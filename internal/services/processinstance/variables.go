@@ -34,7 +34,12 @@ func UpdateProcessInstancesVariables(ctx context.Context, api API, log *slog.Log
 
 func UpdateProcessInstanceVariables(ctx context.Context, api API, request d.ProcessInstanceVariableUpdateRequest, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResult, error) {
 	cfg := services.ApplyCallOptions(opts)
-	resp, err := api.UpdateProcessInstanceVariables(ctx, request.Key, request.Variables, opts...)
+	mutationOpts := opts
+	if !cfg.NoWait {
+		mutationOpts = append([]services.CallOption{}, opts...)
+		mutationOpts = append(mutationOpts, services.WithNoWait())
+	}
+	resp, err := api.UpdateProcessInstanceVariables(ctx, request.Key, request.Variables, mutationOpts...)
 	result := domainVariableUpdateResult(resp, request.Variables)
 	if result.Key == "" {
 		result.Key = request.Key

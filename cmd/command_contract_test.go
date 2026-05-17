@@ -137,13 +137,9 @@ func TestCommandContractOpsRepairProcessInstance(t *testing.T) {
 		Repeated:    true,
 		Description: "process-instance key(s) whose active incidents should be repaired; repeat or combine with stdin '-'",
 	})
-	require.Contains(t, capability.Flags, FlagContract{
-		Name:        "incidents-only",
-		Type:        "bool",
-		Required:    false,
-		Repeated:    false,
-		Description: "select only process instances that have incidents",
-	})
+	for _, flag := range capability.Flags {
+		require.NotEqual(t, "incidents-only", flag.Name)
+	}
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "direct-incidents-only",
 		Type:        "bool",

@@ -205,16 +205,16 @@
 
 **Purpose**: Documentation, generated docs, full validation, and final feature readiness.
 
-- [ ] T079 [P] Update repair command examples and user-facing help text in `cmd/ops_repair.go`, `cmd/ops_repair_incident.go`, and `cmd/ops_repair_processinstance.go`
-- [ ] T080 [P] Update README-facing repair examples or confirm no README update is needed in `README.md`
-- [ ] T081 Run `gofmt` on touched Go files under `cmd/`, `c8volt/`, and `internal/services/`
-- [ ] T082 Run `make docs-content` and review generated files under `docs/cli/` and `docs/index.md`
-- [ ] T083 Run command package validation with `go test ./cmd -count=1` for files under `cmd/`
-- [ ] T084 Run facade and service validation with `go test ./c8volt/ops ./internal/services/ops ./internal/services/incident ./internal/services/processinstance ./internal/services/job -count=1`
-- [ ] T085 Run race validation for worker-sensitive command paths with `go test ./cmd -race -run 'TestOpsRepair' -count=1` for `cmd/`
-- [ ] T086 Run repository validation with `make test` from `Makefile`
-- [ ] T087 Review `git diff --check` and final changed files before committing under `cmd/`, `c8volt/`, `internal/services/`, `README.md`, `docs/`, and `specs/183-ops-repair-workflows/`
-- [ ] T088 Update final implementation notes and completed validation in `specs/183-ops-repair-workflows/progress.md`
+- [x] T079 [P] Update repair command examples and user-facing help text in `cmd/ops_repair.go`, `cmd/ops_repair_incident.go`, and `cmd/ops_repair_processinstance.go`
+- [x] T080 [P] Update README-facing repair examples or confirm no README update is needed in `README.md`
+- [x] T081 Run `gofmt` on touched Go files under `cmd/`, `c8volt/`, and `internal/services/`
+- [x] T082 Run `make docs-content` and review generated files under `docs/cli/` and `docs/index.md`
+- [x] T083 Run command package validation with `go test ./cmd -count=1` for files under `cmd/`
+- [x] T084 Run facade and service validation with `go test ./c8volt/ops ./internal/services/ops ./internal/services/incident ./internal/services/processinstance ./internal/services/job -count=1`
+- [x] T085 Run race validation for worker-sensitive command paths with `go test ./cmd -race -run 'TestOpsRepair' -count=1` for `cmd/`
+- [x] T086 Run repository validation with `make test` from `Makefile`
+- [x] T087 Review `git diff --check` and final changed files before committing under `cmd/`, `c8volt/`, `internal/services/`, `README.md`, `docs/`, and `specs/183-ops-repair-workflows/`
+- [x] T088 Update final implementation notes and completed validation in `specs/183-ops-repair-workflows/progress.md`
 
 ---
 

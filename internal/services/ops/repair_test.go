@@ -14,6 +14,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
 	jsvc "github.com/grafvonb/c8volt/internal/services/job"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
 )
@@ -122,6 +123,81 @@ func TestRepairProcessInstancesDryRunDiscoversExplicitTargets(t *testing.T) {
 	require.Equal(t, "ops.repair.v1", got.Report.SchemaVersion)
 	require.Equal(t, started, got.Report.StartedAt)
 	require.Equal(t, got.FrozenSet, got.Report.FrozenSet)
+}
+
+// TestRepairProcessInstancesDryRunReportsExplicitTargetsWithoutIncidents verifies direct PI keys can include non-applicable instances.
+func TestRepairProcessInstancesDryRunReportsExplicitTargetsWithoutIncidents(t *testing.T) {
+	t.Parallel()
+
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{
+		getProcessInstances: func(_ context.Context, keys typex.Keys, _ int, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			require.Equal(t, []string{"2251799813685251", "2251799813685255"}, []string(keys))
+			return []d.ProcessInstance{
+				{Key: "2251799813685251", State: d.StateActive, Incident: true},
+				{Key: "2251799813685255", State: d.StateActive, Incident: false},
+			}, nil
+		},
+	}, repairIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			switch key {
+			case "2251799813685251":
+				return []d.ProcessInstanceIncidentDetail{
+					{IncidentKey: "2251799813685249", ProcessInstanceKey: key, RootProcessInstanceKey: key, State: "ACTIVE"},
+				}, nil
+			case "2251799813685255":
+				return nil, nil
+			default:
+				t.Fatalf("unexpected process instance key %s", key)
+				return nil, nil
+			}
+		},
+	}, nil, nil, stubJobAPI{}, "")
+
+	got, err := api.RepairProcessInstances(context.Background(), d.OpsRepairRequest{
+		CommandName:   "ops repair process-instance",
+		DiscoveryMode: d.OpsRepairDiscoveryModeKeyed,
+		InputKeys:     typex.Keys{"2251799813685251", "2251799813685255"},
+		DryRun:        true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
+	require.Equal(t, []string{"2251799813685251"}, []string(got.FrozenSet.ProcessInstanceKeys))
+	require.Equal(t, []string{"2251799813685249"}, []string(got.FrozenSet.IncidentKeys))
+	require.Equal(t, []string{"2251799813685255"}, []string(got.FrozenSet.SkippedProcessInstanceKeys))
+	require.Equal(t, got.FrozenSet, got.Report.FrozenSet)
+}
+
+// TestRepairProcessInstancesNoActiveIncidentsNoOpsWithoutError verifies direct PI keys with no incidents are a clean no-op.
+func TestRepairProcessInstancesNoActiveIncidentsNoOpsWithoutError(t *testing.T) {
+	t.Parallel()
+
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{
+		getProcessInstances: func(_ context.Context, keys typex.Keys, _ int, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			require.Equal(t, []string{"2251799813685255"}, []string(keys))
+			return []d.ProcessInstance{{Key: "2251799813685255", State: d.StateActive, Incident: false}}, nil
+		},
+	}, repairIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			require.Equal(t, "2251799813685255", key)
+			return nil, nil
+		},
+	}, nil, nil, stubJobAPI{}, "")
+
+	got, err := api.RepairProcessInstances(context.Background(), d.OpsRepairRequest{
+		CommandName:   "ops repair process-instance",
+		DiscoveryMode: d.OpsRepairDiscoveryModeKeyed,
+		InputKeys:     typex.Keys{"2251799813685255"},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
+	require.Empty(t, got.FrozenSet.ProcessInstanceKeys)
+	require.Empty(t, got.FrozenSet.IncidentKeys)
+	require.Equal(t, []string{"2251799813685255"}, []string(got.FrozenSet.SkippedProcessInstanceKeys))
+	require.Empty(t, got.Plan)
+	require.Len(t, got.Notices, 1)
+	require.Equal(t, "no_active_incidents", got.Notices[0].Code)
 }
 
 // TestRepairProcessInstancesSearchDedupeAndRoutesThroughIncidentRepair verifies search-selected PIs repair each duplicate incident once.
@@ -458,11 +534,11 @@ func TestOpsRepairProcessInstancesSearchDryRunPlansMixedApplicabilityWithoutMuta
 func TestRepairIncidentsDedupesVariableScopesAndConfirmsRequestedNames(t *testing.T) {
 	t.Parallel()
 
-	var variableUpdates []string
-	var resolved []string
+	var variableUpdates testx.SafeSlice[string]
+	var resolved testx.SafeSlice[string]
 	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{
 		updateVariables: func(_ context.Context, key string, variables map[string]any, _ ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
-			variableUpdates = append(variableUpdates, key)
+			variableUpdates.Append(key)
 			require.Equal(t, map[string]any{"customerTier": "gold"}, variables)
 			return d.ProcessInstanceVariableUpdateResponse{Key: key, Ok: true, StatusCode: http.StatusNoContent, Status: "204 No Content"}, nil
 		},
@@ -474,7 +550,7 @@ func TestRepairIncidentsDedupesVariableScopesAndConfirmsRequestedNames(t *testin
 			return d.ProcessInstanceIncidentDetail{IncidentKey: key, ProcessInstanceKey: "2251799813685251", State: "ACTIVE"}, nil
 		},
 		resolveIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
-			resolved = append(resolved, key)
+			resolved.Append(key)
 			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: http.StatusNoContent, Status: "accepted"}, nil
 		},
 		waitForIncidentResolved: func(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
@@ -490,8 +566,8 @@ func TestRepairIncidentsDedupesVariableScopesAndConfirmsRequestedNames(t *testin
 
 	require.NoError(t, err)
 	require.Equal(t, d.OpsRepairOutcomeRepaired, got.Outcome)
-	require.Equal(t, []string{"2251799813685251"}, variableUpdates)
-	require.Equal(t, []string{"2251799813685249", "2251799813685250"}, resolved)
+	require.Equal(t, []string{"2251799813685251"}, variableUpdates.Snapshot())
+	require.ElementsMatch(t, []string{"2251799813685249", "2251799813685250"}, resolved.Snapshot())
 	require.Len(t, got.VariableUpdates, 1)
 	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.VariableUpdates[0].Status)
 	require.Equal(t, []string{"customerTier"}, got.VariableUpdates[0].VariableNames)

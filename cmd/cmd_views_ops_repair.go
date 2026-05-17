@@ -26,15 +26,13 @@ func renderOpsRepairIncidentResult(cmd *cobra.Command, result ops.RepairResult) 
 		renderHumanLine(cmd, "repair incidents")
 	}
 	if result.Request.DiscoveryMode == ops.RepairDiscoveryModeSearch {
-		renderHumanLine(cmd, "discovery: search filters %s", result.FrozenSet.IncidentFilters.String())
+		renderHumanLine(cmd, "selection filters: %s", result.FrozenSet.IncidentFilters.String())
 	}
-	renderHumanLine(cmd, "frozen incidents: %d", len(result.FrozenSet.IncidentKeys))
-	if len(result.FrozenSet.JobKeys) > 0 || len(result.Plan) > 0 {
-		renderHumanLine(cmd, "related jobs: %d applicable, %d not applicable", len(result.FrozenSet.JobKeys), countOpsRepairIncidentJobNotApplicable(result.Plan))
-	}
+	renderHumanLine(cmd, "candidate incidents: %d", len(result.FrozenSet.IncidentKeys))
 	if len(result.FrozenSet.VariableScopes) > 0 || len(result.VariableUpdates) > 0 {
 		renderHumanLine(cmd, "variable scopes: %d", countOpsRepairVariableScopes(result))
 	}
+	renderOpsRepairPlanSummary(cmd, result)
 	renderOpsRepairReportFile(cmd, result.Request.ReportFile)
 	if flagVerbose {
 		renderOpsRepairKeys(cmd, "incident keys", result.FrozenSet.IncidentKeys)
@@ -80,19 +78,21 @@ func renderOpsRepairProcessInstanceResult(cmd *cobra.Command, result ops.RepairR
 		renderHumanLine(cmd, "repair process-instance incidents")
 	}
 	if result.Request.DiscoveryMode == ops.RepairDiscoveryModeSearch {
-		renderHumanLine(cmd, "discovery: process filters %s", result.FrozenSet.ProcessFilters.String())
+		renderHumanLine(cmd, "selection filters: %s", result.FrozenSet.ProcessFilters.String())
 	}
-	renderHumanLine(cmd, "frozen process instances: %d", len(result.FrozenSet.ProcessInstanceKeys))
-	renderHumanLine(cmd, "frozen incidents: %d deduped", len(result.FrozenSet.IncidentKeys))
-	if len(result.FrozenSet.JobKeys) > 0 || len(result.Plan) > 0 {
-		renderHumanLine(cmd, "related jobs: %d applicable, %d not applicable", len(result.FrozenSet.JobKeys), countOpsRepairIncidentJobNotApplicable(result.Plan))
+	renderHumanLine(cmd, "candidate process instances: %d", len(result.FrozenSet.ProcessInstanceKeys))
+	renderHumanLine(cmd, "active incidents: %d", len(result.FrozenSet.IncidentKeys))
+	if len(result.FrozenSet.SkippedProcessInstanceKeys) > 0 {
+		renderHumanLine(cmd, "process instances without active incidents: %d", len(result.FrozenSet.SkippedProcessInstanceKeys))
 	}
 	if len(result.FrozenSet.VariableScopes) > 0 || len(result.VariableUpdates) > 0 {
 		renderHumanLine(cmd, "variable scopes: %d", countOpsRepairVariableScopes(result))
 	}
+	renderOpsRepairPlanSummary(cmd, result)
 	renderOpsRepairReportFile(cmd, result.Request.ReportFile)
 	if flagVerbose {
 		renderOpsRepairKeys(cmd, "process-instance keys", result.FrozenSet.ProcessInstanceKeys)
+		renderOpsRepairKeys(cmd, "skipped process-instance keys", result.FrozenSet.SkippedProcessInstanceKeys)
 		renderOpsRepairKeys(cmd, "incident keys", result.FrozenSet.IncidentKeys)
 		renderOpsRepairKeys(cmd, "job keys", result.FrozenSet.JobKeys)
 		renderOpsRepairVariableUpdates(cmd, result.VariableUpdates)
@@ -135,7 +135,49 @@ func countOpsRepairIncidentJobNotApplicable(items []ops.RepairPlanItem) int {
 	return count
 }
 
-// countOpsRepairVariableScopes reports deduped variable scopes from either frozen discovery or executed scope updates.
+// renderOpsRepairPlanSummary prints the dry-run or execution plan in the same compact style as other ops previews.
+func renderOpsRepairPlanSummary(cmd *cobra.Command, result ops.RepairResult) {
+	if len(result.FrozenSet.IncidentKeys) == 0 && len(result.Plan) == 0 {
+		if result.Request.DryRun {
+			renderHumanLine(cmd, "repair preview: skipped (no active incident targets)")
+		} else {
+			renderHumanLine(cmd, "repair plan: skipped")
+		}
+		return
+	}
+	if result.Request.DryRun {
+		renderHumanLine(cmd, "repair preview: %d incident(s), %d related job(s), %d variable scope(s) would be updated",
+			len(result.FrozenSet.IncidentKeys),
+			countOpsRepairRelatedJobs(result),
+			countOpsRepairVariableScopes(result),
+		)
+	} else {
+		renderHumanLine(cmd, "repair plan: %d incident(s), %d related job(s), %d variable scope(s)",
+			len(result.FrozenSet.IncidentKeys),
+			countOpsRepairRelatedJobs(result),
+			countOpsRepairVariableScopes(result),
+		)
+	}
+	if withoutJobs := countOpsRepairIncidentJobNotApplicable(result.Plan); withoutJobs > 0 {
+		renderHumanLine(cmd, "incidents without related jobs: %d", withoutJobs)
+	}
+}
+
+func countOpsRepairRelatedJobs(result ops.RepairResult) int {
+	if len(result.FrozenSet.JobKeys) > 0 {
+		return len(result.FrozenSet.JobKeys)
+	}
+	jobKeys := make(map[string]struct{}, len(result.Plan))
+	for _, item := range result.Plan {
+		if item.JobKey == "" {
+			continue
+		}
+		jobKeys[item.JobKey] = struct{}{}
+	}
+	return len(jobKeys)
+}
+
+// countOpsRepairVariableScopes reports unique variable scopes from either target discovery or executed scope updates.
 func countOpsRepairVariableScopes(result ops.RepairResult) int {
 	if len(result.VariableUpdates) > 0 {
 		return len(result.VariableUpdates)
@@ -146,6 +188,7 @@ func countOpsRepairVariableScopes(result ops.RepairResult) int {
 // opsRepairProcessInstanceHasHiddenKeys reports whether compact output omitted target details.
 func opsRepairProcessInstanceHasHiddenKeys(result ops.RepairResult) bool {
 	return len(result.FrozenSet.ProcessInstanceKeys) > 0 ||
+		len(result.FrozenSet.SkippedProcessInstanceKeys) > 0 ||
 		len(result.FrozenSet.IncidentKeys) > 0 ||
 		len(result.FrozenSet.JobKeys) > 0 ||
 		len(result.FrozenSet.VariableScopes) > 0
@@ -167,7 +210,7 @@ func renderOpsRepairKeys(cmd *cobra.Command, label string, keys []string) {
 	renderHumanLine(cmd, "%s: %s", label, strings.Join(keys, ", "))
 }
 
-// renderOpsRepairVariableUpdates prints deduped variable scope status rows in verbose human output.
+// renderOpsRepairVariableUpdates prints unique variable scope status rows in verbose human output.
 func renderOpsRepairVariableUpdates(cmd *cobra.Command, updates []ops.RepairVariableScopeUpdate) {
 	for _, update := range updates {
 		names := "none"
@@ -272,7 +315,7 @@ func renderOpsRepairMarkdownReport(report ops.RepairAuditReport, cfg *config.Con
 	writeMarkdownReportField(&out, "Requested Retries", opsRepairReportRetries(report.Request.RequestedRetries))
 	writeMarkdownReportField(&out, "Requested Job Timeout", report.Request.RequestedJobTimeout.String())
 
-	out.WriteString("\n## Frozen Targets\n\n")
+	out.WriteString("\n## Fixed Targets\n\n")
 	writeMarkdownReportField(&out, "Status", string(report.FrozenSet.Status))
 	writeMarkdownReportField(&out, "Target", string(report.FrozenSet.Target))
 	writeMarkdownReportField(&out, "Discovery Mode", string(report.FrozenSet.DiscoveryMode))
@@ -281,6 +324,7 @@ func renderOpsRepairMarkdownReport(report ops.RepairAuditReport, cfg *config.Con
 	writeMarkdownReportList(&out, "Input Keys", report.FrozenSet.InputKeys)
 	writeMarkdownReportList(&out, "Incident Keys", report.FrozenSet.IncidentKeys)
 	writeMarkdownReportList(&out, "Process-Instance Keys", report.FrozenSet.ProcessInstanceKeys)
+	writeMarkdownReportList(&out, "Skipped Process-Instance Keys", report.FrozenSet.SkippedProcessInstanceKeys)
 	writeMarkdownReportList(&out, "Root Process-Instance Keys", report.FrozenSet.RootProcessKeys)
 	writeMarkdownReportList(&out, "Job Keys", report.FrozenSet.JobKeys)
 	writeMarkdownReportList(&out, "Variable Scopes", report.FrozenSet.VariableScopes)

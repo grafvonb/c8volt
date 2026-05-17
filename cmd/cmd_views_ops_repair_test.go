@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestRenderOpsRepairIncidentDryRunSearchHumanOutput verifies dry-run search output exposes filters and frozen keys.
+// TestRenderOpsRepairIncidentDryRunSearchHumanOutput verifies dry-run search output exposes filters and target keys.
 func TestRenderOpsRepairIncidentDryRunSearchHumanOutput(t *testing.T) {
 	resetOpsRepairIncidentFlagState()
 	t.Cleanup(resetOpsRepairIncidentFlagState)
@@ -55,11 +55,28 @@ func TestRenderOpsRepairIncidentDryRunSearchHumanOutput(t *testing.T) {
 	require.NoError(t, err)
 	output := buf.String()
 	require.Contains(t, output, "dry run: repair incidents")
-	require.Contains(t, output, `discovery: search filters {state=active, errorType="io_mapping_error"}`)
-	require.Contains(t, output, "frozen incidents: 2")
+	require.Contains(t, output, `selection filters: {state=active, errorType="io_mapping_error"}`)
+	require.Contains(t, output, "candidate incidents: 2")
+	require.Contains(t, output, "repair preview: 2 incident(s), 1 related job(s), 0 variable scope(s) would be updated")
+	require.Contains(t, output, "incidents without related jobs: 1")
 	require.Contains(t, output, "incident keys: 2251799813685249, 2251799813685250")
 	require.Contains(t, output, "report: written repair-preview.json")
 	require.Contains(t, output, "outcome: planned; no changes applied")
+}
+
+// TestOpsRepairConfirmationPromptIncludesNonIncidentProcessInstances verifies preflight calls out non-applicable direct PI keys.
+func TestOpsRepairConfirmationPromptIncludesNonIncidentProcessInstances(t *testing.T) {
+	prompt := opsRepairConfirmationPrompt(ops.RepairResult{
+		Request: ops.RepairRequest{Target: ops.RepairTargetProcessInstance},
+		FrozenSet: ops.RepairFrozenSet{
+			ProcessInstanceKeys:        typex.Keys{"2251799813685251"},
+			SkippedProcessInstanceKeys: typex.Keys{"2251799813685255"},
+			IncidentKeys:               typex.Keys{"2251799813685249"},
+		},
+	})
+
+	require.Contains(t, prompt, "1 repairable process instance(s), 1 active incident(s), and skipped 1 process instance(s) without active incidents")
+	require.Contains(t, prompt, "resolve 1 incident(s)")
 }
 
 // TestRenderOpsRepairIncidentDryRunSearchJSON verifies the shared envelope preserves dry-run search fields.
@@ -116,7 +133,7 @@ func TestRenderOpsRepairMarkdownReport(t *testing.T) {
 	require.Contains(t, output, "- Command: ops repair incident")
 	require.Contains(t, output, "- Dry Run: true")
 	require.Contains(t, output, "- Outcome: planned")
-	require.Contains(t, output, "## Frozen Targets")
+	require.Contains(t, output, "## Fixed Targets")
 	require.Contains(t, output, "  - 2251799813685249")
 	require.Contains(t, output, "## Variable Updates")
 	require.Contains(t, output, "  - scope=2251799813685251 status=planned names=approved dependents=2251799813685249")

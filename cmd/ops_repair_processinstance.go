@@ -30,11 +30,11 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Repair incidents selected by process instances",
 	Long: "Repair incidents selected by process instances.\n\n" +
-		"The command accepts repeated --key values, newline-separated process-instance keys from stdin with '-', or process-instance search filters. Search mode requires --incidents-only or --direct-incidents-only so repair only scans incident-bearing selections. The workflow freezes the selected process instances and deduped active incident set before mutation, then reuses the incident repair steps for job updates, incident resolution, and confirmation.",
+		"The command accepts repeated --key values, newline-separated process-instance keys from stdin with '-', or process-instance search filters. Search mode automatically limits discovery to incident-bearing process instances; use --direct-incidents-only for stricter direct active incident matching. The workflow builds a fixed target set of repairable process instances and active incidents before mutation, applies process-instance-scope variable updates once per unique scope when requested, then reuses the incident repair steps for job updates, incident resolution, and confirmation. Use --report-file with markdown or json output for an audit record of discovery, targets, duplicate handling, skipped keys, step statuses, notices, errors, and final outcome.",
 	Example: `  ./c8volt ops repair process-instance --key <process-instance-key>
   ./c8volt ops repair pi --key <process-instance-key> --key <another-process-instance-key>
   printf '%s\n' "$PI_KEY_A" "$PI_KEY_B" | ./c8volt ops repair process-instance -
-  ./c8volt ops repair process-instance --incidents-only --state active --limit 25 --dry-run
+  ./c8volt ops repair process-instance --state active --limit 25 --dry-run
   ./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id demo --limit 25 --dry-run
   ./c8volt ops repair process-instance --key <process-instance-key> --retries 0
   ./c8volt ops repair process-instance --key <process-instance-key> --job-timeout 5m
@@ -82,11 +82,13 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		keys := mergeAndValidateKeys(flagOpsRepairProcessInstanceKeys, stdinKeys, log, cfg).Unique()
-		searchMode := hasOpsRepairProcessInstanceSearchModeFlags(cmd)
-		keyedMode := len(flagOpsRepairProcessInstanceKeys) > 0 || len(stdinKeys) > 0
-		if keyedMode && searchMode {
+		stdinMode := len(args) == 1 && args[0] == "-"
+		keyedMode := len(flagOpsRepairProcessInstanceKeys) > 0 || stdinMode
+		explicitSearchMode := hasOpsRepairProcessInstanceSearchModeFlags(cmd)
+		if keyedMode && explicitSearchMode {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, mutuallyExclusiveFlagsf("--key cannot be combined with process-instance search filters"))
 		}
+		searchMode := explicitSearchMode || !keyedMode
 		if len(keys) == 0 && !searchMode {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process-instance keys provided or found to repair")))
 		}
@@ -101,11 +103,11 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 			mode = ops.RepairDiscoveryModeStdin
 		}
 		selection := populatePISearchFilterOpts()
-		if flagGetPIDirectIncidentsOnly {
+		if searchMode {
 			selection.HasIncident = new(bool)
 			*selection.HasIncident = true
 		}
-		result, err := cli.RepairProcessInstances(cmd.Context(), ops.RepairRequest{
+		request := ops.RepairRequest{
 			CommandName:              opsRepairProcessInstanceCommandName,
 			Target:                   ops.RepairTargetProcessInstance,
 			DiscoveryMode:            mode,
@@ -129,7 +131,27 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 			ReportFile:               flagOpsRepairProcessInstanceReportFile,
 			ReportFormat:             reportFormat,
 			StartedAt:                time.Now().UTC(),
-		}, collectOptions()...)
+		}
+		var result ops.RepairResult
+		if opsRepairNeedsPreflight(cmd) {
+			planRequest := request
+			planRequest.DryRun = true
+			planned, err := cli.RepairProcessInstances(cmd.Context(), planRequest, collectOptions()...)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops repair process-instance: %w", err))
+			}
+			if opsRepairPlanHasRepairTargets(planned) {
+				if err := confirmCmdOrAbortFn(false, opsRepairConfirmationPrompt(planned)); err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
+				request = opsRepairConfirmedRequestFromPlan(request, planned)
+				result, err = cli.RepairProcessInstances(cmd.Context(), request, collectOptions()...)
+			} else {
+				result = opsRepairResultWithoutMutation(request, planned)
+			}
+		} else {
+			result, err = cli.RepairProcessInstances(cmd.Context(), request, collectOptions()...)
+		}
 		if reportErr := writeOpsRepairReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops repair process-instance: %w; write audit report: %v", err, reportErr))
@@ -159,7 +181,6 @@ func init() {
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled, terminated")
 	fs.BoolVar(&flagGetPIRootsOnly, "roots-only", false, "select only root process instances")
 	fs.BoolVar(&flagGetPIChildrenOnly, "children-only", false, "select only child process instances")
-	fs.BoolVar(&flagGetPIIncidentsOnly, "incidents-only", false, "select only process instances that have incidents")
 	fs.BoolVar(&flagGetPIDirectIncidentsOnly, "direct-incidents-only", false, "select only process instances with direct active incidents")
 	fs.StringVar(&flagGetPIIncidentState, "incident-state", "active", "incident state scope for --direct-incidents-only: active, pending, resolved, migrated, unknown, all")
 	fs.StringVar(&flagGetPIIncidentErrorType, "incident-error-type", "", "case-insensitive incident error type filter for --direct-incidents-only")
@@ -213,9 +234,6 @@ func validateOpsRepairProcessInstanceFlagValues(cmd *cobra.Command) error {
 	if len(flagOpsRepairProcessInstanceKeys) > 0 && hasOpsRepairProcessInstanceSearchModeFlags(cmd) {
 		return mutuallyExclusiveFlagsf("--key cannot be combined with process-instance search filters")
 	}
-	if hasOpsRepairProcessInstanceSearchModeFlags(cmd) && !flagGetPIIncidentsOnly && !flagGetPIDirectIncidentsOnly {
-		return missingDependentFlagsf("process-instance search repair requires --incidents-only or --direct-incidents-only")
-	}
 	for flag, value := range map[string]string{
 		"--parent-key": flagGetPIParentKey,
 		"--pd-key":     flagGetPIProcessDefinitionKey,
@@ -259,7 +277,6 @@ func hasOpsRepairProcessInstanceSearchModeFlags(cmd *cobra.Command) bool {
 		"state",
 		"roots-only",
 		"children-only",
-		"incidents-only",
 		"direct-incidents-only",
 		"incident-state",
 		"incident-error-type",

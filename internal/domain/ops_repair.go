@@ -75,19 +75,20 @@ type OpsRepairRequest struct {
 
 // OpsRepairFrozenSet captures the immutable target data discovered before mutation.
 type OpsRepairFrozenSet struct {
-	Status              OpsWorkflowStepStatus
-	Target              OpsRepairTarget
-	DiscoveryMode       OpsRepairDiscoveryMode
-	InputKeys           typex.Keys
-	IncidentKeys        typex.Keys
-	ProcessInstanceKeys typex.Keys
-	RootProcessKeys     typex.Keys
-	JobKeys             typex.Keys
-	VariableScopes      typex.Keys
-	OriginalIncidents   []ProcessInstanceIncidentDetail
-	IncidentFilters     IncidentFilter
-	ProcessFilters      ProcessInstanceFilter
-	Errors              []string
+	Status                     OpsWorkflowStepStatus
+	Target                     OpsRepairTarget
+	DiscoveryMode              OpsRepairDiscoveryMode
+	InputKeys                  typex.Keys
+	IncidentKeys               typex.Keys
+	ProcessInstanceKeys        typex.Keys
+	SkippedProcessInstanceKeys typex.Keys
+	RootProcessKeys            typex.Keys
+	JobKeys                    typex.Keys
+	VariableScopes             typex.Keys
+	OriginalIncidents          []ProcessInstanceIncidentDetail
+	IncidentFilters            IncidentFilter
+	ProcessFilters             ProcessInstanceFilter
+	Errors                     []string
 }
 
 // OpsRepairPlanItem describes the planned or executed steps for one incident.

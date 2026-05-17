@@ -85,22 +85,21 @@ func TestOpsExecuteCommandReturnsHelpForGroupingInvocation(t *testing.T) {
 	require.Contains(t, output, "c8volt ops execute")
 }
 
-// TestOpsRepairHelpDocumentsGroupingCommand verifies repair is only a discoverable parent for future remediation workflows.
+// TestOpsRepairHelpDocumentsGroupingCommand verifies repair is only a discoverable parent for target remediation workflows.
 func TestOpsRepairHelpDocumentsGroupingCommand(t *testing.T) {
 	output := executeRootForTest(t, "ops", "repair", "--help")
 
 	assertHelpOutputContainsAll(t, output,
 		"Discover repair and remediation workflows",
-		"reserved for future workflows that repair",
-		"Target-specific subcommands will define their own target semantics",
+		"lists target-specific remediation workflows",
+		"does not define target keys or",
+		"run remediation behavior by itself",
 		"./c8volt ops repair --help",
 		"./c8volt capabilities --json",
 	)
 	assertHelpOutputOmitsAll(t, output,
 		"--key string",
 		"--key strings",
-		"repair incident",
-		"repair process-instance",
 	)
 }
 

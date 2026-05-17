@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -31,7 +32,6 @@ func TestOpsRepairProcessInstanceHelpDocumentsSelectionShape(t *testing.T) {
 		"Aliases:",
 		"pi",
 		"--key strings",
-		"--incidents-only",
 		"--direct-incidents-only",
 		"--batch-size int32",
 		"--limit int32",
@@ -46,6 +46,7 @@ func TestOpsRepairProcessInstanceHelpDocumentsSelectionShape(t *testing.T) {
 		"--workers int",
 		"printf '%s\\n' \"$PI_KEY_A\" \"$PI_KEY_B\" | ./c8volt ops repair process-instance -",
 	)
+	require.NotContains(t, output, "--incidents-only")
 }
 
 // TestOpsRepairProcessInstanceDryRunWritesMarkdownReport verifies report writing keeps dry-run mutation-free.
@@ -70,7 +71,7 @@ func TestOpsRepairProcessInstanceDryRunWritesMarkdownReport(t *testing.T) {
 	require.Contains(t, report, "- Command: ops repair process-instance")
 	require.Contains(t, report, "- Dry Run: true")
 	require.Contains(t, report, "- Outcome: planned")
-	require.Contains(t, report, "## Frozen Targets")
+	require.Contains(t, report, "## Fixed Targets")
 	require.Contains(t, report, "  - 2251799813685251")
 	gotRequests := strings.Join(requests.Snapshot(), "\n")
 	require.Contains(t, gotRequests, "GET /v2/process-instances/2251799813685251")
@@ -120,8 +121,8 @@ func TestOpsRepairProcessInstanceExplicitKeyNoWaitRepairsDiscoveredIncidents(t *
 
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "repair process-instance incidents")
-	require.Contains(t, string(output), "frozen process instances: 1")
-	require.Contains(t, string(output), "frozen incidents: 1 deduped")
+	require.Contains(t, string(output), "candidate process instances: 1")
+	require.Contains(t, string(output), "active incidents: 1")
 	require.Contains(t, string(output), "outcome: repaired")
 	gotRequests := strings.Join(requests.Snapshot(), "\n")
 	require.Contains(t, gotRequests, "GET /v2/process-instances/2251799813685251")
@@ -130,8 +131,109 @@ func TestOpsRepairProcessInstanceExplicitKeyNoWaitRepairsDiscoveredIncidents(t *
 	require.Contains(t, gotRequests, "POST /v2/incidents/2251799813685249/resolution")
 }
 
-// TestOpsRepairProcessInstanceStdinDryRunFreezesDiscoveredIncidents verifies stdin PI keys discover incidents without mutation in dry-run.
-func TestOpsRepairProcessInstanceStdinDryRunFreezesDiscoveredIncidents(t *testing.T) {
+// TestOpsRepairProcessInstanceDirectKeysReportNonIncidentTargets verifies mixed direct PI keys stay non-fatal and visible.
+func TestOpsRepairProcessInstanceDirectKeysReportNonIncidentTargets(t *testing.T) {
+	resetOpsRepairProcessInstanceFlagState()
+	t.Cleanup(resetOpsRepairProcessInstanceFlagState)
+
+	var requests testx.SafeSlice[string]
+	srv := newOpsRepairProcessInstanceServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairProcessInstanceCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":             writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_OPS_REPAIR_PI_ARGS": marshalOpsRepairProcessInstanceArgsForEnv(t, []string{"ops", "repair", "process-instance", "--key", "2251799813685251", "--key", "2251799813685255", "--dry-run", "--verbose"}),
+	})
+
+	require.NoError(t, err, string(output))
+	require.Contains(t, string(output), "candidate process instances: 1")
+	require.Contains(t, string(output), "active incidents: 1")
+	require.Contains(t, string(output), "process instances without active incidents: 1")
+	require.Contains(t, string(output), "skipped process-instance keys: 2251799813685255")
+	require.Contains(t, string(output), "outcome: planned; no changes applied")
+	gotRequests := strings.Join(requests.Snapshot(), "\n")
+	require.Contains(t, gotRequests, "GET /v2/process-instances/2251799813685255")
+	require.Contains(t, gotRequests, "POST /v2/process-instances/2251799813685255/incidents/search")
+	require.NotContains(t, gotRequests, "PATCH /v2/jobs/")
+	require.NotContains(t, gotRequests, "/resolution")
+}
+
+// TestOpsRepairProcessInstanceDirectKeyWithoutIncidentNoOps verifies no-target preflight exits cleanly.
+func TestOpsRepairProcessInstanceDirectKeyWithoutIncidentNoOps(t *testing.T) {
+	resetOpsRepairProcessInstanceFlagState()
+	t.Cleanup(resetOpsRepairProcessInstanceFlagState)
+
+	var requests testx.SafeSlice[string]
+	srv := newOpsRepairProcessInstanceServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairProcessInstanceCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":             writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_OPS_REPAIR_PI_ARGS": marshalOpsRepairProcessInstanceArgsForEnv(t, []string{"ops", "repair", "process-instance", "--key", "2251799813685255"}),
+	})
+
+	require.NoError(t, err, string(output))
+	require.Contains(t, string(output), "repair process-instance incidents")
+	require.Contains(t, string(output), "candidate process instances: 0")
+	require.Contains(t, string(output), "active incidents: 0")
+	require.Contains(t, string(output), "process instances without active incidents: 1")
+	require.Contains(t, string(output), "repair plan: skipped")
+	require.Contains(t, string(output), "outcome: planned; no changes applied")
+	gotRequests := strings.Join(requests.Snapshot(), "\n")
+	require.Contains(t, gotRequests, "GET /v2/process-instances/2251799813685255")
+	require.Contains(t, gotRequests, "POST /v2/process-instances/2251799813685255/incidents/search")
+	require.NotContains(t, gotRequests, "PATCH /v2/jobs/")
+	require.NotContains(t, gotRequests, "/resolution")
+}
+
+// TestOpsRepairProcessInstanceSearchPreflightsBeforeMutation verifies filtered PI repair plans and fixes keys before mutation.
+func TestOpsRepairProcessInstanceSearchPreflightsBeforeMutation(t *testing.T) {
+	resetOpsRepairProcessInstanceFlagState()
+	t.Cleanup(resetOpsRepairProcessInstanceFlagState)
+
+	var requests testx.SafeSlice[string]
+	srv := newOpsRepairProcessInstanceServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairProcessInstanceCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":             writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_OPS_REPAIR_PI_ARGS": marshalOpsRepairProcessInstanceArgsForEnv(t, []string{"ops", "repair", "process-instance", "--state", "active", "--no-wait"}),
+	})
+
+	require.NoError(t, err, string(output))
+	require.Contains(t, string(output), "repair process-instance incidents")
+	requireRequestBefore(t, requests.Snapshot(), "POST /v2/process-instances/search", "GET /v2/process-instances/2251799813685251")
+	requireRequestBefore(t, requests.Snapshot(), "GET /v2/process-instances/2251799813685251", "PATCH /v2/jobs/2251799813685252")
+}
+
+// TestOpsRepairProcessInstanceBareDryRunSearchesIncidents verifies no explicit selector means the default incident-bearing search.
+func TestOpsRepairProcessInstanceBareDryRunSearchesIncidents(t *testing.T) {
+	resetOpsRepairProcessInstanceFlagState()
+	t.Cleanup(resetOpsRepairProcessInstanceFlagState)
+
+	var requests testx.SafeSlice[string]
+	srv := newOpsRepairProcessInstanceServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairProcessInstanceCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":             writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_OPS_REPAIR_PI_ARGS": marshalOpsRepairProcessInstanceArgsForEnv(t, []string{"ops", "repair", "process-instance", "--dry-run"}),
+	})
+
+	require.NoError(t, err, string(output))
+	require.Contains(t, string(output), "dry run: repair process-instance incidents")
+	require.Contains(t, string(output), "selection filters: {hasIncident=true}")
+	require.Contains(t, string(output), "candidate process instances: 1")
+	require.Contains(t, string(output), "active incidents: 1")
+	require.Contains(t, string(output), "repair preview: 1 incident(s), 1 related job(s), 0 variable scope(s) would be updated")
+	gotRequests := strings.Join(requests.Snapshot(), "\n")
+	require.Contains(t, gotRequests, "POST /v2/process-instances/search")
+	require.NotContains(t, gotRequests, "PATCH /v2/jobs/")
+	require.NotContains(t, gotRequests, "/resolution")
+}
+
+// TestOpsRepairProcessInstanceStdinDryRunUsesDiscoveredIncidents verifies stdin PI keys discover incidents without mutation in dry-run.
+func TestOpsRepairProcessInstanceStdinDryRunUsesDiscoveredIncidents(t *testing.T) {
 	resetOpsRepairProcessInstanceFlagState()
 	t.Cleanup(resetOpsRepairProcessInstanceFlagState)
 
@@ -146,9 +248,10 @@ func TestOpsRepairProcessInstanceStdinDryRunFreezesDiscoveredIncidents(t *testin
 
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "dry run: repair process-instance incidents")
-	require.Contains(t, string(output), "frozen process instances: 1")
-	require.Contains(t, string(output), "frozen incidents: 1 deduped")
-	require.Contains(t, string(output), "related jobs: 0 applicable, 1 not applicable")
+	require.Contains(t, string(output), "candidate process instances: 1")
+	require.Contains(t, string(output), "active incidents: 1")
+	require.Contains(t, string(output), "repair preview: 1 incident(s), 0 related job(s), 0 variable scope(s) would be updated")
+	require.Contains(t, string(output), "incidents without related jobs: 1")
 	gotRequests := strings.Join(requests.Snapshot(), "\n")
 	require.NotContains(t, gotRequests, "PATCH /v2/jobs/")
 	require.NotContains(t, gotRequests, "/resolution")
@@ -168,17 +271,12 @@ func TestOpsRepairProcessInstanceRejectsInvalidSelection(t *testing.T) {
 		},
 		{
 			name: "keyed plus filter",
-			args: []string{"ops", "repair", "process-instance", "--key", "2251799813685251", "--incidents-only"},
+			args: []string{"ops", "repair", "process-instance", "--key", "2251799813685251", "--state", "active"},
 			want: "--key cannot be combined with process-instance search filters",
 		},
 		{
-			name: "search without incident selector",
-			args: []string{"ops", "repair", "process-instance", "--state", "active", "--dry-run"},
-			want: "process-instance search repair requires --incidents-only or --direct-incidents-only",
-		},
-		{
 			name: "invalid limit",
-			args: []string{"ops", "repair", "process-instance", "--incidents-only", "--limit", "0"},
+			args: []string{"ops", "repair", "process-instance", "--state", "active", "--limit", "0"},
 			want: "--limit must be positive integer",
 		},
 	}
@@ -232,12 +330,24 @@ func newOpsRepairProcessInstanceServer(t *testing.T, requests *testx.SafeSlice[s
 		case "/v2/process-instances/2251799813685253":
 			require.Equal(t, http.MethodGet, r.Method)
 			_, _ = w.Write([]byte(opsRepairProcessInstanceJSON("2251799813685253")))
+		case "/v2/process-instances/2251799813685255":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(opsRepairProcessInstanceJSONWithIncident("2251799813685255", false)))
 		case "/v2/process-instances/2251799813685251/incidents/search":
 			require.Equal(t, http.MethodPost, r.Method)
 			_, _ = w.Write([]byte(`{"items":[` + opsRepairIncidentJSON("2251799813685249", "2251799813685251", "2251799813685252", "ACTIVE") + `],"page":{"totalItems":1}}`))
 		case "/v2/process-instances/2251799813685253/incidents/search":
 			require.Equal(t, http.MethodPost, r.Method)
 			_, _ = w.Write([]byte(`{"items":[` + opsRepairIncidentJSON("2251799813685250", "2251799813685253", "", "ACTIVE") + `],"page":{"totalItems":1}}`))
+		case "/v2/process-instances/2251799813685255/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0}}`))
+		case "/v2/process-instances/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			payload, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.Contains(t, string(payload), `"hasIncident":true`)
+			_, _ = w.Write([]byte(`{"items":[` + opsRepairProcessInstanceJSON("2251799813685251") + `],"page":{"totalItems":1}}`))
 		case "/v2/jobs/2251799813685252":
 			require.Equal(t, http.MethodPatch, r.Method)
 			w.WriteHeader(http.StatusNoContent)
@@ -252,7 +362,16 @@ func newOpsRepairProcessInstanceServer(t *testing.T, requests *testx.SafeSlice[s
 
 // opsRepairProcessInstanceJSON returns a compact process-instance API response for repair tests.
 func opsRepairProcessInstanceJSON(key string) string {
-	return `{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"2251799813685200","processDefinitionName":"demo","processDefinitionVersion":1,"processInstanceKey":"` + key + `","rootProcessInstanceKey":"` + key + `","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"<default>"}`
+	return opsRepairProcessInstanceJSONWithIncident(key, true)
+}
+
+// opsRepairProcessInstanceJSONWithIncident returns a compact process-instance API response with incident state.
+func opsRepairProcessInstanceJSONWithIncident(key string, hasIncident bool) string {
+	incidentValue := "false"
+	if hasIncident {
+		incidentValue = "true"
+	}
+	return `{"hasIncident":` + incidentValue + `,"processDefinitionId":"demo","processDefinitionKey":"2251799813685200","processDefinitionName":"demo","processDefinitionVersion":1,"processInstanceKey":"` + key + `","rootProcessInstanceKey":"` + key + `","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"<default>"}`
 }
 
 // marshalOpsRepairProcessInstanceArgsForEnv serializes subprocess command arguments.

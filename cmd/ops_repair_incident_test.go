@@ -172,14 +172,14 @@ func TestOpsRepairIncidentExplicitKeyNoWaitRepairsThroughServices(t *testing.T) 
 
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "repair incidents")
-	require.Contains(t, string(output), "frozen incidents: 1")
+	require.Contains(t, string(output), "candidate incidents: 1")
 	require.Contains(t, string(output), "outcome: repaired")
 	require.Contains(t, strings.Join(requests.Snapshot(), "\n"), "GET /v2/incidents/2251799813685249")
 	require.Contains(t, strings.Join(requests.Snapshot(), "\n"), "PATCH /v2/jobs/2251799813685252")
 	require.Contains(t, strings.Join(requests.Snapshot(), "\n"), "POST /v2/incidents/2251799813685249/resolution")
 }
 
-func TestOpsRepairIncidentStdinDryRunFreezesKeys(t *testing.T) {
+func TestOpsRepairIncidentStdinDryRunUsesFixedKeys(t *testing.T) {
 	resetOpsRepairIncidentFlagState()
 	t.Cleanup(resetOpsRepairIncidentFlagState)
 
@@ -194,14 +194,15 @@ func TestOpsRepairIncidentStdinDryRunFreezesKeys(t *testing.T) {
 
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "dry run: repair incidents")
-	require.Contains(t, string(output), "frozen incidents: 1")
-	require.Contains(t, string(output), "related jobs: 0 applicable, 1 not applicable")
+	require.Contains(t, string(output), "candidate incidents: 1")
+	require.Contains(t, string(output), "repair preview: 1 incident(s), 0 related job(s), 0 variable scope(s) would be updated")
+	require.Contains(t, string(output), "incidents without related jobs: 1")
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "PATCH /v2/jobs/")
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/resolution")
 }
 
-// TestOpsRepairIncidentFilterDryRunDiscoversFrozenTargets verifies search-mode repair freezes filtered incidents without mutation.
-func TestOpsRepairIncidentFilterDryRunDiscoversFrozenTargets(t *testing.T) {
+// TestOpsRepairIncidentFilterDryRunDiscoversFixedTargets verifies search-mode repair plans filtered incidents without mutation.
+func TestOpsRepairIncidentFilterDryRunDiscoversFixedTargets(t *testing.T) {
 	resetOpsRepairIncidentFlagState()
 	t.Cleanup(resetOpsRepairIncidentFlagState)
 
@@ -216,13 +217,33 @@ func TestOpsRepairIncidentFilterDryRunDiscoversFrozenTargets(t *testing.T) {
 
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "dry run: repair incidents")
-	require.Contains(t, string(output), `discovery: search filters {state=active, errorType="io_mapping_error"}`)
-	require.Contains(t, string(output), "frozen incidents: 2")
+	require.Contains(t, string(output), `selection filters: {state=active, errorType="IO_MAPPING_ERROR"}`)
+	require.Contains(t, string(output), "candidate incidents: 2")
 	require.Contains(t, string(output), "incident keys: 2251799813685249, 2251799813685250")
 	require.Contains(t, strings.Join(requests.Snapshot(), "\n"), "POST /v2/incidents/search")
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "GET /v2/incidents/")
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "PATCH /v2/jobs/")
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/resolution")
+}
+
+// TestOpsRepairIncidentSearchPreflightsBeforeMutation verifies search repair plans and fixes keys before mutation.
+func TestOpsRepairIncidentSearchPreflightsBeforeMutation(t *testing.T) {
+	resetOpsRepairIncidentFlagState()
+	t.Cleanup(resetOpsRepairIncidentFlagState)
+
+	var requests testx.SafeSlice[string]
+	srv := newOpsRepairIncidentServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairIncidentCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":              writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_OPS_REPAIR_INC_ARGS": marshalOpsRepairIncidentArgsForEnv(t, []string{"ops", "repair", "incident", "--state", "active", "--limit", "2", "--no-wait"}),
+	})
+
+	require.NoError(t, err, string(output))
+	require.Contains(t, string(output), "repair incidents")
+	requireRequestBefore(t, requests.Snapshot(), "POST /v2/incidents/search", "GET /v2/incidents/2251799813685249")
+	requireRequestBefore(t, requests.Snapshot(), "GET /v2/incidents/2251799813685249", "POST /v2/incidents/2251799813685249/resolution")
 }
 
 // TestOpsRepairIncidentRejectsKeyedSearchMode verifies mixed key and filter selection fails before remote mutation.
@@ -317,6 +338,7 @@ func newOpsRepairIncidentServer(t *testing.T, requests *testx.SafeSlice[string])
 	t.Helper()
 	return testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Append(r.Method + " " + r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/incidents/search":
 			require.Equal(t, http.MethodPost, r.Method)
@@ -342,6 +364,7 @@ func newOpsRepairIncidentFailingResolutionServer(t *testing.T, requests *testx.S
 	t.Helper()
 	return testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Append(r.Method + " " + r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/incidents/2251799813685249":
 			_, _ = w.Write([]byte(opsRepairIncidentJSON("2251799813685249", "2251799813685251", "2251799813685252", "ACTIVE")))
@@ -410,4 +433,22 @@ func resetOpsRepairIncidentFlagState() {
 	flagViewKeysOnly = false
 	flagCmdAutoConfirm = false
 	flagCmdAutomation = false
+}
+
+// requireRequestBefore asserts that one captured request happened before another.
+func requireRequestBefore(t *testing.T, requests []string, before string, after string) {
+	t.Helper()
+	beforeIndex := -1
+	afterIndex := -1
+	for i, request := range requests {
+		if beforeIndex < 0 && strings.Contains(request, before) {
+			beforeIndex = i
+		}
+		if afterIndex < 0 && strings.Contains(request, after) {
+			afterIndex = i
+		}
+	}
+	require.NotEqual(t, -1, beforeIndex, "missing request containing %q in %v", before, requests)
+	require.NotEqual(t, -1, afterIndex, "missing request containing %q in %v", after, requests)
+	require.Less(t, beforeIndex, afterIndex, "%q should happen before %q", before, after)
 }

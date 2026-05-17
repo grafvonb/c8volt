@@ -13,6 +13,7 @@
 
 ## Codebase Patterns
 
+- Running `make docs-content` materializes concrete repair child pages under `docs/cli/c8volt_ops_repair_incident.md` and `docs/cli/c8volt_ops_repair_process-instance.md`; the repair grouping page should list children and examples while still omitting target flags.
 - Repair audit reports are rendered in `cmd/cmd_views_ops_repair.go` from the structured public `ops.RepairAuditReport`, with command-side enrichment for build version, Camunda version, tenant, and profile identity matching existing ops report helpers.
 - Repair commands write requested reports immediately after the ops service returns and before surfacing post-discovery service errors, so failure reports preserve frozen target, step status, and error data.
 - With report writing implemented, compact repair human output uses `report: written <path>`; dry-run report requests now create audit files while still skipping variable, job, and incident mutation calls.
@@ -316,4 +317,39 @@
 - The existing repair service already returns a complete structured `RepairAuditReport`; US6 only needed command-side metadata enrichment, file rendering, and write sequencing.
 - Report writing must happen before command error handling so post-discovery failures still produce audit artifacts.
 - Validation run: `GOCACHE=/private/tmp/go-build-cache go test ./cmd -run 'TestOpsRepair.*Report|TestOpsWorkflowReport' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./cmd -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./... -count=1`.
+---
+---
+## Iteration 9 - 2026-05-17 18:46:19 CEST
+**User Story**: Final Phase: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T079: Update repair command examples and user-facing help text
+- [x] T080: Update README-facing repair examples
+- [x] T081: Run gofmt on touched Go files
+- [x] T082: Run make docs-content and review generated docs
+- [x] T083: Run command package validation
+- [x] T084: Run facade and service validation
+- [x] T085: Run race validation for worker-sensitive command paths
+- [x] T086: Run repository validation with make test
+- [x] T087: Review git diff --check and final changed files
+- [x] T088: Update final implementation notes and completed validation
+**Tasks Remaining in Story**: None - story complete
+**Commit**: No commit - local `.git` metadata is not writable in this sandbox
+**Files Changed**:
+- README.md
+- cmd/ops_repair.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_processinstance.go
+- cmd/ops_test.go
+- docs/cli/c8volt_ops_repair.md
+- docs/cli/c8volt_ops_repair_incident.md
+- docs/cli/c8volt_ops_repair_process-instance.md
+- docs/index.md
+- docsgen/main_test.go
+- specs/183-ops-repair-workflows/tasks.md
+- specs/183-ops-repair-workflows/progress.md
+**Learnings**:
+- Repair grouping help should now describe available target workflows while keeping all key/filter semantics on child commands.
+- README and generated docs need explicit repair examples so operators can discover dry-run, variables, job timeout, automation JSON, and audit report usage without reading the feature spec.
+- Local file writes succeed, but `.git` metadata writes fail with `Operation not permitted`; staging and committing must be retried from an environment that can write `.git/index.lock`.
+- Validation run: `make docs-content`; `GOCACHE=/private/tmp/go-build-cache go test ./cmd -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./c8volt/ops ./internal/services/ops ./internal/services/incident ./internal/services/processinstance ./internal/services/job -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./cmd -race -run 'TestOpsRepair' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./docsgen -run 'TestGeneratedOpsDocsDocumentGroupingCommands' -count=1`; `GOCACHE=/private/tmp/go-build-cache make test`; `git diff --check`.
 ---

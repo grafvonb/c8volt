@@ -45,7 +45,7 @@ var opsRepairIncidentCmd = &cobra.Command{
 	Use:   "incident",
 	Short: "Repair incidents by key or filter",
 	Long: "Repair incidents by key or filter.\n\n" +
-		"The command accepts repeated --key values, newline-separated keys from stdin with '-', or incident search filters. Keyed mode and search mode are mutually exclusive. It freezes the requested incident set before mutation, applies job retry and timeout updates only when an incident has a related job, resolves each incident, and confirms clearance unless --no-wait is set. Incidents without related jobs report job steps as not_applicable and still proceed to incident resolution.",
+		"The command accepts repeated --key values, newline-separated keys from stdin with '-', or incident search filters. Keyed mode and search mode are mutually exclusive. It builds a fixed incident target set before mutation, applies process-instance-scope variable updates once per unique scope when requested, applies job retry and timeout updates only when an incident has a related job, resolves each incident, and confirms clearance unless --no-wait is set. Incidents without related jobs are reported and still proceed to incident resolution. Use --report-file with markdown or json output for an audit record of discovery, targets, step statuses, notices, errors, and final outcome.",
 	Example: `  ./c8volt ops repair incident --key <incident-key>
   ./c8volt ops repair inc --key <incident-key> --key <another-incident-key>
   printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt ops repair incident -
@@ -110,7 +110,7 @@ var opsRepairIncidentCmd = &cobra.Command{
 		} else if len(stdinKeys) > 0 && len(flagOpsRepairIncidentKeys) == 0 {
 			mode = ops.RepairDiscoveryModeStdin
 		}
-		result, err := cli.RepairIncidents(cmd.Context(), ops.RepairRequest{
+		request := ops.RepairRequest{
 			CommandName:         opsRepairIncidentCommandName,
 			Target:              ops.RepairTargetIncident,
 			DiscoveryMode:       mode,
@@ -133,7 +133,20 @@ var opsRepairIncidentCmd = &cobra.Command{
 			ReportFile:          flagOpsRepairIncidentReportFile,
 			ReportFormat:        reportFormat,
 			StartedAt:           time.Now().UTC(),
-		}, collectOptions()...)
+		}
+		if opsRepairNeedsPreflight(cmd) {
+			planRequest := request
+			planRequest.DryRun = true
+			planned, err := cli.RepairIncidents(cmd.Context(), planRequest, collectOptions()...)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops repair incident: %w", err))
+			}
+			if err := confirmCmdOrAbortFn(false, opsRepairConfirmationPrompt(planned)); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			request = opsRepairConfirmedRequestFromPlan(request, planned)
+		}
+		result, err := cli.RepairIncidents(cmd.Context(), request, collectOptions()...)
 		if reportErr := writeOpsRepairReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops repair incident: %w; write audit report: %v", err, reportErr))

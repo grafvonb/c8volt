@@ -309,12 +309,13 @@ func freezeIncidentSearchSet(request d.OpsRepairRequest, incidents []d.ProcessIn
 	return frozen
 }
 
-// freezeProcessInstanceRepairSet records selected process-instance keys and the deduped active incident repair set.
-func freezeProcessInstanceRepairSet(request d.OpsRepairRequest, processInstanceKeys typex.Keys, incidents []d.ProcessInstanceIncidentDetail) d.OpsRepairFrozenSet {
+// freezeProcessInstanceRepairSet records repairable process instances and skipped direct selections.
+func freezeProcessInstanceRepairSet(request d.OpsRepairRequest, selectedProcessInstanceKeys typex.Keys, incidents []d.ProcessInstanceIncidentDetail) d.OpsRepairFrozenSet {
 	frozen := newRepairResult(request).FrozenSet
 	frozen.Status = d.OpsWorkflowStepStatusConfirmed
-	frozen.ProcessInstanceKeys = processInstanceKeys.Unique()
 	frozen.IncidentKeys = incidentKeysFromDetails(incidents)
+	frozen.ProcessInstanceKeys = processInstanceKeysFromIncidents(incidents)
+	frozen.SkippedProcessInstanceKeys = skippedProcessInstanceKeysWithoutActiveIncidents(selectedProcessInstanceKeys, frozen.ProcessInstanceKeys)
 	frozen.RootProcessKeys = rootProcessInstanceKeysFromIncidents(incidents)
 	frozen.JobKeys = jobKeysFromIncidents(incidents)
 	if len(request.Variables) > 0 {
@@ -360,6 +361,28 @@ func limitRepairProcessInstances(items []d.ProcessInstance, limit int32) []d.Pro
 		return items
 	}
 	return items[:limit]
+}
+
+// skippedProcessInstanceKeysWithoutActiveIncidents reports selected process instances that are not repair targets.
+func skippedProcessInstanceKeysWithoutActiveIncidents(selectedProcessInstanceKeys, repairableProcessInstanceKeys typex.Keys) typex.Keys {
+	if len(selectedProcessInstanceKeys) == 0 {
+		return nil
+	}
+	repairable := make(map[string]struct{}, len(repairableProcessInstanceKeys))
+	for _, key := range repairableProcessInstanceKeys {
+		if key == "" {
+			continue
+		}
+		repairable[key] = struct{}{}
+	}
+	out := make(typex.Keys, 0)
+	for _, key := range selectedProcessInstanceKeys.Unique() {
+		if _, ok := repairable[key]; ok {
+			continue
+		}
+		out = append(out, key)
+	}
+	return out
 }
 
 func buildRepairPlans(request d.OpsRepairRequest, incidents []d.ProcessInstanceIncidentDetail, variables map[string]d.OpsRepairVariableScopeUpdate) ([]d.OpsRepairPlanItem, []d.OpsRepairJobApplicability) {

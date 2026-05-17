@@ -12,11 +12,11 @@ Discover repair and remediation workflows
 
 Discover repair and remediation workflows.
 
-The repair command group is reserved for future workflows that repair
-operational issues through target-specific subcommands. This grouping command
-does not define target keys or run remediation behavior by itself.
-Target-specific subcommands will define their own target semantics as they are
-added.
+The repair command group lists target-specific remediation workflows for
+incidents and process-instance selected incidents. Use a concrete target command
+to provide keys, filters, dry-run controls, variable updates, job repair
+options, and audit reports. This grouping command does not define target keys or
+run remediation behavior by itself.
 
 ```
 c8volt ops repair [flags]
@@ -56,4 +56,6 @@ c8volt ops repair [flags]
 ### SEE ALSO
 
 * [c8volt ops](c8volt_ops)	 - Discover high-level operational workflows
+* [c8volt ops repair incident](c8volt_ops_repair_incident)	 - Repair incidents by key or filter
+* [c8volt ops repair process-instance](c8volt_ops_repair_process-instance)	 - Repair incidents selected by process instances
 

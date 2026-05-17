@@ -318,7 +318,7 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 	repairDoc := readGeneratedDocForTest(t, out, "c8volt_ops_repair.md")
 	for _, want := range []string{
 		"Discover repair and remediation workflows",
-		"Target-specific subcommands will define their own target semantics",
+		"lists target-specific remediation workflows",
 		"./c8volt ops repair --help",
 		"incident",
 		"process-instance",
@@ -343,13 +343,15 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 	for _, want := range []string{
 		"Repair incidents selected by process instances",
 		"--key strings",
-		"--incidents-only",
 		"--direct-incidents-only",
 		"[c8volt ops repair](c8volt_ops_repair)",
 	} {
 		if !strings.Contains(repairProcessInstanceDoc, want) {
 			t.Fatalf("expected generated ops repair process-instance docs to contain %q, got %q", want, repairProcessInstanceDoc)
 		}
+	}
+	if strings.Contains(repairProcessInstanceDoc, "--incidents-only") {
+		t.Fatalf("expected generated ops repair process-instance docs not to contain --incidents-only, got %q", repairProcessInstanceDoc)
 	}
 
 	for _, unwanted := range []string{

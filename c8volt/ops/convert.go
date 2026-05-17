@@ -732,19 +732,20 @@ func fromDomainRepairRequest(x d.OpsRepairRequest) RepairRequest {
 // fromDomainRepairFrozenSet maps frozen repair targets to public output.
 func fromDomainRepairFrozenSet(x d.OpsRepairFrozenSet) RepairFrozenSet {
 	return RepairFrozenSet{
-		Status:              WorkflowStepStatus(x.Status),
-		Target:              RepairTarget(x.Target),
-		DiscoveryMode:       RepairDiscoveryMode(x.DiscoveryMode),
-		InputKeys:           append(typex.Keys{}, x.InputKeys...),
-		IncidentKeys:        append(typex.Keys{}, x.IncidentKeys...),
-		ProcessInstanceKeys: append(typex.Keys{}, x.ProcessInstanceKeys...),
-		RootProcessKeys:     append(typex.Keys{}, x.RootProcessKeys...),
-		JobKeys:             append(typex.Keys{}, x.JobKeys...),
-		VariableScopes:      append(typex.Keys{}, x.VariableScopes...),
-		OriginalIncidents:   toolx.MapSlice(x.OriginalIncidents, fromDomainIncidentDetail),
-		IncidentFilters:     fromDomainIncidentFilter(x.IncidentFilters),
-		ProcessFilters:      fromDomainProcessInstanceFilter(x.ProcessFilters),
-		Errors:              append([]string(nil), x.Errors...),
+		Status:                     WorkflowStepStatus(x.Status),
+		Target:                     RepairTarget(x.Target),
+		DiscoveryMode:              RepairDiscoveryMode(x.DiscoveryMode),
+		InputKeys:                  append(typex.Keys{}, x.InputKeys...),
+		IncidentKeys:               append(typex.Keys{}, x.IncidentKeys...),
+		ProcessInstanceKeys:        append(typex.Keys{}, x.ProcessInstanceKeys...),
+		SkippedProcessInstanceKeys: append(typex.Keys{}, x.SkippedProcessInstanceKeys...),
+		RootProcessKeys:            append(typex.Keys{}, x.RootProcessKeys...),
+		JobKeys:                    append(typex.Keys{}, x.JobKeys...),
+		VariableScopes:             append(typex.Keys{}, x.VariableScopes...),
+		OriginalIncidents:          toolx.MapSlice(x.OriginalIncidents, fromDomainIncidentDetail),
+		IncidentFilters:            fromDomainIncidentFilter(x.IncidentFilters),
+		ProcessFilters:             fromDomainProcessInstanceFilter(x.ProcessFilters),
+		Errors:                     append([]string(nil), x.Errors...),
 	}
 }
 

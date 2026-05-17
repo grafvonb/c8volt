@@ -93,19 +93,20 @@ type RepairRequest struct {
 
 // RepairFrozenSet captures the immutable target data discovered before mutation.
 type RepairFrozenSet struct {
-	Status              WorkflowStepStatus                       `json:"status,omitempty"`
-	Target              RepairTarget                             `json:"target,omitempty"`
-	DiscoveryMode       RepairDiscoveryMode                      `json:"discoveryMode,omitempty"`
-	InputKeys           typex.Keys                               `json:"inputKeys,omitempty"`
-	IncidentKeys        typex.Keys                               `json:"incidentKeys,omitempty"`
-	ProcessInstanceKeys typex.Keys                               `json:"processInstanceKeys,omitempty"`
-	RootProcessKeys     typex.Keys                               `json:"rootProcessKeys,omitempty"`
-	JobKeys             typex.Keys                               `json:"jobKeys,omitempty"`
-	VariableScopes      typex.Keys                               `json:"variableScopes,omitempty"`
-	OriginalIncidents   []incident.ProcessInstanceIncidentDetail `json:"originalIncidents,omitempty"`
-	IncidentFilters     incident.Filter                          `json:"incidentFilters,omitempty"`
-	ProcessFilters      process.ProcessInstanceFilter            `json:"processFilters,omitempty"`
-	Errors              []string                                 `json:"errors,omitempty"`
+	Status                     WorkflowStepStatus                       `json:"status,omitempty"`
+	Target                     RepairTarget                             `json:"target,omitempty"`
+	DiscoveryMode              RepairDiscoveryMode                      `json:"discoveryMode,omitempty"`
+	InputKeys                  typex.Keys                               `json:"inputKeys,omitempty"`
+	IncidentKeys               typex.Keys                               `json:"incidentKeys,omitempty"`
+	ProcessInstanceKeys        typex.Keys                               `json:"processInstanceKeys,omitempty"`
+	SkippedProcessInstanceKeys typex.Keys                               `json:"skippedProcessInstanceKeys,omitempty"`
+	RootProcessKeys            typex.Keys                               `json:"rootProcessKeys,omitempty"`
+	JobKeys                    typex.Keys                               `json:"jobKeys,omitempty"`
+	VariableScopes             typex.Keys                               `json:"variableScopes,omitempty"`
+	OriginalIncidents          []incident.ProcessInstanceIncidentDetail `json:"originalIncidents,omitempty"`
+	IncidentFilters            incident.Filter                          `json:"incidentFilters,omitempty"`
+	ProcessFilters             process.ProcessInstanceFilter            `json:"processFilters,omitempty"`
+	Errors                     []string                                 `json:"errors,omitempty"`
 }
 
 // RepairPlanItem describes the planned or executed steps for one incident.
