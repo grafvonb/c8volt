@@ -46,17 +46,17 @@
 
 ### Tests for User Story 1
 
-- [ ] T012 [P] [US1] Add command registration and help tests for `ops execute smoke-test` in `cmd/ops_execute_smoke_test_test.go`
-- [ ] T013 [P] [US1] Add invalid `--count`, invalid `--report-format`, and missing dependent report flag subprocess tests in `cmd/ops_execute_smoke_test_test.go`
-- [ ] T014 [P] [US1] Add command contract metadata tests for smoke-test state-changing and automation support in `cmd/command_contract_test.go`
+- [x] T012 [P] [US1] Add command registration and help tests for `ops execute smoke-test` in `cmd/ops_execute_smoke_test_test.go`
+- [x] T013 [P] [US1] Add invalid `--count`, invalid `--report-format`, and missing dependent report flag subprocess tests in `cmd/ops_execute_smoke_test_test.go`
+- [x] T014 [P] [US1] Add command contract metadata tests for smoke-test state-changing and automation support in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Add `ops execute smoke-test` Cobra command, summary, examples, and count/report flags in `cmd/ops_execute_smoke_test.go`
-- [ ] T016 [US1] Wire smoke-test command into the existing execute group in `cmd/ops_execute.go`
-- [ ] T017 [US1] Implement local count and report flag validation with invalid-input error mapping in `cmd/ops_execute_smoke_test.go`
-- [ ] T018 [US1] Set mutation, output-mode, report, count, worker, cleanup, and automation metadata in `cmd/ops_execute_smoke_test.go`
-- [ ] T019 [US1] Mark US1 tasks complete and record validation notes in `specs/188-ops-smoke-test/progress.md`
+- [x] T015 [US1] Add `ops execute smoke-test` Cobra command, summary, examples, and count/report flags in `cmd/ops_execute_smoke_test.go`
+- [x] T016 [US1] Wire smoke-test command into the existing execute group in `cmd/ops_execute.go`
+- [x] T017 [US1] Implement local count and report flag validation with invalid-input error mapping in `cmd/ops_execute_smoke_test.go`
+- [x] T018 [US1] Set mutation, output-mode, report, count, worker, cleanup, and automation metadata in `cmd/ops_execute_smoke_test.go`
+- [x] T019 [US1] Mark US1 tasks complete and record validation notes in `specs/188-ops-smoke-test/progress.md`
 
 **Checkpoint**: User Story 1 is independently functional and testable.
 
@@ -70,17 +70,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T020 [P] [US2] Add ops service dry-run planning tests for no mutation and planned steps in `internal/services/ops/smoke_test_test.go`
-- [ ] T021 [P] [US2] Add command dry-run human and JSON output tests in `cmd/ops_execute_smoke_test_test.go`
-- [ ] T022 [P] [US2] Add dry-run report-file behavior tests in `cmd/ops_execute_smoke_test_test.go`
+- [x] T020 [P] [US2] Add ops service dry-run planning tests for no mutation and planned steps in `internal/services/ops/smoke_test_test.go`
+- [x] T021 [P] [US2] Add command dry-run human and JSON output tests in `cmd/ops_execute_smoke_test_test.go`
+- [x] T022 [P] [US2] Add dry-run report-file behavior tests in `cmd/ops_execute_smoke_test_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T023 [US2] Implement smoke-test planning and dry-run status handling in `internal/services/ops/smoke_test.go`
-- [ ] T024 [US2] Reuse config test-connection effective behavior or add the required lower-level primitive in the owning package before calling it from `internal/services/ops/smoke_test.go`
-- [ ] T025 [US2] Map dry-run request/result through `c8volt/ops/client.go` and `c8volt/ops/convert.go`
-- [ ] T026 [US2] Render compact dry-run human output and complete JSON result data in `cmd/cmd_views_ops_execute_smoke_test.go`
-- [ ] T027 [US2] Mark US2 tasks complete and record validation notes in `specs/188-ops-smoke-test/progress.md`
+- [x] T023 [US2] Implement smoke-test planning and dry-run status handling in `internal/services/ops/smoke_test.go`
+- [x] T024 [US2] Reuse config test-connection effective behavior or add the required lower-level primitive in the owning package before calling it from `internal/services/ops/smoke_test.go`
+- [x] T025 [US2] Map dry-run request/result through `c8volt/ops/client.go` and `c8volt/ops/convert.go`
+- [x] T026 [US2] Render compact dry-run human output and complete JSON result data in `cmd/cmd_views_ops_execute_smoke_test.go`
+- [x] T027 [US2] Mark US2 tasks complete and record validation notes in `specs/188-ops-smoke-test/progress.md`
 
 **Checkpoint**: Dry-run smoke-test planning is operator-usable and mutates nothing.
 

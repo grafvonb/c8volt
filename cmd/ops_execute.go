@@ -15,6 +15,7 @@ existing c8volt resource actions. This grouping command does not run concrete
 operational workflows by itself.`,
 	Example: `  ./c8volt ops execute --help
   ./c8volt ops execute retention-policy --retention-days 90 --dry-run
+  ./c8volt ops execute smoke-test --dry-run
   ./c8volt capabilities --json`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {

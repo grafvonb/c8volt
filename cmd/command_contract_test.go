@@ -838,6 +838,106 @@ func TestCommandCapabilityForCommand_OpsExecuteRetentionPolicyContract(t *testin
 	})
 }
 
+func TestCommandCapabilityForCommand_OpsExecuteSmokeTestContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	capability := commandCapabilityForCommand(opsExecuteSmokeTestCmd)
+
+	require.Equal(t, "ops execute smoke-test", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.AutomationNotes, "implicitly confirmed smoke-test cleanup")
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:             "json",
+		Supported:        true,
+		MachinePreferred: true,
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "count",
+		Shorthand:   "n",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "number of process instances to create from the deployed smoke-test definition",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "workers",
+		Shorthand:   "w",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum concurrent workers when creating, walking, or cleaning smoke-test resources (default: min(count, 2*GOMAXPROCS, 32))",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-worker-limit",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "use all queued smoke-test jobs as workers when --workers is unset",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "fail-fast",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "stop scheduling smoke-test work after the first error",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-cleanup",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "retain created process instances and the deployed process definition",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "validate the smoke-test plan without submitting mutation requests",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after cleanup requests are accepted without deletion confirmation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "report-file",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "write an audit report to the given path",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "report-format",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "audit report format: markdown, json (default inferred from report-file extension)",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "auto-confirm",
+		Shorthand:   "y",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "auto-confirm prompts for non-interactive use",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "automation",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "enable non-interactive mode for commands that explicitly support it",
+	})
+}
+
 func TestCapabilityDocumentForRoot_UpdateCommandFamily(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)

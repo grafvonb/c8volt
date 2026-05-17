@@ -68,11 +68,11 @@ func TestOpsExecuteHelpDocumentsGroupingCommand(t *testing.T) {
 		"existing c8volt resource actions",
 		"./c8volt ops execute --help",
 		"./c8volt ops execute retention-policy --retention-days 90 --dry-run",
+		"./c8volt ops execute smoke-test --dry-run",
 		"./c8volt capabilities --json",
 	)
 	assertHelpOutputOmitsAll(t, output,
 		"orphan-cleanup",
-		"smoke-test",
 	)
 }
 
