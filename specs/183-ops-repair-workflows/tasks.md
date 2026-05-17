@@ -13,12 +13,12 @@
 
 **Purpose**: Confirm current codebase patterns and record reusable discoveries before code changes.
 
-- [ ] T001 Inspect existing ops repair grouping behavior in `cmd/ops_repair.go` and record target-specific command constraints in `specs/183-ops-repair-workflows/progress.md`
-- [ ] T002 Inspect incident command/filter patterns in `cmd/get_incident.go`, `cmd/get_incident_search.go`, `internal/services/incident/api.go`, and `internal/domain/incident.go`
-- [ ] T003 Inspect process-instance search and variable update patterns in `cmd/get_processinstance*.go`, `cmd/update_processinstance_variables.go`, and `internal/services/processinstance/variables.go`
-- [ ] T004 Inspect job lookup/update patterns in `cmd/update_job.go`, `c8volt/job`, and `internal/services/job`
-- [ ] T005 Inspect ops report and automation patterns in `cmd/ops_contract.go`, `cmd/ops_purge_processinstances_with_incidents.go`, and `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`
-- [ ] T006 Record mandatory Ralph context, issue traceability, and discovered implementation patterns in `specs/183-ops-repair-workflows/progress.md`
+- [x] T001 Inspect existing ops repair grouping behavior in `cmd/ops_repair.go` and record target-specific command constraints in `specs/183-ops-repair-workflows/progress.md`
+- [x] T002 Inspect incident command/filter patterns in `cmd/get_incident.go`, `cmd/get_incident_search.go`, `internal/services/incident/api.go`, and `internal/domain/incident.go`
+- [x] T003 Inspect process-instance search and variable update patterns in `cmd/get_processinstance*.go`, `cmd/update_processinstance_variables.go`, and `internal/services/processinstance/variables.go`
+- [x] T004 Inspect job lookup/update patterns in `cmd/update_job.go`, `c8volt/job`, and `internal/services/job`
+- [x] T005 Inspect ops report and automation patterns in `cmd/ops_contract.go`, `cmd/ops_purge_processinstances_with_incidents.go`, and `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`
+- [x] T006 Record mandatory Ralph context, issue traceability, and discovered implementation patterns in `specs/183-ops-repair-workflows/progress.md`
 
 ---
 
