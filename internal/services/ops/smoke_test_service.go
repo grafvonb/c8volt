@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"path/filepath"
 	"strings"
 	"time"
@@ -14,7 +15,11 @@ import (
 	"github.com/grafvonb/c8volt/embedded"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
+	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/pool"
+	"github.com/grafvonb/c8volt/typex"
 )
 
 const smokeTestReportSchemaVersion = "ops.smoke-test.v1"
@@ -141,14 +146,149 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 	}
 
 	result.Deployment = smokeTestDeploymentResult(fixture, deployment, d.OpsWorkflowStepStatusConfirmed)
-	result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, connectivityStatus, connectivityMessage, nil, d.OpsWorkflowStepStatusConfirmed, result.Deployment.Status, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped)
-	result.Run.Status = d.OpsWorkflowStepStatusSkipped
-	result.Run.RequestedCount = result.Request.Count
-	result.Walk.Status = d.OpsWorkflowStepStatusSkipped
+	if s.piAPI == nil {
+		err := fmt.Errorf("%w: smoke-test run requires process-instance service", d.ErrValidation)
+		result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, connectivityStatus, connectivityMessage, nil, d.OpsWorkflowStepStatusConfirmed, result.Deployment.Status, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped)
+		result.Run.Status = d.OpsWorkflowStepStatusSkipped
+		result.Run.RequestedCount = result.Request.Count
+		result.Run.Errors = []string{err.Error()}
+		result.Walk.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		return finishSmokeTestResult(result, d.SmokeTestOutcomePartiallyFailed, err)
+	}
+
+	runOpts := smokeTestProofOptions(opts...)
+	result.Run, err = smokeTestCreateProcessInstances(ctx, s.piAPI, s.log, result.Request, result.Deployment, runOpts...)
+	if err != nil {
+		result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, connectivityStatus, connectivityMessage, nil, d.OpsWorkflowStepStatusConfirmed, result.Deployment.Status, result.Run.Status, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped)
+		result.Walk.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		return finishSmokeTestResult(result, d.SmokeTestOutcomePartiallyFailed, fmt.Errorf("start smoke-test process instances: %w", err))
+	}
+
+	result.Walk, err = smokeTestWalkCreatedFamilies(ctx, s.piAPI, result.Run.ProcessInstanceKeys, result.Request.Workers, runOpts...)
+	if err != nil {
+		result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, connectivityStatus, connectivityMessage, nil, d.OpsWorkflowStepStatusConfirmed, result.Deployment.Status, result.Run.Status, result.Walk.Status, d.OpsWorkflowStepStatusSkipped)
+		result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		return finishSmokeTestResult(result, d.SmokeTestOutcomePartiallyFailed, fmt.Errorf("walk smoke-test process-instance families: %w", err))
+	}
+
+	result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, connectivityStatus, connectivityMessage, nil, d.OpsWorkflowStepStatusConfirmed, result.Deployment.Status, result.Run.Status, result.Walk.Status, d.OpsWorkflowStepStatusSkipped)
 	result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
 	result.Cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
 	result.Cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
 	return finishSmokeTestResult(result, d.SmokeTestOutcomePassedCleanupSkipped, nil)
+}
+
+func smokeTestCreateProcessInstances(ctx context.Context, api pisvc.API, log *slog.Logger, request d.SmokeTestRequest, deployment d.SmokeTestDeploymentResult, opts ...services.CallOption) (d.SmokeTestRunResult, error) {
+	out := d.SmokeTestRunResult{
+		Status:         d.OpsWorkflowStepStatusSubmitted,
+		RequestedCount: request.Count,
+	}
+	data := smokeTestProcessInstanceData(deployment)
+	created, err := pisvc.CreateNProcessInstances(ctx, api, log, data, request.Count, request.Workers, opts...)
+	out.Items = make([]d.SmokeTestRunItem, 0, len(created))
+	for _, item := range created {
+		if item.Key == "" {
+			continue
+		}
+		out.ProcessInstanceKeys = append(out.ProcessInstanceKeys, item.Key)
+		out.Items = append(out.Items, d.SmokeTestRunItem{
+			ProcessInstanceKey: item.Key,
+			Status:             d.OpsWorkflowStepStatusConfirmed,
+		})
+	}
+	out.CreatedCount = len(out.ProcessInstanceKeys)
+	if err != nil {
+		out.Status = d.OpsWorkflowStepStatusFailed
+		out.Errors = []string{err.Error()}
+		return out, err
+	}
+	out.Status = d.OpsWorkflowStepStatusConfirmed
+	return out, nil
+}
+
+func smokeTestProcessInstanceData(deployment d.SmokeTestDeploymentResult) d.ProcessInstanceData {
+	data := d.ProcessInstanceData{
+		TenantId: deployment.TenantID,
+	}
+	if strings.TrimSpace(deployment.ProcessDefinitionKey) != "" {
+		data.ProcessDefinitionSpecificId = deployment.ProcessDefinitionKey
+		return data
+	}
+	data.BpmnProcessId = deployment.BpmnProcessID
+	return data
+}
+
+func smokeTestWalkCreatedFamilies(ctx context.Context, api pisvc.API, keys []string, wantedWorkers int, opts ...services.CallOption) (d.SmokeTestWalkResult, error) {
+	out := d.SmokeTestWalkResult{Status: d.OpsWorkflowStepStatusSubmitted}
+	cfg := services.ApplyCallOptions(opts)
+	workers := toolx.DetermineNoOfWorkers(len(keys), wantedWorkers, cfg.NoWorkerLimit)
+	items, err := pool.ExecuteSlice[string, d.SmokeTestWalkItem](ctx, keys, workers, cfg.FailFast, func(ctx context.Context, key string, _ int) (d.SmokeTestWalkItem, error) {
+		result, walkErr := api.FamilyResult(ctx, key, opts...)
+		item := smokeTestWalkItemFromTraversal(key, result)
+		if walkErr != nil {
+			item.Status = d.OpsWorkflowStepStatusFailed
+			item.Error = walkErr.Error()
+			return item, walkErr
+		}
+		item.Status = d.OpsWorkflowStepStatusConfirmed
+		return item, nil
+	})
+	out.Items = items
+	if err != nil {
+		out.Status = d.OpsWorkflowStepStatusFailed
+		out.Errors = []string{err.Error()}
+		return out, err
+	}
+	out.Status = d.OpsWorkflowStepStatusConfirmed
+	return out, nil
+}
+
+func smokeTestWalkItemFromTraversal(key string, result pitraversal.Result) d.SmokeTestWalkItem {
+	return d.SmokeTestWalkItem{
+		ProcessInstanceKey: key,
+		Summary: d.SmokeTestTraversalSummary{
+			ProcessInstanceKey:     key,
+			RootProcessInstanceKey: result.RootKey,
+			FamilyKeys:             append(typex.Keys(nil), result.Keys...),
+			MissingAncestors:       smokeTestMissingAncestors(result.MissingAncestors),
+			Warning:                result.Warning,
+			Outcome:                d.TraversalOutcome(result.Outcome),
+		},
+	}
+}
+
+func smokeTestMissingAncestors(items []pitraversal.MissingAncestor) []d.MissingAncestor {
+	out := make([]d.MissingAncestor, 0, len(items))
+	for _, item := range items {
+		out = append(out, d.MissingAncestor{
+			Key:      item.Key,
+			StartKey: item.StartKey,
+		})
+	}
+	return out
+}
+
+func smokeTestProofOptions(opts ...services.CallOption) []services.CallOption {
+	cfg := services.ApplyCallOptions(opts)
+	out := make([]services.CallOption, 0, 3)
+	if cfg.FailFast {
+		out = append(out, services.WithFailFast())
+	}
+	if cfg.NoWorkerLimit {
+		out = append(out, services.WithNoWorkerLimit())
+	}
+	if cfg.Verbose {
+		out = append(out, services.WithVerbose())
+	}
+	return out
 }
 
 func (s *Service) executeSmokeTestDryRun(ctx context.Context, result d.SmokeTestResult, opts ...services.CallOption) (d.SmokeTestResult, error) {

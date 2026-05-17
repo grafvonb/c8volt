@@ -27,6 +27,9 @@
 - Smoke-test human output/report rendering belongs in `cmd/cmd_views_ops_execute_smoke_test.go`; the command should call the facade, write the optional report, then render the result.
 - Smoke-test deployment can reuse `internal/services/resource.API.Deploy` directly from the ops service; pass `DeploymentUnitData.Name` as the embedded FS path such as `processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn`.
 - Deployment metadata should be read from the first `Deployment.Units[].ProcessDefinition`, with deployment tenant as fallback when the unit omits tenant id.
+- Smoke-test process-instance creation can reuse `internal/services/processinstance.CreateNProcessInstances`; set `ProcessInstanceData.ProcessDefinitionSpecificId` from deployment `ProcessDefinitionKey` to run the exact deployed definition, with BPMN process id fallback only when no key is available.
+- Smoke-test family traversal can reuse `processinstance.API.FamilyResult` and summarize `Result.Keys`, missing ancestors, warnings, root key, and outcome without adding command-owned traversal logic.
+- `--no-wait` is a cleanup control for the smoke-test workflow; deployment-run-walk proof steps should rebuild call options without `WithNoWait` so created instances can be confirmed before traversal.
 
 ## Ralph Notes
 
@@ -152,4 +155,33 @@
 - `internal/services/resource.API.Deploy` already provides the owning deployment primitive needed by US3; no public resource facade expansion was needed for smoke-test orchestration.
 - The selected embedded fixture is deployed from `embedded.FS` using the existing embedded path format, which keeps behavior aligned with `embed deploy`.
 - Validation run: `GOCACHE=/private/tmp/c8volt-gocache go test ./internal/services/ops -run 'TestExecuteSmokeTest' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test ./c8volt/ops -run 'TestClientExecuteSmokeTest' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test ./cmd -run 'TestOpsExecuteSmokeTest' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test ./cmd ./c8volt/ops ./internal/services/ops -count=1`.
+---
+---
+## Iteration 5 - 2026-05-17 08:50:07 CEST
+**User Story**: User Story 4 - Start And Walk Created Instances
+**Tasks Completed**:
+- [x] T038: Add process-instance creation count and `-n` shorthand command tests
+- [x] T039: Add service tests for deployed process-definition key preference
+- [x] T040: Add worker, fail-fast, and no-worker-limit mapping tests
+- [x] T041: Add traversal summary tests
+- [x] T042: Reuse the owning process-instance primitive for running by deployed process-definition key
+- [x] T043: Start the requested count through existing process-instance creation behavior
+- [x] T044: Walk each created process-instance family through existing traversal behavior
+- [x] T045: Preserve requested count, created count, created keys, per-instance run status, walk status, and traversal summaries
+- [x] T046: Render created keys, run status, walk status, and traversal summaries
+- [x] T047: Mark US4 tasks complete and record validation notes
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- internal/services/ops/smoke_test_service.go
+- internal/services/ops/smoke_test_test.go
+- internal/services/ops/orphan_purge_test.go
+- cmd/cmd_views_ops_execute_smoke_test.go
+- cmd/ops_execute_smoke_test_test.go
+- specs/188-ops-smoke-test/tasks.md
+- specs/188-ops-smoke-test/progress.md
+**Learnings**:
+- Existing process-instance creation already supports exact deployed-definition execution through `ProcessInstanceData.ProcessDefinitionSpecificId`; no new lower-level API was needed.
+- Smoke-test proof options intentionally retain fail-fast, no-worker-limit, and verbose controls while excluding no-wait before run/walk so traversal has confirmed instances to inspect.
+- Validation run: `GOCACHE=/private/tmp/c8volt-gocache go test ./internal/services/ops -run 'TestExecuteSmokeTest' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test ./cmd -run 'TestOpsExecuteSmokeTest' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test ./cmd ./c8volt/ops ./internal/services/ops -run 'TestClientExecuteSmokeTest|TestExecuteSmokeTest|TestOpsExecuteSmokeTest' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test -race ./internal/services/ops ./cmd -run 'TestExecuteSmokeTestStartsCreatedInstancesByDeployedProcessDefinitionKey|TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances' -count=1`.
 ---

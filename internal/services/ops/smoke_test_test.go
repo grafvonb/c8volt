@@ -12,6 +12,7 @@ import (
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/stretchr/testify/require"
 )
@@ -251,7 +252,30 @@ func TestExecuteSmokeTestDeploysSelectedFixtureThroughResourceAPI(t *testing.T) 
 		},
 	}
 
-	got, err := NewWithWorkflowDependencies(cluster, nil, nil, nil, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			require.Equal(t, "pd-88", data.ProcessDefinitionSpecificId)
+			require.Empty(t, data.BpmnProcessId)
+			return d.ProcessInstanceCreation{
+				Key:                  "pi-1",
+				BpmnProcessId:        "C88_MultipleSubProcessesParentProcess",
+				ProcessDefinitionKey: "pd-88",
+				TenantId:             "tenant-a",
+			}, nil
+		},
+		familyResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "pi-1", startKey)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeFamily,
+				StartKey: "pi-1",
+				RootKey:  "pi-1",
+				Keys:     []string{"pi-1"},
+				Outcome:  pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	got, err := NewWithWorkflowDependencies(cluster, piAPI, nil, nil, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
 		CommandName: "ops execute smoke-test",
 		Count:       1,
 	})
@@ -266,9 +290,150 @@ func TestExecuteSmokeTestDeploysSelectedFixtureThroughResourceAPI(t *testing.T) 
 	require.Equal(t, "pd-88", got.Deployment.ProcessDefinitionKey)
 	require.Equal(t, int32(4), got.Deployment.ProcessDefinitionVersion)
 	require.Equal(t, "tenant-a", got.Deployment.TenantID)
-	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Run.Status)
-	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Walk.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Run.Status)
+	require.Equal(t, 1, got.Run.RequestedCount)
+	require.Equal(t, 1, got.Run.CreatedCount)
+	require.Equal(t, typexKeys("pi-1"), got.Run.ProcessInstanceKeys)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Walk.Status)
+	require.Len(t, got.Walk.Items, 1)
+	require.Equal(t, "pi-1", got.Walk.Items[0].ProcessInstanceKey)
+	require.Equal(t, d.TraversalOutcomeComplete, got.Walk.Items[0].Summary.Outcome)
 	require.Equal(t, got.Deployment, got.Report.Deployment)
+	require.Equal(t, got.Run, got.Report.Run)
+	require.Equal(t, got.Walk, got.Report.Walk)
+}
+
+func TestExecuteSmokeTestStartsCreatedInstancesByDeployedProcessDefinitionKey(t *testing.T) {
+	t.Parallel()
+
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
+			return d.Deployment{Units: []d.DeploymentUnit{{
+				ProcessDefinition: d.ProcessDefinitionDeployment{
+					ProcessDefinitionId:  "C88_MultipleSubProcessesParentProcess",
+					ProcessDefinitionKey: "pd-exact",
+					TenantId:             "tenant-a",
+				},
+			}}}, nil
+		},
+	}
+	var created []d.ProcessInstanceData
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			created = append(created, data)
+			cfg := services.ApplyCallOptions(opts)
+			require.True(t, cfg.FailFast)
+			require.True(t, cfg.NoWorkerLimit)
+			return d.ProcessInstanceCreation{
+				Key:                  "pi-" + string(rune('0'+len(created))),
+				BpmnProcessId:        "C88_MultipleSubProcessesParentProcess",
+				ProcessDefinitionKey: data.ProcessDefinitionSpecificId,
+				TenantId:             data.TenantId,
+			}, nil
+		},
+		familyResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeFamily,
+				StartKey: startKey,
+				RootKey:  startKey,
+				Keys:     []string{startKey, startKey + "-child"},
+				Outcome:  pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	got, err := NewWithWorkflowDependencies(nil, piAPI, nil, nil, resource, toolx.V88).ExecuteSmokeTest(
+		context.Background(),
+		d.SmokeTestRequest{CommandName: "ops execute smoke-test", Count: 2, Workers: 1, FailFast: true, NoWorkerLimit: true},
+		services.WithFailFast(),
+		services.WithNoWorkerLimit(),
+	)
+
+	require.NoError(t, err)
+	require.Len(t, created, 2)
+	for _, data := range created {
+		require.Equal(t, "pd-exact", data.ProcessDefinitionSpecificId)
+		require.Empty(t, data.BpmnProcessId)
+		require.Equal(t, "tenant-a", data.TenantId)
+	}
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Run.Status)
+	require.Equal(t, 2, got.Run.RequestedCount)
+	require.Equal(t, 2, got.Run.CreatedCount)
+	require.Equal(t, typexKeys("pi-1", "pi-2"), got.Run.ProcessInstanceKeys)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Walk.Status)
+	require.Len(t, got.Walk.Items, 2)
+	require.Equal(t, typexKeys("pi-1", "pi-1-child"), got.Walk.Items[0].Summary.FamilyKeys)
+	require.Equal(t, d.SmokeTestOutcomePassedCleanupSkipped, got.Outcome)
+}
+
+func TestExecuteSmokeTestFallsBackToBPMNProcessIDWhenDeploymentKeyMissing(t *testing.T) {
+	t.Parallel()
+
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
+			return d.Deployment{}, nil
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			require.Empty(t, data.ProcessDefinitionSpecificId)
+			require.Equal(t, "C88_MultipleSubProcessesParentProcess", data.BpmnProcessId)
+			return d.ProcessInstanceCreation{Key: "pi-fallback", BpmnProcessId: data.BpmnProcessId}, nil
+		},
+		familyResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{Mode: pitraversal.ModeFamily, StartKey: startKey, RootKey: startKey, Keys: []string{startKey}, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+	}
+
+	got, err := NewWithWorkflowDependencies(nil, piAPI, nil, nil, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
+		CommandName: "ops execute smoke-test",
+		Count:       1,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, typexKeys("pi-fallback"), got.Run.ProcessInstanceKeys)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Walk.Status)
+}
+
+func TestExecuteSmokeTestTraversalSummariesCapturePartialFamilyWalks(t *testing.T) {
+	t.Parallel()
+
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
+			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{ProcessDefinitionKey: "pd-88"}}}}, nil
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			return d.ProcessInstanceCreation{Key: "child", ProcessDefinitionKey: data.ProcessDefinitionSpecificId}, nil
+		},
+		familyResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:             pitraversal.ModeFamily,
+				StartKey:         startKey,
+				RootKey:          "root",
+				Keys:             []string{"root", "child"},
+				MissingAncestors: []pitraversal.MissingAncestor{{Key: "missing-parent", StartKey: startKey}},
+				Warning:          "one or more parent process instances were not found",
+				Outcome:          pitraversal.OutcomePartial,
+			}, nil
+		},
+	}
+
+	got, err := NewWithWorkflowDependencies(nil, piAPI, nil, nil, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
+		CommandName: "ops execute smoke-test",
+		Count:       1,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Walk.Status)
+	require.Len(t, got.Walk.Items, 1)
+	summary := got.Walk.Items[0].Summary
+	require.Equal(t, "child", summary.ProcessInstanceKey)
+	require.Equal(t, "root", summary.RootProcessInstanceKey)
+	require.Equal(t, typexKeys("root", "child"), summary.FamilyKeys)
+	require.Equal(t, []d.MissingAncestor{{Key: "missing-parent", StartKey: "child"}}, summary.MissingAncestors)
+	require.Equal(t, d.TraversalOutcomePartial, summary.Outcome)
 }
 
 func TestExecuteSmokeTestDryRunConnectivityFailureDoesNotPlanMutation(t *testing.T) {

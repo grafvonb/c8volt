@@ -120,19 +120,19 @@
 
 ### Tests for User Story 4
 
-- [ ] T038 [P] [US4] Add process-instance creation count and `-n` shorthand command tests in `cmd/ops_execute_smoke_test_test.go`
-- [ ] T039 [P] [US4] Add service tests for deployed process-definition key preference in `internal/services/ops/smoke_test_test.go`
-- [ ] T040 [P] [US4] Add worker, fail-fast, and no-worker-limit mapping tests in `cmd/ops_execute_smoke_test_test.go`
-- [ ] T041 [P] [US4] Add traversal summary tests in `internal/services/ops/smoke_test_test.go`
+- [x] T038 [P] [US4] Add process-instance creation count and `-n` shorthand command tests in `cmd/ops_execute_smoke_test_test.go`
+- [x] T039 [P] [US4] Add service tests for deployed process-definition key preference in `internal/services/ops/smoke_test_test.go`
+- [x] T040 [P] [US4] Add worker, fail-fast, and no-worker-limit mapping tests in `cmd/ops_execute_smoke_test_test.go`
+- [x] T041 [P] [US4] Add traversal summary tests in `internal/services/ops/smoke_test_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T042 [US4] Reuse or add the owning process-instance primitive for running by deployed process-definition key in `internal/services/processinstance/api.go`
-- [ ] T043 [US4] Start the requested count through existing process-instance creation behavior from `internal/services/ops/smoke_test.go`
-- [ ] T044 [US4] Walk each created process-instance family through existing traversal behavior from `internal/services/ops/smoke_test.go`
-- [ ] T045 [US4] Preserve requested count, created count, created keys, per-instance run status, walk status, and traversal summaries in `internal/domain/ops_smoke_test.go`
-- [ ] T046 [US4] Render created keys, run status, walk status, and traversal summaries in `cmd/cmd_views_ops_execute_smoke_test.go`
-- [ ] T047 [US4] Mark US4 tasks complete and record validation notes in `specs/188-ops-smoke-test/progress.md`
+- [x] T042 [US4] Reuse or add the owning process-instance primitive for running by deployed process-definition key in `internal/services/processinstance/api.go`
+- [x] T043 [US4] Start the requested count through existing process-instance creation behavior from `internal/services/ops/smoke_test.go`
+- [x] T044 [US4] Walk each created process-instance family through existing traversal behavior from `internal/services/ops/smoke_test.go`
+- [x] T045 [US4] Preserve requested count, created count, created keys, per-instance run status, walk status, and traversal summaries in `internal/domain/ops_smoke_test.go`
+- [x] T046 [US4] Render created keys, run status, walk status, and traversal summaries in `cmd/cmd_views_ops_execute_smoke_test.go`
+- [x] T047 [US4] Mark US4 tasks complete and record validation notes in `specs/188-ops-smoke-test/progress.md`
 
 **Checkpoint**: The core deployment-run-walk proof works independently.
 

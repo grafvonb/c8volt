@@ -25,6 +25,8 @@ func renderOpsExecuteSmokeTestResult(cmd *cobra.Command, result ops.SmokeTestRes
 	}
 	renderOpsExecuteSmokeTestPlan(cmd, result)
 	renderOpsExecuteSmokeTestDeployment(cmd, result)
+	renderOpsExecuteSmokeTestRun(cmd, result)
+	renderOpsExecuteSmokeTestWalk(cmd, result)
 	renderOpsExecuteSmokeTestOutcome(cmd, result)
 	renderOpsExecuteSmokeTestReportFile(cmd, result)
 	if len(result.Errors) > 0 {
@@ -68,6 +70,35 @@ func renderOpsExecuteSmokeTestDeployment(cmd *cobra.Command, result ops.SmokeTes
 	}
 	if result.Deployment.TenantID != "" {
 		renderHumanLine(cmd, "tenant: %s", result.Deployment.TenantID)
+	}
+}
+
+func renderOpsExecuteSmokeTestRun(cmd *cobra.Command, result ops.SmokeTestResult) {
+	if result.Run.Status == "" || result.Run.Status == ops.WorkflowStepStatusPlanned || result.Run.Status == ops.WorkflowStepStatusSkipped {
+		return
+	}
+	renderHumanLine(cmd, "run result: %s", result.Run.Status)
+	renderHumanLine(cmd, "created process instances: %d/%d", result.Run.CreatedCount, result.Run.RequestedCount)
+	if len(result.Run.ProcessInstanceKeys) > 0 {
+		renderHumanLine(cmd, "created keys: %s", strings.Join(result.Run.ProcessInstanceKeys, ", "))
+	}
+}
+
+func renderOpsExecuteSmokeTestWalk(cmd *cobra.Command, result ops.SmokeTestResult) {
+	if result.Walk.Status == "" || result.Walk.Status == ops.WorkflowStepStatusPlanned || result.Walk.Status == ops.WorkflowStepStatusSkipped {
+		return
+	}
+	renderHumanLine(cmd, "walk result: %s", result.Walk.Status)
+	for _, item := range result.Walk.Items {
+		if item.ProcessInstanceKey == "" {
+			continue
+		}
+		familyCount := len(item.Summary.FamilyKeys)
+		if item.Summary.RootProcessInstanceKey != "" {
+			renderHumanLine(cmd, "walk %s: %s, root %s, family %d", item.ProcessInstanceKey, item.Status, item.Summary.RootProcessInstanceKey, familyCount)
+			continue
+		}
+		renderHumanLine(cmd, "walk %s: %s, family %d", item.ProcessInstanceKey, item.Status, familyCount)
 	}
 }
 
@@ -197,9 +228,26 @@ func renderOpsExecuteSmokeTestMarkdownReport(report ops.SmokeTestAuditReport, cf
 	writeMarkdownReportField(&out, "Status", string(report.Run.Status))
 	writeMarkdownReportField(&out, "Requested Count", fmt.Sprintf("%d", report.Run.RequestedCount))
 	writeMarkdownReportField(&out, "Created Count", fmt.Sprintf("%d", report.Run.CreatedCount))
+	writeMarkdownReportList(&out, "Created Process Instance Keys", report.Run.ProcessInstanceKeys)
 
 	out.WriteString("\n## Walk\n\n")
 	writeMarkdownReportField(&out, "Status", string(report.Walk.Status))
+	if len(report.Walk.Items) > 0 {
+		out.WriteString("- Traversals:\n")
+		for _, item := range report.Walk.Items {
+			out.WriteString(fmt.Sprintf("  - %s: %s", item.ProcessInstanceKey, item.Status))
+			if item.Summary.RootProcessInstanceKey != "" {
+				out.WriteString(fmt.Sprintf(", root %s", item.Summary.RootProcessInstanceKey))
+			}
+			if len(item.Summary.FamilyKeys) > 0 {
+				out.WriteString(fmt.Sprintf(", family keys %s", strings.Join(item.Summary.FamilyKeys, ", ")))
+			}
+			if item.Summary.Warning != "" {
+				out.WriteString(fmt.Sprintf(", warning %s", item.Summary.Warning))
+			}
+			out.WriteString("\n")
+		}
+	}
 
 	out.WriteString("\n## Cleanup\n\n")
 	writeMarkdownReportField(&out, "No Cleanup", fmt.Sprintf("%t", report.Cleanup.NoCleanup))

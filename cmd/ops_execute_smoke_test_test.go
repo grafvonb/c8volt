@@ -5,6 +5,8 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -247,12 +249,96 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 	require.Contains(t, output, "deployment result: confirmed")
 	require.Contains(t, output, "process definition: pd-88 (C88_MultipleSubProcessesParentProcess, version 4)")
 	require.Contains(t, output, "tenant: <default>")
+	require.Contains(t, output, "run result: confirmed")
+	require.Contains(t, output, "created process instances: 1/1")
+	require.Contains(t, output, "created keys: pi-1")
+	require.Contains(t, output, "walk result: confirmed")
+	require.Contains(t, output, "walk pi-1: confirmed, root pi-1, family 1")
 	require.Contains(t, output, "outcome: passed_cleanup_skipped")
 	require.Equal(t, []string{
 		"GET /v2/topology",
 		"POST /v2/deployments",
 		"GET /v2/process-definitions/pd-88",
+		"POST /v2/process-instances",
+		"GET /v2/process-instances/pi-1",
+		"GET /v2/process-instances/pi-1",
+		"GET /v2/process-instances/pi-1",
+		"POST /v2/process-instances/search",
 	}, requests.Snapshot())
+}
+
+func TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "count flag",
+			args: []string{"--count", "2"},
+		},
+		{
+			name: "count shorthand",
+			args: []string{"-n", "2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			var createBodies testx.SafeSlice[string]
+			srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, &createBodies)
+			t.Cleanup(srv.Close)
+
+			args := append([]string{
+				"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+				"ops", "execute", "smoke-test",
+				"--workers", "1",
+			}, tt.args...)
+			output := executeRootForProcessInstanceTest(t, args...)
+
+			require.Contains(t, output, "run: confirmed - start 2 process instance(s)")
+			require.Contains(t, output, "created process instances: 2/2")
+			require.Contains(t, output, "created keys: pi-1, pi-2")
+			require.Contains(t, output, "walk result: confirmed")
+			require.Contains(t, output, "walk pi-1: confirmed, root pi-1, family 1")
+			require.Contains(t, output, "walk pi-2: confirmed, root pi-2, family 1")
+			require.Len(t, createBodies.Snapshot(), 2)
+			for _, body := range createBodies.Snapshot() {
+				require.Contains(t, body, `"processDefinitionKey":"pd-88"`)
+				require.NotContains(t, body, `"processDefinitionId"`)
+			}
+		})
+	}
+}
+
+func TestOpsExecuteSmokeTestMapsWorkerControlsToJSONRequest(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsExecuteSmokeTestDryRunServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"--json",
+		"ops", "execute", "smoke-test",
+		"--dry-run",
+		"--count", "4",
+		"--workers", "3",
+		"--fail-fast",
+		"--no-worker-limit",
+	)
+
+	require.Empty(t, strings.TrimSpace(stderr))
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+	payload := requireJSONObject(t, envelope["payload"])
+	request := requireJSONObject(t, payload["request"])
+	require.Equal(t, float64(4), request["count"])
+	require.Equal(t, float64(3), request["workers"])
+	require.Equal(t, true, request["failFast"])
+	require.Equal(t, true, request["noWorkerLimit"])
+	run := requireJSONObject(t, payload["run"])
+	require.Equal(t, "planned", run["status"])
+	require.Equal(t, float64(4), run["requestedCount"])
 }
 
 func newOpsExecuteSmokeTestDryRunServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
@@ -271,8 +357,13 @@ func newOpsExecuteSmokeTestDryRunServer(t *testing.T, requests *testx.SafeSlice[
 }
 
 func newOpsExecuteSmokeTestDeploymentServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
+	return newOpsExecuteSmokeTestRunWalkServer(t, requests, nil)
+}
+
+func newOpsExecuteSmokeTestRunWalkServer(t *testing.T, requests *testx.SafeSlice[string], createBodies *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
+	var created int
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/topology":
@@ -305,10 +396,54 @@ func newOpsExecuteSmokeTestDeploymentServer(t *testing.T, requests *testx.SafeSl
 				"processDefinitionId": "C88_MultipleSubProcessesParentProcess",
 				"processDefinitionKey": "pd-88"
 			}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances":
+			requests.Append(r.Method + " " + r.URL.Path)
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			if createBodies != nil {
+				createBodies.Append(string(body))
+			}
+			created++
+			key := fmt.Sprintf("pi-%d", created)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(processInstanceCreationJSON(key)))
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
+			requests.Append(r.Method + " " + r.URL.Path)
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(processInstanceJSON(key)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 	}))
+}
+
+func processInstanceCreationJSON(key string) string {
+	return fmt.Sprintf(`{
+		"processInstanceKey": %q,
+		"processDefinitionId": "C88_MultipleSubProcessesParentProcess",
+		"processDefinitionKey": "pd-88",
+		"processDefinitionVersion": 4,
+		"tenantId": "<default>"
+	}`, key)
+}
+
+func processInstanceJSON(key string) string {
+	return fmt.Sprintf(`{
+		"hasIncident": false,
+		"processDefinitionId": "C88_MultipleSubProcessesParentProcess",
+		"processDefinitionKey": "pd-88",
+		"processDefinitionName": "C88_MultipleSubProcessesParentProcess",
+		"processDefinitionVersion": 4,
+		"processInstanceKey": %q,
+		"startDate": "2026-05-17T08:00:00Z",
+		"state": "ACTIVE",
+		"tenantId": "<default>"
+	}`, key)
 }
 
 func marshalSmokeTestArgsForEnv(t *testing.T, args []string) string {
