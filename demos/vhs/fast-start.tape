@@ -24,8 +24,9 @@ Enter
 Show
 
 Wait
+Sleep 2s
 Hide
-Type "printf '\033[1A\033[2K\n%s\n' 'Check the connection and credentials.'"
+Type "printf '\033[1A\033[2K%s\n' 'Check the connection and credentials.'"
 Enter
 Show
 Sleep 1s
@@ -91,18 +92,21 @@ Wait
 
 Sleep 1s
 Hide
-Type "printf '\033[1A\033[2K\n%s\n' 'Start one demo process instance with process variables.'"
+Type "printf '\033[1A\033[2K\n%s\n' 'Start two demo process instances with process variables.'"
 Enter
 Show
 Sleep 1s
 Wait
-Type `./c8volt run pi -b C89_MultipleSubProcessesParentProcess --vars '{"businessId":123}'`
+Type `./c8volt run pi -b C89_MultipleSubProcessesParentProcess --vars '{"businessId":12345}'`
+Enter
+Wait
+Type `./c8volt run pi -b C89_MultipleSubProcessesParentProcess --vars '{"businessId":67890}'`
 Enter
 Wait
 
 Sleep 1s
 Hide
-Type "printf '\033[1A\033[2K\n%s\n' 'Confirm the new process instance is visible.'"
+Type "printf '\033[1A\033[2K\n%s\n' 'Confirm the new process instances are visible.'"
 Enter
 Show
 Sleep 1s
@@ -113,7 +117,7 @@ Wait
 
 Sleep 1s
 Hide
-Type "printf '\033[1A\033[2K\n%s\n' 'Refresh process definition stats after starting the instance.'"
+Type "printf '\033[1A\033[2K\n%s\n' 'Refresh process definition stats after starting the instances.'"
 Enter
 Show
 Sleep 1s
@@ -194,8 +198,10 @@ Type "./c8volt get pi -b C89_MultipleSubProcessesParentProcess --total"
 Enter
 Wait
 
+Sleep 1s
 Hide
 Type "printf '\033[1A\033[2K\n%s\n' 'Fast start demo complete.'"
 Enter
 Show
 Wait
+Sleep 3s
