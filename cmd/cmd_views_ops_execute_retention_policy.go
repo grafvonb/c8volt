@@ -142,12 +142,7 @@ func renderOpsExecuteRetentionPolicyDeletion(cmd *cobra.Command, result ops.Rete
 			renderHumanLine(cmd, "deletion: %s; no deletion request submitted", result.Deletion.Status)
 			return
 		}
-		renderHumanLine(cmd, "deletion: %s (requests: %d)", result.Deletion.Status, len(result.Deletion.Items))
-		if result.Deletion.NoWait {
-			renderHumanLine(cmd, "deletion confirmation: skipped (--no-wait)")
-		} else {
-			renderHumanLine(cmd, "deletion confirmation: %t", result.Deletion.Confirmed)
-		}
+		renderHumanLine(cmd, "deletion: %s", opsWorkflowDeletionSummary(string(result.Deletion.Status), len(result.Deletion.Items), "process-instance tree", "process-instance trees", result.Deletion.NoWait))
 	}
 }
 

@@ -70,12 +70,7 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 	}
 	renderOpsHumanNotices(cmd, opsPurgeOrphanProcessInstancesHumanNotices(result), opsPurgeOrphanProcessInstancesNoticeFilter(result))
 	if result.DeleteRequested {
-		renderHumanLine(cmd, "deletion: %s (requests: %d)", result.Deletion.Status, len(result.Deletion.Items))
-		if result.Deletion.NoWait {
-			renderHumanLine(cmd, "deletion confirmation: skipped (--no-wait)")
-		} else {
-			renderHumanLine(cmd, "deletion confirmation: %t", result.Deletion.Confirmed)
-		}
+		renderHumanLine(cmd, "deletion: %s", opsWorkflowDeletionSummary(string(result.Deletion.Status), len(result.Deletion.Items), "process-instance tree", "process-instance trees", result.Deletion.NoWait))
 		renderOpsPurgeOrphanProcessInstancesReportFile(cmd, result)
 		renderHumanLine(cmd, "outcome: %s%s", result.Outcome, opsWorkflowElapsedSuffix(result.Report.Duration))
 		return nil

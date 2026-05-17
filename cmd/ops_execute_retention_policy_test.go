@@ -263,8 +263,8 @@ func TestOpsExecuteRetentionPolicyConfirmedDeletionUsesFrozenPlanRoots(t *testin
 	)
 
 	require.Contains(t, output, "delete plan: planned")
-	require.Contains(t, output, "deletion: submitted (requests: 1)")
-	require.Contains(t, output, "deletion confirmation: skipped (--no-wait)")
+	require.Contains(t, output, "deletion: submitted 1 process-instance tree (--no-wait)")
+	require.NotContains(t, output, "deletion confirmation:")
 	require.Contains(t, output, "outcome: deleted")
 	require.Contains(t, output, "elapsed:")
 	require.Equal(t, []string{"/v1/process-instances/" + opsRetentionPolicySeedKey}, deleted.Snapshot())

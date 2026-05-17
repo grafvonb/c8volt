@@ -31,3 +31,25 @@ func opsWorkflowApproxDuration(duration time.Duration) string {
 	}
 	return duration.Round(time.Second).String()
 }
+
+func opsWorkflowDeletionSummary(status string, count int, singular string, plural string, noWait bool) string {
+	items := opsWorkflowCountLabel(count, singular, plural)
+	switch status {
+	case "confirmed":
+		return "removed " + items
+	case "submitted":
+		if noWait {
+			return "submitted " + items + " (--no-wait)"
+		}
+		return "submitted " + items
+	default:
+		return fmt.Sprintf("%s (%s)", status, items)
+	}
+}
+
+func opsWorkflowCountLabel(count int, singular string, plural string) string {
+	if count == 1 {
+		return fmt.Sprintf("1 %s", singular)
+	}
+	return fmt.Sprintf("%d %s", count, plural)
+}

@@ -141,8 +141,8 @@ func TestOpsPurgeOrphanProcessInstancesAutoConfirmDeletesCandidateKeys(t *testin
 	require.Contains(t, output, "candidate orphan process instances: 1")
 	require.Contains(t, output, "delete plan: planned")
 	require.NotContains(t, output, "one or more parent process instances were not found")
-	require.Contains(t, output, "deletion: submitted (requests: 1)")
-	require.Contains(t, output, "deletion confirmation: skipped (--no-wait)")
+	require.Contains(t, output, "deletion: submitted 1 process-instance tree (--no-wait)")
+	require.NotContains(t, output, "deletion confirmation:")
 	require.Contains(t, output, "outcome: deleted")
 	require.Contains(t, output, "elapsed:")
 	require.Equal(t, []string{"/v2/process-instances/" + opsOrphanChildKey + "/deletion"}, deleted.Snapshot())
@@ -181,8 +181,8 @@ func TestOpsPurgeOrphanProcessInstancesAutomationDeletesWithoutAutoConfirm(t *te
 		"--no-wait",
 	)
 
-	require.Contains(t, output, "deletion: submitted (requests: 1)")
-	require.Contains(t, output, "deletion confirmation: skipped (--no-wait)")
+	require.Contains(t, output, "deletion: submitted 1 process-instance tree (--no-wait)")
+	require.NotContains(t, output, "deletion confirmation:")
 	require.Contains(t, output, "outcome: deleted")
 	require.Equal(t, []string{"/v2/process-instances/" + opsOrphanChildKey + "/deletion"}, deleted.Snapshot())
 }

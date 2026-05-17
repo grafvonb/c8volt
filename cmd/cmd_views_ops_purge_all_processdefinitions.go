@@ -112,12 +112,7 @@ func renderOpsPurgeAllProcessDefinitionsDeletion(cmd *cobra.Command, result ops.
 		renderHumanLine(cmd, "deletion: %s; no deletion request submitted", result.Deletion.Status)
 		return
 	}
-	renderHumanLine(cmd, "deletion: %s (submitted process-definition deletes: %d)", result.Deletion.Status, len(result.Deletion.Items))
-	if result.Deletion.NoWait {
-		renderHumanLine(cmd, "deletion confirmation: skipped (--no-wait)")
-	} else {
-		renderHumanLine(cmd, "deletion confirmation: %t", result.Deletion.Confirmed)
-	}
+	renderHumanLine(cmd, "deletion: %s", opsWorkflowDeletionSummary(string(result.Deletion.Status), len(result.Deletion.Items), "process definition", "process definitions", result.Deletion.NoWait))
 }
 
 // renderOpsPurgeAllProcessDefinitionsOutcome prints the final workflow outcome.

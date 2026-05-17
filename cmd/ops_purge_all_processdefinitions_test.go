@@ -299,8 +299,8 @@ func TestOpsPurgeAllProcessDefinitionsConfirmedDeletionUsesFrozenCandidates(t *t
 	output := string(outputBytes)
 
 	require.Contains(t, readReportFile(t, promptPath), "All process-definitions purge matched 2 candidate process definition(s)")
-	require.Contains(t, output, "deletion: submitted (submitted process-definition deletes: 2)")
-	require.Contains(t, output, "deletion confirmation: skipped (--no-wait)")
+	require.Contains(t, output, "deletion: submitted 2 process definitions (--no-wait)")
+	require.NotContains(t, output, "deletion confirmation:")
 	require.Contains(t, output, "outcome: deleted")
 	require.Contains(t, output, "elapsed:")
 	require.ElementsMatch(t, []string{
@@ -398,8 +398,8 @@ func TestOpsPurgeAllProcessDefinitionsDeletionOutput(t *testing.T) {
 	output := buf.String()
 
 	require.Contains(t, output, "purge all process definitions")
-	require.Contains(t, output, "deletion: submitted (submitted process-definition deletes: 2)")
-	require.Contains(t, output, "deletion confirmation: skipped (--no-wait)")
+	require.Contains(t, output, "deletion: submitted 2 process definitions (--no-wait)")
+	require.NotContains(t, output, "deletion confirmation:")
 	require.Contains(t, output, "outcome: deleted")
 }
 
