@@ -28,16 +28,16 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T007 [P] Add internal repair request/result/domain models and `not_applicable` workflow status in `internal/domain/ops_repair.go`
-- [ ] T008 [P] Add public repair request/result models and `not_applicable` workflow status mapping in `c8volt/ops/model.go`
-- [ ] T009 Extend internal ops service API and constructors to accept job service dependency in `internal/services/ops/api.go`
-- [ ] T010 Extend public ops facade API with repair workflow methods in `c8volt/ops/api.go`
-- [ ] T011 Implement repair model conversions in `c8volt/ops/convert.go`
-- [ ] T012 Implement thin public repair facade methods in `c8volt/ops/client.go`
-- [ ] T013 Wire job service into ops facade construction in `c8volt/client.go` and `internal/services/ops/api.go`
-- [ ] T014 [P] Add foundational ops repair model/conversion tests in `c8volt/ops/client_test.go`
-- [ ] T015 [P] Add internal repair workflow constructor/dependency tests in `internal/services/ops/repair_test.go`
-- [ ] T016 Mark foundational tasks complete and record validation notes in `specs/183-ops-repair-workflows/progress.md`
+- [x] T007 [P] Add internal repair request/result/domain models and `not_applicable` workflow status in `internal/domain/ops_repair.go`
+- [x] T008 [P] Add public repair request/result models and `not_applicable` workflow status mapping in `c8volt/ops/model.go`
+- [x] T009 Extend internal ops service API and constructors to accept job service dependency in `internal/services/ops/api.go`
+- [x] T010 Extend public ops facade API with repair workflow methods in `c8volt/ops/api.go`
+- [x] T011 Implement repair model conversions in `c8volt/ops/convert.go`
+- [x] T012 Implement thin public repair facade methods in `c8volt/ops/client.go`
+- [x] T013 Wire job service into ops facade construction in `c8volt/client.go` and `internal/services/ops/api.go`
+- [x] T014 [P] Add foundational ops repair model/conversion tests in `c8volt/ops/client_test.go`
+- [x] T015 [P] Add internal repair workflow constructor/dependency tests in `internal/services/ops/repair_test.go`
+- [x] T016 Mark foundational tasks complete and record validation notes in `specs/183-ops-repair-workflows/progress.md`
 
 **Checkpoint**: Repair request/result models and service dependencies exist without concrete target behavior.
 

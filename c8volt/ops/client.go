@@ -65,3 +65,23 @@ func (c *client) PurgeAllProcessDefinitions(ctx context.Context, request AllProc
 	}
 	return out, nil
 }
+
+// RepairIncidents delegates incident repair to the internal ops workflow boundary.
+func (c *client) RepairIncidents(ctx context.Context, request RepairRequest, opts ...options.FacadeOption) (RepairResult, error) {
+	result, err := c.api.RepairIncidents(ctx, toDomainRepairRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainRepairResult(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
+}
+
+// RepairProcessInstances delegates process-instance repair to the internal ops workflow boundary.
+func (c *client) RepairProcessInstances(ctx context.Context, request RepairRequest, opts ...options.FacadeOption) (RepairResult, error) {
+	result, err := c.api.RepairProcessInstances(ctx, toDomainRepairRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainRepairResult(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
+}

@@ -32,10 +32,14 @@
 - `internal/services/ops/api.go` currently injects process-instance, incident, process-definition, resource, and cluster services; this feature must add job service injection for repair without bypassing resource services.
 - `c8volt/ops/model.go` already has shared workflow statuses, but repair requires adding `not_applicable`.
 - Existing incident primitives live in `internal/services/incident`; process-instance search and variable updates live in `internal/services/processinstance`; job lookup and update live in `internal/services/job`.
+- `internal/domain/ops_repair.go` now owns the shared repair request/result/report model, while `c8volt/ops/model.go` mirrors only public JSON-facing repair types.
+- `internal/services/ops.NewWithRepairDependencies` injects the job service for repair while keeping `NewWithWorkflowDependencies` available for older workflow tests and non-repair callers.
+- Foundational repair service methods currently validate process-instance, incident, and job dependencies and return a planned result skeleton; later user stories should replace the skeleton with concrete discovery and mutation behavior without changing the facade shape.
+- Public repair facade methods in `c8volt/ops/client.go` remain thin: convert public models, delegate to internal ops, map domain errors, and map results back through `c8volt/ops/convert.go`.
 
 ## Validation Notes
 
-- Planning artifacts only so far; no implementation validation has been run.
+- Iteration 2 foundational validation passed with targeted ops/facade tests and full `go test ./... -count=1` using `GOCACHE=/private/tmp/go-build-cache` for sandbox-compatible cache writes.
 
 ---
 ## Iteration 1 - 2026-05-17 17:21:56 CEST
@@ -56,4 +60,39 @@
 - No conflict was found between `specs/ralph-implementation-rules.md` and the active feature artifacts.
 - The first implementation iteration should start with foundational models and dependency wiring, especially adding job service injection to the ops workflow boundary.
 - Repair command implementation should reuse existing selector validation and report patterns instead of creating parallel parsing, output, or file-writing behavior.
+---
+---
+## Iteration 2 - 2026-05-17 17:32:20 CEST
+**User Story**: Phase 2: Foundational (Blocking Prerequisites)
+**Tasks Completed**:
+- [x] T007: Add internal repair request/result/domain models and `not_applicable` workflow status
+- [x] T008: Add public repair request/result models and `not_applicable` workflow status mapping
+- [x] T009: Extend internal ops service API and constructors to accept job service dependency
+- [x] T010: Extend public ops facade API with repair workflow methods
+- [x] T011: Implement repair model conversions
+- [x] T012: Implement thin public repair facade methods
+- [x] T013: Wire job service into ops facade construction
+- [x] T014: Add foundational ops repair model/conversion tests
+- [x] T015: Add internal repair workflow constructor/dependency tests
+- [x] T016: Mark foundational tasks complete and record validation notes
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/client.go
+- c8volt/ops/api.go
+- c8volt/ops/client.go
+- c8volt/ops/client_test.go
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- internal/domain/ops_orphan_purge.go
+- internal/domain/ops_repair.go
+- internal/services/ops/api.go
+- internal/services/ops/repair.go
+- internal/services/ops/repair_test.go
+- specs/183-ops-repair-workflows/tasks.md
+- specs/183-ops-repair-workflows/progress.md
+**Learnings**:
+- `not_applicable` belongs in the shared ops workflow step vocabulary because repair job steps need it for mixed job-backed and non-job incidents.
+- Keeping repair service methods as planned skeletons lets later user stories add explicit incident and process-instance behavior without changing public method signatures.
+- Validation run: `go test ./c8volt/ops ./internal/services/ops -run 'TestClientRepairIncidentsMapsServiceBoundary|TestRepairWorkflows' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./c8volt ./c8volt/ops ./internal/services/ops -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./... -count=1`.
 ---

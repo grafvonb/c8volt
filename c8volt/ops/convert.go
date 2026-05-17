@@ -653,6 +653,197 @@ func fromDomainIncidentPurgeWorkflowNotice(x d.IncidentPurgeWorkflowNotice) Inci
 	}
 }
 
+// toDomainRepairRequest maps public repair controls to the service request model.
+func toDomainRepairRequest(x RepairRequest) d.OpsRepairRequest {
+	return d.OpsRepairRequest{
+		CommandName:              x.CommandName,
+		Target:                   d.OpsRepairTarget(x.Target),
+		DiscoveryMode:            d.OpsRepairDiscoveryMode(x.DiscoveryMode),
+		InputKeys:                append(typex.Keys{}, x.InputKeys...),
+		IncidentSelection:        toDomainIncidentFilter(x.IncidentSelection),
+		ProcessInstanceSelection: toDomainProcessInstanceFilter(x.ProcessInstanceSelection),
+		BatchSize:                x.BatchSize,
+		Limit:                    x.Limit,
+		Workers:                  x.Workers,
+		FailFast:                 x.FailFast,
+		NoWorkerLimit:            x.NoWorkerLimit,
+		DryRun:                   x.DryRun,
+		AutoConfirm:              x.AutoConfirm,
+		Automation:               x.Automation,
+		NoWait:                   x.NoWait,
+		OutputMode:               x.OutputMode,
+		Variables:                toolx.CopyMap(x.Variables),
+		VariablesFile:            x.VariablesFile,
+		RequestedRetries:         toolx.CopyPtr(x.RequestedRetries),
+		RequestedJobTimeout:      x.RequestedJobTimeout,
+		ReportFile:               x.ReportFile,
+		ReportFormat:             x.ReportFormat,
+		StartedAt:                x.StartedAt,
+	}
+}
+
+// fromDomainRepairResult maps the service repair result to the public facade model.
+func fromDomainRepairResult(x d.OpsRepairResult) RepairResult {
+	return RepairResult{
+		Request:          fromDomainRepairRequest(x.Request),
+		FrozenSet:        fromDomainRepairFrozenSet(x.FrozenSet),
+		Plan:             toolx.MapSlice(x.Plan, fromDomainRepairPlanItem),
+		VariableUpdates:  toolx.MapSlice(x.VariableUpdates, fromDomainRepairVariableScopeUpdate),
+		JobApplicability: toolx.MapSlice(x.JobApplicability, fromDomainRepairJobApplicability),
+		Remaining:        fromDomainRepairRemainingIncidentSummary(x.Remaining),
+		Report:           fromDomainRepairAuditReport(x.Report),
+		Outcome:          RepairOutcome(x.Outcome),
+		Errors:           append([]string(nil), x.Errors...),
+		Notices:          toolx.MapSlice(x.Notices, fromDomainRepairNotice),
+	}
+}
+
+// fromDomainRepairRequest maps a service repair request back to public output.
+func fromDomainRepairRequest(x d.OpsRepairRequest) RepairRequest {
+	return RepairRequest{
+		CommandName:              x.CommandName,
+		Target:                   RepairTarget(x.Target),
+		DiscoveryMode:            RepairDiscoveryMode(x.DiscoveryMode),
+		InputKeys:                append(typex.Keys{}, x.InputKeys...),
+		IncidentSelection:        fromDomainIncidentFilter(x.IncidentSelection),
+		ProcessInstanceSelection: fromDomainProcessInstanceFilter(x.ProcessInstanceSelection),
+		BatchSize:                x.BatchSize,
+		Limit:                    x.Limit,
+		Workers:                  x.Workers,
+		FailFast:                 x.FailFast,
+		NoWorkerLimit:            x.NoWorkerLimit,
+		DryRun:                   x.DryRun,
+		AutoConfirm:              x.AutoConfirm,
+		Automation:               x.Automation,
+		NoWait:                   x.NoWait,
+		OutputMode:               x.OutputMode,
+		Variables:                toolx.CopyMap(x.Variables),
+		VariablesFile:            x.VariablesFile,
+		RequestedRetries:         toolx.CopyPtr(x.RequestedRetries),
+		RequestedJobTimeout:      x.RequestedJobTimeout,
+		ReportFile:               x.ReportFile,
+		ReportFormat:             x.ReportFormat,
+		StartedAt:                x.StartedAt,
+	}
+}
+
+// fromDomainRepairFrozenSet maps frozen repair targets to public output.
+func fromDomainRepairFrozenSet(x d.OpsRepairFrozenSet) RepairFrozenSet {
+	return RepairFrozenSet{
+		Status:              WorkflowStepStatus(x.Status),
+		Target:              RepairTarget(x.Target),
+		DiscoveryMode:       RepairDiscoveryMode(x.DiscoveryMode),
+		InputKeys:           append(typex.Keys{}, x.InputKeys...),
+		IncidentKeys:        append(typex.Keys{}, x.IncidentKeys...),
+		ProcessInstanceKeys: append(typex.Keys{}, x.ProcessInstanceKeys...),
+		RootProcessKeys:     append(typex.Keys{}, x.RootProcessKeys...),
+		JobKeys:             append(typex.Keys{}, x.JobKeys...),
+		VariableScopes:      append(typex.Keys{}, x.VariableScopes...),
+		OriginalIncidents:   toolx.MapSlice(x.OriginalIncidents, fromDomainIncidentDetail),
+		IncidentFilters:     fromDomainIncidentFilter(x.IncidentFilters),
+		ProcessFilters:      fromDomainProcessInstanceFilter(x.ProcessFilters),
+		Errors:              append([]string(nil), x.Errors...),
+	}
+}
+
+// fromDomainRepairPlanItem maps one service repair plan row to public output.
+func fromDomainRepairPlanItem(x d.OpsRepairPlanItem) RepairPlanItem {
+	return RepairPlanItem{
+		IncidentKey:            x.IncidentKey,
+		ProcessInstanceKey:     x.ProcessInstanceKey,
+		RootProcessInstanceKey: x.RootProcessInstanceKey,
+		JobKey:                 x.JobKey,
+		VariableScopeKey:       x.VariableScopeKey,
+		RequestedVariableNames: append([]string(nil), x.RequestedVariableNames...),
+		RequestedRetries:       toolx.CopyPtr(x.RequestedRetries),
+		RequestedTimeout:       x.RequestedTimeout,
+		VariableUpdateStatus:   WorkflowStepStatus(x.VariableUpdateStatus),
+		RetryUpdateStatus:      WorkflowStepStatus(x.RetryUpdateStatus),
+		TimeoutUpdateStatus:    WorkflowStepStatus(x.TimeoutUpdateStatus),
+		ResolutionStatus:       WorkflowStepStatus(x.ResolutionStatus),
+		ConfirmationStatus:     WorkflowStepStatus(x.ConfirmationStatus),
+		Notices:                toolx.MapSlice(x.Notices, fromDomainRepairNotice),
+		Errors:                 append([]string(nil), x.Errors...),
+	}
+}
+
+// fromDomainRepairVariableScopeUpdate maps one variable scope update result to public output.
+func fromDomainRepairVariableScopeUpdate(x d.OpsRepairVariableScopeUpdate) RepairVariableScopeUpdate {
+	return RepairVariableScopeUpdate{
+		ScopeKey:              x.ScopeKey,
+		VariableNames:         append([]string(nil), x.VariableNames...),
+		Payload:               toolx.CopyMap(x.Payload),
+		DependentIncidentKeys: append(typex.Keys{}, x.DependentIncidentKeys...),
+		Status:                WorkflowStepStatus(x.Status),
+		Errors:                append([]string(nil), x.Errors...),
+	}
+}
+
+// fromDomainRepairJobApplicability maps one job repair applicability decision to public output.
+func fromDomainRepairJobApplicability(x d.OpsRepairJobApplicability) RepairJobApplicability {
+	return RepairJobApplicability{
+		IncidentKey:        x.IncidentKey,
+		JobKey:             x.JobKey,
+		RetryStatus:        WorkflowStepStatus(x.RetryStatus),
+		TimeoutStatus:      WorkflowStepStatus(x.TimeoutStatus),
+		Reason:             x.Reason,
+		RequestedRetries:   toolx.CopyPtr(x.RequestedRetries),
+		RequestedTimeout:   x.RequestedTimeout,
+		UnsupportedVersion: x.UnsupportedVersion,
+	}
+}
+
+// fromDomainRepairRemainingIncidentSummary maps post-repair incident context to public output.
+func fromDomainRepairRemainingIncidentSummary(x d.OpsRepairRemainingIncidentSummary) RepairRemainingIncidentSummary {
+	return RepairRemainingIncidentSummary{
+		Status:     WorkflowStepStatus(x.Status),
+		ActiveKeys: append(typex.Keys{}, x.ActiveKeys...),
+		Incidents:  toolx.MapSlice(x.Incidents, fromDomainIncidentDetail),
+		Checked:    x.Checked,
+		Errors:     append([]string(nil), x.Errors...),
+	}
+}
+
+// fromDomainRepairAuditReport maps the service repair audit model to public output.
+func fromDomainRepairAuditReport(x d.OpsRepairAuditReport) RepairAuditReport {
+	return RepairAuditReport{
+		SchemaVersion:    x.SchemaVersion,
+		CommandName:      x.CommandName,
+		StartedAt:        x.StartedAt,
+		FinishedAt:       x.FinishedAt,
+		Duration:         x.Duration,
+		DryRun:           x.DryRun,
+		C8voltVersion:    x.C8voltVersion,
+		CamundaVersion:   x.CamundaVersion,
+		ProfileIdentity:  x.ProfileIdentity,
+		TenantID:         x.TenantID,
+		Request:          fromDomainRepairRequest(x.Request),
+		FrozenSet:        fromDomainRepairFrozenSet(x.FrozenSet),
+		Plan:             toolx.MapSlice(x.Plan, fromDomainRepairPlanItem),
+		VariableUpdates:  toolx.MapSlice(x.VariableUpdates, fromDomainRepairVariableScopeUpdate),
+		JobApplicability: toolx.MapSlice(x.JobApplicability, fromDomainRepairJobApplicability),
+		Remaining:        fromDomainRepairRemainingIncidentSummary(x.Remaining),
+		AutoConfirm:      x.AutoConfirm,
+		Automation:       x.Automation,
+		NoWait:           x.NoWait,
+		FailFast:         x.FailFast,
+		NoWorkerLimit:    x.NoWorkerLimit,
+		Errors:           append([]string(nil), x.Errors...),
+		Notices:          toolx.MapSlice(x.Notices, fromDomainRepairNotice),
+		Outcome:          RepairOutcome(x.Outcome),
+	}
+}
+
+// fromDomainRepairNotice maps structured repair notices to public output.
+func fromDomainRepairNotice(x d.OpsRepairWorkflowNotice) RepairNotice {
+	return RepairNotice{
+		Code:     x.Code,
+		Severity: x.Severity,
+		Message:  x.Message,
+		Details:  toolx.CopyMap(x.Details),
+	}
+}
+
 // toDomainAllProcessDefinitionsPurgeRequest maps the public purge request to the service contract.
 func toDomainAllProcessDefinitionsPurgeRequest(x AllProcessDefinitionsPurgeRequest) d.AllProcessDefinitionsPurgeRequest {
 	out := d.AllProcessDefinitionsPurgeRequest{

@@ -15,6 +15,8 @@ type API interface {
 	ExecuteRetentionPolicy(ctx context.Context, request RetentionPolicyRequest, opts ...options.FacadeOption) (RetentionPolicyResult, error)
 	PurgeProcessInstancesWithIncidents(ctx context.Context, request IncidentPurgeRequest, opts ...options.FacadeOption) (IncidentPurgeResult, error)
 	PurgeAllProcessDefinitions(ctx context.Context, request AllProcessDefinitionsPurgeRequest, opts ...options.FacadeOption) (AllProcessDefinitionsPurgeResult, error)
+	RepairIncidents(ctx context.Context, request RepairRequest, opts ...options.FacadeOption) (RepairResult, error)
+	RepairProcessInstances(ctx context.Context, request RepairRequest, opts ...options.FacadeOption) (RepairResult, error)
 }
 
 var _ API = (*client)(nil)

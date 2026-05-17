@@ -12,8 +12,10 @@ import (
 type OpsWorkflowStepStatus string
 
 const (
-	OpsWorkflowStepStatusPlanned            OpsWorkflowStepStatus = "planned"
-	OpsWorkflowStepStatusSkipped            OpsWorkflowStepStatus = "skipped"
+	OpsWorkflowStepStatusPlanned OpsWorkflowStepStatus = "planned"
+	OpsWorkflowStepStatusSkipped OpsWorkflowStepStatus = "skipped"
+	// OpsWorkflowStepStatusNotApplicable means a workflow step does not apply to the selected target.
+	OpsWorkflowStepStatusNotApplicable      OpsWorkflowStepStatus = "not_applicable"
 	OpsWorkflowStepStatusSubmitted          OpsWorkflowStepStatus = "submitted"
 	OpsWorkflowStepStatusConfirmed          OpsWorkflowStepStatus = "confirmed"
 	OpsWorkflowStepStatusConfirmationFailed OpsWorkflowStepStatus = "confirmation_failed"
