@@ -52,7 +52,7 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
   ./c8volt ops purge process-instances-with-incidents --dry-run --report-file incident-purge.md
   ./c8volt ops purge process-instances-with-incidents --state active --error-type job_no_retries --auto-confirm --force
   ./c8volt ops purge process-instances-with-incidents --state active --error-type job_no_retries --auto-confirm --force --workers 4 --report-file incident-purge.json --report-format json`,
-	Aliases: []string{"pi-with-incidents"},
+	Aliases: []string{"pi-with-incidents", "piwi"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := validateOpsPurgeProcessInstancesWithIncidentsFlags(cmd); err != nil {
