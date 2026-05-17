@@ -24,15 +24,15 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T003 [P] Define internal smoke-test request/result domain models in `internal/domain/ops_smoke_test.go`
-- [ ] T004 [P] Define public ops smoke-test request/result models in `c8volt/ops/model.go`
-- [ ] T005 [P] Extend public ops facade API for smoke-test execution in `c8volt/ops/api.go`
-- [ ] T006 Extend internal ops service interface for smoke-test execution in `internal/services/ops/api.go`
-- [ ] T007 Implement public/internal smoke-test model conversions in `c8volt/ops/convert.go`
-- [ ] T008 Implement thin public ops facade smoke-test method in `c8volt/ops/client.go`
-- [ ] T009 [P] Add foundational ops facade wiring tests for smoke-test execution in `c8volt/ops/client_test.go`
-- [ ] T010 [P] Add foundational internal ops service validation tests for smoke-test request shape in `internal/services/ops/smoke_test_test.go`
-- [ ] T011 Mark Phase 2 tasks complete and record validation notes in `specs/188-ops-smoke-test/progress.md`
+- [x] T003 [P] Define internal smoke-test request/result domain models in `internal/domain/ops_smoke_test.go`
+- [x] T004 [P] Define public ops smoke-test request/result models in `c8volt/ops/model.go`
+- [x] T005 [P] Extend public ops facade API for smoke-test execution in `c8volt/ops/api.go`
+- [x] T006 Extend internal ops service interface for smoke-test execution in `internal/services/ops/api.go`
+- [x] T007 Implement public/internal smoke-test model conversions in `c8volt/ops/convert.go`
+- [x] T008 Implement thin public ops facade smoke-test method in `c8volt/ops/client.go`
+- [x] T009 [P] Add foundational ops facade wiring tests for smoke-test execution in `c8volt/ops/client_test.go`
+- [x] T010 [P] Add foundational internal ops service validation tests for smoke-test request shape in `internal/services/ops/smoke_test_test.go`
+- [x] T011 Mark Phase 2 tasks complete and record validation notes in `specs/188-ops-smoke-test/progress.md`
 
 **Checkpoint**: Smoke-test workflow model, facade, and service boundary are available for story implementation.
 

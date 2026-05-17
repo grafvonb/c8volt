@@ -25,6 +25,199 @@ const (
 	WorkflowStepStatusFailed             WorkflowStepStatus = "failed"
 )
 
+// SmokeTestOutcome is the final state of one ops smoke-test workflow run.
+type SmokeTestOutcome string
+
+const (
+	// SmokeTestOutcomePlanned means the workflow produced a read-only plan.
+	SmokeTestOutcomePlanned SmokeTestOutcome = "planned"
+	// SmokeTestOutcomePassed means every smoke-test step and cleanup step passed.
+	SmokeTestOutcomePassed SmokeTestOutcome = "passed"
+	// SmokeTestOutcomePassedCleanupSkipped means proof steps passed and cleanup was intentionally skipped.
+	SmokeTestOutcomePassedCleanupSkipped SmokeTestOutcome = "passed_cleanup_skipped"
+	// SmokeTestOutcomePartiallyFailed means at least one mutation succeeded and a later step failed.
+	SmokeTestOutcomePartiallyFailed SmokeTestOutcome = "partially_failed"
+	// SmokeTestOutcomeFailed means validation, planning, or workflow execution failed before a partial success state.
+	SmokeTestOutcomeFailed SmokeTestOutcome = "failed"
+)
+
+// SmokeTestRequest captures one requested ops execute smoke-test run.
+type SmokeTestRequest struct {
+	CommandName   string    `json:"commandName,omitempty"`
+	DryRun        bool      `json:"dryRun,omitempty"`
+	Count         int       `json:"count,omitempty"`
+	Workers       int       `json:"workers,omitempty"`
+	FailFast      bool      `json:"failFast,omitempty"`
+	NoWorkerLimit bool      `json:"noWorkerLimit,omitempty"`
+	NoCleanup     bool      `json:"noCleanup,omitempty"`
+	AutoConfirm   bool      `json:"autoConfirm,omitempty"`
+	Automation    bool      `json:"automation,omitempty"`
+	NoWait        bool      `json:"noWait,omitempty"`
+	OutputMode    string    `json:"outputMode,omitempty"`
+	ReportFile    string    `json:"reportFile,omitempty"`
+	ReportFormat  string    `json:"reportFormat,omitempty"`
+	StartedAt     time.Time `json:"startedAt,omitempty"`
+}
+
+// WorkflowStepResult captures compact status for one smoke-test workflow step.
+type WorkflowStepResult struct {
+	Name    string             `json:"name,omitempty"`
+	Status  WorkflowStepStatus `json:"status,omitempty"`
+	Message string             `json:"message,omitempty"`
+	Errors  []string           `json:"errors,omitempty"`
+}
+
+// EmbeddedSmokeTestFixture describes the selected version-specific BPMN fixture.
+type EmbeddedSmokeTestFixture struct {
+	CamundaVersion string `json:"camundaVersion,omitempty"`
+	File           string `json:"file,omitempty"`
+	BpmnProcessID  string `json:"bpmnProcessId,omitempty"`
+	Available      bool   `json:"available,omitempty"`
+}
+
+// SmokeTestPlan captures read-only planning output before mutation.
+type SmokeTestPlan struct {
+	Status           WorkflowStepStatus       `json:"status,omitempty"`
+	CamundaVersion   string                   `json:"camundaVersion,omitempty"`
+	Fixture          EmbeddedSmokeTestFixture `json:"fixture,omitempty"`
+	CleanupRequested bool                     `json:"cleanupRequested,omitempty"`
+	PlannedSteps     []WorkflowStepResult     `json:"plannedSteps,omitempty"`
+	Errors           []string                 `json:"errors,omitempty"`
+}
+
+// SmokeTestDeploymentResult captures deployment step output.
+type SmokeTestDeploymentResult struct {
+	Status                   WorkflowStepStatus `json:"status,omitempty"`
+	FixtureFile              string             `json:"fixtureFile,omitempty"`
+	BpmnProcessID            string             `json:"bpmnProcessId,omitempty"`
+	ProcessDefinitionKey     string             `json:"processDefinitionKey,omitempty"`
+	ProcessDefinitionVersion int32              `json:"processDefinitionVersion,omitempty"`
+	TenantID                 string             `json:"tenantId,omitempty"`
+	Errors                   []string           `json:"errors,omitempty"`
+}
+
+// SmokeTestRunItem captures one process-instance creation attempt.
+type SmokeTestRunItem struct {
+	ProcessInstanceKey string             `json:"processInstanceKey,omitempty"`
+	Status             WorkflowStepStatus `json:"status,omitempty"`
+	Error              string             `json:"error,omitempty"`
+}
+
+// SmokeTestRunResult captures process-instance creation output.
+type SmokeTestRunResult struct {
+	Status              WorkflowStepStatus `json:"status,omitempty"`
+	RequestedCount      int                `json:"requestedCount"`
+	CreatedCount        int                `json:"createdCount"`
+	ProcessInstanceKeys typex.Keys         `json:"processInstanceKeys,omitempty"`
+	Items               []SmokeTestRunItem `json:"items,omitempty"`
+	Errors              []string           `json:"errors,omitempty"`
+}
+
+// SmokeTestTraversalSummary captures report-safe traversal details for one created instance family.
+type SmokeTestTraversalSummary struct {
+	ProcessInstanceKey     string                    `json:"processInstanceKey,omitempty"`
+	RootProcessInstanceKey string                    `json:"rootProcessInstanceKey,omitempty"`
+	FamilyKeys             typex.Keys                `json:"familyKeys,omitempty"`
+	MissingAncestors       []process.MissingAncestor `json:"missingAncestors,omitempty"`
+	Warning                string                    `json:"warning,omitempty"`
+	Outcome                process.TraversalOutcome  `json:"outcome,omitempty"`
+}
+
+// SmokeTestWalkItem captures one traversal attempt for a created process instance.
+type SmokeTestWalkItem struct {
+	ProcessInstanceKey string                    `json:"processInstanceKey,omitempty"`
+	Status             WorkflowStepStatus        `json:"status,omitempty"`
+	Summary            SmokeTestTraversalSummary `json:"summary,omitempty"`
+	Error              string                    `json:"error,omitempty"`
+}
+
+// SmokeTestWalkResult captures traversal output for created process instances.
+type SmokeTestWalkResult struct {
+	Status WorkflowStepStatus  `json:"status,omitempty"`
+	Items  []SmokeTestWalkItem `json:"items,omitempty"`
+	Errors []string            `json:"errors,omitempty"`
+}
+
+// SmokeTestCleanupEligibility captures the safety decision for process-definition cleanup.
+type SmokeTestCleanupEligibility struct {
+	Status   WorkflowStepStatus `json:"status,omitempty"`
+	Eligible bool               `json:"eligible,omitempty"`
+	Blockers []string           `json:"blockers,omitempty"`
+	Errors   []string           `json:"errors,omitempty"`
+}
+
+// SmokeTestProcessInstanceCleanupResult captures delete-pi cleanup output.
+type SmokeTestProcessInstanceCleanupResult struct {
+	Status        WorkflowStepStatus     `json:"status,omitempty"`
+	SubmittedKeys typex.Keys             `json:"submittedKeys,omitempty"`
+	Items         []process.DeleteReport `json:"items,omitempty"`
+	Submitted     bool                   `json:"submitted,omitempty"`
+	Confirmed     bool                   `json:"confirmed,omitempty"`
+	NoWait        bool                   `json:"noWait,omitempty"`
+	Errors        []string               `json:"errors,omitempty"`
+}
+
+// SmokeTestProcessDefinitionCleanupResult captures process-definition cleanup output.
+type SmokeTestProcessDefinitionCleanupResult struct {
+	Status                        WorkflowStepStatus      `json:"status,omitempty"`
+	SubmittedProcessDefinitionKey string                  `json:"submittedProcessDefinitionKey,omitempty"`
+	Items                         []resource.DeleteReport `json:"items,omitempty"`
+	Submitted                     bool                    `json:"submitted,omitempty"`
+	Confirmed                     bool                    `json:"confirmed,omitempty"`
+	NoWait                        bool                    `json:"noWait,omitempty"`
+	Errors                        []string                `json:"errors,omitempty"`
+}
+
+// SmokeTestCleanupResult captures process-instance and process-definition cleanup output.
+type SmokeTestCleanupResult struct {
+	ProcessInstanceCleanup       SmokeTestProcessInstanceCleanupResult   `json:"processInstanceCleanup,omitempty"`
+	ProcessDefinitionEligibility SmokeTestCleanupEligibility             `json:"processDefinitionEligibility,omitempty"`
+	ProcessDefinitionCleanup     SmokeTestProcessDefinitionCleanupResult `json:"processDefinitionCleanup,omitempty"`
+	NoCleanup                    bool                                    `json:"noCleanup,omitempty"`
+	Errors                       []string                                `json:"errors,omitempty"`
+}
+
+// SmokeTestAuditReport is the stable report model for smoke-test output and audit files.
+type SmokeTestAuditReport struct {
+	SchemaVersion    string                    `json:"schemaVersion,omitempty"`
+	CommandName      string                    `json:"commandName,omitempty"`
+	StartedAt        time.Time                 `json:"startedAt,omitempty"`
+	FinishedAt       time.Time                 `json:"finishedAt,omitempty"`
+	Duration         string                    `json:"duration,omitempty"`
+	DryRun           bool                      `json:"dryRun,omitempty"`
+	C8voltVersion    string                    `json:"c8voltVersion,omitempty"`
+	CamundaVersion   string                    `json:"camundaVersion,omitempty"`
+	ProfileIdentity  string                    `json:"profileIdentity,omitempty"`
+	TenantID         string                    `json:"tenantId,omitempty"`
+	Fixture          EmbeddedSmokeTestFixture  `json:"fixture,omitempty"`
+	Plan             SmokeTestPlan             `json:"plan,omitempty"`
+	Deployment       SmokeTestDeploymentResult `json:"deployment,omitempty"`
+	Run              SmokeTestRunResult        `json:"run,omitempty"`
+	Walk             SmokeTestWalkResult       `json:"walk,omitempty"`
+	CleanupRequested bool                      `json:"cleanupRequested,omitempty"`
+	NoCleanup        bool                      `json:"noCleanup,omitempty"`
+	Cleanup          SmokeTestCleanupResult    `json:"cleanup,omitempty"`
+	AutoConfirm      bool                      `json:"autoConfirm,omitempty"`
+	Automation       bool                      `json:"automation,omitempty"`
+	NoWait           bool                      `json:"noWait,omitempty"`
+	Errors           []string                  `json:"errors,omitempty"`
+	Outcome          SmokeTestOutcome          `json:"outcome,omitempty"`
+}
+
+// SmokeTestResult carries the full smoke-test workflow result across the facade boundary.
+type SmokeTestResult struct {
+	Request    SmokeTestRequest          `json:"request,omitempty"`
+	Plan       SmokeTestPlan             `json:"plan,omitempty"`
+	Fixture    EmbeddedSmokeTestFixture  `json:"fixture,omitempty"`
+	Deployment SmokeTestDeploymentResult `json:"deployment,omitempty"`
+	Run        SmokeTestRunResult        `json:"run,omitempty"`
+	Walk       SmokeTestWalkResult       `json:"walk,omitempty"`
+	Cleanup    SmokeTestCleanupResult    `json:"cleanup,omitempty"`
+	Report     SmokeTestAuditReport      `json:"report,omitempty"`
+	Outcome    SmokeTestOutcome          `json:"outcome,omitempty"`
+	Errors     []string                  `json:"errors,omitempty"`
+}
+
 type OrphanPurgeOutcome string
 
 const (
