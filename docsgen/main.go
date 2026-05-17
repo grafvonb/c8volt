@@ -48,8 +48,7 @@ func main() {
 			prep := func(filename string) string {
 				base := filepath.Base(filename)
 				name := strings.TrimSuffix(base, filepath.Ext(base))
-				title := strings.ReplaceAll(name, "_", " ")
-				return fmt.Sprintf("---\ntitle: %q\nnav_exclude: true\n---\n\n[CLI Reference]({{ \"/cli/\" | relative_url }})\n", title)
+				return cliMarkdownPrelude(name)
 			}
 			link := func(name string) string { return docsLinkName(name) }
 			if err := doc.GenMarkdownTreeCustom(root, *out, prep, link); err != nil {
@@ -71,6 +70,15 @@ func main() {
 	default:
 		log.Fatalf("unknown format: %s", *format)
 	}
+}
+
+func cliMarkdownPrelude(name string) string {
+	title := strings.ReplaceAll(name, "_", " ")
+	prelude := fmt.Sprintf("---\ntitle: %q\nnav_exclude: true\n---\n\n", title)
+	if strings.HasPrefix(name, "c8volt_ops") {
+		return prelude
+	}
+	return prelude + "[CLI Reference]({{ \"/cli/\" | relative_url }})\n"
 }
 
 func syncDocsIndexFromReadme(src, dst string) error {

@@ -3,7 +3,6 @@ title: "c8volt ops purge process-instances-with-incidents"
 nav_exclude: true
 ---
 
-[CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt ops purge process-instances-with-incidents
 
 Purge process instances selected by incidents
@@ -27,8 +26,8 @@ c8volt ops purge process-instances-with-incidents [flags]
   ./c8volt ops purge pi-with-incidents --state active --dry-run
   ./c8volt ops purge process-instances-with-incidents --automation --json --dry-run
   ./c8volt ops purge process-instances-with-incidents --dry-run --report-file incident-purge.md
-  ./c8volt ops purge process-instances-with-incidents --state active --error-type job_no_retries --auto-confirm --force
-  ./c8volt ops purge process-instances-with-incidents --state active --error-type job_no_retries --auto-confirm --force --workers 4 --report-file incident-purge.json --report-format json
+  ./c8volt ops purge process-instances-with-incidents --state active --error-type job_no_retries --limit 5 --auto-confirm --force
+  ./c8volt ops purge process-instances-with-incidents --state active --error-type job_no_retries --limit 5 --auto-confirm --force --workers 4 --report-file incident-purge.json --report-format json
 ```
 
 ### Options

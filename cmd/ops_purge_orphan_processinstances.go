@@ -30,9 +30,9 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 	Example: `  ./c8volt ops purge orphan-process-instances --dry-run
   ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id order-process --limit 25
   ./c8volt ops purge orphan-process-instances --automation --json --dry-run
-  ./c8volt ops purge orphan-process-instances --auto-confirm
+  ./c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm
   ./c8volt ops purge orphan-process-instances --dry-run --report-file orphan-purge.md
-  ./c8volt ops purge orphan-process-instances --auto-confirm --report-file orphan-purge.json --report-format json`,
+  ./c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm --report-file orphan-purge.json --report-format json`,
 	Aliases: []string{"orphan-pi", "opi"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {

@@ -90,6 +90,21 @@ func TestRewriteDocsIndexLinks(t *testing.T) {
 	}
 }
 
+func TestCLIMarkdownPreludeOmitsOpsBreadcrumb(t *testing.T) {
+	opsPrelude := cliMarkdownPrelude("c8volt_ops_repair_incident")
+	if strings.Contains(opsPrelude, "CLI Reference") {
+		t.Fatalf("expected ops CLI page prelude to omit CLI reference breadcrumb, got %q", opsPrelude)
+	}
+	if !strings.Contains(opsPrelude, `title: "c8volt ops repair incident"`) {
+		t.Fatalf("expected ops CLI page prelude to preserve title, got %q", opsPrelude)
+	}
+
+	regularPrelude := cliMarkdownPrelude("c8volt_get_process-instance")
+	if !strings.Contains(regularPrelude, "CLI Reference") {
+		t.Fatalf("expected non-ops CLI page prelude to keep CLI reference breadcrumb, got %q", regularPrelude)
+	}
+}
+
 // TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup protects generated command docs for the task-key lookup surface.
 func TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup(t *testing.T) {
 	out := t.TempDir()

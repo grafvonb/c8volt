@@ -3,7 +3,6 @@ title: "c8volt ops repair process-instance"
 nav_exclude: true
 ---
 
-[CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt ops repair process-instance
 
 Repair incidents selected by process instances
@@ -24,11 +23,12 @@ c8volt ops repair process-instance [flags]
   ./c8volt ops repair process-instance --key <process-instance-key>
   ./c8volt ops repair pi --key <process-instance-key> --key <another-process-instance-key>
   printf '%s\n' "$PI_KEY_A" "$PI_KEY_B" | ./c8volt ops repair process-instance -
-  ./c8volt ops repair process-instance --state active --limit 25 --dry-run
-  ./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id demo --limit 25 --dry-run
+  ./c8volt ops repair process-instance --state active --limit 5 --dry-run
+  ./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id demo --limit 5 --dry-run
   ./c8volt ops repair process-instance --key <process-instance-key> --retries 0
   ./c8volt ops repair process-instance --key <process-instance-key> --job-timeout 5m
-  ./c8volt --json ops repair process-instance --key <process-instance-key> --automation
+  ./c8volt ops repair process-instance --key <process-instance-key> --auto-confirm --report-file repair-process-instance.md
+  ./c8volt --json ops repair process-instance --key <process-instance-key> --automation --dry-run
 ```
 
 ### Options

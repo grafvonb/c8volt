@@ -1,33 +1,43 @@
 ---
-title: "Use Cases"
+title: "C8 Ops Discussions"
 permalink: /use-cases/
-nav_order: 2
+nav_order: 3
 has_toc: false
 ---
 
-# Use Cases & Ideas
+# C8 Ops Use-Case Discussions
 
-The c8volt use-case board is where operational workflows are shaped before they become CLI behavior.
+The c8volt use-case board is the GitHub discussion space where C8 Ops CLI workflows are shaped before, during, and after implementation.
 
 [Open the discussion board](https://github.com/grafvonb/c8volt/discussions/categories/1-use-cases-ideas){: .btn .btn-primary }
 
-## Ops use cases
+Implemented operational workflows now live in the [C8 Ops CLI playbooks](/ops/). This page remains the idea board for accepted, upcoming, and superseded workflow concepts.
 
-### [Repair commands](https://github.com/grafvonb/c8volt/discussions/189) <span class="status-badge status-accepted">status: accepted</span>
+## Discussion Links
 
-High-level repair workflows for operator-safe remediation. The goal is to turn multi-step recovery work into explicit `c8volt ops repair ...` commands with dry-run previews, confirmation controls, automation support, and a final report that shows what was selected, attempted, skipped, and changed.
+### [Repair commands](https://github.com/grafvonb/c8volt/discussions/189) <span class="status-badge status-implemented">status: implemented</span>
 
-### [Orphan cleanup](https://github.com/grafvonb/c8volt/discussions/190) <span class="status-badge status-accepted">status: accepted</span>
+High-level repair workflows for operator-safe remediation. The implemented `c8volt ops repair incident` and `c8volt ops repair process-instance` flows freeze repair targets, optionally update process-instance variables once per scope, apply related-job retry/timeout repair where applicable, resolve incidents, confirm clearance unless `--no-wait` is set, and write a final report that shows what was selected, attempted, skipped, and changed.
 
-Automated cleanup for orphan child process instances. The planned flow selects candidates with `get pi --orphan-children-only --keys-only`, then passes those keys into `delete pi --keys`, reusing existing delete behavior for root traversal, duplicate removal, dry-run reporting, `--auto-confirm`, and `--automation`.
+### [Orphan cleanup](https://github.com/grafvonb/c8volt/discussions/190) <span class="status-badge status-implemented">status: implemented</span>
 
-### [Retention policy](https://github.com/grafvonb/c8volt/discussions/191) <span class="status-badge status-accepted">status: accepted</span>
+Automated cleanup for orphan child process instances. The implemented `c8volt ops purge orphan-process-instances` flow selects candidates with orphan-child discovery, freezes those keys, then reuses existing process-instance delete planning for root traversal, affected-scope validation, dry-run reporting, `--auto-confirm`, and `--automation`.
 
-Home-grown retention cleanup for completed process instances older than a configured number of days. The planned flow selects keys with `get pi --end-date-older-days --keys-only`, then deletes them through the existing process-instance delete service so c8volt keeps full control over filtering, concurrency, traversal, reporting, and execution timing.
+### [Retention policy](https://github.com/grafvonb/c8volt/discussions/191) <span class="status-badge status-implemented">status: implemented</span>
 
-### [Smoke test](https://github.com/grafvonb/c8volt/discussions/56) <span class="status-badge status-accepted">status: accepted</span>
+Home-grown retention cleanup for completed process instances older than a configured number of days. The implemented `c8volt ops execute retention-policy` flow derives the end-date boundary, discovers candidate process instances, skips candidates whose roots are not final, and deletes final-root scopes through the existing process-instance delete service.
 
-Operational smoke test for proving a c8volt-to-Camunda environment is usable end to end. The planned flow checks the connection, deploys the embedded `C89_MultipleSubProcessesParentProcess`, starts one or more instances, walks the process tree, deletes the created instances, and removes the deployed process definition only when no independently created instances still exist.
+### [Smoke test](https://github.com/grafvonb/c8volt/discussions/56) <span class="status-badge status-implemented">status: implemented</span>
+
+Operational smoke test for proving a c8volt-to-Camunda environment is usable end to end. The implemented `c8volt ops execute smoke-test` flow checks topology where available, deploys the version-matched embedded multiple-subprocess fixture, starts one or more instances, walks each created family, and cleans up unless `--no-cleanup` is set.
+
+### [Purge all selected process definitions](https://github.com/grafvonb/c8volt/discussions/213) <span class="status-badge status-implemented">status: implemented</span>
+
+Process-definition cleanup for selected versions. The implemented `c8volt ops purge all-process-definitions` flow discovers candidate process definitions with `get pd`-style filters, previews process-instance impact, blocks active-instance impact unless `--force` is supplied, and deletes selected definitions through the existing process-definition deletion service.
+
+### [Purge process instances selected by incidents](https://github.com/grafvonb/c8volt/discussions/212) <span class="status-badge status-implemented">status: implemented</span>
+
+Incident-driven cleanup for process-instance families. The implemented `c8volt ops purge process-instances-with-incidents` flow discovers candidate incidents, freezes candidate process-instance keys, deduplicates them, builds the shared process-instance delete plan, and deletes resolved roots after confirmation.
 
 ## Status guide
 

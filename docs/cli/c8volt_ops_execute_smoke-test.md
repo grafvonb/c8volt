@@ -3,7 +3,6 @@ title: "c8volt ops execute smoke-test"
 nav_exclude: true
 ---
 
-[CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt ops execute smoke-test
 
 Execute a cluster smoke test workflow

@@ -3,7 +3,6 @@ title: "c8volt ops repair"
 nav_exclude: true
 ---
 
-[CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt ops repair
 
 Discover repair and remediation workflows

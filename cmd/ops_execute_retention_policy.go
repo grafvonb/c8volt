@@ -32,10 +32,10 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 	Example: `  ./c8volt ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id order-process --dry-run
   ./c8volt ops execute retention-policy --retention-days 90 --automation --json --dry-run
-  ./c8volt ops execute retention-policy --retention-days 90 --auto-confirm
-  ./c8volt ops execute retention-policy --retention-days 90 --auto-confirm --force --workers 4
+  ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id order-process --limit 25 --auto-confirm
+  ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id order-process --limit 25 --auto-confirm --force --workers 4
   ./c8volt ops execute retention-policy --retention-days 90 --dry-run --report-file retention-report.md
-  ./c8volt ops execute retention-policy --retention-days 90 --auto-confirm --report-file retention-report.json --report-format json`,
+  ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id order-process --limit 25 --auto-confirm --report-file retention-report.json --report-format json`,
 	Aliases: []string{"ret-pol", "rt"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
