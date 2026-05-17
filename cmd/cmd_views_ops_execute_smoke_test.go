@@ -24,6 +24,7 @@ func renderOpsExecuteSmokeTestResult(cmd *cobra.Command, result ops.SmokeTestRes
 		renderHumanLine(cmd, "execute smoke test")
 	}
 	renderOpsExecuteSmokeTestPlan(cmd, result)
+	renderOpsExecuteSmokeTestDeployment(cmd, result)
 	renderOpsExecuteSmokeTestOutcome(cmd, result)
 	renderOpsExecuteSmokeTestReportFile(cmd, result)
 	if len(result.Errors) > 0 {
@@ -48,6 +49,25 @@ func renderOpsExecuteSmokeTestPlan(cmd *cobra.Command, result ops.SmokeTestResul
 		} else {
 			renderHumanLine(cmd, "%s: %s - %s", step.Name, step.Status, step.Message)
 		}
+	}
+}
+
+func renderOpsExecuteSmokeTestDeployment(cmd *cobra.Command, result ops.SmokeTestResult) {
+	if result.Deployment.Status == "" || result.Deployment.Status == ops.WorkflowStepStatusPlanned || result.Deployment.Status == ops.WorkflowStepStatusSkipped {
+		return
+	}
+	renderHumanLine(cmd, "deployment result: %s", result.Deployment.Status)
+	if result.Deployment.ProcessDefinitionKey != "" {
+		version := ""
+		if result.Deployment.ProcessDefinitionVersion > 0 {
+			version = fmt.Sprintf(", version %d", result.Deployment.ProcessDefinitionVersion)
+		}
+		renderHumanLine(cmd, "process definition: %s (%s%s)", result.Deployment.ProcessDefinitionKey, result.Deployment.BpmnProcessID, version)
+	} else if result.Deployment.BpmnProcessID != "" {
+		renderHumanLine(cmd, "process definition: %s", result.Deployment.BpmnProcessID)
+	}
+	if result.Deployment.TenantID != "" {
+		renderHumanLine(cmd, "tenant: %s", result.Deployment.TenantID)
 	}
 }
 
@@ -167,6 +187,11 @@ func renderOpsExecuteSmokeTestMarkdownReport(report ops.SmokeTestAuditReport, cf
 	writeMarkdownReportField(&out, "Status", string(report.Deployment.Status))
 	writeMarkdownReportField(&out, "Fixture File", report.Deployment.FixtureFile)
 	writeMarkdownReportField(&out, "BPMN Process ID", report.Deployment.BpmnProcessID)
+	writeMarkdownReportField(&out, "Process Definition Key", report.Deployment.ProcessDefinitionKey)
+	if report.Deployment.ProcessDefinitionVersion > 0 {
+		writeMarkdownReportField(&out, "Process Definition Version", fmt.Sprintf("%d", report.Deployment.ProcessDefinitionVersion))
+	}
+	writeMarkdownReportField(&out, "Tenant", report.Deployment.TenantID)
 
 	out.WriteString("\n## Run\n\n")
 	writeMarkdownReportField(&out, "Status", string(report.Run.Status))

@@ -164,6 +164,113 @@ func TestExecuteSmokeTestDryRunPlansReadOnlyWorkflow(t *testing.T) {
 	require.Equal(t, got.Deployment, got.Report.Deployment)
 }
 
+func TestExecuteSmokeTestSelectsVersionMatchedFixtures(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		version toolx.CamundaVersion
+		file    string
+		process string
+	}{
+		{
+			version: toolx.V87,
+			file:    "embedded/processdefinitions/C87_MultipleSubProcessesParentProcess.bpmn",
+			process: "C87_MultipleSubProcessesParentProcess",
+		},
+		{
+			version: toolx.V88,
+			file:    "embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn",
+			process: "C88_MultipleSubProcessesParentProcess",
+		},
+		{
+			version: toolx.V89,
+			file:    "embedded/processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn",
+			process: "C89_MultipleSubProcessesParentProcess",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.version.String(), func(t *testing.T) {
+			t.Parallel()
+
+			got, err := smokeTestFixtureForVersion(tt.version)
+
+			require.NoError(t, err)
+			require.Equal(t, tt.version.String(), got.CamundaVersion)
+			require.Equal(t, tt.file, got.File)
+			require.Equal(t, tt.process, got.BpmnProcessID)
+			require.True(t, got.Available)
+		})
+	}
+}
+
+func TestExecuteSmokeTestMissingFixtureFailsBeforeMutation(t *testing.T) {
+	t.Parallel()
+
+	resource := &stubSmokeTestResourceAPI{}
+	got, err := NewWithWorkflowDependencies(nil, nil, nil, nil, resource, toolx.CamundaVersion("8.10")).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
+		CommandName: "ops execute smoke-test",
+		Count:       1,
+	})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unsupported smoke-test fixture version")
+	require.Zero(t, resource.deployCalls)
+	require.Equal(t, d.SmokeTestOutcomeFailed, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusFailed, got.Plan.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deployment.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Run.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Walk.Status)
+}
+
+func TestExecuteSmokeTestDeploysSelectedFixtureThroughResourceAPI(t *testing.T) {
+	t.Parallel()
+
+	cluster := &stubSmokeTestClusterAPI{
+		topology: d.Topology{GatewayVersion: "8.8.2"},
+	}
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(_ context.Context, units []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
+			require.Len(t, units, 1)
+			require.Equal(t, "processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn", units[0].Name)
+			require.Equal(t, "application/xml", units[0].ContentType)
+			require.Contains(t, string(units[0].Data), "C88_MultipleSubProcessesParentProcess")
+			return d.Deployment{
+				Key:      "deployment-1",
+				TenantId: "tenant-a",
+				Units: []d.DeploymentUnit{{
+					ProcessDefinition: d.ProcessDefinitionDeployment{
+						ProcessDefinitionId:      "C88_MultipleSubProcessesParentProcess",
+						ProcessDefinitionKey:     "pd-88",
+						ProcessDefinitionVersion: 4,
+						ResourceName:             "processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn",
+						TenantId:                 "tenant-a",
+					},
+				}},
+			}, nil
+		},
+	}
+
+	got, err := NewWithWorkflowDependencies(cluster, nil, nil, nil, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
+		CommandName: "ops execute smoke-test",
+		Count:       1,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 1, cluster.topologyCalls)
+	require.Equal(t, 1, resource.deployCalls)
+	require.Equal(t, d.SmokeTestOutcomePassedCleanupSkipped, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Deployment.Status)
+	require.Equal(t, "embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn", got.Deployment.FixtureFile)
+	require.Equal(t, "C88_MultipleSubProcessesParentProcess", got.Deployment.BpmnProcessID)
+	require.Equal(t, "pd-88", got.Deployment.ProcessDefinitionKey)
+	require.Equal(t, int32(4), got.Deployment.ProcessDefinitionVersion)
+	require.Equal(t, "tenant-a", got.Deployment.TenantID)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Run.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Walk.Status)
+	require.Equal(t, got.Deployment, got.Report.Deployment)
+}
+
 func TestExecuteSmokeTestDryRunConnectivityFailureDoesNotPlanMutation(t *testing.T) {
 	t.Parallel()
 
@@ -204,4 +311,25 @@ func (s *stubSmokeTestClusterAPI) GetClusterTopology(context.Context, ...service
 
 func (*stubSmokeTestClusterAPI) GetClusterLicense(context.Context, ...services.CallOption) (d.License, error) {
 	return d.License{}, nil
+}
+
+type stubSmokeTestResourceAPI struct {
+	deploy      func(context.Context, []d.DeploymentUnitData, ...services.CallOption) (d.Deployment, error)
+	deployCalls int
+}
+
+func (s *stubSmokeTestResourceAPI) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error) {
+	s.deployCalls++
+	if s.deploy == nil {
+		return d.Deployment{}, errors.New("unexpected deploy call")
+	}
+	return s.deploy(ctx, units, opts...)
+}
+
+func (*stubSmokeTestResourceAPI) Delete(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error) {
+	return d.ResourceDeleteResponse{}, errors.New("unexpected delete call")
+}
+
+func (*stubSmokeTestResourceAPI) Get(context.Context, string, ...services.CallOption) (d.Resource, error) {
+	return d.Resource{}, errors.New("unexpected get call")
 }

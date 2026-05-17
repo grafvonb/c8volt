@@ -25,6 +25,8 @@
 - Command subprocess tests cover `os.Exit` paths with `testx.RunCmdSubprocess`, a JSON-encoded args env var, and a helper test that calls `handleBootstrapError` on `root.Execute`.
 - Read-only smoke-test connectivity should reuse the cluster topology service path used by `config test-connection` instead of adding command-owned HTTP behavior.
 - Smoke-test human output/report rendering belongs in `cmd/cmd_views_ops_execute_smoke_test.go`; the command should call the facade, write the optional report, then render the result.
+- Smoke-test deployment can reuse `internal/services/resource.API.Deploy` directly from the ops service; pass `DeploymentUnitData.Name` as the embedded FS path such as `processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn`.
+- Deployment metadata should be read from the first `Deployment.Units[].ProcessDefinition`, with deployment tenant as fallback when the unit omits tenant id.
 
 ## Ralph Notes
 
@@ -36,7 +38,7 @@
 ---
 ## Iteration 3 - 2026-05-17 08:33:33 CEST
 **User Story**: User Story 2 - Dry-Run Smoke Test Planning
-**Tasks Completed**: 
+**Tasks Completed**:
 - [x] T020: Add ops service dry-run planning tests for no mutation and planned steps
 - [x] T021: Add command dry-run human and JSON output tests
 - [x] T022: Add dry-run report-file behavior tests
@@ -47,7 +49,7 @@
 - [x] T027: Mark US2 tasks complete and record validation notes
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
-**Files Changed**: 
+**Files Changed**:
 - internal/services/ops/api.go
 - internal/services/ops/smoke_test_service.go
 - internal/services/ops/smoke_test_test.go
@@ -121,4 +123,33 @@
 - Local smoke-test flag failures are rejected before CLI client creation for zero/negative count, unsupported report format, report format without report file, and invalid worker count.
 - Validation run: `GOCACHE=/private/tmp/c8volt-gocache go test ./cmd -run 'TestOpsExecuteSmokeTest|TestCommandCapabilityForCommand_OpsExecuteSmokeTestContract|TestOpsExecuteHelpDocumentsGroupingCommand|TestCapabilitiesCommand_JSONIncludesOpsRootMetadata' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test ./cmd -run '^$' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test ./cmd -count=1`.
 - Commit attempt blocked because this sandbox cannot create files under `.git` (`.git/index.lock`: operation not permitted); no code changes were staged.
+---
+---
+## Iteration 4 - 2026-05-17 08:40:58 CEST
+**User Story**: User Story 3 - Select And Deploy Version-Matched Fixture
+**Tasks Completed**:
+- [x] T028: Add fixture selection tests for Camunda 8.7, 8.8, and 8.9
+- [x] T029: Add missing fixture failure-before-mutation tests
+- [x] T030: Add deployment result mapping tests
+- [x] T031: Add command deployment output tests
+- [x] T032: Implement version-matched embedded smoke-test fixture selection
+- [x] T033: Reuse embedded fixture deployment behavior through the resource service
+- [x] T034: Deploy the selected fixture through lower-level resource behavior
+- [x] T035: Preserve fixture, process-definition, version, tenant, and deployment status metadata
+- [x] T036: Render deployment details
+- [x] T037: Mark US3 tasks complete and record validation notes
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- internal/services/ops/smoke_test_service.go
+- internal/services/ops/smoke_test_test.go
+- c8volt/ops/client_test.go
+- cmd/cmd_views_ops_execute_smoke_test.go
+- cmd/ops_execute_smoke_test_test.go
+- specs/188-ops-smoke-test/tasks.md
+- specs/188-ops-smoke-test/progress.md
+**Learnings**:
+- `internal/services/resource.API.Deploy` already provides the owning deployment primitive needed by US3; no public resource facade expansion was needed for smoke-test orchestration.
+- The selected embedded fixture is deployed from `embedded.FS` using the existing embedded path format, which keeps behavior aligned with `embed deploy`.
+- Validation run: `GOCACHE=/private/tmp/c8volt-gocache go test ./internal/services/ops -run 'TestExecuteSmokeTest' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test ./c8volt/ops -run 'TestClientExecuteSmokeTest' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test ./cmd -run 'TestOpsExecuteSmokeTest' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test ./cmd ./c8volt/ops ./internal/services/ops -count=1`.
 ---

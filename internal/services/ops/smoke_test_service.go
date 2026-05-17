@@ -45,15 +45,110 @@ func (s *Service) ExecuteSmokeTest(ctx context.Context, request d.SmokeTestReque
 		return s.executeSmokeTestDryRun(ctx, result, opts...)
 	}
 
-	result.Plan.Status = d.OpsWorkflowStepStatusPlanned
-	result.Plan.PlannedSteps = smokeTestPlannedSteps(request, d.OpsWorkflowStepStatusSkipped, "", nil)
-	result.Deployment.Status = d.OpsWorkflowStepStatusSkipped
+	return s.executeSmokeTestDeployment(ctx, result, opts...)
+}
+
+func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.SmokeTestResult, opts ...services.CallOption) (d.SmokeTestResult, error) {
+	version := s.version
+	if version == "" {
+		version = toolx.CurrentCamundaVersion
+	}
+	fixture, err := smokeTestFixtureForVersion(version)
+	if err != nil {
+		result.Plan.Status = d.OpsWorkflowStepStatusFailed
+		result.Plan.CamundaVersion = version.String()
+		result.Plan.Errors = []string{err.Error()}
+		result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, d.OpsWorkflowStepStatusSkipped, "", nil, d.OpsWorkflowStepStatusFailed, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped)
+		result.Deployment.Status = d.OpsWorkflowStepStatusSkipped
+		result.Run.Status = d.OpsWorkflowStepStatusSkipped
+		result.Walk.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		return finishSmokeTestResult(result, d.SmokeTestOutcomeFailed, err)
+	}
+
+	result.Fixture = fixture
+	connectivityStatus := d.OpsWorkflowStepStatusSkipped
+	connectivityMessage := "cluster topology check not configured"
+	if s.clusterAPI != nil {
+		if _, err := s.clusterAPI.GetClusterTopology(ctx, opts...); err != nil {
+			result.Plan.Status = d.OpsWorkflowStepStatusFailed
+			result.Plan.CamundaVersion = version.String()
+			result.Plan.Fixture = fixture
+			result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, d.OpsWorkflowStepStatusFailed, err.Error(), []string{err.Error()}, d.OpsWorkflowStepStatusPlanned, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped)
+			result.Plan.Errors = []string{err.Error()}
+			result.Deployment.Status = d.OpsWorkflowStepStatusSkipped
+			result.Run.Status = d.OpsWorkflowStepStatusSkipped
+			result.Walk.Status = d.OpsWorkflowStepStatusSkipped
+			result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
+			result.Cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
+			result.Cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+			return finishSmokeTestResult(result, d.SmokeTestOutcomeFailed, fmt.Errorf("smoke-test connectivity validation: %w", err))
+		}
+		connectivityStatus = d.OpsWorkflowStepStatusConfirmed
+		connectivityMessage = "cluster topology retrieved"
+	}
+
+	result.Plan = d.SmokeTestPlan{
+		Status:           d.OpsWorkflowStepStatusPlanned,
+		CamundaVersion:   version.String(),
+		Fixture:          fixture,
+		CleanupRequested: !result.Request.NoCleanup,
+		PlannedSteps:     smokeTestPlannedSteps(result.Request, connectivityStatus, connectivityMessage, nil),
+	}
+	if s.resourceAPI == nil {
+		err := fmt.Errorf("%w: smoke-test deployment requires resource service", d.ErrValidation)
+		result.Plan.Status = d.OpsWorkflowStepStatusFailed
+		result.Plan.Errors = []string{err.Error()}
+		result.Deployment.Status = d.OpsWorkflowStepStatusSkipped
+		result.Run.Status = d.OpsWorkflowStepStatusSkipped
+		result.Walk.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		return finishSmokeTestResult(result, d.SmokeTestOutcomeFailed, err)
+	}
+
+	unit, err := smokeTestDeploymentUnit(fixture)
+	if err != nil {
+		result.Plan.Status = d.OpsWorkflowStepStatusFailed
+		result.Plan.Errors = []string{err.Error()}
+		result.Deployment.Status = d.OpsWorkflowStepStatusSkipped
+		result.Run.Status = d.OpsWorkflowStepStatusSkipped
+		result.Walk.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		return finishSmokeTestResult(result, d.SmokeTestOutcomeFailed, err)
+	}
+
+	deployment, err := s.resourceAPI.Deploy(ctx, []d.DeploymentUnitData{unit}, opts...)
+	if err != nil {
+		result.Deployment = d.SmokeTestDeploymentResult{
+			Status:        d.OpsWorkflowStepStatusFailed,
+			FixtureFile:   fixture.File,
+			BpmnProcessID: fixture.BpmnProcessID,
+			Errors:        []string{err.Error()},
+		}
+		result.Run.Status = d.OpsWorkflowStepStatusSkipped
+		result.Walk.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, connectivityStatus, connectivityMessage, nil, d.OpsWorkflowStepStatusPlanned, d.OpsWorkflowStepStatusFailed, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped)
+		return finishSmokeTestResult(result, d.SmokeTestOutcomeFailed, fmt.Errorf("deploy smoke-test fixture: %w", err))
+	}
+
+	result.Deployment = smokeTestDeploymentResult(fixture, deployment, d.OpsWorkflowStepStatusConfirmed)
+	result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, connectivityStatus, connectivityMessage, nil, d.OpsWorkflowStepStatusConfirmed, result.Deployment.Status, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped)
 	result.Run.Status = d.OpsWorkflowStepStatusSkipped
+	result.Run.RequestedCount = result.Request.Count
 	result.Walk.Status = d.OpsWorkflowStepStatusSkipped
 	result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
 	result.Cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
 	result.Cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
-	return finishSmokeTestResult(result, d.SmokeTestOutcomePlanned, nil)
+	return finishSmokeTestResult(result, d.SmokeTestOutcomePassedCleanupSkipped, nil)
 }
 
 func (s *Service) executeSmokeTestDryRun(ctx context.Context, result d.SmokeTestResult, opts ...services.CallOption) (d.SmokeTestResult, error) {
@@ -143,21 +238,73 @@ func smokeTestFixtureForVersion(version toolx.CamundaVersion) (d.EmbeddedSmokeTe
 	}, nil
 }
 
+func smokeTestDeploymentUnit(fixture d.EmbeddedSmokeTestFixture) (d.DeploymentUnitData, error) {
+	fsPath := strings.TrimPrefix(fixture.File, "embedded/")
+	data, err := fs.ReadFile(embedded.FS, fsPath)
+	if err != nil {
+		return d.DeploymentUnitData{}, fmt.Errorf("%w: read embedded smoke-test fixture %s: %v", d.ErrPrecondition, fixture.File, err)
+	}
+	return d.DeploymentUnitData{
+		Name:        fsPath,
+		ContentType: "application/xml",
+		Data:        data,
+	}, nil
+}
+
+func smokeTestDeploymentResult(fixture d.EmbeddedSmokeTestFixture, deployment d.Deployment, status d.OpsWorkflowStepStatus) d.SmokeTestDeploymentResult {
+	out := d.SmokeTestDeploymentResult{
+		Status:        status,
+		FixtureFile:   fixture.File,
+		BpmnProcessID: fixture.BpmnProcessID,
+		TenantID:      deployment.TenantId,
+	}
+	if len(deployment.Units) > 0 {
+		pd := deployment.Units[0].ProcessDefinition
+		if pd.ProcessDefinitionId != "" {
+			out.BpmnProcessID = pd.ProcessDefinitionId
+		}
+		out.ProcessDefinitionKey = pd.ProcessDefinitionKey
+		out.ProcessDefinitionVersion = pd.ProcessDefinitionVersion
+		if pd.TenantId != "" {
+			out.TenantID = pd.TenantId
+		}
+	}
+	return out
+}
+
 func smokeTestPlannedSteps(request d.SmokeTestRequest, connectivityStatus d.OpsWorkflowStepStatus, connectivityMessage string, connectivityErrors []string) []d.WorkflowStepResult {
+	cleanupStatus := d.OpsWorkflowStepStatusPlanned
+	if request.NoCleanup {
+		cleanupStatus = d.OpsWorkflowStepStatusSkipped
+	}
+	return smokeTestPlannedStepsWithStatuses(request, connectivityStatus, connectivityMessage, connectivityErrors, d.OpsWorkflowStepStatusPlanned, d.OpsWorkflowStepStatusPlanned, d.OpsWorkflowStepStatusPlanned, d.OpsWorkflowStepStatusPlanned, cleanupStatus)
+}
+
+func smokeTestPlannedStepsWithStatuses(request d.SmokeTestRequest, connectivityStatus d.OpsWorkflowStepStatus, connectivityMessage string, connectivityErrors []string, fixtureStatus d.OpsWorkflowStepStatus, deploymentStatus d.OpsWorkflowStepStatus, runStatus d.OpsWorkflowStepStatus, walkStatus d.OpsWorkflowStepStatus, cleanupStatus d.OpsWorkflowStepStatus) []d.WorkflowStepResult {
 	if connectivityStatus == "" {
 		connectivityStatus = d.OpsWorkflowStepStatusPlanned
 	}
+	if fixtureStatus == "" {
+		fixtureStatus = d.OpsWorkflowStepStatusPlanned
+	}
+	if deploymentStatus == "" {
+		deploymentStatus = d.OpsWorkflowStepStatusPlanned
+	}
+	if runStatus == "" {
+		runStatus = d.OpsWorkflowStepStatusPlanned
+	}
+	if walkStatus == "" {
+		walkStatus = d.OpsWorkflowStepStatusPlanned
+	}
 	steps := []d.WorkflowStepResult{
 		{Name: "connectivity", Status: connectivityStatus, Message: connectivityMessage, Errors: append([]string(nil), connectivityErrors...)},
-		{Name: "fixture", Status: d.OpsWorkflowStepStatusPlanned, Message: "select version-matched embedded fixture"},
-		{Name: "deployment", Status: d.OpsWorkflowStepStatusPlanned, Message: "deploy selected fixture"},
-		{Name: "run", Status: d.OpsWorkflowStepStatusPlanned, Message: fmt.Sprintf("start %d process instance(s)", request.Count)},
-		{Name: "walk", Status: d.OpsWorkflowStepStatusPlanned, Message: "walk each created process-instance family"},
+		{Name: "fixture", Status: fixtureStatus, Message: "select version-matched embedded fixture"},
+		{Name: "deployment", Status: deploymentStatus, Message: "deploy selected fixture"},
+		{Name: "run", Status: runStatus, Message: fmt.Sprintf("start %d process instance(s)", request.Count)},
+		{Name: "walk", Status: walkStatus, Message: "walk each created process-instance family"},
 	}
-	cleanupStatus := d.OpsWorkflowStepStatusPlanned
 	cleanupMessage := "clean up created process instances and eligible process definition"
 	if request.NoCleanup {
-		cleanupStatus = d.OpsWorkflowStepStatusSkipped
 		cleanupMessage = "retain created resources because --no-cleanup is set"
 	}
 	steps = append(steps, d.WorkflowStepResult{Name: "cleanup", Status: cleanupStatus, Message: cleanupMessage})

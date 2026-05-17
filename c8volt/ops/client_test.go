@@ -273,6 +273,40 @@ func TestClientExecuteSmokeTestMapsServiceBoundary(t *testing.T) {
 	require.True(t, got.Report.NoCleanup)
 }
 
+func TestClientExecuteSmokeTestMapsDeploymentResult(t *testing.T) {
+	t.Parallel()
+
+	api := stubOpsService{
+		smokeTest: func(_ context.Context, request d.SmokeTestRequest, _ ...services.CallOption) (d.SmokeTestResult, error) {
+			return d.SmokeTestResult{
+				Request: request,
+				Deployment: d.SmokeTestDeploymentResult{
+					Status:                   d.OpsWorkflowStepStatusConfirmed,
+					FixtureFile:              "embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn",
+					BpmnProcessID:            "C88_MultipleSubProcessesParentProcess",
+					ProcessDefinitionKey:     "pd-88",
+					ProcessDefinitionVersion: 4,
+					TenantID:                 "tenant-a",
+				},
+				Outcome: d.SmokeTestOutcomePassedCleanupSkipped,
+			}, nil
+		},
+	}
+
+	got, err := New(api, slog.Default()).ExecuteSmokeTest(context.Background(), SmokeTestRequest{
+		CommandName: "ops execute smoke-test",
+		Count:       1,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, WorkflowStepStatusConfirmed, got.Deployment.Status)
+	require.Equal(t, "embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn", got.Deployment.FixtureFile)
+	require.Equal(t, "C88_MultipleSubProcessesParentProcess", got.Deployment.BpmnProcessID)
+	require.Equal(t, "pd-88", got.Deployment.ProcessDefinitionKey)
+	require.Equal(t, int32(4), got.Deployment.ProcessDefinitionVersion)
+	require.Equal(t, "tenant-a", got.Deployment.TenantID)
+}
+
 func TestClientExecuteRetentionPolicyMapsServiceBoundary(t *testing.T) {
 	t.Parallel()
 

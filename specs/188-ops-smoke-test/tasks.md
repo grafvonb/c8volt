@@ -94,19 +94,19 @@
 
 ### Tests for User Story 3
 
-- [ ] T028 [P] [US3] Add fixture selection tests for Camunda 8.7, 8.8, and 8.9 in `internal/services/ops/smoke_test_test.go`
-- [ ] T029 [P] [US3] Add missing fixture failure-before-mutation tests in `internal/services/ops/smoke_test_test.go`
-- [ ] T030 [P] [US3] Add deployment result mapping tests in `c8volt/ops/client_test.go`
-- [ ] T031 [P] [US3] Add command deployment output tests in `cmd/ops_execute_smoke_test_test.go`
+- [x] T028 [P] [US3] Add fixture selection tests for Camunda 8.7, 8.8, and 8.9 in `internal/services/ops/smoke_test_test.go`
+- [x] T029 [P] [US3] Add missing fixture failure-before-mutation tests in `internal/services/ops/smoke_test_test.go`
+- [x] T030 [P] [US3] Add deployment result mapping tests in `c8volt/ops/client_test.go`
+- [x] T031 [P] [US3] Add command deployment output tests in `cmd/ops_execute_smoke_test_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T032 [US3] Implement version-matched embedded smoke-test fixture selection in `internal/services/ops/smoke_test.go`
-- [ ] T033 [US3] Expose or reuse embedded fixture deployment behavior through the owning resource facade/service in `c8volt/resource` or `internal/services/resource`
-- [ ] T034 [US3] Deploy the selected fixture through lower-level resource behavior from `internal/services/ops/smoke_test.go`
-- [ ] T035 [US3] Preserve fixture file, BPMN process ID, deployed process-definition key, deployed version, tenant id, and deployment status in `internal/domain/ops_smoke_test.go`
-- [ ] T036 [US3] Render deployment details in `cmd/cmd_views_ops_execute_smoke_test.go`
-- [ ] T037 [US3] Mark US3 tasks complete and record validation notes in `specs/188-ops-smoke-test/progress.md`
+- [x] T032 [US3] Implement version-matched embedded smoke-test fixture selection in `internal/services/ops/smoke_test.go`
+- [x] T033 [US3] Expose or reuse embedded fixture deployment behavior through the owning resource facade/service in `c8volt/resource` or `internal/services/resource`
+- [x] T034 [US3] Deploy the selected fixture through lower-level resource behavior from `internal/services/ops/smoke_test.go`
+- [x] T035 [US3] Preserve fixture file, BPMN process ID, deployed process-definition key, deployed version, tenant id, and deployment status in `internal/domain/ops_smoke_test.go`
+- [x] T036 [US3] Render deployment details in `cmd/cmd_views_ops_execute_smoke_test.go`
+- [x] T037 [US3] Mark US3 tasks complete and record validation notes in `specs/188-ops-smoke-test/progress.md`
 
 **Checkpoint**: The smoke-test workflow can select and deploy the correct fixture independently.
 

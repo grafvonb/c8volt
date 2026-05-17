@@ -230,6 +230,31 @@ func TestOpsExecuteSmokeTestDryRunExistingReportFailsBeforePreflight(t *testing.
 	require.Empty(t, requests.Snapshot())
 }
 
+func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsExecuteSmokeTestDeploymentServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"ops", "execute", "smoke-test",
+	)
+
+	require.Contains(t, output, "execute smoke test")
+	require.Contains(t, output, "camunda version: 8.8")
+	require.Contains(t, output, "fixture: embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn (available)")
+	require.Contains(t, output, "deployment: confirmed - deploy selected fixture")
+	require.Contains(t, output, "deployment result: confirmed")
+	require.Contains(t, output, "process definition: pd-88 (C88_MultipleSubProcessesParentProcess, version 4)")
+	require.Contains(t, output, "tenant: <default>")
+	require.Contains(t, output, "outcome: passed_cleanup_skipped")
+	require.Equal(t, []string{
+		"GET /v2/topology",
+		"POST /v2/deployments",
+		"GET /v2/process-definitions/pd-88",
+	}, requests.Snapshot())
+}
+
 func newOpsExecuteSmokeTestDryRunServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
@@ -239,6 +264,47 @@ func newOpsExecuteSmokeTestDryRunServer(t *testing.T, requests *testx.SafeSlice[
 			requests.Append(r.Method + " " + r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, "8.8.0", 1, 1)))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+}
+
+func newOpsExecuteSmokeTestDeploymentServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
+	t.Helper()
+
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/topology":
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, "8.8.0", 1, 1)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
+			requests.Append(r.Method + " " + r.URL.Path)
+			require.Contains(t, r.Header.Get("Content-Type"), "multipart/form-data")
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{
+				"deploymentKey": "deployment-1",
+				"tenantId": "<default>",
+				"deployments": [
+					{
+						"processDefinition": {
+							"processDefinitionId": "C88_MultipleSubProcessesParentProcess",
+							"processDefinitionKey": "pd-88",
+							"processDefinitionVersion": 4,
+							"resourceName": "processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn",
+							"tenantId": "<default>"
+						}
+					}
+				]
+			}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-definitions/pd-88":
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{
+				"processDefinitionId": "C88_MultipleSubProcessesParentProcess",
+				"processDefinitionKey": "pd-88"
+			}`))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
