@@ -57,4 +57,5 @@ c8volt ops execute [flags]
 
 * [c8volt ops](c8volt_ops)	 - Discover high-level operational workflows
 * [c8volt ops execute retention-policy](c8volt_ops_execute_retention-policy)	 - Execute process-instance retention cleanup
+* [c8volt ops execute smoke-test](c8volt_ops_execute_smoke-test)	 - Execute a cluster smoke test workflow
 
