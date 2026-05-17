@@ -43,7 +43,7 @@ func CreateNProcessInstances(ctx context.Context, api API, log *slog.Logger, dat
 		}
 		return pi, err
 	})
-	if !cfg.NoWait {
+	if !cfg.NoWait && !cfg.SuppressWorkflowDetailLogs {
 		ok := int(created.Load())
 		log.Info(fmt.Sprintf("creating pi done; requested %d, created %d, failed %d", n, ok, n-ok))
 	}

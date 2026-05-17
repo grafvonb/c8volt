@@ -659,7 +659,7 @@ func TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContra
 	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
 	require.Contains(t, capability.AutomationNotes, "implicitly confirmed incident-based purges")
 	require.Contains(t, capability.Aliases, "pi-with-incidents")
-	require.NotContains(t, capability.Aliases, "piwi")
+	require.Contains(t, capability.Aliases, "piwi")
 	require.NotContains(t, capability.Aliases, "incident-pis")
 	require.Contains(t, capability.OutputModes, OutputModeContract{
 		Name:      "one-line",

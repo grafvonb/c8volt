@@ -135,12 +135,11 @@ func TestOpsExecuteSmokeTestDryRunHumanOutputPlansWithoutMutation(t *testing.T) 
 	)
 
 	require.Contains(t, output, "dry run: execute smoke test")
-	require.Contains(t, output, "camunda version: 8.8")
-	require.Contains(t, output, "fixture: embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn (available)")
-	require.Contains(t, output, "connectivity: confirmed - cluster topology retrieved")
-	require.Contains(t, output, "deployment: planned - deploy selected fixture")
-	require.Contains(t, output, "run: planned - start 2 process instance(s)")
-	require.Contains(t, output, "cleanup: skipped - retain created resources because --no-cleanup is set")
+	require.Contains(t, output, "fixture: embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn")
+	require.Contains(t, output, "execution plan: planned (process instances: 2, cleanup: false)")
+	require.NotContains(t, output, "connectivity: confirmed")
+	require.NotContains(t, output, "deployment: planned -")
+	require.NotContains(t, output, "run: planned -")
 	require.Contains(t, output, "outcome: planned; no changes applied")
 	require.Equal(t, []string{"GET /v2/topology"}, requests.Snapshot())
 }
@@ -397,22 +396,15 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 	)
 
 	require.Contains(t, output, "execute smoke test")
-	require.Contains(t, output, "camunda version: 8.8")
-	require.Contains(t, output, "fixture: embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn (available)")
-	require.Contains(t, output, "deployment: confirmed - deploy selected fixture")
-	require.Contains(t, output, "deployment result: confirmed")
-	require.Contains(t, output, "process definition: pd-88 (C88_MultipleSubProcessesParentProcess, version 4)")
-	require.Contains(t, output, "tenant: <default>")
-	require.Contains(t, output, "run result: confirmed")
+	require.Contains(t, output, "fixture: embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn")
+	require.Contains(t, output, "execution plan: planned (process instances: 1, cleanup: true)")
+	require.Contains(t, output, "deployment: confirmed")
 	require.Contains(t, output, "created process instances: 1/1")
-	require.Contains(t, output, "created keys: 101")
-	require.Contains(t, output, "walk result: confirmed")
-	require.Contains(t, output, "walk 101: confirmed, root 101, family 1")
-	require.Contains(t, output, "process-instance cleanup: submitted")
-	require.Contains(t, output, "cleanup roots: 101")
-	require.Contains(t, output, "process-definition cleanup eligibility: confirmed")
-	require.Contains(t, output, "process-definition cleanup: submitted")
-	require.Contains(t, output, "cleanup process definition: pd-88")
+	require.Contains(t, output, "walk: confirmed (process instances: 1)")
+	require.Contains(t, output, "cleanup: submitted (process instances: 1, process definition: submitted)")
+	require.Contains(t, output, "cleanup confirmation: skipped (--no-wait)")
+	require.NotContains(t, output, "created keys: 101")
+	require.NotContains(t, output, "walk 101:")
 	require.Contains(t, output, "outcome: passed")
 	require.Equal(t, []string{
 		"GET /v2/topology",
@@ -426,7 +418,9 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 		"GET /v2/process-instances/101",
 		"GET /v2/process-instances/101",
 		"POST /v2/process-instances/search",
-		"DELETE /process-instances/101",
+		"GET /v2/process-instances/101",
+		"POST /v2/process-instances/search",
+		"DELETE /v1/process-instances/101",
 		"POST /v2/process-instances/search",
 		"GET /v2/process-definitions/pd-88",
 		"POST /v2/process-instances/search",
@@ -467,12 +461,12 @@ func TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances(t *testing.T) {
 			}, tt.args...)
 			output := executeRootForProcessInstanceTest(t, args...)
 
-			require.Contains(t, output, "run: confirmed - start 2 process instance(s)")
 			require.Contains(t, output, "created process instances: 2/2")
-			require.Contains(t, output, "created keys: 101, 102")
-			require.Contains(t, output, "walk result: confirmed")
-			require.Contains(t, output, "walk 101: confirmed, root 101, family 1")
-			require.Contains(t, output, "walk 102: confirmed, root 102, family 1")
+			require.Contains(t, output, "walk: confirmed (process instances: 2)")
+			require.Contains(t, output, "cleanup: skipped (--no-cleanup)")
+			require.Contains(t, output, "outcome: passed_cleanup_skipped; use --verbose to list retained resources")
+			require.NotContains(t, output, "created keys: 101, 102")
+			require.NotContains(t, output, "walk 101:")
 			require.Len(t, createBodies.Snapshot(), 2)
 			for _, body := range createBodies.Snapshot() {
 				require.Contains(t, body, `"processDefinitionKey":"pd-88"`)
@@ -491,6 +485,7 @@ func TestOpsExecuteSmokeTestNoCleanupHumanOutputReportsRetainedResources(t *test
 		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
 		"ops", "execute", "smoke-test",
 		"--no-cleanup",
+		"--verbose",
 	)
 
 	require.Contains(t, output, "cleanup: skipped (--no-cleanup)")
@@ -498,7 +493,7 @@ func TestOpsExecuteSmokeTestNoCleanupHumanOutputReportsRetainedResources(t *test
 	require.Contains(t, output, "retained process definition: pd-88 (C88_MultipleSubProcessesParentProcess)")
 	require.Contains(t, output, "outcome: passed_cleanup_skipped")
 	requestLog := strings.Join(requests.Snapshot(), "\n")
-	require.NotContains(t, requestLog, "DELETE /process-instances/")
+	require.NotContains(t, requestLog, "DELETE /v1/process-instances/")
 	require.NotContains(t, requestLog, "/v2/resources/pd-88/deletion")
 }
 
@@ -576,7 +571,7 @@ func TestOpsExecuteSmokeTestUsesImplicitConfirmationForCleanup(t *testing.T) {
 		"--no-wait",
 	)
 
-	require.Contains(t, output, "process-instance cleanup: submitted")
+	require.Contains(t, output, "cleanup: submitted (process instances: 1, process definition: submitted)")
 	require.Len(t, prompts, 1)
 	require.Contains(t, prompts[0], "clean up the created instances and eligible process definition")
 }
@@ -710,7 +705,7 @@ func newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t *testing.T, request
 				return
 			}
 			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
-		case r.Method == http.MethodDelete && strings.HasPrefix(r.URL.Path, "/process-instances/"):
+		case r.Method == http.MethodDelete && strings.HasPrefix(r.URL.Path, "/v1/process-instances/"):
 			requests.Append(r.Method + " " + r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"status":"deleted"}`))

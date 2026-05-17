@@ -13,6 +13,9 @@ func WithDryRun() CallOption        { return func(c *CallCfg) { c.DryRun = true 
 func WithVerbose() CallOption       { return func(c *CallCfg) { c.Verbose = true } }
 func WithNoWorkerLimit() CallOption { return func(c *CallCfg) { c.NoWorkerLimit = true } }
 func WithIgnoreTenant() CallOption  { return func(c *CallCfg) { c.IgnoreTenant = true } }
+func WithSuppressWorkflowDetailLogs() CallOption {
+	return func(c *CallCfg) { c.SuppressWorkflowDetailLogs = true }
+}
 func WithSuppressProcessInstanceDetailLogs() CallOption {
 	return func(c *CallCfg) { c.SuppressProcessInstanceDetailLogs = true }
 }
@@ -42,6 +45,7 @@ type CallCfg struct {
 	Verbose                           bool
 	NoWorkerLimit                     bool
 	IgnoreTenant                      bool
+	SuppressWorkflowDetailLogs        bool
 	SuppressProcessInstanceDetailLogs bool
 	IncidentState                     string
 	IncidentErrorType                 string

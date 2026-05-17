@@ -37,11 +37,24 @@ func renderOpsExecuteSmokeTestResult(cmd *cobra.Command, result ops.SmokeTestRes
 }
 
 func renderOpsExecuteSmokeTestPlan(cmd *cobra.Command, result ops.SmokeTestResult) {
+	if result.Plan.Fixture.File != "" {
+		renderHumanLine(cmd, "fixture: %s", result.Plan.Fixture.File)
+	}
+	if result.Plan.Status != "" {
+		renderHumanLine(cmd, "execution plan: %s (process instances: %d, cleanup: %t)",
+			result.Plan.Status,
+			result.Request.Count,
+			result.Plan.CleanupRequested,
+		)
+	}
+	if !flagVerbose {
+		return
+	}
 	if result.Plan.CamundaVersion != "" {
 		renderHumanLine(cmd, "camunda version: %s", result.Plan.CamundaVersion)
 	}
 	if result.Plan.Fixture.File != "" {
-		renderHumanLine(cmd, "fixture: %s (%s)", result.Plan.Fixture.File, availabilityLabel(result.Plan.Fixture.Available))
+		renderHumanLine(cmd, "fixture availability: %s", availabilityLabel(result.Plan.Fixture.Available))
 	}
 	for _, step := range result.Plan.PlannedSteps {
 		if step.Name == "" || step.Status == "" {
@@ -59,7 +72,10 @@ func renderOpsExecuteSmokeTestDeployment(cmd *cobra.Command, result ops.SmokeTes
 	if result.Deployment.Status == "" || result.Deployment.Status == ops.WorkflowStepStatusPlanned || result.Deployment.Status == ops.WorkflowStepStatusSkipped {
 		return
 	}
-	renderHumanLine(cmd, "deployment result: %s", result.Deployment.Status)
+	renderHumanLine(cmd, "deployment: %s", result.Deployment.Status)
+	if !flagVerbose {
+		return
+	}
 	if result.Deployment.ProcessDefinitionKey != "" {
 		version := ""
 		if result.Deployment.ProcessDefinitionVersion > 0 {
@@ -78,9 +94,8 @@ func renderOpsExecuteSmokeTestRun(cmd *cobra.Command, result ops.SmokeTestResult
 	if result.Run.Status == "" || result.Run.Status == ops.WorkflowStepStatusPlanned || result.Run.Status == ops.WorkflowStepStatusSkipped {
 		return
 	}
-	renderHumanLine(cmd, "run result: %s", result.Run.Status)
 	renderHumanLine(cmd, "created process instances: %d/%d", result.Run.CreatedCount, result.Run.RequestedCount)
-	if len(result.Run.ProcessInstanceKeys) > 0 {
+	if flagVerbose && len(result.Run.ProcessInstanceKeys) > 0 {
 		renderHumanLine(cmd, "created keys: %s", strings.Join(result.Run.ProcessInstanceKeys, ", "))
 	}
 }
@@ -89,7 +104,10 @@ func renderOpsExecuteSmokeTestWalk(cmd *cobra.Command, result ops.SmokeTestResul
 	if result.Walk.Status == "" || result.Walk.Status == ops.WorkflowStepStatusPlanned || result.Walk.Status == ops.WorkflowStepStatusSkipped {
 		return
 	}
-	renderHumanLine(cmd, "walk result: %s", result.Walk.Status)
+	renderHumanLine(cmd, "walk: %s (process instances: %d)", result.Walk.Status, len(result.Walk.Items))
+	if !flagVerbose {
+		return
+	}
 	for _, item := range result.Walk.Items {
 		if item.ProcessInstanceKey == "" {
 			continue
@@ -107,17 +125,38 @@ func renderOpsExecuteSmokeTestCleanup(cmd *cobra.Command, result ops.SmokeTestRe
 	cleanup := result.Cleanup
 	if cleanup.NoCleanup {
 		renderHumanLine(cmd, "cleanup: skipped (--no-cleanup)")
-		if len(cleanup.RetainedProcessInstanceKeys) > 0 {
+		if flagVerbose && len(cleanup.RetainedProcessInstanceKeys) > 0 {
 			renderHumanLine(cmd, "retained process instances: %s", strings.Join(cleanup.RetainedProcessInstanceKeys, ", "))
 		}
-		if cleanup.RetainedProcessDefinitionKey != "" {
+		if flagVerbose && cleanup.RetainedProcessDefinitionKey != "" {
 			if cleanup.RetainedBpmnProcessID != "" {
 				renderHumanLine(cmd, "retained process definition: %s (%s)", cleanup.RetainedProcessDefinitionKey, cleanup.RetainedBpmnProcessID)
 			} else {
 				renderHumanLine(cmd, "retained process definition: %s", cleanup.RetainedProcessDefinitionKey)
 			}
-		} else if cleanup.RetainedBpmnProcessID != "" {
+		} else if flagVerbose && cleanup.RetainedBpmnProcessID != "" {
 			renderHumanLine(cmd, "retained process definition: %s", cleanup.RetainedBpmnProcessID)
+		}
+		return
+	}
+	status := smokeTestCleanupStatus(cleanup)
+	if status != "" && status != ops.WorkflowStepStatusSkipped {
+		renderHumanLine(cmd, "cleanup: %s (process instances: %d, process definition: %s)",
+			status,
+			len(cleanup.ProcessInstanceCleanup.SubmittedKeys),
+			smokeTestProcessDefinitionCleanupStatus(cleanup),
+		)
+		if cleanup.ProcessInstanceCleanup.Submitted || cleanup.ProcessDefinitionCleanup.Submitted {
+			if cleanup.ProcessInstanceCleanup.NoWait || cleanup.ProcessDefinitionCleanup.NoWait {
+				renderHumanLine(cmd, "cleanup confirmation: skipped (--no-wait)")
+			} else {
+				renderHumanLine(cmd, "cleanup confirmation: %t", cleanup.ProcessInstanceCleanup.Confirmed && cleanup.ProcessDefinitionCleanup.Confirmed)
+			}
+		}
+	}
+	if !flagVerbose {
+		if len(cleanup.ProcessDefinitionEligibility.Blockers) > 0 {
+			renderHumanLine(cmd, "process-definition cleanup blockers: %d", len(cleanup.ProcessDefinitionEligibility.Blockers))
 		}
 		return
 	}
@@ -147,10 +186,64 @@ func renderOpsExecuteSmokeTestOutcome(cmd *cobra.Command, result ops.SmokeTestRe
 	}
 	elapsed := opsWorkflowElapsedSuffix(result.Report.Duration)
 	if result.Outcome == ops.SmokeTestOutcomePlanned {
-		renderHumanLine(cmd, "outcome: %s; no changes applied%s", result.Outcome, elapsed)
+		line := fmt.Sprintf("outcome: %s; no changes applied", result.Outcome)
+		if !flagVerbose && smokeTestHasHiddenKeys(result) {
+			line += "; use --verbose to list process-instance keys"
+		}
+		line += elapsed
+		renderHumanLine(cmd, "%s", line)
+		return
+	}
+	if result.Outcome == ops.SmokeTestOutcomePassedCleanupSkipped && !flagVerbose && smokeTestHasHiddenRetainedResources(result) {
+		renderHumanLine(cmd, "outcome: %s; use --verbose to list retained resources%s", result.Outcome, elapsed)
 		return
 	}
 	renderHumanLine(cmd, "outcome: %s%s", result.Outcome, elapsed)
+}
+
+func smokeTestCleanupStatus(cleanup ops.SmokeTestCleanupResult) ops.WorkflowStepStatus {
+	for _, status := range []ops.WorkflowStepStatus{
+		cleanup.ProcessInstanceCleanup.Status,
+		cleanup.ProcessDefinitionEligibility.Status,
+		cleanup.ProcessDefinitionCleanup.Status,
+	} {
+		if status == ops.WorkflowStepStatusFailed || status == ops.WorkflowStepStatusBlocked {
+			return status
+		}
+	}
+	for _, status := range []ops.WorkflowStepStatus{
+		cleanup.ProcessInstanceCleanup.Status,
+		cleanup.ProcessDefinitionCleanup.Status,
+	} {
+		if status == ops.WorkflowStepStatusSubmitted {
+			return status
+		}
+	}
+	if cleanup.ProcessInstanceCleanup.Status == ops.WorkflowStepStatusConfirmed ||
+		cleanup.ProcessDefinitionCleanup.Status == ops.WorkflowStepStatusConfirmed {
+		return ops.WorkflowStepStatusConfirmed
+	}
+	return cleanup.ProcessInstanceCleanup.Status
+}
+
+func smokeTestProcessDefinitionCleanupStatus(cleanup ops.SmokeTestCleanupResult) ops.WorkflowStepStatus {
+	if cleanup.ProcessDefinitionEligibility.Status == ops.WorkflowStepStatusBlocked ||
+		cleanup.ProcessDefinitionEligibility.Status == ops.WorkflowStepStatusFailed {
+		return cleanup.ProcessDefinitionEligibility.Status
+	}
+	return cleanup.ProcessDefinitionCleanup.Status
+}
+
+func smokeTestHasHiddenKeys(result ops.SmokeTestResult) bool {
+	return len(result.Run.ProcessInstanceKeys) > 0 ||
+		len(result.Cleanup.ProcessInstanceCleanup.SubmittedKeys) > 0 ||
+		len(result.Cleanup.ProcessDefinitionEligibility.Blockers) > 0
+}
+
+func smokeTestHasHiddenRetainedResources(result ops.SmokeTestResult) bool {
+	return len(result.Cleanup.RetainedProcessInstanceKeys) > 0 ||
+		result.Cleanup.RetainedProcessDefinitionKey != "" ||
+		result.Cleanup.RetainedBpmnProcessID != ""
 }
 
 func renderOpsExecuteSmokeTestReportFile(cmd *cobra.Command, result ops.SmokeTestResult) {
