@@ -34,7 +34,8 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
   ./c8volt ops execute smoke-test --dry-run --report-file smoke-test.md
   ./c8volt ops execute smoke-test --no-cleanup --report-file retained-smoke-test.md
   ./c8volt ops execute smoke-test --count 10 --automation --json --report-file smoke-test.json --report-format json`,
-	Args: cobra.NoArgs,
+	Aliases: []string{"st"},
+	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := validateOpsExecuteSmokeTestFlags(cmd); err != nil {
 			failBeforeCli(cmd, err)
