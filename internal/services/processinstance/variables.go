@@ -5,8 +5,10 @@ package processinstance
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"reflect"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
@@ -57,9 +59,34 @@ func UpdateProcessInstanceVariables(ctx context.Context, api API, request d.Proc
 		result.ConfirmationStatus = "skipped"
 		return result, nil
 	}
+	if err := ConfirmProcessInstanceVariables(ctx, api, request.Key, request.Variables, opts...); err != nil {
+		result.Status = d.ProcessInstanceVariableUpdateStatusConfirmationFailed
+		result.ConfirmationStatus = "failed"
+		result.Error = err.Error()
+		return result, err
+	}
 	result.Status = d.ProcessInstanceVariableUpdateStatusConfirmed
 	result.ConfirmationStatus = "confirmed"
 	return result, nil
+}
+
+// ConfirmProcessInstanceVariables verifies only the requested process-scope variables using normalized JSON values.
+func ConfirmProcessInstanceVariables(ctx context.Context, api API, key string, requested map[string]any, opts ...services.CallOption) error {
+	current, err := api.SearchProcessInstanceVariables(ctx, key, opts...)
+	if err != nil {
+		return fmt.Errorf("confirm variables for process-instance %s: %w", key, err)
+	}
+	currentByName := processScopeVariableValuesByName(key, current)
+	for name, expected := range requested {
+		actual, ok := currentByName[name]
+		if !ok {
+			return fmt.Errorf("%w: variable %q not confirmed on process-instance %s", d.ErrUpstream, name, key)
+		}
+		if !normalizedJSONEqual(actual, expected) {
+			return fmt.Errorf("%w: variable %q confirmation mismatch on process-instance %s", d.ErrUpstream, name, key)
+		}
+	}
+	return nil
 }
 
 func domainVariableUpdateResult(x d.ProcessInstanceVariableUpdateResponse, variables map[string]any) d.ProcessInstanceVariableUpdateResult {
@@ -75,4 +102,46 @@ func domainVariableUpdateResult(x d.ProcessInstanceVariableUpdateResponse, varia
 		Message:          x.Status,
 		Variables:        toolx.CopyMap(variables),
 	}
+}
+
+// processScopeVariableValuesByName keeps confirmation aligned with get/update process-instance scope semantics.
+func processScopeVariableValuesByName(key string, variables []d.ProcessInstanceVariable) map[string]any {
+	out := make(map[string]any, len(variables))
+	for _, variable := range variables {
+		if variable.ProcessInstanceKey != "" && variable.ProcessInstanceKey != key {
+			continue
+		}
+		if variable.ScopeKey != "" && variable.ScopeKey != key {
+			continue
+		}
+		out[variable.Name] = decodeProcessInstanceVariableValue(variable.Value)
+	}
+	return out
+}
+
+// decodeProcessInstanceVariableValue converts API JSON values before normalized confirmation comparison.
+func decodeProcessInstanceVariableValue(raw string) any {
+	var value any
+	if err := json.Unmarshal([]byte(raw), &value); err != nil {
+		return raw
+	}
+	return value
+}
+
+// normalizedJSONEqual compares values after JSON round-tripping so numeric and object formatting differences do not matter.
+func normalizedJSONEqual(a any, b any) bool {
+	return reflect.DeepEqual(normalizeJSONValue(a), normalizeJSONValue(b))
+}
+
+// normalizeJSONValue returns the JSON data model representation used by Camunda variable payloads.
+func normalizeJSONValue(value any) any {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return value
+	}
+	var out any
+	if err := json.Unmarshal(data, &out); err != nil {
+		return value
+	}
+	return out
 }

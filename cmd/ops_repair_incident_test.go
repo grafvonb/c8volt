@@ -35,6 +35,8 @@ func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 		"--limit int32",
 		"--retries int32",
 		"--job-timeout string",
+		"--vars string",
+		"--vars-file string",
 		"--dry-run",
 		"--no-wait",
 		"--workers int",
@@ -46,6 +48,42 @@ func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 	parentOutput := executeRootForProcessInstanceTest(t, "ops", "repair", "--help")
 	require.NotContains(t, parentOutput, "--key strings")
 	require.NotContains(t, parentOutput, "--retries int32")
+}
+
+// TestOpsRepairIncidentVarsDryRunShowsVariableScopes verifies repair variable flags reuse update-pi parsing and appear in dry-run output.
+func TestOpsRepairIncidentVarsDryRunShowsVariableScopes(t *testing.T) {
+	resetOpsRepairIncidentFlagState()
+	t.Cleanup(resetOpsRepairIncidentFlagState)
+
+	var requests testx.SafeSlice[string]
+	srv := newOpsRepairIncidentServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairIncidentCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":              writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_OPS_REPAIR_INC_ARGS": marshalOpsRepairIncidentArgsForEnv(t, []string{"ops", "repair", "incident", "--key", "2251799813685249", "--vars", `{"approved":true}`, "--dry-run", "--verbose"}),
+	})
+
+	require.NoError(t, err, string(output))
+	require.Contains(t, string(output), "variable scopes: 1")
+	require.Contains(t, string(output), "variable scope 2251799813685251: names=approved status=planned dependents=2251799813685249")
+	require.Contains(t, string(output), "incident 2251799813685249: vars=planned")
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "PUT /v2/element-instances/")
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/resolution")
+}
+
+// TestOpsRepairIncidentRejectsInvalidVars verifies malformed repair variable JSON fails before remote mutation.
+func TestOpsRepairIncidentRejectsInvalidVars(t *testing.T) {
+	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairIncidentCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":              writeTestConfigForVersion(t, "http://127.0.0.1:9", "8.9"),
+		"C8VOLT_TEST_OPS_REPAIR_INC_ARGS": marshalOpsRepairIncidentArgsForEnv(t, []string{"ops", "repair", "incident", "--key", "2251799813685249", "--vars", "{"}),
+	})
+
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+	require.Contains(t, string(output), "--vars must be a valid JSON object")
 }
 
 func TestOpsRepairIncidentExplicitKeyNoWaitRepairsThroughServices(t *testing.T) {
@@ -262,6 +300,8 @@ func resetOpsRepairIncidentFlagState() {
 	flagOpsRepairIncidentLimit = 0
 	flagOpsRepairIncidentRetries = 1
 	flagOpsRepairIncidentJobTimeoutRaw = ""
+	flagOpsRepairIncidentVars = ""
+	flagOpsRepairIncidentVarsFile = ""
 	flagDryRun = false
 	flagNoWait = false
 	flagWorkers = 0

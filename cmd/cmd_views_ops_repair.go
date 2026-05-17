@@ -28,13 +28,18 @@ func renderOpsRepairIncidentResult(cmd *cobra.Command, result ops.RepairResult) 
 	if len(result.FrozenSet.JobKeys) > 0 || len(result.Plan) > 0 {
 		renderHumanLine(cmd, "related jobs: %d applicable, %d not applicable", len(result.FrozenSet.JobKeys), countOpsRepairIncidentJobNotApplicable(result.Plan))
 	}
+	if len(result.FrozenSet.VariableScopes) > 0 || len(result.VariableUpdates) > 0 {
+		renderHumanLine(cmd, "variable scopes: %d", countOpsRepairVariableScopes(result))
+	}
 	if flagVerbose {
 		renderOpsRepairKeys(cmd, "incident keys", result.FrozenSet.IncidentKeys)
 		renderOpsRepairKeys(cmd, "process-instance keys", result.FrozenSet.ProcessInstanceKeys)
 		renderOpsRepairKeys(cmd, "job keys", result.FrozenSet.JobKeys)
+		renderOpsRepairVariableUpdates(cmd, result.VariableUpdates)
 		for _, item := range result.Plan {
-			renderHumanLine(cmd, "incident %s: retry=%s timeout=%s resolution=%s confirmation=%s",
+			renderHumanLine(cmd, "incident %s: vars=%s retry=%s timeout=%s resolution=%s confirmation=%s",
 				item.IncidentKey,
+				item.VariableUpdateStatus,
 				item.RetryUpdateStatus,
 				item.TimeoutUpdateStatus,
 				item.ResolutionStatus,
@@ -77,14 +82,19 @@ func renderOpsRepairProcessInstanceResult(cmd *cobra.Command, result ops.RepairR
 	if len(result.FrozenSet.JobKeys) > 0 || len(result.Plan) > 0 {
 		renderHumanLine(cmd, "related jobs: %d applicable, %d not applicable", len(result.FrozenSet.JobKeys), countOpsRepairIncidentJobNotApplicable(result.Plan))
 	}
+	if len(result.FrozenSet.VariableScopes) > 0 || len(result.VariableUpdates) > 0 {
+		renderHumanLine(cmd, "variable scopes: %d", countOpsRepairVariableScopes(result))
+	}
 	if flagVerbose {
 		renderOpsRepairKeys(cmd, "process-instance keys", result.FrozenSet.ProcessInstanceKeys)
 		renderOpsRepairKeys(cmd, "incident keys", result.FrozenSet.IncidentKeys)
 		renderOpsRepairKeys(cmd, "job keys", result.FrozenSet.JobKeys)
+		renderOpsRepairVariableUpdates(cmd, result.VariableUpdates)
 		for _, item := range result.Plan {
-			renderHumanLine(cmd, "process-instance %s incident %s: retry=%s timeout=%s resolution=%s confirmation=%s",
+			renderHumanLine(cmd, "process-instance %s incident %s: vars=%s retry=%s timeout=%s resolution=%s confirmation=%s",
 				item.ProcessInstanceKey,
 				item.IncidentKey,
+				item.VariableUpdateStatus,
 				item.RetryUpdateStatus,
 				item.TimeoutUpdateStatus,
 				item.ResolutionStatus,
@@ -119,17 +129,28 @@ func countOpsRepairIncidentJobNotApplicable(items []ops.RepairPlanItem) int {
 	return count
 }
 
+// countOpsRepairVariableScopes reports deduped variable scopes from either frozen discovery or executed scope updates.
+func countOpsRepairVariableScopes(result ops.RepairResult) int {
+	if len(result.VariableUpdates) > 0 {
+		return len(result.VariableUpdates)
+	}
+	return len(result.FrozenSet.VariableScopes)
+}
+
 // opsRepairProcessInstanceHasHiddenKeys reports whether compact output omitted target details.
 func opsRepairProcessInstanceHasHiddenKeys(result ops.RepairResult) bool {
 	return len(result.FrozenSet.ProcessInstanceKeys) > 0 ||
 		len(result.FrozenSet.IncidentKeys) > 0 ||
-		len(result.FrozenSet.JobKeys) > 0
+		len(result.FrozenSet.JobKeys) > 0 ||
+		len(result.FrozenSet.VariableScopes) > 0
 }
 
+// opsRepairIncidentHasHiddenKeys reports whether compact incident output omitted target details.
 func opsRepairIncidentHasHiddenKeys(result ops.RepairResult) bool {
 	return len(result.FrozenSet.IncidentKeys) > 0 ||
 		len(result.FrozenSet.ProcessInstanceKeys) > 0 ||
-		len(result.FrozenSet.JobKeys) > 0
+		len(result.FrozenSet.JobKeys) > 0 ||
+		len(result.FrozenSet.VariableScopes) > 0
 }
 
 func renderOpsRepairKeys(cmd *cobra.Command, label string, keys []string) {
@@ -138,4 +159,20 @@ func renderOpsRepairKeys(cmd *cobra.Command, label string, keys []string) {
 		return
 	}
 	renderHumanLine(cmd, "%s: %s", label, strings.Join(keys, ", "))
+}
+
+// renderOpsRepairVariableUpdates prints deduped variable scope status rows in verbose human output.
+func renderOpsRepairVariableUpdates(cmd *cobra.Command, updates []ops.RepairVariableScopeUpdate) {
+	for _, update := range updates {
+		names := "none"
+		if len(update.VariableNames) > 0 {
+			names = strings.Join(update.VariableNames, ", ")
+		}
+		renderHumanLine(cmd, "variable scope %s: names=%s status=%s dependents=%s",
+			update.ScopeKey,
+			names,
+			update.Status,
+			strings.Join(update.DependentIncidentKeys, ", "),
+		)
+	}
 }

@@ -132,19 +132,19 @@
 
 ### Tests for User Story 4
 
-- [ ] T050 [P] [US4] Add command tests for `--vars`, `--vars-file`, parse failures, and variable-scope output in `cmd/ops_repair_incident_test.go` and `cmd/ops_repair_processinstance_test.go`
-- [ ] T051 [P] [US4] Add internal service tests for variable scope dedupe, normalized confirmation, and blocked dependent incidents in `internal/services/ops/repair_test.go`
-- [ ] T052 [P] [US4] Add process-instance service or facade tests for any missing variable confirmation primitive in `internal/services/processinstance` or `c8volt/process`
+- [x] T050 [P] [US4] Add command tests for `--vars`, `--vars-file`, parse failures, and variable-scope output in `cmd/ops_repair_incident_test.go` and `cmd/ops_repair_processinstance_test.go`
+- [x] T051 [P] [US4] Add internal service tests for variable scope dedupe, normalized confirmation, and blocked dependent incidents in `internal/services/ops/repair_test.go`
+- [x] T052 [P] [US4] Add process-instance service or facade tests for any missing variable confirmation primitive in `internal/services/processinstance` or `c8volt/process`
 
 ### Implementation for User Story 4
 
-- [ ] T053 [US4] Reuse existing process-instance variable parsing and validation for repair variable flags in `cmd/ops_repair_incident.go` and `cmd/ops_repair_processinstance.go`
-- [ ] T054 [US4] Add or extend process-instance service primitives for requested variable confirmation in `internal/services/processinstance/variables.go`
-- [ ] T055 [US4] Implement deduped variable scope update planning and execution in `internal/services/ops/repair.go`
-- [ ] T056 [US4] Block incident resolution for incidents dependent on failed variable scopes in `internal/services/ops/repair.go`
-- [ ] T057 [US4] Render variable scopes, requested names, normalized confirmation status, and blocked incidents in `cmd/cmd_views_ops_repair.go`
-- [ ] T058 [US4] Run targeted validation with `go test ./cmd ./internal/services/ops ./internal/services/processinstance -run 'TestOpsRepair.*Var|Test.*Variable' -count=1`
-- [ ] T059 [US4] Mark US4 tasks complete and record validation notes in `specs/183-ops-repair-workflows/progress.md`
+- [x] T053 [US4] Reuse existing process-instance variable parsing and validation for repair variable flags in `cmd/ops_repair_incident.go` and `cmd/ops_repair_processinstance.go`
+- [x] T054 [US4] Add or extend process-instance service primitives for requested variable confirmation in `internal/services/processinstance/variables.go`
+- [x] T055 [US4] Implement deduped variable scope update planning and execution in `internal/services/ops/repair.go`
+- [x] T056 [US4] Block incident resolution for incidents dependent on failed variable scopes in `internal/services/ops/repair.go`
+- [x] T057 [US4] Render variable scopes, requested names, normalized confirmation status, and blocked incidents in `cmd/cmd_views_ops_repair.go`
+- [x] T058 [US4] Run targeted validation with `go test ./cmd ./internal/services/ops ./internal/services/processinstance -run 'TestOpsRepair.*Var|Test.*Variable' -count=1`
+- [x] T059 [US4] Mark US4 tasks complete and record validation notes in `specs/183-ops-repair-workflows/progress.md`
 
 **Checkpoint**: Variable repair is independently functional and safely gates resolution.
 

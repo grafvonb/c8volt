@@ -15,6 +15,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
+	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/pool"
 	"github.com/grafvonb/c8volt/typex"
@@ -80,15 +81,19 @@ func (s *Service) repairExplicitIncidents(ctx context.Context, request d.OpsRepa
 	}
 	result.FrozenSet = freezeExplicitIncidentSet(request, incidents)
 	if request.DryRun {
-		result.Plan, result.JobApplicability = buildRepairPlans(request, incidents)
+		result.VariableUpdates = buildRepairVariableScopeUpdates(request, incidents, d.OpsWorkflowStepStatusPlanned)
+		result.Plan, result.JobApplicability = buildRepairPlans(request, incidents, variableUpdatesByScope(result.VariableUpdates))
 		result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
 	}
 
+	var varErr error
+	result.VariableUpdates, varErr = s.executeRepairVariableUpdates(ctx, request, incidents, opts...)
+	variableUpdates := variableUpdatesByScope(result.VariableUpdates)
 	cfg := services.ApplyCallOptions(opts)
 	workers := toolx.DetermineNoOfWorkers(len(incidents), request.Workers, cfg.NoWorkerLimit)
 	items, runErr := pool.ExecuteSlice(ctx, incidents, workers, cfg.FailFast, func(ctx context.Context, incident d.ProcessInstanceIncidentDetail, _ int) (repairIncidentExecution, error) {
-		return s.executeIncidentRepair(ctx, request, incident, opts...)
+		return s.executeIncidentRepair(ctx, request, incident, variableUpdates, opts...)
 	})
 	for _, item := range items {
 		if item.Plan.IncidentKey == "" {
@@ -98,8 +103,9 @@ func (s *Service) repairExplicitIncidents(ctx context.Context, request d.OpsRepa
 		result.JobApplicability = append(result.JobApplicability, item.JobApplicability)
 	}
 	result.Remaining = d.OpsRepairRemainingIncidentSummary{Status: d.OpsWorkflowStepStatusConfirmed, Checked: !request.NoWait}
-	outcome := repairOutcomeForPlans(result.Plan, runErr)
-	return finishRepairResult(result, s.version, outcome, runErr)
+	repairErr := errorsJoin(varErr, runErr)
+	outcome := repairOutcomeForPlans(result.Plan, repairErr)
+	return finishRepairResult(result, s.version, outcome, repairErr)
 }
 
 // repairFilteredIncidents discovers matching incidents once, freezes them, and then reuses the shared incident repair execution path.
@@ -123,15 +129,19 @@ func (s *Service) repairFilteredIncidents(ctx context.Context, request d.OpsRepa
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
 	}
 	if request.DryRun {
-		result.Plan, result.JobApplicability = buildRepairPlans(request, incidents)
+		result.VariableUpdates = buildRepairVariableScopeUpdates(request, incidents, d.OpsWorkflowStepStatusPlanned)
+		result.Plan, result.JobApplicability = buildRepairPlans(request, incidents, variableUpdatesByScope(result.VariableUpdates))
 		result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
 	}
 
+	var varErr error
+	result.VariableUpdates, varErr = s.executeRepairVariableUpdates(ctx, request, incidents, opts...)
+	variableUpdates := variableUpdatesByScope(result.VariableUpdates)
 	cfg := services.ApplyCallOptions(opts)
 	workers := toolx.DetermineNoOfWorkers(len(incidents), request.Workers, cfg.NoWorkerLimit)
 	items, runErr := pool.ExecuteSlice(ctx, incidents, workers, cfg.FailFast, func(ctx context.Context, incident d.ProcessInstanceIncidentDetail, _ int) (repairIncidentExecution, error) {
-		return s.executeIncidentRepair(ctx, request, incident, opts...)
+		return s.executeIncidentRepair(ctx, request, incident, variableUpdates, opts...)
 	})
 	for _, item := range items {
 		if item.Plan.IncidentKey == "" {
@@ -141,8 +151,9 @@ func (s *Service) repairFilteredIncidents(ctx context.Context, request d.OpsRepa
 		result.JobApplicability = append(result.JobApplicability, item.JobApplicability)
 	}
 	result.Remaining = d.OpsRepairRemainingIncidentSummary{Status: d.OpsWorkflowStepStatusConfirmed, Checked: !request.NoWait}
-	outcome := repairOutcomeForPlans(result.Plan, runErr)
-	return finishRepairResult(result, s.version, outcome, runErr)
+	repairErr := errorsJoin(varErr, runErr)
+	outcome := repairOutcomeForPlans(result.Plan, repairErr)
+	return finishRepairResult(result, s.version, outcome, repairErr)
 }
 
 // repairExplicitProcessInstances discovers active incidents for the frozen explicit process-instance key set.
@@ -213,15 +224,19 @@ func (s *Service) finishProcessInstanceIncidentRepair(ctx context.Context, reque
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
 	}
 	if request.DryRun {
-		result.Plan, result.JobApplicability = buildRepairPlans(request, incidents)
+		result.VariableUpdates = buildRepairVariableScopeUpdates(request, incidents, d.OpsWorkflowStepStatusPlanned)
+		result.Plan, result.JobApplicability = buildRepairPlans(request, incidents, variableUpdatesByScope(result.VariableUpdates))
 		result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
 	}
 
+	var varErr error
+	result.VariableUpdates, varErr = s.executeRepairVariableUpdates(ctx, request, incidents, opts...)
+	variableUpdates := variableUpdatesByScope(result.VariableUpdates)
 	cfg := services.ApplyCallOptions(opts)
 	workers := toolx.DetermineNoOfWorkers(len(incidents), request.Workers, cfg.NoWorkerLimit)
 	items, runErr := pool.ExecuteSlice(ctx, incidents, workers, cfg.FailFast, func(ctx context.Context, incident d.ProcessInstanceIncidentDetail, _ int) (repairIncidentExecution, error) {
-		return s.executeIncidentRepair(ctx, request, incident, opts...)
+		return s.executeIncidentRepair(ctx, request, incident, variableUpdates, opts...)
 	})
 	for _, item := range items {
 		if item.Plan.IncidentKey == "" {
@@ -231,8 +246,9 @@ func (s *Service) finishProcessInstanceIncidentRepair(ctx context.Context, reque
 		result.JobApplicability = append(result.JobApplicability, item.JobApplicability)
 	}
 	result.Remaining = d.OpsRepairRemainingIncidentSummary{Status: d.OpsWorkflowStepStatusConfirmed, Checked: !request.NoWait}
-	outcome := repairOutcomeForPlans(result.Plan, runErr)
-	return finishRepairResult(result, s.version, outcome, runErr)
+	repairErr := errorsJoin(varErr, runErr)
+	outcome := repairOutcomeForPlans(result.Plan, repairErr)
+	return finishRepairResult(result, s.version, outcome, repairErr)
 }
 
 // discoverProcessInstanceRepairIncidents loads direct active incidents for each selected process instance and dedupes by incident key.
@@ -347,19 +363,171 @@ func limitRepairProcessInstances(items []d.ProcessInstance, limit int32) []d.Pro
 	return items[:limit]
 }
 
-func buildRepairPlans(request d.OpsRepairRequest, incidents []d.ProcessInstanceIncidentDetail) ([]d.OpsRepairPlanItem, []d.OpsRepairJobApplicability) {
+func buildRepairPlans(request d.OpsRepairRequest, incidents []d.ProcessInstanceIncidentDetail, variables map[string]d.OpsRepairVariableScopeUpdate) ([]d.OpsRepairPlanItem, []d.OpsRepairJobApplicability) {
 	plans := make([]d.OpsRepairPlanItem, 0, len(incidents))
 	applicability := make([]d.OpsRepairJobApplicability, 0, len(incidents))
 	for _, incident := range incidents {
 		plan, job := newIncidentRepairPlan(request, incident)
+		applyRepairVariableStatus(&plan, variables[incident.ProcessInstanceKey])
 		plans = append(plans, plan)
 		applicability = append(applicability, job)
 	}
 	return plans, applicability
 }
 
-func (s *Service) executeIncidentRepair(ctx context.Context, request d.OpsRepairRequest, incident d.ProcessInstanceIncidentDetail, opts ...services.CallOption) (repairIncidentExecution, error) {
+// buildRepairVariableScopeUpdates groups incidents by process-instance variable scope while preserving discovery order.
+func buildRepairVariableScopeUpdates(request d.OpsRepairRequest, incidents []d.ProcessInstanceIncidentDetail, status d.OpsWorkflowStepStatus) []d.OpsRepairVariableScopeUpdate {
+	if len(request.Variables) == 0 {
+		return nil
+	}
+	names := sortedMapKeys(request.Variables)
+	updates := make([]d.OpsRepairVariableScopeUpdate, 0)
+	byScope := make(map[string]int)
+	for _, incident := range incidents {
+		if incident.ProcessInstanceKey == "" {
+			continue
+		}
+		idx, ok := byScope[incident.ProcessInstanceKey]
+		if !ok {
+			idx = len(updates)
+			byScope[incident.ProcessInstanceKey] = idx
+			updates = append(updates, d.OpsRepairVariableScopeUpdate{
+				ScopeKey:      incident.ProcessInstanceKey,
+				VariableNames: append([]string(nil), names...),
+				Payload:       toolx.CopyMap(request.Variables),
+				Status:        status,
+			})
+		}
+		if incident.IncidentKey != "" {
+			updates[idx].DependentIncidentKeys = append(updates[idx].DependentIncidentKeys, incident.IncidentKey).Unique()
+		}
+	}
+	return updates
+}
+
+// executeRepairVariableUpdates applies one variable payload per unique process-instance scope before incident mutation.
+func (s *Service) executeRepairVariableUpdates(ctx context.Context, request d.OpsRepairRequest, incidents []d.ProcessInstanceIncidentDetail, opts ...services.CallOption) ([]d.OpsRepairVariableScopeUpdate, error) {
+	planned := buildRepairVariableScopeUpdates(request, incidents, d.OpsWorkflowStepStatusPlanned)
+	if len(planned) == 0 {
+		return nil, nil
+	}
+	scopes := make(typex.Keys, 0, len(planned))
+	dependents := make(map[string]typex.Keys, len(planned))
+	for _, update := range planned {
+		scopes = append(scopes, update.ScopeKey)
+		dependents[update.ScopeKey] = append(typex.Keys(nil), update.DependentIncidentKeys...)
+	}
+	results, err := pisvc.UpdateProcessInstancesVariables(ctx, s.piAPI, s.log, scopes, request.Variables, request.Workers, opts...)
+	resultsByScope := make(map[string]d.ProcessInstanceVariableUpdateResult, len(results.Items))
+	for _, item := range results.Items {
+		if item.Key != "" {
+			resultsByScope[item.Key] = item
+		}
+	}
+	updates := make([]d.OpsRepairVariableScopeUpdate, 0, len(planned))
+	var errs []error
+	if err != nil {
+		errs = append(errs, err)
+	}
+	for _, plannedUpdate := range planned {
+		item, ok := resultsByScope[plannedUpdate.ScopeKey]
+		if !ok {
+			item = d.ProcessInstanceVariableUpdateResult{
+				Key:       plannedUpdate.ScopeKey,
+				Status:    d.ProcessInstanceVariableUpdateStatusMutationFailed,
+				Error:     repairVariableMissingResultError(plannedUpdate.ScopeKey, err),
+				Variables: plannedUpdate.Payload,
+			}
+		}
+		status := repairVariableStatusFromProcessInstanceStatus(item.Status)
+		if repairVariableStatusBlocksResolution(status) {
+			if item.Error != "" {
+				errs = append(errs, errors.New(item.Error))
+			} else {
+				errs = append(errs, fmt.Errorf("variable update failed for process-instance scope %s", item.Key))
+			}
+		}
+		updates = append(updates, d.OpsRepairVariableScopeUpdate{
+			ScopeKey:              item.Key,
+			VariableNames:         sortedMapKeys(item.Variables),
+			Payload:               toolx.CopyMap(item.Variables),
+			DependentIncidentKeys: append(typex.Keys(nil), dependents[item.Key]...),
+			Status:                status,
+			Errors:                repairVariableErrors(item),
+		})
+	}
+	return updates, errorsJoin(errs...)
+}
+
+// repairVariableMissingResultError explains unprocessed scopes when fail-fast or cancellation stopped bulk updates.
+func repairVariableMissingResultError(scope string, err error) string {
+	if err != nil {
+		return fmt.Sprintf("variable update did not complete for process-instance scope %s: %v", scope, err)
+	}
+	return fmt.Sprintf("variable update did not complete for process-instance scope %s", scope)
+}
+
+// variableUpdatesByScope indexes variable update results for per-incident gating.
+func variableUpdatesByScope(updates []d.OpsRepairVariableScopeUpdate) map[string]d.OpsRepairVariableScopeUpdate {
+	if len(updates) == 0 {
+		return nil
+	}
+	out := make(map[string]d.OpsRepairVariableScopeUpdate, len(updates))
+	for _, update := range updates {
+		out[update.ScopeKey] = update
+	}
+	return out
+}
+
+// applyRepairVariableStatus transfers the deduped scope outcome onto one incident plan.
+func applyRepairVariableStatus(plan *d.OpsRepairPlanItem, update d.OpsRepairVariableScopeUpdate) bool {
+	if plan == nil || plan.VariableUpdateStatus != d.OpsWorkflowStepStatusPlanned || update.ScopeKey == "" {
+		return false
+	}
+	plan.VariableUpdateStatus = update.Status
+	if repairVariableStatusBlocksResolution(update.Status) {
+		plan.Errors = append(plan.Errors, update.Errors...)
+	}
+	return true
+}
+
+// repairVariableStatusBlocksResolution identifies variable outcomes that must stop dependent incident resolution.
+func repairVariableStatusBlocksResolution(status d.OpsWorkflowStepStatus) bool {
+	return status == d.OpsWorkflowStepStatusFailed || status == d.OpsWorkflowStepStatusConfirmationFailed
+}
+
+// repairVariableStatusFromProcessInstanceStatus maps process-instance update vocabulary into repair step vocabulary.
+func repairVariableStatusFromProcessInstanceStatus(status d.ProcessInstanceVariableUpdateStatus) d.OpsWorkflowStepStatus {
+	switch status {
+	case d.ProcessInstanceVariableUpdateStatusConfirmed:
+		return d.OpsWorkflowStepStatusConfirmed
+	case d.ProcessInstanceVariableUpdateStatusSubmitted:
+		return d.OpsWorkflowStepStatusSubmitted
+	case d.ProcessInstanceVariableUpdateStatusConfirmationFailed:
+		return d.OpsWorkflowStepStatusConfirmationFailed
+	default:
+		return d.OpsWorkflowStepStatusFailed
+	}
+}
+
+// repairVariableErrors preserves per-scope update failure text without fabricating success messages.
+func repairVariableErrors(item d.ProcessInstanceVariableUpdateResult) []string {
+	if item.Error == "" {
+		return nil
+	}
+	return []string{item.Error}
+}
+
+func (s *Service) executeIncidentRepair(ctx context.Context, request d.OpsRepairRequest, incident d.ProcessInstanceIncidentDetail, variables map[string]d.OpsRepairVariableScopeUpdate, opts ...services.CallOption) (repairIncidentExecution, error) {
 	plan, jobApplicability := newIncidentRepairPlan(request, incident)
+	if applyRepairVariableStatus(&plan, variables[incident.ProcessInstanceKey]) && repairVariableStatusBlocksResolution(plan.VariableUpdateStatus) {
+		plan.ResolutionStatus = d.OpsWorkflowStepStatusBlocked
+		plan.ConfirmationStatus = d.OpsWorkflowStepStatusSkipped
+		if len(plan.Errors) == 0 {
+			plan.Errors = append(plan.Errors, fmt.Sprintf("variable update failed for process-instance scope %s", incident.ProcessInstanceKey))
+		}
+		return repairIncidentExecution{Plan: plan, JobApplicability: jobApplicability}, nil
+	}
 	var errs []error
 	if !incidentIsActive(incident) {
 		plan.ResolutionStatus = d.OpsWorkflowStepStatusSkipped

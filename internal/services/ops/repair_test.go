@@ -157,6 +157,9 @@ func TestRepairProcessInstancesSearchDedupeAndRoutesThroughIncidentRepair(t *tes
 			resolved = append(resolved, key)
 			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: http.StatusNoContent, Status: "accepted"}, nil
 		},
+		waitForIncidentResolved: func(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: http.StatusOK, Status: "resolved"}, nil
+		},
 	}, nil, nil, repairJobAPI{}, "")
 
 	hasIncident := true
@@ -340,6 +343,9 @@ func TestRepairIncidentsSearchModeDoesNotExpandAfterFreeze(t *testing.T) {
 			resolved = append(resolved, key)
 			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: http.StatusNoContent, Status: "accepted"}, nil
 		},
+		waitForIncidentResolved: func(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: http.StatusOK, Status: "resolved"}, nil
+		},
 	}, nil, nil, repairJobAPI{}, "")
 
 	got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{
@@ -355,6 +361,91 @@ func TestRepairIncidentsSearchModeDoesNotExpandAfterFreeze(t *testing.T) {
 	require.Equal(t, []string{"2251799813685249"}, resolved)
 	require.Equal(t, []string{"2251799813685249"}, []string(got.FrozenSet.IncidentKeys))
 	require.Len(t, got.Plan, 1)
+}
+
+// TestRepairIncidentsDedupesVariableScopesAndConfirmsRequestedNames verifies shared scope updates run once before dependent incidents resolve.
+func TestRepairIncidentsDedupesVariableScopesAndConfirmsRequestedNames(t *testing.T) {
+	t.Parallel()
+
+	var variableUpdates []string
+	var resolved []string
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{
+		updateVariables: func(_ context.Context, key string, variables map[string]any, _ ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+			variableUpdates = append(variableUpdates, key)
+			require.Equal(t, map[string]any{"customerTier": "gold"}, variables)
+			return d.ProcessInstanceVariableUpdateResponse{Key: key, Ok: true, StatusCode: http.StatusNoContent, Status: "204 No Content"}, nil
+		},
+		searchVariables: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			return []d.ProcessInstanceVariable{{Name: "customerTier", Value: `"gold"`, ProcessInstanceKey: key, ScopeKey: key}}, nil
+		},
+	}, repairIncidentAPI{
+		getIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			return d.ProcessInstanceIncidentDetail{IncidentKey: key, ProcessInstanceKey: "2251799813685251", State: "ACTIVE"}, nil
+		},
+		resolveIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			resolved = append(resolved, key)
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: http.StatusNoContent, Status: "accepted"}, nil
+		},
+		waitForIncidentResolved: func(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: http.StatusOK, Status: "resolved"}, nil
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{
+		CommandName: "ops repair incident",
+		InputKeys:   typex.Keys{"2251799813685249", "2251799813685250"},
+		Variables:   map[string]any{"customerTier": "gold"},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.OpsRepairOutcomeRepaired, got.Outcome)
+	require.Equal(t, []string{"2251799813685251"}, variableUpdates)
+	require.Equal(t, []string{"2251799813685249", "2251799813685250"}, resolved)
+	require.Len(t, got.VariableUpdates, 1)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.VariableUpdates[0].Status)
+	require.Equal(t, []string{"customerTier"}, got.VariableUpdates[0].VariableNames)
+	require.Equal(t, []string{"2251799813685249", "2251799813685250"}, []string(got.VariableUpdates[0].DependentIncidentKeys))
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Plan[0].VariableUpdateStatus)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Plan[1].VariableUpdateStatus)
+}
+
+// TestRepairIncidentsBlocksResolutionWhenVariableScopeFails verifies failed variable repair gates dependent incident resolution.
+func TestRepairIncidentsBlocksResolutionWhenVariableScopeFails(t *testing.T) {
+	t.Parallel()
+
+	var resolved []string
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{
+		updateVariables: func(_ context.Context, key string, variables map[string]any, _ ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+			require.Equal(t, "2251799813685251", key)
+			require.Equal(t, map[string]any{"customerTier": "gold"}, variables)
+			return d.ProcessInstanceVariableUpdateResponse{Key: key, Ok: false, StatusCode: http.StatusConflict, Status: "409 Conflict"}, errors.New("variable update rejected")
+		},
+	}, repairIncidentAPI{
+		getIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			return d.ProcessInstanceIncidentDetail{IncidentKey: key, ProcessInstanceKey: "2251799813685251", State: "ACTIVE"}, nil
+		},
+		resolveIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			resolved = append(resolved, key)
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: http.StatusNoContent, Status: "accepted"}, nil
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{
+		CommandName: "ops repair incident",
+		InputKeys:   typex.Keys{"2251799813685249"},
+		Variables:   map[string]any{"customerTier": "gold"},
+		NoWait:      true,
+	})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "variable update rejected")
+	require.Equal(t, d.OpsRepairOutcomeFailed, got.Outcome)
+	require.Empty(t, resolved)
+	require.Len(t, got.VariableUpdates, 1)
+	require.Equal(t, d.OpsWorkflowStepStatusFailed, got.VariableUpdates[0].Status)
+	require.Len(t, got.Plan, 1)
+	require.Equal(t, d.OpsWorkflowStepStatusFailed, got.Plan[0].VariableUpdateStatus)
+	require.Equal(t, d.OpsWorkflowStepStatusBlocked, got.Plan[0].ResolutionStatus)
 }
 
 type stubJobAPI struct {

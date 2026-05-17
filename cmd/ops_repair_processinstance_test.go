@@ -36,11 +36,38 @@ func TestOpsRepairProcessInstanceHelpDocumentsSelectionShape(t *testing.T) {
 		"--limit int32",
 		"--retries int32",
 		"--job-timeout string",
+		"--vars string",
+		"--vars-file string",
 		"--dry-run",
 		"--no-wait",
 		"--workers int",
 		"printf '%s\\n' \"$PI_KEY_A\" \"$PI_KEY_B\" | ./c8volt ops repair process-instance -",
 	)
+}
+
+// TestOpsRepairProcessInstanceVarsFileDryRunShowsVariableScopes verifies file-backed variables are planned per process-instance scope.
+func TestOpsRepairProcessInstanceVarsFileDryRunShowsVariableScopes(t *testing.T) {
+	resetOpsRepairProcessInstanceFlagState()
+	t.Cleanup(resetOpsRepairProcessInstanceFlagState)
+
+	varsFile := t.TempDir() + "/repair-vars.json"
+	require.NoError(t, os.WriteFile(varsFile, []byte(`{"customerTier":"gold"}`), 0o600))
+
+	var requests testx.SafeSlice[string]
+	srv := newOpsRepairProcessInstanceServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairProcessInstanceCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":             writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_OPS_REPAIR_PI_ARGS": marshalOpsRepairProcessInstanceArgsForEnv(t, []string{"ops", "repair", "process-instance", "--key", "2251799813685251", "--vars-file", varsFile, "--dry-run", "--verbose"}),
+	})
+
+	require.NoError(t, err, string(output))
+	require.Contains(t, string(output), "variable scopes: 1")
+	require.Contains(t, string(output), "variable scope 2251799813685251: names=customerTier status=planned dependents=2251799813685249")
+	require.Contains(t, string(output), "process-instance 2251799813685251 incident 2251799813685249: vars=planned")
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "PUT /v2/element-instances/")
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/resolution")
 }
 
 // TestOpsRepairProcessInstanceExplicitKeyNoWaitRepairsDiscoveredIncidents verifies keyed PI repair routes to incident repair.
@@ -215,6 +242,8 @@ func resetOpsRepairProcessInstanceFlagState() {
 	flagOpsRepairProcessInstanceKeys = nil
 	flagOpsRepairProcessInstanceRetries = 1
 	flagOpsRepairProcessInstanceJobTimeoutRaw = ""
+	flagOpsRepairProcessInstanceVars = ""
+	flagOpsRepairProcessInstanceVarsFile = ""
 	flagGetPIBpmnProcessID = ""
 	flagGetPIProcessVersion = 0
 	flagGetPIProcessVersionTag = ""

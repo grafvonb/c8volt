@@ -13,6 +13,10 @@
 
 ## Codebase Patterns
 
+- Repair variable flags reuse the existing `update pi` JSON object parser through a narrow repair wrapper, so `--vars` and `--vars-file` keep the same mutual exclusion and parse failure semantics on both repair targets.
+- Process-instance variable confirmation now verifies only requested process-scope variable names after JSON normalization, using `SearchProcessInstanceVariables` so formatting and numeric representation differences do not fail valid confirmations.
+- Ops repair applies variable payloads once per unique process-instance scope before incident mutation, records dependent incident keys per scope, and blocks dependent incident resolution when a scope update fails or confirmation fails.
+- Verbose repair output includes deduped variable scope rows plus per-incident variable step status; compact output reports only the variable scope count to keep operator output scan-friendly.
 - `ops repair process-instance` reuses the `get pi` process-definition/date/state/relationship validation globals and helper functions, but owns separate target keys, retries, timeout, and repair-specific search-mode validation.
 - Process-instance repair search mode is explicit: `--incidents-only` or `--direct-incidents-only` is required before remote selection, and `--key`/stdin input is rejected with search filters before mutation.
 - Internal process-instance repair first freezes selected process-instance keys, discovers direct active incidents through the incident service, dedupes incidents by key in selected-process-instance order, and then routes the frozen incidents through the shared incident repair execution path.
@@ -53,6 +57,7 @@
 ## Validation Notes
 
 - Iteration 2 foundational validation passed with targeted ops/facade tests and full `go test ./... -count=1` using `GOCACHE=/private/tmp/go-build-cache` for sandbox-compatible cache writes.
+- Iteration 6 US4 validation passed with the exact targeted command `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops ./internal/services/processinstance -run 'TestOpsRepair.*Var|Test.*Variable' -count=1` plus broader related package validation `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./c8volt/process ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -count=1`.
 
 ## Iteration 1 - 2026-05-17 17:21:56 CEST
 **User Story**: Phase 1: Setup (Shared Discovery)
@@ -210,4 +215,39 @@
 - Process-instance repair can preserve layering by having the command pass PI selectors to the public ops facade while the internal ops workflow composes process-instance lookup/search and incident discovery primitives.
 - Direct incident selection needs a durable request bit in addition to the process-instance filter, because the existing process filter only represents incident-bearing state, not direct-only semantics.
 - Validation run: `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops -run 'TestOpsRepairProcessInstance|TestCommandContract' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./c8volt/ops ./internal/services/ops -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./docsgen -run TestGeneratedOpsDocsDocumentGroupingCommands -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./... -count=1`.
+---
+---
+## Iteration 6 - 2026-05-17 18:24:51 CEST
+**User Story**: User Story 4 - Apply Shared Variable Updates Safely
+**Tasks Completed**:
+- [x] T050: Add command tests for `--vars`, `--vars-file`, parse failures, and variable-scope output
+- [x] T051: Add internal service tests for variable scope dedupe, normalized confirmation, and blocked dependent incidents
+- [x] T052: Add process-instance facade tests for requested variable confirmation behavior
+- [x] T053: Reuse existing process-instance variable parsing and validation for repair variable flags
+- [x] T054: Add requested variable confirmation in process-instance service primitives
+- [x] T055: Implement deduped variable scope update planning and execution
+- [x] T056: Block incident resolution for incidents dependent on failed variable scopes
+- [x] T057: Render variable scopes, requested names, confirmation status, and blocked incidents
+- [x] T058: Run targeted validation
+- [x] T059: Mark US4 tasks complete and record validation notes
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/client_test.go
+- cmd/cmd_views_ops_repair.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_incident_test.go
+- cmd/ops_repair_processinstance.go
+- cmd/ops_repair_processinstance_test.go
+- cmd/ops_repair_variables.go
+- internal/services/ops/orphan_purge_test.go
+- internal/services/ops/repair.go
+- internal/services/ops/repair_test.go
+- internal/services/processinstance/variables.go
+- specs/183-ops-repair-workflows/tasks.md
+- specs/183-ops-repair-workflows/progress.md
+**Learnings**:
+- Repair variable scope is consistently the process-instance key; deduped scope updates can be applied before shared incident repair without changing the public repair model shape.
+- The process-instance variable service can provide normalized requested-name confirmation centrally, so repair does not need to duplicate JSON comparison logic.
+- Validation run: `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops ./internal/services/processinstance -run 'TestOpsRepair.*Var|Test.*Variable' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./c8volt/process ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -count=1`.
 ---

@@ -440,6 +440,14 @@ func TestUpdateProcessInstanceVariablesMapsConfirmedServiceResponse(t *testing.T
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
 			return d.ProcessInstanceVariableUpdateResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
 		},
+		searchProcessInstanceVariables: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			require.Equal(t, "123", key)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return []d.ProcessInstanceVariable{
+				{Name: "foo", Value: `"bar"`, ProcessInstanceKey: key, ScopeKey: key},
+				{Name: "nested", Value: `{"count":2}`, ProcessInstanceKey: key, ScopeKey: key},
+			}, nil
+		},
 	}
 
 	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
@@ -573,6 +581,35 @@ func TestUpdateProcessInstanceVariablesNoWaitReportsMutationFailurePerKey(t *tes
 		Variables:          map[string]any{"foo": "bar"},
 	}, got.Items[0])
 	require.False(t, got.Items[0].OK())
+}
+
+// TestUpdateProcessInstanceVariablesConfirmationMismatchReportsFailure verifies requested values are confirmed after JSON normalization.
+func TestUpdateProcessInstanceVariablesConfirmationMismatchReportsFailure(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		updateProcessInstanceVariables: func(_ context.Context, key string, variables map[string]any, _ ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+			require.Equal(t, "123", key)
+			require.Equal(t, map[string]any{"foo": "bar"}, variables)
+			return d.ProcessInstanceVariableUpdateResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+		searchProcessInstanceVariables: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			return []d.ProcessInstanceVariable{{Name: "foo", Value: `"baz"`, ProcessInstanceKey: key, ScopeKey: key}}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	got, err := cli.UpdateProcessInstanceVariables(ctx, ProcessInstanceVariableUpdateRequest{
+		Key:       "123",
+		Variables: map[string]any{"foo": "bar"},
+	})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "confirmation mismatch")
+	require.Equal(t, ProcessInstanceVariableUpdateStatusConfirmationFailed, got.Status)
+	require.Equal(t, "failed", got.ConfirmationStatus)
+	require.False(t, got.OK())
 }
 
 func TestUpdateProcessInstanceVariablesConfirmationTimeoutReportsPerKeyFailure(t *testing.T) {

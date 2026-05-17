@@ -35,6 +35,8 @@ var (
 	flagOpsRepairIncidentLimit              int32
 	flagOpsRepairIncidentRetries            int32
 	flagOpsRepairIncidentJobTimeoutRaw      string
+	flagOpsRepairIncidentVars               string
+	flagOpsRepairIncidentVarsFile           string
 )
 
 var opsRepairIncidentCmd = &cobra.Command{
@@ -62,6 +64,10 @@ var opsRepairIncidentCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		timeout, err := parseOpsRepairIncidentJobTimeout(cmd)
+		if err != nil {
+			failBeforeCli(cmd, err)
+		}
+		variables, variablesFile, err := parseOpsRepairVariablesFromFlags(cmd, flagOpsRepairIncidentVars, flagOpsRepairIncidentVarsFile)
 		if err != nil {
 			failBeforeCli(cmd, err)
 		}
@@ -111,6 +117,8 @@ var opsRepairIncidentCmd = &cobra.Command{
 			Automation:          automationModeEnabled(cmd),
 			NoWait:              flagNoWait,
 			OutputMode:          pickMode().String(),
+			Variables:           variables,
+			VariablesFile:       variablesFile,
 			RequestedRetries:    &retries,
 			RequestedJobTimeout: timeout,
 			StartedAt:           time.Now().UTC(),
@@ -146,6 +154,8 @@ func init() {
 	fs.Int32VarP(&flagOpsRepairIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to repair")
 	fs.Int32Var(&flagOpsRepairIncidentRetries, "retries", 1, "retry count to set on related jobs; 0 skips retry restoration")
 	fs.StringVar(&flagOpsRepairIncidentJobTimeoutRaw, "job-timeout", "", "timeout duration to submit for related jobs, for example 60s, 5m, or 1h")
+	fs.StringVar(&flagOpsRepairIncidentVars, "vars", "", "JSON object with variables to set once per process-instance scope before resolving dependent incidents")
+	fs.StringVar(&flagOpsRepairIncidentVarsFile, "vars-file", "", "path to JSON object file with variables to set once per process-instance scope")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "freeze repair targets and preview repair steps without submitting mutations")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after repair mutations are accepted without incident or retry confirmation")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when repairing multiple incidents (default: min(count, 2*GOMAXPROCS, 32))")
@@ -185,6 +195,9 @@ func validateOpsRepairIncidentFlagValues(cmd *cobra.Command) error {
 	}
 	if flagOpsRepairIncidentRetries < 0 {
 		return invalidFlagValuef("invalid value for --retries: %d, expected non-negative integer", flagOpsRepairIncidentRetries)
+	}
+	if cmd != nil && cmd.Flags().Changed("vars") && cmd.Flags().Changed("vars-file") {
+		return mutuallyExclusiveFlagsf("--vars cannot be combined with --vars-file")
 	}
 	if pickMode() == RenderModeJSON && flagVerbose {
 		return mutuallyExclusiveFlagsf("--json cannot be combined with --verbose for ops repair incident")
