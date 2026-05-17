@@ -363,6 +363,97 @@ func TestRepairIncidentsSearchModeDoesNotExpandAfterFreeze(t *testing.T) {
 	require.Len(t, got.Plan, 1)
 }
 
+// TestOpsRepairIncidentsDryRunPlansVariablesJobsAndResolutionWithoutMutation verifies dry-run builds the full plan and skips every mutation primitive.
+func TestOpsRepairIncidentsDryRunPlansVariablesJobsAndResolutionWithoutMutation(t *testing.T) {
+	t.Parallel()
+
+	retries := int32(3)
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
+		getIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			return d.ProcessInstanceIncidentDetail{
+				IncidentKey:        key,
+				ProcessInstanceKey: "2251799813685251",
+				JobKey:             "2251799813685252",
+				State:              "ACTIVE",
+			}, nil
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{
+		CommandName:         "ops repair incident",
+		InputKeys:           typex.Keys{"2251799813685249"},
+		Variables:           map[string]any{"customerTier": "gold"},
+		RequestedRetries:    &retries,
+		RequestedJobTimeout: 5 * time.Minute,
+		DryRun:              true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
+	require.Len(t, got.VariableUpdates, 1)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.VariableUpdates[0].Status)
+	require.Len(t, got.Plan, 1)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Plan[0].VariableUpdateStatus)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Plan[0].RetryUpdateStatus)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Plan[0].TimeoutUpdateStatus)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Plan[0].ResolutionStatus)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Plan[0].ConfirmationStatus)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Remaining.Status)
+	require.Equal(t, []string{"2251799813685252"}, []string(got.FrozenSet.JobKeys))
+	require.Equal(t, []string{"2251799813685251"}, []string(got.FrozenSet.VariableScopes))
+}
+
+// TestOpsRepairProcessInstancesSearchDryRunPlansMixedApplicabilityWithoutMutation verifies process-instance search gets the same dry-run plan shape.
+func TestOpsRepairProcessInstancesSearchDryRunPlansMixedApplicabilityWithoutMutation(t *testing.T) {
+	t.Parallel()
+
+	hasIncident := true
+	retries := int32(1)
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			require.Equal(t, d.ProcessInstanceFilter{State: d.StateActive, HasIncident: &hasIncident}, filter)
+			require.EqualValues(t, 2, size)
+			return []d.ProcessInstance{
+				{Key: "2251799813685251", State: d.StateActive},
+				{Key: "2251799813685253", State: d.StateActive},
+			}, nil
+		},
+	}, repairIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			switch key {
+			case "2251799813685251":
+				return []d.ProcessInstanceIncidentDetail{{IncidentKey: "2251799813685249", ProcessInstanceKey: key, JobKey: "2251799813685252", State: "ACTIVE"}}, nil
+			case "2251799813685253":
+				return []d.ProcessInstanceIncidentDetail{{IncidentKey: "2251799813685250", ProcessInstanceKey: key, State: "ACTIVE"}}, nil
+			default:
+				t.Fatalf("unexpected process instance key %s", key)
+				return nil, nil
+			}
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	got, err := api.RepairProcessInstances(context.Background(), d.OpsRepairRequest{
+		CommandName:              "ops repair process-instance",
+		DiscoveryMode:            d.OpsRepairDiscoveryModeSearch,
+		ProcessInstanceSelection: d.ProcessInstanceFilter{State: d.StateActive, HasIncident: &hasIncident},
+		BatchSize:                2,
+		RequestedRetries:         &retries,
+		Variables:                map[string]any{"customerTier": "gold"},
+		DryRun:                   true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
+	require.Equal(t, []string{"2251799813685251", "2251799813685253"}, []string(got.FrozenSet.ProcessInstanceKeys))
+	require.Equal(t, []string{"2251799813685249", "2251799813685250"}, []string(got.FrozenSet.IncidentKeys))
+	require.Len(t, got.VariableUpdates, 2)
+	require.Len(t, got.Plan, 2)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Plan[0].VariableUpdateStatus)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Plan[0].RetryUpdateStatus)
+	require.Equal(t, d.OpsWorkflowStepStatusNotApplicable, got.Plan[1].RetryUpdateStatus)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Remaining.Status)
+}
+
 // TestRepairIncidentsDedupesVariableScopesAndConfirmsRequestedNames verifies shared scope updates run once before dependent incidents resolve.
 func TestRepairIncidentsDedupesVariableScopesAndConfirmsRequestedNames(t *testing.T) {
 	t.Parallel()

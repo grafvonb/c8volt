@@ -38,11 +38,38 @@ func TestOpsRepairProcessInstanceHelpDocumentsSelectionShape(t *testing.T) {
 		"--job-timeout string",
 		"--vars string",
 		"--vars-file string",
+		"--report-file string",
+		"--report-format string",
 		"--dry-run",
 		"--no-wait",
 		"--workers int",
 		"printf '%s\\n' \"$PI_KEY_A\" \"$PI_KEY_B\" | ./c8volt ops repair process-instance -",
 	)
+}
+
+// TestOpsRepairProcessInstanceDryRunReportOptionsPlansPathWithoutMutation verifies report planning does not write or mutate.
+func TestOpsRepairProcessInstanceDryRunReportOptionsPlansPathWithoutMutation(t *testing.T) {
+	resetOpsRepairProcessInstanceFlagState()
+	t.Cleanup(resetOpsRepairProcessInstanceFlagState)
+
+	reportFile := t.TempDir() + "/repair.md"
+	var requests testx.SafeSlice[string]
+	srv := newOpsRepairProcessInstanceServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairProcessInstanceCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":             writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_OPS_REPAIR_PI_ARGS": marshalOpsRepairProcessInstanceArgsForEnv(t, []string{"ops", "repair", "process-instance", "--key", "2251799813685251", "--dry-run", "--report-file", reportFile}),
+	})
+
+	require.NoError(t, err, string(output))
+	require.Contains(t, string(output), "report: planned "+reportFile+" (markdown)")
+	require.NoFileExists(t, reportFile)
+	gotRequests := strings.Join(requests.Snapshot(), "\n")
+	require.Contains(t, gotRequests, "GET /v2/process-instances/2251799813685251")
+	require.Contains(t, gotRequests, "POST /v2/process-instances/2251799813685251/incidents/search")
+	require.NotContains(t, gotRequests, "PATCH /v2/jobs/")
+	require.NotContains(t, gotRequests, "/resolution")
 }
 
 // TestOpsRepairProcessInstanceVarsFileDryRunShowsVariableScopes verifies file-backed variables are planned per process-instance scope.
@@ -244,6 +271,8 @@ func resetOpsRepairProcessInstanceFlagState() {
 	flagOpsRepairProcessInstanceJobTimeoutRaw = ""
 	flagOpsRepairProcessInstanceVars = ""
 	flagOpsRepairProcessInstanceVarsFile = ""
+	flagOpsRepairProcessInstanceReportFile = ""
+	flagOpsRepairProcessInstanceReportFormat = ""
 	flagGetPIBpmnProcessID = ""
 	flagGetPIProcessVersion = 0
 	flagGetPIProcessVersionTag = ""

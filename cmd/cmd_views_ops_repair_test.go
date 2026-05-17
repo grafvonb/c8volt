@@ -27,6 +27,8 @@ func TestRenderOpsRepairIncidentDryRunSearchHumanOutput(t *testing.T) {
 		Request: ops.RepairRequest{
 			DryRun:        true,
 			DiscoveryMode: ops.RepairDiscoveryModeSearch,
+			ReportFile:    "repair-preview.json",
+			ReportFormat:  "json",
 			IncidentSelection: incident.Filter{
 				State:     "active",
 				ErrorType: "io_mapping_error",
@@ -54,6 +56,7 @@ func TestRenderOpsRepairIncidentDryRunSearchHumanOutput(t *testing.T) {
 	require.Contains(t, output, `discovery: search filters {state=active, errorType="io_mapping_error"}`)
 	require.Contains(t, output, "frozen incidents: 2")
 	require.Contains(t, output, "incident keys: 2251799813685249, 2251799813685250")
+	require.Contains(t, output, "report: planned repair-preview.json (json)")
 	require.Contains(t, output, "outcome: planned; no changes applied")
 }
 
@@ -70,6 +73,8 @@ func TestRenderOpsRepairIncidentDryRunSearchJSON(t *testing.T) {
 		Request: ops.RepairRequest{
 			DryRun:        true,
 			DiscoveryMode: ops.RepairDiscoveryModeSearch,
+			ReportFile:    "repair-preview.md",
+			ReportFormat:  "markdown",
 			IncidentSelection: incident.Filter{
 				State: "active",
 			},
@@ -90,6 +95,8 @@ func TestRenderOpsRepairIncidentDryRunSearchJSON(t *testing.T) {
 	require.True(t, strings.HasPrefix(output, "{"))
 	require.Contains(t, output, `"outcome": "succeeded"`)
 	require.Contains(t, output, `"discoveryMode": "search"`)
+	require.Contains(t, output, `"reportFile": "repair-preview.md"`)
+	require.Contains(t, output, `"reportFormat": "markdown"`)
 	require.Contains(t, output, `"incidentFilters": {`)
 	require.Contains(t, output, `"incidentKeys": [`)
 }

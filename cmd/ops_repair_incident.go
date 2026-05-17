@@ -37,6 +37,8 @@ var (
 	flagOpsRepairIncidentJobTimeoutRaw      string
 	flagOpsRepairIncidentVars               string
 	flagOpsRepairIncidentVarsFile           string
+	flagOpsRepairIncidentReportFile         string
+	flagOpsRepairIncidentReportFormat       string
 )
 
 var opsRepairIncidentCmd = &cobra.Command{
@@ -76,6 +78,13 @@ var opsRepairIncidentCmd = &cobra.Command{
 			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
 		}
 		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		reportFormat, err := resolveOpsRepairReportFormat(flagOpsRepairIncidentReportFile, flagOpsRepairIncidentReportFormat)
+		if err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if err := validateOpsWorkflowReportPathForPlanning(flagOpsRepairIncidentReportFile, OpsWorkflowReportPreserveExisting); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		stdinKeys, err := readKeysIfDash(args)
@@ -121,6 +130,8 @@ var opsRepairIncidentCmd = &cobra.Command{
 			VariablesFile:       variablesFile,
 			RequestedRetries:    &retries,
 			RequestedJobTimeout: timeout,
+			ReportFile:          flagOpsRepairIncidentReportFile,
+			ReportFormat:        reportFormat,
 			StartedAt:           time.Now().UTC(),
 		}, collectOptions()...)
 		renderErr := renderOpsRepairIncidentResult(cmd, result)
@@ -156,6 +167,8 @@ func init() {
 	fs.StringVar(&flagOpsRepairIncidentJobTimeoutRaw, "job-timeout", "", "timeout duration to submit for related jobs, for example 60s, 5m, or 1h")
 	fs.StringVar(&flagOpsRepairIncidentVars, "vars", "", "JSON object with variables to set once per process-instance scope before resolving dependent incidents")
 	fs.StringVar(&flagOpsRepairIncidentVarsFile, "vars-file", "", "path to JSON object file with variables to set once per process-instance scope")
+	fs.StringVar(&flagOpsRepairIncidentReportFile, "report-file", "", "plan an audit report at the given path")
+	fs.StringVar(&flagOpsRepairIncidentReportFormat, "report-format", "", "audit report format: markdown, json (default inferred from report-file extension)")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "freeze repair targets and preview repair steps without submitting mutations")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after repair mutations are accepted without incident or retry confirmation")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when repairing multiple incidents (default: min(count, 2*GOMAXPROCS, 32))")
@@ -201,6 +214,9 @@ func validateOpsRepairIncidentFlagValues(cmd *cobra.Command) error {
 	}
 	if pickMode() == RenderModeJSON && flagVerbose {
 		return mutuallyExclusiveFlagsf("--json cannot be combined with --verbose for ops repair incident")
+	}
+	if err := validateOpsWorkflowReportFlags(flagOpsRepairIncidentReportFile, OpsWorkflowReportFormat(flagOpsRepairIncidentReportFormat)); err != nil {
+		return err
 	}
 	if ok, firstBadKey, _ := validateKeys(flagOpsRepairIncidentKeys); len(flagOpsRepairIncidentKeys) > 0 && !ok {
 		return invalidFlagValuef("incident key %q is not a valid key", firstBadKey)
@@ -300,4 +316,16 @@ func pickOpsRepairIncidentSearchSize() int32 {
 		return consts.MaxPISearchSize
 	}
 	return flagOpsRepairIncidentBatchSize
+}
+
+// resolveOpsRepairReportFormat returns the explicit or inferred repair report format for planned output.
+func resolveOpsRepairReportFormat(reportPath string, requested string) (string, error) {
+	if reportPath == "" {
+		return "", nil
+	}
+	format, err := opsWorkflowReportFormatForPath(reportPath, OpsWorkflowReportFormat(requested))
+	if err != nil {
+		return "", invalidFlagValuef("%v", err)
+	}
+	return format.String(), nil
 }

@@ -158,17 +158,17 @@
 
 ### Tests for User Story 5
 
-- [ ] T060 [P] [US5] Add dry-run no-mutation service tests covering variables, jobs, and incident resolution in `internal/services/ops/repair_test.go`
-- [ ] T061 [P] [US5] Add dry-run command tests for both repair targets with report options in `cmd/ops_repair_incident_test.go` and `cmd/ops_repair_processinstance_test.go`
-- [ ] T062 [P] [US5] Add dry-run rendering tests for planned report path/format and mixed job applicability in `cmd/cmd_views_ops_repair_test.go`
+- [x] T060 [P] [US5] Add dry-run no-mutation service tests covering variables, jobs, and incident resolution in `internal/services/ops/repair_test.go`
+- [x] T061 [P] [US5] Add dry-run command tests for both repair targets with report options in `cmd/ops_repair_incident_test.go` and `cmd/ops_repair_processinstance_test.go`
+- [x] T062 [P] [US5] Add dry-run rendering tests for planned report path/format and mixed job applicability in `cmd/cmd_views_ops_repair_test.go`
 
 ### Implementation for User Story 5
 
-- [ ] T063 [US5] Normalize dry-run planning behavior across explicit incident, incident search, explicit process-instance, and process-instance search modes in `internal/services/ops/repair.go`
-- [ ] T064 [US5] Ensure command planning validates report paths without implying mutations in `cmd/ops_repair_incident.go` and `cmd/ops_repair_processinstance.go`
-- [ ] T065 [US5] Ensure dry-run JSON includes frozen targets, variable scopes, job keys, applicability, retry/timeout requests, and resolution targets in `cmd/cmd_views_ops_repair.go`
-- [ ] T066 [US5] Run targeted validation with `go test ./cmd ./internal/services/ops -run 'TestOpsRepair.*DryRun' -count=1`
-- [ ] T067 [US5] Mark US5 tasks complete and record validation notes in `specs/183-ops-repair-workflows/progress.md`
+- [x] T063 [US5] Normalize dry-run planning behavior across explicit incident, incident search, explicit process-instance, and process-instance search modes in `internal/services/ops/repair.go`
+- [x] T064 [US5] Ensure command planning validates report paths without implying mutations in `cmd/ops_repair_incident.go` and `cmd/ops_repair_processinstance.go`
+- [x] T065 [US5] Ensure dry-run JSON includes frozen targets, variable scopes, job keys, applicability, retry/timeout requests, and resolution targets in `cmd/cmd_views_ops_repair.go`
+- [x] T066 [US5] Run targeted validation with `go test ./cmd ./internal/services/ops -run 'TestOpsRepair.*DryRun' -count=1`
+- [x] T067 [US5] Mark US5 tasks complete and record validation notes in `specs/183-ops-repair-workflows/progress.md`
 
 **Checkpoint**: Dry-run behavior is complete and mutation-free for both targets.
 

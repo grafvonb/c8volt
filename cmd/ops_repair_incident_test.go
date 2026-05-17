@@ -37,6 +37,8 @@ func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 		"--job-timeout string",
 		"--vars string",
 		"--vars-file string",
+		"--report-file string",
+		"--report-format string",
 		"--dry-run",
 		"--no-wait",
 		"--workers int",
@@ -48,6 +50,33 @@ func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 	parentOutput := executeRootForProcessInstanceTest(t, "ops", "repair", "--help")
 	require.NotContains(t, parentOutput, "--key strings")
 	require.NotContains(t, parentOutput, "--retries int32")
+}
+
+// TestOpsRepairIncidentDryRunReportOptionsPreservePlannedJSON verifies dry-run report options are reflected without writing or mutating.
+func TestOpsRepairIncidentDryRunReportOptionsPreservePlannedJSON(t *testing.T) {
+	resetOpsRepairIncidentFlagState()
+	t.Cleanup(resetOpsRepairIncidentFlagState)
+
+	reportFile := t.TempDir() + "/repair.json"
+	var requests testx.SafeSlice[string]
+	srv := newOpsRepairIncidentServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairIncidentCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":              writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_OPS_REPAIR_INC_ARGS": marshalOpsRepairIncidentArgsForEnv(t, []string{"--json", "ops", "repair", "incident", "--state", "active", "--limit", "2", "--dry-run", "--report-file", reportFile, "--report-format", "json", "--automation"}),
+	})
+
+	require.NoError(t, err, string(output))
+	require.Contains(t, string(output), `"reportFile": "`+reportFile+`"`)
+	require.Contains(t, string(output), `"reportFormat": "json"`)
+	require.Contains(t, string(output), `"jobKeys": [`)
+	require.Contains(t, string(output), `"retryUpdateStatus": "not_applicable"`)
+	require.NoFileExists(t, reportFile)
+	gotRequests := strings.Join(requests.Snapshot(), "\n")
+	require.Contains(t, gotRequests, "POST /v2/incidents/search")
+	require.NotContains(t, gotRequests, "PATCH /v2/jobs/")
+	require.NotContains(t, gotRequests, "/resolution")
 }
 
 // TestOpsRepairIncidentVarsDryRunShowsVariableScopes verifies repair variable flags reuse update-pi parsing and appear in dry-run output.
@@ -187,6 +216,11 @@ func TestOpsRepairIncidentSearchValidation(t *testing.T) {
 			args: []string{"ops", "repair", "incident", "--limit", "0"},
 			want: "--limit must be positive integer",
 		},
+		{
+			name: "report format requires report file",
+			args: []string{"ops", "repair", "incident", "--report-format", "json", "--dry-run"},
+			want: "--report-format requires --report-file",
+		},
 	}
 
 	for _, tt := range tests {
@@ -302,6 +336,8 @@ func resetOpsRepairIncidentFlagState() {
 	flagOpsRepairIncidentJobTimeoutRaw = ""
 	flagOpsRepairIncidentVars = ""
 	flagOpsRepairIncidentVarsFile = ""
+	flagOpsRepairIncidentReportFile = ""
+	flagOpsRepairIncidentReportFormat = ""
 	flagDryRun = false
 	flagNoWait = false
 	flagWorkers = 0

@@ -81,10 +81,7 @@ func (s *Service) repairExplicitIncidents(ctx context.Context, request d.OpsRepa
 	}
 	result.FrozenSet = freezeExplicitIncidentSet(request, incidents)
 	if request.DryRun {
-		result.VariableUpdates = buildRepairVariableScopeUpdates(request, incidents, d.OpsWorkflowStepStatusPlanned)
-		result.Plan, result.JobApplicability = buildRepairPlans(request, incidents, variableUpdatesByScope(result.VariableUpdates))
-		result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
-		return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
+		return s.finishDryRunIncidentRepair(request, result, incidents)
 	}
 
 	var varErr error
@@ -129,10 +126,7 @@ func (s *Service) repairFilteredIncidents(ctx context.Context, request d.OpsRepa
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
 	}
 	if request.DryRun {
-		result.VariableUpdates = buildRepairVariableScopeUpdates(request, incidents, d.OpsWorkflowStepStatusPlanned)
-		result.Plan, result.JobApplicability = buildRepairPlans(request, incidents, variableUpdatesByScope(result.VariableUpdates))
-		result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
-		return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
+		return s.finishDryRunIncidentRepair(request, result, incidents)
 	}
 
 	var varErr error
@@ -224,10 +218,7 @@ func (s *Service) finishProcessInstanceIncidentRepair(ctx context.Context, reque
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
 	}
 	if request.DryRun {
-		result.VariableUpdates = buildRepairVariableScopeUpdates(request, incidents, d.OpsWorkflowStepStatusPlanned)
-		result.Plan, result.JobApplicability = buildRepairPlans(request, incidents, variableUpdatesByScope(result.VariableUpdates))
-		result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
-		return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
+		return s.finishDryRunIncidentRepair(request, result, incidents)
 	}
 
 	var varErr error
@@ -249,6 +240,14 @@ func (s *Service) finishProcessInstanceIncidentRepair(ctx context.Context, reque
 	repairErr := errorsJoin(varErr, runErr)
 	outcome := repairOutcomeForPlans(result.Plan, repairErr)
 	return finishRepairResult(result, s.version, outcome, repairErr)
+}
+
+// finishDryRunIncidentRepair returns the same planned repair shape for every incident discovery mode without submitting mutations.
+func (s *Service) finishDryRunIncidentRepair(request d.OpsRepairRequest, result d.OpsRepairResult, incidents []d.ProcessInstanceIncidentDetail) (d.OpsRepairResult, error) {
+	result.VariableUpdates = buildRepairVariableScopeUpdates(request, incidents, d.OpsWorkflowStepStatusPlanned)
+	result.Plan, result.JobApplicability = buildRepairPlans(request, incidents, variableUpdatesByScope(result.VariableUpdates))
+	result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
+	return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
 }
 
 // discoverProcessInstanceRepairIncidents loads direct active incidents for each selected process instance and dedupes by incident key.

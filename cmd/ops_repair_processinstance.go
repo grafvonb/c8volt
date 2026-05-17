@@ -22,6 +22,8 @@ var (
 	flagOpsRepairProcessInstanceJobTimeoutRaw string
 	flagOpsRepairProcessInstanceVars          string
 	flagOpsRepairProcessInstanceVarsFile      string
+	flagOpsRepairProcessInstanceReportFile    string
+	flagOpsRepairProcessInstanceReportFormat  string
 )
 
 var opsRepairProcessInstanceCmd = &cobra.Command{
@@ -61,6 +63,13 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
 		}
 		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		reportFormat, err := resolveOpsRepairReportFormat(flagOpsRepairProcessInstanceReportFile, flagOpsRepairProcessInstanceReportFormat)
+		if err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if err := validateOpsWorkflowReportPathForPlanning(flagOpsRepairProcessInstanceReportFile, OpsWorkflowReportPreserveExisting); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if hasOpsRepairProcessInstanceSearchModeFlags(cmd) {
@@ -117,6 +126,8 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 			VariablesFile:            variablesFile,
 			RequestedRetries:         &retries,
 			RequestedJobTimeout:      timeout,
+			ReportFile:               flagOpsRepairProcessInstanceReportFile,
+			ReportFormat:             reportFormat,
 			StartedAt:                time.Now().UTC(),
 		}, collectOptions()...)
 		renderErr := renderOpsRepairProcessInstanceResult(cmd, result)
@@ -153,6 +164,8 @@ func init() {
 	fs.StringVar(&flagOpsRepairProcessInstanceJobTimeoutRaw, "job-timeout", "", "timeout duration to submit for related jobs, for example 60s, 5m, or 1h")
 	fs.StringVar(&flagOpsRepairProcessInstanceVars, "vars", "", "JSON object with variables to set once per process-instance scope before resolving dependent incidents")
 	fs.StringVar(&flagOpsRepairProcessInstanceVarsFile, "vars-file", "", "path to JSON object file with variables to set once per process-instance scope")
+	fs.StringVar(&flagOpsRepairProcessInstanceReportFile, "report-file", "", "plan an audit report at the given path")
+	fs.StringVar(&flagOpsRepairProcessInstanceReportFormat, "report-format", "", "audit report format: markdown, json (default inferred from report-file extension)")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "freeze repair targets and preview repair steps without submitting mutations")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after repair mutations are accepted without incident or retry confirmation")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when repairing multiple incidents (default: min(count, 2*GOMAXPROCS, 32))")
@@ -184,6 +197,9 @@ func validateOpsRepairProcessInstanceFlagValues(cmd *cobra.Command) error {
 	}
 	if pickMode() == RenderModeJSON && flagVerbose {
 		return mutuallyExclusiveFlagsf("--json cannot be combined with --verbose for ops repair process-instance")
+	}
+	if err := validateOpsWorkflowReportFlags(flagOpsRepairProcessInstanceReportFile, OpsWorkflowReportFormat(flagOpsRepairProcessInstanceReportFormat)); err != nil {
+		return err
 	}
 	if ok, firstBadKey, _ := validateKeys(flagOpsRepairProcessInstanceKeys); len(flagOpsRepairProcessInstanceKeys) > 0 && !ok {
 		return invalidFlagValuef("process-instance key %q is not a valid key", firstBadKey)

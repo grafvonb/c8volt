@@ -31,6 +31,7 @@ func renderOpsRepairIncidentResult(cmd *cobra.Command, result ops.RepairResult) 
 	if len(result.FrozenSet.VariableScopes) > 0 || len(result.VariableUpdates) > 0 {
 		renderHumanLine(cmd, "variable scopes: %d", countOpsRepairVariableScopes(result))
 	}
+	renderOpsRepairPlannedReport(cmd, result.Request.ReportFile, result.Request.ReportFormat)
 	if flagVerbose {
 		renderOpsRepairKeys(cmd, "incident keys", result.FrozenSet.IncidentKeys)
 		renderOpsRepairKeys(cmd, "process-instance keys", result.FrozenSet.ProcessInstanceKeys)
@@ -85,6 +86,7 @@ func renderOpsRepairProcessInstanceResult(cmd *cobra.Command, result ops.RepairR
 	if len(result.FrozenSet.VariableScopes) > 0 || len(result.VariableUpdates) > 0 {
 		renderHumanLine(cmd, "variable scopes: %d", countOpsRepairVariableScopes(result))
 	}
+	renderOpsRepairPlannedReport(cmd, result.Request.ReportFile, result.Request.ReportFormat)
 	if flagVerbose {
 		renderOpsRepairKeys(cmd, "process-instance keys", result.FrozenSet.ProcessInstanceKeys)
 		renderOpsRepairKeys(cmd, "incident keys", result.FrozenSet.IncidentKeys)
@@ -175,4 +177,14 @@ func renderOpsRepairVariableUpdates(cmd *cobra.Command, updates []ops.RepairVari
 			strings.Join(update.DependentIncidentKeys, ", "),
 		)
 	}
+}
+
+func renderOpsRepairPlannedReport(cmd *cobra.Command, path string, format string) {
+	if path == "" {
+		return
+	}
+	if format == "" {
+		format = OpsWorkflowReportFormatMarkdown.String()
+	}
+	renderHumanLine(cmd, "report: planned %s (%s)", path, format)
 }

@@ -13,6 +13,9 @@
 
 ## Codebase Patterns
 
+- Dry-run repair planning now flows through one internal service helper after target freezing, so explicit incident, incident search, explicit process-instance, and process-instance search modes share the same planned variable, job, resolution, and remaining-summary statuses without calling mutation primitives.
+- Repair report options are accepted and validated during dry-run planning, with `--report-format` requiring `--report-file`; report paths are preserved and formats are inferred for output, but report file writing remains a separate US6 concern.
+- Compact repair human output uses `report: planned <path> (<format>)` for requested report previews so it does not imply a report file was written before US6 report rendering exists.
 - Repair variable flags reuse the existing `update pi` JSON object parser through a narrow repair wrapper, so `--vars` and `--vars-file` keep the same mutual exclusion and parse failure semantics on both repair targets.
 - Process-instance variable confirmation now verifies only requested process-scope variable names after JSON normalization, using `SearchProcessInstanceVariables` so formatting and numeric representation differences do not fail valid confirmations.
 - Ops repair applies variable payloads once per unique process-instance scope before incident mutation, records dependent incident keys per scope, and blocks dependent incident resolution when a scope update fails or confirmation fails.
@@ -58,6 +61,7 @@
 
 - Iteration 2 foundational validation passed with targeted ops/facade tests and full `go test ./... -count=1` using `GOCACHE=/private/tmp/go-build-cache` for sandbox-compatible cache writes.
 - Iteration 6 US4 validation passed with the exact targeted command `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops ./internal/services/processinstance -run 'TestOpsRepair.*Var|Test.*Variable' -count=1` plus broader related package validation `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./c8volt/process ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -count=1`.
+- Iteration 7 US5 validation passed with `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops -run 'TestOpsRepair.*DryRun' -count=1`, dry-run rendering validation, and broader related package validation `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops -count=1`.
 
 ## Iteration 1 - 2026-05-17 17:21:56 CEST
 **User Story**: Phase 1: Setup (Shared Discovery)
@@ -250,4 +254,34 @@
 - Repair variable scope is consistently the process-instance key; deduped scope updates can be applied before shared incident repair without changing the public repair model shape.
 - The process-instance variable service can provide normalized requested-name confirmation centrally, so repair does not need to duplicate JSON comparison logic.
 - Validation run: `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops ./internal/services/processinstance -run 'TestOpsRepair.*Var|Test.*Variable' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./c8volt/process ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -count=1`.
+---
+---
+## Iteration 7 - 2026-05-17 18:31:52 CEST
+**User Story**: User Story 5 - Preview Repair Without Mutation
+**Tasks Completed**:
+- [x] T060: Add dry-run no-mutation service tests covering variables, jobs, and incident resolution
+- [x] T061: Add dry-run command tests for both repair targets with report options
+- [x] T062: Add dry-run rendering tests for planned report path/format and mixed job applicability
+- [x] T063: Normalize dry-run planning behavior across repair discovery modes
+- [x] T064: Ensure command planning validates report paths without implying mutations
+- [x] T065: Ensure dry-run JSON includes frozen targets, variable scopes, job keys, applicability, retry/timeout requests, and resolution targets
+- [x] T066: Run targeted validation
+- [x] T067: Mark US5 tasks complete and record validation notes
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_ops_repair.go
+- cmd/cmd_views_ops_repair_test.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_incident_test.go
+- cmd/ops_repair_processinstance.go
+- cmd/ops_repair_processinstance_test.go
+- internal/services/ops/repair.go
+- internal/services/ops/repair_test.go
+- specs/183-ops-repair-workflows/tasks.md
+- specs/183-ops-repair-workflows/progress.md
+**Learnings**:
+- Dry-run can produce a complete mutation preview by reusing the same frozen incident plan builder after discovery and stopping before variable, job, or incident mutation services are invoked.
+- Report options need to be represented in the repair request before US6 writes files, because dry-run JSON and human previews must show the planned report path and resolved format.
+- Validation run: `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops -run 'TestOpsRepair.*DryRun' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops -count=1`.
 ---
