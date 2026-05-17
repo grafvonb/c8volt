@@ -81,6 +81,74 @@ func TestCommandCapabilityForCommand_UsesExplicitAutomationOutputModes(t *testin
 	}, capability.OutputModes)
 }
 
+func TestCommandContractOpsRepairIncident(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(opsRepairIncidentCmd)
+
+	require.Equal(t, "ops repair incident", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Equal(t, []OutputModeContract{
+		{Name: "one-line", Supported: true},
+		{Name: "json", Supported: true, MachinePreferred: true},
+	}, capability.OutputModes)
+	require.Contains(t, capability.Aliases, "inc")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "incident key(s) to repair; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "retries",
+		Type:        "int32",
+		Required:    false,
+		Repeated:    false,
+		Description: "retry count to set on related jobs; 0 skips retry restoration",
+	})
+}
+
+// TestCommandContractOpsRepairProcessInstance verifies the process-instance repair target exposes automation metadata.
+func TestCommandContractOpsRepairProcessInstance(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(opsRepairProcessInstanceCmd)
+
+	require.Equal(t, "ops repair process-instance", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Equal(t, []OutputModeContract{
+		{Name: "one-line", Supported: true},
+		{Name: "json", Supported: true, MachinePreferred: true},
+	}, capability.OutputModes)
+	require.Contains(t, capability.Aliases, "pi")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "process-instance key(s) whose active incidents should be repaired; repeat or combine with stdin '-'",
+	})
+	for _, flag := range capability.Flags {
+		require.NotEqual(t, "incidents-only", flag.Name)
+	}
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "direct-incidents-only",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "select only process instances with direct active incidents",
+	})
+}
+
 func TestCommandPath_TrimsRootName(t *testing.T) {
 	require.Equal(t, "", commandPath(Root()))
 	require.Equal(t, "version", commandPath(versionCmd))

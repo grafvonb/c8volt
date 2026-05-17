@@ -16,14 +16,198 @@ import (
 type WorkflowStepStatus string
 
 const (
-	WorkflowStepStatusPlanned            WorkflowStepStatus = "planned"
-	WorkflowStepStatusSkipped            WorkflowStepStatus = "skipped"
+	WorkflowStepStatusPlanned WorkflowStepStatus = "planned"
+	WorkflowStepStatusSkipped WorkflowStepStatus = "skipped"
+	// WorkflowStepStatusNotApplicable means a workflow step does not apply to the selected target.
+	WorkflowStepStatusNotApplicable      WorkflowStepStatus = "not_applicable"
 	WorkflowStepStatusSubmitted          WorkflowStepStatus = "submitted"
 	WorkflowStepStatusConfirmed          WorkflowStepStatus = "confirmed"
 	WorkflowStepStatusConfirmationFailed WorkflowStepStatus = "confirmation_failed"
 	WorkflowStepStatusBlocked            WorkflowStepStatus = "blocked"
 	WorkflowStepStatusFailed             WorkflowStepStatus = "failed"
 )
+
+// RepairTarget identifies the repair workflow entry point.
+type RepairTarget string
+
+const (
+	// RepairTargetIncident repairs incidents selected directly or by incident filters.
+	RepairTargetIncident RepairTarget = "incident"
+	// RepairTargetProcessInstance repairs active incidents associated with selected process instances.
+	RepairTargetProcessInstance RepairTarget = "process_instance"
+)
+
+// RepairDiscoveryMode records how the workflow found its initial target set.
+type RepairDiscoveryMode string
+
+const (
+	// RepairDiscoveryModeKeyed records targets supplied by repeated key flags.
+	RepairDiscoveryModeKeyed RepairDiscoveryMode = "keyed"
+	// RepairDiscoveryModeStdin records targets supplied through stdin.
+	RepairDiscoveryModeStdin RepairDiscoveryMode = "stdin"
+	// RepairDiscoveryModeSearch records targets discovered from filters.
+	RepairDiscoveryModeSearch RepairDiscoveryMode = "search"
+)
+
+// RepairOutcome is the final aggregate state of a repair workflow.
+type RepairOutcome string
+
+const (
+	// RepairOutcomePlanned means discovery and validation completed without mutation.
+	RepairOutcomePlanned RepairOutcome = "planned"
+	// RepairOutcomeRepaired means every requested repair target completed successfully.
+	RepairOutcomeRepaired RepairOutcome = "repaired"
+	// RepairOutcomePartiallyFailed means at least one repair target failed while another succeeded or remained planned.
+	RepairOutcomePartiallyFailed RepairOutcome = "partially_failed"
+	// RepairOutcomeFailed means discovery, planning, or repair failed before a successful target result.
+	RepairOutcomeFailed RepairOutcome = "failed"
+)
+
+// RepairRequest captures one operator repair invocation.
+type RepairRequest struct {
+	CommandName              string                        `json:"commandName,omitempty"`
+	Target                   RepairTarget                  `json:"target,omitempty"`
+	DiscoveryMode            RepairDiscoveryMode           `json:"discoveryMode,omitempty"`
+	InputKeys                typex.Keys                    `json:"inputKeys,omitempty"`
+	IncidentSelection        incident.Filter               `json:"incidentSelection,omitempty"`
+	ProcessInstanceSelection process.ProcessInstanceFilter `json:"processInstanceSelection,omitempty"`
+	DirectIncidentsOnly      bool                          `json:"directIncidentsOnly,omitempty"`
+	BatchSize                int32                         `json:"batchSize,omitempty"`
+	Limit                    int32                         `json:"limit,omitempty"`
+	Workers                  int                           `json:"workers,omitempty"`
+	FailFast                 bool                          `json:"failFast,omitempty"`
+	NoWorkerLimit            bool                          `json:"noWorkerLimit,omitempty"`
+	DryRun                   bool                          `json:"dryRun,omitempty"`
+	AutoConfirm              bool                          `json:"autoConfirm,omitempty"`
+	Automation               bool                          `json:"automation,omitempty"`
+	NoWait                   bool                          `json:"noWait,omitempty"`
+	OutputMode               string                        `json:"outputMode,omitempty"`
+	Variables                map[string]any                `json:"variables,omitempty"`
+	VariablesFile            string                        `json:"variablesFile,omitempty"`
+	RequestedRetries         *int32                        `json:"requestedRetries,omitempty"`
+	RequestedJobTimeout      time.Duration                 `json:"requestedJobTimeout,omitempty"`
+	ReportFile               string                        `json:"reportFile,omitempty"`
+	ReportFormat             string                        `json:"reportFormat,omitempty"`
+	StartedAt                time.Time                     `json:"startedAt,omitempty"`
+}
+
+// RepairFrozenSet captures the immutable target data discovered before mutation.
+type RepairFrozenSet struct {
+	Status                     WorkflowStepStatus                       `json:"status,omitempty"`
+	Target                     RepairTarget                             `json:"target,omitempty"`
+	DiscoveryMode              RepairDiscoveryMode                      `json:"discoveryMode,omitempty"`
+	InputKeys                  typex.Keys                               `json:"inputKeys,omitempty"`
+	IncidentKeys               typex.Keys                               `json:"incidentKeys,omitempty"`
+	ProcessInstanceKeys        typex.Keys                               `json:"processInstanceKeys,omitempty"`
+	SkippedProcessInstanceKeys typex.Keys                               `json:"skippedProcessInstanceKeys,omitempty"`
+	RootProcessKeys            typex.Keys                               `json:"rootProcessKeys,omitempty"`
+	JobKeys                    typex.Keys                               `json:"jobKeys,omitempty"`
+	VariableScopes             typex.Keys                               `json:"variableScopes,omitempty"`
+	OriginalIncidents          []incident.ProcessInstanceIncidentDetail `json:"originalIncidents,omitempty"`
+	IncidentFilters            incident.Filter                          `json:"incidentFilters,omitempty"`
+	ProcessFilters             process.ProcessInstanceFilter            `json:"processFilters,omitempty"`
+	Errors                     []string                                 `json:"errors,omitempty"`
+}
+
+// RepairPlanItem describes the planned or executed steps for one incident.
+type RepairPlanItem struct {
+	IncidentKey            string             `json:"incidentKey,omitempty"`
+	ProcessInstanceKey     string             `json:"processInstanceKey,omitempty"`
+	RootProcessInstanceKey string             `json:"rootProcessInstanceKey,omitempty"`
+	JobKey                 string             `json:"jobKey,omitempty"`
+	VariableScopeKey       string             `json:"variableScopeKey,omitempty"`
+	RequestedVariableNames []string           `json:"requestedVariableNames,omitempty"`
+	RequestedRetries       *int32             `json:"requestedRetries,omitempty"`
+	RequestedTimeout       string             `json:"requestedTimeout,omitempty"`
+	VariableUpdateStatus   WorkflowStepStatus `json:"variableUpdateStatus,omitempty"`
+	RetryUpdateStatus      WorkflowStepStatus `json:"retryUpdateStatus,omitempty"`
+	TimeoutUpdateStatus    WorkflowStepStatus `json:"timeoutUpdateStatus,omitempty"`
+	ResolutionStatus       WorkflowStepStatus `json:"resolutionStatus,omitempty"`
+	ConfirmationStatus     WorkflowStepStatus `json:"confirmationStatus,omitempty"`
+	Notices                []RepairNotice     `json:"notices,omitempty"`
+	Errors                 []string           `json:"errors,omitempty"`
+}
+
+// RepairVariableScopeUpdate represents one deduped process-instance variable mutation scope.
+type RepairVariableScopeUpdate struct {
+	ScopeKey              string             `json:"scopeKey,omitempty"`
+	VariableNames         []string           `json:"variableNames,omitempty"`
+	Payload               map[string]any     `json:"payload,omitempty"`
+	DependentIncidentKeys typex.Keys         `json:"dependentIncidentKeys,omitempty"`
+	Status                WorkflowStepStatus `json:"status,omitempty"`
+	Errors                []string           `json:"errors,omitempty"`
+}
+
+// RepairJobApplicability records whether job repair steps apply to one incident.
+type RepairJobApplicability struct {
+	IncidentKey        string             `json:"incidentKey,omitempty"`
+	JobKey             string             `json:"jobKey,omitempty"`
+	RetryStatus        WorkflowStepStatus `json:"retryStatus,omitempty"`
+	TimeoutStatus      WorkflowStepStatus `json:"timeoutStatus,omitempty"`
+	Reason             string             `json:"reason,omitempty"`
+	RequestedRetries   *int32             `json:"requestedRetries,omitempty"`
+	RequestedTimeout   string             `json:"requestedTimeout,omitempty"`
+	UnsupportedVersion bool               `json:"unsupportedVersion,omitempty"`
+}
+
+// RepairRemainingIncidentSummary captures post-repair incident context for audit output.
+type RepairRemainingIncidentSummary struct {
+	Status     WorkflowStepStatus                       `json:"status,omitempty"`
+	ActiveKeys typex.Keys                               `json:"activeKeys,omitempty"`
+	Incidents  []incident.ProcessInstanceIncidentDetail `json:"incidents,omitempty"`
+	Checked    bool                                     `json:"checked,omitempty"`
+	Errors     []string                                 `json:"errors,omitempty"`
+}
+
+// RepairNotice represents semantic repair context for compact and structured output.
+type RepairNotice struct {
+	Code     string            `json:"code,omitempty"`
+	Severity string            `json:"severity,omitempty"`
+	Message  string            `json:"message,omitempty"`
+	Details  map[string]string `json:"details,omitempty"`
+}
+
+// RepairAuditReport is the stable report model for repair output and audit files.
+type RepairAuditReport struct {
+	SchemaVersion    string                         `json:"schemaVersion,omitempty"`
+	CommandName      string                         `json:"commandName,omitempty"`
+	StartedAt        time.Time                      `json:"startedAt,omitempty"`
+	FinishedAt       time.Time                      `json:"finishedAt,omitempty"`
+	Duration         string                         `json:"duration,omitempty"`
+	DryRun           bool                           `json:"dryRun,omitempty"`
+	C8voltVersion    string                         `json:"c8voltVersion,omitempty"`
+	CamundaVersion   string                         `json:"camundaVersion,omitempty"`
+	ProfileIdentity  string                         `json:"profileIdentity,omitempty"`
+	TenantID         string                         `json:"tenantId,omitempty"`
+	Request          RepairRequest                  `json:"request,omitempty"`
+	FrozenSet        RepairFrozenSet                `json:"frozenSet,omitempty"`
+	Plan             []RepairPlanItem               `json:"plan,omitempty"`
+	VariableUpdates  []RepairVariableScopeUpdate    `json:"variableUpdates,omitempty"`
+	JobApplicability []RepairJobApplicability       `json:"jobApplicability,omitempty"`
+	Remaining        RepairRemainingIncidentSummary `json:"remaining,omitempty"`
+	AutoConfirm      bool                           `json:"autoConfirm,omitempty"`
+	Automation       bool                           `json:"automation,omitempty"`
+	NoWait           bool                           `json:"noWait,omitempty"`
+	FailFast         bool                           `json:"failFast,omitempty"`
+	NoWorkerLimit    bool                           `json:"noWorkerLimit,omitempty"`
+	Errors           []string                       `json:"errors,omitempty"`
+	Notices          []RepairNotice                 `json:"notices,omitempty"`
+	Outcome          RepairOutcome                  `json:"outcome,omitempty"`
+}
+
+// RepairResult carries the full repair workflow result across the facade boundary.
+type RepairResult struct {
+	Request          RepairRequest                  `json:"request,omitempty"`
+	FrozenSet        RepairFrozenSet                `json:"frozenSet,omitempty"`
+	Plan             []RepairPlanItem               `json:"plan,omitempty"`
+	VariableUpdates  []RepairVariableScopeUpdate    `json:"variableUpdates,omitempty"`
+	JobApplicability []RepairJobApplicability       `json:"jobApplicability,omitempty"`
+	Remaining        RepairRemainingIncidentSummary `json:"remaining,omitempty"`
+	Report           RepairAuditReport              `json:"report,omitempty"`
+	Outcome          RepairOutcome                  `json:"outcome,omitempty"`
+	Errors           []string                       `json:"errors,omitempty"`
+	Notices          []RepairNotice                 `json:"notices,omitempty"`
+}
 
 // SmokeTestOutcome is the final state of one ops smoke-test workflow run.
 type SmokeTestOutcome string

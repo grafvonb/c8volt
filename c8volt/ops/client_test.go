@@ -6,6 +6,7 @@ package ops
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"testing"
 	"time"
@@ -725,12 +726,181 @@ func TestClientPurgeAllProcessDefinitionsMapsDiscoveryFields(t *testing.T) {
 	require.Equal(t, "latest_only_scope", got.Notices[0].Code)
 }
 
+// TestClientRepairIncidentsMapsServiceBoundary verifies repair requests remain thin facade conversions.
+func TestClientRepairIncidentsMapsServiceBoundary(t *testing.T) {
+	t.Parallel()
+
+	started := time.Date(2026, 5, 17, 14, 0, 0, 0, time.UTC)
+	retries := int32(1)
+	api := stubOpsService{
+		repairIncidents: func(_ context.Context, request d.OpsRepairRequest, opts ...services.CallOption) (d.OpsRepairResult, error) {
+			require.Equal(t, d.OpsRepairRequest{
+				CommandName:         "ops repair incident",
+				Target:              d.OpsRepairTargetIncident,
+				DiscoveryMode:       d.OpsRepairDiscoveryModeKeyed,
+				InputKeys:           typex.Keys{"inc-1", "inc-2"},
+				IncidentSelection:   d.IncidentFilter{State: "ACTIVE", ErrorType: "JOB_NO_RETRIES"},
+				BatchSize:           50,
+				Limit:               2,
+				Workers:             3,
+				FailFast:            true,
+				NoWorkerLimit:       true,
+				DryRun:              true,
+				AutoConfirm:         true,
+				Automation:          true,
+				NoWait:              true,
+				OutputMode:          "json",
+				Variables:           map[string]any{"approved": true},
+				VariablesFile:       "vars.json",
+				RequestedRetries:    &retries,
+				RequestedJobTimeout: 5 * time.Minute,
+				ReportFile:          "repair.json",
+				ReportFormat:        "json",
+				StartedAt:           started,
+			}, request)
+			cfg := services.ApplyCallOptions(opts)
+			require.True(t, cfg.Verbose)
+			require.True(t, cfg.NoWait)
+			require.True(t, cfg.FailFast)
+			return d.OpsRepairResult{
+				Request: request,
+				FrozenSet: d.OpsRepairFrozenSet{
+					Status:            d.OpsWorkflowStepStatusPlanned,
+					Target:            d.OpsRepairTargetIncident,
+					DiscoveryMode:     d.OpsRepairDiscoveryModeKeyed,
+					InputKeys:         typex.Keys{"inc-1", "inc-2"},
+					IncidentKeys:      typex.Keys{"inc-1", "inc-2"},
+					JobKeys:           typex.Keys{"job-1"},
+					VariableScopes:    typex.Keys{"pi-1"},
+					IncidentFilters:   request.IncidentSelection,
+					OriginalIncidents: []d.ProcessInstanceIncidentDetail{{IncidentKey: "inc-1", ProcessInstanceKey: "pi-1", JobKey: "job-1"}},
+				},
+				Plan: []d.OpsRepairPlanItem{{
+					IncidentKey:            "inc-1",
+					ProcessInstanceKey:     "pi-1",
+					JobKey:                 "job-1",
+					RequestedRetries:       &retries,
+					RetryUpdateStatus:      d.OpsWorkflowStepStatusPlanned,
+					TimeoutUpdateStatus:    d.OpsWorkflowStepStatusNotApplicable,
+					ResolutionStatus:       d.OpsWorkflowStepStatusPlanned,
+					ConfirmationStatus:     d.OpsWorkflowStepStatusSkipped,
+					RequestedVariableNames: []string{"approved"},
+				}},
+				VariableUpdates: []d.OpsRepairVariableScopeUpdate{{
+					ScopeKey:              "pi-1",
+					VariableNames:         []string{"approved"},
+					Payload:               map[string]any{"approved": true},
+					DependentIncidentKeys: typex.Keys{"inc-1"},
+					Status:                d.OpsWorkflowStepStatusPlanned,
+				}},
+				JobApplicability: []d.OpsRepairJobApplicability{{
+					IncidentKey:      "inc-1",
+					JobKey:           "job-1",
+					RetryStatus:      d.OpsWorkflowStepStatusPlanned,
+					TimeoutStatus:    d.OpsWorkflowStepStatusNotApplicable,
+					RequestedRetries: &retries,
+					Reason:           "no timeout requested",
+				}},
+				Remaining: d.OpsRepairRemainingIncidentSummary{Status: d.OpsWorkflowStepStatusSkipped},
+				Report: d.OpsRepairAuditReport{
+					SchemaVersion:    "ops.repair.v1",
+					CommandName:      "ops repair incident",
+					StartedAt:        started,
+					DryRun:           true,
+					Request:          request,
+					FrozenSet:        d.OpsRepairFrozenSet{Status: d.OpsWorkflowStepStatusPlanned, Target: d.OpsRepairTargetIncident, IncidentKeys: typex.Keys{"inc-1"}},
+					JobApplicability: []d.OpsRepairJobApplicability{{IncidentKey: "inc-1", TimeoutStatus: d.OpsWorkflowStepStatusNotApplicable}},
+					Outcome:          d.OpsRepairOutcomePlanned,
+				},
+				Outcome: d.OpsRepairOutcomePlanned,
+				Notices: []d.OpsRepairWorkflowNotice{{Code: "job_timeout_not_requested", Severity: "info", Details: map[string]string{"incidentKey": "inc-1"}}},
+			}, nil
+		},
+	}
+
+	got, err := New(api, slog.Default()).RepairIncidents(context.Background(), RepairRequest{
+		CommandName:         "ops repair incident",
+		Target:              RepairTargetIncident,
+		DiscoveryMode:       RepairDiscoveryModeKeyed,
+		InputKeys:           typex.Keys{"inc-1", "inc-2"},
+		IncidentSelection:   incident.Filter{State: "ACTIVE", ErrorType: "JOB_NO_RETRIES"},
+		BatchSize:           50,
+		Limit:               2,
+		Workers:             3,
+		FailFast:            true,
+		NoWorkerLimit:       true,
+		DryRun:              true,
+		AutoConfirm:         true,
+		Automation:          true,
+		NoWait:              true,
+		OutputMode:          "json",
+		Variables:           map[string]any{"approved": true},
+		VariablesFile:       "vars.json",
+		RequestedRetries:    &retries,
+		RequestedJobTimeout: 5 * time.Minute,
+		ReportFile:          "repair.json",
+		ReportFormat:        "json",
+		StartedAt:           started,
+	}, foptions.WithVerbose(), foptions.WithNoWait(), foptions.WithFailFast())
+
+	require.NoError(t, err)
+	require.Equal(t, RepairOutcomePlanned, got.Outcome)
+	require.Equal(t, RepairTargetIncident, got.FrozenSet.Target)
+	require.Equal(t, []string{"inc-1", "inc-2"}, []string(got.FrozenSet.IncidentKeys))
+	require.Equal(t, "job-1", got.FrozenSet.OriginalIncidents[0].JobKey)
+	require.Equal(t, WorkflowStepStatusNotApplicable, got.Plan[0].TimeoutUpdateStatus)
+	require.Equal(t, []string{"approved"}, got.VariableUpdates[0].VariableNames)
+	require.Equal(t, WorkflowStepStatusNotApplicable, got.JobApplicability[0].TimeoutStatus)
+	require.Equal(t, "job_timeout_not_requested", got.Notices[0].Code)
+	require.Equal(t, RepairOutcomePlanned, got.Report.Outcome)
+	require.Equal(t, []string{"inc-1"}, []string(got.Report.FrozenSet.IncidentKeys))
+}
+
+// TestClientRepairIncidentsMapsServiceErrors verifies explicit repair returns the partial result with facade-normalized errors.
+func TestClientRepairIncidentsMapsServiceErrors(t *testing.T) {
+	t.Parallel()
+
+	api := stubOpsService{
+		repairIncidents: func(_ context.Context, request d.OpsRepairRequest, _ ...services.CallOption) (d.OpsRepairResult, error) {
+			return d.OpsRepairResult{
+				Request: request,
+				FrozenSet: d.OpsRepairFrozenSet{
+					Status:       d.OpsWorkflowStepStatusFailed,
+					Target:       d.OpsRepairTargetIncident,
+					IncidentKeys: typex.Keys{"2251799813685249"},
+					Errors:       []string{"boom"},
+				},
+				Outcome: d.OpsRepairOutcomeFailed,
+				Errors:  []string{"boom"},
+			}, fmt.Errorf("%w: boom", d.ErrValidation)
+		},
+	}
+
+	got, err := New(api, slog.Default()).RepairIncidents(context.Background(), RepairRequest{
+		CommandName: "ops repair incident",
+		Target:      RepairTargetIncident,
+		InputKeys:   typex.Keys{"2251799813685249"},
+		RequestedRetries: func() *int32 {
+			v := int32(1)
+			return &v
+		}(),
+	})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "boom")
+	require.Equal(t, RepairOutcomeFailed, got.Outcome)
+	require.Equal(t, WorkflowStepStatusFailed, got.FrozenSet.Status)
+	require.Equal(t, []string{"2251799813685249"}, []string(got.FrozenSet.IncidentKeys))
+}
+
 type stubOpsService struct {
 	smokeTest                  func(context.Context, d.SmokeTestRequest, ...services.CallOption) (d.SmokeTestResult, error)
 	purge                      func(context.Context, d.OrphanPurgeRequest, ...services.CallOption) (d.OrphanPurgeResult, error)
 	retention                  func(context.Context, d.RetentionPolicyRequest, ...services.CallOption) (d.RetentionPolicyResult, error)
 	incidentPurge              func(context.Context, d.IncidentPurgeRequest, ...services.CallOption) (d.IncidentPurgeResult, error)
 	allProcessDefinitionsPurge func(context.Context, d.AllProcessDefinitionsPurgeRequest, ...services.CallOption) (d.AllProcessDefinitionsPurgeResult, error)
+	repairIncidents            func(context.Context, d.OpsRepairRequest, ...services.CallOption) (d.OpsRepairResult, error)
+	repairProcessInstances     func(context.Context, d.OpsRepairRequest, ...services.CallOption) (d.OpsRepairResult, error)
 }
 
 func (s stubOpsService) ExecuteSmokeTest(ctx context.Context, request d.SmokeTestRequest, opts ...services.CallOption) (d.SmokeTestResult, error) {
@@ -766,6 +936,20 @@ func (s stubOpsService) PurgeAllProcessDefinitions(ctx context.Context, request 
 		panic("unexpected call")
 	}
 	return s.allProcessDefinitionsPurge(ctx, request, opts...)
+}
+
+func (s stubOpsService) RepairIncidents(ctx context.Context, request d.OpsRepairRequest, opts ...services.CallOption) (d.OpsRepairResult, error) {
+	if s.repairIncidents == nil {
+		panic("unexpected call")
+	}
+	return s.repairIncidents(ctx, request, opts...)
+}
+
+func (s stubOpsService) RepairProcessInstances(ctx context.Context, request d.OpsRepairRequest, opts ...services.CallOption) (d.OpsRepairResult, error) {
+	if s.repairProcessInstances == nil {
+		panic("unexpected call")
+	}
+	return s.repairProcessInstances(ctx, request, opts...)
 }
 
 var _ opsvc.API = stubOpsService{}

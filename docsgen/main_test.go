@@ -318,12 +318,40 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 	repairDoc := readGeneratedDocForTest(t, out, "c8volt_ops_repair.md")
 	for _, want := range []string{
 		"Discover repair and remediation workflows",
-		"Target-specific subcommands will define their own target semantics",
+		"lists target-specific remediation workflows",
 		"./c8volt ops repair --help",
+		"incident",
+		"process-instance",
 	} {
 		if !strings.Contains(repairDoc, want) {
 			t.Fatalf("expected generated ops repair docs to contain %q, got %q", want, repairDoc)
 		}
+	}
+	repairIncidentDoc := readGeneratedDocForTest(t, out, "c8volt_ops_repair_incident.md")
+	for _, want := range []string{
+		"Repair incidents by key",
+		"--key strings",
+		"--retries int32",
+		"--job-timeout string",
+		"[c8volt ops repair](c8volt_ops_repair)",
+	} {
+		if !strings.Contains(repairIncidentDoc, want) {
+			t.Fatalf("expected generated ops repair incident docs to contain %q, got %q", want, repairIncidentDoc)
+		}
+	}
+	repairProcessInstanceDoc := readGeneratedDocForTest(t, out, "c8volt_ops_repair_process-instance.md")
+	for _, want := range []string{
+		"Repair incidents selected by process instances",
+		"--key strings",
+		"--direct-incidents-only",
+		"[c8volt ops repair](c8volt_ops_repair)",
+	} {
+		if !strings.Contains(repairProcessInstanceDoc, want) {
+			t.Fatalf("expected generated ops repair process-instance docs to contain %q, got %q", want, repairProcessInstanceDoc)
+		}
+	}
+	if strings.Contains(repairProcessInstanceDoc, "--incidents-only") {
+		t.Fatalf("expected generated ops repair process-instance docs not to contain --incidents-only, got %q", repairProcessInstanceDoc)
 	}
 
 	for _, unwanted := range []string{
@@ -331,12 +359,14 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"smoke-test",
 		"--key string",
 		"--key strings",
-		"repair incident",
 		"repair process-instance",
 	} {
-		if strings.Contains(opsDoc, unwanted) || strings.Contains(repairDoc, unwanted) {
+		if strings.Contains(opsDoc, unwanted) {
 			t.Fatalf("expected generated ops docs to omit %q", unwanted)
 		}
+	}
+	if strings.Contains(repairDoc, "--key strings") {
+		t.Fatalf("expected generated ops repair grouping docs to omit target flags")
 	}
 }
 

@@ -261,6 +261,9 @@ func TestPurgeOrphanProcessInstancesUsesSuppliedLoggerForDeleteSummary(t *testin
 type stubProcessInstanceAPI struct {
 	pisvc.API
 	createProcessInstance func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)
+	getProcessInstances   func(context.Context, typex.Keys, int, ...services.CallOption) ([]d.ProcessInstance, error)
+	searchVariables       func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceVariable, error)
+	updateVariables       func(context.Context, string, map[string]any, ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error)
 	search                func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
 	searchPage            func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
 	filterOrphans         func(context.Context, []d.ProcessInstance, ...services.CallOption) ([]d.ProcessInstance, error)
@@ -276,6 +279,27 @@ func (s stubProcessInstanceAPI) CreateProcessInstance(ctx context.Context, data 
 		panic("unexpected create")
 	}
 	return s.createProcessInstance(ctx, data, opts...)
+}
+
+func (s stubProcessInstanceAPI) GetProcessInstances(ctx context.Context, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+	if s.getProcessInstances == nil {
+		panic("unexpected get process instances")
+	}
+	return s.getProcessInstances(ctx, keys, wantedWorkers, opts...)
+}
+
+func (s stubProcessInstanceAPI) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+	if s.searchVariables == nil {
+		panic("unexpected search variables")
+	}
+	return s.searchVariables(ctx, key, opts...)
+}
+
+func (s stubProcessInstanceAPI) UpdateProcessInstanceVariables(ctx context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+	if s.updateVariables == nil {
+		panic("unexpected update variables")
+	}
+	return s.updateVariables(ctx, key, variables, opts...)
 }
 
 func (s stubProcessInstanceAPI) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {

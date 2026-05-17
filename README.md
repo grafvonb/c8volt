@@ -45,6 +45,7 @@ That is the gap `c8volt` closes.
 - list, fetch, filter, and count incidents directly
 - inspect process trees with incidents and variables in context
 - resolve incident keys or process-instance incidents with dry-run previews
+- discover high-level ops workflow groups before concrete playbooks are added
 - preview, cancel, and delete process-instance families safely
 - wait for state or incident conditions in scripts
 - search, page, count, and batch process-instance results
@@ -501,6 +502,7 @@ For supported command paths, combine `--automation` with `--json` when you need 
 ./c8volt --automation --json update job --key <job-key> --retries 3 --auto-confirm
 ./c8volt --automation --json resolve incident --key <incident-key> --dry-run
 ./c8volt --automation --json resolve pi --key <process-instance-key>
+./c8volt --automation --json ops repair incident --key <incident-key> --dry-run
 ./c8volt --automation --json get pi --bpmn-process-id C89_SimpleUserTask_Process --state active --limit 5
 ```
 
@@ -527,6 +529,8 @@ Examples:
 ./c8volt get pi --key <process-instance-key> --with-incidents
 ./c8volt resolve pi --key <process-instance-key> --dry-run
 ./c8volt resolve incident --key <incident-key>
+./c8volt ops repair incident --key <incident-key> --dry-run
+./c8volt ops repair process-instance --key <process-instance-key> --dry-run
 ./c8volt get incident --state active --error-type job_no_retries --pi-keys-only | ./c8volt cancel pi --dry-run -
 ./c8volt get pi --bpmn-process-id C89_SimpleUserTask_Process --state active --limit 3 --keys-only | ./c8volt cancel pi --dry-run -
 ```
@@ -549,6 +553,10 @@ c8volt
 |-- resolve                   Resolve operational incidents
 |   |-- incident              Resolve incidents by key
 |   `-- process-instance      Resolve active incidents discovered for process instances
+|-- ops                       Discover high-level operational workflows
+|   |-- execute               Discover predefined operational playbooks
+|   |-- purge                 Discover destructive operational cleanup workflows
+|   `-- repair                Discover repair and remediation workflows
 |-- walk                      Inspect parent/child relationships
 |   `-- pi                    Walk ancestors, descendants, or full family trees
 |-- cancel                    Cancel resources and wait for confirmation
@@ -613,6 +621,12 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 ./c8volt resolve incident --key <incident-key>
 ./c8volt resolve pi --key <process-instance-key> --dry-run
 ./c8volt resolve pi --key <process-instance-key>
+
+# Preview and repair incidents with fixed targets and audit reports.
+./c8volt ops repair incident --key <incident-key> --dry-run
+./c8volt ops repair incident --key <incident-key> --retries 3 --job-timeout 5m --auto-confirm --report-file repair.md
+./c8volt ops repair process-instance --key <process-instance-key> --dry-run
+./c8volt ops repair process-instance --state active --limit 25 --dry-run
 
 # Find active work, incidents, and exact instance details.
 ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 5
