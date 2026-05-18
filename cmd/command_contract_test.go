@@ -822,6 +822,9 @@ func TestCommandCapabilityForCommand_OpsExecuteRetentionPolicyContract(t *testin
 	capability := commandCapabilityForCommand(opsExecuteRetentionPolicyCmd)
 
 	require.Equal(t, "ops execute retention-policy", capability.Path)
+	require.Contains(t, capability.Aliases, "ret-pol")
+	require.Contains(t, capability.Aliases, "rp")
+	require.NotContains(t, capability.Aliases, "rt")
 	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
 	require.Equal(t, ContractSupportFull, capability.ContractSupport)
 	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)

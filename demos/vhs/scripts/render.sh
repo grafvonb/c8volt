@@ -5,7 +5,15 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-SCENARIO="${1:-fast-start}"
+if [[ $# -ne 1 ]]; then
+  echo "usage: $0 <tape-name>" >&2
+  echo >&2
+  echo "available tapes:" >&2
+  find "${ROOT_DIR}/demos/vhs" -maxdepth 1 -type f -name '*.tape' -exec basename {} .tape \; | sort | sed 's/^/  /' >&2
+  exit 1
+fi
+
+SCENARIO="${1%.tape}"
 TAPE="${ROOT_DIR}/demos/vhs/${SCENARIO}.tape"
 
 if [[ ! -f "${TAPE}" ]]; then

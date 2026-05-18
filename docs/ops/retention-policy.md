@@ -16,6 +16,8 @@ Retention cleanup is simple to describe but risky to perform by hand. The operat
 
 `c8volt ops execute retention-policy` applies a c8volt-owned retention workflow. It discovers finished process instances older than the requested age, freezes the retention seed set, builds the normal delete plan, executes only after validation and confirmation, and records what happened.
 
+Aliases: `ret-pol`, `rp`.
+
 ## Use When
 
 - deleting old completed or terminated process instances from a supported Camunda cluster

@@ -35,7 +35,7 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
   ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25 --auto-confirm
   ./c8volt ops execute retention-policy --retention-days 90 --dry-run --report-file retention-report.md
   ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25 --auto-confirm --report-file retention-report.json --report-format json`,
-	Aliases: []string{"ret-pol", "rt"},
+	Aliases: []string{"ret-pol", "rp"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := validateOpsExecuteRetentionPolicyFlags(cmd); err != nil {
