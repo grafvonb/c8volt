@@ -60,10 +60,10 @@ binary into `/tmp/c8volt-vhs/bin/c8volt`, writes the recording-only
 Generated media is written to:
 
 - `docs/assets/screencasts/fast-start.gif`
-- `docs/assets/screencasts/ops-smoke-test.gif`
-- `docs/assets/screencasts/ops-retention-policy.gif`
-- `docs/assets/screencasts/ops-orphan-process-instances.gif`
-- `docs/assets/screencasts/ops-purge-pi-with-incidents.gif`
-- `docs/assets/screencasts/ops-all-process-definitions.gif`
+- `docs/assets/screencasts/ops-execute-smoke-test.gif`
+- `docs/assets/screencasts/ops-execute-retention-policy.gif`
+- `docs/assets/screencasts/ops-purge-orphan-process-instances.gif`
+- `docs/assets/screencasts/ops-purge-process-instances-with-incidents.gif`
+- `docs/assets/screencasts/ops-purge-all-process-definitions.gif`
 - `docs/assets/screencasts/ops-repair-incident.gif`
 - `docs/assets/screencasts/ops-repair-process-instance.gif`

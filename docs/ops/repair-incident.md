@@ -1,5 +1,5 @@
 ---
-title: "Incident Repair"
+title: "Repair Incident"
 permalink: /ops/repair-incident/
 parent: "C8 Ops CLI"
 nav_order: 6

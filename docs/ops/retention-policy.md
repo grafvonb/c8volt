@@ -1,5 +1,5 @@
 ---
-title: "Retention Policy"
+title: "Execute Retention Policy"
 permalink: /ops/retention-policy/
 parent: "C8 Ops CLI"
 nav_order: 2
@@ -93,7 +93,7 @@ Suggested outcomes are `planned`, `deleted`, `partially_failed`, and `failed`.
 
 ## Demo
 
-The initial VHS source is `demos/vhs/ops-retention-policy.tape`.
+The initial VHS source is `demos/vhs/ops-execute-retention-policy.tape`.
 
 The demo should show the preview-first path:
 

@@ -1,5 +1,5 @@
 ---
-title: "Orphan Process Instances"
+title: "Purge Orphan Process Instances"
 permalink: /ops/orphan-process-instances/
 parent: "C8 Ops CLI"
 nav_order: 3
@@ -96,7 +96,7 @@ Report format is inferred from `--report-file` unless `--report-format markdown|
 
 ## Demo
 
-The VHS source is `demos/vhs/ops-orphan-process-instances.tape`.
+The VHS source is `demos/vhs/ops-purge-orphan-process-instances.tape`.
 
 ```bash
 c8volt ops purge orphan-process-instances --dry-run

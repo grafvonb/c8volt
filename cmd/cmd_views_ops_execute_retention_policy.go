@@ -202,7 +202,7 @@ func renderOpsExecuteRetentionPolicyJSONReport(report ops.RetentionAuditReport) 
 
 func renderOpsExecuteRetentionPolicyMarkdownReport(report ops.RetentionAuditReport, cfg *config.Config) ([]byte, error) {
 	var out strings.Builder
-	out.WriteString("# Retention Policy Audit Report\n\n")
+	out.WriteString("# Execute Retention Policy Audit Report\n\n")
 	writeMarkdownReportField(&out, "Schema Version", report.SchemaVersion)
 	writeMarkdownReportField(&out, "Command", report.CommandName)
 	writeMarkdownReportField(&out, "Started", formatOpsPurgeReportTime(report.StartedAt, cfg))

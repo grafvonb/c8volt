@@ -1,5 +1,5 @@
 ---
-title: "All Process Definitions"
+title: "Purge All Process Definitions"
 permalink: /ops/all-process-definitions/
 parent: "C8 Ops CLI"
 nav_order: 5
@@ -96,7 +96,7 @@ Report format is inferred from `--report-file` unless `--report-format markdown|
 
 ## Demo
 
-The VHS source is `demos/vhs/ops-all-process-definitions.tape`.
+The VHS source is `demos/vhs/ops-purge-all-process-definitions.tape`.
 
 ```bash
 c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run

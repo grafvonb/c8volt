@@ -128,7 +128,7 @@ func TestRenderOpsRepairMarkdownReport(t *testing.T) {
 
 	require.NoError(t, err)
 	output := string(data)
-	require.Contains(t, output, "# Repair Audit Report")
+	require.Contains(t, output, "# Repair Incident Audit Report")
 	require.Contains(t, output, "- Schema Version: ops.repair.v1")
 	require.Contains(t, output, "- Command: ops repair incident")
 	require.Contains(t, output, "- Dry Run: true")

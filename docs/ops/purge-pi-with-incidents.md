@@ -1,5 +1,5 @@
 ---
-title: "Incident-Based Purge"
+title: "Purge Process Instances With Incidents"
 permalink: /ops/purge-pi-with-incidents/
 parent: "C8 Ops CLI"
 nav_order: 4
@@ -113,7 +113,7 @@ Human-facing Markdown should use candidate terminology: candidate incidents, can
 
 ## Demo
 
-The initial VHS source is `demos/vhs/ops-purge-pi-with-incidents.tape`.
+The initial VHS source is `demos/vhs/ops-purge-process-instances-with-incidents.tape`.
 
 The demo should show the preview-first path:
 

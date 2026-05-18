@@ -333,7 +333,7 @@ func TestOpsExecuteRetentionPolicyWritesMarkdownReport(t *testing.T) {
 	require.Contains(t, output, "report: written "+reportPath)
 	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: planned; no changes applied"))
 	report := readReportFile(t, reportPath)
-	require.Contains(t, report, "# Retention Policy Audit Report")
+	require.Contains(t, report, "# Execute Retention Policy Audit Report")
 	require.Contains(t, report, "- Command: ops execute retention-policy")
 	require.Contains(t, report, "- Dry Run: true")
 	require.Contains(t, report, "- Retention Days: 90")

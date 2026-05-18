@@ -1,4 +1,4 @@
-Output docs/assets/screencasts/ops-purge-pi-with-incidents.gif
+Output docs/assets/screencasts/ops-purge-all-process-definitions.gif
 
 Require zsh
 
@@ -28,23 +28,23 @@ Show
 Wait
 Sleep 2s
 Hide
-Type "printf '\\033[1A\\033[2K%s\\n' 'Preview incident-based process-instance purge.'"
+Type "printf '\\033[1A\\033[2K%s\\n' 'Preview process-definition purge and inspect impact.'"
 Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run"
+Type "./c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --dry-run"
 Enter
 Wait
 
 Sleep 1s
 Hide
-Type "printf '\\033[1A\\033[2K\\n%s\\n' 'Run the purge workflow and write an audit report.'"
+Type "printf '\\033[1A\\033[2K\\n%s\\n' 'Run process-definition purge and write an audit report.'"
 Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt ops purge process-instances-with-incidents --state active --error-type job_no_retries --limit 5 --auto-confirm --force --report-file /tmp/c8volt-vhs/reports/incident-purge.md"
+Type "./c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --auto-confirm --force --report-file /tmp/c8volt-vhs/reports/process-definition-purge.md"
 Enter
 Wait
 
@@ -55,6 +55,6 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "sed -n '1,80p' /tmp/c8volt-vhs/reports/incident-purge.md"
+Type "sed -n '1,80p' /tmp/c8volt-vhs/reports/process-definition-purge.md"
 Enter
 Wait

@@ -1,4 +1,4 @@
-Output docs/assets/screencasts/ops-retention-policy.gif
+Output docs/assets/screencasts/ops-execute-retention-policy.gif
 
 Require zsh
 

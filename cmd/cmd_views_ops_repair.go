@@ -286,7 +286,7 @@ func renderOpsRepairJSONReport(report ops.RepairAuditReport) ([]byte, error) {
 // renderOpsRepairMarkdownReport renders the structured repair audit model as readable Markdown.
 func renderOpsRepairMarkdownReport(report ops.RepairAuditReport, cfg *config.Config) ([]byte, error) {
 	var out strings.Builder
-	out.WriteString("# Repair Audit Report\n\n")
+	out.WriteString("# " + opsRepairMarkdownReportTitle(report) + "\n\n")
 	writeMarkdownReportField(&out, "Schema Version", report.SchemaVersion)
 	writeMarkdownReportField(&out, "Command", report.CommandName)
 	writeMarkdownReportField(&out, "Started", formatOpsPurgeReportTime(report.StartedAt, cfg))
@@ -349,6 +349,17 @@ func renderOpsRepairMarkdownReport(report ops.RepairAuditReport, cfg *config.Con
 	writeMarkdownReportList(&out, "Run Errors", report.Errors)
 
 	return []byte(out.String()), nil
+}
+
+func opsRepairMarkdownReportTitle(report ops.RepairAuditReport) string {
+	switch report.Request.Target {
+	case ops.RepairTargetIncident:
+		return "Repair Incident Audit Report"
+	case ops.RepairTargetProcessInstance:
+		return "Repair Process Instance Audit Report"
+	default:
+		return "Repair Audit Report"
+	}
 }
 
 // opsRepairReportVariableNames returns sorted requested variable names for report summaries.

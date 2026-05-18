@@ -1,5 +1,5 @@
 ---
-title: "Process-Instance Repair"
+title: "Repair Process Instance"
 permalink: /ops/repair-process-instance/
 parent: "C8 Ops CLI"
 nav_order: 7

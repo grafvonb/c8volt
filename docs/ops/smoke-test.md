@@ -1,5 +1,5 @@
 ---
-title: "Smoke Test"
+title: "Execute Smoke Test"
 permalink: /ops/smoke-test/
 parent: "C8 Ops CLI"
 nav_order: 1
@@ -97,7 +97,7 @@ Important fields include selected fixture, BPMN process ID, deployed process-def
 
 ## Demo
 
-The initial VHS source is `demos/vhs/ops-smoke-test.tape`.
+The initial VHS source is `demos/vhs/ops-execute-smoke-test.tape`.
 
 The demo should show the preview-first path:
 

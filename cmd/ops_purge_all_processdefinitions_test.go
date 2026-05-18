@@ -429,7 +429,7 @@ func TestOpsPurgeAllProcessDefinitionsWritesMarkdownReport(t *testing.T) {
 	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: planned; no changes applied"))
 	require.Empty(t, deleted.Snapshot())
 	report := readReportFile(t, reportPath)
-	require.Contains(t, report, "# All Process Definitions Purge Audit Report")
+	require.Contains(t, report, "# Purge All Process Definitions Audit Report")
 	require.Contains(t, report, "- Command: ops purge all-process-definitions")
 	require.Contains(t, report, "- Dry Run: true")
 	require.Contains(t, report, "- Camunda Version: 8.9")

@@ -1,4 +1,4 @@
-Output docs/assets/screencasts/ops-all-process-definitions.gif
+Output docs/assets/screencasts/ops-purge-orphan-process-instances.gif
 
 Require zsh
 
@@ -28,23 +28,23 @@ Show
 Wait
 Sleep 2s
 Hide
-Type "printf '\\033[1A\\033[2K%s\\n' 'Preview process-definition purge and inspect impact.'"
+Type "printf '\\033[1A\\033[2K%s\\n' 'Preview orphan process-instance purge before deleting anything.'"
 Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --dry-run"
+Type "./c8volt ops purge orphan-process-instances --dry-run"
 Enter
 Wait
 
 Sleep 1s
 Hide
-Type "printf '\\033[1A\\033[2K\\n%s\\n' 'Run process-definition purge and write an audit report.'"
+Type "printf '\\033[1A\\033[2K\\n%s\\n' 'Run orphan process-instance purge and write an audit report.'"
 Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --auto-confirm --force --report-file /tmp/c8volt-vhs/reports/process-definition-purge.md"
+Type "./c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm --report-file /tmp/c8volt-vhs/reports/orphan-purge.md"
 Enter
 Wait
 
@@ -55,7 +55,6 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "sed -n '1,80p' /tmp/c8volt-vhs/reports/process-definition-purge.md"
+Type "sed -n '1,80p' /tmp/c8volt-vhs/reports/orphan-purge.md"
 Enter
 Wait
-

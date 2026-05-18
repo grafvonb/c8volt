@@ -1,4 +1,4 @@
-Output docs/assets/screencasts/ops-smoke-test.gif
+Output docs/assets/screencasts/ops-execute-smoke-test.gif
 
 Require zsh
 
@@ -58,4 +58,3 @@ Wait
 Type "sed -n '1,80p' /tmp/c8volt-vhs/reports/smoke-test.md"
 Enter
 Wait
-
