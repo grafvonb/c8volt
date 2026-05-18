@@ -1,6 +1,6 @@
 ---
 title: "Execute Retention Policy"
-permalink: /ops/retention-policy/
+permalink: /ops/execute-retention-policy/
 parent: "C8 Ops CLI"
 nav_order: 2
 has_toc: true

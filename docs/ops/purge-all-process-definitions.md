@@ -1,6 +1,6 @@
 ---
 title: "Purge All Process Definitions"
-permalink: /ops/all-process-definitions/
+permalink: /ops/purge-all-process-definitions/
 parent: "C8 Ops CLI"
 nav_order: 5
 has_toc: true

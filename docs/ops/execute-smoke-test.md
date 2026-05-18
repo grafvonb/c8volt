@@ -1,6 +1,6 @@
 ---
 title: "Execute Smoke Test"
-permalink: /ops/smoke-test/
+permalink: /ops/execute-smoke-test/
 parent: "C8 Ops CLI"
 nav_order: 1
 has_toc: true
@@ -97,9 +97,15 @@ Important fields include selected fixture, BPMN process ID, deployed process-def
 
 ## Demo
 
-The initial VHS source is `demos/vhs/ops-execute-smoke-test.tape`.
+<img src="../assets/screencasts/ops-execute-smoke-test.gif" alt="c8volt ops execute smoke-test demo" />
 
-The demo should show the preview-first path:
+The recording shows the operator path for proving a profile end to end: inspect the command, run a dry-run preview, execute with confirmation already handled, and open the generated audit report.
+
+Source tape: `demos/vhs/ops-execute-smoke-test.tape`
+
+Render target: `make demo-vhs-ops-execute-smoke-test` or `make demo-vhs-st`
+
+Core commands shown:
 
 ```bash
 c8volt ops execute smoke-test --dry-run

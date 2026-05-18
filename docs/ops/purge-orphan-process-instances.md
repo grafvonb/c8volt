@@ -1,6 +1,6 @@
 ---
 title: "Purge Orphan Process Instances"
-permalink: /ops/orphan-process-instances/
+permalink: /ops/purge-orphan-process-instances/
 parent: "C8 Ops CLI"
 nav_order: 3
 has_toc: true

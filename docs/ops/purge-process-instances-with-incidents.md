@@ -1,6 +1,6 @@
 ---
 title: "Purge Process Instances With Incidents"
-permalink: /ops/purge-pi-with-incidents/
+permalink: /ops/purge-process-instances-with-incidents/
 parent: "C8 Ops CLI"
 nav_order: 4
 has_toc: true
