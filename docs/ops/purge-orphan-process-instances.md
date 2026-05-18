@@ -16,7 +16,18 @@ Orphan child process instances are hard to delete safely because the operator fi
 
 `c8volt ops purge orphan-process-instances` discovers orphan child process instances, freezes their keys, runs the shared process-instance delete preview, and either reports the plan with `--dry-run` or deletes only after confirmation. It supports deterministic JSON output and Markdown or JSON audit reports.
 
-Aliases: `orphan-pi`, `opi`.
+## In Action
+
+The recording previews the orphan process-instance purge before deleting anything, then runs the purge, confirms the prompt, writes an audit report, and opens the first report section. It shows the normal purge rhythm: freeze the candidate set, inspect the plan, confirm the mutation, then keep the evidence.
+
+<img src="../../assets/screencasts/ops-purge-orphan-process-instances.gif" alt="c8volt ops purge orphan-process-instances demo" />
+
+Core commands shown:
+
+```bash
+c8volt ops purge orphan-process-instances --dry-run
+c8volt ops purge orphan-process-instances --report-file /tmp/c8volt-vhs/reports/orphan-purge.md
+```
 
 ## Use When
 
@@ -93,15 +104,6 @@ Deletion submits root process-instance trees through the existing process-instan
 Reports use schema version `ops.orphan-process-instances.v1`. They include command metadata, selection filters, discovered candidate keys, delete plan root and affected keys, deletion item status, confirmation/no-wait flags, errors, and outcome.
 
 Report format is inferred from `--report-file` unless `--report-format markdown|json` is supplied.
-
-## Demo
-
-The VHS source is `demos/vhs/ops-purge-orphan-process-instances.tape`.
-
-```bash
-c8volt ops purge orphan-process-instances --dry-run
-c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm --report-file /tmp/c8volt-vhs/reports/orphan-purge.md
-```
 
 ## Failure And Safety Notes
 

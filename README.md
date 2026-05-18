@@ -41,6 +41,8 @@ When the plan is right, run for real with `--auto-confirm`, `--automation`, `--j
 
 ## c8volt in Action
 
+The fast-start recording walks through the everyday c8volt loop: verify the connection, inspect and deploy bundled BPMN, start process instances, inspect them, walk their execution tree, and clean everything up. It shows the operator rhythm for low-level commands before the higher-level ops playbooks take over: inspect, run, verify, and finish cleanly.
+
 <img src="./docs/assets/screencasts/fast-start.gif" alt="c8volt fast start screencast" />
 
 ## Why c8volt

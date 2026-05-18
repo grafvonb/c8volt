@@ -16,8 +16,6 @@ Incident repair is rarely one API call. Operators often need to inspect the inci
 
 `c8volt ops repair incident` turns that remediation chain into a fixed-target workflow. It accepts explicit incident keys, stdin keys, or incident filters, freezes the incident set before mutation, plans variable, job, and resolution steps, then reports what was planned, skipped, submitted, confirmed, or failed.
 
-Aliases: `inc`.
-
 ## Use When
 
 - repairing one known incident key from incident-aware process-instance output

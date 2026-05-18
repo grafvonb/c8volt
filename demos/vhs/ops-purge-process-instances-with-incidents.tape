@@ -33,7 +33,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run"
+Type "./c8volt ops purge process-instances-with-incidents --error-type io_mapping_error --dry-run"
 Enter
 Wait
 
@@ -44,7 +44,10 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt ops purge process-instances-with-incidents --state active --error-type job_no_retries --limit 5 --auto-confirm --force --report-file /tmp/c8volt-vhs/reports/incident-purge.md"
+Type "./c8volt ops purge process-instances-with-incidents --error-type io_mapping_error --force --report-file /tmp/c8volt-vhs/reports/incident-purge.md"
+Enter
+Sleep 1s
+Type "y"
 Enter
 Wait
 
@@ -55,7 +58,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "sed -n '1,80p' /tmp/c8volt-vhs/reports/incident-purge.md"
+Type "head -n 20 /tmp/c8volt-vhs/reports/incident-purge.md"
 Enter
 Wait
 

@@ -16,7 +16,18 @@ Incident cleanup often begins with incident filters, not process-instance keys. 
 
 `c8volt ops purge process-instances-with-incidents` discovers candidate incidents, extracts candidate process-instance keys, freezes that set, then runs the same deterministic family-scope delete planning used by `delete pi`.
 
-Aliases: `pi-with-incidents`, `piwi`.
+## In Action
+
+The recording previews an incident-based process-instance purge for `io_mapping_error`, then runs the purge with `--force`, confirms the prompt, writes an audit report, and opens the first report section. It shows that incident matching is only discovery: c8volt still builds and reports the process-instance family delete plan before mutation.
+
+<img src="../../assets/screencasts/ops-purge-process-instances-with-incidents.gif" alt="c8volt ops purge process-instances-with-incidents demo" />
+
+Core commands shown:
+
+```bash
+c8volt ops purge process-instances-with-incidents --error-type io_mapping_error --dry-run
+c8volt ops purge process-instances-with-incidents --error-type io_mapping_error --force --report-file /tmp/c8volt-vhs/reports/incident-purge.md
+```
 
 ## Use When
 
@@ -110,17 +121,6 @@ If no incidents match, no delete request should be submitted.
 Reports should preserve the full chain: incident selection filters, incident discovery result, candidate process-instance set, delete plan, deletion result, notices, errors, automation flags, timestamps, duration, and final outcome.
 
 Human-facing Markdown should use candidate terminology: candidate incidents, candidate process instances, resolved roots, and affected process instances.
-
-## Demo
-
-The initial VHS source is `demos/vhs/ops-purge-process-instances-with-incidents.tape`.
-
-The demo should show the preview-first path:
-
-```bash
-c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
-c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --auto-confirm --report-file /tmp/c8volt-vhs/reports/incident-purge.md
-```
 
 ## Failure And Safety Notes
 

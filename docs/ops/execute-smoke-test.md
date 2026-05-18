@@ -16,6 +16,19 @@ A profile can look valid and still fail at the first real operational step. Oper
 
 `c8volt ops execute smoke-test` proves the configured environment with a real c8volt-owned workflow. It runs the whole loop and reports each step: connection, fixture selection, deployment, process-instance creation, traversal, cleanup, and final outcome.
 
+## In Action
+
+The recording previews the smoke-test workflow without touching the cluster, then runs it with confirmation already handled, writes an audit report, and opens the first report section. It shows the normal operator rhythm: plan first, execute once the plan is understood, then inspect the evidence.
+
+<img src="../../assets/screencasts/ops-execute-smoke-test.gif" alt="c8volt ops execute smoke-test demo" />
+
+Core commands shown:
+
+```bash
+c8volt ops execute smoke-test --dry-run
+c8volt ops execute smoke-test --auto-confirm --report-file /tmp/c8volt-vhs/reports/smoke-test.md
+```
+
 ## Use When
 
 - validating a new local, CI, or production-support profile
@@ -94,23 +107,6 @@ When cleanup is enabled, the command prompts before deployment/run/cleanup unles
 Markdown reports should be easy for an operator to read. JSON reports should keep the full structured step model for automation.
 
 Important fields include selected fixture, BPMN process ID, deployed process-definition key, requested count, created process-instance keys, walk status, cleanup status, skipped cleanup reasons, errors, timestamps, duration, and final outcome.
-
-## Demo
-
-<img src="../../assets/screencasts/ops-execute-smoke-test.gif" alt="c8volt ops execute smoke-test demo" />
-
-The recording shows the operator path for proving a profile end to end: inspect the command, run a dry-run preview, execute with confirmation already handled, and open the generated audit report.
-
-Source tape: `demos/vhs/ops-execute-smoke-test.tape`
-
-Render target: `make demo-vhs-ops-execute-smoke-test` or `make demo-vhs-st`
-
-Core commands shown:
-
-```bash
-c8volt ops execute smoke-test --dry-run
-c8volt ops execute smoke-test --auto-confirm --report-file /tmp/c8volt-vhs/reports/smoke-test.md
-```
 
 ## Failure And Safety Notes
 

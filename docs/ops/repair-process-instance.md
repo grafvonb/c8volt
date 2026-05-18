@@ -16,8 +16,6 @@ Support work often starts from process-instance keys or process-instance filters
 
 `c8volt ops repair process-instance` selects process instances by key, stdin, or process-instance search filters, freezes the repairable process-instance and incident set, then reuses the incident repair workflow for variables, related jobs, incident resolution, confirmation, and audit reporting.
 
-Aliases: `pi`, `pis`, `process-instances`.
-
 ## Use When
 
 - repairing all active incidents associated with one known process instance

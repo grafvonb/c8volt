@@ -44,7 +44,10 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt ops execute smoke-test --auto-confirm --report-file /tmp/c8volt-vhs/reports/smoke-test.md"
+Type "./c8volt ops execute smoke-test --report-file /tmp/c8volt-vhs/reports/smoke-test.md"
+Enter
+Sleep 1s
+Type "y"
 Enter
 Wait
 
@@ -55,7 +58,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "sed -n '1,80p' /tmp/c8volt-vhs/reports/smoke-test.md"
+Type "head -n 20 /tmp/c8volt-vhs/reports/smoke-test.md"
 Enter
 Wait
 

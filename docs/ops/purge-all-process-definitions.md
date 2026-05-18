@@ -16,7 +16,18 @@ Deleting process definitions is not just a resource cleanup. A selected process-
 
 `c8volt ops purge all-process-definitions` discovers candidate process-definition versions with `get pd`-style selectors, freezes their keys, previews delete impact, blocks active process-instance scope unless `--force` is supplied, and deletes the selected definitions only after confirmation.
 
-Aliases: `all-pds`, `apd`.
+## In Action
+
+The recording previews process-definition purge impact before deleting anything, then runs the purge with `--force`, confirms the prompt, writes an audit report, and opens the first report section. It shows the key safety point for this workflow: process definitions are selected first, but c8volt still plans and reports process-instance impact before mutation.
+
+<img src="../../assets/screencasts/ops-purge-all-process-definitions.gif" alt="c8volt ops purge all-process-definitions demo" />
+
+Core commands shown:
+
+```bash
+c8volt ops purge all-process-definitions --dry-run
+c8volt ops purge all-process-definitions --force --report-file /tmp/c8volt-vhs/reports/process-definition-purge.md
+```
 
 ## Use When
 
@@ -93,15 +104,6 @@ Deletion uses the existing process-definition deletion service. With `--force`, 
 Reports use schema version `ops.all-process-definitions.v1`. They include selection filters, latest-only scope, candidate process-definition keys and details, duplicate candidates, delete-plan items, affected and active process-instance counts, deletion items, no-wait/force/fail-fast flags, notices, errors, and final outcome.
 
 Report format is inferred from `--report-file` unless `--report-format markdown|json` is supplied.
-
-## Demo
-
-The VHS source is `demos/vhs/ops-purge-all-process-definitions.tape`.
-
-```bash
-c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
-c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --auto-confirm --force --report-file /tmp/c8volt-vhs/reports/process-definition-purge.md
-```
 
 ## Failure And Safety Notes
 

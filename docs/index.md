@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.7.0-alpha1-170-g60770d4d-dirty`, commit `60770d4d`, built `2026-05-18T17:36:32Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.7.0-alpha1-175-g81cb9bdc-dirty`, commit `81cb9bdc`, built `2026-05-18T20:15:40Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -50,6 +50,8 @@ Start every destructive or repair workflow with a plan:
 When the plan is right, run for real with `--auto-confirm`, `--automation`, `--json`, or `--report-file` according to the environment. See the [C8 Ops CLI playbooks](docs/ops/index.md) for the problem each workflow solves, the lower-level command flow it composes, dry-run versus execution behavior, and VHS demo scripts.
 
 ## c8volt in Action
+
+The fast-start recording walks through the everyday c8volt loop: verify the connection, inspect and deploy bundled BPMN, start process instances, inspect them, walk their execution tree, and clean everything up. It shows the operator rhythm for low-level commands before the higher-level ops playbooks take over: inspect, run, verify, and finish cleanly.
 
 <img src="./assets/screencasts/fast-start.gif" alt="c8volt fast start screencast" />
 

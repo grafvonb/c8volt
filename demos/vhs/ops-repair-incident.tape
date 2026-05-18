@@ -55,7 +55,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "sed -n '1,80p' /tmp/c8volt-vhs/reports/repair-incident.md"
+Type "head -n 20 /tmp/c8volt-vhs/reports/repair-incident.md"
 Enter
 Wait
 

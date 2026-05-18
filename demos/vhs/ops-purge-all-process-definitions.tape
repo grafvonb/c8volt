@@ -33,7 +33,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --dry-run"
+Type "./c8volt ops purge all-process-definitions --dry-run"
 Enter
 Wait
 
@@ -44,7 +44,10 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --auto-confirm --force --report-file /tmp/c8volt-vhs/reports/process-definition-purge.md"
+Type "./c8volt ops purge all-process-definitions --force --report-file /tmp/c8volt-vhs/reports/process-definition-purge.md"
+Enter
+Sleep 1s
+Type "y"
 Enter
 Wait
 
@@ -55,7 +58,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "sed -n '1,80p' /tmp/c8volt-vhs/reports/process-definition-purge.md"
+Type "head -n 20 /tmp/c8volt-vhs/reports/process-definition-purge.md"
 Enter
 Wait
 

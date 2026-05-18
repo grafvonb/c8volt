@@ -16,7 +16,18 @@ Retention cleanup is simple to describe but risky to perform by hand. The operat
 
 `c8volt ops execute retention-policy` applies a c8volt-owned retention workflow. It discovers finished process instances older than the requested age, freezes the retention seed set, builds the normal delete plan, executes only after validation and confirmation, and records what happened.
 
-Aliases: `ret-pol`, `rp`.
+## In Action
+
+The recording previews retention cleanup before deleting anything, then runs the workflow with confirmation already handled, writes an audit report, and opens the first report section. It uses `--retention-days 0`, which means today and is mainly useful for demo data; in normal operations, set a real retention window such as `--retention-days 90` to remove instances older than roughly three months.
+
+<img src="../../assets/screencasts/ops-execute-retention-policy.gif" alt="c8volt ops execute retention-policy demo" />
+
+Core commands shown:
+
+```bash
+c8volt ops execute retention-policy --retention-days 0 --dry-run
+c8volt ops execute retention-policy --retention-days 0 --auto-confirm --report-file /tmp/c8volt-vhs/reports/retention-report.md
+```
 
 ## Use When
 
@@ -92,17 +103,6 @@ Deletion reuses existing process-instance delete execution. Before deletion, the
 Reports should distinguish retention seeds, resolved roots, and affected process-instance family keys. They should include retention days, derived boundary, filters, discovery status, delete plan, duplicate summary, final-state and non-final counts, missing ancestors, automation flags, per-key or per-batch delete status, errors, timestamps, duration, and final outcome.
 
 Suggested outcomes are `planned`, `deleted`, `partially_failed`, and `failed`.
-
-## Demo
-
-The initial VHS source is `demos/vhs/ops-execute-retention-policy.tape`.
-
-The demo should show the preview-first path:
-
-```bash
-c8volt ops execute retention-policy --retention-days 90 --dry-run
-c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id <bpmn-process-id> --state completed --limit 25 --auto-confirm --report-file /tmp/c8volt-vhs/reports/retention-report.md
-```
 
 ## Failure And Safety Notes
 

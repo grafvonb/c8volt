@@ -28,23 +28,26 @@ Show
 Wait
 Sleep 2s
 Hide
-Type "printf '\033[1A\033[2K%s\n' 'Preview retention cleanup for process instances older than 90 days.'"
+Type "printf '\033[1A\033[2K%s\n' 'Preview retention cleanup for demo data ending today.'"
 Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt ops execute retention-policy --retention-days 90 --dry-run"
+Type "./c8volt ops execute retention-policy --retention-days 0 --dry-run"
 Enter
 Wait
 
 Sleep 1s
 Hide
-Type "printf '\033[1A\033[2K\n%s\n' 'Run the retention workflow and write an audit report.'"
+Type "printf '\033[1A\033[2K\n%s\n' 'Run the demo retention workflow and write an audit report.'"
 Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt ops execute retention-policy --retention-days 90 --state completed --limit 25 --auto-confirm --report-file /tmp/c8volt-vhs/reports/retention-report.md"
+Type "./c8volt ops execute retention-policy --retention-days 0 --report-file /tmp/c8volt-vhs/reports/retention-report.md"
+Enter
+Sleep 1s
+Type "y"
 Enter
 Wait
 
@@ -55,7 +58,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "sed -n '1,80p' /tmp/c8volt-vhs/reports/retention-report.md"
+Type "head -n 20 /tmp/c8volt-vhs/reports/retention-report.md"
 Enter
 Wait
 
