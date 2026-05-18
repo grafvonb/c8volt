@@ -22,15 +22,12 @@ var updateProcessInstanceCmd = &cobra.Command{
 		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. Provide exactly one variable payload source: --vars with a JSON object or --vars-file with a path to a JSON object file. The same variable map is applied to every unique target key.\n\n" +
 		"By default c8volt loads current process-instance-scope variables, previews planned additions and changes, asks for confirmation, then waits until requested variables are visible through the same lookup path as `get pi --with-vars`. Use --dry-run to preview without mutating, or --auto-confirm for unattended mutation.\n\n" +
 		"Variable updates are supported for Camunda 8.8 and 8.9. Camunda 8.7 returns an unsupported-version error before mutation.",
-	Example: `  ./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}'
-  ./c8volt update pi --key <process-instance-key> --vars-file ./vars.json
-  ./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
-  ./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --auto-confirm
-  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}'
-  ./c8volt update pi --key <process-instance-key-a> --key <process-instance-key-b> --vars '{"customerTier":"gold"}'
-  printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt update pi - --vars '{"customerTier":"gold"}'
-  printf '%s\n' "$PROCESS_INSTANCE_KEY_A" | ./c8volt update pi --key "$PROCESS_INSTANCE_KEY_B" - --vars '{"customerTier":"gold"}'
-  ./c8volt --json update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --auto-confirm`,
+	Example: `  ./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
+  ./c8volt update pi --key <process-instance-key> --vars-file ./vars.json --dry-run
+  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
+  ./c8volt update pi --key <process-instance-key-a> --key <process-instance-key-b> --vars '{"customerTier":"gold"}' --dry-run
+  printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt update pi - --vars '{"customerTier":"gold"}' --dry-run
+  ./c8volt --json update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)

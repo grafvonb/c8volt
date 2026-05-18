@@ -29,10 +29,10 @@ var resolveProcessInstanceCmd = &cobra.Command{
 		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. For each unique process instance, c8volt expands to the process-instance family, discovers active incidents at command start for direct incidents on in-scope instances, resolves that fixed incident set, and reports process instances with no active incidents as skipped.\n\n" +
 		"By default c8volt validates the affected root and descendant instances and asks for confirmation before resolving active incidents in the family. Use --dry-run to preview the family scope and incident resolution plan without submitting mutations.\n\n" +
 		"By default c8volt waits until the initially discovered incidents are no longer active by polling process-instance incident lookup through the incident service.",
-	Example: `  ./c8volt resolve process-instance --key 2251799813685250
-  ./c8volt resolve pi --key 2251799813685250 --key 2251799813685260
-  printf '%s\n' 2251799813685250 2251799813685260 | ./c8volt resolve process-instance -
-  printf '%s\n' 2251799813685250 | ./c8volt resolve pi --key 2251799813685260 -`,
+	Example: `  ./c8volt resolve process-instance --key <process-instance-key> --dry-run
+  ./c8volt resolve pi --key <process-instance-key>
+  ./c8volt resolve pi --key <process-instance-key> --key <another-process-instance-key>
+  printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt resolve process-instance -`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)

@@ -25,15 +25,12 @@ c8volt update process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}'
-  ./c8volt update pi --key <process-instance-key> --vars-file ./vars.json
   ./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
-  ./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --auto-confirm
-  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}'
-  ./c8volt update pi --key <process-instance-key-a> --key <process-instance-key-b> --vars '{"customerTier":"gold"}'
-  printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt update pi - --vars '{"customerTier":"gold"}'
-  printf '%s\n' "$PROCESS_INSTANCE_KEY_A" | ./c8volt update pi --key "$PROCESS_INSTANCE_KEY_B" - --vars '{"customerTier":"gold"}'
-  ./c8volt --json update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --auto-confirm
+  ./c8volt update pi --key <process-instance-key> --vars-file ./vars.json --dry-run
+  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
+  ./c8volt update pi --key <process-instance-key-a> --key <process-instance-key-b> --vars '{"customerTier":"gold"}' --dry-run
+  printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt update pi - --vars '{"customerTier":"gold"}' --dry-run
+  ./c8volt --json update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
 ```
 
 ### Options

@@ -26,10 +26,10 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		"By default c8volt first checks delete impact without changing anything: active process instances, required cancellation roots and process-instance tree scope when --force is used, and batch-operation read access before prompting. With --force, it cancels the root process instances, deletes the affected process-instance history, then asks Camunda to delete the process definition and remaining associated history.\n\n" +
 		"Use --auto-confirm for unattended destructive runs.",
 	Example: `  ./c8volt delete pd --key <process-definition-key> --auto-confirm
-  ./c8volt delete pd --bpmn-process-id C89_SimpleUserTask_Process --latest --force
-  ./c8volt delete pd --bpmn-process-id C89_SimpleUserTask_Process --latest --auto-confirm
-  ./c8volt get pd --bpmn-process-id C89_SimpleUserTask_Process --latest --json
-  ./c8volt get pd --bpmn-process-id C89_SimpleUserTask_Process --latest --keys-only | ./c8volt delete pd --auto-confirm -`,
+  ./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --force
+  ./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
+  ./c8volt get pd --bpmn-process-id <bpmn-process-id> --latest --json
+  ./c8volt get pd --bpmn-process-id <bpmn-process-id> --latest --keys-only | ./c8volt delete pd --auto-confirm -`,
 	Aliases: []string{"pd"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)

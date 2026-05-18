@@ -41,11 +41,11 @@ This is the conceptual flow. The ops command should use c8volt services and faca
 
 ```bash
 c8volt config test-connection
-c8volt embed deploy -f processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn
-c8volt run pi -b C89_MultipleSubProcessesParentProcess
+c8volt embed deploy -f processdefinitions/<embedded-process>.bpmn
+c8volt run pi -b <bpmn-process-id>
 c8volt walk pi --key <created-process-instance-key>
 c8volt delete pi --key <created-process-instance-key>
-c8volt delete pd -b C89_MultipleSubProcessesParentProcess
+c8volt delete pd -b <bpmn-process-id>
 ```
 
 ## Workflow

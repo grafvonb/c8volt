@@ -86,8 +86,8 @@ func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
 		"By default, walk shows the full process-instance family as an ASCII tree",
 		"returns the partial tree plus a warning",
 		"./c8volt walk pi --key <process-instance-key> --with-incidents",
-		"./c8volt walk pi --key <process-instance-key> --with-incidents --incident-message-limit 80",
-		"./c8volt walk pi --key <process-instance-key> --with-incidents --incident-state all",
+		"./c8volt walk pi --key <process-instance-key> --with-vars",
+		"./c8volt walk pi --key <process-instance-key> --flat",
 	}, nil)
 	require.Contains(t, output, "--flat")
 	require.Contains(t, output, "--incident-message-limit int")

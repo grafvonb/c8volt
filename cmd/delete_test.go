@@ -743,7 +743,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"Delete process instances or process definitions",
 		"--auto-confirm",
 		"show verification examples",
-		"./c8volt delete pd --bpmn-process-id C89_SimpleUserTask_Process --latest --auto-confirm",
+		"./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 	require.Contains(t, output, "process-definition")
@@ -757,7 +757,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"number of process instances to process per page",
 		"maximum number of matching process instances to process across all pages",
 		"./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run",
-		"./c8volt delete pi --bpmn-process-id C89_SimpleUserTask_Process --state terminated --batch-size 250 --limit 5 --dry-run",
+		"./c8volt delete pi --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run",
 	}, []string{"--count"})
 	require.Contains(t, output, "--force")
 	require.Contains(t, output, "--batch-size int32")
@@ -768,7 +768,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"checks delete impact without changing anything",
 		"associated history",
 		"Use --auto-confirm for unattended destructive runs",
-		"./c8volt delete pd --bpmn-process-id C89_SimpleUserTask_Process --latest --auto-confirm",
+		"./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
 	}, nil)
 	require.NotContains(t, output, "--allow-inconsistent")
 }

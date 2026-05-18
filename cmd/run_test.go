@@ -32,7 +32,7 @@ func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"run"}, []string{
 		"Start process instances",
 		"waits for active instances by default",
-		"./c8volt run pi -b C89_SimpleUserTask_Process",
+		"./c8volt run pi -b <bpmn-process-id>",
 	}, nil)
 
 	require.Contains(t, output, "process-instance")
@@ -40,7 +40,7 @@ func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 	output = assertCommandHelpOutput(t, []string{"run", "process-instance"}, []string{
 		"Run by BPMN process ID",
 		"waits for active instances",
-		"./c8volt run pi -b C89_SimpleUserTask_Process -n 3 --workers 2",
+		"./c8volt run pi -b <bpmn-process-id> -n 3 --workers 2",
 		"./c8volt expect pi --key <process-instance-key> --state active",
 	}, nil)
 	require.Contains(t, output, "--no-wait")

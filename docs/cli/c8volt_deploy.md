@@ -22,8 +22,8 @@ c8volt deploy [flags]
 ### Examples
 
 ```
-  ./c8volt embed export --file processdefinitions/C89_SimpleUserTaskProcess.bpmn --out ./fixtures
-  ./c8volt deploy pd --file ./fixtures/processdefinitions/C89_SimpleUserTaskProcess.bpmn --run
+  ./c8volt embed export --file processdefinitions/<embedded-process>.bpmn --out ./fixtures
+  ./c8volt deploy pd --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run
   ./c8volt embed deploy --all --run
 ```
 

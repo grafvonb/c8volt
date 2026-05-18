@@ -51,7 +51,7 @@ func TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape(t *testing.T) {
 		"--report-file string",
 		"--report-format string",
 		"./c8volt ops purge all-process-definitions --dry-run",
-		"./c8volt ops purge all-pds --bpmn-process-id invoice --latest --dry-run",
+		"./c8volt ops purge all-pds --bpmn-process-id <bpmn-process-id> --latest --dry-run",
 		"./c8volt ops purge all-process-definitions --automation --json --dry-run",
 	)
 	assertHelpOutputOmitsAll(t, output,

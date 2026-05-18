@@ -28,10 +28,10 @@ var runProcessInstanceCmd = &cobra.Command{
 		"Run by BPMN process ID for the latest version, or by process definition key for an exact definition.\n\n" +
 		"When running by BPMN process ID, c8volt validates all requested process definitions before creating anything. Mixed visible and missing BPMN IDs fail as one request, so no partial process instances are started; automation-oriented modes never prompt for recovery output.\n\n" +
 		"By default c8volt waits for active instances.",
-	Example: `  ./c8volt run pi -b C89_SimpleUserTask_Process
-  ./c8volt run pi -b C89_SimpleUserTask_Process --vars '{"customerId":"1234"}'
-  ./c8volt run pi -b C89_SimpleUserTask_Process -n 3 --workers 2
-  ./c8volt --json run pi -b C89_SimpleUserTask_Process --vars '{"customerId":"1234"}'
+	Example: `  ./c8volt run pi -b <bpmn-process-id>
+  ./c8volt run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
+  ./c8volt run pi -b <bpmn-process-id> -n 3 --workers 2
+  ./c8volt --json run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
   ./c8volt expect pi --key <process-instance-key> --state active`,
 	Aliases: []string{"pi"},
 	Run: func(cmd *cobra.Command, args []string) {

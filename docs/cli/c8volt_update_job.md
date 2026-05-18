@@ -21,13 +21,10 @@ c8volt update job [flags]
 ### Examples
 
 ```
-  ./c8volt update job --key <job-key> --retries 3
-  ./c8volt update job --key <job-key> --timeout 5m
-  ./c8volt update job --key <job-key> --retries 3 --timeout 5m
   ./c8volt update job --key <job-key> --retries 3 --dry-run
   ./c8volt update job --key <job-key> --retries 3 --auto-confirm
+  ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
   ./c8volt --json update job --key <job-key> --retries 3 --dry-run
-  ./c8volt --json update job --key <job-key> --retries 3 --auto-confirm
 ```
 
 ### Options

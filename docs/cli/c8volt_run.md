@@ -21,9 +21,9 @@ c8volt run [flags]
 ### Examples
 
 ```
-  ./c8volt run pi -b C89_SimpleUserTask_Process
-  ./c8volt run pi -b C89_SimpleUserTask_Process --vars '{"customerId":"1234"}'
-  ./c8volt run pi -b C89_SimpleUserTask_Process -n 3 --workers 2
+  ./c8volt run pi -b <bpmn-process-id>
+  ./c8volt run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
+  ./c8volt run pi -b <bpmn-process-id> -n 3 --workers 2
 ```
 
 ### Options

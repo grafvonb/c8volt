@@ -27,11 +27,10 @@ Retention cleanup is simple to describe but risky to perform by hand. The operat
 
 ```bash
 c8volt ops execute retention-policy --retention-days 90 --dry-run
-c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id invoice-process --state completed --limit 25 --auto-confirm
+c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id <bpmn-process-id> --state completed --limit 25 --auto-confirm
 c8volt ops execute retention-policy --retention-days 90 --automation --json --dry-run
-c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id invoice-process --state completed --limit 25 --auto-confirm --force --workers 4
 c8volt ops execute retention-policy --retention-days 90 --dry-run --report-file retention-report.md
-c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id invoice-process --state completed --limit 25 --auto-confirm --report-file retention-report.json --report-format json
+c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id <bpmn-process-id> --state completed --limit 25 --auto-confirm --report-file retention-report.json --report-format json
 ```
 
 ## Built From Lower-Level Commands
@@ -100,7 +99,7 @@ The demo should show the preview-first path:
 
 ```bash
 c8volt ops execute retention-policy --retention-days 90 --dry-run
-c8volt ops execute retention-policy --retention-days 90 --state completed --limit 25 --auto-confirm --report-file /tmp/c8volt-vhs/reports/retention-report.md
+c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id <bpmn-process-id> --state completed --limit 25 --auto-confirm --report-file /tmp/c8volt-vhs/reports/retention-report.md
 ```
 
 ## Failure And Safety Notes

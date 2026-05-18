@@ -33,11 +33,10 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 		"The workflow discovers candidate process-definition versions using the same filters as `get pd`, freezes the candidate keys, validates the existing delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Preview with --dry-run before confirmed deletion. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
 	Example: `  ./c8volt ops purge all-process-definitions --dry-run
   ./c8volt ops purge all-process-definitions --dry-run --report-file process-definition-purge.md
-  ./c8volt ops purge all-pds --bpmn-process-id invoice --latest --dry-run
-  ./c8volt ops purge all-process-definitions --bpmn-process-id invoice --pd-version 3 --dry-run --report-file invoice-purge.json --report-format json
+  ./c8volt ops purge all-pds --bpmn-process-id <bpmn-process-id> --latest --dry-run
+  ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --pd-version 3 --dry-run --report-file process-definition-purge.json --report-format json
   ./c8volt ops purge all-process-definitions --automation --json --dry-run
-  ./c8volt ops purge all-process-definitions --key <process-definition-key> --auto-confirm --force
-  ./c8volt ops purge all-process-definitions --key <process-definition-key> --auto-confirm --force --workers 4 --no-wait --report-file process-definition-purge.json --report-format json`,
+  ./c8volt ops purge all-process-definitions --key <process-definition-key> --auto-confirm --force --report-file process-definition-purge.md`,
 	Aliases: []string{"all-pds", "apd"},
 	Args:    validateOpsPurgeAllProcessDefinitionsArgs,
 	Run: func(cmd *cobra.Command, args []string) {

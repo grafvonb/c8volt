@@ -21,10 +21,10 @@ c8volt deploy process-definition [flags]
 ### Examples
 
 ```
-  ./c8volt embed export --file processdefinitions/C89_SimpleUserTaskProcess.bpmn --out ./fixtures
-  ./c8volt deploy pd --file ./fixtures/processdefinitions/C89_SimpleUserTaskProcess.bpmn
-  ./c8volt deploy pd --file ./fixtures/processdefinitions/C89_SimpleUserTaskProcess.bpmn --run
-  ./c8volt get pd --bpmn-process-id C89_SimpleUserTask_Process --latest --json
+  ./c8volt embed export --file processdefinitions/<embedded-process>.bpmn --out ./fixtures
+  ./c8volt deploy pd --file ./fixtures/processdefinitions/<embedded-process>.bpmn
+  ./c8volt deploy pd --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run
+  ./c8volt get pd --bpmn-process-id <bpmn-process-id> --latest --json
 ```
 
 ### Options

@@ -29,7 +29,7 @@ Aliases: `orphan-pi`, `opi`.
 
 ```bash
 c8volt ops purge orphan-process-instances --dry-run
-c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id order-process --limit 25
+c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id <bpmn-process-id> --limit 25
 c8volt ops purge orphan-process-instances --automation --json --dry-run
 c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm
 c8volt ops purge orphan-process-instances --dry-run --report-file orphan-purge.md

@@ -32,7 +32,7 @@ Start every destructive or repair workflow with a plan:
 ./c8volt ops execute retention-policy --retention-days 90 --dry-run
 ./c8volt ops purge orphan-process-instances --dry-run
 ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
-./c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --dry-run
+./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
 ./c8volt ops repair incident --state active --limit 5 --dry-run
 ./c8volt ops repair process-instance --direct-incidents-only --limit 5 --dry-run
 ```
@@ -162,7 +162,7 @@ Commands that change state, such as `run`, `update`, `resolve`, `cancel`, and `d
 
 ```bash
 ./c8volt get pd --latest
-./c8volt run pi -b C89_SimpleUserTask_Process
+./c8volt run pi -b <bpmn-process-id>
 ```
 
 By default, `c8volt` waits until the process instance is actually active.
@@ -170,7 +170,7 @@ By default, `c8volt` waits until the process instance is actually active.
 For batch execution:
 
 ```bash
-./c8volt run pi -b C89_SimpleUserTask_Process -n 3 --workers 2
+./c8volt run pi -b <bpmn-process-id> -n 3 --workers 2
 ```
 
 ### Update Runtime Variables
@@ -178,9 +178,8 @@ For batch execution:
 ```bash
 ./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}'
 ./c8volt update pi --key <process-instance-key> --vars-file ./vars.json --dry-run
-./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --auto-confirm
-./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}'
-printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt update pi - --vars '{"customerTier":"gold"}'
+./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
+printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt update pi - --vars '{"customerTier":"gold"}' --dry-run
 ```
 
 By default, `update pi` loads current process-instance-scope variables, previews planned additions and changes, asks for confirmation, submits the mutation, and waits until the requested values are visible through the same lookup path used by `get pi --with-vars`. Provide exactly one payload source: `--vars` with a JSON object or `--vars-file` with a path to a JSON object file. Repeated `--key` flags and stdin `-` keys are merged and deduplicated before the same variable map is applied to each target.
@@ -247,7 +246,7 @@ With `--dry-run`, `c8volt` previews the selected process instances, process-inst
 ./c8volt delete pi --key <process-instance-key> --dry-run
 ./c8volt delete pi --key <process-instance-key> --force
 ./c8volt delete pi --state terminated --end-date-after 2026-05-01 --end-date-before 2026-05-31 --limit 5 --dry-run
-./c8volt get pi --bpmn-process-id C89_SimpleUserTask_Process --state terminated --limit 5 --keys-only | ./c8volt delete pi --dry-run -
+./c8volt get pi --bpmn-process-id <bpmn-process-id> --state terminated --limit 5 --keys-only | ./c8volt delete pi --dry-run -
 ```
 
 Deletion in real environments often means preview the family scope, cancel-first when needed, then remove, then verify. `--dry-run` shows selected instances already in final state and process instances not in final state. Delete is all-or-nothing for the affected scope: if any selected or dependency-expanded process instance is not in a final state, c8volt refuses the whole delete batch before submitting any delete request. Use `--force` when the affected scope must be canceled first and then deleted.
@@ -271,8 +270,8 @@ Deletion in real environments often means preview the family scope, cancel-first
 ./c8volt get pi --state active --limit 5
 ./c8volt get pi --state active --total
 ./c8volt get pi --state active --batch-size 250 --limit 5
-./c8volt cancel pi --bpmn-process-id C89_SimpleUserTask_Process --state active --batch-size 250 --limit 5 --dry-run
-./c8volt delete pi --bpmn-process-id C89_SimpleUserTask_Process --state terminated --batch-size 250 --limit 5 --dry-run
+./c8volt cancel pi --bpmn-process-id <bpmn-process-id> --state active --batch-size 250 --limit 5 --dry-run
+./c8volt delete pi --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run
 ```
 
 Search-based `get pi`, `cancel pi`, and `delete pi` work page by page instead of silently stopping at the first large result set. Interactive modes prompt before continuing unless `--auto-confirm` or `--json` is set. JSON mode consumes remaining pages and returns one aggregated result.
@@ -305,7 +304,7 @@ On Camunda `8.8` and `8.9`, a not-found v2 user-task result falls back to deprec
 
 ```bash
 ./c8volt get pd --key <process-definition-key> --xml
-./c8volt get pd --bpmn-process-id C89_SimpleUserTask_Process --latest --stat
+./c8volt get pd --bpmn-process-id <bpmn-process-id> --latest --stat
 ```
 
 For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for the exact process-definition version: `ac:<count>` for active, `cp:<count>` for completed, `cx:<count>` for canceled, and `inc:<count>` for process instances having at least one incident. Camunda `8.7` rejects statistics because the generated client surface does not provide the same native statistics endpoints.
@@ -426,8 +425,8 @@ app:
 ```
 
 ```bash
-./c8volt --tenant "<default>" run pi -b C89_SimpleUserTask_Process
-./c8volt --tenant "<default>" embed deploy --file processdefinitions/C89_SimpleUserTaskProcess.bpmn
+./c8volt --tenant "<tenant-id>" run pi -b <bpmn-process-id>
+./c8volt --tenant "<tenant-id>" embed deploy --file processdefinitions/<embedded-process>.bpmn
 ./c8volt --tenant "<default>" get pd --latest
 ```
 
@@ -517,14 +516,14 @@ For supported command paths, combine `--automation` with `--json` when you need 
 
 ```bash
 ./c8volt capabilities --json
-./c8volt --automation --json run pi -b C89_SimpleUserTask_Process
-./c8volt --automation --json update pi --key <process-instance-key> --vars '{"customerTier":"gold"}'
+./c8volt --automation --json run pi -b <bpmn-process-id>
+./c8volt --automation --json update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
 ./c8volt --automation --json update pi --key <process-instance-key> --vars-file ./vars.json --dry-run
 ./c8volt --automation --json update job --key <job-key> --retries 3 --auto-confirm
 ./c8volt --automation --json resolve incident --key <incident-key> --dry-run
 ./c8volt --automation --json resolve pi --key <process-instance-key>
 ./c8volt --automation --json ops repair incident --key <incident-key> --dry-run
-./c8volt --automation --json get pi --bpmn-process-id C89_SimpleUserTask_Process --state active --limit 5
+./c8volt --automation --json get pi --bpmn-process-id <bpmn-process-id> --state active --limit 5
 ```
 
 Useful pipeline controls:
@@ -543,7 +542,7 @@ Examples:
 
 ```bash
 ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm -
-./c8volt get pi --bpmn-process-id C89_SimpleUserTask_Process --state active --limit 3 --keys-only | ./c8volt update pi - --vars '{"priority":"high"}' --auto-confirm
+./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 3 --keys-only | ./c8volt update pi - --vars '{"priority":"high"}' --dry-run
 ./c8volt get job --key <job-key>
 ./c8volt update job --key <job-key> --retries 3 --dry-run
 ./c8volt update job --key <job-key> --retries 3 --auto-confirm
@@ -553,7 +552,7 @@ Examples:
 ./c8volt ops repair incident --key <incident-key> --dry-run
 ./c8volt ops repair process-instance --key <process-instance-key> --dry-run
 ./c8volt get incident --state active --error-type job_no_retries --pi-keys-only | ./c8volt cancel pi --dry-run -
-./c8volt get pi --bpmn-process-id C89_SimpleUserTask_Process --state active --limit 3 --keys-only | ./c8volt cancel pi --dry-run -
+./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 3 --keys-only | ./c8volt cancel pi --dry-run -
 ```
 
 ## Command Map
@@ -630,7 +629,7 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 ./c8volt get pd --bpmn-process-id <bpmn-process-id> --latest --stat
 
 # Local fixture loop for quick smoke tests.
-./c8volt embed deploy --file processdefinitions/C89_SimpleUserTaskProcess.bpmn --run
+./c8volt embed deploy --file processdefinitions/<embedded-process>.bpmn --run
 
 # Start process instances from the latest version.
 ./c8volt run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
@@ -639,7 +638,7 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 # Update process-instance-scope variables.
 ./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}'
 ./c8volt update pi --key <process-instance-key> --vars-file ./vars.json --dry-run
-./c8volt get pi --bpmn-process-id C89_SimpleUserTask_Process --state active --limit 3 --keys-only | ./c8volt update pi - --vars '{"priority":"high"}' --auto-confirm
+./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 3 --keys-only | ./c8volt update pi - --vars '{"priority":"high"}' --dry-run
 
 # Inspect and update jobs from incident job keys.
 ./c8volt get job --key <job-key>
@@ -687,7 +686,7 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 # Preview and perform cancellation.
 ./c8volt cancel pi --key <process-instance-key> --dry-run
 ./c8volt cancel pi --key <process-instance-key> --force
-./c8volt get pi --bpmn-process-id C89_SimpleUserTask_Process --state active --limit 3 --keys-only | ./c8volt cancel pi --dry-run -
+./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 3 --keys-only | ./c8volt cancel pi --dry-run -
 
 # Preview final-state cleanup.
 ./c8volt delete pi --state terminated --end-date-before 2026-05-31 --limit 5 --dry-run

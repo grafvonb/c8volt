@@ -262,7 +262,7 @@ func TestGeneratedResolveDocsDocumentResolveWorkflows(t *testing.T) {
 	for _, want := range []string{
 		"Resolve process-instance incidents by key.",
 		"discovers active incidents at command start",
-		"./c8volt resolve pi --key 2251799813685250 --key 2251799813685260",
+		"./c8volt resolve pi --key <process-instance-key> --key <another-process-instance-key>",
 		"--dry-run",
 		"preview process-instance incident resolutions without submitting mutation",
 		"--no-wait",
@@ -322,7 +322,7 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"Execute process-instance retention cleanup",
 		"--retention-days int",
 		"--report-file string",
-		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id order-process --dry-run",
+		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --dry-run",
 		"[c8volt ops execute](c8volt_ops_execute)",
 	} {
 		if !strings.Contains(retentionDoc, want) {

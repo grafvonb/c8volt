@@ -35,12 +35,8 @@ var walkProcessInstanceCmd = &cobra.Command{
 	Example: `  ./c8volt walk pi --key <process-instance-key>
   ./c8volt walk pi --key <process-instance-key> --with-incidents
   ./c8volt walk pi --key <process-instance-key> --with-vars
-  ./c8volt walk pi --key <process-instance-key> --with-vars --with-incidents
-  ./c8volt walk pi --key <process-instance-key> --with-incidents --incident-message-limit 80
-  ./c8volt walk pi --key <process-instance-key> --with-incidents --incident-state all
   ./c8volt walk pi --key <process-instance-key> --flat
-  ./c8volt walk pi --key <process-instance-key> --parent
-  ./c8volt --json walk pi --key <process-instance-key> --children --with-incidents`,
+  ./c8volt walk pi --key <process-instance-key> --parent`,
 	Aliases: []string{"pi", "pis"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)

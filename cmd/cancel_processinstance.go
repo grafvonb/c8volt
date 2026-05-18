@@ -31,7 +31,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
   ./c8volt cancel pi --state active --batch-size 250 --limit 5 --dry-run
   ./c8volt cancel pi --state active --start-date-before 2026-05-31 --limit 5 --dry-run
   ./c8volt cancel pi --state active --start-date-newer-days 30 --limit 5 --dry-run
-  ./c8volt cancel pi --bpmn-process-id C89_SimpleUserTask_Process --state active --limit 5 --auto-confirm
+  ./c8volt cancel pi --bpmn-process-id <bpmn-process-id> --state active --limit 5 --auto-confirm
   ./c8volt expect pi --key <process-instance-key> --state canceled
   ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm -`,
 	Aliases: []string{"pi"},

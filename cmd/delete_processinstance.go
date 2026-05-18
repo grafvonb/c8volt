@@ -31,7 +31,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
   ./c8volt delete pi --key <process-instance-key> --dry-run
   ./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run
   ./c8volt delete pi --state terminated --end-date-after 2026-05-01 --end-date-before 2026-05-31 --limit 5 --dry-run
-  ./c8volt delete pi --bpmn-process-id C89_SimpleUserTask_Process --state terminated --batch-size 250 --limit 5 --dry-run
+  ./c8volt delete pi --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run
   ./c8volt expect pi --key <process-instance-key> --state absent`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {

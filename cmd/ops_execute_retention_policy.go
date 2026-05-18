@@ -30,12 +30,11 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 	Long: "Execute process-instance retention cleanup.\n\n" +
 		"The workflow discovers process instances older than the required retention age, freezes that candidate set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion after confirmation. Use compatible process-instance filters to narrow discovery, --auto-confirm or --automation for unattended deletion, and --report-file to write an audit report.",
 	Example: `  ./c8volt ops execute retention-policy --retention-days 90 --dry-run
-  ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id order-process --dry-run
+  ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --dry-run
   ./c8volt ops execute retention-policy --retention-days 90 --automation --json --dry-run
-  ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id order-process --limit 25 --auto-confirm
-  ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id order-process --limit 25 --auto-confirm --force --workers 4
+  ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25 --auto-confirm
   ./c8volt ops execute retention-policy --retention-days 90 --dry-run --report-file retention-report.md
-  ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id order-process --limit 25 --auto-confirm --report-file retention-report.json --report-format json`,
+  ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25 --auto-confirm --report-file retention-report.json --report-format json`,
 	Aliases: []string{"ret-pol", "rt"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
