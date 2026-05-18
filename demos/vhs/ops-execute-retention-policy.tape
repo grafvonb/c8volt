@@ -28,7 +28,7 @@ Show
 Wait
 Sleep 2s
 Hide
-Type "printf '\\033[1A\\033[2K%s\\n' 'Preview retention cleanup for process instances older than 90 days.'"
+Type "printf '\033[1A\033[2K%s\n' 'Preview retention cleanup for process instances older than 90 days.'"
 Enter
 Show
 Sleep 1s
@@ -39,7 +39,7 @@ Wait
 
 Sleep 1s
 Hide
-Type "printf '\\033[1A\\033[2K\\n%s\\n' 'Run the retention workflow and write an audit report.'"
+Type "printf '\033[1A\033[2K\n%s\n' 'Run the retention workflow and write an audit report.'"
 Enter
 Show
 Sleep 1s
@@ -50,7 +50,7 @@ Wait
 
 Sleep 1s
 Hide
-Type "printf '\\033[1A\\033[2K\\n%s\\n' 'Open the first part of the report.'"
+Type "printf '\033[1A\033[2K\n%s\n' 'Open the first part of the report.'"
 Enter
 Show
 Sleep 1s

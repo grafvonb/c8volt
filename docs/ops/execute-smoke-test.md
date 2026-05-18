@@ -97,7 +97,7 @@ Important fields include selected fixture, BPMN process ID, deployed process-def
 
 ## Demo
 
-<img src="../assets/screencasts/ops-execute-smoke-test.gif" alt="c8volt ops execute smoke-test demo" />
+<img src="../../assets/screencasts/ops-execute-smoke-test.gif" alt="c8volt ops execute smoke-test demo" />
 
 The recording shows the operator path for proving a profile end to end: inspect the command, run a dry-run preview, execute with confirmation already handled, and open the generated audit report.
 
