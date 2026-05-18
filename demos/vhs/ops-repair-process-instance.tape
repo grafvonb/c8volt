@@ -59,3 +59,10 @@ Type "sed -n '1,80p' /tmp/c8volt-vhs/reports/repair-process-instance.md"
 Enter
 Wait
 
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'Repair process instance demo complete.'"
+Enter
+Show
+Wait
+Sleep 3s

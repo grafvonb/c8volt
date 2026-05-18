@@ -58,3 +58,11 @@ Wait
 Type "sed -n '1,80p' /tmp/c8volt-vhs/reports/smoke-test.md"
 Enter
 Wait
+
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'Execute smoke test demo complete.'"
+Enter
+Show
+Wait
+Sleep 3s
