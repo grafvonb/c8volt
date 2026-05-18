@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.7.0-alpha1-175-g81cb9bdc-dirty`, commit `81cb9bdc`, built `2026-05-18T20:15:40Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.7.0-alpha1-176-gb853b61a-dirty`, commit `b853b61a`, built `2026-05-18T21:30:43Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -28,13 +28,13 @@ The `ops` command group turns multi-command Camunda operations into audited, pre
 
 | Command | What it finishes | Playbook |
 | --- | --- | --- |
-| `c8volt ops execute smoke-test` | Proves that a profile can connect, deploy, run, walk, and clean up a real process. | [Execute Smoke Test](docs/ops/execute-smoke-test.md) |
-| `c8volt ops execute retention-policy` | Deletes old finished process instances with a retention-age plan and audit report. | [Execute Retention Policy](docs/ops/execute-retention-policy.md) |
-| `c8volt ops purge orphan-process-instances` | Finds orphan child process instances and deletes the frozen set through c8volt delete planning. | [Purge Orphan Process Instances](docs/ops/purge-orphan-process-instances.md) |
-| `c8volt ops purge process-instances-with-incidents` | Finds process instances through incident filters, then purges them through deterministic family-scope delete planning. | [Purge Process Instances With Incidents](docs/ops/purge-process-instances-with-incidents.md) |
-| `c8volt ops purge all-process-definitions` | Finds process-definition versions, plans their process-instance impact, then deletes the selected definitions. | [Purge All Process Definitions](docs/ops/purge-all-process-definitions.md) |
-| `c8volt ops repair incident` | Freezes incident targets, repairs variables/jobs where requested, resolves incidents, and reports every step. | [Repair Incident](docs/ops/repair-incident.md) |
-| `c8volt ops repair process-instance` | Selects process instances, discovers their active incidents, then runs the same audited repair workflow. | [Repair Process Instance](docs/ops/repair-process-instance.md) |
+| `c8volt ops execute smoke-test` | Proves that a profile can connect, deploy, run, walk, and clean up a real process. | [Execute Smoke Test](./ops/execute-smoke-test/) |
+| `c8volt ops execute retention-policy` | Deletes old finished process instances with a retention-age plan and audit report. | [Execute Retention Policy](./ops/execute-retention-policy/) |
+| `c8volt ops purge orphan-process-instances` | Finds orphan child process instances and deletes the frozen set through c8volt delete planning. | [Purge Orphan Process Instances](./ops/purge-orphan-process-instances/) |
+| `c8volt ops purge process-instances-with-incidents` | Finds process instances through incident filters, then purges them through deterministic family-scope delete planning. | [Purge Process Instances With Incidents](./ops/purge-process-instances-with-incidents/) |
+| `c8volt ops purge all-process-definitions` | Finds process-definition versions, plans their process-instance impact, then deletes the selected definitions. | [Purge All Process Definitions](./ops/purge-all-process-definitions/) |
+| `c8volt ops repair incident` | Freezes incident targets, repairs variables/jobs where requested, resolves incidents, and reports every step. | [Repair Incident](./ops/repair-incident/) |
+| `c8volt ops repair process-instance` | Selects process instances, discovers their active incidents, then runs the same audited repair workflow. | [Repair Process Instance](./ops/repair-process-instance/) |
 
 Start every destructive or repair workflow with a plan:
 
@@ -47,7 +47,7 @@ Start every destructive or repair workflow with a plan:
 ./c8volt ops repair process-instance --direct-incidents-only --limit 5 --dry-run
 ```
 
-When the plan is right, run for real with `--auto-confirm`, `--automation`, `--json`, or `--report-file` according to the environment. See the [C8 Ops CLI playbooks](docs/ops/index.md) for the problem each workflow solves, the lower-level command flow it composes, dry-run versus execution behavior, and VHS demo scripts.
+When the plan is right, run for real with `--auto-confirm`, `--automation`, `--json`, or `--report-file` according to the environment. See the [C8 Ops CLI playbooks](./ops/) for the problem each workflow solves, the lower-level command flow it composes, dry-run versus execution behavior, and VHS demo scripts.
 
 ## c8volt in Action
 
