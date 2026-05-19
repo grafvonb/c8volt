@@ -347,6 +347,45 @@ func TestSearchIncidentsPaginatesMessageFilteringBeyondFirstPage(t *testing.T) {
 	require.Equal(t, []string{"match-second-page"}, incidentDetailKeys(got))
 }
 
+func TestSearchIncidentsPaginatesStateAndTypeFilteringBeyondFirstPage(t *testing.T) {
+	t.Parallel()
+
+	var fromValues []int32
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
+			require.Nil(t, body.Filter)
+			require.NotNil(t, body.Page)
+			page, err := body.Page.AsOffsetPagination()
+			require.NoError(t, err)
+			require.NotNil(t, page.From)
+			fromValues = append(fromValues, *page.From)
+
+			items := []camundav88.IncidentResult{
+				{IncidentKey: "skip-first-page", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumRESOLVED, ErrorType: camundav88.IncidentErrorTypeEnumJOBNORETRIES},
+			}
+			pageResp := camundav88.SearchQueryPageResponse{TotalItems: 2}
+			if *page.From > 0 {
+				items = []camundav88.IncidentResult{
+					{IncidentKey: "match-second-page", ProcessInstanceKey: "pi-b", State: camundav88.IncidentStateEnumACTIVE, ErrorType: camundav88.IncidentErrorTypeEnumIOMAPPINGERROR},
+				}
+			}
+			return &camundav88.SearchIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200:      &camundav88.IncidentSearchQueryResult{Items: items, Page: pageResp},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchIncidents(context.Background(), d.IncidentFilter{
+		State:     "active",
+		ErrorType: "io_mapping_error",
+	}, 1)
+
+	require.NoError(t, err)
+	require.Equal(t, []int32{0, 1}, fromValues)
+	require.Equal(t, []string{"match-second-page"}, incidentDetailKeys(got))
+}
+
 func TestSearchIncidentsPaginatesCreationTimeFilteringBeyondFirstPage(t *testing.T) {
 	t.Parallel()
 

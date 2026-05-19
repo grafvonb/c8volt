@@ -110,7 +110,15 @@ func (s *Service) searchIncidentPagesUntilLimit(ctx context.Context, filter d.In
 }
 
 func incidentSearchNeedsPagedLocalFiltering(filter d.IncidentFilter) bool {
-	return filter.ErrorMessage != "" ||
+	return filter.State != "" ||
+		filter.ErrorType != "" ||
+		filter.ErrorMessage != "" ||
+		filter.ProcessInstanceKey != "" ||
+		filter.RootProcessInstanceKey != "" ||
+		filter.ProcessDefinitionKey != "" ||
+		filter.ProcessDefinitionId != "" ||
+		filter.FlowNodeId != "" ||
+		filter.FlowNodeInstanceKey != "" ||
 		filter.CreationTimeAfter != "" ||
 		filter.CreationTimeBefore != ""
 }

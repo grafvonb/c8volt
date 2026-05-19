@@ -178,7 +178,7 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 	for _, want := range []string{
 		"Inspect cluster, process, job, incident, tenant, and resource state without changing it.",
 		"./c8volt get incident --key <incident-key>",
-		"./c8volt get incident --state active --error-type job_no_retries --pi-keys-only",
+		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only",
 		"[c8volt get incident](c8volt_get_incident)",
 	} {
 		if !strings.Contains(getDoc, want) {
@@ -192,8 +192,8 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 		"Get Camunda incidents by key or by search criteria.",
 		"./c8volt get inc --key <incident-key> --key <another-incident-key>",
 		"./c8volt get incident --state resolved --error-type io_mapping_error",
-		"./c8volt get incident --state active --error-type job_no_retries --pi-keys-only",
-		"./c8volt get incident --state active --error-type job_no_retries --pi-keys-only | ./c8volt cancel pi --dry-run -",
+		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only",
+		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel pi --dry-run -",
 		"--error-message string",
 		"case-insensitive incident error message substring filter for search",
 		"--pi-keys-only",

@@ -612,6 +612,59 @@ func TestGetProcessInstanceDirectIncidentsOnly_FiltersByLoadedDirectIncidents(t 
 	require.Contains(t, output, "found: 1")
 }
 
+func TestGetProcessInstanceDirectIncidentsOnlyWithLimitUsesIncidentSearch(t *testing.T) {
+	var requests []string
+	var incidentSearchBodies []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			incidentSearchBodies = append(incidentSearchBodies, string(body))
+			_, _ = w.Write([]byte(`{"items":[
+				{"errorMessage":"intentional failure","errorType":"IO_MAPPING_ERROR","incidentKey":"incident-123","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"},
+				{"errorMessage":"intentional failure","errorType":"IO_MAPPING_ERROR","incidentKey":"incident-124","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"124","state":"ACTIVE","tenantId":"tenant"}
+			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/124":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:05:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "process-instance",
+		"--direct-incidents-only",
+		"--incident-error-type", "io_mapping_error",
+		"--incident-error-message", "intentional",
+		"--limit", "5",
+	)
+
+	require.NotEmpty(t, requests)
+	require.Equal(t, "POST /v2/incidents/search", requests[0])
+	require.ElementsMatch(t, []string{
+		"GET /v2/process-instances/123",
+		"GET /v2/process-instances/124",
+	}, requests[1:])
+	require.Len(t, incidentSearchBodies, 1)
+	require.NotContains(t, incidentSearchBodies[0], "process-instances")
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "124 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "found: 2")
+}
+
 func TestGetProcessInstanceIncidentFlags_PreserveSearchAndEnrichmentContracts(t *testing.T) {
 	tests := []struct {
 		name               string
