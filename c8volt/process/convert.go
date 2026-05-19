@@ -271,6 +271,19 @@ func fromDomainOrphanDiscovery(x pisvc.OrphanDiscovery) OrphanDiscovery {
 	}
 }
 
+func fromDomainOrphanDiscoveryProgress(x pisvc.OrphanDiscoveryProgress) OrphanDiscoveryProgress {
+	return OrphanDiscoveryProgress{
+		Page:                  x.Page,
+		Phase:                 x.Phase,
+		CurrentPageCandidates: x.CurrentPageCandidates,
+		CurrentPageOrphans:    x.CurrentPageOrphans,
+		CandidatesChecked:     x.CandidatesChecked,
+		OrphansFound:          x.OrphansFound,
+		Limit:                 x.Limit,
+		OverflowState:         ProcessInstanceOverflowState(x.OverflowState),
+	}
+}
+
 func fromDomainProcessInstanceReportedTotal(x d.ProcessInstanceReportedTotal) ProcessInstanceReportedTotal {
 	return ProcessInstanceReportedTotal{
 		Count: x.Count,

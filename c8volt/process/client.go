@@ -205,10 +205,17 @@ func (c *client) FilterProcessInstanceWithOrphanParent(ctx context.Context, item
 }
 
 func (c *client) DiscoverOrphanProcessInstances(ctx context.Context, request OrphanDiscoveryRequest, opts ...options.FacadeOption) (OrphanDiscovery, error) {
+	var progress func(pisvc.OrphanDiscoveryProgress)
+	if request.Progress != nil {
+		progress = func(event pisvc.OrphanDiscoveryProgress) {
+			request.Progress(fromDomainOrphanDiscoveryProgress(event))
+		}
+	}
 	out, err := pisvc.DiscoverOrphanProcessInstances(ctx, c.piApi, pisvc.OrphanDiscoveryRequest{
 		Filter:    toDomainProcessInstanceFilter(request.Filter),
 		BatchSize: request.BatchSize,
 		Limit:     request.Limit,
+		Progress:  progress,
 	}, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return OrphanDiscovery{}, ferr.FromDomain(err)

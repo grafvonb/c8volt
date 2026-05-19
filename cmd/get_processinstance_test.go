@@ -1334,6 +1334,66 @@ func TestGetProcessInstanceOrphanChildrenOnly_UsesRealFacadeDiscovery(t *testing
 	require.Contains(t, topLevelFilter, "parentProcessInstanceKey")
 }
 
+func TestSearchOrphanProcessInstancesWithSharedDiscovery_UsesCommandActivity(t *testing.T) {
+	prevLimit := flagGetPILimit
+	prevDirectIncidentsOnly := flagGetPIDirectIncidentsOnly
+	t.Cleanup(func() {
+		flagGetPILimit = prevLimit
+		flagGetPIDirectIncidentsOnly = prevDirectIncidentsOnly
+	})
+	flagGetPILimit = 25
+	flagGetPIDirectIncidentsOnly = false
+
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+
+	discoverCalls := 0
+	cli := stubProcessAPI{discoverOrphans: func(_ context.Context, request process.OrphanDiscoveryRequest, _ ...options.FacadeOption) (process.OrphanDiscovery, error) {
+		discoverCalls++
+		require.EqualValues(t, consts.MaxPISearchSize, request.BatchSize)
+		require.EqualValues(t, 25, request.Limit)
+		require.NotNil(t, request.Progress)
+		request.Progress(process.OrphanDiscoveryProgress{
+			Page:                  1,
+			Phase:                 "checking",
+			CurrentPageCandidates: 2,
+			CandidatesChecked:     0,
+			OrphansFound:          0,
+			Limit:                 request.Limit,
+		})
+		request.Progress(process.OrphanDiscoveryProgress{
+			Page:               1,
+			Phase:              "checked",
+			CurrentPageOrphans: 1,
+			CandidatesChecked:  2,
+			OrphansFound:       1,
+			Limit:              request.Limit,
+		})
+		return process.OrphanDiscovery{
+			Items: []process.ProcessInstance{{Key: "123", ParentKey: "456"}},
+			Keys:  []string{"123"},
+		}, nil
+	}}
+
+	got, renderedIncrementally, err := searchOrphanProcessInstancesWithSharedDiscovery(cmd, cli, nil, process.ProcessInstanceFilter{})
+
+	require.NoError(t, err)
+	require.False(t, renderedIncrementally)
+	require.Equal(t, 1, discoverCalls)
+	require.EqualValues(t, 1, got.Total)
+	require.Equal(t, []process.ProcessInstance{{Key: "123", ParentKey: "456"}}, got.Items)
+
+	started, stopped, msgs := sink.Snapshot()
+	require.Equal(t, 1, started)
+	require.Equal(t, 1, stopped)
+	require.Equal(t, []string{"discovering orphan child process instances"}, msgs)
+	require.Equal(t, []string{
+		"orphan search: page 1 checking 2 child process instance(s) for missing parents; checked 0, found 0 orphan child process instance(s)",
+		"orphan search: page 1 checked 2 child process instance(s), found 1 on page, 1 total",
+	}, sink.Updates())
+}
+
 func TestEnrichProcessInstancesWithIncidentActivity_UsesCommandActivity(t *testing.T) {
 	sink := &activitysink.Sink{}
 	cmd := &cobra.Command{}

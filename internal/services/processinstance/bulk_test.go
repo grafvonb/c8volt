@@ -16,6 +16,7 @@ import (
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
@@ -161,6 +162,7 @@ func TestDeleteProcessInstancesLogsProgressWhileRootDeleteRuns(t *testing.T) {
 
 	var logBuf lockedLogBuffer
 	log := slog.New(logging.NewPlainHandler(&logBuf, slog.LevelInfo))
+	sink := &activitysink.Sink{}
 	started := make(chan struct{})
 	release := make(chan struct{})
 	var startedOnce sync.Once
@@ -178,13 +180,16 @@ func TestDeleteProcessInstancesLogsProgressWhileRootDeleteRuns(t *testing.T) {
 	}
 	errCh := make(chan error, 1)
 	go func() {
-		_, err := DeleteProcessInstances(context.Background(), api, log, typex.Keys{"root-1"}, 1, 4)
+		_, err := DeleteProcessInstances(logging.ToActivityContext(context.Background(), sink), api, log, typex.Keys{"root-1"}, 1, 4)
 		errCh <- err
 	}()
 
 	<-started
 	require.Eventually(t, func() bool {
 		return strings.Contains(logBuf.String(), "pi delete progress; roots 0/1 done, affected 4")
+	}, time.Second, 10*time.Millisecond)
+	require.Eventually(t, func() bool {
+		return strings.Contains(strings.Join(sink.Updates(), "\n"), "pi delete progress; roots 0/1 done, affected 4")
 	}, time.Second, 10*time.Millisecond)
 	close(release)
 

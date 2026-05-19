@@ -172,18 +172,22 @@ func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.Proc
 	if err != nil {
 		return err
 	}
+	logging.UpdateActivity(ctx, fmt.Sprintf("pd stats %s (%s): active %d", pd.BpmnProcessId, pd.Key, active))
 	completed, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, "completed", camundav89.ProcessInstanceStateEnumCOMPLETED)
 	if err != nil {
 		return err
 	}
+	logging.UpdateActivity(ctx, fmt.Sprintf("pd stats %s (%s): completed %d", pd.BpmnProcessId, pd.Key, completed))
 	canceled, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, "canceled", camundav89.ProcessInstanceStateEnum(d.StateTerminated))
 	if err != nil {
 		return err
 	}
+	logging.UpdateActivity(ctx, fmt.Sprintf("pd stats %s (%s): canceled %d", pd.BpmnProcessId, pd.Key, canceled))
 	incidents, err := s.countProcessInstancesWithIncidentsForProcessDefinition(ctx, *pd)
 	if err != nil {
 		return err
 	}
+	logging.UpdateActivity(ctx, fmt.Sprintf("pd stats %s (%s): incidents %d", pd.BpmnProcessId, pd.Key, incidents))
 	ret := d.ProcessDefinitionStatistics{
 		Active:    active,
 		Completed: completed,
