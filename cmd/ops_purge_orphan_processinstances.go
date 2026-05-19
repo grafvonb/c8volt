@@ -71,7 +71,9 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
-			planned, err := cli.PurgeOrphanProcessInstances(cmd.Context(), planRequest, collectOptions()...)
+			planned, err := purgeOrphanProcessInstancesWithCommandActivity(cmd, planRequest, func() (ops.OrphanPurgeResult, error) {
+				return cli.PurgeOrphanProcessInstances(cmd.Context(), planRequest, collectOptions()...)
+			})
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops purge orphan process instances: %w", err))
 			}
@@ -91,7 +93,9 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 			}
 			request.DiscoveredKeys = append(typex.Keys{}, planned.Discovery.Keys...)
 		}
-		result, err := cli.PurgeOrphanProcessInstances(cmd.Context(), request, collectOptions()...)
+		result, err := purgeOrphanProcessInstancesWithCommandActivity(cmd, request, func() (ops.OrphanPurgeResult, error) {
+			return cli.PurgeOrphanProcessInstances(cmd.Context(), request, collectOptions()...)
+		})
 		if err != nil {
 			if reportErr := writeOpsPurgeOrphanProcessInstancesReport(result, cfg, opsPurgeOrphanProcessInstancesReportWriteMode(result)); reportErr != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge orphan process instances: %w; write audit report: %v", err, reportErr))
@@ -105,6 +109,29 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render ops purge orphan process instances: %w", err))
 		}
 	},
+}
+
+func purgeOrphanProcessInstancesWithCommandActivity(cmd *cobra.Command, request ops.OrphanPurgeRequest, run func() (ops.OrphanPurgeResult, error)) (ops.OrphanPurgeResult, error) {
+	msg := formatOpsPurgeOrphanProcessInstancesActivity(request, false)
+	if request.DiscoveredKeys != nil {
+		msg = "deleting orphan process-instance purge scope"
+	} else if !request.DryRun {
+		msg = formatOpsPurgeOrphanProcessInstancesActivity(request, true)
+	}
+	stopActivity := startCommandActivity(cmd, msg)
+	defer stopActivity()
+	return run()
+}
+
+func formatOpsPurgeOrphanProcessInstancesActivity(request ops.OrphanPurgeRequest, beforeDeletion bool) string {
+	msg := "checking orphan child pi parents"
+	if beforeDeletion {
+		msg += " before delete"
+	}
+	if request.BatchSize > 0 {
+		msg += fmt.Sprintf("; page size %d", request.BatchSize)
+	}
+	return msg
 }
 
 func init() {

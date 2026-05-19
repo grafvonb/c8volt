@@ -51,11 +51,21 @@ func renderOpsPurgeProcessInstancesWithIncidentsDiscovery(cmd *cobra.Command, re
 	if len(result.Discovery.SkippedIncidents) > 0 {
 		renderHumanLine(cmd, "skipped incidents: %d", len(result.Discovery.SkippedIncidents))
 	}
+	renderOpsPurgeProcessInstancesWithIncidentsNotices(cmd, result.Discovery.Notices)
 	if flagVerbose {
 		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "incident keys", result.Discovery.IncidentKeys)
 		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "candidate process-instance keys", result.Discovery.CandidateProcessInstanceKeys)
 		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "duplicate candidate process-instance keys", result.Discovery.DuplicateCandidateProcessInstanceKeys)
 		renderOpsPurgeProcessInstancesWithIncidentsSkipped(cmd, result.Discovery.SkippedIncidents)
+	}
+}
+
+func renderOpsPurgeProcessInstancesWithIncidentsNotices(cmd *cobra.Command, notices []ops.IncidentPurgeWorkflowNotice) {
+	for _, notice := range notices {
+		if notice.Code != "bounded_search_scope" || notice.Message == "" {
+			continue
+		}
+		renderHumanLine(cmd, "%s", notice.Message)
 	}
 }
 

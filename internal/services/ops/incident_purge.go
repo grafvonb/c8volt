@@ -196,12 +196,12 @@ func discoverIncidentPurgeCandidates(ctx context.Context, api incsvc.API, reques
 	discovery.CandidateProcessInstanceKeys = discovery.CandidateProcessInstanceKeys.Unique()
 	discovery.DuplicateCandidateProcessInstanceKeys = duplicateCandidates.Unique()
 	discovery.CandidateProcessInstanceCount = len(discovery.CandidateProcessInstanceKeys)
-	discovery.Notices = incidentPurgeDiscoveryNotices(discovery)
+	discovery.Notices = incidentPurgeDiscoveryNotices(discovery, request)
 	return discovery, nil
 }
 
 // incidentPurgeDiscoveryNotices records semantic discovery facts for reports without inflating compact output.
-func incidentPurgeDiscoveryNotices(discovery d.IncidentDiscoveryResult) []d.IncidentPurgeWorkflowNotice {
+func incidentPurgeDiscoveryNotices(discovery d.IncidentDiscoveryResult, request d.IncidentPurgeRequest) []d.IncidentPurgeWorkflowNotice {
 	var notices []d.IncidentPurgeWorkflowNotice
 	if discovery.IncidentCount == 0 {
 		notices = append(notices, d.IncidentPurgeWorkflowNotice{
@@ -230,6 +230,9 @@ func incidentPurgeDiscoveryNotices(discovery d.IncidentDiscoveryResult) []d.Inci
 			},
 		})
 	}
+	if notice := incidentPurgeBoundedSearchNotice(request, discovery.IncidentCount); notice != nil {
+		notices = append(notices, *notice)
+	}
 	return notices
 }
 
@@ -242,6 +245,22 @@ func incidentPurgeDiscoverySize(request d.IncidentPurgeRequest) int32 {
 		return request.BatchSize
 	}
 	return consts.MaxPISearchSize
+}
+
+func incidentPurgeBoundedSearchNotice(request d.IncidentPurgeRequest, count int) *d.IncidentPurgeWorkflowNotice {
+	discoverySize := incidentPurgeDiscoverySize(request)
+	if request.Limit > 0 || discoverySize <= 0 || count < int(discoverySize) {
+		return nil
+	}
+	return &d.IncidentPurgeWorkflowNotice{
+		Code:     "bounded_search_scope",
+		Severity: "info",
+		Message:  fmt.Sprintf("candidate incidents reached batch size %d; more matching incidents may exist", discoverySize),
+		Details: map[string]string{
+			"batchSize": fmt.Sprintf("%d", discoverySize),
+			"target":    "incidents",
+		},
+	}
 }
 
 // limitIncidentPurgeCandidateIncidents protects candidate extraction even when a stub or backend over-returns.

@@ -108,7 +108,8 @@ func (s *Service) repairExplicitIncidents(ctx context.Context, request d.OpsRepa
 // repairFilteredIncidents discovers matching incidents once, freezes them, and then reuses the shared incident repair execution path.
 func (s *Service) repairFilteredIncidents(ctx context.Context, request d.OpsRepairRequest, opts ...services.CallOption) (d.OpsRepairResult, error) {
 	result := newRepairResult(request)
-	incidents, err := incsvc.SearchIncidents(ctx, s.incAPI, request.IncidentSelection, repairIncidentDiscoverySize(request), opts...)
+	discoverySize := repairIncidentDiscoverySize(request)
+	incidents, err := incsvc.SearchIncidents(ctx, s.incAPI, request.IncidentSelection, discoverySize, opts...)
 	if err != nil {
 		result.FrozenSet.Status = d.OpsWorkflowStepStatusFailed
 		result.FrozenSet.Errors = []string{err.Error()}
@@ -116,6 +117,7 @@ func (s *Service) repairFilteredIncidents(ctx context.Context, request d.OpsRepa
 	}
 	incidents = limitRepairIncidents(incidents, request.Limit)
 	result.FrozenSet = freezeIncidentSearchSet(request, incidents)
+	result.Notices = append(result.Notices, repairBoundedSearchNotice(request.Limit, discoverySize, len(incidents), "incidents")...)
 	if len(incidents) == 0 {
 		result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
 		result.Notices = append(result.Notices, d.OpsRepairWorkflowNotice{
@@ -183,7 +185,8 @@ func (s *Service) repairExplicitProcessInstances(ctx context.Context, request d.
 // repairFilteredProcessInstances searches incident-bearing process instances before freezing and repairing their active incidents.
 func (s *Service) repairFilteredProcessInstances(ctx context.Context, request d.OpsRepairRequest, opts ...services.CallOption) (d.OpsRepairResult, error) {
 	result := newRepairResult(request)
-	pis, err := s.piAPI.SearchForProcessInstances(ctx, request.ProcessInstanceSelection, repairProcessInstanceDiscoverySize(request), opts...)
+	discoverySize := repairProcessInstanceDiscoverySize(request)
+	pis, err := s.piAPI.SearchForProcessInstances(ctx, request.ProcessInstanceSelection, discoverySize, opts...)
 	if err != nil {
 		result.FrozenSet.Status = d.OpsWorkflowStepStatusFailed
 		result.FrozenSet.Errors = []string{err.Error()}
@@ -203,6 +206,7 @@ func (s *Service) repairFilteredProcessInstances(ctx context.Context, request d.
 	result.FrozenSet.DiscoveryMode = d.OpsRepairDiscoveryModeSearch
 	result.FrozenSet.InputKeys = nil
 	result.FrozenSet.ProcessFilters = request.ProcessInstanceSelection
+	result.Notices = append(result.Notices, repairBoundedSearchNotice(request.Limit, discoverySize, len(pis), "pi")...)
 	return s.finishProcessInstanceIncidentRepair(ctx, request, result, incidents, opts...)
 }
 
@@ -345,6 +349,21 @@ func repairProcessInstanceDiscoverySize(request d.OpsRepairRequest) int32 {
 		return request.BatchSize
 	}
 	return consts.MaxPISearchSize
+}
+
+func repairBoundedSearchNotice(limit int32, discoverySize int32, count int, target string) []d.OpsRepairWorkflowNotice {
+	if limit > 0 || discoverySize <= 0 || count < int(discoverySize) {
+		return nil
+	}
+	return []d.OpsRepairWorkflowNotice{{
+		Code:     "bounded_search_scope",
+		Severity: "info",
+		Message:  fmt.Sprintf("candidate %s reached batch size %d; more matching %s may exist", target, discoverySize, target),
+		Details: map[string]string{
+			"batchSize": fmt.Sprintf("%d", discoverySize),
+			"target":    target,
+		},
+	}}
 }
 
 // limitRepairIncidents protects repair scope even when a stub or backend over-returns.
