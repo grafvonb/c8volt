@@ -80,6 +80,13 @@ func WaitForCompletion(ctx context.Context, log *slog.Logger, timeout time.Durat
 			log.Debug(fmt.Sprintf("waiting for completion done; attempts %d, elapsed %s", attempt, duration.String()))
 			return nil
 		}
+		if activity != nil {
+			msg := fmt.Sprintf("waiting for completion; attempt %d, elapsed %s", attempt, time.Since(startedAt).Round(time.Second))
+			if status.Message != "" {
+				msg += fmt.Sprintf(", status %s", status.Message)
+			}
+			logging.UpdateActivity(ctx, msg)
+		}
 		log.Debug(fmt.Sprintf("waiting for completion; reason %s", status.Message))
 
 		jitterRange := defaultJitterMaxRatio - defaultJitterMinRatio

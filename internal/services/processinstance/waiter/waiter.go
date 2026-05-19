@@ -101,7 +101,9 @@ func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *con
 		if errInDelay != nil {
 			if isProcessInstanceAbsentErr(errInDelay) {
 				pi = d.ProcessInstance{Key: key, State: d.StateAbsent}
-				logging.InfoIfVerbose(fmt.Sprintf("pi %s absent; waiting, attempt %d", key, attempts), log, cCfg.Verbose)
+				waitMsg := fmt.Sprintf("pi %s absent; waiting, attempt %d", key, attempts)
+				logging.UpdateActivity(ctx, waitMsg)
+				logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
 			} else {
 				elapsed := time.Since(start)
 				status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to error", key, attempts, elapsed)
@@ -123,7 +125,9 @@ func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *con
 			return d.ProcessInstanceExpectationResponse{Key: key, Ok: true, State: pi.State, Incident: &incident, Status: status}, pi, nil
 		}
 		if present {
-			logging.InfoIfVerbose(fmt.Sprintf("pi %s waiting; state %s, incident %t, attempt %d", key, pi.State, pi.Incident, attempts), log, cCfg.Verbose)
+			waitMsg := fmt.Sprintf("pi %s waiting; state %s, incident %t, attempt %d", key, pi.State, pi.Incident, attempts)
+			logging.UpdateActivity(ctx, waitMsg)
+			logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
 		}
 		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
 			elapsed := time.Since(start)
@@ -182,7 +186,9 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 				log.Debug(status)
 				return d.StateResponse{Ok: true, State: got, Status: status}, pi, nil
 			}
-			logging.InfoIfVerbose(fmt.Sprintf("pi %s waiting; state %s, attempt %d", key, got, attempts), log, cCfg.Verbose)
+			waitMsg := fmt.Sprintf("pi %s waiting; state %s, attempt %d", key, got, attempts)
+			logging.UpdateActivity(ctx, waitMsg)
+			logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
 		} else if errInDelay != nil {
 			if isProcessInstanceAbsentErr(errInDelay) {
 				// Only waiter-driven absent/deleted confirmation maps not-found into ABSENT; direct lookups stay strict.
@@ -193,7 +199,9 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 					log.Debug(status)
 					return d.StateResponse{Ok: true, State: got, Status: status}, d.ProcessInstance{}, nil
 				}
-				logging.InfoIfVerbose(fmt.Sprintf("pi %s absent; waiting, attempt %d", key, attempts), log, cCfg.Verbose)
+				waitMsg := fmt.Sprintf("pi %s absent; waiting, attempt %d", key, attempts)
+				logging.UpdateActivity(ctx, waitMsg)
+				logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
 			} else {
 				elapsed := time.Since(start)
 				status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to error", key, attempts, elapsed)

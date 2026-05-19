@@ -4,8 +4,11 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -17,10 +20,13 @@ func searchOrphanProcessInstancesWithSharedDiscovery(cmd *cobra.Command, cli pro
 	if flagGetPIDirectIncidentsOnly || hasPIIncidentDetailFilters() {
 		limit = 0
 	}
+	stopActivity := startCommandActivity(cmd, "discovering orphan child process instances")
+	defer stopActivity()
 	discovery, err := cli.DiscoverOrphanProcessInstances(cmd.Context(), process.OrphanDiscoveryRequest{
 		Filter:    filter,
 		BatchSize: resolvePISearchSize(cmd, cfg),
 		Limit:     limit,
+		Progress:  updateOrphanDiscoveryActivity(cmd),
 	}, collectOptions()...)
 	if err != nil {
 		return process.ProcessInstances{}, false, err
@@ -38,4 +44,47 @@ func searchOrphanProcessInstancesWithSharedDiscovery(cmd *cobra.Command, cli pro
 		pis.Total = int32(len(pis.Items))
 	}
 	return pis, false, nil
+}
+
+func updateOrphanDiscoveryActivity(cmd *cobra.Command) func(process.OrphanDiscoveryProgress) {
+	if cmd == nil {
+		return func(process.OrphanDiscoveryProgress) {}
+	}
+	return func(event process.OrphanDiscoveryProgress) {
+		msg := formatOrphanDiscoveryProgress(event)
+		logging.UpdateActivity(cmd.Context(), msg)
+		printOrphanDiscoveryProgress(cmd, msg)
+	}
+}
+
+func printOrphanDiscoveryProgress(cmd *cobra.Command, msg string) {
+	if cmd == nil || !flagVerbose || pickMode() != RenderModeOneLine {
+		return
+	}
+	fmt.Fprintln(cmd.ErrOrStderr(), msg)
+}
+
+func formatOrphanDiscoveryProgress(event process.OrphanDiscoveryProgress) string {
+	switch event.Phase {
+	case "checking":
+		return fmt.Sprintf(
+			"orphan search: page %d checking %d child process instance(s) for missing parents; checked %d, found %d orphan child process instance(s)",
+			event.Page,
+			event.CurrentPageCandidates,
+			event.CandidatesChecked,
+			event.OrphansFound,
+		)
+	default:
+		msg := fmt.Sprintf(
+			"orphan search: page %d checked %d child process instance(s), found %d on page, %d total",
+			event.Page,
+			event.CandidatesChecked,
+			event.CurrentPageOrphans,
+			event.OrphansFound,
+		)
+		if event.Limit > 0 && event.OrphansFound >= int(event.Limit) {
+			msg += fmt.Sprintf(", limit %d reached", event.Limit)
+		}
+		return msg
+	}
 }

@@ -11,6 +11,7 @@ type Sink struct {
 	started int
 	stopped int
 	msgs    []string
+	updates []string
 }
 
 // StartActivity records an activity start message.
@@ -26,6 +27,13 @@ func (s *Sink) StopActivity() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.stopped++
+}
+
+// UpdateActivity records an activity progress message.
+func (s *Sink) UpdateActivity(msg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.updates = append(s.updates, msg)
 }
 
 // Snapshot returns a thread-safe copy of the recorded activity state.
@@ -54,4 +62,11 @@ func (s *Sink) Messages() []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return append([]string(nil), s.msgs...)
+}
+
+// Updates returns a copy of recorded activity update messages.
+func (s *Sink) Updates() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.updates...)
 }

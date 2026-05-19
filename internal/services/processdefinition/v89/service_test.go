@@ -254,6 +254,12 @@ func TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator(t *testi
 	assert.Equal(t, 1, started)
 	assert.Equal(t, 1, stopped)
 	assert.Equal(t, []string{"getting pd stats proc (123)"}, msgs)
+	assert.Equal(t, []string{
+		"pd stats proc (123): active 10",
+		"pd stats proc (123): completed 20",
+		"pd stats proc (123): canceled 30",
+		"pd stats proc (123): incidents 4",
+	}, sink.Updates())
 	m.AssertExpectations(t)
 }
 

@@ -16,6 +16,7 @@ func TestDiscoverOrphanProcessInstancesLimitCountsOrphansNotCandidates(t *testin
 	t.Parallel()
 
 	searches := 0
+	var progress []OrphanDiscoveryProgress
 	api := stubOrphanDiscoveryAPI{
 		searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
 			searches++
@@ -62,6 +63,9 @@ func TestDiscoverOrphanProcessInstancesLimitCountsOrphansNotCandidates(t *testin
 	got, err := DiscoverOrphanProcessInstances(context.Background(), api, OrphanDiscoveryRequest{
 		BatchSize: 10,
 		Limit:     2,
+		Progress: func(event OrphanDiscoveryProgress) {
+			progress = append(progress, event)
+		},
 	})
 
 	require.NoError(t, err)
@@ -71,6 +75,46 @@ func TestDiscoverOrphanProcessInstancesLimitCountsOrphansNotCandidates(t *testin
 		{Key: "orphan-2", ParentKey: "missing-2"},
 	}, got.Items)
 	require.Equal(t, []string{"orphan-1", "orphan-2"}, []string(got.Keys))
+	require.Equal(t, []OrphanDiscoveryProgress{
+		{
+			Page:                  1,
+			Phase:                 "checking",
+			CurrentPageCandidates: 3,
+			CandidatesChecked:     0,
+			OrphansFound:          0,
+			Limit:                 2,
+			OverflowState:         d.ProcessInstanceOverflowStateHasMore,
+		},
+		{
+			Page:                  1,
+			Phase:                 "checked",
+			CurrentPageCandidates: 3,
+			CurrentPageOrphans:    1,
+			CandidatesChecked:     3,
+			OrphansFound:          1,
+			Limit:                 2,
+			OverflowState:         d.ProcessInstanceOverflowStateHasMore,
+		},
+		{
+			Page:                  2,
+			Phase:                 "checking",
+			CurrentPageCandidates: 2,
+			CandidatesChecked:     3,
+			OrphansFound:          1,
+			Limit:                 2,
+			OverflowState:         d.ProcessInstanceOverflowStateNoMore,
+		},
+		{
+			Page:                  2,
+			Phase:                 "checked",
+			CurrentPageCandidates: 2,
+			CurrentPageOrphans:    1,
+			CandidatesChecked:     5,
+			OrphansFound:          2,
+			Limit:                 2,
+			OverflowState:         d.ProcessInstanceOverflowStateNoMore,
+		},
+	}, progress)
 }
 
 type stubOrphanDiscoveryAPI struct {

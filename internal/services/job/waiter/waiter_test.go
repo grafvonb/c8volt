@@ -13,6 +13,8 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,15 +32,17 @@ func (f *fakeJobGetter) GetJob(context.Context, string, ...services.CallOption) 
 }
 
 func TestRetryConfirmationSuccess(t *testing.T) {
+	sink := &activitysink.Sink{}
 	lookup := &fakeJobGetter{jobs: []d.Job{
 		{Key: "2251799813711967", Retries: 1},
 		{Key: "2251799813711967", Retries: 3},
 	}}
 
-	job, err := WaitForRetries(context.Background(), lookup, retryWaiterTestConfig(), testLogger(), "2251799813711967", 3)
+	job, err := WaitForRetries(logging.ToActivityContext(context.Background(), sink), lookup, retryWaiterTestConfig(), testLogger(), "2251799813711967", 3)
 
 	require.NoError(t, err)
 	require.Equal(t, int32(3), job.Retries)
+	require.Equal(t, []string{"job 2251799813711967 waiting; retries 1, target 3, attempt 1"}, sink.Updates())
 }
 
 func TestRetryConfirmationExhaustion(t *testing.T) {

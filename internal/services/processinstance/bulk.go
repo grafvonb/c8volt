@@ -189,11 +189,14 @@ func startProcessInstanceBulkProgress(ctx context.Context, log *slog.Logger, act
 					lastDoneRoots = doneRoots
 					unchangedTicks = 0
 				}
+				var msg string
 				if affectedCount > roots {
-					log.Info(fmt.Sprintf("pi %s progress; roots %d/%d done, affected %d", action, doneRoots, roots, affectedCount))
+					msg = fmt.Sprintf("pi %s progress; roots %d/%d done, affected %d", action, doneRoots, roots, affectedCount)
 				} else {
-					log.Info(fmt.Sprintf("pi %s progress; requested %d/%d done", action, doneRoots, roots))
+					msg = fmt.Sprintf("pi %s progress; requested %d/%d done", action, doneRoots, roots)
 				}
+				logging.UpdateActivity(ctx, msg)
+				log.Info(msg)
 				if unchangedTicks >= processInstanceBulkStallProgressThreshold {
 					logOldestProcessInstanceBulkWork(log, action, tracker, unchangedTicks)
 				}

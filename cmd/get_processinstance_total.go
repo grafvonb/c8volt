@@ -9,6 +9,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -49,7 +50,11 @@ func searchProcessInstancesTotal(cmd *cobra.Command, log *slog.Logger, cli proce
 		}
 
 		total += int64(len(filtered.Items))
-		logPISearchProgress(cmd, log, newPIProgressSummary(page, int(total), true))
+		summary := newPIProgressSummary(page, int(total), true)
+		if cmd != nil {
+			logging.UpdateActivity(cmd.Context(), formatPISearchProgress(summary))
+		}
+		logPISearchProgress(cmd, log, summary)
 
 		if len(page.Items) == 0 || page.OverflowState == process.ProcessInstanceOverflowStateNoMore {
 			return total, nil

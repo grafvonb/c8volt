@@ -21,6 +21,18 @@ type OrphanDiscoveryRequest struct {
 	Filter    d.ProcessInstanceFilter
 	BatchSize int32
 	Limit     int32
+	Progress  func(OrphanDiscoveryProgress)
+}
+
+type OrphanDiscoveryProgress struct {
+	Page                  int
+	Phase                 string
+	CurrentPageCandidates int
+	CurrentPageOrphans    int
+	CandidatesChecked     int
+	OrphansFound          int
+	Limit                 int32
+	OverflowState         d.ProcessInstanceOverflowState
 }
 
 type OrphanDiscovery struct {
@@ -38,13 +50,25 @@ func DiscoverOrphanProcessInstances(ctx context.Context, api OrphanDiscoveryAPI,
 	var out OrphanDiscovery
 	out.Filter = filter
 	cumulativeOrphans := 0
+	cumulativeCandidates := 0
+	pageNumber := 0
 
 	for {
 		page, err := api.SearchForProcessInstancesPage(ctx, filter, pageReq, opts...)
 		if err != nil {
 			return OrphanDiscovery{}, err
 		}
+		pageNumber++
 		if len(page.Items) > 0 {
+			reportOrphanDiscoveryProgress(request.Progress, OrphanDiscoveryProgress{
+				Page:                  pageNumber,
+				Phase:                 "checking",
+				CurrentPageCandidates: len(page.Items),
+				CandidatesChecked:     cumulativeCandidates,
+				OrphansFound:          cumulativeOrphans,
+				Limit:                 request.Limit,
+				OverflowState:         page.OverflowState,
+			})
 			orphans, err := api.FilterProcessInstanceWithOrphanParent(ctx, page.Items, opts...)
 			if err != nil {
 				return OrphanDiscovery{}, err
@@ -54,7 +78,18 @@ func DiscoverOrphanProcessInstances(ctx context.Context, api OrphanDiscoveryAPI,
 			for _, item := range limitedOrphans {
 				out.Keys = append(out.Keys, item.Key)
 			}
+			cumulativeCandidates += len(page.Items)
 			cumulativeOrphans += len(limitedOrphans)
+			reportOrphanDiscoveryProgress(request.Progress, OrphanDiscoveryProgress{
+				Page:                  pageNumber,
+				Phase:                 "checked",
+				CurrentPageCandidates: len(page.Items),
+				CurrentPageOrphans:    len(limitedOrphans),
+				CandidatesChecked:     cumulativeCandidates,
+				OrphansFound:          cumulativeOrphans,
+				Limit:                 request.Limit,
+				OverflowState:         page.OverflowState,
+			})
 		}
 		if shouldStopOrphanDiscovery(page, request.Limit, cumulativeOrphans) {
 			out.Keys = out.Keys.Unique()
@@ -62,6 +97,13 @@ func DiscoverOrphanProcessInstances(ctx context.Context, api OrphanDiscoveryAPI,
 		}
 		pageReq = nextOrphanDiscoveryPageRequest(pageReq, page)
 	}
+}
+
+func reportOrphanDiscoveryProgress(progress func(OrphanDiscoveryProgress), event OrphanDiscoveryProgress) {
+	if progress == nil {
+		return
+	}
+	progress(event)
 }
 
 func normalizeOrphanDiscoveryBatchSize(size int32) int32 {

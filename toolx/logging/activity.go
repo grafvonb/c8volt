@@ -27,9 +27,14 @@ type ActivitySink interface {
 	StopActivity()
 }
 
+type ActivityUpdater interface {
+	UpdateActivity(msg string)
+}
+
 type ActivityWriter interface {
 	io.Writer
 	ActivitySink
+	ActivityUpdater
 }
 
 type activityCtxKey struct{}
@@ -40,18 +45,19 @@ type concurrentWriter interface {
 }
 
 type activityWriter struct {
-	w        io.Writer
-	mu       sync.Mutex
-	enabled  bool
-	refs     int
-	active   bool
-	drawn    bool
-	frame    int
-	stopCh   chan struct{}
-	doneCh   chan struct{}
-	message  string
-	delay    time.Duration
-	interval time.Duration
+	w          io.Writer
+	mu         sync.Mutex
+	enabled    bool
+	refs       int
+	active     bool
+	drawn      bool
+	drawnWidth int
+	frame      int
+	stopCh     chan struct{}
+	doneCh     chan struct{}
+	message    string
+	delay      time.Duration
+	interval   time.Duration
 }
 
 func NewActivityWriter(w io.Writer) ActivityWriter {
@@ -81,6 +87,14 @@ func StartActivity(ctx context.Context, msg string) func() {
 	}
 	activity.StartActivity(msg)
 	return activity.StopActivity
+}
+
+func UpdateActivity(ctx context.Context, msg string) {
+	activity, _ := ActivityFromContext(ctx).(ActivityUpdater)
+	if activity == nil {
+		return
+	}
+	activity.UpdateActivity(msg)
 }
 
 // newActivityWriter builds an activity writer with default spinner timing.
@@ -116,6 +130,7 @@ func (w *activityWriter) StartActivity(msg string) {
 	}
 	w.active = true
 	w.drawn = false
+	w.drawnWidth = 0
 	w.frame = 0
 	w.message = strings.TrimSpace(msg)
 	w.stopCh = make(chan struct{})
@@ -183,6 +198,24 @@ func (w *activityWriter) StopActivity() {
 	w.clearLocked()
 }
 
+func (w *activityWriter) UpdateActivity(msg string) {
+	if w == nil || !w.enabled {
+		return
+	}
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if !w.active {
+		return
+	}
+	w.message = strings.TrimSpace(msg)
+	if !w.drawn {
+		return
+	}
+	w.drawLocked()
+}
+
 func (w *activityWriter) tick() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -191,22 +224,29 @@ func (w *activityWriter) tick() {
 		return
 	}
 
+	w.drawLocked()
+}
+
+func (w *activityWriter) drawLocked() {
 	frame := activityFrames[w.frame%len(activityFrames)]
 	w.frame++
 	line := frame
 	if w.message != "" {
 		line += " " + w.message
 	}
-	_, _ = fmt.Fprintf(w.w, "\r%s", padRight(line, 80))
+	width := max(80, w.drawnWidth, len(line))
+	_, _ = fmt.Fprintf(w.w, "\r%s", padRight(line, width))
 	w.drawn = true
+	w.drawnWidth = width
 }
 
 func (w *activityWriter) clearLocked() {
 	if !w.drawn {
 		return
 	}
-	_, _ = fmt.Fprintf(w.w, "\r%s\r", strings.Repeat(" ", 80))
+	_, _ = fmt.Fprintf(w.w, "\r%s\r", strings.Repeat(" ", max(80, w.drawnWidth)))
 	w.drawn = false
+	w.drawnWidth = 0
 }
 
 func padRight(s string, width int) string {

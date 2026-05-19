@@ -494,8 +494,13 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 		t.Parallel()
 
 		sink := &activitysink.Sink{}
+		attempts := 0
 		waiter := stubPIWaiter{
 			getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+				attempts++
+				if attempts == 1 {
+					return d.StateActive, d.ProcessInstance{Key: key, State: d.StateActive}, nil
+				}
 				return d.StateCompleted, d.ProcessInstance{Key: key, State: d.StateCompleted}, nil
 			},
 		}
@@ -514,6 +519,7 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 		assert.Equal(t, 1, started)
 		assert.Equal(t, 1, stopped)
 		assert.Equal(t, []string{"waiting for pi 123 state"}, msgs)
+		assert.Equal(t, []string{"pi 123 waiting; state ACTIVE, attempt 1"}, sink.Updates())
 	})
 }
 

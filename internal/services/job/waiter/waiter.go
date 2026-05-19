@@ -52,7 +52,9 @@ func WaitForRetries(ctx context.Context, s JobGetter, cfg *config.Config, log *s
 		if job.Key != "" && job.Retries == retries {
 			return job, nil
 		}
-		logging.InfoIfVerbose(fmt.Sprintf("job %s waiting; retries %d, target %d, attempt %d", key, job.Retries, retries, attempts), log, cCfg.Verbose)
+		waitMsg := fmt.Sprintf("job %s waiting; retries %d, target %d, attempt %d", key, job.Retries, retries, attempts)
+		logging.UpdateActivity(ctx, waitMsg)
+		logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
 		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
 			elapsed := time.Since(start)
 			return job, fmt.Errorf("exceeded max_retries (%d) waiting for job %s retries to be %d after %d attempts in %s", backoff.MaxRetries, key, retries, attempts, elapsed)

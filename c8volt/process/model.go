@@ -203,9 +203,21 @@ type ProcessInstancePage struct {
 }
 
 type OrphanDiscoveryRequest struct {
-	Filter    ProcessInstanceFilter `json:"filter,omitempty"`
-	BatchSize int32                 `json:"batchSize,omitempty"`
-	Limit     int32                 `json:"limit,omitempty"`
+	Filter    ProcessInstanceFilter         `json:"filter,omitempty"`
+	BatchSize int32                         `json:"batchSize,omitempty"`
+	Limit     int32                         `json:"limit,omitempty"`
+	Progress  func(OrphanDiscoveryProgress) `json:"-"`
+}
+
+type OrphanDiscoveryProgress struct {
+	Page                  int                          `json:"page,omitempty"`
+	Phase                 string                       `json:"phase,omitempty"`
+	CurrentPageCandidates int                          `json:"currentPageCandidates,omitempty"`
+	CurrentPageOrphans    int                          `json:"currentPageOrphans,omitempty"`
+	CandidatesChecked     int                          `json:"candidatesChecked,omitempty"`
+	OrphansFound          int                          `json:"orphansFound,omitempty"`
+	Limit                 int32                        `json:"limit,omitempty"`
+	OverflowState         ProcessInstanceOverflowState `json:"overflowState,omitempty"`
 }
 
 type OrphanDiscovery struct {
