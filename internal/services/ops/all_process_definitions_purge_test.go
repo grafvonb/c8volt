@@ -403,7 +403,7 @@ func TestPurgeAllProcessDefinitionsBlocksUnsafeActiveInstancesWithoutForce(t *te
 func TestPurgeAllProcessDefinitionsExecutesDeletionThroughResourceDelete(t *testing.T) {
 	t.Parallel()
 
-	var deleted []string
+	deleted := typex.Keys{}
 	got, err := NewWithProcessDefinitionPurge(
 		stubProcessInstanceAPI{},
 		nil,
@@ -416,7 +416,11 @@ func TestPurgeAllProcessDefinitionsExecutesDeletionThroughResourceDelete(t *test
 				}, nil
 			},
 			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
-				require.True(t, services.ApplyCallOptions(opts).WithStat)
+				cfg := services.ApplyCallOptions(opts)
+				if !cfg.WithStat && deleted.Contains(key) {
+					return d.ProcessDefinition{}, d.ErrNotFound
+				}
+				require.True(t, cfg.WithStat)
 				return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
 			},
 		},
@@ -432,7 +436,7 @@ func TestPurgeAllProcessDefinitionsExecutesDeletionThroughResourceDelete(t *test
 	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{Workers: 1})
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"pd-a", "pd-b"}, deleted)
+	require.Equal(t, typex.Keys{"pd-a", "pd-b"}, deleted)
 	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeDeleted, got.Outcome)
 	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Deletion.Status)
 	require.Equal(t, []string{"pd-a", "pd-b"}, []string(got.Deletion.SubmittedProcessDefinitionKeys))
@@ -500,7 +504,7 @@ func TestPurgeAllProcessDefinitionsMapsExecutionControlsToDeletePath(t *testing.
 func TestPurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots(t *testing.T) {
 	var cancelled []string
 	var deletedPI []string
-	var deletedPD []string
+	var deletedPD typex.Keys
 	getCalls := map[string]int{}
 
 	got, err := NewWithProcessDefinitionPurge(
@@ -548,7 +552,11 @@ func TestPurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots(
 				}, nil
 			},
 			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
-				require.True(t, services.ApplyCallOptions(opts).WithStat)
+				cfg := services.ApplyCallOptions(opts)
+				if !cfg.WithStat && deletedPD.Contains(key) {
+					return d.ProcessDefinition{}, d.ErrNotFound
+				}
+				require.True(t, cfg.WithStat)
 				getCalls[key]++
 				active := int64(1)
 				if getCalls[key] > 2 {
@@ -576,7 +584,7 @@ func TestPurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots(
 	require.NoError(t, err)
 	require.Equal(t, []string{"pi-root"}, cancelled)
 	require.Equal(t, []string{"pi-root"}, deletedPI)
-	require.Equal(t, []string{"pd-a", "pd-b"}, deletedPD)
+	require.Equal(t, typex.Keys{"pd-a", "pd-b"}, deletedPD)
 	require.EqualValues(t, 2, got.DeletePlan.ActiveProcessInstanceCount)
 	require.EqualValues(t, 3, got.DeletePlan.AffectedProcessInstanceCount)
 	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeDeleted, got.Outcome)

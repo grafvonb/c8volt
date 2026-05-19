@@ -141,6 +141,16 @@ type cleanupProcessDefinitionAPI struct {
 	API
 }
 
+type deleteVisibilityProcessDefinitionAPI struct {
+	API
+	calls atomic.Int64
+}
+
+func (s *deleteVisibilityProcessDefinitionAPI) GetProcessDefinition(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
+	s.calls.Add(1)
+	return d.ProcessDefinition{}, fmt.Errorf("%w: process definition %s not found", d.ErrNotFound, key)
+}
+
 type testResourceDeleteAPI struct {
 	delete func(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error)
 }
@@ -206,7 +216,7 @@ func TestDeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError(t
 		{Key: "pd-3"},
 	}
 
-	got, err := DeleteProcessDefinitionResources(context.Background(), api, slog.New(slog.NewTextHandler(io.Discard, nil)), plans, 10)
+	got, err := DeleteProcessDefinitionResources(context.Background(), api, cleanupProcessDefinitionAPI{}, slog.New(slog.NewTextHandler(io.Discard, nil)), plans, 10)
 
 	require.Error(t, err)
 	require.ErrorIs(t, err, d.ErrBadRequest)
@@ -215,6 +225,32 @@ func TestDeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError(t
 	require.Equal(t, int64(1), calls.Load())
 	require.Len(t, got, 1)
 	require.Equal(t, "pd-1", got[0].Key)
+}
+
+// TestDeleteProcessDefinitionResourcesWaitsForDefinitionAbsenceAfterBatchCompletion verifies batch completion is not treated as the final visibility proof.
+func TestDeleteProcessDefinitionResourcesWaitsForDefinitionAbsenceAfterBatchCompletion(t *testing.T) {
+	var deletes atomic.Int64
+	api := testResourceDeleteAPI{
+		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			deletes.Add(1)
+			return d.ResourceDeleteResponse{Key: key, BatchOperationKey: "batch-1", BatchState: "COMPLETED"}, nil
+		},
+	}
+	pdAPI := &deleteVisibilityProcessDefinitionAPI{}
+
+	got, err := DeleteProcessDefinitionResources(
+		context.Background(),
+		api,
+		pdAPI,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		[]d.DeleteProcessDefinitionPlanItem{{Key: "pd-1"}},
+		1,
+	)
+
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, int64(1), deletes.Load())
+	require.Equal(t, int64(1), pdAPI.calls.Load())
 }
 
 // GetProcessDefinition returns inactive statistics so force cleanup can proceed after cancellation.

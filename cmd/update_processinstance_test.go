@@ -115,6 +115,7 @@ func TestUpdatePICommand_RegressionVarsUsesVariableMutationAndConfirmation(t *te
 		"POST /v2/variables/search",
 		"PUT /v2/element-instances/2251799813711967/variables",
 		"POST /v2/variables/search",
+		"POST /v2/variables/search",
 	}, requests)
 	require.Contains(t, output, "updated process-instance 2251799813711967: confirmed")
 	require.Contains(t, output, "updated: 1 (confirmed/submitted: 1, failed: 0)")
@@ -230,7 +231,7 @@ func TestUpdateProcessInstanceCommand_MultipleRepeatedKeysApplyOneVarsPayloadToE
 		"2251799813711967": 1,
 		"2251799813711968": 1,
 	}, gotUpdates)
-	require.Equal(t, 4, gotConfirmations)
+	require.Equal(t, 6, gotConfirmations)
 	envelope := requireUpdateProcessInstanceEnvelope(t, stdout)
 	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
 	requireUpdateResultKeys(t, envelope, "2251799813711967", "2251799813711968")
