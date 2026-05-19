@@ -14,7 +14,7 @@ Deleting process definitions is not just a resource cleanup. A selected process-
 
 ## The Promise
 
-`c8volt ops purge all-process-definitions` discovers candidate process-definition versions with `get pd`-style selectors, freezes their keys, previews delete impact, blocks active process-instance scope unless `--force` is supplied, and deletes the selected definitions only after confirmation.
+`c8volt ops purge all-process-definitions` discovers candidate process-definition versions with `get pd`-style selectors, freezes their keys, previews delete impact, blocks active process-instance scope unless `--force` is supplied, and deletes the selected definitions only after confirmation. The full process-definition purge workflow is supported for Camunda 8.9 and newer, where c8volt can request process-definition history deletion through the Camunda resource deletion endpoint.
 
 ## In Action
 
@@ -107,6 +107,7 @@ Report format is inferred from `--report-file` unless `--report-format markdown|
 
 ## Failure And Safety Notes
 
+- Full process-definition purge is supported from Camunda 8.9 onward. On earlier configured Camunda versions, c8volt fails before discovery or deletion because those endpoints do not support full process-definition history deletion.
 - `--pd-version` must be positive when supplied.
 - `--workers` must be positive when supplied.
 - Active process-instance impact blocks mutation unless `--force` is set.

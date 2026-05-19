@@ -13,6 +13,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
 )
 
@@ -27,6 +28,13 @@ func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllP
 	result := newAllProcessDefinitionsPurgeResult(request)
 
 	if err := validateAllProcessDefinitionsPurgeServiceReady(s); err != nil {
+		result.Discovery.Status = d.OpsWorkflowStepStatusFailed
+		result.Discovery.Errors = []string{err.Error()}
+		result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
+		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomeFailed, err)
+	}
+	if err := validateAllProcessDefinitionsPurgeSupportedVersion(s.version); err != nil {
 		result.Discovery.Status = d.OpsWorkflowStepStatusFailed
 		result.Discovery.Errors = []string{err.Error()}
 		result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
@@ -312,6 +320,16 @@ func validateAllProcessDefinitionsPurgeServiceReady(s *Service) error {
 	}
 	if s.resourceAPI == nil {
 		return fmt.Errorf("%w: all-process-definitions purge requires resource service", d.ErrValidation)
+	}
+	return nil
+}
+
+func validateAllProcessDefinitionsPurgeSupportedVersion(version toolx.CamundaVersion) error {
+	if version == "" {
+		version = toolx.CurrentCamundaVersion
+	}
+	if version != toolx.V89 {
+		return fmt.Errorf("%w: all-process-definitions purge requires Camunda 8.9 or newer; configured Camunda version is %s", d.ErrUnsupported, version.String())
 	}
 	return nil
 }

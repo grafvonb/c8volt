@@ -394,20 +394,20 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 	t.Cleanup(srv.Close)
 
 	output := executeRootForProcessInstanceTest(t,
-		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
 		"ops", "execute", "smoke-test",
 		"--no-wait",
 	)
 
 	require.Contains(t, output, "execute smoke test")
-	require.Contains(t, output, "deploy: fixture embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn")
+	require.Contains(t, output, "deploy: fixture embedded/processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn")
 	require.Contains(t, output, "deploy: confirmed process definition pd-88")
 	require.Contains(t, output, "start: 1 process instance")
 	require.Contains(t, output, "start: created 1/1")
 	require.Contains(t, output, "walk: 1 process-instance family")
 	require.Contains(t, output, "walk: confirmed 1 process-instance family")
 	require.Contains(t, output, "cleanup: deleting created resources")
-	require.Contains(t, output, "fixture: embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn")
+	require.Contains(t, output, "fixture: embedded/processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn")
 	require.Contains(t, output, "deployment: confirmed")
 	require.Contains(t, output, "created process instances: 1/1")
 	require.Contains(t, output, "walk: confirmed (process instances: 1)")
@@ -433,7 +433,7 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 		"POST /v2/process-instances/search",
 		"GET /v2/process-instances/101",
 		"POST /v2/process-instances/search",
-		"DELETE /v1/process-instances/101",
+		"POST /v2/process-instances/101/deletion",
 		"POST /v2/process-instances/search",
 		"GET /v2/process-definitions/pd-88",
 		"POST /v2/process-instances/search",
@@ -582,7 +582,7 @@ func TestOpsExecuteSmokeTestUsesImplicitConfirmationForCleanup(t *testing.T) {
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
 
 	output := executeRootForProcessInstanceTest(t,
-		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
 		"ops", "execute", "smoke-test",
 		"--no-wait",
 	)
@@ -723,6 +723,10 @@ func newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t *testing.T, request
 			}
 			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
 		case r.Method == http.MethodDelete && strings.HasPrefix(r.URL.Path, "/v1/process-instances/"):
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"status":"deleted"}`))
+		case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v2/process-instances/") && strings.HasSuffix(r.URL.Path, "/deletion"):
 			requests.Append(r.Method + " " + r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"status":"deleted"}`))

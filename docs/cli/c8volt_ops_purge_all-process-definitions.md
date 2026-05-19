@@ -11,7 +11,7 @@ Purge all selected process definitions
 
 Purge all selected process definitions.
 
-The workflow discovers candidate process-definition versions using the same filters as `get pd`, freezes the candidate keys, validates the existing delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Preview with --dry-run before confirmed deletion. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.
+The workflow discovers candidate process-definition versions using the same filters as `get pd`, freezes the candidate keys, validates the existing delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. This purge requires Camunda 8.9 or newer because earlier endpoints do not support full process-definition history deletion. Preview with --dry-run before confirmed deletion. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.
 
 ```
 c8volt ops purge all-process-definitions [flags]

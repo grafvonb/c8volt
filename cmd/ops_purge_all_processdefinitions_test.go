@@ -21,6 +21,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -552,6 +553,31 @@ func TestOpsPurgeAllProcessDefinitionsExistingReportPreservation(t *testing.T) {
 	}
 }
 
+// TestOpsPurgeAllProcessDefinitionsRejectsV88BeforePlanning keeps APD on the first fully supported Camunda version.
+func TestOpsPurgeAllProcessDefinitionsRejectsV88BeforePlanning(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, toolx.V88.String()),
+		"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, []string{
+			"ops", "purge", "all-process-definitions",
+			"--dry-run",
+		}),
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "all-process-definitions purge requires Camunda 8.9 or newer")
+	require.Empty(t, requests.Snapshot())
+	require.Empty(t, deleted.Snapshot())
+}
+
 // TestOpsPurgeAllProcessDefinitionsCommandHelper runs all-process-definitions purge command subprocess cases.
 func TestOpsPurgeAllProcessDefinitionsCommandHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -617,8 +643,8 @@ func sampleAllProcessDefinitionsPurgeDeletedResult() ops.AllProcessDefinitionsPu
 		Status:                         ops.WorkflowStepStatusSubmitted,
 		SubmittedProcessDefinitionKeys: typex.Keys{"pd-a", "pd-b"},
 		Items: []resource.DeleteReport{
-			{Key: "pd-a", Ok: true, StatusCode: http.StatusOK, Status: "200 OK"},
-			{Key: "pd-b", Ok: true, StatusCode: http.StatusOK, Status: "200 OK"},
+			{Key: "pd-a", Ok: true, StatusCode: http.StatusOK, Status: "200 OK", DeleteHistory: true},
+			{Key: "pd-b", Ok: true, StatusCode: http.StatusOK, Status: "200 OK", DeleteHistory: true},
 		},
 		Submitted: true,
 		NoWait:    true,

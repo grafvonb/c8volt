@@ -48,6 +48,8 @@ c8volt ops execute smoke-test --no-cleanup --report-file retained-smoke-test.md
 c8volt ops execute smoke-test --count 10 --automation --json --report-file smoke-test.json --report-format json
 ```
 
+On Camunda 8.8, prefer `--no-cleanup`: smoke-test cleanup deletes the deployed process definition, and full process-definition deletion is supported by c8volt from Camunda 8.9 onward. On dirty clusters, retained or unrelated instances can also block cleanup planning.
+
 ## Built From Lower-Level Commands
 
 This is the conceptual flow. The ops command should use c8volt services and facades rather than shelling out to these commands.

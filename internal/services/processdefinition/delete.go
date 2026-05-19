@@ -5,6 +5,7 @@ package processdefinition
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -24,8 +25,15 @@ type ResourceDeleteAPI interface {
 	Delete(ctx context.Context, key string, opts ...services.CallOption) (d.ResourceDeleteResponse, error)
 }
 
+type ResourceDeleteCapabilityAPI interface {
+	SupportsProcessDefinitionHistoryDeletion() bool
+}
+
 // DeleteProcessDefinition deletes one process definition after optional active-instance cleanup.
 func DeleteProcessDefinition(ctx context.Context, api ResourceDeleteAPI, pdApi API, piApi pisvc.API, log *slog.Logger, key string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+	if err := requireProcessDefinitionHistoryDeletionSupport(api); err != nil {
+		return d.ResourceDeleteResponse{}, err
+	}
 	cfg := services.ApplyCallOptions(opts)
 	plan := d.DeleteProcessDefinitionPlanItem{Key: key}
 	if cfg.NoStateCheck {
@@ -69,7 +77,7 @@ func DeleteProcessDefinition(ctx context.Context, api ResourceDeleteAPI, pdApi A
 			return d.ResourceDeleteResponse{}, fmt.Errorf("delete process definition process-instance history: %w", err)
 		}
 	}
-	return DeleteProcessDefinitionResource(ctx, api, log, plan, opts...)
+	return DeleteProcessDefinitionResourceAndWait(ctx, api, pdApi, log, plan, opts...)
 }
 
 // logProcessDefinitionDeleteResult emits the final resource deletion lifecycle line.
@@ -90,14 +98,34 @@ func DeleteProcessDefinitionResource(ctx context.Context, api ResourceDeleteAPI,
 	cfg := services.ApplyCallOptions(opts)
 	pdLabel := processDefinitionDeleteLogSubject(plan)
 	if !cfg.SuppressWorkflowDetailLogs {
-		log.Info(fmt.Sprintf("%s; delete request sent; history included", pdLabel))
+		log.Info(fmt.Sprintf("%s; delete request sent", pdLabel))
 	}
 	resp, err := api.Delete(ctx, plan.Key, opts...)
+	resp.Key = plan.Key
+	if err != nil {
+		return resp, err
+	}
 	if !cfg.SuppressWorkflowDetailLogs {
 		logProcessDefinitionDeleteResult(log, pdLabel, resp)
 	}
-	resp.Key = plan.Key
 	return resp, err
+}
+
+// DeleteProcessDefinitionResourceAndWait submits a process-definition resource delete and, unless --no-wait is set,
+// waits until process-definition lookup no longer returns the deleted key.
+func DeleteProcessDefinitionResourceAndWait(ctx context.Context, api ResourceDeleteAPI, pdApi API, log *slog.Logger, plan d.DeleteProcessDefinitionPlanItem, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+	resp, err := DeleteProcessDefinitionResource(ctx, api, log, plan, opts...)
+	if err != nil {
+		return resp, err
+	}
+	cfg := services.ApplyCallOptions(opts)
+	if cfg.NoWait {
+		return resp, nil
+	}
+	if err := waitForProcessDefinitionDeleted(ctx, pdApi, log, plan, opts...); err != nil {
+		return resp, err
+	}
+	return resp, nil
 }
 
 // PreviewDeleteProcessDefinitions builds a non-mutating delete impact plan for process-definition keys.
@@ -141,6 +169,9 @@ func PreviewDeleteProcessDefinitionsWithWorkers(ctx context.Context, pdApi API, 
 
 // DeleteProcessDefinitions deletes process definitions, sharing force cleanup across overlapping process-instance trees.
 func DeleteProcessDefinitions(ctx context.Context, api ResourceDeleteAPI, pdApi API, piApi pisvc.API, log *slog.Logger, keys types.Keys, wantedWorkers int, opts ...services.CallOption) ([]d.ResourceDeleteResponse, error) {
+	if err := requireProcessDefinitionHistoryDeletionSupport(api); err != nil {
+		return nil, err
+	}
 	cfg := services.ApplyCallOptions(opts)
 	ukeys := keys.Unique()
 	if cfg.Force && !cfg.NoStateCheck {
@@ -151,7 +182,7 @@ func DeleteProcessDefinitions(ctx context.Context, api ResourceDeleteAPI, pdApi 
 		if err := cleanupProcessDefinitionDeletePlanForceScope(ctx, pdApi, piApi, log, plan.Items, wantedWorkers, opts...); err != nil {
 			return nil, err
 		}
-		return DeleteProcessDefinitionResources(ctx, api, log, plan.Items, wantedWorkers, opts...)
+		return DeleteProcessDefinitionResources(ctx, api, pdApi, log, plan.Items, wantedWorkers, opts...)
 	}
 	lk := len(ukeys)
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cfg.NoWorkerLimit)
@@ -169,21 +200,63 @@ func DeleteProcessDefinitions(ctx context.Context, api ResourceDeleteAPI, pdApi 
 }
 
 // DeleteProcessDefinitionResources submits resource deletes for preplanned process-definition items.
-func DeleteProcessDefinitionResources(ctx context.Context, api ResourceDeleteAPI, log *slog.Logger, plans []d.DeleteProcessDefinitionPlanItem, wantedWorkers int, opts ...services.CallOption) ([]d.ResourceDeleteResponse, error) {
+func DeleteProcessDefinitionResources(ctx context.Context, api ResourceDeleteAPI, pdApi API, log *slog.Logger, plans []d.DeleteProcessDefinitionPlanItem, wantedWorkers int, opts ...services.CallOption) ([]d.ResourceDeleteResponse, error) {
+	if err := requireProcessDefinitionHistoryDeletionSupport(api); err != nil {
+		return nil, err
+	}
 	cfg := services.ApplyCallOptions(opts)
 	lk := len(plans)
+	if lk == 0 {
+		return nil, nil
+	}
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cfg.NoWorkerLimit)
 	logging.InfoIfVerbose(fmt.Sprintf("deleting pd: requested %d, workers %d", lk, nw), log, cfg.Verbose)
 	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("deleting %d pd", lk))
 	defer stopActivity()
-	rs, err := pool.ExecuteSlice[d.DeleteProcessDefinitionPlanItem, d.ResourceDeleteResponse](ctx, plans, nw, cfg.FailFast, func(ctx context.Context, plan d.DeleteProcessDefinitionPlanItem, _ int) (d.ResourceDeleteResponse, error) {
-		return DeleteProcessDefinitionResource(ctx, api, log, plan, opts...)
+
+	first, err := DeleteProcessDefinitionResourceAndWait(ctx, api, pdApi, log, plans[0], opts...)
+	if err != nil {
+		if isDeleteHistoryRequestShapeError(err) {
+			return []d.ResourceDeleteResponse{first}, fmt.Errorf("process-definition history deletion is not accepted by this Camunda endpoint; first key %s failed before submitting %d remaining process-definition delete request(s): %w", plans[0].Key, lk-1, err)
+		}
+		if cfg.FailFast || lk == 1 {
+			return []d.ResourceDeleteResponse{first}, err
+		}
+	}
+	if lk == 1 {
+		if !cfg.NoWait && !cfg.SuppressWorkflowDetailLogs {
+			total, oks, noks := resourceDeleteTotals([]d.ResourceDeleteResponse{first})
+			log.Info(fmt.Sprintf("pd delete done; requested %d, ok %d, failed %d", total, oks, noks))
+		}
+		return []d.ResourceDeleteResponse{first}, err
+	}
+
+	remaining, remainingErr := pool.ExecuteSlice[d.DeleteProcessDefinitionPlanItem, d.ResourceDeleteResponse](ctx, plans[1:], nw, cfg.FailFast, func(ctx context.Context, plan d.DeleteProcessDefinitionPlanItem, _ int) (d.ResourceDeleteResponse, error) {
+		return DeleteProcessDefinitionResourceAndWait(ctx, api, pdApi, log, plan, opts...)
 	})
+	rs := append([]d.ResourceDeleteResponse{first}, remaining...)
+	err = errors.Join(err, remainingErr)
 	if !cfg.NoWait && !cfg.SuppressWorkflowDetailLogs {
 		total, oks, noks := resourceDeleteTotals(rs)
 		log.Info(fmt.Sprintf("pd delete done; requested %d, ok %d, failed %d", total, oks, noks))
 	}
 	return rs, err
+}
+
+func requireProcessDefinitionHistoryDeletionSupport(api ResourceDeleteAPI) error {
+	capability, ok := api.(ResourceDeleteCapabilityAPI)
+	if !ok || capability.SupportsProcessDefinitionHistoryDeletion() {
+		return nil
+	}
+	return fmt.Errorf("%w: process-definition deletion requires Camunda 8.9 or newer for full history deletion", d.ErrUnsupported)
+}
+
+func isDeleteHistoryRequestShapeError(err error) bool {
+	if err == nil || !errors.Is(err, d.ErrBadRequest) {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "deletehistory") && strings.Contains(msg, "cannot be parsed")
 }
 
 // FindUnrelatedProcessInstancesForDefinition returns process instances matching
@@ -472,6 +545,27 @@ func waitForActiveProcessDefinitionInstancesDrained(ctx context.Context, pdApi A
 		return err
 	}
 	log.Info(fmt.Sprintf("%s; cancelled pi no longer active", pdLabel))
+	return nil
+}
+
+// waitForProcessDefinitionDeleted waits until the process-definition lookup surface reflects deletion.
+func waitForProcessDefinitionDeleted(ctx context.Context, pdApi API, log *slog.Logger, plan d.DeleteProcessDefinitionPlanItem, opts ...services.CallOption) error {
+	key := plan.Key
+	pdLabel := processDefinitionDeleteLogSubject(plan)
+	poll := func(ctx context.Context) (poller.JobPollStatus, error) {
+		_, err := pdApi.GetProcessDefinition(ctx, key, opts...)
+		if errors.Is(err, d.ErrNotFound) {
+			return poller.JobPollStatus{Success: true, Message: fmt.Sprintf("process definition %s no longer visible", key)}, nil
+		}
+		if err != nil {
+			return poller.JobPollStatus{}, err
+		}
+		return poller.JobPollStatus{Success: false, Message: fmt.Sprintf("process definition %s still visible", key)}, nil
+	}
+	if err := poller.WaitForCompletion(ctx, log, poller.DefaultCompletionTimeout, true, poll); err != nil {
+		return fmt.Errorf("%s; wait for delete visibility: %w", pdLabel, err)
+	}
+	log.Info(fmt.Sprintf("%s; delete no longer visible", pdLabel))
 	return nil
 }
 

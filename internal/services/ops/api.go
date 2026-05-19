@@ -52,7 +52,7 @@ func NewWithProcessDefinitionPurge(piAPI pisvc.API, incAPI incsvc.API, pdAPI pds
 	if len(loggers) > 0 && loggers[0] != nil {
 		log = loggers[0]
 	}
-	return &Service{piAPI: piAPI, incAPI: incAPI, pdAPI: pdAPI, resourceAPI: resourceAPI, version: toolx.CurrentCamundaVersion, log: log}
+	return &Service{piAPI: piAPI, incAPI: incAPI, pdAPI: pdAPI, resourceAPI: resourceAPI, version: toolx.V89, log: log}
 }
 
 // NewWithWorkflowDependencies creates an ops service with cross-resource workflow dependencies.

@@ -12,7 +12,7 @@ Get a resource by id
 
 Get a single resource by id.
 
-Requires --id.
+Requires --id. The id must be a Camunda resource id; process-definition keys and deployment response keys are not resource ids.
 
 ```
 c8volt get resource [flags]
@@ -21,9 +21,9 @@ c8volt get resource [flags]
 ### Examples
 
 ```
-  ./c8volt get resource --id <resource-key>
-  ./c8volt --json get resource --id <resource-key>
-  ./c8volt --keys-only get resource --id <resource-key>
+  ./c8volt get resource --id <resource-id>
+  ./c8volt --json get resource --id <resource-id>
+  ./c8volt --keys-only get resource --id <resource-id>
 ```
 
 ### Options

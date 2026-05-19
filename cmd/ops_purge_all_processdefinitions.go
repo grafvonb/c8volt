@@ -30,7 +30,7 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 	Use:   "all-process-definitions",
 	Short: "Purge all selected process definitions",
 	Long: "Purge all selected process definitions.\n\n" +
-		"The workflow discovers candidate process-definition versions using the same filters as `get pd`, freezes the candidate keys, validates the existing delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Preview with --dry-run before confirmed deletion. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
+		"The workflow discovers candidate process-definition versions using the same filters as `get pd`, freezes the candidate keys, validates the existing delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. This purge requires Camunda 8.9 or newer because earlier endpoints do not support full process-definition history deletion. Preview with --dry-run before confirmed deletion. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
 	Example: `  ./c8volt ops purge all-process-definitions --dry-run
   ./c8volt ops purge all-process-definitions --dry-run --report-file process-definition-purge.md
   ./c8volt ops purge all-pds --bpmn-process-id <bpmn-process-id> --latest --dry-run
@@ -79,11 +79,7 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 				return
 			}
 			if len(planned.DeletePlan.CandidateProcessDefinitionKeys) > 0 {
-				prompt := fmt.Sprintf("All process-definitions purge matched %d candidate process definition(s); delete planning will affect %d process instance(s) across %d unique process definition(s). Do you want to proceed?",
-					planned.Discovery.CandidateProcessDefinitionCount,
-					planned.DeletePlan.AffectedProcessInstanceCount,
-					len(planned.DeletePlan.CandidateProcessDefinitionKeys),
-				)
+				prompt := opsPurgeAllProcessDefinitionsConfirmationPrompt(planned)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsPurgeAllProcessDefinitionsAfterReport(cmd, log, cfg, markOpsPurgeAllProcessDefinitionsLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
 					return
@@ -156,6 +152,15 @@ func validateOpsPurgeAllProcessDefinitionsFlags(cmd *cobra.Command) error {
 		return invalidFlagValuef("--workers must be positive integer")
 	}
 	return validateOpsWorkflowReportFlags(flagOpsPurgeAllPDReportFile, OpsWorkflowReportFormat(flagOpsPurgeAllPDReportFormat))
+}
+
+// opsPurgeAllProcessDefinitionsConfirmationPrompt summarizes the frozen destructive scope and version-specific limitations.
+func opsPurgeAllProcessDefinitionsConfirmationPrompt(planned ops.AllProcessDefinitionsPurgeResult) string {
+	return fmt.Sprintf("All process-definitions purge matched %d candidate process definition(s); delete planning will affect %d process instance(s) across %d unique process definition(s). Do you want to proceed?",
+		planned.Discovery.CandidateProcessDefinitionCount,
+		planned.DeletePlan.AffectedProcessInstanceCount,
+		len(planned.DeletePlan.CandidateProcessDefinitionKeys),
+	)
 }
 
 // rejectOpsPurgeAllProcessDefinitionsPlanRequiringForce blocks mutation before prompting when active process instances are affected.

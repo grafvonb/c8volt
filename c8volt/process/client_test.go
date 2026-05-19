@@ -438,6 +438,7 @@ func TestUpdateProcessInstanceVariablesMapsConfirmedServiceResponse(t *testing.T
 				"nested": map[string]any{"count": float64(2)},
 			}, variables)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			assert.False(t, services.ApplyCallOptions(opts).NoWait)
 			return d.ProcessInstanceVariableUpdateResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
 		},
 		searchProcessInstanceVariables: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {

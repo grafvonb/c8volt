@@ -486,7 +486,11 @@ func TestExecuteSmokeTestCleansUpCreatedResources(t *testing.T) {
 	pdAPI := stubProcessDefinitionAPI{
 		getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
 			require.Equal(t, "pd-88", key)
-			require.True(t, services.ApplyCallOptions(opts).WithStat)
+			cfg := services.ApplyCallOptions(opts)
+			if !cfg.WithStat {
+				return d.ProcessDefinition{}, d.ErrNotFound
+			}
+			require.True(t, cfg.WithStat)
 			return d.ProcessDefinition{Key: key, BpmnProcessId: "C88_MultipleSubProcessesParentProcess", Statistics: &d.ProcessDefinitionStatistics{}}, nil
 		},
 	}
