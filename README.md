@@ -10,7 +10,7 @@
 
 `c8volt` is a Camunda 8 CLI for teams that care about outcomes, not just accepted requests. It is built for operators, developers, support engineers, CI pipelines, and AI agents that need one reliable command line for setup, inspection, recovery, and cleanup.
 
-## New in v4: C8 Ops CLI
+## New in v4 [CamundaCon 2026](https://www.camundacon.com/) Edition: C8 Ops CLI
 
 The v4 release introduces the C8 Ops CLI: high-level operational commands that finish the whole workflow. Low-level commands do work. `c8volt ops` gets the job done.
 
