@@ -350,7 +350,7 @@ func renderOpsExecuteSmokeTestJSONReport(report ops.SmokeTestAuditReport) ([]byt
 
 func renderOpsExecuteSmokeTestMarkdownReport(report ops.SmokeTestAuditReport, cfg *config.Config) ([]byte, error) {
 	var out strings.Builder
-	out.WriteString("# Smoke Test Audit Report\n\n")
+	out.WriteString("# Execute Smoke Test Audit Report\n\n")
 	writeMarkdownReportField(&out, "Schema Version", report.SchemaVersion)
 	writeMarkdownReportField(&out, "Command", report.CommandName)
 	writeMarkdownReportField(&out, "Started", formatOpsPurgeReportTime(report.StartedAt, cfg))

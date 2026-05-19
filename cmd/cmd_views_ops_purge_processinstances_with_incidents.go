@@ -197,7 +197,7 @@ func renderOpsPurgeProcessInstancesWithIncidentsJSONReport(report ops.IncidentPu
 // renderOpsPurgeProcessInstancesWithIncidentsMarkdownReport renders a readable incident-purge audit report.
 func renderOpsPurgeProcessInstancesWithIncidentsMarkdownReport(report ops.IncidentPurgeReport, cfg *config.Config) ([]byte, error) {
 	var out strings.Builder
-	out.WriteString("# Incident Process Instance Purge Audit Report\n\n")
+	out.WriteString("# Purge Process Instances With Incidents Audit Report\n\n")
 	writeMarkdownReportField(&out, "Schema Version", report.SchemaVersion)
 	writeMarkdownReportField(&out, "Command", report.CommandName)
 	writeMarkdownReportField(&out, "Started", formatOpsPurgeReportTime(report.StartedAt, cfg))

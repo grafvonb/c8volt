@@ -28,7 +28,7 @@ var embedDeployCmd = &cobra.Command{
 		"Add --run to start one process instance after deployment.",
 	Example: `  ./c8volt embed list
   ./c8volt embed deploy --all
-  ./c8volt embed deploy --file processdefinitions/C89_SimpleUserTaskProcess.bpmn
+  ./c8volt embed deploy --file processdefinitions/<embedded-process>.bpmn
   ./c8volt embed deploy --all --run`,
 	Aliases: []string{"dep"},
 	Run: func(cmd *cobra.Command, args []string) {

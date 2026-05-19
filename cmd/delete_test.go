@@ -743,7 +743,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"Delete process instances or process definitions",
 		"--auto-confirm",
 		"show verification examples",
-		"./c8volt delete pd --bpmn-process-id C89_SimpleUserTask_Process --latest --auto-confirm",
+		"./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 	require.Contains(t, output, "process-definition")
@@ -757,7 +757,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"number of process instances to process per page",
 		"maximum number of matching process instances to process across all pages",
 		"./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run",
-		"./c8volt delete pi --bpmn-process-id C89_SimpleUserTask_Process --state terminated --batch-size 250 --limit 5 --dry-run",
+		"./c8volt delete pi --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run",
 	}, []string{"--count"})
 	require.Contains(t, output, "--force")
 	require.Contains(t, output, "--batch-size int32")
@@ -766,9 +766,11 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 	output = assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{
 		"Delete process definition resources from Camunda",
 		"checks delete impact without changing anything",
+		"requires Camunda 8.9 or newer",
 		"associated history",
+		"c8volt delete process-instance --bpmn-process-id <bpmn-process-id>",
 		"Use --auto-confirm for unattended destructive runs",
-		"./c8volt delete pd --bpmn-process-id C89_SimpleUserTask_Process --latest --auto-confirm",
+		"./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
 	}, nil)
 	require.NotContains(t, output, "--allow-inconsistent")
 }
@@ -2263,7 +2265,7 @@ func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *test
 		}
 	}))
 	t.Cleanup(srv.Close)
-	cfgPath := writeTestConfig(t, srv.URL)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 
 	output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector", map[string]string{
 		"C8VOLT_TEST_CONFIG": cfgPath,
@@ -2275,6 +2277,30 @@ func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *test
 	require.Contains(t, string(output), "pd delete done; requested 1, ok 1, failed 0")
 	body := decodeSingleRequestJSON(t, deleteBodies)
 	require.Equal(t, true, body["deleteHistory"])
+}
+
+// TestDeleteProcessDefinitionCommand_V88RejectsBeforeMutation keeps process-definition deletion on the first fully supported Camunda version.
+func TestDeleteProcessDefinitionCommand_V88RejectsBeforeMutation(t *testing.T) {
+	var called bool
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		http.Error(w, "unexpected request", http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	}, "2251799813692357\n")
+
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "process-definition deletion requires Camunda 8.9 or newer")
+	require.Contains(t, string(output), "c8volt delete process-instance --bpmn-process-id")
+	require.False(t, called)
 }
 
 // TestDeleteProcessDefinitionCommand_BatchReadCheckBlocksBeforeMutation verifies
@@ -2299,7 +2325,7 @@ func TestDeleteProcessDefinitionCommand_BatchReadCheckBlocksBeforeMutation(t *te
 		}
 	}))
 	t.Cleanup(srv.Close)
-	cfgPath := writeTestConfig(t, srv.URL)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 
 	output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector", map[string]string{
 		"C8VOLT_TEST_CONFIG": cfgPath,
@@ -2334,7 +2360,7 @@ func TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenant(t *testi
 	t.Cleanup(srv.Close)
 
 	cfgPath := writeRawTestConfig(t, `app:
-  camunda_version: 8.8
+  camunda_version: 8.9
   tenant: base-tenant
 apis:
   camunda_api:
@@ -2383,7 +2409,7 @@ func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForc
 	}))
 	t.Cleanup(srv.Close)
 
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 	output, err := testx.RunCmdSubprocess(t, "TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWaitHelper", map[string]string{
 		"C8VOLT_TEST_CONFIG": cfgPath,
 	})

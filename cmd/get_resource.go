@@ -18,10 +18,10 @@ var getResourceCmd = &cobra.Command{
 	Use:   "resource",
 	Short: "Get a resource by id",
 	Long: "Get a single resource by id.\n\n" +
-		"Requires --id.",
-	Example: `  ./c8volt get resource --id <resource-key>
-  ./c8volt --json get resource --id <resource-key>
-  ./c8volt --keys-only get resource --id <resource-key>`,
+		"Requires --id. The id must be a Camunda resource id; process-definition keys and deployment response keys are not resource ids.",
+	Example: `  ./c8volt get resource --id <resource-id>
+  ./c8volt --json get resource --id <resource-id>
+  ./c8volt --keys-only get resource --id <resource-id>`,
 	Aliases: []string{"r"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		_, err := validatedResourceID()

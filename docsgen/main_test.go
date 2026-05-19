@@ -64,6 +64,9 @@ func TestRewriteDocsIndexLinks(t *testing.T) {
 		`Screencast: ![demo](docs/assets/screencasts/fast-start.gif)`,
 		`Asset: <img src="./docs/assets/example.png" />`,
 		`CLI: [reference](./docs/cli/index.md)`,
+		`Ops index: [playbooks](docs/ops/index.md)`,
+		`Ops page: [Execute Smoke Test](docs/ops/execute-smoke-test.md)`,
+		`Ops page with dot: [Execute Retention Policy](./docs/ops/execute-retention-policy.md)`,
 		`Docs: [LICENSE](./LICENSE), [COPYRIGHT](./COPYRIGHT), [NOTICE.md](./NOTICE.md)`,
 		`Project: [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](./SECURITY.md), [TRADEMARKS.md](TRADEMARKS.md), [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)`,
 		`Lowercase target: [trademarks.md](trademarks.md)`,
@@ -76,6 +79,9 @@ func TestRewriteDocsIndexLinks(t *testing.T) {
 		`Screencast: ![demo](./assets/screencasts/fast-start.gif)`,
 		`Asset: <img src="./assets/example.png" />`,
 		`CLI: [reference](./cli/)`,
+		`Ops index: [playbooks](./ops/)`,
+		`Ops page: [Execute Smoke Test](./ops/execute-smoke-test/)`,
+		`Ops page with dot: [Execute Retention Policy](./ops/execute-retention-policy/)`,
 		`[LICENSE](https://github.com/grafvonb/c8volt/blob/main/LICENSE)`,
 		`[COPYRIGHT](https://github.com/grafvonb/c8volt/blob/main/COPYRIGHT)`,
 		`[NOTICE.md](https://github.com/grafvonb/c8volt/blob/main/NOTICE.md)`,
@@ -172,7 +178,7 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 	for _, want := range []string{
 		"Inspect cluster, process, job, incident, tenant, and resource state without changing it.",
 		"./c8volt get incident --key <incident-key>",
-		"./c8volt get incident --state active --error-type job_no_retries --pi-keys-only",
+		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only",
 		"[c8volt get incident](c8volt_get_incident)",
 	} {
 		if !strings.Contains(getDoc, want) {
@@ -186,8 +192,8 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 		"Get Camunda incidents by key or by search criteria.",
 		"./c8volt get inc --key <incident-key> --key <another-incident-key>",
 		"./c8volt get incident --state resolved --error-type io_mapping_error",
-		"./c8volt get incident --state active --error-type job_no_retries --pi-keys-only",
-		"./c8volt get incident --state active --error-type job_no_retries --pi-keys-only | ./c8volt cancel pi --dry-run -",
+		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only",
+		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel pi --dry-run -",
 		"--error-message string",
 		"case-insensitive incident error message substring filter for search",
 		"--pi-keys-only",
@@ -262,7 +268,7 @@ func TestGeneratedResolveDocsDocumentResolveWorkflows(t *testing.T) {
 	for _, want := range []string{
 		"Resolve process-instance incidents by key.",
 		"discovers active incidents at command start",
-		"./c8volt resolve pi --key 2251799813685250 --key 2251799813685260",
+		"./c8volt resolve pi --key <process-instance-key> --key <another-process-instance-key>",
 		"--dry-run",
 		"preview process-instance incident resolutions without submitting mutation",
 		"--no-wait",
@@ -322,7 +328,7 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"Execute process-instance retention cleanup",
 		"--retention-days int",
 		"--report-file string",
-		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id order-process --dry-run",
+		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --dry-run",
 		"[c8volt ops execute](c8volt_ops_execute)",
 	} {
 		if !strings.Contains(retentionDoc, want) {

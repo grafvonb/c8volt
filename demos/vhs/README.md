@@ -47,11 +47,18 @@ export C8VOLT_VHS_OAUTH_TASKLIST_SCOPE="tasklist-api.read"
 
 ## Render
 
-Render the fast-start screencast:
+Render a screencast with its Make target or short alias:
 
-```bash
-make demo-vhs-fast-start
-```
+| Screencast | Make target | Short alias |
+| --- | --- | --- |
+| Fast Start | `make demo-vhs-fast-start` | |
+| Execute Smoke Test | `make demo-vhs-ops-execute-smoke-test` | `make demo-vhs-st` |
+| Execute Retention Policy | `make demo-vhs-ops-execute-retention-policy` | `make demo-vhs-rp` |
+| Purge Orphan Process Instances | `make demo-vhs-ops-purge-orphan-process-instances` | `make demo-vhs-opi` |
+| Purge Process Instances With Incidents | `make demo-vhs-ops-purge-process-instances-with-incidents` | `make demo-vhs-piwi` |
+| Purge All Process Definitions | `make demo-vhs-ops-purge-all-process-definitions` | `make demo-vhs-apd` |
+| Repair Incident | `make demo-vhs-ops-repair-incident` | `make demo-vhs-inc` |
+| Repair Process Instance | `make demo-vhs-ops-repair-process-instance` | `make demo-vhs-pi` |
 
 The render script builds `./bin/c8volt`, creates `/tmp/c8volt-vhs`, copies the
 binary into `/tmp/c8volt-vhs/bin/c8volt`, writes the recording-only
@@ -60,10 +67,10 @@ binary into `/tmp/c8volt-vhs/bin/c8volt`, writes the recording-only
 Generated media is written to:
 
 - `docs/assets/screencasts/fast-start.gif`
-- `docs/assets/screencasts/ops-smoke-test.gif`
-- `docs/assets/screencasts/ops-retention-policy.gif`
-- `docs/assets/screencasts/ops-orphan-process-instances.gif`
-- `docs/assets/screencasts/ops-purge-pi-with-incidents.gif`
-- `docs/assets/screencasts/ops-all-process-definitions.gif`
+- `docs/assets/screencasts/ops-execute-smoke-test.gif`
+- `docs/assets/screencasts/ops-execute-retention-policy.gif`
+- `docs/assets/screencasts/ops-purge-orphan-process-instances.gif`
+- `docs/assets/screencasts/ops-purge-process-instances-with-incidents.gif`
+- `docs/assets/screencasts/ops-purge-all-process-definitions.gif`
 - `docs/assets/screencasts/ops-repair-incident.gif`
 - `docs/assets/screencasts/ops-repair-process-instance.gif`

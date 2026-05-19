@@ -114,6 +114,9 @@ func rewriteDocsIndexLinks(body string) string {
 	body = strings.ReplaceAll(body, "./docs/assets/", "./assets/")
 	body = strings.ReplaceAll(body, "](docs/assets/", "](./assets/")
 	body = strings.ReplaceAll(body, "](./docs/cli/index.md)", "](./cli/)")
+	body = strings.ReplaceAll(body, "](docs/ops/index.md)", "](./ops/)")
+	body = strings.ReplaceAll(body, "](./docs/ops/index.md)", "](./ops/)")
+	body = opsPlaybookLinkTargetPattern.ReplaceAllString(body, "](./ops/$2/)")
 
 	body = rewriteGovernanceLinks(body)
 
@@ -121,6 +124,7 @@ func rewriteDocsIndexLinks(body string) string {
 }
 
 var (
+	opsPlaybookLinkTargetPattern = regexp.MustCompile(`\]\((\./)?docs/ops/([A-Za-z0-9_.-]+)\.md\)`)
 	governanceLinkTargetPattern = regexp.MustCompile(`\]\((\./)?([A-Za-z0-9_.-]+)\)`)
 	governanceDocs              = map[string]string{
 		"code_of_conduct.md": "CODE_OF_CONDUCT.md",

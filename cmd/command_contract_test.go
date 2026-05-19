@@ -822,6 +822,9 @@ func TestCommandCapabilityForCommand_OpsExecuteRetentionPolicyContract(t *testin
 	capability := commandCapabilityForCommand(opsExecuteRetentionPolicyCmd)
 
 	require.Equal(t, "ops execute retention-policy", capability.Path)
+	require.Contains(t, capability.Aliases, "ret-pol")
+	require.Contains(t, capability.Aliases, "rp")
+	require.NotContains(t, capability.Aliases, "rt")
 	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
 	require.Equal(t, ContractSupportFull, capability.ContractSupport)
 	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
@@ -1230,7 +1233,7 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"--json cannot be combined with --verbose",
 		"Camunda 8.7 returns an unsupported-version error before mutation",
 		"./c8volt update job --key <job-key> --retries 3 --dry-run",
-		"./c8volt --json update job --key <job-key> --retries 3 --auto-confirm",
+		"./c8volt --json update job --key <job-key> --retries 3 --dry-run",
 		"--key string",
 		"--retries int32",
 		"--timeout string",
@@ -1247,9 +1250,9 @@ func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *tes
 		"./c8volt get incident --key <incident-key>",
 		"./c8volt get inc --key <incident-key> --key <another-incident-key>",
 		"./c8volt get incident --state resolved --error-type io_mapping_error --limit 5",
-		"./c8volt get pi --with-incidents --keys-only | ./c8volt get inc -",
-		"./c8volt get incident --state active --error-type job_no_retries --pi-keys-only",
-		"./c8volt get incident --state active --error-type job_no_retries --pi-keys-only | ./c8volt cancel pi --dry-run -",
+		"./c8volt get incident --state active --keys-only | ./c8volt get inc -",
+		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only",
+		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel pi --dry-run -",
 		"./c8volt --json get incident --key <incident-key>",
 		"./c8volt --keys-only get incident --key <incident-key>",
 		"--key strings",
@@ -1297,7 +1300,7 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 		"Camunda 8.7 returns an unsupported-version error before mutation",
 		"./c8volt update pi --key <process-instance-key> --vars '{\"customerTier\":\"gold\"}' --dry-run",
 		"./c8volt update pi --key <process-instance-key-a> --key <process-instance-key-b> --vars",
-		"printf '%s\\n' \"$PROCESS_INSTANCE_KEY_A\" | ./c8volt update pi --key \"$PROCESS_INSTANCE_KEY_B\" - --vars",
+		"printf '%s\\n' \"$PROCESS_INSTANCE_KEY_A\" \"$PROCESS_INSTANCE_KEY_B\" | ./c8volt update pi - --vars",
 		"--workers",
 		"--dry-run",
 		"--fail-fast",

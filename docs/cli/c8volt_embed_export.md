@@ -23,7 +23,7 @@ c8volt embed export [flags]
 ```
   ./c8volt embed export --all --out ./fixtures
   ./c8volt embed export --file 'processdefinitions/*.bpmn' --out ./fixtures
-  ./c8volt embed export --file processdefinitions/C89_SimpleUserTaskProcess.bpmn --out ./fixtures
+  ./c8volt embed export --file processdefinitions/<embedded-process>.bpmn --out ./fixtures
 ```
 
 ### Options

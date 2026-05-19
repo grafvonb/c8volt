@@ -44,14 +44,11 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 5")
 	require.Contains(t, output, "./c8volt get pi --key <process-instance-key>")
 	require.Contains(t, output, "./c8volt get pi --state active --total")
-	require.Contains(t, output, "./c8volt get pi --state active --json --limit 5")
-	require.Contains(t, output, "./c8volt get pi --state active --limit 5 --auto-confirm")
+	require.Contains(t, output, "./c8volt get pi --has-user-tasks <user-task-key>")
 	require.Contains(t, output, "./c8volt get pi --incidents-only --with-incidents --limit 5")
-	require.Contains(t, output, "./c8volt get pi --direct-incidents-only --with-incidents --limit 5")
-	require.Contains(t, output, "./c8volt get pi --with-incidents --incident-message-limit 80 --limit 5")
 	require.Contains(t, output, "./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5")
 	require.Contains(t, output, "./c8volt get pi --state active --with-vars --var-value-limit 120 --limit 5")
-	require.Contains(t, output, "./c8volt get pi --key <process-instance-key> --with-incidents --incident-state all")
+	require.Contains(t, output, "./c8volt get pi --key <process-instance-key> --with-incidents")
 	require.Contains(t, output, "./c8volt get pi --key <process-instance-key> --with-vars")
 	require.Contains(t, output, "./c8volt get pi --key <process-instance-key> --with-vars --var-value-limit 120")
 	require.Contains(t, output, "capped backend totals are counted by paging")
@@ -613,6 +610,59 @@ func TestGetProcessInstanceDirectIncidentsOnly_FiltersByLoadedDirectIncidents(t 
 	require.NotContains(t, output, "123 tenant demo-a")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
 	require.Contains(t, output, "found: 1")
+}
+
+func TestGetProcessInstanceDirectIncidentsOnlyWithLimitUsesIncidentSearch(t *testing.T) {
+	var requests []string
+	var incidentSearchBodies []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			incidentSearchBodies = append(incidentSearchBodies, string(body))
+			_, _ = w.Write([]byte(`{"items":[
+				{"errorMessage":"intentional failure","errorType":"IO_MAPPING_ERROR","incidentKey":"incident-123","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"},
+				{"errorMessage":"intentional failure","errorType":"IO_MAPPING_ERROR","incidentKey":"incident-124","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"124","state":"ACTIVE","tenantId":"tenant"}
+			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/124":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:05:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "process-instance",
+		"--direct-incidents-only",
+		"--incident-error-type", "io_mapping_error",
+		"--incident-error-message", "intentional",
+		"--limit", "5",
+	)
+
+	require.NotEmpty(t, requests)
+	require.Equal(t, "POST /v2/incidents/search", requests[0])
+	require.ElementsMatch(t, []string{
+		"GET /v2/process-instances/123",
+		"GET /v2/process-instances/124",
+	}, requests[1:])
+	require.Len(t, incidentSearchBodies, 1)
+	require.NotContains(t, incidentSearchBodies[0], "process-instances")
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "124 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "found: 2")
 }
 
 func TestGetProcessInstanceIncidentFlags_PreserveSearchAndEnrichmentContracts(t *testing.T) {

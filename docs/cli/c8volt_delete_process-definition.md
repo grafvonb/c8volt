@@ -12,7 +12,7 @@ Delete process definition resources
 
 Delete process definition resources from Camunda.
 
-By default c8volt first checks delete impact without changing anything: active process instances, required cancellation roots and process-instance tree scope when --force is used, and batch-operation read access before prompting. With --force, it cancels the root process instances, deletes the affected process-instance history, then asks Camunda to delete the process definition and remaining associated history.
+By default c8volt first checks delete impact without changing anything: active process instances, required cancellation roots and process-instance tree scope when --force is used, and batch-operation read access before prompting. Process-definition deletion requires Camunda 8.9 or newer so c8volt can request full process-definition history deletion. With --force, it cancels the root process instances, deletes the affected process-instance history, then asks Camunda to delete the process definition and remaining associated history. If you only want to delete process instances for a definition, use `c8volt delete process-instance --bpmn-process-id <bpmn-process-id>`.
 
 Use --auto-confirm for unattended destructive runs.
 
@@ -24,10 +24,10 @@ c8volt delete process-definition [flags]
 
 ```
   ./c8volt delete pd --key <process-definition-key> --auto-confirm
-  ./c8volt delete pd --bpmn-process-id C89_SimpleUserTask_Process --latest --force
-  ./c8volt delete pd --bpmn-process-id C89_SimpleUserTask_Process --latest --auto-confirm
-  ./c8volt get pd --bpmn-process-id C89_SimpleUserTask_Process --latest --json
-  ./c8volt get pd --bpmn-process-id C89_SimpleUserTask_Process --latest --keys-only | ./c8volt delete pd --auto-confirm -
+  ./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --force
+  ./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
+  ./c8volt get pd --bpmn-process-id <bpmn-process-id> --latest --json
+  ./c8volt get pd --bpmn-process-id <bpmn-process-id> --latest --keys-only | ./c8volt delete pd --auto-confirm -
 ```
 
 ### Options

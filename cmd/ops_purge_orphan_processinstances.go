@@ -28,7 +28,7 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 	Long: "Purge orphan child process instances.\n\n" +
 		"The workflow discovers child process instances with missing parents, freezes the discovered key set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
 	Example: `  ./c8volt ops purge orphan-process-instances --dry-run
-  ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id order-process --limit 25
+  ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id <bpmn-process-id> --limit 25
   ./c8volt ops purge orphan-process-instances --automation --json --dry-run
   ./c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm
   ./c8volt ops purge orphan-process-instances --dry-run --report-file orphan-purge.md

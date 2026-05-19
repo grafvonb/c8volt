@@ -92,9 +92,11 @@ func TestClient_DeleteProcessDefinition_UsesRootCancellationPlan(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
+	deletedPD := typex.Keys{}
 	api := &stubResourceAPI{
 		delete: func(_ context.Context, resourceKey string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
 			assert.Equal(t, "pd-1", resourceKey)
+			deletedPD = append(deletedPD, resourceKey)
 			return d.ResourceDeleteResponse{
 				Ok:                true,
 				StatusCode:        http.StatusOK,
@@ -114,7 +116,11 @@ func TestClient_DeleteProcessDefinition_UsesRootCancellationPlan(t *testing.T) {
 	papi := stubProcessAPI{
 		getProcessDefinition: func(_ context.Context, key string, opts ...options.FacadeOption) (process.ProcessDefinition, error) {
 			assert.Equal(t, "pd-1", key)
-			assert.True(t, options.ApplyFacadeOptions(opts).Stat)
+			cfg := options.ApplyFacadeOptions(opts)
+			if !cfg.Stat && deletedPD.Contains(key) {
+				return process.ProcessDefinition{}, d.ErrNotFound
+			}
+			assert.True(t, cfg.Stat)
 			active := int64(1)
 			if statsCalls.Add(1) > 1 {
 				active = 0
@@ -177,9 +183,11 @@ func TestClient_DeleteProcessDefinition_ForwardsContextToRootCancellation(t *tes
 
 	type ctxKey struct{}
 	ctx := context.WithValue(context.Background(), ctxKey{}, "request-ctx")
+	deletedPD := typex.Keys{}
 	api := &stubResourceAPI{
 		delete: func(_ context.Context, resourceKey string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
 			assert.Equal(t, "pd-1", resourceKey)
+			deletedPD = append(deletedPD, resourceKey)
 			return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
 		},
 	}
@@ -187,7 +195,11 @@ func TestClient_DeleteProcessDefinition_ForwardsContextToRootCancellation(t *tes
 	papi := stubProcessAPI{
 		getProcessDefinition: func(_ context.Context, key string, opts ...options.FacadeOption) (process.ProcessDefinition, error) {
 			assert.Equal(t, "pd-1", key)
-			assert.True(t, options.ApplyFacadeOptions(opts).Stat)
+			cfg := options.ApplyFacadeOptions(opts)
+			if !cfg.Stat && deletedPD.Contains(key) {
+				return process.ProcessDefinition{}, d.ErrNotFound
+			}
+			assert.True(t, cfg.Stat)
 			active := int64(1)
 			if statsCalls.Add(1) > 1 {
 				active = 0
@@ -358,12 +370,22 @@ func TestClient_DeleteProcessDefinitions_UsesActivityIndicator(t *testing.T) {
 
 	sink := &activitysink.Sink{}
 	ctx := logging.ToActivityContext(context.Background(), sink)
+	deletedPD := map[string]bool{}
 	api := &stubResourceAPI{
-		delete: func(_ context.Context, _ string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			deletedPD[key] = true
 			return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
 		},
 	}
-	cli := New(api, nil, nil, slog.Default())
+	papi := stubProcessAPI{
+		getProcessDefinition: func(_ context.Context, key string, _ ...options.FacadeOption) (process.ProcessDefinition, error) {
+			if deletedPD[key] {
+				return process.ProcessDefinition{}, d.ErrNotFound
+			}
+			return process.ProcessDefinition{Key: key}, nil
+		},
+	}
+	cli := newResourceTestClient(api, papi)
 
 	reports, err := cli.DeleteProcessDefinitions(ctx, typex.Keys{"pd-1", "pd-2"}, 1, options.WithNoStateCheck())
 
@@ -397,7 +419,11 @@ func TestClient_DeleteProcessDefinitions_ForceCleanupDeduplicatesRoots(t *testin
 	}
 	papi := stubProcessAPI{
 		getProcessDefinition: func(_ context.Context, key string, opts ...options.FacadeOption) (process.ProcessDefinition, error) {
-			assert.True(t, options.ApplyFacadeOptions(opts).Stat)
+			cfg := options.ApplyFacadeOptions(opts)
+			if !cfg.Stat && deletedPD.Contains(key) {
+				return process.ProcessDefinition{}, d.ErrNotFound
+			}
+			assert.True(t, cfg.Stat)
 			pdStatsCalls[key]++
 			active := int64(1)
 			if pdStatsCalls[key] > 1 {

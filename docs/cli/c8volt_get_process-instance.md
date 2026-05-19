@@ -35,24 +35,14 @@ c8volt get process-instance [flags]
 ```
   ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 5
   ./c8volt get pi --key <process-instance-key>
-  ./c8volt get pi --state active --limit 5
-  ./c8volt get pi --state active --json --limit 5
   ./c8volt get pi --state active --total
   ./c8volt get pi --has-user-tasks <user-task-key>
-  ./c8volt get pi --state active --batch-size 250 --limit 5
-  ./c8volt get pi --state active --limit 5 --auto-confirm
   ./c8volt get pi --incidents-only --with-incidents --limit 5
-  ./c8volt get pi --direct-incidents-only --with-incidents --limit 5
-  ./c8volt get pi --with-incidents --incident-message-limit 80 --limit 5
   ./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5
   ./c8volt get pi --state active --with-vars --var-value-limit 120 --limit 5
   ./c8volt get pi --key <process-instance-key> --with-incidents
-  ./c8volt get pi --key <process-instance-key> --with-incidents --incident-state all
   ./c8volt get pi --key <process-instance-key> --with-vars
-  ./c8volt get pi --key <process-instance-key> --with-vars --with-incidents
   ./c8volt get pi --key <process-instance-key> --with-vars --var-value-limit 120
-  ./c8volt get pi --key <process-instance-key> --json
-  ./c8volt get pi --key <process-instance-key> --with-incidents --json
   ./c8volt get pi --start-date-after 2026-05-01 --start-date-before 2026-05-31 --limit 5
   ./c8volt get pi --key <process-instance-key> --key <another-process-instance-key>
 ```

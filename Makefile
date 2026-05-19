@@ -11,11 +11,28 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo unknown)
 LDFLAGS ?= -X github.com/grafvonb/c8volt/cmd.version=$(VERSION) -X github.com/grafvonb/c8volt/cmd.commit=$(COMMIT) -X github.com/grafvonb/c8volt/cmd.date=$(DATE)
+DEMO_VHS_TARGETS := \
+	demo-vhs-fast-start \
+	demo-vhs-ops-execute-retention-policy \
+	demo-vhs-ops-execute-smoke-test \
+	demo-vhs-ops-purge-all-process-definitions \
+	demo-vhs-ops-purge-orphan-process-instances \
+	demo-vhs-ops-purge-process-instances-with-incidents \
+	demo-vhs-ops-repair-incident \
+	demo-vhs-ops-repair-process-instance
+DEMO_VHS_ALIASES := \
+	demo-vhs-rp \
+	demo-vhs-st \
+	demo-vhs-apd \
+	demo-vhs-opi \
+	demo-vhs-piwi \
+	demo-vhs-inc \
+	demo-vhs-pi
 
-.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-build docs-site-build-root docs-site-serve demo-vhs-check demo-vhs-fast-start
+.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-build docs-site-build-root docs-site-serve demo-vhs-check $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES)
 
 help: ## Show all available Make targets with a short description.
-	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "%-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "%-55s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 all: tidy fmt vet lint licenses test build docs ## Run the full local quality pipeline: tidy, format, vet, lint, licenses, test, build, and all docs.
 
@@ -50,6 +67,41 @@ demo-vhs-check: ## Verify local VHS recording prerequisites and required recordi
 
 demo-vhs-fast-start: ## Render the live Camunda-backed Fast Start VHS screencast.
 	./demos/vhs/scripts/render.sh fast-start
+
+demo-vhs-ops-execute-retention-policy: ## Render the ops execute retention policy VHS screencast.
+	./demos/vhs/scripts/render.sh ops-execute-retention-policy
+
+demo-vhs-rp: demo-vhs-ops-execute-retention-policy ## Alias for demo-vhs-ops-execute-retention-policy.
+
+demo-vhs-ops-execute-smoke-test: ## Render the ops execute smoke test VHS screencast.
+	./demos/vhs/scripts/render.sh ops-execute-smoke-test
+
+demo-vhs-st: demo-vhs-ops-execute-smoke-test ## Alias for demo-vhs-ops-execute-smoke-test.
+
+demo-vhs-ops-purge-all-process-definitions: ## Render the ops purge all process definitions VHS screencast.
+	./demos/vhs/scripts/render.sh ops-purge-all-process-definitions
+
+demo-vhs-apd: demo-vhs-ops-purge-all-process-definitions ## Alias for demo-vhs-ops-purge-all-process-definitions.
+
+demo-vhs-ops-purge-orphan-process-instances: ## Render the ops purge orphan process instances VHS screencast.
+	./demos/vhs/scripts/render.sh ops-purge-orphan-process-instances
+
+demo-vhs-opi: demo-vhs-ops-purge-orphan-process-instances ## Alias for demo-vhs-ops-purge-orphan-process-instances.
+
+demo-vhs-ops-purge-process-instances-with-incidents: ## Render the ops purge process instances with incidents VHS screencast.
+	./demos/vhs/scripts/render.sh ops-purge-process-instances-with-incidents
+
+demo-vhs-piwi: demo-vhs-ops-purge-process-instances-with-incidents ## Alias for demo-vhs-ops-purge-process-instances-with-incidents.
+
+demo-vhs-ops-repair-incident: ## Render the ops repair incident VHS screencast.
+	./demos/vhs/scripts/render.sh ops-repair-incident
+
+demo-vhs-inc: demo-vhs-ops-repair-incident ## Alias for demo-vhs-ops-repair-incident.
+
+demo-vhs-ops-repair-process-instance: ## Render the ops repair process instance VHS screencast.
+	./demos/vhs/scripts/render.sh ops-repair-process-instance
+
+demo-vhs-pi: demo-vhs-ops-repair-process-instance ## Alias for demo-vhs-ops-repair-process-instance.
 
 build: ## Compile the c8volt binary into the local bin directory.
 	mkdir -p $(BIN_DIR)

@@ -296,7 +296,7 @@ func renderOpsPurgeAllProcessDefinitionsJSONReport(report ops.AllProcessDefiniti
 // renderOpsPurgeAllProcessDefinitionsMarkdownReport renders a readable all-process-definitions purge audit report.
 func renderOpsPurgeAllProcessDefinitionsMarkdownReport(report ops.AllProcessDefinitionsPurgeReport, cfg *config.Config) ([]byte, error) {
 	var out strings.Builder
-	out.WriteString("# All Process Definitions Purge Audit Report\n\n")
+	out.WriteString("# Purge All Process Definitions Audit Report\n\n")
 	writeMarkdownReportField(&out, "Schema Version", report.SchemaVersion)
 	writeMarkdownReportField(&out, "Command", report.CommandName)
 	writeMarkdownReportField(&out, "Started", formatOpsPurgeReportTime(report.StartedAt, cfg))

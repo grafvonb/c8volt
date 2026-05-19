@@ -293,176 +293,18 @@ func TestService_Deploy_DefaultsEmptyTenantToDefaultTenant(t *testing.T) {
 	assert.Equal(t, config.DefaultTenant, deployment.TenantId)
 }
 
-// TestService_Delete documents the process-definition deletion contract. The
-// service always asks Camunda to delete history like Operate.
+// TestService_Delete documents that v8.8 is not a full process-definition history deletion path.
 func TestService_Delete(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("ReturnsDeletionStatusErrors", func(t *testing.T) {
+	t.Run("Unsupported", func(t *testing.T) {
 		svc := newTestService(t, "tenant", &mockResourceClient{
 			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error) {
 				t.Fatalf("unexpected deploy call")
 				return nil, nil
 			},
 			deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav88.DeleteResourceOpJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceOpResponse, error) {
-				require.NotNil(t, body.DeleteHistory)
-				assert.True(t, *body.DeleteHistory)
-				return &camundav88.DeleteResourceOpResponse{
-					Body:         []byte(`{"detail":"resource not found"}`),
-					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/resources/resource-1/deletion", http.StatusNotFound, "404 Not Found"),
-				}, nil
-			},
-			getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
-				t.Fatalf("unexpected get call")
-				return nil, nil
-			},
-		}, &mockProcessDefinitionClient{
-			getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
-				t.Fatalf("unexpected process definition lookup")
-				return nil, nil
-			},
-		})
-
-		_, err := svc.Delete(ctx, "resource-1")
-
-		require.Error(t, err)
-		assert.ErrorIs(t, err, d.ErrNotFound)
-	})
-
-	t.Run("DefaultDeletesHistoryAndWaitsForBatchCompletion", func(t *testing.T) {
-		svc := newTestService(t, "tenant", &mockResourceClient{
-			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error) {
-				t.Fatalf("unexpected deploy call")
-				return nil, nil
-			},
-			deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav88.DeleteResourceOpJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceOpResponse, error) {
-				assert.Equal(t, "resource-1", resourceKey)
-				require.NotNil(t, body.DeleteHistory)
-				assert.True(t, *body.DeleteHistory)
-				return &camundav88.DeleteResourceOpResponse{
-					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/resources/resource-1/deletion", http.StatusOK, "200 OK"),
-					JSON200: &camundav88.DeleteResourceResponse{
-						ResourceKey: "resource-1",
-						BatchOperation: &camundav88.BatchOperationCreatedResult{
-							BatchOperationKey:  "batch-1",
-							BatchOperationType: camundav88.BatchOperationTypeEnumDELETEPROCESSDEFINITION,
-						},
-					},
-				}, nil
-			},
-			getBatchOperationWithResponse: func(ctx context.Context, batchOperationKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetBatchOperationResponse, error) {
-				assert.Equal(t, "batch-1", batchOperationKey)
-				return &camundav88.GetBatchOperationResponse{
-					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusOK, "200 OK"),
-					JSON200: &camundav88.BatchOperationResponse{
-						BatchOperationKey:  "batch-1",
-						BatchOperationType: camundav88.BatchOperationTypeEnumDELETEPROCESSDEFINITION,
-						State:              camundav88.BatchOperationStateEnumCOMPLETED,
-					},
-				}, nil
-			},
-			getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
-				t.Fatalf("unexpected get call")
-				return nil, nil
-			},
-		}, &mockProcessDefinitionClient{
-			getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
-				t.Fatalf("unexpected process definition lookup")
-				return nil, nil
-			},
-		})
-
-		resp, err := svc.Delete(ctx, "resource-1")
-
-		require.NoError(t, err)
-		assert.True(t, resp.Ok)
-		assert.True(t, resp.DeleteHistory)
-		assert.Equal(t, "batch-1", resp.BatchOperationKey)
-		assert.Equal(t, string(camundav88.BatchOperationStateEnumCOMPLETED), resp.BatchState)
-	})
-
-	t.Run("HistoryBatch404KeepsPollingUntilVisible", func(t *testing.T) {
-		getCalls := 0
-		svc := newTestService(t, "tenant", &mockResourceClient{
-			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error) {
-				t.Fatalf("unexpected deploy call")
-				return nil, nil
-			},
-			deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav88.DeleteResourceOpJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceOpResponse, error) {
-				assert.Equal(t, "resource-1", resourceKey)
-				require.NotNil(t, body.DeleteHistory)
-				assert.True(t, *body.DeleteHistory)
-				return &camundav88.DeleteResourceOpResponse{
-					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/resources/resource-1/deletion", http.StatusOK, "200 OK"),
-					JSON200: &camundav88.DeleteResourceResponse{
-						ResourceKey: "resource-1",
-						BatchOperation: &camundav88.BatchOperationCreatedResult{
-							BatchOperationKey:  "batch-1",
-							BatchOperationType: camundav88.BatchOperationTypeEnumDELETEPROCESSDEFINITION,
-						},
-					},
-				}, nil
-			},
-			getBatchOperationWithResponse: func(ctx context.Context, batchOperationKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetBatchOperationResponse, error) {
-				assert.Equal(t, "batch-1", batchOperationKey)
-				getCalls++
-				if getCalls == 1 {
-					return &camundav88.GetBatchOperationResponse{
-						Body:         []byte(`{"title":"NOT_FOUND","status":404,"detail":"Batch Operation with id 'batch-1' not found"}`),
-						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusNotFound, "404 Not Found"),
-					}, nil
-				}
-				return &camundav88.GetBatchOperationResponse{
-					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusOK, "200 OK"),
-					JSON200: &camundav88.BatchOperationResponse{
-						BatchOperationKey:  "batch-1",
-						BatchOperationType: camundav88.BatchOperationTypeEnumDELETEPROCESSDEFINITION,
-						State:              camundav88.BatchOperationStateEnumCOMPLETED,
-					},
-				}, nil
-			},
-			getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
-				t.Fatalf("unexpected get call")
-				return nil, nil
-			},
-		}, &mockProcessDefinitionClient{
-			getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
-				t.Fatalf("unexpected process definition lookup")
-				return nil, nil
-			},
-		})
-
-		resp, err := svc.Delete(ctx, "resource-1")
-
-		require.NoError(t, err)
-		assert.Equal(t, 2, getCalls)
-		assert.True(t, resp.DeleteHistory)
-		assert.Equal(t, "batch-1", resp.BatchOperationKey)
-		assert.Equal(t, string(camundav88.BatchOperationStateEnumCOMPLETED), resp.BatchState)
-	})
-
-	t.Run("DefaultFailsWhenHistoryBatchIsMissing", func(t *testing.T) {
-		svc := newTestService(t, "tenant", &mockResourceClient{
-			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error) {
-				t.Fatalf("unexpected deploy call")
-				return nil, nil
-			},
-			deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav88.DeleteResourceOpJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceOpResponse, error) {
-				require.NotNil(t, body.DeleteHistory)
-				assert.True(t, *body.DeleteHistory)
-				return &camundav88.DeleteResourceOpResponse{
-					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/resources/resource-1/deletion", http.StatusOK, "200 OK"),
-					JSON200: &camundav88.DeleteResourceResponse{
-						ResourceKey: "resource-1",
-					},
-				}, nil
-			},
-			getBatchOperationWithResponse: func(ctx context.Context, batchOperationKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetBatchOperationResponse, error) {
-				t.Fatalf("unexpected batch operation lookup")
-				return nil, nil
-			},
-			getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
-				t.Fatalf("unexpected get call")
+				t.Fatalf("deletion endpoint should not be called")
 				return nil, nil
 			},
 		}, &mockProcessDefinitionClient{
@@ -475,9 +317,9 @@ func TestService_Delete(t *testing.T) {
 		resp, err := svc.Delete(ctx, "resource-1")
 
 		require.Error(t, err)
-		assert.ErrorIs(t, err, d.ErrMalformedResponse)
-		assert.True(t, resp.DeleteHistory)
-		assert.Empty(t, resp.BatchOperationKey)
+		assert.ErrorIs(t, err, d.ErrUnsupported)
+		assert.False(t, resp.Ok)
+		assert.False(t, svc.SupportsProcessDefinitionHistoryDeletion())
 	})
 }
 

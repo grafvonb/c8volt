@@ -231,7 +231,7 @@ func TestOpsPurgeOrphanProcessInstancesWritesMarkdownReport(t *testing.T) {
 	require.Contains(t, output, "report: written "+reportPath)
 	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: planned; no changes applied"))
 	report := readReportFile(t, reportPath)
-	require.Contains(t, report, "# Orphan Process Instance Purge Audit Report")
+	require.Contains(t, report, "# Purge Orphan Process Instances Audit Report")
 	require.Contains(t, report, "- Command: ops purge orphan-process-instances")
 	require.Contains(t, report, "- Dry Run: true")
 	require.Contains(t, report, "- No Wait: false")

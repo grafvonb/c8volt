@@ -67,7 +67,7 @@ func TestOpsRepairProcessInstanceDryRunWritesMarkdownReport(t *testing.T) {
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "report: written "+reportFile)
 	report := readReportFile(t, reportFile)
-	require.Contains(t, report, "# Repair Audit Report")
+	require.Contains(t, report, "# Repair Process Instance Audit Report")
 	require.Contains(t, report, "- Command: ops repair process-instance")
 	require.Contains(t, report, "- Dry Run: true")
 	require.Contains(t, report, "- Outcome: planned")

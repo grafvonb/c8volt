@@ -16,13 +16,13 @@ The ops command group is the operator-facing layer for predefined Camunda playbo
 
 | Workflow | Command | Use when |
 | --- | --- | --- |
-| [Smoke Test](/ops/smoke-test/) | `c8volt ops execute smoke-test` | You need to prove a profile can connect, deploy, run, walk, and clean up. |
-| [Retention Policy](/ops/retention-policy/) | `c8volt ops execute retention-policy` | You need an auditable cleanup of old finished process instances. |
-| [Orphan Process Instances](/ops/orphan-process-instances/) | `c8volt ops purge orphan-process-instances` | You need to find and delete orphan child process instances. |
-| [Incident-Based Purge](/ops/purge-pi-with-incidents/) | `c8volt ops purge process-instances-with-incidents` | You need to delete process-instance families selected from incident filters. |
-| [All Process Definitions](/ops/all-process-definitions/) | `c8volt ops purge all-process-definitions` | You need to delete selected process-definition versions after impact planning. |
-| [Incident Repair](/ops/repair-incident/) | `c8volt ops repair incident` | You need to repair incidents selected by key, stdin, or incident filters. |
-| [Process-Instance Repair](/ops/repair-process-instance/) | `c8volt ops repair process-instance` | You need to repair active incidents discovered from selected process instances. |
+| [Execute Smoke Test](./execute-smoke-test/) | `c8volt ops execute smoke-test` | You need to prove a profile can connect, deploy, run, walk, and clean up. |
+| [Execute Retention Policy](./execute-retention-policy/) | `c8volt ops execute retention-policy` | You need an auditable cleanup of old finished process instances. |
+| [Purge Orphan Process Instances](./purge-orphan-process-instances/) | `c8volt ops purge orphan-process-instances` | You need to find and delete orphan child process instances. |
+| [Purge Process Instances With Incidents](./purge-process-instances-with-incidents/) | `c8volt ops purge process-instances-with-incidents` | You need to delete process-instance families selected from incident filters. |
+| [Purge All Process Definitions](./purge-all-process-definitions/) | `c8volt ops purge all-process-definitions` | You need to delete selected process-definition versions after impact planning. |
+| [Repair Incident](./repair-incident/) | `c8volt ops repair incident` | You need to repair incidents selected by key, stdin, or incident filters. |
+| [Repair Process Instance](./repair-process-instance/) | `c8volt ops repair process-instance` | You need to repair active incidents discovered from selected process instances. |
 
 ## Shared Shape
 
