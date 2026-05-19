@@ -32,6 +32,7 @@ func renderOpsRepairIncidentResult(cmd *cobra.Command, result ops.RepairResult) 
 	if len(result.FrozenSet.VariableScopes) > 0 || len(result.VariableUpdates) > 0 {
 		renderHumanLine(cmd, "variable scopes: %d", countOpsRepairVariableScopes(result))
 	}
+	renderOpsRepairNotices(cmd, result.Notices)
 	renderOpsRepairPlanSummary(cmd, result)
 	renderOpsRepairReportFile(cmd, result.Request.ReportFile)
 	if flagVerbose {
@@ -88,6 +89,7 @@ func renderOpsRepairProcessInstanceResult(cmd *cobra.Command, result ops.RepairR
 	if len(result.FrozenSet.VariableScopes) > 0 || len(result.VariableUpdates) > 0 {
 		renderHumanLine(cmd, "variable scopes: %d", countOpsRepairVariableScopes(result))
 	}
+	renderOpsRepairNotices(cmd, result.Notices)
 	renderOpsRepairPlanSummary(cmd, result)
 	renderOpsRepairReportFile(cmd, result.Request.ReportFile)
 	if flagVerbose {
@@ -175,6 +177,15 @@ func countOpsRepairRelatedJobs(result ops.RepairResult) int {
 		jobKeys[item.JobKey] = struct{}{}
 	}
 	return len(jobKeys)
+}
+
+func renderOpsRepairNotices(cmd *cobra.Command, notices []ops.RepairNotice) {
+	for _, notice := range notices {
+		if notice.Code != "bounded_search_scope" || notice.Message == "" {
+			continue
+		}
+		renderHumanLine(cmd, "%s", notice.Message)
+	}
 }
 
 // countOpsRepairVariableScopes reports unique variable scopes from either target discovery or executed scope updates.

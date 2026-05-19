@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -14,8 +15,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx/logging"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,6 +40,22 @@ func TestOpsPurgeOrphanProcessInstancesHelpDocumentsSafeAutomationPreview(t *tes
 	assertHelpOutputOmitsAll(t, output,
 		"./c8volt ops purge orphan-process-instances --automation --json\n",
 	)
+}
+
+func TestOpsPurgeOrphanProcessInstancesActivityWrapsDryRunDiscovery(t *testing.T) {
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+
+	_, err := purgeOrphanProcessInstancesWithCommandActivity(cmd, ops.OrphanPurgeRequest{DryRun: true, BatchSize: 25}, func() (ops.OrphanPurgeResult, error) {
+		return ops.OrphanPurgeResult{}, nil
+	})
+
+	require.NoError(t, err)
+	started, stopped, msgs := sink.Snapshot()
+	require.Equal(t, 1, started)
+	require.Equal(t, 1, stopped)
+	require.Equal(t, []string{"checking orphan child pi parents; page size 25"}, msgs)
 }
 
 func TestOpsPurgeOrphanProcessInstancesDryRunHidesCandidateKeysWithoutDelete(t *testing.T) {

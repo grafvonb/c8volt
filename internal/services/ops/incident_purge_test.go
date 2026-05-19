@@ -226,6 +226,36 @@ func TestPurgeProcessInstancesWithIncidentsDryRunNoTargetsSkipsPlanning(t *testi
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
 }
 
+// TestPurgeProcessInstancesWithIncidentsReportsBoundedSearchScope verifies previews can distinguish batch scope from total matches.
+func TestPurgeProcessInstancesWithIncidentsReportsBoundedSearchScope(t *testing.T) {
+	t.Parallel()
+
+	incAPI := stubIncidentAPI{
+		searchIncidents: func(_ context.Context, _ d.IncidentFilter, size int32, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			require.EqualValues(t, 2, size)
+			return []d.ProcessInstanceIncidentDetail{
+				{IncidentKey: "9001", State: "ACTIVE"},
+				{IncidentKey: "9002", State: "ACTIVE"},
+			}, nil
+		},
+	}
+
+	got, err := New(stubProcessInstanceAPI{}, incAPI).PurgeProcessInstancesWithIncidents(context.Background(), d.IncidentPurgeRequest{
+		CommandName: "ops purge process-instances-with-incidents",
+		DryRun:      true,
+		Selection:   d.IncidentFilter{State: "ACTIVE"},
+		BatchSize:   2,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.IncidentPurgeOutcomePlanned, got.Outcome)
+	require.Equal(t, 2, got.Discovery.IncidentCount)
+	require.Len(t, got.Discovery.Notices, 2)
+	require.Equal(t, "skipped_incidents", got.Discovery.Notices[0].Code)
+	require.Equal(t, "bounded_search_scope", got.Discovery.Notices[1].Code)
+	require.Equal(t, got.Discovery.Notices, got.Notices)
+}
+
 // TestPurgeProcessInstancesWithIncidentsDryRunBuildsDeletePlan verifies frozen incident candidates are expanded by the existing delete-plan path.
 func TestPurgeProcessInstancesWithIncidentsDryRunBuildsDeletePlan(t *testing.T) {
 	t.Parallel()

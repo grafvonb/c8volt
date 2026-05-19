@@ -404,6 +404,36 @@ func TestRepairIncidentsSearchModeFreezesFilteredTargets(t *testing.T) {
 	require.Equal(t, got.FrozenSet, got.Report.FrozenSet)
 }
 
+// TestRepairIncidentsSearchModeReportsBoundedSearchScope verifies search-mode previews identify batch-limited candidate scope.
+func TestRepairIncidentsSearchModeReportsBoundedSearchScope(t *testing.T) {
+	t.Parallel()
+
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
+		searchIncidents: func(_ context.Context, _ d.IncidentFilter, size int32, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			require.EqualValues(t, 2, size)
+			return []d.ProcessInstanceIncidentDetail{
+				{IncidentKey: "2251799813685249", ProcessInstanceKey: "2251799813685251", State: "ACTIVE"},
+				{IncidentKey: "2251799813685250", ProcessInstanceKey: "2251799813685253", State: "ACTIVE"},
+			}, nil
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{
+		CommandName:       "ops repair incident",
+		DiscoveryMode:     d.OpsRepairDiscoveryModeSearch,
+		IncidentSelection: d.IncidentFilter{State: "ACTIVE"},
+		BatchSize:         2,
+		DryRun:            true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
+	require.Len(t, got.Notices, 1)
+	require.Equal(t, "bounded_search_scope", got.Notices[0].Code)
+	require.Contains(t, got.Notices[0].Message, "candidate incidents reached batch size 2")
+	require.Equal(t, got.Notices, got.Report.Notices)
+}
+
 // TestRepairIncidentsSearchModeDoesNotExpandAfterFreeze verifies mutation uses only the initially discovered incident set.
 func TestRepairIncidentsSearchModeDoesNotExpandAfterFreeze(t *testing.T) {
 	t.Parallel()
@@ -528,6 +558,8 @@ func TestOpsRepairProcessInstancesSearchDryRunPlansMixedApplicabilityWithoutMuta
 	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Plan[0].RetryUpdateStatus)
 	require.Equal(t, d.OpsWorkflowStepStatusNotApplicable, got.Plan[1].RetryUpdateStatus)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Remaining.Status)
+	require.Len(t, got.Notices, 1)
+	require.Equal(t, "bounded_search_scope", got.Notices[0].Code)
 }
 
 // TestRepairIncidentsDedupesVariableScopesAndConfirmsRequestedNames verifies shared scope updates run once before dependent incidents resolve.
