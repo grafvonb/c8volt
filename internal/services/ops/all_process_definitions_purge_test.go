@@ -15,6 +15,7 @@ import (
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
 )
@@ -126,6 +127,34 @@ func TestPurgeAllProcessDefinitionsValidatesServiceDependencies(t *testing.T) {
 			require.Len(t, got.Report.Errors, 1)
 		})
 	}
+}
+
+// TestPurgeAllProcessDefinitionsRejectsUnsupportedVersionBeforeDiscovery keeps APD on the fully supported v8.9+ path.
+func TestPurgeAllProcessDefinitionsRejectsUnsupportedVersionBeforeDiscovery(t *testing.T) {
+	t.Parallel()
+
+	got, err := NewWithWorkflowDependencies(
+		nil,
+		stubProcessInstanceAPI{},
+		nil,
+		stubProcessDefinitionAPI{
+			searchProcessDefinitions: func(context.Context, d.ProcessDefinitionFilter, int32, ...services.CallOption) ([]d.ProcessDefinition, error) {
+				t.Fatal("unsupported version must fail before discovery")
+				return nil, nil
+			},
+		},
+		stubResourceAPI{},
+		toolx.V88,
+	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{})
+
+	require.Error(t, err)
+	require.True(t, errors.Is(err, d.ErrUnsupported), "got %v", err)
+	require.Contains(t, err.Error(), "requires Camunda 8.9 or newer")
+	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeFailed, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusFailed, got.Discovery.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
+	require.Empty(t, got.Discovery.CandidateProcessDefinitionKeys)
 }
 
 // TestPurgeAllProcessDefinitionsDiscoversCandidates verifies get-pd-equivalent discovery and frozen candidate extraction.
@@ -397,7 +426,7 @@ func TestPurgeAllProcessDefinitionsExecutesDeletionThroughResourceDelete(t *test
 				require.False(t, cfg.NoWait)
 				require.True(t, cfg.SuppressProcessInstanceDetailLogs)
 				deleted = append(deleted, resourceKey)
-				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
+				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK", DeleteHistory: true}, nil
 			},
 		},
 	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{Workers: 1})
@@ -442,7 +471,7 @@ func TestPurgeAllProcessDefinitionsMapsExecutionControlsToDeletePath(t *testing.
 				require.True(t, cfg.NoWorkerLimit)
 				require.True(t, cfg.SuppressProcessInstanceDetailLogs)
 				deleted = append(deleted, resourceKey)
-				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
+				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK", DeleteHistory: true}, nil
 			},
 		},
 	).PurgeAllProcessDefinitions(
@@ -539,7 +568,7 @@ func TestPurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots(
 			delete: func(_ context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
 				deletedPD = append(deletedPD, resourceKey)
 				require.True(t, services.ApplyCallOptions(opts).SuppressProcessInstanceDetailLogs)
-				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
+				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK", DeleteHistory: true}, nil
 			},
 		},
 	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{Force: true, Workers: 1})

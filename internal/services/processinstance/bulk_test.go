@@ -191,3 +191,48 @@ func TestDeleteProcessInstancesLogsProgressWhileRootDeleteRuns(t *testing.T) {
 	require.NoError(t, <-errCh)
 	require.Contains(t, logBuf.String(), "pi delete done; roots 1, affected 4, ok 1, failed 0")
 }
+
+// TestCancelProcessInstancesLogsSlowRootWhenProgressStalls verifies progress output names the in-flight root when completion stops advancing.
+func TestCancelProcessInstancesLogsSlowRootWhenProgressStalls(t *testing.T) {
+	oldInterval := processInstanceBulkProgressInterval
+	oldThreshold := processInstanceBulkStallProgressThreshold
+	processInstanceBulkProgressInterval = 10 * time.Millisecond
+	processInstanceBulkStallProgressThreshold = 1
+	t.Cleanup(func() {
+		processInstanceBulkProgressInterval = oldInterval
+		processInstanceBulkStallProgressThreshold = oldThreshold
+	})
+
+	var logBuf lockedLogBuffer
+	log := slog.New(logging.NewPlainHandler(&logBuf, slog.LevelInfo))
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var startedOnce sync.Once
+	api := stubBulkProcessInstanceAPI{
+		cancel: func(ctx context.Context, key string, _ ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+			require.Equal(t, "root-slow", key)
+			startedOnce.Do(func() { close(started) })
+			select {
+			case <-ctx.Done():
+				return d.CancelResponse{}, nil, ctx.Err()
+			case <-release:
+				return d.CancelResponse{Ok: true, StatusCode: 200, Status: "200 OK"}, nil, nil
+			}
+		},
+	}
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := CancelProcessInstances(context.Background(), api, log, typex.Keys{"root-slow"}, 1, 3)
+		errCh <- err
+	}()
+
+	<-started
+	require.Eventually(t, func() bool {
+		out := logBuf.String()
+		return strings.Contains(out, "pi cancel slow root; root root-slow") &&
+			strings.Contains(out, "phase cancel request or wait")
+	}, time.Second, 10*time.Millisecond)
+	close(release)
+
+	require.NoError(t, <-errCh)
+}

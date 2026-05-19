@@ -76,8 +76,10 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
 	_ = services.ApplyCallOptions(opts)
 
-	return d.ResourceDeleteResponse{}, fmt.Errorf("%w: process-definition history-safe deletion requires Camunda 8.8 or newer", d.ErrUnsupported)
+	return d.ResourceDeleteResponse{}, fmt.Errorf("%w: process-definition history-safe deletion requires Camunda 8.9 or newer", d.ErrUnsupported)
 }
+
+func (s *Service) SupportsProcessDefinitionHistoryDeletion() bool { return false }
 
 // Get fetches a resource by Camunda resource key and maps the generated response to the internal domain model.
 func (s *Service) Get(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.Resource, error) {

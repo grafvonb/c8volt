@@ -107,6 +107,8 @@ func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...servic
 	return result, nil
 }
 
+func (s *Service) SupportsProcessDefinitionHistoryDeletion() bool { return true }
+
 func (s *Service) waitForResourceHistoryDeletion(ctx context.Context, batchOperationKey string) (camundav89.BatchOperationStateEnum, error) {
 	var state camundav89.BatchOperationStateEnum
 	poll := func(ctx context.Context) (poller.JobPollStatus, error) {

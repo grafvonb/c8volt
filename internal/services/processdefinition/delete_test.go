@@ -6,6 +6,7 @@ package processdefinition
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"strconv"
@@ -18,6 +19,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
+	types "github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -137,6 +139,82 @@ func (s cleanupProcessInstanceAPI) DeleteProcessInstance(ctx context.Context, ke
 
 type cleanupProcessDefinitionAPI struct {
 	API
+}
+
+type testResourceDeleteAPI struct {
+	delete func(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error)
+}
+
+func (s testResourceDeleteAPI) Delete(ctx context.Context, key string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+	return s.delete(ctx, key, opts...)
+}
+
+type unsupportedResourceDeleteAPI struct {
+	testResourceDeleteAPI
+}
+
+func (unsupportedResourceDeleteAPI) SupportsProcessDefinitionHistoryDeletion() bool { return false }
+
+// TestDeleteProcessDefinitionsRejectsUnsupportedHistoryDeletionBeforeCleanup protects callers from partial v8.8 cleanup.
+func TestDeleteProcessDefinitionsRejectsUnsupportedHistoryDeletionBeforeCleanup(t *testing.T) {
+	api := unsupportedResourceDeleteAPI{testResourceDeleteAPI{
+		delete: func(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			t.Fatal("resource delete must not be called")
+			return d.ResourceDeleteResponse{}, nil
+		},
+	}}
+
+	got, err := DeleteProcessDefinitions(
+		context.Background(),
+		api,
+		cleanupProcessDefinitionAPI{},
+		cleanupProcessInstanceAPI{
+			cancel: func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+				t.Fatal("process-instance cancellation must not be called")
+				return d.CancelResponse{}, nil, nil
+			},
+			delete: func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error) {
+				t.Fatal("process-instance deletion must not be called")
+				return d.DeleteResponse{}, nil
+			},
+		},
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		types.Keys{"pd-1"},
+		1,
+		services.WithForce(),
+	)
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, d.ErrUnsupported)
+	require.Contains(t, err.Error(), "requires Camunda 8.9 or newer")
+	require.Nil(t, got)
+}
+
+// TestDeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError verifies a server-side request-shape mismatch is reported once instead of being repeated for every selected definition.
+func TestDeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError(t *testing.T) {
+	var calls atomic.Int64
+	api := testResourceDeleteAPI{
+		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			calls.Add(1)
+			require.Equal(t, "pd-1", key)
+			return d.ResourceDeleteResponse{Key: key}, fmt.Errorf("%w: 400 POST /v2/resources/%s/deletion (Request property [deleteHistory] cannot be parsed)", d.ErrBadRequest, key)
+		},
+	}
+	plans := []d.DeleteProcessDefinitionPlanItem{
+		{Key: "pd-1"},
+		{Key: "pd-2"},
+		{Key: "pd-3"},
+	}
+
+	got, err := DeleteProcessDefinitionResources(context.Background(), api, slog.New(slog.NewTextHandler(io.Discard, nil)), plans, 10)
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, d.ErrBadRequest)
+	require.ErrorContains(t, err, "deleteHistory")
+	require.ErrorContains(t, err, "before submitting 2 remaining process-definition delete request(s)")
+	require.Equal(t, int64(1), calls.Load())
+	require.Len(t, got, 1)
+	require.Equal(t, "pd-1", got[0].Key)
 }
 
 // GetProcessDefinition returns inactive statistics so force cleanup can proceed after cancellation.
