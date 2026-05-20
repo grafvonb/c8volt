@@ -123,17 +123,20 @@ auth:
   mode: "none"
 ```
 
-Once that works, look around:
+Once that works, prove the connection and create one predictable process
+instance. This is safe for an empty dev cluster and still useful when the
+cluster already has other data:
 
 ```bash
-./c8volt get cluster topology
-./c8volt get pd --latest
+./c8volt config test-connection
+./c8volt embed deploy --all
+./c8volt run pi -b C89_SimpleUserTask_Process
 ```
 
-Need something runnable in an empty dev cluster? Deploy the bundled BPMN examples:
+Then look around at the latest process definitions visible in the cluster:
 
 ```bash
-./c8volt embed deploy --all --run
+./c8volt get pd --latest
 ```
 
 For scripts or CI, add `--json` when stdout should be data and logs should stay on stderr:
@@ -561,61 +564,58 @@ Examples:
 
 ```text
 c8volt
-|-- embed                     Work with bundled BPMN fixtures
-|   |-- list                  List bundled BPMN assets
-|   |-- deploy                Deploy bundled fixtures
-|   `-- export                Export bundled fixtures
-|-- deploy                    Deploy resources from files or stdin
-|   `-- pd                    Deploy BPMN process definitions
-|-- run                       Start runnable resources
-|   `-- pi                    Start process instances and confirm activation by default
-|-- update                    Update existing resources
-|   |-- pi                    Update process-instance variables and confirm visibility by default
-|   `-- job                   Update job retries and timeout by key
-|-- resolve                   Resolve operational incidents
-|   |-- incident              Resolve incidents by key
-|   `-- process-instance      Resolve active incidents discovered for process instances
-|-- ops                       Discover high-level operational workflows
-|   |-- execute               Discover predefined operational playbooks
-|   |   |-- smoke-test         Prove profile connectivity, deployment, runtime, traversal, and cleanup
-|   |   `-- retention-policy   Delete old process instances through an audited retention plan
-|   |-- purge                 Discover destructive operational cleanup workflows
-|   |   |-- orphan-process-instances
-|   |   |                         Purge orphan child process instances through delete planning
-|   |   |-- process-instances-with-incidents
-|   |   |                         Purge process-instance families selected by incident filters
-|   |   `-- all-process-definitions
-|   |                             Purge selected process definitions after impact planning
-|   `-- repair                Discover repair and remediation workflows
-|       |-- incident           Repair incidents selected by key, stdin, or incident filters
-|       `-- process-instance   Repair active incidents selected from process-instance keys or filters
-|-- walk                      Inspect parent/child relationships
-|   `-- pi                    Walk ancestors, descendants, or full family trees
-|-- cancel                    Cancel resources and wait for confirmation
-|   `-- pi                    Cancel process instances, including root escalation with --force
-|-- delete                    Delete resources, optionally forcing cleanup first
-|   |-- pi                    Delete process instance trees
-|   `-- pd                    Delete process definitions with safety warnings
-|-- expect                    Wait until resources reach a target state
-|   `-- pi                    Wait for state or incident conditions
-|-- get                       Read state, metadata, and resources
-|   |-- cluster topology      Show connected Camunda cluster topology as a tree
-|   |-- cluster version       Show gateway and optional broker versions
-|   |-- cluster license       Show cluster license details
-|   |-- process-definition    List definitions, fetch latest versions, or retrieve XML
-|   |-- process-instance      List, fetch, and enrich process instances
-|   |-- job                   Inspect a job by key
-|   |-- incident              List or fetch incidents
-|   |-- tenant                List, filter, or fetch visible tenants
-|   `-- resource              Fetch a single resource by id
-|-- capabilities              Describe the public CLI contract for automation and discovery
-|-- completion                Generate shell completion scripts
-|-- config                    Inspect and validate c8volt configuration
-|   |-- show                  Show effective configuration
-|   |-- validate              Validate effective configuration
-|   |-- template              Print a blank configuration template
-|   `-- test-connection       Test configured Camunda connection
-`-- version                   Print build and compatibility information
+|-- embed                                      Work with bundled BPMN fixtures
+|   |-- list                                   List bundled BPMN assets
+|   |-- deploy                                 Deploy bundled fixtures
+|   `-- export                                 Export bundled fixtures
+|-- deploy                                     Deploy resources from files or stdin
+|   `-- pd                                     Deploy BPMN process definitions
+|-- run                                        Start runnable resources
+|   `-- pi                                     Start process instances and confirm activation by default
+|-- update                                     Update existing resources
+|   |-- pi                                     Update process-instance variables and confirm visibility by default
+|   `-- job                                    Update job retries and timeout by key
+|-- resolve                                    Resolve operational incidents
+|   |-- incident                               Resolve incidents by key
+|   `-- process-instance                       Resolve active incidents discovered for process instances
+|-- ops                                        Discover high-level operational workflows
+|   |-- execute                                Discover predefined operational playbooks
+|   |   |-- smoke-test                         Prove profile connectivity, deployment, runtime, traversal, and cleanup
+|   |   `-- retention-policy                   Delete old process instances through an audited retention plan
+|   |-- purge                                  Discover destructive operational cleanup workflows
+|   |   |-- orphan-process-instances           Purge orphan child process instances through delete planning
+|   |   |-- process-instances-with-incidents   Purge process-instance families selected by incident filters
+|   |   `-- all-process-definitions            Purge selected process definitions after impact planning
+|   `-- repair                                 Discover repair and remediation workflows
+|       |-- incident                           Repair incidents selected by key, stdin, or incident filters
+|       `-- process-instance                   Repair active incidents selected from process-instance keys or filters
+|-- walk                                       Inspect parent/child relationships
+|   `-- pi                                     Walk ancestors, descendants, or full family trees
+|-- cancel                                     Cancel resources and wait for confirmation
+|   `-- pi                                     Cancel process instances, including root escalation with --force
+|-- delete                                     Delete resources, optionally forcing cleanup first
+|   |-- pi                                     Delete process instance trees
+|   `-- pd                                     Delete process definitions with safety warnings
+|-- expect                                     Wait until resources reach a target state
+|   `-- pi                                     Wait for state or incident conditions
+|-- get                                        Read state, metadata, and resources
+|   |-- cluster topology                       Show connected Camunda cluster topology as a tree
+|   |-- cluster version                        Show gateway and optional broker versions
+|   |-- cluster license                        Show cluster license details
+|   |-- process-definition                     List definitions, fetch latest versions, or retrieve XML
+|   |-- process-instance                       List, fetch, and enrich process instances
+|   |-- job                                    Inspect a job by key
+|   |-- incident                               List or fetch incidents
+|   |-- tenant                                 List, filter, or fetch visible tenants
+|   `-- resource                               Fetch a single resource by id
+|-- capabilities                               Describe the public CLI contract for automation and discovery
+|-- completion                                 Generate shell completion scripts
+|-- config                                     Inspect and validate c8volt configuration
+|   |-- show                                   Show effective configuration
+|   |-- validate                               Validate effective configuration
+|   |-- template                               Print a blank configuration template
+|   `-- test-connection                        Test configured Camunda connection
+`-- version                                    Print build and compatibility information
 ```
 
 ## Everyday Commands

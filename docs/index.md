@@ -133,17 +133,20 @@ auth:
   mode: "none"
 ```
 
-Once that works, look around:
+Once that works, prove the connection and create one predictable process
+instance. This is safe for an empty dev cluster and still useful when the
+cluster already has other data:
 
 ```bash
-./c8volt get cluster topology
-./c8volt get pd --latest
+./c8volt config test-connection
+./c8volt embed deploy --all
+./c8volt run pi -b C89_SimpleUserTask_Process
 ```
 
-Need something runnable in an empty dev cluster? Deploy the bundled BPMN examples:
+Then look around at the latest process definitions visible in the cluster:
 
 ```bash
-./c8volt embed deploy --all --run
+./c8volt get pd --latest
 ```
 
 For scripts or CI, add `--json` when stdout should be data and logs should stay on stderr:
