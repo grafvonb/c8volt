@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active implementation plan: `specs/183-ops-repair-workflows/plan.md`
+- No active Speckit implementation plan has been recorded yet.
 <!-- SPECKIT END -->

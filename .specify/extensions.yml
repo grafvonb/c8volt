@@ -1,0 +1,12 @@
+installed: []
+settings:
+  auto_execute_hooks: true
+hooks:
+  after_tasks:
+  - extension: ralph
+    command: speckit.ralph.run
+    enabled: true
+    optional: true
+    prompt: Run ralph loop to implement tasks?
+    description: Start autonomous implementation after task generation
+    condition: null
