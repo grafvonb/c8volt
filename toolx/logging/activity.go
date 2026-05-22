@@ -48,6 +48,7 @@ type activityWriter struct {
 	w          io.Writer
 	mu         sync.Mutex
 	enabled    bool
+	maxWidth   int
 	refs       int
 	active     bool
 	drawn      bool
@@ -102,6 +103,7 @@ func newActivityWriter(w io.Writer, enabled bool) *activityWriter {
 	return &activityWriter{
 		w:        w,
 		enabled:  enabled,
+		maxWidth: activityWriterMaxWidth(w),
 		delay:    defaultActivityDelay,
 		interval: defaultActivityInterval,
 	}
@@ -234,7 +236,8 @@ func (w *activityWriter) drawLocked() {
 	if w.message != "" {
 		line += " " + w.message
 	}
-	width := max(80, w.drawnWidth, len(line))
+	line = truncateActivityLine(line, w.maxWidth)
+	width := activityLineWidth(w.drawnWidth, len(line), w.maxWidth)
 	_, _ = fmt.Fprintf(w.w, "\r%s", padRight(line, width))
 	w.drawn = true
 	w.drawnWidth = width
@@ -244,9 +247,34 @@ func (w *activityWriter) clearLocked() {
 	if !w.drawn {
 		return
 	}
-	_, _ = fmt.Fprintf(w.w, "\r%s\r", strings.Repeat(" ", max(80, w.drawnWidth)))
+	_, _ = fmt.Fprintf(w.w, "\r%s\r", strings.Repeat(" ", activityClearWidth(w.drawnWidth, w.maxWidth)))
 	w.drawn = false
 	w.drawnWidth = 0
+}
+
+func activityLineWidth(previous int, current int, maxWidth int) int {
+	width := max(previous, current)
+	if maxWidth > 0 {
+		return min(maxWidth, max(1, width))
+	}
+	return max(80, width)
+}
+
+func activityClearWidth(drawnWidth int, maxWidth int) int {
+	if maxWidth > 0 {
+		return min(maxWidth, max(1, drawnWidth))
+	}
+	return max(80, drawnWidth)
+}
+
+func truncateActivityLine(line string, maxWidth int) string {
+	if maxWidth <= 0 || len(line) <= maxWidth {
+		return line
+	}
+	if maxWidth <= 3 {
+		return line[:maxWidth]
+	}
+	return line[:maxWidth-3] + "..."
 }
 
 func padRight(s string, width int) string {
@@ -268,4 +296,22 @@ func isInteractiveTerminal(w io.Writer) bool {
 		return false
 	}
 	return term.IsTerminal(int(f.Fd()))
+}
+
+func activityWriterMaxWidth(w io.Writer) int {
+	type fdWriter interface {
+		Fd() uintptr
+	}
+	f, ok := w.(fdWriter)
+	if !ok {
+		return 0
+	}
+	width, _, err := term.GetSize(int(f.Fd()))
+	if err != nil || width <= 0 {
+		return 0
+	}
+	if width > 1 {
+		return width - 1
+	}
+	return width
 }

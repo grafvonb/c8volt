@@ -102,6 +102,27 @@ func TestActivityWriter_ClearsLongUpdatedMessageBeforeNormalOutput(t *testing.T)
 	require.Contains(t, out, clearBeforeOutput)
 }
 
+func TestActivityWriter_TruncatesIndicatorToConfiguredWidth(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	w := newActivityWriter(&buf, true)
+	w.delay = 1 * time.Millisecond
+	w.interval = 1 * time.Millisecond
+	w.maxWidth = 20
+	longMessage := "page size: 1000, current page: 1000, total so far: 16000, more matches: yes"
+
+	w.StartActivity(longMessage)
+	time.Sleep(5 * time.Millisecond)
+	w.StopActivity()
+
+	for _, segment := range strings.Split(buf.String(), "\r") {
+		require.LessOrEqual(t, len(segment), 20)
+	}
+	require.Contains(t, buf.String(), "...")
+	require.NotContains(t, buf.String(), "more matches")
+}
+
 // TestActivityWriter_NestedActivityScopesRequireMatchingStops verifies nested activity scopes keep the indicator alive until all scopes finish.
 func TestActivityWriter_NestedActivityScopesRequireMatchingStops(t *testing.T) {
 	t.Parallel()
