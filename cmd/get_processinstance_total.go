@@ -52,7 +52,7 @@ func searchProcessInstancesTotal(cmd *cobra.Command, log *slog.Logger, cli proce
 		total += int64(len(filtered.Items))
 		summary := newPIProgressSummary(page, int(total), true)
 		if cmd != nil {
-			logging.UpdateActivity(cmd.Context(), formatPISearchProgress(summary))
+			logging.UpdateActivity(cmd.Context(), formatPITotalActivityProgress(summary))
 		}
 		logPISearchProgress(cmd, log, summary)
 
@@ -61,6 +61,23 @@ func searchProcessInstancesTotal(cmd *cobra.Command, log *slog.Logger, cli proce
 		}
 		pageReq = nextPISearchPageRequest(cmd, cfg, pageReq, page)
 	}
+}
+
+// formatPITotalActivityProgress keeps the transient --total activity indicator
+// intentionally short. Verbose mode still logs the full pagination diagnostic,
+// but the spinner line must fit narrow terminals so carriage-return redraws do
+// not wrap into visible output.
+func formatPITotalActivityProgress(summary processInstanceProgressSummary) string {
+	status := "fetching next page"
+	switch summary.ContinuationState {
+	case processInstanceContinuationCompleted:
+		status = "complete"
+	case processInstanceContinuationWarningStop:
+		status = "stopped with warning"
+	case processInstanceContinuationLimitReached:
+		status = "limit reached"
+	}
+	return fmt.Sprintf("counting process instances: %d counted, %s", summary.CumulativeCount, status)
 }
 
 // logPITotalPage records the paging metadata that explains how a total was

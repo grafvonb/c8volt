@@ -88,3 +88,20 @@ func TestFormatIncidentPagingProgress(t *testing.T) {
 		require.Equal(t, "1000 loaded", formatIncidentPagingProgress(incident.Page{}, 1000, "loaded"))
 	})
 }
+
+func TestFormatPITotalActivityProgress(t *testing.T) {
+	require.Equal(t,
+		"counting process instances: 16668 counted, fetching next page",
+		formatPITotalActivityProgress(processInstanceProgressSummary{
+			CumulativeCount:   16668,
+			ContinuationState: processInstanceContinuationAutoContinue,
+		}),
+	)
+	require.Equal(t,
+		"counting process instances: 16668 counted, complete",
+		formatPITotalActivityProgress(processInstanceProgressSummary{
+			CumulativeCount:   16668,
+			ContinuationState: processInstanceContinuationCompleted,
+		}),
+	)
+}
