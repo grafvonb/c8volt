@@ -42,6 +42,7 @@
 - 2026-05-23 19:56 CEST: `go test ./cmd ./docsgen -run 'RunProcessInstance|ExpectProcessInstance|CommandContract|Capabilities|Generated' -count=1` passed.
 - 2026-05-23 20:00 CEST: `go test ./cmd ./c8volt/process ./internal/services/processinstance/... ./docsgen -count=1` passed.
 - 2026-05-23 20:01 CEST: `make test` passed, including `go test ./... -race -count=1`.
+- 2026-05-23 20:09 CEST: `BIN=/tmp/c8volt-issue225-smoke CONFIG=config.yaml scripts/smoke-issue-225-run-observable-keys.sh` passed against local Camunda 8.9. Covered fast-completion normal output, JSON observed state, completed keys-only pipeline, active keys-only pipeline, and active-instance cleanup.
 
 ## Residual Risks
 
@@ -190,4 +191,19 @@
 - Full repository validation passed through `make test`, which exercises the repository under the race detector.
 - Generated docs have no uncommitted drift; the previous generated docs diff touched `docs/cli/c8volt_run.md`, `docs/cli/c8volt_run_process-instance.md`, and `docs/index.md`.
 - The generated docs contain the `run pi --keys-only | expect pi --state completed -` and active-state pipeline examples.
+---
+## Follow-up - 2026-05-23 20:28 CEST
+**User Story**: Run output polish after local-cluster smoke use
+**Tasks Completed**:
+- [x] Replaced generic process-instance list formatting for `run pi` human output with a compact run-specific formatter.
+- [x] Removed age labels such as `(today)` from `run pi` output while preserving them for `get pi`.
+- [x] Sorted `run pi -n` rendered results by observed start date and process-instance key for deterministic count-mode output.
+- [x] Added observed lifecycle state to post-wait creation INFO logs in v8.7, v8.8, and v8.9 services.
+- [x] Preserved `--no-wait` semantics by omitting lifecycle state in normal and JSON output when no observation occurred.
+**Validation**:
+- `go test ./cmd ./internal/services/processinstance/... -count=1`
+- `go build -o /tmp/c8volt-issue225-output-fix .`
+**Learnings**:
+- `run pi` needs a distinct human output contract from `get pi`: the former reports a just-created result, while the latter remains an inspection/listing view with age metadata.
+- State in `run pi` means observed lifecycle state; `--no-wait` should omit state instead of rendering any placeholder.
 ---

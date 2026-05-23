@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
@@ -300,6 +301,7 @@ func TestRunProcessInstanceCommand_NormalOutputRendersObservedState(t *testing.T
 	require.Contains(t, stdout, "order-process")
 	require.Contains(t, stdout, "COMPLETED")
 	require.Contains(t, stdout, "found: 1")
+	require.NotContains(t, stdout, "(today)")
 	require.NotContains(t, stdout, `"outcome"`)
 	require.Contains(t, stderr, "waiting for pi 2251799813711967")
 }
@@ -332,6 +334,43 @@ func TestRunProcessInstanceCommand_JSONEnvelopeIncludesObservedState(t *testing.
 	require.Equal(t, "COMPLETED", item["state"])
 }
 
+func TestRunProcessInstanceCommand_JSONNoWaitOmitsUnobservedState(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-definitions/search":
+			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"<default>","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances":
+			_, _ = w.Write([]byte(`{"processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","state":"ACTIVE","tenantId":"<default>","variables":{}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	stdout, _ := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--automation",
+		"--json",
+		"run", "process-instance",
+		"--bpmn-process-id", "order-process",
+		"--no-wait",
+	)
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	payload := requireJSONObject(t, got["payload"])
+	items, ok := payload["items"].([]any)
+	require.True(t, ok)
+	require.Len(t, items, 1)
+	item := requireJSONObject(t, items[0])
+	require.Equal(t, "2251799813711967", item["key"])
+	require.NotContains(t, item, "state")
+}
+
 // Verifies keys-only run output stays suitable for strict downstream expect pipelines.
 func TestRunProcessInstanceCommand_KeysOnlyOutputsOnlyCreatedKeys(t *testing.T) {
 	srv := newRunProcessInstanceObservedStateServer(t, "COMPLETED")
@@ -352,6 +391,24 @@ func TestRunProcessInstanceCommand_KeysOnlyOutputsOnlyCreatedKeys(t *testing.T) 
 	require.NotContains(t, stdout, "found:")
 	require.NotContains(t, stdout, `"outcome"`)
 	require.Contains(t, stderr, "waiting for pi 2251799813711967")
+}
+
+func TestRunProcessInstanceResultSortsCountOutputByStartDateAndKey(t *testing.T) {
+	items := []process.ProcessInstance{
+		{Key: "30", StartDate: "2026-05-23T18:16:52.711Z"},
+		{Key: "10", StartDate: "2026-05-23T18:16:52.705Z"},
+		{Key: "20", StartDate: "2026-05-23T18:16:52.705Z"},
+		{Key: "5", StartDate: ""},
+	}
+
+	sortRunProcessInstancesForOutput(items)
+
+	require.Equal(t, []process.ProcessInstance{
+		{Key: "10", StartDate: "2026-05-23T18:16:52.705Z"},
+		{Key: "20", StartDate: "2026-05-23T18:16:52.705Z"},
+		{Key: "30", StartDate: "2026-05-23T18:16:52.711Z"},
+		{Key: "5", StartDate: ""},
+	}, items)
 }
 
 func TestRunProcessInstanceCommand_DefaultOutputDoesNotEmitMachineEnvelope(t *testing.T) {
@@ -380,6 +437,8 @@ func TestRunProcessInstanceCommand_DefaultOutputDoesNotEmitMachineEnvelope(t *te
 
 	require.NotContains(t, output, `"outcome"`)
 	require.NotContains(t, output, `"command"`)
+	require.Contains(t, output, "2251799813711967 <default> order-process v3 s:")
+	require.NotContains(t, output, "ACTIVE")
 }
 
 // newRunProcessInstanceObservedStateServer returns a v8.9 fixture that confirms creation through a keyed lookup.

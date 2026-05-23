@@ -170,7 +170,7 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 		pi.State = created.State
 		pi.StartConfirmedAt = time.Now().UTC().Format(time.RFC3339)
 		if !cCfg.SuppressWorkflowDetailLogs {
-			s.log.Info(fmt.Sprintf("pi %s created; pd %s %s v%d %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
+			s.log.Info(fmt.Sprintf("pi %s created; pd %s %s v%d %s; state %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId, pi.State))
 		}
 	} else {
 		pi.StartDate = time.Now().UTC().Format(time.RFC3339)

@@ -264,7 +264,7 @@ func TestService_CreateProcessInstance(t *testing.T) {
 
 		require.NoError(t, err)
 		output := logBuf.String()
-		assert.Contains(t, output, "INFO pi 123 created; pd proc-key demo v7 tenant-a")
+		assert.Contains(t, output, "INFO pi 123 created; pd proc-key demo v7 tenant-a; state ACTIVE")
 		assert.NotContains(t, output, "start ")
 		assert.NotContains(t, output, "confirmed")
 	})

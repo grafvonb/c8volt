@@ -6,9 +6,12 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strconv"
 
 	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -127,6 +130,7 @@ var runProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("running %d process instances for %s: %w", flagRunPICount, contextForErr, err))
 		}
+		sortRunProcessInstancesForOutput(created)
 		if err := renderRunProcessInstanceResult(cmd, process.ProcessInstances{
 			Total: int32(len(created)),
 			Items: created,
@@ -136,12 +140,75 @@ var runProcessInstanceCmd = &cobra.Command{
 	},
 }
 
-// renderRunProcessInstanceResult keeps JSON on the shared mutation envelope while reusing list rendering for terminal output.
+// renderRunProcessInstanceResult keeps JSON on the shared mutation envelope while rendering human output as a compact creation result.
 func renderRunProcessInstanceResult(cmd *cobra.Command, result process.ProcessInstances) error {
 	if commandUsesSharedEnvelope(cmd, pickMode()) {
 		return renderCommandResult(cmd, result)
 	}
-	return listProcessInstancesView(cmd, result)
+	mode := pickMode()
+	if mode == RenderModeKeysOnly {
+		for _, item := range result.Items {
+			renderOutputLine(cmd, "%s", item.Key)
+		}
+		return nil
+	}
+	rows := make([]flatRow, 0, len(result.Items))
+	for _, item := range result.Items {
+		rows = append(rows, flatRowRunProcessInstanceWithTimezone(item, commandShowTimezoneOffset(cmd)))
+	}
+	for _, line := range formatFlatRows(rows) {
+		renderOutputLine(cmd, "%s", line)
+	}
+	renderOutputLine(cmd, "found: %d", len(result.Items))
+	return nil
+}
+
+func flatRowRunProcessInstanceWithTimezone(item process.ProcessInstance, showTimezoneOffset bool) flatRow {
+	parent := "p:<root>"
+	if item.ParentKey != "" {
+		parent = "p:" + item.ParentKey
+	}
+	version := fmt.Sprintf("v%d", item.ProcessVersion)
+	if item.ProcessVersionTag != "" {
+		version += "/" + item.ProcessVersionTag
+	}
+	row := flatRow{
+		item.Key,
+		item.TenantId,
+		item.BpmnProcessId,
+		version,
+	}
+	if item.State != "" {
+		row = append(row, string(item.State))
+	}
+	row = append(row, "s:"+toolx.FormatTimestamp(item.StartDate, showTimezoneOffset), parent)
+	return row
+}
+
+func sortRunProcessInstancesForOutput(items []process.ProcessInstance) {
+	sort.SliceStable(items, func(i, j int) bool {
+		left := items[i]
+		right := items[j]
+		if left.StartDate != right.StartDate {
+			if left.StartDate == "" {
+				return false
+			}
+			if right.StartDate == "" {
+				return true
+			}
+			return left.StartDate < right.StartDate
+		}
+		return runProcessInstanceKeyLess(left.Key, right.Key)
+	})
+}
+
+func runProcessInstanceKeyLess(left, right string) bool {
+	li, lerr := strconv.ParseUint(left, 10, 64)
+	ri, rerr := strconv.ParseUint(right, 10, 64)
+	if lerr == nil && rerr == nil {
+		return li < ri
+	}
+	return left < right
 }
 
 func init() {

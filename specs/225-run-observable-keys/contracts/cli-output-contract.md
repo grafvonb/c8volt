@@ -14,6 +14,7 @@ found: <count>
 ```
 
 The `<state>` token is the observed state that satisfied creation confirmation.
+When `--no-wait` is used, no lifecycle state has been observed, so the state token is omitted rather than replaced with a placeholder.
 
 ### JSON Output
 
