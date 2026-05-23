@@ -28,6 +28,7 @@
 - `internal/domain/state.go` now owns `ObservableProcessInstanceCreationStates`, which returns a copy of the shared `ACTIVE`, `COMPLETED`, `CANCELED`, and `TERMINATED` confirmation state set for later process-instance services.
 - `internal/domain.ProcessInstanceCreation` carries the observed creation-confirmation state, and `c8volt/process` maps it onto the public `ProcessInstance.State` for later command rendering.
 - Camunda 8.7 creation responses still do not provide a usable process-instance key; key-based v8.7 confirmation uses the tenant-filtered Operate search path when a caller already has a key.
+- Repository-wide validation is `make test`, which runs `go test ./... -race -count=1`.
 
 ## Validation Log
 
@@ -39,6 +40,8 @@
 - 2026-05-23 19:44 CEST: `go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` passed.
 - 2026-05-23 19:49 CEST: `go test ./cmd -run 'RunProcessInstance|ProcessInstancesView|DeployProcessDefinition|EmbedDeploy' -count=1` passed.
 - 2026-05-23 19:56 CEST: `go test ./cmd ./docsgen -run 'RunProcessInstance|ExpectProcessInstance|CommandContract|Capabilities|Generated' -count=1` passed.
+- 2026-05-23 20:00 CEST: `go test ./cmd ./c8volt/process ./internal/services/processinstance/... ./docsgen -count=1` passed.
+- 2026-05-23 20:01 CEST: `make test` passed, including `go test ./... -race -count=1`.
 
 ## Residual Risks
 
@@ -170,4 +173,21 @@
 - Command capability discovery infers keys-only support from inherited root flags after Cobra flag reset, so contract coverage should inspect the live `run process-instance` capability.
 - `expect pi` mismatched explicit states still timeout/fail instead of accepting another observable lifecycle state, preserving the strict pipeline boundary.
 - Generated CLI docs were refreshed with `make docs-content`, which also synced `docs/index.md` from the README.
+---
+## Iteration 6 - 2026-05-23 20:01 CEST
+**User Story**: Phase 6 - Polish & Cross-Cutting Validation
+**Tasks Completed**:
+- [x] T032: Run broader validation
+- [x] T033: Run repository validation
+- [x] T034: Review generated documentation diffs
+- [x] T035: Update progress with final validation results and residual risks
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- specs/225-run-observable-keys/tasks.md
+- specs/225-run-observable-keys/progress.md
+**Learnings**:
+- Full repository validation passed through `make test`, which exercises the repository under the race detector.
+- Generated docs have no uncommitted drift; the previous generated docs diff touched `docs/cli/c8volt_run.md`, `docs/cli/c8volt_run_process-instance.md`, and `docs/index.md`.
+- The generated docs contain the `run pi --keys-only | expect pi --state completed -` and active-state pipeline examples.
 ---

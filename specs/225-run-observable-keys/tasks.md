@@ -116,10 +116,10 @@
 
 **Purpose**: Confirm the completed feature against repository standards.
 
-- [ ] T032 Run broader validation with `go test ./cmd ./c8volt/process ./internal/services/processinstance/... ./docsgen -count=1`
-- [ ] T033 Run repository validation with `make test`
-- [ ] T034 Review generated documentation diffs in `docs/cli/` and `docs/index.md`
-- [ ] T035 Update `specs/225-run-observable-keys/progress.md` with final validation results and any residual risks
+- [x] T032 Run broader validation with `go test ./cmd ./c8volt/process ./internal/services/processinstance/... ./docsgen -count=1`
+- [x] T033 Run repository validation with `make test`
+- [x] T034 Review generated documentation diffs in `docs/cli/` and `docs/index.md`
+- [x] T035 Update `specs/225-run-observable-keys/progress.md` with final validation results and any residual risks
 
 ---
 
