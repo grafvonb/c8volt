@@ -1,9 +1,9 @@
 installed:
-- ralph
 - agent-governance
 - arch
 - doctor
 - memory-loader
+- ralph
 - staff-review
 - status
 - verify
@@ -12,19 +12,19 @@ settings:
   auto_execute_hooks: true
 hooks:
   after_tasks:
-  - extension: ralph
-    command: speckit.ralph.run
-    enabled: true
-    optional: true
-    prompt: Run ralph loop to implement tasks?
-    description: Start autonomous implementation after task generation
-    condition: null
   - extension: agent-governance
     command: speckit.agent-governance.refresh
     enabled: true
     optional: true
     prompt: Refresh agent governance after task generation?
     description: Keeps the active agent platform governance file aligned
+    condition: null
+  - extension: ralph
+    command: speckit.ralph.run
+    enabled: true
+    optional: true
+    prompt: Run ralph loop to implement tasks?
+    description: Start autonomous implementation after task generation
     condition: null
   before_specify:
   - extension: memory-loader

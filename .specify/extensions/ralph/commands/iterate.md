@@ -133,6 +133,15 @@ Follow the patterns established in the codebase:
 - Match indentation and formatting styles
 - Use the same import/module patterns
 - Follow any linting rules configured in the project
+- During each iteration, review newly added or substantially changed functions and tests for concise intent comments where they help future readers understand purpose, implementation highlights, or behavioral contract
+- Match the existing repository comment style, for example:
+  - `// newSearchQueryPageRequest builds the v8.9 page request, preferring cursor pagination when available.`
+  - `// SearchTenants lists native Camunda tenants, then applies the local literal tenant name or ID filter.`
+- Do not add comments mechanically just because a function or test exists
+- Do not comment getters, setters, trivial wrappers, obvious one-line helpers, or simple implementation details
+- Prefer comments that explain why the helper or test exists, what behavior it protects, or what non-obvious boundary or contract it preserves
+- For tests, describe the behavior or regression being protected, not a restatement of the test name
+- Keep comments short, precise, and implementation-aware
 
 ## Error Handling
 

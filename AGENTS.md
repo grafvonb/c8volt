@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active plan: [specs/207-bpmn-selector-validation/plan.md](specs/207-bpmn-selector-validation/plan.md)
+- No active Speckit implementation plan has been recorded yet.
 <!-- SPECKIT END -->

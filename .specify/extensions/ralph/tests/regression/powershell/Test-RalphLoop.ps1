@@ -118,8 +118,16 @@ Assert-True "filters defaultPrompt manifest warning" (
     Test-IgnorableAgentOutputLine -Line "2026-04-16T19:39:57.702566Z  WARN codex_core::plugins::manifest: ignoring interface.defaultPrompt: maximum of 3 prompts is supported path=/tmp/plugin.json"
 )
 
-Assert-True "filters defaultPrompt manifest warning from current codex logger" (
-    Test-IgnorableAgentOutputLine -Line "2026-05-06T22:10:35.008184Z  WARN codex_core_plugins::manifest: ignoring interface.defaultPrompt: prompt must be at most 128 characters path=/tmp/plugin.json"
+Assert-True "filters defaultPrompt manifest warning from codex_core_plugins logger" (
+    Test-IgnorableAgentOutputLine -Line "2026-04-22T20:16:53.964590Z  WARN codex_core_plugins::manifest: ignoring interface.defaultPrompt: prompt must be at most 128 characters path=/tmp/plugin.json"
+)
+
+Assert-True "filters skill icon loader warning" (
+    Test-IgnorableAgentOutputLine -Line "2026-05-23T14:19:28.001666Z  WARN codex_core_skills::loader: ignoring interface.icon_small: icon path must not contain '..'"
+)
+
+Assert-True "filters skill icon loader warning variants" (
+    Test-IgnorableAgentOutputLine -Line "2026-05-23T14:19:28.001674Z  WARN codex_core_skills::loader: ignoring interface.icon_large: unsupported icon format"
 )
 
 Assert-True "filters state db migration warning" (
