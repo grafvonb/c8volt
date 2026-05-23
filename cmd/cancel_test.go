@@ -341,6 +341,41 @@ func TestCancelProcessInstanceCommand_DuplicateStdinKeysDeduplicateBeforePlannin
 	require.NotContains(t, output, "selected process instances: 4")
 }
 
+func TestCancelProcessInstanceStdinPipelineKeysSkipBpmnSelectorValidation(t *testing.T) {
+	const key = "2251799813711967"
+	var requests []string
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/"+key:
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"processInstanceKey":"%s","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`, key)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			_, _ = io.Copy(io.Discard, r.Body)
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		case r.URL.Path == "/v2/process-definitions/search":
+			t.Fatal("downstream stdin-key cancel must not validate a BPMN selector")
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	output := executeRootForProcessInstanceTestWithStdin(t,
+		key+"\n",
+		"--config", cfgPath,
+		"cancel", "pi",
+		"-",
+		"--dry-run",
+	)
+
+	require.NotContains(t, requests, "POST /v2/process-definitions/search")
+	require.Contains(t, requests, "POST /v2/process-instances/search")
+	require.Contains(t, output, "selected process instances: 1")
+}
+
 // TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor
 // verifies partial ancestry details are surfaced in output.
 func TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor(t *testing.T) {
@@ -714,21 +749,69 @@ func TestCancelProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequ
 	require.NotContains(t, output, "no process instance keys provided or found to cancel")
 }
 
-func TestCancelProcessInstanceBpmnSelectorSearchesInstancesDirectly(t *testing.T) {
+func TestCancelProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 	var requests []string
-	srv := newProcessInstanceSearchCaptureServer(t, &requests)
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		switch r.URL.Path {
+		case "/v2/process-definitions/search":
+			writeEmptyProcessDefinitionSearchResponse(w)
+		case "/v2/process-instances/search":
+			t.Fatal("unexpected process-instance search before selector validation")
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
 	t.Cleanup(srv.Close)
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output, err := executeCancelProcessInstanceSuccessHelper(t, "TestCancelProcessInstanceBpmnSelectorSearchesInstancesDirectlyHelper", cfgPath)
+	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceBpmnSelectorMissingFailsBeforeSearchHelper", cfgPath)
 
-	require.NoError(t, err)
-	require.Len(t, requests, 1)
-	filter := decodeCapturedPISearchFilter(t, requests)
-	require.Equal(t, "missing-process", filter["processDefinitionId"])
-	require.Contains(t, output, "found: 0")
-	require.NotContains(t, output, "no visible process definition matches the provided selector")
+	require.Equal(t, exitcode.Error, code)
+	require.Equal(t, []string{"POST /v2/process-definitions/search"}, requests)
+	require.Contains(t, output, "no visible process definition matches the provided selector")
+	require.Contains(t, output, "[missing-process]")
+	require.NotContains(t, output, "found: 0")
+}
+
+func TestCancelProcessInstanceBpmnSelectorMissingMachineModesDoNotPrompt(t *testing.T) {
+	tests := []struct {
+		name   string
+		helper string
+	}{
+		{name: "json", helper: "TestCancelProcessInstanceBpmnSelectorMissingJSONHelper"},
+		{name: "automation", helper: "TestCancelProcessInstanceBpmnSelectorMissingAutomationHelper"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests = append(requests, r.Method+" "+r.URL.Path)
+				require.Equal(t, http.MethodPost, r.Method)
+				switch r.URL.Path {
+				case "/v2/process-definitions/search":
+					writeEmptyProcessDefinitionSearchResponse(w)
+				case "/v2/process-instances/search":
+					t.Fatal("unexpected process-instance search before selector validation")
+				default:
+					t.Fatalf("unexpected request path: %s", r.URL.Path)
+				}
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+			output, code := executeCancelProcessInstanceFailureHelper(t, tt.helper, cfgPath)
+
+			require.Equal(t, exitcode.Error, code)
+			require.Equal(t, []string{"POST /v2/process-definitions/search"}, requests)
+			require.Contains(t, output, "no visible process definition matches the provided selector")
+			require.NotContains(t, output, "List visible process definitions?")
+		})
+	}
 }
 
 func TestCancelProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.T) {
@@ -736,9 +819,15 @@ func TestCancelProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		switch r.URL.Path {
+		case "/v2/process-definitions/search":
+			writeVisibleProcessDefinitionSearchResponse(w)
+		case "/v2/process-instances/search":
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
 	}))
 	t.Cleanup(srv.Close)
 
@@ -751,7 +840,7 @@ func TestCancelProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.
 		"--bpmn-process-id", "order-process",
 	)
 
-	require.Equal(t, []string{"POST /v2/process-instances/search"}, requests)
+	require.Equal(t, []string{"POST /v2/process-definitions/search", "POST /v2/process-instances/search"}, requests)
 	require.Equal(t, "found: 0\n", output)
 }
 
@@ -762,6 +851,8 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMa
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			writeVisibleProcessDefinitionSearchResponse(w)
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
@@ -819,6 +910,8 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCa
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			writeVisibleProcessDefinitionSearchResponse(w)
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
@@ -1923,7 +2016,7 @@ func TestCancelProcessInstanceSearchScaffoldHelper(t *testing.T) {
 	Execute()
 }
 
-func TestCancelProcessInstanceBpmnSelectorSearchesInstancesDirectlyHelper(t *testing.T) {
+func TestCancelProcessInstanceBpmnSelectorMissingFailsBeforeSearchHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
@@ -1932,6 +2025,32 @@ func TestCancelProcessInstanceBpmnSelectorSearchesInstancesDirectlyHelper(t *tes
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "missing-process", "--auto-confirm"}
+
+	Execute()
+}
+
+func TestCancelProcessInstanceBpmnSelectorMissingJSONHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "missing-process", "--auto-confirm"}
+
+	Execute()
+}
+
+func TestCancelProcessInstanceBpmnSelectorMissingAutomationHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--automation", "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "missing-process"}
 
 	Execute()
 }

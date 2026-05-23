@@ -49,7 +49,7 @@ c8volt update job --key <job-key> --timeout <duration>
 c8volt resolve incident --key <incident-key>
 ```
 
-Keyed mode and search mode are mutually exclusive. `--key` and stdin `-` select incident keys. Search mode uses incident filters such as `--state`, `--error-type`, `--error-message`, `--bpmn-process-id`, `--pi-key`, `--root-key`, `--flow-node-id`, creation-time bounds, `--batch-size`, and `--limit`.
+Keyed mode and search mode are mutually exclusive. `--key` and stdin `-` select incident keys. Search mode uses incident filters such as `--state`, `--error-type`, `--error-message`, `--bpmn-process-id`, `--pi-key`, `--root-key`, `--flow-node-id`, creation-time bounds, `--batch-size`, and `--limit`. When `--bpmn-process-id` is set, c8volt validates the visible process-definition selector before incident discovery so a typo or invisible definition is not treated as an empty incident set.
 
 ## Workflow
 

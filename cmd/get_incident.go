@@ -40,6 +40,7 @@ var getIncidentCmd = &cobra.Command{
 	Long: "Get Camunda incidents by key or by search criteria.\n\n" +
 		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once and rendered through the shared get output modes.\n\n" +
 		"When no keys are supplied, incidents are searched by state, error type, error message, process context, flow-node context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions.\n\n" +
+		"When --bpmn-process-id is supplied in search mode, the BPMN process definition selector is validated before incident totals, key-only output, process-instance-key output, or paging. Missing or invisible definitions fail explicitly; --json, --automation, --keys-only, --pi-keys-only, and non-TTY runs never prompt for recovery output.\n\n" +
 		"Use --json for the stable incident payload, --keys-only for incident keys, --pi-keys-only for process instance keys, --error-message-limit to shorten long error messages, or --with-no-error-message to omit them.",
 	Example: `  ./c8volt get incident --key <incident-key>
   ./c8volt get inc --key <incident-key> --key <another-incident-key>
@@ -113,6 +114,15 @@ var getIncidentCmd = &cobra.Command{
 		}
 
 		filter := populateGetIncidentSearchFilter()
+		if flagGetIncidentBpmnProcessID != "" {
+			result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newIncidentProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			if !result.Valid() {
+				handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
+			}
+		}
 		log.Debug(fmt.Sprintf("searching incidents; mode %s", pickMode()))
 		if flagGetIncidentTotal {
 			total, err := searchIncidentsTotal(cmd, cli, cfg, filter)
@@ -146,7 +156,7 @@ func init() {
 	fs.StringVarP(&flagGetIncidentState, "state", "s", "active", "incident state scope for search: active, pending, resolved, migrated, unknown, all")
 	fs.StringVar(&flagGetIncidentErrorType, "error-type", "", "case-insensitive incident error type filter for search")
 	fs.StringVar(&flagGetIncidentErrorMessage, "error-message", "", "case-insensitive incident error message substring filter for search")
-	fs.StringVarP(&flagGetIncidentBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter incidents")
+	fs.StringVarP(&flagGetIncidentBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to validate and filter incidents")
 	fs.StringVar(&flagGetIncidentPDKey, "pd-key", "", "process definition key to filter incidents")
 	fs.StringVar(&flagGetIncidentPIKey, "pi-key", "", "process instance key to filter incidents")
 	fs.StringVar(&flagGetIncidentRootKey, "root-key", "", "root process instance key to filter incidents")

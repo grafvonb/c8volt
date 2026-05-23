@@ -22,7 +22,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 	Short: "Cancel process instances by key or filters",
 	Long: "Cancel process instances by key or search filters.\n\n" +
 		"By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.\n\n" +
-		"When --bpmn-process-id is set, c8volt applies the selector directly to the non-mutating process-instance search. If no matching instances are found, no cancellation request is submitted.\n\n" +
+		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, or cancellation; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no cancellation request is submitted.\n\n" +
 		"Use --dry-run to preview selected, in-scope, final-state, and partial-scope instances without cancelling.\n\n" +
 		"Use --auto-confirm for unattended destructive runs.",
 	Example: `  ./c8volt cancel pi --key <process-instance-key>
@@ -75,6 +75,15 @@ var cancelProcessInstanceCmd = &cobra.Command{
 			}
 			if err := validatePISearchVersionSupport(cfg); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			if flagGetPIBpmnProcessID != "" {
+				result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newPIProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+				if err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
+				if !result.Valid() {
+					handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
+				}
 			}
 			searchFilterOpts := populatePISearchFilterOpts()
 			results, err := processPISearchPagesWithAction(cmd, cli, cfg, searchFilterOpts, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {

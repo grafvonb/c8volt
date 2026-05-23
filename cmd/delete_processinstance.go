@@ -24,7 +24,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 	Short: "Delete process instances by key or filters",
 	Long: "Delete process instances by key or search filters, optionally cancelling first.\n\n" +
 		"By default c8volt validates the complete affected tree before submitting any delete request, prompts before deletion, and waits until deletion is observed. If any affected process instance is not in a final state, the whole delete batch is refused before mutation. Use --force to cancel the affected scope first, then delete it.\n\n" +
-		"When --bpmn-process-id is set, c8volt applies the selector directly to the non-mutating process-instance search. If no matching instances are found, no deletion request is submitted.\n\n" +
+		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, cancellation, or deletion; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no deletion request is submitted.\n\n" +
 		"Use --dry-run to preview selected, in-scope, final-state, non-final, and partial-scope instances without deleting or cancelling.\n\n" +
 		"Use --auto-confirm for unattended destructive runs.",
 	Example: `  ./c8volt delete pi --key <process-instance-key> --force
@@ -71,6 +71,15 @@ var deleteProcessInstanceCmd = &cobra.Command{
 			}
 			if err := validatePISearchVersionSupport(cfg); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			if flagGetPIBpmnProcessID != "" {
+				result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newPIProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+				if err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
+				if !result.Valid() {
+					handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
+				}
 			}
 			searchFilterOpts := populatePISearchFilterOpts()
 			results, err := deleteProcessInstanceSearchPages(cmd, cli, cfg, searchFilterOpts)

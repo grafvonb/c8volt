@@ -56,7 +56,7 @@ c8volt get pd [process-definition filters...]
 c8volt delete pd --key <candidate-process-definition-key>
 ```
 
-The command supports `--key`, `--bpmn-process-id`, `--pd-version`, `--pd-version-tag`, and `--latest` for candidate discovery. Execution controls include `--workers`, `--no-worker-limit`, `--fail-fast`, `--no-wait`, `--force`, `--automation`, `--json`, `--report-file`, and `--report-format`.
+The command supports `--key`, `--bpmn-process-id`, `--pd-version`, `--pd-version-tag`, and `--latest` for candidate discovery. When `--bpmn-process-id` is set, c8volt validates visible process-definition matches before impact planning, confirmation, or deletion. Execution controls include `--workers`, `--no-worker-limit`, `--fail-fast`, `--no-wait`, `--force`, `--automation`, `--json`, `--report-file`, and `--report-format`.
 
 ## Workflow
 

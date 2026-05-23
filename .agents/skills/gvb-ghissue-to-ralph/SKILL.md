@@ -7,6 +7,8 @@ metadata:
   wraps:
     - gvb-ghissue-to-speckit
     - speckit-clarify
+    - speckit-arch-generate
+    - speckit-arch-reverse
     - speckit-plan
     - speckit-tasks
     - speckit-ralph-run
@@ -20,9 +22,10 @@ This wrapper standardizes the following sequence:
 
 1. `gvb-ghissue-to-speckit`
 2. `speckit-clarify`
-3. `speckit-plan`
-4. `speckit-tasks`
-5. `speckit-ralph-run` or the equivalent `after_tasks` hook
+3. architecture grounding with existing architecture memory, `speckit-arch-reverse`, or `speckit-arch-generate`
+4. `speckit-plan`
+5. `speckit-tasks`
+6. `speckit-ralph-run` or the equivalent `after_tasks` hook
 
 The intended outcome is an issue-backed feature with traceable spec artifacts, completed planning artifacts, generated tasks, and a Ralph loop launch path that respects the repository's hook configuration.
 
@@ -50,16 +53,21 @@ A bare issue URL is sufficient to begin.
    - wait for the user to answer each clarification question
    - integrate accepted answers into `spec.md`
    - do not run `speckit-plan` or `speckit-tasks` until clarification has completed, all accepted answers have been written to `spec.md`, or the user explicitly instructs you to proceed without resolving remaining clarification questions
-6. After clarification completes, run `speckit-plan`.
-7. After planning completes, run `speckit-tasks`.
-8. After tasks are generated, decide how Ralph should start:
+6. After clarification completes and before planning, perform architecture grounding:
+   - if `.specify/extensions/arch/` is unavailable, continue but report that architecture grounding was skipped because the target repository does not have the architecture extension installed
+   - if architecture memory is missing, create it before planning using `speckit-arch-reverse` for existing repositories with observable code/docs/tests/config/deployment evidence, or `speckit-arch-generate` for greenfield or intent-first work
+   - if architecture memory exists, refresh it only when the issue or clarification answers affect stable architecture concerns such as module boundaries, runtime responsibilities, deployment assumptions, external systems, ownership boundaries, or forbidden responsibility crossings
+   - for narrow chores, docs updates, dependency bumps, tests, local bug fixes, and other work that does not affect architecture boundaries, reuse the existing architecture memory without refreshing it
+7. After architecture grounding completes, run `speckit-plan`.
+8. After planning completes, run `speckit-tasks`.
+9. After tasks are generated, decide how Ralph should start:
    - always stop and ask the user for explicit confirmation before any Ralph launch path is allowed to continue
    - treat this confirmation as a budget check, not as a mere informational prompt
    - on macOS, always phrase the eventual launch as `speckit-ralph-run in Terminal.app`
    - if `.specify/extensions.yml` defines an enabled `after_tasks` hook targeting `speckit.ralph.run`, prefer that hook-driven path after the user confirms and do not manually invoke `speckit-ralph-run` a second time
    - otherwise invoke `speckit-ralph-run` explicitly only after the user confirms
-9. When a hook-driven Ralph launch is available, surface that to the user clearly and ask whether they want to spend budget on starting Ralph now.
-10. Carry the GitHub issue number through all downstream naming and traceability where relevant, including commit messages.
+10. When a hook-driven Ralph launch is available, surface that to the user clearly and ask whether they want to spend budget on starting Ralph now.
+11. Carry the GitHub issue number through all downstream naming and traceability where relevant, including commit messages.
 
 ## Commit Rule
 
@@ -104,6 +112,21 @@ Clarification is complete only after one of these conditions is true:
 
 Do not run `speckit-plan`, `speckit-tasks`, an `after_tasks` hook, or `speckit-ralph-run` before the clarification gate is complete.
 
+## Architecture Grounding Gate
+
+Architecture grounding runs after clarification and before planning.
+
+The purpose is to make sure `speckit-plan` sees stable project-level architecture context instead of deriving architecture boundaries from one issue in isolation.
+
+This gate is conditional:
+
+- If `.specify/extensions/arch/` is unavailable, do not block the whole issue flow solely for that reason. Continue after reporting that architecture grounding was skipped because the target repository needs an ai-tooling refresh with the architecture extension.
+- If `.specify/memory/architecture.md` or any required 4+1 view file is missing, run an architecture workflow before planning.
+- Use `speckit-arch-reverse` when the repository already has observable implementation, docs, tests, entry points, configuration, CI/CD, or deployment evidence.
+- Use `speckit-arch-generate` when the work is primarily greenfield or intent-driven and reliable repository evidence does not yet exist.
+- If architecture memory already exists, refresh it only when the issue or clarification answers affect stable architecture concerns such as module boundaries, runtime responsibilities, deployment assumptions, external systems, ownership boundaries, or forbidden responsibility crossings.
+- For narrow chores, documentation-only changes, dependency bumps, test cleanup, local bug fixes, and other work that does not affect architecture boundaries, do not refresh architecture memory. Preserve the existing architecture SSOT and rely on `memory-loader` to load it before planning.
+
 ## Execution Flow
 
 1. Read the user request and locate the GitHub issue URL.
@@ -116,16 +139,23 @@ Do not run `speckit-plan`, `speckit-tasks`, an `after_tasks` hook, or `speckit-r
    - wait for the user's answer
    - integrate each accepted answer into `spec.md`
    - stop only when `speckit-clarify` reports no critical ambiguities, all selected questions are answered, the question limit is reached, or the user explicitly stops or proceeds with remaining ambiguity
-7. Run `speckit-plan` only after the clarification gate is complete.
-8. Run `speckit-tasks` after planning.
-9. Inspect `.specify/extensions.yml` for an enabled `after_tasks` hook targeting `speckit.ralph.run`.
-10. Stop and ask the user whether they want to launch Ralph now, explicitly framing the question as a budget check.
-11. If the user declines, stop after confirming tasks generation is complete and report the next command to run later.
-12. If the user approves and the hook exists, present the hook-driven Ralph handoff and stop after confirming the launch path.
-13. If the user approves and that hook does not exist, invoke `speckit-ralph-run`.
-14. In the final handoff, restate:
+7. Perform the architecture grounding gate:
+   - inspect whether `.specify/extensions/arch/` is installed
+   - inspect whether `.specify/memory/architecture.md` and the five 4+1 view files exist
+   - create architecture memory with `speckit-arch-reverse` or `speckit-arch-generate` when it is missing
+   - refresh architecture memory only when the issue affects stable architecture concerns
+   - otherwise reuse the existing architecture memory for `memory-loader`
+8. Run `speckit-plan` only after the clarification and architecture grounding gates are complete.
+9. Run `speckit-tasks` after planning.
+10. Inspect `.specify/extensions.yml` for an enabled `after_tasks` hook targeting `speckit.ralph.run`.
+11. Stop and ask the user whether they want to launch Ralph now, explicitly framing the question as a budget check.
+12. If the user declines, stop after confirming tasks generation is complete and report the next command to run later.
+13. If the user approves and the hook exists, present the hook-driven Ralph handoff and stop after confirming the launch path.
+14. If the user approves and that hook does not exist, invoke `speckit-ralph-run`.
+15. In the final handoff, restate:
    - the feature directory
    - the spec, plan, and tasks artifact paths
+   - whether architecture memory was created, refreshed, reused, or skipped
    - whether Ralph was hook-driven or manually launched
    - the issue-suffixed commit-message rule
 

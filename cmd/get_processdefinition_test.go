@@ -7,9 +7,11 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
@@ -60,6 +62,69 @@ func TestGetProcessDefinitionLatestSearchPreservesSelectionRequest(t *testing.T)
 	require.Equal(t, float64(3), filter["version"])
 	require.Equal(t, "stable", filter["versionTag"])
 	require.Equal(t, true, filter["isLatestVersion"])
+}
+
+func TestGetProcessDefinitionBpmnSelectorMissingFailsWithExplicitDiagnostic(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		requests = append(requests, string(body))
+		writeEmptyProcessDefinitionSearchResponse(w)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	output, err := testx.RunCmdSubprocess(t, "TestGetProcessDefinitionBpmnSelectorMissingFailsWithExplicitDiagnosticHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Len(t, requests, 1)
+	body := decodeSingleRequestJSON(t, requests)
+	filter, ok := body["filter"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "missing-process", filter["processDefinitionId"])
+	require.Contains(t, string(output), "no visible process definition matches the provided selector")
+	require.Contains(t, string(output), "[missing-process]")
+}
+
+func TestGetProcessDefinitionBpmnSelectorVisiblePreservesListing(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		requests = append(requests, string(body))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"order-process","name":"Order Process","version":3,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	output := executeRootForTest(t,
+		"--config", cfgPath,
+		"get", "process-definition",
+		"--bpmn-process-id", "order-process",
+		"--pd-version", "3",
+		"--pd-version-tag", "stable",
+	)
+
+	require.Len(t, requests, 1)
+	body := decodeSingleRequestJSON(t, requests)
+	filter, ok := body["filter"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "order-process", filter["processDefinitionId"])
+	require.Equal(t, float64(3), filter["version"])
+	require.Equal(t, "stable", filter["versionTag"])
+	require.Contains(t, output, "2251799813685255")
+	require.Contains(t, output, "tenant order-process v3/stable")
 }
 
 func TestGetProcessDefinitionXMLOutputRemainsKeyOnlyDisplayMode(t *testing.T) {
@@ -192,6 +257,24 @@ func TestGetProcessDefinitionLatestSearchPreservesSelectionRequestHelper(t *test
 		"--pd-version", "3",
 		"--pd-version-tag", "stable",
 		"--latest",
+	})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestGetProcessDefinitionBpmnSelectorMissingFailsWithExplicitDiagnosticHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetGetProcessDefinitionCommandGlobals()
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"get", "process-definition",
+		"--bpmn-process-id", "missing-process",
 	})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)

@@ -149,6 +149,35 @@ func TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 	require.NotContains(t, string(output), "found: 0")
 }
 
+// A keys-only upstream pipeline command still validates the BPMN selector before emitting keys.
+func TestGetProcessInstanceBpmnSelectorMissingKeysOnlyPipelineFailsUpstream(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceBpmnSelectorMissingKeysOnlyPipelineFailsUpstreamHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Equal(t, []string{"POST /v2/process-definitions/search"}, requests)
+	require.Contains(t, string(output), "no visible process definition matches the provided selector")
+	require.Contains(t, string(output), "[missing-process]")
+	require.NotContains(t, string(output), "List visible process definitions?")
+	require.NotContains(t, string(output), "found: 0")
+}
+
 // Visible definitions with no instances still use the normal empty-list path.
 func TestGetProcessInstanceBpmnSelectorVisiblePreservesFoundZero(t *testing.T) {
 	var requests []string
@@ -4763,6 +4792,19 @@ func TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearchHelper(t *testing
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant-a", "get", "process-instance", "--bpmn-process-id", "missing-process"}
+
+	Execute()
+}
+
+func TestGetProcessInstanceBpmnSelectorMissingKeysOnlyPipelineFailsUpstreamHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant-a", "get", "process-instance", "--bpmn-process-id", "missing-process", "--keys-only"}
 
 	Execute()
 }

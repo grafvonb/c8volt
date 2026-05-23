@@ -26,6 +26,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 	Short: "Delete process definition resources",
 	Long: "Delete process definition resources from Camunda.\n\n" +
 		"By default c8volt first checks delete impact without changing anything: active process instances, required cancellation roots and process-instance tree scope when --force is used, and batch-operation read access before prompting. Process-definition deletion requires Camunda 8.9 or newer so c8volt can request full process-definition history deletion. With --force, it cancels the root process instances, deletes the affected process-instance history, then asks Camunda to delete the process definition and remaining associated history. If you only want to delete process instances for a definition, use `c8volt delete process-instance --bpmn-process-id <bpmn-process-id>`.\n\n" +
+		"When --bpmn-process-id is set, c8volt validates visible process-definition matches before delete impact planning, confirmation, cancellation, or deletion. A missing selector fails with the shared local diagnostic.\n\n" +
 		"Use --auto-confirm for unattended destructive runs.",
 	Example: `  ./c8volt delete pd --key <process-definition-key> --auto-confirm
   ./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --force
@@ -62,16 +63,29 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		switch {
 		case len(keys) > 0:
 		default:
-			filter := process.ProcessDefinitionFilter{
-				BpmnProcessId:     flagDeletePDBpmnProcessId,
-				ProcessVersion:    flagDeletePDProcessVersion,
-				ProcessVersionTag: flagDeletePDProcessVersionTag,
-			}
 			var pds process.ProcessDefinitions
-			if !flagDeletePDLatest {
-				pds, err = cli.SearchProcessDefinitions(cmd.Context(), filter)
+			if flagDeletePDBpmnProcessId != "" {
+				result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newDeletePDProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+				if err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
+				if !result.Valid() {
+					handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
+				}
+				if len(result.Request.BpmnProcessIds) > 0 {
+					pds = result.MatchesByBpmnProcessID[result.Request.BpmnProcessIds[0]]
+				}
 			} else {
-				pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter)
+				filter := process.ProcessDefinitionFilter{
+					BpmnProcessId:     flagDeletePDBpmnProcessId,
+					ProcessVersion:    flagDeletePDProcessVersion,
+					ProcessVersionTag: flagDeletePDProcessVersionTag,
+				}
+				if flagDeletePDLatest {
+					pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter)
+				} else {
+					pds, err = cli.SearchProcessDefinitions(cmd.Context(), filter)
+				}
 			}
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("searching for process definitions to delete: %w", err))

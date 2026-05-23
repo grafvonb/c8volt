@@ -33,6 +33,10 @@ var getProcessDefinitionCmd = &cobra.Command{
 Inspect deployed BPMN models by key, BPMN process ID, version selectors, or
 latest deployed version. Use ` + "`--xml`" + ` only with ` + "`--key`" + `.
 
+When ` + "`--bpmn-process-id`" + ` is set, c8volt validates that at least one visible
+process definition matches the selector before rendering output. A missing selector
+fails with the shared local diagnostic instead of rendering an ambiguous empty list.
+
 ` + "`--stat`" + ` requires Camunda ` + "`8.8`" + ` or ` + "`8.9`" + ` and prints exact-version
 counts. Camunda ` + "`8.7`" + ` does not support native statistics.`,
 	Example: `  ./c8volt get pd --latest
@@ -95,7 +99,18 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 		pds process.ProcessDefinitions
 		err error
 	)
-	if !flagGetPDLatest {
+	if filter.BpmnProcessId != "" {
+		result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newGetPDProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+		if err != nil {
+			ferrors.HandleAndExit(log, noErrCodes, err)
+		}
+		if !result.Valid() {
+			handleProcessDefinitionSelectorValidationError(cmd, log, noErrCodes, cli, result)
+		}
+		if len(result.Request.BpmnProcessIds) > 0 {
+			pds = result.MatchesByBpmnProcessID[result.Request.BpmnProcessIds[0]]
+		}
+	} else if !flagGetPDLatest {
 		pds, err = cli.SearchProcessDefinitions(cmd.Context(), filter, collectOptions()...)
 	} else {
 		pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter, collectOptions()...)
