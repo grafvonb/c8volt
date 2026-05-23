@@ -17,12 +17,12 @@
 
 **Purpose**: Confirm the current command paths, selector registration, shared validator behavior, paging boundaries, and documentation surfaces before changing behavior.
 
-- [ ] T001 Audit every direct `--bpmn-process-id` registration in `cmd/get_processinstance_filtering.go`, `cmd/run_processinstance.go`, `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, `cmd/get_incident.go`, `cmd/get_processdefinition.go`, and `cmd/delete_processdefinition.go`
-- [ ] T002 [P] Inspect shared selector validation behavior and reusable gaps in `cmd/process_definition_selector_validation.go` and `cmd/process_definition_selector_validation_test.go`
-- [ ] T003 [P] Inspect process-instance search-selected mutation paths in `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, `cmd/get_processinstance_paging.go`, and `cmd/get_processinstance_search.go`
-- [ ] T004 [P] Inspect incident search filters, paging, totals, and output modes in `cmd/get_incident.go`, `cmd/get_incident_search.go`, and `cmd/get_incident_test.go`
-- [ ] T005 [P] Inspect direct process-definition search/delete behavior and tests in `cmd/get_processdefinition.go`, `cmd/get_processdefinition_test.go`, `cmd/delete_processdefinition.go`, and `cmd/delete_test.go`
-- [ ] T006 [P] Inspect README and generated documentation surfaces for affected command wording in `README.md`, `docs/index.md`, and `docs/cli/`
+- [x] T001 Audit every direct `--bpmn-process-id` registration in `cmd/get_processinstance_filtering.go`, `cmd/run_processinstance.go`, `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, `cmd/get_incident.go`, `cmd/get_processdefinition.go`, and `cmd/delete_processdefinition.go`
+- [x] T002 [P] Inspect shared selector validation behavior and reusable gaps in `cmd/process_definition_selector_validation.go` and `cmd/process_definition_selector_validation_test.go`
+- [x] T003 [P] Inspect process-instance search-selected mutation paths in `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, `cmd/get_processinstance_paging.go`, and `cmd/get_processinstance_search.go`
+- [x] T004 [P] Inspect incident search filters, paging, totals, and output modes in `cmd/get_incident.go`, `cmd/get_incident_search.go`, and `cmd/get_incident_test.go`
+- [x] T005 [P] Inspect direct process-definition search/delete behavior and tests in `cmd/get_processdefinition.go`, `cmd/get_processdefinition_test.go`, `cmd/delete_processdefinition.go`, and `cmd/delete_test.go`
+- [x] T006 [P] Inspect README and generated documentation surfaces for affected command wording in `README.md`, `docs/index.md`, and `docs/cli/`
 
 ---
 
