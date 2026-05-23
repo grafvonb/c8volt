@@ -39,6 +39,62 @@ func TestProcessDefinitionSelectorFromPIFlags_MapsBpmnVersionAndTag(t *testing.T
 	}, filter)
 }
 
+func TestProcessDefinitionSelectorSingleRequest_MapsBpmnVersionTagAndMode(t *testing.T) {
+	req := newSingleProcessDefinitionSelectorValidationRequest(" order-process ", 7, "stable", processDefinitionSelectorValidationLatest)
+	filter := req.filterForBpmnProcessID("order-process")
+
+	require.Equal(t, processDefinitionSelectorValidationRequest{
+		BpmnProcessIds:    []string{"order-process"},
+		ProcessVersion:    7,
+		ProcessVersionTag: "stable",
+		Mode:              processDefinitionSelectorValidationLatest,
+	}, req)
+	require.Equal(t, process.ProcessDefinitionFilter{
+		BpmnProcessId:     "order-process",
+		ProcessVersion:    7,
+		ProcessVersionTag: "stable",
+	}, filter)
+}
+
+func TestProcessDefinitionSelectorCommandRequests_MapCommandFlags(t *testing.T) {
+	t.Cleanup(func() {
+		resetGetIncidentFlagState()
+		resetGetProcessDefinitionCommandGlobals()
+		flagDeletePDBpmnProcessId = ""
+		flagDeletePDProcessVersion = 0
+		flagDeletePDProcessVersionTag = ""
+		flagDeletePDLatest = false
+	})
+
+	resetGetIncidentFlagState()
+	flagGetIncidentBpmnProcessID = "incident-process"
+	require.Equal(t, processDefinitionSelectorValidationRequest{
+		BpmnProcessIds: []string{"incident-process"},
+	}, newIncidentProcessDefinitionSelectorValidationRequest())
+
+	resetGetProcessDefinitionCommandGlobals()
+	flagGetPDBpmnProcessId = "invoice"
+	flagGetPDProcessVersion = 3
+	flagGetPDProcessVersionTag = "stable"
+	flagGetPDLatest = true
+	require.Equal(t, processDefinitionSelectorValidationRequest{
+		BpmnProcessIds:    []string{"invoice"},
+		ProcessVersion:    3,
+		ProcessVersionTag: "stable",
+		Mode:              processDefinitionSelectorValidationLatest,
+	}, newGetPDProcessDefinitionSelectorValidationRequest())
+
+	flagDeletePDBpmnProcessId = "archive"
+	flagDeletePDProcessVersion = 4
+	flagDeletePDProcessVersionTag = "candidate"
+	flagDeletePDLatest = false
+	require.Equal(t, processDefinitionSelectorValidationRequest{
+		BpmnProcessIds:    []string{"archive"},
+		ProcessVersion:    4,
+		ProcessVersionTag: "candidate",
+	}, newDeletePDProcessDefinitionSelectorValidationRequest())
+}
+
 func TestProcessDefinitionSelectorValidation_SearchesEveryDistinctBpmnProcessID(t *testing.T) {
 	var gotFilters []process.ProcessDefinitionFilter
 	cli := stubProcessAPI{
@@ -85,6 +141,83 @@ func TestProcessDefinitionSelectorValidation_UsesLatestSearchWhenRequested(t *te
 	require.NoError(t, err)
 	require.True(t, result.Valid())
 	require.Equal(t, 1, latestCalls)
+}
+
+func TestProcessDefinitionSelectorValidationForCommand_ReturnsNoPromptErrorWhenPromptForbidden(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(cmd *cobra.Command)
+	}{
+		{
+			name: "json",
+			setup: func(cmd *cobra.Command) {
+				flagViewAsJson = true
+			},
+		},
+		{
+			name: "automation",
+			setup: func(cmd *cobra.Command) {
+				require.NoError(t, cmd.Flags().Set("automation", "true"))
+			},
+		},
+		{
+			name: "keys-only",
+			setup: func(cmd *cobra.Command) {
+				flagViewKeysOnly = true
+			},
+		},
+		{
+			name: "non-tty",
+			setup: func(cmd *cobra.Command) {
+				processDefinitionSelectorInteractiveTerminalFn = func() bool { return false }
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessDefinitionSelectorPromptTestState(t)
+			processDefinitionSelectorInteractiveTerminalFn = func() bool { return true }
+			cmd, _ := newProcessDefinitionSelectorValidationTestCommand()
+			tt.setup(cmd)
+			cli := stubProcessAPI{
+				searchProcessDefinitions: func(_ context.Context, filter process.ProcessDefinitionFilter, opts ...options.FacadeOption) (process.ProcessDefinitions, error) {
+					require.Equal(t, process.ProcessDefinitionFilter{BpmnProcessId: "missing-process"}, filter)
+					return process.ProcessDefinitions{}, nil
+				},
+			}
+
+			result, err := validateProcessDefinitionSelectorsForCommand(context.Background(), cmd, cli, processDefinitionSelectorValidationRequest{
+				BpmnProcessIds: []string{"missing-process"},
+			})
+
+			require.Error(t, err)
+			require.False(t, result.Valid())
+			require.Equal(t, []string{"missing-process"}, result.MissingBpmnProcessIDs)
+			require.EqualError(t, err, "no visible process definition matches the provided selector: [missing-process]")
+			require.True(t, errors.Is(err, ferrors.ErrLocalPrecondition))
+		})
+	}
+}
+
+func TestProcessDefinitionSelectorValidationForCommand_AllowsPromptEligibleResultHandling(t *testing.T) {
+	resetProcessDefinitionSelectorPromptTestState(t)
+	processDefinitionSelectorInteractiveTerminalFn = func() bool { return true }
+	cmd, _ := newProcessDefinitionSelectorValidationTestCommand()
+	cli := stubProcessAPI{
+		searchProcessDefinitions: func(_ context.Context, filter process.ProcessDefinitionFilter, opts ...options.FacadeOption) (process.ProcessDefinitions, error) {
+			require.Equal(t, process.ProcessDefinitionFilter{BpmnProcessId: "missing-process"}, filter)
+			return process.ProcessDefinitions{}, nil
+		},
+	}
+
+	result, err := validateProcessDefinitionSelectorsForCommand(context.Background(), cmd, cli, processDefinitionSelectorValidationRequest{
+		BpmnProcessIds: []string{"missing-process"},
+	})
+
+	require.NoError(t, err)
+	require.False(t, result.Valid())
+	require.Equal(t, []string{"missing-process"}, result.MissingBpmnProcessIDs)
 }
 
 // This protects the selector validation contract that a mixed visible/missing selector reports all misses without hiding valid matches.

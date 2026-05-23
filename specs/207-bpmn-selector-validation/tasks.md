@@ -32,11 +32,11 @@
 
 **Critical**: No user story implementation should begin until this phase is complete.
 
-- [ ] T007 Extend or add shared single-selector request construction in `cmd/process_definition_selector_validation.go` for non-PI commands that directly accept one BPMN process ID
-- [ ] T008 Add reusable validation entry points that return local precondition errors without recovery prompts when command mode forbids prompting in `cmd/process_definition_selector_validation.go`
-- [ ] T009 [P] Add helper tests for single-selector request construction, version/tag narrowing, and no-prompt modes in `cmd/process_definition_selector_validation_test.go`
-- [ ] T010 [P] Add or update command test stubs to prove selector validation happens before resource paging by failing if search methods are called in `cmd/process_api_stub_test.go` or existing command test stubs
-- [ ] T011 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*ProcessDefinitionSelector' -count=1` and fix foundational compile/test failures
+- [x] T007 Extend or add shared single-selector request construction in `cmd/process_definition_selector_validation.go` for non-PI commands that directly accept one BPMN process ID
+- [x] T008 Add reusable validation entry points that return local precondition errors without recovery prompts when command mode forbids prompting in `cmd/process_definition_selector_validation.go`
+- [x] T009 [P] Add helper tests for single-selector request construction, version/tag narrowing, and no-prompt modes in `cmd/process_definition_selector_validation_test.go`
+- [x] T010 [P] Add or update command test stubs to prove selector validation happens before resource paging by failing if search methods are called in `cmd/process_api_stub_test.go` or existing command test stubs
+- [x] T011 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*ProcessDefinitionSelector' -count=1` and fix foundational compile/test failures
 
 **Checkpoint**: Shared validation can be reused by process-instance, incident, and direct process-definition commands without changing keyed or non-BPMN flows.
 
