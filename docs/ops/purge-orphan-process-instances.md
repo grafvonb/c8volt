@@ -56,7 +56,7 @@ c8volt get pi --orphan-children-only --keys-only [filters...]
 c8volt delete pi -
 ```
 
-Implemented selection controls include process-definition filters, `--pd-key`, date ranges, `--batch-size`, `--limit`, `--parent-key`, `--state`, `--incidents-only`, and `--no-incidents-only`. Execution controls include `--workers`, `--no-worker-limit`, `--fail-fast`, `--no-wait`, `--force`, `--automation`, `--json`, `--report-file`, and `--report-format`.
+Implemented selection controls include process-definition filters, `--pd-key`, date ranges, `--batch-size`, `--limit`, `--parent-key`, `--state`, `--incidents-only`, and `--no-incidents-only`. When the discovery filters include `--bpmn-process-id`, c8volt validates the visible process-definition selector before freezing orphan process-instance keys. Execution controls include `--workers`, `--no-worker-limit`, `--fail-fast`, `--no-wait`, `--force`, `--automation`, `--json`, `--report-file`, and `--report-format`.
 
 ## Workflow
 

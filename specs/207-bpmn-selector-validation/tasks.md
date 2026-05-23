@@ -121,12 +121,12 @@
 
 ### Tests and Documentation for User Story 4
 
-- [ ] T035 [P] [US4] Add or update pipeline-boundary tests proving `get pi -b <missing> --keys-only | cancel pi -` validates upstream while downstream keyed commands remain key-only in `cmd/get_processinstance_test.go`, `cmd/cancel_test.go`, or `cmd/delete_test.go`
-- [ ] T036 [P] [US4] Add or update command contract tests for aligned command help, mutation metadata, automation notes, and output mode expectations in `cmd/command_contract_test.go`
-- [ ] T037 [P] [US4] Update user-facing selector guidance and examples in `README.md`
-- [ ] T038 [P] [US4] Update docs source guidance and examples in `docs/index.md` and relevant files under `docs/ops/`
-- [ ] T039 [US4] Run `make docs-content` and review generated updates under `docs/cli/`
-- [ ] T040 [US4] Review [quickstart.md](./quickstart.md) against the implemented behavior and adjust validation commands if paths or test names changed
+- [x] T035 [P] [US4] Add or update pipeline-boundary tests proving `get pi -b <missing> --keys-only | cancel pi -` validates upstream while downstream keyed commands remain key-only in `cmd/get_processinstance_test.go`, `cmd/cancel_test.go`, or `cmd/delete_test.go`
+- [x] T036 [P] [US4] Add or update command contract tests for aligned command help, mutation metadata, automation notes, and output mode expectations in `cmd/command_contract_test.go`
+- [x] T037 [P] [US4] Update user-facing selector guidance and examples in `README.md`
+- [x] T038 [P] [US4] Update docs source guidance and examples in `docs/index.md` and relevant files under `docs/ops/`
+- [x] T039 [US4] Run `make docs-content` and review generated updates under `docs/cli/`
+- [x] T040 [US4] Review [quickstart.md](./quickstart.md) against the implemented behavior and adjust validation commands if paths or test names changed
 
 ### Final Validation
 

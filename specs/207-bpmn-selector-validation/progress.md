@@ -21,6 +21,9 @@ Started: 2026-05-23 16:18:50
 - Incident BPMN selector validation has tenant-context coverage through the global `--tenant` option; `get incident` does not expose process-definition version or version-tag selector flags, so those fields remain intentionally absent from its selector request.
 - Direct `get pd -b` now uses the shared selector validator and renders the validated process-definition matches directly, avoiding an extra search while turning missing selectors into the canonical diagnostic.
 - Direct `delete pd -b` now uses the shared selector validator before delete impact planning and reuses the validated process-definition keys for preview and deletion; key and stdin-key delete paths remain unchanged.
+- Pipeline-boundary coverage keeps BPMN selector validation in upstream `get pi --keys-only` and proves downstream `cancel pi -` and `delete pi -` operate on stdin keys without process-definition preflight.
+- `make docs-content` regenerates `docs/cli/` from Cobra help and refreshes `docs/index.md` from `README.md`; docs source wording should be changed in command help, README, and `docs/ops/` before regeneration.
+- Command contract discovery exposes `get pd` with JSON output mode but not a command-specific `keys-only` output mode, even though the inherited global flag appears in help.
 
 ---
 ## Iteration 1 - 2026-05-23 16:20:13 CEST
@@ -140,4 +143,45 @@ Started: 2026-05-23 16:18:50
 - The direct process-definition commands can use the validated selector match set as the command selection source, so `get pd -b` and `delete pd -b` do not need a second process-definition search after preflight.
 - `delete pd --no-state-check` can preview deletion from the selected process-definition keys without an additional process-definition GET; the visible-selector test should assert the search and delete request boundary instead.
 - The US3 targeted gate passes in this sandbox; a broader `go test ./cmd -count=1` still reaches unrelated existing fixture failures where prior PI/incident selector preflights introduce process-definition search requests.
+---
+---
+## Iteration 6 - 2026-05-23 16:55:39 CEST
+**User Story**: User Story 4 - Preserve pipelines and documented command contracts
+**Tasks Completed**:
+- [x] T035: Add or update pipeline-boundary tests proving `get pi -b <missing> --keys-only | cancel pi -` validates upstream while downstream keyed commands remain key-only in `cmd/get_processinstance_test.go`, `cmd/cancel_test.go`, or `cmd/delete_test.go`
+- [x] T036: Add or update command contract tests for aligned command help, mutation metadata, automation notes, and output mode expectations in `cmd/command_contract_test.go`
+- [x] T037: Update user-facing selector guidance and examples in `README.md`
+- [x] T038: Update docs source guidance and examples in `docs/index.md` and relevant files under `docs/ops/`
+- [x] T039: Run `make docs-content` and review generated updates under `docs/cli/`
+- [x] T040: Review `quickstart.md` against the implemented behavior and adjust validation commands if paths or test names changed
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/cancel_processinstance.go
+- cmd/cancel_test.go
+- cmd/command_contract_test.go
+- cmd/delete_processdefinition.go
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- cmd/get_incident.go
+- cmd/get_processdefinition.go
+- cmd/get_processinstance_test.go
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete_process-definition.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/cli/c8volt_get_incident.md
+- docs/cli/c8volt_get_process-definition.md
+- docs/index.md
+- docs/ops/execute-retention-policy.md
+- docs/ops/purge-all-process-definitions.md
+- docs/ops/purge-orphan-process-instances.md
+- docs/ops/repair-incident.md
+- specs/207-bpmn-selector-validation/quickstart.md
+- specs/207-bpmn-selector-validation/tasks.md
+- specs/207-bpmn-selector-validation/progress.md
+**Learnings**:
+- `get pi --bpmn-process-id <missing> --keys-only` fails during process-definition selector preflight before any process-instance search or key output.
+- Stdin-key `cancel pi -` and `delete pi -` dry-run paths read keys and perform keyed impact planning without calling process-definition search.
+- Generated `docs/index.md` may include unrelated command-map formatting churn from the current docs generator; the aligned selector wording still lands in the expected README, CLI, and ops docs surfaces.
 ---

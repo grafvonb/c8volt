@@ -16,6 +16,8 @@ The command accepts repeated --key values or newline-separated keys from stdin w
 
 When no keys are supplied, incidents are searched by state, error type, error message, process context, flow-node context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions.
 
+When --bpmn-process-id is supplied in search mode, the BPMN process definition selector is validated before incident totals, key-only output, process-instance-key output, or paging. Missing or invisible definitions fail explicitly; --json, --automation, --keys-only, --pi-keys-only, and non-TTY runs never prompt for recovery output.
+
 Use --json for the stable incident payload, --keys-only for incident keys, --pi-keys-only for process instance keys, --error-message-limit to shorten long error messages, or --with-no-error-message to omit them.
 
 ```
@@ -44,7 +46,7 @@ c8volt get incident [flags]
 
 ```
   -n, --batch-size int32              number of incidents to fetch per page (max limit 1000 enforced by server) (default 1000)
-  -b, --bpmn-process-id string        BPMN process ID to filter incidents
+  -b, --bpmn-process-id string        BPMN process ID to validate and filter incidents
       --creation-time-after string    only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD
       --creation-time-before string   only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD
       --error-message string          case-insensitive incident error message substring filter for search

@@ -26,6 +26,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 	Short: "Delete process definition resources",
 	Long: "Delete process definition resources from Camunda.\n\n" +
 		"By default c8volt first checks delete impact without changing anything: active process instances, required cancellation roots and process-instance tree scope when --force is used, and batch-operation read access before prompting. Process-definition deletion requires Camunda 8.9 or newer so c8volt can request full process-definition history deletion. With --force, it cancels the root process instances, deletes the affected process-instance history, then asks Camunda to delete the process definition and remaining associated history. If you only want to delete process instances for a definition, use `c8volt delete process-instance --bpmn-process-id <bpmn-process-id>`.\n\n" +
+		"When --bpmn-process-id is set, c8volt validates visible process-definition matches before delete impact planning, confirmation, cancellation, or deletion. A missing selector fails with the shared local diagnostic.\n\n" +
 		"Use --auto-confirm for unattended destructive runs.",
 	Example: `  ./c8volt delete pd --key <process-definition-key> --auto-confirm
   ./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --force

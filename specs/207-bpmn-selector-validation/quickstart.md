@@ -80,12 +80,12 @@ Expected result:
 Expected result:
 
 - `get pi` reports the missing BPMN selector.
-- `cancel pi -` continues to operate only on key input and does not invent BPMN selector validation.
+- `cancel pi -` and `delete pi -` continue to operate only on key input and do not invent BPMN selector validation.
 
 ## Suggested Validation Commands
 
 ```sh
-GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*ProcessDefinitionSelector|Test.*Bpmn.*Selector|Test(GetIncident|Cancel|Delete).*Bpmn|Test(Get|Delete)ProcessDefinition.*Bpmn' -count=1
+GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*ProcessDefinitionSelector|Test.*Bpmn.*Selector|Test(GetIncident|Cancel|Delete).*Bpmn|Test(Get|Delete)ProcessDefinition.*Bpmn|Test(Get|Cancel|Delete)ProcessInstance.*Pipeline|Test.*SelectorValidationHelpContract|TestCommandCapabilityForCommand_BpmnSelectorAlignedCommandContracts' -count=1
 GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./c8volt/incident ./internal/services/processdefinition ./internal/services/incident -count=1
 make docs-content
 make test

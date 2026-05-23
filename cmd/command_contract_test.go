@@ -515,6 +515,14 @@ func TestCommandCapabilityForCommand_GetIncidentContract(t *testing.T) {
 		Repeated:    false,
 		Description: "return only process instance keys for matching incidents",
 	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "bpmn-process-id",
+		Shorthand:   "b",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN process ID to validate and filter incidents",
+	})
 	require.Contains(t, capability.OutputModes, OutputModeContract{
 		Name:             "json",
 		Supported:        true,
@@ -524,6 +532,130 @@ func TestCommandCapabilityForCommand_GetIncidentContract(t *testing.T) {
 		Name:      "keys-only",
 		Supported: true,
 	})
+}
+
+func TestCommandCapabilityForCommand_BpmnSelectorAlignedCommandContracts(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	t.Cleanup(resetGetIncidentFlagState)
+
+	tests := []struct {
+		name              string
+		cmd               *cobra.Command
+		path              string
+		mutation          CommandMutation
+		automation        AutomationSupport
+		wantAutomation    string
+		wantOutputMode    OutputModeContract
+		wantBpmnFlag      string
+		wantDryRun        bool
+		wantAutoConfirm   bool
+		wantProcessKeysIn bool
+	}{
+		{
+			name:              "get pi",
+			cmd:               getProcessInstanceCmd,
+			path:              "get process-instance",
+			mutation:          CommandMutationReadOnly,
+			automation:        AutomationSupportFull,
+			wantOutputMode:    OutputModeContract{Name: "keys-only", Supported: true},
+			wantBpmnFlag:      "BPMN process ID to filter process instances",
+			wantProcessKeysIn: true,
+		},
+		{
+			name:            "cancel pi",
+			cmd:             cancelProcessInstanceCmd,
+			path:            "cancel process-instance",
+			mutation:        CommandMutationStateChanging,
+			automation:      AutomationSupportFull,
+			wantAutomation:  "unattended destructive confirmation",
+			wantOutputMode:  OutputModeContract{Name: "json", Supported: true, MachinePreferred: true},
+			wantBpmnFlag:    "BPMN process ID to filter process instances",
+			wantDryRun:      true,
+			wantAutoConfirm: true,
+		},
+		{
+			name:            "delete pi",
+			cmd:             deleteProcessInstanceCmd,
+			path:            "delete process-instance",
+			mutation:        CommandMutationStateChanging,
+			automation:      AutomationSupportFull,
+			wantAutomation:  "unattended destructive confirmation",
+			wantOutputMode:  OutputModeContract{Name: "json", Supported: true, MachinePreferred: true},
+			wantBpmnFlag:    "BPMN process ID to filter process instances",
+			wantDryRun:      true,
+			wantAutoConfirm: true,
+		},
+		{
+			name:           "get incident",
+			cmd:            getIncidentCmd,
+			path:           "get incident",
+			mutation:       CommandMutationReadOnly,
+			automation:     AutomationSupportFull,
+			wantOutputMode: OutputModeContract{Name: "keys-only", Supported: true},
+			wantBpmnFlag:   "BPMN process ID to validate and filter incidents",
+		},
+		{
+			name:           "get pd",
+			cmd:            getProcessDefinitionCmd,
+			path:           "get process-definition",
+			mutation:       CommandMutationReadOnly,
+			automation:     AutomationSupportUnsupported,
+			wantOutputMode: OutputModeContract{Name: "json", Supported: true, MachinePreferred: true, Notes: "preferred for automation when not using --xml"},
+			wantBpmnFlag:   "BPMN process ID to filter process instances",
+		},
+		{
+			name:            "delete pd",
+			cmd:             deleteProcessDefinitionCmd,
+			path:            "delete process-definition",
+			mutation:        CommandMutationStateChanging,
+			automation:      AutomationSupportFull,
+			wantAutomation:  "unattended destructive confirmation",
+			wantOutputMode:  OutputModeContract{Name: "json", Supported: true, MachinePreferred: true},
+			wantBpmnFlag:    "BPMN process ID of the process definition (all versions) to delete",
+			wantAutoConfirm: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			capability := commandCapabilityForCommand(tt.cmd)
+			require.Equal(t, tt.path, capability.Path)
+			require.Equal(t, tt.mutation, capability.Mutation)
+			require.Equal(t, ContractSupportFull, capability.ContractSupport)
+			require.Equal(t, tt.automation, capability.AutomationSupport)
+			if tt.wantAutomation != "" {
+				require.Contains(t, capability.AutomationNotes, tt.wantAutomation)
+			}
+			require.Contains(t, capability.OutputModes, tt.wantOutputMode)
+			require.Contains(t, capability.Flags, FlagContract{
+				Name:        "bpmn-process-id",
+				Shorthand:   "b",
+				Type:        "string",
+				Required:    false,
+				Repeated:    false,
+				Description: tt.wantBpmnFlag,
+			})
+			if tt.wantDryRun {
+				require.True(t, hasFlagContractNamed(capability.Flags, "dry-run"), "missing dry-run flag")
+			}
+			if tt.wantAutoConfirm {
+				require.Contains(t, capability.Flags, FlagContract{
+					Name:        "auto-confirm",
+					Shorthand:   "y",
+					Type:        "bool",
+					Required:    false,
+					Repeated:    false,
+					Description: "auto-confirm prompts for non-interactive use",
+				})
+			}
+			if tt.wantProcessKeysIn {
+				require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
+			}
+		})
+	}
 }
 
 func TestCommandCapabilityForCommand_OpsPurgeOrphanProcessInstancesContract(t *testing.T) {
@@ -1247,6 +1379,7 @@ func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *tes
 		"Get Camunda incidents by key or by search criteria",
 		"repeated --key values or newline-separated keys from stdin with '-'",
 		"Search mode defaults to active incidents",
+		"When --bpmn-process-id is supplied in search mode, the BPMN process definition selector is validated before incident totals, key-only output, process-instance-key output, or paging.",
 		"./c8volt get incident --key <incident-key>",
 		"./c8volt get inc --key <incident-key> --key <another-incident-key>",
 		"./c8volt get incident --state resolved --error-type io_mapping_error --limit 5",
@@ -1338,16 +1471,18 @@ func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
 			name: "cancel pi",
 			args: []string{"cancel", "pi", "--help"},
 			wants: []string{
-				"When --bpmn-process-id is set, c8volt applies the selector directly to the non-mutating process-instance search.",
-				"If no matching instances are found, no cancellation request is submitted.",
+				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances.",
+				"A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, or cancellation",
+				"If the selector is visible but no matching instances are found, no cancellation request is submitted.",
 			},
 		},
 		{
 			name: "delete pi",
 			args: []string{"delete", "pi", "--help"},
 			wants: []string{
-				"When --bpmn-process-id is set, c8volt applies the selector directly to the non-mutating process-instance search.",
-				"If no matching instances are found, no deletion request is submitted.",
+				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances.",
+				"A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, cancellation, or deletion",
+				"If the selector is visible but no matching instances are found, no deletion request is submitted.",
 			},
 		},
 		{
@@ -1357,6 +1492,42 @@ func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
 				"When running by BPMN process ID, c8volt validates all requested process definitions before creating anything.",
 				"Mixed visible and missing BPMN IDs fail as one request, so no partial process instances are started",
 				"automation-oriented modes never prompt for recovery output.",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output := executeRootForTest(t, tt.args...)
+			for _, want := range tt.wants {
+				require.Contains(t, output, want)
+			}
+		})
+	}
+}
+
+func TestProcessDefinitionSelectorValidationHelpContract(t *testing.T) {
+	tests := []struct {
+		name  string
+		args  []string
+		wants []string
+	}{
+		{
+			name: "get pd",
+			args: []string{"get", "pd", "--help"},
+			wants: []string{
+				"When `--bpmn-process-id` is set, c8volt validates that at least one visible",
+				"process definition matches the selector before rendering output.",
+				"A missing selector",
+				"fails with the shared local diagnostic instead of rendering an ambiguous empty list.",
+			},
+		},
+		{
+			name: "delete pd",
+			args: []string{"delete", "pd", "--help"},
+			wants: []string{
+				"When --bpmn-process-id is set, c8volt validates visible process-definition matches before delete impact planning, confirmation, cancellation, or deletion.",
+				"A missing selector fails with the shared local diagnostic.",
 			},
 		},
 	}
@@ -1391,4 +1562,13 @@ func findCommandCapability(commands []CommandCapability, path string) (CommandCa
 		}
 	}
 	return CommandCapability{}, false
+}
+
+func hasFlagContractNamed(flags []FlagContract, name string) bool {
+	for _, flag := range flags {
+		if flag.Name == name {
+			return true
+		}
+	}
+	return false
 }

@@ -15,6 +15,10 @@ List or fetch deployed process definitions.
 Inspect deployed BPMN models by key, BPMN process ID, version selectors, or
 latest deployed version. Use `--xml` only with `--key`.
 
+When `--bpmn-process-id` is set, c8volt validates that at least one visible
+process definition matches the selector before rendering output. A missing selector
+fails with the shared local diagnostic instead of rendering an ambiguous empty list.
+
 `--stat` requires Camunda `8.8` or `8.9` and prints exact-version
 counts. Camunda `8.7` does not support native statistics.
 

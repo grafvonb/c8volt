@@ -57,6 +57,8 @@ c8volt delete pi -
 
 The command derives an `endDate <= <boundary>` filter from `--retention-days` and the command start time. It intentionally does not use Camunda native retention policies or Camunda batch deletion APIs. c8volt owns discovery, delete planning, confirmation, waiting, concurrency, and reporting.
 
+When retention discovery includes `--bpmn-process-id`, c8volt validates the visible process-definition selector before freezing process-instance keys. The downstream delete phase operates on the frozen keys only.
+
 ## Workflow
 
 ```text

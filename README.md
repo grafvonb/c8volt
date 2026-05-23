@@ -281,6 +281,8 @@ Deletion in real environments often means preview the family scope, cancel-first
 
 Search-based `get pi`, `cancel pi`, and `delete pi` work page by page instead of silently stopping at the first large result set. Interactive modes prompt before continuing unless `--auto-confirm` or `--json` is set. JSON mode consumes remaining pages and returns one aggregated result.
 
+When `--bpmn-process-id` is set, `get pi`, `cancel pi`, and `delete pi` validate that the process definition is visible before process-instance paging, dry-run planning, confirmation, cancellation, or deletion. A typo, tenant mismatch, version mismatch, or invisible definition fails with the shared selector diagnostic instead of looking like a legitimate `found: 0`. Piped key workflows keep validation upstream: `get pi -b <id> --keys-only | cancel pi -` validates in `get pi`, while the downstream command operates only on keys.
+
 For bulk work, check the batch first, then act:
 
 ```bash
@@ -313,6 +315,8 @@ On Camunda `8.8` and `8.9`, a not-found v2 user-task result falls back to deprec
 ```
 
 For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for the exact process-definition version: `ac:<count>` for active, `cp:<count>` for completed, `cx:<count>` for canceled, and `inc:<count>` for process instances having at least one incident. Camunda `8.7` rejects statistics because the generated client surface does not provide the same native statistics endpoints.
+
+Direct `get pd --bpmn-process-id` and `delete pd --bpmn-process-id` also validate visible process-definition matches. Missing BPMN selectors fail explicitly before `get pd` renders output or `delete pd` plans impact.
 
 ### Narrow Process Instances
 
@@ -352,6 +356,7 @@ When incident output includes `jobKey`, use `get job --key <job-key>` for direct
 ./c8volt get incident --key <incident-key>
 ./c8volt get incident --key <incident-key> --json
 ./c8volt get incident --state active --limit 5
+./c8volt get incident --bpmn-process-id <bpmn-process-id> --state active --limit 5
 ./c8volt get incident --error-type io_mapping_error --error-message intentional --limit 5
 ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
 ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel pi --dry-run -
@@ -361,7 +366,7 @@ When incident output includes `jobKey`, use `get job --key <job-key>` for direct
 printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt get inc -
 ```
 
-Use `get incident` when the incident itself is the target. Repeated `--key` values and stdin `-` are merged and deduplicated for keyed lookup. Without keys, the command lists incidents with plain incident filters such as `--state`, `--error-type`, `--error-message`, process and flow-node selectors, and creation-time bounds. Rows include tenant, state, type, creation time, process context, job key, message, and age; `--json`, `--keys-only`, `--pi-keys-only`, and `--total` preserve script-friendly output contracts. Use `--keys-only` when piping incident keys and `--pi-keys-only` when piping matching process instance keys into process-instance commands.
+Use `get incident` when the incident itself is the target. Repeated `--key` values and stdin `-` are merged and deduplicated for keyed lookup. Without keys, the command lists incidents with plain incident filters such as `--state`, `--error-type`, `--error-message`, process and flow-node selectors, and creation-time bounds. When `--bpmn-process-id` is present, c8volt validates the visible process-definition selector before totals, key-only output, process-instance-key output, or incident paging; missing selectors fail without recovery prompts in machine-oriented modes. Rows include tenant, state, type, creation time, process context, job key, message, and age; `--json`, `--keys-only`, `--pi-keys-only`, and `--total` preserve script-friendly output contracts. Use `--keys-only` when piping incident keys and `--pi-keys-only` when piping matching process instance keys into process-instance commands.
 
 For variable inspection, add `--with-vars` to keyed or list/search `get pi` output, or to keyed `walk pi` output. Combine it with `--with-incidents` when you need runtime data and failure context in one view. Values are full by default; add `--var-value-limit <chars>` for noisy payloads. JSON keeps received values and metadata intact.
 
@@ -559,6 +564,8 @@ Examples:
 ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel pi --dry-run -
 ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 3 --keys-only | ./c8volt cancel pi --dry-run -
 ```
+
+Selector validation happens in the command that receives `--bpmn-process-id`. A downstream command that reads `-` from stdin receives keys only and does not infer BPMN selector context.
 
 ## Command Map
 
