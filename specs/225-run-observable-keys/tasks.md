@@ -19,8 +19,8 @@
 
 **Purpose**: Establish Ralph-ready context and record reusable codebase discoveries before implementation.
 
-- [ ] T001 Read `specs/ralph-implementation-rules.md`, `specs/225-run-observable-keys/spec.md`, `specs/225-run-observable-keys/plan.md`, `specs/225-run-observable-keys/tasks.md`, and `specs/225-run-observable-keys/progress.md`
-- [ ] T002 Record initial codebase pattern notes and current work-unit status in `specs/225-run-observable-keys/progress.md`
+- [x] T001 Read `specs/ralph-implementation-rules.md`, `specs/225-run-observable-keys/spec.md`, `specs/225-run-observable-keys/plan.md`, `specs/225-run-observable-keys/tasks.md`, and `specs/225-run-observable-keys/progress.md`
+- [x] T002 Record initial codebase pattern notes and current work-unit status in `specs/225-run-observable-keys/progress.md`
 
 ---
 
