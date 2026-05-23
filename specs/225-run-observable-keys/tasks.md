@@ -70,17 +70,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T014 [P] [US2] Add `run pi` normal-output state rendering tests in `cmd/run_processinstance_test.go`
-- [ ] T015 [P] [US2] Add `run pi` JSON envelope state rendering tests in `cmd/run_processinstance_test.go`
-- [ ] T016 [P] [US2] Add process-instance list view state regression coverage in `cmd/cmd_views_get_test.go`
+- [x] T014 [P] [US2] Add `run pi` normal-output state rendering tests in `cmd/run_processinstance_test.go`
+- [x] T015 [P] [US2] Add `run pi` JSON envelope state rendering tests in `cmd/run_processinstance_test.go`
+- [x] T016 [P] [US2] Add process-instance list view state regression coverage in `cmd/cmd_views_get_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Render `run pi` non-JSON results through the existing process-instance list view in `cmd/run_processinstance.go`
-- [ ] T018 [US2] Ensure `run pi` JSON output keeps the shared full-contract envelope and includes observed process instance `state` in `cmd/run_processinstance.go`
-- [ ] T019 [US2] Verify `deploy --run` and `embed deploy --run` continue to use shared creation confirmation without adding separate state expectation flags in `cmd/deploy_processdefinition.go` and `cmd/embed_deploy.go`
-- [ ] T020 [US2] Run targeted command validation with `go test ./cmd -run 'RunProcessInstance|ProcessInstancesView|DeployProcessDefinition|EmbedDeploy' -count=1`
-- [ ] T021 [US2] Update `specs/225-run-observable-keys/progress.md` with US2 implementation notes and validation results
+- [x] T017 [US2] Render `run pi` non-JSON results through the existing process-instance list view in `cmd/run_processinstance.go`
+- [x] T018 [US2] Ensure `run pi` JSON output keeps the shared full-contract envelope and includes observed process instance `state` in `cmd/run_processinstance.go`
+- [x] T019 [US2] Verify `deploy --run` and `embed deploy --run` continue to use shared creation confirmation without adding separate state expectation flags in `cmd/deploy_processdefinition.go` and `cmd/embed_deploy.go`
+- [x] T020 [US2] Run targeted command validation with `go test ./cmd -run 'RunProcessInstance|ProcessInstancesView|DeployProcessDefinition|EmbedDeploy' -count=1`
+- [x] T021 [US2] Update `specs/225-run-observable-keys/progress.md` with US2 implementation notes and validation results
 
 **Checkpoint**: User Stories 1 and 2 both work independently.
 

@@ -109,7 +109,7 @@ var runProcessInstanceCmd = &cobra.Command{
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("running process instance(s) for %s: %w", contextForErr, err))
 			}
-			if err := renderCommandResult(cmd, process.ProcessInstances{
+			if err := renderRunProcessInstanceResult(cmd, process.ProcessInstances{
 				Total: int32(len(created)),
 				Items: created,
 			}); err != nil {
@@ -125,13 +125,21 @@ var runProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("running %d process instances for %s: %w", flagRunPICount, contextForErr, err))
 		}
-		if err := renderCommandResult(cmd, process.ProcessInstances{
+		if err := renderRunProcessInstanceResult(cmd, process.ProcessInstances{
 			Total: int32(len(created)),
 			Items: created,
 		}); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render process-instance result: %w", err))
 		}
 	},
+}
+
+// renderRunProcessInstanceResult keeps JSON on the shared mutation envelope while reusing list rendering for terminal output.
+func renderRunProcessInstanceResult(cmd *cobra.Command, result process.ProcessInstances) error {
+	if commandUsesSharedEnvelope(cmd, pickMode()) {
+		return renderCommandResult(cmd, result)
+	}
+	return listProcessInstancesView(cmd, result)
 }
 
 func init() {

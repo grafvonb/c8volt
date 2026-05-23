@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"testing"
@@ -281,6 +282,55 @@ func TestRunProcessInstanceCommand_VarsPayloadRemainsCreationInput(t *testing.T)
 	require.Contains(t, output, "2251799813711967")
 }
 
+// Verifies normal run output shows the state observed by creation confirmation.
+func TestRunProcessInstanceCommand_NormalOutputRendersObservedState(t *testing.T) {
+	srv := newRunProcessInstanceObservedStateServer(t, "COMPLETED")
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"run", "process-instance",
+		"--bpmn-process-id", "order-process",
+	)
+
+	require.Contains(t, stdout, "2251799813711967")
+	require.Contains(t, stdout, "order-process")
+	require.Contains(t, stdout, "COMPLETED")
+	require.Contains(t, stdout, "found: 1")
+	require.NotContains(t, stdout, `"outcome"`)
+	require.Contains(t, stderr, "waiting for pi 2251799813711967")
+}
+
+// Verifies JSON run output keeps the full command envelope and includes the observed state.
+func TestRunProcessInstanceCommand_JSONEnvelopeIncludesObservedState(t *testing.T) {
+	srv := newRunProcessInstanceObservedStateServer(t, "COMPLETED")
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	stdout, _ := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--automation",
+		"--json",
+		"run", "process-instance",
+		"--bpmn-process-id", "order-process",
+	)
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	require.Equal(t, string(OutcomeSucceeded), got["outcome"])
+	require.Equal(t, "run process-instance", got["command"])
+	payload := requireJSONObject(t, got["payload"])
+	items, ok := payload["items"].([]any)
+	require.True(t, ok)
+	require.Len(t, items, 1)
+	item := requireJSONObject(t, items[0])
+	require.Equal(t, "2251799813711967", item["key"])
+	require.Equal(t, "COMPLETED", item["state"])
+}
+
 func TestRunProcessInstanceCommand_DefaultOutputDoesNotEmitMachineEnvelope(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
@@ -307,6 +357,25 @@ func TestRunProcessInstanceCommand_DefaultOutputDoesNotEmitMachineEnvelope(t *te
 
 	require.NotContains(t, output, `"outcome"`)
 	require.NotContains(t, output, `"command"`)
+}
+
+// newRunProcessInstanceObservedStateServer returns a v8.9 fixture that confirms creation through a keyed lookup.
+func newRunProcessInstanceObservedStateServer(t *testing.T, observedState string) *httptest.Server {
+	t.Helper()
+
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"<default>","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances":
+			_, _ = w.Write([]byte(`{"processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","tenantId":"<default>","variables":{}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/2251799813711967":
+			_, _ = w.Write([]byte(`{"processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","tenantId":"<default>","state":"` + observedState + `","startDate":"2026-05-23T12:00:00Z","hasIncident":false,"tags":[]}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
 }
 
 func TestRunProcessInstanceBpmnSelectorPartialMultiIDFailsBeforeCreate(t *testing.T) {
