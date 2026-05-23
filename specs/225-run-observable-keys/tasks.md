@@ -45,18 +45,18 @@
 
 ### Tests for User Story 1
 
-- [ ] T005 [P] [US1] Add v8.7 creation confirmation tests for `ACTIVE`, `COMPLETED`, terminal observable state, and absent/not-found rejection in `internal/services/processinstance/v87/service_test.go`
-- [ ] T006 [P] [US1] Add v8.8 creation confirmation tests for `ACTIVE`, `COMPLETED`, terminal observable state, and absent/not-found rejection in `internal/services/processinstance/v88/service_test.go`
-- [ ] T007 [P] [US1] Add v8.9 creation confirmation tests for `ACTIVE`, `COMPLETED`, terminal observable state, and absent/not-found rejection in `internal/services/processinstance/v89/service_test.go`
+- [x] T005 [P] [US1] Add v8.7 creation confirmation tests for `ACTIVE`, `COMPLETED`, terminal observable state, and absent/not-found rejection in `internal/services/processinstance/v87/service_test.go`
+- [x] T006 [P] [US1] Add v8.8 creation confirmation tests for `ACTIVE`, `COMPLETED`, terminal observable state, and absent/not-found rejection in `internal/services/processinstance/v88/service_test.go`
+- [x] T007 [P] [US1] Add v8.9 creation confirmation tests for `ACTIVE`, `COMPLETED`, terminal observable state, and absent/not-found rejection in `internal/services/processinstance/v89/service_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Use the shared observable creation state set when v8.7 waits after process instance creation in `internal/services/processinstance/v87/service.go`
-- [ ] T009 [US1] Use the shared observable creation state set when v8.8 waits after process instance creation in `internal/services/processinstance/v88/service.go`
-- [ ] T010 [US1] Use the shared observable creation state set when v8.9 waits after process instance creation in `internal/services/processinstance/v89/service.go`
-- [ ] T011 [US1] Preserve the observed state and confirmation timestamp on the returned created process instance in `internal/services/processinstance/v87/service.go`, `internal/services/processinstance/v88/service.go`, and `internal/services/processinstance/v89/service.go`
-- [ ] T012 [US1] Run targeted service validation with `go test ./internal/domain ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'State|CreateProcessInstance|WaitForProcessInstance' -count=1`
-- [ ] T013 [US1] Update `specs/225-run-observable-keys/progress.md` with US1 implementation notes and validation results
+- [x] T008 [US1] Use the shared observable creation state set when v8.7 waits after process instance creation in `internal/services/processinstance/v87/service.go`
+- [x] T009 [US1] Use the shared observable creation state set when v8.8 waits after process instance creation in `internal/services/processinstance/v88/service.go`
+- [x] T010 [US1] Use the shared observable creation state set when v8.9 waits after process instance creation in `internal/services/processinstance/v89/service.go`
+- [x] T011 [US1] Preserve the observed state and confirmation timestamp on the returned created process instance in `internal/services/processinstance/v87/service.go`, `internal/services/processinstance/v88/service.go`, and `internal/services/processinstance/v89/service.go`
+- [x] T012 [US1] Run targeted service validation with `go test ./internal/domain ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'State|CreateProcessInstance|WaitForProcessInstance' -count=1`
+- [x] T013 [US1] Update `specs/225-run-observable-keys/progress.md` with US1 implementation notes and validation results
 
 **Checkpoint**: User Story 1 is independently functional and validated.
 

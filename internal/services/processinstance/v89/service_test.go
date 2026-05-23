@@ -65,6 +65,7 @@ func (m *mockCamundaClient) GetProcessInstanceWithResponse(ctx context.Context, 
 	return m.getProcessInstanceWithResponse(ctx, key, reqEditors...)
 }
 
+// TestService_CreateProcessInstance verifies creation request mapping and wait-based confirmation semantics.
 func TestService_CreateProcessInstance(t *testing.T) {
 	ctx := context.Background()
 
@@ -141,7 +142,58 @@ func TestService_CreateProcessInstance(t *testing.T) {
 		assert.Equal(t, config.DefaultTenant, creation.TenantId)
 	})
 
-	t.Run("SuccessWaitsForActiveState", func(t *testing.T) {
+	t.Run("SuccessWaitsForObservableCreationStates", func(t *testing.T) {
+		tests := []struct {
+			name  string
+			state string
+		}{
+			{name: "Active", state: "ACTIVE"},
+			{name: "Completed", state: "COMPLETED"},
+			{name: "Terminal", state: "TERMINATED"},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				getCalls := 0
+				svc := newTestService(t, waitTestConfig(), &mockCamundaClient{
+					createProcessInstanceWithResponse: func(ctx context.Context, body camundav89.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateProcessInstanceResponse, error) {
+						return &camundav89.CreateProcessInstanceResponse{
+							HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances", http.StatusOK, "200 OK"),
+							JSON200: &camundav89.CreateProcessInstanceResult{
+								ProcessDefinitionId:      "demo",
+								ProcessDefinitionKey:     "proc-key",
+								ProcessDefinitionVersion: 7,
+								ProcessInstanceKey:       "123",
+								TenantId:                 "tenant-a",
+							},
+						}, nil
+					},
+					searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
+					cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+					deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
+					getProcessInstanceWithResponse: func(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessInstanceResponse, error) {
+						getCalls++
+						assert.Equal(t, camundav89.ProcessInstanceKey("123"), key)
+						return &camundav89.GetProcessInstanceResponse{
+							HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+							JSON200:      new(makeProcessInstanceResult("123", tt.state, "")),
+						}, nil
+					},
+				})
+
+				creation, err := svc.CreateProcessInstance(ctx, d.ProcessInstanceData{BpmnProcessId: "demo", TenantId: "tenant-a"})
+
+				require.NoError(t, err)
+				assert.Equal(t, "123", creation.Key)
+				assert.Equal(t, "2026-03-23T18:00:00Z", creation.StartDate)
+				assert.Equal(t, d.State(tt.state), creation.State)
+				assert.NotEmpty(t, creation.StartConfirmedAt)
+				assert.Equal(t, 1, getCalls)
+			})
+		}
+	})
+
+	t.Run("RejectsNotFoundDuringConfirmation", func(t *testing.T) {
 		getCalls := 0
 		svc := newTestService(t, waitTestConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: func(ctx context.Context, body camundav89.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateProcessInstanceResponse, error) {
@@ -161,21 +213,19 @@ func TestService_CreateProcessInstance(t *testing.T) {
 			deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
 			getProcessInstanceWithResponse: func(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessInstanceResponse, error) {
 				getCalls++
-				assert.Equal(t, camundav89.ProcessInstanceKey("123"), key)
 				return &camundav89.GetProcessInstanceResponse{
-					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
-					JSON200:      new(makeProcessInstanceResult("123", "ACTIVE", "")),
+					Body:         []byte(`{"message":"not found"}`),
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusNotFound, "404 Not Found"),
 				}, nil
 			},
 		})
 
-		creation, err := svc.CreateProcessInstance(ctx, d.ProcessInstanceData{BpmnProcessId: "demo", TenantId: "tenant-a"})
+		_, err := svc.CreateProcessInstance(ctx, d.ProcessInstanceData{BpmnProcessId: "demo", TenantId: "tenant-a"})
 
-		require.NoError(t, err)
-		assert.Equal(t, "123", creation.Key)
-		assert.Equal(t, "2026-03-23T18:00:00Z", creation.StartDate)
-		assert.NotEmpty(t, creation.StartConfirmedAt)
-		assert.Equal(t, 1, getCalls)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "wait for observable state")
+		assert.Contains(t, err.Error(), "exceeded max_retries")
+		assert.Equal(t, 2, getCalls)
 	})
 
 	t.Run("CreateLogOmitsStartAndConfirmedTimestamps", func(t *testing.T) {

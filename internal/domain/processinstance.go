@@ -168,6 +168,7 @@ type ProcessInstanceCreation struct {
 	BpmnProcessId            string         `json:"bpmnProcessId,omitempty"`        // ProcessDefinitionId in API
 	ProcessDefinitionKey     string         `json:"processDefinitionKey,omitempty"` // ProcessDefinitionKey in API
 	ProcessDefinitionVersion int32          `json:"processDefinitionVersion,omitempty"`
+	State                    State          `json:"state,omitempty"`
 	TenantId                 string         `json:"tenantId,omitempty"`
 	Variables                map[string]any `json:"variables,omitempty"`
 	StartDate                string         `json:"startDate,omitempty"`

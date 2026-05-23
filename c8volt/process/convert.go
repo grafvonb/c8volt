@@ -65,6 +65,7 @@ func fromDomainProcessInstanceCreation(x d.ProcessInstanceCreation) ProcessInsta
 		BpmnProcessId:        x.BpmnProcessId,
 		ProcessDefinitionKey: x.ProcessDefinitionKey,
 		ProcessVersion:       x.ProcessDefinitionVersion,
+		State:                State(x.State),
 		Variables:            toolx.CopyMap(x.Variables),
 		TenantId:             x.TenantId,
 		StartDate:            x.StartDate,

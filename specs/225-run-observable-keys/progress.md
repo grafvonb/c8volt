@@ -23,11 +23,17 @@
 - `README.md`, `cmd/*` help text, `docsgen`, and generated `docs/cli/*` must stay aligned for user-facing command changes.
 - `specs/ralph-implementation-rules.md` is binding for every Ralph implementation iteration and should be read before nearby source/tests for the current work unit.
 - `internal/domain/state.go` now owns `ObservableProcessInstanceCreationStates`, which returns a copy of the shared `ACTIVE`, `COMPLETED`, `CANCELED`, and `TERMINATED` confirmation state set for later process-instance services.
+- `internal/domain.ProcessInstanceCreation` carries the observed creation-confirmation state, and `c8volt/process` maps it onto the public `ProcessInstance.State` for later command rendering.
+- Camunda 8.7 creation responses still do not provide a usable process-instance key; key-based v8.7 confirmation uses the tenant-filtered Operate search path when a caller already has a key.
 
 ## Validation Log
 
 - 2026-05-23 19:36 CEST: `go test ./internal/domain -run 'State' -count=1` passed.
 - 2026-05-23 19:36 CEST: `go test ./internal/domain -count=1` passed.
+- 2026-05-23 19:44 CEST: `go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'CreateProcessInstance|WaitForProcessInstance|GetProcessInstanceStateByKey' -count=1` passed.
+- 2026-05-23 19:44 CEST: `go test ./internal/domain ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'State|CreateProcessInstance|WaitForProcessInstance' -count=1` passed.
+- 2026-05-23 19:44 CEST: `go test ./c8volt/process -run 'CreateProcessInstances' -count=1` passed.
+- 2026-05-23 19:44 CEST: `go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` passed.
 
 ## Residual Risks
 
@@ -67,4 +73,35 @@
 - Creation confirmation semantics are now centralized in `internal/domain` so v8.7, v8.8, and v8.9 services can share the same accepted state set.
 - `ObservableProcessInstanceCreationStates` returns a copy to avoid accidental mutation of shared confirmation semantics.
 - Validation passed with `go test ./internal/domain -run 'State' -count=1` and `go test ./internal/domain -count=1`.
+---
+## Iteration 3 - 2026-05-23 19:44 CEST
+**User Story**: User Story 1 - Confirm Fast Process Instance Runs
+**Tasks Completed**:
+- [x] T005: Add v8.7 creation confirmation tests for ACTIVE, COMPLETED, terminal observable state, and absent/not-found rejection
+- [x] T006: Add v8.8 creation confirmation tests for ACTIVE, COMPLETED, terminal observable state, and absent/not-found rejection
+- [x] T007: Add v8.9 creation confirmation tests for ACTIVE, COMPLETED, terminal observable state, and absent/not-found rejection
+- [x] T008: Use the shared observable creation state set when v8.7 waits after process instance creation
+- [x] T009: Use the shared observable creation state set when v8.8 waits after process instance creation
+- [x] T010: Use the shared observable creation state set when v8.9 waits after process instance creation
+- [x] T011: Preserve the observed state and confirmation timestamp on returned created process instances
+- [x] T012: Run targeted service validation
+- [x] T013: Update progress with US1 implementation notes and validation results
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/convert.go
+- internal/domain/processinstance.go
+- internal/services/processinstance/v87/service.go
+- internal/services/processinstance/v87/service_test.go
+- internal/services/processinstance/v88/service.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v89/service.go
+- internal/services/processinstance/v89/service_test.go
+- specs/225-run-observable-keys/tasks.md
+- specs/225-run-observable-keys/progress.md
+**Learnings**:
+- v8.8 and v8.9 creation waits can accept `ACTIVE`, `COMPLETED`, and terminal observable states by reusing `ObservableProcessInstanceCreationStates`; not-found observations still retry and fail instead of confirming creation.
+- v8.7 cannot observe a newly created instance without a key from the create response, so the existing no-key compatibility path remains unchanged; key-based state confirmation is now backed by tenant-filtered Operate search.
+- Observed confirmation state is stored on the internal creation result and mapped through the public process facade for subsequent `run pi` rendering work.
+- Validation passed with the targeted US1 command, focused facade conversion coverage, and full v8.7/v8.8/v8.9 process-instance service package tests.
 ---

@@ -161,12 +161,13 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 		if !cCfg.SuppressWorkflowDetailLogs {
 			s.log.Info(fmt.Sprintf("waiting for pi %s; pd %s", pi.Key, pi.ProcessDefinitionKey))
 		}
-		states := []d.State{d.StateActive}
+		states := d.ObservableProcessInstanceCreationStates()
 		_, created, err := waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, pi.Key, states, opts...)
 		if err != nil {
-			return d.ProcessInstanceCreation{}, fmt.Errorf("wait for started state: %w", err)
+			return d.ProcessInstanceCreation{}, fmt.Errorf("wait for observable state: %w", err)
 		}
 		pi.StartDate = created.StartDate
+		pi.State = created.State
 		pi.StartConfirmedAt = time.Now().UTC().Format(time.RFC3339)
 		if !cCfg.SuppressWorkflowDetailLogs {
 			s.log.Info(fmt.Sprintf("pi %s created; pd %s %s v%d %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
@@ -424,7 +425,13 @@ func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, 
 	if err != nil {
 		return "", d.ProcessInstance{}, err
 	}
-	return "", d.ProcessInstance{}, fmt.Errorf("process instance state: %w", fmt.Errorf("%w: process-instance state lookup by key is not tenant-safe in Camunda 8.7", d.ErrUnsupported))
+	pi, err := traversalAdapter{s}.GetProcessInstance(ctx, key, opts...)
+	if err != nil {
+		return "", d.ProcessInstance{}, fmt.Errorf("process instance state: %w", err)
+	}
+	st := pi.State
+	s.log.Debug(fmt.Sprintf("pi %s state %s", key, st))
+	return st, pi, nil
 }
 
 func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
@@ -611,6 +618,10 @@ func isDeleteWrongStateResponse(resp *operatev87.DeleteProcessInstanceAndAllDepe
 }
 
 func searchProcessInstancesRequest(tenant string, filter d.ProcessInstanceFilter, size int32) (operatev87.SearchProcessInstancesJSONRequestBody, error) {
+	processInstanceKey, err := toolx.StringToInt64Ptr(filter.Key)
+	if err != nil {
+		return operatev87.SearchProcessInstancesJSONRequestBody{}, fmt.Errorf("parsing process instance key %q to int64: %w", filter.Key, err)
+	}
 	parentKey, err := toolx.StringToInt64Ptr(filter.ParentKey)
 	if err != nil {
 		return operatev87.SearchProcessInstancesJSONRequestBody{}, fmt.Errorf("parsing parent key %q to int64: %w", filter.ParentKey, err)
@@ -618,6 +629,7 @@ func searchProcessInstancesRequest(tenant string, filter d.ProcessInstanceFilter
 	// Camunda 8.7 only supports the existing equality-style request fields here.
 	// Parent/incident presence semantics stay on the client-side fallback path.
 	bodyFilter := operatev87.ProcessInstance{
+		Key:               processInstanceKey,
 		TenantId:          toolx.PtrIf(tenant, ""),
 		BpmnProcessId:     &filter.BpmnProcessId,
 		ProcessVersion:    toolx.PtrIfNonZero(filter.ProcessVersion),
