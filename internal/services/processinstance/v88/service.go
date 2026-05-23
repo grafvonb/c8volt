@@ -150,15 +150,16 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 		if !cCfg.SuppressWorkflowDetailLogs {
 			s.log.Info(fmt.Sprintf("waiting for pi %s; pd %s", pi.Key, pi.ProcessDefinitionKey))
 		}
-		states := []d.State{d.StateActive}
+		states := d.ObservableProcessInstanceCreationStates()
 		_, created, err := waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, pi.Key, states, opts...)
 		if err != nil {
-			return d.ProcessInstanceCreation{}, fmt.Errorf("wait for started state: %w", err)
+			return d.ProcessInstanceCreation{}, fmt.Errorf("wait for observable state: %w", err)
 		}
 		pi.StartDate = created.StartDate
+		pi.State = created.State
 		pi.StartConfirmedAt = time.Now().UTC().Format(time.RFC3339)
 		if !cCfg.SuppressWorkflowDetailLogs {
-			s.log.Info(fmt.Sprintf("pi %s created; pd %s %s v%d %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
+			s.log.Info(fmt.Sprintf("pi %s created; pd %s %s v%d %s; state %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId, pi.State))
 		}
 	} else {
 		pi.StartDate = time.Now().UTC().Format(time.RFC3339)

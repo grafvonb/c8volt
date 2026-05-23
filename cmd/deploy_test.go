@@ -44,6 +44,7 @@ func TestDeployHelp_DocumentsWaitContractsAndFollowUp(t *testing.T) {
 		"./c8volt deploy pd --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run",
 	}, nil)
 	require.Contains(t, output, "--run")
+	require.NotContains(t, output, "--expected-status")
 }
 
 func TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig(t *testing.T) {

@@ -6,9 +6,12 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strconv"
 
 	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -23,16 +26,18 @@ var (
 
 var runProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
-	Short: "Start process instances and confirm activation",
-	Long: "Start process instances and confirm activation.\n\n" +
+	Short: "Start process instances and confirm creation",
+	Long: "Start process instances and confirm creation.\n\n" +
 		"Run by BPMN process ID for the latest version, or by process definition key for an exact definition.\n\n" +
 		"When running by BPMN process ID, c8volt validates all requested process definitions before creating anything. Mixed visible and missing BPMN IDs fail as one request, so no partial process instances are started; automation-oriented modes never prompt for recovery output.\n\n" +
-		"By default c8volt waits for active instances.",
+		"By default c8volt waits until created instances are observable. Created instances are confirmed after Camunda observes ACTIVE, COMPLETED, CANCELED, or TERMINATED.\n\n" +
+		"Use --keys-only to pipe created process instance keys into strict lifecycle checks with expect pi.",
 	Example: `  ./c8volt run pi -b <bpmn-process-id>
   ./c8volt run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
   ./c8volt run pi -b <bpmn-process-id> -n 3 --workers 2
   ./c8volt --json run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
-  ./c8volt expect pi --key <process-instance-key> --state active`,
+  ./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -
+  ./c8volt run pi -b <long-running-bpmn-process-id> --keys-only | ./c8volt expect pi --state active -`,
 	Aliases: []string{"pi"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
@@ -109,7 +114,7 @@ var runProcessInstanceCmd = &cobra.Command{
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("running process instance(s) for %s: %w", contextForErr, err))
 			}
-			if err := renderCommandResult(cmd, process.ProcessInstances{
+			if err := renderRunProcessInstanceResult(cmd, process.ProcessInstances{
 				Total: int32(len(created)),
 				Items: created,
 			}); err != nil {
@@ -125,13 +130,85 @@ var runProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("running %d process instances for %s: %w", flagRunPICount, contextForErr, err))
 		}
-		if err := renderCommandResult(cmd, process.ProcessInstances{
+		sortRunProcessInstancesForOutput(created)
+		if err := renderRunProcessInstanceResult(cmd, process.ProcessInstances{
 			Total: int32(len(created)),
 			Items: created,
 		}); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render process-instance result: %w", err))
 		}
 	},
+}
+
+// renderRunProcessInstanceResult keeps JSON on the shared mutation envelope while rendering human output as a compact creation result.
+func renderRunProcessInstanceResult(cmd *cobra.Command, result process.ProcessInstances) error {
+	if commandUsesSharedEnvelope(cmd, pickMode()) {
+		return renderCommandResult(cmd, result)
+	}
+	mode := pickMode()
+	if mode == RenderModeKeysOnly {
+		for _, item := range result.Items {
+			renderOutputLine(cmd, "%s", item.Key)
+		}
+		return nil
+	}
+	rows := make([]flatRow, 0, len(result.Items))
+	for _, item := range result.Items {
+		rows = append(rows, flatRowRunProcessInstanceWithTimezone(item, commandShowTimezoneOffset(cmd)))
+	}
+	for _, line := range formatFlatRows(rows) {
+		renderOutputLine(cmd, "%s", line)
+	}
+	renderOutputLine(cmd, "found: %d", len(result.Items))
+	return nil
+}
+
+func flatRowRunProcessInstanceWithTimezone(item process.ProcessInstance, showTimezoneOffset bool) flatRow {
+	parent := "p:<root>"
+	if item.ParentKey != "" {
+		parent = "p:" + item.ParentKey
+	}
+	version := fmt.Sprintf("v%d", item.ProcessVersion)
+	if item.ProcessVersionTag != "" {
+		version += "/" + item.ProcessVersionTag
+	}
+	row := flatRow{
+		item.Key,
+		item.TenantId,
+		item.BpmnProcessId,
+		version,
+	}
+	if item.State != "" {
+		row = append(row, string(item.State))
+	}
+	row = append(row, "s:"+toolx.FormatTimestamp(item.StartDate, showTimezoneOffset), parent)
+	return row
+}
+
+func sortRunProcessInstancesForOutput(items []process.ProcessInstance) {
+	sort.SliceStable(items, func(i, j int) bool {
+		left := items[i]
+		right := items[j]
+		if left.StartDate != right.StartDate {
+			if left.StartDate == "" {
+				return false
+			}
+			if right.StartDate == "" {
+				return true
+			}
+			return left.StartDate < right.StartDate
+		}
+		return runProcessInstanceKeyLess(left.Key, right.Key)
+	})
+}
+
+func runProcessInstanceKeyLess(left, right string) bool {
+	li, lerr := strconv.ParseUint(left, 10, 64)
+	ri, rerr := strconv.ParseUint(right, 10, 64)
+	if lerr == nil && rerr == nil {
+		return li < ri
+	}
+	return left < right
 }
 
 func init() {

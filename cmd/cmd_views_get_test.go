@@ -186,6 +186,41 @@ func TestListProcessInstancesView_UsesConfiguredTimezoneOffset(t *testing.T) {
 	require.Contains(t, buf.String(), "s:2026-02-01T07:00:00.000+00:00")
 }
 
+// Verifies shared JSON process-instance list rendering preserves lifecycle state fields for command payloads.
+func TestListProcessInstancesView_JSONPayloadIncludesState(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = true
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := listProcessInstancesView(cmd, process.ProcessInstances{
+		Total: 1,
+		Items: []process.ProcessInstance{{
+			Key:            "2251799813711967",
+			TenantId:       "<default>",
+			BpmnProcessId:  "order-process",
+			ProcessVersion: 3,
+			State:          process.StateCompleted,
+			StartDate:      "2026-05-23T12:00:00Z",
+		}},
+	})
+
+	require.NoError(t, err)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &got))
+	items, ok := got["items"].([]any)
+	require.True(t, ok)
+	require.Len(t, items, 1)
+	item := requireJSONObject(t, items[0])
+	require.Equal(t, "2251799813711967", item["key"])
+	require.Equal(t, "COMPLETED", item["state"])
+}
+
 // Verifies process-definition scan output uses the same dynamic alignment as process-instance lists.
 func TestListProcessDefinitionsView_AlignsFlatRowsDynamically(t *testing.T) {
 	cmd := &cobra.Command{Use: "process-definition"}

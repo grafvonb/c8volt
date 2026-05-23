@@ -20,6 +20,13 @@ const (
 	StateUnknown    State = "UNKNOWN"
 )
 
+var observableProcessInstanceCreationStates = States{
+	StateActive,
+	StateCompleted,
+	StateCanceled,
+	StateTerminated,
+}
+
 func (s State) String() string { return string(s) }
 
 func (s State) EqualsIgnoreCase(other State) bool {
@@ -35,6 +42,11 @@ func (s State) IsTerminal() bool {
 }
 
 type States []State
+
+// ObservableProcessInstanceCreationStates returns lifecycle states that prove a just-created process instance is observable.
+func ObservableProcessInstanceCreationStates() States {
+	return slices.Clone(observableProcessInstanceCreationStates)
+}
 
 func (sx States) Contains(state State) bool {
 	for _, s := range sx {

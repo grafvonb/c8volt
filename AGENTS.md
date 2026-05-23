@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active plan: [specs/207-bpmn-selector-validation/plan.md](specs/207-bpmn-selector-validation/plan.md)
+- Active Speckit implementation plan: `specs/225-run-observable-keys/plan.md`
 <!-- SPECKIT END -->

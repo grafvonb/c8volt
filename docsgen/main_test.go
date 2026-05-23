@@ -220,6 +220,47 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 	}
 }
 
+// TestGeneratedRunProcessInstanceDocsDocumentPipeline protects generated docs for keys-only run composition.
+func TestGeneratedRunProcessInstanceDocsDocumentPipeline(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	runDoc := readGeneratedDocForTest(t, out, "c8volt_run.md")
+	for _, want := range []string{
+		"waits until created instances are observable",
+		"./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -",
+		"[c8volt run process-instance](c8volt_run_process-instance)",
+	} {
+		if !strings.Contains(runDoc, want) {
+			t.Fatalf("expected generated run docs to contain %q, got %q", want, runDoc)
+		}
+	}
+
+	processInstanceDoc := readGeneratedDocForTest(t, out, "c8volt_run_process-instance.md")
+	for _, want := range []string{
+		"Start process instances and confirm creation",
+		"Created instances are confirmed after Camunda observes ACTIVE, COMPLETED, CANCELED, or TERMINATED.",
+		"./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -",
+		"./c8volt run pi -b <long-running-bpmn-process-id> --keys-only | ./c8volt expect pi --state active -",
+	} {
+		if !strings.Contains(processInstanceDoc, want) {
+			t.Fatalf("expected generated run process-instance docs to contain %q, got %q", want, processInstanceDoc)
+		}
+	}
+}
+
 // TestGeneratedResolveDocsDocumentResolveWorkflows protects generated docs for the incident recovery command family.
 func TestGeneratedResolveDocsDocumentResolveWorkflows(t *testing.T) {
 	out := t.TempDir()

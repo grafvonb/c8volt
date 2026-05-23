@@ -232,6 +232,7 @@ function Test-IgnorableAgentOutputLine {
     return (
         $Line -like "*WARN codex_core::plugins::manifest: ignoring interface.defaultPrompt:*" -or
         $Line -like "*WARN codex_core_plugins::manifest: ignoring interface.defaultPrompt:*" -or
+        $Line -like "*WARN codex_core_skills::loader: ignoring interface.icon_*" -or
         $Line -like "*WARN codex_state::runtime: failed to open state db at *: migration 23 was previously applied but is missing in the resolved migrations*" -or
         $Line -like "*WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back*" -or
         $Line -like '*WARN codex_core::shell_snapshot: Failed to delete shell snapshot at *: Os { code: 2, kind: NotFound, message: "No such file or directory" }*'

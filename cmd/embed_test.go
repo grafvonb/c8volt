@@ -60,6 +60,15 @@ func TestEmbedExportHelp_DocumentsSelectionWorkflow(t *testing.T) {
 	require.Contains(t, output, "quote patterns in the shell like zsh")
 }
 
+// Verifies embed deploy keeps --run as a creation shortcut without adding state expectation flags.
+func TestEmbedDeployHelp_DocumentsRunWithoutExpectationFlags(t *testing.T) {
+	output := executeRootForTest(t, "embed", "deploy", "--help")
+
+	require.Contains(t, output, "Add --run to start one process instance")
+	require.Contains(t, output, "--run")
+	require.NotContains(t, output, "--expected-status")
+}
+
 func TestEmbedExportCommand_AllFiltersFilesForConfiguredCamundaVersion(t *testing.T) {
 	resetEmbedCommandStateForTest()
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
