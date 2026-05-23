@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- No active Speckit implementation plan has been recorded yet.
+- Active Speckit implementation plan: `specs/225-run-observable-keys/plan.md`
 <!-- SPECKIT END -->
