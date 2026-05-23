@@ -658,6 +658,36 @@ func TestCommandCapabilityForCommand_BpmnSelectorAlignedCommandContracts(t *test
 	}
 }
 
+// Verifies run process-instance advertises keys-only output for command composition.
+func TestCommandCapabilityForCommand_RunProcessInstanceKeysOnlyContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(runProcessInstanceCmd)
+
+	require.Equal(t, "run process-instance", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:             "json",
+		Supported:        true,
+		MachinePreferred: true,
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:      "keys-only",
+		Supported: true,
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "bpmn-process-id",
+		Shorthand:   "b",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "BPMN process ID(s) to run process instance for (mutually exclusive with --pd-key). Runs latest version unless --pd-version is specified",
+	})
+}
+
 func TestCommandCapabilityForCommand_OpsPurgeOrphanProcessInstancesContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)

@@ -80,6 +80,10 @@ func TestCapabilityDocumentForRoot_BuildsNestedDiscoveryMetadata(t *testing.T) {
 		Supported:        true,
 		MachinePreferred: true,
 	})
+	require.Contains(t, runCapability.Children[0].OutputModes, OutputModeContract{
+		Name:      "keys-only",
+		Supported: true,
+	})
 }
 
 func TestCapabilitiesCommand_JSONOutput(t *testing.T) {
@@ -267,6 +271,7 @@ func TestCapabilitiesCommand_DefaultOutputUsesHumanSummary(t *testing.T) {
 	require.Contains(t, output, "Hidden and shell-internal commands are excluded.")
 	require.Contains(t, output, "- capabilities [read_only, limited, automation:full] modes: json, one-line")
 	require.Contains(t, output, "- get [read_only, limited, automation:unsupported] modes: one-line, json, keys-only")
+	require.Contains(t, output, "- run process-instance [state_changing, full, automation:full] modes: one-line, json, keys-only")
 	require.NotContains(t, output, "\"command\":\"capabilities\"")
 }
 

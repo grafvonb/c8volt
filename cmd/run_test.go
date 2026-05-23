@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,7 +33,7 @@ func TestRunCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t
 func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"run"}, []string{
 		"Start process instances",
-		"waits for active instances by default",
+		"waits until created instances are observable",
 		"./c8volt run pi -b <bpmn-process-id>",
 	}, nil)
 
@@ -40,9 +41,9 @@ func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 
 	output = assertCommandHelpOutput(t, []string{"run", "process-instance"}, []string{
 		"Run by BPMN process ID",
-		"waits for active instances",
+		"waits until created instances are observable",
 		"./c8volt run pi -b <bpmn-process-id> -n 3 --workers 2",
-		"./c8volt expect pi --key <process-instance-key> --state active",
+		"./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -",
 	}, nil)
 	require.Contains(t, output, "--no-wait")
 }
@@ -329,6 +330,28 @@ func TestRunProcessInstanceCommand_JSONEnvelopeIncludesObservedState(t *testing.
 	item := requireJSONObject(t, items[0])
 	require.Equal(t, "2251799813711967", item["key"])
 	require.Equal(t, "COMPLETED", item["state"])
+}
+
+// Verifies keys-only run output stays suitable for strict downstream expect pipelines.
+func TestRunProcessInstanceCommand_KeysOnlyOutputsOnlyCreatedKeys(t *testing.T) {
+	srv := newRunProcessInstanceObservedStateServer(t, "COMPLETED")
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"run", "process-instance",
+		"--bpmn-process-id", "order-process",
+		"--keys-only",
+	)
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	require.Equal(t, []string{"2251799813711967"}, lines)
+	require.NotContains(t, stdout, "COMPLETED")
+	require.NotContains(t, stdout, "found:")
+	require.NotContains(t, stdout, `"outcome"`)
+	require.Contains(t, stderr, "waiting for pi 2251799813711967")
 }
 
 func TestRunProcessInstanceCommand_DefaultOutputDoesNotEmitMachineEnvelope(t *testing.T) {

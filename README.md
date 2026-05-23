@@ -62,7 +62,7 @@ That is the gap `c8volt` closes.
 ## At A Glance
 
 - deploy BPMN and start using it immediately
-- run process instances and confirm they become active
+- run process instances and confirm they are observable
 - update process-instance-scope variables and confirm visibility
 - inspect jobs from incident output and safely adjust retries or timeout
 - list, fetch, filter, and count incidents directly
@@ -170,7 +170,12 @@ Commands that change state, such as `run`, `update`, `resolve`, `cancel`, and `d
 ./c8volt run pi -b <bpmn-process-id>
 ```
 
-By default, `c8volt` waits until the process instance is actually active.
+By default, `c8volt` waits until the created process instance is observable as `ACTIVE`, `COMPLETED`, `CANCELED`, or `TERMINATED`. Pipe keys into `expect pi` when a script needs a strict lifecycle assertion:
+
+```bash
+./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -
+./c8volt run pi -b <long-running-bpmn-process-id> --keys-only | ./c8volt expect pi --state active -
+```
 
 For batch execution:
 
@@ -552,6 +557,7 @@ Examples:
 
 ```bash
 ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm -
+./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -
 ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 3 --keys-only | ./c8volt update pi - --vars '{"priority":"high"}' --dry-run
 ./c8volt get job --key <job-key>
 ./c8volt update job --key <job-key> --retries 3 --dry-run
@@ -578,7 +584,7 @@ c8volt
 |-- deploy                                     Deploy resources from files or stdin
 |   `-- pd                                     Deploy BPMN process definitions
 |-- run                                        Start runnable resources
-|   `-- pi                                     Start process instances and confirm activation by default
+|   `-- pi                                     Start process instances and confirm creation by default
 |-- update                                     Update existing resources
 |   |-- pi                                     Update process-instance variables and confirm visibility by default
 |   `-- job                                    Update job retries and timeout by key
@@ -643,6 +649,7 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 # Start process instances from the latest version.
 ./c8volt run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
 ./c8volt run pi -b <bpmn-process-id> -n 3 --workers 2
+./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -
 
 # Update process-instance-scope variables.
 ./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}'

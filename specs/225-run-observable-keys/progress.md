@@ -21,6 +21,8 @@
 - `cmd/cmd_views_get.go` already renders `process.ProcessInstances` in normal, JSON, and keys-only modes through shared helpers.
 - `cmd/cmd_views_contract.go` renders shared JSON envelopes for full-contract commands and intentionally does not render non-JSON command results.
 - `cmd/run_processinstance.go` now routes `run pi` JSON output through the shared mutation envelope while routing non-JSON output through `listProcessInstancesView`, preserving observed process-instance state in normal output.
+- `run pi --keys-only` reaches the shared process-instance keys-only renderer through `listProcessInstancesView`; it must not emit `found:`, state text, or JSON envelope fields on stdout.
+- `expect pi` state waits remain strict and should keep using explicit user-requested states, not the broader creation-confirmation state set.
 - `README.md`, `cmd/*` help text, `docsgen`, and generated `docs/cli/*` must stay aligned for user-facing command changes.
 - `specs/ralph-implementation-rules.md` is binding for every Ralph implementation iteration and should be read before nearby source/tests for the current work unit.
 - `internal/domain/state.go` now owns `ObservableProcessInstanceCreationStates`, which returns a copy of the shared `ACTIVE`, `COMPLETED`, `CANCELED`, and `TERMINATED` confirmation state set for later process-instance services.
@@ -36,6 +38,7 @@
 - 2026-05-23 19:44 CEST: `go test ./c8volt/process -run 'CreateProcessInstances' -count=1` passed.
 - 2026-05-23 19:44 CEST: `go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` passed.
 - 2026-05-23 19:49 CEST: `go test ./cmd -run 'RunProcessInstance|ProcessInstancesView|DeployProcessDefinition|EmbedDeploy' -count=1` passed.
+- 2026-05-23 19:56 CEST: `go test ./cmd ./docsgen -run 'RunProcessInstance|ExpectProcessInstance|CommandContract|Capabilities|Generated' -count=1` passed.
 
 ## Residual Risks
 
@@ -132,4 +135,39 @@
 - `renderCommandResult` is intentionally JSON-envelope-only, so normal `run pi` output must call the shared process-instance list view after creation.
 - Keeping `run pi` JSON on `renderCommandResult` preserves the state-changing accepted/succeeded envelope behavior while still carrying observed state in payload items.
 - `deploy --run` and `embed deploy --run` remain shared creation-confirmation consumers and do not expose a run-specific state expectation flag.
+---
+## Iteration 5 - 2026-05-23 19:56 CEST
+**User Story**: User Story 3 - Pipe Created Keys Into Strict Expectations
+**Tasks Completed**:
+- [x] T022: Add `run pi --keys-only` output tests
+- [x] T023: Add command contract/capabilities coverage for `run pi` keys-only support
+- [x] T024: Add strict `expect pi` regression coverage for mismatched explicit state expectations
+- [x] T025: Add generated docs coverage for the `run pi --keys-only | expect pi --state <state> -` example
+- [x] T026: Ensure `run pi --keys-only` uses the shared process-instance keys-only renderer
+- [x] T027: Update `run pi` help text and examples with completed and active pipeline patterns
+- [x] T028: Update README pipeline examples and wording
+- [x] T029: Regenerate generated CLI documentation
+- [x] T030: Run targeted validation
+- [x] T031: Update progress with US3 implementation notes and validation results
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/capabilities_test.go
+- cmd/command_contract_test.go
+- cmd/expect_test.go
+- cmd/run.go
+- cmd/run_processinstance.go
+- cmd/run_test.go
+- docs/cli/c8volt_run.md
+- docs/cli/c8volt_run_process-instance.md
+- docs/index.md
+- docsgen/main_test.go
+- specs/225-run-observable-keys/tasks.md
+- specs/225-run-observable-keys/progress.md
+**Learnings**:
+- US2's `renderRunProcessInstanceResult` routing already lets keys-only mode reuse the shared process-instance key renderer; the implementation work made that behavior explicit with tests and docs.
+- Command capability discovery infers keys-only support from inherited root flags after Cobra flag reset, so contract coverage should inspect the live `run process-instance` capability.
+- `expect pi` mismatched explicit states still timeout/fail instead of accepting another observable lifecycle state, preserving the strict pipeline boundary.
+- Generated CLI docs were refreshed with `make docs-content`, which also synced `docs/index.md` from the README.
 ---

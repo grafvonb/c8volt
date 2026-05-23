@@ -94,19 +94,19 @@
 
 ### Tests for User Story 3
 
-- [ ] T022 [P] [US3] Add `run pi --keys-only` output tests in `cmd/run_processinstance_test.go`
-- [ ] T023 [P] [US3] Add command contract/capabilities coverage for `run pi` keys-only support in `cmd/command_contract_test.go` and `cmd/capabilities_test.go`
-- [ ] T024 [P] [US3] Add strict `expect pi` regression coverage for mismatched explicit state expectations in `cmd/expect_test.go`
-- [ ] T025 [P] [US3] Add generated docs coverage for the `run pi --keys-only | expect pi --state <state> -` example in `docsgen/main_test.go`
+- [x] T022 [P] [US3] Add `run pi --keys-only` output tests in `cmd/run_processinstance_test.go`
+- [x] T023 [P] [US3] Add command contract/capabilities coverage for `run pi` keys-only support in `cmd/command_contract_test.go` and `cmd/capabilities_test.go`
+- [x] T024 [P] [US3] Add strict `expect pi` regression coverage for mismatched explicit state expectations in `cmd/expect_test.go`
+- [x] T025 [P] [US3] Add generated docs coverage for the `run pi --keys-only | expect pi --state <state> -` example in `docsgen/main_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T026 [US3] Ensure `run pi --keys-only` uses the shared process-instance keys-only renderer in `cmd/run_processinstance.go`
-- [ ] T027 [US3] Update `run pi` help text and examples with completed and active pipeline patterns in `cmd/run_processinstance.go`
-- [ ] T028 [US3] Update README pipeline examples and wording in `README.md`
-- [ ] T029 [US3] Regenerate generated CLI documentation with `make docs-content`
-- [ ] T030 [US3] Run targeted validation with `go test ./cmd ./docsgen -run 'RunProcessInstance|ExpectProcessInstance|CommandContract|Capabilities|Generated' -count=1`
-- [ ] T031 [US3] Update `specs/225-run-observable-keys/progress.md` with US3 implementation notes and validation results
+- [x] T026 [US3] Ensure `run pi --keys-only` uses the shared process-instance keys-only renderer in `cmd/run_processinstance.go`
+- [x] T027 [US3] Update `run pi` help text and examples with completed and active pipeline patterns in `cmd/run_processinstance.go`
+- [x] T028 [US3] Update README pipeline examples and wording in `README.md`
+- [x] T029 [US3] Regenerate generated CLI documentation with `make docs-content`
+- [x] T030 [US3] Run targeted validation with `go test ./cmd ./docsgen -run 'RunProcessInstance|ExpectProcessInstance|CommandContract|Capabilities|Generated' -count=1`
+- [x] T031 [US3] Update `specs/225-run-observable-keys/progress.md` with US3 implementation notes and validation results
 
 **Checkpoint**: All user stories are independently functional.
 
