@@ -30,8 +30,8 @@
 
 **Critical**: No user story implementation should begin until this phase is complete.
 
-- [ ] T003 Add a documented helper for observable process-instance creation confirmation states in `internal/domain/state.go`
-- [ ] T004 [P] Add or update state helper tests for observable creation states in `internal/domain/state_test.go`
+- [x] T003 Add a documented helper for observable process-instance creation confirmation states in `internal/domain/state.go`
+- [x] T004 [P] Add or update state helper tests for observable creation states in `internal/domain/state_test.go`
 
 **Checkpoint**: Shared confirmation state semantics are available to all versioned services.
 
