@@ -58,7 +58,7 @@ func newProcessInstanceSearchCaptureServerWithResponses(t *testing.T, requests *
 
 		switch r.URL.Path {
 		case "/v2/process-definitions/search":
-			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant-a","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+			writeVisibleProcessDefinitionSearchResponse(w)
 		case "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
@@ -72,6 +72,16 @@ func newProcessInstanceSearchCaptureServerWithResponses(t *testing.T, requests *
 		}
 	}))
 	return srv
+}
+
+func writeVisibleProcessDefinitionSearchResponse(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant-a","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+}
+
+func writeEmptyProcessDefinitionSearchResponse(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
 }
 
 // decodeCapturedPISearchFilter returns the JSON search filter captured by the

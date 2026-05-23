@@ -76,6 +76,15 @@ var cancelProcessInstanceCmd = &cobra.Command{
 			if err := validatePISearchVersionSupport(cfg); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
+			if flagGetPIBpmnProcessID != "" {
+				result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newPIProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+				if err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
+				if !result.Valid() {
+					handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
+				}
+			}
 			searchFilterOpts := populatePISearchFilterOpts()
 			results, err := processPISearchPagesWithAction(cmd, cli, cfg, searchFilterOpts, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
 				keys := make(types.Keys, 0, len(page.Items))

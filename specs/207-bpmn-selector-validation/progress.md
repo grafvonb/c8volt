@@ -15,6 +15,8 @@ Started: 2026-05-23 16:18:50
 - Shared selector construction now includes single-BPMN helpers for incident and direct process-definition commands, with latest-aware mode for `get pd` and `delete pd`.
 - `validateProcessDefinitionSelectorsForCommand` returns the shared local-precondition missing-selector error immediately when prompt policy forbids recovery output, while prompt-eligible callers can still pass the invalid result to the existing recovery handler.
 - `stubProcessAPI` can now install incident paging callbacks and reusable failing page-search guards for command tests that need to prove selector validation happens before process-instance or incident paging.
+- `cancel pi` and `delete pi` now validate direct BPMN selectors after PI search flag/version checks and before process-instance paging, preserving keyed/stdin-key flows and valid empty search results after a visible selector preflight.
+- Process-instance command tests share visible and empty process-definition search fixtures so BPMN selector preflight behavior can be asserted without duplicating response JSON.
 
 ---
 ## Iteration 1 - 2026-05-23 16:20:13 CEST
@@ -58,4 +60,31 @@ Started: 2026-05-23 16:18:50
 - Single-selector request builders let future command changes share normalization, version/tag narrowing, and latest-mode selection without duplicating request literals.
 - No-prompt command validation can return the canonical local-precondition error before recovery handling, which keeps machine and pipeline modes compact.
 - Reusable paging-failure guards are now available for US1 and US2 tests that need to prove runtime resource paging is not reached after a missing selector.
+---
+---
+## Iteration 3 - 2026-05-23 16:32:18 CEST
+**User Story**: User Story 1 - Block no-op mutations from missing BPMN selectors
+**Tasks Completed**:
+- [x] T012: Add `cancel pi --bpmn-process-id <missing>` test proving validation fails before process-instance search paging in `cmd/cancel_test.go`
+- [x] T013: Add `delete pi --bpmn-process-id <missing>` test proving validation fails before process-instance search paging or delete planning in `cmd/delete_test.go`
+- [x] T014: Add valid visible selector with zero matching process instances tests preserving existing no-op/empty behavior in `cmd/cancel_test.go` and `cmd/delete_test.go`
+- [x] T015: Add machine/non-interactive mode tests for `--json`, `--automation`, and key-only-equivalent output where applicable in `cmd/cancel_test.go` and `cmd/delete_test.go`
+- [x] T016: Invoke shared BPMN selector validation before `processPISearchPagesWithAction` in the search-selected path of `cmd/cancel_processinstance.go`
+- [x] T017: Invoke shared BPMN selector validation before `deleteProcessInstanceSearchPages` in the search-selected path of `cmd/delete_processinstance.go`
+- [x] T018: Preserve keyed, stdin key, non-BPMN search, dry-run, auto-confirm, and valid `found: 0` behavior in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`
+- [x] T019: Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(Cancel|Delete).*Bpmn|Test(Cancel|Delete).*ProcessDefinitionSelector' -count=1` and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/delete_processinstance.go
+- cmd/cancel_test.go
+- cmd/delete_test.go
+- cmd/cmd_processinstance_test.go
+- specs/207-bpmn-selector-validation/tasks.md
+- specs/207-bpmn-selector-validation/progress.md
+**Learnings**:
+- Missing direct BPMN selectors for `cancel pi` and `delete pi` now fail on the process-definition preflight and never reach process-instance page search.
+- Valid visible BPMN selectors still proceed to process-instance search and keep the existing `found: 0` no-op output when no runtime instances match.
+- `--json` and `--automation` selector failures return the shared diagnostic without recovery prompts.
 ---

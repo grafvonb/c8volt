@@ -50,17 +50,17 @@
 
 ### Tests for User Story 1
 
-- [ ] T012 [P] [US1] Add `cancel pi --bpmn-process-id <missing>` test proving validation fails before process-instance search paging in `cmd/cancel_test.go`
-- [ ] T013 [P] [US1] Add `delete pi --bpmn-process-id <missing>` test proving validation fails before process-instance search paging or delete planning in `cmd/delete_test.go`
-- [ ] T014 [P] [US1] Add valid visible selector with zero matching process instances tests preserving existing no-op/empty behavior in `cmd/cancel_test.go` and `cmd/delete_test.go`
-- [ ] T015 [P] [US1] Add machine/non-interactive mode tests for `--json`, `--automation`, and key-only-equivalent output where applicable in `cmd/cancel_test.go` and `cmd/delete_test.go`
+- [x] T012 [P] [US1] Add `cancel pi --bpmn-process-id <missing>` test proving validation fails before process-instance search paging in `cmd/cancel_test.go`
+- [x] T013 [P] [US1] Add `delete pi --bpmn-process-id <missing>` test proving validation fails before process-instance search paging or delete planning in `cmd/delete_test.go`
+- [x] T014 [P] [US1] Add valid visible selector with zero matching process instances tests preserving existing no-op/empty behavior in `cmd/cancel_test.go` and `cmd/delete_test.go`
+- [x] T015 [P] [US1] Add machine/non-interactive mode tests for `--json`, `--automation`, and key-only-equivalent output where applicable in `cmd/cancel_test.go` and `cmd/delete_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] Invoke shared BPMN selector validation before `processPISearchPagesWithAction` in the search-selected path of `cmd/cancel_processinstance.go`
-- [ ] T017 [US1] Invoke shared BPMN selector validation before `deleteProcessInstanceSearchPages` in the search-selected path of `cmd/delete_processinstance.go`
-- [ ] T018 [US1] Preserve keyed, stdin key, non-BPMN search, dry-run, auto-confirm, and valid `found: 0` behavior in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`
-- [ ] T019 [US1] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(Cancel|Delete).*Bpmn|Test(Cancel|Delete).*ProcessDefinitionSelector' -count=1` and fix regressions
+- [x] T016 [US1] Invoke shared BPMN selector validation before `processPISearchPagesWithAction` in the search-selected path of `cmd/cancel_processinstance.go`
+- [x] T017 [US1] Invoke shared BPMN selector validation before `deleteProcessInstanceSearchPages` in the search-selected path of `cmd/delete_processinstance.go`
+- [x] T018 [US1] Preserve keyed, stdin key, non-BPMN search, dry-run, auto-confirm, and valid `found: 0` behavior in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`
+- [x] T019 [US1] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(Cancel|Delete).*Bpmn|Test(Cancel|Delete).*ProcessDefinitionSelector' -count=1` and fix regressions
 
 **Checkpoint**: User Story 1 is independently complete when direct mutating PI commands no longer turn missing BPMN selectors into successful no-ops.
 

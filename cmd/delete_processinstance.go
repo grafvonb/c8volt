@@ -72,6 +72,15 @@ var deleteProcessInstanceCmd = &cobra.Command{
 			if err := validatePISearchVersionSupport(cfg); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
+			if flagGetPIBpmnProcessID != "" {
+				result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newPIProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+				if err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
+				if !result.Valid() {
+					handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
+				}
+			}
 			searchFilterOpts := populatePISearchFilterOpts()
 			results, err := deleteProcessInstanceSearchPages(cmd, cli, cfg, searchFilterOpts)
 			if err != nil {
