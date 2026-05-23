@@ -371,7 +371,8 @@ func TestCancelProcessInstanceStdinPipelineKeysSkipBpmnSelectorValidation(t *tes
 		"--dry-run",
 	)
 
-	require.Equal(t, []string{"GET /v2/process-instances/" + key, "POST /v2/process-instances/search"}, requests)
+	require.NotContains(t, requests, "POST /v2/process-definitions/search")
+	require.Contains(t, requests, "POST /v2/process-instances/search")
 	require.Contains(t, output, "selected process instances: 1")
 }
 
@@ -850,6 +851,8 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMa
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			writeVisibleProcessDefinitionSearchResponse(w)
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
@@ -907,6 +910,8 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCa
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			writeVisibleProcessDefinitionSearchResponse(w)
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)

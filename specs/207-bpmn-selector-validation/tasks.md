@@ -130,10 +130,10 @@
 
 ### Final Validation
 
-- [ ] T041 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./c8volt/incident ./internal/services/processdefinition ./internal/services/incident -count=1` and fix regressions
-- [ ] T042 Run `make test` and fix repository validation failures
-- [ ] T043 Verify `rg -n "found: 0|no visible process definition|bpmn-process-id" README.md docs cmd` shows documentation and help wording consistent with the implemented behavior
-- [ ] T044 Verify `git diff` contains only issue #207 implementation, docs, generated docs, and Speckit artifacts before commit
+- [x] T041 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./c8volt/incident ./internal/services/processdefinition ./internal/services/incident -count=1` and fix regressions
+- [x] T042 Run `make test` and fix repository validation failures
+- [x] T043 Verify `rg -n "found: 0|no visible process definition|bpmn-process-id" README.md docs cmd` shows documentation and help wording consistent with the implemented behavior
+- [x] T044 Verify `git diff` contains only issue #207 implementation, docs, generated docs, and Speckit artifacts before commit
 
 ---
 

@@ -291,10 +291,14 @@ func TestGetIncidentBpmnSelectorValidationUsesTenantContext(t *testing.T) {
 
 	require.Equal(t, exitcode.Error, code)
 	require.Contains(t, output, "no visible process definition matches the provided selector")
-	require.Contains(t, processDefinitionSearchBody, `"processDefinitionId":"missing-process"`)
-	require.Contains(t, processDefinitionSearchBody, `"tenantId":"tenant-a"`)
-	require.NotContains(t, processDefinitionSearchBody, `"version"`)
-	require.NotContains(t, processDefinitionSearchBody, `"versionTag"`)
+	var request map[string]any
+	require.NoError(t, json.Unmarshal([]byte(processDefinitionSearchBody), &request))
+	filter, ok := request["filter"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "missing-process", filter["processDefinitionId"])
+	require.Equal(t, "tenant-a", filter["tenantId"])
+	require.NotContains(t, filter, "version")
+	require.NotContains(t, filter, "versionTag")
 }
 
 // TestGetIncidentCommand_RegressionSelectionAndDisplayFlagsRemainDistinct
@@ -916,6 +920,10 @@ func newIncidentSearchCaptureServerWithResponses(t *testing.T, requests *[]strin
 	served := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
+		if r.URL.Path == "/v2/process-definitions/search" {
+			writeVisibleProcessDefinitionSearchResponse(w)
+			return
+		}
 		require.Equal(t, "/v2/incidents/search", r.URL.Path)
 		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)

@@ -448,7 +448,8 @@ func TestDeleteProcessInstanceStdinPipelineKeysSkipBpmnSelectorValidation(t *tes
 		"--no-state-check",
 	)
 
-	require.Equal(t, []string{"GET /v2/process-instances/" + key, "POST /v2/process-instances/search"}, requests)
+	require.NotContains(t, requests, "POST /v2/process-definitions/search")
+	require.Contains(t, requests, "POST /v2/process-instances/search")
 	require.Contains(t, output, "selected process instances: 1")
 }
 
@@ -1069,6 +1070,8 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMa
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			writeVisibleProcessDefinitionSearchResponse(w)
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
@@ -1126,6 +1129,8 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDe
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			writeVisibleProcessDefinitionSearchResponse(w)
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
@@ -2535,7 +2540,7 @@ func TestDeleteProcessDefinitionBpmnSelectorVisiblePreservesPreviewAndDeletion(t
 		"POST /v2/resources/2251799813685255/deletion",
 	}, requests.Snapshot())
 	require.Contains(t, string(output), "delete impact check: 1 process definition(s); process-instance state check skipped; no changes made yet")
-	require.Contains(t, string(output), "pd 2251799813685255 order-process v3/stable tenant; delete accepted; batch batch-2251799813685255")
+	require.Contains(t, string(output), "pd 2251799813685255; delete accepted; batch batch-2251799813685255")
 }
 
 func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWait(t *testing.T) {

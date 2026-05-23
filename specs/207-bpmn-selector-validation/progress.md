@@ -5,6 +5,10 @@ Started: 2026-05-23 16:18:50
 
 ## Codebase Patterns
 
+- Full `make test` runs `go test ./... -race -count=1`; direct-BPMN command tests that use subprocess helpers need selector preflight fixtures even when narrower non-race package gates pass.
+- Tests for stdin-key `cancel pi -` and `delete pi -` should assert no `/v2/process-definitions/search` request rather than an exact process-instance GET count, because dry-run impact planning may fetch keyed process instances more than once.
+- Incident selector-validation request assertions should parse the JSON request filter; string checks for `"version"` can accidentally match sort fields instead of process-definition version filters.
+- `delete pd --bpmn-process-id ... --no-state-check --no-wait` uses a key-only delete impact plan, so the accepted delete log line contains the process-definition key without name/version/tenant details.
 - `get pi` already validates direct `--bpmn-process-id` selectors before process-instance totals/paging with `validateProcessDefinitionSelectors`, `newPIProcessDefinitionSelectorValidationRequest`, and `handleProcessDefinitionSelectorValidationError`.
 - `run pi` already validates one or more direct BPMN IDs before creation; latest mode is used unless `--pd-version` selects an exact process-definition version.
 - Shared PI selector flags live in `cmd/get_processinstance_filtering.go`; `cancel pi` and `delete pi` reuse those globals, so single-selector helper additions can target the same flag set.
@@ -184,4 +188,25 @@ Started: 2026-05-23 16:18:50
 - `get pi --bpmn-process-id <missing> --keys-only` fails during process-definition selector preflight before any process-instance search or key output.
 - Stdin-key `cancel pi -` and `delete pi -` dry-run paths read keys and perform keyed impact planning without calling process-definition search.
 - Generated `docs/index.md` may include unrelated command-map formatting churn from the current docs generator; the aligned selector wording still lands in the expected README, CLI, and ops docs surfaces.
+---
+---
+## Iteration 7 - 2026-05-23 17:03:09 CEST
+**User Story**: Final Validation
+**Tasks Completed**:
+- [x] T041: Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./c8volt/incident ./internal/services/processdefinition ./internal/services/incident -count=1` and fix regressions
+- [x] T042: Run `make test` and fix repository validation failures
+- [x] T043: Verify `rg -n "found: 0|no visible process definition|bpmn-process-id" README.md docs cmd` shows documentation and help wording consistent with the implemented behavior
+- [x] T044: Verify `git diff` contains only issue #207 implementation, docs, generated docs, and Speckit artifacts before commit
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cancel_test.go
+- cmd/delete_test.go
+- cmd/get_incident_test.go
+- specs/207-bpmn-selector-validation/tasks.md
+- specs/207-bpmn-selector-validation/progress.md
+**Learnings**:
+- The broader race-mode gate caught stale test expectations that targeted non-race package validation missed.
+- Direct-BPMN search fixtures for cancel, delete, and incident tests must allow the visible process-definition preflight before asserting resource search behavior.
+- The documentation/help wording search is consistent with the implemented missing-selector behavior for the aligned commands.
 ---
