@@ -98,16 +98,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T028 [P] [US3] Add `get pd --bpmn-process-id <missing>` test for explicit missing-selector behavior in `cmd/get_processdefinition_test.go`
-- [ ] T029 [P] [US3] Add `delete pd --bpmn-process-id <missing>` test proving failure before delete impact planning in `cmd/delete_test.go`
-- [ ] T030 [P] [US3] Add valid visible selector tests preserving existing `get pd` listing and `delete pd` preview/confirmation behavior in `cmd/get_processdefinition_test.go` and `cmd/delete_test.go`
+- [x] T028 [P] [US3] Add `get pd --bpmn-process-id <missing>` test for explicit missing-selector behavior in `cmd/get_processdefinition_test.go`
+- [x] T029 [P] [US3] Add `delete pd --bpmn-process-id <missing>` test proving failure before delete impact planning in `cmd/delete_test.go`
+- [x] T030 [P] [US3] Add valid visible selector tests preserving existing `get pd` listing and `delete pd` preview/confirmation behavior in `cmd/get_processdefinition_test.go` and `cmd/delete_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] Align direct BPMN search misses in `runSearchProcessDefinitions` with the explicit selector diagnostic when `flagGetPDBpmnProcessId` is set in `cmd/get_processdefinition.go`
-- [ ] T032 [US3] Align direct BPMN delete misses before impact planning when `flagDeletePDBpmnProcessId` is set in `cmd/delete_processdefinition.go`
-- [ ] T033 [US3] Preserve broad `get pd`, keyed `get pd`, keyed/stdin `delete pd`, `--latest`, version, tag, and XML compatibility behavior in `cmd/get_processdefinition.go` and `cmd/delete_processdefinition.go`
-- [ ] T034 [US3] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(Get|Delete)ProcessDefinition.*(Bpmn|Selector|Missing|Latest)' -count=1` and fix regressions
+- [x] T031 [US3] Align direct BPMN search misses in `runSearchProcessDefinitions` with the explicit selector diagnostic when `flagGetPDBpmnProcessId` is set in `cmd/get_processdefinition.go`
+- [x] T032 [US3] Align direct BPMN delete misses before impact planning when `flagDeletePDBpmnProcessId` is set in `cmd/delete_processdefinition.go`
+- [x] T033 [US3] Preserve broad `get pd`, keyed `get pd`, keyed/stdin `delete pd`, `--latest`, version, tag, and XML compatibility behavior in `cmd/get_processdefinition.go` and `cmd/delete_processdefinition.go`
+- [x] T034 [US3] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(Get|Delete)ProcessDefinition.*(Bpmn|Selector|Missing|Latest)' -count=1` and fix regressions
 
 **Checkpoint**: User Story 3 is independently complete when direct process-definition commands have tested missing BPMN selector semantics.
 

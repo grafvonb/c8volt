@@ -62,16 +62,29 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		switch {
 		case len(keys) > 0:
 		default:
-			filter := process.ProcessDefinitionFilter{
-				BpmnProcessId:     flagDeletePDBpmnProcessId,
-				ProcessVersion:    flagDeletePDProcessVersion,
-				ProcessVersionTag: flagDeletePDProcessVersionTag,
-			}
 			var pds process.ProcessDefinitions
-			if !flagDeletePDLatest {
-				pds, err = cli.SearchProcessDefinitions(cmd.Context(), filter)
+			if flagDeletePDBpmnProcessId != "" {
+				result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newDeletePDProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+				if err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
+				if !result.Valid() {
+					handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
+				}
+				if len(result.Request.BpmnProcessIds) > 0 {
+					pds = result.MatchesByBpmnProcessID[result.Request.BpmnProcessIds[0]]
+				}
 			} else {
-				pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter)
+				filter := process.ProcessDefinitionFilter{
+					BpmnProcessId:     flagDeletePDBpmnProcessId,
+					ProcessVersion:    flagDeletePDProcessVersion,
+					ProcessVersionTag: flagDeletePDProcessVersionTag,
+				}
+				if flagDeletePDLatest {
+					pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter)
+				} else {
+					pds, err = cli.SearchProcessDefinitions(cmd.Context(), filter)
+				}
 			}
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("searching for process definitions to delete: %w", err))

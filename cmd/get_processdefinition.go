@@ -95,7 +95,18 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 		pds process.ProcessDefinitions
 		err error
 	)
-	if !flagGetPDLatest {
+	if filter.BpmnProcessId != "" {
+		result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newGetPDProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+		if err != nil {
+			ferrors.HandleAndExit(log, noErrCodes, err)
+		}
+		if !result.Valid() {
+			handleProcessDefinitionSelectorValidationError(cmd, log, noErrCodes, cli, result)
+		}
+		if len(result.Request.BpmnProcessIds) > 0 {
+			pds = result.MatchesByBpmnProcessID[result.Request.BpmnProcessIds[0]]
+		}
+	} else if !flagGetPDLatest {
 		pds, err = cli.SearchProcessDefinitions(cmd.Context(), filter, collectOptions()...)
 	} else {
 		pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter, collectOptions()...)

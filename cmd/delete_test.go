@@ -2425,13 +2425,82 @@ apis:
 		"C8VOLT_TEST_CONFIG": cfgPath,
 	})
 	require.Error(t, err)
-	require.Contains(t, string(output), "no process definitions found to delete")
+	require.Contains(t, string(output), "no visible process definition matches the provided selector")
+	require.Contains(t, string(output), "[order-process]")
 
 	body := decodeSingleRequestJSON(t, requests)
 	filter, ok := body["filter"].(map[string]any)
 	require.True(t, ok, "expected search request filter object")
 	require.Equal(t, "tenant-a", filter["tenantId"])
 	require.Equal(t, true, filter["isLatestVersion"])
+}
+
+func TestDeleteProcessDefinitionBpmnSelectorMissingFailsBeforeImpactPlanning(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			writeEmptyProcessDefinitionSearchResponse(w)
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-definitions/"):
+			t.Fatal("unexpected process-definition lookup before selector validation")
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			t.Fatal("unexpected delete impact planning before selector validation")
+		case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v2/resources/"):
+			t.Fatal("unexpected resource deletion before selector validation")
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+	output, err := testx.RunCmdSubprocess(t, "TestDeleteProcessDefinitionBpmnSelectorMissingFailsBeforeImpactPlanningHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Equal(t, []string{"POST /v2/process-definitions/search"}, requests)
+	require.Contains(t, string(output), "no visible process definition matches the provided selector")
+	require.Contains(t, string(output), "[missing-process]")
+	require.NotContains(t, string(output), "no process definitions found to delete")
+}
+
+func TestDeleteProcessDefinitionBpmnSelectorVisiblePreservesPreviewAndDeletion(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			requests.Append(r.Method + " " + r.URL.Path)
+			_, _ = w.Write([]byte(`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"order-process","name":"Order Process","version":3,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-definitions/2251799813685255":
+			requests.Append(r.Method + " " + r.URL.Path)
+			_, _ = w.Write([]byte(`{"processDefinitionKey":"2251799813685255","processDefinitionId":"order-process","name":"Order Process","version":3,"tenantId":"tenant","versionTag":"stable"}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/resources/2251799813685255/deletion":
+			requests.Append(r.Method + " " + r.URL.Path)
+			_, _ = w.Write([]byte(`{"resourceKey":"2251799813685255","batchOperation":{"batchOperationKey":"batch-2251799813685255","batchOperationType":"DELETE_PROCESS_DEFINITION"}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+	output, err := testx.RunCmdSubprocess(t, "TestDeleteProcessDefinitionBpmnSelectorVisiblePreservesPreviewAndDeletionHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+
+	require.NoError(t, err, string(output))
+	require.Equal(t, []string{
+		"POST /v2/process-definitions/search",
+		"POST /v2/resources/2251799813685255/deletion",
+	}, requests.Snapshot())
+	require.Contains(t, string(output), "delete impact check: 1 process definition(s); process-instance state check skipped; no changes made yet")
+	require.Contains(t, string(output), "pd 2251799813685255 order-process v3/stable tenant; delete accepted; batch batch-2251799813685255")
 }
 
 func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWait(t *testing.T) {
@@ -2828,6 +2897,50 @@ func TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenantHelper(t 
 
 	root := Root()
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant-a", "delete", "process-definition", "--bpmn-process-id", "order-process", "--latest", "--auto-confirm", "--no-wait"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestDeleteProcessDefinitionBpmnSelectorMissingFailsBeforeImpactPlanningHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"delete", "process-definition",
+		"--bpmn-process-id", "missing-process",
+		"--auto-confirm",
+		"--no-state-check",
+		"--no-wait",
+	})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestDeleteProcessDefinitionBpmnSelectorVisiblePreservesPreviewAndDeletionHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"delete", "process-definition",
+		"--bpmn-process-id", "order-process",
+		"--pd-version", "3",
+		"--pd-version-tag", "stable",
+		"--auto-confirm",
+		"--no-state-check",
+		"--no-wait",
+	})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
