@@ -74,17 +74,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T020 [P] [US2] Add `get incident --bpmn-process-id <missing>` test proving validation fails before incident search paging in `cmd/get_incident_test.go`
-- [ ] T021 [P] [US2] Add visible selector with zero matching incidents test preserving empty incident output in `cmd/get_incident_test.go`
-- [ ] T022 [P] [US2] Add `--total`, `--keys-only`, `--pi-keys-only`, `--json`, and `--automation` no-prompt validation tests where compatible in `cmd/get_incident_test.go`
-- [ ] T023 [P] [US2] Add version/tag/tenant selector context coverage for incident BPMN validation in `cmd/get_incident_test.go` or `cmd/process_definition_selector_validation_test.go`
+- [x] T020 [P] [US2] Add `get incident --bpmn-process-id <missing>` test proving validation fails before incident search paging in `cmd/get_incident_test.go`
+- [x] T021 [P] [US2] Add visible selector with zero matching incidents test preserving empty incident output in `cmd/get_incident_test.go`
+- [x] T022 [P] [US2] Add `--total`, `--keys-only`, `--pi-keys-only`, `--json`, and `--automation` no-prompt validation tests where compatible in `cmd/get_incident_test.go`
+- [x] T023 [P] [US2] Add version/tag/tenant selector context coverage for incident BPMN validation in `cmd/get_incident_test.go` or `cmd/process_definition_selector_validation_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T024 [US2] Build and invoke shared BPMN selector validation before `searchIncidentsTotal` and `searchIncidentsWithPaging` when `flagGetIncidentBpmnProcessID` is set in `cmd/get_incident.go`
-- [ ] T025 [US2] Preserve keyed incident mode, `--pd-key`, non-BPMN incident filters, paging continuation, totals, and key-only rendering in `cmd/get_incident.go` and `cmd/get_incident_search.go`
-- [ ] T026 [US2] Update `get incident` help text to describe BPMN selector validation without changing unrelated incident examples in `cmd/get_incident.go`
-- [ ] T027 [US2] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetIncident.*(Bpmn|Selector|Total|KeysOnly|Automation|JSON)' -count=1` and fix regressions
+- [x] T024 [US2] Build and invoke shared BPMN selector validation before `searchIncidentsTotal` and `searchIncidentsWithPaging` when `flagGetIncidentBpmnProcessID` is set in `cmd/get_incident.go`
+- [x] T025 [US2] Preserve keyed incident mode, `--pd-key`, non-BPMN incident filters, paging continuation, totals, and key-only rendering in `cmd/get_incident.go` and `cmd/get_incident_search.go`
+- [x] T026 [US2] Update `get incident` help text to describe BPMN selector validation without changing unrelated incident examples in `cmd/get_incident.go`
+- [x] T027 [US2] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetIncident.*(Bpmn|Selector|Total|KeysOnly|Automation|JSON)' -count=1` and fix regressions
 
 **Checkpoint**: User Story 2 is independently complete when incident search distinguishes missing BPMN selectors from legitimate empty incident results.
 

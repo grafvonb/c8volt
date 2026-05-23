@@ -19,6 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testGetIncidentArgsEnv = "C8VOLT_TEST_GET_INCIDENT_ARGS"
+
 func TestGetIncidentCommand_KeyedLookupDeduplicatesFlagAndStdinKeys(t *testing.T) {
 	var requests []string
 	srv := newIncidentLookupServer(t, &requests, map[string]string{
@@ -161,6 +163,138 @@ func TestGetIncidentCommand_SearchPIKeysOnlyOutputUsesProcessInstanceKeys(t *tes
 
 	require.Len(t, requests, 1)
 	require.Equal(t, "2251799813711972\n2251799813711972\n", output)
+}
+
+func TestGetIncidentBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		switch r.URL.Path {
+		case "/v2/process-definitions/search":
+			writeEmptyProcessDefinitionSearchResponse(w)
+		case "/v2/incidents/search":
+			t.Fatal("unexpected incident search before selector validation")
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output, code := executeGetIncidentFailureHelper(t, cfgPath,
+		"get", "incident",
+		"--state", "active",
+		"--bpmn-process-id", "missing-process",
+	)
+
+	require.Equal(t, exitcode.Error, code)
+	require.Equal(t, []string{"POST /v2/process-definitions/search"}, requests)
+	require.Contains(t, output, "no visible process definition matches the provided selector")
+	require.Contains(t, output, "[missing-process]")
+	require.NotContains(t, output, "found: 0")
+}
+
+func TestGetIncidentBpmnSelectorVisiblePreservesEmptyOutput(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-definitions/search":
+			writeVisibleProcessDefinitionSearchResponse(w)
+		case "/v2/incidents/search":
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--state", "active",
+		"--bpmn-process-id", "order-process",
+	)
+
+	require.Equal(t, []string{"POST /v2/process-definitions/search", "POST /v2/incidents/search"}, requests)
+	require.Equal(t, "found: 0\n", output)
+}
+
+func TestGetIncidentBpmnSelectorMissingNoPromptModes(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "total", args: []string{"get", "incident", "--bpmn-process-id", "missing-process", "--total"}},
+		{name: "keys only", args: []string{"--keys-only", "get", "incident", "--bpmn-process-id", "missing-process"}},
+		{name: "pi keys only", args: []string{"get", "incident", "--bpmn-process-id", "missing-process", "--pi-keys-only"}},
+		{name: "json", args: []string{"--json", "get", "incident", "--bpmn-process-id", "missing-process"}},
+		{name: "automation", args: []string{"--automation", "get", "incident", "--bpmn-process-id", "missing-process"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests = append(requests, r.Method+" "+r.URL.Path)
+				require.Equal(t, http.MethodPost, r.Method)
+				switch r.URL.Path {
+				case "/v2/process-definitions/search":
+					writeEmptyProcessDefinitionSearchResponse(w)
+				case "/v2/incidents/search":
+					t.Fatal("unexpected incident search before selector validation")
+				default:
+					t.Fatalf("unexpected request path: %s", r.URL.Path)
+				}
+			}))
+			t.Cleanup(srv.Close)
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+			output, code := executeGetIncidentFailureHelper(t, cfgPath, tt.args...)
+
+			require.Equal(t, exitcode.Error, code)
+			require.Equal(t, []string{"POST /v2/process-definitions/search"}, requests)
+			require.Contains(t, output, "no visible process definition matches the provided selector")
+			require.NotContains(t, output, "List visible process definitions?")
+		})
+	}
+}
+
+func TestGetIncidentBpmnSelectorValidationUsesTenantContext(t *testing.T) {
+	var processDefinitionSearchBody string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		switch r.URL.Path {
+		case "/v2/process-definitions/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			processDefinitionSearchBody = string(body)
+			writeEmptyProcessDefinitionSearchResponse(w)
+		case "/v2/incidents/search":
+			t.Fatal("unexpected incident search before selector validation")
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output, code := executeGetIncidentFailureHelper(t, cfgPath,
+		"--tenant", "tenant-a",
+		"get", "incident",
+		"--bpmn-process-id", "missing-process",
+	)
+
+	require.Equal(t, exitcode.Error, code)
+	require.Contains(t, output, "no visible process definition matches the provided selector")
+	require.Contains(t, processDefinitionSearchBody, `"processDefinitionId":"missing-process"`)
+	require.Contains(t, processDefinitionSearchBody, `"tenantId":"tenant-a"`)
+	require.NotContains(t, processDefinitionSearchBody, `"version"`)
+	require.NotContains(t, processDefinitionSearchBody, `"versionTag"`)
 }
 
 // TestGetIncidentCommand_RegressionSelectionAndDisplayFlagsRemainDistinct
@@ -860,6 +994,38 @@ func executeRootExpectErrorForIncidentTest(t *testing.T, args ...string) (string
 
 	_, err := root.ExecuteC()
 	return buf.String(), err
+}
+
+func executeGetIncidentFailureHelper(t *testing.T, cfgPath string, args ...string) (string, int) {
+	t.Helper()
+
+	argsJSON, err := json.Marshal(args)
+	require.NoError(t, err)
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetIncidentCommand_HelperProcess", map[string]string{
+		"C8VOLT_TEST_CONFIG":   cfgPath,
+		testGetIncidentArgsEnv: string(argsJSON),
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	return string(output), exitErr.ExitCode()
+}
+
+func TestGetIncidentCommand_HelperProcess(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	var args []string
+	require.NoError(t, json.Unmarshal([]byte(os.Getenv(testGetIncidentArgsEnv)), &args))
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = append([]string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG")}, args...)
+
+	Execute()
 }
 
 func strconvQuote(value string) string {

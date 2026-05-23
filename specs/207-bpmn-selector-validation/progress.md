@@ -17,6 +17,8 @@ Started: 2026-05-23 16:18:50
 - `stubProcessAPI` can now install incident paging callbacks and reusable failing page-search guards for command tests that need to prove selector validation happens before process-instance or incident paging.
 - `cancel pi` and `delete pi` now validate direct BPMN selectors after PI search flag/version checks and before process-instance paging, preserving keyed/stdin-key flows and valid empty search results after a visible selector preflight.
 - Process-instance command tests share visible and empty process-definition search fixtures so BPMN selector preflight behavior can be asserted without duplicating response JSON.
+- `get incident` search mode now validates a direct BPMN selector before both `searchIncidentsTotal` and `searchIncidentsWithPaging`; keyed incident mode and `--pd-key` filtering remain outside this BPMN preflight.
+- Incident BPMN selector validation has tenant-context coverage through the global `--tenant` option; `get incident` does not expose process-definition version or version-tag selector flags, so those fields remain intentionally absent from its selector request.
 
 ---
 ## Iteration 1 - 2026-05-23 16:20:13 CEST
@@ -87,4 +89,28 @@ Started: 2026-05-23 16:18:50
 - Missing direct BPMN selectors for `cancel pi` and `delete pi` now fail on the process-definition preflight and never reach process-instance page search.
 - Valid visible BPMN selectors still proceed to process-instance search and keep the existing `found: 0` no-op output when no runtime instances match.
 - `--json` and `--automation` selector failures return the shared diagnostic without recovery prompts.
+---
+---
+## Iteration 4 - 2026-05-23 16:38:46 CEST
+**User Story**: User Story 2 - Validate incident searches by BPMN selector
+**Tasks Completed**:
+- [x] T020: Add `get incident --bpmn-process-id <missing>` test proving validation fails before incident search paging in `cmd/get_incident_test.go`
+- [x] T021: Add visible selector with zero matching incidents test preserving empty incident output in `cmd/get_incident_test.go`
+- [x] T022: Add `--total`, `--keys-only`, `--pi-keys-only`, `--json`, and `--automation` no-prompt validation tests where compatible in `cmd/get_incident_test.go`
+- [x] T023: Add version/tag/tenant selector context coverage for incident BPMN validation in `cmd/get_incident_test.go`
+- [x] T024: Build and invoke shared BPMN selector validation before `searchIncidentsTotal` and `searchIncidentsWithPaging` when `flagGetIncidentBpmnProcessID` is set in `cmd/get_incident.go`
+- [x] T025: Preserve keyed incident mode, `--pd-key`, non-BPMN incident filters, paging continuation, totals, and key-only rendering in `cmd/get_incident.go` and `cmd/get_incident_search.go`
+- [x] T026: Update `get incident` help text to describe BPMN selector validation without changing unrelated incident examples in `cmd/get_incident.go`
+- [x] T027: Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetIncident.*(Bpmn|Selector|Total|KeysOnly|Automation|JSON)' -count=1` and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_incident.go
+- cmd/get_incident_test.go
+- specs/207-bpmn-selector-validation/tasks.md
+- specs/207-bpmn-selector-validation/progress.md
+**Learnings**:
+- `get incident` can reuse the shared process-definition selector validator because the root CLI API embeds both incident and process APIs.
+- The validation must sit after keyed-mode handling and immediately before incident search totals/paging so keyed lookup, stdin keys, `--pd-key`, and other non-BPMN filters keep their existing behavior.
+- The sandbox reports localhost listener tests as skipped, but both the required US2 target and the broader `TestGetIncident` selection compile and pass in this environment.
 ---
