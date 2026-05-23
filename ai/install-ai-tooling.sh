@@ -120,7 +120,7 @@ append_tree_files_if_present() {
 
 is_manifest_excluded_path() {
     case "$1" in
-        ai/ai-tooling-source|ai/installed-ai-tooling-manifest.txt|ai/installed-ai-tooling-version|.specify/extensions/*/*-config.yml|.specify/extensions/*/local-config.yml|.specify/extensions/*/*.local.yml)
+        ai/ai-tooling-source|ai/installed-ai-tooling-manifest.txt|ai/installed-ai-tooling-version|.specify/extensions/*/*-config.yml|.specify/extensions/*/config.yml|.specify/extensions/*/local-config.yml|.specify/extensions/*/*.local.yml)
             return 0
             ;;
         *)
