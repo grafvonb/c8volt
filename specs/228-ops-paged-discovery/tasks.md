@@ -75,20 +75,20 @@
 
 ### Tests for User Story 2
 
-- [ ] T024 [P] [US2] Add multi-page repair incident service test in `internal/services/ops/repair_test.go`
-- [ ] T025 [P] [US2] Add multi-page repair process-instance service test in `internal/services/ops/repair_test.go`
-- [ ] T026 [P] [US2] Add repair `--limit` service tests for incident and process-instance search modes in `internal/services/ops/repair_test.go`
-- [ ] T027 [P] [US2] Add frozen-scope reuse or no-second-discovery command test in `cmd/ops_repair_incident_test.go`
-- [ ] T028 [P] [US2] Add frozen-scope reuse or no-second-discovery command test in `cmd/ops_repair_processinstance_test.go`
+- [x] T024 [P] [US2] Add multi-page repair incident service test in `internal/services/ops/repair_test.go`
+- [x] T025 [P] [US2] Add multi-page repair process-instance service test in `internal/services/ops/repair_test.go`
+- [x] T026 [P] [US2] Add repair `--limit` service tests for incident and process-instance search modes in `internal/services/ops/repair_test.go`
+- [x] T027 [P] [US2] Add frozen-scope reuse or no-second-discovery command test in `cmd/ops_repair_incident_test.go`
+- [x] T028 [P] [US2] Add frozen-scope reuse or no-second-discovery command test in `cmd/ops_repair_processinstance_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T029 [US2] Replace single incident repair search with complete-by-default paged discovery in `internal/services/ops/repair.go`
-- [ ] T030 [US2] Replace single process-instance repair search with complete-by-default paged discovery in `internal/services/ops/repair.go`
-- [ ] T031 [US2] Populate repair frozen-set completeness and user-limited status in `internal/services/ops/repair.go`
-- [ ] T032 [US2] Update repair human, JSON, and Markdown report rendering for discovery status in `cmd/cmd_views_ops_repair.go`
-- [ ] T033 [US2] Run `go test ./internal/services/ops -run 'Test.*Repair' -count=1`
-- [ ] T034 [US2] Run `go test ./cmd -run 'TestOpsRepair(Incident|ProcessInstance)' -count=1`
+- [x] T029 [US2] Replace single incident repair search with complete-by-default paged discovery in `internal/services/ops/repair.go`
+- [x] T030 [US2] Replace single process-instance repair search with complete-by-default paged discovery in `internal/services/ops/repair.go`
+- [x] T031 [US2] Populate repair frozen-set completeness and user-limited status in `internal/services/ops/repair.go`
+- [x] T032 [US2] Update repair human, JSON, and Markdown report rendering for discovery status in `cmd/cmd_views_ops_repair.go`
+- [x] T033 [US2] Run `go test ./internal/services/ops -run 'Test.*Repair' -count=1`
+- [x] T034 [US2] Run `go test ./cmd -run 'TestOpsRepair(Incident|ProcessInstance)' -count=1`
 
 **Checkpoint**: User Stories 1 and 2 work independently.
 

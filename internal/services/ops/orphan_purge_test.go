@@ -310,10 +310,14 @@ func (s stubProcessInstanceAPI) SearchForProcessInstances(ctx context.Context, f
 }
 
 func (s stubProcessInstanceAPI) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
-	if s.searchPage == nil {
+	if s.searchPage != nil {
+		return s.searchPage(ctx, filter, page, opts...)
+	}
+	if s.search == nil {
 		panic("unexpected search")
 	}
-	return s.searchPage(ctx, filter, page, opts...)
+	items, err := s.search(ctx, filter, page.Size, opts...)
+	return d.ProcessInstancePage{Items: items, Request: page, OverflowState: d.ProcessInstanceOverflowStateNoMore}, err
 }
 
 func (s stubProcessInstanceAPI) FilterProcessInstanceWithOrphanParent(ctx context.Context, items []d.ProcessInstance, opts ...services.CallOption) ([]d.ProcessInstance, error) {

@@ -242,6 +242,7 @@ func TestOpsRepairIncidentSearchPreflightsBeforeMutation(t *testing.T) {
 
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "repair incidents")
+	requireRequestCount(t, requests.Snapshot(), "POST /v2/incidents/search", 1)
 	requireRequestBefore(t, requests.Snapshot(), "POST /v2/incidents/search", "GET /v2/incidents/2251799813685249")
 	requireRequestBefore(t, requests.Snapshot(), "GET /v2/incidents/2251799813685249", "POST /v2/incidents/2251799813685249/resolution")
 }
@@ -451,4 +452,16 @@ func requireRequestBefore(t *testing.T, requests []string, before string, after 
 	require.NotEqual(t, -1, beforeIndex, "missing request containing %q in %v", before, requests)
 	require.NotEqual(t, -1, afterIndex, "missing request containing %q in %v", after, requests)
 	require.Less(t, beforeIndex, afterIndex, "%q should happen before %q", before, after)
+}
+
+// requireRequestCount verifies preflight discovery is not repeated after confirmation.
+func requireRequestCount(t *testing.T, requests []string, contains string, want int) {
+	t.Helper()
+	got := 0
+	for _, request := range requests {
+		if strings.Contains(request, contains) {
+			got++
+		}
+	}
+	require.Equal(t, want, got, "request count for %q in %v", contains, requests)
 }

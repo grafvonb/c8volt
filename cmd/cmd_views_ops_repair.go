@@ -29,6 +29,7 @@ func renderOpsRepairIncidentResult(cmd *cobra.Command, result ops.RepairResult) 
 		renderHumanLine(cmd, "selection filters: %s", result.FrozenSet.IncidentFilters.String())
 	}
 	renderHumanLine(cmd, "candidate incidents: %d", len(result.FrozenSet.IncidentKeys))
+	renderOpsRepairDiscoveryStatus(cmd, result.FrozenSet.DiscoveryScopeStatus)
 	if len(result.FrozenSet.VariableScopes) > 0 || len(result.VariableUpdates) > 0 {
 		renderHumanLine(cmd, "variable scopes: %d", countOpsRepairVariableScopes(result))
 	}
@@ -83,6 +84,7 @@ func renderOpsRepairProcessInstanceResult(cmd *cobra.Command, result ops.RepairR
 	}
 	renderHumanLine(cmd, "candidate process instances: %d", len(result.FrozenSet.ProcessInstanceKeys))
 	renderHumanLine(cmd, "active incidents: %d", len(result.FrozenSet.IncidentKeys))
+	renderOpsRepairDiscoveryStatus(cmd, result.FrozenSet.DiscoveryScopeStatus)
 	if len(result.FrozenSet.SkippedProcessInstanceKeys) > 0 {
 		renderHumanLine(cmd, "process instances without active incidents: %d", len(result.FrozenSet.SkippedProcessInstanceKeys))
 	}
@@ -125,6 +127,16 @@ func renderOpsRepairProcessInstanceResult(cmd *cobra.Command, result ops.RepairR
 		return fmt.Errorf("%s", result.Errors[0])
 	}
 	return nil
+}
+
+func renderOpsRepairDiscoveryStatus(cmd *cobra.Command, status ops.DiscoveryScopeStatus) {
+	if status.Limited {
+		renderHumanLine(cmd, "discovery user-limited: limit %d; pages %d; batch size %d", status.Limit, status.Pages, status.BatchSize)
+		return
+	}
+	if status.Complete {
+		renderHumanLine(cmd, "discovery complete: pages %d; batch size %d", status.Pages, status.BatchSize)
+	}
 }
 
 func countOpsRepairIncidentJobNotApplicable(items []ops.RepairPlanItem) int {
@@ -328,6 +340,12 @@ func renderOpsRepairMarkdownReport(report ops.RepairAuditReport, cfg *config.Con
 
 	out.WriteString("\n## Fixed Targets\n\n")
 	writeMarkdownReportField(&out, "Status", string(report.FrozenSet.Status))
+	writeMarkdownReportField(&out, "Completeness", incidentPurgeDiscoveryCompletenessText(report.FrozenSet.DiscoveryScopeStatus))
+	writeMarkdownReportField(&out, "Discovery Limit", fmt.Sprintf("%d", report.FrozenSet.Limit))
+	writeMarkdownReportField(&out, "Discovery Batch Size", fmt.Sprintf("%d", report.FrozenSet.BatchSize))
+	writeMarkdownReportField(&out, "Discovery Pages", fmt.Sprintf("%d", report.FrozenSet.Pages))
+	writeMarkdownReportField(&out, "Discovery Candidates Seen", fmt.Sprintf("%d", report.FrozenSet.CandidatesSeen))
+	writeMarkdownReportField(&out, "Discovery Candidates Frozen", fmt.Sprintf("%d", report.FrozenSet.CandidatesFrozen))
 	writeMarkdownReportField(&out, "Target", string(report.FrozenSet.Target))
 	writeMarkdownReportField(&out, "Discovery Mode", string(report.FrozenSet.DiscoveryMode))
 	writeMarkdownReportField(&out, "Incident Filters", report.FrozenSet.IncidentFilters.String())

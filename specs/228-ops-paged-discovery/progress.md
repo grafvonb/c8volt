@@ -13,6 +13,9 @@ Started: 2026-05-24 12:31:13
 - Process-definition v8.8/v8.9 search already uses native `SearchQueryPageRequest` and `SearchQueryPageResponse`; page continuation should prefer `EndCursor` when a previous cursor is available and otherwise use offset/total metadata.
 - Process-definition v8.7 Operate search has no response cursor, so page support follows the existing v8.7 process-instance pattern: over-fetch up to `consts.MaxPISearchSize`, then trim a local offset window and classify overflow from `total`.
 - Incident purge confirmation should pass the planned discovery status alongside frozen process-instance keys; otherwise the final mutation run can avoid rediscovery but lose whether the approved scope was complete or user-limited.
+- Repair search-mode discovery records completeness on `OpsRepairFrozenSet`, and repair human/Markdown output should render from that frozen-set status rather than infer completeness from counts.
+- Repair confirmation already converts search preflight plans into keyed follow-up requests; command regression tests should assert the search endpoint is called once so mutation reuses the frozen scope.
+- Shared ops process-instance test stubs can route page requests through existing one-shot search callbacks when a test is not about pagination, keeping old repair and orphan tests focused.
 
 ---
 
@@ -104,4 +107,36 @@ Started: 2026-05-24 12:31:13
 - `SearchIncidentsPage` is the correct service boundary for incident purge full discovery; `SearchIncidents` remains useful for existing one-shot callers but cannot express complete-by-default paging.
 - The prescribed `go test ./internal/services/ops -run 'Test.*IncidentPurge' -count=1` command currently matches no test names, so `go test ./internal/services/ops -run 'TestPurgeProcessInstancesWithIncidents' -count=1` was also run as the effective service validation.
 - Human and Markdown discovery status can be rendered directly from the shared `DiscoveryScopeStatus`, while JSON receives the same fields through the existing facade result conversion.
+---
+
+---
+## Iteration 4 - 2026-05-24 13:01:35 CEST
+**User Story**: User Story 2 - Repair Workflows Discover All Matching Candidates
+**Tasks Completed**:
+- [x] T024: Add multi-page repair incident service test in `internal/services/ops/repair_test.go`
+- [x] T025: Add multi-page repair process-instance service test in `internal/services/ops/repair_test.go`
+- [x] T026: Add repair `--limit` service tests for incident and process-instance search modes in `internal/services/ops/repair_test.go`
+- [x] T027: Add frozen-scope reuse or no-second-discovery command test in `cmd/ops_repair_incident_test.go`
+- [x] T028: Add frozen-scope reuse or no-second-discovery command test in `cmd/ops_repair_processinstance_test.go`
+- [x] T029: Replace single incident repair search with complete-by-default paged discovery in `internal/services/ops/repair.go`
+- [x] T030: Replace single process-instance repair search with complete-by-default paged discovery in `internal/services/ops/repair.go`
+- [x] T031: Populate repair frozen-set completeness and user-limited status in `internal/services/ops/repair.go`
+- [x] T032: Update repair human, JSON, and Markdown report rendering for discovery status in `cmd/cmd_views_ops_repair.go`
+- [x] T033: Run `go test ./internal/services/ops -run 'Test.*Repair' -count=1`
+- [x] T034: Run `go test ./cmd -run 'TestOpsRepair(Incident|ProcessInstance)' -count=1`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_ops_repair.go
+- cmd/ops_repair_incident_test.go
+- cmd/ops_repair_processinstance_test.go
+- internal/services/ops/orphan_purge_test.go
+- internal/services/ops/repair.go
+- internal/services/ops/repair_test.go
+- specs/228-ops-paged-discovery/tasks.md
+- specs/228-ops-paged-discovery/progress.md
+**Learnings**:
+- Repair search paths should call `SearchIncidentsPage` and `SearchForProcessInstancesPage` directly so `--batch-size` remains page size and `--limit` is applied after cumulative frozen candidates.
+- Existing repair confirmation already avoids second discovery by converting a search preflight result into keyed incident or process-instance input; the command tests now count discovery requests to protect that contract.
+- `DiscoveryScopeStatus` on `OpsRepairFrozenSet` is the shared source for repair JSON, human, and Markdown discovery completeness output.
 ---

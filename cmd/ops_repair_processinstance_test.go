@@ -202,6 +202,7 @@ func TestOpsRepairProcessInstanceSearchPreflightsBeforeMutation(t *testing.T) {
 
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "repair process-instance incidents")
+	requireRequestCount(t, requests.Snapshot(), "POST /v2/process-instances/search", 1)
 	requireRequestBefore(t, requests.Snapshot(), "POST /v2/process-instances/search", "GET /v2/process-instances/2251799813685251")
 	requireRequestBefore(t, requests.Snapshot(), "GET /v2/process-instances/2251799813685251", "PATCH /v2/jobs/2251799813685252")
 }
