@@ -27,10 +27,10 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T005 Identify and record current local tenant mismatch checks or tenant-equality assumptions in `specs/156-tenant-admin-keys/progress.md`
-- [ ] T006 [P] Add or update shared test fixtures for tenant-a selected context with tenant-b returned metadata in `cmd/get_processinstance_test.go`
-- [ ] T007 [P] Add or update facade/service stubs for explicit tenant mismatch behavior in `c8volt/process/client_test.go` and `c8volt/resource/client_test.go`
-- [ ] T008 Verify no new c8volt-side authorization layer is needed and record the chosen repository-native path in `specs/156-tenant-admin-keys/progress.md`
+- [x] T005 Identify and record current local tenant mismatch checks or tenant-equality assumptions in `specs/156-tenant-admin-keys/progress.md`
+- [x] T006 [P] Add or update shared test fixtures for tenant-a selected context with tenant-b returned metadata in `cmd/get_processinstance_test.go`
+- [x] T007 [P] Add or update facade/service stubs for explicit tenant mismatch behavior in `c8volt/process/client_test.go` and `c8volt/resource/client_test.go`
+- [x] T008 Verify no new c8volt-side authorization layer is needed and record the chosen repository-native path in `specs/156-tenant-admin-keys/progress.md`
 
 **Checkpoint**: Audit notes and reusable test fixtures are ready for user story implementation.
 

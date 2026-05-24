@@ -4164,6 +4164,33 @@ func requireProcessInstanceVariableJSONPayload(t *testing.T, output string) map[
 	return requireJSONObject(t, envelope["payload"])
 }
 
+const (
+	tenantAdminKeysSelectedTenant       = "tenant-a"
+	tenantAdminKeysReturnedTenant       = "tenant-b"
+	tenantAdminKeysProcessInstanceKey   = "2251799813711967"
+	tenantAdminKeysProcessDefinitionKey = "9001"
+)
+
+// tenantAdminKeysMismatchProcessInstance returns the shared selected-tenant
+// mismatch fixture used by direct-key admin-input command tests.
+func tenantAdminKeysMismatchProcessInstance() process.ProcessInstance {
+	return process.ProcessInstance{
+		Key:                  tenantAdminKeysProcessInstanceKey,
+		TenantId:             tenantAdminKeysReturnedTenant,
+		BpmnProcessId:        "tenant-b-process",
+		ProcessDefinitionKey: tenantAdminKeysProcessDefinitionKey,
+		ProcessVersion:       3,
+		State:                process.StateActive,
+		StartDate:            "2026-03-23T18:00:00Z",
+	}
+}
+
+// tenantAdminKeysMismatchProcessInstanceJSON mirrors
+// tenantAdminKeysMismatchProcessInstance for fake Camunda v2 keyed responses.
+func tenantAdminKeysMismatchProcessInstanceJSON() string {
+	return `{"hasIncident":false,"processDefinitionId":"tenant-b-process","processDefinitionKey":"9001","processDefinitionName":"tenant-b-process","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-b"}`
+}
+
 // executeRootForProcessInstanceTest runs the root command with process-instance globals reset.
 func executeRootForProcessInstanceTest(t *testing.T, args ...string) string {
 	t.Helper()

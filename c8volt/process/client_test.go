@@ -1193,6 +1193,26 @@ func TestClient_LookupProcessInstanceStateByKey_MapsSearchBackedState(t *testing
 	assert.Equal(t, StateCompleted, pi.State)
 }
 
+const (
+	tenantAdminKeysSelectedTenant       = "tenant-a"
+	tenantAdminKeysReturnedTenant       = "tenant-b"
+	tenantAdminKeysProcessInstanceKey   = "2251799813711967"
+	tenantAdminKeysProcessDefinitionKey = "9001"
+)
+
+// tenantAdminKeysMismatchProcessInstanceDomain is the shared facade fixture for
+// tests where selected tenant and returned Camunda metadata intentionally differ.
+func tenantAdminKeysMismatchProcessInstanceDomain() d.ProcessInstance {
+	return d.ProcessInstance{
+		Key:                  tenantAdminKeysProcessInstanceKey,
+		TenantId:             tenantAdminKeysReturnedTenant,
+		BpmnProcessId:        "tenant-b-process",
+		ProcessDefinitionKey: tenantAdminKeysProcessDefinitionKey,
+		ProcessVersion:       3,
+		State:                d.StateActive,
+	}
+}
+
 // TestClient_DryRunCancelOrDeleteGetPIKeys_DeduplicatesRootsAndCollected covers
 // the legacy dry-run expansion contract. Multiple selected children can share a
 // root, so roots and collected keys must keep deterministic first-seen order.
@@ -1652,6 +1672,7 @@ var _ pdsvc.API = (*stubProcessDefinitionAPI)(nil)
 
 type stubProcessInstanceAPI struct {
 	createProcessInstance              func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)
+	getProcessInstance                 func(context.Context, string, ...services.CallOption) (d.ProcessInstance, error)
 	searchForProcessInstances          func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
 	searchForProcessInstancesPage      func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
 	searchProcessInstanceVariables     func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceVariable, error)
@@ -1663,6 +1684,7 @@ type stubProcessInstanceAPI struct {
 	ancestryResult                     func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
 	descendantsResult                  func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
 	familyResult                       func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	getProcessInstanceStateByKey       func(context.Context, string, ...services.CallOption) (d.State, d.ProcessInstance, error)
 	waitForProcessInstanceExpectation  func(context.Context, string, d.ProcessInstanceExpectationRequest, ...services.CallOption) (d.ProcessInstanceExpectationResponse, d.ProcessInstance, error)
 	waitForProcessInstancesExpectation func(context.Context, typex.Keys, d.ProcessInstanceExpectationRequest, int, ...services.CallOption) (d.ProcessInstanceExpectationResponses, error)
 }
@@ -1675,9 +1697,13 @@ func (s stubProcessInstanceAPI) CreateProcessInstance(ctx context.Context, data 
 	return s.createProcessInstance(ctx, data, opts...)
 }
 
-// GetProcessInstance panics when a facade test accidentally performs direct lookup.
-func (stubProcessInstanceAPI) GetProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstance, error) {
-	panic("unexpected call")
+// GetProcessInstance delegates to the per-test callback for explicit direct-key
+// fixtures and panics when a test did not authorize direct lookup.
+func (s stubProcessInstanceAPI) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
+	if s.getProcessInstance == nil {
+		panic("unexpected call")
+	}
+	return s.getProcessInstance(ctx, key, opts...)
 }
 
 // SearchProcessInstanceVariables delegates to the per-test callback used by variable enrichment facade tests.
@@ -1819,9 +1845,13 @@ func (s stubProcessInstanceAPI) DeleteProcessInstance(ctx context.Context, key s
 	return s.deleteProcessInstance(ctx, key, opts...)
 }
 
-// GetProcessInstanceStateByKey panics when a facade test accidentally checks process state.
-func (stubProcessInstanceAPI) GetProcessInstanceStateByKey(context.Context, string, ...services.CallOption) (d.State, d.ProcessInstance, error) {
-	panic("unexpected call")
+// GetProcessInstanceStateByKey delegates to the per-test callback for direct
+// admin-input state checks and panics when no state lookup is expected.
+func (s stubProcessInstanceAPI) GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
+	if s.getProcessInstanceStateByKey == nil {
+		panic("unexpected call")
+	}
+	return s.getProcessInstanceStateByKey(ctx, key, opts...)
 }
 
 // WaitForProcessInstanceState panics when a facade test accidentally waits for one process instance.
