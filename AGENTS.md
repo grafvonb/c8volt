@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/228-ops-paged-discovery/plan.md`
+- Active Speckit implementation plan: `specs/156-tenant-admin-keys/plan.md`
 <!-- SPECKIT END -->
