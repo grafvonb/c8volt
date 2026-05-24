@@ -20,6 +20,7 @@
 - Camunda 8.7 process-instance direct lookup intentionally returns an unsupported tenant-safe boundary; this feature should preserve that behavior.
 - Camunda 8.8/8.9 process-instance state lookups delegate to direct keyed lookup, so any explicit-input tenant semantics should be changed at keyed lookup behavior rather than adding state-specific checks.
 - Process-definition and resource direct get paths map returned tenant metadata from keyed/id backend endpoints without a local selected-tenant equality check.
+- Search-derived process-instance dry-run command tests can isolate c8volt-produced candidates by capturing top-level search requests separately from parent/child dependency-expansion searches.
 
 ## Work Log
 
@@ -64,4 +65,28 @@
 - Current local tenant assumptions are search-side filters, v8.7 unsupported direct lookup safeguards, and backend not-found handling in wrong-tenant v8.8/v8.9 fixtures; no new c8volt-side authorization layer is needed.
 - The repository-native path is to keep commands classifying input mode, let facades translate public options, and let versioned services own search tenant filters versus keyed/id backend calls.
 - Validation passed with `go test ./cmd ./c8volt/process ./c8volt/resource -run 'Test(GetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest|Client_LookupProcessInstance_UsesSearchBackedLookup|Client_LookupProcessInstanceStateByKey_MapsSearchBackedState|Client_GetResource)$' -count=1`.
+---
+---
+## Iteration 3 - 2026-05-24 22:03 CEST
+**User Story**: User Story 1 - Preserve Tenant-Scoped Discovery Boundaries
+**Tasks Completed**: 
+- [x] T009: Add tenant-scoped process-instance search/list test in `cmd/get_processinstance_test.go`
+- [x] T010: Add search-derived `cancel pi --dry-run` tenant-scoped candidate test in `cmd/cancel_test.go`
+- [x] T011: Add search-derived `delete pi --dry-run` tenant-scoped candidate and dependency-scope test in `cmd/delete_test.go`
+- [x] T012: Ensure `get pi` search/list mode continues passing selected tenant through existing filters/options in `cmd/get_processinstance_search.go` and affected process-instance services
+- [x] T013: Ensure search-derived `cancel pi` preserves the tenant-scoped discovered candidate set in `cmd/cancel_processinstance.go` and `c8volt/process/client.go`
+- [x] T014: Ensure search-derived `delete pi` preserves the tenant-scoped discovered candidate set and intended dependency scope in `cmd/delete_processinstance.go` and `c8volt/process/client.go`
+- [x] T015: Run `go test ./cmd -run 'Test(GetProcessInstance|CancelProcessInstance|DeleteProcessInstance).*Tenant' -count=1`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**: 
+- cmd/get_processinstance_test.go
+- cmd/cancel_test.go
+- cmd/delete_test.go
+- specs/156-tenant-admin-keys/tasks.md
+- specs/156-tenant-admin-keys/progress.md
+**Learnings**:
+- `get pi` search already sends the effective tenant through versioned process-instance search requests; US1 only needed regression coverage.
+- Search-derived cancel/delete dry-run flows freeze keys from the tenant-scoped search page before dependency expansion, and child-scope searches keep the same tenant filter.
+- Validation passed with `go test ./cmd -run 'Test(GetProcessInstance|CancelProcessInstance|DeleteProcessInstance).*Tenant' -count=1`.
 ---

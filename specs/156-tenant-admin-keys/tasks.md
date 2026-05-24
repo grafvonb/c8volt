@@ -44,16 +44,16 @@
 
 ### Tests for User Story 1
 
-- [ ] T009 [P] [US1] Add tenant-scoped process-instance search/list test in `cmd/get_processinstance_test.go`
-- [ ] T010 [P] [US1] Add search-derived `cancel pi --dry-run` tenant-scoped candidate test in `cmd/cancel_test.go`
-- [ ] T011 [P] [US1] Add search-derived `delete pi --dry-run` tenant-scoped candidate and dependency-scope test in `cmd/delete_test.go`
+- [x] T009 [P] [US1] Add tenant-scoped process-instance search/list test in `cmd/get_processinstance_test.go`
+- [x] T010 [P] [US1] Add search-derived `cancel pi --dry-run` tenant-scoped candidate test in `cmd/cancel_test.go`
+- [x] T011 [P] [US1] Add search-derived `delete pi --dry-run` tenant-scoped candidate and dependency-scope test in `cmd/delete_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Ensure `get pi` search/list mode continues passing selected tenant through existing filters/options in `cmd/get_processinstance_search.go` and affected process-instance services
-- [ ] T013 [US1] Ensure search-derived `cancel pi` preserves the tenant-scoped discovered candidate set in `cmd/cancel_processinstance.go` and `c8volt/process/client.go`
-- [ ] T014 [US1] Ensure search-derived `delete pi` preserves the tenant-scoped discovered candidate set and intended dependency scope in `cmd/delete_processinstance.go` and `c8volt/process/client.go`
-- [ ] T015 [US1] Run `go test ./cmd -run 'Test(GetProcessInstance|CancelProcessInstance|DeleteProcessInstance).*Tenant' -count=1`
+- [x] T012 [US1] Ensure `get pi` search/list mode continues passing selected tenant through existing filters/options in `cmd/get_processinstance_search.go` and affected process-instance services
+- [x] T013 [US1] Ensure search-derived `cancel pi` preserves the tenant-scoped discovered candidate set in `cmd/cancel_processinstance.go` and `c8volt/process/client.go`
+- [x] T014 [US1] Ensure search-derived `delete pi` preserves the tenant-scoped discovered candidate set and intended dependency scope in `cmd/delete_processinstance.go` and `c8volt/process/client.go`
+- [x] T015 [US1] Run `go test ./cmd -run 'Test(GetProcessInstance|CancelProcessInstance|DeleteProcessInstance).*Tenant' -count=1`
 
 **Checkpoint**: User Story 1 is independently functional and testable.
 

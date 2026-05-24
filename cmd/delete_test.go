@@ -647,6 +647,66 @@ func TestDeleteProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *tes
 	requireDryRunPreviewStringSlice(t, secondPreview, "affectedFamilyKeys", typex.Keys{"delete-root-b"})
 }
 
+// TestDeleteProcessInstanceDryRun_SearchTenantScopedCandidatesAndDependencies
+// protects search-derived delete previews from adding unrelated tenants.
+func TestDeleteProcessInstanceDryRun_SearchTenantScopedCandidatesAndDependencies(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var fetched testx.SafeSlice[string]
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(string(body))
+
+			searchBody := decodeCapturedPISearchRequest(t, string(body))
+			filter, _ := searchBody["filter"].(map[string]any)
+			require.Equal(t, tenantAdminKeysSelectedTenant, filter["tenantId"])
+			if _, ok := filter["parentProcessInstanceKey"]; ok {
+				_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+				return
+			}
+
+			require.Equal(t, "COMPLETED", filter["state"])
+			_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"401","processDefinitionId":"tenant-a-process","processDefinitionKey":"9001","processDefinitionName":"tenant-a-process","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant-a"},{"processInstanceKey":"402","processDefinitionId":"tenant-a-process","processDefinitionKey":"9001","processDefinitionName":"tenant-a-process","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			if strings.Contains(key, "/") {
+				t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+			}
+			require.Contains(t, []string{"401", "402"}, key)
+			fetched.Append(key)
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"processInstanceKey":"%s","processDefinitionId":"tenant-a-process","processDefinitionKey":"9001","processDefinitionName":"tenant-a-process","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant-a"}`, key)))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"--json",
+		"delete", "process-instance",
+		"--state", "completed",
+		"--dry-run",
+		"--batch-size", "2",
+	)
+
+	topFilters := decodeCapturedTopLevelPISearchFilters(t, requests.Snapshot())
+	require.Len(t, topFilters, 1)
+	require.Equal(t, tenantAdminKeysSelectedTenant, topFilters[0]["tenantId"])
+	require.NotContains(t, fetched.Snapshot(), tenantAdminKeysProcessInstanceKey)
+	require.Contains(t, output, `"requestedCount": 2`)
+	require.Contains(t, output, `"401"`)
+	require.Contains(t, output, `"402"`)
+	require.NotContains(t, output, tenantAdminKeysReturnedTenant)
+}
+
 // TestDeleteProcessInstanceDryRun_SearchSummaryExplainsNonFinalScope verifies
 // aggregate output explains non-final delete blockers.
 func TestDeleteProcessInstanceDryRun_SearchSummaryExplainsNonFinalScope(t *testing.T) {
