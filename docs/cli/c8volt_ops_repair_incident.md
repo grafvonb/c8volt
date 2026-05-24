@@ -11,7 +11,7 @@ Repair incidents by key or filter
 
 Repair incidents by key or filter.
 
-The command accepts repeated --key values, newline-separated keys from stdin with '-', or incident search filters. Keyed mode and search mode are mutually exclusive. It builds a fixed incident target set before mutation, applies process-instance-scope variable updates once per unique scope when requested, applies job retry and timeout updates only when an incident has a related job, resolves each incident, and confirms clearance unless --no-wait is set. Incidents without related jobs are reported and still proceed to incident resolution. Use --report-file with markdown or json output for an audit record of discovery, targets, step statuses, notices, errors, and final outcome.
+The command accepts repeated --key values, newline-separated keys from stdin with '-', or incident search filters. Keyed mode and search mode are mutually exclusive. Search mode pages through all matching incidents by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. It builds a fixed incident target set before mutation, applies process-instance-scope variable updates once per unique scope when requested, applies job retry and timeout updates only when an incident has a related job, resolves each incident, and confirms clearance unless --no-wait is set. Incidents without related jobs are reported and still proceed to incident resolution. Use --report-file with markdown or json output for an audit record of discovery, targets, step statuses, notices, errors, and final outcome.
 
 ```
 c8volt ops repair incident [flags]
@@ -34,7 +34,7 @@ c8volt ops repair incident [flags]
 ### Options
 
 ```
-  -n, --batch-size int32              number of incidents to inspect per page (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32              number of incidents to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string        BPMN process ID to filter incidents
       --creation-time-after string    only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD
       --creation-time-before string   only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD
@@ -47,7 +47,7 @@ c8volt ops repair incident [flags]
   -h, --help                          help for incident
       --job-timeout string            timeout duration to submit for related jobs, for example 60s, 5m, or 1h
   -k, --key strings                   incident key(s) to repair; repeat or combine with stdin '-'
-  -l, --limit int32                   maximum number of matching incidents to repair
+  -l, --limit int32                   maximum number of matching incidents to freeze for repair; omit to discover all matches
       --no-wait                       return after repair mutations are accepted without incident or retry confirmation
       --no-worker-limit               use all queued jobs as workers when --workers is unset
       --pd-key string                 process definition key to filter incidents

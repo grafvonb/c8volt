@@ -468,12 +468,14 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 						Status:     fmt.Sprintf("dry-run: would cancel %d process instances with keys %v", len(keys), keys),
 					}, pis, nil
 				}
-				logging.InfoOrVerbose(
-					fmt.Sprintf("force: cancelling %d pi", len(keys)),
-					fmt.Sprintf("force: cancelling %d pi; keys %v", len(keys), keys),
-					s.log,
-					cCfg.Verbose,
-				)
+				if !cCfg.SuppressProcessInstanceDetailLogs {
+					logging.InfoOrVerbose(
+						fmt.Sprintf("force: cancelling %d pi", len(keys)),
+						fmt.Sprintf("force: cancelling %d pi; keys %v", len(keys), keys),
+						s.log,
+						cCfg.Verbose,
+					)
+				}
 				return s.CancelProcessInstance(ctx, rootPIKey, opts...)
 			}
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s is child of root %s; use --force to cancel tree", key, rootPIKey))

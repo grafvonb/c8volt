@@ -45,7 +45,7 @@ var opsRepairIncidentCmd = &cobra.Command{
 	Use:   "incident",
 	Short: "Repair incidents by key or filter",
 	Long: "Repair incidents by key or filter.\n\n" +
-		"The command accepts repeated --key values, newline-separated keys from stdin with '-', or incident search filters. Keyed mode and search mode are mutually exclusive. It builds a fixed incident target set before mutation, applies process-instance-scope variable updates once per unique scope when requested, applies job retry and timeout updates only when an incident has a related job, resolves each incident, and confirms clearance unless --no-wait is set. Incidents without related jobs are reported and still proceed to incident resolution. Use --report-file with markdown or json output for an audit record of discovery, targets, step statuses, notices, errors, and final outcome.",
+		"The command accepts repeated --key values, newline-separated keys from stdin with '-', or incident search filters. Keyed mode and search mode are mutually exclusive. Search mode pages through all matching incidents by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. It builds a fixed incident target set before mutation, applies process-instance-scope variable updates once per unique scope when requested, applies job retry and timeout updates only when an incident has a related job, resolves each incident, and confirms clearance unless --no-wait is set. Incidents without related jobs are reported and still proceed to incident resolution. Use --report-file with markdown or json output for an audit record of discovery, targets, step statuses, notices, errors, and final outcome.",
 	Example: `  ./c8volt ops repair incident --key <incident-key>
   ./c8volt ops repair inc --key <incident-key> --key <another-incident-key>
   printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt ops repair incident -
@@ -138,7 +138,9 @@ var opsRepairIncidentCmd = &cobra.Command{
 		if opsRepairNeedsPreflight(cmd) {
 			planRequest := request
 			planRequest.DryRun = true
-			planned, err := cli.RepairIncidents(cmd.Context(), planRequest, collectOptions()...)
+			planned, err := repairIncidentWithCommandActivity(cmd, planRequest, func() (ops.RepairResult, error) {
+				return cli.RepairIncidents(cmd.Context(), planRequest, collectOptions()...)
+			})
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops repair incident: %w", err))
 			}
@@ -147,7 +149,9 @@ var opsRepairIncidentCmd = &cobra.Command{
 			}
 			request = opsRepairConfirmedRequestFromPlan(request, planned)
 		}
-		result, err := cli.RepairIncidents(cmd.Context(), request, collectOptions()...)
+		result, err := repairIncidentWithCommandActivity(cmd, request, func() (ops.RepairResult, error) {
+			return cli.RepairIncidents(cmd.Context(), request, collectOptions()...)
+		})
 		if reportErr := writeOpsRepairReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops repair incident: %w; write audit report: %v", err, reportErr))
@@ -181,8 +185,8 @@ func init() {
 	fs.StringVar(&flagOpsRepairIncidentFNIKey, "fni-key", "", "flow node instance key to filter incidents")
 	fs.StringVar(&flagOpsRepairIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD")
 	fs.StringVar(&flagOpsRepairIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD")
-	fs.Int32VarP(&flagOpsRepairIncidentBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to inspect per page (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.Int32VarP(&flagOpsRepairIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to repair")
+	fs.Int32VarP(&flagOpsRepairIncidentBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagOpsRepairIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to freeze for repair; omit to discover all matches")
 	fs.Int32Var(&flagOpsRepairIncidentRetries, "retries", 1, "retry count to set on related jobs; 0 skips retry restoration")
 	fs.StringVar(&flagOpsRepairIncidentJobTimeoutRaw, "job-timeout", "", "timeout duration to submit for related jobs, for example 60s, 5m, or 1h")
 	fs.StringVar(&flagOpsRepairIncidentVars, "vars", "", "JSON object with variables to set once per process-instance scope before resolving dependent incidents")
@@ -272,6 +276,22 @@ func parseOpsRepairIncidentJobTimeout(cmd *cobra.Command) (time.Duration, error)
 		return 0, invalidFlagValuef("invalid value for --job-timeout: %q, duration must be at least 1ms", flagOpsRepairIncidentJobTimeoutRaw)
 	}
 	return timeout, nil
+}
+
+func repairIncidentWithCommandActivity(cmd *cobra.Command, request ops.RepairRequest, run func() (ops.RepairResult, error)) (ops.RepairResult, error) {
+	stopActivity := startCommandActivity(cmd, formatOpsRepairIncidentActivity(request))
+	defer stopActivity()
+	return run()
+}
+
+func formatOpsRepairIncidentActivity(request ops.RepairRequest) string {
+	if request.DryRun {
+		if request.DiscoveryMode == ops.RepairDiscoveryModeSearch {
+			return "discovering incident repair targets"
+		}
+		return "planning incident repair"
+	}
+	return "repairing incidents"
 }
 
 // hasOpsRepairIncidentSearchModeFlags detects explicit incident search mode without treating default state as an implicit mutation target.

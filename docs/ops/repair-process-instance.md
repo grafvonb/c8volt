@@ -16,6 +16,8 @@ Support work often starts from process-instance keys or process-instance filters
 
 `c8volt ops repair process-instance` selects process instances by key, stdin, or process-instance search filters, freezes the repairable process-instance and incident set, then reuses the incident repair workflow for variables, related jobs, incident resolution, confirmation, and audit reporting.
 
+Search mode pages through all matching incident-bearing process instances by default. `--batch-size` controls the per-page request size only; `--limit` is the explicit cap for the frozen repair scope. Human output, JSON output, and Markdown reports show whether discovery completed or was user-limited.
+
 ## Use When
 
 - repairing all active incidents associated with one known process instance
@@ -29,6 +31,7 @@ Support work often starts from process-instance keys or process-instance filters
 ```bash
 c8volt ops repair process-instance --key <process-instance-key> --dry-run
 c8volt ops repair process-instance --key <process-instance-key> --retries 3 --job-timeout 5m --dry-run
+c8volt ops repair process-instance --state active --batch-size 250 --dry-run
 c8volt ops repair process-instance --state active --limit 5 --dry-run
 c8volt ops repair process-instance --direct-incidents-only --state active --limit 5 --dry-run
 printf '%s\n' "$PI_KEY_A" "$PI_KEY_B" | c8volt ops repair process-instance - --dry-run
@@ -49,7 +52,7 @@ c8volt update job --key <job-key> --timeout <duration>
 c8volt resolve incident --key <incident-key>
 ```
 
-Keyed mode and search mode are mutually exclusive. With no keys and no stdin, the command uses process-instance search mode and automatically limits discovery to incident-bearing process instances. `--direct-incidents-only` adds a stricter direct active incident match and can be combined with incident-state, incident-error-type, and incident-error-message filters.
+Keyed mode and search mode are mutually exclusive. With no keys and no stdin, the command uses process-instance search mode and automatically limits discovery to incident-bearing process instances. `--batch-size` changes page size only and does not cap how many matching process instances are frozen. Use `--limit N` when the repair scope should intentionally stop after `N` matching process instances. `--direct-incidents-only` adds a stricter direct active incident match and can be combined with incident-state, incident-error-type, and incident-error-message filters.
 
 ## Workflow
 
@@ -85,9 +88,11 @@ write optional audit report
 
 ## Dry Run
 
-`--dry-run` searches or reads process-instance targets, discovers their active incidents, and builds the repair plan without updating variables, changing jobs, or resolving incidents. Human output shows process-instance count, skipped process-instance count, incident count, related job count, variable scope count, and the planned final outcome.
+`--dry-run` searches or reads process-instance targets, discovers their active incidents, and builds the repair plan without updating variables, changing jobs, or resolving incidents. Human output shows selected process-instance count, repairable process-instance count, active incident count, the repair preview, skipped process instances, and the planned final outcome.
 
-Verbose output can list frozen process-instance keys, skipped keys, incident keys, job keys, and planned variable scopes.
+Search-mode dry-run output includes `discovery user-limited` when `--limit` stops discovery. Normal completed paging is shown only with `--verbose`.
+
+Verbose output can list normal completed discovery paging, frozen process-instance keys, skipped keys, incident keys, job keys, and planned variable scopes.
 
 ## Real Execution
 

@@ -11,7 +11,7 @@ Purge all selected process definitions
 
 Purge all selected process definitions.
 
-The workflow discovers candidate process-definition versions using the same filters as `get pd`, freezes the candidate keys, validates the existing delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. This purge requires Camunda 8.9 or newer because earlier endpoints do not support full process-definition history deletion. Preview with --dry-run before confirmed deletion. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.
+The workflow discovers candidate process-definition versions using the same filters as `get pd`, freezes the candidate keys, validates the existing delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Discovery pages through all matching process definitions by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. This purge requires Camunda 8.9 or newer because earlier endpoints do not support full process-definition history deletion. Preview with --dry-run before confirmed deletion. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.
 
 ```
 c8volt ops purge all-process-definitions [flags]
@@ -31,6 +31,7 @@ c8volt ops purge all-process-definitions [flags]
 ### Options
 
 ```
+  -n, --batch-size int32         number of process definitions to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string   BPMN process ID to filter candidate process definitions
       --dry-run                  discover and validate process-definition cleanup without submitting deletion requests
       --fail-fast                stop scheduling validation or deletion work after the first error
@@ -38,6 +39,7 @@ c8volt ops purge all-process-definitions [flags]
   -h, --help                     help for all-process-definitions
   -k, --key string               process definition key to select for candidate discovery
       --latest                   only include the latest matching process-definition version(s)
+  -l, --limit int32              maximum number of matching process definitions to freeze for purge; omit to discover all matches
       --no-wait                  return after deletion requests are accepted without deletion confirmation
       --no-worker-limit          use all queued jobs as workers when --workers is unset
       --pd-version int32         process definition version to filter candidate discovery

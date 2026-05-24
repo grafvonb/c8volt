@@ -90,7 +90,7 @@ write outcome and optional audit report
 
 ## Dry Run
 
-`--dry-run` performs discovery, delete planning, and validation without deleting or canceling process instances. It should show retention days, the derived end-date boundary when available, selection filters, discovered retention seed count, resolved root count, affected process-instance count, duplicate handling, non-final blockers, missing ancestor warnings, and report path or format when supplied.
+`--dry-run` performs discovery, delete planning, and validation without deleting or canceling process instances. It should show retention days, the derived end-date boundary when available, selection filters, discovered retention seed count, affected process-instance count across roots, any additional process instances due to dependencies, duplicate root handling, non-final blockers, missing ancestor warnings, and report path or format when supplied.
 
 Verbose output can list the actual seed keys, root keys, affected keys, and blocked keys.
 

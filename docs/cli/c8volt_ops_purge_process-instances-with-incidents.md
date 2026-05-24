@@ -11,7 +11,7 @@ Purge process instances selected by incidents
 
 Purge process instances selected by incidents.
 
-The workflow discovers candidate incidents from incident filters, freezes the candidate process-instance keys, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.
+The workflow discovers candidate incidents from incident filters, freezes the candidate process-instance keys, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Discovery pages through all matching incidents by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.
 
 ```
 c8volt ops purge process-instances-with-incidents [flags]
@@ -33,7 +33,7 @@ c8volt ops purge process-instances-with-incidents [flags]
 ### Options
 
 ```
-  -n, --batch-size int32              number of incidents to inspect per page (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32              number of incidents to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string        BPMN process ID to filter incidents
       --creation-time-after string    only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD
       --creation-time-before string   only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD
@@ -46,7 +46,7 @@ c8volt ops purge process-instances-with-incidents [flags]
       --force                         force cancellation of the process instance(s), prior to deletion
   -h, --help                          help for process-instances-with-incidents
   -k, --key strings                   incident key(s) to select for candidate discovery
-  -l, --limit int32                   maximum number of matching incidents to inspect before candidate process-instance dedupe
+  -l, --limit int32                   maximum number of matching incidents to freeze before candidate process-instance dedupe; omit to discover all matches
       --no-wait                       return after deletion requests are accepted without deletion confirmation
       --no-worker-limit               use all queued jobs as workers when --workers is unset
       --pd-key string                 process definition key to filter incidents

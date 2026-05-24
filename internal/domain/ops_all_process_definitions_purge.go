@@ -27,6 +27,8 @@ type AllProcessDefinitionsPurgeRequest struct {
 	Automation                               bool
 	OutputMode                               string
 	Selection                                ProcessDefinitionFilter
+	BatchSize                                int32
+	Limit                                    int32
 	Workers                                  int
 	FailFast                                 bool
 	NoWorkerLimit                            bool
@@ -35,11 +37,13 @@ type AllProcessDefinitionsPurgeRequest struct {
 	ReportFile                               string
 	ReportFormat                             string
 	DiscoveredCandidateProcessDefinitionKeys typex.Keys
+	DiscoveredScopeStatus                    DiscoveryScopeStatus
 	StartedAt                                time.Time
 }
 
 // ProcessDefinitionDiscoveryResult captures immutable process-definition discovery output.
 type ProcessDefinitionDiscoveryResult struct {
+	DiscoveryScopeStatus
 	Status                                  OpsWorkflowStepStatus
 	Filters                                 ProcessDefinitionFilter
 	CandidateProcessDefinitionKeys          typex.Keys

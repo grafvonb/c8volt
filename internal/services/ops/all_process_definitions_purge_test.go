@@ -297,6 +297,129 @@ func TestPurgeAllProcessDefinitionsDiscoversCandidates(t *testing.T) {
 	}
 }
 
+// TestPurgeAllProcessDefinitionsDiscoversCandidatesAcrossPages protects APD from first-page truncation.
+func TestPurgeAllProcessDefinitionsDiscoversCandidatesAcrossPages(t *testing.T) {
+	t.Parallel()
+
+	var requests []d.ProcessDefinitionPageRequest
+	got, err := NewWithProcessDefinitionPurge(
+		stubProcessInstanceAPI{},
+		nil,
+		stubProcessDefinitionAPI{
+			searchProcessDefinitionsPage: func(_ context.Context, filter d.ProcessDefinitionFilter, page d.ProcessDefinitionPageRequest, _ ...services.CallOption) (d.ProcessDefinitionPage, error) {
+				require.Equal(t, d.ProcessDefinitionFilter{BpmnProcessId: "invoice"}, filter)
+				require.EqualValues(t, 2, page.Size)
+				requests = append(requests, page)
+				switch len(requests) {
+				case 1:
+					return d.ProcessDefinitionPage{
+						Items: []d.ProcessDefinition{
+							{Key: "pd-a", BpmnProcessId: "invoice", ProcessVersion: 3},
+							{Key: "pd-b", BpmnProcessId: "invoice", ProcessVersion: 2},
+						},
+						OverflowState: d.ProcessInstanceOverflowStateHasMore,
+						EndCursor:     "cursor-2",
+					}, nil
+				case 2:
+					require.Equal(t, "cursor-2", page.After)
+					return d.ProcessDefinitionPage{
+						Items: []d.ProcessDefinition{
+							{Key: "pd-b", BpmnProcessId: "invoice", ProcessVersion: 2},
+							{Key: "pd-c", BpmnProcessId: "invoice", ProcessVersion: 1},
+						},
+						OverflowState: d.ProcessInstanceOverflowStateNoMore,
+					}, nil
+				default:
+					t.Fatalf("unexpected process-definition page request %d", len(requests))
+					return d.ProcessDefinitionPage{}, nil
+				}
+			},
+			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+				require.True(t, services.ApplyCallOptions(opts).WithStat)
+				return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+			},
+		},
+		stubResourceAPI{},
+	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{
+		DryRun:    true,
+		BatchSize: 2,
+		Selection: d.ProcessDefinitionFilter{BpmnProcessId: "invoice"},
+	})
+
+	require.NoError(t, err)
+	require.Len(t, requests, 2)
+	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomePlanned, got.Outcome)
+	require.Equal(t, []string{"pd-a", "pd-b", "pd-c"}, []string(got.Discovery.CandidateProcessDefinitionKeys))
+	require.Equal(t, []string{"pd-b"}, []string(got.Discovery.DuplicateCandidateProcessDefinitionKeys))
+	require.True(t, got.Discovery.Complete)
+	require.False(t, got.Discovery.Limited)
+	require.EqualValues(t, 2, got.Discovery.BatchSize)
+	require.Equal(t, 2, got.Discovery.Pages)
+	require.Equal(t, 4, got.Discovery.CandidatesSeen)
+	require.Equal(t, 3, got.Discovery.CandidatesFrozen)
+	require.Equal(t, got.Discovery, got.Report.Discovery)
+}
+
+// TestPurgeAllProcessDefinitionsLimitStopsAfterFrozenScopeCap keeps --batch-size distinct from the total cap.
+func TestPurgeAllProcessDefinitionsLimitStopsAfterFrozenScopeCap(t *testing.T) {
+	t.Parallel()
+
+	var requests []d.ProcessDefinitionPageRequest
+	got, err := NewWithProcessDefinitionPurge(
+		stubProcessInstanceAPI{},
+		nil,
+		stubProcessDefinitionAPI{
+			searchProcessDefinitionsPage: func(_ context.Context, _ d.ProcessDefinitionFilter, page d.ProcessDefinitionPageRequest, _ ...services.CallOption) (d.ProcessDefinitionPage, error) {
+				require.EqualValues(t, 2, page.Size)
+				requests = append(requests, page)
+				switch len(requests) {
+				case 1:
+					return d.ProcessDefinitionPage{
+						Items: []d.ProcessDefinition{
+							{Key: "pd-a", BpmnProcessId: "invoice", ProcessVersion: 4},
+							{Key: "pd-b", BpmnProcessId: "invoice", ProcessVersion: 3},
+						},
+						OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					}, nil
+				case 2:
+					require.EqualValues(t, 2, page.From)
+					return d.ProcessDefinitionPage{
+						Items: []d.ProcessDefinition{
+							{Key: "pd-c", BpmnProcessId: "invoice", ProcessVersion: 2},
+							{Key: "pd-d", BpmnProcessId: "invoice", ProcessVersion: 1},
+						},
+						OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					}, nil
+				default:
+					t.Fatalf("unexpected process-definition page request %d", len(requests))
+					return d.ProcessDefinitionPage{}, nil
+				}
+			},
+			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+				require.True(t, services.ApplyCallOptions(opts).WithStat)
+				return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+			},
+		},
+		stubResourceAPI{},
+	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{
+		DryRun:    true,
+		BatchSize: 2,
+		Limit:     3,
+	})
+
+	require.NoError(t, err)
+	require.Len(t, requests, 2)
+	require.Equal(t, []string{"pd-a", "pd-b", "pd-c"}, []string(got.Discovery.CandidateProcessDefinitionKeys))
+	require.False(t, got.Discovery.Complete)
+	require.True(t, got.Discovery.Limited)
+	require.EqualValues(t, 3, got.Discovery.Limit)
+	require.EqualValues(t, 2, got.Discovery.BatchSize)
+	require.Equal(t, 2, got.Discovery.Pages)
+	require.Equal(t, 4, got.Discovery.CandidatesSeen)
+	require.Equal(t, 3, got.Discovery.CandidatesFrozen)
+	require.Equal(t, got.Discovery, got.Report.Discovery)
+}
+
 // TestPurgeAllProcessDefinitionsDiscoversSingleKey verifies key selection follows get-pd lookup semantics.
 func TestPurgeAllProcessDefinitionsDiscoversSingleKey(t *testing.T) {
 	t.Parallel()
@@ -611,6 +734,7 @@ func requireNoticeCodes(t *testing.T, notices []d.AllProcessDefinitionsPurgeWork
 
 type stubProcessDefinitionAPI struct {
 	pdsvc.API
+	searchProcessDefinitionsPage   func(context.Context, d.ProcessDefinitionFilter, d.ProcessDefinitionPageRequest, ...services.CallOption) (d.ProcessDefinitionPage, error)
 	searchProcessDefinitions       func(context.Context, d.ProcessDefinitionFilter, int32, ...services.CallOption) ([]d.ProcessDefinition, error)
 	searchProcessDefinitionsLatest func(context.Context, d.ProcessDefinitionFilter, ...services.CallOption) ([]d.ProcessDefinition, error)
 	getProcessDefinition           func(context.Context, string, ...services.CallOption) (d.ProcessDefinition, error)
@@ -619,6 +743,22 @@ type stubProcessDefinitionAPI struct {
 type stubResourceAPI struct {
 	rsvc.API
 	delete func(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error)
+}
+
+// SearchProcessDefinitionsPage delegates to the per-test process-definition page search callback.
+func (s stubProcessDefinitionAPI) SearchProcessDefinitionsPage(ctx context.Context, filter d.ProcessDefinitionFilter, page d.ProcessDefinitionPageRequest, opts ...services.CallOption) (d.ProcessDefinitionPage, error) {
+	if s.searchProcessDefinitionsPage != nil {
+		return s.searchProcessDefinitionsPage(ctx, filter, page, opts...)
+	}
+	if filter.IsLatestVersion && s.searchProcessDefinitionsLatest != nil {
+		items, err := s.searchProcessDefinitionsLatest(ctx, filter, opts...)
+		return d.ProcessDefinitionPage{Items: items, OverflowState: d.ProcessInstanceOverflowStateNoMore}, err
+	}
+	if s.searchProcessDefinitions != nil {
+		items, err := s.searchProcessDefinitions(ctx, filter, page.Size, opts...)
+		return d.ProcessDefinitionPage{Items: items, OverflowState: d.ProcessInstanceOverflowStateNoMore}, err
+	}
+	panic("unexpected SearchProcessDefinitionsPage call")
 }
 
 // SearchProcessDefinitions delegates to the per-test process-definition search callback.

@@ -14,6 +14,7 @@ The purpose of this file is to reduce repeated project lookup cost. Read it befo
 
 - Treat these rules as binding for every Ralph implementation iteration that receives this file.
 - Apply these rules in addition to `AGENTS.md`, the active feature's `spec.md`, `plan.md`, `tasks.md`, `research.md`, `data-model.md`, and any contracts.
+- Treat the operator UX rules in this file as strict requirements with precedence over feature text that proposes looser, noisier, or inconsistent command output. If a feature explicitly asks for conflicting UX, stop and surface the conflict before implementing.
 - If a feature artifact conflicts with these rules, stop and surface the conflict before implementing.
 - Complete only the current Ralph work unit. Do not start another user story or polish section in the same iteration.
 - Preserve externally observable behavior unless the current feature explicitly requires a behavior change.
@@ -263,6 +264,39 @@ Before adding helper code, search these locations.
   - Job views: `cmd/cmd_views_job.go`
   - Cluster views: `cmd/cmd_views_cluster.go`
 - When changing command output, update or add command tests for one-line, JSON, keys-only, and error modes as applicable.
+
+## Operator UX Rules
+
+These rules are mandatory for CLI and ops workflow work. They capture the command UX decisions already corrected in this repository and must be followed strictly, even when a feature spec is vague about output details.
+
+- Preserve the repository's established wording rhythm. Before changing a command's human output, scan nearby command renderers and tests for the same workflow family, especially `ops purge`, `ops repair`, `ops execute`, `delete`, `cancel`, and `get` commands.
+- Do not invent a parallel vocabulary for existing concepts. Use established nouns such as `candidate incident(s)`, `candidate process instance(s)`, `affected process instance(s)`, `root(s)`, `non-final affected process instances`, `delete plan`, `delete preview`, `repair plan`, `deletion`, and `outcome`.
+- Avoid casual abbreviations in human command output unless nearby output already uses them for that exact context. Service diagnostic logs may use compact technical labels such as `pi` and `pd`; operator summaries should prefer the established full wording.
+- Output must reflect operator decisions and backend scope accurately. The counts shown in confirmation prompts, execution summaries, final human output, JSON output, and audit reports must not drift after confirmation.
+- If a confirmed run reuses frozen discovery, carry forward every count required for final output. Do not reconstruct a final summary that prints misleading zero values just because rediscovery was intentionally skipped.
+- Do not print low-value endpoint details in human progress indicators. Activity and spinner text must describe the work, not HTTP method or URL text such as `waiting for GET localhost:8080`.
+- Activity labels should be semantic, compact, and stable: name the operation, target type, and useful scope when available. Prefer text like `discovering incident process-instance candidates`, `checking orphan process-instance parents`, or `deleting process-instance trees`.
+- Keep activity text free of noisy implementation trivia such as raw URLs, request verbs, internal page cursors, generated-client method names, or repeated per-key lifecycle updates.
+- Dry-run human output must follow a predictable rhythm: workflow header, selection filters, candidate counts, relevant discovery scope, plan or preview, important dependency expansion or non-final scope facts, and outcome.
+- Do not print `discovery complete: pages ...; batch size ...` by default. Full discovery page details are low-value for operators and should be shown only in verbose output unless the discovery was user-limited.
+- User-limited discovery is important and should remain visible in compact output, for example `discovery user-limited: limit N; pages P; batch size B`.
+- Delete preview and delete plan lines must distinguish direct candidates from dependency expansion. For incident purge this means candidate incidents, candidate process instances where incidents directly hang, affected process instances after dependency expansion, and roots.
+- Do not use ambiguous tree counts when some selected roots are single-instance trees. Prefer `affected process instance(s) across N root(s)` and a separate dependency-expansion line when useful.
+- Dependency expansion lines should explain the extra scope, for example `dependency expansion: M additional process instance(s) due to dependencies`.
+- Non-final scope lines should identify the affected set, for example `non-final affected process instances: N`. For destructive non-dry-run commands, blocking errors must explain when `--force` is required.
+- Confirmation prompts for destructive ops commands must align with the dry-run plan. They should use one compact sentence naming the workflow and the same decisive counts, ending with `will be deleted`, `will be repaired`, or the precise mutation verb.
+- Do not prompt for dry-run or read-only execution. Automation and auto-confirm paths must stay deterministic and avoid interactive prompts.
+- Real run output should not repeat every dry-run discovery line before the operator confirms. Plan first for confirmation, then execute the frozen scope, then render the final summary.
+- During real destructive execution, default human output must be aggregate-first and compact. Per-key cancel/delete/wait/retry lifecycle lines are diagnostic chatter and must be hidden unless `--verbose` is set.
+- For ops workflows, pass existing suppression options such as `services.WithSuppressWorkflowDetailLogs()` and `services.WithSuppressProcessInstanceDetailLogs()` for default destructive execution, and leave them unset when verbose output is requested.
+- Keep detailed service logs available under `--verbose`. Do not delete diagnostics that are useful for support; route them behind the existing verbose and suppression mechanisms.
+- Long-running operations may show rate-limited aggregate progress, such as roots complete, affected process-instance count, or active process instances still draining. Do not show every key by default.
+- Final human output for destructive ops commands should read as an audit summary: workflow header, filters, candidate counts, plan, deletion or repair result, report path when applicable, and outcome with elapsed duration.
+- Outcome lines should include `use --verbose to list keys` only when compact output actually hid meaningful keys. Avoid adding that hint as filler.
+- Repair output should stay especially quiet. Prefer selected/repairable counts, active incident counts, repair plan, and outcome. Do not add step-by-step incident/job/variable chatter unless verbose output is requested.
+- Smoke-test output may use stage-level progress such as deploy, start, walk, and cleanup. It must not leak lower-level process-instance or process-definition delete chatter in default output.
+- Help text and flag descriptions must describe behavior directly. Avoid filler phrases such as `human output`, `human incident output`, `human incident messages`, or `for terminal diagnosis` when they do not add actionable meaning.
+- When output behavior changes, update tests that assert compact human output, verbose output, JSON/envelope output, confirmation prompts, report files, and activity/spinner labels where relevant.
 
 ## Public Facade Rules
 

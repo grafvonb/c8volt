@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.7.0-alpha1-207-g2af74ee7-dirty`, commit `2af74ee7`, built `2026-05-23T17:56:09Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.7.0-alpha1-217-g3ad064ca-dirty`, commit `3ad064ca`, built `2026-05-24T11:19:47Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -24,17 +24,17 @@ has_toc: true
 
 The v4 release introduces the C8 Ops CLI: high-level operational commands that finish the whole workflow. Low-level commands do work. `c8volt ops` gets the job done.
 
-The `ops` command group turns multi-command Camunda operations into audited, previewable playbooks. Instead of making operators manually chain `get`, `walk`, `delete`, `resolve`, `update`, and cleanup commands, an ops command discovers the target set, freezes it, builds the same lower-level c8volt plan you would trust by hand, then runs it with dry-run previews, confirmation controls, JSON output, and audit reports.
+The `ops` command group turns multi-command Camunda operations into audited, previewable playbooks. Instead of making operators manually chain `get`, `walk`, `delete`, `resolve`, `update`, and cleanup commands, an ops command discovers the target set, freezes it, builds the same lower-level c8volt plan you would trust by hand, then runs it with dry-run previews, confirmation controls, JSON output, and audit reports. Discovery pages through the full matching scope by default; `--batch-size` only tunes page size, while `--limit` is the explicit way to cap the frozen scope. Human, JSON, and Markdown reports identify whether discovery completed or was user-limited.
 
 | Command | What it finishes | Playbook |
 | --- | --- | --- |
 | `c8volt ops execute smoke-test` | Proves that a profile can connect, deploy, run, walk, and clean up a real process. | [Execute Smoke Test](./ops/execute-smoke-test/) |
 | `c8volt ops execute retention-policy` | Deletes old finished process instances with a retention-age plan and audit report. | [Execute Retention Policy](./ops/execute-retention-policy/) |
 | `c8volt ops purge orphan-process-instances` | Finds orphan child process instances and deletes the frozen set through c8volt delete planning. | [Purge Orphan Process Instances](./ops/purge-orphan-process-instances/) |
-| `c8volt ops purge process-instances-with-incidents` | Finds process instances through incident filters, then purges them through deterministic family-scope delete planning. | [Purge Process Instances With Incidents](./ops/purge-process-instances-with-incidents/) |
-| `c8volt ops purge all-process-definitions` | Finds process-definition versions, plans their process-instance impact, then deletes the selected definitions. | [Purge All Process Definitions](./ops/purge-all-process-definitions/) |
-| `c8volt ops repair incident` | Freezes incident targets, repairs variables/jobs where requested, resolves incidents, and reports every step. | [Repair Incident](./ops/repair-incident/) |
-| `c8volt ops repair process-instance` | Selects process instances, discovers their active incidents, then runs the same audited repair workflow. | [Repair Process Instance](./ops/repair-process-instance/) |
+| `c8volt ops purge process-instances-with-incidents` | Pages incident discovery, freezes process-instance candidates, then purges them through deterministic family-scope delete planning. | [Purge Process Instances With Incidents](./ops/purge-process-instances-with-incidents/) |
+| `c8volt ops purge all-process-definitions` | Pages process-definition discovery, plans process-instance impact, then deletes the selected definitions. | [Purge All Process Definitions](./ops/purge-all-process-definitions/) |
+| `c8volt ops repair incident` | Pages incident discovery or uses keyed input, repairs variables/jobs where requested, resolves incidents, and reports every step. | [Repair Incident](./ops/repair-incident/) |
+| `c8volt ops repair process-instance` | Pages incident-bearing process-instance discovery, discovers active incidents, then runs the same audited repair workflow. | [Repair Process Instance](./ops/repair-process-instance/) |
 
 Start every destructive or repair workflow with a plan:
 

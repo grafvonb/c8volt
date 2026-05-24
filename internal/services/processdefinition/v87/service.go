@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/consts"
 	operatev87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/operate"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
@@ -76,24 +77,46 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 		return nil, err
 	}
 
+	page, err := s.SearchProcessDefinitionsPage(ctx, filter, d.ProcessDefinitionPageRequest{Size: size}, opts...)
+	if err != nil {
+		return nil, err
+	}
+	out := page.Items
+	d.SortByBpmnProcessIdAscThenByVersionDesc(out)
+	common.VerboseLog(ctx, cCfg, s.log, "found process definitions", "count", len(out))
+	return out, nil
+}
+
+// SearchProcessDefinitionsPage returns one locally windowed Operate process-definition search page.
+func (s *Service) SearchProcessDefinitionsPage(ctx context.Context, filter d.ProcessDefinitionFilter, pageReq d.ProcessDefinitionPageRequest, opts ...services.CallOption) (d.ProcessDefinitionPage, error) {
+	cCfg := services.ApplyCallOptions(opts)
+	if err := ensureStatsSupported(cCfg); err != nil {
+		return d.ProcessDefinitionPage{}, err
+	}
+
 	tenantID := common.EffectiveTenant(s.cfg)
 	if cCfg.IgnoreTenant {
 		tenantID = ""
 	}
-	body := searchProcessDefinitionsRequest(tenantID, filter, size)
+	fetchSize := pickProcessDefinitionSearchFetchSize(pageReq)
+	body := searchProcessDefinitionsRequest(tenantID, filter, fetchSize)
 	common.VerboseLog(ctx, cCfg, s.log, "searching process definitions", "baseURL", s.cfg.APIs.Operate.BaseURL, "body", body)
 	resp, err := s.co.SearchProcessDefinitionsWithResponse(ctx, body)
 	if err != nil {
-		return nil, err
+		return d.ProcessDefinitionPage{}, err
 	}
 	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
 	if err != nil {
-		return nil, err
+		return d.ProcessDefinitionPage{}, err
 	}
-	out := toolx.DerefSlicePtr(payload.Items, fromProcessDefinitionResponse)
-	d.SortByBpmnProcessIdAscThenByVersionDesc(out)
-	common.VerboseLog(ctx, cCfg, s.log, "found process definitions", "count", len(out))
-	return out, nil
+	items := toolx.DerefSlicePtr(payload.Items, fromProcessDefinitionResponse)
+	window, overflow := trimProcessDefinitionPageWindow(items, payload.Total, pageReq, fetchSize)
+	return d.ProcessDefinitionPage{
+		Items:         window,
+		Request:       pageReq,
+		OverflowState: overflow,
+		ReportedTotal: newProcessDefinitionReportedTotal(payload.Total),
+	}, nil
 }
 
 func (s *Service) SearchProcessDefinitionsLatest(ctx context.Context, filter d.ProcessDefinitionFilter, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
@@ -166,6 +189,67 @@ func ensureStatsSupported(cCfg *services.CallCfg) error {
 		return fmt.Errorf("process definition stats not supported in v8.7 API")
 	}
 	return nil
+}
+
+// newProcessDefinitionReportedTotal converts an Operate total into exact domain metadata.
+func newProcessDefinitionReportedTotal(total *int64) *d.ProcessDefinitionReportedTotal {
+	if total == nil {
+		return nil
+	}
+	return &d.ProcessDefinitionReportedTotal{
+		Count: *total,
+		Kind:  d.ProcessDefinitionReportedTotalKindExact,
+	}
+}
+
+// pickProcessDefinitionSearchFetchSize over-fetches enough records to emulate offset paging.
+func pickProcessDefinitionSearchFetchSize(pageReq d.ProcessDefinitionPageRequest) int32 {
+	if pageReq.Size <= 0 {
+		return 0
+	}
+	fetchSize := pageReq.From + pageReq.Size
+	if fetchSize <= 0 {
+		return pageReq.Size
+	}
+	if fetchSize > consts.MaxPISearchSize {
+		return consts.MaxPISearchSize
+	}
+	return fetchSize
+}
+
+// trimProcessDefinitionPageWindow applies the requested local page window to v8.7 search results.
+func trimProcessDefinitionPageWindow(items []d.ProcessDefinition, total *int64, pageReq d.ProcessDefinitionPageRequest, fetchSize int32) ([]d.ProcessDefinition, d.ProcessInstanceOverflowState) {
+	if pageReq.From < 0 {
+		pageReq.From = 0
+	}
+	start := int(pageReq.From)
+	if start >= len(items) {
+		return nil, pickProcessDefinitionOverflowState(total, pageReq, 0, len(items), fetchSize)
+	}
+	end := start + int(pageReq.Size)
+	if end > len(items) {
+		end = len(items)
+	}
+	window := items[start:end]
+	return window, pickProcessDefinitionOverflowState(total, pageReq, len(window), len(items), fetchSize)
+}
+
+// pickProcessDefinitionOverflowState records whether more v8.7 results are visible after the local window.
+func pickProcessDefinitionOverflowState(total *int64, pageReq d.ProcessDefinitionPageRequest, windowCount int, fetchedCount int, fetchSize int32) d.ProcessInstanceOverflowState {
+	visibleThrough := int64(pageReq.From) + int64(windowCount)
+	if total != nil {
+		if *total > visibleThrough {
+			return d.ProcessInstanceOverflowStateHasMore
+		}
+		return d.ProcessInstanceOverflowStateNoMore
+	}
+	if pageReq.From+pageReq.Size > consts.MaxPISearchSize {
+		return d.ProcessInstanceOverflowStateIndeterminate
+	}
+	if int32(fetchedCount) < fetchSize {
+		return d.ProcessInstanceOverflowStateNoMore
+	}
+	return d.ProcessInstanceOverflowStateIndeterminate
 }
 
 func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinitionFilter, size int32) operatev87.QueryProcessDefinition {

@@ -89,7 +89,7 @@ write optional audit report
 
 ## Dry Run
 
-`--dry-run` performs discovery and delete-plan validation only. Human output shows candidate orphan count and the delete preview: orphan candidates, process-instance trees, and affected process instances. Verbose output lists candidate keys.
+`--dry-run` performs discovery and delete-plan validation only. Human output shows candidate orphan count and the delete preview: orphan candidates, affected process instances, roots, and any additional process instances due to dependencies. Verbose output lists candidate keys.
 
 When no orphan candidates are found, the command reports a skipped preview and exits successfully with outcome `planned`.
 

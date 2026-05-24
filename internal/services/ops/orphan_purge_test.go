@@ -209,7 +209,7 @@ func TestPurgeOrphanProcessInstancesConfirmedDeletesImmutableDiscoveredSet(t *te
 	require.Equal(t, d.OrphanPurgeOutcomeDeleted, got.Outcome)
 }
 
-func TestPurgeOrphanProcessInstancesUsesSuppliedLoggerForDeleteSummary(t *testing.T) {
+func TestPurgeOrphanProcessInstancesSuppressesDefaultDeleteSummary(t *testing.T) {
 	t.Parallel()
 
 	var logBuf bytes.Buffer
@@ -255,7 +255,7 @@ func TestPurgeOrphanProcessInstancesUsesSuppliedLoggerForDeleteSummary(t *testin
 
 	require.NoError(t, err)
 	require.Equal(t, d.OrphanPurgeOutcomeDeleted, got.Outcome)
-	require.Contains(t, logBuf.String(), "pi delete done; requested 1, ok 1, failed 0")
+	require.NotContains(t, logBuf.String(), "pi delete done; requested 1, ok 1, failed 0")
 }
 
 type stubProcessInstanceAPI struct {
@@ -310,10 +310,14 @@ func (s stubProcessInstanceAPI) SearchForProcessInstances(ctx context.Context, f
 }
 
 func (s stubProcessInstanceAPI) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
-	if s.searchPage == nil {
+	if s.searchPage != nil {
+		return s.searchPage(ctx, filter, page, opts...)
+	}
+	if s.search == nil {
 		panic("unexpected search")
 	}
-	return s.searchPage(ctx, filter, page, opts...)
+	items, err := s.search(ctx, filter, page.Size, opts...)
+	return d.ProcessInstancePage{Items: items, Request: page, OverflowState: d.ProcessInstanceOverflowStateNoMore}, err
 }
 
 func (s stubProcessInstanceAPI) FilterProcessInstanceWithOrphanParent(ctx context.Context, items []d.ProcessInstance, opts ...services.CallOption) ([]d.ProcessInstance, error) {

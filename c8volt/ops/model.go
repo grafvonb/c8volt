@@ -27,6 +27,17 @@ const (
 	WorkflowStepStatusFailed             WorkflowStepStatus = "failed"
 )
 
+// DiscoveryScopeStatus records whether candidate discovery reached all matches or stopped at an explicit user limit.
+type DiscoveryScopeStatus struct {
+	Complete         bool  `json:"complete,omitempty"`
+	Limited          bool  `json:"limited,omitempty"`
+	Limit            int32 `json:"limit,omitempty"`
+	BatchSize        int32 `json:"batchSize,omitempty"`
+	Pages            int   `json:"pages,omitempty"`
+	CandidatesSeen   int   `json:"candidatesSeen,omitempty"`
+	CandidatesFrozen int   `json:"candidatesFrozen,omitempty"`
+}
+
 // RepairTarget identifies the repair workflow entry point.
 type RepairTarget string
 
@@ -93,6 +104,7 @@ type RepairRequest struct {
 
 // RepairFrozenSet captures the immutable target data discovered before mutation.
 type RepairFrozenSet struct {
+	DiscoveryScopeStatus
 	Status                     WorkflowStepStatus                       `json:"status,omitempty"`
 	Target                     RepairTarget                             `json:"target,omitempty"`
 	DiscoveryMode              RepairDiscoveryMode                      `json:"discoveryMode,omitempty"`
@@ -622,23 +634,26 @@ const (
 
 // IncidentPurgeRequest captures one requested incident-based purge run.
 type IncidentPurgeRequest struct {
-	CommandName                            string          `json:"commandName,omitempty"`
-	DryRun                                 bool            `json:"dryRun,omitempty"`
-	AutoConfirm                            bool            `json:"autoConfirm,omitempty"`
-	Automation                             bool            `json:"automation,omitempty"`
-	OutputMode                             string          `json:"outputMode,omitempty"`
-	Selection                              incident.Filter `json:"selection,omitempty"`
-	BatchSize                              int32           `json:"batchSize,omitempty"`
-	Limit                                  int32           `json:"limit,omitempty"`
-	Workers                                int             `json:"workers,omitempty"`
-	FailFast                               bool            `json:"failFast,omitempty"`
-	NoWorkerLimit                          bool            `json:"noWorkerLimit,omitempty"`
-	NoWait                                 bool            `json:"noWait,omitempty"`
-	Force                                  bool            `json:"force,omitempty"`
-	ReportFile                             string          `json:"reportFile,omitempty"`
-	ReportFormat                           string          `json:"reportFormat,omitempty"`
-	DiscoveredCandidateProcessInstanceKeys typex.Keys      `json:"discoveredCandidateProcessInstanceKeys,omitempty"`
-	StartedAt                              time.Time       `json:"startedAt,omitempty"`
+	CommandName                            string               `json:"commandName,omitempty"`
+	DryRun                                 bool                 `json:"dryRun,omitempty"`
+	AutoConfirm                            bool                 `json:"autoConfirm,omitempty"`
+	Automation                             bool                 `json:"automation,omitempty"`
+	OutputMode                             string               `json:"outputMode,omitempty"`
+	Selection                              incident.Filter      `json:"selection,omitempty"`
+	BatchSize                              int32                `json:"batchSize,omitempty"`
+	Limit                                  int32                `json:"limit,omitempty"`
+	Workers                                int                  `json:"workers,omitempty"`
+	FailFast                               bool                 `json:"failFast,omitempty"`
+	NoWorkerLimit                          bool                 `json:"noWorkerLimit,omitempty"`
+	NoWait                                 bool                 `json:"noWait,omitempty"`
+	Force                                  bool                 `json:"force,omitempty"`
+	ReportFile                             string               `json:"reportFile,omitempty"`
+	ReportFormat                           string               `json:"reportFormat,omitempty"`
+	DiscoveredCandidateProcessInstanceKeys typex.Keys           `json:"discoveredCandidateProcessInstanceKeys,omitempty"`
+	DiscoveredIncidentKeys                 typex.Keys           `json:"discoveredIncidentKeys,omitempty"`
+	DiscoveredIncidentCount                int                  `json:"discoveredIncidentCount,omitempty"`
+	DiscoveredScopeStatus                  DiscoveryScopeStatus `json:"discoveredScopeStatus,omitempty"`
+	StartedAt                              time.Time            `json:"startedAt,omitempty"`
 }
 
 // IncidentPurgeSkippedIncident records a matching incident that could not produce a delete candidate.
@@ -649,6 +664,7 @@ type IncidentPurgeSkippedIncident struct {
 
 // IncidentDiscoveryResult captures immutable incident discovery and candidate extraction output.
 type IncidentDiscoveryResult struct {
+	DiscoveryScopeStatus
 	Status                                WorkflowStepStatus                       `json:"status,omitempty"`
 	Filters                               incident.Filter                          `json:"filters,omitempty"`
 	CandidateIncidents                    []incident.ProcessInstanceIncidentDetail `json:"candidateIncidents,omitempty"`
@@ -774,6 +790,8 @@ type AllProcessDefinitionsPurgeRequest struct {
 	Automation                               bool                       `json:"automation,omitempty"`
 	OutputMode                               string                     `json:"outputMode,omitempty"`
 	Selection                                ProcessDefinitionSelection `json:"selection,omitempty"`
+	BatchSize                                int32                      `json:"batchSize,omitempty"`
+	Limit                                    int32                      `json:"limit,omitempty"`
 	Workers                                  int                        `json:"workers,omitempty"`
 	FailFast                                 bool                       `json:"failFast,omitempty"`
 	NoWorkerLimit                            bool                       `json:"noWorkerLimit,omitempty"`
@@ -782,11 +800,13 @@ type AllProcessDefinitionsPurgeRequest struct {
 	ReportFile                               string                     `json:"reportFile,omitempty"`
 	ReportFormat                             string                     `json:"reportFormat,omitempty"`
 	DiscoveredCandidateProcessDefinitionKeys typex.Keys                 `json:"discoveredCandidateProcessDefinitionKeys,omitempty"`
+	DiscoveredScopeStatus                    DiscoveryScopeStatus       `json:"discoveredScopeStatus,omitempty"`
 	StartedAt                                time.Time                  `json:"startedAt,omitempty"`
 }
 
 // ProcessDefinitionDiscoveryResult captures immutable process-definition discovery output.
 type ProcessDefinitionDiscoveryResult struct {
+	DiscoveryScopeStatus
 	Status                                  WorkflowStepStatus                 `json:"status,omitempty"`
 	Filters                                 ProcessDefinitionSelection         `json:"filters,omitempty"`
 	CandidateProcessDefinitionKeys          typex.Keys                         `json:"candidateProcessDefinitionKeys,omitempty"`

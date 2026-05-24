@@ -75,6 +75,7 @@ type OpsRepairRequest struct {
 
 // OpsRepairFrozenSet captures the immutable target data discovered before mutation.
 type OpsRepairFrozenSet struct {
+	DiscoveryScopeStatus
 	Status                     OpsWorkflowStepStatus
 	Target                     OpsRepairTarget
 	DiscoveryMode              OpsRepairDiscoveryMode

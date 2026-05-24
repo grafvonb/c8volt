@@ -76,32 +76,11 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 
 func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
 	cCfg := services.ApplyCallOptions(opts)
-	tenantID := common.EffectiveTenant(s.cfg)
-	if cCfg.IgnoreTenant {
-		tenantID = ""
-	}
-	body, err := searchProcessDefinitionsRequest(tenantID, filter, size)
-	if err != nil {
-		return nil, fmt.Errorf("building process definition search request: %w", err)
-	}
-	common.VerboseLog(ctx, cCfg, s.log, "searching process definitions", "baseURL", s.cfg.APIs.Camunda.BaseURL, "body", body)
-	bodyJSON, err := json.Marshal(body)
+	page, err := s.SearchProcessDefinitionsPage(ctx, filter, d.ProcessDefinitionPageRequest{Size: size}, opts...)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := s.cc.SearchProcessDefinitionsWithBodyWithResponse(ctx, "application/json", bytes.NewReader(bodyJSON))
-	if err != nil {
-		return nil, err
-	}
-	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
-	if err != nil {
-		return nil, err
-	}
-	result, err := decodeSearchProcessDefinitionsResponse(resp.Body, payload)
-	if err != nil {
-		return nil, err
-	}
-	out := toolx.MapSlice(result.Items, fromProcessDefinitionResult)
+	out := page.Items
 	d.SortByBpmnProcessIdAscThenByVersionDesc(out)
 
 	if cCfg.WithStat {
@@ -116,6 +95,44 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 	}
 	common.VerboseLog(ctx, cCfg, s.log, "found process definitions", "count", len(out))
 	return out, nil
+}
+
+// SearchProcessDefinitionsPage returns one backend process-definition search page without mutating page order.
+func (s *Service) SearchProcessDefinitionsPage(ctx context.Context, filter d.ProcessDefinitionFilter, pageReq d.ProcessDefinitionPageRequest, opts ...services.CallOption) (d.ProcessDefinitionPage, error) {
+	cCfg := services.ApplyCallOptions(opts)
+	tenantID := common.EffectiveTenant(s.cfg)
+	if cCfg.IgnoreTenant {
+		tenantID = ""
+	}
+	body, err := searchProcessDefinitionsRequest(tenantID, filter, pageReq)
+	if err != nil {
+		return d.ProcessDefinitionPage{}, fmt.Errorf("building process definition search request: %w", err)
+	}
+	common.VerboseLog(ctx, cCfg, s.log, "searching process definitions", "baseURL", s.cfg.APIs.Camunda.BaseURL, "body", body)
+	bodyJSON, err := json.Marshal(body)
+	if err != nil {
+		return d.ProcessDefinitionPage{}, err
+	}
+	resp, err := s.cc.SearchProcessDefinitionsWithBodyWithResponse(ctx, "application/json", bytes.NewReader(bodyJSON))
+	if err != nil {
+		return d.ProcessDefinitionPage{}, err
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.ProcessDefinitionPage{}, err
+	}
+	result, err := decodeSearchProcessDefinitionsResponse(resp.Body, payload)
+	if err != nil {
+		return d.ProcessDefinitionPage{}, err
+	}
+	items := toolx.MapSlice(result.Items, fromProcessDefinitionResult)
+	return d.ProcessDefinitionPage{
+		Items:         items,
+		Request:       pageReq,
+		OverflowState: pickProcessDefinitionOverflowState(result.Page, pageReq, len(items)),
+		ReportedTotal: newProcessDefinitionReportedTotal(result.Page),
+		EndCursor:     processDefinitionEndCursor(result.Page),
+	}, nil
 }
 
 func (s *Service) SearchProcessDefinitionsLatest(ctx context.Context, filter d.ProcessDefinitionFilter, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
@@ -348,7 +365,68 @@ func processDefinitionStatsEndCursor(page camundav89.SearchQueryPageResponse) st
 	return string(*page.EndCursor)
 }
 
-func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinitionFilter, size int32) (processDefinitionSearchQuery, error) {
+// processDefinitionEndCursor returns the page cursor used to continue process-definition paging.
+func processDefinitionEndCursor(page camundav89.SearchQueryPageResponse) string {
+	if page.EndCursor == nil {
+		return ""
+	}
+	return string(*page.EndCursor)
+}
+
+// newProcessDefinitionReportedTotal converts v8.9 page metadata into domain total metadata.
+func newProcessDefinitionReportedTotal(page camundav89.SearchQueryPageResponse) *d.ProcessDefinitionReportedTotal {
+	if page.TotalItems == 0 {
+		return nil
+	}
+	kind := d.ProcessDefinitionReportedTotalKindExact
+	if page.HasMoreTotalItems {
+		kind = d.ProcessDefinitionReportedTotalKindLowerBound
+	}
+	return &d.ProcessDefinitionReportedTotal{Count: page.TotalItems, Kind: kind}
+}
+
+// pickProcessDefinitionOverflowState classifies whether a process-definition page can continue.
+func pickProcessDefinitionOverflowState(page camundav89.SearchQueryPageResponse, req d.ProcessDefinitionPageRequest, itemCount int) d.ProcessInstanceOverflowState {
+	if itemCount == 0 {
+		return d.ProcessInstanceOverflowStateNoMore
+	}
+	if req.After != "" {
+		if page.EndCursor != nil {
+			return d.ProcessInstanceOverflowStateHasMore
+		}
+		return d.ProcessInstanceOverflowStateNoMore
+	}
+	visibleCount := int64(req.From) + int64(itemCount)
+	if page.TotalItems > visibleCount {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
+	if page.HasMoreTotalItems && req.Size > 0 && itemCount >= int(req.Size) {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
+	if page.TotalItems == 0 {
+		return d.ProcessInstanceOverflowStateIndeterminate
+	}
+	return d.ProcessInstanceOverflowStateNoMore
+}
+
+// newProcessDefinitionSearchPageRequest builds the v8.9 page request, using cursor pagination when requested.
+func newProcessDefinitionSearchPageRequest(pageReq d.ProcessDefinitionPageRequest, preferCursor bool) camundav89.SearchQueryPageRequest {
+	page := camundav89.SearchQueryPageRequest{}
+	if preferCursor || pageReq.After != "" {
+		_ = page.FromCursorForwardPagination(camundav89.CursorForwardPagination{
+			After: camundav89.EndCursor(pageReq.After),
+			Limit: &pageReq.Size,
+		})
+		return page
+	}
+	_ = page.FromOffsetPagination(camundav89.OffsetPagination{
+		From:  &pageReq.From,
+		Limit: &pageReq.Size,
+	})
+	return page
+}
+
+func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinitionFilter, pageReq d.ProcessDefinitionPageRequest) (processDefinitionSearchQuery, error) {
 	processDefinitionIDFilter, err := newStringEqFilterPtr(filter.BpmnProcessId)
 	if err != nil {
 		return processDefinitionSearchQuery{}, err
@@ -360,14 +438,9 @@ func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinition
 		VersionTag:          toolx.PtrIf(filter.ProcessVersionTag, ""),
 		IsLatestVersion:     toolx.PtrIf(filter.IsLatestVersion, false),
 	}
-	page := camundav89.SearchQueryPageRequest{}
+	page := newProcessDefinitionSearchPageRequest(pageReq, filter.IsLatestVersion)
 	sort := []camundav89.ProcessDefinitionSearchQuerySortRequest{}
 	if filter.IsLatestVersion {
-		after := camundav89.EndCursor("")
-		_ = page.FromCursorForwardPagination(camundav89.CursorForwardPagination{
-			After: after,
-			Limit: &size,
-		})
 		asc := camundav89.ASC
 		sort = append(sort,
 			camundav89.ProcessDefinitionSearchQuerySortRequest{
@@ -380,10 +453,6 @@ func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinition
 			},
 		)
 	} else {
-		_ = page.FromOffsetPagination(camundav89.OffsetPagination{
-			From:  new(int32),
-			Limit: &size,
-		})
 		desc := camundav89.DESC
 		asc := camundav89.ASC
 		sort = append(sort,
@@ -502,7 +571,9 @@ func decodeSearchProcessDefinitionsResponse(body []byte, page *camundav89.Proces
 	if err := json.Unmarshal(body, &result); err != nil {
 		return processDefinitionSearchQueryResult{}, err
 	}
-	result.Page = page.Page
+	if result.Page.TotalItems == 0 && result.Page.EndCursor == nil && page != nil {
+		result.Page = page.Page
+	}
 	return result, nil
 }
 

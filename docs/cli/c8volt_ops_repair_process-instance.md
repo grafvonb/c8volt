@@ -11,7 +11,7 @@ Repair incidents selected by process instances
 
 Repair incidents selected by process instances.
 
-The command accepts repeated --key values, newline-separated process-instance keys from stdin with '-', or process-instance search filters. Search mode automatically limits discovery to incident-bearing process instances; use --direct-incidents-only for stricter direct active incident matching. The workflow builds a fixed target set of repairable process instances and active incidents before mutation, applies process-instance-scope variable updates once per unique scope when requested, then reuses the incident repair steps for job updates, incident resolution, and confirmation. Use --report-file with markdown or json output for an audit record of discovery, targets, duplicate handling, skipped keys, step statuses, notices, errors, and final outcome.
+The command accepts repeated --key values, newline-separated process-instance keys from stdin with '-', or process-instance search filters. Search mode automatically limits discovery to incident-bearing process instances; use --direct-incidents-only for stricter direct active incident matching. Search mode pages through all matching incident-bearing process instances by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. The workflow builds a fixed target set of repairable process instances and active incidents before mutation, applies process-instance-scope variable updates once per unique scope when requested, then reuses the incident repair steps for job updates, incident resolution, and confirmation. Use --report-file with markdown or json output for an audit record of discovery, targets, duplicate handling, skipped keys, step statuses, notices, errors, and final outcome.
 
 ```
 c8volt ops repair process-instance [flags]
@@ -34,7 +34,7 @@ c8volt ops repair process-instance [flags]
 ### Options
 
 ```
-  -n, --batch-size int32                number of process instances to inspect per page (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32                number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string          BPMN process ID to filter process instances
       --children-only                   select only child process instances
       --direct-incidents-only           select only process instances with direct active incidents
@@ -50,7 +50,7 @@ c8volt ops repair process-instance [flags]
       --incident-state string           incident state scope for --direct-incidents-only: active, pending, resolved, migrated, unknown, all (default "active")
       --job-timeout string              timeout duration to submit for related jobs, for example 60s, 5m, or 1h
   -k, --key strings                     process-instance key(s) whose active incidents should be repaired; repeat or combine with stdin '-'
-  -l, --limit int32                     maximum number of matching process instances to repair
+  -l, --limit int32                     maximum number of matching process instances to freeze for repair; omit to discover all matches
       --no-wait                         return after repair mutations are accepted without incident or retry confirmation
       --no-worker-limit                 use all queued jobs as workers when --workers is unset
       --parent-key string               parent process instance key to filter process instances

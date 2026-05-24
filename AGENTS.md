@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/225-run-observable-keys/plan.md`
+- Active Speckit implementation plan: `specs/228-ops-paged-discovery/plan.md`
 <!-- SPECKIT END -->

@@ -16,6 +16,8 @@ Incident repair is rarely one API call. Operators often need to inspect the inci
 
 `c8volt ops repair incident` turns that remediation chain into a fixed-target workflow. It accepts explicit incident keys, stdin keys, or incident filters, freezes the incident set before mutation, plans variable, job, and resolution steps, then reports what was planned, skipped, submitted, confirmed, or failed.
 
+Search mode pages through all matching incidents by default. `--batch-size` controls the per-page request size only; `--limit` is the explicit cap for the frozen repair scope. Human output, JSON output, and Markdown reports show whether discovery completed or was user-limited.
+
 ## Use When
 
 - repairing one known incident key from incident-aware process-instance output
@@ -29,6 +31,7 @@ Incident repair is rarely one API call. Operators often need to inspect the inci
 ```bash
 c8volt ops repair incident --key <incident-key> --dry-run
 c8volt ops repair incident --key <incident-key> --retries 3 --job-timeout 5m --dry-run
+c8volt ops repair incident --state active --error-type io_mapping_error --batch-size 250 --dry-run
 c8volt ops repair incident --state active --error-type io_mapping_error --limit 5 --dry-run
 printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | c8volt ops repair incident - --dry-run
 c8volt ops repair incident --key <incident-key> --vars '{"approved":true}' --dry-run
@@ -49,7 +52,7 @@ c8volt update job --key <job-key> --timeout <duration>
 c8volt resolve incident --key <incident-key>
 ```
 
-Keyed mode and search mode are mutually exclusive. `--key` and stdin `-` select incident keys. Search mode uses incident filters such as `--state`, `--error-type`, `--error-message`, `--bpmn-process-id`, `--pi-key`, `--root-key`, `--flow-node-id`, creation-time bounds, `--batch-size`, and `--limit`. When `--bpmn-process-id` is set, c8volt validates the visible process-definition selector before incident discovery so a typo or invisible definition is not treated as an empty incident set.
+Keyed mode and search mode are mutually exclusive. `--key` and stdin `-` select incident keys. Search mode uses incident filters such as `--state`, `--error-type`, `--error-message`, `--bpmn-process-id`, `--pi-key`, `--root-key`, `--flow-node-id`, creation-time bounds, `--batch-size`, and `--limit`. `--batch-size` changes page size only and does not cap how many matching incidents are frozen. Use `--limit N` when the repair scope should intentionally stop after `N` matching incidents. When `--bpmn-process-id` is set, c8volt validates the visible process-definition selector before incident discovery so a typo or invisible definition is not treated as an empty incident set.
 
 ## Workflow
 
@@ -88,15 +91,17 @@ write optional audit report
 
 ## Dry Run
 
-`--dry-run` resolves the target set and builds the full repair plan without updating variables, changing jobs, or resolving incidents. Human output emphasizes incident count, process-instance count, related job count, variable scope count, and whether any incidents have no related job.
+`--dry-run` resolves the target set and builds the full repair plan without updating variables, changing jobs, or resolving incidents. Human output emphasizes incident count, the repair preview, related job count, variable scope count, and mixed job coverage when some but not all incidents have related jobs.
 
-Verbose output can list frozen incident keys, process-instance keys, job keys, and planned variable scopes.
+Search-mode dry-run output includes `discovery user-limited` when `--limit` stops discovery. Normal completed paging is shown only with `--verbose`.
+
+Verbose output can list normal completed discovery paging, frozen incident keys, process-instance keys, job keys, and planned variable scopes.
 
 ## Real Execution
 
 Without `--dry-run`, interactive runs first execute the same plan as a preflight and ask for confirmation. `--auto-confirm` and `--automation` allow supported unattended repair.
 
-When `--vars` or `--vars-file` is supplied, the variables are applied once per unique process-instance scope before incident resolution. If a variable update fails for a scope, dependent incident resolution is blocked for that scope. Job retry and timeout steps run only when the incident has a related job; incidents without related jobs are reported and still proceed to incident resolution.
+When `--vars` or `--vars-file` is supplied, the variables are applied once per unique process-instance scope before incident resolution. If a variable update fails for a scope, dependent incident resolution is blocked for that scope. Job retry and timeout steps run only when the incident has a related job; incidents without related jobs still proceed to incident resolution and are detailed in verbose output or mixed job-coverage summaries.
 
 ## Reports
 

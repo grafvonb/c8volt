@@ -432,6 +432,86 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 	}
 }
 
+// TestGeneratedOpsPagedDiscoveryDocsDocumentHelp verifies generated ops docs preserve the complete-discovery flag contract.
+func TestGeneratedOpsPagedDiscoveryDocsDocumentHelp(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		file      string
+		fragments []string
+	}{
+		{
+			name: "incident purge",
+			file: "c8volt_ops_purge_process-instances-with-incidents.md",
+			fragments: []string{
+				"Discovery pages through all matching incidents by default.",
+				"--batch-size tunes per-page discovery requests only",
+				"--limit intentionally caps the frozen scope",
+				"number of incidents to inspect per discovery page; does not cap total frozen scope",
+				"maximum number of matching incidents to freeze before candidate process-instance dedupe; omit to discover all matches",
+			},
+		},
+		{
+			name: "repair incident",
+			file: "c8volt_ops_repair_incident.md",
+			fragments: []string{
+				"Search mode pages through all matching incidents by default.",
+				"--batch-size tunes per-page discovery requests only",
+				"--limit intentionally caps the frozen scope",
+				"number of incidents to inspect per discovery page; does not cap total frozen scope",
+				"maximum number of matching incidents to freeze for repair; omit to discover all matches",
+			},
+		},
+		{
+			name: "repair process-instance",
+			file: "c8volt_ops_repair_process-instance.md",
+			fragments: []string{
+				"Search mode pages through all matching incident-bearing process instances by default.",
+				"--batch-size tunes per-page discovery requests only",
+				"--limit intentionally caps the frozen scope",
+				"number of process instances to inspect per discovery page; does not cap total frozen scope",
+				"maximum number of matching process instances to freeze for repair; omit to discover all matches",
+			},
+		},
+		{
+			name: "all process definitions purge",
+			file: "c8volt_ops_purge_all-process-definitions.md",
+			fragments: []string{
+				"Discovery pages through all matching process definitions by default.",
+				"--batch-size tunes per-page discovery requests only",
+				"--limit intentionally caps the frozen scope",
+				"number of process definitions to inspect per discovery page; does not cap total frozen scope",
+				"maximum number of matching process definitions to freeze for purge; omit to discover all matches",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := readGeneratedDocForTest(t, out, tt.file)
+			for _, want := range tt.fragments {
+				if !strings.Contains(got, want) {
+					t.Fatalf("expected generated docs to contain %q, got %q", want, got)
+				}
+			}
+		})
+	}
+}
+
 // TestGeneratedConfigDocsDocumentSplitDiagnostics protects generated command docs for config diagnostics.
 func TestGeneratedConfigDocsDocumentSplitDiagnostics(t *testing.T) {
 	out := t.TempDir()

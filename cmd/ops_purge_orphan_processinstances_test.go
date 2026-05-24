@@ -55,7 +55,7 @@ func TestOpsPurgeOrphanProcessInstancesActivityWrapsDryRunDiscovery(t *testing.T
 	started, stopped, msgs := sink.Snapshot()
 	require.Equal(t, 1, started)
 	require.Equal(t, 1, stopped)
-	require.Equal(t, []string{"checking orphan child pi parents; page size 25"}, msgs)
+	require.Equal(t, []string{"discovering orphan process-instance candidates"}, msgs)
 }
 
 func TestOpsPurgeOrphanProcessInstancesDryRunHidesCandidateKeysWithoutDelete(t *testing.T) {
@@ -73,7 +73,8 @@ func TestOpsPurgeOrphanProcessInstancesDryRunHidesCandidateKeysWithoutDelete(t *
 	require.Contains(t, output, "dry run: purge orphan process-instances")
 	require.Contains(t, output, "candidate orphan process instances: 1")
 	require.NotContains(t, output, "candidate keys:")
-	require.Contains(t, output, "delete preview:")
+	require.Contains(t, output, "delete preview: 1 orphan candidate(s), 1 affected process instance(s) across 1 root(s) would be deleted")
+	require.NotContains(t, output, "dependency expansion:")
 	require.NotContains(t, output, "one or more parent process instances were not found")
 	require.NotContains(t, output, "no deletion request submitted")
 	require.Contains(t, output, "outcome: planned; no changes applied; use --verbose to list process-instance keys")

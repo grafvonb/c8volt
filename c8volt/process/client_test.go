@@ -1596,10 +1596,20 @@ func TestClient_DeleteProcessInstances_LogsConsolidatedWrongStateForExpandedScop
 }
 
 type stubProcessDefinitionAPI struct {
+	searchProcessDefinitionsPage   func(ctx context.Context, filter d.ProcessDefinitionFilter, page d.ProcessDefinitionPageRequest, opts ...services.CallOption) (d.ProcessDefinitionPage, error)
 	searchProcessDefinitions       func(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error)
 	searchProcessDefinitionsLatest func(ctx context.Context, filter d.ProcessDefinitionFilter, opts ...services.CallOption) ([]d.ProcessDefinition, error)
 	getProcessDefinition           func(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error)
 	getProcessDefinitionXML        func(ctx context.Context, key string, opts ...services.CallOption) (string, error)
+}
+
+// SearchProcessDefinitionsPage delegates to the per-test callback and panics
+// when a test did not authorize page-based discovery.
+func (s *stubProcessDefinitionAPI) SearchProcessDefinitionsPage(ctx context.Context, filter d.ProcessDefinitionFilter, page d.ProcessDefinitionPageRequest, opts ...services.CallOption) (d.ProcessDefinitionPage, error) {
+	if s.searchProcessDefinitionsPage == nil {
+		panic("unexpected call")
+	}
+	return s.searchProcessDefinitionsPage(ctx, filter, page, opts...)
 }
 
 // SearchProcessDefinitions delegates to the per-test callback and panics when a

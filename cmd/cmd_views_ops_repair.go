@@ -29,9 +29,7 @@ func renderOpsRepairIncidentResult(cmd *cobra.Command, result ops.RepairResult) 
 		renderHumanLine(cmd, "selection filters: %s", result.FrozenSet.IncidentFilters.String())
 	}
 	renderHumanLine(cmd, "candidate incidents: %d", len(result.FrozenSet.IncidentKeys))
-	if len(result.FrozenSet.VariableScopes) > 0 || len(result.VariableUpdates) > 0 {
-		renderHumanLine(cmd, "variable scopes: %d", countOpsRepairVariableScopes(result))
-	}
+	renderOpsRepairDiscoveryStatus(cmd, result.FrozenSet.DiscoveryScopeStatus)
 	renderOpsRepairNotices(cmd, result.Notices)
 	renderOpsRepairPlanSummary(cmd, result)
 	renderOpsRepairReportFile(cmd, result.Request.ReportFile)
@@ -81,16 +79,15 @@ func renderOpsRepairProcessInstanceResult(cmd *cobra.Command, result ops.RepairR
 	if result.Request.DiscoveryMode == ops.RepairDiscoveryModeSearch {
 		renderHumanLine(cmd, "selection filters: %s", result.FrozenSet.ProcessFilters.String())
 	}
-	renderHumanLine(cmd, "candidate process instances: %d", len(result.FrozenSet.ProcessInstanceKeys))
+	renderHumanLine(cmd, "selected process instances: %d", len(result.FrozenSet.ProcessInstanceKeys)+len(result.FrozenSet.SkippedProcessInstanceKeys))
+	renderHumanLine(cmd, "repairable process instances: %d", len(result.FrozenSet.ProcessInstanceKeys))
 	renderHumanLine(cmd, "active incidents: %d", len(result.FrozenSet.IncidentKeys))
-	if len(result.FrozenSet.SkippedProcessInstanceKeys) > 0 {
-		renderHumanLine(cmd, "process instances without active incidents: %d", len(result.FrozenSet.SkippedProcessInstanceKeys))
-	}
-	if len(result.FrozenSet.VariableScopes) > 0 || len(result.VariableUpdates) > 0 {
-		renderHumanLine(cmd, "variable scopes: %d", countOpsRepairVariableScopes(result))
-	}
+	renderOpsRepairDiscoveryStatus(cmd, result.FrozenSet.DiscoveryScopeStatus)
 	renderOpsRepairNotices(cmd, result.Notices)
 	renderOpsRepairPlanSummary(cmd, result)
+	if len(result.FrozenSet.SkippedProcessInstanceKeys) > 0 {
+		renderHumanLine(cmd, "skipped process instances: %d without active incidents", len(result.FrozenSet.SkippedProcessInstanceKeys))
+	}
 	renderOpsRepairReportFile(cmd, result.Request.ReportFile)
 	if flagVerbose {
 		renderOpsRepairKeys(cmd, "process-instance keys", result.FrozenSet.ProcessInstanceKeys)
@@ -127,6 +124,16 @@ func renderOpsRepairProcessInstanceResult(cmd *cobra.Command, result ops.RepairR
 	return nil
 }
 
+func renderOpsRepairDiscoveryStatus(cmd *cobra.Command, status ops.DiscoveryScopeStatus) {
+	if status.Limited {
+		renderHumanLine(cmd, "discovery user-limited: limit %d; pages %d; batch size %d", status.Limit, status.Pages, status.BatchSize)
+		return
+	}
+	if status.Complete && flagVerbose {
+		renderHumanLine(cmd, "discovery complete: pages %d; batch size %d", status.Pages, status.BatchSize)
+	}
+}
+
 func countOpsRepairIncidentJobNotApplicable(items []ops.RepairPlanItem) int {
 	count := 0
 	for _, item := range items {
@@ -148,20 +155,21 @@ func renderOpsRepairPlanSummary(cmd *cobra.Command, result ops.RepairResult) {
 		return
 	}
 	if result.Request.DryRun {
-		renderHumanLine(cmd, "repair preview: %d incident(s), %d related job(s), %d variable scope(s) would be updated",
+		renderHumanLine(cmd, "repair preview: %d active incident(s) would be resolved; %d related job(s), %d variable scope(s) would be updated",
 			len(result.FrozenSet.IncidentKeys),
 			countOpsRepairRelatedJobs(result),
 			countOpsRepairVariableScopes(result),
 		)
 	} else {
-		renderHumanLine(cmd, "repair plan: %d incident(s), %d related job(s), %d variable scope(s)",
+		renderHumanLine(cmd, "repair plan: %d active incident(s) will be resolved; %d related job(s), %d variable scope(s) will be updated",
 			len(result.FrozenSet.IncidentKeys),
 			countOpsRepairRelatedJobs(result),
 			countOpsRepairVariableScopes(result),
 		)
 	}
-	if withoutJobs := countOpsRepairIncidentJobNotApplicable(result.Plan); withoutJobs > 0 {
-		renderHumanLine(cmd, "incidents without related jobs: %d", withoutJobs)
+	relatedJobs := countOpsRepairRelatedJobs(result)
+	if withoutJobs := countOpsRepairIncidentJobNotApplicable(result.Plan); withoutJobs > 0 && relatedJobs > 0 {
+		renderHumanLine(cmd, "job repair coverage: %d related job(s), %d incident(s) without related jobs", relatedJobs, withoutJobs)
 	}
 }
 
@@ -328,6 +336,12 @@ func renderOpsRepairMarkdownReport(report ops.RepairAuditReport, cfg *config.Con
 
 	out.WriteString("\n## Fixed Targets\n\n")
 	writeMarkdownReportField(&out, "Status", string(report.FrozenSet.Status))
+	writeMarkdownReportField(&out, "Completeness", incidentPurgeDiscoveryCompletenessText(report.FrozenSet.DiscoveryScopeStatus))
+	writeMarkdownReportField(&out, "Discovery Limit", fmt.Sprintf("%d", report.FrozenSet.Limit))
+	writeMarkdownReportField(&out, "Discovery Batch Size", fmt.Sprintf("%d", report.FrozenSet.BatchSize))
+	writeMarkdownReportField(&out, "Discovery Pages", fmt.Sprintf("%d", report.FrozenSet.Pages))
+	writeMarkdownReportField(&out, "Discovery Candidates Seen", fmt.Sprintf("%d", report.FrozenSet.CandidatesSeen))
+	writeMarkdownReportField(&out, "Discovery Candidates Frozen", fmt.Sprintf("%d", report.FrozenSet.CandidatesFrozen))
 	writeMarkdownReportField(&out, "Target", string(report.FrozenSet.Target))
 	writeMarkdownReportField(&out, "Discovery Mode", string(report.FrozenSet.DiscoveryMode))
 	writeMarkdownReportField(&out, "Incident Filters", report.FrozenSet.IncidentFilters.String())

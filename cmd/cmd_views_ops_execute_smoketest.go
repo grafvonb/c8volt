@@ -41,7 +41,7 @@ func renderOpsExecuteSmokeTestPlan(cmd *cobra.Command, result ops.SmokeTestResul
 		renderHumanLine(cmd, "fixture: %s", result.Plan.Fixture.File)
 	}
 	if result.Request.DryRun {
-		renderHumanLine(cmd, "workflow: %s", smokeTestDryRunWorkflow(result.Request.Count))
+		renderHumanLine(cmd, "smoke-test preview: %s", smokeTestDryRunWorkflow(result.Request.Count))
 		renderHumanLine(cmd, "cleanup: %s", smokeTestCleanupIntent(result.Plan.CleanupRequested))
 	}
 	if !flagVerbose {

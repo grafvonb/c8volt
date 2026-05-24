@@ -113,6 +113,98 @@ func TestCommandContractOpsRepairIncident(t *testing.T) {
 	})
 }
 
+// TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts verifies discovery flags describe page size and explicit caps distinctly.
+func TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	resetOpsRepairIncidentFlagState()
+	resetProcessInstanceCommandGlobals()
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
+	t.Cleanup(resetOpsRepairIncidentFlagState)
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+
+	tests := []struct {
+		name          string
+		cmd           *cobra.Command
+		batchDesc     string
+		limitDesc     string
+		longFragments []string
+	}{
+		{
+			name:      "incident purge",
+			cmd:       opsPurgeProcessInstancesWithIncidentsCmd,
+			batchDesc: "number of incidents to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server)",
+			limitDesc: "maximum number of matching incidents to freeze before candidate process-instance dedupe; omit to discover all matches",
+			longFragments: []string{
+				"Discovery pages through all matching incidents by default.",
+				"--batch-size tunes per-page discovery requests only",
+				"--limit intentionally caps the frozen scope",
+			},
+		},
+		{
+			name:      "repair incident",
+			cmd:       opsRepairIncidentCmd,
+			batchDesc: "number of incidents to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server)",
+			limitDesc: "maximum number of matching incidents to freeze for repair; omit to discover all matches",
+			longFragments: []string{
+				"Search mode pages through all matching incidents by default.",
+				"--batch-size tunes per-page discovery requests only",
+				"--limit intentionally caps the frozen scope",
+			},
+		},
+		{
+			name:      "repair process-instance",
+			cmd:       opsRepairProcessInstanceCmd,
+			batchDesc: "number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server)",
+			limitDesc: "maximum number of matching process instances to freeze for repair; omit to discover all matches",
+			longFragments: []string{
+				"Search mode pages through all matching incident-bearing process instances by default.",
+				"--batch-size tunes per-page discovery requests only",
+				"--limit intentionally caps the frozen scope",
+			},
+		},
+		{
+			name:      "all process definitions purge",
+			cmd:       opsPurgeAllProcessDefinitionsCmd,
+			batchDesc: "number of process definitions to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server)",
+			limitDesc: "maximum number of matching process definitions to freeze for purge; omit to discover all matches",
+			longFragments: []string{
+				"Discovery pages through all matching process definitions by default.",
+				"--batch-size tunes per-page discovery requests only",
+				"--limit intentionally caps the frozen scope",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			capability := commandCapabilityForCommand(tt.cmd)
+			require.Contains(t, capability.Flags, FlagContract{
+				Name:        "batch-size",
+				Shorthand:   "n",
+				Type:        "int32",
+				Required:    false,
+				Repeated:    false,
+				Description: tt.batchDesc,
+			})
+			require.Contains(t, capability.Flags, FlagContract{
+				Name:        "limit",
+				Shorthand:   "l",
+				Type:        "int32",
+				Required:    false,
+				Repeated:    false,
+				Description: tt.limitDesc,
+			})
+			for _, want := range tt.longFragments {
+				require.Contains(t, tt.cmd.Long, want)
+			}
+		})
+	}
+}
+
 // TestCommandContractOpsRepairProcessInstance verifies the process-instance repair target exposes automation metadata.
 func TestCommandContractOpsRepairProcessInstance(t *testing.T) {
 	root := Root()

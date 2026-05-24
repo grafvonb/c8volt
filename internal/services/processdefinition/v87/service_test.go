@@ -234,6 +234,43 @@ func TestService_SearchProcessDefinitions_IncludesTenantFilterWhenConfigured(t *
 	m.AssertExpectations(t)
 }
 
+// TestService_SearchProcessDefinitionsPage_WindowsOperateResults protects v8.7 local offset paging for discovery.
+func TestService_SearchProcessDefinitionsPage_WindowsOperateResults(t *testing.T) {
+	ctx := context.Background()
+	m := &mockProcessDefinitionClient{}
+	total := int64(3)
+	resp := &operatev87.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/search", http.StatusOK, "200 OK"),
+		JSON200: &operatev87.ResultsProcessDefinition{
+			Items: &[]operatev87.ProcessDefinition{
+				makeProcessDefinition(1, "alpha", 1),
+				makeProcessDefinition(2, "beta", 1),
+			},
+			Total: &total,
+		},
+	}
+	m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			body := args.Get(1).(operatev87.SearchProcessDefinitionsJSONRequestBody)
+			require.NotNil(t, body.Size)
+			assert.Equal(t, int32(2), *body.Size)
+		}).
+		Return(resp, nil)
+
+	svc, err := v87.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v87.WithClientOperate(m))
+	require.NoError(t, err)
+	page, err := svc.SearchProcessDefinitionsPage(ctx, domain.ProcessDefinitionFilter{}, domain.ProcessDefinitionPageRequest{From: 1, Size: 1})
+
+	require.NoError(t, err)
+	require.Len(t, page.Items, 1)
+	assert.Equal(t, "beta", page.Items[0].BpmnProcessId)
+	assert.Equal(t, domain.ProcessInstanceOverflowStateHasMore, page.OverflowState)
+	require.NotNil(t, page.ReportedTotal)
+	assert.Equal(t, int64(3), page.ReportedTotal.Count)
+	assert.Equal(t, domain.ProcessDefinitionReportedTotalKindExact, page.ReportedTotal.Kind)
+	m.AssertExpectations(t)
+}
+
 func TestService_GetProcessDefinition(t *testing.T) {
 	ctx := context.Background()
 	mockErr := errors.New("get failed")
