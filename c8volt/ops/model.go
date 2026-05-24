@@ -788,6 +788,8 @@ type AllProcessDefinitionsPurgeRequest struct {
 	Automation                               bool                       `json:"automation,omitempty"`
 	OutputMode                               string                     `json:"outputMode,omitempty"`
 	Selection                                ProcessDefinitionSelection `json:"selection,omitempty"`
+	BatchSize                                int32                      `json:"batchSize,omitempty"`
+	Limit                                    int32                      `json:"limit,omitempty"`
 	Workers                                  int                        `json:"workers,omitempty"`
 	FailFast                                 bool                       `json:"failFast,omitempty"`
 	NoWorkerLimit                            bool                       `json:"noWorkerLimit,omitempty"`
@@ -796,6 +798,7 @@ type AllProcessDefinitionsPurgeRequest struct {
 	ReportFile                               string                     `json:"reportFile,omitempty"`
 	ReportFormat                             string                     `json:"reportFormat,omitempty"`
 	DiscoveredCandidateProcessDefinitionKeys typex.Keys                 `json:"discoveredCandidateProcessDefinitionKeys,omitempty"`
+	DiscoveredScopeStatus                    DiscoveryScopeStatus       `json:"discoveredScopeStatus,omitempty"`
 	StartedAt                                time.Time                  `json:"startedAt,omitempty"`
 }
 

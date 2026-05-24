@@ -565,6 +565,8 @@ func TestClientPurgeAllProcessDefinitionsMapsServiceBoundary(t *testing.T) {
 				Automation:    true,
 				OutputMode:    "json",
 				Selection:     d.ProcessDefinitionFilter{Key: "pd-a", BpmnProcessId: "invoice", ProcessVersion: 3, ProcessVersionTag: "stable", IsLatestVersion: true},
+				BatchSize:     25,
+				Limit:         5,
 				Workers:       3,
 				FailFast:      true,
 				NoWorkerLimit: true,
@@ -575,7 +577,8 @@ func TestClientPurgeAllProcessDefinitionsMapsServiceBoundary(t *testing.T) {
 				DiscoveredCandidateProcessDefinitionKeys: typex.Keys{
 					"pd-a",
 				},
-				StartedAt: started,
+				DiscoveredScopeStatus: d.DiscoveryScopeStatus{Limited: true, Limit: 5, BatchSize: 25, Pages: 1, CandidatesSeen: 6, CandidatesFrozen: 5},
+				StartedAt:             started,
 			}, request)
 			cfg := services.ApplyCallOptions(opts)
 			require.True(t, cfg.Verbose)
@@ -586,6 +589,7 @@ func TestClientPurgeAllProcessDefinitionsMapsServiceBoundary(t *testing.T) {
 				Request: request,
 				Discovery: d.ProcessDefinitionDiscoveryResult{
 					Status:                         d.OpsWorkflowStepStatusPlanned,
+					DiscoveryScopeStatus:           d.DiscoveryScopeStatus{Limited: true, Limit: 5, BatchSize: 25, Pages: 1, CandidatesSeen: 6, CandidatesFrozen: 5},
 					Filters:                        request.Selection,
 					CandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
 					CandidateProcessDefinitions: []d.ProcessDefinition{{
@@ -648,6 +652,8 @@ func TestClientPurgeAllProcessDefinitionsMapsServiceBoundary(t *testing.T) {
 		Automation:    true,
 		OutputMode:    "json",
 		Selection:     ProcessDefinitionSelection{Key: "pd-a", BpmnProcessId: "invoice", ProcessVersion: 3, ProcessVersionTag: "stable", LatestOnly: true},
+		BatchSize:     25,
+		Limit:         5,
 		Workers:       3,
 		FailFast:      true,
 		NoWorkerLimit: true,
@@ -658,12 +664,15 @@ func TestClientPurgeAllProcessDefinitionsMapsServiceBoundary(t *testing.T) {
 		DiscoveredCandidateProcessDefinitionKeys: typex.Keys{
 			"pd-a",
 		},
-		StartedAt: started,
+		DiscoveredScopeStatus: DiscoveryScopeStatus{Limited: true, Limit: 5, BatchSize: 25, Pages: 1, CandidatesSeen: 6, CandidatesFrozen: 5},
+		StartedAt:             started,
 	}, foptions.WithVerbose(), foptions.WithNoWait(), foptions.WithForce(), foptions.WithFailFast())
 
 	require.NoError(t, err)
 	require.Equal(t, AllProcessDefinitionsPurgeOutcomePlanned, got.Outcome)
 	require.Equal(t, []string{"pd-a"}, []string(got.Discovery.CandidateProcessDefinitionKeys))
+	require.True(t, got.Discovery.Limited)
+	require.EqualValues(t, 25, got.Discovery.BatchSize)
 	require.Equal(t, []string{"pd-a"}, []string(got.Discovery.DuplicateCandidateProcessDefinitionKeys))
 	require.True(t, got.Discovery.LatestOnly)
 	require.Equal(t, "invoice", got.Discovery.CandidateProcessDefinitions[0].BpmnProcessId)

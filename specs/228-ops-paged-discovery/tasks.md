@@ -102,20 +102,20 @@
 
 ### Tests for User Story 3
 
-- [ ] T035 [P] [US3] Add all-process-definitions multi-page service test in `internal/services/ops/all_process_definitions_purge_test.go`
-- [ ] T036 [P] [US3] Add all-process-definitions `--limit` service test in `internal/services/ops/all_process_definitions_purge_test.go`
-- [ ] T037 [P] [US3] Add all-process-definitions command flag and confirmation reuse tests in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T035 [P] [US3] Add all-process-definitions multi-page service test in `internal/services/ops/all_process_definitions_purge_test.go`
+- [x] T036 [P] [US3] Add all-process-definitions `--limit` service test in `internal/services/ops/all_process_definitions_purge_test.go`
+- [x] T037 [P] [US3] Add all-process-definitions command flag and confirmation reuse tests in `cmd/ops_purge_all_processdefinitions_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T038 [US3] Add `BatchSize` and `Limit` request fields to `internal/domain/ops_all_process_definitions_purge.go` and `c8volt/ops/model.go`
-- [ ] T039 [US3] Wire `BatchSize` and `Limit` through facade conversion in `c8volt/ops/convert.go`
-- [ ] T040 [US3] Add `--batch-size` and `--limit` flags and validation to `cmd/ops_purge_all_processdefinitions.go`
-- [ ] T041 [US3] Replace one-shot process-definition search with complete-by-default paged discovery in `internal/services/ops/all_process_definitions_purge.go`
-- [ ] T042 [US3] Populate all-process-definitions discovery completeness and user-limited status in `internal/services/ops/all_process_definitions_purge.go`
-- [ ] T043 [US3] Update all-process-definitions human, JSON, and Markdown report rendering for discovery status in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
-- [ ] T044 [US3] Run `go test ./internal/services/ops -run 'Test.*AllProcessDefinitionsPurge' -count=1`
-- [ ] T045 [US3] Run `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions' -count=1`
+- [x] T038 [US3] Add `BatchSize` and `Limit` request fields to `internal/domain/ops_all_process_definitions_purge.go` and `c8volt/ops/model.go`
+- [x] T039 [US3] Wire `BatchSize` and `Limit` through facade conversion in `c8volt/ops/convert.go`
+- [x] T040 [US3] Add `--batch-size` and `--limit` flags and validation to `cmd/ops_purge_all_processdefinitions.go`
+- [x] T041 [US3] Replace one-shot process-definition search with complete-by-default paged discovery in `internal/services/ops/all_process_definitions_purge.go`
+- [x] T042 [US3] Populate all-process-definitions discovery completeness and user-limited status in `internal/services/ops/all_process_definitions_purge.go`
+- [x] T043 [US3] Update all-process-definitions human, JSON, and Markdown report rendering for discovery status in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
+- [x] T044 [US3] Run `go test ./internal/services/ops -run 'Test.*AllProcessDefinitionsPurge' -count=1`
+- [x] T045 [US3] Run `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions' -count=1`
 
 **Checkpoint**: User Stories 1, 2, and 3 work independently.
 

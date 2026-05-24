@@ -10,6 +10,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
@@ -22,6 +23,8 @@ var (
 	flagOpsPurgeAllPDProcessVersion    int32
 	flagOpsPurgeAllPDProcessVersionTag string
 	flagOpsPurgeAllPDLatest            bool
+	flagOpsPurgeAllPDBatchSize         int32
+	flagOpsPurgeAllPDLimit             int32
 	flagOpsPurgeAllPDReportFile        string
 	flagOpsPurgeAllPDReportFormat      string
 )
@@ -58,6 +61,8 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			Automation:    automationModeEnabled(cmd),
 			OutputMode:    pickMode().String(),
 			Selection:     populateOpsPurgeAllProcessDefinitionsSelection(),
+			BatchSize:     resolveOpsPurgeAllProcessDefinitionsSearchSize(cmd, cfg),
+			Limit:         flagOpsPurgeAllPDLimit,
 			Workers:       flagWorkers,
 			FailFast:      flagFailFast,
 			NoWorkerLimit: flagNoWorkerLimit,
@@ -86,6 +91,7 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 				}
 			}
 			request.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, planned.Discovery.CandidateProcessDefinitionKeys...)
+			request.DiscoveredScopeStatus = planned.Discovery.DiscoveryScopeStatus
 		}
 		result, err := cli.PurgeAllProcessDefinitions(cmd.Context(), request, collectOptions()...)
 		if err != nil {
@@ -113,6 +119,8 @@ func init() {
 	fs.Int32Var(&flagOpsPurgeAllPDProcessVersion, "pd-version", 0, "process definition version to filter candidate discovery")
 	fs.StringVar(&flagOpsPurgeAllPDProcessVersionTag, "pd-version-tag", "", "process definition version tag to filter candidate discovery")
 	fs.BoolVar(&flagOpsPurgeAllPDLatest, "latest", false, "only include the latest matching process-definition version(s)")
+	fs.Int32VarP(&flagOpsPurgeAllPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process definitions to inspect per page (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagOpsPurgeAllPDLimit, "limit", "l", 0, "maximum number of matching process definitions to purge")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "discover and validate process-definition cleanup without submitting deletion requests")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when validating the delete plan and deleting process definitions (default: min(targets, 2*GOMAXPROCS, 32))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
@@ -147,6 +155,12 @@ func validateOpsPurgeAllProcessDefinitionsFlags(cmd *cobra.Command) error {
 	}
 	if cmd != nil && cmd.Flags().Changed("pd-version") && flagOpsPurgeAllPDProcessVersion <= 0 {
 		return invalidFlagValuef("--pd-version must be positive integer")
+	}
+	if flagOpsPurgeAllPDBatchSize <= 0 || flagOpsPurgeAllPDBatchSize > consts.MaxPISearchSize {
+		return invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagOpsPurgeAllPDBatchSize, consts.MaxPISearchSize)
+	}
+	if flagOpsPurgeAllPDLimit < 0 || (flagOpsPurgeAllPDLimit == 0 && cmd != nil && cmd.Flags().Changed("limit")) {
+		return invalidFlagValuef("--limit must be positive integer")
 	}
 	if cmd != nil && cmd.Flags().Changed("workers") && flagWorkers < 1 {
 		return invalidFlagValuef("--workers must be positive integer")
@@ -273,4 +287,15 @@ func populateOpsPurgeAllProcessDefinitionsSelection() ops.ProcessDefinitionSelec
 		ProcessVersionTag: flagOpsPurgeAllPDProcessVersionTag,
 		LatestOnly:        flagOpsPurgeAllPDLatest,
 	}
+}
+
+// resolveOpsPurgeAllProcessDefinitionsSearchSize applies the existing page-size default policy.
+func resolveOpsPurgeAllProcessDefinitionsSearchSize(cmd *cobra.Command, cfg *config.Config) int32 {
+	if cmd != nil && cmd.Flags().Changed("batch-size") {
+		return flagOpsPurgeAllPDBatchSize
+	}
+	if cfg != nil && cfg.App.ProcessInstancePageSize > 0 && cfg.App.ProcessInstancePageSize <= consts.MaxPISearchSize {
+		return cfg.App.ProcessInstancePageSize
+	}
+	return consts.MaxPISearchSize
 }

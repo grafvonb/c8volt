@@ -16,6 +16,8 @@ Started: 2026-05-24 12:31:13
 - Repair search-mode discovery records completeness on `OpsRepairFrozenSet`, and repair human/Markdown output should render from that frozen-set status rather than infer completeness from counts.
 - Repair confirmation already converts search preflight plans into keyed follow-up requests; command regression tests should assert the search endpoint is called once so mutation reuses the frozen scope.
 - Shared ops process-instance test stubs can route page requests through existing one-shot search callbacks when a test is not about pagination, keeping old repair and orphan tests focused.
+- All-process-definitions purge should use `SearchProcessDefinitionsPage` for filtered/latest discovery, preserve the planned `DiscoveryScopeStatus` when confirmation replays frozen keys, and advance offset fallback by returned item count when no cursor is available.
+- APD command tests can force a multi-page fake backend with `--batch-size 1`; default page size still returns the full fixture in one request so older command tests keep their existing request-count expectations.
 
 ---
 
@@ -139,4 +141,39 @@ Started: 2026-05-24 12:31:13
 - Repair search paths should call `SearchIncidentsPage` and `SearchForProcessInstancesPage` directly so `--batch-size` remains page size and `--limit` is applied after cumulative frozen candidates.
 - Existing repair confirmation already avoids second discovery by converting a search preflight result into keyed incident or process-instance input; the command tests now count discovery requests to protect that contract.
 - `DiscoveryScopeStatus` on `OpsRepairFrozenSet` is the shared source for repair JSON, human, and Markdown discovery completeness output.
+---
+
+---
+## Iteration 5 - 2026-05-24 13:11:40 CEST
+**User Story**: User Story 3 - Process Definition Purge Discovers All Matching Definitions
+**Tasks Completed**:
+- [x] T035: Add all-process-definitions multi-page service test in `internal/services/ops/all_process_definitions_purge_test.go`
+- [x] T036: Add all-process-definitions `--limit` service test in `internal/services/ops/all_process_definitions_purge_test.go`
+- [x] T037: Add all-process-definitions command flag and confirmation reuse tests in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T038: Add `BatchSize` and `Limit` request fields to `internal/domain/ops_all_process_definitions_purge.go` and `c8volt/ops/model.go`
+- [x] T039: Wire `BatchSize` and `Limit` through facade conversion in `c8volt/ops/convert.go`
+- [x] T040: Add `--batch-size` and `--limit` flags and validation to `cmd/ops_purge_all_processdefinitions.go`
+- [x] T041: Replace one-shot process-definition search with complete-by-default paged discovery in `internal/services/ops/all_process_definitions_purge.go`
+- [x] T042: Populate all-process-definitions discovery completeness and user-limited status in `internal/services/ops/all_process_definitions_purge.go`
+- [x] T043: Update all-process-definitions human, JSON, and Markdown report rendering for discovery status in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
+- [x] T044: Run `go test ./internal/services/ops -run 'Test.*AllProcessDefinitionsPurge' -count=1`
+- [x] T045: Run `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions' -count=1`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/ops/client_test.go
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- cmd/cmd_views_ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- internal/domain/ops_all_process_definitions_purge.go
+- internal/services/ops/all_process_definitions_purge.go
+- internal/services/ops/all_process_definitions_purge_test.go
+- specs/228-ops-paged-discovery/tasks.md
+- specs/228-ops-paged-discovery/progress.md
+**Learnings**:
+- APD filtered and latest discovery can use the same process-definition page service boundary; keyed discovery remains a lookup with a complete frozen scope and zero backend pages.
+- The prescribed service validation pattern `Test.*AllProcessDefinitionsPurge` currently matches no tests, so `TestPurgeAllProcessDefinitions` was also run as the effective service validation.
+- APD Markdown, human, and JSON output now read discovery completeness from `DiscoveryScopeStatus`, matching the incident purge and repair story pattern.
 ---

@@ -881,6 +881,8 @@ func toDomainAllProcessDefinitionsPurgeRequest(x AllProcessDefinitionsPurgeReque
 		Automation:    x.Automation,
 		OutputMode:    x.OutputMode,
 		Selection:     toDomainProcessDefinitionSelection(x.Selection),
+		BatchSize:     x.BatchSize,
+		Limit:         x.Limit,
 		Workers:       x.Workers,
 		FailFast:      x.FailFast,
 		NoWorkerLimit: x.NoWorkerLimit,
@@ -888,7 +890,16 @@ func toDomainAllProcessDefinitionsPurgeRequest(x AllProcessDefinitionsPurgeReque
 		Force:         x.Force,
 		ReportFile:    x.ReportFile,
 		ReportFormat:  x.ReportFormat,
-		StartedAt:     x.StartedAt,
+		DiscoveredScopeStatus: d.DiscoveryScopeStatus{
+			Complete:         x.DiscoveredScopeStatus.Complete,
+			Limited:          x.DiscoveredScopeStatus.Limited,
+			Limit:            x.DiscoveredScopeStatus.Limit,
+			BatchSize:        x.DiscoveredScopeStatus.BatchSize,
+			Pages:            x.DiscoveredScopeStatus.Pages,
+			CandidatesSeen:   x.DiscoveredScopeStatus.CandidatesSeen,
+			CandidatesFrozen: x.DiscoveredScopeStatus.CandidatesFrozen,
+		},
+		StartedAt: x.StartedAt,
 	}
 	if x.DiscoveredCandidateProcessDefinitionKeys != nil {
 		out.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessDefinitionKeys...)
@@ -913,20 +924,23 @@ func fromDomainAllProcessDefinitionsPurgeResult(x d.AllProcessDefinitionsPurgeRe
 // fromDomainAllProcessDefinitionsPurgeRequest maps a service request back to public output.
 func fromDomainAllProcessDefinitionsPurgeRequest(x d.AllProcessDefinitionsPurgeRequest) AllProcessDefinitionsPurgeRequest {
 	out := AllProcessDefinitionsPurgeRequest{
-		CommandName:   x.CommandName,
-		DryRun:        x.DryRun,
-		AutoConfirm:   x.AutoConfirm,
-		Automation:    x.Automation,
-		OutputMode:    x.OutputMode,
-		Selection:     fromDomainProcessDefinitionSelection(x.Selection),
-		Workers:       x.Workers,
-		FailFast:      x.FailFast,
-		NoWorkerLimit: x.NoWorkerLimit,
-		NoWait:        x.NoWait,
-		Force:         x.Force,
-		ReportFile:    x.ReportFile,
-		ReportFormat:  x.ReportFormat,
-		StartedAt:     x.StartedAt,
+		CommandName:           x.CommandName,
+		DryRun:                x.DryRun,
+		AutoConfirm:           x.AutoConfirm,
+		Automation:            x.Automation,
+		OutputMode:            x.OutputMode,
+		Selection:             fromDomainProcessDefinitionSelection(x.Selection),
+		BatchSize:             x.BatchSize,
+		Limit:                 x.Limit,
+		Workers:               x.Workers,
+		FailFast:              x.FailFast,
+		NoWorkerLimit:         x.NoWorkerLimit,
+		NoWait:                x.NoWait,
+		Force:                 x.Force,
+		ReportFile:            x.ReportFile,
+		ReportFormat:          x.ReportFormat,
+		DiscoveredScopeStatus: fromDomainDiscoveryScopeStatus(x.DiscoveredScopeStatus),
+		StartedAt:             x.StartedAt,
 	}
 	if x.DiscoveredCandidateProcessDefinitionKeys != nil {
 		out.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessDefinitionKeys...)

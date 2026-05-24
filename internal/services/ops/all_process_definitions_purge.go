@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/grafvonb/c8volt/consts"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
@@ -204,7 +205,7 @@ func allResourceDeleteResponsesOK(reports []d.ResourceDeleteResponse) bool {
 	return true
 }
 
-// allProcessDefinitionsPurgeDiscovery either reuses a frozen candidate set or performs one process-definition lookup.
+// allProcessDefinitionsPurgeDiscovery either reuses a frozen candidate set or performs paged process-definition discovery.
 func allProcessDefinitionsPurgeDiscovery(ctx context.Context, api pdsvc.API, request d.AllProcessDefinitionsPurgeRequest, opts ...services.CallOption) (d.ProcessDefinitionDiscoveryResult, error) {
 	if request.DiscoveredCandidateProcessDefinitionKeys != nil {
 		return frozenAllProcessDefinitionsPurgeDiscovery(request), nil
@@ -212,16 +213,17 @@ func allProcessDefinitionsPurgeDiscovery(ctx context.Context, api pdsvc.API, req
 	return discoverAllProcessDefinitionsPurgeCandidates(ctx, api, request, opts...)
 }
 
-// discoverAllProcessDefinitionsPurgeCandidates reuses get-pd search behavior and freezes unique process-definition keys.
+// discoverAllProcessDefinitionsPurgeCandidates walks process-definition pages and freezes unique process-definition keys.
 func discoverAllProcessDefinitionsPurgeCandidates(ctx context.Context, api pdsvc.API, request d.AllProcessDefinitionsPurgeRequest, opts ...services.CallOption) (d.ProcessDefinitionDiscoveryResult, error) {
-	definitions, err := searchAllProcessDefinitionsPurgeCandidates(ctx, api, request.Selection, opts...)
+	definitions, status, err := searchAllProcessDefinitionsPurgeCandidates(ctx, api, request, opts...)
 	if err != nil {
 		return d.ProcessDefinitionDiscoveryResult{}, err
 	}
 	discovery := d.ProcessDefinitionDiscoveryResult{
-		Status:     d.OpsWorkflowStepStatusPlanned,
-		Filters:    request.Selection,
-		LatestOnly: request.Selection.IsLatestVersion,
+		DiscoveryScopeStatus: status,
+		Status:               d.OpsWorkflowStepStatusPlanned,
+		Filters:              request.Selection,
+		LatestOnly:           request.Selection.IsLatestVersion,
 	}
 	seenDefinitions := make(map[string]int, len(definitions))
 	var duplicateCandidates typex.Keys
@@ -240,28 +242,67 @@ func discoverAllProcessDefinitionsPurgeCandidates(ctx context.Context, api pdsvc
 	discovery.CandidateProcessDefinitionKeys = discovery.CandidateProcessDefinitionKeys.Unique()
 	discovery.DuplicateCandidateProcessDefinitionKeys = duplicateCandidates.Unique()
 	discovery.CandidateProcessDefinitionCount = len(discovery.CandidateProcessDefinitionKeys)
+	discovery.CandidatesFrozen = discovery.CandidateProcessDefinitionCount
 	discovery.Notices = allProcessDefinitionsPurgeDiscoveryNotices(discovery)
 	return discovery, nil
 }
 
-// searchAllProcessDefinitionsPurgeCandidates mirrors get-pd key/latest/all-version branching.
-func searchAllProcessDefinitionsPurgeCandidates(ctx context.Context, api pdsvc.API, selection d.ProcessDefinitionFilter, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
-	if selection.Key != "" {
-		definition, err := api.GetProcessDefinition(ctx, selection.Key, opts...)
+// searchAllProcessDefinitionsPurgeCandidates mirrors get-pd key/latest/all-version branching with paged search.
+func searchAllProcessDefinitionsPurgeCandidates(ctx context.Context, api pdsvc.API, request d.AllProcessDefinitionsPurgeRequest, opts ...services.CallOption) ([]d.ProcessDefinition, d.DiscoveryScopeStatus, error) {
+	status := d.DiscoveryScopeStatus{
+		BatchSize: allProcessDefinitionsPurgeDiscoverySize(request),
+		Limit:     request.Limit,
+	}
+	if request.Selection.Key != "" {
+		definition, err := api.GetProcessDefinition(ctx, request.Selection.Key, opts...)
 		if err != nil {
-			return nil, err
+			return nil, d.DiscoveryScopeStatus{}, err
 		}
-		return []d.ProcessDefinition{definition}, nil
+		status.Complete = true
+		status.CandidatesSeen = 1
+		status.CandidatesFrozen = 1
+		return []d.ProcessDefinition{definition}, status, nil
 	}
-	if selection.IsLatestVersion {
-		return api.SearchProcessDefinitionsLatest(ctx, selection, opts...)
+
+	pageReq := d.ProcessDefinitionPageRequest{Size: status.BatchSize}
+	var definitions []d.ProcessDefinition
+	limited := false
+	for {
+		page, err := api.SearchProcessDefinitionsPage(ctx, request.Selection, pageReq, opts...)
+		if err != nil {
+			return nil, d.DiscoveryScopeStatus{}, err
+		}
+		status.Pages++
+		status.CandidatesSeen += len(page.Items)
+		items := limitAllProcessDefinitionsPurgePageItems(page.Items, request.Limit, len(definitions))
+		definitions = append(definitions, items...)
+		if request.Limit > 0 && len(definitions) >= int(request.Limit) {
+			limited = true
+		}
+		if limited || allProcessDefinitionsPurgeDiscoveryPageComplete(page) {
+			status.Complete = !limited
+			status.Limited = limited
+			break
+		}
+		pageReq = nextAllProcessDefinitionsPurgeDiscoveryPageRequest(pageReq, page)
 	}
-	return api.SearchProcessDefinitions(ctx, selection, pdsvc.MaxResultSize, opts...)
+	return definitions, status, nil
 }
 
 func frozenAllProcessDefinitionsPurgeDiscovery(request d.AllProcessDefinitionsPurgeRequest) d.ProcessDefinitionDiscoveryResult {
 	candidates := request.DiscoveredCandidateProcessDefinitionKeys.Unique()
+	status := request.DiscoveredScopeStatus
+	if status.BatchSize == 0 {
+		status.BatchSize = allProcessDefinitionsPurgeDiscoverySize(request)
+	}
+	if status.CandidatesFrozen == 0 {
+		status.CandidatesFrozen = len(candidates)
+	}
+	if !status.Complete && !status.Limited {
+		status.Complete = true
+	}
 	discovery := d.ProcessDefinitionDiscoveryResult{
+		DiscoveryScopeStatus:            status,
 		Status:                          d.OpsWorkflowStepStatusPlanned,
 		Filters:                         request.Selection,
 		CandidateProcessDefinitionKeys:  candidates,
@@ -270,6 +311,45 @@ func frozenAllProcessDefinitionsPurgeDiscovery(request d.AllProcessDefinitionsPu
 	}
 	discovery.Notices = allProcessDefinitionsPurgeDiscoveryNotices(discovery)
 	return discovery
+}
+
+// allProcessDefinitionsPurgeDiscoverySize normalizes page size; --limit caps total discovery separately.
+func allProcessDefinitionsPurgeDiscoverySize(request d.AllProcessDefinitionsPurgeRequest) int32 {
+	if request.BatchSize > 0 && request.BatchSize <= consts.MaxPISearchSize {
+		return request.BatchSize
+	}
+	return consts.MaxPISearchSize
+}
+
+// limitAllProcessDefinitionsPurgePageItems applies the total APD target cap after page retrieval.
+func limitAllProcessDefinitionsPurgePageItems(items []d.ProcessDefinition, limit int32, cumulative int) []d.ProcessDefinition {
+	if limit <= 0 {
+		return items
+	}
+	remaining := int(limit) - cumulative
+	if remaining <= 0 {
+		return nil
+	}
+	if len(items) > remaining {
+		return items[:remaining]
+	}
+	return items
+}
+
+// allProcessDefinitionsPurgeDiscoveryPageComplete stops on backend completion or contradictory empty pages.
+func allProcessDefinitionsPurgeDiscoveryPageComplete(page d.ProcessDefinitionPage) bool {
+	return len(page.Items) == 0 || page.OverflowState != d.ProcessInstanceOverflowStateHasMore
+}
+
+// nextAllProcessDefinitionsPurgeDiscoveryPageRequest advances by cursor when available, otherwise by returned items.
+func nextAllProcessDefinitionsPurgeDiscoveryPageRequest(current d.ProcessDefinitionPageRequest, page d.ProcessDefinitionPage) d.ProcessDefinitionPageRequest {
+	next := d.ProcessDefinitionPageRequest{Size: current.Size}
+	if page.EndCursor != "" {
+		next.After = page.EndCursor
+		return next
+	}
+	next.From = current.From + int32(len(page.Items))
+	return next
 }
 
 // allProcessDefinitionsPurgeDiscoveryNotices records semantic discovery facts for reports and machine output.
