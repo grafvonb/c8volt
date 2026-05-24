@@ -101,13 +101,14 @@ func renderOpsExecuteRetentionPolicyDryRunDeletePreview(cmd *cobra.Command, resu
 		renderHumanLine(cmd, "delete preview: skipped (no retention cleanup targets)")
 		return
 	}
-	renderHumanLine(cmd, "delete preview: %d retention candidate(s), %d process-instance tree(s), %d process instance(s) would be deleted",
+	renderHumanLine(cmd, "delete preview: %d retention candidate(s), %d affected process instance(s) across %d root(s) would be deleted",
 		len(result.DeletePlan.SeedKeys),
-		len(result.DeletePlan.ResolvedRootKeys),
 		len(result.DeletePlan.AffectedKeys),
+		len(result.DeletePlan.ResolvedRootKeys),
 	)
+	renderOpsProcessInstanceDependencyExpansion(cmd, len(result.DeletePlan.SeedKeys), len(result.DeletePlan.AffectedKeys))
 	if flagVerbose && len(result.DeletePlan.DuplicateKeys) > 0 {
-		renderHumanLine(cmd, "duplicate process-instance trees: %d", len(result.DeletePlan.DuplicateKeys))
+		renderHumanLine(cmd, "duplicate roots: %d", len(result.DeletePlan.DuplicateKeys))
 	}
 	if len(result.DeletePlan.NonFinalAffectedItems) > 0 {
 		renderHumanLine(cmd, "non-final process instances in scope: %d (use --force to cancel before delete)", len(result.DeletePlan.NonFinalAffectedItems))

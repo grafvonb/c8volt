@@ -114,12 +114,13 @@ func renderOpsPurgeProcessInstancesWithIncidentsDryRunDeletePreview(cmd *cobra.C
 		renderHumanLine(cmd, "delete preview: skipped (no incident process-instance targets)")
 		return
 	}
-	renderHumanLine(cmd, "delete preview: %d incident(s), %d process-instance candidate(s), %d process-instance tree(s), %d process instance(s) would be deleted",
+	renderHumanLine(cmd, "delete preview: %d candidate incident(s), %d candidate process instance(s), %d affected process instance(s) across %d root(s) would be deleted",
 		result.Discovery.IncidentCount,
 		len(result.DeletePlan.CandidateProcessInstanceKeys),
-		len(result.DeletePlan.ResolvedRootKeys),
 		len(result.DeletePlan.AffectedKeys),
+		len(result.DeletePlan.ResolvedRootKeys),
 	)
+	renderOpsProcessInstanceDependencyExpansion(cmd, len(result.DeletePlan.CandidateProcessInstanceKeys), len(result.DeletePlan.AffectedKeys))
 	if len(result.DeletePlan.NonFinalAffectedItems) > 0 {
 		renderHumanLine(cmd, "non-final process instances in scope: %d", len(result.DeletePlan.NonFinalAffectedItems))
 	}

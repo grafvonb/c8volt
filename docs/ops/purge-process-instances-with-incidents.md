@@ -108,9 +108,12 @@ dry run: purge process-instances with incidents
 candidate incidents: N
 candidate process instances: M
 discovery complete: pages P; batch size B
-delete plan: planned (candidate process instances: M, roots: R, affected process instances: A)
+delete preview: N candidate incident(s), M candidate process instance(s), A affected process instance(s) across R root(s) would be deleted
+dependency expansion: D additional process instance(s) due to dependencies
 outcome: planned; no changes applied; use --verbose to list process-instance keys
 ```
+
+The dependency expansion line is shown only when delete planning adds process instances beyond the candidate process-instance set.
 
 When `--limit` stops discovery, the status line changes to `discovery user-limited` and includes the limit value.
 
