@@ -162,7 +162,7 @@ func TestOpsPurgeAllProcessDefinitionsDryRunDiscoveryOutput(t *testing.T) {
 	require.Contains(t, output, "dry run: purge all process definitions")
 	require.Contains(t, output, `selection filters: {bpmnProcessId="invoice", processVersion=3, processVersionTag="stable", latestOnly=true}`)
 	require.Contains(t, output, "candidate process definitions: 1")
-	require.Contains(t, output, "discovery complete: pages 2; batch size 25")
+	require.NotContains(t, output, "discovery complete:")
 	require.Contains(t, output, "candidate scope: latest matching process definitions")
 	require.Contains(t, output, "duplicate candidate process definitions: 1")
 	require.Contains(t, output, "delete preview: skipped (no matching process definitions)")
@@ -174,6 +174,7 @@ func TestOpsPurgeAllProcessDefinitionsDryRunDiscoveryOutput(t *testing.T) {
 	cmd = &cobra.Command{}
 	cmd.SetOut(&verbose)
 	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, sampleAllProcessDefinitionsPurgeDryRunDiscoveryResult()))
+	require.Contains(t, verbose.String(), "discovery complete: pages 2; batch size 25")
 	require.Contains(t, verbose.String(), "candidate process-definition keys: 2251799813685255")
 	require.Contains(t, verbose.String(), "candidate process-definition details: 2251799813685255 (bpmnProcessId=invoice, version=3, versionTag=stable)")
 	require.Contains(t, verbose.String(), "duplicate candidate process-definition keys: 2251799813685255")
@@ -222,7 +223,7 @@ func TestOpsPurgeAllProcessDefinitionsDryRunPlanOutput(t *testing.T) {
 	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, sampleAllProcessDefinitionsPurgeDryRunPlanResult()))
 	output := buf.String()
 
-	require.Contains(t, output, "delete preview: 2 process definition(s) would be deleted; 3 process instance(s) affected")
+	require.Contains(t, output, "delete preview: 2 candidate process definition(s), 3 affected process instance(s) would be deleted")
 	require.NotContains(t, output, "\nprocess definitions:\n")
 	require.Contains(t, output, "invoice [v1: 3, v2/stable: 0]")
 	require.Contains(t, output, "active-instance blocker: 3 active process instances require --force before deletion")

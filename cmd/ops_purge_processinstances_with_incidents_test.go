@@ -169,7 +169,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsDryRunDiscoveryOutput(t *testing.T
 	require.Contains(t, output, `selection filters: {state=active}`)
 	require.Contains(t, output, "candidate incidents: 3")
 	require.Contains(t, output, "candidate process instances: 1")
-	require.Contains(t, output, "discovery complete: pages 2; batch size 2")
+	require.NotContains(t, output, "discovery complete:")
 	require.Contains(t, output, "duplicate candidate process instances: 1")
 	require.Contains(t, output, "skipped incidents: 1")
 	require.Contains(t, output, "delete preview: 3 candidate incident(s), 1 candidate process instance(s), 1 affected process instance(s) across 1 root(s) would be deleted")

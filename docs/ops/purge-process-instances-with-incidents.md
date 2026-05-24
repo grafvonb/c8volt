@@ -107,9 +107,9 @@ Normal output should emphasize counts:
 dry run: purge process-instances with incidents
 candidate incidents: N
 candidate process instances: M
-discovery complete: pages P; batch size B
 delete preview: N candidate incident(s), M candidate process instance(s), A affected process instance(s) across R root(s) would be deleted
 dependency expansion: D additional process instance(s) due to dependencies
+non-final affected process instances: X (use --force to cancel before delete)
 outcome: planned; no changes applied; use --verbose to list process-instance keys
 ```
 
@@ -117,7 +117,7 @@ The dependency expansion line is shown only when delete planning adds process in
 
 When `--limit` stops discovery, the status line changes to `discovery user-limited` and includes the limit value.
 
-Verbose output can list incident keys, candidate process-instance keys, resolved root keys, affected keys, and blocked keys.
+Verbose output can list normal completed discovery paging, incident keys, candidate process-instance keys, resolved root keys, affected keys, and blocked keys.
 
 ## Real Execution
 

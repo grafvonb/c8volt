@@ -94,9 +94,9 @@ write optional audit report
 
 `--dry-run` discovers matching process definitions and runs the delete preview. Human output shows candidate process-definition count, grouped BPMN/version impact when available, and a delete preview with affected process-instance count. If active instances are in scope, output reports that `--force` is required before deletion.
 
-Dry-run output includes a discovery status line such as `discovery complete: pages P; batch size B`. When `--limit` stops discovery, the line changes to `discovery user-limited` and includes the limit value.
+Dry-run output includes `discovery user-limited` when `--limit` stops discovery. Normal completed paging is shown only with `--verbose`.
 
-Verbose output lists candidate process-definition details and planned keys.
+Verbose output lists normal completed discovery paging, candidate process-definition details, and planned keys.
 
 ## Real Execution
 

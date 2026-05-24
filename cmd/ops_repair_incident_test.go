@@ -136,7 +136,7 @@ func TestOpsRepairIncidentVarsDryRunShowsVariableScopes(t *testing.T) {
 	})
 
 	require.NoError(t, err, string(output))
-	require.Contains(t, string(output), "variable scopes: 1")
+	require.Contains(t, string(output), "repair preview: 1 active incident(s) would be resolved; 1 related job(s), 1 variable scope(s) would be updated")
 	require.Contains(t, string(output), "variable scope 2251799813685251: names=approved status=planned dependents=2251799813685249")
 	require.Contains(t, string(output), "incident 2251799813685249: vars=planned")
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "PUT /v2/element-instances/")
@@ -195,8 +195,8 @@ func TestOpsRepairIncidentStdinDryRunUsesFixedKeys(t *testing.T) {
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "dry run: repair incidents")
 	require.Contains(t, string(output), "candidate incidents: 1")
-	require.Contains(t, string(output), "repair preview: 1 incident(s), 0 related job(s), 0 variable scope(s) would be updated")
-	require.Contains(t, string(output), "incidents without related jobs: 1")
+	require.Contains(t, string(output), "repair preview: 1 active incident(s) would be resolved; 0 related job(s), 0 variable scope(s) would be updated")
+	require.NotContains(t, string(output), "incidents without related jobs")
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "PATCH /v2/jobs/")
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/resolution")
 }

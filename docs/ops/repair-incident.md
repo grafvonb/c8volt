@@ -91,17 +91,17 @@ write optional audit report
 
 ## Dry Run
 
-`--dry-run` resolves the target set and builds the full repair plan without updating variables, changing jobs, or resolving incidents. Human output emphasizes incident count, process-instance count, related job count, variable scope count, and whether any incidents have no related job.
+`--dry-run` resolves the target set and builds the full repair plan without updating variables, changing jobs, or resolving incidents. Human output emphasizes incident count, the repair preview, related job count, variable scope count, and mixed job coverage when some but not all incidents have related jobs.
 
-Search-mode dry-run output includes a discovery status line such as `discovery complete: pages P; batch size B`. When `--limit` stops discovery, the line changes to `discovery user-limited` and includes the limit value.
+Search-mode dry-run output includes `discovery user-limited` when `--limit` stops discovery. Normal completed paging is shown only with `--verbose`.
 
-Verbose output can list frozen incident keys, process-instance keys, job keys, and planned variable scopes.
+Verbose output can list normal completed discovery paging, frozen incident keys, process-instance keys, job keys, and planned variable scopes.
 
 ## Real Execution
 
 Without `--dry-run`, interactive runs first execute the same plan as a preflight and ask for confirmation. `--auto-confirm` and `--automation` allow supported unattended repair.
 
-When `--vars` or `--vars-file` is supplied, the variables are applied once per unique process-instance scope before incident resolution. If a variable update fails for a scope, dependent incident resolution is blocked for that scope. Job retry and timeout steps run only when the incident has a related job; incidents without related jobs are reported and still proceed to incident resolution.
+When `--vars` or `--vars-file` is supplied, the variables are applied once per unique process-instance scope before incident resolution. If a variable update fails for a scope, dependent incident resolution is blocked for that scope. Job retry and timeout steps run only when the incident has a related job; incidents without related jobs still proceed to incident resolution and are detailed in verbose output or mixed job-coverage summaries.
 
 ## Reports
 

@@ -619,7 +619,7 @@ func TestOpsExecuteRetentionPolicyDryRunPlanRendering(t *testing.T) {
 	require.Contains(t, got, "delete preview: 2 retention candidate(s), 3 affected process instance(s) across 1 root(s) would be deleted")
 	require.Contains(t, got, "dependency expansion: 1 additional process instance(s) due to dependencies")
 	require.Contains(t, got, "duplicate roots: 1")
-	require.Contains(t, got, "non-final process instances in scope: 1 (use --force to cancel before delete)")
+	require.Contains(t, got, "non-final affected process instances: 1 (use --force to cancel before delete)")
 	require.Contains(t, got, "missing ancestors: 1")
 	require.Contains(t, got, "traversal warning: one or more parent process instances were not found")
 	require.Contains(t, got, "confirmation required: true")

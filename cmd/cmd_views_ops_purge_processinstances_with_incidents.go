@@ -66,7 +66,7 @@ func renderOpsPurgeProcessInstancesWithIncidentsDiscoveryStatus(cmd *cobra.Comma
 		renderHumanLine(cmd, "discovery user-limited: limit %d; pages %d; batch size %d", status.Limit, status.Pages, status.BatchSize)
 		return
 	}
-	if status.Complete {
+	if status.Complete && flagVerbose {
 		renderHumanLine(cmd, "discovery complete: pages %d; batch size %d", status.Pages, status.BatchSize)
 	}
 }
@@ -122,7 +122,7 @@ func renderOpsPurgeProcessInstancesWithIncidentsDryRunDeletePreview(cmd *cobra.C
 	)
 	renderOpsProcessInstanceDependencyExpansion(cmd, len(result.DeletePlan.CandidateProcessInstanceKeys), len(result.DeletePlan.AffectedKeys))
 	if len(result.DeletePlan.NonFinalAffectedItems) > 0 {
-		renderHumanLine(cmd, "non-final process instances in scope: %d", len(result.DeletePlan.NonFinalAffectedItems))
+		renderHumanLine(cmd, "non-final affected process instances: %d (use --force to cancel before delete)", len(result.DeletePlan.NonFinalAffectedItems))
 	}
 	if flagVerbose {
 		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)

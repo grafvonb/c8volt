@@ -111,7 +111,7 @@ func renderOpsExecuteRetentionPolicyDryRunDeletePreview(cmd *cobra.Command, resu
 		renderHumanLine(cmd, "duplicate roots: %d", len(result.DeletePlan.DuplicateKeys))
 	}
 	if len(result.DeletePlan.NonFinalAffectedItems) > 0 {
-		renderHumanLine(cmd, "non-final process instances in scope: %d (use --force to cancel before delete)", len(result.DeletePlan.NonFinalAffectedItems))
+		renderHumanLine(cmd, "non-final affected process instances: %d (use --force to cancel before delete)", len(result.DeletePlan.NonFinalAffectedItems))
 	}
 	if len(result.DeletePlan.SkippedSeedKeys) > 0 {
 		renderHumanLine(cmd, "skipped retention candidates with non-final roots: %d", len(result.DeletePlan.SkippedSeedKeys))

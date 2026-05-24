@@ -67,7 +67,7 @@ func renderOpsPurgeAllProcessDefinitionsDiscoveryStatus(cmd *cobra.Command, stat
 		renderHumanLine(cmd, "discovery user-limited: limit %d; pages %d; batch size %d", status.Limit, status.Pages, status.BatchSize)
 		return
 	}
-	if status.Complete {
+	if status.Complete && flagVerbose {
 		renderHumanLine(cmd, "discovery complete: pages %d; batch size %d", status.Pages, status.BatchSize)
 	}
 }
@@ -103,7 +103,7 @@ func renderOpsPurgeAllProcessDefinitionsDryRunDeletePreview(cmd *cobra.Command, 
 		renderHumanLine(cmd, "delete preview: skipped (no matching process definitions)")
 		return
 	}
-	renderHumanLine(cmd, "delete preview: %d process definition(s) would be deleted; %d process instance(s) affected",
+	renderHumanLine(cmd, "delete preview: %d candidate process definition(s), %d affected process instance(s) would be deleted",
 		len(result.DeletePlan.CandidateProcessDefinitionKeys),
 		result.DeletePlan.AffectedProcessInstanceCount,
 	)

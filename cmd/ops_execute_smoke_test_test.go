@@ -136,7 +136,7 @@ func TestOpsExecuteSmokeTestDryRunHumanOutputPlansWithoutMutation(t *testing.T) 
 
 	require.Contains(t, output, "dry run: execute smoke test")
 	require.Contains(t, output, "fixture: embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn")
-	require.Contains(t, output, "workflow: would deploy the fixture, start 2 process instances, and walk their process-instance families")
+	require.Contains(t, output, "smoke-test preview: would deploy the fixture, start 2 process instances, and walk their process-instance families")
 	require.Contains(t, output, "cleanup: skipped (--no-cleanup)")
 	require.NotContains(t, output, "connectivity: confirmed")
 	require.NotContains(t, output, "deployment: planned -")

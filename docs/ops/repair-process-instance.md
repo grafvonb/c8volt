@@ -88,11 +88,11 @@ write optional audit report
 
 ## Dry Run
 
-`--dry-run` searches or reads process-instance targets, discovers their active incidents, and builds the repair plan without updating variables, changing jobs, or resolving incidents. Human output shows process-instance count, skipped process-instance count, incident count, related job count, variable scope count, and the planned final outcome.
+`--dry-run` searches or reads process-instance targets, discovers their active incidents, and builds the repair plan without updating variables, changing jobs, or resolving incidents. Human output shows selected process-instance count, repairable process-instance count, active incident count, the repair preview, skipped process instances, and the planned final outcome.
 
-Search-mode dry-run output includes a discovery status line such as `discovery complete: pages P; batch size B`. When `--limit` stops discovery, the line changes to `discovery user-limited` and includes the limit value.
+Search-mode dry-run output includes `discovery user-limited` when `--limit` stops discovery. Normal completed paging is shown only with `--verbose`.
 
-Verbose output can list frozen process-instance keys, skipped keys, incident keys, job keys, and planned variable scopes.
+Verbose output can list normal completed discovery paging, frozen process-instance keys, skipped keys, incident keys, job keys, and planned variable scopes.
 
 ## Real Execution
 
