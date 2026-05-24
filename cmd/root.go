@@ -259,7 +259,7 @@ func init() {
 	pf.String("log-format", "plain-time", "log format (plain-time, plain, json, text)")
 	pf.Bool("log-with-source", false, "include source file and line number in logs")
 
-	pf.String("tenant", "", "tenant ID for tenant-aware command flows (overrides env, profile, and base config)")
+	pf.String("tenant", "", "tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized")
 	pf.BoolVar(&flagNoErrCodes, "no-err-codes", false, "suppress error codes in error outputs")
 
 	pf.String("camunda-version", string(toolx.CurrentCamundaVersion), fmt.Sprintf("Camunda version (%s) expected. Causes usage of specific API versions.", toolx.SupportedCamundaVersionsString()))

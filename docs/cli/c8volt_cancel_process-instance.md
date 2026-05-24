@@ -14,6 +14,8 @@ Cancel process instances by key or search filters.
 
 By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.
 
+Tenant contract: --tenant scopes search-derived candidate discovery where supported. Explicit --key and stdin keys are backend-authorized admin input; existing dry-run, confirmation, force, and wait safety checks still apply.
+
 When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, or cancellation; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no cancellation request is submitted.
 
 Use --dry-run to preview selected, in-scope, final-state, and partial-scope instances without cancelling.
@@ -79,7 +81,7 @@ c8volt cancel process-instance [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for tenant-aware command flows (overrides env, profile, and base config)
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

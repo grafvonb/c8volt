@@ -208,6 +208,17 @@ func TestDeleteCommands_RegressionPreservesCleanupContracts(t *testing.T) {
 	})
 }
 
+// TestDeleteProcessDefinitionHelp_DocumentsTenantContract verifies destructive
+// definition help separates selector discovery from explicit admin keys.
+func TestDeleteProcessDefinitionHelp_DocumentsTenantContract(t *testing.T) {
+	output := executeRootForTest(t, "delete", "process-definition", "--help")
+
+	require.Contains(t, output, "Tenant contract:")
+	require.Contains(t, output, "--tenant scopes BPMN selector discovery")
+	require.Contains(t, output, "Explicit --key and stdin process-definition keys are backend-authorized admin input")
+	require.Contains(t, output, "existing impact, confirmation, force, and wait safety checks still apply")
+}
+
 // TestDeleteProcessInstanceDryRun_DefaultOutputSummarizesSelectedFinalStateInstances
 // verifies terminal selected instances are summarized without noisy key lists by
 // default.

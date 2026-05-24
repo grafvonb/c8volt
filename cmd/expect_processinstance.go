@@ -21,6 +21,7 @@ var expectProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Wait for process instances to satisfy expectations",
 	Long: "Wait for process instances to satisfy requested state and incident expectations.\n\n" +
+		"Tenant contract: explicit --key and stdin process-instance targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.\n\n" +
 		"Use after `run`, `cancel`, or `delete` when a command returns before the final state or incident marker is visible.",
 	Example: `  ./c8volt expect pi --key <process-instance-key> --state active
   ./c8volt expect pi --key <process-instance-key> --incident true

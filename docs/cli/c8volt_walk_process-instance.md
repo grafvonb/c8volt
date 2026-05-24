@@ -14,6 +14,8 @@ Inspect the parent/child tree of process instances.
 
 By default, walk shows the full process-instance family as an ASCII tree. Use --parent for ancestry, --children for descendants, or --flat for a path-style family view.
 
+Tenant contract: explicit --key process-instance targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.
+
 Add --with-incidents and/or --with-vars to keyed walks to show incident details and process-instance-scope variables below matching rows.
 
 When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.
@@ -60,7 +62,7 @@ c8volt walk process-instance [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for tenant-aware command flows (overrides env, profile, and base config)
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

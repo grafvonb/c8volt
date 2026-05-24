@@ -31,6 +31,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 	Short: "Inspect the parent/child tree of process instances",
 	Long: "Inspect the parent/child tree of process instances.\n\n" +
 		"By default, walk shows the full process-instance family as an ASCII tree. Use --parent for ancestry, --children for descendants, or --flat for a path-style family view.\n\n" +
+		"Tenant contract: explicit --key process-instance targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.\n\n" +
 		"Add --with-incidents and/or --with-vars to keyed walks to show incident details and process-instance-scope variables below matching rows.\n\n" +
 		"When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.",
 	Example: `  ./c8volt walk pi --key <process-instance-key>

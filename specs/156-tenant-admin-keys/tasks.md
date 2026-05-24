@@ -117,15 +117,15 @@
 
 ### Tests for User Story 4
 
-- [ ] T034 [P] [US4] Add command contract assertions for tenant flag/help wording in `cmd/command_contract_test.go`
-- [ ] T035 [P] [US4] Add command help assertions for affected process-instance, process-definition, and resource commands in `cmd/cmd_processinstance_test.go`, `cmd/get_test.go`, and `cmd/delete_test.go`
+- [x] T034 [P] [US4] Add command contract assertions for tenant flag/help wording in `cmd/command_contract_test.go`
+- [x] T035 [P] [US4] Add command help assertions for affected process-instance, process-definition, and resource commands in `cmd/cmd_processinstance_test.go`, `cmd/get_test.go`, and `cmd/delete_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T036 [US4] Update root tenant flag description and affected command long help in `cmd/root.go`, process-instance command files, process-definition command files, and `cmd/get_resource.go`
-- [ ] T037 [US4] Update README tenant guidance in `README.md`
-- [ ] T038 [US4] Run `make docs-content` to regenerate generated CLI docs under `docs/cli/` and `docs/index.md`
-- [ ] T039 [US4] Run `go test ./docsgen ./cmd -count=1`
+- [x] T036 [US4] Update root tenant flag description and affected command long help in `cmd/root.go`, process-instance command files, process-definition command files, and `cmd/get_resource.go`
+- [x] T037 [US4] Update README tenant guidance in `README.md`
+- [x] T038 [US4] Run `make docs-content` to regenerate generated CLI docs under `docs/cli/` and `docs/index.md`
+- [x] T039 [US4] Run `go test ./docsgen ./cmd -count=1`
 
 **Checkpoint**: All user-facing documentation and command help describe the tenant contract.
 

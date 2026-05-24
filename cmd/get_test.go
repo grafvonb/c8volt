@@ -140,6 +140,9 @@ func TestGetResourceHelp(t *testing.T) {
 
 	require.Contains(t, output, "Get a single resource by id")
 	require.Contains(t, output, "Requires --id")
+	require.Contains(t, output, "Tenant contract:")
+	require.Contains(t, output, "explicit --id resource targets are backend-authorized admin input")
+	require.Contains(t, output, "returned tenant metadata may differ from the selected tenant")
 	require.Contains(t, output, "c8volt get resource")
 	require.Contains(t, output, "--id")
 	require.Contains(t, output, "resource id to fetch")
@@ -207,6 +210,9 @@ func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 	require.Contains(t, output, "`--stat` requires Camunda `8.8` or `8.9`")
 	require.Contains(t, output, "prints exact-version")
 	require.Contains(t, output, "Camunda `8.7` does not support")
+	require.Contains(t, output, "Tenant contract:")
+	require.Contains(t, output, "`--tenant` scopes list/latest and BPMN selector discovery")
+	require.Contains(t, output, "Explicit `--key` and XML key lookups are backend-authorized admin")
 	require.Contains(t, output, "./c8volt get pd --key <process-definition-key> --json")
 }
 

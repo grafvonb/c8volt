@@ -252,6 +252,35 @@ func TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode(t *testing.T)
 	require.Contains(t, deleteOutput, "./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run")
 }
 
+// TestProcessInstanceHelp_DocumentsTenantContract verifies command help names
+// discovery-scoped tenant behavior separately from explicit admin input.
+func TestProcessInstanceHelp_DocumentsTenantContract(t *testing.T) {
+	getOutput := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
+	require.Contains(t, getOutput, "Tenant contract:")
+	require.Contains(t, getOutput, "--tenant scopes search/list discovery and selector validation")
+	require.Contains(t, getOutput, "Explicit --key and stdin keys are backend-authorized admin input")
+
+	walkOutput := executeRootForProcessInstanceTest(t, "walk", "process-instance", "--help")
+	require.Contains(t, walkOutput, "Tenant contract:")
+	require.Contains(t, walkOutput, "explicit --key process-instance targets are backend-authorized admin input")
+
+	expectOutput := executeRootForProcessInstanceTest(t, "expect", "process-instance", "--help")
+	require.Contains(t, expectOutput, "Tenant contract:")
+	require.Contains(t, expectOutput, "explicit --key and stdin process-instance targets are backend-authorized admin input")
+
+	cancelOutput := executeRootForProcessInstanceTest(t, "cancel", "process-instance", "--help")
+	require.Contains(t, cancelOutput, "Tenant contract:")
+	require.Contains(t, cancelOutput, "--tenant scopes search-derived candidate discovery")
+	require.Contains(t, cancelOutput, "Explicit --key and stdin keys are backend-authorized admin input")
+	require.Contains(t, cancelOutput, "existing dry-run, confirmation, force, and wait safety checks still apply")
+
+	deleteOutput := executeRootForProcessInstanceTest(t, "delete", "process-instance", "--help")
+	require.Contains(t, deleteOutput, "Tenant contract:")
+	require.Contains(t, deleteOutput, "--tenant scopes search-derived candidate discovery")
+	require.Contains(t, deleteOutput, "Explicit --key and stdin keys are backend-authorized admin input")
+	require.Contains(t, deleteOutput, "existing dry-run, confirmation, force, and wait safety checks still apply")
+}
+
 func TestProcessInstanceSearchDefaultOneLineOutput_IgnoresReportedTotalMetadata(t *testing.T) {
 	var requests []string
 	srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,

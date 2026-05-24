@@ -24,6 +24,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 	Short: "Delete process instances by key or filters",
 	Long: "Delete process instances by key or search filters, optionally cancelling first.\n\n" +
 		"By default c8volt validates the complete affected tree before submitting any delete request, prompts before deletion, and waits until deletion is observed. If any affected process instance is not in a final state, the whole delete batch is refused before mutation. Use --force to cancel the affected scope first, then delete it.\n\n" +
+		"Tenant contract: --tenant scopes search-derived candidate discovery where supported. Explicit --key and stdin keys are backend-authorized admin input; existing dry-run, confirmation, force, and wait safety checks still apply.\n\n" +
 		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, cancellation, or deletion; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no deletion request is submitted.\n\n" +
 		"Use --dry-run to preview selected, in-scope, final-state, non-final, and partial-scope instances without deleting or cancelling.\n\n" +
 		"Use --auto-confirm for unattended destructive runs.",

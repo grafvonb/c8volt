@@ -12,6 +12,8 @@ Wait for process instances to satisfy expectations
 
 Wait for process instances to satisfy requested state and incident expectations.
 
+Tenant contract: explicit --key and stdin process-instance targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.
+
 Use after `run`, `cancel`, or `delete` when a command returns before the final state or incident marker is visible.
 
 ```
@@ -54,7 +56,7 @@ c8volt expect process-instance [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for tenant-aware command flows (overrides env, profile, and base config)
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

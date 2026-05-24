@@ -25,6 +25,7 @@
 - v88/v89 process-instance search services honor `services.WithIgnoreTenant()` by omitting the tenant filter, while normal search-derived command paths continue to pass tenant-scoped options.
 - Explicit process-definition key/XML, resource ID, and stdin process-definition delete paths use `foptions.WithIgnoreTenant()` through the public facade option boundary; selector/search-derived process-definition paths continue to use normal tenant-scoped options.
 - v88/v89 process-definition statistics honor `services.WithIgnoreTenant()` by omitting tenant filters from process-instance count searches, preventing direct-key stats and delete impact checks from reintroducing selected-tenant scope.
+- Command long help is the source for generated CLI docs; after tenant help changes, run `make docs-content` so `docs/cli/` and `docs/index.md` stay synchronized.
 
 ## Work Log
 
@@ -166,4 +167,40 @@
 - Direct process-definition stats and delete impact planning can reintroduce selected-tenant filters unless the direct-key command path passes `IgnoreTenant` all the way into v88/v89 statistics requests.
 - Resource direct-ID lookup already delegates to backend keyed lookup; the command and facade tests now pin the explicit admin-input option propagation contract.
 - Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/process ./c8volt/resource ./internal/services/processdefinition ./internal/services/resource -run 'Test.*(ProcessDefinition|Resource|Stdin).*Tenant|Test.*Tenant.*(ProcessDefinition|Resource|Stdin)' -count=1` and `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./internal/services/processdefinition/... ./internal/services/resource/... -count=1`.
+---
+---
+## Iteration 6 - 2026-05-24 22:27 CEST
+**User Story**: User Story 4 - Document Tenant Semantics For Operators
+**Tasks Completed**:
+- [x] T034: Add command contract assertions for tenant flag/help wording in `cmd/command_contract_test.go`
+- [x] T035: Add command help assertions for affected process-instance, process-definition, and resource commands in `cmd/cmd_processinstance_test.go`, `cmd/get_test.go`, and `cmd/delete_test.go`
+- [x] T036: Update root tenant flag description and affected command long help in `cmd/root.go`, process-instance command files, process-definition command files, and `cmd/get_resource.go`
+- [x] T037: Update README tenant guidance in `README.md`
+- [x] T038: Run `make docs-content` to regenerate generated CLI docs under `docs/cli/` and `docs/index.md`
+- [x] T039: Run `go test ./docsgen ./cmd -count=1`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/root.go
+- cmd/get_processinstance.go
+- cmd/walk_processinstance.go
+- cmd/expect_processinstance.go
+- cmd/cancel_processinstance.go
+- cmd/delete_processinstance.go
+- cmd/get_processdefinition.go
+- cmd/delete_processdefinition.go
+- cmd/get_resource.go
+- cmd/command_contract_test.go
+- cmd/cmd_processinstance_test.go
+- cmd/get_test.go
+- cmd/delete_test.go
+- docs/cli/*.md
+- docs/index.md
+- specs/156-tenant-admin-keys/tasks.md
+- specs/156-tenant-admin-keys/progress.md
+**Learnings**:
+- Root persistent flag descriptions propagate to every generated command page, so the tenant contract belongs in the global flag when it affects all command help.
+- Command-specific long help is still needed for affected process-instance, process-definition, and resource commands because the global flag cannot describe mode-specific explicit-key behavior by itself.
+- Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd -run 'Test(CommandCapabilityForCommand_DocumentsTenantContract|ProcessInstanceHelp_DocumentsTenantContract|GetResourceHelp|GetProcessDefinitionHelp_DocumentsJSONAndXMLModes|DeleteProcessDefinitionHelp_DocumentsTenantContract)$' -count=1` and `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./docsgen ./cmd -count=1`.
 ---

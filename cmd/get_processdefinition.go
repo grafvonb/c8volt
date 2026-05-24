@@ -33,6 +33,11 @@ var getProcessDefinitionCmd = &cobra.Command{
 Inspect deployed BPMN models by key, BPMN process ID, version selectors, or
 latest deployed version. Use ` + "`--xml`" + ` only with ` + "`--key`" + `.
 
+Tenant contract: ` + "`--tenant`" + ` scopes list/latest and BPMN selector discovery where
+supported. Explicit ` + "`--key`" + ` and XML key lookups are backend-authorized admin input;
+c8volt displays returned tenant metadata without rejecting solely because it differs
+from the selected tenant.
+
 When ` + "`--bpmn-process-id`" + ` is set, c8volt validates that at least one visible
 process definition matches the selector before rendering output. A missing selector
 fails with the shared local diagnostic instead of rendering an ambiguous empty list.
