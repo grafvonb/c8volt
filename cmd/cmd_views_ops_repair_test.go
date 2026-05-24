@@ -40,6 +40,12 @@ func TestRenderOpsRepairIncidentDryRunSearchHumanOutput(t *testing.T) {
 			DiscoveryMode:       ops.RepairDiscoveryModeSearch,
 			IncidentKeys:        typex.Keys{"2251799813685249", "2251799813685250"},
 			ProcessInstanceKeys: typex.Keys{"2251799813685251"},
+			DiscoveryScopeStatus: ops.DiscoveryScopeStatus{
+				Complete:         true,
+				BatchSize:        2,
+				Pages:            3,
+				CandidatesFrozen: 2,
+			},
 			IncidentFilters: incident.Filter{
 				State:     "active",
 				ErrorType: "io_mapping_error",
@@ -57,10 +63,49 @@ func TestRenderOpsRepairIncidentDryRunSearchHumanOutput(t *testing.T) {
 	require.Contains(t, output, "dry run: repair incidents")
 	require.Contains(t, output, `selection filters: {state=active, errorType="io_mapping_error"}`)
 	require.Contains(t, output, "candidate incidents: 2")
+	require.Contains(t, output, "discovery complete: pages 3; batch size 2")
 	require.Contains(t, output, "repair preview: 2 incident(s), 1 related job(s), 0 variable scope(s) would be updated")
 	require.Contains(t, output, "incidents without related jobs: 1")
 	require.Contains(t, output, "incident keys: 2251799813685249, 2251799813685250")
 	require.Contains(t, output, "report: written repair-preview.json")
+	require.Contains(t, output, "outcome: planned; no changes applied")
+}
+
+// TestRenderOpsRepairProcessInstanceDryRunSearchHumanOutput verifies user-limited repair discovery is visible in compact output.
+func TestRenderOpsRepairProcessInstanceDryRunSearchHumanOutput(t *testing.T) {
+	resetOpsRepairProcessInstanceFlagState()
+	t.Cleanup(resetOpsRepairProcessInstanceFlagState)
+
+	cmd, buf := newOpsRepairProcessInstanceRenderTestCommand()
+
+	err := renderOpsRepairProcessInstanceResult(cmd, ops.RepairResult{
+		Request: ops.RepairRequest{
+			DryRun:        true,
+			DiscoveryMode: ops.RepairDiscoveryModeSearch,
+		},
+		FrozenSet: ops.RepairFrozenSet{
+			DiscoveryMode:       ops.RepairDiscoveryModeSearch,
+			ProcessInstanceKeys: typex.Keys{"2251799813685251"},
+			IncidentKeys:        typex.Keys{"2251799813685249"},
+			DiscoveryScopeStatus: ops.DiscoveryScopeStatus{
+				Limited:          true,
+				Limit:            1,
+				BatchSize:        2,
+				Pages:            1,
+				CandidatesSeen:   2,
+				CandidatesFrozen: 1,
+			},
+		},
+		Plan:    []ops.RepairPlanItem{{IncidentKey: "2251799813685249", ResolutionStatus: ops.WorkflowStepStatusPlanned}},
+		Outcome: ops.RepairOutcomePlanned,
+	})
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "dry run: repair process-instance incidents")
+	require.Contains(t, output, "candidate process instances: 1")
+	require.Contains(t, output, "active incidents: 1")
+	require.Contains(t, output, "discovery user-limited: limit 1; pages 1; batch size 2")
 	require.Contains(t, output, "outcome: planned; no changes applied")
 }
 
@@ -123,6 +168,13 @@ func TestRenderOpsRepairIncidentDryRunSearchJSON(t *testing.T) {
 // TestRenderOpsRepairMarkdownReport verifies repair Markdown is derived from the structured audit model.
 func TestRenderOpsRepairMarkdownReport(t *testing.T) {
 	report := newOpsRepairRenderTestReport()
+	report.FrozenSet.DiscoveryScopeStatus = ops.DiscoveryScopeStatus{
+		Complete:         true,
+		BatchSize:        2,
+		Pages:            3,
+		CandidatesSeen:   3,
+		CandidatesFrozen: 1,
+	}
 
 	data, err := renderOpsRepairMarkdownReport(report, nil)
 
@@ -134,6 +186,9 @@ func TestRenderOpsRepairMarkdownReport(t *testing.T) {
 	require.Contains(t, output, "- Dry Run: true")
 	require.Contains(t, output, "- Outcome: planned")
 	require.Contains(t, output, "## Fixed Targets")
+	require.Contains(t, output, "- Completeness: discovery complete")
+	require.Contains(t, output, "- Discovery Batch Size: 2")
+	require.Contains(t, output, "- Discovery Pages: 3")
 	require.Contains(t, output, "  - 2251799813685249")
 	require.Contains(t, output, "## Variable Updates")
 	require.Contains(t, output, "  - scope=2251799813685251 status=planned names=approved dependents=2251799813685249")
@@ -165,6 +220,15 @@ func TestRenderOpsRepairJSONReport(t *testing.T) {
 func newOpsRepairIncidentRenderTestCommand() (*cobra.Command, *bytes.Buffer) {
 	buf := &bytes.Buffer{}
 	cmd := &cobra.Command{Use: "incident"}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	return cmd, buf
+}
+
+// newOpsRepairProcessInstanceRenderTestCommand captures process-instance repair renderer output.
+func newOpsRepairProcessInstanceRenderTestCommand() (*cobra.Command, *bytes.Buffer) {
+	buf := &bytes.Buffer{}
+	cmd := &cobra.Command{Use: "process-instance"}
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
 	return cmd, buf

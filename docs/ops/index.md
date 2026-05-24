@@ -10,7 +10,7 @@ has_toc: true
 
 Low-level commands do work. `c8volt ops` finishes workflows.
 
-The ops command group is the operator-facing layer for predefined Camunda playbooks. Each command composes lower-level c8volt behavior such as discovery, tree traversal, delete planning, incident lookup, confirmation, waiting, JSON output, and report writing. The goal is not to hide the primitives. The goal is to make the whole operational outcome repeatable.
+The ops command group is the operator-facing layer for predefined Camunda playbooks. Each command composes lower-level c8volt behavior such as discovery, tree traversal, delete planning, incident lookup, confirmation, waiting, JSON output, and report writing. The goal is not to hide the primitives. The goal is to make the whole operational outcome repeatable. Discovery-oriented ops workflows page through all matches by default; `--batch-size` tunes page size only, and `--limit` intentionally caps the frozen scope. Human, JSON, and Markdown output identify whether discovery completed or was user-limited.
 
 ## Playbook Index
 

@@ -16,6 +16,8 @@ Deleting process definitions is not just a resource cleanup. A selected process-
 
 `c8volt ops purge all-process-definitions` discovers candidate process-definition versions with `get pd`-style selectors, freezes their keys, previews delete impact, blocks active process-instance scope unless `--force` is supplied, and deletes the selected definitions only after confirmation. The full process-definition purge workflow is supported for Camunda 8.9 and newer, where c8volt can request process-definition history deletion through the Camunda resource deletion endpoint.
 
+Discovery pages through all matching process definitions by default. `--batch-size` controls how many process definitions are inspected per discovery page, and `--limit` is the explicit cap for the frozen purge scope. Human output, JSON output, and Markdown reports show whether discovery completed or was user-limited.
+
 ## In Action
 
 The recording previews process-definition purge impact before deleting anything, then runs the purge with `--force`, confirms the prompt, writes an audit report, and opens the first report section. It shows the key safety point for this workflow: process definitions are selected first, but c8volt still plans and reports process-instance impact before mutation.
@@ -41,6 +43,7 @@ c8volt ops purge all-process-definitions --force --report-file /tmp/c8volt-vhs/r
 ```bash
 c8volt ops purge all-process-definitions --dry-run
 c8volt ops purge all-process-definitions --dry-run --report-file process-definition-purge.md
+c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --batch-size 250 --dry-run
 c8volt ops purge all-pds --bpmn-process-id <bpmn-process-id> --latest --dry-run
 c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --pd-version 3 --dry-run --report-file process-definition-purge.json --report-format json
 c8volt ops purge all-process-definitions --automation --json --dry-run
@@ -56,7 +59,7 @@ c8volt get pd [process-definition filters...]
 c8volt delete pd --key <candidate-process-definition-key>
 ```
 
-The command supports `--key`, `--bpmn-process-id`, `--pd-version`, `--pd-version-tag`, and `--latest` for candidate discovery. When `--bpmn-process-id` is set, c8volt validates visible process-definition matches before impact planning, confirmation, or deletion. Execution controls include `--workers`, `--no-worker-limit`, `--fail-fast`, `--no-wait`, `--force`, `--automation`, `--json`, `--report-file`, and `--report-format`.
+The command supports `--key`, `--bpmn-process-id`, `--pd-version`, `--pd-version-tag`, and `--latest` for candidate discovery. `--batch-size` changes request size only and does not stop discovery. Use `--limit N` when the purge scope should intentionally contain at most `N` matching process definitions. When `--bpmn-process-id` is set, c8volt validates visible process-definition matches before impact planning, confirmation, or deletion. Execution controls include `--workers`, `--no-worker-limit`, `--fail-fast`, `--no-wait`, `--force`, `--automation`, `--json`, `--report-file`, and `--report-format`.
 
 ## Workflow
 
@@ -90,6 +93,8 @@ write optional audit report
 ## Dry Run
 
 `--dry-run` discovers matching process definitions and runs the delete preview. Human output shows candidate process-definition count, grouped BPMN/version impact when available, and a delete preview with affected process-instance count. If active instances are in scope, output reports that `--force` is required before deletion.
+
+Dry-run output includes a discovery status line such as `discovery complete: pages P; batch size B`. When `--limit` stops discovery, the line changes to `discovery user-limited` and includes the limit value.
 
 Verbose output lists candidate process-definition details and planned keys.
 

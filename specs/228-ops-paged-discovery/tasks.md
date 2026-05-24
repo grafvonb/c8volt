@@ -129,16 +129,16 @@
 
 ### Tests for User Story 4
 
-- [ ] T046 [P] [US4] Add command contract assertions for updated discovery flag/help semantics in `cmd/command_contract_test.go`
-- [ ] T047 [P] [US4] Add renderer tests for discovery complete and user-limited output in `cmd/cmd_views_ops_repair_test.go`
-- [ ] T048 [P] [US4] Add docs generator expectations for affected help text in `docsgen/main_test.go`
+- [x] T046 [P] [US4] Add command contract assertions for updated discovery flag/help semantics in `cmd/command_contract_test.go`
+- [x] T047 [P] [US4] Add renderer tests for discovery complete and user-limited output in `cmd/cmd_views_ops_repair_test.go`
+- [x] T048 [P] [US4] Add docs generator expectations for affected help text in `docsgen/main_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T049 [US4] Update affected command long help and flag descriptions in `cmd/ops_purge_processinstances_with_incidents.go`, `cmd/ops_repair_incident.go`, `cmd/ops_repair_processinstance.go`, and `cmd/ops_purge_all_processdefinitions.go`
-- [ ] T050 [US4] Update ops documentation in `README.md` and affected `docs/ops/*.md` files
-- [ ] T051 [US4] Run `make docs-content` to regenerate generated CLI docs after command metadata changes
-- [ ] T052 [US4] Run `go test ./docsgen ./cmd -count=1`
+- [x] T049 [US4] Update affected command long help and flag descriptions in `cmd/ops_purge_processinstances_with_incidents.go`, `cmd/ops_repair_incident.go`, `cmd/ops_repair_processinstance.go`, and `cmd/ops_purge_all_processdefinitions.go`
+- [x] T050 [US4] Update ops documentation in `README.md` and affected `docs/ops/*.md` files
+- [x] T051 [US4] Run `make docs-content` to regenerate generated CLI docs after command metadata changes
+- [x] T052 [US4] Run `go test ./docsgen ./cmd -count=1`
 
 **Checkpoint**: All user-facing and machine-facing output surfaces document and expose discovery status.
 

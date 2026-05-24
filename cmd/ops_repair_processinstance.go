@@ -30,7 +30,7 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Repair incidents selected by process instances",
 	Long: "Repair incidents selected by process instances.\n\n" +
-		"The command accepts repeated --key values, newline-separated process-instance keys from stdin with '-', or process-instance search filters. Search mode automatically limits discovery to incident-bearing process instances; use --direct-incidents-only for stricter direct active incident matching. The workflow builds a fixed target set of repairable process instances and active incidents before mutation, applies process-instance-scope variable updates once per unique scope when requested, then reuses the incident repair steps for job updates, incident resolution, and confirmation. Use --report-file with markdown or json output for an audit record of discovery, targets, duplicate handling, skipped keys, step statuses, notices, errors, and final outcome.",
+		"The command accepts repeated --key values, newline-separated process-instance keys from stdin with '-', or process-instance search filters. Search mode automatically limits discovery to incident-bearing process instances; use --direct-incidents-only for stricter direct active incident matching. Search mode pages through all matching incident-bearing process instances by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. The workflow builds a fixed target set of repairable process instances and active incidents before mutation, applies process-instance-scope variable updates once per unique scope when requested, then reuses the incident repair steps for job updates, incident resolution, and confirmation. Use --report-file with markdown or json output for an audit record of discovery, targets, duplicate handling, skipped keys, step statuses, notices, errors, and final outcome.",
 	Example: `  ./c8volt ops repair process-instance --key <process-instance-key>
   ./c8volt ops repair pi --key <process-instance-key> --key <another-process-instance-key>
   printf '%s\n' "$PI_KEY_A" "$PI_KEY_B" | ./c8volt ops repair process-instance -
@@ -186,8 +186,8 @@ func init() {
 	fs.StringVar(&flagGetPIIncidentState, "incident-state", "active", "incident state scope for --direct-incidents-only: active, pending, resolved, migrated, unknown, all")
 	fs.StringVar(&flagGetPIIncidentErrorType, "incident-error-type", "", "case-insensitive incident error type filter for --direct-incidents-only")
 	fs.StringVar(&flagGetPIIncidentErrorMessage, "incident-error-message", "", "case-insensitive incident error message substring filter for --direct-incidents-only")
-	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to inspect per page (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to repair")
+	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to freeze for repair; omit to discover all matches")
 	fs.Int32Var(&flagOpsRepairProcessInstanceRetries, "retries", 1, "retry count to set on related jobs; 0 skips retry restoration")
 	fs.StringVar(&flagOpsRepairProcessInstanceJobTimeoutRaw, "job-timeout", "", "timeout duration to submit for related jobs, for example 60s, 5m, or 1h")
 	fs.StringVar(&flagOpsRepairProcessInstanceVars, "vars", "", "JSON object with variables to set once per process-instance scope before resolving dependent incidents")

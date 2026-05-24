@@ -18,6 +18,8 @@ Started: 2026-05-24 12:31:13
 - Shared ops process-instance test stubs can route page requests through existing one-shot search callbacks when a test is not about pagination, keeping old repair and orphan tests focused.
 - All-process-definitions purge should use `SearchProcessDefinitionsPage` for filtered/latest discovery, preserve the planned `DiscoveryScopeStatus` when confirmation replays frozen keys, and advance offset fallback by returned item count when no cursor is available.
 - APD command tests can force a multi-page fake backend with `--batch-size 1`; default page size still returns the full fixture in one request so older command tests keep their existing request-count expectations.
+- Command long help and Cobra flag descriptions are the source for both capability metadata and generated CLI docs, so discovery wording should be updated there before running `make docs-content`.
+- `make docs-content` regenerates both `docs/cli/*` command pages and `docs/index.md` from README content, so README-facing ops copy can legitimately change the generated docs index.
 
 ---
 
@@ -176,4 +178,44 @@ Started: 2026-05-24 12:31:13
 - APD filtered and latest discovery can use the same process-definition page service boundary; keyed discovery remains a lookup with a complete frozen scope and zero backend pages.
 - The prescribed service validation pattern `Test.*AllProcessDefinitionsPurge` currently matches no tests, so `TestPurgeAllProcessDefinitions` was also run as the effective service validation.
 - APD Markdown, human, and JSON output now read discovery completeness from `DiscoveryScopeStatus`, matching the incident purge and repair story pattern.
+---
+
+---
+## Iteration 6 - 2026-05-24 13:20:27 CEST
+**User Story**: User Story 4 - Operators Can Audit Discovery Completeness
+**Tasks Completed**:
+- [x] T046: Add command contract assertions for updated discovery flag/help semantics in `cmd/command_contract_test.go`
+- [x] T047: Add renderer tests for discovery complete and user-limited output in `cmd/cmd_views_ops_repair_test.go`
+- [x] T048: Add docs generator expectations for affected help text in `docsgen/main_test.go`
+- [x] T049: Update affected command long help and flag descriptions in `cmd/ops_purge_processinstances_with_incidents.go`, `cmd/ops_repair_incident.go`, `cmd/ops_repair_processinstance.go`, and `cmd/ops_purge_all_processdefinitions.go`
+- [x] T050: Update ops documentation in `README.md` and affected `docs/ops/*.md` files
+- [x] T051: Run `make docs-content` to regenerate generated CLI docs after command metadata changes
+- [x] T052: Run `go test ./docsgen ./cmd -count=1`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/cmd_views_ops_repair_test.go
+- cmd/command_contract_test.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_processinstances_with_incidents.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_processinstance.go
+- docs/cli/c8volt_ops_purge_all-process-definitions.md
+- docs/cli/c8volt_ops_purge_process-instances-with-incidents.md
+- docs/cli/c8volt_ops_repair_incident.md
+- docs/cli/c8volt_ops_repair_process-instance.md
+- docs/index.md
+- docs/ops/index.md
+- docs/ops/purge-all-process-definitions.md
+- docs/ops/purge-process-instances-with-incidents.md
+- docs/ops/repair-incident.md
+- docs/ops/repair-process-instance.md
+- docsgen/main_test.go
+- specs/228-ops-paged-discovery/tasks.md
+- specs/228-ops-paged-discovery/progress.md
+**Learnings**:
+- Command long help and flag descriptions are the shared source for capability output and generated CLI reference pages.
+- Repair renderer tests can exercise full vs. user-limited discovery directly by setting `DiscoveryScopeStatus` on `RepairFrozenSet`.
+- `make docs-content` also refreshes `docs/index.md` from README, so README wording changes can produce generated docs index diffs.
 ---

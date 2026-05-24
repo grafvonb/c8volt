@@ -14,17 +14,17 @@
 
 The v4 release introduces the C8 Ops CLI: high-level operational commands that finish the whole workflow. Low-level commands do work. `c8volt ops` gets the job done.
 
-The `ops` command group turns multi-command Camunda operations into audited, previewable playbooks. Instead of making operators manually chain `get`, `walk`, `delete`, `resolve`, `update`, and cleanup commands, an ops command discovers the target set, freezes it, builds the same lower-level c8volt plan you would trust by hand, then runs it with dry-run previews, confirmation controls, JSON output, and audit reports.
+The `ops` command group turns multi-command Camunda operations into audited, previewable playbooks. Instead of making operators manually chain `get`, `walk`, `delete`, `resolve`, `update`, and cleanup commands, an ops command discovers the target set, freezes it, builds the same lower-level c8volt plan you would trust by hand, then runs it with dry-run previews, confirmation controls, JSON output, and audit reports. Discovery pages through the full matching scope by default; `--batch-size` only tunes page size, while `--limit` is the explicit way to cap the frozen scope. Human, JSON, and Markdown reports identify whether discovery completed or was user-limited.
 
 | Command | What it finishes | Playbook |
 | --- | --- | --- |
 | `c8volt ops execute smoke-test` | Proves that a profile can connect, deploy, run, walk, and clean up a real process. | [Execute Smoke Test](docs/ops/execute-smoke-test.md) |
 | `c8volt ops execute retention-policy` | Deletes old finished process instances with a retention-age plan and audit report. | [Execute Retention Policy](docs/ops/execute-retention-policy.md) |
 | `c8volt ops purge orphan-process-instances` | Finds orphan child process instances and deletes the frozen set through c8volt delete planning. | [Purge Orphan Process Instances](docs/ops/purge-orphan-process-instances.md) |
-| `c8volt ops purge process-instances-with-incidents` | Finds process instances through incident filters, then purges them through deterministic family-scope delete planning. | [Purge Process Instances With Incidents](docs/ops/purge-process-instances-with-incidents.md) |
-| `c8volt ops purge all-process-definitions` | Finds process-definition versions, plans their process-instance impact, then deletes the selected definitions. | [Purge All Process Definitions](docs/ops/purge-all-process-definitions.md) |
-| `c8volt ops repair incident` | Freezes incident targets, repairs variables/jobs where requested, resolves incidents, and reports every step. | [Repair Incident](docs/ops/repair-incident.md) |
-| `c8volt ops repair process-instance` | Selects process instances, discovers their active incidents, then runs the same audited repair workflow. | [Repair Process Instance](docs/ops/repair-process-instance.md) |
+| `c8volt ops purge process-instances-with-incidents` | Pages incident discovery, freezes process-instance candidates, then purges them through deterministic family-scope delete planning. | [Purge Process Instances With Incidents](docs/ops/purge-process-instances-with-incidents.md) |
+| `c8volt ops purge all-process-definitions` | Pages process-definition discovery, plans process-instance impact, then deletes the selected definitions. | [Purge All Process Definitions](docs/ops/purge-all-process-definitions.md) |
+| `c8volt ops repair incident` | Pages incident discovery or uses keyed input, repairs variables/jobs where requested, resolves incidents, and reports every step. | [Repair Incident](docs/ops/repair-incident.md) |
+| `c8volt ops repair process-instance` | Pages incident-bearing process-instance discovery, discovers active incidents, then runs the same audited repair workflow. | [Repair Process Instance](docs/ops/repair-process-instance.md) |
 
 Start every destructive or repair workflow with a plan:
 
