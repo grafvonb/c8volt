@@ -124,14 +124,10 @@ func purgeOrphanProcessInstancesWithCommandActivity(cmd *cobra.Command, request 
 }
 
 func formatOpsPurgeOrphanProcessInstancesActivity(request ops.OrphanPurgeRequest, beforeDeletion bool) string {
-	msg := "checking orphan child pi parents"
 	if beforeDeletion {
-		msg += " before delete"
+		return "checking orphan process-instance candidates before delete"
 	}
-	if request.BatchSize > 0 {
-		msg += fmt.Sprintf("; page size %d", request.BatchSize)
-	}
-	return msg
+	return "discovering orphan process-instance candidates"
 }
 
 func init() {

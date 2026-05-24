@@ -88,7 +88,9 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
-			planned, err := cli.ExecuteRetentionPolicy(cmd.Context(), planRequest, collectOptions()...)
+			planned, err := executeRetentionPolicyWithCommandActivity(cmd, planRequest, func() (ops.RetentionPolicyResult, error) {
+				return cli.ExecuteRetentionPolicy(cmd.Context(), planRequest, collectOptions()...)
+			})
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops execute retention-policy: %w", err))
 			}
@@ -109,7 +111,9 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 			}
 			request.DiscoveredKeys = append(typex.Keys{}, planned.Discovery.SeedKeys...)
 		}
-		result, err := cli.ExecuteRetentionPolicy(cmd.Context(), request, collectOptions()...)
+		result, err := executeRetentionPolicyWithCommandActivity(cmd, request, func() (ops.RetentionPolicyResult, error) {
+			return cli.ExecuteRetentionPolicy(cmd.Context(), request, collectOptions()...)
+		})
 		if err != nil {
 			if reportErr := writeOpsExecuteRetentionPolicyReport(result, cfg, opsExecuteRetentionPolicyReportWriteMode(result)); reportErr != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops execute retention-policy: %w; write audit report: %v", err, reportErr))
@@ -173,6 +177,22 @@ func validateOpsExecuteRetentionPolicyFlags(cmd *cobra.Command) error {
 
 func validateOpsExecuteRetentionPolicyReportFlags() error {
 	return validateOpsWorkflowReportFlags(flagOpsExecuteRetentionPolicyReportFile, OpsWorkflowReportFormat(flagOpsExecuteRetentionPolicyReportFormat))
+}
+
+func executeRetentionPolicyWithCommandActivity(cmd *cobra.Command, request ops.RetentionPolicyRequest, run func() (ops.RetentionPolicyResult, error)) (ops.RetentionPolicyResult, error) {
+	stopActivity := startCommandActivity(cmd, formatOpsExecuteRetentionPolicyActivity(request))
+	defer stopActivity()
+	return run()
+}
+
+func formatOpsExecuteRetentionPolicyActivity(request ops.RetentionPolicyRequest) string {
+	if request.DiscoveredKeys != nil {
+		return "deleting retention cleanup scope"
+	}
+	if request.DryRun {
+		return "planning retention delete scope"
+	}
+	return "running retention cleanup workflow"
 }
 
 func rejectOpsExecuteRetentionPolicyPlanRequiringForce(plan ops.RetentionDeletePlan) error {

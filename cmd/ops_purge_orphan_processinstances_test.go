@@ -55,7 +55,7 @@ func TestOpsPurgeOrphanProcessInstancesActivityWrapsDryRunDiscovery(t *testing.T
 	started, stopped, msgs := sink.Snapshot()
 	require.Equal(t, 1, started)
 	require.Equal(t, 1, stopped)
-	require.Equal(t, []string{"checking orphan child pi parents; page size 25"}, msgs)
+	require.Equal(t, []string{"discovering orphan process-instance candidates"}, msgs)
 }
 
 func TestOpsPurgeOrphanProcessInstancesDryRunHidesCandidateKeysWithoutDelete(t *testing.T) {

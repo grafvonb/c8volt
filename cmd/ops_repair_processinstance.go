@@ -137,7 +137,9 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 		if opsRepairNeedsPreflight(cmd) {
 			planRequest := request
 			planRequest.DryRun = true
-			planned, err := cli.RepairProcessInstances(cmd.Context(), planRequest, collectOptions()...)
+			planned, err := repairProcessInstanceWithCommandActivity(cmd, planRequest, func() (ops.RepairResult, error) {
+				return cli.RepairProcessInstances(cmd.Context(), planRequest, collectOptions()...)
+			})
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops repair process-instance: %w", err))
 			}
@@ -146,12 +148,16 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}
 				request = opsRepairConfirmedRequestFromPlan(request, planned)
-				result, err = cli.RepairProcessInstances(cmd.Context(), request, collectOptions()...)
+				result, err = repairProcessInstanceWithCommandActivity(cmd, request, func() (ops.RepairResult, error) {
+					return cli.RepairProcessInstances(cmd.Context(), request, collectOptions()...)
+				})
 			} else {
 				result = opsRepairResultWithoutMutation(request, planned)
 			}
 		} else {
-			result, err = cli.RepairProcessInstances(cmd.Context(), request, collectOptions()...)
+			result, err = repairProcessInstanceWithCommandActivity(cmd, request, func() (ops.RepairResult, error) {
+				return cli.RepairProcessInstances(cmd.Context(), request, collectOptions()...)
+			})
 		}
 		if reportErr := writeOpsRepairReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
 			if err != nil {
@@ -262,6 +268,22 @@ func parseOpsRepairProcessInstanceJobTimeout(cmd *cobra.Command) (time.Duration,
 		return 0, invalidFlagValuef("invalid value for --job-timeout: %q, duration must be at least 1ms", flagOpsRepairProcessInstanceJobTimeoutRaw)
 	}
 	return timeout, nil
+}
+
+func repairProcessInstanceWithCommandActivity(cmd *cobra.Command, request ops.RepairRequest, run func() (ops.RepairResult, error)) (ops.RepairResult, error) {
+	stopActivity := startCommandActivity(cmd, formatOpsRepairProcessInstanceActivity(request))
+	defer stopActivity()
+	return run()
+}
+
+func formatOpsRepairProcessInstanceActivity(request ops.RepairRequest) string {
+	if request.DryRun {
+		if request.DiscoveryMode == ops.RepairDiscoveryModeSearch {
+			return "discovering process-instance repair targets"
+		}
+		return "planning process-instance incident repair"
+	}
+	return "repairing process-instance incidents"
 }
 
 // hasOpsRepairProcessInstanceSearchModeFlags detects explicit process-instance search mode without treating default state as a selector.

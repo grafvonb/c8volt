@@ -90,7 +90,9 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
-			planned, err := cli.PurgeProcessInstancesWithIncidents(cmd.Context(), planRequest, collectOptions()...)
+			planned, err := purgeProcessInstancesWithIncidentsWithCommandActivity(cmd, planRequest, func() (ops.IncidentPurgeResult, error) {
+				return cli.PurgeProcessInstancesWithIncidents(cmd.Context(), planRequest, collectOptions()...)
+			})
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops purge process-instances with incidents: %w", err))
 			}
@@ -113,7 +115,9 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 			request.DiscoveredCandidateProcessInstanceKeys = append(typex.Keys{}, planned.Discovery.CandidateProcessInstanceKeys...)
 			request.DiscoveredScopeStatus = planned.Discovery.DiscoveryScopeStatus
 		}
-		result, err := cli.PurgeProcessInstancesWithIncidents(cmd.Context(), request, collectOptions()...)
+		result, err := purgeProcessInstancesWithIncidentsWithCommandActivity(cmd, request, func() (ops.IncidentPurgeResult, error) {
+			return cli.PurgeProcessInstancesWithIncidents(cmd.Context(), request, collectOptions()...)
+		})
 		if err != nil {
 			if reportErr := writeOpsPurgeProcessInstancesWithIncidentsReport(result, cfg, opsPurgeProcessInstancesWithIncidentsReportWriteMode(result)); reportErr != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge process-instances with incidents: %w; write audit report: %v", err, reportErr))
@@ -206,6 +210,22 @@ func validateOpsPurgeProcessInstancesWithIncidentsFlags(cmd *cobra.Command) erro
 		return invalidFlagValuef("incident key %q is not a valid key", firstBadKey)
 	}
 	return validateOpsWorkflowReportFlags(flagOpsPurgeIncidentReportFile, OpsWorkflowReportFormat(flagOpsPurgeIncidentReportFormat))
+}
+
+func purgeProcessInstancesWithIncidentsWithCommandActivity(cmd *cobra.Command, request ops.IncidentPurgeRequest, run func() (ops.IncidentPurgeResult, error)) (ops.IncidentPurgeResult, error) {
+	stopActivity := startCommandActivity(cmd, formatOpsPurgeProcessInstancesWithIncidentsActivity(request))
+	defer stopActivity()
+	return run()
+}
+
+func formatOpsPurgeProcessInstancesWithIncidentsActivity(request ops.IncidentPurgeRequest) string {
+	if request.DiscoveredCandidateProcessInstanceKeys != nil {
+		return "deleting incident purge scope"
+	}
+	if request.DryRun {
+		return "planning incident purge delete scope"
+	}
+	return "running incident purge workflow"
 }
 
 // rejectOpsPurgeProcessInstancesWithIncidentsPlanRequiringForce blocks mutation before prompting when the plan has non-final affected instances.

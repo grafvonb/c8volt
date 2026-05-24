@@ -73,7 +73,9 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 		}
-		result, err := cli.ExecuteSmokeTest(cmd.Context(), request, collectOptions()...)
+		result, err := executeSmokeTestWithCommandActivity(cmd, request, func() (ops.SmokeTestResult, error) {
+			return cli.ExecuteSmokeTest(cmd.Context(), request, collectOptions()...)
+		})
 		if err != nil {
 			if reportErr := writeOpsExecuteSmokeTestReport(result, cfg, opsExecuteSmokeTestReportWriteMode(result)); reportErr != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops execute smoke-test: %w; write audit report: %v", err, reportErr))
@@ -121,6 +123,19 @@ func validateOpsExecuteSmokeTestFlags(cmd *cobra.Command) error {
 
 func validateOpsExecuteSmokeTestReportFlags() error {
 	return validateOpsWorkflowReportFlags(flagOpsExecuteSmokeTestReportFile, OpsWorkflowReportFormat(flagOpsExecuteSmokeTestReportFormat))
+}
+
+func executeSmokeTestWithCommandActivity(cmd *cobra.Command, request ops.SmokeTestRequest, run func() (ops.SmokeTestResult, error)) (ops.SmokeTestResult, error) {
+	stopActivity := startCommandActivity(cmd, formatOpsExecuteSmokeTestActivity(request))
+	defer stopActivity()
+	return run()
+}
+
+func formatOpsExecuteSmokeTestActivity(request ops.SmokeTestRequest) string {
+	if request.DryRun {
+		return "validating smoke-test plan"
+	}
+	return "running smoke-test workflow"
 }
 
 func abortOpsExecuteSmokeTestAfterReport(cmd *cobra.Command, log *slog.Logger, cfg *config.Config, result ops.SmokeTestResult, err error) {

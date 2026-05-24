@@ -75,7 +75,9 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
-			planned, err := cli.PurgeAllProcessDefinitions(cmd.Context(), planRequest, collectOptions()...)
+			planned, err := purgeAllProcessDefinitionsWithCommandActivity(cmd, planRequest, func() (ops.AllProcessDefinitionsPurgeResult, error) {
+				return cli.PurgeAllProcessDefinitions(cmd.Context(), planRequest, collectOptions()...)
+			})
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops purge all process definitions: %w", err))
 			}
@@ -93,7 +95,9 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			request.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, planned.Discovery.CandidateProcessDefinitionKeys...)
 			request.DiscoveredScopeStatus = planned.Discovery.DiscoveryScopeStatus
 		}
-		result, err := cli.PurgeAllProcessDefinitions(cmd.Context(), request, collectOptions()...)
+		result, err := purgeAllProcessDefinitionsWithCommandActivity(cmd, request, func() (ops.AllProcessDefinitionsPurgeResult, error) {
+			return cli.PurgeAllProcessDefinitions(cmd.Context(), request, collectOptions()...)
+		})
 		if err != nil {
 			if reportErr := writeOpsPurgeAllProcessDefinitionsReport(result, cfg, opsPurgeAllProcessDefinitionsReportWriteMode(result)); reportErr != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge all process definitions: %w; write audit report: %v", err, reportErr))
@@ -175,6 +179,22 @@ func opsPurgeAllProcessDefinitionsConfirmationPrompt(planned ops.AllProcessDefin
 		planned.DeletePlan.AffectedProcessInstanceCount,
 		len(planned.DeletePlan.CandidateProcessDefinitionKeys),
 	)
+}
+
+func purgeAllProcessDefinitionsWithCommandActivity(cmd *cobra.Command, request ops.AllProcessDefinitionsPurgeRequest, run func() (ops.AllProcessDefinitionsPurgeResult, error)) (ops.AllProcessDefinitionsPurgeResult, error) {
+	stopActivity := startCommandActivity(cmd, formatOpsPurgeAllProcessDefinitionsActivity(request))
+	defer stopActivity()
+	return run()
+}
+
+func formatOpsPurgeAllProcessDefinitionsActivity(request ops.AllProcessDefinitionsPurgeRequest) string {
+	if request.DiscoveredCandidateProcessDefinitionKeys != nil {
+		return "deleting process definitions"
+	}
+	if request.DryRun {
+		return "checking process-definition delete impact"
+	}
+	return "running process-definition purge workflow"
 }
 
 // rejectOpsPurgeAllProcessDefinitionsPlanRequiringForce blocks mutation before prompting when active process instances are affected.
