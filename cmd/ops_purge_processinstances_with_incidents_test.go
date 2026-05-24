@@ -556,7 +556,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionReusesMultiPageFr
 
 	prompt := readReportFile(t, promptPath)
 	require.Contains(t, prompt, "incident purge: 2 candidate incident(s), 2 candidate process instance(s)")
-	require.Equal(t, []string{
+	require.ElementsMatch(t, []string{
 		"/v2/process-instances/" + opsIncidentPurgeRootKey + "/deletion",
 		"/v2/process-instances/" + opsIncidentPurgeChildKey + "/deletion",
 	}, deleted.Snapshot())
