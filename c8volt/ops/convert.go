@@ -523,7 +523,16 @@ func toDomainIncidentPurgeRequest(x IncidentPurgeRequest) d.IncidentPurgeRequest
 		Force:         x.Force,
 		ReportFile:    x.ReportFile,
 		ReportFormat:  x.ReportFormat,
-		StartedAt:     x.StartedAt,
+		DiscoveredScopeStatus: d.DiscoveryScopeStatus{
+			Complete:         x.DiscoveredScopeStatus.Complete,
+			Limited:          x.DiscoveredScopeStatus.Limited,
+			Limit:            x.DiscoveredScopeStatus.Limit,
+			BatchSize:        x.DiscoveredScopeStatus.BatchSize,
+			Pages:            x.DiscoveredScopeStatus.Pages,
+			CandidatesSeen:   x.DiscoveredScopeStatus.CandidatesSeen,
+			CandidatesFrozen: x.DiscoveredScopeStatus.CandidatesFrozen,
+		},
+		StartedAt: x.StartedAt,
 	}
 	if x.DiscoveredCandidateProcessInstanceKeys != nil {
 		out.DiscoveredCandidateProcessInstanceKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessInstanceKeys...)
@@ -548,22 +557,23 @@ func fromDomainIncidentPurgeResult(x d.IncidentPurgeResult) IncidentPurgeResult 
 // fromDomainIncidentPurgeRequest maps a service request back to public output.
 func fromDomainIncidentPurgeRequest(x d.IncidentPurgeRequest) IncidentPurgeRequest {
 	out := IncidentPurgeRequest{
-		CommandName:   x.CommandName,
-		DryRun:        x.DryRun,
-		AutoConfirm:   x.AutoConfirm,
-		Automation:    x.Automation,
-		OutputMode:    x.OutputMode,
-		Selection:     fromDomainIncidentFilter(x.Selection),
-		BatchSize:     x.BatchSize,
-		Limit:         x.Limit,
-		Workers:       x.Workers,
-		FailFast:      x.FailFast,
-		NoWorkerLimit: x.NoWorkerLimit,
-		NoWait:        x.NoWait,
-		Force:         x.Force,
-		ReportFile:    x.ReportFile,
-		ReportFormat:  x.ReportFormat,
-		StartedAt:     x.StartedAt,
+		CommandName:           x.CommandName,
+		DryRun:                x.DryRun,
+		AutoConfirm:           x.AutoConfirm,
+		Automation:            x.Automation,
+		OutputMode:            x.OutputMode,
+		Selection:             fromDomainIncidentFilter(x.Selection),
+		BatchSize:             x.BatchSize,
+		Limit:                 x.Limit,
+		Workers:               x.Workers,
+		FailFast:              x.FailFast,
+		NoWorkerLimit:         x.NoWorkerLimit,
+		NoWait:                x.NoWait,
+		Force:                 x.Force,
+		ReportFile:            x.ReportFile,
+		ReportFormat:          x.ReportFormat,
+		DiscoveredScopeStatus: fromDomainDiscoveryScopeStatus(x.DiscoveredScopeStatus),
+		StartedAt:             x.StartedAt,
 	}
 	if x.DiscoveredCandidateProcessInstanceKeys != nil {
 		out.DiscoveredCandidateProcessInstanceKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessInstanceKeys...)

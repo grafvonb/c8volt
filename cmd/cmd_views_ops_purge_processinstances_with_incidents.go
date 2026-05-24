@@ -45,6 +45,7 @@ func renderOpsPurgeProcessInstancesWithIncidentsDiscovery(cmd *cobra.Command, re
 	}
 	renderHumanLine(cmd, "candidate incidents: %d", result.Discovery.IncidentCount)
 	renderHumanLine(cmd, "candidate process instances: %d", result.Discovery.CandidateProcessInstanceCount)
+	renderOpsPurgeProcessInstancesWithIncidentsDiscoveryStatus(cmd, result.Discovery.DiscoveryScopeStatus)
 	if len(result.Discovery.DuplicateCandidateProcessInstanceKeys) > 0 {
 		renderHumanLine(cmd, "duplicate candidate process instances: %d", len(result.Discovery.DuplicateCandidateProcessInstanceKeys))
 	}
@@ -57,6 +58,16 @@ func renderOpsPurgeProcessInstancesWithIncidentsDiscovery(cmd *cobra.Command, re
 		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "candidate process-instance keys", result.Discovery.CandidateProcessInstanceKeys)
 		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "duplicate candidate process-instance keys", result.Discovery.DuplicateCandidateProcessInstanceKeys)
 		renderOpsPurgeProcessInstancesWithIncidentsSkipped(cmd, result.Discovery.SkippedIncidents)
+	}
+}
+
+func renderOpsPurgeProcessInstancesWithIncidentsDiscoveryStatus(cmd *cobra.Command, status ops.DiscoveryScopeStatus) {
+	if status.Limited {
+		renderHumanLine(cmd, "discovery user-limited: limit %d; pages %d; batch size %d", status.Limit, status.Pages, status.BatchSize)
+		return
+	}
+	if status.Complete {
+		renderHumanLine(cmd, "discovery complete: pages %d; batch size %d", status.Pages, status.BatchSize)
 	}
 }
 
@@ -231,6 +242,12 @@ func renderOpsPurgeProcessInstancesWithIncidentsMarkdownReport(report ops.Incide
 
 	out.WriteString("\n## Discovery\n\n")
 	writeMarkdownReportField(&out, "Status", string(report.Discovery.Status))
+	writeMarkdownReportField(&out, "Completeness", incidentPurgeDiscoveryCompletenessText(report.Discovery.DiscoveryScopeStatus))
+	writeMarkdownReportField(&out, "Discovery Limit", fmt.Sprintf("%d", report.Discovery.Limit))
+	writeMarkdownReportField(&out, "Discovery Batch Size", fmt.Sprintf("%d", report.Discovery.BatchSize))
+	writeMarkdownReportField(&out, "Discovery Pages", fmt.Sprintf("%d", report.Discovery.Pages))
+	writeMarkdownReportField(&out, "Discovery Candidates Seen", fmt.Sprintf("%d", report.Discovery.CandidatesSeen))
+	writeMarkdownReportField(&out, "Discovery Candidates Frozen", fmt.Sprintf("%d", report.Discovery.CandidatesFrozen))
 	writeMarkdownReportField(&out, "Candidate Incidents", fmt.Sprintf("%d", report.Discovery.IncidentCount))
 	writeMarkdownReportField(&out, "Candidate Process Instances", fmt.Sprintf("%d", report.Discovery.CandidateProcessInstanceCount))
 	writeMarkdownReportList(&out, "Incident Keys", report.Discovery.IncidentKeys)
@@ -271,6 +288,16 @@ func renderOpsPurgeProcessInstancesWithIncidentsMarkdownReport(report ops.Incide
 	writeMarkdownReportList(&out, "Run Errors", report.Errors)
 
 	return []byte(out.String()), nil
+}
+
+func incidentPurgeDiscoveryCompletenessText(status ops.DiscoveryScopeStatus) string {
+	if status.Limited {
+		return "discovery user-limited"
+	}
+	if status.Complete {
+		return "discovery complete"
+	}
+	return "unknown"
 }
 
 // incidentPurgeSkippedIncidentItems formats skipped incidents for Markdown reports.

@@ -140,7 +140,7 @@ func incidentPurgeDeletionOutcomeForReports(reports []d.Reporter) d.IncidentPurg
 	}
 }
 
-// incidentPurgeDiscovery either reuses a frozen candidate set or performs a single incident search.
+// incidentPurgeDiscovery either reuses a frozen candidate set or performs paged incident discovery.
 func incidentPurgeDiscovery(ctx context.Context, api incsvc.API, request d.IncidentPurgeRequest, opts ...services.CallOption) (d.IncidentDiscoveryResult, error) {
 	if request.DiscoveredCandidateProcessInstanceKeys != nil {
 		return frozenIncidentPurgeDiscovery(request), nil
@@ -151,7 +151,18 @@ func incidentPurgeDiscovery(ctx context.Context, api incsvc.API, request d.Incid
 // frozenIncidentPurgeDiscovery reconstructs enough discovery state to execute a previously confirmed plan without expanding scope.
 func frozenIncidentPurgeDiscovery(request d.IncidentPurgeRequest) d.IncidentDiscoveryResult {
 	candidates := request.DiscoveredCandidateProcessInstanceKeys.Unique()
+	status := request.DiscoveredScopeStatus
+	if status.BatchSize == 0 {
+		status.BatchSize = incidentPurgeDiscoverySize(request)
+	}
+	if status.CandidatesFrozen == 0 {
+		status.CandidatesFrozen = len(candidates)
+	}
+	if !status.Complete && !status.Limited {
+		status.Complete = true
+	}
 	return d.IncidentDiscoveryResult{
+		DiscoveryScopeStatus:          status,
 		Status:                        d.OpsWorkflowStepStatusPlanned,
 		Filters:                       request.Selection,
 		CandidateProcessInstanceKeys:  candidates,
@@ -159,20 +170,39 @@ func frozenIncidentPurgeDiscovery(request d.IncidentPurgeRequest) d.IncidentDisc
 	}
 }
 
-// discoverIncidentPurgeCandidates runs incident search once and freezes the process-instance candidate set.
+// discoverIncidentPurgeCandidates walks incident pages and freezes the process-instance candidate set before planning.
 func discoverIncidentPurgeCandidates(ctx context.Context, api incsvc.API, request d.IncidentPurgeRequest, opts ...services.CallOption) (d.IncidentDiscoveryResult, error) {
-	incidents, err := incsvc.SearchIncidents(ctx, api, request.Selection, incidentPurgeDiscoverySize(request), opts...)
-	if err != nil {
-		return d.IncidentDiscoveryResult{}, err
-	}
-	incidents = limitIncidentPurgeCandidateIncidents(incidents, request.Limit)
-
 	discovery := d.IncidentDiscoveryResult{
-		Status:             d.OpsWorkflowStepStatusPlanned,
-		Filters:            request.Selection,
-		CandidateIncidents: append([]d.ProcessInstanceIncidentDetail(nil), incidents...),
-		IncidentCount:      len(incidents),
+		DiscoveryScopeStatus: d.DiscoveryScopeStatus{
+			BatchSize: incidentPurgeDiscoverySize(request),
+			Limit:     request.Limit,
+		},
+		Status:  d.OpsWorkflowStepStatusPlanned,
+		Filters: request.Selection,
 	}
+	pageReq := d.IncidentPageRequest{Size: discovery.BatchSize}
+	limited := false
+	for {
+		page, err := api.SearchIncidentsPage(ctx, request.Selection, pageReq, opts...)
+		if err != nil {
+			return d.IncidentDiscoveryResult{}, err
+		}
+		discovery.Pages++
+		discovery.CandidatesSeen += len(page.Items)
+		items := limitIncidentPurgeCandidateIncidents(page.Items, request.Limit, len(discovery.CandidateIncidents))
+		discovery.CandidateIncidents = append(discovery.CandidateIncidents, items...)
+		if request.Limit > 0 && len(discovery.CandidateIncidents) >= int(request.Limit) {
+			limited = true
+		}
+		if limited || incidentPurgeDiscoveryPageComplete(page) {
+			discovery.Complete = !limited
+			discovery.Limited = limited
+			break
+		}
+		pageReq = nextIncidentPurgeDiscoveryPageRequest(pageReq, page)
+	}
+	incidents := discovery.CandidateIncidents
+	discovery.IncidentCount = len(incidents)
 	seenProcessInstances := make(map[string]int, len(incidents))
 	var duplicateCandidates typex.Keys
 	for _, incident := range incidents {
@@ -196,12 +226,13 @@ func discoverIncidentPurgeCandidates(ctx context.Context, api incsvc.API, reques
 	discovery.CandidateProcessInstanceKeys = discovery.CandidateProcessInstanceKeys.Unique()
 	discovery.DuplicateCandidateProcessInstanceKeys = duplicateCandidates.Unique()
 	discovery.CandidateProcessInstanceCount = len(discovery.CandidateProcessInstanceKeys)
-	discovery.Notices = incidentPurgeDiscoveryNotices(discovery, request)
+	discovery.CandidatesFrozen = discovery.CandidateProcessInstanceCount
+	discovery.Notices = incidentPurgeDiscoveryNotices(discovery)
 	return discovery, nil
 }
 
 // incidentPurgeDiscoveryNotices records semantic discovery facts for reports without inflating compact output.
-func incidentPurgeDiscoveryNotices(discovery d.IncidentDiscoveryResult, request d.IncidentPurgeRequest) []d.IncidentPurgeWorkflowNotice {
+func incidentPurgeDiscoveryNotices(discovery d.IncidentDiscoveryResult) []d.IncidentPurgeWorkflowNotice {
 	var notices []d.IncidentPurgeWorkflowNotice
 	if discovery.IncidentCount == 0 {
 		notices = append(notices, d.IncidentPurgeWorkflowNotice{
@@ -230,45 +261,41 @@ func incidentPurgeDiscoveryNotices(discovery d.IncidentDiscoveryResult, request 
 			},
 		})
 	}
-	if notice := incidentPurgeBoundedSearchNotice(request, discovery.IncidentCount); notice != nil {
-		notices = append(notices, *notice)
-	}
 	return notices
 }
 
-// incidentPurgeDiscoverySize normalizes the search size while allowing --limit to cap candidate incidents first.
+// incidentPurgeDiscoverySize normalizes the page size; --limit caps total discovery separately.
 func incidentPurgeDiscoverySize(request d.IncidentPurgeRequest) int32 {
-	if request.Limit > 0 {
-		return request.Limit
-	}
 	if request.BatchSize > 0 && request.BatchSize <= consts.MaxPISearchSize {
 		return request.BatchSize
 	}
 	return consts.MaxPISearchSize
 }
 
-func incidentPurgeBoundedSearchNotice(request d.IncidentPurgeRequest, count int) *d.IncidentPurgeWorkflowNotice {
-	discoverySize := incidentPurgeDiscoverySize(request)
-	if request.Limit > 0 || discoverySize <= 0 || count < int(discoverySize) {
-		return nil
-	}
-	return &d.IncidentPurgeWorkflowNotice{
-		Code:     "bounded_search_scope",
-		Severity: "info",
-		Message:  fmt.Sprintf("candidate incidents reached batch size %d; more matching incidents may exist", discoverySize),
-		Details: map[string]string{
-			"batchSize": fmt.Sprintf("%d", discoverySize),
-			"target":    "incidents",
-		},
-	}
-}
-
 // limitIncidentPurgeCandidateIncidents protects candidate extraction even when a stub or backend over-returns.
-func limitIncidentPurgeCandidateIncidents(items []d.ProcessInstanceIncidentDetail, limit int32) []d.ProcessInstanceIncidentDetail {
-	if limit <= 0 || len(items) <= int(limit) {
+func limitIncidentPurgeCandidateIncidents(items []d.ProcessInstanceIncidentDetail, limit int32, cumulative int) []d.ProcessInstanceIncidentDetail {
+	if limit <= 0 {
 		return items
 	}
-	return items[:limit]
+	remaining := int(limit) - cumulative
+	if remaining <= 0 {
+		return nil
+	}
+	if len(items) > remaining {
+		return items[:remaining]
+	}
+	return items
+}
+
+func incidentPurgeDiscoveryPageComplete(page d.IncidentPage) bool {
+	return page.OverflowState == d.ProcessInstanceOverflowStateNoMore
+}
+
+func nextIncidentPurgeDiscoveryPageRequest(current d.IncidentPageRequest, page d.IncidentPage) d.IncidentPageRequest {
+	if page.EndCursor != "" {
+		return d.IncidentPageRequest{Size: current.Size, After: page.EndCursor}
+	}
+	return d.IncidentPageRequest{From: current.From + current.Size, Size: current.Size}
 }
 
 // withIncidentPurgeOptionControls records call-option controls in the durable request model.

@@ -40,7 +40,7 @@ func TestPurgeProcessInstancesWithIncidentsRecordsControls(t *testing.T) {
 	incAPI := stubIncidentAPI{
 		searchIncidents: func(_ context.Context, filter d.IncidentFilter, size int32, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 			require.Equal(t, request.Selection, filter)
-			require.EqualValues(t, 5, size)
+			require.EqualValues(t, 25, size)
 			return nil, nil
 		},
 	}
@@ -122,7 +122,7 @@ func TestPurgeProcessInstancesWithIncidentsDryRunDiscoversFrozenCandidates(t *te
 	incAPI := stubIncidentAPI{
 		searchIncidents: func(_ context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 			require.Equal(t, d.IncidentFilter{State: "ACTIVE", ErrorType: "JOB_NO_RETRIES", Keys: []string{"9001"}}, filter)
-			require.EqualValues(t, 3, size)
+			require.EqualValues(t, 100, size)
 			require.True(t, services.ApplyCallOptions(opts).Verbose)
 			return []d.ProcessInstanceIncidentDetail{
 				{IncidentKey: "9001", ProcessInstanceKey: "1001", State: "ACTIVE"},
@@ -188,6 +188,13 @@ func TestPurgeProcessInstancesWithIncidentsDryRunDiscoversFrozenCandidates(t *te
 	require.Equal(t, "missing process-instance key", got.Discovery.SkippedIncidents[0].Reason)
 	require.Equal(t, 3, got.Discovery.IncidentCount)
 	require.Equal(t, 1, got.Discovery.CandidateProcessInstanceCount)
+	require.False(t, got.Discovery.Complete)
+	require.True(t, got.Discovery.Limited)
+	require.EqualValues(t, 3, got.Discovery.Limit)
+	require.EqualValues(t, 100, got.Discovery.BatchSize)
+	require.Equal(t, 1, got.Discovery.Pages)
+	require.Equal(t, 4, got.Discovery.CandidatesSeen)
+	require.Equal(t, 1, got.Discovery.CandidatesFrozen)
 	require.Equal(t, []string{"duplicate_candidate_process_instances", "skipped_incidents"}, []string{got.Discovery.Notices[0].Code, got.Discovery.Notices[1].Code})
 	require.Len(t, got.Notices, 2)
 	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.DeletePlan.Status)
@@ -196,6 +203,122 @@ func TestPurgeProcessInstancesWithIncidentsDryRunDiscoversFrozenCandidates(t *te
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
 	require.Equal(t, got.Discovery, got.Report.Discovery)
 	require.Empty(t, got.Errors)
+}
+
+// TestPurgeProcessInstancesWithIncidentsPagesAllCandidateIncidentsByDefault protects complete-by-default discovery.
+func TestPurgeProcessInstancesWithIncidentsPagesAllCandidateIncidentsByDefault(t *testing.T) {
+	t.Parallel()
+
+	var requests []d.IncidentPageRequest
+	incAPI := stubIncidentAPI{
+		searchIncidentsPage: func(_ context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error) {
+			require.Equal(t, d.IncidentFilter{State: "ACTIVE"}, filter)
+			require.True(t, services.ApplyCallOptions(opts).Verbose)
+			requests = append(requests, page)
+			switch len(requests) {
+			case 1:
+				require.EqualValues(t, 2, page.Size)
+				require.Empty(t, page.After)
+				return d.IncidentPage{
+					Items: []d.ProcessInstanceIncidentDetail{
+						{IncidentKey: "inc-1", ProcessInstanceKey: "pi-1", State: "ACTIVE"},
+						{IncidentKey: "inc-2", ProcessInstanceKey: "pi-2", State: "ACTIVE"},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					EndCursor:     "cursor-1",
+				}, nil
+			case 2:
+				require.EqualValues(t, 2, page.Size)
+				require.Equal(t, "cursor-1", page.After)
+				return d.IncidentPage{
+					Items: []d.ProcessInstanceIncidentDetail{
+						{IncidentKey: "inc-3", ProcessInstanceKey: "pi-2", State: "ACTIVE"},
+						{IncidentKey: "inc-4", ProcessInstanceKey: "pi-3", State: "ACTIVE"},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				}, nil
+			default:
+				t.Fatalf("unexpected incident page request %d: %+v", len(requests), page)
+				return d.IncidentPage{}, nil
+			}
+		},
+	}
+
+	got, err := New(completedRootProcessInstanceAPI(), incAPI).PurgeProcessInstancesWithIncidents(context.Background(), d.IncidentPurgeRequest{
+		DryRun:    true,
+		Selection: d.IncidentFilter{State: "ACTIVE"},
+		BatchSize: 2,
+	}, services.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, d.IncidentPurgeOutcomePlanned, got.Outcome)
+	require.Equal(t, []string{"inc-1", "inc-2", "inc-3", "inc-4"}, []string(got.Discovery.IncidentKeys))
+	require.Equal(t, []string{"pi-1", "pi-2", "pi-3"}, []string(got.Discovery.CandidateProcessInstanceKeys))
+	require.Equal(t, []string{"pi-2"}, []string(got.Discovery.DuplicateCandidateProcessInstanceKeys))
+	require.True(t, got.Discovery.Complete)
+	require.False(t, got.Discovery.Limited)
+	require.EqualValues(t, 2, got.Discovery.BatchSize)
+	require.Equal(t, 2, got.Discovery.Pages)
+	require.Equal(t, 4, got.Discovery.CandidatesSeen)
+	require.Equal(t, 3, got.Discovery.CandidatesFrozen)
+	require.Len(t, requests, 2)
+	require.Equal(t, got.Discovery, got.Report.Discovery)
+}
+
+// TestPurgeProcessInstancesWithIncidentsLimitStopsPagedDiscovery proves --batch-size is only the page size.
+func TestPurgeProcessInstancesWithIncidentsLimitStopsPagedDiscovery(t *testing.T) {
+	t.Parallel()
+
+	var requests []d.IncidentPageRequest
+	incAPI := stubIncidentAPI{
+		searchIncidentsPage: func(_ context.Context, _ d.IncidentFilter, page d.IncidentPageRequest, _ ...services.CallOption) (d.IncidentPage, error) {
+			requests = append(requests, page)
+			require.EqualValues(t, 2, page.Size)
+			if len(requests) == 1 {
+				return d.IncidentPage{
+					Items: []d.ProcessInstanceIncidentDetail{
+						{IncidentKey: "inc-1", ProcessInstanceKey: "pi-1", State: "ACTIVE"},
+						{IncidentKey: "inc-2", ProcessInstanceKey: "pi-2", State: "ACTIVE"},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				}, nil
+			}
+			if len(requests) == 2 {
+				require.EqualValues(t, 2, page.From)
+				return d.IncidentPage{
+					Items: []d.ProcessInstanceIncidentDetail{
+						{IncidentKey: "inc-3", ProcessInstanceKey: "pi-3", State: "ACTIVE"},
+						{IncidentKey: "inc-4", ProcessInstanceKey: "pi-4", State: "ACTIVE"},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				}, nil
+			}
+			t.Fatalf("discovery should stop once --limit is reached, got request %+v", page)
+			return d.IncidentPage{}, nil
+		},
+	}
+
+	got, err := New(completedRootProcessInstanceAPI(), incAPI).PurgeProcessInstancesWithIncidents(context.Background(), d.IncidentPurgeRequest{
+		DryRun:    true,
+		BatchSize: 2,
+		Limit:     3,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"inc-1", "inc-2", "inc-3"}, []string(got.Discovery.IncidentKeys))
+	require.Equal(t, []string{"pi-1", "pi-2", "pi-3"}, []string(got.Discovery.CandidateProcessInstanceKeys))
+	require.False(t, got.Discovery.Complete)
+	require.True(t, got.Discovery.Limited)
+	require.EqualValues(t, 3, got.Discovery.Limit)
+	require.EqualValues(t, 2, got.Discovery.BatchSize)
+	require.Equal(t, 2, got.Discovery.Pages)
+	require.Equal(t, 4, got.Discovery.CandidatesSeen)
+	require.Equal(t, 3, got.Discovery.CandidatesFrozen)
+	require.Len(t, requests, 2)
 }
 
 // TestPurgeProcessInstancesWithIncidentsDryRunNoTargetsSkipsPlanning records the no-target discovery result without mutation.
@@ -220,14 +343,18 @@ func TestPurgeProcessInstancesWithIncidentsDryRunNoTargetsSkipsPlanning(t *testi
 	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Discovery.Status)
 	require.Zero(t, got.Discovery.IncidentCount)
 	require.Zero(t, got.Discovery.CandidateProcessInstanceCount)
+	require.True(t, got.Discovery.Complete)
+	require.False(t, got.Discovery.Limited)
+	require.EqualValues(t, 1000, got.Discovery.BatchSize)
+	require.Equal(t, 1, got.Discovery.Pages)
 	require.Empty(t, got.Discovery.CandidateProcessInstanceKeys)
 	require.Equal(t, "no_candidate_incidents", got.Discovery.Notices[0].Code)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
 }
 
-// TestPurgeProcessInstancesWithIncidentsReportsBoundedSearchScope verifies previews can distinguish batch scope from total matches.
-func TestPurgeProcessInstancesWithIncidentsReportsBoundedSearchScope(t *testing.T) {
+// TestPurgeProcessInstancesWithIncidentsReportsCompleteSearchScope verifies previews no longer treat page size as a total cap.
+func TestPurgeProcessInstancesWithIncidentsReportsCompleteSearchScope(t *testing.T) {
 	t.Parallel()
 
 	incAPI := stubIncidentAPI{
@@ -250,9 +377,12 @@ func TestPurgeProcessInstancesWithIncidentsReportsBoundedSearchScope(t *testing.
 	require.NoError(t, err)
 	require.Equal(t, d.IncidentPurgeOutcomePlanned, got.Outcome)
 	require.Equal(t, 2, got.Discovery.IncidentCount)
-	require.Len(t, got.Discovery.Notices, 2)
+	require.True(t, got.Discovery.Complete)
+	require.False(t, got.Discovery.Limited)
+	require.EqualValues(t, 2, got.Discovery.BatchSize)
+	require.Equal(t, 1, got.Discovery.Pages)
+	require.Len(t, got.Discovery.Notices, 1)
 	require.Equal(t, "skipped_incidents", got.Discovery.Notices[0].Code)
-	require.Equal(t, "bounded_search_scope", got.Discovery.Notices[1].Code)
 	require.Equal(t, got.Discovery.Notices, got.Notices)
 }
 
@@ -509,7 +639,8 @@ func TestPurgeProcessInstancesWithIncidentsUsesFrozenCandidatesWithoutRediscover
 
 type stubIncidentAPI struct {
 	incsvc.API
-	searchIncidents func(context.Context, d.IncidentFilter, int32, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+	searchIncidents     func(context.Context, d.IncidentFilter, int32, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+	searchIncidentsPage func(context.Context, d.IncidentFilter, d.IncidentPageRequest, ...services.CallOption) (d.IncidentPage, error)
 }
 
 func (s stubIncidentAPI) SearchIncidents(ctx context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
@@ -517,4 +648,51 @@ func (s stubIncidentAPI) SearchIncidents(ctx context.Context, filter d.IncidentF
 		panic("unexpected incident search")
 	}
 	return s.searchIncidents(ctx, filter, size, opts...)
+}
+
+func (s stubIncidentAPI) SearchIncidentsPage(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error) {
+	if s.searchIncidentsPage != nil {
+		return s.searchIncidentsPage(ctx, filter, page, opts...)
+	}
+	if s.searchIncidents == nil {
+		panic("unexpected incident page search")
+	}
+	items, err := s.searchIncidents(ctx, filter, page.Size, opts...)
+	if err != nil {
+		return d.IncidentPage{}, err
+	}
+	return d.IncidentPage{
+		Items:         items,
+		Request:       page,
+		OverflowState: d.ProcessInstanceOverflowStateNoMore,
+	}, nil
+}
+
+func completedRootProcessInstanceAPI() stubProcessInstanceAPI {
+	return stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: startKey,
+				RootKey:  startKey,
+				Keys:     []string{startKey},
+				Chain: map[string]d.ProcessInstance{
+					startKey: {Key: startKey, State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeDescendants,
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{rootKey},
+				Chain: map[string]d.ProcessInstance{
+					rootKey: {Key: rootKey, State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
 }

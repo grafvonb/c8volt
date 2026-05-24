@@ -634,23 +634,24 @@ const (
 
 // IncidentPurgeRequest captures one requested incident-based purge run.
 type IncidentPurgeRequest struct {
-	CommandName                            string          `json:"commandName,omitempty"`
-	DryRun                                 bool            `json:"dryRun,omitempty"`
-	AutoConfirm                            bool            `json:"autoConfirm,omitempty"`
-	Automation                             bool            `json:"automation,omitempty"`
-	OutputMode                             string          `json:"outputMode,omitempty"`
-	Selection                              incident.Filter `json:"selection,omitempty"`
-	BatchSize                              int32           `json:"batchSize,omitempty"`
-	Limit                                  int32           `json:"limit,omitempty"`
-	Workers                                int             `json:"workers,omitempty"`
-	FailFast                               bool            `json:"failFast,omitempty"`
-	NoWorkerLimit                          bool            `json:"noWorkerLimit,omitempty"`
-	NoWait                                 bool            `json:"noWait,omitempty"`
-	Force                                  bool            `json:"force,omitempty"`
-	ReportFile                             string          `json:"reportFile,omitempty"`
-	ReportFormat                           string          `json:"reportFormat,omitempty"`
-	DiscoveredCandidateProcessInstanceKeys typex.Keys      `json:"discoveredCandidateProcessInstanceKeys,omitempty"`
-	StartedAt                              time.Time       `json:"startedAt,omitempty"`
+	CommandName                            string               `json:"commandName,omitempty"`
+	DryRun                                 bool                 `json:"dryRun,omitempty"`
+	AutoConfirm                            bool                 `json:"autoConfirm,omitempty"`
+	Automation                             bool                 `json:"automation,omitempty"`
+	OutputMode                             string               `json:"outputMode,omitempty"`
+	Selection                              incident.Filter      `json:"selection,omitempty"`
+	BatchSize                              int32                `json:"batchSize,omitempty"`
+	Limit                                  int32                `json:"limit,omitempty"`
+	Workers                                int                  `json:"workers,omitempty"`
+	FailFast                               bool                 `json:"failFast,omitempty"`
+	NoWorkerLimit                          bool                 `json:"noWorkerLimit,omitempty"`
+	NoWait                                 bool                 `json:"noWait,omitempty"`
+	Force                                  bool                 `json:"force,omitempty"`
+	ReportFile                             string               `json:"reportFile,omitempty"`
+	ReportFormat                           string               `json:"reportFormat,omitempty"`
+	DiscoveredCandidateProcessInstanceKeys typex.Keys           `json:"discoveredCandidateProcessInstanceKeys,omitempty"`
+	DiscoveredScopeStatus                  DiscoveryScopeStatus `json:"discoveredScopeStatus,omitempty"`
+	StartedAt                              time.Time            `json:"startedAt,omitempty"`
 }
 
 // IncidentPurgeSkippedIncident records a matching incident that could not produce a delete candidate.

@@ -50,18 +50,18 @@
 
 ### Tests for User Story 1
 
-- [ ] T015 [P] [US1] Add multi-page incident purge service test without `--limit` in `internal/services/ops/incident_purge_test.go`
-- [ ] T016 [P] [US1] Add incident purge `--limit` service test proving `--batch-size` is page size only in `internal/services/ops/incident_purge_test.go`
-- [ ] T017 [P] [US1] Add confirmation frozen-scope reuse command test for `ops purge piwi` in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T015 [P] [US1] Add multi-page incident purge service test without `--limit` in `internal/services/ops/incident_purge_test.go`
+- [x] T016 [P] [US1] Add incident purge `--limit` service test proving `--batch-size` is page size only in `internal/services/ops/incident_purge_test.go`
+- [x] T017 [P] [US1] Add confirmation frozen-scope reuse command test for `ops purge piwi` in `cmd/ops_purge_processinstances_with_incidents_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] Replace single incident search with complete-by-default paged discovery in `internal/services/ops/incident_purge.go`
-- [ ] T019 [US1] Populate incident purge discovery completeness and user-limited status in `internal/services/ops/incident_purge.go`
-- [ ] T020 [US1] Preserve frozen candidate reuse after confirmation in `internal/services/ops/incident_purge.go` and `cmd/ops_purge_processinstances_with_incidents.go`
-- [ ] T021 [US1] Update incident purge human, JSON, and Markdown report rendering for discovery status in `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`
-- [ ] T022 [US1] Run `go test ./internal/services/ops -run 'Test.*IncidentPurge' -count=1`
-- [ ] T023 [US1] Run `go test ./cmd -run 'TestOpsPurgeProcessInstancesWithIncidents' -count=1`
+- [x] T018 [US1] Replace single incident search with complete-by-default paged discovery in `internal/services/ops/incident_purge.go`
+- [x] T019 [US1] Populate incident purge discovery completeness and user-limited status in `internal/services/ops/incident_purge.go`
+- [x] T020 [US1] Preserve frozen candidate reuse after confirmation in `internal/services/ops/incident_purge.go` and `cmd/ops_purge_processinstances_with_incidents.go`
+- [x] T021 [US1] Update incident purge human, JSON, and Markdown report rendering for discovery status in `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`
+- [x] T022 [US1] Run `go test ./internal/services/ops -run 'Test.*IncidentPurge' -count=1`
+- [x] T023 [US1] Run `go test ./cmd -run 'TestOpsPurgeProcessInstancesWithIncidents' -count=1`
 
 **Checkpoint**: User Story 1 is independently functional and testable.
 

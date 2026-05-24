@@ -111,6 +111,7 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 				}
 			}
 			request.DiscoveredCandidateProcessInstanceKeys = append(typex.Keys{}, planned.Discovery.CandidateProcessInstanceKeys...)
+			request.DiscoveredScopeStatus = planned.Discovery.DiscoveryScopeStatus
 		}
 		result, err := cli.PurgeProcessInstancesWithIncidents(cmd.Context(), request, collectOptions()...)
 		if err != nil {
