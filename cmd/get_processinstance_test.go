@@ -4223,7 +4223,7 @@ const (
 	tenantAdminKeysSelectedTenant       = "tenant-a"
 	tenantAdminKeysReturnedTenant       = "tenant-b"
 	tenantAdminKeysProcessInstanceKey   = "2251799813711967"
-	tenantAdminKeysProcessDefinitionKey = "9001"
+	tenantAdminKeysProcessDefinitionKey = "2251799813685249"
 )
 
 // tenantAdminKeysMismatchProcessInstance returns the shared selected-tenant

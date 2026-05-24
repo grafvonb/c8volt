@@ -1008,7 +1008,7 @@ func TestWalkProcessInstanceCommand_PartialTraversalRendersWarningsAndJSONMetada
 	})
 }
 
-func TestWalkProcessInstanceCommand_UsesEffectiveTenantForTraversalSearches(t *testing.T) {
+func TestWalkProcessInstanceCommand_KeyTraversalOmitsSelectedTenant(t *testing.T) {
 	var requests []string
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1063,7 +1063,7 @@ apis:
 		body := decodeCapturedPISearchRequest(t, request)
 		filter, ok := body["filter"].(map[string]any)
 		require.True(t, ok, "expected search request filter object")
-		require.Equal(t, "tenant-a", filter["tenantId"])
+		require.NotContains(t, filter, "tenantId")
 	}
 	require.Contains(t, output, `"tenantId": "tenant-a"`)
 	require.NotContains(t, output, "base-tenant")
@@ -1123,7 +1123,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsUsesEffectiveTenantForIncidentS
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			require.Contains(t, string(body), `"tenantId":"tenant-a"`)
+			require.NotContains(t, string(body), `"tenantId"`)
 			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
 			body, err := io.ReadAll(r.Body)

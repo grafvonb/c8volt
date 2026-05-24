@@ -331,7 +331,7 @@ apis:
 	)
 
 	require.Equal(t, []string{"GET /v2/process-instances/" + tenantAdminKeysProcessInstanceKey}, requests)
-	require.Contains(t, output, `"ok": true`)
+	require.Contains(t, output, `"outcome": "succeeded"`)
 	require.Contains(t, output, `"state": "ACTIVE"`)
 }
 

@@ -135,10 +135,10 @@
 
 **Purpose**: Verify the full feature, keep generated artifacts synchronized, and preserve implementation traceability.
 
-- [ ] T040 Update `specs/156-tenant-admin-keys/progress.md` with codebase discoveries, validation results, and any follow-up risks
-- [ ] T041 Run `go test ./cmd ./c8volt/process ./c8volt/resource ./internal/services/processinstance ./internal/services/processdefinition ./internal/services/resource -count=1`
-- [ ] T042 Run `make test`
-- [ ] T043 Verify generated docs and working tree status with `git status --short`
+- [x] T040 Update `specs/156-tenant-admin-keys/progress.md` with codebase discoveries, validation results, and any follow-up risks
+- [x] T041 Run `go test ./cmd ./c8volt/process ./c8volt/resource ./internal/services/processinstance ./internal/services/processdefinition ./internal/services/resource -count=1`
+- [x] T042 Run `make test`
+- [x] T043 Verify generated docs and working tree status with `git status --short`
 
 ---
 

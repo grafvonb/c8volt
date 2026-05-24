@@ -26,6 +26,8 @@
 - Explicit process-definition key/XML, resource ID, and stdin process-definition delete paths use `foptions.WithIgnoreTenant()` through the public facade option boundary; selector/search-derived process-definition paths continue to use normal tenant-scoped options.
 - v88/v89 process-definition statistics honor `services.WithIgnoreTenant()` by omitting tenant filters from process-instance count searches, preventing direct-key stats and delete impact checks from reintroducing selected-tenant scope.
 - Command long help is the source for generated CLI docs; after tenant help changes, run `make docs-content` so `docs/cli/` and `docs/index.md` stay synchronized.
+- Test helpers that reset Cobra slice flags must use `pflag.SliceValue.Replace(nil)` for empty slice defaults; setting the serialized default `"[]"` turns into a literal `"[]"` flag value.
+- Explicit process-instance key traversal omits selected-tenant filters for child traversal searches; incident enrichment can still use the selected tenant on the incident-specific search path.
 
 ## Work Log
 
@@ -53,14 +55,14 @@
 ---
 ## Iteration 2 - 2026-05-24 21:56 CEST
 **User Story**: Phase 2: Foundational (Blocking Prerequisites)
-**Tasks Completed**: 
+**Tasks Completed**:
 - [x] T005: Identify and record current local tenant mismatch checks or tenant-equality assumptions in `specs/156-tenant-admin-keys/progress.md`
 - [x] T006: Add or update shared test fixtures for tenant-a selected context with tenant-b returned metadata in `cmd/get_processinstance_test.go`
 - [x] T007: Add or update facade/service stubs for explicit tenant mismatch behavior in `c8volt/process/client_test.go` and `c8volt/resource/client_test.go`
 - [x] T008: Verify no new c8volt-side authorization layer is needed and record the chosen repository-native path in `specs/156-tenant-admin-keys/progress.md`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
-**Files Changed**: 
+**Files Changed**:
 - cmd/get_processinstance_test.go
 - c8volt/process/client_test.go
 - c8volt/resource/client_test.go
@@ -74,7 +76,7 @@
 ---
 ## Iteration 3 - 2026-05-24 22:03 CEST
 **User Story**: User Story 1 - Preserve Tenant-Scoped Discovery Boundaries
-**Tasks Completed**: 
+**Tasks Completed**:
 - [x] T009: Add tenant-scoped process-instance search/list test in `cmd/get_processinstance_test.go`
 - [x] T010: Add search-derived `cancel pi --dry-run` tenant-scoped candidate test in `cmd/cancel_test.go`
 - [x] T011: Add search-derived `delete pi --dry-run` tenant-scoped candidate and dependency-scope test in `cmd/delete_test.go`
@@ -84,7 +86,7 @@
 - [x] T015: Run `go test ./cmd -run 'Test(GetProcessInstance|CancelProcessInstance|DeleteProcessInstance).*Tenant' -count=1`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
-**Files Changed**: 
+**Files Changed**:
 - cmd/get_processinstance_test.go
 - cmd/cancel_test.go
 - cmd/delete_test.go
@@ -98,7 +100,7 @@
 ---
 ## Iteration 4 - 2026-05-24 22:12 CEST
 **User Story**: User Story 2 - Treat Explicit Process-Instance Keys As Admin Input
-**Tasks Completed**: 
+**Tasks Completed**:
 - [x] T016: Add `get pi --key` selected-tenant mismatch test in `cmd/get_processinstance_test.go`
 - [x] T017: Add `walk pi --key` selected-tenant mismatch test in `cmd/walk_test.go`
 - [x] T018: Add `expect pi --key` selected-tenant mismatch test in `cmd/expect_test.go`
@@ -110,7 +112,7 @@
 - [x] T024: Run `go test ./cmd ./c8volt/process ./internal/services/processinstance -run 'Test.*(Key|Direct).*Tenant|Test.*Tenant.*Key' -count=1`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
-**Files Changed**: 
+**Files Changed**:
 - c8volt/process/client.go
 - c8volt/process/client_test.go
 - cmd/cancel_processinstance.go
@@ -203,4 +205,28 @@
 - Root persistent flag descriptions propagate to every generated command page, so the tenant contract belongs in the global flag when it affects all command help.
 - Command-specific long help is still needed for affected process-instance, process-definition, and resource commands because the global flag cannot describe mode-specific explicit-key behavior by itself.
 - Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd -run 'Test(CommandCapabilityForCommand_DocumentsTenantContract|ProcessInstanceHelp_DocumentsTenantContract|GetResourceHelp|GetProcessDefinitionHelp_DocumentsJSONAndXMLModes|DeleteProcessDefinitionHelp_DocumentsTenantContract)$' -count=1` and `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./docsgen ./cmd -count=1`.
+---
+---
+## Iteration 7 - 2026-05-24 22:40 CEST
+**User Story**: Final Phase: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T040: Update `specs/156-tenant-admin-keys/progress.md` with codebase discoveries, validation results, and any follow-up risks
+- [x] T041: Run `go test ./cmd ./c8volt/process ./c8volt/resource ./internal/services/processinstance ./internal/services/processdefinition ./internal/services/resource -count=1`
+- [x] T042: Run `make test`
+- [x] T043: Verify generated docs and working tree status with `git status --short`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/expect_test.go
+- cmd/get_processinstance_test.go
+- cmd/walk_test.go
+- testx/cobra_flags.go
+- testx/cobra_flags_test.go
+- specs/156-tenant-admin-keys/tasks.md
+- specs/156-tenant-admin-keys/progress.md
+**Learnings**:
+- Full-suite validation exposed that `testx.ResetCommandTreeFlags` converted empty Cobra string-slice defaults into a literal `"[]"` value; resetting empty slice defaults through `pflag.SliceValue` keeps tests isolated.
+- Direct process-instance key traversal should not reapply the selected tenant to child traversal searches, while incident enrichment remains tenant-scoped on its incident lookup.
+- Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/process ./c8volt/resource ./internal/services/processinstance ./internal/services/processdefinition ./internal/services/resource -count=1` and `GOCACHE=/private/tmp/c8volt-go-build-cache make test`.
+- Default Go build cache access was unreliable in this sandbox, so validation used `GOCACHE=/private/tmp/c8volt-go-build-cache`.
 ---

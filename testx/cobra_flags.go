@@ -11,7 +11,11 @@ import (
 func ResetCommandTreeFlags(cmd *cobra.Command) {
 	resetFlagSet := func(fs *pflag.FlagSet) {
 		fs.VisitAll(func(flag *pflag.Flag) {
-			_ = flag.Value.Set(flag.DefValue)
+			if slice, ok := flag.Value.(pflag.SliceValue); ok && flag.DefValue == "[]" {
+				_ = slice.Replace(nil)
+			} else {
+				_ = flag.Value.Set(flag.DefValue)
+			}
 			flag.Changed = false
 		})
 	}
