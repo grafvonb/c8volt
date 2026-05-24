@@ -57,6 +57,38 @@ func (f ProcessDefinitionStatisticsFilter) String() string {
 	return toolx.FormatActiveFields(parts)
 }
 
+// ProcessDefinitionPageRequest captures one backend process-definition search page request.
+type ProcessDefinitionPageRequest struct {
+	From  int32
+	Size  int32
+	After string
+}
+
+// ProcessDefinitionReportedTotalKind records whether the backend total is exact or capped.
+type ProcessDefinitionReportedTotalKind string
+
+const (
+	// ProcessDefinitionReportedTotalKindExact means the backend total is the full matching count.
+	ProcessDefinitionReportedTotalKindExact ProcessDefinitionReportedTotalKind = "exact"
+	// ProcessDefinitionReportedTotalKindLowerBound means the backend total is capped below the true count.
+	ProcessDefinitionReportedTotalKindLowerBound ProcessDefinitionReportedTotalKind = "lower_bound"
+)
+
+// ProcessDefinitionReportedTotal carries the backend-reported process-definition total for a page.
+type ProcessDefinitionReportedTotal struct {
+	Count int64
+	Kind  ProcessDefinitionReportedTotalKind
+}
+
+// ProcessDefinitionPage is one process-definition search page plus continuation metadata.
+type ProcessDefinitionPage struct {
+	Items         []ProcessDefinition
+	Request       ProcessDefinitionPageRequest
+	OverflowState ProcessInstanceOverflowState
+	ReportedTotal *ProcessDefinitionReportedTotal
+	EndCursor     string
+}
+
 func SortByVersionDesc(pds []ProcessDefinition) {
 	slices.SortFunc(pds, func(a, b ProcessDefinition) int {
 		switch {

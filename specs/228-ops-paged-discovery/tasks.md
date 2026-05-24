@@ -26,17 +26,17 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 Add discovery completeness fields or a shared discovery status type to `internal/domain/ops_incident_purge.go`, `internal/domain/ops_repair.go`, and `internal/domain/ops_all_process_definitions_purge.go`
-- [ ] T005 Add matching public facade fields and JSON tags in `c8volt/ops/model.go`
-- [ ] T006 Update domain-to-facade conversion for the new discovery status fields in `c8volt/ops/convert.go`
-- [ ] T007 Add or extend page-capable process-definition service contracts in `internal/services/processdefinition/api.go`
-- [ ] T008 [P] Add process-definition page request/response domain types if needed in `internal/domain/processdefinition.go`
-- [ ] T009 Implement v8.9 process-definition page search request and conversion in `internal/services/processdefinition/v89/service.go`
-- [ ] T010 Implement v8.8 process-definition page search request and conversion in `internal/services/processdefinition/v88/service.go`
-- [ ] T011 Implement v8.7 process-definition page search request and conversion in `internal/services/processdefinition/v87/service.go`
-- [ ] T012 [P] Add process-definition page service tests in `internal/services/processdefinition/v89/service_test.go`
-- [ ] T013 [P] Add process-definition page service tests in `internal/services/processdefinition/v88/service_test.go`
-- [ ] T014 [P] Add process-definition page service tests in `internal/services/processdefinition/v87/service_test.go`
+- [x] T004 Add discovery completeness fields or a shared discovery status type to `internal/domain/ops_incident_purge.go`, `internal/domain/ops_repair.go`, and `internal/domain/ops_all_process_definitions_purge.go`
+- [x] T005 Add matching public facade fields and JSON tags in `c8volt/ops/model.go`
+- [x] T006 Update domain-to-facade conversion for the new discovery status fields in `c8volt/ops/convert.go`
+- [x] T007 Add or extend page-capable process-definition service contracts in `internal/services/processdefinition/api.go`
+- [x] T008 [P] Add process-definition page request/response domain types if needed in `internal/domain/processdefinition.go`
+- [x] T009 Implement v8.9 process-definition page search request and conversion in `internal/services/processdefinition/v89/service.go`
+- [x] T010 Implement v8.8 process-definition page search request and conversion in `internal/services/processdefinition/v88/service.go`
+- [x] T011 Implement v8.7 process-definition page search request and conversion in `internal/services/processdefinition/v87/service.go`
+- [x] T012 [P] Add process-definition page service tests in `internal/services/processdefinition/v89/service_test.go`
+- [x] T013 [P] Add process-definition page service tests in `internal/services/processdefinition/v88/service_test.go`
+- [x] T014 [P] Add process-definition page service tests in `internal/services/processdefinition/v87/service_test.go`
 
 **Checkpoint**: Discovery status and process-definition paging are available to service workflows.
 

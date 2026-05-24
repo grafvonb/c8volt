@@ -40,6 +40,7 @@ type AllProcessDefinitionsPurgeRequest struct {
 
 // ProcessDefinitionDiscoveryResult captures immutable process-definition discovery output.
 type ProcessDefinitionDiscoveryResult struct {
+	DiscoveryScopeStatus
 	Status                                  OpsWorkflowStepStatus
 	Filters                                 ProcessDefinitionFilter
 	CandidateProcessDefinitionKeys          typex.Keys

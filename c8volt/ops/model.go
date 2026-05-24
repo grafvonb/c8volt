@@ -27,6 +27,17 @@ const (
 	WorkflowStepStatusFailed             WorkflowStepStatus = "failed"
 )
 
+// DiscoveryScopeStatus records whether candidate discovery reached all matches or stopped at an explicit user limit.
+type DiscoveryScopeStatus struct {
+	Complete         bool  `json:"complete,omitempty"`
+	Limited          bool  `json:"limited,omitempty"`
+	Limit            int32 `json:"limit,omitempty"`
+	BatchSize        int32 `json:"batchSize,omitempty"`
+	Pages            int   `json:"pages,omitempty"`
+	CandidatesSeen   int   `json:"candidatesSeen,omitempty"`
+	CandidatesFrozen int   `json:"candidatesFrozen,omitempty"`
+}
+
 // RepairTarget identifies the repair workflow entry point.
 type RepairTarget string
 
@@ -93,6 +104,7 @@ type RepairRequest struct {
 
 // RepairFrozenSet captures the immutable target data discovered before mutation.
 type RepairFrozenSet struct {
+	DiscoveryScopeStatus
 	Status                     WorkflowStepStatus                       `json:"status,omitempty"`
 	Target                     RepairTarget                             `json:"target,omitempty"`
 	DiscoveryMode              RepairDiscoveryMode                      `json:"discoveryMode,omitempty"`
@@ -649,6 +661,7 @@ type IncidentPurgeSkippedIncident struct {
 
 // IncidentDiscoveryResult captures immutable incident discovery and candidate extraction output.
 type IncidentDiscoveryResult struct {
+	DiscoveryScopeStatus
 	Status                                WorkflowStepStatus                       `json:"status,omitempty"`
 	Filters                               incident.Filter                          `json:"filters,omitempty"`
 	CandidateIncidents                    []incident.ProcessInstanceIncidentDetail `json:"candidateIncidents,omitempty"`
@@ -787,6 +800,7 @@ type AllProcessDefinitionsPurgeRequest struct {
 
 // ProcessDefinitionDiscoveryResult captures immutable process-definition discovery output.
 type ProcessDefinitionDiscoveryResult struct {
+	DiscoveryScopeStatus
 	Status                                  WorkflowStepStatus                 `json:"status,omitempty"`
 	Filters                                 ProcessDefinitionSelection         `json:"filters,omitempty"`
 	CandidateProcessDefinitionKeys          typex.Keys                         `json:"candidateProcessDefinitionKeys,omitempty"`

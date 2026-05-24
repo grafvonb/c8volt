@@ -9,6 +9,17 @@ import (
 	"github.com/grafvonb/c8volt/typex"
 )
 
+// DiscoveryScopeStatus records whether candidate discovery reached all matches or stopped at an explicit user limit.
+type DiscoveryScopeStatus struct {
+	Complete         bool
+	Limited          bool
+	Limit            int32
+	BatchSize        int32
+	Pages            int
+	CandidatesSeen   int
+	CandidatesFrozen int
+}
+
 // IncidentPurgeOutcome is the final state of an incident-based process-instance purge workflow.
 type IncidentPurgeOutcome string
 
@@ -52,6 +63,7 @@ type IncidentPurgeSkippedIncident struct {
 
 // IncidentDiscoveryResult captures immutable incident discovery and candidate extraction output.
 type IncidentDiscoveryResult struct {
+	DiscoveryScopeStatus
 	Status                                OpsWorkflowStepStatus
 	Filters                               IncidentFilter
 	CandidateIncidents                    []ProcessInstanceIncidentDetail

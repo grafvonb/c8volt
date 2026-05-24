@@ -74,6 +74,19 @@ func fromDomainWorkflowStepResult(x d.WorkflowStepResult) WorkflowStepResult {
 	}
 }
 
+// fromDomainDiscoveryScopeStatus maps shared discovery completeness metadata to public output.
+func fromDomainDiscoveryScopeStatus(x d.DiscoveryScopeStatus) DiscoveryScopeStatus {
+	return DiscoveryScopeStatus{
+		Complete:         x.Complete,
+		Limited:          x.Limited,
+		Limit:            x.Limit,
+		BatchSize:        x.BatchSize,
+		Pages:            x.Pages,
+		CandidatesSeen:   x.CandidatesSeen,
+		CandidatesFrozen: x.CandidatesFrozen,
+	}
+}
+
 func fromDomainEmbeddedSmokeTestFixture(x d.EmbeddedSmokeTestFixture) EmbeddedSmokeTestFixture {
 	return EmbeddedSmokeTestFixture{
 		CamundaVersion: x.CamundaVersion,
@@ -561,6 +574,7 @@ func fromDomainIncidentPurgeRequest(x d.IncidentPurgeRequest) IncidentPurgeReque
 // fromDomainIncidentDiscoveryResult maps discovery details to the public model.
 func fromDomainIncidentDiscoveryResult(x d.IncidentDiscoveryResult) IncidentDiscoveryResult {
 	return IncidentDiscoveryResult{
+		DiscoveryScopeStatus:                  fromDomainDiscoveryScopeStatus(x.DiscoveryScopeStatus),
 		Status:                                WorkflowStepStatus(x.Status),
 		Filters:                               fromDomainIncidentFilter(x.Filters),
 		CandidateIncidents:                    toolx.MapSlice(x.CandidateIncidents, fromDomainIncidentDetail),
@@ -732,6 +746,7 @@ func fromDomainRepairRequest(x d.OpsRepairRequest) RepairRequest {
 // fromDomainRepairFrozenSet maps frozen repair targets to public output.
 func fromDomainRepairFrozenSet(x d.OpsRepairFrozenSet) RepairFrozenSet {
 	return RepairFrozenSet{
+		DiscoveryScopeStatus:       fromDomainDiscoveryScopeStatus(x.DiscoveryScopeStatus),
 		Status:                     WorkflowStepStatus(x.Status),
 		Target:                     RepairTarget(x.Target),
 		DiscoveryMode:              RepairDiscoveryMode(x.DiscoveryMode),
@@ -912,6 +927,7 @@ func fromDomainAllProcessDefinitionsPurgeRequest(x d.AllProcessDefinitionsPurgeR
 // fromDomainProcessDefinitionDiscoveryResult maps discovery details to the public model.
 func fromDomainProcessDefinitionDiscoveryResult(x d.ProcessDefinitionDiscoveryResult) ProcessDefinitionDiscoveryResult {
 	return ProcessDefinitionDiscoveryResult{
+		DiscoveryScopeStatus:                    fromDomainDiscoveryScopeStatus(x.DiscoveryScopeStatus),
 		Status:                                  WorkflowStepStatus(x.Status),
 		Filters:                                 fromDomainProcessDefinitionSelection(x.Filters),
 		CandidateProcessDefinitionKeys:          append(typex.Keys{}, x.CandidateProcessDefinitionKeys...),
