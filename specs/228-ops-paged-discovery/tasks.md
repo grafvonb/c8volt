@@ -14,9 +14,9 @@
 
 **Purpose**: Confirm local context and keep implementation bound to repository rules.
 
-- [ ] T001 Read `specs/ralph-implementation-rules.md` and verify no conflict with `specs/228-ops-paged-discovery/spec.md`
-- [ ] T002 [P] Review existing paged discovery patterns in `internal/services/processinstance/retention_discovery.go` and `internal/services/processinstance/orphan_discovery.go`
-- [ ] T003 [P] Review affected output renderers in `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`, `cmd/cmd_views_ops_repair.go`, and `cmd/cmd_views_ops_purge_all_processdefinitions.go`
+- [x] T001 Read `specs/ralph-implementation-rules.md` and verify no conflict with `specs/228-ops-paged-discovery/spec.md`
+- [x] T002 [P] Review existing paged discovery patterns in `internal/services/processinstance/retention_discovery.go` and `internal/services/processinstance/orphan_discovery.go`
+- [x] T003 [P] Review affected output renderers in `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`, `cmd/cmd_views_ops_repair.go`, and `cmd/cmd_views_ops_purge_all_processdefinitions.go`
 
 ---
 
