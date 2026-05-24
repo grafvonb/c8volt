@@ -630,6 +630,49 @@ func TestCancelProcessInstanceDryRun_SearchTenantScopedCandidates(t *testing.T) 
 	require.NotContains(t, output, tenantAdminKeysReturnedTenant)
 }
 
+// TestCancelProcessInstanceDryRun_KeyTenantMismatchUsesAdminScope keeps direct
+// cancel previews backend-authorized while preserving dry-run safety.
+func TestCancelProcessInstanceDryRun_KeyTenantMismatchUsesAdminScope(t *testing.T) {
+	var requests testx.SafeSlice[string]
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		requests.Append(r.Method + " " + r.URL.Path)
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/"+tenantAdminKeysProcessInstanceKey:
+			_, _ = w.Write([]byte(tenantAdminKeysMismatchProcessInstanceJSON()))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			searchBody := decodeCapturedPISearchRequest(t, string(body))
+			filter, ok := searchBody["filter"].(map[string]any)
+			require.True(t, ok, "expected search request filter object")
+			require.Equal(t, tenantAdminKeysProcessInstanceKey, filter["parentProcessInstanceKey"])
+			require.NotContains(t, filter, "tenantId")
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"--json",
+		"cancel", "process-instance",
+		"--key", tenantAdminKeysProcessInstanceKey,
+		"--dry-run",
+	)
+
+	require.Contains(t, requests.Snapshot(), "GET /v2/process-instances/"+tenantAdminKeysProcessInstanceKey)
+	require.Contains(t, requests.Snapshot(), "POST /v2/process-instances/search")
+	require.Contains(t, output, `"requestedCount": 1`)
+	require.Contains(t, output, tenantAdminKeysProcessInstanceKey)
+}
+
 // TestCancelProcessInstanceDryRun_SearchSummaryExplainsPartialScope verifies
 // aggregate output preserves partial-scope warnings.
 func TestCancelProcessInstanceDryRun_SearchSummaryExplainsPartialScope(t *testing.T) {

@@ -1069,6 +1069,48 @@ apis:
 	require.NotContains(t, output, "base-tenant")
 }
 
+// TestWalkProcessInstanceCommand_KeyTenantMismatchUsesAdminTraversal ensures
+// explicit-key walks do not apply the selected tenant to backend traversal.
+func TestWalkProcessInstanceCommand_KeyTenantMismatchUsesAdminTraversal(t *testing.T) {
+	var searchRequests []string
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/"+tenantAdminKeysProcessInstanceKey:
+			_, _ = w.Write([]byte(tenantAdminKeysMismatchProcessInstanceJSON()))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			searchRequests = append(searchRequests, string(body))
+			request := decodeCapturedPISearchRequest(t, string(body))
+			filter, ok := request["filter"].(map[string]any)
+			require.True(t, ok, "expected search request filter object")
+			require.Equal(t, tenantAdminKeysProcessInstanceKey, filter["parentProcessInstanceKey"])
+			require.NotContains(t, filter, "tenantId")
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"--json",
+		"walk", "process-instance",
+		"--key", tenantAdminKeysProcessInstanceKey,
+		"--children",
+	)
+
+	require.Len(t, searchRequests, 1)
+	require.Contains(t, output, `"tenantId": "tenant-b"`)
+	require.Contains(t, output, `"key": "`+tenantAdminKeysProcessInstanceKey+`"`)
+}
+
 // TestWalkProcessInstanceCommand_WithIncidentsUsesEffectiveTenantForIncidentSearches applies command tenant overrides to incident lookup.
 func TestWalkProcessInstanceCommand_WithIncidentsUsesEffectiveTenantForIncidentSearches(t *testing.T) {
 	var incidentRequests []string

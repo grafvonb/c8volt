@@ -21,6 +21,8 @@
 - Camunda 8.8/8.9 process-instance state lookups delegate to direct keyed lookup, so any explicit-input tenant semantics should be changed at keyed lookup behavior rather than adding state-specific checks.
 - Process-definition and resource direct get paths map returned tenant metadata from keyed/id backend endpoints without a local selected-tenant equality check.
 - Search-derived process-instance dry-run command tests can isolate c8volt-produced candidates by capturing top-level search requests separately from parent/child dependency-expansion searches.
+- Direct process-instance key command modes use `foptions.WithIgnoreTenant()` for traversal, dry-run planning, and enrichment so operator-supplied keys are not narrowed by selected-tenant search filters.
+- v88/v89 process-instance search services honor `services.WithIgnoreTenant()` by omitting the tenant filter, while normal search-derived command paths continue to pass tenant-scoped options.
 
 ## Work Log
 
@@ -89,4 +91,44 @@
 - `get pi` search already sends the effective tenant through versioned process-instance search requests; US1 only needed regression coverage.
 - Search-derived cancel/delete dry-run flows freeze keys from the tenant-scoped search page before dependency expansion, and child-scope searches keep the same tenant filter.
 - Validation passed with `go test ./cmd -run 'Test(GetProcessInstance|CancelProcessInstance|DeleteProcessInstance).*Tenant' -count=1`.
+---
+---
+## Iteration 4 - 2026-05-24 22:12 CEST
+**User Story**: User Story 2 - Treat Explicit Process-Instance Keys As Admin Input
+**Tasks Completed**: 
+- [x] T016: Add `get pi --key` selected-tenant mismatch test in `cmd/get_processinstance_test.go`
+- [x] T017: Add `walk pi --key` selected-tenant mismatch test in `cmd/walk_test.go`
+- [x] T018: Add `expect pi --key` selected-tenant mismatch test in `cmd/expect_test.go`
+- [x] T019: Add `cancel pi --key --dry-run` selected-tenant mismatch test in `cmd/cancel_test.go`
+- [x] T020: Add `delete pi --key --dry-run` selected-tenant mismatch test in `cmd/delete_test.go`
+- [x] T021: Update direct process-instance lookup and enrichment paths to avoid c8volt-side tenant mismatch rejection in `c8volt/process/client.go` and affected `internal/services/processinstance/` packages
+- [x] T022: Preserve existing direct-key cancellation preflight, dry-run, confirmation, force, and verification behavior in `cmd/cancel_processinstance.go` and `c8volt/process/client.go`
+- [x] T023: Preserve existing direct-key deletion preflight, dry-run, dependency expansion, force, and verification behavior in `cmd/delete_processinstance.go` and `c8volt/process/client.go`
+- [x] T024: Run `go test ./cmd ./c8volt/process ./internal/services/processinstance -run 'Test.*(Key|Direct).*Tenant|Test.*Tenant.*Key' -count=1`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**: 
+- c8volt/process/client.go
+- c8volt/process/client_test.go
+- cmd/cancel_processinstance.go
+- cmd/cancel_test.go
+- cmd/cmd_options.go
+- cmd/cmd_views_processinstance_dryrun.go
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- cmd/expect_processinstance.go
+- cmd/expect_test.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_enrichment.go
+- cmd/get_processinstance_test.go
+- cmd/walk_processinstance.go
+- cmd/walk_test.go
+- internal/services/processinstance/v88/service.go
+- internal/services/processinstance/v89/service.go
+- specs/156-tenant-admin-keys/tasks.md
+- specs/156-tenant-admin-keys/progress.md
+**Learnings**:
+- Facade direct process-instance lookup had been using the shared search-backed helper; explicit admin input now delegates to versioned service direct lookup so v88/v89 backend authorization owns tenant mismatch behavior.
+- Direct-key traversal and dry-run planning need `IgnoreTenant` only for operator-supplied keys; search-derived cancel/delete paths keep ordinary tenant-scoped options.
+- Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/process ./internal/services/processinstance -run 'Test.*(Key|Direct).*Tenant|Test.*Tenant.*Key' -count=1`.
 ---

@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 
+	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
 	types "github.com/grafvonb/c8volt/typex"
@@ -148,6 +149,8 @@ var getProcessInstanceCmd = &cobra.Command{
 			}
 		case lk > 0:
 			log.Debug(fmt.Sprintf("getting pi keys [%s]", keys))
+			adminInputOpts := collectExplicitPIAdminInputOptions()
+			adminInputIncidentOpts := append(collectIncidentEnrichmentOptions(), processOptions.WithIgnoreTenant())
 			if err := validatePIKeyedModeDateFilters(lk); err != nil {
 				fail(err)
 			}
@@ -164,7 +167,7 @@ var getProcessInstanceCmd = &cobra.Command{
 			if cmd.Flags().Changed("workers") {
 				lk = flagWorkers
 			}
-			pis, err = cli.GetProcessInstances(ctx, ukeys, lk, collectOptions()...)
+			pis, err = cli.GetProcessInstances(ctx, ukeys, lk, adminInputOpts...)
 			if err != nil {
 				msg := fmt.Errorf("get process instances: %w", err)
 				if flagVerbose {
@@ -173,11 +176,11 @@ var getProcessInstanceCmd = &cobra.Command{
 				fail(msg)
 			}
 			if flagGetPIWithIncidents && flagGetPIWithVars {
-				incidentEnriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, pis)
+				incidentEnriched, err := enrichProcessInstancesWithIncidentActivityOptions(cmd, cli, pis, adminInputIncidentOpts)
 				if err != nil {
 					fail(fmt.Errorf("get process instance incidents: %w", err))
 				}
-				variableEnriched, err := enrichProcessInstancesWithVariableActivity(cmd, cli, pis)
+				variableEnriched, err := enrichProcessInstancesWithVariableActivityOptions(cmd, cli, pis, adminInputOpts)
 				if err != nil {
 					fail(fmt.Errorf("get process instance variables: %w", err))
 				}
@@ -187,7 +190,7 @@ var getProcessInstanceCmd = &cobra.Command{
 				return
 			}
 			if flagGetPIWithIncidents {
-				enriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, pis)
+				enriched, err := enrichProcessInstancesWithIncidentActivityOptions(cmd, cli, pis, adminInputIncidentOpts)
 				if err != nil {
 					fail(fmt.Errorf("get process instance incidents: %w", err))
 				}
@@ -197,7 +200,7 @@ var getProcessInstanceCmd = &cobra.Command{
 				return
 			}
 			if flagGetPIWithVars {
-				enriched, err := enrichProcessInstancesWithVariableActivity(cmd, cli, pis)
+				enriched, err := enrichProcessInstancesWithVariableActivityOptions(cmd, cli, pis, adminInputOpts)
 				if err != nil {
 					fail(fmt.Errorf("get process instance variables: %w", err))
 				}

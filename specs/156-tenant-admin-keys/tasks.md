@@ -67,18 +67,18 @@
 
 ### Tests for User Story 2
 
-- [ ] T016 [P] [US2] Add `get pi --key` selected-tenant mismatch test in `cmd/get_processinstance_test.go`
-- [ ] T017 [P] [US2] Add `walk pi --key` selected-tenant mismatch test in `cmd/walk_test.go`
-- [ ] T018 [P] [US2] Add `expect pi --key` selected-tenant mismatch test in `cmd/expect_test.go`
-- [ ] T019 [P] [US2] Add `cancel pi --key --dry-run` selected-tenant mismatch test in `cmd/cancel_test.go`
-- [ ] T020 [P] [US2] Add `delete pi --key --dry-run` selected-tenant mismatch test in `cmd/delete_test.go`
+- [x] T016 [P] [US2] Add `get pi --key` selected-tenant mismatch test in `cmd/get_processinstance_test.go`
+- [x] T017 [P] [US2] Add `walk pi --key` selected-tenant mismatch test in `cmd/walk_test.go`
+- [x] T018 [P] [US2] Add `expect pi --key` selected-tenant mismatch test in `cmd/expect_test.go`
+- [x] T019 [P] [US2] Add `cancel pi --key --dry-run` selected-tenant mismatch test in `cmd/cancel_test.go`
+- [x] T020 [P] [US2] Add `delete pi --key --dry-run` selected-tenant mismatch test in `cmd/delete_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] Update direct process-instance lookup and enrichment paths to avoid c8volt-side tenant mismatch rejection in `c8volt/process/client.go` and affected `internal/services/processinstance/` packages
-- [ ] T022 [US2] Preserve existing direct-key cancellation preflight, dry-run, confirmation, force, and verification behavior in `cmd/cancel_processinstance.go` and `c8volt/process/client.go`
-- [ ] T023 [US2] Preserve existing direct-key deletion preflight, dry-run, dependency expansion, force, and verification behavior in `cmd/delete_processinstance.go` and `c8volt/process/client.go`
-- [ ] T024 [US2] Run `go test ./cmd ./c8volt/process ./internal/services/processinstance -run 'Test.*(Key|Direct).*Tenant|Test.*Tenant.*Key' -count=1`
+- [x] T021 [US2] Update direct process-instance lookup and enrichment paths to avoid c8volt-side tenant mismatch rejection in `c8volt/process/client.go` and affected `internal/services/processinstance/` packages
+- [x] T022 [US2] Preserve existing direct-key cancellation preflight, dry-run, confirmation, force, and verification behavior in `cmd/cancel_processinstance.go` and `c8volt/process/client.go`
+- [x] T023 [US2] Preserve existing direct-key deletion preflight, dry-run, dependency expansion, force, and verification behavior in `cmd/delete_processinstance.go` and `c8volt/process/client.go`
+- [x] T024 [US2] Run `go test ./cmd ./c8volt/process ./internal/services/processinstance -run 'Test.*(Key|Direct).*Tenant|Test.*Tenant.*Key' -count=1`
 
 **Checkpoint**: User Stories 1 and 2 work independently.
 

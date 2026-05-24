@@ -6,6 +6,7 @@ package cmd
 import (
 	"strings"
 
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
@@ -62,7 +63,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 		walkers := map[string]walker{
 			walkPIModeParent: {
 				fetch: func() (process.TraversalResult, error) {
-					return cli.AncestryResult(cmd.Context(), flagWalkPIKey, collectOptions()...)
+					return cli.AncestryResult(cmd.Context(), flagWalkPIKey, collectExplicitPIAdminInputOptions()...)
 				},
 				view: func(cmd *cobra.Command, result process.TraversalResult) error {
 					if pickMode() == RenderModeJSON {
@@ -84,7 +85,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 			},
 			walkPIModeChildren: {
 				fetch: func() (process.TraversalResult, error) {
-					return cli.DescendantsResult(cmd.Context(), flagWalkPIKey, collectOptions()...)
+					return cli.DescendantsResult(cmd.Context(), flagWalkPIKey, collectExplicitPIAdminInputOptions()...)
 				},
 				view: func(cmd *cobra.Command, result process.TraversalResult) error {
 					if pickMode() == RenderModeJSON {
@@ -98,7 +99,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 			},
 			walkPIModeFamily: {
 				fetch: func() (process.TraversalResult, error) {
-					return cli.FamilyResult(cmd.Context(), flagWalkPIKey, collectOptions()...)
+					return cli.FamilyResult(cmd.Context(), flagWalkPIKey, collectExplicitPIAdminInputOptions()...)
 				},
 				view: func(cmd *cobra.Command, result process.TraversalResult) error {
 					if pickMode() == RenderModeJSON {
@@ -142,16 +143,18 @@ var walkProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if flagWalkPIWithIncidents || flagWalkPIWithVars {
+			adminInputOpts := collectExplicitPIAdminInputOptions()
+			adminInputIncidentOpts := append(collectIncidentEnrichmentOptions(), options.WithIgnoreTenant())
 			var incidentEnriched process.IncidentEnrichedTraversalResult
 			if flagWalkPIWithIncidents {
-				incidentEnriched, err = cli.EnrichTraversalWithIncidents(cmd.Context(), result, collectIncidentEnrichmentOptions()...)
+				incidentEnriched, err = cli.EnrichTraversalWithIncidents(cmd.Context(), result, adminInputIncidentOpts...)
 				if err != nil {
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}
 			}
 			var variableEnriched process.VariableEnrichedProcessInstances
 			if flagWalkPIWithVars {
-				variableEnriched, err = cli.EnrichProcessInstancesWithVariables(cmd.Context(), processInstancesFromTraversal(result), collectOptions()...)
+				variableEnriched, err = cli.EnrichProcessInstancesWithVariables(cmd.Context(), processInstancesFromTraversal(result), adminInputOpts...)
 				if err != nil {
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}

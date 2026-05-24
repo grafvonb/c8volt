@@ -89,7 +89,7 @@ var expectProcessInstanceCmd = &cobra.Command{
 			}
 		}
 		if incidentSet {
-			reports, err := cli.WaitForProcessInstancesExpectation(cmd.Context(), keys, expectation, flagWorkers, collectOptions()...)
+			reports, err := cli.WaitForProcessInstancesExpectation(cmd.Context(), keys, expectation, flagWorkers, collectExplicitPIAdminInputOptions()...)
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("expecting process instance: %w", err))
 			}
@@ -107,7 +107,7 @@ var expectProcessInstanceCmd = &cobra.Command{
 			}
 			return
 		}
-		reports, err := cli.WaitForProcessInstancesState(cmd.Context(), keys, states, flagWorkers, collectOptions()...)
+		reports, err := cli.WaitForProcessInstancesState(cmd.Context(), keys, states, flagWorkers, collectExplicitPIAdminInputOptions()...)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("expecting process instance: %w", err))
 		}

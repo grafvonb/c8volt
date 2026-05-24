@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
@@ -69,10 +70,16 @@ type processInstanceDryRunPlanResult struct {
 
 // planProcessInstanceDryRunPreview builds the shared dry-run plan, impact counts, and render payload for one key batch.
 func planProcessInstanceDryRunPreview(cmd *cobra.Command, cli process.API, operation string, keys types.Keys) (processInstanceDryRunPlanResult, error) {
+	return planProcessInstanceDryRunPreviewWithOptions(cmd, cli, operation, keys, collectOptions())
+}
+
+// planProcessInstanceDryRunPreviewWithOptions lets direct-key callers preserve
+// admin-input semantics while search-derived callers keep tenant scoping.
+func planProcessInstanceDryRunPreviewWithOptions(cmd *cobra.Command, cli process.API, operation string, keys types.Keys, opts []options.FacadeOption) (processInstanceDryRunPlanResult, error) {
 	stopActivity := startCommandActivity(cmd, fmt.Sprintf("preparing %s dry-run scope for %d process instance(s)", operation, len(keys)))
 	defer stopActivity()
 
-	plan, err := cli.DryRunCancelOrDeletePlan(context.Background(), keys, flagWorkers, collectOptions()...)
+	plan, err := cli.DryRunCancelOrDeletePlan(context.Background(), keys, flagWorkers, opts...)
 	if err != nil {
 		return processInstanceDryRunPlanResult{}, fmt.Errorf("%s validation: %w", operation, err)
 	}

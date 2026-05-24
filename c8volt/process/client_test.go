@@ -1138,59 +1138,54 @@ func TestClient_SearchProcessInstances_UsesPagedSearchWrapper(t *testing.T) {
 	assert.Equal(t, "2251799813711968", items.Items[1].Key)
 }
 
-// TestClient_LookupProcessInstance_UsesSearchBackedLookup protects the lookup
-// strategy for versions where direct key retrieval is implemented through a
-// tenant-aware search filter.
-func TestClient_LookupProcessInstance_UsesSearchBackedLookup(t *testing.T) {
+// TestClient_LookupProcessInstance_TenantMismatchUsesDirectAdminInput protects
+// explicit keys from being narrowed by selected-tenant search before Camunda authorizes them.
+func TestClient_LookupProcessInstance_TenantMismatchUsesDirectAdminInput(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	piAPI := stubProcessInstanceAPI{
-		searchForProcessInstances: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
-			assert.Equal(t, d.ProcessInstanceFilter{Key: "2251799813711967"}, filter)
-			assert.Equal(t, int32(2), size)
+		getProcessInstance: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
+			assert.Equal(t, tenantAdminKeysProcessInstanceKey, key)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
-			return []d.ProcessInstance{
-				{Key: "2251799813711967", State: d.StateActive, TenantId: "tenant-a"},
-			}, nil
+			return tenantAdminKeysMismatchProcessInstanceDomain(), nil
 		},
 	}
 
 	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
-	pi, err := cli.LookupProcessInstance(ctx, "2251799813711967", options.WithVerbose())
+	pi, err := cli.LookupProcessInstance(ctx, tenantAdminKeysProcessInstanceKey, options.WithVerbose())
 
 	require.NoError(t, err)
-	assert.Equal(t, "2251799813711967", pi.Key)
+	assert.Equal(t, tenantAdminKeysProcessInstanceKey, pi.Key)
 	assert.Equal(t, StateActive, pi.State)
-	assert.Equal(t, "tenant-a", pi.TenantId)
+	assert.Equal(t, tenantAdminKeysReturnedTenant, pi.TenantId)
 }
 
-// TestClient_LookupProcessInstanceStateByKey_MapsSearchBackedState verifies the
-// public state report created from a search-backed lookup, including the stable
-// uppercase status string used by command output.
-func TestClient_LookupProcessInstanceStateByKey_MapsSearchBackedState(t *testing.T) {
+// TestClient_LookupProcessInstanceStateByKey_TenantMismatchUsesDirectAdminInput
+// verifies the public state report comes from the service direct-key state path.
+func TestClient_LookupProcessInstanceStateByKey_TenantMismatchUsesDirectAdminInput(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	piAPI := stubProcessInstanceAPI{
-		searchForProcessInstances: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
-			assert.Equal(t, d.ProcessInstanceFilter{Key: "2251799813711967"}, filter)
-			assert.Equal(t, int32(2), size)
-			return []d.ProcessInstance{
-				{Key: "2251799813711967", State: d.StateCompleted, TenantId: "tenant-a"},
-			}, nil
+		getProcessInstanceStateByKey: func(_ context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
+			assert.Equal(t, tenantAdminKeysProcessInstanceKey, key)
+			pi := tenantAdminKeysMismatchProcessInstanceDomain()
+			pi.State = d.StateCompleted
+			return d.StateCompleted, pi, nil
 		},
 	}
 
 	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
-	report, pi, err := cli.LookupProcessInstanceStateByKey(ctx, "2251799813711967")
+	report, pi, err := cli.LookupProcessInstanceStateByKey(ctx, tenantAdminKeysProcessInstanceKey)
 
 	require.NoError(t, err)
 	assert.Equal(t, StateCompleted, report.State)
 	assert.Equal(t, "COMPLETED", report.Status)
-	assert.Equal(t, "2251799813711967", report.Key)
-	assert.Equal(t, "2251799813711967", pi.Key)
+	assert.Equal(t, tenantAdminKeysProcessInstanceKey, report.Key)
+	assert.Equal(t, tenantAdminKeysProcessInstanceKey, pi.Key)
 	assert.Equal(t, StateCompleted, pi.State)
+	assert.Equal(t, tenantAdminKeysReturnedTenant, pi.TenantId)
 }
 
 const (

@@ -36,3 +36,7 @@ func collectOptions() []options.FacadeOption {
 	}
 	return opts
 }
+
+func collectExplicitPIAdminInputOptions() []options.FacadeOption {
+	return append(collectOptions(), options.WithIgnoreTenant())
+}

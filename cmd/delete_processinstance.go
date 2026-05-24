@@ -135,13 +135,19 @@ var deleteProcessInstanceCmd = &cobra.Command{
 // deleteProcessInstancesWithPlan validates the delete scope, renders dry-run
 // output when requested, and submits the mutation otherwise.
 func deleteProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (processInstancePageActionResult, error) {
-	return deleteProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, true)
+	return deleteProcessInstancesWithPlanAndRenderWithOptions(cmd, cli, keys, firstPage, true, collectExplicitPIAdminInputOptions())
 }
 
 // deleteProcessInstancesWithPlanAndRender shares delete planning for keyed and
 // paged flows while allowing callers to defer dry-run rendering.
 func deleteProcessInstancesWithPlanAndRender(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool, renderDryRun bool) (processInstancePageActionResult, error) {
-	planned, err := planProcessInstanceDryRunPreview(cmd, cli, "delete", keys)
+	return deleteProcessInstancesWithPlanAndRenderWithOptions(cmd, cli, keys, firstPage, renderDryRun, collectOptions())
+}
+
+// deleteProcessInstancesWithPlanAndRenderWithOptions keeps direct-key admin
+// input separate from tenant-scoped search-derived candidates.
+func deleteProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool, renderDryRun bool, opts []processOptions.FacadeOption) (processInstancePageActionResult, error) {
+	planned, err := planProcessInstanceDryRunPreviewWithOptions(cmd, cli, "delete", keys, opts)
 	if err != nil {
 		return processInstancePageActionResult{}, err
 	}
@@ -175,8 +181,8 @@ func deleteProcessInstancesWithPlanAndRender(cmd *cobra.Command, cli process.API
 		}
 	}
 
-	opts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
-	reports, err := cli.DeleteProcessInstances(cmd.Context(), plan.Roots, flagWorkers, opts...)
+	mutationOpts := append(opts, processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+	reports, err := cli.DeleteProcessInstances(cmd.Context(), plan.Roots, flagWorkers, mutationOpts...)
 	if err != nil {
 		return processInstancePageActionResult{}, fmt.Errorf("delete process instances: %w", err)
 	}

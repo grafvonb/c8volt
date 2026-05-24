@@ -147,6 +147,34 @@ func TestGetProcessInstanceSearch_TenantScopedDiscoveryUsesSelectedTenant(t *tes
 	require.NotContains(t, output, tenantAdminKeysReturnedTenant)
 }
 
+// TestGetProcessInstanceKey_SelectedTenantMismatchUsesDirectBackendLookup
+// protects explicit admin-input keys from being converted into tenant-scoped search.
+func TestGetProcessInstanceKey_SelectedTenantMismatchUsesDirectBackendLookup(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/"+tenantAdminKeysProcessInstanceKey, r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(tenantAdminKeysMismatchProcessInstanceJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"--json",
+		"get", "process-instance",
+		"--key", tenantAdminKeysProcessInstanceKey,
+	)
+
+	require.Equal(t, []string{"GET /v2/process-instances/" + tenantAdminKeysProcessInstanceKey}, requests)
+	require.Contains(t, output, `"tenantId": "tenant-b"`)
+	require.Contains(t, output, `"key": "`+tenantAdminKeysProcessInstanceKey+`"`)
+}
+
 // A missing BPMN selector should fail before process-instance search can masquerade as a real empty result.
 func TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 	var requests []string

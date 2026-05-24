@@ -203,7 +203,7 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 }
 
 func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, pageReq d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
-	_ = services.ApplyCallOptions(opts)
+	cCfg := services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching pi; filter %s", filter.String()))
 
 	startDateAfter, err := parseInclusiveDateLowerBound(filter.StartDateAfter)
@@ -222,7 +222,11 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building end-date filter: %w", err)
 	}
-	tenantFilter, err := newStringEqFilterPtr(s.cfg.App.Tenant)
+	tenant := s.cfg.App.Tenant
+	if cCfg.IgnoreTenant {
+		tenant = ""
+	}
+	tenantFilter, err := newStringEqFilterPtr(tenant)
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building tenant filter: %w", err)
 	}
