@@ -148,10 +148,10 @@
 
 **Purpose**: Verify the full feature, keep generated artifacts synchronized, and capture follow-up work.
 
-- [ ] T053 Run `go test ./internal/services/incident ./internal/services/processdefinition ./internal/services/ops ./c8volt/ops ./cmd -count=1`
-- [ ] T054 Run `make test`
-- [ ] T055 Review smoke-test process-definition cleanup eligibility in `internal/services/ops/smoke_test_service.go` and either include a small safe fix or record follow-up notes in `specs/228-ops-paged-discovery/quickstart.md`
-- [ ] T056 Verify generated docs and working tree status with `git status --short`
+- [x] T053 Run `go test ./internal/services/incident ./internal/services/processdefinition ./internal/services/ops ./c8volt/ops ./cmd -count=1`
+- [x] T054 Run `make test`
+- [x] T055 Review smoke-test process-definition cleanup eligibility in `internal/services/ops/smoke_test_service.go` and either include a small safe fix or record follow-up notes in `specs/228-ops-paged-discovery/quickstart.md`
+- [x] T056 Verify generated docs and working tree status with `git status --short`
 
 ---
 

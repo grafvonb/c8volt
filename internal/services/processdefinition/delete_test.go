@@ -137,6 +137,16 @@ func (s cleanupProcessInstanceAPI) DeleteProcessInstance(ctx context.Context, ke
 	return s.delete(ctx, key, opts...)
 }
 
+type cleanupEligibilityProcessInstanceAPI struct {
+	pisvc.API
+	searchPage func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
+}
+
+// SearchForProcessInstancesPage delegates cleanup-eligibility discovery to the configured page callback.
+func (s cleanupEligibilityProcessInstanceAPI) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+	return s.searchPage(ctx, filter, page, opts...)
+}
+
 type cleanupProcessDefinitionAPI struct {
 	API
 }
@@ -164,6 +174,50 @@ type unsupportedResourceDeleteAPI struct {
 }
 
 func (unsupportedResourceDeleteAPI) SupportsProcessDefinitionHistoryDeletion() bool { return false }
+
+// TestFindUnrelatedProcessInstancesForDefinitionPagesThroughMatches protects smoke-test cleanup eligibility from first-page blocker blind spots.
+func TestFindUnrelatedProcessInstancesForDefinitionPagesThroughMatches(t *testing.T) {
+	t.Parallel()
+
+	pages := []d.ProcessInstancePage{
+		{
+			Items: []d.ProcessInstance{
+				{Key: "owned-1"},
+			},
+			EndCursor:     "cursor-1",
+			OverflowState: d.ProcessInstanceOverflowStateHasMore,
+		},
+		{
+			Items: []d.ProcessInstance{
+				{Key: "unrelated-1"},
+			},
+			OverflowState: d.ProcessInstanceOverflowStateNoMore,
+		},
+	}
+	var gotFilters []d.ProcessInstanceFilter
+	var gotPages []d.ProcessInstancePageRequest
+	api := cleanupEligibilityProcessInstanceAPI{
+		searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			call := len(gotPages)
+			gotFilters = append(gotFilters, filter)
+			gotPages = append(gotPages, page)
+			require.Less(t, call, len(pages))
+			return pages[call], nil
+		},
+	}
+
+	got, err := FindUnrelatedProcessInstancesForDefinition(context.Background(), api, "pd-1", "", types.Keys{"owned-1"})
+
+	require.NoError(t, err)
+	require.Equal(t, []d.ProcessInstance{{Key: "unrelated-1"}}, got)
+	require.Len(t, gotFilters, 2)
+	assert.Equal(t, d.ProcessInstanceFilter{ProcessDefinitionKey: "pd-1"}, gotFilters[0])
+	assert.Equal(t, d.ProcessInstanceFilter{ProcessDefinitionKey: "pd-1"}, gotFilters[1])
+	require.Equal(t, []d.ProcessInstancePageRequest{
+		{Size: MaxResultSize},
+		{Size: MaxResultSize, After: "cursor-1"},
+	}, gotPages)
+}
 
 // TestDeleteProcessDefinitionsRejectsUnsupportedHistoryDeletionBeforeCleanup protects callers from partial v8.8 cleanup.
 func TestDeleteProcessDefinitionsRejectsUnsupportedHistoryDeletionBeforeCleanup(t *testing.T) {

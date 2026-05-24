@@ -20,6 +20,8 @@ Started: 2026-05-24 12:31:13
 - APD command tests can force a multi-page fake backend with `--batch-size 1`; default page size still returns the full fixture in one request so older command tests keep their existing request-count expectations.
 - Command long help and Cobra flag descriptions are the source for both capability metadata and generated CLI docs, so discovery wording should be updated there before running `make docs-content`.
 - `make docs-content` regenerates both `docs/cli/*` command pages and `docs/index.md` from README content, so README-facing ops copy can legitimately change the generated docs index.
+- Process-definition cleanup eligibility uses process-instance search to detect unrelated blockers; it must page with `SearchForProcessInstancesPage` so smoke-test cleanup cannot miss blockers beyond the first backend page.
+- Facade test stubs embedding service interfaces must grow explicit unexpected-call guards when service contracts add methods, otherwise `make test` can fail outside the feature's targeted package set.
 
 ---
 
@@ -218,4 +220,27 @@ Started: 2026-05-24 12:31:13
 - Command long help and flag descriptions are the shared source for capability output and generated CLI reference pages.
 - Repair renderer tests can exercise full vs. user-limited discovery directly by setting `DiscoveryScopeStatus` on `RepairFrozenSet`.
 - `make docs-content` also refreshes `docs/index.md` from README, so README wording changes can produce generated docs index diffs.
+---
+
+---
+## Iteration 7 - 2026-05-24 13:27:16 CEST
+**User Story**: Final Phase: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T053: Run `go test ./internal/services/incident ./internal/services/processdefinition ./internal/services/ops ./c8volt/ops ./cmd -count=1`
+- [x] T054: Run `make test`
+- [x] T055: Review smoke-test process-definition cleanup eligibility in `internal/services/ops/smoke_test_service.go` and either include a small safe fix or record follow-up notes in `specs/228-ops-paged-discovery/quickstart.md`
+- [x] T056: Verify generated docs and working tree status with `git status --short`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/client_test.go
+- c8volt/resource/client_test.go
+- internal/services/processdefinition/delete.go
+- internal/services/processdefinition/delete_test.go
+- specs/228-ops-paged-discovery/tasks.md
+- specs/228-ops-paged-discovery/progress.md
+**Learnings**:
+- Full-suite validation caught facade test stubs that targeted validation missed after `processdefinition.API` gained page-search support.
+- Smoke-test process-definition cleanup eligibility used a one-shot process-instance search; paging it through `SearchForProcessInstancesPage` keeps cleanup blockers complete without changing command-layer behavior.
+- `git status --short` showed no generated docs drift; only code, tests, and feature tracking artifacts changed for this polish unit.
 ---

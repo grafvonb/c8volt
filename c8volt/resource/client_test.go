@@ -517,6 +517,12 @@ type stubProcessDefinitionService struct {
 	source stubProcessAPI
 }
 
+// SearchProcessDefinitionsPage panics when resource facade tests accidentally
+// exercise process-definition discovery instead of keyed lookup paths.
+func (s stubProcessDefinitionService) SearchProcessDefinitionsPage(context.Context, d.ProcessDefinitionFilter, d.ProcessDefinitionPageRequest, ...services.CallOption) (d.ProcessDefinitionPage, error) {
+	panic("unexpected call")
+}
+
 func (s stubProcessDefinitionService) SearchProcessDefinitions(context.Context, d.ProcessDefinitionFilter, int32, ...services.CallOption) ([]d.ProcessDefinition, error) {
 	panic("unexpected call")
 }

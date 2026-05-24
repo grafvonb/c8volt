@@ -269,7 +269,7 @@ func FindUnrelatedProcessInstancesForDefinition(ctx context.Context, piApi pisvc
 	if filter.ProcessDefinitionKey == "" && filter.BpmnProcessId == "" {
 		return nil, fmt.Errorf("%w: process-definition cleanup eligibility requires process-definition key or BPMN process ID", d.ErrValidation)
 	}
-	items, err := piApi.SearchForProcessInstances(ctx, filter, MaxResultSize, opts...)
+	items, err := listProcessInstancesForDefinitionCleanupEligibility(ctx, piApi, filter, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -288,6 +288,31 @@ func FindUnrelatedProcessInstancesForDefinition(ctx context.Context, piApi pisvc
 		unrelated = append(unrelated, item)
 	}
 	return unrelated, nil
+}
+
+// listProcessInstancesForDefinitionCleanupEligibility pages through all instances that can block process-definition cleanup.
+func listProcessInstancesForDefinitionCleanupEligibility(ctx context.Context, piApi pisvc.API, filter d.ProcessInstanceFilter, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+	pageReq := d.ProcessInstancePageRequest{Size: MaxResultSize}
+	var items []d.ProcessInstance
+	for {
+		page, err := piApi.SearchForProcessInstancesPage(ctx, filter, pageReq, opts...)
+		if err != nil {
+			return items, err
+		}
+		items = append(items, page.Items...)
+		if page.OverflowState != d.ProcessInstanceOverflowStateHasMore {
+			return items, nil
+		}
+		if len(page.Items) == 0 {
+			return items, fmt.Errorf("process-instance search for process-definition cleanup eligibility reported more pages but returned no items")
+		}
+		if page.EndCursor != "" {
+			pageReq.After = page.EndCursor
+			pageReq.From = 0
+			continue
+		}
+		pageReq.From += int32(len(page.Items))
+	}
 }
 
 // previewDeleteProcessDefinitionImpact loads metadata and completes active-instance impact expansion for one process definition.
