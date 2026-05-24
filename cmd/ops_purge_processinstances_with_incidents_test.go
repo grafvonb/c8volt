@@ -524,7 +524,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionUsesFrozenPlanRoo
 	prompt = readReportFile(t, promptPath)
 	output := string(outputBytes)
 
-	require.Contains(t, prompt, "Incident purge matched 1 candidate incident(s)")
+	require.Contains(t, prompt, "incident purge: 1 candidate incident(s)")
 	require.Contains(t, output, "deletion: submitted 1 process-instance tree (--no-wait)")
 	require.NotContains(t, output, "deletion confirmation:")
 	require.Contains(t, output, "outcome: deleted")
@@ -555,7 +555,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionReusesMultiPageFr
 	require.NoError(t, err, string(outputBytes))
 
 	prompt := readReportFile(t, promptPath)
-	require.Contains(t, prompt, "Incident purge matched 2 candidate incident(s) and 2 candidate process instance(s)")
+	require.Contains(t, prompt, "incident purge: 2 candidate incident(s), 2 candidate process instance(s)")
 	require.Equal(t, []string{
 		"/v2/process-instances/" + opsIncidentPurgeRootKey + "/deletion",
 		"/v2/process-instances/" + opsIncidentPurgeChildKey + "/deletion",

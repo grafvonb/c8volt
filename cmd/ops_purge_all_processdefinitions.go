@@ -174,10 +174,9 @@ func validateOpsPurgeAllProcessDefinitionsFlags(cmd *cobra.Command) error {
 
 // opsPurgeAllProcessDefinitionsConfirmationPrompt summarizes the frozen destructive scope and version-specific limitations.
 func opsPurgeAllProcessDefinitionsConfirmationPrompt(planned ops.AllProcessDefinitionsPurgeResult) string {
-	return fmt.Sprintf("All process-definitions purge matched %d candidate process definition(s); delete planning will affect %d process instance(s) across %d unique process definition(s). Do you want to proceed?",
+	return fmt.Sprintf("process-definition purge: %d candidate process definition(s), %d affected process instance(s) will be deleted. Do you want to proceed?",
 		planned.Discovery.CandidateProcessDefinitionCount,
 		planned.DeletePlan.AffectedProcessInstanceCount,
-		len(planned.DeletePlan.CandidateProcessDefinitionKeys),
 	)
 }
 

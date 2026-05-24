@@ -62,11 +62,11 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 		)
 		renderOpsProcessInstanceDependencyExpansion(cmd, len(result.DeletionPlan.RequestedKeys), len(result.DeletionPlan.AffectedKeys))
 	} else {
-		renderHumanLine(cmd, "delete plan: %s (candidate orphan process instances: %d, roots: %d, affected process instances: %d)",
+		renderHumanLine(cmd, "delete plan: %s; %d orphan candidate(s), %d affected process instance(s) across %d root(s) will be deleted",
 			result.DeletionPlan.Status,
 			len(result.DeletionPlan.RequestedKeys),
-			len(result.DeletionPlan.RootKeys),
 			len(result.DeletionPlan.AffectedKeys),
+			len(result.DeletionPlan.RootKeys),
 		)
 	}
 	renderOpsHumanNotices(cmd, opsPurgeOrphanProcessInstancesHumanNotices(result), opsPurgeOrphanProcessInstancesNoticeFilter(result))

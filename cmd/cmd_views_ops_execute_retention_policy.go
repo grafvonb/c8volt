@@ -62,11 +62,11 @@ func renderOpsExecuteRetentionPolicyDeletePlan(cmd *cobra.Command, result ops.Re
 			renderOpsExecuteRetentionPolicyDryRunDeletePreview(cmd, result)
 			return
 		}
-		renderHumanLine(cmd, "delete plan: %s (candidate retention process instances: %d, roots: %d, affected process instances: %d)",
+		renderHumanLine(cmd, "delete plan: %s; %d retention candidate(s), %d affected process instance(s) across %d root(s) will be deleted",
 			result.DeletePlan.Status,
 			len(result.DeletePlan.SeedKeys),
-			len(result.DeletePlan.ResolvedRootKeys),
 			len(result.DeletePlan.AffectedKeys),
+			len(result.DeletePlan.ResolvedRootKeys),
 		)
 		if flagVerbose && len(result.DeletePlan.DuplicateKeys) > 0 {
 			renderHumanLine(cmd, "duplicate roots: %d", len(result.DeletePlan.DuplicateKeys))

@@ -82,10 +82,7 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 				return
 			}
 			if planned.Discovery.Count > 0 {
-				prompt := fmt.Sprintf("You are about to delete %d affected process instance(s) from %d candidate orphan process instance(s). Do you want to proceed?", len(planned.DeletionPlan.AffectedKeys), planned.Discovery.Count)
-				if len(planned.DeletionPlan.AffectedKeys) > planned.Discovery.Count {
-					prompt = fmt.Sprintf("You have requested to delete %d candidate orphan process instance(s), but due to dependencies, a total of %d affected process instance(s) with %d root instance(s) will be deleted. Do you want to proceed?", planned.Discovery.Count, len(planned.DeletionPlan.AffectedKeys), len(planned.DeletionPlan.RootKeys))
-				}
+				prompt := opsPurgeOrphanProcessInstancesConfirmationPrompt(planned)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsPurgeOrphanProcessInstancesAfterReport(cmd, log, cfg, markOpsPurgeOrphanProcessInstancesLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
 					return
@@ -128,6 +125,15 @@ func formatOpsPurgeOrphanProcessInstancesActivity(request ops.OrphanPurgeRequest
 		return "checking orphan process-instance candidates before delete"
 	}
 	return "discovering orphan process-instance candidates"
+}
+
+func opsPurgeOrphanProcessInstancesConfirmationPrompt(planned ops.OrphanPurgeResult) string {
+	return fmt.Sprintf(
+		"orphan purge: %d orphan candidate(s), %d affected process instance(s) across %d root(s) will be deleted. Do you want to proceed?",
+		planned.Discovery.Count,
+		len(planned.DeletionPlan.AffectedKeys),
+		len(planned.DeletionPlan.RootKeys),
+	)
 }
 
 func init() {

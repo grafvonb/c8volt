@@ -101,12 +101,7 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 				return
 			}
 			if len(planned.DeletePlan.ResolvedRootKeys) > 0 {
-				prompt := fmt.Sprintf("Incident purge matched %d candidate incident(s) and %d candidate process instance(s); delete planning will delete %d affected process instance(s) across %d root(s). Do you want to proceed?",
-					planned.Discovery.IncidentCount,
-					len(planned.DeletePlan.CandidateProcessInstanceKeys),
-					len(planned.DeletePlan.AffectedKeys),
-					len(planned.DeletePlan.ResolvedRootKeys),
-				)
+				prompt := opsPurgeProcessInstancesWithIncidentsConfirmationPrompt(planned)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsPurgeProcessInstancesWithIncidentsAfterReport(cmd, log, cfg, markOpsPurgeProcessInstancesWithIncidentsLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
 					return
@@ -226,6 +221,16 @@ func formatOpsPurgeProcessInstancesWithIncidentsActivity(request ops.IncidentPur
 		return "planning incident purge delete scope"
 	}
 	return "running incident purge workflow"
+}
+
+func opsPurgeProcessInstancesWithIncidentsConfirmationPrompt(planned ops.IncidentPurgeResult) string {
+	return fmt.Sprintf(
+		"incident purge: %d candidate incident(s), %d candidate process instance(s), %d affected process instance(s) across %d root(s) will be deleted. Do you want to proceed?",
+		planned.Discovery.IncidentCount,
+		len(planned.DeletePlan.CandidateProcessInstanceKeys),
+		len(planned.DeletePlan.AffectedKeys),
+		len(planned.DeletePlan.ResolvedRootKeys),
+	)
 }
 
 // rejectOpsPurgeProcessInstancesWithIncidentsPlanRequiringForce blocks mutation before prompting when the plan has non-final affected instances.

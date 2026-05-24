@@ -99,11 +99,7 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 				return
 			}
 			if len(planned.DeletePlan.ResolvedRootKeys) > 0 {
-				prompt := fmt.Sprintf("Retention matched %d candidate process instance(s); delete planning will delete %d affected process instance(s) across %d final root(s).", planned.Discovery.Count, len(planned.DeletePlan.AffectedKeys), len(planned.DeletePlan.ResolvedRootKeys))
-				if len(planned.DeletePlan.SkippedSeedKeys) > 0 {
-					prompt = fmt.Sprintf("%s %d candidate(s) were skipped because their root is not final.", prompt, len(planned.DeletePlan.SkippedSeedKeys))
-				}
-				prompt += " Do you want to proceed?"
+				prompt := opsExecuteRetentionPolicyConfirmationPrompt(planned)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsExecuteRetentionPolicyAfterReport(cmd, log, cfg, markOpsExecuteRetentionPolicyLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
 					return
@@ -193,6 +189,19 @@ func formatOpsExecuteRetentionPolicyActivity(request ops.RetentionPolicyRequest)
 		return "planning retention delete scope"
 	}
 	return "running retention cleanup workflow"
+}
+
+func opsExecuteRetentionPolicyConfirmationPrompt(planned ops.RetentionPolicyResult) string {
+	prompt := fmt.Sprintf(
+		"retention cleanup: %d retention candidate(s), %d affected process instance(s) across %d root(s) will be deleted",
+		planned.Discovery.Count,
+		len(planned.DeletePlan.AffectedKeys),
+		len(planned.DeletePlan.ResolvedRootKeys),
+	)
+	if len(planned.DeletePlan.SkippedSeedKeys) > 0 {
+		prompt += fmt.Sprintf("; %d retention candidate(s) skipped because their root is not final", len(planned.DeletePlan.SkippedSeedKeys))
+	}
+	return prompt + ". Do you want to proceed?"
 }
 
 func rejectOpsExecuteRetentionPolicyPlanRequiringForce(plan ops.RetentionDeletePlan) error {

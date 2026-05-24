@@ -590,7 +590,7 @@ func TestOpsExecuteSmokeTestUsesImplicitConfirmationForCleanup(t *testing.T) {
 	require.Contains(t, output, "cleanup: submitted 1 process instance and fixture process definition (--no-wait)")
 	require.NotContains(t, output, "cleanup confirmation:")
 	require.Len(t, prompts, 1)
-	require.Contains(t, prompts[0], "clean up the created instances and eligible process definition")
+	require.Contains(t, prompts[0], "smoke test: deploy fixture, start 1 process instance(s), walk process-instance families, then clean up created resources")
 }
 
 func TestOpsExecuteSmokeTestAutomationNoCleanupDoesNotPrompt(t *testing.T) {

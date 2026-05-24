@@ -11,12 +11,12 @@ import (
 
 func TestFormatConfirmationPromptSplitsFinalQuestion(t *testing.T) {
 	got := formatConfirmationPrompt(
-		"All process-definitions purge matched 6 candidate process definition(s); delete planning will affect 170 process instance(s) across 6 unique process definition(s). Do you want to proceed?",
+		"process-definition purge: 6 candidate process definition(s), 170 affected process instance(s) will be deleted. Do you want to proceed?",
 		"[y/N]",
 	)
 
 	require.Equal(t, ""+
-		"All process-definitions purge matched 6 candidate process definition(s); delete planning will affect 170 process instance(s) across 6 unique process definition(s).\n"+
+		"process-definition purge: 6 candidate process definition(s), 170 affected process instance(s) will be deleted.\n"+
 		"Do you want to proceed? [y/N]: ", got)
 }
 

@@ -68,7 +68,7 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if !flagDryRun && !flagOpsExecuteSmokeTestNoCleanup {
-			prompt := fmt.Sprintf("Smoke test will deploy a fixture, start %d process instance(s), walk each family, then clean up the created instances and eligible process definition. Do you want to proceed?", flagOpsExecuteSmokeTestCount)
+			prompt := opsExecuteSmokeTestConfirmationPrompt(request)
 			if err := confirmCmdOrAbortFn(effectiveAutoConfirm, prompt); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
@@ -136,6 +136,18 @@ func formatOpsExecuteSmokeTestActivity(request ops.SmokeTestRequest) string {
 		return "validating smoke-test plan"
 	}
 	return "running smoke-test workflow"
+}
+
+func opsExecuteSmokeTestConfirmationPrompt(request ops.SmokeTestRequest) string {
+	cleanup := "then clean up created resources"
+	if request.NoCleanup {
+		cleanup = "then retain created resources"
+	}
+	return fmt.Sprintf(
+		"smoke test: deploy fixture, start %d process instance(s), walk process-instance families, %s. Do you want to proceed?",
+		request.Count,
+		cleanup,
+	)
 }
 
 func abortOpsExecuteSmokeTestAfterReport(cmd *cobra.Command, log *slog.Logger, cfg *config.Config, result ops.SmokeTestResult, err error) {

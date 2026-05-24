@@ -121,8 +121,8 @@ func TestOpsRepairConfirmationPromptIncludesNonIncidentProcessInstances(t *testi
 		},
 	})
 
-	require.Contains(t, prompt, "1 repairable process instance(s), 1 active incident(s), and skipped 1 process instance(s) without active incidents")
-	require.Contains(t, prompt, "resolve 1 incident(s)")
+	require.Contains(t, prompt, "process-instance repair: 1 repairable process instance(s), 1 active incident(s)")
+	require.Contains(t, prompt, "1 selected process instance(s) skipped")
 }
 
 // TestRenderOpsRepairIncidentDryRunSearchJSON verifies the shared envelope preserves dry-run search fields.

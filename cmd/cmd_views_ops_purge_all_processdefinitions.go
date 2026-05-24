@@ -85,7 +85,7 @@ func renderOpsPurgeAllProcessDefinitionsPlan(cmd *cobra.Command, result ops.AllP
 		renderHumanLine(cmd, "delete plan: skipped")
 		return
 	}
-	renderHumanLine(cmd, "delete plan: %s (candidate process definitions: %d, affected process instances: %d)",
+	renderHumanLine(cmd, "delete plan: %s; %d candidate process definition(s), %d affected process instance(s) will be deleted",
 		result.DeletePlan.Status,
 		len(result.DeletePlan.CandidateProcessDefinitionKeys),
 		result.DeletePlan.AffectedProcessInstanceCount,

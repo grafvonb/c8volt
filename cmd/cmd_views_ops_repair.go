@@ -161,7 +161,7 @@ func renderOpsRepairPlanSummary(cmd *cobra.Command, result ops.RepairResult) {
 			countOpsRepairVariableScopes(result),
 		)
 	} else {
-		renderHumanLine(cmd, "repair plan: %d active incident(s) to resolve; %d related job(s), %d variable scope(s) to update",
+		renderHumanLine(cmd, "repair plan: %d active incident(s) will be resolved; %d related job(s), %d variable scope(s) will be updated",
 			len(result.FrozenSet.IncidentKeys),
 			countOpsRepairRelatedJobs(result),
 			countOpsRepairVariableScopes(result),

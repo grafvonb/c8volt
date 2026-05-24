@@ -318,7 +318,7 @@ func TestOpsPurgeAllProcessDefinitionsConfirmedDeletionUsesFrozenCandidates(t *t
 	require.NoError(t, err, string(outputBytes))
 	output := string(outputBytes)
 
-	require.Contains(t, readReportFile(t, promptPath), "All process-definitions purge matched 2 candidate process definition(s)")
+	require.Contains(t, readReportFile(t, promptPath), "process-definition purge: 2 candidate process definition(s)")
 	require.Contains(t, output, "deletion: submitted 2 process definitions (--no-wait)")
 	require.NotContains(t, output, "deletion confirmation:")
 	require.Contains(t, output, "outcome: deleted")
@@ -352,7 +352,7 @@ func TestOpsPurgeAllProcessDefinitionsPagedConfirmationReusesFrozenCandidates(t 
 	})
 	require.NoError(t, err, string(outputBytes))
 
-	require.Contains(t, readReportFile(t, promptPath), "matched 2 candidate process definition(s)")
+	require.Contains(t, readReportFile(t, promptPath), "process-definition purge: 2 candidate process definition(s)")
 	require.ElementsMatch(t, []string{
 		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyA + "/deletion",
 		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyB + "/deletion",

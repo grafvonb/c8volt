@@ -93,11 +93,12 @@ func renderOpsPurgeProcessInstancesWithIncidentsPlan(cmd *cobra.Command, result 
 		renderHumanLine(cmd, "delete plan: skipped")
 		return
 	}
-	renderHumanLine(cmd, "delete plan: %s (candidate process instances: %d, roots: %d, affected process instances: %d)",
+	renderHumanLine(cmd, "delete plan: %s; %d candidate incident(s), %d candidate process instance(s), %d affected process instance(s) across %d root(s) will be deleted",
 		result.DeletePlan.Status,
+		result.Discovery.IncidentCount,
 		len(result.DeletePlan.CandidateProcessInstanceKeys),
-		len(result.DeletePlan.ResolvedRootKeys),
 		len(result.DeletePlan.AffectedKeys),
+		len(result.DeletePlan.ResolvedRootKeys),
 	)
 	if len(result.DeletePlan.NonFinalAffectedItems) > 0 {
 		renderHumanLine(cmd, "non-final affected process instances: %d", len(result.DeletePlan.NonFinalAffectedItems))
