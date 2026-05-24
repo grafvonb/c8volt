@@ -72,7 +72,7 @@ func runGetProcessDefinitionXML(cmd *cobra.Command, cli c8volt.API, log *slog.Lo
 	}
 
 	log.Debug(fmt.Sprintf("getting pd %s xml", filter.Key))
-	xml, err := cli.GetProcessDefinitionXML(cmd.Context(), filter.Key, collectOptions()...)
+	xml, err := cli.GetProcessDefinitionXML(cmd.Context(), filter.Key, collectExplicitAdminInputOptions()...)
 	if err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("get process definition xml: %w", err))
 	}
@@ -83,7 +83,7 @@ func runGetProcessDefinitionXML(cmd *cobra.Command, cli c8volt.API, log *slog.Lo
 
 func runGetProcessDefinitionByKey(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, key string) {
 	log.Debug(fmt.Sprintf("getting pd %s", key))
-	pd, err := cli.GetProcessDefinition(cmd.Context(), key, collectOptions()...)
+	pd, err := cli.GetProcessDefinition(cmd.Context(), key, collectExplicitAdminInputOptions()...)
 	if err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("get process definition: %w", err))
 	}

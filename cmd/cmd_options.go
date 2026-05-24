@@ -37,6 +37,10 @@ func collectOptions() []options.FacadeOption {
 	return opts
 }
 
-func collectExplicitPIAdminInputOptions() []options.FacadeOption {
+func collectExplicitAdminInputOptions() []options.FacadeOption {
 	return append(collectOptions(), options.WithIgnoreTenant())
+}
+
+func collectExplicitPIAdminInputOptions() []options.FacadeOption {
+	return collectExplicitAdminInputOptions()
 }

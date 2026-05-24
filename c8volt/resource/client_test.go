@@ -84,6 +84,29 @@ func tenantAdminKeysMismatchResourceDomain() d.Resource {
 	}
 }
 
+// TestClient_GetResource_TenantMismatchUsesExplicitAdminInput verifies direct
+// resource IDs preserve ignore-tenant options and return backend metadata.
+func TestClient_GetResource_TenantMismatchUsesExplicitAdminInput(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	api := &stubResourceAPI{
+		get: func(_ context.Context, key string, opts ...services.CallOption) (d.Resource, error) {
+			cfg := services.ApplyCallOptions(opts)
+			assert.Equal(t, tenantAdminKeysResourceKey, key)
+			assert.True(t, cfg.IgnoreTenant)
+			return tenantAdminKeysMismatchResourceDomain(), nil
+		},
+	}
+
+	cli := New(api, nil, nil, slog.Default())
+	got, err := cli.GetResource(ctx, tenantAdminKeysResourceKey, options.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	assert.Equal(t, tenantAdminKeysResourceKey, got.Key)
+	assert.Equal(t, tenantAdminKeysReturnedTenant, got.TenantId)
+}
+
 // TestClient_GetResource_MapsDomainErrors ensures domain lookup failures are
 // normalized into facade errors so commands can share one exit-code model.
 func TestClient_GetResource_MapsDomainErrors(t *testing.T) {

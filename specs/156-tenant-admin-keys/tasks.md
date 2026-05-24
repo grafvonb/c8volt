@@ -92,18 +92,18 @@
 
 ### Tests for User Story 3
 
-- [ ] T025 [P] [US3] Add `get pd --key` and `get pd --xml` selected-tenant mismatch tests in `cmd/get_test.go`
-- [ ] T026 [P] [US3] Add `delete pd --key` selected-tenant mismatch dry-run or auto-confirm safety test in `cmd/delete_test.go`
-- [ ] T027 [P] [US3] Add `get resource --id` selected-tenant mismatch test in `cmd/get_test.go`
-- [ ] T028 [P] [US3] Add stdin key selected-tenant mismatch coverage for process-instance or process-definition bulk input in `cmd/delete_test.go`
-- [ ] T029 [P] [US3] Add facade/resource option propagation test in `c8volt/resource/client_test.go`
+- [x] T025 [P] [US3] Add `get pd --key` and `get pd --xml` selected-tenant mismatch tests in `cmd/get_test.go`
+- [x] T026 [P] [US3] Add `delete pd --key` selected-tenant mismatch dry-run or auto-confirm safety test in `cmd/delete_test.go`
+- [x] T027 [P] [US3] Add `get resource --id` selected-tenant mismatch test in `cmd/get_test.go`
+- [x] T028 [P] [US3] Add stdin key selected-tenant mismatch coverage for process-instance or process-definition bulk input in `cmd/delete_test.go`
+- [x] T029 [P] [US3] Add facade/resource option propagation test in `c8volt/resource/client_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T030 [US3] Update process-definition direct-key behavior to avoid c8volt-side tenant mismatch rejection in `cmd/get_processdefinition.go`, `cmd/delete_processdefinition.go`, `c8volt/processdefinition/`, and `internal/services/processdefinition/`
-- [ ] T031 [US3] Update resource direct-ID behavior to avoid c8volt-side tenant mismatch rejection in `cmd/get_resource.go`, `c8volt/resource/`, and `internal/services/resource/`
-- [ ] T032 [US3] Ensure stdin keys remain classified as explicit admin input after validation and deduplication in `cmd/cmd_stdin.go`, `cmd/cmd_cli.go`, and affected command files
-- [ ] T033 [US3] Run `go test ./cmd ./c8volt/resource ./internal/services/processdefinition ./internal/services/resource -run 'Test.*(ProcessDefinition|Resource|Stdin).*Tenant|Test.*Tenant.*(ProcessDefinition|Resource|Stdin)' -count=1`
+- [x] T030 [US3] Update process-definition direct-key behavior to avoid c8volt-side tenant mismatch rejection in `cmd/get_processdefinition.go`, `cmd/delete_processdefinition.go`, `c8volt/processdefinition/`, and `internal/services/processdefinition/`
+- [x] T031 [US3] Update resource direct-ID behavior to avoid c8volt-side tenant mismatch rejection in `cmd/get_resource.go`, `c8volt/resource/`, and `internal/services/resource/`
+- [x] T032 [US3] Ensure stdin keys remain classified as explicit admin input after validation and deduplication in `cmd/cmd_stdin.go`, `cmd/cmd_cli.go`, and affected command files
+- [x] T033 [US3] Run `go test ./cmd ./c8volt/resource ./internal/services/processdefinition ./internal/services/resource -run 'Test.*(ProcessDefinition|Resource|Stdin).*Tenant|Test.*Tenant.*(ProcessDefinition|Resource|Stdin)' -count=1`
 
 **Checkpoint**: User Stories 1, 2, and 3 work independently.
 

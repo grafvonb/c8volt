@@ -124,6 +124,35 @@ func TestClient_GetProcessDefinition_MapsIncidentCountSupportState(t *testing.T)
 	assert.True(t, pd.Statistics.IncidentCountSupported)
 }
 
+// TestClient_GetProcessDefinition_TenantMismatchUsesExplicitAdminInput verifies
+// the facade preserves ignore-tenant options for direct process-definition keys.
+func TestClient_GetProcessDefinition_TenantMismatchUsesExplicitAdminInput(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	pdAPI := &stubProcessDefinitionAPI{
+		getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+			cfg := services.ApplyCallOptions(opts)
+			assert.Equal(t, tenantAdminKeysProcessDefinitionKey, key)
+			assert.True(t, cfg.IgnoreTenant)
+			return d.ProcessDefinition{
+				Key:               tenantAdminKeysProcessDefinitionKey,
+				BpmnProcessId:     "tenant-b-process",
+				ProcessVersion:    3,
+				ProcessVersionTag: "stable",
+				TenantId:          tenantAdminKeysReturnedTenant,
+			}, nil
+		},
+	}
+
+	cli := New(pdAPI, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
+	pd, err := cli.GetProcessDefinition(ctx, tenantAdminKeysProcessDefinitionKey, options.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	assert.Equal(t, tenantAdminKeysProcessDefinitionKey, pd.Key)
+	assert.Equal(t, tenantAdminKeysReturnedTenant, pd.TenantId)
+}
+
 // TestClient_SearchProcessDefinitions_PreservesUnsupportedIncidentCountBoundary
 // keeps the public model from implying that zero incidents were measured when a
 // Camunda version cannot provide incident-count statistics.

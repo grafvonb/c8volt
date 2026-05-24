@@ -23,6 +23,8 @@
 - Search-derived process-instance dry-run command tests can isolate c8volt-produced candidates by capturing top-level search requests separately from parent/child dependency-expansion searches.
 - Direct process-instance key command modes use `foptions.WithIgnoreTenant()` for traversal, dry-run planning, and enrichment so operator-supplied keys are not narrowed by selected-tenant search filters.
 - v88/v89 process-instance search services honor `services.WithIgnoreTenant()` by omitting the tenant filter, while normal search-derived command paths continue to pass tenant-scoped options.
+- Explicit process-definition key/XML, resource ID, and stdin process-definition delete paths use `foptions.WithIgnoreTenant()` through the public facade option boundary; selector/search-derived process-definition paths continue to use normal tenant-scoped options.
+- v88/v89 process-definition statistics honor `services.WithIgnoreTenant()` by omitting tenant filters from process-instance count searches, preventing direct-key stats and delete impact checks from reintroducing selected-tenant scope.
 
 ## Work Log
 
@@ -33,14 +35,14 @@
 ---
 ## Iteration 1 - 2026-05-24 21:52 CEST
 **User Story**: Phase 1: Setup (Shared Infrastructure)
-**Tasks Completed**: 
+**Tasks Completed**:
 - [x] T001: Read `specs/ralph-implementation-rules.md` and verify no conflict with `specs/156-tenant-admin-keys/spec.md`
 - [x] T002: Review explicit key/stdin command mode handling in `cmd/get_processinstance*.go`, `cmd/walk_processinstance.go`, `cmd/expect_processinstance.go`, `cmd/cancel_processinstance.go`, and `cmd/delete_processinstance.go`
 - [x] T003: Review process-definition and resource direct-ID paths in `cmd/get_processdefinition.go`, `cmd/delete_processdefinition.go`, `cmd/get_resource.go`, `c8volt/resource/client.go`, and `internal/services/resource/`
 - [x] T004: Review selected-tenant option flow in `c8volt/foptions/options.go`, `internal/services/calloption.go`, `internal/services/common/`, and affected v88/v89 service packages
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
-**Files Changed**: 
+**Files Changed**:
 - specs/156-tenant-admin-keys/tasks.md
 - specs/156-tenant-admin-keys/progress.md
 **Learnings**:
@@ -131,4 +133,37 @@
 - Facade direct process-instance lookup had been using the shared search-backed helper; explicit admin input now delegates to versioned service direct lookup so v88/v89 backend authorization owns tenant mismatch behavior.
 - Direct-key traversal and dry-run planning need `IgnoreTenant` only for operator-supplied keys; search-derived cancel/delete paths keep ordinary tenant-scoped options.
 - Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/process ./internal/services/processinstance -run 'Test.*(Key|Direct).*Tenant|Test.*Tenant.*Key' -count=1`.
+---
+---
+## Iteration 5 - 2026-05-24 22:21 CEST
+**User Story**: User Story 3 - Align Explicit Definition, Resource, And Stdin Inputs
+**Tasks Completed**:
+- [x] T025: Add `get pd --key` and `get pd --xml` selected-tenant mismatch tests in `cmd/get_test.go`
+- [x] T026: Add `delete pd --key` selected-tenant mismatch dry-run or auto-confirm safety test in `cmd/delete_test.go`
+- [x] T027: Add `get resource --id` selected-tenant mismatch test in `cmd/get_test.go`
+- [x] T028: Add stdin key selected-tenant mismatch coverage for process-instance or process-definition bulk input in `cmd/delete_test.go`
+- [x] T029: Add facade/resource option propagation test in `c8volt/resource/client_test.go`
+- [x] T030: Update process-definition direct-key behavior to avoid c8volt-side tenant mismatch rejection in `cmd/get_processdefinition.go`, `cmd/delete_processdefinition.go`, `c8volt/processdefinition/`, and `internal/services/processdefinition/`
+- [x] T031: Update resource direct-ID behavior to avoid c8volt-side tenant mismatch rejection in `cmd/get_resource.go`, `c8volt/resource/`, and `internal/services/resource/`
+- [x] T032: Ensure stdin keys remain classified as explicit admin input after validation and deduplication in `cmd/cmd_stdin.go`, `cmd/cmd_cli.go`, and affected command files
+- [x] T033: Run `go test ./cmd ./c8volt/resource ./internal/services/processdefinition ./internal/services/resource -run 'Test.*(ProcessDefinition|Resource|Stdin).*Tenant|Test.*Tenant.*(ProcessDefinition|Resource|Stdin)' -count=1`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/client_test.go
+- c8volt/resource/client_test.go
+- cmd/cmd_options.go
+- cmd/delete_processdefinition.go
+- cmd/delete_test.go
+- cmd/get_processdefinition.go
+- cmd/get_resource.go
+- cmd/get_test.go
+- internal/services/processdefinition/v88/service.go
+- internal/services/processdefinition/v89/service.go
+- specs/156-tenant-admin-keys/tasks.md
+- specs/156-tenant-admin-keys/progress.md
+**Learnings**:
+- Direct process-definition stats and delete impact planning can reintroduce selected-tenant filters unless the direct-key command path passes `IgnoreTenant` all the way into v88/v89 statistics requests.
+- Resource direct-ID lookup already delegates to backend keyed lookup; the command and facade tests now pin the explicit admin-input option propagation contract.
+- Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/process ./c8volt/resource ./internal/services/processdefinition ./internal/services/resource -run 'Test.*(ProcessDefinition|Resource|Stdin).*Tenant|Test.*Tenant.*(ProcessDefinition|Resource|Stdin)' -count=1` and `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./internal/services/processdefinition/... ./internal/services/resource/... -count=1`.
 ---

@@ -53,6 +53,11 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		keys := mergeAndValidateKeys(flagDeletePDKeys, stdinKeys, log, cfg)
+		explicitInput := len(keys) > 0
+		callOpts := collectOptions()
+		if explicitInput {
+			callOpts = collectExplicitAdminInputOptions()
+		}
 		if len(keys) == 0 && flagDeletePDBpmnProcessId == "" {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("either --key, stdin keys, or --bpmn-process-id must be provided to delete process definition(s)"))
 		}
@@ -99,7 +104,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process definitions found to delete")))
 		}
 
-		impactPlan, err := cli.PreviewDeleteProcessDefinitions(cmd.Context(), keys, collectOptions()...)
+		impactPlan, err := cli.PreviewDeleteProcessDefinitions(cmd.Context(), keys, callOpts...)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("checking process-definition delete impact: %w", err))
 		}
@@ -109,7 +114,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("%d active process instance(s) block deletion; use --force to cancel them before deleting process definitions", totals.ActiveProcessInstances)))
 		}
 		if !flagNoWait {
-			if err := cli.CheckBatchOperationReadAccess(cmd.Context(), collectOptions()...); err != nil {
+			if err := cli.CheckBatchOperationReadAccess(cmd.Context(), callOpts...); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("cannot confirm asynchronous history deletion because this identity cannot read Camunda batch operations: %w", err)))
 			}
 		}
@@ -117,7 +122,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		if err := confirmCmdOrAbort(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		reports, err := cli.DeleteProcessDefinitions(cmd.Context(), keys, flagWorkers, collectOptions()...)
+		reports, err := cli.DeleteProcessDefinitions(cmd.Context(), keys, flagWorkers, callOpts...)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("deleting process definition(s): %w", err))
 		}

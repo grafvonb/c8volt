@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"strings"
@@ -2578,6 +2579,71 @@ apis:
 	require.Equal(t, true, filter["isLatestVersion"])
 }
 
+// TestDeleteProcessDefinitionCommand_KeyTenantMismatchUsesAdminScope verifies
+// direct process-definition keys keep impact checks out of selected-tenant scope.
+func TestDeleteProcessDefinitionCommand_KeyTenantMismatchUsesAdminScope(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	var statsRequests testx.SafeSlice[string]
+	var requests testx.SafeSlice[string]
+	srv := newTenantAdminProcessDefinitionDeleteServer(t, &requests, &statsRequests)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+	output := executeRootForTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"delete", "process-definition",
+		"--key", tenantAdminKeysProcessDefinitionKey,
+		"--auto-confirm",
+		"--no-wait",
+	)
+
+	got := requests.Snapshot()
+	require.Contains(t, got, "GET /v2/process-definitions/"+tenantAdminKeysProcessDefinitionKey)
+	require.Contains(t, got, "POST /v2/resources/"+tenantAdminKeysProcessDefinitionKey+"/deletion")
+	require.Equal(t, 0, countRequestPrefixes(got, "POST /v2/process-definitions/search"))
+	require.NotEmpty(t, statsRequests.Snapshot())
+	for _, request := range statsRequests.Snapshot() {
+		filter := requireJSONObject(t, decodeSingleRequestJSON(t, []string{request})["filter"])
+		require.NotContains(t, filter, "tenantId")
+		require.Equal(t, tenantAdminKeysProcessDefinitionKey, stringFilterEqValue(t, filter["processDefinitionKey"]))
+	}
+	require.Contains(t, output, "tenant-b")
+	require.Contains(t, output, "delete accepted")
+}
+
+// TestDeleteProcessDefinitionCommand_StdinTenantMismatchUsesAdminScope verifies
+// stdin keys follow the same explicit admin-input path as direct --key values.
+func TestDeleteProcessDefinitionCommand_StdinTenantMismatchUsesAdminScope(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	var statsRequests testx.SafeSlice[string]
+	var requests testx.SafeSlice[string]
+	srv := newTenantAdminProcessDefinitionDeleteServer(t, &requests, &statsRequests)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+	output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperDeleteProcessDefinitionCommand_StdinTenantMismatchUsesAdminScope", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	}, tenantAdminKeysProcessDefinitionKey+"\n")
+
+	require.NoError(t, err, string(output))
+	got := requests.Snapshot()
+	require.Contains(t, got, "GET /v2/process-definitions/"+tenantAdminKeysProcessDefinitionKey)
+	require.Contains(t, got, "POST /v2/resources/"+tenantAdminKeysProcessDefinitionKey+"/deletion")
+	require.Equal(t, 0, countRequestPrefixes(got, "POST /v2/process-definitions/search"))
+	require.NotEmpty(t, statsRequests.Snapshot())
+	for _, request := range statsRequests.Snapshot() {
+		filter := requireJSONObject(t, decodeSingleRequestJSON(t, []string{request})["filter"])
+		require.NotContains(t, filter, "tenantId")
+	}
+	require.Contains(t, string(output), "tenant-b")
+	require.Contains(t, string(output), "delete accepted")
+}
+
 func TestDeleteProcessDefinitionBpmnSelectorMissingFailsBeforeImpactPlanning(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -2723,6 +2789,33 @@ func requestBodyForPrefix(t *testing.T, requests []string, prefix string) []stri
 		}
 	}
 	return matches
+}
+
+func newTenantAdminProcessDefinitionDeleteServer(t *testing.T, requests *testx.SafeSlice[string], statsRequests *testx.SafeSlice[string]) *httptest.Server {
+	t.Helper()
+
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-definitions/"+tenantAdminKeysProcessDefinitionKey:
+			requests.Append(r.Method + " " + r.URL.Path)
+			_, _ = w.Write([]byte(tenantAdminKeysMismatchProcessDefinitionJSON()))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
+			statsRequests.Append(string(body))
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/resources/"+tenantAdminKeysProcessDefinitionKey+"/deletion":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(r.Method + " " + r.URL.Path)
+			require.Equal(t, true, decodeSingleRequestJSON(t, []string{string(body)})["deleteHistory"])
+			_, _ = w.Write([]byte(`{"resourceKey":"` + tenantAdminKeysProcessDefinitionKey + `","batchOperation":{"batchOperationKey":"batch-tenant-b","batchOperationType":"DELETE_PROCESS_DEFINITION"}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
 }
 
 // Runs a delete helper subprocess expected to fail and returns combined output with the exit code.
@@ -3027,6 +3120,27 @@ func TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t
 	resetCommandTreeFlags(root)
 	resetProcessInstanceCommandGlobals()
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-definition", "--auto-confirm", "--no-state-check", "-"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestHelperDeleteProcessDefinitionCommand_StdinTenantMismatchUsesAdminScope(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"delete", "process-definition",
+		"--auto-confirm",
+		"--no-wait",
+		"-",
+	})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
