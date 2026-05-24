@@ -140,6 +140,9 @@ func TestGetResourceHelp(t *testing.T) {
 
 	require.Contains(t, output, "Get a single resource by id")
 	require.Contains(t, output, "Requires --id")
+	require.Contains(t, output, "Tenant contract:")
+	require.Contains(t, output, "explicit --id resource targets are backend-authorized admin input")
+	require.Contains(t, output, "returned tenant metadata may differ from the selected tenant")
 	require.Contains(t, output, "c8volt get resource")
 	require.Contains(t, output, "--id")
 	require.Contains(t, output, "resource id to fetch")
@@ -207,6 +210,9 @@ func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 	require.Contains(t, output, "`--stat` requires Camunda `8.8` or `8.9`")
 	require.Contains(t, output, "prints exact-version")
 	require.Contains(t, output, "Camunda `8.7` does not support")
+	require.Contains(t, output, "Tenant contract:")
+	require.Contains(t, output, "`--tenant` scopes list/latest and BPMN selector discovery")
+	require.Contains(t, output, "Explicit `--key` and XML key lookups are backend-authorized admin")
 	require.Contains(t, output, "./c8volt get pd --key <process-definition-key> --json")
 }
 
@@ -865,6 +871,77 @@ func TestGetProcessDefinitionByKeyCommand_Success(t *testing.T) {
 	require.NotContains(t, output, "<definitions")
 }
 
+// TestGetProcessDefinitionByKey_SelectedTenantMismatchUsesAdminScope verifies
+// direct process-definition keys do not feed selected tenant into follow-up stats.
+func TestGetProcessDefinitionByKey_SelectedTenantMismatchUsesAdminScope(t *testing.T) {
+	var statsRequests []string
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-definitions/"+tenantAdminKeysProcessDefinitionKey:
+			_, _ = w.Write([]byte(tenantAdminKeysMismatchProcessDefinitionJSON()))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			statsRequests = append(statsRequests, string(body))
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"--json",
+		"get", "process-definition",
+		"--key", tenantAdminKeysProcessDefinitionKey,
+		"--stat",
+	)
+
+	require.Contains(t, requests, "GET /v2/process-definitions/"+tenantAdminKeysProcessDefinitionKey)
+	require.Len(t, statsRequests, 4)
+	for _, request := range statsRequests {
+		filter := requireJSONObject(t, decodeSingleRequestJSON(t, []string{request})["filter"])
+		require.NotContains(t, filter, "tenantId")
+		require.Equal(t, tenantAdminKeysProcessDefinitionKey, stringFilterEqValue(t, filter["processDefinitionKey"]))
+	}
+	require.Contains(t, output, `"tenantId": "tenant-b"`)
+	require.Contains(t, output, `"key": "`+tenantAdminKeysProcessDefinitionKey+`"`)
+}
+
+// TestGetProcessDefinitionXML_SelectedTenantMismatchUsesDirectEndpoint keeps
+// XML retrieval on the explicit-key backend endpoint even with a selected tenant.
+func TestGetProcessDefinitionXML_SelectedTenantMismatchUsesDirectEndpoint(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-definitions/"+tenantAdminKeysProcessDefinitionKey+"/xml", r.URL.Path)
+		w.Header().Set("Content-Type", "application/xml")
+		_, _ = w.Write([]byte("<definitions id=\"tenant-b-process\"/>"))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"get", "process-definition",
+		"--key", tenantAdminKeysProcessDefinitionKey,
+		"--xml",
+	)
+
+	require.Equal(t, []string{"GET /v2/process-definitions/" + tenantAdminKeysProcessDefinitionKey + "/xml"}, requests)
+	require.Equal(t, "<definitions id=\"tenant-b-process\"/>", output)
+}
+
 func TestGetProcessDefinitionLatest_UsesEffectiveTenantForSearch(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1004,6 +1081,34 @@ func TestGetResourceCommand_Success(t *testing.T) {
 	require.Contains(t, output, "<default>")
 	require.Contains(t, output, "order-process.bpmn")
 	require.Contains(t, output, "v7/stable")
+}
+
+// TestGetResourceCommand_SelectedTenantMismatchUsesDirectID verifies resource IDs
+// are treated as explicit admin input and returned tenant metadata is displayed.
+func TestGetResourceCommand_SelectedTenantMismatchUsesDirectID(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/"+tenantAdminKeysResourceID, r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(tenantAdminKeysMismatchResourceJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"--json",
+		"get", "resource",
+		"--id", tenantAdminKeysResourceID,
+	)
+
+	require.Equal(t, []string{"GET /v2/resources/" + tenantAdminKeysResourceID}, requests)
+	require.Contains(t, output, `"tenantId": "tenant-b"`)
+	require.Contains(t, output, `"id": "`+tenantAdminKeysResourceID+`"`)
 }
 
 // Verifies resource lookup JSON view uses serialized model field keys.
@@ -1559,6 +1664,48 @@ func TestGetProcessInstanceOrphanChildrenOnlyUnsupportedV87Helper(t *testing.T) 
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--orphan-children-only"}
 
 	Execute()
+}
+
+const tenantAdminKeysResourceID = "resource-tenant-b"
+
+func tenantAdminKeysMismatchProcessDefinitionJSON() string {
+	return `{
+  "processDefinitionId": "tenant-b-process",
+  "processDefinitionKey": "` + tenantAdminKeysProcessDefinitionKey + `",
+  "tenantId": "` + tenantAdminKeysReturnedTenant + `",
+  "version": 3,
+  "versionTag": "stable"
+}`
+}
+
+func tenantAdminKeysMismatchResourceJSON() string {
+	return `{
+  "resourceId": "` + tenantAdminKeysResourceID + `",
+  "resourceKey": "resource-key-tenant-b",
+  "resourceName": "tenant-b.bpmn",
+  "tenantId": "` + tenantAdminKeysReturnedTenant + `",
+  "version": 3,
+  "versionTag": "stable"
+}`
+}
+
+func stringFilterEqValue(t *testing.T, value any) string {
+	t.Helper()
+
+	switch got := value.(type) {
+	case string:
+		return got
+	case map[string]any:
+		for _, key := range []string{"$eq", "eq"} {
+			if v, ok := got[key].(string); ok {
+				return v
+			}
+		}
+		t.Fatalf("expected string equality filter, got %#v", got)
+	default:
+		t.Fatalf("expected string equality filter, got %#v", got)
+	}
+	return ""
 }
 
 func executeRootForTest(t *testing.T, args ...string) string {

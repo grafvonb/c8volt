@@ -87,7 +87,7 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 			if out[i].Key == "" {
 				continue
 			}
-			if err = s.retrieveProcessDefinitionStats(ctx, &out[i]); err != nil {
+			if err = s.retrieveProcessDefinitionStats(ctx, &out[i], opts...); err != nil {
 				return nil, err
 			}
 		}
@@ -144,7 +144,7 @@ func (s *Service) GetProcessDefinition(ctx context.Context, key string, opts ...
 	}
 	pd := fromProcessDefinitionResult(*payload)
 	if cCfg.WithStat {
-		if err := s.retrieveProcessDefinitionStats(ctx, &pd); err != nil {
+		if err := s.retrieveProcessDefinitionStats(ctx, &pd, opts...); err != nil {
 			return d.ProcessDefinition{}, err
 		}
 	}
@@ -171,27 +171,31 @@ func (s *Service) GetProcessDefinitionXML(ctx context.Context, key string, opts 
 }
 
 // retrieveProcessDefinitionStats populates exact process-instance statistics for one process definition.
-func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.ProcessDefinition) error {
+func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.ProcessDefinition, opts ...services.CallOption) error {
 	s.log.Debug(fmt.Sprintf("getting pd %s stats", pd.Key))
 	stopActivity := logging.StartActivity(ctx, common.ProcessDefinitionStatsActivity(pd.BpmnProcessId, pd.Key))
 	defer stopActivity()
 
-	active, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, "active", camundav88.ProcessInstanceStateEnumACTIVE)
+	tenantID := common.EffectiveTenant(s.cfg)
+	if services.ApplyCallOptions(opts).IgnoreTenant {
+		tenantID = ""
+	}
+	active, err := s.countProcessInstancesForProcessDefinitionState(ctx, tenantID, *pd, "active", camundav88.ProcessInstanceStateEnumACTIVE)
 	if err != nil {
 		return err
 	}
 	logging.UpdateActivity(ctx, fmt.Sprintf("pd stats %s (%s): active %d", pd.BpmnProcessId, pd.Key, active))
-	completed, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, "completed", camundav88.ProcessInstanceStateEnumCOMPLETED)
+	completed, err := s.countProcessInstancesForProcessDefinitionState(ctx, tenantID, *pd, "completed", camundav88.ProcessInstanceStateEnumCOMPLETED)
 	if err != nil {
 		return err
 	}
 	logging.UpdateActivity(ctx, fmt.Sprintf("pd stats %s (%s): completed %d", pd.BpmnProcessId, pd.Key, completed))
-	canceled, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, "canceled", camundav88.ProcessInstanceStateEnum(d.StateTerminated))
+	canceled, err := s.countProcessInstancesForProcessDefinitionState(ctx, tenantID, *pd, "canceled", camundav88.ProcessInstanceStateEnum(d.StateTerminated))
 	if err != nil {
 		return err
 	}
 	logging.UpdateActivity(ctx, fmt.Sprintf("pd stats %s (%s): canceled %d", pd.BpmnProcessId, pd.Key, canceled))
-	incidents, err := s.countProcessInstancesWithIncidentsForProcessDefinition(ctx, *pd)
+	incidents, err := s.countProcessInstancesWithIncidentsForProcessDefinition(ctx, tenantID, *pd)
 	if err != nil {
 		return err
 	}
@@ -208,11 +212,11 @@ func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.Proc
 }
 
 // countProcessInstancesForProcessDefinitionState counts instances for one process-definition state bucket.
-func (s *Service) countProcessInstancesForProcessDefinitionState(ctx context.Context, pd d.ProcessDefinition, label string, state camundav88.ProcessInstanceStateEnum) (int64, error) {
+func (s *Service) countProcessInstancesForProcessDefinitionState(ctx context.Context, tenantID string, pd d.ProcessDefinition, label string, state camundav88.ProcessInstanceStateEnum) (int64, error) {
 	if pd.Key == "" {
 		return 0, nil
 	}
-	req, err := searchProcessInstancesForDefinitionStateRequest(common.EffectiveTenant(s.cfg), pd.Key, state)
+	req, err := searchProcessInstancesForDefinitionStateRequest(tenantID, pd.Key, state)
 	if err != nil {
 		return 0, err
 	}
@@ -220,11 +224,11 @@ func (s *Service) countProcessInstancesForProcessDefinitionState(ctx context.Con
 }
 
 // countProcessInstancesWithIncidentsForProcessDefinition counts incident-bearing instances for one process definition.
-func (s *Service) countProcessInstancesWithIncidentsForProcessDefinition(ctx context.Context, pd d.ProcessDefinition) (int64, error) {
+func (s *Service) countProcessInstancesWithIncidentsForProcessDefinition(ctx context.Context, tenantID string, pd d.ProcessDefinition) (int64, error) {
 	if pd.Key == "" {
 		return 0, nil
 	}
-	req, err := searchProcessInstancesForDefinitionIncidentRequest(common.EffectiveTenant(s.cfg), pd.Key)
+	req, err := searchProcessInstancesForDefinitionIncidentRequest(tenantID, pd.Key)
 	if err != nil {
 		return 0, err
 	}

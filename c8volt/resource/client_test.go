@@ -65,6 +65,48 @@ func TestClient_GetResource(t *testing.T) {
 	}, got)
 }
 
+const (
+	tenantAdminKeysSelectedTenant = "tenant-a"
+	tenantAdminKeysReturnedTenant = "tenant-b"
+	tenantAdminKeysResourceKey    = "resource-tenant-b"
+)
+
+// tenantAdminKeysMismatchResourceDomain is the shared facade fixture for direct
+// resource-ID admin-input tests where returned tenant metadata differs.
+func tenantAdminKeysMismatchResourceDomain() d.Resource {
+	return d.Resource{
+		ID:         "tenant-b-process",
+		Key:        tenantAdminKeysResourceKey,
+		Name:       "tenant-b.bpmn",
+		TenantId:   tenantAdminKeysReturnedTenant,
+		Version:    3,
+		VersionTag: "stable",
+	}
+}
+
+// TestClient_GetResource_TenantMismatchUsesExplicitAdminInput verifies direct
+// resource IDs preserve ignore-tenant options and return backend metadata.
+func TestClient_GetResource_TenantMismatchUsesExplicitAdminInput(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	api := &stubResourceAPI{
+		get: func(_ context.Context, key string, opts ...services.CallOption) (d.Resource, error) {
+			cfg := services.ApplyCallOptions(opts)
+			assert.Equal(t, tenantAdminKeysResourceKey, key)
+			assert.True(t, cfg.IgnoreTenant)
+			return tenantAdminKeysMismatchResourceDomain(), nil
+		},
+	}
+
+	cli := New(api, nil, nil, slog.Default())
+	got, err := cli.GetResource(ctx, tenantAdminKeysResourceKey, options.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	assert.Equal(t, tenantAdminKeysResourceKey, got.Key)
+	assert.Equal(t, tenantAdminKeysReturnedTenant, got.TenantId)
+}
+
 // TestClient_GetResource_MapsDomainErrors ensures domain lookup failures are
 // normalized into facade errors so commands can share one exit-code model.
 func TestClient_GetResource_MapsDomainErrors(t *testing.T) {
@@ -550,8 +592,9 @@ func (s stubProcessInstanceService) CreateProcessInstance(context.Context, d.Pro
 	panic("unexpected call")
 }
 
-func (s stubProcessInstanceService) GetProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstance, error) {
-	panic("unexpected call")
+func (s stubProcessInstanceService) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
+	got, err := s.source.GetProcessInstance(ctx, key, facadeOptionsFromCallOptions(opts)...)
+	return toDomainProcessInstance(got), err
 }
 
 func (s stubProcessInstanceService) SearchProcessInstanceVariables(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
@@ -848,6 +891,7 @@ var _ batchoperation.API = (*stubBatchOperationAPI)(nil)
 
 type stubProcessAPI struct {
 	getProcessDefinition       func(context.Context, string, ...options.FacadeOption) (process.ProcessDefinition, error)
+	getProcessInstance         func(context.Context, string, ...options.FacadeOption) (process.ProcessInstance, error)
 	searchProcessInstancesPage func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
 	searchProcessInstances     func(context.Context, process.ProcessInstanceFilter, int32, ...options.FacadeOption) (process.ProcessInstances, error)
 	dryRunCancelOrDeletePlan   func(context.Context, typex.Keys, ...options.FacadeOption) (process.DryRunPIKeyExpansion, error)
@@ -882,8 +926,11 @@ func (stubProcessAPI) CreateProcessInstances(context.Context, []process.ProcessI
 	panic("unexpected call")
 }
 
-func (stubProcessAPI) GetProcessInstance(context.Context, string, ...options.FacadeOption) (process.ProcessInstance, error) {
-	panic("unexpected call")
+func (s stubProcessAPI) GetProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (process.ProcessInstance, error) {
+	if s.getProcessInstance == nil {
+		panic("unexpected call")
+	}
+	return s.getProcessInstance(ctx, key, opts...)
 }
 
 func (stubProcessAPI) LookupProcessInstance(context.Context, string, ...options.FacadeOption) (process.ProcessInstance, error) {

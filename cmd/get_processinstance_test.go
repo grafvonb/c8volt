@@ -120,6 +120,61 @@ func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest
 	require.Equal(t, "get process-instance", got["command"])
 }
 
+// TestGetProcessInstanceSearch_TenantScopedDiscoveryUsesSelectedTenant verifies
+// c8volt-produced search candidates remain scoped by the effective tenant.
+func TestGetProcessInstanceSearch_TenantScopedDiscoveryUsesSelectedTenant(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"hasIncident":false,"processDefinitionId":"tenant-a-process","processDefinitionKey":"9001","processDefinitionName":"tenant-a-process","processDefinitionVersion":3,"processInstanceKey":"101","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"--json",
+		"get", "process-instance",
+		"--state", "active",
+		"--batch-size", "5",
+	)
+
+	filter := decodeCapturedPISearchFilter(t, requests)
+	require.Equal(t, tenantAdminKeysSelectedTenant, filter["tenantId"])
+	require.Equal(t, "ACTIVE", filter["state"])
+	require.Contains(t, output, `"tenantId": "tenant-a"`)
+	require.NotContains(t, output, tenantAdminKeysReturnedTenant)
+}
+
+// TestGetProcessInstanceKey_SelectedTenantMismatchUsesDirectBackendLookup
+// protects explicit admin-input keys from being converted into tenant-scoped search.
+func TestGetProcessInstanceKey_SelectedTenantMismatchUsesDirectBackendLookup(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/"+tenantAdminKeysProcessInstanceKey, r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(tenantAdminKeysMismatchProcessInstanceJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"--json",
+		"get", "process-instance",
+		"--key", tenantAdminKeysProcessInstanceKey,
+	)
+
+	require.Equal(t, []string{"GET /v2/process-instances/" + tenantAdminKeysProcessInstanceKey}, requests)
+	require.Contains(t, output, `"tenantId": "tenant-b"`)
+	require.Contains(t, output, `"key": "`+tenantAdminKeysProcessInstanceKey+`"`)
+}
+
 // A missing BPMN selector should fail before process-instance search can masquerade as a real empty result.
 func TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 	var requests []string
@@ -4162,6 +4217,33 @@ func requireProcessInstanceVariableJSONPayload(t *testing.T, output string) map[
 	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
 	require.Equal(t, "get process-instance", envelope["command"])
 	return requireJSONObject(t, envelope["payload"])
+}
+
+const (
+	tenantAdminKeysSelectedTenant       = "tenant-a"
+	tenantAdminKeysReturnedTenant       = "tenant-b"
+	tenantAdminKeysProcessInstanceKey   = "2251799813711967"
+	tenantAdminKeysProcessDefinitionKey = "2251799813685249"
+)
+
+// tenantAdminKeysMismatchProcessInstance returns the shared selected-tenant
+// mismatch fixture used by direct-key admin-input command tests.
+func tenantAdminKeysMismatchProcessInstance() process.ProcessInstance {
+	return process.ProcessInstance{
+		Key:                  tenantAdminKeysProcessInstanceKey,
+		TenantId:             tenantAdminKeysReturnedTenant,
+		BpmnProcessId:        "tenant-b-process",
+		ProcessDefinitionKey: tenantAdminKeysProcessDefinitionKey,
+		ProcessVersion:       3,
+		State:                process.StateActive,
+		StartDate:            "2026-03-23T18:00:00Z",
+	}
+}
+
+// tenantAdminKeysMismatchProcessInstanceJSON mirrors
+// tenantAdminKeysMismatchProcessInstance for fake Camunda v2 keyed responses.
+func tenantAdminKeysMismatchProcessInstanceJSON() string {
+	return `{"hasIncident":false,"processDefinitionId":"tenant-b-process","processDefinitionKey":"9001","processDefinitionName":"tenant-b-process","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-b"}`
 }
 
 // executeRootForProcessInstanceTest runs the root command with process-instance globals reset.

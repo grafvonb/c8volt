@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.7.0-alpha1-217-g3ad064ca-dirty`, commit `3ad064ca`, built `2026-05-24T11:19:47Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.7.0-alpha1-233-g67106fa3-dirty`, commit `67106fa3`, built `2026-05-24T20:26:42Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -442,7 +442,9 @@ app:
 - `app.tenant` in the config file
 - the global `--tenant` flag for per-command override
 
-Commands that create tenant-owned data, including `deploy pd`, `embed deploy`, `deploy pd --run`, and `run pi`, use Camunda's `<default>` tenant when the effective tenant is empty. Read/search commands preserve an empty tenant as an unscoped visible-tenants query unless `--tenant` is provided.
+Commands that create tenant-owned data, including `deploy pd`, `embed deploy`, `deploy pd --run`, and `run pi`, use Camunda's `<default>` tenant when the effective tenant is empty. Read/search, selector validation, and discovery-derived preview or mutation flows preserve an empty tenant as an unscoped visible-tenants query unless `--tenant` is provided; when `--tenant` is provided and the Camunda version supports tenant filtering, c8volt keeps those c8volt-produced candidate sets tenant-scoped.
+
+Direct keys, stdin keys, resource IDs, and direct flag values are explicit admin input. c8volt sends them to Camunda and relies on backend authorization instead of rejecting solely because returned tenant metadata differs from the selected `--tenant`. The returned tenant may still appear in normal output so operators can see what Camunda authorized.
 
 ```yaml
 app:

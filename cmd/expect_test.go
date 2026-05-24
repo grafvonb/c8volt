@@ -294,6 +294,47 @@ apis:
 	require.Contains(t, output, `"ok": true`)
 }
 
+// TestExpectProcessInstanceCommand_KeyTenantMismatchUsesDirectStateLookup keeps
+// explicit wait keys backend-authorized even when returned tenant metadata differs.
+func TestExpectProcessInstanceCommand_KeyTenantMismatchUsesDirectStateLookup(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/"+tenantAdminKeysProcessInstanceKey, r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(tenantAdminKeysMismatchProcessInstanceJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.8
+  backoff:
+    strategy: fixed
+    initial_delay: 1ms
+    max_retries: 3
+    timeout: 100ms
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"--json",
+		"expect", "pi",
+		"--key", tenantAdminKeysProcessInstanceKey,
+		"--state", "active",
+	)
+
+	require.Equal(t, []string{"GET /v2/process-instances/" + tenantAdminKeysProcessInstanceKey}, requests)
+	require.Contains(t, output, `"outcome": "succeeded"`)
+	require.Contains(t, output, `"state": "ACTIVE"`)
+}
+
 // Incident=false is only satisfied by a present instance, which keeps missing instances from looking healthy.
 func TestExpectProcessInstanceCommand_IncidentFalseSucceedsForPresentIncidentFreeInstance(t *testing.T) {
 	var attempts atomic.Int32

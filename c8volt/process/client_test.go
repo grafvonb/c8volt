@@ -124,6 +124,35 @@ func TestClient_GetProcessDefinition_MapsIncidentCountSupportState(t *testing.T)
 	assert.True(t, pd.Statistics.IncidentCountSupported)
 }
 
+// TestClient_GetProcessDefinition_TenantMismatchUsesExplicitAdminInput verifies
+// the facade preserves ignore-tenant options for direct process-definition keys.
+func TestClient_GetProcessDefinition_TenantMismatchUsesExplicitAdminInput(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	pdAPI := &stubProcessDefinitionAPI{
+		getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+			cfg := services.ApplyCallOptions(opts)
+			assert.Equal(t, tenantAdminKeysProcessDefinitionKey, key)
+			assert.True(t, cfg.IgnoreTenant)
+			return d.ProcessDefinition{
+				Key:               tenantAdminKeysProcessDefinitionKey,
+				BpmnProcessId:     "tenant-b-process",
+				ProcessVersion:    3,
+				ProcessVersionTag: "stable",
+				TenantId:          tenantAdminKeysReturnedTenant,
+			}, nil
+		},
+	}
+
+	cli := New(pdAPI, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
+	pd, err := cli.GetProcessDefinition(ctx, tenantAdminKeysProcessDefinitionKey, options.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	assert.Equal(t, tenantAdminKeysProcessDefinitionKey, pd.Key)
+	assert.Equal(t, tenantAdminKeysReturnedTenant, pd.TenantId)
+}
+
 // TestClient_SearchProcessDefinitions_PreservesUnsupportedIncidentCountBoundary
 // keeps the public model from implying that zero incidents were measured when a
 // Camunda version cannot provide incident-count statistics.
@@ -1138,59 +1167,74 @@ func TestClient_SearchProcessInstances_UsesPagedSearchWrapper(t *testing.T) {
 	assert.Equal(t, "2251799813711968", items.Items[1].Key)
 }
 
-// TestClient_LookupProcessInstance_UsesSearchBackedLookup protects the lookup
-// strategy for versions where direct key retrieval is implemented through a
-// tenant-aware search filter.
-func TestClient_LookupProcessInstance_UsesSearchBackedLookup(t *testing.T) {
+// TestClient_LookupProcessInstance_TenantMismatchUsesDirectAdminInput protects
+// explicit keys from being narrowed by selected-tenant search before Camunda authorizes them.
+func TestClient_LookupProcessInstance_TenantMismatchUsesDirectAdminInput(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	piAPI := stubProcessInstanceAPI{
-		searchForProcessInstances: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
-			assert.Equal(t, d.ProcessInstanceFilter{Key: "2251799813711967"}, filter)
-			assert.Equal(t, int32(2), size)
+		getProcessInstance: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
+			assert.Equal(t, tenantAdminKeysProcessInstanceKey, key)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
-			return []d.ProcessInstance{
-				{Key: "2251799813711967", State: d.StateActive, TenantId: "tenant-a"},
-			}, nil
+			return tenantAdminKeysMismatchProcessInstanceDomain(), nil
 		},
 	}
 
 	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
-	pi, err := cli.LookupProcessInstance(ctx, "2251799813711967", options.WithVerbose())
+	pi, err := cli.LookupProcessInstance(ctx, tenantAdminKeysProcessInstanceKey, options.WithVerbose())
 
 	require.NoError(t, err)
-	assert.Equal(t, "2251799813711967", pi.Key)
+	assert.Equal(t, tenantAdminKeysProcessInstanceKey, pi.Key)
 	assert.Equal(t, StateActive, pi.State)
-	assert.Equal(t, "tenant-a", pi.TenantId)
+	assert.Equal(t, tenantAdminKeysReturnedTenant, pi.TenantId)
 }
 
-// TestClient_LookupProcessInstanceStateByKey_MapsSearchBackedState verifies the
-// public state report created from a search-backed lookup, including the stable
-// uppercase status string used by command output.
-func TestClient_LookupProcessInstanceStateByKey_MapsSearchBackedState(t *testing.T) {
+// TestClient_LookupProcessInstanceStateByKey_TenantMismatchUsesDirectAdminInput
+// verifies the public state report comes from the service direct-key state path.
+func TestClient_LookupProcessInstanceStateByKey_TenantMismatchUsesDirectAdminInput(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	piAPI := stubProcessInstanceAPI{
-		searchForProcessInstances: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
-			assert.Equal(t, d.ProcessInstanceFilter{Key: "2251799813711967"}, filter)
-			assert.Equal(t, int32(2), size)
-			return []d.ProcessInstance{
-				{Key: "2251799813711967", State: d.StateCompleted, TenantId: "tenant-a"},
-			}, nil
+		getProcessInstanceStateByKey: func(_ context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
+			assert.Equal(t, tenantAdminKeysProcessInstanceKey, key)
+			pi := tenantAdminKeysMismatchProcessInstanceDomain()
+			pi.State = d.StateCompleted
+			return d.StateCompleted, pi, nil
 		},
 	}
 
 	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
-	report, pi, err := cli.LookupProcessInstanceStateByKey(ctx, "2251799813711967")
+	report, pi, err := cli.LookupProcessInstanceStateByKey(ctx, tenantAdminKeysProcessInstanceKey)
 
 	require.NoError(t, err)
 	assert.Equal(t, StateCompleted, report.State)
 	assert.Equal(t, "COMPLETED", report.Status)
-	assert.Equal(t, "2251799813711967", report.Key)
-	assert.Equal(t, "2251799813711967", pi.Key)
+	assert.Equal(t, tenantAdminKeysProcessInstanceKey, report.Key)
+	assert.Equal(t, tenantAdminKeysProcessInstanceKey, pi.Key)
 	assert.Equal(t, StateCompleted, pi.State)
+	assert.Equal(t, tenantAdminKeysReturnedTenant, pi.TenantId)
+}
+
+const (
+	tenantAdminKeysSelectedTenant       = "tenant-a"
+	tenantAdminKeysReturnedTenant       = "tenant-b"
+	tenantAdminKeysProcessInstanceKey   = "2251799813711967"
+	tenantAdminKeysProcessDefinitionKey = "9001"
+)
+
+// tenantAdminKeysMismatchProcessInstanceDomain is the shared facade fixture for
+// tests where selected tenant and returned Camunda metadata intentionally differ.
+func tenantAdminKeysMismatchProcessInstanceDomain() d.ProcessInstance {
+	return d.ProcessInstance{
+		Key:                  tenantAdminKeysProcessInstanceKey,
+		TenantId:             tenantAdminKeysReturnedTenant,
+		BpmnProcessId:        "tenant-b-process",
+		ProcessDefinitionKey: tenantAdminKeysProcessDefinitionKey,
+		ProcessVersion:       3,
+		State:                d.StateActive,
+	}
 }
 
 // TestClient_DryRunCancelOrDeleteGetPIKeys_DeduplicatesRootsAndCollected covers
@@ -1652,6 +1696,7 @@ var _ pdsvc.API = (*stubProcessDefinitionAPI)(nil)
 
 type stubProcessInstanceAPI struct {
 	createProcessInstance              func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)
+	getProcessInstance                 func(context.Context, string, ...services.CallOption) (d.ProcessInstance, error)
 	searchForProcessInstances          func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
 	searchForProcessInstancesPage      func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
 	searchProcessInstanceVariables     func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceVariable, error)
@@ -1663,6 +1708,7 @@ type stubProcessInstanceAPI struct {
 	ancestryResult                     func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
 	descendantsResult                  func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
 	familyResult                       func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	getProcessInstanceStateByKey       func(context.Context, string, ...services.CallOption) (d.State, d.ProcessInstance, error)
 	waitForProcessInstanceExpectation  func(context.Context, string, d.ProcessInstanceExpectationRequest, ...services.CallOption) (d.ProcessInstanceExpectationResponse, d.ProcessInstance, error)
 	waitForProcessInstancesExpectation func(context.Context, typex.Keys, d.ProcessInstanceExpectationRequest, int, ...services.CallOption) (d.ProcessInstanceExpectationResponses, error)
 }
@@ -1675,9 +1721,13 @@ func (s stubProcessInstanceAPI) CreateProcessInstance(ctx context.Context, data 
 	return s.createProcessInstance(ctx, data, opts...)
 }
 
-// GetProcessInstance panics when a facade test accidentally performs direct lookup.
-func (stubProcessInstanceAPI) GetProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstance, error) {
-	panic("unexpected call")
+// GetProcessInstance delegates to the per-test callback for explicit direct-key
+// fixtures and panics when a test did not authorize direct lookup.
+func (s stubProcessInstanceAPI) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
+	if s.getProcessInstance == nil {
+		panic("unexpected call")
+	}
+	return s.getProcessInstance(ctx, key, opts...)
 }
 
 // SearchProcessInstanceVariables delegates to the per-test callback used by variable enrichment facade tests.
@@ -1819,9 +1869,13 @@ func (s stubProcessInstanceAPI) DeleteProcessInstance(ctx context.Context, key s
 	return s.deleteProcessInstance(ctx, key, opts...)
 }
 
-// GetProcessInstanceStateByKey panics when a facade test accidentally checks process state.
-func (stubProcessInstanceAPI) GetProcessInstanceStateByKey(context.Context, string, ...services.CallOption) (d.State, d.ProcessInstance, error) {
-	panic("unexpected call")
+// GetProcessInstanceStateByKey delegates to the per-test callback for direct
+// admin-input state checks and panics when no state lookup is expected.
+func (s stubProcessInstanceAPI) GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
+	if s.getProcessInstanceStateByKey == nil {
+		panic("unexpected call")
+	}
+	return s.getProcessInstanceStateByKey(ctx, key, opts...)
 }
 
 // WaitForProcessInstanceState panics when a facade test accidentally waits for one process instance.

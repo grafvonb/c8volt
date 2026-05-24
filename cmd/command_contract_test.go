@@ -64,6 +64,36 @@ func TestCommandCapabilityForCommand_IncludesInheritedAndRequiredFlags(t *testin
 	})
 }
 
+// TestCommandCapabilityForCommand_DocumentsTenantContract keeps the machine
+// contract aligned with operator-facing tenant help.
+func TestCommandCapabilityForCommand_DocumentsTenantContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	const tenantDescription = "tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized"
+	capability := commandCapabilityForCommand(getProcessInstanceCmd)
+
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "tenant",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: tenantDescription,
+	})
+
+	for _, cmd := range []*cobra.Command{
+		getProcessInstanceCmd,
+		cancelProcessInstanceCmd,
+		deleteProcessInstanceCmd,
+		getProcessDefinitionCmd,
+		deleteProcessDefinitionCmd,
+		getResourceCmd,
+	} {
+		require.Contains(t, cmd.Long, "Tenant contract:")
+		require.Contains(t, cmd.Long, "backend-authorized admin input")
+	}
+}
+
 func TestCommandCapabilityForCommand_UsesExplicitAutomationOutputModes(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)

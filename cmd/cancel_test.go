@@ -570,6 +570,109 @@ func TestCancelProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *tes
 	requireDryRunPreviewStringSlice(t, secondPreview, "affectedFamilyKeys", typex.Keys{"root-b"})
 }
 
+// TestCancelProcessInstanceDryRun_SearchTenantScopedCandidates protects the
+// search-derived dry-run path from broadening beyond tenant-scoped candidates.
+func TestCancelProcessInstanceDryRun_SearchTenantScopedCandidates(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var fetched testx.SafeSlice[string]
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(string(body))
+
+			searchBody := decodeCapturedPISearchRequest(t, string(body))
+			filter, _ := searchBody["filter"].(map[string]any)
+			require.Equal(t, tenantAdminKeysSelectedTenant, filter["tenantId"])
+			if _, ok := filter["parentProcessInstanceKey"]; ok {
+				_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+				return
+			}
+
+			require.Equal(t, "ACTIVE", filter["state"])
+			_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"101","processDefinitionId":"tenant-a-process","processDefinitionKey":"9001","processDefinitionName":"tenant-a-process","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"},{"processInstanceKey":"102","processDefinitionId":"tenant-a-process","processDefinitionKey":"9001","processDefinitionName":"tenant-a-process","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			if strings.Contains(key, "/") {
+				t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+			}
+			require.Contains(t, []string{"101", "102"}, key)
+			fetched.Append(key)
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"processInstanceKey":"%s","processDefinitionId":"tenant-a-process","processDefinitionKey":"9001","processDefinitionName":"tenant-a-process","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"}`, key)))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"--json",
+		"cancel", "process-instance",
+		"--state", "active",
+		"--dry-run",
+		"--batch-size", "2",
+	)
+
+	topFilters := decodeCapturedTopLevelPISearchFilters(t, requests.Snapshot())
+	require.Len(t, topFilters, 1)
+	require.Equal(t, tenantAdminKeysSelectedTenant, topFilters[0]["tenantId"])
+	require.NotContains(t, fetched.Snapshot(), tenantAdminKeysProcessInstanceKey)
+	require.Contains(t, output, `"requestedCount": 2`)
+	require.Contains(t, output, `"101"`)
+	require.Contains(t, output, `"102"`)
+	require.NotContains(t, output, tenantAdminKeysReturnedTenant)
+}
+
+// TestCancelProcessInstanceDryRun_KeyTenantMismatchUsesAdminScope keeps direct
+// cancel previews backend-authorized while preserving dry-run safety.
+func TestCancelProcessInstanceDryRun_KeyTenantMismatchUsesAdminScope(t *testing.T) {
+	var requests testx.SafeSlice[string]
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		requests.Append(r.Method + " " + r.URL.Path)
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/"+tenantAdminKeysProcessInstanceKey:
+			_, _ = w.Write([]byte(tenantAdminKeysMismatchProcessInstanceJSON()))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			searchBody := decodeCapturedPISearchRequest(t, string(body))
+			filter, ok := searchBody["filter"].(map[string]any)
+			require.True(t, ok, "expected search request filter object")
+			require.Equal(t, tenantAdminKeysProcessInstanceKey, filter["parentProcessInstanceKey"])
+			require.NotContains(t, filter, "tenantId")
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"--json",
+		"cancel", "process-instance",
+		"--key", tenantAdminKeysProcessInstanceKey,
+		"--dry-run",
+	)
+
+	require.Contains(t, requests.Snapshot(), "GET /v2/process-instances/"+tenantAdminKeysProcessInstanceKey)
+	require.Contains(t, requests.Snapshot(), "POST /v2/process-instances/search")
+	require.Contains(t, output, `"requestedCount": 1`)
+	require.Contains(t, output, tenantAdminKeysProcessInstanceKey)
+}
+
 // TestCancelProcessInstanceDryRun_SearchSummaryExplainsPartialScope verifies
 // aggregate output preserves partial-scope warnings.
 func TestCancelProcessInstanceDryRun_SearchSummaryExplainsPartialScope(t *testing.T) {

@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 
+	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
 	types "github.com/grafvonb/c8volt/typex"
@@ -57,6 +58,7 @@ var getProcessInstanceCmd = &cobra.Command{
 	Long: "Get process instances by key or by search criteria.\n\n" +
 		"Use direct lookup when you know a process-instance key, or combine search filters to inspect matching process instances by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges.\n\n" +
 		"Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. Direct key lookup stays strict: missing keys return not-found.\n\n" +
+		"Tenant contract: --tenant scopes search/list discovery and selector validation where supported. Explicit --key and stdin keys are backend-authorized admin input; c8volt displays returned tenant metadata without rejecting solely because it differs from the selected tenant.\n\n" +
 		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic instead of looking like a valid empty result; --json, --automation, --keys-only, and non-TTY runs never prompt for recovery output.\n\n" +
 		"Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.\n\n" +
 		"Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.\n\n" +
@@ -148,6 +150,8 @@ var getProcessInstanceCmd = &cobra.Command{
 			}
 		case lk > 0:
 			log.Debug(fmt.Sprintf("getting pi keys [%s]", keys))
+			adminInputOpts := collectExplicitPIAdminInputOptions()
+			adminInputIncidentOpts := append(collectIncidentEnrichmentOptions(), processOptions.WithIgnoreTenant())
 			if err := validatePIKeyedModeDateFilters(lk); err != nil {
 				fail(err)
 			}
@@ -164,7 +168,7 @@ var getProcessInstanceCmd = &cobra.Command{
 			if cmd.Flags().Changed("workers") {
 				lk = flagWorkers
 			}
-			pis, err = cli.GetProcessInstances(ctx, ukeys, lk, collectOptions()...)
+			pis, err = cli.GetProcessInstances(ctx, ukeys, lk, adminInputOpts...)
 			if err != nil {
 				msg := fmt.Errorf("get process instances: %w", err)
 				if flagVerbose {
@@ -173,11 +177,11 @@ var getProcessInstanceCmd = &cobra.Command{
 				fail(msg)
 			}
 			if flagGetPIWithIncidents && flagGetPIWithVars {
-				incidentEnriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, pis)
+				incidentEnriched, err := enrichProcessInstancesWithIncidentActivityOptions(cmd, cli, pis, adminInputIncidentOpts)
 				if err != nil {
 					fail(fmt.Errorf("get process instance incidents: %w", err))
 				}
-				variableEnriched, err := enrichProcessInstancesWithVariableActivity(cmd, cli, pis)
+				variableEnriched, err := enrichProcessInstancesWithVariableActivityOptions(cmd, cli, pis, adminInputOpts)
 				if err != nil {
 					fail(fmt.Errorf("get process instance variables: %w", err))
 				}
@@ -187,7 +191,7 @@ var getProcessInstanceCmd = &cobra.Command{
 				return
 			}
 			if flagGetPIWithIncidents {
-				enriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, pis)
+				enriched, err := enrichProcessInstancesWithIncidentActivityOptions(cmd, cli, pis, adminInputIncidentOpts)
 				if err != nil {
 					fail(fmt.Errorf("get process instance incidents: %w", err))
 				}
@@ -197,7 +201,7 @@ var getProcessInstanceCmd = &cobra.Command{
 				return
 			}
 			if flagGetPIWithVars {
-				enriched, err := enrichProcessInstancesWithVariableActivity(cmd, cli, pis)
+				enriched, err := enrichProcessInstancesWithVariableActivityOptions(cmd, cli, pis, adminInputOpts)
 				if err != nil {
 					fail(fmt.Errorf("get process instance variables: %w", err))
 				}
