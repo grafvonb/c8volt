@@ -74,7 +74,20 @@ func (s *Service) PurgeProcessInstancesWithIncidents(ctx context.Context, reques
 		return finishIncidentPurgeResult(result, d.IncidentPurgeOutcomePlanned, nil)
 	}
 
-	reports, err := pisvc.DeleteProcessInstances(ctx, s.piAPI, s.log, plan.ResolvedRootKeys, request.Workers, len(plan.AffectedKeys), opts...)
+	deleteOpts := compactOpsExecutionOptions(opts...)
+	if request.Force {
+		deleteOpts = append(deleteOpts, services.WithForce())
+	}
+	if request.NoWait {
+		deleteOpts = append(deleteOpts, services.WithNoWait())
+	}
+	if request.FailFast {
+		deleteOpts = append(deleteOpts, services.WithFailFast())
+	}
+	if request.NoWorkerLimit {
+		deleteOpts = append(deleteOpts, services.WithNoWorkerLimit())
+	}
+	reports, err := pisvc.DeleteProcessInstances(ctx, s.piAPI, s.log, plan.ResolvedRootKeys, request.Workers, len(plan.AffectedKeys), deleteOpts...)
 	result.Deletion = d.IncidentPurgeDeletionResult{
 		Status:            deletionStatusForReports(reports, request.NoWait, err),
 		SubmittedRootKeys: plan.ResolvedRootKeys,
@@ -151,6 +164,11 @@ func incidentPurgeDiscovery(ctx context.Context, api incsvc.API, request d.Incid
 // frozenIncidentPurgeDiscovery reconstructs enough discovery state to execute a previously confirmed plan without expanding scope.
 func frozenIncidentPurgeDiscovery(request d.IncidentPurgeRequest) d.IncidentDiscoveryResult {
 	candidates := request.DiscoveredCandidateProcessInstanceKeys.Unique()
+	incidentKeys := request.DiscoveredIncidentKeys.Unique()
+	incidentCount := request.DiscoveredIncidentCount
+	if incidentCount == 0 {
+		incidentCount = len(incidentKeys)
+	}
 	status := request.DiscoveredScopeStatus
 	if status.BatchSize == 0 {
 		status.BatchSize = incidentPurgeDiscoverySize(request)
@@ -165,6 +183,8 @@ func frozenIncidentPurgeDiscovery(request d.IncidentPurgeRequest) d.IncidentDisc
 		DiscoveryScopeStatus:          status,
 		Status:                        d.OpsWorkflowStepStatusPlanned,
 		Filters:                       request.Selection,
+		IncidentKeys:                  incidentKeys,
+		IncidentCount:                 incidentCount,
 		CandidateProcessInstanceKeys:  candidates,
 		CandidateProcessInstanceCount: len(candidates),
 	}

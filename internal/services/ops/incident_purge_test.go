@@ -627,13 +627,16 @@ func TestPurgeProcessInstancesWithIncidentsUsesFrozenCandidatesWithoutRediscover
 
 	got, err := New(piAPI, incAPI).PurgeProcessInstancesWithIncidents(context.Background(), d.IncidentPurgeRequest{
 		DiscoveredCandidateProcessInstanceKeys: typexKeys("child-1"),
+		DiscoveredIncidentKeys:                 typexKeys("inc-1", "inc-2"),
+		DiscoveredIncidentCount:                2,
 	}, services.WithNoWait())
 
 	require.NoError(t, err)
 	require.Equal(t, d.IncidentPurgeOutcomeDeleted, got.Outcome)
 	require.Equal(t, []string{"child-1"}, []string(got.Discovery.CandidateProcessInstanceKeys))
 	require.Equal(t, 1, got.Discovery.CandidateProcessInstanceCount)
-	require.Zero(t, got.Discovery.IncidentCount)
+	require.Equal(t, typexKeys("inc-1", "inc-2"), got.Discovery.IncidentKeys)
+	require.Equal(t, 2, got.Discovery.IncidentCount)
 	require.Equal(t, []string{"root-1"}, []string(got.Deletion.SubmittedRootKeys))
 }
 

@@ -209,7 +209,7 @@ func TestPurgeOrphanProcessInstancesConfirmedDeletesImmutableDiscoveredSet(t *te
 	require.Equal(t, d.OrphanPurgeOutcomeDeleted, got.Outcome)
 }
 
-func TestPurgeOrphanProcessInstancesUsesSuppliedLoggerForDeleteSummary(t *testing.T) {
+func TestPurgeOrphanProcessInstancesSuppressesDefaultDeleteSummary(t *testing.T) {
 	t.Parallel()
 
 	var logBuf bytes.Buffer
@@ -255,7 +255,7 @@ func TestPurgeOrphanProcessInstancesUsesSuppliedLoggerForDeleteSummary(t *testin
 
 	require.NoError(t, err)
 	require.Equal(t, d.OrphanPurgeOutcomeDeleted, got.Outcome)
-	require.Contains(t, logBuf.String(), "pi delete done; requested 1, ok 1, failed 0")
+	require.NotContains(t, logBuf.String(), "pi delete done; requested 1, ok 1, failed 0")
 }
 
 type stubProcessInstanceAPI struct {

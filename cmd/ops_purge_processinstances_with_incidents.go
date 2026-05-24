@@ -108,6 +108,8 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 				}
 			}
 			request.DiscoveredCandidateProcessInstanceKeys = append(typex.Keys{}, planned.Discovery.CandidateProcessInstanceKeys...)
+			request.DiscoveredIncidentKeys = append(typex.Keys{}, planned.Discovery.IncidentKeys...)
+			request.DiscoveredIncidentCount = planned.Discovery.IncidentCount
 			request.DiscoveredScopeStatus = planned.Discovery.DiscoveryScopeStatus
 		}
 		result, err := purgeProcessInstancesWithIncidentsWithCommandActivity(cmd, request, func() (ops.IncidentPurgeResult, error) {

@@ -650,6 +650,8 @@ type IncidentPurgeRequest struct {
 	ReportFile                             string               `json:"reportFile,omitempty"`
 	ReportFormat                           string               `json:"reportFormat,omitempty"`
 	DiscoveredCandidateProcessInstanceKeys typex.Keys           `json:"discoveredCandidateProcessInstanceKeys,omitempty"`
+	DiscoveredIncidentKeys                 typex.Keys           `json:"discoveredIncidentKeys,omitempty"`
+	DiscoveredIncidentCount                int                  `json:"discoveredIncidentCount,omitempty"`
 	DiscoveredScopeStatus                  DiscoveryScopeStatus `json:"discoveredScopeStatus,omitempty"`
 	StartedAt                              time.Time            `json:"startedAt,omitempty"`
 }

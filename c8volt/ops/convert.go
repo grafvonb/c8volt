@@ -537,6 +537,10 @@ func toDomainIncidentPurgeRequest(x IncidentPurgeRequest) d.IncidentPurgeRequest
 	if x.DiscoveredCandidateProcessInstanceKeys != nil {
 		out.DiscoveredCandidateProcessInstanceKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessInstanceKeys...)
 	}
+	if x.DiscoveredIncidentKeys != nil {
+		out.DiscoveredIncidentKeys = append(typex.Keys{}, x.DiscoveredIncidentKeys...)
+	}
+	out.DiscoveredIncidentCount = x.DiscoveredIncidentCount
 	return out
 }
 
@@ -578,6 +582,10 @@ func fromDomainIncidentPurgeRequest(x d.IncidentPurgeRequest) IncidentPurgeReque
 	if x.DiscoveredCandidateProcessInstanceKeys != nil {
 		out.DiscoveredCandidateProcessInstanceKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessInstanceKeys...)
 	}
+	if x.DiscoveredIncidentKeys != nil {
+		out.DiscoveredIncidentKeys = append(typex.Keys{}, x.DiscoveredIncidentKeys...)
+	}
+	out.DiscoveredIncidentCount = x.DiscoveredIncidentCount
 	return out
 }
 

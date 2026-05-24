@@ -576,7 +576,7 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 	})
 
 	t.Run("ForceCancelLogsKeyListOnlyWhenVerbose", func(t *testing.T) {
-		runForceCancelLogTest := func(t *testing.T, verbose bool) string {
+		runForceCancelLogTest := func(t *testing.T, verbose bool, suppress bool) string {
 			t.Helper()
 			var logBuf bytes.Buffer
 			svc, err := v89.New(
@@ -628,18 +628,23 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 			if verbose {
 				opts = append(opts, services.WithVerbose())
 			}
+			if suppress {
+				opts = append(opts, services.WithSuppressProcessInstanceDetailLogs())
+			}
 			_, _, err = svc.CancelProcessInstance(context.Background(), "124", opts...)
 
 			require.NoError(t, err)
 			return logBuf.String()
 		}
 
-		quietLog := runForceCancelLogTest(t, false)
-		verboseLog := runForceCancelLogTest(t, true)
+		quietLog := runForceCancelLogTest(t, false, false)
+		verboseLog := runForceCancelLogTest(t, true, false)
+		suppressedLog := runForceCancelLogTest(t, false, true)
 
 		assert.Contains(t, quietLog, "force: cancelling 2 pi")
 		assert.NotContains(t, quietLog, "with keys [123 124]")
 		assert.Contains(t, verboseLog, "force: cancelling 2 pi; keys [123 124]")
+		assert.NotContains(t, suppressedLog, "force: cancelling 2 pi")
 	})
 
 	t.Run("DeleteNoWait", func(t *testing.T) {

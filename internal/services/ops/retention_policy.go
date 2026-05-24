@@ -105,7 +105,20 @@ func (s *Service) ExecuteRetentionPolicy(ctx context.Context, request d.Retentio
 		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomeFailed, err)
 	}
 
-	reports, err := pisvc.DeleteProcessInstances(ctx, s.piAPI, s.log, plan.ResolvedRootKeys, request.Workers, len(plan.AffectedKeys), opts...)
+	deleteOpts := compactOpsExecutionOptions(opts...)
+	if request.Force {
+		deleteOpts = append(deleteOpts, services.WithForce())
+	}
+	if request.NoWait {
+		deleteOpts = append(deleteOpts, services.WithNoWait())
+	}
+	if request.FailFast {
+		deleteOpts = append(deleteOpts, services.WithFailFast())
+	}
+	if request.NoWorkerLimit {
+		deleteOpts = append(deleteOpts, services.WithNoWorkerLimit())
+	}
+	reports, err := pisvc.DeleteProcessInstances(ctx, s.piAPI, s.log, plan.ResolvedRootKeys, request.Workers, len(plan.AffectedKeys), deleteOpts...)
 	result.Deletion = d.RetentionDeletionResult{
 		Status:            deletionStatusForReports(reports, request.NoWait, err),
 		SubmittedRootKeys: plan.ResolvedRootKeys,

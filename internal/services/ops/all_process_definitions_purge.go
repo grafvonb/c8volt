@@ -83,8 +83,7 @@ func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllP
 		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomePlanned, nil)
 	}
 
-	deleteOpts := append([]services.CallOption{}, opts...)
-	deleteOpts = append(deleteOpts, services.WithSuppressProcessInstanceDetailLogs())
+	deleteOpts := compactOpsExecutionOptions(opts...)
 	if request.Force {
 		deleteOpts = append(deleteOpts, services.WithForce())
 	}

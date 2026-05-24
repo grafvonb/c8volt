@@ -52,6 +52,8 @@ type IncidentPurgeRequest struct {
 	ReportFile                             string
 	ReportFormat                           string
 	DiscoveredCandidateProcessInstanceKeys typex.Keys
+	DiscoveredIncidentKeys                 typex.Keys
+	DiscoveredIncidentCount                int
 	DiscoveredScopeStatus                  DiscoveryScopeStatus
 	StartedAt                              time.Time
 }
