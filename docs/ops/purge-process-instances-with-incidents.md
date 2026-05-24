@@ -24,11 +24,14 @@ The recording previews an incident-based process-instance purge for `io_mapping_
 
 <img src="../../assets/screencasts/ops-purge-process-instances-with-incidents.gif" alt="c8volt ops purge process-instances-with-incidents demo" />
 
-Core commands shown:
+Generic command shape:
 
 ```bash
+# read-only: preview incident-derived process-instance deletion
 c8volt ops purge process-instances-with-incidents --error-type io_mapping_error --dry-run
-c8volt ops purge process-instances-with-incidents --error-type io_mapping_error --force --report-file /tmp/c8volt-vhs/reports/incident-purge.md
+
+# destructive: deletes the previewed process-instance family scope after confirmation
+c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md
 ```
 
 ## Use When
@@ -41,14 +44,11 @@ c8volt ops purge process-instances-with-incidents --error-type io_mapping_error 
 ## Command At A Glance
 
 ```bash
-c8volt ops purge process-instances-with-incidents --dry-run
+# read-only: preview incident-derived process-instance deletion
 c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
-c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --batch-size 250 --dry-run
-c8volt ops purge pi-with-incidents --state active --limit 5 --dry-run
-c8volt ops purge process-instances-with-incidents --automation --json --dry-run
-c8volt ops purge process-instances-with-incidents --dry-run --report-file incident-purge.md
-c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --auto-confirm --force
-c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --auto-confirm --force --workers 4 --report-file incident-purge.json --report-format json
+
+# destructive: deletes only the bounded incident-derived process-instance scope
+c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md
 ```
 
 ## Built From Lower-Level Commands

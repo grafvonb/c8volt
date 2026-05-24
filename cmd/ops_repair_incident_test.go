@@ -45,7 +45,8 @@ func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 		"--workers int",
 		"--no-worker-limit",
 		"--fail-fast",
-		"printf '%s\\n' \"$INCIDENT_KEY_A\" \"$INCIDENT_KEY_B\" | ./c8volt ops repair incident -",
+		"./c8volt ops repair incident --key <incident-key> --dry-run",
+		"./c8volt ops repair incident --key <incident-key> --vars '{\"hasIncident\":false}' --report-file repair-incident.md",
 	)
 
 	parentOutput := executeRootForProcessInstanceTest(t, "ops", "repair", "--help")

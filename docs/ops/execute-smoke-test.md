@@ -22,11 +22,14 @@ The recording previews the smoke-test workflow without touching the cluster, the
 
 <img src="../../assets/screencasts/ops-execute-smoke-test.gif" alt="c8volt ops execute smoke-test demo" />
 
-Core commands shown:
+Generic command shape:
 
 ```bash
+# read-only: preview the smoke-test workflow
 c8volt ops execute smoke-test --dry-run
-c8volt ops execute smoke-test --auto-confirm --report-file /tmp/c8volt-vhs/reports/smoke-test.md
+
+# harmless: deploys, runs, walks, and cleans up c8volt-owned smoke-test data
+c8volt ops execute smoke-test --report-file smoke-test.md
 ```
 
 ## Use When
@@ -39,13 +42,11 @@ c8volt ops execute smoke-test --auto-confirm --report-file /tmp/c8volt-vhs/repor
 ## Command At A Glance
 
 ```bash
+# read-only: preview the full smoke-test workflow
 c8volt ops execute smoke-test --dry-run
-c8volt ops execute smoke-test
-c8volt ops execute smoke-test --count 5
-c8volt ops execute smoke-test --no-cleanup
-c8volt ops execute smoke-test --dry-run --report-file smoke-test.md
-c8volt ops execute smoke-test --no-cleanup --report-file retained-smoke-test.md
-c8volt ops execute smoke-test --count 10 --automation --json --report-file smoke-test.json --report-format json
+
+# harmless: creates disposable smoke-test data and removes it during cleanup
+c8volt ops execute smoke-test --report-file smoke-test.md
 ```
 
 On Camunda 8.8, prefer `--no-cleanup`: smoke-test cleanup deletes the deployed process definition, and full process-definition deletion is supported by c8volt from Camunda 8.9 onward. On dirty clusters, retained or unrelated instances can also block cleanup planning.

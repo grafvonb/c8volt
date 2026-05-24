@@ -20,15 +20,10 @@ c8volt ops repair incident [flags]
 ### Examples
 
 ```
-  ./c8volt ops repair incident --key <incident-key>
-  ./c8volt ops repair inc --key <incident-key> --key <another-incident-key>
-  printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt ops repair incident -
-  ./c8volt ops repair incident --state active --error-type io_mapping_error --limit 5 --dry-run
-  ./c8volt ops repair incident --key <incident-key> --retries 0
-  ./c8volt ops repair incident --key <incident-key> --job-timeout 5m
   ./c8volt ops repair incident --key <incident-key> --dry-run
-  ./c8volt ops repair incident --key <incident-key> --auto-confirm --report-file repair-incident.md
-  ./c8volt --json ops repair incident --key <incident-key> --automation --dry-run
+  ./c8volt ops repair incident --state active --error-type io_mapping_error --limit 5 --dry-run
+  ./c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --dry-run
+  ./c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --report-file repair-incident.md
 ```
 
 ### Options

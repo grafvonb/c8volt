@@ -21,11 +21,9 @@ c8volt ops purge all-process-definitions [flags]
 
 ```
   ./c8volt ops purge all-process-definitions --dry-run
-  ./c8volt ops purge all-process-definitions --dry-run --report-file process-definition-purge.md
   ./c8volt ops purge all-pds --bpmn-process-id <bpmn-process-id> --latest --dry-run
-  ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --pd-version 3 --dry-run --report-file process-definition-purge.json --report-format json
-  ./c8volt ops purge all-process-definitions --automation --json --dry-run
-  ./c8volt ops purge all-process-definitions --key <process-definition-key> --auto-confirm --force --report-file process-definition-purge.md
+  ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --force
+  ./c8volt ops purge all-process-definitions --key <process-definition-key> --force --report-file process-definition-purge.md
 ```
 
 ### Options

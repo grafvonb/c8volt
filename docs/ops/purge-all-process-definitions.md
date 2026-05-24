@@ -24,11 +24,14 @@ The recording previews process-definition purge impact before deleting anything,
 
 <img src="../../assets/screencasts/ops-purge-all-process-definitions.gif" alt="c8volt ops purge all-process-definitions demo" />
 
-Core commands shown:
+Generic command shape:
 
 ```bash
-c8volt ops purge all-process-definitions --dry-run
-c8volt ops purge all-process-definitions --force --report-file /tmp/c8volt-vhs/reports/process-definition-purge.md
+# read-only: preview selected process definitions and process-instance impact
+c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
+
+# destructive: deletes the selected process definition scope after confirmation
+c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --force --report-file process-definition-purge.md
 ```
 
 ## Use When
@@ -41,13 +44,11 @@ c8volt ops purge all-process-definitions --force --report-file /tmp/c8volt-vhs/r
 ## Command At A Glance
 
 ```bash
-c8volt ops purge all-process-definitions --dry-run
-c8volt ops purge all-process-definitions --dry-run --report-file process-definition-purge.md
-c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --batch-size 250 --dry-run
+# read-only: preview selected process definitions and affected instances
 c8volt ops purge all-pds --bpmn-process-id <bpmn-process-id> --latest --dry-run
-c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --pd-version 3 --dry-run --report-file process-definition-purge.json --report-format json
-c8volt ops purge all-process-definitions --automation --json --dry-run
-c8volt ops purge all-process-definitions --key <process-definition-key> --auto-confirm --force --report-file process-definition-purge.md
+
+# destructive: deletes the selected process definition and affected scope after confirmation
+c8volt ops purge all-process-definitions --key <process-definition-key> --force --report-file process-definition-purge.md
 ```
 
 ## Built From Lower-Level Commands

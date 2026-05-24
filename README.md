@@ -130,7 +130,7 @@ cluster already has other data:
 ```bash
 ./c8volt config test-connection
 ./c8volt embed deploy --all
-./c8volt run pi -b C89_SimpleUserTask_Process
+./c8volt run pi -b <bpmn-process-id>
 ```
 
 Then look around at the latest process definitions visible in the cluster:

@@ -46,12 +46,8 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 		"The workflow discovers candidate incidents from incident filters, freezes the candidate process-instance keys, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Discovery pages through all matching incidents by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
 	Example: `  ./c8volt ops purge process-instances-with-incidents --dry-run
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
-  ./c8volt ops purge process-instances-with-incidents --state active --limit 5 --dry-run
-  ./c8volt ops purge pi-with-incidents --state active --dry-run
-  ./c8volt ops purge process-instances-with-incidents --automation --json --dry-run
-  ./c8volt ops purge process-instances-with-incidents --dry-run --report-file incident-purge.md
-  ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --auto-confirm --force
-  ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --auto-confirm --force --workers 4 --report-file incident-purge.json --report-format json`,
+  ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force
+  ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md`,
 	Aliases: []string{"pi-with-incidents", "piwi"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {

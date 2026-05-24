@@ -44,7 +44,8 @@ func TestOpsRepairProcessInstanceHelpDocumentsSelectionShape(t *testing.T) {
 		"--dry-run",
 		"--no-wait",
 		"--workers int",
-		"printf '%s\\n' \"$PI_KEY_A\" \"$PI_KEY_B\" | ./c8volt ops repair process-instance -",
+		"./c8volt ops repair process-instance --key <process-instance-key> --dry-run",
+		"./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id <bpmn-process-id> --limit 5 --dry-run",
 	)
 	require.NotContains(t, output, "--incidents-only")
 }

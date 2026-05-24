@@ -29,14 +29,14 @@ Search mode pages through all matching incidents by default. `--batch-size` cont
 ## Command At A Glance
 
 ```bash
+# read-only: preview one known incident repair
 c8volt ops repair incident --key <incident-key> --dry-run
-c8volt ops repair incident --key <incident-key> --retries 3 --job-timeout 5m --dry-run
-c8volt ops repair incident --state active --error-type io_mapping_error --batch-size 250 --dry-run
+
+# read-only: preview a bounded filtered repair scope
 c8volt ops repair incident --state active --error-type io_mapping_error --limit 5 --dry-run
-printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | c8volt ops repair incident - --dry-run
-c8volt ops repair incident --key <incident-key> --vars '{"approved":true}' --dry-run
-c8volt ops repair incident --key <incident-key> --auto-confirm --report-file repair-incident.md
-c8volt --automation --json ops repair incident --key <incident-key> --dry-run
+
+# destructive: updates requested repair data and resolves the selected incident after confirmation
+c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --report-file repair-incident.md
 ```
 
 ## Built From Lower-Level Commands
@@ -115,7 +115,7 @@ The VHS source is `demos/vhs/ops-repair-incident.tape`.
 
 ```bash
 c8volt ops repair incident --state active --limit 1 --dry-run
-c8volt ops repair incident --state active --limit 1 --auto-confirm --report-file /tmp/c8volt-vhs/reports/repair-incident.md
+c8volt ops repair incident --state active --limit 1 --report-file repair-incident.md
 ```
 
 ## Failure And Safety Notes

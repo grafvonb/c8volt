@@ -28,12 +28,8 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
 	Long: "Execute a cluster smoke test workflow.\n\n" +
 		"The workflow validates the configured profile, selects the embedded multiple-subprocess fixture for the configured Camunda version, deploys it, creates process instances, walks their families, and cleans up created resources unless --no-cleanup is set. Cleanup removes the deployed process definition and therefore requires Camunda 8.9 or newer; use --no-cleanup for Camunda 8.8 smoke runs. Use --dry-run to validate the requested plan without submitting mutation requests.",
 	Example: `  ./c8volt ops execute smoke-test --dry-run
-  ./c8volt ops execute smoke-test -n 5
-  ./c8volt ops execute smoke-test --count 5
-  ./c8volt ops execute smoke-test --no-cleanup
-  ./c8volt ops execute smoke-test --dry-run --report-file smoke-test.md
-  ./c8volt ops execute smoke-test --no-cleanup --report-file retained-smoke-test.md
-  ./c8volt ops execute smoke-test --count 10 --automation --json --report-file smoke-test.json --report-format json`,
+  ./c8volt ops execute smoke-test --report-file smoke-test.md
+  ./c8volt ops execute smoke-test --count 5 --report-file smoke-test.md`,
 	Aliases: []string{"st"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {

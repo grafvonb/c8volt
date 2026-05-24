@@ -31,15 +31,10 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 	Short: "Repair incidents selected by process instances",
 	Long: "Repair incidents selected by process instances.\n\n" +
 		"The command accepts repeated --key values, newline-separated process-instance keys from stdin with '-', or process-instance search filters. Search mode automatically limits discovery to incident-bearing process instances; use --direct-incidents-only for stricter direct active incident matching. Search mode pages through all matching incident-bearing process instances by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. The workflow builds a fixed target set of repairable process instances and active incidents before mutation, applies process-instance-scope variable updates once per unique scope when requested, then reuses the incident repair steps for job updates, incident resolution, and confirmation. Use --report-file with markdown or json output for an audit record of discovery, targets, duplicate handling, skipped keys, step statuses, notices, errors, and final outcome.",
-	Example: `  ./c8volt ops repair process-instance --key <process-instance-key>
-  ./c8volt ops repair pi --key <process-instance-key> --key <another-process-instance-key>
-  printf '%s\n' "$PI_KEY_A" "$PI_KEY_B" | ./c8volt ops repair process-instance -
+	Example: `  ./c8volt ops repair process-instance --key <process-instance-key> --dry-run
   ./c8volt ops repair process-instance --state active --limit 5 --dry-run
-  ./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id C88_SimpleUserTaskWithIncident_Process --limit 5 --dry-run
-  ./c8volt ops repair process-instance --key <process-instance-key> --retries 0
-  ./c8volt ops repair process-instance --key <process-instance-key> --job-timeout 5m
-  ./c8volt ops repair process-instance --key <process-instance-key> --auto-confirm --report-file repair-process-instance.md
-  ./c8volt --json ops repair process-instance --key <process-instance-key> --automation --dry-run`,
+  ./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id <bpmn-process-id> --limit 5 --dry-run
+  ./c8volt ops repair process-instance --key <process-instance-key> --vars '{"hasIncident":false}' --report-file repair-process-instance.md`,
 	Aliases: []string{"pi", "pis", "process-instances"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		if err := validateOptionalDashArg(args); err != nil {

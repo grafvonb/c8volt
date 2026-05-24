@@ -22,11 +22,14 @@ The recording previews the orphan process-instance purge before deleting anythin
 
 <img src="../../assets/screencasts/ops-purge-orphan-process-instances.gif" alt="c8volt ops purge orphan-process-instances demo" />
 
-Core commands shown:
+Generic command shape:
 
 ```bash
+# read-only: preview orphan cleanup
 c8volt ops purge orphan-process-instances --dry-run
-c8volt ops purge orphan-process-instances --report-file /tmp/c8volt-vhs/reports/orphan-purge.md
+
+# destructive: deletes the frozen orphan process-instance family scope after confirmation
+c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md
 ```
 
 ## Use When
@@ -39,12 +42,11 @@ c8volt ops purge orphan-process-instances --report-file /tmp/c8volt-vhs/reports/
 ## Command At A Glance
 
 ```bash
+# read-only: preview orphan cleanup
 c8volt ops purge orphan-process-instances --dry-run
-c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id <bpmn-process-id> --limit 25
-c8volt ops purge orphan-process-instances --automation --json --dry-run
-c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm
-c8volt ops purge orphan-process-instances --dry-run --report-file orphan-purge.md
-c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm --report-file orphan-purge.json --report-format json
+
+# destructive: deletes only the bounded orphan scope selected at command start
+c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md
 ```
 
 ## Built From Lower-Level Commands

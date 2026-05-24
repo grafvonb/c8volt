@@ -29,14 +29,14 @@ Search mode pages through all matching incident-bearing process instances by def
 ## Command At A Glance
 
 ```bash
+# read-only: preview repair for one known process instance
 c8volt ops repair process-instance --key <process-instance-key> --dry-run
-c8volt ops repair process-instance --key <process-instance-key> --retries 3 --job-timeout 5m --dry-run
-c8volt ops repair process-instance --state active --batch-size 250 --dry-run
-c8volt ops repair process-instance --state active --limit 5 --dry-run
+
+# read-only: preview a bounded direct-incident repair search
 c8volt ops repair process-instance --direct-incidents-only --state active --limit 5 --dry-run
-printf '%s\n' "$PI_KEY_A" "$PI_KEY_B" | c8volt ops repair process-instance - --dry-run
-c8volt ops repair process-instance --key <process-instance-key> --auto-confirm --report-file repair-process-instance.md
-c8volt --automation --json ops repair process-instance --key <process-instance-key> --dry-run
+
+# destructive: updates requested repair data and resolves active incidents after confirmation
+c8volt ops repair process-instance --key <process-instance-key> --vars '{"hasIncident":false}' --report-file repair-process-instance.md
 ```
 
 ## Built From Lower-Level Commands
@@ -112,7 +112,7 @@ The VHS source is `demos/vhs/ops-repair-process-instance.tape`.
 
 ```bash
 c8volt ops repair process-instance --direct-incidents-only --state active --limit 1 --dry-run
-c8volt ops repair process-instance --direct-incidents-only --state active --limit 1 --auto-confirm --report-file /tmp/c8volt-vhs/reports/repair-process-instance.md
+c8volt ops repair process-instance --direct-incidents-only --state active --limit 1 --report-file repair-process-instance.md
 ```
 
 ## Failure And Safety Notes

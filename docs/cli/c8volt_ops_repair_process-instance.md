@@ -20,15 +20,10 @@ c8volt ops repair process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt ops repair process-instance --key <process-instance-key>
-  ./c8volt ops repair pi --key <process-instance-key> --key <another-process-instance-key>
-  printf '%s\n' "$PI_KEY_A" "$PI_KEY_B" | ./c8volt ops repair process-instance -
+  ./c8volt ops repair process-instance --key <process-instance-key> --dry-run
   ./c8volt ops repair process-instance --state active --limit 5 --dry-run
-  ./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id C88_SimpleUserTaskWithIncident_Process --limit 5 --dry-run
-  ./c8volt ops repair process-instance --key <process-instance-key> --retries 0
-  ./c8volt ops repair process-instance --key <process-instance-key> --job-timeout 5m
-  ./c8volt ops repair process-instance --key <process-instance-key> --auto-confirm --report-file repair-process-instance.md
-  ./c8volt --json ops repair process-instance --key <process-instance-key> --automation --dry-run
+  ./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id <bpmn-process-id> --limit 5 --dry-run
+  ./c8volt ops repair process-instance --key <process-instance-key> --vars '{"hasIncident":false}' --report-file repair-process-instance.md
 ```
 
 ### Options

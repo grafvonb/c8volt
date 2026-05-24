@@ -59,7 +59,8 @@ func TestOpsPurgeProcessInstancesWithIncidentsHelpDocumentsCommandShape(t *testi
 		"--force",
 		"--report-file string",
 		"--report-format string",
-		"./c8volt ops purge process-instances-with-incidents --automation --json --dry-run",
+		"./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run",
+		"./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md",
 	)
 	assertHelpOutputOmitsAll(t, output,
 		"incident-pis",

@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.7.0-alpha1-233-g67106fa3-dirty`, commit `67106fa3`, built `2026-05-24T20:26:42Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt dev`, commit `none`, built `unknown` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -140,7 +140,7 @@ cluster already has other data:
 ```bash
 ./c8volt config test-connection
 ./c8volt embed deploy --all
-./c8volt run pi -b C89_SimpleUserTask_Process
+./c8volt run pi -b <bpmn-process-id>
 ```
 
 Then look around at the latest process definitions visible in the cluster:

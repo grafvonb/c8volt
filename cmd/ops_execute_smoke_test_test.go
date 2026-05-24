@@ -44,7 +44,8 @@ func TestOpsExecuteSmokeTestHelpDocumentsCommand(t *testing.T) {
 		"--report-file string",
 		"--report-format string",
 		"./c8volt ops execute smoke-test --dry-run",
-		"./c8volt ops execute smoke-test --count 10 --automation --json --report-file smoke-test.json --report-format json",
+		"./c8volt ops execute smoke-test --report-file smoke-test.md",
+		"./c8volt ops execute smoke-test --count 5 --report-file smoke-test.md",
 	)
 }
 

@@ -40,7 +40,8 @@ func TestOpsExecuteRetentionPolicyHelpDocumentsCommand(t *testing.T) {
 		"Execute process-instance retention cleanup",
 		"--retention-days int",
 		"./c8volt ops execute retention-policy --retention-days 90 --dry-run",
-		"./c8volt ops execute retention-policy --retention-days 90 --automation --json --dry-run",
+		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --dry-run",
+		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25 --report-file retention-report.md",
 	)
 	assertHelpOutputOmitsAll(t, commandOutput,
 		"./c8volt ops execute retention-policy --retention-days 90 --automation --json --no-wait",

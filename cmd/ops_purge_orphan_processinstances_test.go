@@ -35,7 +35,8 @@ func TestOpsPurgeOrphanProcessInstancesHelpDocumentsSafeAutomationPreview(t *tes
 
 	assertHelpOutputContainsAll(t, output,
 		"Purge orphan child process instances",
-		"./c8volt ops purge orphan-process-instances --automation --json --dry-run",
+		"./c8volt ops purge orphan-process-instances --dry-run",
+		"./c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md",
 	)
 	assertHelpOutputOmitsAll(t, output,
 		"./c8volt ops purge orphan-process-instances --automation --json\n",

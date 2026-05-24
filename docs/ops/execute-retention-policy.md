@@ -22,11 +22,14 @@ The recording previews retention cleanup before deleting anything, then runs the
 
 <img src="../../assets/screencasts/ops-execute-retention-policy.gif" alt="c8volt ops execute retention-policy demo" />
 
-Core commands shown:
+Generic command shape:
 
 ```bash
-c8volt ops execute retention-policy --retention-days 0 --dry-run
-c8volt ops execute retention-policy --retention-days 0 --auto-confirm --report-file /tmp/c8volt-vhs/reports/retention-report.md
+# read-only: preview the frozen retention scope
+c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id <bpmn-process-id> --state completed --limit 25 --dry-run
+
+# destructive: deletes the previewed completed process-instance scope after confirmation
+c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id <bpmn-process-id> --state completed --limit 25 --report-file retention-report.md
 ```
 
 ## Use When
@@ -39,11 +42,11 @@ c8volt ops execute retention-policy --retention-days 0 --auto-confirm --report-f
 ## Command At A Glance
 
 ```bash
+# read-only: preview old completed process instances without mutation
 c8volt ops execute retention-policy --retention-days 90 --dry-run
-c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id <bpmn-process-id> --state completed --limit 25 --auto-confirm
-c8volt ops execute retention-policy --retention-days 90 --automation --json --dry-run
-c8volt ops execute retention-policy --retention-days 90 --dry-run --report-file retention-report.md
-c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id <bpmn-process-id> --state completed --limit 25 --auto-confirm --report-file retention-report.json --report-format json
+
+# destructive: deletes only the bounded completed scope selected at command start
+c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id <bpmn-process-id> --state completed --limit 25 --report-file retention-report.md
 ```
 
 ## Built From Lower-Level Commands
