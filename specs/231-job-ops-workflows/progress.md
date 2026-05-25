@@ -5,6 +5,7 @@ Started: 2026-05-25 15:34:07
 
 ## Codebase Patterns
 
+- Final validation for this feature can use `GOCACHE=/private/tmp/c8volt-go-build-cache` for both targeted tests and `make test`; `make test` runs the full repository with `go test ./... -race -count=1`.
 - Completion worker outcomes use the same `SubmitJobWorkerOutcome` path as failure and BPMN error; v8.8/v8.9 generated completion requests require a variables object, so omitted `--vars` is submitted as an empty object.
 - BPMN error worker outcomes reuse the existing `SubmitJobWorkerOutcome` facade and mutation-plan path; command parsing owns JSON object validation for `--vars`, while v8.8/v8.9 services own generated `ThrowJobErrorWithResponse` request construction.
 - `cmd/get_job.go` currently owns keyed-only validation, full contract support, and the `--error-message-limit` JSON exclusion; list/search mode should extend this local flag grammar without bypassing the facade.
@@ -289,4 +290,25 @@ Started: 2026-05-25 15:34:07
 - Command capability metadata inherits global output flags unless a command sets explicit output modes.
 - `make docs-content VERSION=dev COMMIT=none DATE=unknown` refreshes generated docs without introducing transient dirty build metadata into `docs/index.md`.
 - Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/job ./internal/services ./internal/services/job ./internal/services/job/v87 ./internal/services/job/v88 ./internal/services/job/v89 -count=1` and `git diff --check`.
+---
+
+---
+## Iteration 9 - 2026-05-25 16:43:29 CEST
+**User Story**: Phase 9: Polish & Cross-Cutting Validation
+**Tasks Completed**:
+- [x] T073: Run gofmt for changed Go files
+- [x] T074: Run targeted Go tests for changed packages
+- [x] T075: Run `make docs-content`
+- [x] T076: Run `make test`
+- [x] T077: Review quickstart against implemented behavior
+- [x] T078: Review `git diff` scope
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- specs/231-job-ops-workflows/tasks.md
+- specs/231-job-ops-workflows/progress.md
+**Learnings**:
+- `gofmt` and stable docs generation produced no source or generated documentation diffs after the user story commits.
+- Quickstart examples already matched the implemented flags, version behavior, and validation commands, so no quickstart edits were needed.
+- Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/job ./internal/domain ./internal/services/job ./internal/services/job/v87 ./internal/services/job/v88 ./internal/services/job/v89 -count=1`, `make docs-content VERSION=dev COMMIT=none DATE=unknown`, `GOCACHE=/private/tmp/c8volt-go-build-cache make test`, and `git diff --check`.
 ---

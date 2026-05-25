@@ -205,12 +205,12 @@
 
 **Purpose**: Final cleanup, generated docs, and repository validation.
 
-- [ ] T073 [P] Run gofmt for changed Go files under `cmd/`, `c8volt/job/`, `internal/domain/`, and `internal/services/job/`
-- [ ] T074 Run targeted Go tests for changed packages in `cmd/`, `c8volt/job/`, `internal/domain/`, `internal/services/job/`, `internal/services/job/v87/`, `internal/services/job/v88/`, and `internal/services/job/v89/`
-- [ ] T075 Run `make docs-content` for README/docs command metadata changes affecting `docs/cli/`
-- [ ] T076 Run `make test` for repository validation from the repository root
-- [ ] T077 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update examples if flags or validation commands changed
-- [ ] T078 Review `git diff` to ensure changes are scoped to issue #231 artifacts, implementation, tests, README, and generated docs
+- [x] T073 [P] Run gofmt for changed Go files under `cmd/`, `c8volt/job/`, `internal/domain/`, and `internal/services/job/`
+- [x] T074 Run targeted Go tests for changed packages in `cmd/`, `c8volt/job/`, `internal/domain/`, `internal/services/job/`, `internal/services/job/v87/`, `internal/services/job/v88/`, and `internal/services/job/v89/`
+- [x] T075 Run `make docs-content` for README/docs command metadata changes affecting `docs/cli/`
+- [x] T076 Run `make test` for repository validation from the repository root
+- [x] T077 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update examples if flags or validation commands changed
+- [x] T078 Review `git diff` to ensure changes are scoped to issue #231 artifacts, implementation, tests, README, and generated docs
 
 ---
 
