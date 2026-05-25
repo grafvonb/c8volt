@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.7.0-alpha1-260-g8bf8346a`, commit `8bf8346a`, built `2026-05-25T17:27:00Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.7.0-alpha1-267-ged3aae36`, commit `ed3aae36`, built `2026-05-25T19:28:24Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -212,7 +212,8 @@ Process-instance variable updates are available on Camunda `8.8` and `8.9`. Camu
 
 ```bash
 ./c8volt get job --key <job-key>
-./c8volt get job --state failed --limit 50
+./c8volt get job --state failed --batch-size 10 --limit 50
+./c8volt get job --state failed --total
 ./c8volt get job --type payment-worker --worker worker-a
 ./c8volt get job --kind task_listener --listener-event-type completing
 ./c8volt --json get job --key <job-key>
@@ -224,7 +225,7 @@ Process-instance variable updates are available on Camunda `8.8` and `8.9`. Camu
 ./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run
 ```
 
-Use `get job --key` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Omit `--key` to list or search jobs with filters such as `--state`, `--type`, `--pi-key`, `--element-instance-key`, `--element-id`, `--worker`, `--retries`, `--kind`, `--listener-event-type`, and `--limit`; `--keys-only` emits one job key per line for pipelines. Job output keeps the full error message by default; use `--error-message-limit` when terminal output should be shortened.
+Use `get job --key` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Omit `--key` to list or search jobs with filters such as `--state`, `--type`, `--pi-key`, `--element-instance-key`, `--element-id`, `--worker`, `--retries`, `--kind`, and `--listener-event-type`. Search mode pages through matching jobs by default: `--batch-size` or `-n` tunes the per-request page size, while `--limit` or `-l` caps the total returned rows. Use `--total` when a script needs only the matching count, and `--keys-only` when piping job keys. Job output keeps the full error message by default; use `--error-message-limit` when terminal output should be shortened.
 
 `update job` supports retry and timeout changes plus worker outcome modes on Camunda `8.8` and `8.9`: `--fail`, `--throw-bpmn-error`, and `--complete`. Retry changes are confirmed by reading the job by key by default, while timeout changes and worker outcomes report accepted submission without claiming a stable read-model confirmation. Use `--dry-run` to preview the plan without mutation, and `--auto-confirm` or `--automation` for unattended mutations. Camunda `8.7` returns an unsupported-version error for job search and worker outcome paths before unsupported mutation requests are submitted.
 
@@ -679,7 +680,8 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 
 # Inspect and update jobs from incident job keys.
 ./c8volt get job --key <job-key>
-./c8volt get job --state failed --limit 50
+./c8volt get job --state failed --batch-size 10 --limit 50
+./c8volt get job --state failed --total
 ./c8volt update job --key <job-key> --retries 3 --dry-run
 ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
 ./c8volt update job --key <job-key> --retries 3 --auto-confirm
