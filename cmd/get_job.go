@@ -59,9 +59,12 @@ var getJobCmd = &cobra.Command{
 			}
 			return
 		}
-		result, err := cli.SearchJobs(cmd.Context(), newGetJobSearchRequest(cmd), collectOptions()...)
+		result, renderedIncrementally, err := searchJobsWithPaging(cmd, cli, newGetJobSearchRequest(cmd))
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get jobs: %w", err))
+		}
+		if renderedIncrementally {
+			return
 		}
 		if err := jobsView(cmd, result); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render jobs: %w", err))

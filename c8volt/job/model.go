@@ -58,6 +58,24 @@ type SearchResult struct {
 	Limit int32 `json:"limit"`
 }
 
+type PageRequest struct {
+	From int32 `json:"from,omitempty"`
+	Size int32 `json:"size,omitempty"`
+}
+
+type OverflowState string
+
+const (
+	OverflowStateNoMore  OverflowState = "no_more"
+	OverflowStateHasMore OverflowState = "has_more"
+)
+
+type Page struct {
+	Items         []Job         `json:"items"`
+	Request       PageRequest   `json:"request,omitempty"`
+	OverflowState OverflowState `json:"overflowState,omitempty"`
+}
+
 type UpdateRequest struct {
 	Key              string
 	Retries          *int32

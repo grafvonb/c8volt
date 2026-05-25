@@ -20,6 +20,7 @@ import (
 type fakeJobService struct {
 	get     func(context.Context, string, ...services.CallOption) (d.Job, error)
 	search  func(context.Context, d.JobSearchQuery, ...services.CallOption) (d.JobSearchResult, error)
+	page    func(context.Context, d.JobSearchQuery, d.JobPageRequest, ...services.CallOption) (d.JobSearchPage, error)
 	update  func(context.Context, d.JobUpdateRequest, ...services.CallOption) (d.JobUpdateResult, error)
 	outcome func(context.Context, d.JobWorkerOutcomeRequest, ...services.CallOption) (d.JobWorkerOutcomeResult, error)
 }
@@ -33,6 +34,13 @@ func (f fakeJobService) SearchJobs(ctx context.Context, request d.JobSearchQuery
 		return d.JobSearchResult{}, errors.New("unexpected search")
 	}
 	return f.search(ctx, request, opts...)
+}
+
+func (f fakeJobService) SearchJobsPage(ctx context.Context, request d.JobSearchQuery, page d.JobPageRequest, opts ...services.CallOption) (d.JobSearchPage, error) {
+	if f.page == nil {
+		return d.JobSearchPage{}, errors.New("unexpected search page")
+	}
+	return f.page(ctx, request, page, opts...)
 }
 
 func (f fakeJobService) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error) {

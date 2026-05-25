@@ -98,10 +98,6 @@ func (s *Service) GetJob(ctx context.Context, key string, opts ...services.CallO
 func (s *Service) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error) {
 	_ = services.ApplyCallOptions(opts)
 
-	filter, err := newJobSearchFilter(query)
-	if err != nil {
-		return d.JobSearchResult{}, err
-	}
 	batchSize := query.BatchSize
 	if batchSize <= 0 {
 		batchSize = consts.MaxPISearchSize
@@ -114,31 +110,53 @@ func (s *Service) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts .
 		if pageLimit <= 0 {
 			break
 		}
-		page := newSearchQueryPageRequest(from, pageLimit)
-		resp, err := s.c.SearchJobsWithResponse(ctx, camundav89.SearchJobsJSONRequestBody{
-			Filter: filter,
-			Page:   &page,
-		})
+		page, err := s.SearchJobsPage(ctx, query, d.JobPageRequest{From: from, Size: pageLimit}, opts...)
 		if err != nil {
 			return d.JobSearchResult{}, err
 		}
-		payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
-		if err != nil {
-			return d.JobSearchResult{}, err
-		}
-		items = append(items, fromJobSearchResults(payload.Items)...)
+		items = append(items, page.Items...)
 		if limit > 0 && int32(len(items)) >= limit {
 			break
 		}
-		itemCount := len(payload.Items)
-		if !jobSearchHasMore(payload.Page, from, itemCount, pageLimit) {
+		if page.OverflowState != d.ProcessInstanceOverflowStateHasMore {
 			break
 		}
-		from += int32(itemCount)
+		from += int32(len(page.Items))
 	}
 	return d.JobSearchResult{
 		Items: items,
 		Limit: limit,
+	}, nil
+}
+
+func (s *Service) SearchJobsPage(ctx context.Context, query d.JobSearchQuery, pageReq d.JobPageRequest, opts ...services.CallOption) (d.JobSearchPage, error) {
+	_ = services.ApplyCallOptions(opts)
+
+	filter, err := newJobSearchFilter(query)
+	if err != nil {
+		return d.JobSearchPage{}, err
+	}
+	pageSize := pageReq.Size
+	if pageSize <= 0 {
+		pageSize = consts.MaxPISearchSize
+	}
+	page := newSearchQueryPageRequest(pageReq.From, pageSize)
+	resp, err := s.c.SearchJobsWithResponse(ctx, camundav89.SearchJobsJSONRequestBody{
+		Filter: filter,
+		Page:   &page,
+	})
+	if err != nil {
+		return d.JobSearchPage{}, err
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.JobSearchPage{}, err
+	}
+	items := trimJobSearchPageResults(payload.Items, payload.Page, pageReq.From, pageSize)
+	return d.JobSearchPage{
+		Items:         fromJobSearchResults(items),
+		Request:       d.JobPageRequest{From: pageReq.From, Size: pageSize},
+		OverflowState: pickJobSearchOverflowState(payload.Page, pageReq.From, len(items), pageSize),
 	}, nil
 }
 
@@ -160,15 +178,35 @@ func nextJobSearchPageLimit(batchSize int32, limit int32, loaded int32) int32 {
 	return batchSize
 }
 
-func jobSearchHasMore(page camundav89.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) bool {
+func trimJobSearchPageResults(items []camundav89.JobSearchResult, page camundav89.SearchQueryPageResponse, from int32, pageSize int32) []camundav89.JobSearchResult {
+	if pageSize <= 0 || len(items) <= int(pageSize) {
+		return items
+	}
+	if page.TotalItems == int64(len(items)) && from > 0 {
+		start := int(from)
+		if start >= len(items) {
+			return nil
+		}
+		items = items[start:]
+	}
+	if len(items) > int(pageSize) {
+		return items[:pageSize]
+	}
+	return items
+}
+
+func pickJobSearchOverflowState(page camundav89.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) d.ProcessInstanceOverflowState {
 	if itemCount == 0 {
-		return false
+		return d.ProcessInstanceOverflowStateNoMore
 	}
 	nextFrom := int64(from) + int64(itemCount)
 	if page.TotalItems > nextFrom {
-		return true
+		return d.ProcessInstanceOverflowStateHasMore
 	}
-	return page.HasMoreTotalItems && itemCount >= int(pageSize)
+	if page.HasMoreTotalItems && itemCount >= int(pageSize) {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
+	return d.ProcessInstanceOverflowStateNoMore
 }
 
 func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error) {

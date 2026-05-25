@@ -58,6 +58,17 @@ type JobSearchResult struct {
 	Limit int32 `json:"limit"`
 }
 
+type JobPageRequest struct {
+	From int32
+	Size int32
+}
+
+type JobSearchPage struct {
+	Items         []Job
+	Request       JobPageRequest
+	OverflowState ProcessInstanceOverflowState
+}
+
 type JobUpdateRequest struct {
 	Key               string
 	Retries           *int32

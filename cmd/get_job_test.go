@@ -155,7 +155,7 @@ func TestGetJobCommand_SearchModeBatchSizeShorthandPagesUntilComplete(t *testing
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "get", "job", "-n", "2")
+	output := executeRootForJobTest(t, "--config", cfgPath, "--auto-confirm", "get", "job", "-n", "2")
 
 	require.Contains(t, output, "2251799813711967")
 	require.Contains(t, output, "2251799813711968")
