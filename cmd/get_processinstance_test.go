@@ -1699,7 +1699,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "demo v3")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-03-23T18:01:00.000 (48 days ago) fn:task-a fni:element-123 m:No retries left")
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-03-23T18:01:00.000 (48 days ago) e:task-a ei:element-123 m:No retries left")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -1968,7 +1968,7 @@ func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(
 	require.Contains(t, output, "│  ├─ businessKey=2234809392328")
 	require.Contains(t, output, "│  └─ hasIncident=true")
 	require.Contains(t, output, "└─ incidents:")
-	require.Contains(t, output, "   └─ incident-123 IO_MAPPING_ERROR ACTIVE j:n/a fn:task-a fni:element-123 m:No retries left")
+	require.Contains(t, output, "   └─ incident-123 IO_MAPPING_ERROR ACTIVE j:n/a e:task-a ei:element-123 m:No retries left")
 	require.Contains(t, output, "found: 1")
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
@@ -2088,8 +2088,8 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 			wantMessages: []string{
 				"└─ incidents:",
-				"├─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a 2026-03-23T18:01:00.000 (48 days ago) fn:task-a fni:element-123 m:No retries left",
-				"└─ incident-124 EXTRACT_VALUE_ERROR ACTIVE j:n/a 2026-03-23T18:02:00.000 (48 days ago) fn:task-b fni:element-124 m:Gateway failed",
+				"├─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a 2026-03-23T18:01:00.000 (48 days ago) e:task-a ei:element-123 m:No retries left",
+				"└─ incident-124 EXTRACT_VALUE_ERROR ACTIVE j:n/a 2026-03-23T18:02:00.000 (48 days ago) e:task-b ei:element-124 m:Gateway failed",
 			},
 		},
 		{
@@ -2178,7 +2178,9 @@ func TestGetProcessInstanceWithIncidents_JSONOutputShowsIncidentDetails(t *testi
 	require.Equal(t, "incident-123", incident["incidentKey"])
 	require.Equal(t, "123", incident["processInstanceKey"])
 	require.Equal(t, "No retries left", incident["errorMessage"])
-	require.Equal(t, "task-a", incident["flowNodeId"])
+	require.Equal(t, "task-a", incident["elementId"])
+	require.Equal(t, "element-123", incident["elementInstanceKey"])
+	require.NotContains(t, output, "flowNode")
 }
 
 // TestGetProcessInstanceWithIncidents_JSONOutputAssociatesMultipleKeys prevents incident details from crossing keyed lookup boundaries.
@@ -2314,7 +2316,7 @@ func TestGetProcessInstanceJSONWithIncidents_ListSearchUsesEnrichedPayloadShape(
 	require.Equal(t, "incident-123", firstIncident["incidentKey"])
 	require.Equal(t, "123", firstIncident["processInstanceKey"])
 	require.Equal(t, "First direct incident", firstIncident["errorMessage"])
-	require.Equal(t, "task-a", firstIncident["flowNodeId"])
+	require.Equal(t, "task-a", firstIncident["elementId"])
 
 	second := requireJSONObject(t, items[1])
 	secondItem := requireJSONObject(t, second["item"])
@@ -2324,7 +2326,7 @@ func TestGetProcessInstanceJSONWithIncidents_ListSearchUsesEnrichedPayloadShape(
 	require.Equal(t, "incident-124", secondIncident["incidentKey"])
 	require.Equal(t, "124", secondIncident["processInstanceKey"])
 	require.Equal(t, "Second direct incident", secondIncident["errorMessage"])
-	require.Equal(t, "task-b", secondIncident["flowNodeId"])
+	require.Equal(t, "task-b", secondIncident["elementId"])
 }
 
 func TestGetProcessInstanceJSONWithIncidents_IncidentMessageLimitKeepsFullMessages(t *testing.T) {
@@ -2432,7 +2434,7 @@ func TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault(t *testi
 		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		_, _ = w.Write([]byte(`{"hasIncident":true,"parentElementInstanceKey":"ei-parent","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
 	}))
 	t.Cleanup(srv.Close)
 
@@ -2508,7 +2510,7 @@ func TestGetProcessInstanceWithoutIncidents_JSONOutputPreservesDefaultShape(t *t
 		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		_, _ = w.Write([]byte(`{"hasIncident":true,"parentElementInstanceKey":"ei-parent","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
 	}))
 	t.Cleanup(srv.Close)
 
@@ -2535,7 +2537,10 @@ func TestGetProcessInstanceWithoutIncidents_JSONOutputPreservesDefaultShape(t *t
 	item := requireJSONObject(t, items[0])
 	require.Equal(t, "123", item["key"])
 	require.Equal(t, true, item["incident"])
+	require.Equal(t, "ei-parent", item["parentElementInstanceKey"])
 	require.NotContains(t, item, "incidents")
+	require.NotContains(t, item, "parentFlowNodeInstanceKey")
+	require.NotContains(t, output, "parentFlowNodeInstanceKey")
 }
 
 // TestGetProcessInstanceSearchIncidentFilters_PreserveDefaultSearchMode keeps incident presence filters on the paged search path.

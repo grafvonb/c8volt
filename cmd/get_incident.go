@@ -26,8 +26,8 @@ var (
 	flagGetIncidentRootKey            string
 	flagGetIncidentPDKey              string
 	flagGetIncidentBpmnProcessID      string
-	flagGetIncidentFlowNodeID         string
-	flagGetIncidentFNIKey             string
+	flagGetIncidentElementID          string
+	flagGetIncidentElementInstanceKey string
 	flagGetIncidentCreationTimeAfter  string
 	flagGetIncidentCreationTimeBefore string
 	flagGetIncidentSize               int32
@@ -40,7 +40,7 @@ var getIncidentCmd = &cobra.Command{
 	Short: "List or fetch incidents",
 	Long: "Get Camunda incidents by key or by search criteria.\n\n" +
 		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once and rendered through the shared get output modes.\n\n" +
-		"When no keys are supplied, incidents are searched by state, error type, error message, process context, flow-node context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions.\n\n" +
+		"When no keys are supplied, incidents are searched by state, error type, error message, process context, element context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions.\n\n" +
 		"When --bpmn-process-id is supplied in search mode, the BPMN process definition selector is validated before incident totals, key-only output, process-instance-key output, or paging. Missing or invisible definitions fail explicitly; --json, --automation, --keys-only, --pi-keys-only, and non-TTY runs never prompt for recovery output.\n\n" +
 		"Use --json for the stable incident payload, --keys-only for incident keys, --pi-keys-only for process instance keys, --error-message-limit to shorten long error messages, or --with-no-error-message to omit them.",
 	Example: `  ./c8volt get incident --key <incident-key>
@@ -53,7 +53,7 @@ var getIncidentCmd = &cobra.Command{
   ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel pi --dry-run -
   ./c8volt get incident --error-message "intentional" --limit 5
   ./c8volt get incident --creation-time-after 2026-05-01T00:00:00Z --creation-time-before 2026-05-31T00:00:00Z --limit 5
-  ./c8volt get incident --pi-key <process-instance-key> --flow-node-id <flow-node-id>
+  ./c8volt get incident --pi-key <process-instance-key> --element-id <element-id>
   ./c8volt --json get incident --key <incident-key>
   ./c8volt --keys-only get incident --key <incident-key>`,
 	Aliases: []string{"incidents", "inc"},
@@ -161,8 +161,8 @@ func init() {
 	fs.StringVar(&flagGetIncidentPDKey, "pd-key", "", "process definition key to filter incidents")
 	fs.StringVar(&flagGetIncidentPIKey, "pi-key", "", "process instance key to filter incidents")
 	fs.StringVar(&flagGetIncidentRootKey, "root-key", "", "root process instance key to filter incidents")
-	fs.StringVar(&flagGetIncidentFlowNodeID, "flow-node-id", "", "flow node ID to filter incidents")
-	fs.StringVar(&flagGetIncidentFNIKey, "fni-key", "", "flow node instance key to filter incidents")
+	fs.StringVar(&flagGetIncidentElementID, "element-id", "", "BPMN element ID to filter incidents")
+	fs.StringVar(&flagGetIncidentElementInstanceKey, "element-instance-key", "", "element instance key to filter incidents")
 	fs.StringVar(&flagGetIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD")
 	fs.StringVar(&flagGetIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD")
 	fs.Int32VarP(&flagGetIncidentSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
@@ -222,10 +222,10 @@ func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 		return mutuallyExclusiveFlagsf("--key cannot be combined with search filters")
 	}
 	for flag, value := range map[string]string{
-		"--pi-key":   flagGetIncidentPIKey,
-		"--root-key": flagGetIncidentRootKey,
-		"--pd-key":   flagGetIncidentPDKey,
-		"--fni-key":  flagGetIncidentFNIKey,
+		"--pi-key":               flagGetIncidentPIKey,
+		"--root-key":             flagGetIncidentRootKey,
+		"--pd-key":               flagGetIncidentPDKey,
+		"--element-instance-key": flagGetIncidentElementInstanceKey,
 	} {
 		if value == "" {
 			continue
@@ -310,8 +310,8 @@ func hasGetIncidentSearchModeFlags(cmd *cobra.Command) bool {
 		"root-key",
 		"pd-key",
 		"bpmn-process-id",
-		"flow-node-id",
-		"fni-key",
+		"element-id",
+		"element-instance-key",
 		"creation-time-after",
 		"creation-time-before",
 		"batch-size",
@@ -335,8 +335,8 @@ func populateGetIncidentSearchFilter() incident.Filter {
 		RootProcessInstanceKey: flagGetIncidentRootKey,
 		ProcessDefinitionKey:   flagGetIncidentPDKey,
 		ProcessDefinitionId:    flagGetIncidentBpmnProcessID,
-		FlowNodeId:             flagGetIncidentFlowNodeID,
-		FlowNodeInstanceKey:    flagGetIncidentFNIKey,
+		ElementId:              flagGetIncidentElementID,
+		ElementInstanceKey:     flagGetIncidentElementInstanceKey,
 		CreationTimeAfter:      flagGetIncidentCreationTimeAfter,
 		CreationTimeBefore:     flagGetIncidentCreationTimeBefore,
 	}
@@ -354,8 +354,8 @@ func resetGetIncidentFlagState() {
 	flagGetIncidentRootKey = ""
 	flagGetIncidentPDKey = ""
 	flagGetIncidentBpmnProcessID = ""
-	flagGetIncidentFlowNodeID = ""
-	flagGetIncidentFNIKey = ""
+	flagGetIncidentElementID = ""
+	flagGetIncidentElementInstanceKey = ""
 	flagGetIncidentCreationTimeAfter = ""
 	flagGetIncidentCreationTimeBefore = ""
 	flagGetIncidentSize = consts.MaxPISearchSize

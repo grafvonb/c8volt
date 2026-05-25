@@ -105,13 +105,43 @@ func TestGetIncidentMapsDetail(t *testing.T) {
 		State:                  "ACTIVE",
 		ErrorType:              "JOB_NO_RETRIES",
 		ErrorMessage:           "no retries left",
-		FlowNodeId:             "task-a",
-		FlowNodeInstanceKey:    "2251799813685252",
+		ElementId:              "task-a",
+		ElementInstanceKey:     "2251799813685252",
 		JobKey:                 "2251799813685251",
 		RootProcessInstanceKey: "2251799813685250",
 		ProcessDefinitionKey:   "2251799813685253",
 		ProcessDefinitionId:    "order-process",
 	}, got)
+}
+
+func TestSearchIncidentsPageKeepsAdapterBoundaryElementFields(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
+			require.Nil(t, body.Filter)
+			return &camundav88.SearchIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200: &camundav88.IncidentSearchQueryResult{
+					Items: []camundav88.IncidentResult{{
+						IncidentKey:        "2251799813685249",
+						ProcessInstanceKey: "2251799813685250",
+						State:              camundav88.IncidentStateEnumACTIVE,
+						ElementId:          "task-a",
+						ElementInstanceKey: "2251799813685252",
+					}},
+					Page: camundav88.SearchQueryPageResponse{TotalItems: 1},
+				},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{}, d.IncidentPageRequest{Size: 10})
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 1)
+	require.Equal(t, "task-a", got.Items[0].ElementId)
+	require.Equal(t, "2251799813685252", got.Items[0].ElementInstanceKey)
 }
 
 func TestWaitForIncidentResolvedPollsUntilNotFound(t *testing.T) {
@@ -297,8 +327,8 @@ func TestSearchIncidentsPageUsesTopLevelEndpointAndLocalCompatibilityFilters(t *
 		RootProcessInstanceKey: "root-a",
 		ProcessDefinitionKey:   "pd-key",
 		ProcessDefinitionId:    "pd-id",
-		FlowNodeId:             "task-a",
-		FlowNodeInstanceKey:    "fni-a",
+		ElementId:              "task-a",
+		ElementInstanceKey:     "fni-a",
 		CreationTimeAfter:      "2026-05-09T09:00:00Z",
 		CreationTimeBefore:     "2026-05-09T11:00:00Z",
 	}, d.IncidentPageRequest{From: 25, Size: 10})
@@ -465,8 +495,8 @@ func TestSearchIncidentsPageDoesNotSendBrokenV88FilterShapeForLocalFilters(t *te
 		RootProcessInstanceKey: "root-a",
 		ProcessDefinitionKey:   "pd-key",
 		ProcessDefinitionId:    "pd-id",
-		FlowNodeId:             "task-a",
-		FlowNodeInstanceKey:    "fni-a",
+		ElementId:              "task-a",
+		ElementInstanceKey:     "fni-a",
 	}, d.IncidentPageRequest{Size: 10})
 
 	require.NoError(t, err)

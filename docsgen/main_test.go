@@ -393,12 +393,19 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 	for _, want := range []string{
 		"Repair incidents by key",
 		"--key strings",
+		"--element-id string",
+		"--element-instance-key string",
 		"--retries int32",
 		"--job-timeout string",
 		"[c8volt ops repair](c8volt_ops_repair)",
 	} {
 		if !strings.Contains(repairIncidentDoc, want) {
 			t.Fatalf("expected generated ops repair incident docs to contain %q, got %q", want, repairIncidentDoc)
+		}
+	}
+	for _, unwanted := range []string{"--flow-node-id", "--fni-key"} {
+		if strings.Contains(repairIncidentDoc, unwanted) {
+			t.Fatalf("expected generated ops repair incident docs to omit %q", unwanted)
 		}
 	}
 	repairProcessInstanceDoc := readGeneratedDocForTest(t, out, "c8volt_ops_repair_process-instance.md")
@@ -461,6 +468,8 @@ func TestGeneratedOpsPagedDiscoveryDocsDocumentHelp(t *testing.T) {
 				"Discovery pages through all matching incidents by default.",
 				"--batch-size tunes per-page discovery requests only",
 				"--limit intentionally caps the frozen scope",
+				"--element-id string",
+				"--element-instance-key string",
 				"number of incidents to inspect per discovery page; does not cap total frozen scope",
 				"maximum number of matching incidents to freeze before candidate process-instance dedupe; omit to discover all matches",
 			},
@@ -472,6 +481,8 @@ func TestGeneratedOpsPagedDiscoveryDocsDocumentHelp(t *testing.T) {
 				"Search mode pages through all matching incidents by default.",
 				"--batch-size tunes per-page discovery requests only",
 				"--limit intentionally caps the frozen scope",
+				"--element-id string",
+				"--element-instance-key string",
 				"number of incidents to inspect per discovery page; does not cap total frozen scope",
 				"maximum number of matching incidents to freeze for repair; omit to discover all matches",
 			},
@@ -506,6 +517,11 @@ func TestGeneratedOpsPagedDiscoveryDocsDocumentHelp(t *testing.T) {
 			for _, want := range tt.fragments {
 				if !strings.Contains(got, want) {
 					t.Fatalf("expected generated docs to contain %q, got %q", want, got)
+				}
+			}
+			for _, unwanted := range []string{"--flow-node-id", "--fni-key"} {
+				if strings.Contains(got, unwanted) {
+					t.Fatalf("expected generated docs to omit %q, got %q", unwanted, got)
 				}
 			}
 		})

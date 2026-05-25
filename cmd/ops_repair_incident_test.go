@@ -32,6 +32,8 @@ func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 		"--key strings",
 		"--state string",
 		"--error-type string",
+		"--element-id string",
+		"--element-instance-key string",
 		"--batch-size int32",
 		"--limit int32",
 		"--retries int32",
@@ -52,6 +54,22 @@ func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 	parentOutput := executeRootForProcessInstanceTest(t, "ops", "repair", "--help")
 	require.NotContains(t, parentOutput, "--key strings")
 	require.NotContains(t, parentOutput, "--retries int32")
+	require.NotContains(t, output, "--flow-node-id")
+	require.NotContains(t, output, "--fni-key")
+}
+
+func TestOpsRepairIncidentRejectsLegacyFlowNodeFilterFlags(t *testing.T) {
+	tests := []string{"--flow-node-id", "--fni-key"}
+	for _, flag := range tests {
+		t.Run(flag, func(t *testing.T) {
+			output, err := executeRootExpectErrorForTest(t, "ops", "repair", "incident", flag, "legacy-value")
+			require.Error(t, err)
+			if output == "" {
+				output = err.Error()
+			}
+			require.Contains(t, output, "unknown flag: "+flag)
+		})
+	}
 }
 
 // TestOpsRepairIncidentDryRunWritesJSONReport verifies dry-run reports write structured audit data without mutation.
@@ -74,8 +92,15 @@ func TestOpsRepairIncidentDryRunWritesJSONReport(t *testing.T) {
 	require.Contains(t, string(output), `"reportFormat": "json"`)
 	require.Contains(t, string(output), `"jobKeys": [`)
 	require.Contains(t, string(output), `"retryUpdateStatus": "not_applicable"`)
+	require.Contains(t, string(output), `"elementId": "task-a"`)
+	require.Contains(t, string(output), `"elementInstanceKey": "2251799813685300"`)
+	require.NotContains(t, string(output), "flowNode")
 	var report map[string]any
-	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportFile)), &report))
+	reportData := readReportFile(t, reportFile)
+	require.Contains(t, reportData, `"elementId": "task-a"`)
+	require.Contains(t, reportData, `"elementInstanceKey": "2251799813685300"`)
+	require.NotContains(t, reportData, "flowNode")
+	require.NoError(t, json.Unmarshal([]byte(reportData), &report))
 	require.Equal(t, "ops.repair.v1", report["schemaVersion"])
 	require.Equal(t, "ops repair incident", report["commandName"])
 	require.Equal(t, "planned", report["outcome"])
@@ -413,8 +438,8 @@ func resetOpsRepairIncidentFlagState() {
 	flagOpsRepairIncidentRootKey = ""
 	flagOpsRepairIncidentPDKey = ""
 	flagOpsRepairIncidentBpmnProcessID = ""
-	flagOpsRepairIncidentFlowNodeID = ""
-	flagOpsRepairIncidentFNIKey = ""
+	flagOpsRepairIncidentElementID = ""
+	flagOpsRepairIncidentElementInstanceKey = ""
 	flagOpsRepairIncidentCreationTimeAfter = ""
 	flagOpsRepairIncidentCreationTimeBefore = ""
 	flagOpsRepairIncidentBatchSize = consts.MaxPISearchSize

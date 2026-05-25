@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -141,6 +142,22 @@ func TestCommandContractOpsRepairIncident(t *testing.T) {
 		Repeated:    false,
 		Description: "retry count to set on related jobs; 0 skips retry restoration",
 	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "element-id",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN element ID to filter incidents",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "element-instance-key",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "element instance key to filter incidents",
+	})
+	require.False(t, hasFlagContractNamed(capability.Flags, "flow-node-id"))
+	require.False(t, hasFlagContractNamed(capability.Flags, "fni-key"))
 }
 
 // TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts verifies discovery flags describe page size and explicit caps distinctly.
@@ -609,10 +626,26 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 	})
 	require.Contains(t, getCapability.Flags, FlagContract{
 		Name:        "limit",
+		Shorthand:   "l",
 		Type:        "int32",
 		Required:    false,
 		Repeated:    false,
 		Description: "maximum number of jobs to return in search mode",
+	})
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "batch-size",
+		Shorthand:   "n",
+		Type:        "int32",
+		Required:    false,
+		Repeated:    false,
+		Description: "number of jobs to fetch per page (max limit 1000 enforced by server)",
+	})
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "total",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return only the numeric total of matching jobs",
 	})
 	require.Contains(t, getCapability.Flags, FlagContract{
 		Name:        "error-message-limit",
@@ -768,6 +801,22 @@ func TestCommandCapabilityForCommand_GetIncidentContract(t *testing.T) {
 		Repeated:    false,
 		Description: "BPMN process ID to validate and filter incidents",
 	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "element-id",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN element ID to filter incidents",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "element-instance-key",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "element instance key to filter incidents",
+	})
+	require.False(t, hasFlagContractNamed(capability.Flags, "flow-node-id"))
+	require.False(t, hasFlagContractNamed(capability.Flags, "fni-key"))
 	require.Contains(t, capability.OutputModes, OutputModeContract{
 		Name:             "json",
 		Supported:        true,
@@ -1154,6 +1203,20 @@ func TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContra
 		Description: "incident key(s) to select for candidate discovery",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "element-id",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN element ID to filter incidents",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "element-instance-key",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "element instance key to filter incidents",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "dry-run",
 		Type:        "bool",
 		Required:    false,
@@ -1220,6 +1283,8 @@ func TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContra
 	})
 	require.NotContains(t, capability.Flags, FlagContract{Name: "pi-keys-only"})
 	require.NotContains(t, capability.Flags, FlagContract{Name: "total"})
+	require.False(t, hasFlagContractNamed(capability.Flags, "flow-node-id"))
+	require.False(t, hasFlagContractNamed(capability.Flags, "fni-key"))
 }
 
 func TestCommandCapabilityForCommand_OpsExecuteRetentionPolicyContract(t *testing.T) {
@@ -1611,18 +1676,24 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"Inspect or search Camunda jobs",
 		"Use --key with the jobKey exposed by incident-aware process-instance output",
 		"Search mode will use list filters",
+		"Search mode pages through matching jobs by default",
+		"--batch-size tunes per-page discovery requests only",
+		"--total returns only the matching count",
 		"Use --json for the stable job payload",
 		"--error-message-limit",
 		"Camunda 8.8 and 8.9",
 		"./c8volt get job --key <job-key>",
-		"./c8volt get job --state failed --limit 50",
+		"./c8volt get job --state failed --batch-size 10 --limit 50",
+		"./c8volt get job --state failed --total",
 		"./c8volt --json get job --key <job-key>",
 		"--key string",
 		"--state string",
 		"--element-instance-key string",
 		"--element-id string",
 		"--listener-event-type string",
-		"--limit int32",
+		"-n, --batch-size int32",
+		"-l, --limit int32",
+		"--total",
 		"--error-message-limit int",
 	}, nil)
 
@@ -1688,8 +1759,8 @@ func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *tes
 		"--pd-key string",
 		"--pi-key string",
 		"--root-key string",
-		"--flow-node-id string",
-		"--fni-key string",
+		"--element-id string",
+		"--element-instance-key string",
 		"--batch-size int32",
 		"--limit int32",
 		"--error-message-limit int",
@@ -1700,6 +1771,28 @@ func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *tes
 	require.Contains(t, output, "incidents")
 	require.Contains(t, output, "inc")
 	require.NotContains(t, output, "AD_HOC_SUB_PROCESS_NO_RETRIES")
+	require.NotContains(t, output, "--flow-node-id")
+	require.NotContains(t, output, "--fni-key")
+}
+
+func TestIncidentCommandHelpOmitsLegacyElementTerminology(t *testing.T) {
+	tests := [][]string{
+		{"get", "incident"},
+		{"ops", "repair", "incident"},
+		{"ops", "purge", "process-instances-with-incidents"},
+	}
+	for _, args := range tests {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			output := assertCommandHelpOutput(t, args, []string{
+				"--element-id string",
+				"--element-instance-key string",
+			}, []string{
+				"--flow-node-id",
+				"--fni-key",
+			})
+			require.NotContains(t, output, "flow node")
+		})
+	}
 }
 
 func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T) {

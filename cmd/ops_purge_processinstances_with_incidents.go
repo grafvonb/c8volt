@@ -29,8 +29,8 @@ var (
 	flagOpsPurgeIncidentPDKey              string
 	flagOpsPurgeIncidentPIKey              string
 	flagOpsPurgeIncidentRootKey            string
-	flagOpsPurgeIncidentFlowNodeID         string
-	flagOpsPurgeIncidentFNIKey             string
+	flagOpsPurgeIncidentElementID          string
+	flagOpsPurgeIncidentElementInstanceKey string
 	flagOpsPurgeIncidentCreationTimeAfter  string
 	flagOpsPurgeIncidentCreationTimeBefore string
 	flagOpsPurgeIncidentBatchSize          int32
@@ -139,8 +139,8 @@ func init() {
 	fs.StringVar(&flagOpsPurgeIncidentPDKey, "pd-key", "", "process definition key to filter incidents")
 	fs.StringVar(&flagOpsPurgeIncidentPIKey, "pi-key", "", "process instance key to filter incidents")
 	fs.StringVar(&flagOpsPurgeIncidentRootKey, "root-key", "", "root process instance key to filter incidents")
-	fs.StringVar(&flagOpsPurgeIncidentFlowNodeID, "flow-node-id", "", "flow node ID to filter incidents")
-	fs.StringVar(&flagOpsPurgeIncidentFNIKey, "fni-key", "", "flow node instance key to filter incidents")
+	fs.StringVar(&flagOpsPurgeIncidentElementID, "element-id", "", "BPMN element ID to filter incidents")
+	fs.StringVar(&flagOpsPurgeIncidentElementInstanceKey, "element-instance-key", "", "element instance key to filter incidents")
 	fs.StringVar(&flagOpsPurgeIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD")
 	fs.StringVar(&flagOpsPurgeIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD")
 	fs.Int32VarP(&flagOpsPurgeIncidentBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
@@ -187,10 +187,10 @@ func validateOpsPurgeProcessInstancesWithIncidentsFlags(cmd *cobra.Command) erro
 		return err
 	}
 	for flag, value := range map[string]string{
-		"--pi-key":   flagOpsPurgeIncidentPIKey,
-		"--root-key": flagOpsPurgeIncidentRootKey,
-		"--pd-key":   flagOpsPurgeIncidentPDKey,
-		"--fni-key":  flagOpsPurgeIncidentFNIKey,
+		"--pi-key":               flagOpsPurgeIncidentPIKey,
+		"--root-key":             flagOpsPurgeIncidentRootKey,
+		"--pd-key":               flagOpsPurgeIncidentPDKey,
+		"--element-instance-key": flagOpsPurgeIncidentElementInstanceKey,
 	} {
 		if value == "" {
 			continue
@@ -363,8 +363,8 @@ func populateOpsPurgeIncidentSelection() incident.Filter {
 		ProcessDefinitionKey:   flagOpsPurgeIncidentPDKey,
 		ProcessInstanceKey:     flagOpsPurgeIncidentPIKey,
 		RootProcessInstanceKey: flagOpsPurgeIncidentRootKey,
-		FlowNodeId:             flagOpsPurgeIncidentFlowNodeID,
-		FlowNodeInstanceKey:    flagOpsPurgeIncidentFNIKey,
+		ElementId:              flagOpsPurgeIncidentElementID,
+		ElementInstanceKey:     flagOpsPurgeIncidentElementInstanceKey,
 		CreationTimeAfter:      flagOpsPurgeIncidentCreationTimeAfter,
 		CreationTimeBefore:     flagOpsPurgeIncidentCreationTimeBefore,
 	}

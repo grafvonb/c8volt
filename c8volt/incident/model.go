@@ -17,8 +17,8 @@ type ProcessInstanceIncidentDetail struct {
 	State                  string `json:"state,omitempty"`
 	ErrorType              string `json:"errorType,omitempty"`
 	ErrorMessage           string `json:"errorMessage"`
-	FlowNodeId             string `json:"flowNodeId,omitempty"`
-	FlowNodeInstanceKey    string `json:"flowNodeInstanceKey,omitempty"`
+	ElementId              string `json:"elementId,omitempty"`
+	ElementInstanceKey     string `json:"elementInstanceKey,omitempty"`
 	JobKey                 string `json:"jobKey,omitempty"`
 	RootProcessInstanceKey string `json:"rootProcessInstanceKey,omitempty"`
 	ProcessDefinitionKey   string `json:"processDefinitionKey,omitempty"`
@@ -34,8 +34,8 @@ type Filter struct {
 	RootProcessInstanceKey string   `json:"rootProcessInstanceKey,omitempty"`
 	ProcessDefinitionKey   string   `json:"processDefinitionKey,omitempty"`
 	ProcessDefinitionId    string   `json:"processDefinitionId,omitempty"`
-	FlowNodeId             string   `json:"flowNodeId,omitempty"`
-	FlowNodeInstanceKey    string   `json:"flowNodeInstanceKey,omitempty"`
+	ElementId              string   `json:"elementId,omitempty"`
+	ElementInstanceKey     string   `json:"elementInstanceKey,omitempty"`
 	CreationTimeAfter      string   `json:"creationTimeAfter,omitempty"`
 	CreationTimeBefore     string   `json:"creationTimeBefore,omitempty"`
 }
@@ -53,8 +53,8 @@ func (f Filter) String() string {
 	parts = toolx.AppendQuotedField(parts, "rootProcessInstanceKey", f.RootProcessInstanceKey)
 	parts = toolx.AppendQuotedField(parts, "processDefinitionKey", f.ProcessDefinitionKey)
 	parts = toolx.AppendQuotedField(parts, "processDefinitionId", f.ProcessDefinitionId)
-	parts = toolx.AppendQuotedField(parts, "flowNodeId", f.FlowNodeId)
-	parts = toolx.AppendQuotedField(parts, "flowNodeInstanceKey", f.FlowNodeInstanceKey)
+	parts = toolx.AppendQuotedField(parts, "elementId", f.ElementId)
+	parts = toolx.AppendQuotedField(parts, "elementInstanceKey", f.ElementInstanceKey)
 	parts = toolx.AppendQuotedField(parts, "creationTimeAfter", f.CreationTimeAfter)
 	parts = toolx.AppendQuotedField(parts, "creationTimeBefore", f.CreationTimeBefore)
 	return toolx.FormatActiveFields(parts)

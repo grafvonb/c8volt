@@ -180,6 +180,33 @@ func TestService_SearchJobs_ConstructsFiltersAndConvertsRows(t *testing.T) {
 	require.Equal(t, "charge-card", result.Items[0].ElementId)
 }
 
+func TestService_SearchJobsPageTrimsV88OverfullResponses(t *testing.T) {
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(_ context.Context, body camundav88.SearchJobsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchJobsResponse, error) {
+			requireJobSearchPageJSON(t, body, 0, 2)
+			return &camundav88.SearchJobsResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav88.JobSearchQueryResult{
+					Items: []camundav88.JobSearchResult{
+						{JobKey: "2251799813711967", State: camundav88.JobStateEnumFAILED},
+						{JobKey: "2251799813711968", State: camundav88.JobStateEnumFAILED},
+						{JobKey: "2251799813711969", State: camundav88.JobStateEnumFAILED},
+					},
+					Page: camundav88.SearchQueryPageResponse{TotalItems: 3},
+				},
+			}, nil
+		},
+	})
+
+	page, err := svc.SearchJobsPage(context.Background(), d.JobSearchQuery{State: "FAILED"}, d.JobPageRequest{Size: 2})
+
+	require.NoError(t, err)
+	require.Equal(t, d.ProcessInstanceOverflowStateHasMore, page.OverflowState)
+	require.Len(t, page.Items, 2)
+	require.Equal(t, "2251799813711967", page.Items[0].Key)
+	require.Equal(t, "2251799813711968", page.Items[1].Key)
+}
+
 func TestJobUpdateRetriesRequest(t *testing.T) {
 	retries := int32(3)
 	svc := newJobServiceTest(t, &mockJobClient{
@@ -431,6 +458,17 @@ func requireJobSearchFilterJSON(t *testing.T, body camundav88.SearchJobsJSONRequ
 		require.Equal(t, value, filter[name], "filter %s", name)
 	}
 	page := got["page"].(map[string]any)
+	require.Equal(t, float64(wantLimit), page["limit"])
+}
+
+func requireJobSearchPageJSON(t *testing.T, body camundav88.SearchJobsJSONRequestBody, wantFrom int32, wantLimit int32) {
+	t.Helper()
+	raw, err := json.Marshal(body)
+	require.NoError(t, err)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(raw, &got))
+	page := got["page"].(map[string]any)
+	require.Equal(t, float64(wantFrom), page["from"])
 	require.Equal(t, float64(wantLimit), page["limit"])
 }
 

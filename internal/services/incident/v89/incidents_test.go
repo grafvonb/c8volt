@@ -105,13 +105,43 @@ func TestGetIncidentMapsDetail(t *testing.T) {
 		State:                  "ACTIVE",
 		ErrorType:              "JOB_NO_RETRIES",
 		ErrorMessage:           "no retries left",
-		FlowNodeId:             "task-a",
-		FlowNodeInstanceKey:    "2251799813685252",
+		ElementId:              "task-a",
+		ElementInstanceKey:     "2251799813685252",
 		JobKey:                 "2251799813685251",
 		RootProcessInstanceKey: "2251799813685250",
 		ProcessDefinitionKey:   "2251799813685253",
 		ProcessDefinitionId:    "order-process",
 	}, got)
+}
+
+func TestSearchIncidentsPageKeepsAdapterBoundaryElementFields(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(_ context.Context, body camundav89.SearchIncidentsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchIncidentsResponse, error) {
+			require.NotNil(t, body.Filter)
+			return &camundav89.SearchIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200: &camundav89.IncidentSearchQueryResult{
+					Items: []camundav89.IncidentResult{{
+						IncidentKey:        "2251799813685249",
+						ProcessInstanceKey: "2251799813685250",
+						State:              camundav89.IncidentStateEnumACTIVE,
+						ElementId:          "task-a",
+						ElementInstanceKey: "2251799813685252",
+					}},
+					Page: camundav89.SearchQueryPageResponse{TotalItems: 1},
+				},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{}, d.IncidentPageRequest{Size: 10})
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 1)
+	require.Equal(t, "task-a", got.Items[0].ElementId)
+	require.Equal(t, "2251799813685252", got.Items[0].ElementInstanceKey)
 }
 
 func TestWaitForProcessInstanceIncidentsResolvedPollsInitialSetOnly(t *testing.T) {
@@ -309,8 +339,8 @@ func TestSearchIncidentsPageUsesServerFiltersAndLocalMessageFiltering(t *testing
 		ProcessInstanceKey:     "pi-a",
 		ProcessDefinitionKey:   "pd-key",
 		ProcessDefinitionId:    "pd-id",
-		FlowNodeId:             "task-a",
-		FlowNodeInstanceKey:    "fni-a",
+		ElementId:              "task-a",
+		ElementInstanceKey:     "fni-a",
 		CreationTimeAfter:      "2026-05-09T09:00:00Z",
 		CreationTimeBefore:     "2026-05-09T11:00:00Z",
 		RootProcessInstanceKey: "root-a",

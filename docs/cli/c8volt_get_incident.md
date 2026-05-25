@@ -14,7 +14,7 @@ Get Camunda incidents by key or by search criteria.
 
 The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once and rendered through the shared get output modes.
 
-When no keys are supplied, incidents are searched by state, error type, error message, process context, flow-node context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions.
+When no keys are supplied, incidents are searched by state, error type, error message, process context, element context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions.
 
 When --bpmn-process-id is supplied in search mode, the BPMN process definition selector is validated before incident totals, key-only output, process-instance-key output, or paging. Missing or invisible definitions fail explicitly; --json, --automation, --keys-only, --pi-keys-only, and non-TTY runs never prompt for recovery output.
 
@@ -37,7 +37,7 @@ c8volt get incident [flags]
   ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel pi --dry-run -
   ./c8volt get incident --error-message "intentional" --limit 5
   ./c8volt get incident --creation-time-after 2026-05-01T00:00:00Z --creation-time-before 2026-05-31T00:00:00Z --limit 5
-  ./c8volt get incident --pi-key <process-instance-key> --flow-node-id <flow-node-id>
+  ./c8volt get incident --pi-key <process-instance-key> --element-id <element-id>
   ./c8volt --json get incident --key <incident-key>
   ./c8volt --keys-only get incident --key <incident-key>
 ```
@@ -49,12 +49,12 @@ c8volt get incident [flags]
   -b, --bpmn-process-id string        BPMN process ID to validate and filter incidents
       --creation-time-after string    only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD
       --creation-time-before string   only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD
+      --element-id string             BPMN element ID to filter incidents
+      --element-instance-key string   element instance key to filter incidents
       --error-message string          case-insensitive incident error message substring filter for search
       --error-message-limit int       maximum characters to show for incident messages; 0 keeps full messages
       --error-type string             case-insensitive incident error type filter for search
       --fail-fast                     stop scheduling new incident lookups after the first error
-      --flow-node-id string           flow node ID to filter incidents
-      --fni-key string                flow node instance key to filter incidents
   -h, --help                          help for incident
   -k, --key strings                   incident key(s) to fetch; repeat or combine with stdin '-'
   -l, --limit int32                   maximum number of matching incidents to return across all pages

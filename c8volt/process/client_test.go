@@ -6,6 +6,7 @@ package process
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"sync/atomic"
@@ -330,6 +331,38 @@ func TestClient_SearchProcessInstances_PreservesDerivedRelativeDayBoundsAsCanoni
 	}, 10, options.WithVerbose())
 
 	require.NoError(t, err)
+}
+
+func TestClient_SearchProcessInstancesMapsParentElementInstanceKey(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{BpmnProcessId: "order-process"}, filter)
+			assert.Equal(t, d.ProcessInstancePageRequest{Size: 1}, page)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.ProcessInstancePage{
+				Items: []d.ProcessInstance{{
+					Key:                      "pi-a",
+					BpmnProcessId:            "order-process",
+					ParentElementInstanceKey: "ei-parent",
+				}},
+				Request: page,
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	got, err := cli.SearchProcessInstances(ctx, ProcessInstanceFilter{BpmnProcessId: "order-process"}, 1, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 1)
+	require.Equal(t, "ei-parent", got.Items[0].ParentElementInstanceKey)
+	raw, err := json.Marshal(got.Items[0])
+	require.NoError(t, err)
+	require.Contains(t, string(raw), `"parentElementInstanceKey":"ei-parent"`)
+	require.NotContains(t, string(raw), "parentFlowNodeInstanceKey")
 }
 
 // TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssociation prevents incident details from leaking across keyed results.

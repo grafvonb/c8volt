@@ -117,8 +117,8 @@ func incidentSearchNeedsPagedLocalFiltering(filter d.IncidentFilter) bool {
 		filter.RootProcessInstanceKey != "" ||
 		filter.ProcessDefinitionKey != "" ||
 		filter.ProcessDefinitionId != "" ||
-		filter.FlowNodeId != "" ||
-		filter.FlowNodeInstanceKey != "" ||
+		filter.ElementId != "" ||
+		filter.ElementInstanceKey != "" ||
 		filter.CreationTimeAfter != "" ||
 		filter.CreationTimeBefore != ""
 }
@@ -215,10 +215,10 @@ func filterIncidentSearchResults(filter d.IncidentFilter, tenant string, items [
 		if filter.ProcessDefinitionId != "" && item.ProcessDefinitionId != filter.ProcessDefinitionId {
 			continue
 		}
-		if filter.FlowNodeId != "" && item.ElementId != filter.FlowNodeId {
+		if filter.ElementId != "" && item.ElementId != filter.ElementId {
 			continue
 		}
-		if filter.FlowNodeInstanceKey != "" && item.ElementInstanceKey != filter.FlowNodeInstanceKey {
+		if filter.ElementInstanceKey != "" && item.ElementInstanceKey != filter.ElementInstanceKey {
 			continue
 		}
 		if !incidentCreationTimeMatches(incidentCreationTime(item.CreationTime), filter.CreationTimeAfter, filter.CreationTimeBefore) {
@@ -286,8 +286,8 @@ func incidentLocalFilteringRequired(filter d.IncidentFilter) bool {
 		filter.RootProcessInstanceKey != "" ||
 		filter.ProcessDefinitionKey != "" ||
 		filter.ProcessDefinitionId != "" ||
-		filter.FlowNodeId != "" ||
-		filter.FlowNodeInstanceKey != "" ||
+		filter.ElementId != "" ||
+		filter.ElementInstanceKey != "" ||
 		filter.CreationTimeAfter != "" ||
 		filter.CreationTimeBefore != ""
 }
@@ -317,6 +317,9 @@ func (s *Service) searchProcessInstanceIncidentsPages(ctx context.Context, key s
 }
 
 func incidentSearchHasMore(page camundav88.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) bool {
+	if itemCount == 0 && page.TotalItems > int64(from)+int64(pageSize) {
+		return true
+	}
 	if itemCount == 0 {
 		return false
 	}
@@ -328,6 +331,9 @@ func incidentSearchHasMore(page camundav88.SearchQueryPageResponse, from int32, 
 }
 
 func incidentSearchOverflowState(page camundav88.SearchQueryPageResponse, req d.IncidentPageRequest, itemCount int) d.ProcessInstanceOverflowState {
+	if itemCount == 0 && page.TotalItems > int64(req.From)+int64(req.Size) {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
 	if itemCount == 0 {
 		return d.ProcessInstanceOverflowStateNoMore
 	}

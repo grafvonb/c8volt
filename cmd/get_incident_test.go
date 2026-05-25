@@ -81,6 +81,9 @@ func TestGetIncidentCommand_JSONOutputUsesIncidentListPayload(t *testing.T) {
 	require.Equal(t, "2251799813685249", item["incidentKey"])
 	require.Equal(t, longMessage, item["errorMessage"])
 	require.Equal(t, "2026-03-23T18:01:00Z", item["creationTime"])
+	require.Equal(t, "task-a", item["elementId"])
+	require.Equal(t, "2251799813685300", item["elementInstanceKey"])
+	require.NotContains(t, output, "flowNode")
 }
 
 func TestGetIncidentCommand_KeysOnlyOutputUsesIncidentKeys(t *testing.T) {
@@ -368,6 +371,39 @@ func TestGetIncidentCommand_SearchPIKeysOnlyIncrementalPagesOmitFound(t *testing
 	require.Equal(t, 1, promptCalls)
 	require.Equal(t, "2251799813711972\n2251799813711973\n2251799813711974\n2251799813711975\n", output)
 	require.NotContains(t, output, "found:")
+}
+
+// TestGetIncidentCommand_SearchSkipsPromptForEmptyFilteredPages verifies locally filtered empty pages do not make interactive users confirm before any rows are shown.
+func TestGetIncidentCommand_SearchSkipsPromptForEmptyFilteredPages(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+		`{"items":[{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+	var prompts []string
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		require.False(t, autoConfirm)
+		prompts = append(prompts, prompt)
+		return nil
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--batch-size", "1",
+	)
+
+	require.Len(t, requests, 3)
+	require.Len(t, prompts, 1)
+	require.Contains(t, prompts[0], "Fetched 1 incident(s) on this page")
+	require.Contains(t, output, "2251799813685253")
+	require.Contains(t, output, "2251799813685254")
+	require.Contains(t, output, "found: 2")
 }
 
 func TestGetIncidentCommand_TotalUsesExactReportedBackendTotal(t *testing.T) {
@@ -757,7 +793,7 @@ func TestGetIncidentCommand_RejectsInvalidErrorType(t *testing.T) {
 	require.Empty(t, output)
 }
 
-func TestGetIncidentCommand_SearchCoreProcessAndFlowNodeFilters(t *testing.T) {
+func TestGetIncidentCommand_SearchCoreProcessAndElementFilters(t *testing.T) {
 	var requests []string
 	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
 		`{"items":[{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"2251799813685303","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685252","processDefinitionId":"order-process","processDefinitionKey":"2251799813685201","processInstanceKey":"2251799813711970","rootProcessInstanceKey":"2251799813711971","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
@@ -772,8 +808,8 @@ func TestGetIncidentCommand_SearchCoreProcessAndFlowNodeFilters(t *testing.T) {
 		"--root-key", "2251799813711971",
 		"--pd-key", "2251799813685201",
 		"--bpmn-process-id", "order-process",
-		"--flow-node-id", "task-a",
-		"--fni-key", "2251799813685303",
+		"--element-id", "task-a",
+		"--element-instance-key", "2251799813685303",
 	)
 
 	require.Len(t, requests, 1)
@@ -784,12 +820,28 @@ func TestGetIncidentCommand_SearchCoreProcessAndFlowNodeFilters(t *testing.T) {
 	require.Contains(t, requests[0], "task-a")
 	require.Contains(t, requests[0], "2251799813685303")
 	require.Contains(t, output, "2251799813685252")
-	require.Contains(t, output, "fn:task-a")
-	require.Contains(t, output, "fni:2251799813685303")
+	require.Contains(t, output, "e:task-a")
+	require.Contains(t, output, "ei:2251799813685303")
+	require.NotContains(t, output, "fn:")
+	require.NotContains(t, output, "fni:")
 	require.Contains(t, output, "pi:2251799813711970")
 	require.Contains(t, output, "root:2251799813711971")
 	require.Contains(t, output, "order-process")
 	require.Contains(t, output, "found: 1")
+}
+
+func TestGetIncidentCommand_RejectsLegacyFlowNodeFilterFlags(t *testing.T) {
+	tests := []string{"--flow-node-id", "--fni-key"}
+
+	for _, flag := range tests {
+		t.Run(flag, func(t *testing.T) {
+			output, err := executeRootExpectErrorForIncidentTest(t, "get", "incident", flag, "legacy-value")
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "unknown flag: "+flag)
+			require.Empty(t, output)
+		})
+	}
 }
 
 func TestGetIncidentCommand_SearchCreationTimeWindow(t *testing.T) {

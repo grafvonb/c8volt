@@ -40,6 +40,15 @@ func (c *client) SearchJobs(ctx context.Context, request SearchRequest, opts ...
 	return out, nil
 }
 
+func (c *client) SearchJobsPage(ctx context.Context, request SearchRequest, page PageRequest, opts ...foptions.FacadeOption) (Page, error) {
+	result, err := c.api.SearchJobsPage(ctx, toDomainSearchRequest(request), toDomainPageRequest(page), foptions.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainPage(result)
+	if err != nil {
+		return out, ferrors.FromDomain(err)
+	}
+	return out, nil
+}
+
 func (c *client) UpdateJob(ctx context.Context, request UpdateRequest, opts ...foptions.FacadeOption) (UpdateResult, error) {
 	result, err := c.api.UpdateJob(ctx, toDomainUpdateRequest(request), foptions.MapFacadeOptionsToCallOptions(opts)...)
 	out := fromDomainUpdateResult(result)
@@ -99,6 +108,7 @@ func toDomainSearchRequest(request SearchRequest) d.JobSearchQuery {
 		Retries:            request.Retries,
 		Kind:               request.Kind,
 		ListenerEventType:  request.ListenerEventType,
+		BatchSize:          request.BatchSize,
 		Limit:              request.Limit,
 	}
 }
@@ -107,6 +117,44 @@ func fromDomainSearchResult(result d.JobSearchResult) SearchResult {
 	return SearchResult{
 		Items: mapDomainJobs(result.Items),
 		Limit: result.Limit,
+	}
+}
+
+func toDomainPageRequest(request PageRequest) d.JobPageRequest {
+	return d.JobPageRequest{
+		From: request.From,
+		Size: request.Size,
+	}
+}
+
+func fromDomainPage(result d.JobSearchPage) Page {
+	return Page{
+		Items: mapDomainJobs(result.Items),
+		Request: PageRequest{
+			From: result.Request.From,
+			Size: result.Request.Size,
+		},
+		OverflowState: fromDomainOverflowState(result.OverflowState),
+		ReportedTotal: fromDomainReportedTotal(result.ReportedTotal),
+	}
+}
+
+func fromDomainReportedTotal(total *d.JobReportedTotal) *ReportedTotal {
+	if total == nil {
+		return nil
+	}
+	return &ReportedTotal{
+		Count: total.Count,
+		Kind:  ReportedTotalKind(total.Kind),
+	}
+}
+
+func fromDomainOverflowState(value d.ProcessInstanceOverflowState) OverflowState {
+	switch value {
+	case d.ProcessInstanceOverflowStateHasMore:
+		return OverflowStateHasMore
+	default:
+		return OverflowStateNoMore
 	}
 }
 

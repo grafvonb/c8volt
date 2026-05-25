@@ -157,9 +157,8 @@ func newJobListenerEventTypeEqFilterPtr(v string) (*camundav89.JobListenerEventT
 	return &f, nil
 }
 
-func newSearchQueryPageRequest(limit int32) camundav89.SearchQueryPageRequest {
+func newSearchQueryPageRequest(from int32, limit int32) camundav89.SearchQueryPageRequest {
 	var page camundav89.SearchQueryPageRequest
-	from := int32(0)
 	_ = page.FromOffsetPagination(camundav89.OffsetPagination{
 		From:  &from,
 		Limit: &limit,

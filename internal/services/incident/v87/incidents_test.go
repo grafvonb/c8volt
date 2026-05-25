@@ -32,15 +32,17 @@ func TestUnsupportedIncidentResolutionOperations(t *testing.T) {
 	require.True(t, errors.Is(err, d.ErrUnsupported))
 	require.False(t, resp.Ok)
 
-	_, err = svc.SearchIncidents(context.Background(), d.IncidentFilter{}, 100)
+	_, err = svc.SearchIncidents(context.Background(), d.IncidentFilter{ElementId: "task-a", ElementInstanceKey: "ei-a"}, 100)
 	require.Error(t, err)
 	require.True(t, errors.Is(err, d.ErrUnsupported))
 	require.Contains(t, err.Error(), "incident search is not tenant-safe in Camunda 8.7")
+	require.NotContains(t, err.Error(), "flow-node")
 
-	_, err = svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{}, d.IncidentPageRequest{Size: 100})
+	_, err = svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{ElementId: "task-a", ElementInstanceKey: "ei-a"}, d.IncidentPageRequest{Size: 100})
 	require.Error(t, err)
 	require.True(t, errors.Is(err, d.ErrUnsupported))
 	require.Contains(t, err.Error(), "incident search is not tenant-safe in Camunda 8.7")
+	require.NotContains(t, err.Error(), "flow-node")
 
 	_, err = svc.WaitForIncidentResolved(context.Background(), "2251799813685249")
 	require.Error(t, err)

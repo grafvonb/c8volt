@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt dev`, commit `none`, built `unknown` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.7.0-alpha1-267-ged3aae36`, commit `ed3aae36`, built `2026-05-25T19:28:24Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -212,7 +212,8 @@ Process-instance variable updates are available on Camunda `8.8` and `8.9`. Camu
 
 ```bash
 ./c8volt get job --key <job-key>
-./c8volt get job --state failed --limit 50
+./c8volt get job --state failed --batch-size 10 --limit 50
+./c8volt get job --state failed --total
 ./c8volt get job --type payment-worker --worker worker-a
 ./c8volt get job --kind task_listener --listener-event-type completing
 ./c8volt --json get job --key <job-key>
@@ -224,7 +225,7 @@ Process-instance variable updates are available on Camunda `8.8` and `8.9`. Camu
 ./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run
 ```
 
-Use `get job --key` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Omit `--key` to list or search jobs with filters such as `--state`, `--type`, `--pi-key`, `--element-instance-key`, `--element-id`, `--worker`, `--retries`, `--kind`, `--listener-event-type`, and `--limit`; `--keys-only` emits one job key per line for pipelines. Job output keeps the full error message by default; use `--error-message-limit` when terminal output should be shortened.
+Use `get job --key` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Omit `--key` to list or search jobs; `--batch-size` tunes page size, `--limit` caps returned rows, `--total` prints only the count, and `--keys-only` emits pipeline keys. Use `--error-message-limit` when terminal output should be shortened.
 
 `update job` supports retry and timeout changes plus worker outcome modes on Camunda `8.8` and `8.9`: `--fail`, `--throw-bpmn-error`, and `--complete`. Retry changes are confirmed by reading the job by key by default, while timeout changes and worker outcomes report accepted submission without claiming a stable read-model confirmation. Use `--dry-run` to preview the plan without mutation, and `--auto-confirm` or `--automation` for unattended mutations. Camunda `8.7` returns an unsupported-version error for job search and worker outcome paths before unsupported mutation requests are submitted.
 
@@ -384,12 +385,12 @@ When incident output includes `jobKey`, use `get job --key <job-key>` for direct
 ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
 ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel pi --dry-run -
 ./c8volt get incident --creation-time-after 2026-05-01T00:00:00Z --creation-time-before 2026-05-31T00:00:00Z --limit 5
-./c8volt get incident --pi-key <process-instance-key> --flow-node-id <flow-node-id>
+./c8volt get incident --pi-key <process-instance-key> --element-id <element-id>
 ./c8volt get incident --total --state resolved
 printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt get inc -
 ```
 
-Use `get incident` when the incident itself is the target. Repeated `--key` values and stdin `-` are merged and deduplicated for keyed lookup. Without keys, the command lists incidents with plain incident filters such as `--state`, `--error-type`, `--error-message`, process and flow-node selectors, and creation-time bounds. When `--bpmn-process-id` is present, c8volt validates the visible process-definition selector before totals, key-only output, process-instance-key output, or incident paging; missing selectors fail without recovery prompts in machine-oriented modes. Rows include tenant, state, type, creation time, process context, job key, message, and age; `--json`, `--keys-only`, `--pi-keys-only`, and `--total` preserve script-friendly output contracts. Use `--keys-only` when piping incident keys and `--pi-keys-only` when piping matching process instance keys into process-instance commands.
+Use `get incident` when the incident itself is the target. Repeated `--key` values and stdin `-` are merged and deduplicated for keyed lookup. Without keys, the command lists incidents with plain incident filters such as `--state`, `--error-type`, `--error-message`, process and element selectors, and creation-time bounds. When `--bpmn-process-id` is present, c8volt validates the visible process-definition selector before totals, key-only output, process-instance-key output, or incident paging; missing selectors fail without recovery prompts in machine-oriented modes. Rows include tenant, state, type, creation time, process context, job key, message, and age; `--json`, `--keys-only`, `--pi-keys-only`, and `--total` preserve script-friendly output contracts. Use `--keys-only` when piping incident keys and `--pi-keys-only` when piping matching process instance keys into process-instance commands.
 
 For variable inspection, add `--with-vars` to keyed or list/search `get pi` output, or to keyed `walk pi` output. Combine it with `--with-incidents` when you need runtime data and failure context in one view. Values are full by default; add `--var-value-limit <chars>` for noisy payloads. JSON keeps received values and metadata intact.
 
@@ -679,7 +680,8 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 
 # Inspect and update jobs from incident job keys.
 ./c8volt get job --key <job-key>
-./c8volt get job --state failed --limit 50
+./c8volt get job --state failed --batch-size 10 --limit 50
+./c8volt get job --state failed --total
 ./c8volt update job --key <job-key> --retries 3 --dry-run
 ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
 ./c8volt update job --key <job-key> --retries 3 --auto-confirm

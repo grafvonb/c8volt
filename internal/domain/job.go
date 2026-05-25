@@ -33,6 +33,7 @@ type JobSearchQuery struct {
 	Retries            *int32
 	Kind               string
 	ListenerEventType  string
+	BatchSize          int32
 	Limit              int32
 }
 
@@ -55,6 +56,30 @@ func (q JobSearchQuery) HasSearchFilters() bool {
 type JobSearchResult struct {
 	Items []Job `json:"items"`
 	Limit int32 `json:"limit"`
+}
+
+type JobReportedTotalKind string
+
+const (
+	JobReportedTotalKindExact      JobReportedTotalKind = "exact"
+	JobReportedTotalKindLowerBound JobReportedTotalKind = "lower_bound"
+)
+
+type JobReportedTotal struct {
+	Count int64
+	Kind  JobReportedTotalKind
+}
+
+type JobPageRequest struct {
+	From int32
+	Size int32
+}
+
+type JobSearchPage struct {
+	Items         []Job
+	Request       JobPageRequest
+	OverflowState ProcessInstanceOverflowState
+	ReportedTotal *JobReportedTotal
 }
 
 type JobUpdateRequest struct {

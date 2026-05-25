@@ -62,6 +62,14 @@ func (s *Service) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts .
 	return d.JobSearchResult{}, unsupportedJobOperation("search jobs")
 }
 
+func (s *Service) SearchJobsPage(ctx context.Context, query d.JobSearchQuery, page d.JobPageRequest, opts ...services.CallOption) (d.JobSearchPage, error) {
+	_ = ctx
+	_ = query
+	_ = page
+	_ = services.ApplyCallOptions(opts)
+	return d.JobSearchPage{}, unsupportedJobOperation("search jobs")
+}
+
 func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error) {
 	_ = ctx
 	_ = request

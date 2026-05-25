@@ -78,7 +78,7 @@ func (s *Service) GetJob(ctx context.Context, key string, opts ...services.CallO
 	if err != nil {
 		return d.Job{}, fmt.Errorf("building job key filter: %w", err)
 	}
-	page := newSearchQueryPageRequest(2)
+	page := newSearchQueryPageRequest(0, 2)
 	resp, err := s.c.SearchJobsWithResponse(ctx, camundav88.SearchJobsJSONRequestBody{
 		Filter: &camundav88.JobFilter{
 			JobKey: jobKeyFilter,
@@ -98,30 +98,124 @@ func (s *Service) GetJob(ctx context.Context, key string, opts ...services.CallO
 func (s *Service) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error) {
 	_ = services.ApplyCallOptions(opts)
 
-	filter, err := newJobSearchFilter(query)
-	if err != nil {
-		return d.JobSearchResult{}, err
+	batchSize := query.BatchSize
+	if batchSize <= 0 {
+		batchSize = consts.MaxPISearchSize
 	}
 	limit := query.Limit
-	if limit <= 0 {
-		limit = consts.MaxPISearchSize
+	items := make([]d.Job, 0, minPositiveJobSearchSize(batchSize, limit))
+	from := int32(0)
+	for {
+		pageLimit := nextJobSearchPageLimit(batchSize, limit, int32(len(items)))
+		if pageLimit <= 0 {
+			break
+		}
+		page, err := s.SearchJobsPage(ctx, query, d.JobPageRequest{From: from, Size: pageLimit}, opts...)
+		if err != nil {
+			return d.JobSearchResult{}, err
+		}
+		items = append(items, page.Items...)
+		if limit > 0 && int32(len(items)) >= limit {
+			break
+		}
+		if page.OverflowState != d.ProcessInstanceOverflowStateHasMore {
+			break
+		}
+		from += int32(len(page.Items))
 	}
-	page := newSearchQueryPageRequest(limit)
+	return d.JobSearchResult{
+		Items: items,
+		Limit: limit,
+	}, nil
+}
+
+func (s *Service) SearchJobsPage(ctx context.Context, query d.JobSearchQuery, pageReq d.JobPageRequest, opts ...services.CallOption) (d.JobSearchPage, error) {
+	_ = services.ApplyCallOptions(opts)
+
+	filter, err := newJobSearchFilter(query)
+	if err != nil {
+		return d.JobSearchPage{}, err
+	}
+	pageSize := pageReq.Size
+	if pageSize <= 0 {
+		pageSize = consts.MaxPISearchSize
+	}
+	page := newSearchQueryPageRequest(pageReq.From, pageSize)
 	resp, err := s.c.SearchJobsWithResponse(ctx, camundav88.SearchJobsJSONRequestBody{
 		Filter: filter,
 		Page:   &page,
 	})
 	if err != nil {
-		return d.JobSearchResult{}, err
+		return d.JobSearchPage{}, err
 	}
 	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
 	if err != nil {
-		return d.JobSearchResult{}, err
+		return d.JobSearchPage{}, err
 	}
-	return d.JobSearchResult{
-		Items: fromJobSearchResults(payload.Items),
-		Limit: limit,
+	items := trimJobSearchPageResults(payload.Items, payload.Page, pageReq.From, pageSize)
+	return d.JobSearchPage{
+		Items:         fromJobSearchResults(items),
+		Request:       d.JobPageRequest{From: pageReq.From, Size: pageSize},
+		OverflowState: pickJobSearchOverflowState(payload.Page, pageReq.From, len(items), pageSize),
+		ReportedTotal: newJobReportedTotal(payload.Page.TotalItems, payload.Page.HasMoreTotalItems),
 	}, nil
+}
+
+func minPositiveJobSearchSize(batchSize int32, limit int32) int {
+	if limit > 0 && limit < batchSize {
+		return int(limit)
+	}
+	return int(batchSize)
+}
+
+func nextJobSearchPageLimit(batchSize int32, limit int32, loaded int32) int32 {
+	if limit <= 0 {
+		return batchSize
+	}
+	remaining := limit - loaded
+	if remaining < batchSize {
+		return remaining
+	}
+	return batchSize
+}
+
+func trimJobSearchPageResults(items []camundav88.JobSearchResult, page camundav88.SearchQueryPageResponse, from int32, pageSize int32) []camundav88.JobSearchResult {
+	if pageSize <= 0 || len(items) <= int(pageSize) {
+		return items
+	}
+	if page.TotalItems == int64(len(items)) && from > 0 {
+		start := int(from)
+		if start >= len(items) {
+			return nil
+		}
+		items = items[start:]
+	}
+	if len(items) > int(pageSize) {
+		return items[:pageSize]
+	}
+	return items
+}
+
+func pickJobSearchOverflowState(page camundav88.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) d.ProcessInstanceOverflowState {
+	if itemCount == 0 {
+		return d.ProcessInstanceOverflowStateNoMore
+	}
+	nextFrom := int64(from) + int64(itemCount)
+	if page.TotalItems > nextFrom {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
+	if page.HasMoreTotalItems && itemCount >= int(pageSize) {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
+	return d.ProcessInstanceOverflowStateNoMore
+}
+
+func newJobReportedTotal(count int64, lowerBound bool) *d.JobReportedTotal {
+	kind := d.JobReportedTotalKindExact
+	if lowerBound {
+		kind = d.JobReportedTotalKindLowerBound
+	}
+	return &d.JobReportedTotal{Count: count, Kind: kind}
 }
 
 func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error) {

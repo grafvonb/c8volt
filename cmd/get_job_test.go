@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/job"
+	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
@@ -129,7 +130,7 @@ func TestGetJobCommand_SearchModeAcceptsNoKey(t *testing.T) {
 
 	output := executeRootForJobTest(t, "--config", cfgPath, "get", "job", "--state", "failed", "--type", "payment-worker", "--pi-key", "2251799813711000", "--element-instance-key", "2251799813711001", "--element-id", "charge-card", "--worker", "worker-a", "--retries", "0", "--kind", "bpmn_element", "--listener-event-type", "unspecified", "--limit", "1")
 
-	require.Equal(t, "2251799813711967 tenant-a BPMN_ELEMENT charge-card FAILED type:payment-worker worker:worker-a pi:2251799813711000 ei:2251799813711001 r:0\nfound: 1\n", output)
+	require.Equal(t, "2251799813711967 tenant-a BPMN_ELEMENT charge-card FAILED tp:payment-worker worker:worker-a pi:2251799813711000 ei:2251799813711001 r:0\nfound: 1\n", output)
 	require.Len(t, bodies, 1)
 	filter := requireJSONObject(t, bodies[0]["filter"])
 	require.Equal(t, "FAILED", filter["state"])
@@ -145,12 +146,72 @@ func TestGetJobCommand_SearchModeAcceptsNoKey(t *testing.T) {
 	require.Equal(t, float64(1), page["limit"])
 }
 
+func TestGetJobCommand_SearchModeBatchSizeShorthandPagesUntilComplete(t *testing.T) {
+	var bodies []map[string]any
+	srv := newJobSearchServerResponses(t, &bodies,
+		`{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+		`{"items":[{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "--auto-confirm", "get", "job", "-n", "2")
+
+	require.Contains(t, output, "2251799813711967")
+	require.Contains(t, output, "2251799813711968")
+	require.Contains(t, output, "found: 2")
+	require.Len(t, bodies, 2)
+	page := requireJSONObject(t, bodies[0]["page"])
+	require.Equal(t, float64(2), page["limit"])
+	require.Equal(t, float64(0), page["from"])
+	page = requireJSONObject(t, bodies[1]["page"])
+	require.Equal(t, float64(2), page["limit"])
+	require.Equal(t, float64(1), page["from"])
+}
+
+func TestGetJobCommand_SearchModeLimitShorthandCapsPagedSearch(t *testing.T) {
+	var bodies []map[string]any
+	srv := newJobSearchServerResponses(t, &bodies,
+		`{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+		`{"items":[{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "get", "job", "-n", "1", "-l", "1")
+
+	require.Contains(t, output, "2251799813711967")
+	require.NotContains(t, output, "2251799813711968")
+	require.Contains(t, output, "found: 1")
+	require.Len(t, bodies, 1)
+	page := requireJSONObject(t, bodies[0]["page"])
+	require.Equal(t, float64(1), page["limit"])
+	require.Equal(t, float64(0), page["from"])
+}
+
+func TestGetJobCommand_SearchModeTotalUsesReportedCount(t *testing.T) {
+	var bodies []map[string]any
+	srv := newJobSearchServer(t, &bodies, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0},{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":10,"hasMoreTotalItems":false}}`)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "get", "job", "--batch-size", "2", "--total")
+
+	require.Equal(t, "10\n", output)
+	require.Len(t, bodies, 1)
+	page := requireJSONObject(t, bodies[0]["page"])
+	require.Equal(t, float64(2), page["limit"])
+	require.Equal(t, float64(0), page["from"])
+}
+
 func TestGetJobCommand_SearchModeNormalizesEnumFilters(t *testing.T) {
 	req := jobSearchRequestForTest(t, " failed ", " bpmn_element ", " completing ")
 
 	require.Equal(t, "FAILED", req.State)
 	require.Equal(t, "BPMN_ELEMENT", req.Kind)
 	require.Equal(t, "COMPLETING", req.ListenerEventType)
+	require.Equal(t, int32(1000), req.BatchSize)
+	require.Zero(t, req.Limit)
 }
 
 // TestGetJobCommand_SearchModeJSONOutput keeps searched job output as one
@@ -280,6 +341,23 @@ func TestGetJobCommand_SearchValidationRejectsInvalidValues(t *testing.T) {
 			flagGetJobLimit = 0
 			require.NoError(t, getJobCmd.Flags().Set("limit", "0"))
 		}, want: "--limit must be positive integer"},
+		{name: "total json", setup: func() {
+			flagGetJobTotal = true
+			flagViewAsJson = true
+		}, want: "--total cannot be combined with --json"},
+		{name: "total keys only", setup: func() {
+			flagGetJobTotal = true
+			flagViewKeysOnly = true
+		}, want: "--total cannot be combined with --keys-only"},
+		{name: "total limit", setup: func() {
+			flagGetJobTotal = true
+			flagGetJobLimit = 10
+			require.NoError(t, getJobCmd.Flags().Set("limit", "10"))
+		}, want: "--total cannot be combined with --limit"},
+		{name: "batch size", setup: func() {
+			flagGetJobBatchSize = 0
+			require.NoError(t, getJobCmd.Flags().Set("batch-size", "0"))
+		}, want: "invalid value for --batch-size"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := Root()
@@ -288,6 +366,8 @@ func TestGetJobCommand_SearchValidationRejectsInvalidValues(t *testing.T) {
 			t.Cleanup(func() {
 				resetCommandTreeFlags(root)
 				resetGetJobFlagState()
+				flagViewAsJson = false
+				flagViewKeysOnly = false
 			})
 			tc.setup()
 
@@ -383,14 +463,25 @@ func newJobLookupServer(t *testing.T, requests *[]string, response string) *http
 // assertions while returning a generated-client compatible response.
 func newJobSearchServer(t *testing.T, bodies *[]map[string]any, response string) *httptest.Server {
 	t.Helper()
+	return newJobSearchServerResponses(t, bodies, response)
+}
+
+// newJobSearchServerResponses returns one response per request and keeps the
+// final response sticky when a test issues more calls than expected.
+func newJobSearchServerResponses(t *testing.T, bodies *[]map[string]any, responses ...string) *httptest.Server {
+	t.Helper()
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/jobs/search", r.URL.Path)
 		var body map[string]any
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		*bodies = append(*bodies, body)
+		responseIndex := len(*bodies) - 1
+		if responseIndex >= len(responses) {
+			responseIndex = len(responses) - 1
+		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(response))
+		_, _ = w.Write([]byte(responses[responseIndex]))
 	}))
 }
 
@@ -429,6 +520,8 @@ func resetGetJobFlagState() {
 	flagGetJobRetries = 0
 	flagGetJobKind = ""
 	flagGetJobListenerEvent = ""
+	flagGetJobBatchSize = consts.MaxPISearchSize
 	flagGetJobLimit = 0
+	flagGetJobTotal = false
 	flagGetErrorMessageLimit = 0
 }

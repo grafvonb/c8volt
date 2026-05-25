@@ -180,6 +180,80 @@ func TestService_SearchJobs_ConstructsFiltersAndConvertsRows(t *testing.T) {
 	require.Equal(t, "charge-card", result.Items[0].ElementId)
 }
 
+func TestService_SearchJobsPagesByBatchSizeUntilComplete(t *testing.T) {
+	var requests []camundav89.SearchJobsJSONRequestBody
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(_ context.Context, body camundav89.SearchJobsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchJobsResponse, error) {
+			requests = append(requests, body)
+			key := camundav89.JobKey("2251799813711967")
+			if len(requests) == 2 {
+				key = "2251799813711968"
+			}
+			return &camundav89.SearchJobsResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav89.JobSearchQueryResult{
+					Items: []camundav89.JobSearchResult{{
+						JobKey:  key,
+						State:   camundav89.JobStateEnumFAILED,
+						Retries: int32(len(requests) - 1),
+					}},
+					Page: camundav89.SearchQueryPageResponse{
+						TotalItems: 2,
+					},
+				},
+			}, nil
+		},
+	})
+
+	result, err := svc.SearchJobs(context.Background(), d.JobSearchQuery{
+		State:     "FAILED",
+		BatchSize: 1,
+	})
+
+	require.NoError(t, err)
+	require.Zero(t, result.Limit)
+	require.Len(t, result.Items, 2)
+	require.Equal(t, "2251799813711967", result.Items[0].Key)
+	require.Equal(t, "2251799813711968", result.Items[1].Key)
+	require.Len(t, requests, 2)
+	requireJobSearchPageJSON(t, requests[0], 0, 1)
+	requireJobSearchPageJSON(t, requests[1], 1, 1)
+}
+
+func TestService_SearchJobsLimitCapsPagedSearch(t *testing.T) {
+	var requests []camundav89.SearchJobsJSONRequestBody
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(_ context.Context, body camundav89.SearchJobsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchJobsResponse, error) {
+			requests = append(requests, body)
+			return &camundav89.SearchJobsResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav89.JobSearchQueryResult{
+					Items: []camundav89.JobSearchResult{{
+						JobKey:  "2251799813711967",
+						State:   camundav89.JobStateEnumFAILED,
+						Retries: 0,
+					}},
+					Page: camundav89.SearchQueryPageResponse{
+						TotalItems: 2,
+					},
+				},
+			}, nil
+		},
+	})
+
+	result, err := svc.SearchJobs(context.Background(), d.JobSearchQuery{
+		State:     "FAILED",
+		BatchSize: 1,
+		Limit:     1,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int32(1), result.Limit)
+	require.Len(t, result.Items, 1)
+	require.Len(t, requests, 1)
+	requireJobSearchPageJSON(t, requests[0], 0, 1)
+}
+
 func TestJobUpdateRetriesRequest(t *testing.T) {
 	retries := int32(3)
 	svc := newJobServiceTest(t, &mockJobClient{
@@ -431,6 +505,17 @@ func requireJobSearchFilterJSON(t *testing.T, body camundav89.SearchJobsJSONRequ
 		require.Equal(t, value, filter[name], "filter %s", name)
 	}
 	page := got["page"].(map[string]any)
+	require.Equal(t, float64(wantLimit), page["limit"])
+}
+
+func requireJobSearchPageJSON(t *testing.T, body camundav89.SearchJobsJSONRequestBody, wantFrom int32, wantLimit int32) {
+	t.Helper()
+	raw, err := json.Marshal(body)
+	require.NoError(t, err)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(raw, &got))
+	page := got["page"].(map[string]any)
+	require.Equal(t, float64(wantFrom), page["from"])
 	require.Equal(t, float64(wantLimit), page["limit"])
 }
 

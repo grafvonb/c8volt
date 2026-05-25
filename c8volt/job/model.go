@@ -33,6 +33,7 @@ type SearchRequest struct {
 	Retries            *int32
 	Kind               string
 	ListenerEventType  string
+	BatchSize          int32
 	Limit              int32
 }
 
@@ -55,6 +56,37 @@ func (r SearchRequest) HasSearchFilters() bool {
 type SearchResult struct {
 	Items []Job `json:"items"`
 	Limit int32 `json:"limit"`
+}
+
+type PageRequest struct {
+	From int32 `json:"from,omitempty"`
+	Size int32 `json:"size,omitempty"`
+}
+
+type ReportedTotalKind string
+
+const (
+	ReportedTotalKindExact      ReportedTotalKind = "exact"
+	ReportedTotalKindLowerBound ReportedTotalKind = "lower_bound"
+)
+
+type ReportedTotal struct {
+	Count int64             `json:"count,omitempty"`
+	Kind  ReportedTotalKind `json:"kind,omitempty"`
+}
+
+type OverflowState string
+
+const (
+	OverflowStateNoMore  OverflowState = "no_more"
+	OverflowStateHasMore OverflowState = "has_more"
+)
+
+type Page struct {
+	Items         []Job          `json:"items"`
+	Request       PageRequest    `json:"request,omitempty"`
+	OverflowState OverflowState  `json:"overflowState,omitempty"`
+	ReportedTotal *ReportedTotal `json:"reportedTotal,omitempty"`
 }
 
 type UpdateRequest struct {
