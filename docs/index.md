@@ -212,13 +212,21 @@ Process-instance variable updates are available on Camunda `8.8` and `8.9`. Camu
 
 ```bash
 ./c8volt get job --key <job-key>
+./c8volt get job --state FAILED --limit 50
+./c8volt get job --type payment-worker --worker worker-a
+./c8volt get job --kind TASK_LISTENER --listener-event-type COMPLETING
 ./c8volt --json get job --key <job-key>
 ./c8volt update job --key <job-key> --retries 3 --dry-run
 ./c8volt update job --key <job-key> --retries 3 --auto-confirm
 ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
+./c8volt update job --key <job-key> --fail --retries 0 --message "worker unavailable" --dry-run
+./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED --message "card declined" --dry-run
+./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run
 ```
 
-Use `get job` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Job output keeps the full error message by default; use `--error-message-limit` when terminal output should be shortened. `update job` supports retry and timeout changes on Camunda `8.8` and `8.9`; retry changes are confirmed by reading the job by key by default, while timeout changes report submitted milliseconds without claiming deadline confirmation. Use `--dry-run` to preview the plan without mutation, and `--auto-confirm` or `--automation` for unattended mutations.
+Use `get job --key` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Omit `--key` to list or search jobs with filters such as `--state`, `--type`, `--pi-key`, `--element-instance-key`, `--element-id`, `--worker`, `--retries`, `--kind`, `--listener-event-type`, and `--limit`; `--keys-only` emits one job key per line for pipelines. Job output keeps the full error message by default; use `--error-message-limit` when terminal output should be shortened.
+
+`update job` supports retry and timeout changes plus worker outcome modes on Camunda `8.8` and `8.9`: `--fail`, `--throw-bpmn-error`, and `--complete`. Retry changes are confirmed by reading the job by key by default, while timeout changes and worker outcomes report accepted submission without claiming a stable read-model confirmation. Use `--dry-run` to preview the plan without mutation, and `--auto-confirm` or `--automation` for unattended mutations. Camunda `8.7` returns an unsupported-version error for job search and worker outcome paths before unsupported mutation requests are submitted.
 
 ### Resolve Incidents
 
@@ -547,6 +555,7 @@ For supported command paths, combine `--automation` with `--json` when you need 
 ./c8volt --automation --json update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
 ./c8volt --automation --json update pi --key <process-instance-key> --vars-file ./vars.json --dry-run
 ./c8volt --automation --json update job --key <job-key> --retries 3 --auto-confirm
+./c8volt --automation --json update job --key <job-key> --complete --vars '{"approved":true}' --auto-confirm
 ./c8volt --automation --json resolve incident --key <incident-key> --dry-run
 ./c8volt --automation --json resolve pi --key <process-instance-key>
 ./c8volt --automation --json ops repair incident --key <incident-key> --dry-run
@@ -670,9 +679,13 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 
 # Inspect and update jobs from incident job keys.
 ./c8volt get job --key <job-key>
+./c8volt get job --state FAILED --limit 50
 ./c8volt update job --key <job-key> --retries 3 --dry-run
 ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
 ./c8volt update job --key <job-key> --retries 3 --auto-confirm
+./c8volt update job --key <job-key> --fail --retries 0 --message "worker unavailable" --dry-run
+./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED --message "card declined" --dry-run
+./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run
 
 # Preview and resolve incidents.
 ./c8volt resolve incident --key <incident-key> --dry-run

@@ -184,18 +184,18 @@
 
 ### Tests for User Story 6
 
-- [ ] T064 [P] [US6] Add v8.7 unsupported tests for job search and worker outcomes in `internal/services/job/v87/service_test.go`
-- [ ] T065 [P] [US6] Add command tests for unsupported 8.7 behavior before mutation in `cmd/update_job_test.go` and `cmd/get_job_test.go`
-- [ ] T066 [P] [US6] Add command contract metadata tests for new flags, mutation modes, output modes, and automation support in `cmd/command_contract_test.go`
-- [ ] T067 [P] [US6] Add regression tests proving process-instance and incident service APIs do not gain job behavior in `internal/services/processinstance/api.go`, `internal/services/incident/api.go`, or a focused static test file
+- [x] T064 [P] [US6] Add v8.7 unsupported tests for job search and worker outcomes in `internal/services/job/v87/service_test.go`
+- [x] T065 [P] [US6] Add command tests for unsupported 8.7 behavior before mutation in `cmd/update_job_test.go` and `cmd/get_job_test.go`
+- [x] T066 [P] [US6] Add command contract metadata tests for new flags, mutation modes, output modes, and automation support in `cmd/command_contract_test.go`
+- [x] T067 [P] [US6] Add regression tests proving process-instance and incident service APIs do not gain job behavior in `internal/services/processinstance/api.go`, `internal/services/incident/api.go`, or a focused static test file
 
 ### Implementation for User Story 6
 
-- [ ] T068 [US6] Implement v8.7 unsupported behavior for job search and worker outcomes in `internal/services/job/v87/service.go`
-- [ ] T069 [US6] Update command help and metadata for all new get/update job flags in `cmd/get_job.go`, `cmd/update_job.go`, and `cmd/command_contract.go`
-- [ ] T070 [US6] Update README examples for job search and worker outcomes in `README.md`
-- [ ] T071 [US6] Regenerate CLI documentation for changed commands in `docs/cli/c8volt_get_job.md` and `docs/cli/c8volt_update_job.md`
-- [ ] T072 [US6] Verify US6 with targeted command contract, v8.7 unsupported, docs generation, and boundary tests in `cmd/`, `internal/services/job/v87/`, and `docs/cli/`
+- [x] T068 [US6] Implement v8.7 unsupported behavior for job search and worker outcomes in `internal/services/job/v87/service.go`
+- [x] T069 [US6] Update command help and metadata for all new get/update job flags in `cmd/get_job.go`, `cmd/update_job.go`, and `cmd/command_contract.go`
+- [x] T070 [US6] Update README examples for job search and worker outcomes in `README.md`
+- [x] T071 [US6] Regenerate CLI documentation for changed commands in `docs/cli/c8volt_get_job.md` and `docs/cli/c8volt_update_job.md`
+- [x] T072 [US6] Verify US6 with targeted command contract, v8.7 unsupported, docs generation, and boundary tests in `cmd/`, `internal/services/job/v87/`, and `docs/cli/`
 
 **Checkpoint**: User Story 6 is complete when job primitives are documented, version-gated, and safe for scripts and future ops workflows.
 

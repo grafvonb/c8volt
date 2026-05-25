@@ -24,6 +24,8 @@ Started: 2026-05-25 15:34:07
 - Job search rows reuse `flatRowJobWithTimezone` through `jobsView`, while JSON returns one `job.SearchResult` payload and `--keys-only` emits only job keys.
 - `update job --fail` now routes through `SubmitJobWorkerOutcome` after the same current-job planning and confirmation gates as retry/timeout updates; BPMN error, completion, and `--vars` remain fail-closed for later stories.
 - v8.8/v8.9 technical failure submission uses generated `FailJobWithResponse`, preserves explicit zero retries through pointer-backed fields, and reports accepted outcomes with skipped confirmation because no stable read-model predicate exists.
+- `update job` must set explicit command output modes when metadata should advertise only one-line and JSON; otherwise inherited global flags make capabilities report `keys-only`.
+- v8.7 job search and worker outcome safety is enforced by unsupported service paths; command-level worker outcomes still load the current job first, so 8.7 fails before any outcome mutation is submitted.
 
 ---
 
@@ -251,4 +253,40 @@ Started: 2026-05-25 15:34:07
 - Completion did not require new facade/domain model types because foundational worker outcome fields already represented completion variables and accepted outcomes.
 - `--complete` rejects retry, timeout, fail, BPMN error, retry-backoff, and message flags locally before the current-job lookup or mutation call.
 - Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/job ./internal/domain ./internal/services/job ./internal/services/job/v87 ./internal/services/job/v88 ./internal/services/job/v89 -count=1`.
+---
+
+---
+## Iteration 8 - 2026-05-25 16:40:19 CEST
+**User Story**: User Story 6 - Keep Job Primitives Safe, Versioned, And Documented
+**Tasks Completed**:
+- [x] T064: Add v8.7 unsupported tests for job search and worker outcomes
+- [x] T065: Add command tests for unsupported 8.7 behavior before mutation
+- [x] T066: Add command contract metadata tests for new flags, mutation modes, output modes, and automation support
+- [x] T067: Add regression tests proving process-instance and incident service APIs do not gain job behavior
+- [x] T068: Implement v8.7 unsupported behavior for job search and worker outcomes
+- [x] T069: Update command help and metadata for all new get/update job flags
+- [x] T070: Update README examples for job search and worker outcomes
+- [x] T071: Regenerate CLI documentation for changed commands
+- [x] T072: Verify US6 with targeted command contract, v8.7 unsupported, docs generation, and boundary tests
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/command_contract_test.go
+- cmd/get_job.go
+- cmd/get_job_test.go
+- cmd/update_job.go
+- cmd/update_job_test.go
+- docs/cli/c8volt_get.md
+- docs/cli/c8volt_get_job.md
+- docs/cli/c8volt_update_job.md
+- docs/index.md
+- internal/services/service_boundary_test.go
+- internal/services/job/v87/service_test.go
+- specs/231-job-ops-workflows/tasks.md
+- specs/231-job-ops-workflows/progress.md
+**Learnings**:
+- Command capability metadata inherits global output flags unless a command sets explicit output modes.
+- `make docs-content VERSION=dev COMMIT=none DATE=unknown` refreshes generated docs without introducing transient dirty build metadata into `docs/index.md`.
+- Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/job ./internal/services ./internal/services/job ./internal/services/job/v87 ./internal/services/job/v88 ./internal/services/job/v89 -count=1` and `git diff --check`.
 ---

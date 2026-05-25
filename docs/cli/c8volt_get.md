@@ -61,7 +61,7 @@ c8volt get [flags]
 * [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
 * [c8volt get cluster](c8volt_get_cluster)	 - Inspect cluster-wide topology, version, and license information
 * [c8volt get incident](c8volt_get_incident)	 - List or fetch incidents
-* [c8volt get job](c8volt_get_job)	 - Inspect a job by key
+* [c8volt get job](c8volt_get_job)	 - Inspect or search jobs
 * [c8volt get process-definition](c8volt_get_process-definition)	 - List or fetch deployed process definitions
 * [c8volt get process-instance](c8volt_get_process-instance)	 - List or fetch process instances
 * [c8volt get resource](c8volt_get_resource)	 - Get a resource by id

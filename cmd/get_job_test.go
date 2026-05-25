@@ -180,6 +180,34 @@ func TestGetJobCommand_SearchModeKeysOnlyOutput(t *testing.T) {
 	require.Len(t, bodies, 1)
 }
 
+func TestGetJobCommand_SearchUnsupportedV87FailsBeforeLookup(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetJobCommand_SearchUnsupportedV87FailsBeforeLookupHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "search jobs")
+	require.Contains(t, string(output), "Camunda 8.8")
+	require.NotContains(t, string(output), "found:")
+}
+
+func TestGetJobCommand_SearchUnsupportedV87FailsBeforeLookupHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "job", "--state", "FAILED", "--limit", "1"}
+
+	Execute()
+}
+
 // TestGetJobCommand_SearchValidationRejectsInvalidValues proves search filters
 // fail locally for enum, key, count, and limit violations.
 func TestGetJobCommand_SearchValidationRejectsInvalidValues(t *testing.T) {

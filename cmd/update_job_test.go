@@ -595,6 +595,46 @@ func TestUpdateJobCommand_UnsupportedV87FailsBeforeMutationHelper(t *testing.T) 
 	Execute()
 }
 
+func TestUpdateJobCommand_WorkerOutcomeUnsupportedV87FailsBeforeMutation(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
+
+	for _, mode := range []string{"fail", "bpmn-error", "completion"} {
+		t.Run(mode, func(t *testing.T) {
+			output, err := testx.RunCmdSubprocess(t, "TestUpdateJobCommand_WorkerOutcomeUnsupportedV87FailsBeforeMutationHelper", map[string]string{
+				"C8VOLT_TEST_CONFIG":             cfgPath,
+				"C8VOLT_TEST_JOB_WORKER_OUTCOME": mode,
+			})
+			require.Error(t, err)
+
+			exitErr, ok := err.(*exec.ExitError)
+			require.True(t, ok)
+			require.Equal(t, exitcode.Error, exitErr.ExitCode())
+			require.Contains(t, string(output), "Camunda 8.8")
+			require.NotContains(t, string(output), "updated job")
+		})
+	}
+}
+
+func TestUpdateJobCommand_WorkerOutcomeUnsupportedV87FailsBeforeMutationHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	base := []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "update", "job", "--key", "2251799813711967"}
+	switch os.Getenv("C8VOLT_TEST_JOB_WORKER_OUTCOME") {
+	case "fail":
+		os.Args = append(base, "--fail", "--retries", "0", "--message", "worker unavailable", "--auto-confirm")
+	case "bpmn-error":
+		os.Args = append(base, "--throw-bpmn-error", "PAYMENT_DECLINED", "--message", "card declined", "--auto-confirm")
+	default:
+		os.Args = append(base, "--complete", "--auto-confirm")
+	}
+
+	Execute()
+}
+
 func TestUpdateJobCommand_RejectsJSONVerboseBeforeLookupOrMutation(t *testing.T) {
 	resetUpdateJobFlagState()
 	t.Cleanup(resetUpdateJobFlagState)

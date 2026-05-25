@@ -12,7 +12,7 @@ Update a job by key
 
 Update a Camunda job by key.
 
-The command supports retries and timeout updates for Camunda 8.8 and 8.9. It builds a pre-mutation plan, supports --dry-run previews, and asks for confirmation before material interactive mutations. Retry updates are confirmed by reading the job by key by default; timeout updates report submitted milliseconds without deadline confirmation. JSON mutations require --dry-run, --auto-confirm, or --automation, and --json cannot be combined with --verbose. Camunda 8.7 returns an unsupported-version error before mutation.
+The command supports retries, timeout updates, and worker outcome modes for Camunda 8.8 and 8.9. It builds a pre-mutation plan, supports --dry-run previews, and asks for confirmation before material interactive mutations. Retry updates are confirmed by reading the job by key by default; timeout updates and worker outcomes report accepted submission without deadline or outcome confirmation. JSON mutations require --dry-run, --auto-confirm, or --automation, and --json cannot be combined with --verbose. Camunda 8.7 returns an unsupported-version error before mutation.
 
 ```
 c8volt update job [flags]
@@ -24,18 +24,27 @@ c8volt update job [flags]
   ./c8volt update job --key <job-key> --retries 3 --dry-run
   ./c8volt update job --key <job-key> --retries 3 --auto-confirm
   ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
+  ./c8volt update job --key <job-key> --fail --retries 0 --message "worker unavailable" --dry-run
+  ./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED --message "card declined" --dry-run
+  ./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run
   ./c8volt --json update job --key <job-key> --retries 3 --dry-run
 ```
 
 ### Options
 
 ```
-      --dry-run          preview job updates without submitting mutation
-  -h, --help             help for job
-      --key string       job key to update
-      --no-wait          return after the update request is accepted without retry confirmation
-      --retries int32    retry count to set on the job
-      --timeout string   timeout duration to submit for the job, for example 60s, 5m, or 1h
+      --complete                  complete the job through the worker outcome API
+      --dry-run                   preview job updates without submitting mutation
+      --fail                      report a technical job failure
+  -h, --help                      help for job
+      --key string                job key to update
+      --message string            operator message for worker outcome modes
+      --no-wait                   return after the update request is accepted without retry confirmation
+      --retries int32             retry count to set, or remaining retries for --fail
+      --retry-backoff string      duration before a failed job becomes retryable, for example 60s, 5m, or 1h
+      --throw-bpmn-error string   BPMN error code to throw for the job
+      --timeout string            timeout duration to submit for the job, for example 60s, 5m, or 1h
+      --vars string               JSON object with variables for BPMN error or completion outcomes
 ```
 
 ### Options inherited from parent commands

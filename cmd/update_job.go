@@ -111,14 +111,14 @@ func init() {
 
 	fs := updateJobCmd.Flags()
 	fs.StringVar(&flagUpdateJobKey, "key", "", "job key to update")
-	fs.Int32Var(&flagUpdateJobRetries, "retries", 0, "retry count to set on the job")
+	fs.Int32Var(&flagUpdateJobRetries, "retries", 0, "retry count to set, or remaining retries for --fail")
 	fs.StringVar(&flagUpdateJobTimeoutRaw, "timeout", "", "timeout duration to submit for the job, for example 60s, 5m, or 1h")
 	fs.BoolVar(&flagUpdateJobFail, "fail", false, "report a technical job failure")
 	fs.StringVar(&flagUpdateJobRetryBackoffRaw, "retry-backoff", "", "duration before a failed job becomes retryable, for example 60s, 5m, or 1h")
 	fs.StringVar(&flagUpdateJobMessage, "message", "", "operator message for worker outcome modes")
 	fs.StringVar(&flagUpdateJobBPMNError, "throw-bpmn-error", "", "BPMN error code to throw for the job")
-	fs.BoolVar(&flagUpdateJobComplete, "complete", false, "complete the job")
-	fs.StringVar(&flagUpdateJobVariables, "vars", "", "JSON object with variables for job completion or worker outcome modes")
+	fs.BoolVar(&flagUpdateJobComplete, "complete", false, "complete the job through the worker outcome API")
+	fs.StringVar(&flagUpdateJobVariables, "vars", "", "JSON object with variables for BPMN error or completion outcomes")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview job updates without submitting mutation")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after the update request is accepted without retry confirmation")
 
@@ -126,6 +126,10 @@ func init() {
 	setCommandMutation(updateJobCmd, CommandMutationStateChanging)
 	setContractSupport(updateJobCmd, ContractSupportFull)
 	setAutomationSupport(updateJobCmd, AutomationSupportFull, "supports shared machine output, non-mutating dry-run previews, and accepted results")
+	setOutputModes(updateJobCmd,
+		OutputModeContract{Name: RenderModeOneLine.String(), Supported: true},
+		OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
+	)
 	setFlagContractRequired(updateJobCmd, "key")
 }
 
