@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -141,6 +142,22 @@ func TestCommandContractOpsRepairIncident(t *testing.T) {
 		Repeated:    false,
 		Description: "retry count to set on related jobs; 0 skips retry restoration",
 	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "element-id",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN element ID to filter incidents",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "element-instance-key",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "element instance key to filter incidents",
+	})
+	require.False(t, hasFlagContractNamed(capability.Flags, "flow-node-id"))
+	require.False(t, hasFlagContractNamed(capability.Flags, "fni-key"))
 }
 
 // TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts verifies discovery flags describe page size and explicit caps distinctly.
@@ -1170,6 +1187,20 @@ func TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContra
 		Description: "incident key(s) to select for candidate discovery",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "element-id",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN element ID to filter incidents",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "element-instance-key",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "element instance key to filter incidents",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "dry-run",
 		Type:        "bool",
 		Required:    false,
@@ -1236,6 +1267,8 @@ func TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContra
 	})
 	require.NotContains(t, capability.Flags, FlagContract{Name: "pi-keys-only"})
 	require.NotContains(t, capability.Flags, FlagContract{Name: "total"})
+	require.False(t, hasFlagContractNamed(capability.Flags, "flow-node-id"))
+	require.False(t, hasFlagContractNamed(capability.Flags, "fni-key"))
 }
 
 func TestCommandCapabilityForCommand_OpsExecuteRetentionPolicyContract(t *testing.T) {
@@ -1718,6 +1751,26 @@ func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *tes
 	require.NotContains(t, output, "AD_HOC_SUB_PROCESS_NO_RETRIES")
 	require.NotContains(t, output, "--flow-node-id")
 	require.NotContains(t, output, "--fni-key")
+}
+
+func TestIncidentCommandHelpOmitsLegacyElementTerminology(t *testing.T) {
+	tests := [][]string{
+		{"get", "incident"},
+		{"ops", "repair", "incident"},
+		{"ops", "purge", "process-instances-with-incidents"},
+	}
+	for _, args := range tests {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			output := assertCommandHelpOutput(t, args, []string{
+				"--element-id string",
+				"--element-instance-key string",
+			}, []string{
+				"--flow-node-id",
+				"--fni-key",
+			})
+			require.NotContains(t, output, "flow node")
+		})
+	}
 }
 
 func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T) {

@@ -27,8 +27,8 @@ var (
 	flagOpsRepairIncidentRootKey            string
 	flagOpsRepairIncidentPDKey              string
 	flagOpsRepairIncidentBpmnProcessID      string
-	flagOpsRepairIncidentFlowNodeID         string
-	flagOpsRepairIncidentFNIKey             string
+	flagOpsRepairIncidentElementID          string
+	flagOpsRepairIncidentElementInstanceKey string
 	flagOpsRepairIncidentCreationTimeAfter  string
 	flagOpsRepairIncidentCreationTimeBefore string
 	flagOpsRepairIncidentBatchSize          int32
@@ -176,8 +176,8 @@ func init() {
 	fs.StringVar(&flagOpsRepairIncidentPDKey, "pd-key", "", "process definition key to filter incidents")
 	fs.StringVar(&flagOpsRepairIncidentPIKey, "pi-key", "", "process instance key to filter incidents")
 	fs.StringVar(&flagOpsRepairIncidentRootKey, "root-key", "", "root process instance key to filter incidents")
-	fs.StringVar(&flagOpsRepairIncidentFlowNodeID, "flow-node-id", "", "flow node ID to filter incidents")
-	fs.StringVar(&flagOpsRepairIncidentFNIKey, "fni-key", "", "flow node instance key to filter incidents")
+	fs.StringVar(&flagOpsRepairIncidentElementID, "element-id", "", "BPMN element ID to filter incidents")
+	fs.StringVar(&flagOpsRepairIncidentElementInstanceKey, "element-instance-key", "", "element instance key to filter incidents")
 	fs.StringVar(&flagOpsRepairIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD")
 	fs.StringVar(&flagOpsRepairIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD")
 	fs.Int32VarP(&flagOpsRepairIncidentBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
@@ -244,10 +244,10 @@ func validateOpsRepairIncidentFlagValues(cmd *cobra.Command) error {
 		return mutuallyExclusiveFlagsf("--key cannot be combined with search filters")
 	}
 	for flag, value := range map[string]string{
-		"--pi-key":   flagOpsRepairIncidentPIKey,
-		"--root-key": flagOpsRepairIncidentRootKey,
-		"--pd-key":   flagOpsRepairIncidentPDKey,
-		"--fni-key":  flagOpsRepairIncidentFNIKey,
+		"--pi-key":               flagOpsRepairIncidentPIKey,
+		"--root-key":             flagOpsRepairIncidentRootKey,
+		"--pd-key":               flagOpsRepairIncidentPDKey,
+		"--element-instance-key": flagOpsRepairIncidentElementInstanceKey,
 	} {
 		if value == "" {
 			continue
@@ -302,8 +302,8 @@ func hasOpsRepairIncidentSearchModeFlags(cmd *cobra.Command) bool {
 		"root-key",
 		"pd-key",
 		"bpmn-process-id",
-		"flow-node-id",
-		"fni-key",
+		"element-id",
+		"element-instance-key",
 		"creation-time-after",
 		"creation-time-before",
 		"batch-size",
@@ -328,8 +328,8 @@ func populateOpsRepairIncidentSelection() incident.Filter {
 		ProcessDefinitionKey:   flagOpsRepairIncidentPDKey,
 		ProcessInstanceKey:     flagOpsRepairIncidentPIKey,
 		RootProcessInstanceKey: flagOpsRepairIncidentRootKey,
-		ElementId:              flagOpsRepairIncidentFlowNodeID,
-		ElementInstanceKey:     flagOpsRepairIncidentFNIKey,
+		ElementId:              flagOpsRepairIncidentElementID,
+		ElementInstanceKey:     flagOpsRepairIncidentElementInstanceKey,
 		CreationTimeAfter:      flagOpsRepairIncidentCreationTimeAfter,
 		CreationTimeBefore:     flagOpsRepairIncidentCreationTimeBefore,
 	}

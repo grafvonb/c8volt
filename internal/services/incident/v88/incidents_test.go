@@ -114,6 +114,36 @@ func TestGetIncidentMapsDetail(t *testing.T) {
 	}, got)
 }
 
+func TestSearchIncidentsPageKeepsAdapterBoundaryElementFields(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
+			require.Nil(t, body.Filter)
+			return &camundav88.SearchIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200: &camundav88.IncidentSearchQueryResult{
+					Items: []camundav88.IncidentResult{{
+						IncidentKey:        "2251799813685249",
+						ProcessInstanceKey: "2251799813685250",
+						State:              camundav88.IncidentStateEnumACTIVE,
+						ElementId:          "task-a",
+						ElementInstanceKey: "2251799813685252",
+					}},
+					Page: camundav88.SearchQueryPageResponse{TotalItems: 1},
+				},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{}, d.IncidentPageRequest{Size: 10})
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 1)
+	require.Equal(t, "task-a", got.Items[0].ElementId)
+	require.Equal(t, "2251799813685252", got.Items[0].ElementInstanceKey)
+}
+
 func TestWaitForIncidentResolvedPollsUntilNotFound(t *testing.T) {
 	t.Parallel()
 

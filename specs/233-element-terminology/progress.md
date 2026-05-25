@@ -3,6 +3,8 @@
 ## Codebase Patterns
 
 - Process-instance parent context is now canonical end-to-end as `ParentElementInstanceKey` / `parentElementInstanceKey`; only generated clients or v8.7 adapter reads may keep `ParentFlowNodeInstanceKey`.
+- Ops incident workflows register canonical `--element-id` and `--element-instance-key` filters directly; legacy `--flow-node-id` and `--fni-key` remain unregistered and fail as unknown flags.
+- `make docs-content` regenerates `docs/cli/` and syncs `docs/index.md` from README after command metadata or README examples change.
 - `cmd/get_processinstance_test.go` and `cmd/walk_test.go` are suitable focused command contract surfaces for asserting `parentFlowNodeInstanceKey` is absent from public JSON output.
 - Shared incident human rows are rendered only through `flatRowProcessInstanceIncidentWithTimezone` and `flatRowIncidentWithTimezone`; canonical compact labels are now `e:` and `ei:`.
 - Public incident facade/domain fields are now `ElementId` and `ElementInstanceKey`; public JSON tags are `elementId` and `elementInstanceKey`.
@@ -175,4 +177,46 @@
 - The model, converter, domain, and process-instance service layers were already canonical from the foundational work; US3 added missing public JSON regression coverage for process parent context.
 - Resource delete-plan conversion preserves canonical parent context through `process.DryRunPIKeyExpansion`, and JSON output omits `parentFlowNodeInstanceKey`.
 - Validation passed with `GOCACHE=/private/tmp/c8volt-go-build go test ./c8volt/process ./c8volt/resource ./internal/services/processinstance/... ./cmd`.
+---
+---
+## Iteration 6 - 2026-05-25 19:24:25 CEST
+**User Story**: User Story 4 - Keep Legacy Names Behind Adapter Boundaries
+**Tasks Completed**:
+- [x] T047: Add ops repair incident flag contract tests for canonical filters in `cmd/ops_repair_incident_test.go`
+- [x] T048: Add ops purge incident flag contract tests for canonical filters in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T049: Add static regression checks for forbidden public strings in `cmd/command_contract_test.go`
+- [x] T050: Add adapter-boundary tests documenting canonical element mapping in `internal/services/incident/v87/`, `internal/services/incident/v88/`, and `internal/services/incident/v89/`
+- [x] T051: Add docs regression checks in `docsgen/main_test.go`
+- [x] T052: Update ops repair incident filter flags, help, and request assembly in `cmd/ops_repair_incident*.go`
+- [x] T053: Update ops purge process-instances-with-incidents filter flags, help, and request assembly in `cmd/ops_purge_processinstances_with_incidents*.go`
+- [x] T054: Update README examples and incident wording in `README.md`
+- [x] T055: Update source documentation for ops workflows in `docs/ops/repair-incident.md`
+- [x] T056: Regenerate CLI docs and index content with `make docs-content`
+- [x] T057: Run scoped legacy-term search and resolve public matches
+- [x] T058: Verify US4 with targeted ops, command contract, adapter-boundary, docs generation, and legacy-term checks
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/command_contract_test.go
+- cmd/ops_purge_processinstances_with_incidents.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_incident_test.go
+- docs/cli/c8volt_get_incident.md
+- docs/cli/c8volt_get_job.md
+- docs/cli/c8volt_ops_purge_process-instances-with-incidents.md
+- docs/cli/c8volt_ops_repair_incident.md
+- docs/index.md
+- docs/ops/repair-incident.md
+- docsgen/main_test.go
+- internal/services/incident/v87/incidents_test.go
+- internal/services/incident/v88/incidents_test.go
+- internal/services/incident/v89/incidents_test.go
+- specs/233-element-terminology/tasks.md
+- specs/233-element-terminology/progress.md
+**Learnings**:
+- Ops repair and incident-purge commands own their incident filter variables independently, so both command files need canonical flag registration and request selection updates.
+- v8.8 incident search still sends only the tenant filter and applies most filters locally; v8.9 builds a server-side filter object with default active state even for an otherwise empty filter.
+- Validation passed with `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd ./docsgen ./internal/services/incident/...`, `make docs-content`, and a scoped public legacy-term search.
 ---

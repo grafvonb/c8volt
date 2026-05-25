@@ -374,12 +374,12 @@ When incident output includes `jobKey`, use `get job --key <job-key>` for direct
 ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
 ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel pi --dry-run -
 ./c8volt get incident --creation-time-after 2026-05-01T00:00:00Z --creation-time-before 2026-05-31T00:00:00Z --limit 5
-./c8volt get incident --pi-key <process-instance-key> --flow-node-id <flow-node-id>
+./c8volt get incident --pi-key <process-instance-key> --element-id <element-id>
 ./c8volt get incident --total --state resolved
 printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt get inc -
 ```
 
-Use `get incident` when the incident itself is the target. Repeated `--key` values and stdin `-` are merged and deduplicated for keyed lookup. Without keys, the command lists incidents with plain incident filters such as `--state`, `--error-type`, `--error-message`, process and flow-node selectors, and creation-time bounds. When `--bpmn-process-id` is present, c8volt validates the visible process-definition selector before totals, key-only output, process-instance-key output, or incident paging; missing selectors fail without recovery prompts in machine-oriented modes. Rows include tenant, state, type, creation time, process context, job key, message, and age; `--json`, `--keys-only`, `--pi-keys-only`, and `--total` preserve script-friendly output contracts. Use `--keys-only` when piping incident keys and `--pi-keys-only` when piping matching process instance keys into process-instance commands.
+Use `get incident` when the incident itself is the target. Repeated `--key` values and stdin `-` are merged and deduplicated for keyed lookup. Without keys, the command lists incidents with plain incident filters such as `--state`, `--error-type`, `--error-message`, process and element selectors, and creation-time bounds. When `--bpmn-process-id` is present, c8volt validates the visible process-definition selector before totals, key-only output, process-instance-key output, or incident paging; missing selectors fail without recovery prompts in machine-oriented modes. Rows include tenant, state, type, creation time, process context, job key, message, and age; `--json`, `--keys-only`, `--pi-keys-only`, and `--total` preserve script-friendly output contracts. Use `--keys-only` when piping incident keys and `--pi-keys-only` when piping matching process instance keys into process-instance commands.
 
 For variable inspection, add `--with-vars` to keyed or list/search `get pi` output, or to keyed `walk pi` output. Combine it with `--with-incidents` when you need runtime data and failure context in one view. Values are full by default; add `--var-value-limit <chars>` for noisy payloads. JSON keeps received values and metadata intact.
 

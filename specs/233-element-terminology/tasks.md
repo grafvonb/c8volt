@@ -135,21 +135,21 @@
 
 ### Tests for User Story 4
 
-- [ ] T047 [P] [US4] Add ops repair incident flag contract tests for canonical filters in `cmd/ops_repair_incident_test.go`
-- [ ] T048 [P] [US4] Add ops purge incident flag contract tests for canonical filters in `cmd/ops_purge_processinstances_with_incidents_test.go`
-- [ ] T049 [P] [US4] Add static regression checks for forbidden public strings in `cmd/command_contract_test.go` or a focused repository contract test file
-- [ ] T050 [P] [US4] Add adapter-boundary tests documenting allowed generated legacy mapping in `internal/services/incident/v87/`, `internal/services/incident/v88/`, and `internal/services/incident/v89/`
-- [ ] T051 [P] [US4] Add docs regression checks or update existing generated-doc assertions in `docsgen/` or `cmd/command_contract_test.go`
+- [x] T047 [P] [US4] Add ops repair incident flag contract tests for canonical filters in `cmd/ops_repair_incident_test.go`
+- [x] T048 [P] [US4] Add ops purge incident flag contract tests for canonical filters in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T049 [P] [US4] Add static regression checks for forbidden public strings in `cmd/command_contract_test.go` or a focused repository contract test file
+- [x] T050 [P] [US4] Add adapter-boundary tests documenting allowed generated legacy mapping in `internal/services/incident/v87/`, `internal/services/incident/v88/`, and `internal/services/incident/v89/`
+- [x] T051 [P] [US4] Add docs regression checks or update existing generated-doc assertions in `docsgen/` or `cmd/command_contract_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T052 [US4] Update ops repair incident filter flags, help, and request assembly in `cmd/ops_repair_incident*.go`
-- [ ] T053 [US4] Update ops purge process-instances-with-incidents filter flags, help, and request assembly in `cmd/ops_purge_processinstances_with_incidents*.go`
-- [ ] T054 [US4] Update README examples and incident wording in `README.md`
-- [ ] T055 [US4] Update source documentation for ops workflows in `docs/ops/repair-incident.md` and related non-generated docs
-- [ ] T056 [US4] Regenerate CLI docs and index content with `make docs-content` for `docs/cli/`, `docs/index.md`, and `docs/_site/assets/js/search-data.json`
-- [ ] T057 [US4] Run scoped legacy-term search and resolve public matches in `cmd`, `c8volt`, `internal/domain`, `README.md`, `docs/cli`, `docs/ops`, and `docs/index.md`
-- [ ] T058 [US4] Verify US4 with targeted ops, command contract, adapter-boundary, docs generation, and legacy-term checks
+- [x] T052 [US4] Update ops repair incident filter flags, help, and request assembly in `cmd/ops_repair_incident*.go`
+- [x] T053 [US4] Update ops purge process-instances-with-incidents filter flags, help, and request assembly in `cmd/ops_purge_processinstances_with_incidents*.go`
+- [x] T054 [US4] Update README examples and incident wording in `README.md`
+- [x] T055 [US4] Update source documentation for ops workflows in `docs/ops/repair-incident.md` and related non-generated docs
+- [x] T056 [US4] Regenerate CLI docs and index content with `make docs-content` for `docs/cli/`, `docs/index.md`, and `docs/_site/assets/js/search-data.json`
+- [x] T057 [US4] Run scoped legacy-term search and resolve public matches in `cmd`, `c8volt`, `internal/domain`, `README.md`, `docs/cli`, `docs/ops`, and `docs/index.md`
+- [x] T058 [US4] Verify US4 with targeted ops, command contract, adapter-boundary, docs generation, and legacy-term checks
 
 **Checkpoint**: User Story 4 is complete when legacy names appear only in generated clients, versioned adapter mappings, or historical spec artifacts outside the new public contract.
 

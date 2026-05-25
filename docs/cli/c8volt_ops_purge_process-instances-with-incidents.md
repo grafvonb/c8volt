@@ -34,11 +34,11 @@ c8volt ops purge process-instances-with-incidents [flags]
       --creation-time-after string    only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD
       --creation-time-before string   only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD
       --dry-run                       discover and validate incident-based process-instance cleanup without submitting deletion requests
+      --element-id string             BPMN element ID to filter incidents
+      --element-instance-key string   element instance key to filter incidents
       --error-message string          case-insensitive incident error message substring filter for discovery
       --error-type string             case-insensitive incident error type filter for discovery
       --fail-fast                     stop scheduling validation or deletion work after the first error
-      --flow-node-id string           flow node ID to filter incidents
-      --fni-key string                flow node instance key to filter incidents
       --force                         force cancellation of the process instance(s), prior to deletion
   -h, --help                          help for process-instances-with-incidents
   -k, --key strings                   incident key(s) to select for candidate discovery

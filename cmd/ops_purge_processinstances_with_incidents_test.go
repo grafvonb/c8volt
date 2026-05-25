@@ -45,8 +45,8 @@ func TestOpsPurgeProcessInstancesWithIncidentsHelpDocumentsCommandShape(t *testi
 		"--pd-key string",
 		"--pi-key string",
 		"--root-key string",
-		"--flow-node-id string",
-		"--fni-key string",
+		"--element-id string",
+		"--element-instance-key string",
 		"--creation-time-after string",
 		"--creation-time-before string",
 		"--batch-size int32",
@@ -69,6 +69,8 @@ func TestOpsPurgeProcessInstancesWithIncidentsHelpDocumentsCommandShape(t *testi
 		"--total",
 		"--error-message-limit",
 		"--with-no-error-message",
+		"--flow-node-id",
+		"--fni-key",
 	)
 
 	aliasOutput := executeRootForProcessInstanceTest(t, "ops", "purge", "pi-with-incidents", "--help")
@@ -86,6 +88,8 @@ func TestOpsPurgeProcessInstancesWithIncidentsRejectsIncidentDisplayOnlyFlags(t 
 		{name: "total", args: []string{"--total"}, want: "unknown flag: --total"},
 		{name: "message limit", args: []string{"--error-message-limit", "20"}, want: "unknown flag: --error-message-limit"},
 		{name: "omit message", args: []string{"--with-no-error-message"}, want: "unknown flag: --with-no-error-message"},
+		{name: "legacy element id", args: []string{"--flow-node-id", "task-a"}, want: "unknown flag: --flow-node-id"},
+		{name: "legacy element instance key", args: []string{"--fni-key", "2251799813685252"}, want: "unknown flag: --fni-key"},
 	}
 
 	for _, tt := range tests {
@@ -755,8 +759,8 @@ func resetOpsPurgeProcessInstancesWithIncidentsFlagState() {
 	flagOpsPurgeIncidentPDKey = ""
 	flagOpsPurgeIncidentPIKey = ""
 	flagOpsPurgeIncidentRootKey = ""
-	flagOpsPurgeIncidentFlowNodeID = ""
-	flagOpsPurgeIncidentFNIKey = ""
+	flagOpsPurgeIncidentElementID = ""
+	flagOpsPurgeIncidentElementInstanceKey = ""
 	flagOpsPurgeIncidentCreationTimeAfter = ""
 	flagOpsPurgeIncidentCreationTimeBefore = ""
 	flagOpsPurgeIncidentBatchSize = consts.MaxPISearchSize

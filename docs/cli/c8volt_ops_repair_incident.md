@@ -34,11 +34,11 @@ c8volt ops repair incident [flags]
       --creation-time-after string    only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD
       --creation-time-before string   only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD
       --dry-run                       freeze repair targets and preview repair steps without submitting mutations
+      --element-id string             BPMN element ID to filter incidents
+      --element-instance-key string   element instance key to filter incidents
       --error-message string          case-insensitive incident error message substring filter for search
       --error-type string             case-insensitive incident error type filter for search
       --fail-fast                     stop scheduling incident repairs after the first error
-      --flow-node-id string           flow node ID to filter incidents
-      --fni-key string                flow node instance key to filter incidents
   -h, --help                          help for incident
       --job-timeout string            timeout duration to submit for related jobs, for example 60s, 5m, or 1h
   -k, --key strings                   incident key(s) to repair; repeat or combine with stdin '-'
