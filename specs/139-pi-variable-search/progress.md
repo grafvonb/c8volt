@@ -27,6 +27,8 @@
 - Native process-instance variable request mapping lives in focused `internal/services/processinstance/v88/variable_filter.go` and `internal/services/processinstance/v89/variable_filter.go`; later operator stories should extend those switch statements rather than adding command-layer request code.
 - `--var` equality uses the same parser path as advanced `--var` clauses: `name=value` normalizes to `$eq` while preserving serialized quote characters and comma-containing values.
 - v8.8 and v8.9 native equality mapping should set `AdvancedStringFilter.Eq` directly from the preserved domain clause value; command, facade, and service layers must not parse or reserialize that value.
+- `--var-like` uses the same parser path with a `$like` default operator; wildcard strings, question marks, and escaped wildcard characters are preserved as raw native pattern values.
+- v8.8 and v8.9 native like mapping should set `AdvancedStringFilter.Like` directly from the preserved domain clause value.
 
 ## Architecture Grounding
 
@@ -45,7 +47,6 @@
 - Do not stage or commit unless validation for the work unit passes.
 - Commit subjects must use Conventional Commits and end with `#139`.
 
----
 ## Iteration 1 - 2026-05-25 22:37:13 CEST
 **User Story**: Phase 1: Setup (Shared Discovery)
 **Tasks Completed**:
@@ -166,4 +167,36 @@
 - `StringArrayVar` registration for `--var` preserves comma-sensitive equality inputs so `splitPIVariableClauses` can distinguish top-level delimiters from commas inside serialized values.
 - Equality shorthand was already represented through facade and domain filters by the foundational plumbing; US2 only needed command registration plus native `$eq` request serialization in v8.8 and v8.9.
 - Validation passed with targeted parser, command, facade, domain, and versioned service tests, followed by `go test ./cmd ./c8volt/process ./internal/domain ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`.
+---
+---
+## Iteration 5 - 2026-05-25 23:04:10 CEST
+**User Story**: User Story 3 - Search With Like Patterns
+**Tasks Completed**:
+- [x] T038: Add parser tests for `--var-like`, `*`, `?`, and escaped wildcard values in `cmd/get_processinstance_variable_filter_test.go`
+- [x] T039: Add command execution tests for like filters in `cmd/get_processinstance_test.go`
+- [x] T040: Add v8.8 native request tests for `$like` filters in `internal/services/processinstance/v88/service_test.go`
+- [x] T041: Add v8.9 native request tests for `$like` filters in `internal/services/processinstance/v89/service_test.go`
+- [x] T042: Register `--var-like` flag and wildcard examples in `cmd/get_processinstance.go`
+- [x] T043: Implement `--var-like` shorthand parsing in `cmd/get_processinstance_variable_filter.go`
+- [x] T044: Preserve wildcard and escaped wildcard values in parser logic in `cmd/get_processinstance_variable_filter.go`
+- [x] T045: Map like clauses through process facade and domain filters in `c8volt/process/convert.go` and `internal/domain/processinstance.go`
+- [x] T046: Implement native like request mapping for Camunda 8.8 in `internal/services/processinstance/v88/`
+- [x] T047: Implement native like request mapping for Camunda 8.9 in `internal/services/processinstance/v89/`
+- [x] T048: Verify US3 with targeted tests for `cmd`, `internal/services/processinstance/v88`, and `internal/services/processinstance/v89`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/get_processinstance_variable_filter_test.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v88/variable_filter.go
+- internal/services/processinstance/v89/service_test.go
+- internal/services/processinstance/v89/variable_filter.go
+- specs/139-pi-variable-search/tasks.md
+- specs/139-pi-variable-search/progress.md
+**Learnings**:
+- `--var-like` can reuse the existing variable value parser path; the story only needed flag registration plus tests that prove `*`, `?`, and `\*` are preserved.
+- Generated `AdvancedStringFilter.Like` fields accept the preserved pattern string directly in v8.8 and v8.9 request builders.
+- Validation passed with `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`.
 ---

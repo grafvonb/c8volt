@@ -110,20 +110,20 @@
 
 ### Tests for User Story 3
 
-- [ ] T038 [P] [US3] Add parser tests for `--var-like`, `*`, `?`, and escaped wildcard values in `cmd/get_processinstance_variable_filter_test.go`
-- [ ] T039 [P] [US3] Add command execution tests for like filters in `cmd/get_processinstance_test.go`
-- [ ] T040 [P] [US3] Add v8.8 native request tests for `$like` filters in `internal/services/processinstance/v88/service_test.go`
-- [ ] T041 [P] [US3] Add v8.9 native request tests for `$like` filters in `internal/services/processinstance/v89/service_test.go`
+- [x] T038 [P] [US3] Add parser tests for `--var-like`, `*`, `?`, and escaped wildcard values in `cmd/get_processinstance_variable_filter_test.go`
+- [x] T039 [P] [US3] Add command execution tests for like filters in `cmd/get_processinstance_test.go`
+- [x] T040 [P] [US3] Add v8.8 native request tests for `$like` filters in `internal/services/processinstance/v88/service_test.go`
+- [x] T041 [P] [US3] Add v8.9 native request tests for `$like` filters in `internal/services/processinstance/v89/service_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T042 [US3] Register `--var-like` flag and wildcard examples in `cmd/get_processinstance.go`
-- [ ] T043 [US3] Implement `--var-like` shorthand parsing in `cmd/get_processinstance_variable_filter.go`
-- [ ] T044 [US3] Preserve wildcard and escaped wildcard values in parser logic in `cmd/get_processinstance_variable_filter.go`
-- [ ] T045 [US3] Map like clauses through process facade and domain filters in `c8volt/process/convert.go` and `internal/domain/processinstance.go`
-- [ ] T046 [US3] Implement native like request mapping for Camunda 8.8 in `internal/services/processinstance/v88/`
-- [ ] T047 [US3] Implement native like request mapping for Camunda 8.9 in `internal/services/processinstance/v89/`
-- [ ] T048 [US3] Verify US3 with targeted tests for `cmd`, `internal/services/processinstance/v88`, and `internal/services/processinstance/v89`
+- [x] T042 [US3] Register `--var-like` flag and wildcard examples in `cmd/get_processinstance.go`
+- [x] T043 [US3] Implement `--var-like` shorthand parsing in `cmd/get_processinstance_variable_filter.go`
+- [x] T044 [US3] Preserve wildcard and escaped wildcard values in parser logic in `cmd/get_processinstance_variable_filter.go`
+- [x] T045 [US3] Map like clauses through process facade and domain filters in `c8volt/process/convert.go` and `internal/domain/processinstance.go`
+- [x] T046 [US3] Implement native like request mapping for Camunda 8.8 in `internal/services/processinstance/v88/`
+- [x] T047 [US3] Implement native like request mapping for Camunda 8.9 in `internal/services/processinstance/v89/`
+- [x] T048 [US3] Verify US3 with targeted tests for `cmd`, `internal/services/processinstance/v88`, and `internal/services/processinstance/v89`
 
 **Checkpoint**: User Story 3 is complete when like filters preserve native wildcard behavior and compose with earlier variable filters.
 

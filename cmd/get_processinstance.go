@@ -74,6 +74,7 @@ var getProcessInstanceCmd = &cobra.Command{
   ./c8volt get pi --incidents-only --with-incidents --limit 5
   ./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5
   ./c8volt get pi --var 'status="approved"' --limit 5
+  ./c8volt get pi --var-like 'email=*@example.com' --limit 5
   ./c8volt get pi --state active --with-vars --var-value-limit 120 --limit 5
   ./c8volt get pi --key <process-instance-key> --with-incidents
   ./c8volt get pi --key <process-instance-key> --with-vars
@@ -321,6 +322,7 @@ func init() {
 	fs.IntVar(&flagGetPIVarValueLimit, "var-value-limit", 0, "maximum characters to show for variable values when --with-vars is set; 0 disables truncation")
 	fs.StringArrayVar(&flagGetPIVarExists, "var-exists", nil, "require variable name(s) to exist; repeat or separate names with commas")
 	fs.StringArrayVar(&flagGetPIVars, "var", nil, "require variable equality clause(s) as name=value; repeat or separate clauses with commas")
+	fs.StringArrayVar(&flagGetPIVarLikes, "var-like", nil, "require variable value pattern clause(s) as name=pattern; repeat or separate clauses with commas")
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")

@@ -87,6 +87,24 @@ func TestParsePIVariableFilters_PreservesEqualityQuotedCommaValues(t *testing.T)
 	}, got.Clauses)
 }
 
+// TestParsePIVariableFilters_ExpandsLikeInputs verifies like shorthand keeps
+// native wildcard and escaped wildcard text exactly as supplied.
+func TestParsePIVariableFilters_ExpandsLikeInputs(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	flagGetPIVarLikes = []string{`email=*@example.com,customerId=CUST-????`, `literal=invoice-\*`}
+
+	got, err := parsePIVariableFilters()
+
+	require.NoError(t, err)
+	require.Equal(t, []process.ProcessInstanceVariableFilterClause{
+		{Name: "email", Operator: process.ProcessInstanceVariableFilterOperatorLike, Value: `*@example.com`, Source: piVariableFilterSourceLike},
+		{Name: "customerId", Operator: process.ProcessInstanceVariableFilterOperatorLike, Value: `CUST-????`, Source: piVariableFilterSourceLike},
+		{Name: "literal", Operator: process.ProcessInstanceVariableFilterOperatorLike, Value: `invoice-\*`, Source: piVariableFilterSourceLike},
+	}, got.Clauses)
+}
+
 // TestParsePIVariableFilters_RejectsBlankExistsName keeps doubled delimiters
 // from becoming ambiguous native existence clauses.
 func TestParsePIVariableFilters_RejectsBlankExistsName(t *testing.T) {

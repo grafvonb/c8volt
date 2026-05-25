@@ -43,6 +43,11 @@ func newVariableStringFilter(clause d.ProcessInstanceVariableFilterClause) (camu
 			return camundav89.StringFilterProperty{}, err
 		}
 		return valueFilter, nil
+	case d.ProcessInstanceVariableFilterOperatorLike:
+		if err := valueFilter.FromAdvancedStringFilter(camundav89.AdvancedStringFilter{Like: &clause.Value}); err != nil {
+			return camundav89.StringFilterProperty{}, err
+		}
+		return valueFilter, nil
 	case d.ProcessInstanceVariableFilterOperatorExists:
 		if err := valueFilter.FromAdvancedStringFilter(camundav89.AdvancedStringFilter{Exists: clause.Exists}); err != nil {
 			return camundav89.StringFilterProperty{}, err
