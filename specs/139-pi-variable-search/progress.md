@@ -8,6 +8,7 @@
 
 ## Codebase Patterns
 
+- `make docs-content` refreshes the `docs/index.md` build metadata from the current repository build information, so final polish may include a generated index metadata-only diff even when command pages are unchanged.
 - `make docs-content` regenerates both `docs/cli/*` from Cobra metadata and `docs/index.md` from README content, so US6 source changes must be made in command help/README before generation.
 - Generated CLI docs can be regression-tested in `docsgen/main_test.go` by building a temporary markdown tree with `doc.GenMarkdownTreeCustom` and inspecting `c8volt_get_process-instance.md`.
 - Command capability metadata exposes `StringArrayVar` flags as `stringArray` with `Repeated: true`, which is the contract shape for `--var-exists`, `--var`, and `--var-like`.
@@ -299,4 +300,26 @@
 - Variable-search help and generated docs are source-driven from `cmd/get_processinstance.go`; README guidance is separately synced into `docs/index.md`.
 - `scopeKey` wording is now pinned in command help, README-derived docs, and generated CLI docs as direct-definition scope semantics.
 - Validation passed with targeted `go test ./cmd` help/contract tests, `go test ./docsgen` generated-doc tests, `make docs-content`, `rg` documentation checks, and `git diff --check`.
+---
+---
+## Iteration 9 - 2026-05-25 23:24:52 CEST
+**User Story**: Phase 9: Polish & Cross-Cutting Validation
+**Tasks Completed**:
+- [x] T078: Run gofmt for changed Go files under `cmd/`, `c8volt/process/`, `internal/domain/`, and `internal/services/processinstance/`
+- [x] T079: Run targeted Go tests for changed packages under `cmd`, `c8volt/process`, `internal/domain`, and `internal/services/processinstance`
+- [x] T080: Run `make docs-content` from the repository root after command metadata and README changes
+- [x] T081: Run `make test` from the repository root before commit readiness
+- [x] T082: Review `quickstart.md` against implemented behavior and update examples if flags or output changed during implementation
+- [x] T083: Update task completion and codebase pattern notes in `specs/139-pi-variable-search/tasks.md` and `specs/139-pi-variable-search/progress.md`
+- [x] T084: Review `git diff` to ensure changes are scoped to issue #139 artifacts, implementation, tests, README, and generated docs
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- docs/index.md
+- specs/139-pi-variable-search/tasks.md
+- specs/139-pi-variable-search/progress.md
+**Learnings**:
+- `gofmt` over the affected Go areas produced no source diff, and the targeted process-instance package tests passed before broader validation.
+- `make docs-content` refreshed only `docs/index.md` build metadata after generated output normalization; `quickstart.md` already matched the implemented variable-search behavior.
+- Validation passed with targeted package tests, `make docs-content`, full `make test`, `git diff --check`, and final scoped diff review.
 ---

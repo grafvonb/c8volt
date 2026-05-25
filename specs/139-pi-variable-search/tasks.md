@@ -210,13 +210,13 @@
 
 **Purpose**: Final cleanup, generated docs, task/progress updates, and repository validation.
 
-- [ ] T078 [P] Run gofmt for changed Go files under `cmd/`, `c8volt/process/`, `internal/domain/`, and `internal/services/processinstance/`
-- [ ] T079 Run targeted Go tests for changed packages under `cmd`, `c8volt/process`, `internal/domain`, and `internal/services/processinstance`
-- [ ] T080 Run `make docs-content` from the repository root after command metadata and README changes
-- [ ] T081 Run `make test` from the repository root before commit readiness
-- [ ] T082 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update examples if flags or output changed during implementation
-- [ ] T083 Update task completion and codebase pattern notes in `specs/139-pi-variable-search/tasks.md` and `specs/139-pi-variable-search/progress.md`
-- [ ] T084 Review `git diff` to ensure changes are scoped to issue #139 artifacts, implementation, tests, README, and generated docs
+- [x] T078 [P] Run gofmt for changed Go files under `cmd/`, `c8volt/process/`, `internal/domain/`, and `internal/services/processinstance/`
+- [x] T079 Run targeted Go tests for changed packages under `cmd`, `c8volt/process`, `internal/domain`, and `internal/services/processinstance`
+- [x] T080 Run `make docs-content` from the repository root after command metadata and README changes
+- [x] T081 Run `make test` from the repository root before commit readiness
+- [x] T082 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update examples if flags or output changed during implementation
+- [x] T083 Update task completion and codebase pattern notes in `specs/139-pi-variable-search/tasks.md` and `specs/139-pi-variable-search/progress.md`
+- [x] T084 Review `git diff` to ensure changes are scoped to issue #139 artifacts, implementation, tests, README, and generated docs
 
 ---
 
