@@ -335,8 +335,8 @@ func populateGetIncidentSearchFilter() incident.Filter {
 		RootProcessInstanceKey: flagGetIncidentRootKey,
 		ProcessDefinitionKey:   flagGetIncidentPDKey,
 		ProcessDefinitionId:    flagGetIncidentBpmnProcessID,
-		FlowNodeId:             flagGetIncidentFlowNodeID,
-		FlowNodeInstanceKey:    flagGetIncidentFNIKey,
+		ElementId:              flagGetIncidentFlowNodeID,
+		ElementInstanceKey:     flagGetIncidentFNIKey,
 		CreationTimeAfter:      flagGetIncidentCreationTimeAfter,
 		CreationTimeBefore:     flagGetIncidentCreationTimeBefore,
 	}

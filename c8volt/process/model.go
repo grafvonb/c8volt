@@ -60,21 +60,21 @@ type ProcessInstanceData struct {
 }
 
 type ProcessInstance struct {
-	BpmnProcessId             string         `json:"bpmnProcessId,omitempty"`
-	EndDate                   string         `json:"endDate,omitempty"`
-	Incident                  bool           `json:"incident,omitempty"`
-	Key                       string         `json:"key,omitempty"`
-	ParentFlowNodeInstanceKey string         `json:"parentFlowNodeInstanceKey,omitempty"`
-	ParentKey                 string         `json:"parentKey,omitempty"`
-	ParentProcessInstanceKey  string         `json:"parentProcessInstanceKey,omitempty"`
-	ProcessDefinitionKey      string         `json:"processDefinitionKey,omitempty"`
-	RootProcessInstanceKey    string         `json:"rootProcessInstanceKey,omitempty"`
-	ProcessVersion            int32          `json:"processVersion,omitempty"`
-	ProcessVersionTag         string         `json:"processVersionTag,omitempty"`
-	StartDate                 string         `json:"startDate,omitempty"`
-	State                     State          `json:"state,omitempty"`
-	TenantId                  string         `json:"tenantId,omitempty"`
-	Variables                 map[string]any `json:"variables,omitempty"`
+	BpmnProcessId            string         `json:"bpmnProcessId,omitempty"`
+	EndDate                  string         `json:"endDate,omitempty"`
+	Incident                 bool           `json:"incident,omitempty"`
+	Key                      string         `json:"key,omitempty"`
+	ParentElementInstanceKey string         `json:"parentElementInstanceKey,omitempty"`
+	ParentKey                string         `json:"parentKey,omitempty"`
+	ParentProcessInstanceKey string         `json:"parentProcessInstanceKey,omitempty"`
+	ProcessDefinitionKey     string         `json:"processDefinitionKey,omitempty"`
+	RootProcessInstanceKey   string         `json:"rootProcessInstanceKey,omitempty"`
+	ProcessVersion           int32          `json:"processVersion,omitempty"`
+	ProcessVersionTag        string         `json:"processVersionTag,omitempty"`
+	StartDate                string         `json:"startDate,omitempty"`
+	State                    State          `json:"state,omitempty"`
+	TenantId                 string         `json:"tenantId,omitempty"`
+	Variables                map[string]any `json:"variables,omitempty"`
 }
 
 type ProcessInstanceIncidentDetail = incident.ProcessInstanceIncidentDetail

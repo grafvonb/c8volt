@@ -149,13 +149,13 @@ func (s *Service) newIncidentFilter(filter d.IncidentFilter) (*camundav89.Incide
 	if err != nil {
 		return nil, fmt.Errorf("building incident process-definition-id filter: %w", err)
 	}
-	flowNodeIDFilter, err := newStringEqFilterPtr(filter.FlowNodeId)
+	elementIDFilter, err := newStringEqFilterPtr(filter.ElementId)
 	if err != nil {
-		return nil, fmt.Errorf("building incident flow-node-id filter: %w", err)
+		return nil, fmt.Errorf("building incident element-id filter: %w", err)
 	}
-	flowNodeInstanceKeyFilter, err := newElementInstanceKeyEqFilterPtr(filter.FlowNodeInstanceKey)
+	elementInstanceKeyFilter, err := newElementInstanceKeyEqFilterPtr(filter.ElementInstanceKey)
 	if err != nil {
-		return nil, fmt.Errorf("building incident flow-node-instance-key filter: %w", err)
+		return nil, fmt.Errorf("building incident element-instance-key filter: %w", err)
 	}
 	creationTimeAfter, err := parseIncidentTimeBound(filter.CreationTimeAfter)
 	if err != nil {
@@ -176,8 +176,8 @@ func (s *Service) newIncidentFilter(filter d.IncidentFilter) (*camundav89.Incide
 		ProcessInstanceKey:   processInstanceKeyFilter,
 		ProcessDefinitionKey: processDefinitionKeyFilter,
 		ProcessDefinitionId:  processDefinitionIDFilter,
-		ElementId:            flowNodeIDFilter,
-		ElementInstanceKey:   flowNodeInstanceKeyFilter,
+		ElementId:            elementIDFilter,
+		ElementInstanceKey:   elementInstanceKeyFilter,
 		CreationTime:         creationTimeFilter,
 	}
 	if bodyFilter.TenantId == nil &&

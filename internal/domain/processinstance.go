@@ -6,20 +6,20 @@ package domain
 import "github.com/grafvonb/c8volt/toolx"
 
 type ProcessInstance struct {
-	BpmnProcessId             string
-	EndDate                   string
-	Incident                  bool
-	Key                       string
-	ParentFlowNodeInstanceKey string
-	ParentKey                 string
-	ProcessDefinitionKey      string
-	RootProcessInstanceKey    string
-	ProcessVersion            int32
-	ProcessVersionTag         string
-	StartDate                 string
-	State                     State
-	TenantId                  string
-	Variables                 map[string]any
+	BpmnProcessId            string
+	EndDate                  string
+	Incident                 bool
+	Key                      string
+	ParentElementInstanceKey string
+	ParentKey                string
+	ProcessDefinitionKey     string
+	RootProcessInstanceKey   string
+	ProcessVersion           int32
+	ProcessVersionTag        string
+	StartDate                string
+	State                    State
+	TenantId                 string
+	Variables                map[string]any
 }
 
 type ProcessInstanceVariable struct {

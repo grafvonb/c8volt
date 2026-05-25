@@ -338,8 +338,8 @@ func TestIncidentHumanLineWithMessageLimit_RendersAlignedIncidentListFieldsAndAg
 			RootProcessInstanceKey: "2251799813711960",
 			ProcessDefinitionKey:   "2251799813685200",
 			ProcessDefinitionId:    "demo-process",
-			FlowNodeId:             "task-a",
-			FlowNodeInstanceKey:    "2251799813685300",
+			ElementId:              "task-a",
+			ElementInstanceKey:     "2251799813685300",
 		},
 		{
 			IncidentKey:         "9",
@@ -615,13 +615,13 @@ func TestProcessInstanceActivityInstancesView_HumanRowsGroupVarsBeforeIncidents(
 				ScopeKey:           "123",
 			}},
 			Incidents: []incident.ProcessInstanceIncidentDetail{{
-				IncidentKey:         "incident-123",
-				ProcessInstanceKey:  "123",
-				FlowNodeId:          "task-a",
-				FlowNodeInstanceKey: "element-123",
-				State:               "ACTIVE",
-				ErrorType:           "IO_MAPPING_ERROR",
-				ErrorMessage:        "failed",
+				IncidentKey:        "incident-123",
+				ProcessInstanceKey: "123",
+				ElementId:          "task-a",
+				ElementInstanceKey: "element-123",
+				State:              "ACTIVE",
+				ErrorType:          "IO_MAPPING_ERROR",
+				ErrorMessage:       "failed",
 			}},
 			ShowIncidents: true,
 		}},
@@ -776,14 +776,14 @@ func TestIncidentHumanLine_RendersDetailsForIncidentGroup(t *testing.T) {
 	})
 
 	got := incidentHumanLine(incident.ProcessInstanceIncidentDetail{
-		IncidentKey:         "incident-123",
-		CreationTime:        "2026-05-06T09:29:42.711Z",
-		ErrorMessage:        "No retries left",
-		FlowNodeId:          "task-a",
-		FlowNodeInstanceKey: "element-123",
-		State:               "ACTIVE",
-		ErrorType:           "JOB_NO_RETRIES",
-		JobKey:              "job-123",
+		IncidentKey:        "incident-123",
+		CreationTime:       "2026-05-06T09:29:42.711Z",
+		ErrorMessage:       "No retries left",
+		ElementId:          "task-a",
+		ElementInstanceKey: "element-123",
+		State:              "ACTIVE",
+		ErrorType:          "JOB_NO_RETRIES",
+		JobKey:             "job-123",
 	})
 
 	require.Equal(t, "incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-05-06T09:29:42.711 (4 days ago) fn:task-a fni:element-123 m:No retries left", got)
@@ -798,12 +798,12 @@ func TestIncidentHumanLine_RendersUnavailableJobKeyWhenMissing(t *testing.T) {
 	})
 
 	got := incidentHumanLine(incident.ProcessInstanceIncidentDetail{
-		IncidentKey:         "incident-123",
-		ErrorMessage:        "Mapping failed",
-		FlowNodeId:          "task-a",
-		FlowNodeInstanceKey: "element-123",
-		State:               "ACTIVE",
-		ErrorType:           "IO_MAPPING_ERROR",
+		IncidentKey:        "incident-123",
+		ErrorMessage:       "Mapping failed",
+		ElementId:          "task-a",
+		ElementInstanceKey: "element-123",
+		State:              "ACTIVE",
+		ErrorType:          "IO_MAPPING_ERROR",
 	})
 
 	require.Equal(t, "incident-123 IO_MAPPING_ERROR ACTIVE j:n/a fn:task-a fni:element-123 m:Mapping failed", got)
@@ -952,16 +952,16 @@ func TestListIncidentsView_HumanJSONAndKeysOnly(t *testing.T) {
 		Total: 2,
 		Items: []incident.ProcessInstanceIncidentDetail{
 			{
-				IncidentKey:         "incident-123",
-				CreationTime:        "2026-05-06T09:29:42.711Z",
-				ProcessInstanceKey:  "pi-123",
-				TenantId:            "tenant-a",
-				State:               "ACTIVE",
-				ErrorType:           "JOB_NO_RETRIES",
-				ErrorMessage:        "No retries left",
-				FlowNodeId:          "task-a",
-				FlowNodeInstanceKey: "element-123",
-				JobKey:              "job-123",
+				IncidentKey:        "incident-123",
+				CreationTime:       "2026-05-06T09:29:42.711Z",
+				ProcessInstanceKey: "pi-123",
+				TenantId:           "tenant-a",
+				State:              "ACTIVE",
+				ErrorType:          "JOB_NO_RETRIES",
+				ErrorMessage:       "No retries left",
+				ElementId:          "task-a",
+				ElementInstanceKey: "element-123",
+				JobKey:             "job-123",
 			},
 			{
 				IncidentKey:  "incident-124",

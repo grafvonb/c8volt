@@ -5,6 +5,7 @@ package incident
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"sync/atomic"
@@ -27,7 +28,7 @@ func TestClient_GetIncidentAndSearchIncidentsMapServiceBoundary(t *testing.T) {
 		getIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
 			assert.Equal(t, "incident-a", key)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
-			return d.ProcessInstanceIncidentDetail{IncidentKey: key, ProcessInstanceKey: "pi-a", TenantId: "tenant-a"}, nil
+			return d.ProcessInstanceIncidentDetail{IncidentKey: key, ProcessInstanceKey: "pi-a", TenantId: "tenant-a", ElementId: "task-a", ElementInstanceKey: "ei-a"}, nil
 		},
 		searchIncidents: func(_ context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 			assert.Equal(t, d.IncidentFilter{
@@ -37,8 +38,8 @@ func TestClient_GetIncidentAndSearchIncidentsMapServiceBoundary(t *testing.T) {
 				RootProcessInstanceKey: "root-a",
 				ProcessDefinitionKey:   "pd-a",
 				ProcessDefinitionId:    "bpmn-a",
-				FlowNodeId:             "task-a",
-				FlowNodeInstanceKey:    "fni-a",
+				ElementId:              "task-a",
+				ElementInstanceKey:     "fni-a",
 			}, filter)
 			assert.Equal(t, int32(5), size)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
@@ -56,13 +57,32 @@ func TestClient_GetIncidentAndSearchIncidentsMapServiceBoundary(t *testing.T) {
 		RootProcessInstanceKey: "root-a",
 		ProcessDefinitionKey:   "pd-a",
 		ProcessDefinitionId:    "bpmn-a",
-		FlowNodeId:             "task-a",
-		FlowNodeInstanceKey:    "fni-a",
+		ElementId:              "task-a",
+		ElementInstanceKey:     "fni-a",
 	}, 5, options.WithVerbose())
 
 	require.Equal(t, "incident-a", gotIncident.IncidentKey)
+	require.Equal(t, "task-a", gotIncident.ElementId)
+	require.Equal(t, "ei-a", gotIncident.ElementInstanceKey)
 	require.Equal(t, int32(1), gotSearch.Total)
 	require.Equal(t, "incident-b", gotSearch.Items[0].IncidentKey)
+}
+
+func TestProcessInstanceIncidentDetailJSONUsesCanonicalElementFields(t *testing.T) {
+	t.Parallel()
+
+	raw, err := json.Marshal(ProcessInstanceIncidentDetail{
+		IncidentKey:        "incident-a",
+		ProcessInstanceKey: "pi-a",
+		ErrorMessage:       "no retries left",
+		ElementId:          "task-a",
+		ElementInstanceKey: "ei-a",
+	})
+
+	require.NoError(t, err)
+	require.Contains(t, string(raw), `"elementId":"task-a"`)
+	require.Contains(t, string(raw), `"elementInstanceKey":"ei-a"`)
+	require.NotContains(t, string(raw), "flowNode")
 }
 
 func TestClient_SearchIncidentsWithMessageFilterPagesUntilEnoughLocalMatches(t *testing.T) {

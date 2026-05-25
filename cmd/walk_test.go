@@ -166,14 +166,14 @@ func TestWalkIncidentLines_RenderGroupedIncidentDetails(t *testing.T) {
 
 	var out strings.Builder
 	writeIncidentLines(&out, "  ", []incident.ProcessInstanceIncidentDetail{{
-		IncidentKey:         "incident-1",
-		CreationTime:        "2026-05-06T09:29:42.711Z",
-		ErrorMessage:        "Root job failed",
-		FlowNodeId:          "task-a",
-		FlowNodeInstanceKey: "element-123",
-		State:               "ACTIVE",
-		ErrorType:           "JOB_NO_RETRIES",
-		JobKey:              "job-123",
+		IncidentKey:        "incident-1",
+		CreationTime:       "2026-05-06T09:29:42.711Z",
+		ErrorMessage:       "Root job failed",
+		ElementId:          "task-a",
+		ElementInstanceKey: "element-123",
+		State:              "ACTIVE",
+		ErrorType:          "JOB_NO_RETRIES",
+		JobKey:             "job-123",
 	}})
 
 	require.Equal(t, "\n  └─ incident-1 JOB_NO_RETRIES ACTIVE j:job-123 2026-05-06T09:29:42.711 (4 days ago) fn:task-a fni:element-123 m:Root job failed", out.String())

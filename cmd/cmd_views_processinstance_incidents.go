@@ -115,8 +115,8 @@ func flatRowProcessInstanceIncidentWithTimezone(incident incident.ProcessInstanc
 		toolx.FormatTimestamp(incident.CreationTime, showTimezoneOffset),
 		incidentAgeTag(incident.CreationTime),
 		prefixedIncidentField("root", incident.RootProcessInstanceKey),
-		prefixedIncidentField("fn", incident.FlowNodeId),
-		prefixedIncidentField("fni", incident.FlowNodeInstanceKey),
+		prefixedIncidentField("fn", incident.ElementId),
+		prefixedIncidentField("fni", incident.ElementInstanceKey),
 	}
 }
 
@@ -181,8 +181,8 @@ func flatRowIncidentWithTimezone(incident incident.ProcessInstanceIncidentDetail
 		incident.ProcessDefinitionId,
 		prefixedIncidentField("pi", incident.ProcessInstanceKey),
 		prefixedIncidentField("root", incident.RootProcessInstanceKey),
-		prefixedIncidentField("fn", incident.FlowNodeId),
-		prefixedIncidentField("fni", incident.FlowNodeInstanceKey),
+		prefixedIncidentField("fn", incident.ElementId),
+		prefixedIncidentField("fni", incident.ElementInstanceKey),
 	}
 }
 

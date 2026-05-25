@@ -328,8 +328,8 @@ func populateOpsRepairIncidentSelection() incident.Filter {
 		ProcessDefinitionKey:   flagOpsRepairIncidentPDKey,
 		ProcessInstanceKey:     flagOpsRepairIncidentPIKey,
 		RootProcessInstanceKey: flagOpsRepairIncidentRootKey,
-		FlowNodeId:             flagOpsRepairIncidentFlowNodeID,
-		FlowNodeInstanceKey:    flagOpsRepairIncidentFNIKey,
+		ElementId:              flagOpsRepairIncidentFlowNodeID,
+		ElementInstanceKey:     flagOpsRepairIncidentFNIKey,
 		CreationTimeAfter:      flagOpsRepairIncidentCreationTimeAfter,
 		CreationTimeBefore:     flagOpsRepairIncidentCreationTimeBefore,
 	}

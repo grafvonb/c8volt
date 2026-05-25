@@ -829,20 +829,20 @@ func toDomainProcessInstances(items []process.ProcessInstance) []d.ProcessInstan
 
 func toDomainProcessInstance(x process.ProcessInstance) d.ProcessInstance {
 	return d.ProcessInstance{
-		Key:                       x.Key,
-		ProcessDefinitionKey:      x.ProcessDefinitionKey,
-		BpmnProcessId:             x.BpmnProcessId,
-		ProcessVersion:            x.ProcessVersion,
-		ProcessVersionTag:         x.ProcessVersionTag,
-		State:                     d.State(x.State),
-		StartDate:                 x.StartDate,
-		EndDate:                   x.EndDate,
-		ParentKey:                 x.ParentKey,
-		ParentFlowNodeInstanceKey: x.ParentFlowNodeInstanceKey,
-		RootProcessInstanceKey:    x.RootProcessInstanceKey,
-		TenantId:                  x.TenantId,
-		Incident:                  x.Incident,
-		Variables:                 x.Variables,
+		Key:                      x.Key,
+		ProcessDefinitionKey:     x.ProcessDefinitionKey,
+		BpmnProcessId:            x.BpmnProcessId,
+		ProcessVersion:           x.ProcessVersion,
+		ProcessVersionTag:        x.ProcessVersionTag,
+		State:                    d.State(x.State),
+		StartDate:                x.StartDate,
+		EndDate:                  x.EndDate,
+		ParentKey:                x.ParentKey,
+		ParentElementInstanceKey: x.ParentElementInstanceKey,
+		RootProcessInstanceKey:   x.RootProcessInstanceKey,
+		TenantId:                 x.TenantId,
+		Incident:                 x.Incident,
+		Variables:                x.Variables,
 	}
 }
 

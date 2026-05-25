@@ -363,8 +363,8 @@ func populateOpsPurgeIncidentSelection() incident.Filter {
 		ProcessDefinitionKey:   flagOpsPurgeIncidentPDKey,
 		ProcessInstanceKey:     flagOpsPurgeIncidentPIKey,
 		RootProcessInstanceKey: flagOpsPurgeIncidentRootKey,
-		FlowNodeId:             flagOpsPurgeIncidentFlowNodeID,
-		FlowNodeInstanceKey:    flagOpsPurgeIncidentFNIKey,
+		ElementId:              flagOpsPurgeIncidentFlowNodeID,
+		ElementInstanceKey:     flagOpsPurgeIncidentFNIKey,
 		CreationTimeAfter:      flagOpsPurgeIncidentCreationTimeAfter,
 		CreationTimeBefore:     flagOpsPurgeIncidentCreationTimeBefore,
 	}

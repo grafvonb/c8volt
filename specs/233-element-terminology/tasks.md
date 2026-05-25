@@ -36,13 +36,13 @@
 
 **Critical**: No user story implementation should begin until this phase is complete.
 
-- [ ] T009 Add failing model/converter tests for canonical incident fields in `c8volt/incident/client_test.go`
-- [ ] T010 [P] Add failing model/converter tests for canonical process parent fields in `c8volt/process/client_test.go` or nearest existing process facade tests
-- [ ] T011 [P] Add failing domain/service conversion tests for canonical incident fields in `internal/services/incident/v87/`, `internal/services/incident/v88/`, and `internal/services/incident/v89/`
-- [ ] T012 Rename public incident filter/result fields from flow-node terms to element terms in `c8volt/incident/model.go`, `c8volt/incident/convert.go`, and `internal/domain/incident.go`
-- [ ] T013 Rename public process parent fields from flow-node terms to element terms in `c8volt/process/model.go`, `c8volt/process/convert.go`, `c8volt/ops/convert.go`, and `c8volt/resource/convert.go`
-- [ ] T014 Update incident service adapter conversions while keeping generated legacy names adapter-only in `internal/services/incident/v87/`, `internal/services/incident/v88/`, and `internal/services/incident/v89/`
-- [ ] T015 Run targeted compile validation for shared model changes in `c8volt/incident`, `c8volt/process`, `c8volt/ops`, `c8volt/resource`, and `internal/services/incident`
+- [x] T009 Add failing model/converter tests for canonical incident fields in `c8volt/incident/client_test.go`
+- [x] T010 [P] Add failing model/converter tests for canonical process parent fields in `c8volt/process/client_test.go` or nearest existing process facade tests
+- [x] T011 [P] Add failing domain/service conversion tests for canonical incident fields in `internal/services/incident/v87/`, `internal/services/incident/v88/`, and `internal/services/incident/v89/`
+- [x] T012 Rename public incident filter/result fields from flow-node terms to element terms in `c8volt/incident/model.go`, `c8volt/incident/convert.go`, and `internal/domain/incident.go`
+- [x] T013 Rename public process parent fields from flow-node terms to element terms in `c8volt/process/model.go`, `c8volt/process/convert.go`, `c8volt/ops/convert.go`, and `c8volt/resource/convert.go`
+- [x] T014 Update incident service adapter conversions while keeping generated legacy names adapter-only in `internal/services/incident/v87/`, `internal/services/incident/v88/`, and `internal/services/incident/v89/`
+- [x] T015 Run targeted compile validation for shared model changes in `c8volt/incident`, `c8volt/process`, `c8volt/ops`, `c8volt/resource`, and `internal/services/incident`
 
 **Checkpoint**: Shared public and domain terminology is canonical, and generated-client legacy names are contained below adapter boundaries.
 

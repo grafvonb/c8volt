@@ -2178,7 +2178,7 @@ func TestGetProcessInstanceWithIncidents_JSONOutputShowsIncidentDetails(t *testi
 	require.Equal(t, "incident-123", incident["incidentKey"])
 	require.Equal(t, "123", incident["processInstanceKey"])
 	require.Equal(t, "No retries left", incident["errorMessage"])
-	require.Equal(t, "task-a", incident["flowNodeId"])
+	require.Equal(t, "task-a", incident["elementId"])
 }
 
 // TestGetProcessInstanceWithIncidents_JSONOutputAssociatesMultipleKeys prevents incident details from crossing keyed lookup boundaries.
@@ -2314,7 +2314,7 @@ func TestGetProcessInstanceJSONWithIncidents_ListSearchUsesEnrichedPayloadShape(
 	require.Equal(t, "incident-123", firstIncident["incidentKey"])
 	require.Equal(t, "123", firstIncident["processInstanceKey"])
 	require.Equal(t, "First direct incident", firstIncident["errorMessage"])
-	require.Equal(t, "task-a", firstIncident["flowNodeId"])
+	require.Equal(t, "task-a", firstIncident["elementId"])
 
 	second := requireJSONObject(t, items[1])
 	secondItem := requireJSONObject(t, second["item"])
@@ -2324,7 +2324,7 @@ func TestGetProcessInstanceJSONWithIncidents_ListSearchUsesEnrichedPayloadShape(
 	require.Equal(t, "incident-124", secondIncident["incidentKey"])
 	require.Equal(t, "124", secondIncident["processInstanceKey"])
 	require.Equal(t, "Second direct incident", secondIncident["errorMessage"])
-	require.Equal(t, "task-b", secondIncident["flowNodeId"])
+	require.Equal(t, "task-b", secondIncident["elementId"])
 }
 
 func TestGetProcessInstanceJSONWithIncidents_IncidentMessageLimitKeepsFullMessages(t *testing.T) {

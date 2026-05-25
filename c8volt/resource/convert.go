@@ -105,20 +105,20 @@ func fromDomainDryRunPIKeyExpansion(x d.DryRunPIKeyExpansion) process.DryRunPIKe
 
 func fromDomainProcessInstance(x d.ProcessInstance) process.ProcessInstance {
 	return process.ProcessInstance{
-		BpmnProcessId:             x.BpmnProcessId,
-		EndDate:                   x.EndDate,
-		Incident:                  x.Incident,
-		Key:                       x.Key,
-		ParentFlowNodeInstanceKey: x.ParentFlowNodeInstanceKey,
-		ParentKey:                 x.ParentKey,
-		ProcessDefinitionKey:      x.ProcessDefinitionKey,
-		RootProcessInstanceKey:    x.RootProcessInstanceKey,
-		ProcessVersion:            x.ProcessVersion,
-		ProcessVersionTag:         x.ProcessVersionTag,
-		StartDate:                 x.StartDate,
-		State:                     process.State(x.State),
-		TenantId:                  x.TenantId,
-		Variables:                 toolx.CopyMap(x.Variables),
+		BpmnProcessId:            x.BpmnProcessId,
+		EndDate:                  x.EndDate,
+		Incident:                 x.Incident,
+		Key:                      x.Key,
+		ParentElementInstanceKey: x.ParentElementInstanceKey,
+		ParentKey:                x.ParentKey,
+		ProcessDefinitionKey:     x.ProcessDefinitionKey,
+		RootProcessInstanceKey:   x.RootProcessInstanceKey,
+		ProcessVersion:           x.ProcessVersion,
+		ProcessVersionTag:        x.ProcessVersionTag,
+		StartDate:                x.StartDate,
+		State:                    process.State(x.State),
+		TenantId:                 x.TenantId,
+		Variables:                toolx.CopyMap(x.Variables),
 	}
 }
 

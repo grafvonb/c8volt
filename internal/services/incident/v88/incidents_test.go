@@ -105,8 +105,8 @@ func TestGetIncidentMapsDetail(t *testing.T) {
 		State:                  "ACTIVE",
 		ErrorType:              "JOB_NO_RETRIES",
 		ErrorMessage:           "no retries left",
-		FlowNodeId:             "task-a",
-		FlowNodeInstanceKey:    "2251799813685252",
+		ElementId:              "task-a",
+		ElementInstanceKey:     "2251799813685252",
 		JobKey:                 "2251799813685251",
 		RootProcessInstanceKey: "2251799813685250",
 		ProcessDefinitionKey:   "2251799813685253",
@@ -297,8 +297,8 @@ func TestSearchIncidentsPageUsesTopLevelEndpointAndLocalCompatibilityFilters(t *
 		RootProcessInstanceKey: "root-a",
 		ProcessDefinitionKey:   "pd-key",
 		ProcessDefinitionId:    "pd-id",
-		FlowNodeId:             "task-a",
-		FlowNodeInstanceKey:    "fni-a",
+		ElementId:              "task-a",
+		ElementInstanceKey:     "fni-a",
 		CreationTimeAfter:      "2026-05-09T09:00:00Z",
 		CreationTimeBefore:     "2026-05-09T11:00:00Z",
 	}, d.IncidentPageRequest{From: 25, Size: 10})
@@ -465,8 +465,8 @@ func TestSearchIncidentsPageDoesNotSendBrokenV88FilterShapeForLocalFilters(t *te
 		RootProcessInstanceKey: "root-a",
 		ProcessDefinitionKey:   "pd-key",
 		ProcessDefinitionId:    "pd-id",
-		FlowNodeId:             "task-a",
-		FlowNodeInstanceKey:    "fni-a",
+		ElementId:              "task-a",
+		ElementInstanceKey:     "fni-a",
 	}, d.IncidentPageRequest{Size: 10})
 
 	require.NoError(t, err)
