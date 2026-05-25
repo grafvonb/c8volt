@@ -1,4 +1,4 @@
-# Function Comment Quality Prompt
+# Code Comment Quality Audit Prompt
 
 Use this prompt to improve meaningful function and test comments across
 `c8volt/...` and `internal/...`. It is intentionally not a mechanical doc-comment

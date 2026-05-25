@@ -1,8 +1,9 @@
-# Docs And Help Example Integration Test Prompt
+# Release Docs And Help Example Validation Prompt
 
 Use this prompt before publishing a c8volt release when all documentation and
 CLI help examples need a real integration pass against the local/default Camunda
-development cluster.
+development cluster. It is the canonical prompt for release example validation;
+use README-only mode when only `README.md` examples need to be checked.
 
 Before using this prompt, follow `specs/prompts/AGENTS.md`. In particular, do
 not treat files under `specs/prompts/` as release-change source material.
@@ -19,7 +20,7 @@ Inputs:
 - Target Camunda version: v89 only
 - Default config: the repository's normal `config.yaml` resolution
 - Cluster: caller's local/default Camunda development cluster
-- Optional build output path: /tmp/c8volt-docs-help-example-verify
+- Optional build output path: /tmp/c8volt-release-docs-help-verify
 
 Goal:
 Make all examples copyable, generic, bounded, operator-friendly, and true
@@ -39,6 +40,15 @@ source, CLI help source, and tests as needed, then rerun the corrected examples.
 Do not refactor, genericize, reorder, or otherwise update VHS tapes as part of
 this prompt run. For VHS tapes, review only whether the c8volt command syntax is
 valid; warn at the end which tape files need human review.
+
+README-only mode:
+If the caller explicitly asks for README-only validation, restrict the executable
+example scan to `README.md` and compare CLI help only for contradictions. In
+README-only mode, report findings by default and edit README/help/docs only when
+the caller explicitly asks for fixes. Do not update product behavior or
+implementation code as part of README-only validation. Use caller-provided
+values for `<VERSION>`, `<RELEASE_DATE>`, `<CAMUNDA_MINOR>`, and
+`<FIXTURE_PREFIX>` when they are relevant to the README examples being checked.
 
 Required safety and example rules:
 1. Validate every example against the real cluster before keeping it.
@@ -101,18 +111,18 @@ Required safety and example rules:
 
 Required workflow:
 1. Build a temporary validation binary from the current checkout:
-   `GOCACHE=/tmp/c8volt-gocache go build -o /tmp/c8volt-docs-help-example-verify .`
+   `GOCACHE=/tmp/c8volt-gocache go build -o /tmp/c8volt-release-docs-help-verify .`
    Use this binary as the runtime equivalent of public `c8volt` examples.
 2. Confirm default configuration and connectivity before validating examples:
-   - `/tmp/c8volt-docs-help-example-verify version`
-   - `/tmp/c8volt-docs-help-example-verify config validate`
-   - `/tmp/c8volt-docs-help-example-verify config test-connection`
+   - `/tmp/c8volt-release-docs-help-verify version`
+   - `/tmp/c8volt-release-docs-help-verify config validate`
+   - `/tmp/c8volt-release-docs-help-verify config test-connection`
    Stop if the config is not the intended local dev cluster or if the cluster is
    not a healthy v89 environment.
 3. Capture private machine-readable preflight data:
-   - `/tmp/c8volt-docs-help-example-verify capabilities --json`
-   - `/tmp/c8volt-docs-help-example-verify config show --json`
-   - `/tmp/c8volt-docs-help-example-verify config test-connection --json`
+   - `/tmp/c8volt-release-docs-help-verify capabilities --json`
+   - `/tmp/c8volt-release-docs-help-verify config show --json`
+   - `/tmp/c8volt-release-docs-help-verify config test-connection --json`
    Use these outputs to understand command paths, flags, config resolution,
    active profile, base URL, and cluster metadata. Do not convert public
    examples to JSON unless the surrounding section is explicitly about
@@ -122,6 +132,8 @@ Required workflow:
    - `docs/**/*.md`
    - generated docs source or generated docs output used by the site
    - CLI help output from every command family, including nested ops commands
+   In README-only mode, extract executable examples from `README.md` only, then
+   check help output just far enough to detect contradictions with README.
 5. Extract c8volt commands from `demos/vhs/**/*.tape` into a separate VHS syntax
    review list. Do not include VHS tapes in the big docs/help genericization or
    example-reduction pass.
@@ -187,25 +199,25 @@ Required workflow:
 Suggested investigation commands:
 - `rg -n -- 'C87_|C88_|C89_|--no-wait|225179981|<process|<incident|<job|<resource|ops ' README.md docs cmd demos/vhs -g '*.md' -g '*.go' -g '*.tape'`
 - `rg -n -- 'Example|Examples|Use:|Aliases:|ops execute|ops purge|ops repair' cmd docs README.md demos/vhs`
-- `/tmp/c8volt-docs-help-example-verify capabilities --json`
-- `/tmp/c8volt-docs-help-example-verify config show`
-- `/tmp/c8volt-docs-help-example-verify config test-connection`
-- `/tmp/c8volt-docs-help-example-verify embed list`
-- `/tmp/c8volt-docs-help-example-verify embed deploy --all --run`
-- `/tmp/c8volt-docs-help-example-verify get cluster version`
-- `/tmp/c8volt-docs-help-example-verify get cluster topology`
-- `/tmp/c8volt-docs-help-example-verify get pd --latest --limit 5`
-- `/tmp/c8volt-docs-help-example-verify get pi --state active --limit 5`
-- `/tmp/c8volt-docs-help-example-verify get incident --state active --limit 5`
-- `/tmp/c8volt-docs-help-example-verify ops execute smoke-test --dry-run`
-- `/tmp/c8volt-docs-help-example-verify ops execute retention-policy --retention-days 90 --dry-run`
-- `/tmp/c8volt-docs-help-example-verify ops purge orphan-process-instances --dry-run`
-- `/tmp/c8volt-docs-help-example-verify ops purge process-instances-with-incidents --dry-run`
-- `/tmp/c8volt-docs-help-example-verify ops purge all-process-definitions --dry-run`
-- `/tmp/c8volt-docs-help-example-verify ops execute retention-policy --retention-days 90`
-- `/tmp/c8volt-docs-help-example-verify ops purge orphan-process-instances`
-- `/tmp/c8volt-docs-help-example-verify ops purge process-instances-with-incidents`
-- `/tmp/c8volt-docs-help-example-verify ops purge all-process-definitions`
+- `/tmp/c8volt-release-docs-help-verify capabilities --json`
+- `/tmp/c8volt-release-docs-help-verify config show`
+- `/tmp/c8volt-release-docs-help-verify config test-connection`
+- `/tmp/c8volt-release-docs-help-verify embed list`
+- `/tmp/c8volt-release-docs-help-verify embed deploy --all --run`
+- `/tmp/c8volt-release-docs-help-verify get cluster version`
+- `/tmp/c8volt-release-docs-help-verify get cluster topology`
+- `/tmp/c8volt-release-docs-help-verify get pd --latest --limit 5`
+- `/tmp/c8volt-release-docs-help-verify get pi --state active --limit 5`
+- `/tmp/c8volt-release-docs-help-verify get incident --state active --limit 5`
+- `/tmp/c8volt-release-docs-help-verify ops execute smoke-test --dry-run`
+- `/tmp/c8volt-release-docs-help-verify ops execute retention-policy --retention-days 90 --dry-run`
+- `/tmp/c8volt-release-docs-help-verify ops purge orphan-process-instances --dry-run`
+- `/tmp/c8volt-release-docs-help-verify ops purge process-instances-with-incidents --dry-run`
+- `/tmp/c8volt-release-docs-help-verify ops purge all-process-definitions --dry-run`
+- `/tmp/c8volt-release-docs-help-verify ops execute retention-policy --retention-days 90`
+- `/tmp/c8volt-release-docs-help-verify ops purge orphan-process-instances`
+- `/tmp/c8volt-release-docs-help-verify ops purge process-instances-with-incidents`
+- `/tmp/c8volt-release-docs-help-verify ops purge all-process-definitions`
 - `go test ./cmd -count=1`
 - `go test ./docsgen -count=1`
 
