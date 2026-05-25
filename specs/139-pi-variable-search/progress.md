@@ -8,6 +8,9 @@
 
 ## Codebase Patterns
 
+- `make docs-content` regenerates both `docs/cli/*` from Cobra metadata and `docs/index.md` from README content, so US6 source changes must be made in command help/README before generation.
+- Generated CLI docs can be regression-tested in `docsgen/main_test.go` by building a temporary markdown tree with `doc.GenMarkdownTreeCustom` and inspecting `c8volt_get_process-instance.md`.
+- Command capability metadata exposes `StringArrayVar` flags as `stringArray` with `Repeated: true`, which is the contract shape for `--var-exists`, `--var`, and `--var-like`.
 - `cmd/get_processinstance.go` owns the process-instance command registration, help text, flags, high-level command flow, and command metadata.
 - Adjacent `cmd/get_processinstance_*` files own search flag validation, filter population, paging, totals, enrichment, and selector validation.
 - `populatePISearchFilterOpts` is the command-layer handoff from validated `get pi` flags to `process.ProcessInstanceFilter`; new search flags should enter the facade through that path.
@@ -266,4 +269,34 @@
 - The v8.7 service-level guard protects facade callers that supply domain variable filters directly, while strict service tests prove no Operate request is made.
 - Existing v8.9 variable-filter tests already asserted tenant composition; v8.8 now has matching coverage for tenant plus native variable filters.
 - Validation passed with `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`.
+---
+---
+## Iteration 8 - 2026-05-25 23:21:06 CEST
+**User Story**: User Story 6 - Understand The User-Facing Contract
+**Tasks Completed**:
+- [x] T069: Add command contract tests for `--var-exists`, `--var`, and `--var-like` metadata in `cmd/command_contract_test.go`
+- [x] T070: Add help/example regression tests for variable-search flags in `cmd/get_processinstance_test.go`
+- [x] T071: Add docs or generated-content regression checks for variable-search examples in `docsgen/` or the nearest existing docs test path
+- [x] T072: Update `get pi` long help and examples for variable-search syntax in `cmd/get_processinstance.go`
+- [x] T073: Update command contract metadata expectations for variable-search flags in `cmd/command_contract_test.go`
+- [x] T074: Update README examples and user-facing guidance in `README.md`
+- [x] T075: Regenerate CLI docs and index content with `make docs-content` for `docs/cli/`, `docs/index.md`, and related generated docs assets
+- [x] T076: Verify `scopeKey` wording in `cmd/get_processinstance.go`, `README.md`, and `docs/cli/` describes direct definition scope only
+- [x] T077: Verify US6 with targeted command contract, help, docs-generation, and documentation checks
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/command_contract_test.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- docs/cli/c8volt_get_process-instance.md
+- docs/index.md
+- docsgen/main_test.go
+- specs/139-pi-variable-search/tasks.md
+- specs/139-pi-variable-search/progress.md
+**Learnings**:
+- Variable-search help and generated docs are source-driven from `cmd/get_processinstance.go`; README guidance is separately synced into `docs/index.md`.
+- `scopeKey` wording is now pinned in command help, README-derived docs, and generated CLI docs as direct-definition scope semantics.
+- Validation passed with targeted `go test ./cmd` help/contract tests, `go test ./docsgen` generated-doc tests, `make docs-content`, `rg` documentation checks, and `git diff --check`.
 ---

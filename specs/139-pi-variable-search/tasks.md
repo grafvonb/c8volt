@@ -189,18 +189,18 @@
 
 ### Tests for User Story 6
 
-- [ ] T069 [P] [US6] Add command contract tests for `--var-exists`, `--var`, and `--var-like` metadata in `cmd/command_contract_test.go`
-- [ ] T070 [P] [US6] Add help/example regression tests for variable-search flags in `cmd/get_processinstance_test.go`
-- [ ] T071 [P] [US6] Add docs or generated-content regression checks for variable-search examples in `docsgen/` or the nearest existing docs test path
+- [x] T069 [P] [US6] Add command contract tests for `--var-exists`, `--var`, and `--var-like` metadata in `cmd/command_contract_test.go`
+- [x] T070 [P] [US6] Add help/example regression tests for variable-search flags in `cmd/get_processinstance_test.go`
+- [x] T071 [P] [US6] Add docs or generated-content regression checks for variable-search examples in `docsgen/` or the nearest existing docs test path
 
 ### Implementation for User Story 6
 
-- [ ] T072 [US6] Update `get pi` long help and examples for variable-search syntax in `cmd/get_processinstance.go`
-- [ ] T073 [US6] Update command contract metadata expectations for variable-search flags in `cmd/command_contract_test.go`
-- [ ] T074 [US6] Update README examples and user-facing guidance in `README.md`
-- [ ] T075 [US6] Regenerate CLI docs and index content with `make docs-content` for `docs/cli/`, `docs/index.md`, and related generated docs assets
-- [ ] T076 [US6] Verify `scopeKey` wording in `cmd/get_processinstance.go`, `README.md`, and `docs/cli/` describes direct definition scope only
-- [ ] T077 [US6] Verify US6 with targeted command contract, help, docs-generation, and documentation checks
+- [x] T072 [US6] Update `get pi` long help and examples for variable-search syntax in `cmd/get_processinstance.go`
+- [x] T073 [US6] Update command contract metadata expectations for variable-search flags in `cmd/command_contract_test.go`
+- [x] T074 [US6] Update README examples and user-facing guidance in `README.md`
+- [x] T075 [US6] Regenerate CLI docs and index content with `make docs-content` for `docs/cli/`, `docs/index.md`, and related generated docs assets
+- [x] T076 [US6] Verify `scopeKey` wording in `cmd/get_processinstance.go`, `README.md`, and `docs/cli/` describes direct definition scope only
+- [x] T077 [US6] Verify US6 with targeted command contract, help, docs-generation, and documentation checks
 
 **Checkpoint**: User Story 6 is complete when user-facing docs and metadata fully describe the feature and match executable behavior.
 

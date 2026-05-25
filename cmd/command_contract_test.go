@@ -490,6 +490,27 @@ func TestCommandCapabilityForCommand_ProcessInstanceVariableFlags(t *testing.T) 
 		Repeated:    false,
 		Description: "maximum characters to show for variable values when --with-vars is set; 0 disables truncation",
 	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "var-exists",
+		Type:        "stringArray",
+		Required:    false,
+		Repeated:    true,
+		Description: "require variable name(s) to exist; repeat or separate names with commas",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "var",
+		Type:        "stringArray",
+		Required:    false,
+		Repeated:    true,
+		Description: "require variable equality or advanced clause(s); repeat or separate clauses with commas",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "var-like",
+		Type:        "stringArray",
+		Required:    false,
+		Repeated:    true,
+		Description: "require variable value pattern clause(s); repeat or separate clauses with commas",
+	})
 }
 
 func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T) {

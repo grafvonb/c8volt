@@ -24,6 +24,8 @@ Use --with-incidents to include direct incident details under matching process-i
 
 Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.
 
+Use variable-search flags to narrow list/search results natively on Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error for those flags. --var-exists requires every listed variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable scopeKey means the scope where the variable is directly defined.
+
 Use --has-user-tasks to fetch process instances by their owning user-task keys.
 
 Run `c8volt get pi --help` for the complete flag reference.
@@ -41,6 +43,10 @@ c8volt get process-instance [flags]
   ./c8volt get pi --has-user-tasks <user-task-key>
   ./c8volt get pi --incidents-only --with-incidents --limit 5
   ./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5
+  ./c8volt get pi --var-exists payload,email --limit 5
+  ./c8volt get pi --var 'status="approved"' --limit 5
+  ./c8volt get pi --var 'status.$in=["approved","pending"]' --limit 5
+  ./c8volt get pi --var-like 'email=*@example.com,customerId=CUST-????' --limit 5
   ./c8volt get pi --state active --with-vars --var-value-limit 120 --limit 5
   ./c8volt get pi --key <process-instance-key> --with-incidents
   ./c8volt get pi --key <process-instance-key> --with-vars
@@ -84,6 +90,9 @@ c8volt get process-instance [flags]
       --start-date-older-days int       only include process instances N days old or older (default -1)
   -s, --state string                    state to filter process instances: all, active, completed, canceled, terminated (default "all")
       --total                           return only the numeric total of matching process instances; capped backend totals are counted by paging
+      --var stringArray                 require variable equality or advanced clause(s); repeat or separate clauses with commas
+      --var-exists stringArray          require variable name(s) to exist; repeat or separate names with commas
+      --var-like stringArray            require variable value pattern clause(s); repeat or separate clauses with commas
       --var-value-limit int             maximum characters to show for variable values when --with-vars is set; 0 disables truncation
       --with-incidents                  include direct incident keys, states, and messages for keyed or list/search process-instance output
       --with-vars                       include process-instance-scope variables for keyed or list/search process-instance output

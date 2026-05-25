@@ -577,6 +577,41 @@ func TestGeneratedConfigDocsDocumentSplitDiagnostics(t *testing.T) {
 	}
 }
 
+// TestGeneratedGetProcessInstanceDocsDocumentVariableSearch verifies generated
+// CLI markdown carries the same variable-search contract as command help.
+func TestGeneratedGetProcessInstanceDocsDocumentVariableSearch(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	piDoc := readGeneratedDocForTest(t, out, "c8volt_get_process-instance.md")
+	for _, want := range []string{
+		"Use variable-search flags to narrow list/search results natively on Camunda 8.8 and 8.9",
+		"--var accepts name=value equality shorthand plus advanced name.$operator=value clauses",
+		"--var-like uses native wildcard patterns",
+		"Variable scopeKey means the scope where the variable is directly defined.",
+		"./c8volt get pi --var-exists payload,email --limit 5",
+		"./c8volt get pi --var 'status.$in=[\"approved\",\"pending\"]' --limit 5",
+		"--var-exists stringArray",
+		"--var-like stringArray",
+	} {
+		if !strings.Contains(piDoc, want) {
+			t.Fatalf("expected generated get process-instance docs to contain %q, got %q", want, piDoc)
+		}
+	}
+}
+
 func readGeneratedDocForTest(t *testing.T, out string, name string) string {
 	t.Helper()
 

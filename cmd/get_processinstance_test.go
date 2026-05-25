@@ -70,7 +70,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "--var-value-limit int")
 	require.Contains(t, output, "maximum characters to show for variable values when --with-vars is set")
 	require.Contains(t, output, "--var stringArray")
-	require.Contains(t, output, "require variable equality clause(s) as name=value")
+	require.Contains(t, output, "require variable equality or advanced clause(s); repeat or separate clauses with commas")
 	require.Contains(t, output, "--with-incidents")
 	require.Contains(t, output, "include direct incident keys, states, and messages for keyed or list/search process-instance output")
 	require.Contains(t, output, "--direct-incidents-only")
@@ -78,6 +78,29 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "--with-vars")
 	require.Contains(t, output, "include process-instance-scope variables for keyed or list/search process-instance output")
 	require.NotContains(t, output, "--count")
+}
+
+// TestGetProcessInstanceHelp_DocumentsVariableSearchContract protects the
+// compact variable-search grammar and native wildcard documentation.
+func TestGetProcessInstanceHelp_DocumentsVariableSearchContract(t *testing.T) {
+	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
+
+	require.Contains(t, output, "Use variable-search flags to narrow list/search results natively on Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error for those flags.")
+	require.Contains(t, output, "--var-exists requires every listed variable name to exist.")
+	require.Contains(t, output, "--var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn.")
+	require.Contains(t, output, "--var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal.")
+	require.Contains(t, output, "Commas inside quoted values and JSON arrays stay inside the variable clause.")
+	require.Contains(t, output, "Variable scopeKey means the scope where the variable is directly defined.")
+	require.Contains(t, output, `./c8volt get pi --var-exists payload,email --limit 5`)
+	require.Contains(t, output, `./c8volt get pi --var 'status="approved"' --limit 5`)
+	require.Contains(t, output, `./c8volt get pi --var 'status.$in=["approved","pending"]' --limit 5`)
+	require.Contains(t, output, "./c8volt get pi --var-like 'email=*@example.com,customerId=CUST-????' --limit 5")
+	require.Contains(t, output, "--var-exists stringArray")
+	require.Contains(t, output, "require variable name(s) to exist; repeat or separate names with commas")
+	require.Contains(t, output, "--var stringArray")
+	require.Contains(t, output, "require variable equality or advanced clause(s); repeat or separate clauses with commas")
+	require.Contains(t, output, "--var-like stringArray")
+	require.Contains(t, output, "require variable value pattern clause(s); repeat or separate clauses with commas")
 }
 
 // Verifies help text documents has-user-tasks as a compact lookup selector without overloaded examples.
