@@ -239,6 +239,54 @@ func TestUpdateJobTimeoutOnlyFacade_SkipsDeadlineConfirmation(t *testing.T) {
 	require.Equal(t, &timeoutMillis, result.SubmittedTimeoutMS)
 }
 
+func TestUpdateJobRetriesAndTimeoutFacade_PreservesUpdateRequestAndPlan(t *testing.T) {
+	retries := int32(3)
+	timeout := 5 * time.Minute
+	timeoutMillis := int64(300000)
+	api := New(fakeJobService{
+		update: func(_ context.Context, request d.JobUpdateRequest, _ ...services.CallOption) (d.JobUpdateResult, error) {
+			require.Equal(t, "2251799813711967", request.Key)
+			require.Equal(t, &retries, request.Retries)
+			require.Equal(t, &timeoutMillis, request.TimeoutMillis)
+			require.Equal(t, "5m", request.RequestedTimeout)
+			require.Equal(t, timeout, request.RequestedDuration)
+			require.True(t, request.ConfirmRetries)
+			require.False(t, request.SkipConfirmation)
+			return d.JobUpdateResult{
+				Key:                request.Key,
+				MutationAccepted:   true,
+				ConfirmationStatus: "confirmed",
+				SubmittedRetries:   request.Retries,
+				SubmittedTimeoutMS: request.TimeoutMillis,
+				ConfirmedRetries:   request.Retries,
+			}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.UpdateJob(context.Background(), UpdateRequest{
+		Key:            "2251799813711967",
+		Retries:        &retries,
+		Timeout:        &timeout,
+		TimeoutRaw:     "5m",
+		TimeoutMillis:  &timeoutMillis,
+		ConfirmRetries: true,
+		UpdatePlan: &UpdatePlan{
+			Key:            "2251799813711967",
+			Mode:           MutationModeUpdate,
+			MaterialChange: true,
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "confirmed", result.Status)
+	require.True(t, result.MutationAccepted)
+	require.Equal(t, &retries, result.SubmittedRetries)
+	require.Equal(t, &timeoutMillis, result.SubmittedTimeoutMS)
+	require.NotNil(t, result.Plan)
+	require.True(t, result.Plan.MutationSubmitted)
+	require.Equal(t, MutationModeUpdate, result.Plan.Mode)
+}
+
 func TestClient_SubmitJobWorkerOutcome_MapsFoundationalRequestAndResult(t *testing.T) {
 	retries := int32(0)
 	backoffMillis := int64(300000)

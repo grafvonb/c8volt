@@ -99,6 +99,25 @@ func TestGetJobCommand_JSONOutput(t *testing.T) {
 	require.Equal(t, "tenant-a", job["tenantId"])
 }
 
+func TestGetJobCommand_KeyedLookupRejectsSearchFiltersBeforeLookup(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetGetJobFlagState()
+	t.Cleanup(func() {
+		resetCommandTreeFlags(root)
+		resetGetJobFlagState()
+	})
+
+	flagGetJobKey = "2251799813711967"
+	flagGetJobState = "FAILED"
+	require.NoError(t, getJobCmd.Flags().Set("state", "FAILED"))
+
+	err := validateGetJobFlags(getJobCmd)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--key cannot be combined with job search filters: --state")
+}
+
 func TestGetJobCommand_NotFoundExitsWithNotFound(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -160,6 +179,12 @@ func newJobLookupServer(t *testing.T, requests *[]string, response string) *http
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		filter := requireJSONObject(t, body["filter"])
 		require.NotEmpty(t, filter["jobKey"])
+		for name, value := range filter {
+			if name == "jobKey" {
+				continue
+			}
+			require.Nil(t, value, "keyed lookup should not send %s filter", name)
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(response))
 	}))
@@ -191,5 +216,15 @@ func executeRootForJobTest(t *testing.T, args ...string) string {
 
 func resetGetJobFlagState() {
 	flagGetJobKey = ""
+	flagGetJobState = ""
+	flagGetJobType = ""
+	flagGetJobProcessKey = ""
+	flagGetJobElementKey = ""
+	flagGetJobElementID = ""
+	flagGetJobWorker = ""
+	flagGetJobRetries = 0
+	flagGetJobKind = ""
+	flagGetJobListenerEvent = ""
+	flagGetJobLimit = 0
 	flagGetErrorMessageLimit = 0
 }

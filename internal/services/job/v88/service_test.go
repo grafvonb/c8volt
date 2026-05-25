@@ -164,6 +164,40 @@ func TestUpdateJobTimeoutRequest(t *testing.T) {
 	require.Nil(t, result.ConfirmedRetries)
 }
 
+func TestUpdateJobRetriesAndTimeoutRequest(t *testing.T) {
+	retries := int32(3)
+	timeoutMillis := int64(300000)
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(context.Context, camundav88.SearchJobsJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.SearchJobsResponse, error) {
+			t.Fatal("unexpected combined update confirmation lookup")
+			return nil, nil
+		},
+		updateJobWithResponse: func(_ context.Context, jobKey camundav88.JobKey, body camundav88.UpdateJobJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.UpdateJobResponse, error) {
+			require.Equal(t, camundav88.JobKey("2251799813711967"), jobKey)
+			require.NotNil(t, body.Changeset.Retries)
+			require.Equal(t, retries, *body.Changeset.Retries)
+			require.NotNil(t, body.Changeset.Timeout)
+			require.Equal(t, timeoutMillis, *body.Changeset.Timeout)
+			return &camundav88.UpdateJobResponse{
+				HTTPResponse: okJobUpdateHTTPResponse(),
+			}, nil
+		},
+	})
+
+	result, err := svc.UpdateJob(context.Background(), d.JobUpdateRequest{
+		Key:              "2251799813711967",
+		Retries:          &retries,
+		TimeoutMillis:    &timeoutMillis,
+		SkipConfirmation: true,
+	})
+
+	require.NoError(t, err)
+	require.True(t, result.MutationAccepted)
+	require.Equal(t, "skipped", result.ConfirmationStatus)
+	require.Equal(t, &retries, result.SubmittedRetries)
+	require.Equal(t, &timeoutMillis, result.SubmittedTimeoutMS)
+}
+
 func newJobServiceTest(t *testing.T, client *mockJobClient) *Service {
 	t.Helper()
 	cfg := testx.TestConfig(t)

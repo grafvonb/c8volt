@@ -53,18 +53,18 @@
 
 ### Tests for User Story 1
 
-- [ ] T013 [P] [US1] Add or update keyed lookup regression tests in `cmd/get_job_test.go`
-- [ ] T014 [P] [US1] Add or update retry update regression tests in `cmd/update_job_test.go`
-- [ ] T015 [P] [US1] Add or update timeout update regression tests in `cmd/update_job_test.go`
-- [ ] T016 [P] [US1] Add or update facade regression tests for existing update behavior in `c8volt/job/client_test.go`
-- [ ] T017 [P] [US1] Add or update v8.8/v8.9 service regression tests for existing search-by-key and update requests in `internal/services/job/v88/service_test.go` and `internal/services/job/v89/service_test.go`
+- [x] T013 [P] [US1] Add or update keyed lookup regression tests in `cmd/get_job_test.go`
+- [x] T014 [P] [US1] Add or update retry update regression tests in `cmd/update_job_test.go`
+- [x] T015 [P] [US1] Add or update timeout update regression tests in `cmd/update_job_test.go`
+- [x] T016 [P] [US1] Add or update facade regression tests for existing update behavior in `c8volt/job/client_test.go`
+- [x] T017 [P] [US1] Add or update v8.8/v8.9 service regression tests for existing search-by-key and update requests in `internal/services/job/v88/service_test.go` and `internal/services/job/v89/service_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] Refactor keyed lookup validation so `--key` remains exact lookup in `cmd/get_job.go`
-- [ ] T019 [US1] Preserve existing retry/timeout update request parsing while preparing for new modes in `cmd/update_job.go`
-- [ ] T020 [US1] Preserve existing retry/timeout conversion and service delegation in `c8volt/job/client.go`
-- [ ] T021 [US1] Verify US1 with targeted tests for `cmd/`, `c8volt/job/`, `internal/services/job/v88/`, and `internal/services/job/v89/`
+- [x] T018 [US1] Refactor keyed lookup validation so `--key` remains exact lookup in `cmd/get_job.go`
+- [x] T019 [US1] Preserve existing retry/timeout update request parsing while preparing for new modes in `cmd/update_job.go`
+- [x] T020 [US1] Preserve existing retry/timeout conversion and service delegation in `c8volt/job/client.go`
+- [x] T021 [US1] Verify US1 with targeted tests for `cmd/`, `c8volt/job/`, `internal/services/job/v88/`, and `internal/services/job/v89/`
 
 **Checkpoint**: User Story 1 is complete when current job behavior is unchanged and protected by regression tests.
 

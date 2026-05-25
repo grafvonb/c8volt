@@ -169,6 +169,7 @@ func TestUpdateJobCommand_JSONDryRunRetriesPlanPayload(t *testing.T) {
 	require.Equal(t, "2251799813711967", payload["key"])
 	require.Equal(t, false, payload["mutationSubmitted"])
 	require.Equal(t, true, payload["dryRun"])
+	require.Equal(t, "update", payload["mode"])
 	require.Equal(t, true, payload["materialChange"])
 	require.Equal(t, "changed", payload["retryStatus"])
 	require.Equal(t, float64(3), payload["requestedRetries"])
@@ -490,6 +491,49 @@ func TestParseUpdateJobRequestParsesTimeoutMillis(t *testing.T) {
 	require.False(t, request.ConfirmRetries)
 }
 
+// TestParseUpdateJobRequestPreservesRetryUpdateMode protects the legacy retry path while worker outcome flags are added.
+func TestParseUpdateJobRequestPreservesRetryUpdateMode(t *testing.T) {
+	resetUpdateJobFlagState()
+	t.Cleanup(resetUpdateJobFlagState)
+	resetCommandTreeFlags(Root())
+	require.NoError(t, updateJobCmd.Flags().Set("retries", "3"))
+	t.Cleanup(func() { require.NoError(t, updateJobCmd.Flags().Set("retries", "0")) })
+
+	flagUpdateJobKey = "2251799813711967"
+	flagUpdateJobRetries = 3
+	flagNoWait = false
+
+	request, err := parseUpdateJobRequest(updateJobCmd)
+
+	require.NoError(t, err)
+	require.Equal(t, "2251799813711967", request.Key)
+	require.NotNil(t, request.Retries)
+	require.Equal(t, int32(3), *request.Retries)
+	require.True(t, request.ConfirmRetries)
+	require.Nil(t, request.TimeoutMillis)
+}
+
+// TestParseUpdateJobRequestPreservesTimeoutUpdateMode protects timeout conversion without enabling retry confirmation.
+func TestParseUpdateJobRequestPreservesTimeoutUpdateMode(t *testing.T) {
+	resetUpdateJobFlagState()
+	t.Cleanup(resetUpdateJobFlagState)
+	resetCommandTreeFlags(Root())
+	require.NoError(t, updateJobCmd.Flags().Set("timeout", "5m"))
+	t.Cleanup(func() { require.NoError(t, updateJobCmd.Flags().Set("timeout", "")) })
+
+	flagUpdateJobKey = "2251799813711967"
+	flagUpdateJobTimeoutRaw = "5m"
+
+	request, err := parseUpdateJobRequest(updateJobCmd)
+
+	require.NoError(t, err)
+	require.Equal(t, "2251799813711967", request.Key)
+	require.Nil(t, request.Retries)
+	require.NotNil(t, request.TimeoutMillis)
+	require.Equal(t, int64(300000), *request.TimeoutMillis)
+	require.False(t, request.ConfirmRetries)
+}
+
 // TestUpdateJobPlanPreconditionRejectsTimeoutForNonActiveJob verifies timeout updates stop before mutation when the job is not active.
 func TestUpdateJobPlanPreconditionRejectsTimeoutForNonActiveJob(t *testing.T) {
 	timeoutMillis := int64(20000)
@@ -604,4 +648,10 @@ func resetUpdateJobFlagState() {
 	flagUpdateJobKey = ""
 	flagUpdateJobRetries = 0
 	flagUpdateJobTimeoutRaw = ""
+	flagUpdateJobFail = false
+	flagUpdateJobRetryBackoffRaw = ""
+	flagUpdateJobMessage = ""
+	flagUpdateJobBPMNError = ""
+	flagUpdateJobComplete = false
+	flagUpdateJobVariables = ""
 }

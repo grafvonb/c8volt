@@ -210,6 +210,7 @@ func buildUpdateJobPlan(current job.Job, request job.UpdateRequest) job.UpdatePl
 	plan := job.UpdatePlan{
 		Key:               request.Key,
 		Current:           current,
+		Mode:              job.MutationModeUpdate,
 		RetryStatus:       job.RetryChangeNotRequested,
 		DryRun:            request.DryRun,
 		MutationSubmitted: false,

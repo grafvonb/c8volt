@@ -7,6 +7,7 @@ Started: 2026-05-25 15:34:07
 
 - `cmd/get_job.go` currently owns keyed-only validation, full contract support, and the `--error-message-limit` JSON exclusion; list/search mode should extend this local flag grammar without bypassing the facade.
 - `cmd/update_job.go` builds a pre-mutation plan by loading the current job first, renders dry-run/plan output before prompting, and relies on JSON guardrails plus `--auto-confirm`/`--automation` for unattended mutations.
+- Existing retry/timeout plans should carry `MutationModeUpdate` so JSON dry-runs remain explicit as worker outcome plan modes are added later.
 - `cmd/cmd_views_job.go` keeps human rows compact through flat-row helpers and sends JSON through `renderJSONPayload`; future job list and worker outcome output should reuse these view boundaries.
 - `c8volt/job` remains a thin facade over `internal/services/job`: public models live in `model.go`, service/domain conversion lives in `client.go`, and errors are normalized through `ferrors.FromDomain`.
 - `internal/services/job/v87` returns explicit `domain.ErrUnsupported`; v8.8/v8.9 own generated-client request construction, `common.RequirePayload`, mutation retry submission, HTTP status handling, and retry confirmation through `job/waiter`.
@@ -76,4 +77,34 @@ Started: 2026-05-25 15:34:07
 - Command metadata can expose future job search and worker outcome flags safely only when validation rejects those reserved flags before old behavior runs.
 - The facade remains a thin mapper over `internal/services/job`; search and worker outcome service behavior is intentionally pending for later story slices.
 - Targeted validation passed with `go test ./cmd ./c8volt/job ./internal/domain ./internal/services/job ./internal/services/job/v87 ./internal/services/job/v88 ./internal/services/job/v89`.
+---
+
+---
+## Iteration 3 - 2026-05-25 15:50:48 CEST
+**User Story**: User Story 1 - Preserve Keyed Job Lookup And Current Updates
+**Tasks Completed**:
+- [x] T013: Add or update keyed lookup regression tests in `cmd/get_job_test.go`
+- [x] T014: Add or update retry update regression tests in `cmd/update_job_test.go`
+- [x] T015: Add or update timeout update regression tests in `cmd/update_job_test.go`
+- [x] T016: Add or update facade regression tests for existing update behavior in `c8volt/job/client_test.go`
+- [x] T017: Add or update v8.8/v8.9 service regression tests for existing search-by-key and update requests
+- [x] T018: Refactor keyed lookup validation so `--key` remains exact lookup in `cmd/get_job.go`
+- [x] T019: Preserve existing retry/timeout update request parsing while preparing for new modes in `cmd/update_job.go`
+- [x] T020: Preserve existing retry/timeout conversion and service delegation in `c8volt/job/client.go`
+- [x] T021: Verify US1 with targeted tests for `cmd/`, `c8volt/job/`, `internal/services/job/v88/`, and `internal/services/job/v89/`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/job/client_test.go
+- cmd/get_job_test.go
+- cmd/update_job.go
+- cmd/update_job_test.go
+- internal/services/job/v88/service_test.go
+- internal/services/job/v89/service_test.go
+- specs/231-job-ops-workflows/tasks.md
+- specs/231-job-ops-workflows/progress.md
+**Learnings**:
+- Keyed lookup requests include generated nil filter fields, so exact lookup tests should assert no additional non-nil filters rather than counting serialized keys.
+- Targeted validation requires a writable Go build cache in this sandbox; `GOCACHE=/private/tmp/c8volt-go-build-cache` keeps test execution inside allowed paths.
+- Targeted validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/job ./internal/services/job/v88 ./internal/services/job/v89`.
 ---
