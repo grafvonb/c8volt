@@ -35,6 +35,18 @@ func (m *mockJobClient) UpdateJobWithResponse(ctx context.Context, jobKey camund
 	return m.updateJobWithResponse(ctx, jobKey, body, reqEditors...)
 }
 
+func (m *mockJobClient) CompleteJobWithResponse(context.Context, camundav89.JobKey, camundav89.CompleteJobJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.CompleteJobResponse, error) {
+	panic("unexpected CompleteJobWithResponse call")
+}
+
+func (m *mockJobClient) ThrowJobErrorWithResponse(context.Context, camundav89.JobKey, camundav89.ThrowJobErrorJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.ThrowJobErrorResponse, error) {
+	panic("unexpected ThrowJobErrorWithResponse call")
+}
+
+func (m *mockJobClient) FailJobWithResponse(context.Context, camundav89.JobKey, camundav89.FailJobJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.FailJobResponse, error) {
+	panic("unexpected FailJobWithResponse call")
+}
+
 func TestSearchJobsByKey(t *testing.T) {
 	deadline := time.Date(2026, 5, 8, 10, 15, 0, 0, time.UTC)
 	svc := newJobServiceTest(t, &mockJobClient{

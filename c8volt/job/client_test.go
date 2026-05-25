@@ -18,12 +18,21 @@ import (
 )
 
 type fakeJobService struct {
-	get    func(context.Context, string, ...services.CallOption) (d.Job, error)
-	update func(context.Context, d.JobUpdateRequest, ...services.CallOption) (d.JobUpdateResult, error)
+	get     func(context.Context, string, ...services.CallOption) (d.Job, error)
+	search  func(context.Context, d.JobSearchQuery, ...services.CallOption) (d.JobSearchResult, error)
+	update  func(context.Context, d.JobUpdateRequest, ...services.CallOption) (d.JobUpdateResult, error)
+	outcome func(context.Context, d.JobWorkerOutcomeRequest, ...services.CallOption) (d.JobWorkerOutcomeResult, error)
 }
 
 func (f fakeJobService) GetJob(ctx context.Context, key string, opts ...services.CallOption) (d.Job, error) {
 	return f.get(ctx, key, opts...)
+}
+
+func (f fakeJobService) SearchJobs(ctx context.Context, request d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error) {
+	if f.search == nil {
+		return d.JobSearchResult{}, errors.New("unexpected search")
+	}
+	return f.search(ctx, request, opts...)
 }
 
 func (f fakeJobService) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error) {
@@ -31,6 +40,13 @@ func (f fakeJobService) UpdateJob(ctx context.Context, request d.JobUpdateReques
 		return d.JobUpdateResult{}, errors.New("unexpected update")
 	}
 	return f.update(ctx, request, opts...)
+}
+
+func (f fakeJobService) SubmitJobWorkerOutcome(ctx context.Context, request d.JobWorkerOutcomeRequest, opts ...services.CallOption) (d.JobWorkerOutcomeResult, error) {
+	if f.outcome == nil {
+		return d.JobWorkerOutcomeResult{}, errors.New("unexpected worker outcome")
+	}
+	return f.outcome(ctx, request, opts...)
 }
 
 func TestClient_GetJob_Found(t *testing.T) {
@@ -43,8 +59,13 @@ func TestClient_GetJob_Found(t *testing.T) {
 				State:              "FAILED",
 				Retries:            2,
 				Deadline:           &deadline,
+				Type:               "payment-worker",
+				Worker:             "worker-a",
+				Kind:               "BPMN_ELEMENT",
+				ListenerEventType:  "COMPLETING",
 				ProcessInstanceKey: "2251799813711000",
 				ElementInstanceKey: "2251799813711001",
+				ElementId:          "charge-card",
 				ErrorCode:          "PAYMENT_ERROR",
 				ErrorMessage:       "worker failed",
 				TenantId:           "tenant-a",
@@ -59,11 +80,57 @@ func TestClient_GetJob_Found(t *testing.T) {
 	require.Equal(t, "FAILED", result.State)
 	require.Equal(t, int32(2), result.Retries)
 	require.Equal(t, &deadline, result.Deadline)
+	require.Equal(t, "payment-worker", result.Type)
+	require.Equal(t, "worker-a", result.Worker)
+	require.Equal(t, "BPMN_ELEMENT", result.Kind)
+	require.Equal(t, "COMPLETING", result.ListenerEventType)
 	require.Equal(t, "2251799813711000", result.ProcessInstanceKey)
 	require.Equal(t, "2251799813711001", result.ElementInstanceKey)
+	require.Equal(t, "charge-card", result.ElementId)
 	require.Equal(t, "PAYMENT_ERROR", result.ErrorCode)
 	require.Equal(t, "worker failed", result.ErrorMessage)
 	require.Equal(t, "tenant-a", result.TenantId)
+}
+
+func TestClient_SearchJobs_MapsFoundationalQueryAndResults(t *testing.T) {
+	retries := int32(0)
+	api := New(fakeJobService{
+		search: func(_ context.Context, request d.JobSearchQuery, _ ...services.CallOption) (d.JobSearchResult, error) {
+			require.Equal(t, "FAILED", request.State)
+			require.Equal(t, "payment-worker", request.Type)
+			require.Equal(t, "2251799813711000", request.ProcessInstanceKey)
+			require.Equal(t, "2251799813711001", request.ElementInstanceKey)
+			require.Equal(t, "charge-card", request.ElementId)
+			require.Equal(t, "worker-a", request.Worker)
+			require.Equal(t, &retries, request.Retries)
+			require.Equal(t, "BPMN_ELEMENT", request.Kind)
+			require.Equal(t, "COMPLETING", request.ListenerEventType)
+			require.Equal(t, int32(50), request.Limit)
+			return d.JobSearchResult{
+				Items: []d.Job{{Key: "2251799813711967", State: "FAILED", Type: request.Type}},
+				Limit: request.Limit,
+			}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.SearchJobs(context.Background(), SearchRequest{
+		State:              "FAILED",
+		Type:               "payment-worker",
+		ProcessInstanceKey: "2251799813711000",
+		ElementInstanceKey: "2251799813711001",
+		ElementId:          "charge-card",
+		Worker:             "worker-a",
+		Retries:            &retries,
+		Kind:               "BPMN_ELEMENT",
+		ListenerEventType:  "COMPLETING",
+		Limit:              50,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int32(50), result.Limit)
+	require.Len(t, result.Items, 1)
+	require.Equal(t, "2251799813711967", result.Items[0].Key)
+	require.Equal(t, "payment-worker", result.Items[0].Type)
 }
 
 func TestClient_GetJob_NotFound(t *testing.T) {
@@ -170,4 +237,46 @@ func TestUpdateJobTimeoutOnlyFacade_SkipsDeadlineConfirmation(t *testing.T) {
 	require.Equal(t, "skipped", result.ConfirmationStatus)
 	require.Nil(t, result.ConfirmedRetries)
 	require.Equal(t, &timeoutMillis, result.SubmittedTimeoutMS)
+}
+
+func TestClient_SubmitJobWorkerOutcome_MapsFoundationalRequestAndResult(t *testing.T) {
+	retries := int32(0)
+	backoffMillis := int64(300000)
+	api := New(fakeJobService{
+		outcome: func(_ context.Context, request d.JobWorkerOutcomeRequest, _ ...services.CallOption) (d.JobWorkerOutcomeResult, error) {
+			require.Equal(t, "2251799813711967", request.Key)
+			require.Equal(t, d.JobWorkerOutcomeTechnicalFailure, request.Mode)
+			require.Equal(t, "worker unavailable", request.Message)
+			require.Equal(t, map[string]any{"attempt": float64(2)}, request.Variables)
+			require.Equal(t, &retries, request.Retries)
+			require.Equal(t, &backoffMillis, request.RetryBackoffMillis)
+			require.True(t, request.SkipConfirmation)
+			return d.JobWorkerOutcomeResult{
+				Key:                request.Key,
+				Mode:               request.Mode,
+				MutationAccepted:   true,
+				ConfirmationStatus: "skipped",
+				SubmittedRetries:   request.Retries,
+				SubmittedBackoffMS: request.RetryBackoffMillis,
+			}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.SubmitJobWorkerOutcome(context.Background(), WorkerOutcomeRequest{
+		Key:                "2251799813711967",
+		Mode:               WorkerOutcomeTechnicalFailure,
+		Message:            "worker unavailable",
+		Variables:          map[string]any{"attempt": float64(2)},
+		Retries:            &retries,
+		RetryBackoffMillis: &backoffMillis,
+		NoWait:             true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "submitted", result.Status)
+	require.Equal(t, WorkerOutcomeTechnicalFailure, result.Mode)
+	require.True(t, result.MutationAccepted)
+	require.Equal(t, "skipped", result.ConfirmationStatus)
+	require.Equal(t, &retries, result.SubmittedRetries)
+	require.Equal(t, &backoffMillis, result.SubmittedBackoffMS)
 }

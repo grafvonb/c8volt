@@ -31,11 +31,34 @@ func (c *client) GetJob(ctx context.Context, key string, opts ...foptions.Facade
 	return fromDomainJob(result), nil
 }
 
+func (c *client) SearchJobs(ctx context.Context, request SearchRequest, opts ...foptions.FacadeOption) (SearchResult, error) {
+	result, err := c.api.SearchJobs(ctx, toDomainSearchRequest(request), foptions.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainSearchResult(result)
+	if err != nil {
+		return out, ferrors.FromDomain(err)
+	}
+	return out, nil
+}
+
 func (c *client) UpdateJob(ctx context.Context, request UpdateRequest, opts ...foptions.FacadeOption) (UpdateResult, error) {
 	result, err := c.api.UpdateJob(ctx, toDomainUpdateRequest(request), foptions.MapFacadeOptionsToCallOptions(opts)...)
 	out := fromDomainUpdateResult(result)
 	if request.UpdatePlan != nil {
 		plan := *request.UpdatePlan
+		plan.MutationSubmitted = out.MutationAccepted
+		out.Plan = &plan
+	}
+	if err != nil {
+		return out, ferrors.FromDomain(err)
+	}
+	return out, nil
+}
+
+func (c *client) SubmitJobWorkerOutcome(ctx context.Context, request WorkerOutcomeRequest, opts ...foptions.FacadeOption) (WorkerOutcomeResult, error) {
+	result, err := c.api.SubmitJobWorkerOutcome(ctx, toDomainWorkerOutcomeRequest(request), foptions.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainWorkerOutcomeResult(result)
+	if request.OutcomePlan != nil {
+		plan := *request.OutcomePlan
 		plan.MutationSubmitted = out.MutationAccepted
 		out.Plan = &plan
 	}
@@ -51,11 +74,39 @@ func fromDomainJob(result d.Job) Job {
 		State:              result.State,
 		Retries:            result.Retries,
 		Deadline:           result.Deadline,
+		Type:               result.Type,
+		Worker:             result.Worker,
+		Kind:               result.Kind,
+		ListenerEventType:  result.ListenerEventType,
 		ProcessInstanceKey: result.ProcessInstanceKey,
 		ElementInstanceKey: result.ElementInstanceKey,
+		ElementId:          result.ElementId,
 		ErrorCode:          result.ErrorCode,
 		ErrorMessage:       result.ErrorMessage,
 		TenantId:           result.TenantId,
+	}
+}
+
+func toDomainSearchRequest(request SearchRequest) d.JobSearchQuery {
+	return d.JobSearchQuery{
+		Key:                request.Key,
+		State:              request.State,
+		Type:               request.Type,
+		ProcessInstanceKey: request.ProcessInstanceKey,
+		ElementInstanceKey: request.ElementInstanceKey,
+		ElementId:          request.ElementId,
+		Worker:             request.Worker,
+		Retries:            request.Retries,
+		Kind:               request.Kind,
+		ListenerEventType:  request.ListenerEventType,
+		Limit:              request.Limit,
+	}
+}
+
+func fromDomainSearchResult(result d.JobSearchResult) SearchResult {
+	return SearchResult{
+		Items: mapDomainJobs(result.Items),
+		Limit: result.Limit,
 	}
 }
 
@@ -76,6 +127,19 @@ func durationValue(value *time.Duration) time.Duration {
 		return 0
 	}
 	return *value
+}
+
+func toDomainWorkerOutcomeRequest(request WorkerOutcomeRequest) d.JobWorkerOutcomeRequest {
+	return d.JobWorkerOutcomeRequest{
+		Key:                request.Key,
+		Mode:               d.JobWorkerOutcomeMode(request.Mode),
+		Message:            request.Message,
+		Variables:          request.Variables,
+		Retries:            request.Retries,
+		RetryBackoffMillis: request.RetryBackoffMillis,
+		ErrorCode:          request.ErrorCode,
+		SkipConfirmation:   request.NoWait,
+	}
 }
 
 func fromDomainUpdateResult(result d.JobUpdateResult) UpdateResult {
@@ -99,6 +163,32 @@ func fromDomainUpdateResult(result d.JobUpdateResult) UpdateResult {
 		ConfirmedRetries:   result.ConfirmedRetries,
 		Error:              firstNonEmpty(result.MutationError, result.ConfirmationError),
 	}
+}
+
+func fromDomainWorkerOutcomeResult(result d.JobWorkerOutcomeResult) WorkerOutcomeResult {
+	status := "submitted"
+	if result.MutationError != "" {
+		status = "mutation_failed"
+	}
+	return WorkerOutcomeResult{
+		Key:                result.Key,
+		Mode:               WorkerOutcomeMode(result.Mode),
+		Status:             status,
+		MutationAccepted:   result.MutationAccepted,
+		ConfirmationStatus: result.ConfirmationStatus,
+		SubmittedRetries:   result.SubmittedRetries,
+		SubmittedBackoffMS: result.SubmittedBackoffMS,
+		SubmittedErrorCode: result.SubmittedErrorCode,
+		Error:              result.MutationError,
+	}
+}
+
+func mapDomainJobs(items []d.Job) []Job {
+	out := make([]Job, 0, len(items))
+	for _, item := range items {
+		out = append(out, fromDomainJob(item))
+	}
+	return out
 }
 
 func firstNonEmpty(values ...string) string {

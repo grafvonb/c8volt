@@ -94,6 +94,13 @@ func (s *Service) GetJob(ctx context.Context, key string, opts ...services.CallO
 	return requireSingleJob(payload.Items, key)
 }
 
+func (s *Service) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error) {
+	_ = ctx
+	_ = query
+	_ = services.ApplyCallOptions(opts)
+	return d.JobSearchResult{}, fmt.Errorf("%w: job search service implementation is pending", d.ErrUnsupported)
+}
+
 func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	result := d.JobUpdateResult{
@@ -139,6 +146,13 @@ func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opt
 	result.ConfirmationStatus = "confirmed"
 	result.ConfirmedRetries = &confirmed.Retries
 	return result, nil
+}
+
+func (s *Service) SubmitJobWorkerOutcome(ctx context.Context, request d.JobWorkerOutcomeRequest, opts ...services.CallOption) (d.JobWorkerOutcomeResult, error) {
+	_ = ctx
+	_ = request
+	_ = services.ApplyCallOptions(opts)
+	return d.JobWorkerOutcomeResult{}, fmt.Errorf("%w: job worker outcome service implementation is pending", d.ErrUnsupported)
 }
 
 var _ waiter.JobGetter = (*Service)(nil)

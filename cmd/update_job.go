@@ -16,19 +16,28 @@ import (
 )
 
 var (
-	flagUpdateJobKey        string
-	flagUpdateJobRetries    int32
-	flagUpdateJobTimeoutRaw string
+	flagUpdateJobKey             string
+	flagUpdateJobRetries         int32
+	flagUpdateJobTimeoutRaw      string
+	flagUpdateJobFail            bool
+	flagUpdateJobRetryBackoffRaw string
+	flagUpdateJobMessage         string
+	flagUpdateJobBPMNError       string
+	flagUpdateJobComplete        bool
+	flagUpdateJobVariables       string
 )
 
 var updateJobCmd = &cobra.Command{
 	Use:   "job",
 	Short: "Update a job by key",
 	Long: "Update a Camunda job by key.\n\n" +
-		"The command supports retries and timeout updates for Camunda 8.8 and 8.9. It builds a pre-mutation plan, supports --dry-run previews, and asks for confirmation before material interactive mutations. Retry updates are confirmed by reading the job by key by default; timeout updates report submitted milliseconds without deadline confirmation. JSON mutations require --dry-run, --auto-confirm, or --automation, and --json cannot be combined with --verbose. Camunda 8.7 returns an unsupported-version error before mutation.",
+		"The command supports retries, timeout updates, and worker outcome modes for Camunda 8.8 and 8.9. It builds a pre-mutation plan, supports --dry-run previews, and asks for confirmation before material interactive mutations. Retry updates are confirmed by reading the job by key by default; timeout updates and worker outcomes report accepted submission without deadline or outcome confirmation. JSON mutations require --dry-run, --auto-confirm, or --automation, and --json cannot be combined with --verbose. Camunda 8.7 returns an unsupported-version error before mutation.",
 	Example: `  ./c8volt update job --key <job-key> --retries 3 --dry-run
   ./c8volt update job --key <job-key> --retries 3 --auto-confirm
   ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
+  ./c8volt update job --key <job-key> --fail --retries 0 --message "worker unavailable" --dry-run
+  ./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED --message "card declined" --dry-run
+  ./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run
   ./c8volt --json update job --key <job-key> --retries 3 --dry-run`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -92,6 +101,12 @@ func init() {
 	fs.StringVar(&flagUpdateJobKey, "key", "", "job key to update")
 	fs.Int32Var(&flagUpdateJobRetries, "retries", 0, "retry count to set on the job")
 	fs.StringVar(&flagUpdateJobTimeoutRaw, "timeout", "", "timeout duration to submit for the job, for example 60s, 5m, or 1h")
+	fs.BoolVar(&flagUpdateJobFail, "fail", false, "report a technical job failure")
+	fs.StringVar(&flagUpdateJobRetryBackoffRaw, "retry-backoff", "", "duration before a failed job becomes retryable, for example 60s, 5m, or 1h")
+	fs.StringVar(&flagUpdateJobMessage, "message", "", "operator message for worker outcome modes")
+	fs.StringVar(&flagUpdateJobBPMNError, "throw-bpmn-error", "", "BPMN error code to throw for the job")
+	fs.BoolVar(&flagUpdateJobComplete, "complete", false, "complete the job")
+	fs.StringVar(&flagUpdateJobVariables, "vars", "", "JSON object with variables for job completion or worker outcome modes")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview job updates without submitting mutation")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after the update request is accepted without retry confirmation")
 
@@ -105,6 +120,9 @@ func init() {
 func parseUpdateJobRequest(cmd *cobra.Command) (job.UpdateRequest, error) {
 	if strings.TrimSpace(flagUpdateJobKey) == "" {
 		return job.UpdateRequest{}, invalidFlagValuef("job update requires a non-empty --key")
+	}
+	if workerFlags := changedUpdateJobWorkerOutcomeFlags(cmd); len(workerFlags) > 0 {
+		return job.UpdateRequest{}, invalidFlagValuef("job worker outcome flags are reserved for the worker outcome implementation: %s", strings.Join(workerFlags, ", "))
 	}
 	retriesChanged := cmd.Flags().Changed("retries")
 	timeoutChanged := cmd.Flags().Changed("timeout")
@@ -140,6 +158,27 @@ func parseUpdateJobRequest(cmd *cobra.Command) (job.UpdateRequest, error) {
 		request.TimeoutMillis = &timeoutMillis
 	}
 	return request, nil
+}
+
+func changedUpdateJobWorkerOutcomeFlags(cmd *cobra.Command) []string {
+	if cmd == nil {
+		return nil
+	}
+	names := []string{
+		"fail",
+		"retry-backoff",
+		"message",
+		"throw-bpmn-error",
+		"complete",
+		"vars",
+	}
+	changed := make([]string, 0, len(names))
+	for _, name := range names {
+		if cmd.Flags().Changed(name) {
+			changed = append(changed, "--"+name)
+		}
+	}
+	return changed
 }
 
 func validateUpdateJobJSONGuardrails(cmd *cobra.Command) error {

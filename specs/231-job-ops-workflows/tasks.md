@@ -34,12 +34,12 @@
 
 **Critical**: No user story implementation should begin until this phase is complete.
 
-- [ ] T007 Add job search query, worker outcome, and expanded job detail domain models in `internal/domain/job.go`
-- [ ] T008 Add matching facade request/result models for job search, worker outcomes, and mutation plans in `c8volt/job/model.go`
-- [ ] T009 Extend job facade and service interfaces for search and worker outcome operations in `c8volt/job/api.go` and `internal/services/job/api.go`
-- [ ] T010 Add compile-time conformance updates for v8.7, v8.8, and v8.9 job services in `internal/services/job/api.go`, `internal/services/job/v87/contract.go`, `internal/services/job/v88/contract.go`, and `internal/services/job/v89/contract.go`
-- [ ] T011 Extend command metadata tests for new get/update job flags and automation behavior in `cmd/command_contract_test.go`
-- [ ] T012 Run targeted compile validation for foundational surfaces in `cmd/`, `c8volt/job/`, `internal/domain/`, and `internal/services/job/`
+- [x] T007 Add job search query, worker outcome, and expanded job detail domain models in `internal/domain/job.go`
+- [x] T008 Add matching facade request/result models for job search, worker outcomes, and mutation plans in `c8volt/job/model.go`
+- [x] T009 Extend job facade and service interfaces for search and worker outcome operations in `c8volt/job/api.go` and `internal/services/job/api.go`
+- [x] T010 Add compile-time conformance updates for v8.7, v8.8, and v8.9 job services in `internal/services/job/api.go`, `internal/services/job/v87/contract.go`, `internal/services/job/v88/contract.go`, and `internal/services/job/v89/contract.go`
+- [x] T011 Extend command metadata tests for new get/update job flags and automation behavior in `cmd/command_contract_test.go`
+- [x] T012 Run targeted compile validation for foundational surfaces in `cmd/`, `c8volt/job/`, `internal/domain/`, and `internal/services/job/`
 
 **Checkpoint**: Shared models, interfaces, metadata expectations, and package compilation are ready for story implementation.
 
