@@ -99,6 +99,7 @@ func toDomainSearchRequest(request SearchRequest) d.JobSearchQuery {
 		Retries:            request.Retries,
 		Kind:               request.Kind,
 		ListenerEventType:  request.ListenerEventType,
+		BatchSize:          request.BatchSize,
 		Limit:              request.Limit,
 	}
 }

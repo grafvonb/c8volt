@@ -626,10 +626,19 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 	})
 	require.Contains(t, getCapability.Flags, FlagContract{
 		Name:        "limit",
+		Shorthand:   "l",
 		Type:        "int32",
 		Required:    false,
 		Repeated:    false,
 		Description: "maximum number of jobs to return in search mode",
+	})
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "batch-size",
+		Shorthand:   "n",
+		Type:        "int32",
+		Required:    false,
+		Repeated:    false,
+		Description: "number of jobs to fetch per page (max limit 1000 enforced by server)",
 	})
 	require.Contains(t, getCapability.Flags, FlagContract{
 		Name:        "error-message-limit",
@@ -1660,18 +1669,21 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"Inspect or search Camunda jobs",
 		"Use --key with the jobKey exposed by incident-aware process-instance output",
 		"Search mode will use list filters",
+		"Search mode pages through matching jobs by default",
+		"--batch-size tunes per-page discovery requests only",
 		"Use --json for the stable job payload",
 		"--error-message-limit",
 		"Camunda 8.8 and 8.9",
 		"./c8volt get job --key <job-key>",
-		"./c8volt get job --state failed --limit 50",
+		"./c8volt get job --state failed --batch-size 10 --limit 50",
 		"./c8volt --json get job --key <job-key>",
 		"--key string",
 		"--state string",
 		"--element-instance-key string",
 		"--element-id string",
 		"--listener-event-type string",
-		"--limit int32",
+		"-n, --batch-size int32",
+		"-l, --limit int32",
 		"--error-message-limit int",
 	}, nil)
 

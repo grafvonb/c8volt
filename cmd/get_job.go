@@ -24,6 +24,7 @@ var (
 	flagGetJobRetries        int32
 	flagGetJobKind           string
 	flagGetJobListenerEvent  string
+	flagGetJobBatchSize      int32
 	flagGetJobLimit          int32
 	flagGetErrorMessageLimit int
 )
@@ -32,9 +33,9 @@ var getJobCmd = &cobra.Command{
 	Use:   "job",
 	Short: "Inspect or search jobs",
 	Long: "Inspect or search Camunda jobs.\n\n" +
-		"Use --key with the jobKey exposed by incident-aware process-instance output to inspect a matching runtime job directly. Search mode will use list filters such as --state, --type, --pi-key, --element-instance-key, --element-id, --worker, --retries, --kind, --listener-event-type, and --limit. Use --json for the stable job payload, or --error-message-limit to shorten long error messages. Job lookup and search are supported for Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error.",
+		"Use --key with the jobKey exposed by incident-aware process-instance output to inspect a matching runtime job directly. Search mode will use list filters such as --state, --type, --pi-key, --element-instance-key, --element-id, --worker, --retries, --kind, and --listener-event-type. Search mode pages through matching jobs by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps total returned jobs. Use --json for the stable job payload, or --error-message-limit to shorten long error messages. Job lookup and search are supported for Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error.",
 	Example: `  ./c8volt get job --key <job-key>
-  ./c8volt get job --state failed --limit 50
+  ./c8volt get job --state failed --batch-size 10 --limit 50
   ./c8volt --json get job --key <job-key>`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -82,7 +83,8 @@ func init() {
 	fs.Int32Var(&flagGetJobRetries, "retries", 0, "exact retry count to filter in search mode")
 	fs.StringVar(&flagGetJobKind, "kind", "", "Camunda job kind to filter in search mode; case-insensitive")
 	fs.StringVar(&flagGetJobListenerEvent, "listener-event-type", "", "listener event type to filter in search mode; case-insensitive")
-	fs.Int32Var(&flagGetJobLimit, "limit", 0, "maximum number of jobs to return in search mode")
+	fs.Int32VarP(&flagGetJobBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of jobs to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetJobLimit, "limit", "l", 0, "maximum number of jobs to return in search mode")
 	fs.IntVar(&flagGetErrorMessageLimit, "error-message-limit", 0, "maximum characters to show for error messages; 0 keeps full messages")
 
 	useInvalidInputFlagErrors(getJobCmd)
@@ -113,6 +115,9 @@ func validateGetJobFlags(cmd *cobra.Command) error {
 func validateGetJobSearchFlags(cmd *cobra.Command) error {
 	if cmd == nil {
 		return nil
+	}
+	if flagGetJobBatchSize <= 0 || flagGetJobBatchSize > consts.MaxPISearchSize {
+		return invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagGetJobBatchSize, consts.MaxPISearchSize)
 	}
 	if cmd.Flags().Changed("limit") && flagGetJobLimit <= 0 {
 		return invalidFlagValuef("--limit must be positive integer")
@@ -154,6 +159,7 @@ func newGetJobSearchRequest(cmd *cobra.Command) job.SearchRequest {
 		Worker:             flagGetJobWorker,
 		Kind:               normalizedJobKind(flagGetJobKind),
 		ListenerEventType:  normalizedJobListenerEventType(flagGetJobListenerEvent),
+		BatchSize:          flagGetJobBatchSize,
 		Limit:              effectiveGetJobLimit(),
 	}
 	if cmd != nil && cmd.Flags().Changed("retries") {
@@ -163,13 +169,11 @@ func newGetJobSearchRequest(cmd *cobra.Command) job.SearchRequest {
 	return req
 }
 
-// effectiveGetJobLimit keeps list/search bounded even when the caller does not
-// pass --limit.
 func effectiveGetJobLimit() int32 {
 	if flagGetJobLimit > 0 {
 		return flagGetJobLimit
 	}
-	return consts.MaxPISearchSize
+	return 0
 }
 
 // validJobStates is the explicit Camunda v8.8/v8.9 job state allowlist for
@@ -256,6 +260,7 @@ func changedGetJobSearchFlags(cmd *cobra.Command) []string {
 		"retries",
 		"kind",
 		"listener-event-type",
+		"batch-size",
 		"limit",
 	}
 	changed := make([]string, 0, len(names))

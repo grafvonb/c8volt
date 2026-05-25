@@ -78,7 +78,7 @@ func (s *Service) GetJob(ctx context.Context, key string, opts ...services.CallO
 	if err != nil {
 		return d.Job{}, fmt.Errorf("building job key filter: %w", err)
 	}
-	page := newSearchQueryPageRequest(2)
+	page := newSearchQueryPageRequest(0, 2)
 	resp, err := s.c.SearchJobsWithResponse(ctx, camundav89.SearchJobsJSONRequestBody{
 		Filter: &camundav89.JobFilter{
 			JobKey: jobKeyFilter,
@@ -102,26 +102,73 @@ func (s *Service) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts .
 	if err != nil {
 		return d.JobSearchResult{}, err
 	}
+	batchSize := query.BatchSize
+	if batchSize <= 0 {
+		batchSize = consts.MaxPISearchSize
+	}
 	limit := query.Limit
-	if limit <= 0 {
-		limit = consts.MaxPISearchSize
-	}
-	page := newSearchQueryPageRequest(limit)
-	resp, err := s.c.SearchJobsWithResponse(ctx, camundav89.SearchJobsJSONRequestBody{
-		Filter: filter,
-		Page:   &page,
-	})
-	if err != nil {
-		return d.JobSearchResult{}, err
-	}
-	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
-	if err != nil {
-		return d.JobSearchResult{}, err
+	items := make([]d.Job, 0, minPositiveJobSearchSize(batchSize, limit))
+	from := int32(0)
+	for {
+		pageLimit := nextJobSearchPageLimit(batchSize, limit, int32(len(items)))
+		if pageLimit <= 0 {
+			break
+		}
+		page := newSearchQueryPageRequest(from, pageLimit)
+		resp, err := s.c.SearchJobsWithResponse(ctx, camundav89.SearchJobsJSONRequestBody{
+			Filter: filter,
+			Page:   &page,
+		})
+		if err != nil {
+			return d.JobSearchResult{}, err
+		}
+		payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+		if err != nil {
+			return d.JobSearchResult{}, err
+		}
+		items = append(items, fromJobSearchResults(payload.Items)...)
+		if limit > 0 && int32(len(items)) >= limit {
+			break
+		}
+		itemCount := len(payload.Items)
+		if !jobSearchHasMore(payload.Page, from, itemCount, pageLimit) {
+			break
+		}
+		from += int32(itemCount)
 	}
 	return d.JobSearchResult{
-		Items: fromJobSearchResults(payload.Items),
+		Items: items,
 		Limit: limit,
 	}, nil
+}
+
+func minPositiveJobSearchSize(batchSize int32, limit int32) int {
+	if limit > 0 && limit < batchSize {
+		return int(limit)
+	}
+	return int(batchSize)
+}
+
+func nextJobSearchPageLimit(batchSize int32, limit int32, loaded int32) int32 {
+	if limit <= 0 {
+		return batchSize
+	}
+	remaining := limit - loaded
+	if remaining < batchSize {
+		return remaining
+	}
+	return batchSize
+}
+
+func jobSearchHasMore(page camundav89.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) bool {
+	if itemCount == 0 {
+		return false
+	}
+	nextFrom := int64(from) + int64(itemCount)
+	if page.TotalItems > nextFrom {
+		return true
+	}
+	return page.HasMoreTotalItems && itemCount >= int(pageSize)
 }
 
 func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error) {

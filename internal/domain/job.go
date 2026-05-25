@@ -33,6 +33,7 @@ type JobSearchQuery struct {
 	Retries            *int32
 	Kind               string
 	ListenerEventType  string
+	BatchSize          int32
 	Limit              int32
 }
 
