@@ -4,6 +4,7 @@
 package v89
 
 import (
+	"encoding/json"
 	"fmt"
 
 	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
@@ -43,6 +44,29 @@ func newVariableStringFilter(clause d.ProcessInstanceVariableFilterClause) (camu
 			return camundav89.StringFilterProperty{}, err
 		}
 		return valueFilter, nil
+	case d.ProcessInstanceVariableFilterOperatorNeq:
+		if err := valueFilter.FromAdvancedStringFilter(camundav89.AdvancedStringFilter{Neq: &clause.Value}); err != nil {
+			return camundav89.StringFilterProperty{}, err
+		}
+		return valueFilter, nil
+	case d.ProcessInstanceVariableFilterOperatorIn:
+		values, err := variableStringArrayValues(clause)
+		if err != nil {
+			return camundav89.StringFilterProperty{}, err
+		}
+		if err := valueFilter.FromAdvancedStringFilter(camundav89.AdvancedStringFilter{In: &values}); err != nil {
+			return camundav89.StringFilterProperty{}, err
+		}
+		return valueFilter, nil
+	case d.ProcessInstanceVariableFilterOperatorNotIn:
+		values, err := variableStringArrayValues(clause)
+		if err != nil {
+			return camundav89.StringFilterProperty{}, err
+		}
+		if err := valueFilter.FromAdvancedStringFilter(camundav89.AdvancedStringFilter{NotIn: &values}); err != nil {
+			return camundav89.StringFilterProperty{}, err
+		}
+		return valueFilter, nil
 	case d.ProcessInstanceVariableFilterOperatorLike:
 		if err := valueFilter.FromAdvancedStringFilter(camundav89.AdvancedStringFilter{Like: &clause.Value}); err != nil {
 			return camundav89.StringFilterProperty{}, err
@@ -56,4 +80,14 @@ func newVariableStringFilter(clause d.ProcessInstanceVariableFilterClause) (camu
 	default:
 		return camundav89.StringFilterProperty{}, fmt.Errorf("unsupported variable filter operator %q", clause.Operator)
 	}
+}
+
+// variableStringArrayValues parses validated domain array text into the string
+// slice shape required by the generated Camunda string filter.
+func variableStringArrayValues(clause d.ProcessInstanceVariableFilterClause) ([]string, error) {
+	var values []string
+	if err := json.Unmarshal([]byte(clause.Value), &values); err != nil {
+		return nil, fmt.Errorf("%s requires a JSON string array: %w", clause.Operator, err)
+	}
+	return values, nil
 }

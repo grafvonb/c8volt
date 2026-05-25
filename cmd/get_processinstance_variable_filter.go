@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -160,8 +161,8 @@ func validatePIVariableValueClause(clause *process.ProcessInstanceVariableFilter
 		}
 	case process.ProcessInstanceVariableFilterOperatorIn,
 		process.ProcessInstanceVariableFilterOperatorNotIn:
-		if !isPIVariableArrayValue(clause.Value) {
-			return fmt.Errorf("%s requires an array value", clause.Operator)
+		if err := validatePIVariableStringArrayValue(clause.Value); err != nil {
+			return fmt.Errorf("%s requires an array value: %w", clause.Operator, err)
 		}
 	default:
 		return fmt.Errorf("unsupported variable operator %q", clause.Operator)
@@ -293,6 +294,19 @@ func isSupportedPIVariableOperator(operator process.ProcessInstanceVariableFilte
 func isPIVariableArrayValue(value string) bool {
 	value = strings.TrimSpace(value)
 	return len(value) >= 2 && value[0] == '[' && value[len(value)-1] == ']'
+}
+
+// validatePIVariableStringArrayValue catches malformed native string-array
+// filters locally while leaving the original serialized array text untouched.
+func validatePIVariableStringArrayValue(value string) error {
+	if !isPIVariableArrayValue(value) {
+		return fmt.Errorf("must be a JSON array")
+	}
+	var values []string
+	if err := json.Unmarshal([]byte(value), &values); err != nil {
+		return err
+	}
+	return nil
 }
 
 // boolValuePtr creates optional exists values for variable filter clauses.

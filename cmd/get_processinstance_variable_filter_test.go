@@ -125,15 +125,18 @@ func TestParsePIVariableFilters_NormalizesAdvancedOperators(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
-	flagGetPIVars = []string{`status.$neq="failed",active.$exists=false,kind.$notin=["a","b"],email.$like=*@example.com`}
+	flagGetPIVars = []string{`exact.$eq="approved",status.$neq="failed",active.$exists=false,kind.$in=["a","b"],segment.$notIn=["c","d"],alias.$notin=["x","y"],email.$like=*@example.com`}
 
 	got, err := parsePIVariableFilters()
 
 	require.NoError(t, err)
 	require.Equal(t, []process.ProcessInstanceVariableFilterClause{
+		{Name: "exact", Operator: process.ProcessInstanceVariableFilterOperatorEq, Value: `"approved"`, Source: piVariableFilterSourceVar},
 		{Name: "status", Operator: process.ProcessInstanceVariableFilterOperatorNeq, Value: `"failed"`, Source: piVariableFilterSourceVar},
 		{Name: "active", Operator: process.ProcessInstanceVariableFilterOperatorExists, Exists: boolValuePtr(false), Source: piVariableFilterSourceVar},
-		{Name: "kind", Operator: process.ProcessInstanceVariableFilterOperatorNotIn, Value: `["a","b"]`, Source: piVariableFilterSourceVar},
+		{Name: "kind", Operator: process.ProcessInstanceVariableFilterOperatorIn, Value: `["a","b"]`, Source: piVariableFilterSourceVar},
+		{Name: "segment", Operator: process.ProcessInstanceVariableFilterOperatorNotIn, Value: `["c","d"]`, Source: piVariableFilterSourceVar},
+		{Name: "alias", Operator: process.ProcessInstanceVariableFilterOperatorNotIn, Value: `["x","y"]`, Source: piVariableFilterSourceVar},
 		{Name: "email", Operator: process.ProcessInstanceVariableFilterOperatorLike, Value: `*@example.com`, Source: piVariableFilterSourceVar},
 	}, got.Clauses)
 }
@@ -150,7 +153,9 @@ func TestParsePIVariableFilters_RejectsMalformedClauses(t *testing.T) {
 		{name: "unknown operator", vars: []string{"status.$contains=value"}, wantErr: "unsupported variable operator"},
 		{name: "missing value", vars: []string{"status="}, wantErr: "$eq requires a non-empty value"},
 		{name: "malformed bool", vars: []string{"active.$exists=yes"}, wantErr: "$exists requires true or false"},
-		{name: "malformed array", vars: []string{"status.$in=approved"}, wantErr: "$in requires an array value"},
+		{name: "missing array", vars: []string{"status.$in=approved"}, wantErr: "$in requires an array value"},
+		{name: "malformed array", vars: []string{`status.$in=["approved",]`}, wantErr: "$in requires an array value"},
+		{name: "malformed not-in array", vars: []string{`status.$notIn=["approved",]`}, wantErr: "$notIn requires an array value"},
 		{name: "unterminated quote", vars: []string{`status="approved`}, wantErr: "unterminated quoted value"},
 	}
 

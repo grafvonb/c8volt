@@ -218,6 +218,38 @@ func TestGetProcessInstanceSearch_VarLikeSendsNativeLikeFilters(t *testing.T) {
 	require.Equal(t, "get process-instance", got["command"])
 }
 
+// TestGetProcessInstanceSearch_VarSendsNativeAdvancedFilters verifies advanced
+// operators reach the native process-instance search body with normalized names.
+func TestGetProcessInstanceSearch_VarSendsNativeAdvancedFilters(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceSearchCaptureServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--var", `status.$neq="failed",active.$exists=false,kind.$in=["approved","pending"],segment.$notin=["legacy","test"]`,
+		"--batch-size", "5",
+	)
+
+	filter := decodeCapturedPISearchFilter(t, requests)
+	variables, ok := filter["variables"].([]any)
+	require.True(t, ok, "expected native variable filters")
+	require.Len(t, variables, 4)
+	require.Equal(t, map[string]any{"name": "status", "value": map[string]any{"$neq": `"failed"`}}, variables[0])
+	require.Equal(t, map[string]any{"name": "active", "value": map[string]any{"$exists": false}}, variables[1])
+	require.Equal(t, map[string]any{"name": "kind", "value": map[string]any{"$in": []any{"approved", "pending"}}}, variables[2])
+	require.Equal(t, map[string]any{"name": "segment", "value": map[string]any{"$notIn": []any{"legacy", "test"}}}, variables[3])
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &got))
+	require.Equal(t, string(OutcomeSucceeded), got["outcome"])
+	require.Equal(t, "get process-instance", got["command"])
+}
+
 // TestGetProcessInstanceSearch_TenantScopedDiscoveryUsesSelectedTenant verifies
 // c8volt-produced search candidates remain scoped by the effective tenant.
 func TestGetProcessInstanceSearch_TenantScopedDiscoveryUsesSelectedTenant(t *testing.T) {

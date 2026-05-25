@@ -316,6 +316,9 @@ func TestClient_SearchProcessInstances_MapsVariableFiltersToDomainFilter(t *test
 					Clauses: []d.ProcessInstanceVariableFilterClause{
 						{Name: "customerId", Operator: d.ProcessInstanceVariableFilterOperatorExists, Exists: &exists, Source: "--var-exists"},
 						{Name: "status", Operator: d.ProcessInstanceVariableFilterOperatorEq, Value: `"approved"`, Source: "--var"},
+						{Name: "state", Operator: d.ProcessInstanceVariableFilterOperatorNeq, Value: `"failed"`, Source: "--var"},
+						{Name: "kind", Operator: d.ProcessInstanceVariableFilterOperatorIn, Value: `["approved","pending"]`, Source: "--var"},
+						{Name: "segment", Operator: d.ProcessInstanceVariableFilterOperatorNotIn, Value: `["legacy","test"]`, Source: "--var"},
 						{Name: "email", Operator: d.ProcessInstanceVariableFilterOperatorLike, Value: "*@example.com", Source: "--var-like"},
 					},
 				},
@@ -331,6 +334,9 @@ func TestClient_SearchProcessInstances_MapsVariableFiltersToDomainFilter(t *test
 			Clauses: []ProcessInstanceVariableFilterClause{
 				{Name: "customerId", Operator: ProcessInstanceVariableFilterOperatorExists, Exists: &exists, Source: "--var-exists"},
 				{Name: "status", Operator: ProcessInstanceVariableFilterOperatorEq, Value: `"approved"`, Source: "--var"},
+				{Name: "state", Operator: ProcessInstanceVariableFilterOperatorNeq, Value: `"failed"`, Source: "--var"},
+				{Name: "kind", Operator: ProcessInstanceVariableFilterOperatorIn, Value: `["approved","pending"]`, Source: "--var"},
+				{Name: "segment", Operator: ProcessInstanceVariableFilterOperatorNotIn, Value: `["legacy","test"]`, Source: "--var"},
 				{Name: "email", Operator: ProcessInstanceVariableFilterOperatorLike, Value: "*@example.com", Source: "--var-like"},
 			},
 		},

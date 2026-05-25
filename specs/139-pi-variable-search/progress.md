@@ -29,6 +29,8 @@
 - v8.8 and v8.9 native equality mapping should set `AdvancedStringFilter.Eq` directly from the preserved domain clause value; command, facade, and service layers must not parse or reserialize that value.
 - `--var-like` uses the same parser path with a `$like` default operator; wildcard strings, question marks, and escaped wildcard characters are preserved as raw native pattern values.
 - v8.8 and v8.9 native like mapping should set `AdvancedStringFilter.Like` directly from the preserved domain clause value.
+- Advanced `$in` and `$notIn` clauses are locally validated as JSON string arrays while preserving the original serialized clause text through command, facade, and domain layers.
+- v8.8 and v8.9 generated `AdvancedStringFilter.In` and `NotIn` fields require `[]string`, so versioned `variable_filter.go` files parse validated array text at native request construction time.
 
 ## Architecture Grounding
 
@@ -199,4 +201,37 @@
 - `--var-like` can reuse the existing variable value parser path; the story only needed flag registration plus tests that prove `*`, `?`, and `\*` are preserved.
 - Generated `AdvancedStringFilter.Like` fields accept the preserved pattern string directly in v8.8 and v8.9 request builders.
 - Validation passed with `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`.
+---
+---
+## Iteration 6 - 2026-05-25 23:10:44 CEST
+**User Story**: User Story 4 - Use Advanced Native Operators
+**Tasks Completed**:
+- [x] T049: Add parser tests for `$eq`, `$neq`, `$exists`, `$in`, `$notIn`, `$like`, and `$notin` in `cmd/get_processinstance_variable_filter_test.go`
+- [x] T050: Add parser tests for invalid operators, malformed booleans, and malformed arrays in `cmd/get_processinstance_variable_filter_test.go`
+- [x] T051: Add command execution tests for advanced operators in `cmd/get_processinstance_test.go`
+- [x] T052: Add v8.8 native request tests for advanced operators in `internal/services/processinstance/v88/service_test.go`
+- [x] T053: Add v8.9 native request tests for advanced operators in `internal/services/processinstance/v89/service_test.go`
+- [x] T054: Add advanced operator parsing and `$notin` normalization in `cmd/get_processinstance_variable_filter.go`
+- [x] T055: Add local validation for operator value shape in `cmd/get_processinstance_variable_filter.go`
+- [x] T056: Extend domain/facade variable filter conversion for advanced operators in `internal/domain/processinstance.go` and `c8volt/process/convert.go`
+- [x] T057: Implement native advanced operator mapping for Camunda 8.8 in `internal/services/processinstance/v88/`
+- [x] T058: Implement native advanced operator mapping for Camunda 8.9 in `internal/services/processinstance/v89/`
+- [x] T059: Verify US4 with targeted parser, command, and versioned service tests
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance_variable_filter.go
+- cmd/get_processinstance_variable_filter_test.go
+- cmd/get_processinstance_test.go
+- c8volt/process/client_test.go
+- internal/services/processinstance/v88/variable_filter.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v89/variable_filter.go
+- internal/services/processinstance/v89/service_test.go
+- specs/139-pi-variable-search/tasks.md
+- specs/139-pi-variable-search/progress.md
+**Learnings**:
+- `$notin` normalization already lived in the command parser; US4 extended coverage to all advanced operators and made malformed JSON arrays fail locally before remote search.
+- Native v8.8/v8.9 request construction should parse `$in` and `$notIn` arrays only at the generated-client boundary because the intermediate model intentionally preserves serialized values.
+- Validation passed with `go test ./cmd ./c8volt/process ./internal/domain ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`.
 ---

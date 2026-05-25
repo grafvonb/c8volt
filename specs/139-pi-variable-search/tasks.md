@@ -137,20 +137,20 @@
 
 ### Tests for User Story 4
 
-- [ ] T049 [P] [US4] Add parser tests for `$eq`, `$neq`, `$exists`, `$in`, `$notIn`, `$like`, and `$notin` in `cmd/get_processinstance_variable_filter_test.go`
-- [ ] T050 [P] [US4] Add parser tests for invalid operators, malformed booleans, and malformed arrays in `cmd/get_processinstance_variable_filter_test.go`
-- [ ] T051 [P] [US4] Add command execution tests for advanced operators in `cmd/get_processinstance_test.go`
-- [ ] T052 [P] [US4] Add v8.8 native request tests for advanced operators in `internal/services/processinstance/v88/service_test.go`
-- [ ] T053 [P] [US4] Add v8.9 native request tests for advanced operators in `internal/services/processinstance/v89/service_test.go`
+- [x] T049 [P] [US4] Add parser tests for `$eq`, `$neq`, `$exists`, `$in`, `$notIn`, `$like`, and `$notin` in `cmd/get_processinstance_variable_filter_test.go`
+- [x] T050 [P] [US4] Add parser tests for invalid operators, malformed booleans, and malformed arrays in `cmd/get_processinstance_variable_filter_test.go`
+- [x] T051 [P] [US4] Add command execution tests for advanced operators in `cmd/get_processinstance_test.go`
+- [x] T052 [P] [US4] Add v8.8 native request tests for advanced operators in `internal/services/processinstance/v88/service_test.go`
+- [x] T053 [P] [US4] Add v8.9 native request tests for advanced operators in `internal/services/processinstance/v89/service_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T054 [US4] Add advanced operator parsing and `$notin` normalization in `cmd/get_processinstance_variable_filter.go`
-- [ ] T055 [US4] Add local validation for operator value shape in `cmd/get_processinstance_variable_filter.go`
-- [ ] T056 [US4] Extend domain/facade variable filter conversion for advanced operators in `internal/domain/processinstance.go` and `c8volt/process/convert.go`
-- [ ] T057 [US4] Implement native advanced operator mapping for Camunda 8.8 in `internal/services/processinstance/v88/`
-- [ ] T058 [US4] Implement native advanced operator mapping for Camunda 8.9 in `internal/services/processinstance/v89/`
-- [ ] T059 [US4] Verify US4 with targeted parser, command, and versioned service tests
+- [x] T054 [US4] Add advanced operator parsing and `$notin` normalization in `cmd/get_processinstance_variable_filter.go`
+- [x] T055 [US4] Add local validation for operator value shape in `cmd/get_processinstance_variable_filter.go`
+- [x] T056 [US4] Extend domain/facade variable filter conversion for advanced operators in `internal/domain/processinstance.go` and `c8volt/process/convert.go`
+- [x] T057 [US4] Implement native advanced operator mapping for Camunda 8.8 in `internal/services/processinstance/v88/`
+- [x] T058 [US4] Implement native advanced operator mapping for Camunda 8.9 in `internal/services/processinstance/v89/`
+- [x] T059 [US4] Verify US4 with targeted parser, command, and versioned service tests
 
 **Checkpoint**: User Story 4 is complete when every requested advanced operator works or fails locally according to the contract.
 

@@ -507,6 +507,66 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 		assert.Equal(t, "123", items[0].Key)
 	})
 
+	t.Run("MapsVariableAdvancedFilters", func(t *testing.T) {
+		exists := false
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+			searchProcessInstancesWithResp: func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
+				require.NotNil(t, body.Filter)
+				require.NotNil(t, body.Filter.Variables)
+				require.Len(t, *body.Filter.Variables, 4)
+
+				statusFilter, err := (*body.Filter.Variables)[0].Value.AsAdvancedStringFilter()
+				require.NoError(t, err)
+				require.NotNil(t, statusFilter.Neq)
+				assert.Equal(t, `"failed"`, *statusFilter.Neq)
+				assert.Equal(t, "status", (*body.Filter.Variables)[0].Name)
+
+				activeFilter, err := (*body.Filter.Variables)[1].Value.AsAdvancedStringFilter()
+				require.NoError(t, err)
+				require.NotNil(t, activeFilter.Exists)
+				assert.False(t, *activeFilter.Exists)
+				assert.Equal(t, "active", (*body.Filter.Variables)[1].Name)
+
+				kindFilter, err := (*body.Filter.Variables)[2].Value.AsAdvancedStringFilter()
+				require.NoError(t, err)
+				require.NotNil(t, kindFilter.In)
+				assert.Equal(t, []string{"approved", "pending"}, *kindFilter.In)
+				assert.Equal(t, "kind", (*body.Filter.Variables)[2].Name)
+
+				segmentFilter, err := (*body.Filter.Variables)[3].Value.AsAdvancedStringFilter()
+				require.NoError(t, err)
+				require.NotNil(t, segmentFilter.NotIn)
+				assert.Equal(t, []string{"legacy", "test"}, *segmentFilter.NotIn)
+				assert.Equal(t, "segment", (*body.Filter.Variables)[3].Name)
+
+				return &camundav88.SearchProcessInstancesResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/search", http.StatusOK, "200 OK"),
+					JSON200: &camundav88.ProcessInstanceSearchQueryResult{
+						Items: []camundav88.ProcessInstanceResult{*makeProcessInstanceResult("123", "ACTIVE", "")},
+					},
+				}, nil
+			},
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+		}, newStrictOperateClient(t))
+
+		items, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{
+			VariableFilters: d.ProcessInstanceVariableFilterSet{
+				Clauses: []d.ProcessInstanceVariableFilterClause{
+					{Name: "status", Operator: d.ProcessInstanceVariableFilterOperatorNeq, Value: `"failed"`},
+					{Name: "active", Operator: d.ProcessInstanceVariableFilterOperatorExists, Exists: &exists},
+					{Name: "kind", Operator: d.ProcessInstanceVariableFilterOperatorIn, Value: `["approved","pending"]`},
+					{Name: "segment", Operator: d.ProcessInstanceVariableFilterOperatorNotIn, Value: `["legacy","test"]`},
+				},
+			},
+		}, 25)
+
+		require.NoError(t, err)
+		require.Len(t, items, 1)
+		assert.Equal(t, "123", items[0].Key)
+	})
+
 	t.Run("MapsInclusiveStartDateBounds", func(t *testing.T) {
 		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
