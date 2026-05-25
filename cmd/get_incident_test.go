@@ -81,6 +81,9 @@ func TestGetIncidentCommand_JSONOutputUsesIncidentListPayload(t *testing.T) {
 	require.Equal(t, "2251799813685249", item["incidentKey"])
 	require.Equal(t, longMessage, item["errorMessage"])
 	require.Equal(t, "2026-03-23T18:01:00Z", item["creationTime"])
+	require.Equal(t, "task-a", item["elementId"])
+	require.Equal(t, "2251799813685300", item["elementInstanceKey"])
+	require.NotContains(t, output, "flowNode")
 }
 
 func TestGetIncidentCommand_KeysOnlyOutputUsesIncidentKeys(t *testing.T) {
@@ -784,8 +787,10 @@ func TestGetIncidentCommand_SearchCoreProcessAndElementFilters(t *testing.T) {
 	require.Contains(t, requests[0], "task-a")
 	require.Contains(t, requests[0], "2251799813685303")
 	require.Contains(t, output, "2251799813685252")
-	require.Contains(t, output, "fn:task-a")
-	require.Contains(t, output, "fni:2251799813685303")
+	require.Contains(t, output, "e:task-a")
+	require.Contains(t, output, "ei:2251799813685303")
+	require.NotContains(t, output, "fn:")
+	require.NotContains(t, output, "fni:")
 	require.Contains(t, output, "pi:2251799813711970")
 	require.Contains(t, output, "root:2251799813711971")
 	require.Contains(t, output, "order-process")

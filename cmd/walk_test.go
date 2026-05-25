@@ -176,8 +176,10 @@ func TestWalkIncidentLines_RenderGroupedIncidentDetails(t *testing.T) {
 		JobKey:             "job-123",
 	}})
 
-	require.Equal(t, "\n  └─ incident-1 JOB_NO_RETRIES ACTIVE j:job-123 2026-05-06T09:29:42.711 (4 days ago) fn:task-a fni:element-123 m:Root job failed", out.String())
+	require.Equal(t, "\n  └─ incident-1 JOB_NO_RETRIES ACTIVE j:job-123 2026-05-06T09:29:42.711 (4 days ago) e:task-a ei:element-123 m:Root job failed", out.String())
 	require.NotContains(t, out.String(), "incident incident-1:")
+	require.NotContains(t, out.String(), "fn:")
+	require.NotContains(t, out.String(), "fni:")
 }
 
 // TestWalkProcessInstanceCommand_WithIncidentsChildrenHumanOutputShowsIncident renders incident keys under child-walk rows.
@@ -236,7 +238,7 @@ func TestWalkProcessInstanceCommand_WithVarsAndIncidentsChildrenHumanOutputShows
 			require.Contains(t, string(body), `"parentProcessInstanceKey":"123"`)
 			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
-			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "123", "Root job failed")))
+			_, _ = w.Write([]byte(`{"items":[{"elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"Root job failed","errorType":"JOB_NO_RETRIES","incidentKey":"incident-1","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/variables/search":
 			require.Equal(t, "false", r.URL.Query().Get("truncateValues"))
 			_, _ = w.Write([]byte(`{"items":[{"name":"businessKey","value":"2234809392328","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"},{"name":"hasIncident","value":"true","variableKey":"902","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
@@ -268,7 +270,7 @@ func TestWalkProcessInstanceCommand_WithVarsAndIncidentsChildrenHumanOutputShows
 	require.Contains(t, output, "│  ├─ businessKey=2234809392328")
 	require.Contains(t, output, "│  └─ hasIncident=true")
 	require.Contains(t, output, "└─ incidents:")
-	require.Contains(t, output, "   └─ incident-1 JOB_NO_RETRIES ACTIVE j:n/a m:Root job failed")
+	require.Contains(t, output, "   └─ incident-1 JOB_NO_RETRIES ACTIVE j:n/a e:task-a ei:element-123 m:Root job failed")
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
 
@@ -427,7 +429,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsIncidentDetails(
 			require.Contains(t, string(body), `"parentProcessInstanceKey":"123"`)
 			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
-			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "123", "Root job failed")))
+			_, _ = w.Write([]byte(`{"items":[{"elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"Root job failed","errorType":"JOB_NO_RETRIES","incidentKey":"incident-1","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
@@ -456,6 +458,9 @@ func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsIncidentDetails(
 	require.Equal(t, "incident-1", incident["incidentKey"])
 	require.Equal(t, "123", incident["processInstanceKey"])
 	require.Equal(t, "Root job failed", incident["errorMessage"])
+	require.Equal(t, "task-a", incident["elementId"])
+	require.Equal(t, "element-123", incident["elementInstanceKey"])
+	require.NotContains(t, output, "flowNode")
 }
 
 // TestWalkProcessInstanceCommand_WithIncidentsJSONOutputAssociatesMultipleKeys prevents cross-key incident leakage.

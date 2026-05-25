@@ -1699,7 +1699,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "demo v3")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-03-23T18:01:00.000 (48 days ago) fn:task-a fni:element-123 m:No retries left")
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-03-23T18:01:00.000 (48 days ago) e:task-a ei:element-123 m:No retries left")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -1968,7 +1968,7 @@ func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(
 	require.Contains(t, output, "│  ├─ businessKey=2234809392328")
 	require.Contains(t, output, "│  └─ hasIncident=true")
 	require.Contains(t, output, "└─ incidents:")
-	require.Contains(t, output, "   └─ incident-123 IO_MAPPING_ERROR ACTIVE j:n/a fn:task-a fni:element-123 m:No retries left")
+	require.Contains(t, output, "   └─ incident-123 IO_MAPPING_ERROR ACTIVE j:n/a e:task-a ei:element-123 m:No retries left")
 	require.Contains(t, output, "found: 1")
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
@@ -2088,8 +2088,8 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 			wantMessages: []string{
 				"└─ incidents:",
-				"├─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a 2026-03-23T18:01:00.000 (48 days ago) fn:task-a fni:element-123 m:No retries left",
-				"└─ incident-124 EXTRACT_VALUE_ERROR ACTIVE j:n/a 2026-03-23T18:02:00.000 (48 days ago) fn:task-b fni:element-124 m:Gateway failed",
+				"├─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a 2026-03-23T18:01:00.000 (48 days ago) e:task-a ei:element-123 m:No retries left",
+				"└─ incident-124 EXTRACT_VALUE_ERROR ACTIVE j:n/a 2026-03-23T18:02:00.000 (48 days ago) e:task-b ei:element-124 m:Gateway failed",
 			},
 		},
 		{
@@ -2179,6 +2179,8 @@ func TestGetProcessInstanceWithIncidents_JSONOutputShowsIncidentDetails(t *testi
 	require.Equal(t, "123", incident["processInstanceKey"])
 	require.Equal(t, "No retries left", incident["errorMessage"])
 	require.Equal(t, "task-a", incident["elementId"])
+	require.Equal(t, "element-123", incident["elementInstanceKey"])
+	require.NotContains(t, output, "flowNode")
 }
 
 // TestGetProcessInstanceWithIncidents_JSONOutputAssociatesMultipleKeys prevents incident details from crossing keyed lookup boundaries.

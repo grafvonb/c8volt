@@ -83,19 +83,19 @@
 
 ### Tests for User Story 2
 
-- [ ] T027 [P] [US2] Add JSON output tests for canonical incident fields in `cmd/get_incident_test.go`
-- [ ] T028 [P] [US2] Add human row rendering tests for `e:` and `ei:` labels in `cmd/cmd_views_processinstance_incidents_test.go` or nearest existing view test file
-- [ ] T029 [P] [US2] Add `get pi --with-incidents` output tests for canonical incident context in `cmd/get_processinstance_test.go`
-- [ ] T030 [P] [US2] Add `walk pi --with-incidents` output tests for canonical incident context in `cmd/walk_processinstance_test.go`
-- [ ] T031 [P] [US2] Add ops repair/purge output regression tests for canonical incident context in `cmd/ops_repair_incident_test.go` and `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T027 [P] [US2] Add JSON output tests for canonical incident fields in `cmd/get_incident_test.go`
+- [x] T028 [P] [US2] Add human row rendering tests for `e:` and `ei:` labels in `cmd/cmd_views_processinstance_incidents_test.go` or nearest existing view test file
+- [x] T029 [P] [US2] Add `get pi --with-incidents` output tests for canonical incident context in `cmd/get_processinstance_test.go`
+- [x] T030 [P] [US2] Add `walk pi --with-incidents` output tests for canonical incident context in `cmd/walk_processinstance_test.go`
+- [x] T031 [P] [US2] Add ops repair/purge output regression tests for canonical incident context in `cmd/ops_repair_incident_test.go` and `cmd/ops_purge_processinstances_with_incidents_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T032 [US2] Rename incident JSON fields and converter outputs in `c8volt/incident/model.go`, `c8volt/incident/convert.go`, and `internal/domain/incident.go`
-- [ ] T033 [US2] Update process-instance incident detail conversions in `c8volt/process/convert.go`, `c8volt/ops/convert.go`, and `internal/domain/`
-- [ ] T034 [US2] Replace human labels `fn` and `fni` with `e` and `ei` in `cmd/cmd_views_processinstance_incidents.go`
-- [ ] T035 [US2] Update command output assertions and fixtures that consume incident JSON in `cmd/get_incident_test.go`, `cmd/get_processinstance_test.go`, `cmd/walk_processinstance_test.go`, and ops command tests
-- [ ] T036 [US2] Verify US2 with targeted tests for incident rendering, process-instance incident output, walk output, and ops output in `cmd/`
+- [x] T032 [US2] Rename incident JSON fields and converter outputs in `c8volt/incident/model.go`, `c8volt/incident/convert.go`, and `internal/domain/incident.go`
+- [x] T033 [US2] Update process-instance incident detail conversions in `c8volt/process/convert.go`, `c8volt/ops/convert.go`, and `internal/domain/`
+- [x] T034 [US2] Replace human labels `fn` and `fni` with `e` and `ei` in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T035 [US2] Update command output assertions and fixtures that consume incident JSON in `cmd/get_incident_test.go`, `cmd/get_processinstance_test.go`, `cmd/walk_processinstance_test.go`, and ops command tests
+- [x] T036 [US2] Verify US2 with targeted tests for incident rendering, process-instance incident output, walk output, and ops output in `cmd/`
 
 **Checkpoint**: User Story 2 is complete when all incident output surfaces use canonical element terminology.
 

@@ -205,6 +205,11 @@ func TestOpsPurgeProcessInstancesWithIncidentsDryRunJSONDiscoveryData(t *testing
 	require.Len(t, discovery["candidateProcessInstanceKeys"], 1)
 	require.Len(t, discovery["duplicateCandidateProcessInstanceKeys"], 1)
 	require.Len(t, discovery["skippedIncidents"], 1)
+	skipped := requireJSONItems(t, discovery["skippedIncidents"], 1)
+	skippedIncident := requireJSONObject(t, requireJSONObject(t, skipped[0])["incident"])
+	require.Equal(t, "task-a", skippedIncident["elementId"])
+	require.Equal(t, "element-123", skippedIncident["elementInstanceKey"])
+	require.NotContains(t, output, "flowNode")
 	require.Len(t, discovery["notices"], 2)
 	deletePlan := requireJSONObject(t, payload["deletePlan"])
 	require.Equal(t, "planned", deletePlan["status"])
@@ -321,6 +326,9 @@ func TestOpsPurgeProcessInstancesWithIncidentsJSONOutputsStayMachineReadable(t *
 	require.Equal(t, true, requireJSONObject(t, dryRunPayload["request"])["dryRun"])
 	require.Equal(t, "planned", requireJSONObject(t, dryRunPayload["deletePlan"])["status"])
 	require.Equal(t, "skipped", requireJSONObject(t, dryRunPayload["deletion"])["status"])
+	require.Contains(t, dryRunStdout, `"elementId": "task-a"`)
+	require.Contains(t, dryRunStdout, `"elementInstanceKey": "element-123"`)
+	require.NotContains(t, dryRunStdout, "flowNode")
 	require.Empty(t, deleted.Snapshot())
 
 	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
@@ -417,9 +425,13 @@ func TestOpsPurgeProcessInstancesWithIncidentsWritesJSONReport(t *testing.T) {
 	require.Contains(t, output, "elapsed:")
 	require.Contains(t, output, "report: written "+reportPath)
 	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: deleted"))
-	require.NotContains(t, readReportFile(t, reportPath), "old report")
+	reportData := readReportFile(t, reportPath)
+	require.NotContains(t, reportData, "old report")
+	require.Contains(t, reportData, `"elementId": "task-a"`)
+	require.Contains(t, reportData, `"elementInstanceKey": "element-123"`)
+	require.NotContains(t, reportData, "flowNode")
 	var report map[string]any
-	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.NoError(t, json.Unmarshal([]byte(reportData), &report))
 	require.Equal(t, "ops.process-instances-with-incidents.v1", report["schemaVersion"])
 	require.Equal(t, "ops purge process-instances-with-incidents", report["commandName"])
 	require.Equal(t, "deleted", report["outcome"])
@@ -782,7 +794,7 @@ func sampleIncidentPurgeDryRunPlanResult() ops.IncidentPurgeResult {
 			CandidateProcessInstanceKeys:          typex.Keys{"2251799813711972"},
 			DuplicateCandidateProcessInstanceKeys: typex.Keys{"2251799813711972"},
 			SkippedIncidents: []ops.IncidentPurgeSkippedIncident{
-				{Incident: incident.ProcessInstanceIncidentDetail{IncidentKey: "2251799813685255"}, Reason: "missing process-instance key"},
+				{Incident: incident.ProcessInstanceIncidentDetail{IncidentKey: "2251799813685255", ElementId: "task-a", ElementInstanceKey: "element-123"}, Reason: "missing process-instance key"},
 			},
 			IncidentCount:                 3,
 			CandidateProcessInstanceCount: 1,
@@ -898,7 +910,7 @@ func newOpsIncidentPurgeMultiPageServer(t *testing.T, requests *testx.SafeSlice[
 }
 
 func opsIncidentPurgeIncidentJSON(key string, piKey string) string {
-	return `{"incidentKey":"` + key + `","processInstanceKey":"` + piKey + `","tenantId":"tenant","state":"ACTIVE","errorType":"JOB_NO_RETRIES","errorMessage":"no retries left"}`
+	return `{"incidentKey":"` + key + `","processInstanceKey":"` + piKey + `","tenantId":"tenant","state":"ACTIVE","errorType":"JOB_NO_RETRIES","errorMessage":"no retries left","elementId":"task-a","elementInstanceKey":"element-123"}`
 }
 
 func opsIncidentPurgeProcessInstanceJSON(key string, parentKey string, state string) string {

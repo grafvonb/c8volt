@@ -2,6 +2,7 @@
 
 ## Codebase Patterns
 
+- Shared incident human rows are rendered only through `flatRowProcessInstanceIncidentWithTimezone` and `flatRowIncidentWithTimezone`; canonical compact labels are now `e:` and `ei:`.
 - Public incident facade/domain fields are now `ElementId` and `ElementInstanceKey`; public JSON tags are `elementId` and `elementInstanceKey`.
 - Public process facade/domain parent context is now `ParentElementInstanceKey`; the v8.7 process-instance adapter still reads generated `ParentFlowNodeInstanceKey` at the adapter boundary.
 - Command code must reference canonical facade fields after the foundational rename, even where later user stories still own public flag/help and compact-label behavior changes.
@@ -114,4 +115,35 @@
 - `get incident` can drop legacy aliases entirely by not registering them; Cobra reports `unknown flag` before config loading or remote work.
 - US1 validation passed with targeted command, facade, and incident service packages plus broader `go test ./cmd ./c8volt/incident ./internal/services/incident/...`.
 - The foundational facade/domain/service element-field tests already cover T019/T020 behavior, so this iteration only needed command-surface changes.
+---
+---
+## Iteration 4 - 2026-05-25 19:10:35 CEST
+**User Story**: User Story 2 - Show Canonical Incident Context
+**Tasks Completed**:
+- [x] T027: Add JSON output tests for canonical incident fields in `cmd/get_incident_test.go`
+- [x] T028: Add human row rendering tests for `e:` and `ei:` labels in `cmd/cmd_views_get_test.go`
+- [x] T029: Add `get pi --with-incidents` output tests for canonical incident context in `cmd/get_processinstance_test.go`
+- [x] T030: Add `walk pi --with-incidents` output tests for canonical incident context in `cmd/walk_test.go`
+- [x] T031: Add ops repair/purge output regression tests for canonical incident context in `cmd/ops_repair_incident_test.go` and `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T032: Rename incident JSON fields and converter outputs in `c8volt/incident/model.go`, `c8volt/incident/convert.go`, and `internal/domain/incident.go`
+- [x] T033: Update process-instance incident detail conversions in `c8volt/process/convert.go`, `c8volt/ops/convert.go`, and `internal/domain/`
+- [x] T034: Replace human labels `fn` and `fni` with `e` and `ei` in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T035: Update command output assertions and fixtures that consume incident JSON in `cmd/get_incident_test.go`, `cmd/get_processinstance_test.go`, `cmd/walk_test.go`, and ops command tests
+- [x] T036: Verify US2 with targeted tests for incident rendering, process-instance incident output, walk output, and ops output in `cmd/`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_processinstance_incidents.go
+- cmd/cmd_views_get_test.go
+- cmd/get_incident_test.go
+- cmd/get_processinstance_test.go
+- cmd/walk_test.go
+- cmd/ops_repair_incident_test.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- specs/233-element-terminology/tasks.md
+- specs/233-element-terminology/progress.md
+**Learnings**:
+- Incident JSON fields and facade/domain conversions were already canonical from the foundational work; US2 focused on command output coverage and shared human render labels.
+- Ops repair and purge machine/report payloads include incident details through shared `ProcessInstanceIncidentDetail`, so canonical JSON regression coverage belongs in those command tests even before US4 renames ops filter flags.
+- Validation passed with `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd ./c8volt/incident ./c8volt/process ./c8volt/ops`.
 ---
