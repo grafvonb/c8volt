@@ -2,6 +2,8 @@
 
 ## Codebase Patterns
 
+- Process-instance parent context is now canonical end-to-end as `ParentElementInstanceKey` / `parentElementInstanceKey`; only generated clients or v8.7 adapter reads may keep `ParentFlowNodeInstanceKey`.
+- `cmd/get_processinstance_test.go` and `cmd/walk_test.go` are suitable focused command contract surfaces for asserting `parentFlowNodeInstanceKey` is absent from public JSON output.
 - Shared incident human rows are rendered only through `flatRowProcessInstanceIncidentWithTimezone` and `flatRowIncidentWithTimezone`; canonical compact labels are now `e:` and `ei:`.
 - Public incident facade/domain fields are now `ElementId` and `ElementInstanceKey`; public JSON tags are `elementId` and `elementInstanceKey`.
 - Public process facade/domain parent context is now `ParentElementInstanceKey`; the v8.7 process-instance adapter still reads generated `ParentFlowNodeInstanceKey` at the adapter boundary.
@@ -146,4 +148,31 @@
 - Incident JSON fields and facade/domain conversions were already canonical from the foundational work; US2 focused on command output coverage and shared human render labels.
 - Ops repair and purge machine/report payloads include incident details through shared `ProcessInstanceIncidentDetail`, so canonical JSON regression coverage belongs in those command tests even before US4 renames ops filter flags.
 - Validation passed with `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd ./c8volt/incident ./c8volt/process ./c8volt/ops`.
+---
+---
+## Iteration 5 - 2026-05-25 19:16:52 CEST
+**User Story**: User Story 3 - Standardize Process Context Fields
+**Tasks Completed**:
+- [x] T037: Add process facade tests for `parentElementInstanceKey` in `c8volt/process/client_test.go`
+- [x] T038: Add resource facade regression tests for renamed parent context in `c8volt/resource/client_test.go`
+- [x] T039: Add process-instance command JSON tests for `parentElementInstanceKey` in `cmd/get_processinstance_test.go`
+- [x] T040: Add walk command tests for canonical parent context in `cmd/walk_test.go`
+- [x] T041: Add focused command-output checks proving `parentFlowNodeInstanceKey` is absent from public JSON output
+- [x] T042: Rename public process parent fields in `c8volt/process/model.go` and `c8volt/process/convert.go`
+- [x] T043: Rename parent context mappings in `c8volt/resource/convert.go` and `c8volt/ops/convert.go`
+- [x] T044: Update internal domain process-instance parent context names in `internal/domain/` and affected service conversions in `internal/services/processinstance/`
+- [x] T045: Update command views and JSON fixtures that render parent process context in `cmd/`
+- [x] T046: Verify US3 with targeted tests for `c8volt/process`, `c8volt/resource`, `internal/services/processinstance/...`, and `cmd`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/resource/client_test.go
+- cmd/get_processinstance_test.go
+- cmd/walk_test.go
+- specs/233-element-terminology/tasks.md
+- specs/233-element-terminology/progress.md
+**Learnings**:
+- The model, converter, domain, and process-instance service layers were already canonical from the foundational work; US3 added missing public JSON regression coverage for process parent context.
+- Resource delete-plan conversion preserves canonical parent context through `process.DryRunPIKeyExpansion`, and JSON output omits `parentFlowNodeInstanceKey`.
+- Validation passed with `GOCACHE=/private/tmp/c8volt-go-build go test ./c8volt/process ./c8volt/resource ./internal/services/processinstance/... ./cmd`.
 ---

@@ -621,7 +621,7 @@ func TestWalkProcessInstanceCommand_DefaultChildrenHumanOutputUnchangedWithoutWi
 			require.NoError(t, err)
 			switch {
 			case strings.Contains(string(body), `"parentProcessInstanceKey":"123"`):
-				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t, walkedProcessInstanceJSON("124", "123", false))))
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t, walkedProcessInstanceJSONWithParentElement("124", "123", "ei-parent", false))))
 			case strings.Contains(string(body), `"parentProcessInstanceKey":"124"`):
 				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
 			default:
@@ -695,7 +695,10 @@ func TestWalkProcessInstanceCommand_DefaultJSONOutputUnchangedWithoutWithInciden
 	require.NotContains(t, first, "incidents")
 	second := requireJSONObject(t, items[1])
 	require.Equal(t, "124", second["key"])
+	require.Equal(t, "ei-parent", second["parentElementInstanceKey"])
 	require.NotContains(t, second, "incidents")
+	require.NotContains(t, second, "parentFlowNodeInstanceKey")
+	require.NotContains(t, output, "parentFlowNodeInstanceKey")
 }
 
 // TestWalkProcessInstanceCommand_DefaultFamilyTreeLayoutUnchangedWithoutWithIncidents protects the plain tree renderer.
@@ -1391,6 +1394,14 @@ func walkedProcessInstanceJSON(key, parentKey string, hasIncident bool) string {
 		incident = "true"
 	}
 	return `{"processInstanceKey":"` + key + `"` + parent + `,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant","hasIncident":` + incident + `}`
+}
+
+func walkedProcessInstanceJSONWithParentElement(key, parentKey, parentElementKey string, hasIncident bool) string {
+	raw := walkedProcessInstanceJSON(key, parentKey, hasIncident)
+	if parentElementKey == "" {
+		return raw
+	}
+	return strings.TrimSuffix(raw, "}") + `,"parentElementInstanceKey":"` + parentElementKey + `"}`
 }
 
 // walkedProcessInstanceSearchJSON wraps process-instance fixtures in the generated search response shape.

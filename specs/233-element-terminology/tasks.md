@@ -109,19 +109,19 @@
 
 ### Tests for User Story 3
 
-- [ ] T037 [P] [US3] Add process facade tests for `parentElementInstanceKey` in `c8volt/process/client_test.go` or nearest existing process facade tests
-- [ ] T038 [P] [US3] Add resource facade regression tests for renamed parent context in `c8volt/resource/client_test.go`
-- [ ] T039 [P] [US3] Add process-instance command JSON tests for `parentElementInstanceKey` in `cmd/get_processinstance_test.go`
-- [ ] T040 [P] [US3] Add walk command tests for canonical parent context in `cmd/walk_processinstance_test.go`
-- [ ] T041 [P] [US3] Add static or contract tests proving `parentFlowNodeInstanceKey` is absent from public command output contracts in `cmd/command_contract_test.go` or a focused `cmd/*_test.go`
+- [x] T037 [P] [US3] Add process facade tests for `parentElementInstanceKey` in `c8volt/process/client_test.go` or nearest existing process facade tests
+- [x] T038 [P] [US3] Add resource facade regression tests for renamed parent context in `c8volt/resource/client_test.go`
+- [x] T039 [P] [US3] Add process-instance command JSON tests for `parentElementInstanceKey` in `cmd/get_processinstance_test.go`
+- [x] T040 [P] [US3] Add walk command tests for canonical parent context in `cmd/walk_processinstance_test.go`
+- [x] T041 [P] [US3] Add static or contract tests proving `parentFlowNodeInstanceKey` is absent from public command output contracts in `cmd/command_contract_test.go` or a focused `cmd/*_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T042 [US3] Rename public process parent fields in `c8volt/process/model.go` and `c8volt/process/convert.go`
-- [ ] T043 [US3] Rename parent context mappings in `c8volt/resource/convert.go` and `c8volt/ops/convert.go`
-- [ ] T044 [US3] Update internal domain process-instance parent context names in `internal/domain/` and affected service conversions in `internal/services/processinstance/`
-- [ ] T045 [US3] Update command views and JSON fixtures that render parent process context in `cmd/`
-- [ ] T046 [US3] Verify US3 with targeted tests for `c8volt/process`, `c8volt/resource`, `cmd/get_processinstance_test.go`, and `cmd/walk_processinstance_test.go`
+- [x] T042 [US3] Rename public process parent fields in `c8volt/process/model.go` and `c8volt/process/convert.go`
+- [x] T043 [US3] Rename parent context mappings in `c8volt/resource/convert.go` and `c8volt/ops/convert.go`
+- [x] T044 [US3] Update internal domain process-instance parent context names in `internal/domain/` and affected service conversions in `internal/services/processinstance/`
+- [x] T045 [US3] Update command views and JSON fixtures that render parent process context in `cmd/`
+- [x] T046 [US3] Verify US3 with targeted tests for `c8volt/process`, `c8volt/resource`, `cmd/get_processinstance_test.go`, and `cmd/walk_processinstance_test.go`
 
 **Checkpoint**: User Story 3 is complete when public process parent context uses only canonical element terminology.
 

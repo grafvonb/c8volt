@@ -5,6 +5,7 @@ package resource
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -403,6 +404,33 @@ func TestClient_PreviewDeleteProcessDefinitions_ExpandsRootsForForce(t *testing.
 	assert.Equal(t, []string{
 		"checking active pi and roots for 1 pd; dry run",
 	}, msgs)
+}
+
+func TestClient_PreviewDeleteProcessDefinitionsMapsParentElementInstanceKey(t *testing.T) {
+	t.Parallel()
+
+	plan := fromDomainDeleteProcessDefinitionPlan(d.DeleteProcessDefinitionPlan{
+		Items: []d.DeleteProcessDefinitionPlanItem{{
+			Key: "pd-1",
+			CancellationPlan: d.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-1"},
+				Collected: typex.Keys{"root-1", "child-1"},
+				SelectedFinalState: []d.ProcessInstance{{
+					Key:                      "child-1",
+					ParentElementInstanceKey: "ei-parent",
+				}},
+				Outcome: d.TraversalOutcomeComplete,
+			},
+		}},
+	})
+
+	require.Len(t, plan.Items, 1)
+	require.Len(t, plan.Items[0].CancellationPlan.SelectedFinalState, 1)
+	require.Equal(t, "ei-parent", plan.Items[0].CancellationPlan.SelectedFinalState[0].ParentElementInstanceKey)
+	raw, err := json.Marshal(plan)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), `"parentElementInstanceKey":"ei-parent"`)
+	require.NotContains(t, string(raw), "parentFlowNodeInstanceKey")
 }
 
 // TestClient_DeleteProcessDefinitions_UsesActivityIndicator verifies bulk deletion
