@@ -296,6 +296,9 @@ func filterIncidentDetailsByMessage(errorMessage string, items []d.ProcessInstan
 }
 
 func incidentSearchHasMore(page camundav89.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) bool {
+	if itemCount == 0 && page.TotalItems > int64(from)+int64(pageSize) {
+		return true
+	}
 	if itemCount == 0 {
 		return false
 	}
@@ -307,6 +310,9 @@ func incidentSearchHasMore(page camundav89.SearchQueryPageResponse, from int32, 
 }
 
 func incidentSearchOverflowState(page camundav89.SearchQueryPageResponse, req d.IncidentPageRequest, itemCount int) d.ProcessInstanceOverflowState {
+	if itemCount == 0 && page.TotalItems > int64(req.From)+int64(req.Size) {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
 	if itemCount == 0 {
 		return d.ProcessInstanceOverflowStateNoMore
 	}

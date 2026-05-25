@@ -664,7 +664,7 @@ func TestWalkProcessInstanceCommand_DefaultJSONOutputUnchangedWithoutWithInciden
 			require.NoError(t, err)
 			switch {
 			case strings.Contains(string(body), `"parentProcessInstanceKey":"123"`):
-				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t, walkedProcessInstanceJSON("124", "123", false))))
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t, walkedProcessInstanceJSONWithParentElement("124", "123", "ei-parent", false))))
 			case strings.Contains(string(body), `"parentProcessInstanceKey":"124"`):
 				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
 			default:

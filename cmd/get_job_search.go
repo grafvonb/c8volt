@@ -7,13 +7,13 @@ import (
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/job"
+	"github.com/grafvonb/c8volt/consts"
 	"github.com/spf13/cobra"
 )
 
 func searchJobsWithPaging(cmd *cobra.Command, cli job.API, request job.SearchRequest) (job.SearchResult, bool, error) {
-	pageReq := job.PageRequest{Size: request.BatchSize}
-	var collected job.SearchResult
-	collected.Limit = request.Limit
+	pageReq := newJobSearchPageRequest(0, request.BatchSize, request.Limit, 0)
+	collected := job.SearchResult{Items: []job.Job{}, Limit: request.Limit}
 	incremental := shouldRenderJobSearchPageIncrementally(cmd)
 	autoContinue := shouldAutoContinueJobSearchPages(cmd)
 	processedTotal := 0
@@ -46,11 +46,11 @@ func searchJobsWithPaging(cmd *cobra.Command, cli job.API, request job.SearchReq
 			return printFoundAndReturn()
 		}
 		if autoContinue {
-			pageReq = nextJobSearchPageRequest(pageReq, page)
+			pageReq = nextJobSearchPageRequest(pageReq, page, request.Limit, processedTotal)
 			continue
 		}
 		if len(items) == 0 {
-			pageReq = nextJobSearchPageRequest(pageReq, page)
+			pageReq = nextJobSearchPageRequest(pageReq, page, request.Limit, processedTotal)
 			continue
 		}
 		prompt := fmt.Sprintf("Fetched %d job(s) on this page (%d loaded). More matching jobs remain. Continue?", len(items), processedTotal)
@@ -60,7 +60,7 @@ func searchJobsWithPaging(cmd *cobra.Command, cli job.API, request job.SearchReq
 			}
 			return job.SearchResult{}, false, err
 		}
-		pageReq = nextJobSearchPageRequest(pageReq, page)
+		pageReq = nextJobSearchPageRequest(pageReq, page, request.Limit, processedTotal)
 	}
 }
 
@@ -79,7 +79,7 @@ func searchJobsTotal(cmd *cobra.Command, cli job.API, request job.SearchRequest)
 		if len(page.Items) == 0 || page.OverflowState != job.OverflowStateHasMore {
 			return total, nil
 		}
-		pageReq = nextJobSearchPageRequest(pageReq, page)
+		pageReq = nextJobSearchPageRequest(pageReq, page, 0, int(total))
 	}
 }
 
@@ -120,12 +120,26 @@ func isJobLimitReached(cumulative int, limit int32) bool {
 	return limit > 0 && cumulative >= int(limit)
 }
 
-func nextJobSearchPageRequest(current job.PageRequest, page job.Page) job.PageRequest {
-	size := current.Size
-	if size <= 0 {
-		size = page.Request.Size
+func nextJobSearchPageRequest(current job.PageRequest, page job.Page, limit int32, loaded int) job.PageRequest {
+	nextFrom := current.From + int32(len(page.Items))
+	if len(page.Items) == 0 {
+		nextFrom = current.From + current.Size
 	}
-	return job.PageRequest{From: current.From + int32(len(page.Items)), Size: size}
+	return newJobSearchPageRequest(nextFrom, page.Request.Size, limit, loaded)
+}
+
+func newJobSearchPageRequest(from int32, batchSize int32, limit int32, loaded int) job.PageRequest {
+	size := batchSize
+	if size <= 0 {
+		size = consts.MaxPISearchSize
+	}
+	if limit > 0 {
+		remaining := limit - int32(loaded)
+		if remaining < size {
+			size = remaining
+		}
+	}
+	return job.PageRequest{From: from, Size: size}
 }
 
 func renderJobSearchPage(cmd *cobra.Command, items []job.Job) error {

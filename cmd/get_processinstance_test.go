@@ -2510,7 +2510,7 @@ func TestGetProcessInstanceWithoutIncidents_JSONOutputPreservesDefaultShape(t *t
 		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		_, _ = w.Write([]byte(`{"hasIncident":true,"parentElementInstanceKey":"ei-parent","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
 	}))
 	t.Cleanup(srv.Close)
 
