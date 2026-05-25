@@ -52,6 +52,41 @@ func TestParsePIVariableFilters_ExpandsRepeatedExistsInputs(t *testing.T) {
 	}, got.Clauses)
 }
 
+// TestParsePIVariableFilters_ExpandsRepeatedEqualityInputs verifies equality
+// shorthand composes repeated --var flags with comma-separated clauses.
+func TestParsePIVariableFilters_ExpandsRepeatedEqualityInputs(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	flagGetPIVars = []string{`status="approved"`, `payload="payload",customerId="CUST-001"`}
+
+	got, err := parsePIVariableFilters()
+
+	require.NoError(t, err)
+	require.Equal(t, []process.ProcessInstanceVariableFilterClause{
+		{Name: "status", Operator: process.ProcessInstanceVariableFilterOperatorEq, Value: `"approved"`, Source: piVariableFilterSourceVar},
+		{Name: "payload", Operator: process.ProcessInstanceVariableFilterOperatorEq, Value: `"payload"`, Source: piVariableFilterSourceVar},
+		{Name: "customerId", Operator: process.ProcessInstanceVariableFilterOperatorEq, Value: `"CUST-001"`, Source: piVariableFilterSourceVar},
+	}, got.Clauses)
+}
+
+// TestParsePIVariableFilters_PreservesEqualityQuotedCommaValues protects
+// equality values whose serialized text contains commas from accidental splits.
+func TestParsePIVariableFilters_PreservesEqualityQuotedCommaValues(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	flagGetPIVars = []string{`status="approved",payload="payload,with,commas"`}
+
+	got, err := parsePIVariableFilters()
+
+	require.NoError(t, err)
+	require.Equal(t, []process.ProcessInstanceVariableFilterClause{
+		{Name: "status", Operator: process.ProcessInstanceVariableFilterOperatorEq, Value: `"approved"`, Source: piVariableFilterSourceVar},
+		{Name: "payload", Operator: process.ProcessInstanceVariableFilterOperatorEq, Value: `"payload,with,commas"`, Source: piVariableFilterSourceVar},
+	}, got.Clauses)
+}
+
 // TestParsePIVariableFilters_RejectsBlankExistsName keeps doubled delimiters
 // from becoming ambiguous native existence clauses.
 func TestParsePIVariableFilters_RejectsBlankExistsName(t *testing.T) {

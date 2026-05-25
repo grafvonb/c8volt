@@ -83,20 +83,20 @@
 
 ### Tests for User Story 2
 
-- [ ] T027 [P] [US2] Add parser tests for equality shorthand, repeated `--var`, and quoted comma values in `cmd/get_processinstance_variable_filter_test.go`
-- [ ] T028 [P] [US2] Add command execution tests for equality filters in `cmd/get_processinstance_test.go`
-- [ ] T029 [P] [US2] Add v8.8 native request tests for `$eq` equality filters in `internal/services/processinstance/v88/service_test.go`
-- [ ] T030 [P] [US2] Add v8.9 native request tests for `$eq` equality filters in `internal/services/processinstance/v89/service_test.go`
+- [x] T027 [P] [US2] Add parser tests for equality shorthand, repeated `--var`, and quoted comma values in `cmd/get_processinstance_variable_filter_test.go`
+- [x] T028 [P] [US2] Add command execution tests for equality filters in `cmd/get_processinstance_test.go`
+- [x] T029 [P] [US2] Add v8.8 native request tests for `$eq` equality filters in `internal/services/processinstance/v88/service_test.go`
+- [x] T030 [P] [US2] Add v8.9 native request tests for `$eq` equality filters in `internal/services/processinstance/v89/service_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T031 [US2] Register `--var` flag and equality examples in `cmd/get_processinstance.go`
-- [ ] T032 [US2] Implement `name=value` equality shorthand parsing in `cmd/get_processinstance_variable_filter.go`
-- [ ] T033 [US2] Preserve quoted values and comma-containing values in parser logic in `cmd/get_processinstance_variable_filter.go`
-- [ ] T034 [US2] Map equality clauses through process facade and domain filters in `c8volt/process/convert.go` and `internal/domain/processinstance.go`
-- [ ] T035 [US2] Implement native equality request mapping for Camunda 8.8 in `internal/services/processinstance/v88/`
-- [ ] T036 [US2] Implement native equality request mapping for Camunda 8.9 in `internal/services/processinstance/v89/`
-- [ ] T037 [US2] Verify US2 with targeted tests for `cmd`, `c8volt/process`, `internal/domain`, `internal/services/processinstance/v88`, and `internal/services/processinstance/v89`
+- [x] T031 [US2] Register `--var` flag and equality examples in `cmd/get_processinstance.go`
+- [x] T032 [US2] Implement `name=value` equality shorthand parsing in `cmd/get_processinstance_variable_filter.go`
+- [x] T033 [US2] Preserve quoted values and comma-containing values in parser logic in `cmd/get_processinstance_variable_filter.go`
+- [x] T034 [US2] Map equality clauses through process facade and domain filters in `c8volt/process/convert.go` and `internal/domain/processinstance.go`
+- [x] T035 [US2] Implement native equality request mapping for Camunda 8.8 in `internal/services/processinstance/v88/`
+- [x] T036 [US2] Implement native equality request mapping for Camunda 8.9 in `internal/services/processinstance/v89/`
+- [x] T037 [US2] Verify US2 with targeted tests for `cmd`, `c8volt/process`, `internal/domain`, `internal/services/processinstance/v88`, and `internal/services/processinstance/v89`
 
 **Checkpoint**: User Story 2 is complete when equality shorthand composes with existence filters and parser behavior is stable for quoted commas.
 

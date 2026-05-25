@@ -270,6 +270,8 @@ func TestService_CreateProcessInstance(t *testing.T) {
 	})
 }
 
+// TestService_SearchAndLookup verifies v8.9 search request mapping, paging,
+// lookup behavior, and native filter serialization.
 func TestService_SearchAndLookup(t *testing.T) {
 	ctx := context.Background()
 
@@ -364,6 +366,36 @@ func TestService_SearchAndLookup(t *testing.T) {
 				Clauses: []d.ProcessInstanceVariableFilterClause{
 					{Name: "customerId", Operator: d.ProcessInstanceVariableFilterOperatorExists, Exists: &exists},
 					{Name: "payload", Operator: d.ProcessInstanceVariableFilterOperatorExists, Exists: &exists},
+				},
+			},
+		}, d.ProcessInstancePageRequest{From: 0, Size: 25})
+
+		require.NoError(t, err)
+		require.Len(t, page.Items, 1)
+		assert.Equal(t, "123", page.Items[0].Key)
+	})
+
+	t.Run("MapsVariableEqualityFilters", func(t *testing.T) {
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
+				payload := readBody(t, body)
+				assert.Contains(t, payload, `"variables":[{"name":"status","value":{"$eq":"\"approved\""}},{"name":"payload","value":{"$eq":"\"payload,with,comma\""}}]`)
+				return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
+					Items: []camundav89.ProcessInstanceResult{makeProcessInstanceResult("123", "ACTIVE", "")},
+					Page:  camundav89.SearchQueryPageResponse{TotalItems: 1},
+				}), nil
+			},
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+			deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
+			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+		})
+
+		page, err := svc.SearchForProcessInstancesPage(ctx, d.ProcessInstanceFilter{
+			VariableFilters: d.ProcessInstanceVariableFilterSet{
+				Clauses: []d.ProcessInstanceVariableFilterClause{
+					{Name: "status", Operator: d.ProcessInstanceVariableFilterOperatorEq, Value: `"approved"`},
+					{Name: "payload", Operator: d.ProcessInstanceVariableFilterOperatorEq, Value: `"payload,with,comma"`},
 				},
 			},
 		}, d.ProcessInstancePageRequest{From: 0, Size: 25})

@@ -47,6 +47,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "./c8volt get pi --has-user-tasks <user-task-key>")
 	require.Contains(t, output, "./c8volt get pi --incidents-only --with-incidents --limit 5")
 	require.Contains(t, output, "./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5")
+	require.Contains(t, output, `./c8volt get pi --var 'status="approved"' --limit 5`)
 	require.Contains(t, output, "./c8volt get pi --state active --with-vars --var-value-limit 120 --limit 5")
 	require.Contains(t, output, "./c8volt get pi --key <process-instance-key> --with-incidents")
 	require.Contains(t, output, "./c8volt get pi --key <process-instance-key> --with-vars")
@@ -68,6 +69,8 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "maximum number of matching process instances to return or process across all pages")
 	require.Contains(t, output, "--var-value-limit int")
 	require.Contains(t, output, "maximum characters to show for variable values when --with-vars is set")
+	require.Contains(t, output, "--var stringArray")
+	require.Contains(t, output, "require variable equality clause(s) as name=value")
 	require.Contains(t, output, "--with-incidents")
 	require.Contains(t, output, "include direct incident keys, states, and messages for keyed or list/search process-instance output")
 	require.Contains(t, output, "--direct-incidents-only")
@@ -145,6 +148,37 @@ func TestGetProcessInstanceSearch_VarExistsSendsNativeVariableFilters(t *testing
 	require.Equal(t, map[string]any{"name": "customerId", "value": map[string]any{"$exists": true}}, variables[0])
 	require.Equal(t, map[string]any{"name": "payload", "value": map[string]any{"$exists": true}}, variables[1])
 	require.Equal(t, map[string]any{"name": "email", "value": map[string]any{"$exists": true}}, variables[2])
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &got))
+	require.Equal(t, string(OutcomeSucceeded), got["outcome"])
+	require.Equal(t, "get process-instance", got["command"])
+}
+
+// TestGetProcessInstanceSearch_VarSendsNativeEqualityFilters verifies equality
+// shorthand reaches the native process-instance search body without losing commas.
+func TestGetProcessInstanceSearch_VarSendsNativeEqualityFilters(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceSearchCaptureServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--var", `status="approved"`,
+		"--var", `payload="payload,with,comma"`,
+		"--batch-size", "5",
+	)
+
+	filter := decodeCapturedPISearchFilter(t, requests)
+	variables, ok := filter["variables"].([]any)
+	require.True(t, ok, "expected native variable filters")
+	require.Len(t, variables, 2)
+	require.Equal(t, map[string]any{"name": "status", "value": map[string]any{"$eq": `"approved"`}}, variables[0])
+	require.Equal(t, map[string]any{"name": "payload", "value": map[string]any{"$eq": `"payload,with,comma"`}}, variables[1])
 
 	var got map[string]any
 	require.NoError(t, json.Unmarshal([]byte(output), &got))

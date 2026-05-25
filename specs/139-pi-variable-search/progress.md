@@ -25,6 +25,8 @@
 - Variable-search flags use `StringArray`-style Cobra binding so pflag does not split comma-sensitive values before the parser.
 - Shared variable filter intent flows `cmd` -> `c8volt/process.ProcessInstanceFilter.VariableFilters` -> `internal/domain.ProcessInstanceFilter.VariableFilters`; versioned request builders should consume the domain clauses later.
 - Native process-instance variable request mapping lives in focused `internal/services/processinstance/v88/variable_filter.go` and `internal/services/processinstance/v89/variable_filter.go`; later operator stories should extend those switch statements rather than adding command-layer request code.
+- `--var` equality uses the same parser path as advanced `--var` clauses: `name=value` normalizes to `$eq` while preserving serialized quote characters and comma-containing values.
+- v8.8 and v8.9 native equality mapping should set `AdvancedStringFilter.Eq` directly from the preserved domain clause value; command, facade, and service layers must not parse or reserialize that value.
 
 ## Architecture Grounding
 
@@ -132,4 +134,36 @@
 - `StringArrayVar` lets `--var-exists payload,email` reach the repository parser intact while repeated flags append independent raw inputs.
 - The generated v8.8 and v8.9 variable filter shape can reuse `AdvancedStringFilter{Exists: ...}` inside `VariableValueFilterProperty.Value`.
 - v8.9 still needs the local `processInstanceFilter` JSON mirror extended when adding generated-client fields that the service body marshals manually.
+---
+---
+## Iteration 4 - 2026-05-25 22:58:11 CEST
+**User Story**: User Story 2 - Find Instances By Variable Equality
+**Tasks Completed**:
+- [x] T027: Add parser tests for equality shorthand, repeated `--var`, and quoted comma values in `cmd/get_processinstance_variable_filter_test.go`
+- [x] T028: Add command execution tests for equality filters in `cmd/get_processinstance_test.go`
+- [x] T029: Add v8.8 native request tests for `$eq` equality filters in `internal/services/processinstance/v88/service_test.go`
+- [x] T030: Add v8.9 native request tests for `$eq` equality filters in `internal/services/processinstance/v89/service_test.go`
+- [x] T031: Register `--var` flag and equality examples in `cmd/get_processinstance.go`
+- [x] T032: Implement `name=value` equality shorthand parsing in `cmd/get_processinstance_variable_filter.go`
+- [x] T033: Preserve quoted values and comma-containing values in parser logic in `cmd/get_processinstance_variable_filter.go`
+- [x] T034: Map equality clauses through process facade and domain filters in `c8volt/process/convert.go` and `internal/domain/processinstance.go`
+- [x] T035: Implement native equality request mapping for Camunda 8.8 in `internal/services/processinstance/v88/`
+- [x] T036: Implement native equality request mapping for Camunda 8.9 in `internal/services/processinstance/v89/`
+- [x] T037: Verify US2 with targeted tests for `cmd`, `c8volt/process`, `internal/domain`, `internal/services/processinstance/v88`, and `internal/services/processinstance/v89`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/get_processinstance_variable_filter_test.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v88/variable_filter.go
+- internal/services/processinstance/v89/service_test.go
+- internal/services/processinstance/v89/variable_filter.go
+- specs/139-pi-variable-search/tasks.md
+- specs/139-pi-variable-search/progress.md
+**Learnings**:
+- `StringArrayVar` registration for `--var` preserves comma-sensitive equality inputs so `splitPIVariableClauses` can distinguish top-level delimiters from commas inside serialized values.
+- Equality shorthand was already represented through facade and domain filters by the foundational plumbing; US2 only needed command registration plus native `$eq` request serialization in v8.8 and v8.9.
+- Validation passed with targeted parser, command, facade, domain, and versioned service tests, followed by `go test ./cmd ./c8volt/process ./internal/domain ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`.
 ---
