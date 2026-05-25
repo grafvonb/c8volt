@@ -147,8 +147,8 @@ func flatRowJobWithTimezone(item job.Job, showTimezoneOffset bool) flatRow {
 		item.Kind,
 		item.ElementId,
 		item.State,
-		prefixedJobField("type", item.Type),
-		prefixedJobField("listener", item.ListenerEventType),
+		prefixedJobField("tp", item.Type),
+		prefixedJobField("lsnr", item.ListenerEventType),
 		prefixedJobField("worker", item.Worker),
 	}
 	if item.ProcessInstanceKey != "" {

@@ -130,7 +130,7 @@ func TestGetJobCommand_SearchModeAcceptsNoKey(t *testing.T) {
 
 	output := executeRootForJobTest(t, "--config", cfgPath, "get", "job", "--state", "failed", "--type", "payment-worker", "--pi-key", "2251799813711000", "--element-instance-key", "2251799813711001", "--element-id", "charge-card", "--worker", "worker-a", "--retries", "0", "--kind", "bpmn_element", "--listener-event-type", "unspecified", "--limit", "1")
 
-	require.Equal(t, "2251799813711967 tenant-a BPMN_ELEMENT charge-card FAILED type:payment-worker worker:worker-a pi:2251799813711000 ei:2251799813711001 r:0\nfound: 1\n", output)
+	require.Equal(t, "2251799813711967 tenant-a BPMN_ELEMENT charge-card FAILED tp:payment-worker worker:worker-a pi:2251799813711000 ei:2251799813711001 r:0\nfound: 1\n", output)
 	require.Len(t, bodies, 1)
 	filter := requireJSONObject(t, bodies[0]["filter"])
 	require.Equal(t, "FAILED", filter["state"])
