@@ -34,6 +34,23 @@ func TestOneLineJob_RendersCompactRowWithFullErrorMessageByDefault(t *testing.T)
 	require.Equal(t, "2251799814014237 tenant-a FAILED pi:2251799814014230 ei:2251799814014236 r:0 d:2026-04-23T01:07:49.000 err:"+message, line)
 }
 
+func TestOneLineJob_RendersDiscoveryFields(t *testing.T) {
+	line := oneLineJob(job.Job{
+		Key:                "2251799817814347",
+		State:              "CREATED",
+		Retries:            0,
+		Type:               "C88StabilityServiceTaskWorker",
+		Kind:               "BPMN_ELEMENT",
+		ListenerEventType:  "UNSPECIFIED",
+		ProcessInstanceKey: "2251799817814342",
+		ElementInstanceKey: "2251799817814346",
+		ElementId:          "StabilityServiceTask_ServiceTask",
+		TenantId:           "<default>",
+	})
+
+	require.Equal(t, "2251799817814347 <default> BPMN_ELEMENT StabilityServiceTask_ServiceTask CREATED type:C88StabilityServiceTaskWorker listener:UNSPECIFIED pi:2251799817814342 ei:2251799817814346 r:0", line)
+}
+
 func TestOneLineJob_TruncatesErrorMessageOnlyWhenLimitIsSet(t *testing.T) {
 	flagGetErrorMessageLimit = 16
 	t.Cleanup(func() { flagGetErrorMessageLimit = 0 })
@@ -59,6 +76,43 @@ func TestJobsView_RendersSearchRowsAndFoundCount(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, "2251799813711967 tenant-a FAILED  r:0\n2251799813711968 tenant-b CREATED r:3\nfound: 2\n", buf.String())
+}
+
+func TestJobsView_AlignsDiscoveryColumns(t *testing.T) {
+	cmd, buf := newJobRenderTestCommand()
+
+	err := jobsView(cmd, job.SearchResult{Items: []job.Job{
+		{
+			Key:                "2251799817814347",
+			State:              "CREATED",
+			Retries:            0,
+			Type:               "C88StabilityServiceTaskWorker",
+			Kind:               "BPMN_ELEMENT",
+			ListenerEventType:  "UNSPECIFIED",
+			ProcessInstanceKey: "2251799817814342",
+			ElementInstanceKey: "2251799817814346",
+			ElementId:          "StabilityServiceTask_ServiceTask",
+			TenantId:           "<default>",
+		},
+		{
+			Key:                "22",
+			State:              "FAILED",
+			Retries:            3,
+			Type:               "short-worker",
+			Kind:               "TASK_LISTENER",
+			ListenerEventType:  "COMPLETING",
+			ProcessInstanceKey: "99",
+			ElementInstanceKey: "100",
+			ElementId:          "Task",
+			TenantId:           "tenant-b",
+		},
+	}, Limit: 2})
+
+	require.NoError(t, err)
+	require.Equal(t, ""+
+		"2251799817814347 <default> BPMN_ELEMENT  StabilityServiceTask_ServiceTask CREATED type:C88StabilityServiceTaskWorker listener:UNSPECIFIED pi:2251799817814342 ei:2251799817814346 r:0\n"+
+		"22               tenant-b  TASK_LISTENER Task                             FAILED  type:short-worker                  listener:COMPLETING  pi:99               ei:100              r:3\n"+
+		"found: 2\n", buf.String())
 }
 
 // TestJobsView_RendersSearchJSONPayload keeps JSON output as the search result

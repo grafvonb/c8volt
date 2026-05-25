@@ -1227,6 +1227,10 @@ func TestGetProcessInstanceIncidentStateValidation(t *testing.T) {
 	}
 }
 
+func TestGetProcessInstanceIncidentStateValidationAcceptsCaseInsensitiveEnum(t *testing.T) {
+	require.NoError(t, validatePIIncidentStateFlag(" RESOLVED "))
+}
+
 func TestGetProcessInstanceIncidentDetailFilterValidation(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 

@@ -141,30 +141,50 @@ func flatRowJob(item job.Job) flatRow {
 }
 
 func flatRowJobWithTimezone(item job.Job, showTimezoneOffset bool) flatRow {
-	parts := flatRow{item.Key}
-	if item.TenantId != "" {
-		parts = append(parts, item.TenantId)
-	}
-	if item.State != "" {
-		parts = append(parts, item.State)
+	parts := flatRow{
+		item.Key,
+		item.TenantId,
+		item.Kind,
+		item.ElementId,
+		item.State,
+		prefixedJobField("type", item.Type),
+		prefixedJobField("listener", item.ListenerEventType),
+		prefixedJobField("worker", item.Worker),
 	}
 	if item.ProcessInstanceKey != "" {
 		parts = append(parts, "pi:"+item.ProcessInstanceKey)
+	} else {
+		parts = append(parts, "")
 	}
 	if item.ElementInstanceKey != "" {
 		parts = append(parts, "ei:"+item.ElementInstanceKey)
+	} else {
+		parts = append(parts, "")
 	}
 	parts = append(parts, "r:"+strconv.FormatInt(int64(item.Retries), 10))
 	if item.Deadline != nil {
 		parts = append(parts, "d:"+toolx.FormatTime(*item.Deadline, showTimezoneOffset))
+	} else {
+		parts = append(parts, "")
 	}
 	if item.ErrorCode != "" {
 		parts = append(parts, "ec:"+item.ErrorCode)
+	} else {
+		parts = append(parts, "")
 	}
 	if item.ErrorMessage != "" {
 		parts = append(parts, "err:"+truncateHumanMessage(item.ErrorMessage, flagGetErrorMessageLimit))
+	} else {
+		parts = append(parts, "")
 	}
 	return parts
+}
+
+func prefixedJobField(prefix string, value string) string {
+	if value == "" {
+		return ""
+	}
+	return prefix + ":" + value
 }
 
 func formatJobUpdatePlanItems(items []job.UpdatePlanItem) string {

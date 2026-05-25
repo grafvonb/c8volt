@@ -8,7 +8,7 @@ import "time"
 type Job struct {
 	Key                string     `json:"key,omitempty"`
 	State              string     `json:"state,omitempty"`
-	Retries            int32      `json:"retries,omitempty"`
+	Retries            int32      `json:"retries"`
 	Deadline           *time.Time `json:"deadline,omitempty"`
 	Type               string     `json:"type,omitempty"`
 	Worker             string     `json:"worker,omitempty"`
@@ -53,8 +53,8 @@ func (r SearchRequest) HasSearchFilters() bool {
 }
 
 type SearchResult struct {
-	Items []Job `json:"items,omitempty"`
-	Limit int32 `json:"limit,omitempty"`
+	Items []Job `json:"items"`
+	Limit int32 `json:"limit"`
 }
 
 type UpdateRequest struct {

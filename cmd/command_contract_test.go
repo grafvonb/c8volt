@@ -549,7 +549,7 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
-		Description: "Camunda job state to filter in search mode",
+		Description: "Camunda job state to filter in search mode; case-insensitive",
 	})
 	require.Contains(t, getCapability.Flags, FlagContract{
 		Name:        "type",
@@ -598,14 +598,14 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
-		Description: "Camunda job kind to filter in search mode",
+		Description: "Camunda job kind to filter in search mode; case-insensitive",
 	})
 	require.Contains(t, getCapability.Flags, FlagContract{
 		Name:        "listener-event-type",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
-		Description: "listener event type to filter in search mode",
+		Description: "listener event type to filter in search mode; case-insensitive",
 	})
 	require.Contains(t, getCapability.Flags, FlagContract{
 		Name:        "limit",
@@ -1615,7 +1615,7 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"--error-message-limit",
 		"Camunda 8.8 and 8.9",
 		"./c8volt get job --key <job-key>",
-		"./c8volt get job --state FAILED --limit 50",
+		"./c8volt get job --state failed --limit 50",
 		"./c8volt --json get job --key <job-key>",
 		"--key string",
 		"--state string",

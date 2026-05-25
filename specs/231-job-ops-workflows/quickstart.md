@@ -9,14 +9,14 @@
 ## Discover Jobs
 
 ```bash
-c8volt get job --state FAILED --limit 50
+c8volt get job --state failed --limit 50
 c8volt get job --type payment-worker --limit 20
 c8volt get job --pi-key <process-instance-key>
 c8volt get job --element-instance-key <element-instance-key>
 c8volt get job --element-id <bpmn-element-id>
 c8volt get job --worker worker-a
 c8volt get job --retries 0
-c8volt get job --kind TASK_LISTENER --listener-event-type COMPLETING
+c8volt get job --kind task_listener --listener-event-type completing
 ```
 
 Expected result: matching jobs are listed using existing output modes. Invalid filters fail locally before remote calls.
@@ -63,7 +63,7 @@ Expected result: c8volt submits the selected worker outcome through supported Ca
 ## Validate Unsupported Version
 
 ```bash
-c8volt --camunda-version 8.7 get job --state FAILED
+c8volt --camunda-version 8.7 get job --state failed
 c8volt --camunda-version 8.7 update job --key <job-key> --complete --auto-confirm
 ```
 

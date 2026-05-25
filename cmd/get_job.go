@@ -9,6 +9,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -33,7 +34,7 @@ var getJobCmd = &cobra.Command{
 	Long: "Inspect or search Camunda jobs.\n\n" +
 		"Use --key with the jobKey exposed by incident-aware process-instance output to inspect a matching runtime job directly. Search mode will use list filters such as --state, --type, --pi-key, --element-instance-key, --element-id, --worker, --retries, --kind, --listener-event-type, and --limit. Use --json for the stable job payload, or --error-message-limit to shorten long error messages. Job lookup and search are supported for Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error.",
 	Example: `  ./c8volt get job --key <job-key>
-  ./c8volt get job --state FAILED --limit 50
+  ./c8volt get job --state failed --limit 50
   ./c8volt --json get job --key <job-key>`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -72,15 +73,15 @@ func init() {
 
 	fs := getJobCmd.Flags()
 	fs.StringVar(&flagGetJobKey, "key", "", "job key for exact lookup; omit to list or search jobs")
-	fs.StringVar(&flagGetJobState, "state", "", "Camunda job state to filter in search mode")
+	fs.StringVar(&flagGetJobState, "state", "", "Camunda job state to filter in search mode; case-insensitive")
 	fs.StringVar(&flagGetJobType, "type", "", "job type to filter in search mode")
 	fs.StringVar(&flagGetJobProcessKey, "pi-key", "", "process instance key to filter in search mode")
 	fs.StringVar(&flagGetJobElementKey, "element-instance-key", "", "element instance key to filter in search mode")
 	fs.StringVar(&flagGetJobElementID, "element-id", "", "BPMN element ID to filter in search mode")
 	fs.StringVar(&flagGetJobWorker, "worker", "", "worker name to filter in search mode")
 	fs.Int32Var(&flagGetJobRetries, "retries", 0, "exact retry count to filter in search mode")
-	fs.StringVar(&flagGetJobKind, "kind", "", "Camunda job kind to filter in search mode")
-	fs.StringVar(&flagGetJobListenerEvent, "listener-event-type", "", "listener event type to filter in search mode")
+	fs.StringVar(&flagGetJobKind, "kind", "", "Camunda job kind to filter in search mode; case-insensitive")
+	fs.StringVar(&flagGetJobListenerEvent, "listener-event-type", "", "listener event type to filter in search mode; case-insensitive")
 	fs.Int32Var(&flagGetJobLimit, "limit", 0, "maximum number of jobs to return in search mode")
 	fs.IntVar(&flagGetErrorMessageLimit, "error-message-limit", 0, "maximum characters to show for error messages; 0 keeps full messages")
 
@@ -145,14 +146,14 @@ func validateGetJobSearchFlags(cmd *cobra.Command) error {
 // request while preserving zero retries only when the operator supplied it.
 func newGetJobSearchRequest(cmd *cobra.Command) job.SearchRequest {
 	req := job.SearchRequest{
-		State:              flagGetJobState,
+		State:              normalizedJobState(flagGetJobState),
 		Type:               flagGetJobType,
 		ProcessInstanceKey: flagGetJobProcessKey,
 		ElementInstanceKey: flagGetJobElementKey,
 		ElementId:          flagGetJobElementID,
 		Worker:             flagGetJobWorker,
-		Kind:               flagGetJobKind,
-		ListenerEventType:  flagGetJobListenerEvent,
+		Kind:               normalizedJobKind(flagGetJobKind),
+		ListenerEventType:  normalizedJobListenerEventType(flagGetJobListenerEvent),
 		Limit:              effectiveGetJobLimit(),
 	}
 	if cmd != nil && cmd.Flags().Changed("retries") {
@@ -209,29 +210,36 @@ var validJobListenerEventTypes = []string{
 // validJobState reports whether value is an upstream job state accepted by the
 // generated Camunda job search endpoint.
 func validJobState(value string) bool {
-	return stringInList(value, validJobStates)
+	return toolx.ValidEnumString(value, validJobStates)
 }
 
 // validJobKind reports whether value is an upstream job kind accepted by the
 // generated Camunda job search endpoint.
 func validJobKind(value string) bool {
-	return stringInList(value, validJobKinds)
+	return toolx.ValidEnumString(value, validJobKinds)
 }
 
 // validJobListenerEventType reports whether value is an upstream listener event
 // type accepted by the generated Camunda job search endpoint.
 func validJobListenerEventType(value string) bool {
-	return stringInList(value, validJobListenerEventTypes)
+	return toolx.ValidEnumString(value, validJobListenerEventTypes)
 }
 
-// stringInList keeps enum-style validation strict and case-sensitive.
-func stringInList(value string, valid []string) bool {
-	for _, candidate := range valid {
-		if value == candidate {
-			return true
-		}
-	}
-	return false
+func normalizedJobState(value string) string {
+	return normalizedJobEnum(value, validJobStates)
+}
+
+func normalizedJobKind(value string) string {
+	return normalizedJobEnum(value, validJobKinds)
+}
+
+func normalizedJobListenerEventType(value string) string {
+	return normalizedJobEnum(value, validJobListenerEventTypes)
+}
+
+func normalizedJobEnum(value string, valid []string) string {
+	canonical, _ := toolx.CanonicalEnumString(value, valid)
+	return canonical
 }
 
 func changedGetJobSearchFlags(cmd *cobra.Command) []string {

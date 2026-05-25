@@ -230,13 +230,17 @@ func filterIncidentSearchResults(filter d.IncidentFilter, tenant string, items [
 }
 
 func incidentStateMatches(want string, got camundav88.IncidentStateEnum) bool {
-	switch strings.ToLower(strings.TrimSpace(want)) {
+	state, ok := incidentfilter.NormalizeState(want)
+	if !ok {
+		return false
+	}
+	switch state {
 	case "", "active":
 		return got == camundav88.IncidentStateEnumACTIVE
 	case "all":
 		return true
 	default:
-		return string(got) == strings.ToUpper(strings.TrimSpace(want))
+		return strings.EqualFold(string(got), state)
 	}
 }
 
@@ -274,7 +278,7 @@ func parseIncidentTime(raw string) (time.Time, error) {
 }
 
 func incidentLocalFilteringRequired(filter d.IncidentFilter) bool {
-	state := strings.ToLower(strings.TrimSpace(filter.State))
+	state, _ := incidentfilter.NormalizeState(filter.State)
 	return state != "all" ||
 		filter.ErrorType != "" ||
 		filter.ErrorMessage != "" ||
@@ -352,7 +356,11 @@ func incidentReportedTotal(page camundav88.SearchQueryPageResponse, itemCount in
 }
 
 func newIncidentSearchStateFilter(state string) (*camundav88.IncidentStateFilterProperty, error) {
-	switch strings.ToLower(strings.TrimSpace(state)) {
+	normalized, ok := incidentfilter.NormalizeState(state)
+	if !ok {
+		return nil, fmt.Errorf("unsupported incident state %q", state)
+	}
+	switch normalized {
 	case "", "active":
 		return newIncidentStateEqFilterPtr(camundav88.IncidentStateEnumACTIVE)
 	case "pending":

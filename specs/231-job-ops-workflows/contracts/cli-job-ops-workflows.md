@@ -17,15 +17,15 @@ c8volt get job --key <job-key>
 ### List/Search Mode
 
 ```bash
-c8volt get job --state FAILED
+c8volt get job --state failed
 c8volt get job --type payment-worker
 c8volt get job --pi-key <process-instance-key>
 c8volt get job --element-instance-key <element-instance-key>
 c8volt get job --element-id <bpmn-element-id>
 c8volt get job --worker worker-a
 c8volt get job --retries 0
-c8volt get job --kind BPMN_ELEMENT
-c8volt get job --kind TASK_LISTENER --listener-event-type COMPLETING
+c8volt get job --kind bpmn_element
+c8volt get job --kind task_listener --listener-event-type completing
 c8volt get job --limit 50
 ```
 
@@ -33,6 +33,7 @@ c8volt get job --limit 50
 
 - Enters list/search mode when `--key` is omitted.
 - Applies supported filters through the job service.
+- Accepts enum-style filters (`--state`, `--kind`, and `--listener-event-type`) case-insensitively while sending Camunda's canonical uppercase values to the API.
 - Uses `element-id` and `element-instance-key` flag names.
 - Does not introduce `flow-node`, `flow-node-id`, `fni`, or `fni-key` job aliases.
 - Supports default human rows, JSON rows, keys-only output, and documented limit behavior.

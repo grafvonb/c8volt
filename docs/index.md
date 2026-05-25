@@ -212,9 +212,9 @@ Process-instance variable updates are available on Camunda `8.8` and `8.9`. Camu
 
 ```bash
 ./c8volt get job --key <job-key>
-./c8volt get job --state FAILED --limit 50
+./c8volt get job --state failed --limit 50
 ./c8volt get job --type payment-worker --worker worker-a
-./c8volt get job --kind TASK_LISTENER --listener-event-type COMPLETING
+./c8volt get job --kind task_listener --listener-event-type completing
 ./c8volt --json get job --key <job-key>
 ./c8volt update job --key <job-key> --retries 3 --dry-run
 ./c8volt update job --key <job-key> --retries 3 --auto-confirm
@@ -679,7 +679,7 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 
 # Inspect and update jobs from incident job keys.
 ./c8volt get job --key <job-key>
-./c8volt get job --state FAILED --limit 50
+./c8volt get job --state failed --limit 50
 ./c8volt update job --key <job-key> --retries 3 --dry-run
 ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
 ./c8volt update job --key <job-key> --retries 3 --auto-confirm

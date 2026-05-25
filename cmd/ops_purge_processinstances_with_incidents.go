@@ -353,9 +353,10 @@ func formatOpsPurgeProcessInstancesWithIncidentsNonFinalScope(plan ops.IncidentP
 // populateOpsPurgeIncidentSelection converts command flags into the public incident filter model.
 func populateOpsPurgeIncidentSelection() incident.Filter {
 	errorType, _ := incidentfilter.NormalizeErrorType(flagOpsPurgeIncidentErrorType)
+	state, _ := incidentfilter.NormalizeState(flagOpsPurgeIncidentState)
 	return incident.Filter{
 		Keys:                   append([]string(nil), flagOpsPurgeIncidentKeys...),
-		State:                  flagOpsPurgeIncidentState,
+		State:                  state,
 		ErrorType:              errorType,
 		ErrorMessage:           flagOpsPurgeIncidentErrorMessage,
 		ProcessDefinitionId:    flagOpsPurgeIncidentBpmnProcessID,

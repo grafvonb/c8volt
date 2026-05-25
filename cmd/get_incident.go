@@ -5,9 +5,10 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/grafvonb/c8volt/c8volt/incident"
+	"strings"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/services/incidentfilter"
 	"github.com/spf13/cobra"
@@ -264,12 +265,13 @@ func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 }
 
 func validateGetIncidentStateFlag(value string) error {
-	switch value {
-	case "active", "pending", "resolved", "migrated", "unknown", "all":
-		return nil
-	default:
-		return invalidFlagValuef("invalid value for --state: %q, valid values are: active, pending, resolved, migrated, unknown, all", value)
+	if strings.TrimSpace(value) == "" {
+		return invalidFlagValuef("invalid value for --state: %q, valid values are: %s", value, incidentfilter.ValidStatesString())
 	}
+	if _, ok := incidentfilter.NormalizeState(value); ok {
+		return nil
+	}
+	return invalidFlagValuef("invalid value for --state: %q, valid values are: %s", value, incidentfilter.ValidStatesString())
 }
 
 func validateGetIncidentErrorTypeFlag(value string) error {
@@ -324,8 +326,9 @@ func hasGetIncidentSearchModeFlags(cmd *cobra.Command) bool {
 
 func populateGetIncidentSearchFilter() incident.Filter {
 	errorType, _ := incidentfilter.NormalizeErrorType(flagGetIncidentErrorType)
+	state, _ := incidentfilter.NormalizeState(flagGetIncidentState)
 	return incident.Filter{
-		State:                  flagGetIncidentState,
+		State:                  state,
 		ErrorType:              errorType,
 		ErrorMessage:           flagGetIncidentErrorMessage,
 		ProcessInstanceKey:     flagGetIncidentPIKey,

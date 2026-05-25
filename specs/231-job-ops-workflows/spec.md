@@ -45,7 +45,7 @@ As a Camunda operator investigating failures, I want `get job` to list jobs when
 
 **Acceptance Scenarios**:
 
-1. **Given** jobs in different states, **When** the operator runs `c8volt get job --state FAILED`, **Then** c8volt lists only jobs matching the requested state semantics.
+1. **Given** jobs in different states, **When** the operator runs `c8volt get job --state failed`, **Then** c8volt lists only jobs matching the requested state semantics.
 2. **Given** jobs with different job types, process instance keys, element instance keys, element IDs, workers, retries, kinds, or listener event types, **When** the operator supplies the matching filters, **Then** c8volt lists only matching jobs or fails locally when a filter value is invalid.
 3. **Given** no `--key` is supplied and no search filter is supplied, **When** the operator runs `c8volt get job`, **Then** c8volt uses the command's documented default list behavior with the explicit limit policy instead of requiring a known key.
 

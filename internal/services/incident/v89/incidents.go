@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
@@ -196,7 +195,11 @@ func (s *Service) newIncidentFilter(filter d.IncidentFilter) (*camundav89.Incide
 }
 
 func newIncidentSearchStateFilter(state string) (*camundav89.IncidentStateFilterProperty, error) {
-	switch strings.ToLower(strings.TrimSpace(state)) {
+	normalized, ok := incidentfilter.NormalizeState(state)
+	if !ok {
+		return nil, fmt.Errorf("unsupported incident state %q", state)
+	}
+	switch normalized {
 	case "", "active":
 		return newIncidentStateEqFilterPtr(camundav89.IncidentStateEnumACTIVE)
 	case "pending":

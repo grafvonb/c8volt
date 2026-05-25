@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
@@ -126,9 +127,9 @@ func TestGetJobCommand_SearchModeAcceptsNoKey(t *testing.T) {
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "get", "job", "--state", "FAILED", "--type", "payment-worker", "--pi-key", "2251799813711000", "--element-instance-key", "2251799813711001", "--element-id", "charge-card", "--worker", "worker-a", "--retries", "0", "--kind", "BPMN_ELEMENT", "--limit", "1")
+	output := executeRootForJobTest(t, "--config", cfgPath, "get", "job", "--state", "failed", "--type", "payment-worker", "--pi-key", "2251799813711000", "--element-instance-key", "2251799813711001", "--element-id", "charge-card", "--worker", "worker-a", "--retries", "0", "--kind", "bpmn_element", "--listener-event-type", "unspecified", "--limit", "1")
 
-	require.Equal(t, "2251799813711967 tenant-a FAILED pi:2251799813711000 ei:2251799813711001 r:0\nfound: 1\n", output)
+	require.Equal(t, "2251799813711967 tenant-a BPMN_ELEMENT charge-card FAILED type:payment-worker worker:worker-a pi:2251799813711000 ei:2251799813711001 r:0\nfound: 1\n", output)
 	require.Len(t, bodies, 1)
 	filter := requireJSONObject(t, bodies[0]["filter"])
 	require.Equal(t, "FAILED", filter["state"])
@@ -139,8 +140,17 @@ func TestGetJobCommand_SearchModeAcceptsNoKey(t *testing.T) {
 	require.Equal(t, "worker-a", filter["worker"])
 	require.Equal(t, float64(0), filter["retries"])
 	require.Equal(t, "BPMN_ELEMENT", filter["kind"])
+	require.Equal(t, "UNSPECIFIED", filter["listenerEventType"])
 	page := requireJSONObject(t, bodies[0]["page"])
 	require.Equal(t, float64(1), page["limit"])
+}
+
+func TestGetJobCommand_SearchModeNormalizesEnumFilters(t *testing.T) {
+	req := jobSearchRequestForTest(t, " failed ", " bpmn_element ", " completing ")
+
+	require.Equal(t, "FAILED", req.State)
+	require.Equal(t, "BPMN_ELEMENT", req.Kind)
+	require.Equal(t, "COMPLETING", req.ListenerEventType)
 }
 
 // TestGetJobCommand_SearchModeJSONOutput keeps searched job output as one
@@ -163,6 +173,47 @@ func TestGetJobCommand_SearchModeJSONOutput(t *testing.T) {
 	first := requireJSONObject(t, items[0])
 	require.Equal(t, "2251799813711967", first["key"])
 	require.Equal(t, "FAILED", first["state"])
+	require.Equal(t, float64(0), first["retries"])
+	require.Equal(t, float64(1), payload["limit"])
+}
+
+func jobSearchRequestForTest(t *testing.T, state string, kind string, listenerEventType string) job.SearchRequest {
+	t.Helper()
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetGetJobFlagState()
+	t.Cleanup(func() {
+		resetCommandTreeFlags(root)
+		resetGetJobFlagState()
+	})
+
+	flagGetJobState = state
+	flagGetJobKind = kind
+	flagGetJobListenerEvent = listenerEventType
+	require.NoError(t, getJobCmd.Flags().Set("state", state))
+	require.NoError(t, getJobCmd.Flags().Set("kind", kind))
+	require.NoError(t, getJobCmd.Flags().Set("listener-event-type", listenerEventType))
+	require.NoError(t, validateGetJobFlags(getJobCmd))
+	return newGetJobSearchRequest(getJobCmd)
+}
+
+// TestGetJobCommand_SearchModeJSONOutputIncludesEmptyItems keeps empty search
+// results explicit for machine consumers.
+func TestGetJobCommand_SearchModeJSONOutputIncludesEmptyItems(t *testing.T) {
+	var bodies []map[string]any
+	srv := newJobSearchServer(t, &bodies, `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "get", "job", "--state", "FAILED", "--limit", "1")
+
+	require.Len(t, bodies, 1)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	payload := requireJSONObject(t, envelope["payload"])
+	items, ok := payload["items"].([]any)
+	require.True(t, ok, "items should be present as an empty array")
+	require.Empty(t, items)
 	require.Equal(t, float64(1), payload["limit"])
 }
 
