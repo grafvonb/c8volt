@@ -182,6 +182,7 @@ func TestSearchProcessInstanceIncidentsUsesRequestedStateScope(t *testing.T) {
 		{name: "default active", wantKeys: []string{"active"}},
 		{name: "pending", option: services.WithIncidentState("pending"), wantKeys: []string{"pending"}},
 		{name: "resolved", option: services.WithIncidentState("resolved"), wantKeys: []string{"resolved"}},
+		{name: "resolved uppercase", option: services.WithIncidentState("RESOLVED"), wantKeys: []string{"resolved"}},
 		{name: "migrated", option: services.WithIncidentState("migrated"), wantKeys: []string{"migrated"}},
 		{name: "unknown", option: services.WithIncidentState("unknown"), wantKeys: []string{"unknown"}},
 		{name: "all", option: services.WithIncidentState("all"), wantKeys: []string{"active", "pending", "resolved", "migrated", "unknown"}},

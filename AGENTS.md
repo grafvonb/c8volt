@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/156-tenant-admin-keys/plan.md`
+- Active Speckit implementation plan: `specs/231-job-ops-workflows/plan.md`
 <!-- SPECKIT END -->

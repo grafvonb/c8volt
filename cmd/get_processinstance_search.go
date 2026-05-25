@@ -218,8 +218,9 @@ func collectDirectIncidentProcessInstanceKeys(cmd *cobra.Command, cli processInc
 
 func directIncidentSearchFilter(filter process.ProcessInstanceFilter) incident.Filter {
 	errorType, _ := incidentfilter.NormalizeErrorType(flagGetPIIncidentErrorType)
+	state, _ := incidentfilter.NormalizeState(flagGetPIIncidentState)
 	return incident.Filter{
-		State:                flagGetPIIncidentState,
+		State:                state,
 		ErrorType:            errorType,
 		ErrorMessage:         flagGetPIIncidentErrorMessage,
 		ProcessDefinitionId:  filter.BpmnProcessId,

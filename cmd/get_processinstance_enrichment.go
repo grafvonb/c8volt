@@ -8,6 +8,7 @@ import (
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/internal/services/incidentfilter"
 	"github.com/spf13/cobra"
 )
 
@@ -31,9 +32,11 @@ func enrichProcessInstancesWithIncidentActivityOptions(cmd *cobra.Command, cli p
 }
 
 func collectIncidentEnrichmentOptions() []options.FacadeOption {
+	state, _ := incidentfilter.NormalizeState(flagGetPIIncidentState)
+	errorType, _ := incidentfilter.NormalizeErrorType(flagGetPIIncidentErrorType)
 	return append(collectOptions(),
-		options.WithIncidentState(flagGetPIIncidentState),
-		options.WithIncidentErrorType(flagGetPIIncidentErrorType),
+		options.WithIncidentState(state),
+		options.WithIncidentErrorType(errorType),
 		options.WithIncidentErrorMessage(flagGetPIIncidentErrorMessage),
 	)
 }

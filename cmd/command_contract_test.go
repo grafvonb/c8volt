@@ -531,12 +531,88 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 	require.Equal(t, "get job", getCapability.Path)
 	require.Equal(t, CommandMutationReadOnly, getCapability.Mutation)
 	require.Equal(t, ContractSupportFull, getCapability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, getCapability.AutomationSupport)
+	require.Contains(t, getCapability.AutomationNotes, "unattended job reads")
+	require.Contains(t, getCapability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
+	require.Contains(t, getCapability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
+	require.Contains(t, getJobCmd.Long, "Search mode will use list filters")
+	require.Contains(t, getJobCmd.Long, "Camunda 8.7 returns an unsupported-version error")
 	require.Contains(t, getCapability.Flags, FlagContract{
 		Name:        "key",
 		Type:        "string",
-		Required:    true,
+		Required:    false,
 		Repeated:    false,
-		Description: "job key to inspect",
+		Description: "job key for exact lookup; omit to list or search jobs",
+	})
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "state",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "Camunda job state to filter in search mode; case-insensitive",
+	})
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "type",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "job type to filter in search mode",
+	})
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "pi-key",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "process instance key to filter in search mode",
+	})
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "element-instance-key",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "element instance key to filter in search mode",
+	})
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "element-id",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN element ID to filter in search mode",
+	})
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "worker",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "worker name to filter in search mode",
+	})
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "retries",
+		Type:        "int32",
+		Required:    false,
+		Repeated:    false,
+		Description: "exact retry count to filter in search mode",
+	})
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "kind",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "Camunda job kind to filter in search mode; case-insensitive",
+	})
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "listener-event-type",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "listener event type to filter in search mode; case-insensitive",
+	})
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "limit",
+		Type:        "int32",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum number of jobs to return in search mode",
 	})
 	require.Contains(t, getCapability.Flags, FlagContract{
 		Name:        "error-message-limit",
@@ -551,6 +627,11 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 	require.Equal(t, CommandMutationStateChanging, updateCapability.Mutation)
 	require.Equal(t, ContractSupportFull, updateCapability.ContractSupport)
 	require.Equal(t, AutomationSupportFull, updateCapability.AutomationSupport)
+	require.Contains(t, updateCapability.AutomationNotes, "non-mutating dry-run previews")
+	require.Contains(t, updateCapability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
+	require.NotContains(t, updateCapability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
+	require.Contains(t, updateJobCmd.Long, "worker outcome modes")
+	require.Contains(t, updateJobCmd.Long, "Camunda 8.7 returns an unsupported-version error before mutation")
 	require.Contains(t, updateCapability.Flags, FlagContract{
 		Name:        "key",
 		Type:        "string",
@@ -563,7 +644,7 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Type:        "int32",
 		Required:    false,
 		Repeated:    false,
-		Description: "retry count to set on the job",
+		Description: "retry count to set, or remaining retries for --fail",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
 		Name:        "timeout",
@@ -571,6 +652,48 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Required:    false,
 		Repeated:    false,
 		Description: "timeout duration to submit for the job, for example 60s, 5m, or 1h",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "fail",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "report a technical job failure",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "retry-backoff",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "duration before a failed job becomes retryable, for example 60s, 5m, or 1h",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "message",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "operator message for worker outcome modes",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "throw-bpmn-error",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN error code to throw for the job",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "complete",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "complete the job through the worker outcome API",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "vars",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "JSON object with variables for BPMN error or completion outcomes",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
 		Name:        "dry-run",
@@ -1485,14 +1608,21 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 	require.Contains(t, output, "job")
 
 	output = assertCommandHelpOutput(t, []string{"get", "job"}, []string{
-		"Inspect a Camunda job by key",
-		"Use the jobKey exposed by incident-aware process-instance output",
+		"Inspect or search Camunda jobs",
+		"Use --key with the jobKey exposed by incident-aware process-instance output",
+		"Search mode will use list filters",
 		"Use --json for the stable job payload",
 		"--error-message-limit",
 		"Camunda 8.8 and 8.9",
 		"./c8volt get job --key <job-key>",
+		"./c8volt get job --state failed --limit 50",
 		"./c8volt --json get job --key <job-key>",
 		"--key string",
+		"--state string",
+		"--element-instance-key string",
+		"--element-id string",
+		"--listener-event-type string",
+		"--limit int32",
 		"--error-message-limit int",
 	}, nil)
 
@@ -1508,19 +1638,28 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 
 	output = assertCommandHelpOutput(t, []string{"update", "job"}, []string{
 		"Update a Camunda job by key",
-		"supports retries and timeout updates",
+		"supports retries, timeout updates, and worker outcome modes",
 		"pre-mutation plan",
 		"--dry-run previews",
 		"Retry updates are confirmed by reading the job by key by default",
-		"timeout updates report submitted milliseconds without deadline confirmation",
+		"timeout updates and worker outcomes report accepted submission",
 		"JSON mutations require --dry-run, --auto-confirm, or --automation",
 		"--json cannot be combined with --verbose",
 		"Camunda 8.7 returns an unsupported-version error before mutation",
 		"./c8volt update job --key <job-key> --retries 3 --dry-run",
+		"./c8volt update job --key <job-key> --fail --retries 0",
+		"./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED",
+		`./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run`,
 		"./c8volt --json update job --key <job-key> --retries 3 --dry-run",
 		"--key string",
 		"--retries int32",
 		"--timeout string",
+		"--fail",
+		"--retry-backoff string",
+		"--message string",
+		"--throw-bpmn-error string",
+		"--complete",
+		"--vars string",
 		"--dry-run",
 		"--auto-confirm",
 	}, nil)

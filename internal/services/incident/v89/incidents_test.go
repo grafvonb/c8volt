@@ -159,6 +159,7 @@ func TestSearchProcessInstanceIncidentsUsesRequestedStateScope(t *testing.T) {
 		{name: "default active", wantState: ptrIncidentState89(camundav89.IncidentStateEnumACTIVE)},
 		{name: "pending", option: services.WithIncidentState("pending"), wantState: ptrIncidentState89(camundav89.IncidentStateEnumPENDING)},
 		{name: "resolved", option: services.WithIncidentState("resolved"), wantState: ptrIncidentState89(camundav89.IncidentStateEnumRESOLVED)},
+		{name: "resolved uppercase", option: services.WithIncidentState("RESOLVED"), wantState: ptrIncidentState89(camundav89.IncidentStateEnumRESOLVED)},
 		{name: "migrated", option: services.WithIncidentState("migrated"), wantState: ptrIncidentState89(camundav89.IncidentStateEnumMIGRATED)},
 		{name: "unknown", option: services.WithIncidentState("unknown"), wantState: ptrIncidentState89(camundav89.IncidentStateEnumUNKNOWN)},
 		{name: "all", option: services.WithIncidentState("all"), wantState: nil},

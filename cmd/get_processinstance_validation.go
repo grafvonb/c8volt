@@ -167,12 +167,13 @@ func isPIIncidentErrorMessageFlagChanged(cmd *cobra.Command) bool {
 }
 
 func validatePIIncidentStateFlag(value string) error {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "active", "pending", "resolved", "migrated", "unknown", "all":
-		return nil
-	default:
-		return invalidFlagValuef("invalid value for --incident-state: %q, valid values are: active, pending, resolved, migrated, unknown, all", value)
+	if strings.TrimSpace(value) == "" {
+		return invalidFlagValuef("invalid value for --incident-state: %q, valid values are: %s", value, incidentfilter.ValidStatesString())
 	}
+	if _, ok := incidentfilter.NormalizeState(value); ok {
+		return nil
+	}
+	return invalidFlagValuef("invalid value for --incident-state: %q, valid values are: %s", value, incidentfilter.ValidStatesString())
 }
 
 func validatePIIncidentErrorTypeFlag(value string) error {

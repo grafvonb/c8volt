@@ -1,4 +1,4 @@
-# GitHub Release Changelog Prompt
+# Release GitHub Changelog Prompt
 
 Use this prompt whenever a short changelog summary is needed for the GitHub
 Release "Changelog" field. Replace the placeholders before running it.

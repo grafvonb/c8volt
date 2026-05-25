@@ -1,4 +1,4 @@
-# README Release Update Prompt
+# Release README Refresh Prompt
 
 Use this prompt whenever `README.md` should be refreshed for a new c8volt
 release. Replace the placeholders before running it.

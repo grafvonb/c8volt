@@ -698,6 +698,26 @@ func TestGetIncidentCommand_SearchStateAllOmitsStateFilter(t *testing.T) {
 	require.Contains(t, output, "found: 1")
 }
 
+func TestGetIncidentCommand_SearchNormalizesCaseInsensitiveState(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"errorMessage":"resolved earlier","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685250","processInstanceKey":"2251799813711968","state":"RESOLVED","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--state", "RESOLVED",
+	)
+
+	require.Len(t, requests, 1)
+	require.Contains(t, requests[0], `"state":"RESOLVED"`)
+	require.Contains(t, output, "RESOLVED")
+	require.Contains(t, output, "found: 1")
+}
+
 func TestGetIncidentCommand_RejectsInvalidStateBeforeLookup(t *testing.T) {
 	output, err := executeRootExpectErrorForIncidentTest(t, "get", "incident", "--state", "done")
 

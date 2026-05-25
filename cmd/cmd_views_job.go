@@ -14,11 +14,36 @@ import (
 )
 
 func jobView(cmd *cobra.Command, item job.Job) error {
-	if pickMode() == RenderModeJSON {
-		return renderJSONPayload(cmd, RenderModeJSON, item)
+	return itemView(cmd, item, pickMode(), oneLineJobWithTimezoneForMode(cmd), jobKey)
+}
+
+// jobsView renders searched jobs using the same row format as keyed lookup and
+// leaves JSON output as one collection payload.
+func jobsView(cmd *cobra.Command, result job.SearchResult) error {
+	return listOrJSONFlat(cmd, result, result.Items, pickMode(), flatRowJobWithTimezoneForMode(cmd), jobKey)
+}
+
+// oneLineJobWithTimezoneForMode binds the current timezone display setting for
+// keyed job rendering.
+func oneLineJobWithTimezoneForMode(cmd *cobra.Command) func(job.Job) string {
+	showTimezoneOffset := commandShowTimezoneOffset(cmd)
+	return func(item job.Job) string {
+		return oneLineJobWithTimezone(item, showTimezoneOffset)
 	}
-	renderOutputLine(cmd, "%s", oneLineJobWithTimezone(item, commandShowTimezoneOffset(cmd)))
-	return nil
+}
+
+// flatRowJobWithTimezoneForMode binds the current timezone display setting for
+// aligned list/search rows.
+func flatRowJobWithTimezoneForMode(cmd *cobra.Command) func(job.Job) flatRow {
+	showTimezoneOffset := commandShowTimezoneOffset(cmd)
+	return func(item job.Job) flatRow {
+		return flatRowJobWithTimezone(item, showTimezoneOffset)
+	}
+}
+
+// jobKey returns the stable pipeline key for keyed and searched job output.
+func jobKey(item job.Job) string {
+	return item.Key
 }
 
 func jobUpdateResultView(cmd *cobra.Command, result job.UpdateResult) error {
@@ -43,6 +68,31 @@ func jobUpdateResultView(cmd *cobra.Command, result job.UpdateResult) error {
 		renderHumanLine(cmd, "updated job %s: %s", result.Key, strings.Join(parts, " "))
 	case "confirmation_failed":
 		renderHumanLine(cmd, "updated job %s: confirmation failed: %s", result.Key, result.Error)
+	case "mutation_failed":
+		renderHumanLine(cmd, "updated job %s: mutation failed: %s", result.Key, result.Error)
+	default:
+		renderHumanLine(cmd, "updated job %s: %s", result.Key, result.Status)
+	}
+	return nil
+}
+
+func jobWorkerOutcomeResultView(cmd *cobra.Command, result job.WorkerOutcomeResult) error {
+	if pickMode() == RenderModeJSON {
+		return renderJSONPayload(cmd, RenderModeJSON, result)
+	}
+	switch result.Status {
+	case "submitted":
+		parts := []string{fmt.Sprintf("submitted %s", formatJobMutationMode(job.MutationMode(result.Mode)))}
+		if result.SubmittedRetries != nil {
+			parts = append(parts, fmt.Sprintf("retries=%d", *result.SubmittedRetries))
+		}
+		if result.SubmittedBackoffMS != nil {
+			parts = append(parts, fmt.Sprintf("retryBackoff=%dms", *result.SubmittedBackoffMS))
+		}
+		if result.SubmittedErrorCode != "" {
+			parts = append(parts, fmt.Sprintf("errorCode=%s", result.SubmittedErrorCode))
+		}
+		renderHumanLine(cmd, "updated job %s: %s", result.Key, strings.Join(parts, " "))
 	case "mutation_failed":
 		renderHumanLine(cmd, "updated job %s: mutation failed: %s", result.Key, result.Error)
 	default:
@@ -91,30 +141,50 @@ func flatRowJob(item job.Job) flatRow {
 }
 
 func flatRowJobWithTimezone(item job.Job, showTimezoneOffset bool) flatRow {
-	parts := flatRow{item.Key}
-	if item.TenantId != "" {
-		parts = append(parts, item.TenantId)
-	}
-	if item.State != "" {
-		parts = append(parts, item.State)
+	parts := flatRow{
+		item.Key,
+		item.TenantId,
+		item.Kind,
+		item.ElementId,
+		item.State,
+		prefixedJobField("type", item.Type),
+		prefixedJobField("listener", item.ListenerEventType),
+		prefixedJobField("worker", item.Worker),
 	}
 	if item.ProcessInstanceKey != "" {
 		parts = append(parts, "pi:"+item.ProcessInstanceKey)
+	} else {
+		parts = append(parts, "")
 	}
 	if item.ElementInstanceKey != "" {
 		parts = append(parts, "ei:"+item.ElementInstanceKey)
+	} else {
+		parts = append(parts, "")
 	}
 	parts = append(parts, "r:"+strconv.FormatInt(int64(item.Retries), 10))
 	if item.Deadline != nil {
 		parts = append(parts, "d:"+toolx.FormatTime(*item.Deadline, showTimezoneOffset))
+	} else {
+		parts = append(parts, "")
 	}
 	if item.ErrorCode != "" {
 		parts = append(parts, "ec:"+item.ErrorCode)
+	} else {
+		parts = append(parts, "")
 	}
 	if item.ErrorMessage != "" {
 		parts = append(parts, "err:"+truncateHumanMessage(item.ErrorMessage, flagGetErrorMessageLimit))
+	} else {
+		parts = append(parts, "")
 	}
 	return parts
+}
+
+func prefixedJobField(prefix string, value string) string {
+	if value == "" {
+		return ""
+	}
+	return prefix + ":" + value
 }
 
 func formatJobUpdatePlanItems(items []job.UpdatePlanItem) string {
@@ -133,11 +203,36 @@ func formatJobUpdatePlanItems(items []job.UpdatePlanItem) string {
 			parts = append(parts, fmt.Sprintf("retries: %s -> %s", item.Before, item.After))
 		case "timeout":
 			parts = append(parts, fmt.Sprintf("timeout: set to %s", item.After))
+		case string(job.MutationModeTechnicalFailure):
+			parts = append(parts, "technical failure: submit")
+		case string(job.MutationModeBPMNError):
+			parts = append(parts, "BPMN error: submit")
+		case "retryBackoff":
+			parts = append(parts, fmt.Sprintf("retry backoff: %s", item.After))
+		case "errorCode":
+			parts = append(parts, fmt.Sprintf("error code: %s", item.After))
+		case "message":
+			parts = append(parts, fmt.Sprintf("message: %s", item.After))
+		case "variables":
+			parts = append(parts, "variables: submit")
 		default:
 			parts = append(parts, fmt.Sprintf("%s: %s", item.Name, item.After))
 		}
 	}
 	return strings.Join(parts, "; ")
+}
+
+func formatJobMutationMode(mode job.MutationMode) string {
+	switch mode {
+	case job.MutationModeTechnicalFailure:
+		return "technical failure"
+	case job.MutationModeBPMNError:
+		return "BPMN error"
+	case job.MutationModeCompletion:
+		return "completion"
+	default:
+		return string(mode)
+	}
 }
 
 func derefInt32(value *int32) int32 {

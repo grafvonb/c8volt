@@ -1,4 +1,4 @@
-# Facade Layering Refactor Prompt
+# Architecture Facade Layering Refactor Prompt
 
 Use this prompt to run the complete facade-layering refactor against either a
 clean repository state or an existing dirty refactor branch. It requires branch

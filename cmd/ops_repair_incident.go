@@ -319,8 +319,9 @@ func hasOpsRepairIncidentSearchModeFlags(cmd *cobra.Command) bool {
 // populateOpsRepairIncidentSelection converts repair command search flags into the public incident filter model.
 func populateOpsRepairIncidentSelection() incident.Filter {
 	errorType, _ := incidentfilter.NormalizeErrorType(flagOpsRepairIncidentErrorType)
+	state, _ := incidentfilter.NormalizeState(flagOpsRepairIncidentState)
 	return incident.Filter{
-		State:                  flagOpsRepairIncidentState,
+		State:                  state,
 		ErrorType:              errorType,
 		ErrorMessage:           flagOpsRepairIncidentErrorMessage,
 		ProcessDefinitionId:    flagOpsRepairIncidentBpmnProcessID,
