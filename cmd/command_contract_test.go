@@ -768,6 +768,22 @@ func TestCommandCapabilityForCommand_GetIncidentContract(t *testing.T) {
 		Repeated:    false,
 		Description: "BPMN process ID to validate and filter incidents",
 	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "element-id",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN element ID to filter incidents",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "element-instance-key",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "element instance key to filter incidents",
+	})
+	require.False(t, hasFlagContractNamed(capability.Flags, "flow-node-id"))
+	require.False(t, hasFlagContractNamed(capability.Flags, "fni-key"))
 	require.Contains(t, capability.OutputModes, OutputModeContract{
 		Name:             "json",
 		Supported:        true,
@@ -1688,8 +1704,8 @@ func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *tes
 		"--pd-key string",
 		"--pi-key string",
 		"--root-key string",
-		"--flow-node-id string",
-		"--fni-key string",
+		"--element-id string",
+		"--element-instance-key string",
 		"--batch-size int32",
 		"--limit int32",
 		"--error-message-limit int",
@@ -1700,6 +1716,8 @@ func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *tes
 	require.Contains(t, output, "incidents")
 	require.Contains(t, output, "inc")
 	require.NotContains(t, output, "AD_HOC_SUB_PROCESS_NO_RETRIES")
+	require.NotContains(t, output, "--flow-node-id")
+	require.NotContains(t, output, "--fni-key")
 }
 
 func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T) {

@@ -56,20 +56,20 @@
 
 ### Tests for User Story 1
 
-- [ ] T016 [P] [US1] Add command tests for `get incident --element-id` and `--element-instance-key` in `cmd/get_incident_test.go`
-- [ ] T017 [P] [US1] Add command tests proving `--flow-node-id` and `--fni-key` are unknown flags in `cmd/get_incident_test.go`
-- [ ] T018 [P] [US1] Add command contract tests for canonical incident flags and absence of old flags in `cmd/command_contract_test.go`
-- [ ] T019 [P] [US1] Add facade mapping tests for canonical incident filter fields in `c8volt/incident/client_test.go`
-- [ ] T020 [P] [US1] Add v8.8/v8.9 incident service tests for element filter construction or compatibility filtering in `internal/services/incident/v88/incidents_test.go` and `internal/services/incident/v89/incidents_test.go`
+- [x] T016 [P] [US1] Add command tests for `get incident --element-id` and `--element-instance-key` in `cmd/get_incident_test.go`
+- [x] T017 [P] [US1] Add command tests proving `--flow-node-id` and `--fni-key` are unknown flags in `cmd/get_incident_test.go`
+- [x] T018 [P] [US1] Add command contract tests for canonical incident flags and absence of old flags in `cmd/command_contract_test.go`
+- [x] T019 [P] [US1] Add facade mapping tests for canonical incident filter fields in `c8volt/incident/client_test.go`
+- [x] T020 [P] [US1] Add v8.8/v8.9 incident service tests for element filter construction or compatibility filtering in `internal/services/incident/v88/incidents_test.go` and `internal/services/incident/v89/incidents_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T021 [US1] Replace legacy incident filter flag variables and registrations with canonical flags in `cmd/get_incident.go`
-- [ ] T022 [US1] Update incident command validation, filter assembly, examples, and reset logic in `cmd/get_incident.go`
-- [ ] T023 [US1] Update command metadata expectations for canonical incident filter flags in `cmd/command_contract_test.go`
-- [ ] T024 [US1] Update incident facade and service filter field names used by `get incident` in `c8volt/incident/` and `internal/domain/incident.go`
-- [ ] T025 [US1] Update v8.8/v8.9 incident filter mapping and v8.7 compatibility mapping in `internal/services/incident/`
-- [ ] T026 [US1] Verify US1 with targeted tests for `cmd/get_incident_test.go`, `cmd/command_contract_test.go`, `c8volt/incident/client_test.go`, and `internal/services/incident/...`
+- [x] T021 [US1] Replace legacy incident filter flag variables and registrations with canonical flags in `cmd/get_incident.go`
+- [x] T022 [US1] Update incident command validation, filter assembly, examples, and reset logic in `cmd/get_incident.go`
+- [x] T023 [US1] Update command metadata expectations for canonical incident filter flags in `cmd/command_contract_test.go`
+- [x] T024 [US1] Update incident facade and service filter field names used by `get incident` in `c8volt/incident/` and `internal/domain/incident.go`
+- [x] T025 [US1] Update v8.8/v8.9 incident filter mapping and v8.7 compatibility mapping in `internal/services/incident/`
+- [x] T026 [US1] Verify US1 with targeted tests for `cmd/get_incident_test.go`, `cmd/command_contract_test.go`, `c8volt/incident/client_test.go`, and `internal/services/incident/...`
 
 **Checkpoint**: User Story 1 is complete when canonical incident filters work and old public flags are gone.
 

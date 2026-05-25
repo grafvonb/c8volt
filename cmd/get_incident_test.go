@@ -757,7 +757,7 @@ func TestGetIncidentCommand_RejectsInvalidErrorType(t *testing.T) {
 	require.Empty(t, output)
 }
 
-func TestGetIncidentCommand_SearchCoreProcessAndFlowNodeFilters(t *testing.T) {
+func TestGetIncidentCommand_SearchCoreProcessAndElementFilters(t *testing.T) {
 	var requests []string
 	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
 		`{"items":[{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"2251799813685303","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685252","processDefinitionId":"order-process","processDefinitionKey":"2251799813685201","processInstanceKey":"2251799813711970","rootProcessInstanceKey":"2251799813711971","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
@@ -772,8 +772,8 @@ func TestGetIncidentCommand_SearchCoreProcessAndFlowNodeFilters(t *testing.T) {
 		"--root-key", "2251799813711971",
 		"--pd-key", "2251799813685201",
 		"--bpmn-process-id", "order-process",
-		"--flow-node-id", "task-a",
-		"--fni-key", "2251799813685303",
+		"--element-id", "task-a",
+		"--element-instance-key", "2251799813685303",
 	)
 
 	require.Len(t, requests, 1)
@@ -790,6 +790,20 @@ func TestGetIncidentCommand_SearchCoreProcessAndFlowNodeFilters(t *testing.T) {
 	require.Contains(t, output, "root:2251799813711971")
 	require.Contains(t, output, "order-process")
 	require.Contains(t, output, "found: 1")
+}
+
+func TestGetIncidentCommand_RejectsLegacyFlowNodeFilterFlags(t *testing.T) {
+	tests := []string{"--flow-node-id", "--fni-key"}
+
+	for _, flag := range tests {
+		t.Run(flag, func(t *testing.T) {
+			output, err := executeRootExpectErrorForIncidentTest(t, "get", "incident", flag, "legacy-value")
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "unknown flag: "+flag)
+			require.Empty(t, output)
+		})
+	}
 }
 
 func TestGetIncidentCommand_SearchCreationTimeWindow(t *testing.T) {
