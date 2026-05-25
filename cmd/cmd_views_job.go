@@ -14,11 +14,36 @@ import (
 )
 
 func jobView(cmd *cobra.Command, item job.Job) error {
-	if pickMode() == RenderModeJSON {
-		return renderJSONPayload(cmd, RenderModeJSON, item)
+	return itemView(cmd, item, pickMode(), oneLineJobWithTimezoneForMode(cmd), jobKey)
+}
+
+// jobsView renders searched jobs using the same row format as keyed lookup and
+// leaves JSON output as one collection payload.
+func jobsView(cmd *cobra.Command, result job.SearchResult) error {
+	return listOrJSONFlat(cmd, result, result.Items, pickMode(), flatRowJobWithTimezoneForMode(cmd), jobKey)
+}
+
+// oneLineJobWithTimezoneForMode binds the current timezone display setting for
+// keyed job rendering.
+func oneLineJobWithTimezoneForMode(cmd *cobra.Command) func(job.Job) string {
+	showTimezoneOffset := commandShowTimezoneOffset(cmd)
+	return func(item job.Job) string {
+		return oneLineJobWithTimezone(item, showTimezoneOffset)
 	}
-	renderOutputLine(cmd, "%s", oneLineJobWithTimezone(item, commandShowTimezoneOffset(cmd)))
-	return nil
+}
+
+// flatRowJobWithTimezoneForMode binds the current timezone display setting for
+// aligned list/search rows.
+func flatRowJobWithTimezoneForMode(cmd *cobra.Command) func(job.Job) flatRow {
+	showTimezoneOffset := commandShowTimezoneOffset(cmd)
+	return func(item job.Job) flatRow {
+		return flatRowJobWithTimezone(item, showTimezoneOffset)
+	}
+}
+
+// jobKey returns the stable pipeline key for keyed and searched job output.
+func jobKey(item job.Job) string {
+	return item.Key
 }
 
 func jobUpdateResultView(cmd *cobra.Command, result job.UpdateResult) error {

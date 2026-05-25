@@ -17,6 +17,9 @@ Started: 2026-05-25 15:34:07
 - Foundational job search and worker outcome flags are now declared for command metadata but fail closed locally until their story implementations wire service behavior, preventing silent fallback to keyed lookup or retry updates.
 - Expanding `internal/services/job.GenJobClient` requires updating versioned service test mocks for all generated job mutation methods, even before those methods are invoked.
 - `get job` now advertises automation support because it already routes through `requireAutomationSupport` and has stable machine output.
+- `get job` list/search mode now uses omitted `--key` as the mode selector and keeps search bounded with `consts.MaxPISearchSize` when `--limit` is omitted.
+- Job search filters use generated equality union properties directly in v8.8/v8.9 services; explicit `--retries 0` must stay pointer-backed so zero is not mistaken for an unset filter.
+- Job search rows reuse `flatRowJobWithTimezone` through `jobsView`, while JSON returns one `job.SearchResult` payload and `--keys-only` emits only job keys.
 
 ---
 
@@ -107,4 +110,42 @@ Started: 2026-05-25 15:34:07
 - Keyed lookup requests include generated nil filter fields, so exact lookup tests should assert no additional non-nil filters rather than counting serialized keys.
 - Targeted validation requires a writable Go build cache in this sandbox; `GOCACHE=/private/tmp/c8volt-go-build-cache` keeps test execution inside allowed paths.
 - Targeted validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/job ./internal/services/job/v88 ./internal/services/job/v89`.
+---
+
+---
+## Iteration 4 - 2026-05-25 16:02:47 CEST
+**User Story**: User Story 2 - Search Jobs Without A Known Key
+**Tasks Completed**:
+- [x] T022: Add command tests for keyed-vs-search validation
+- [x] T023: Add command tests for each search flag and invalid value
+- [x] T024: Add command tests proving no `flowNode` or `fni` aliases exist for jobs
+- [x] T025: Add output rendering tests for searched job rows, JSON, and keys-only output
+- [x] T026: Add v8.8/v8.9 service tests for generated job search filter construction
+- [x] T027: Add facade tests for job search query mapping and pagination/limit behavior
+- [x] T028: Add get job search flags, validation, and mode selection
+- [x] T029: Add job search facade conversion and delegation
+- [x] T030: Add domain-to-generated filter builders for job search filters and limit
+- [x] T031: Add job search result conversion fields
+- [x] T032: Extend job list renderers for human, JSON, and keys-only output
+- [x] T033: Verify US2 with targeted tests
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/job/client_test.go
+- cmd/cmd_views_job.go
+- cmd/cmd_views_job_test.go
+- cmd/get_job.go
+- cmd/get_job_test.go
+- internal/services/job/v88/convert.go
+- internal/services/job/v88/service.go
+- internal/services/job/v88/service_test.go
+- internal/services/job/v89/convert.go
+- internal/services/job/v89/service.go
+- internal/services/job/v89/service_test.go
+- specs/231-job-ops-workflows/tasks.md
+- specs/231-job-ops-workflows/progress.md
+**Learnings**:
+- Generated job filter union types serialize simple equality filters as top-level values, which makes request-shape tests reliable without exposing generated types outside service tests.
+- `common.NewIntegerEqFilterPtr` treats zero as unset, so job retry search uses a local pointer-based filter builder to preserve explicit zero-retry discovery.
+- Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/job ./internal/domain ./internal/services/job ./internal/services/job/v87 ./internal/services/job/v88 ./internal/services/job/v89 -count=1`.
 ---

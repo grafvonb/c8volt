@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/consts"
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
@@ -95,10 +96,32 @@ func (s *Service) GetJob(ctx context.Context, key string, opts ...services.CallO
 }
 
 func (s *Service) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error) {
-	_ = ctx
-	_ = query
 	_ = services.ApplyCallOptions(opts)
-	return d.JobSearchResult{}, fmt.Errorf("%w: job search service implementation is pending", d.ErrUnsupported)
+
+	filter, err := newJobSearchFilter(query)
+	if err != nil {
+		return d.JobSearchResult{}, err
+	}
+	limit := query.Limit
+	if limit <= 0 {
+		limit = consts.MaxPISearchSize
+	}
+	page := newSearchQueryPageRequest(limit)
+	resp, err := s.c.SearchJobsWithResponse(ctx, camundav88.SearchJobsJSONRequestBody{
+		Filter: filter,
+		Page:   &page,
+	})
+	if err != nil {
+		return d.JobSearchResult{}, err
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.JobSearchResult{}, err
+	}
+	return d.JobSearchResult{
+		Items: fromJobSearchResults(payload.Items),
+		Limit: limit,
+	}, nil
 }
 
 func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error) {

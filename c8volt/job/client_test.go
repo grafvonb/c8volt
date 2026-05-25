@@ -133,6 +133,33 @@ func TestClient_SearchJobs_MapsFoundationalQueryAndResults(t *testing.T) {
 	require.Equal(t, "payment-worker", result.Items[0].Type)
 }
 
+// TestClient_SearchJobs_PreservesZeroRetriesAndLimit protects search mapping
+// for zero-retry failure discovery and caller-controlled result limits.
+func TestClient_SearchJobs_PreservesZeroRetriesAndLimit(t *testing.T) {
+	retries := int32(0)
+	api := New(fakeJobService{
+		search: func(_ context.Context, request d.JobSearchQuery, _ ...services.CallOption) (d.JobSearchResult, error) {
+			require.NotNil(t, request.Retries)
+			require.Equal(t, retries, *request.Retries)
+			require.Equal(t, int32(25), request.Limit)
+			return d.JobSearchResult{
+				Items: []d.Job{{Key: "2251799813711967", Retries: *request.Retries}},
+				Limit: request.Limit,
+			}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.SearchJobs(context.Background(), SearchRequest{
+		Retries: &retries,
+		Limit:   25,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int32(25), result.Limit)
+	require.Len(t, result.Items, 1)
+	require.Equal(t, int32(0), result.Items[0].Retries)
+}
+
 func TestClient_GetJob_NotFound(t *testing.T) {
 	api := New(fakeJobService{
 		get: func(_ context.Context, key string, _ ...services.CallOption) (d.Job, error) {

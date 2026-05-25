@@ -5,6 +5,7 @@ package v88
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -102,6 +103,69 @@ func TestService_GetJob_NotFound(t *testing.T) {
 
 	require.ErrorIs(t, err, d.ErrNotFound)
 	require.Empty(t, job)
+}
+
+// TestService_SearchJobs_ConstructsFiltersAndConvertsRows verifies v8.8 job
+// discovery maps every supported search filter into the generated request body.
+func TestService_SearchJobs_ConstructsFiltersAndConvertsRows(t *testing.T) {
+	retries := int32(0)
+	elementID := camundav88.ElementId("charge-card")
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(_ context.Context, body camundav88.SearchJobsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchJobsResponse, error) {
+			requireJobSearchFilterJSON(t, body, map[string]any{
+				"state":              "FAILED",
+				"type":               "payment-worker",
+				"processInstanceKey": "2251799813711000",
+				"elementInstanceKey": "2251799813711001",
+				"elementId":          "charge-card",
+				"worker":             "worker-a",
+				"retries":            float64(0),
+				"kind":               "BPMN_ELEMENT",
+				"listenerEventType":  "COMPLETING",
+			}, 25)
+			return &camundav88.SearchJobsResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav88.JobSearchQueryResult{
+					Items: []camundav88.JobSearchResult{{
+						JobKey:             "2251799813711967",
+						State:              camundav88.JobStateEnumFAILED,
+						Retries:            retries,
+						Type:               "payment-worker",
+						Worker:             "worker-a",
+						Kind:               camundav88.BPMNELEMENT,
+						ListenerEventType:  camundav88.JobListenerEventTypeEnumCOMPLETING,
+						ProcessInstanceKey: "2251799813711000",
+						ElementInstanceKey: "2251799813711001",
+						ElementId:          &elementID,
+						TenantId:           "tenant-a",
+					}},
+				},
+			}, nil
+		},
+	})
+
+	result, err := svc.SearchJobs(context.Background(), d.JobSearchQuery{
+		State:              "FAILED",
+		Type:               "payment-worker",
+		ProcessInstanceKey: "2251799813711000",
+		ElementInstanceKey: "2251799813711001",
+		ElementId:          "charge-card",
+		Worker:             "worker-a",
+		Retries:            &retries,
+		Kind:               "BPMN_ELEMENT",
+		ListenerEventType:  "COMPLETING",
+		Limit:              25,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int32(25), result.Limit)
+	require.Len(t, result.Items, 1)
+	require.Equal(t, "2251799813711967", result.Items[0].Key)
+	require.Equal(t, "payment-worker", result.Items[0].Type)
+	require.Equal(t, "worker-a", result.Items[0].Worker)
+	require.Equal(t, "BPMN_ELEMENT", result.Items[0].Kind)
+	require.Equal(t, "COMPLETING", result.Items[0].ListenerEventType)
+	require.Equal(t, "charge-card", result.Items[0].ElementId)
 }
 
 func TestJobUpdateRetriesRequest(t *testing.T) {
@@ -215,6 +279,22 @@ func requireJobSearchBody(t *testing.T, body camundav88.SearchJobsJSONRequestBod
 	require.NoError(t, err)
 	require.Equal(t, camundav88.JobKey(key), gotKey)
 	require.NotNil(t, body.Page)
+}
+
+// requireJobSearchFilterJSON asserts generated union filters serialize to the
+// simple equality values expected by the Camunda search endpoint.
+func requireJobSearchFilterJSON(t *testing.T, body camundav88.SearchJobsJSONRequestBody, want map[string]any, wantLimit int32) {
+	t.Helper()
+	raw, err := json.Marshal(body)
+	require.NoError(t, err)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(raw, &got))
+	filter := got["filter"].(map[string]any)
+	for name, value := range want {
+		require.Equal(t, value, filter[name], "filter %s", name)
+	}
+	page := got["page"].(map[string]any)
+	require.Equal(t, float64(wantLimit), page["limit"])
 }
 
 func okHTTPResponse() *http.Response {

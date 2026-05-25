@@ -78,21 +78,21 @@
 
 ### Tests for User Story 2
 
-- [ ] T022 [P] [US2] Add command tests for keyed-vs-search validation in `cmd/get_job_test.go`
-- [ ] T023 [P] [US2] Add command tests for each search flag and invalid value in `cmd/get_job_test.go`
-- [ ] T024 [P] [US2] Add command tests proving no `flowNode` or `fni` aliases exist for jobs in `cmd/get_job_test.go`
-- [ ] T025 [P] [US2] Add output rendering tests for searched job rows, JSON, and keys-only output in `cmd/cmd_views_job_test.go`
-- [ ] T026 [P] [US2] Add v8.8/v8.9 service tests for generated job search filter construction in `internal/services/job/v88/service_test.go` and `internal/services/job/v89/service_test.go`
-- [ ] T027 [P] [US2] Add facade tests for job search query mapping and pagination/limit behavior in `c8volt/job/client_test.go`
+- [x] T022 [P] [US2] Add command tests for keyed-vs-search validation in `cmd/get_job_test.go`
+- [x] T023 [P] [US2] Add command tests for each search flag and invalid value in `cmd/get_job_test.go`
+- [x] T024 [P] [US2] Add command tests proving no `flowNode` or `fni` aliases exist for jobs in `cmd/get_job_test.go`
+- [x] T025 [P] [US2] Add output rendering tests for searched job rows, JSON, and keys-only output in `cmd/cmd_views_job_test.go`
+- [x] T026 [P] [US2] Add v8.8/v8.9 service tests for generated job search filter construction in `internal/services/job/v88/service_test.go` and `internal/services/job/v89/service_test.go`
+- [x] T027 [P] [US2] Add facade tests for job search query mapping and pagination/limit behavior in `c8volt/job/client_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T028 [US2] Add get job search flags, validation, and mode selection in `cmd/get_job.go`
-- [ ] T029 [US2] Add job search facade conversion and delegation in `c8volt/job/client.go`
-- [ ] T030 [US2] Add domain-to-generated filter builders for state, type, process instance key, element instance key, element ID, worker, retries, kind, listener event type, and limit in `internal/services/job/v88/service.go` and `internal/services/job/v89/service.go`
-- [ ] T031 [US2] Add job search result conversion fields in `internal/services/job/v88/convert.go`, `internal/services/job/v89/convert.go`, `internal/domain/job.go`, and `c8volt/job/model.go`
-- [ ] T032 [US2] Extend job list renderers for human, JSON, and keys-only output in `cmd/cmd_views_job.go`
-- [ ] T033 [US2] Verify US2 with targeted tests for `cmd/get_job_test.go`, `cmd/cmd_views_job_test.go`, `c8volt/job/client_test.go`, and versioned job service tests
+- [x] T028 [US2] Add get job search flags, validation, and mode selection in `cmd/get_job.go`
+- [x] T029 [US2] Add job search facade conversion and delegation in `c8volt/job/client.go`
+- [x] T030 [US2] Add domain-to-generated filter builders for state, type, process instance key, element instance key, element ID, worker, retries, kind, listener event type, and limit in `internal/services/job/v88/service.go` and `internal/services/job/v89/service.go`
+- [x] T031 [US2] Add job search result conversion fields in `internal/services/job/v88/convert.go`, `internal/services/job/v89/convert.go`, `internal/domain/job.go`, and `c8volt/job/model.go`
+- [x] T032 [US2] Extend job list renderers for human, JSON, and keys-only output in `cmd/cmd_views_job.go`
+- [x] T033 [US2] Verify US2 with targeted tests for `cmd/get_job_test.go`, `cmd/cmd_views_job_test.go`, `c8volt/job/client_test.go`, and versioned job service tests
 
 **Checkpoint**: User Story 2 is complete when operators can discover jobs without knowing keys.
 
