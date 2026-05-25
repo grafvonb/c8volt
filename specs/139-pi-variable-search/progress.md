@@ -31,6 +31,9 @@
 - v8.8 and v8.9 native like mapping should set `AdvancedStringFilter.Like` directly from the preserved domain clause value.
 - Advanced `$in` and `$notIn` clauses are locally validated as JSON string arrays while preserving the original serialized clause text through command, facade, and domain layers.
 - v8.8 and v8.9 generated `AdvancedStringFilter.In` and `NotIn` fields require `[]string`, so versioned `variable_filter.go` files parse validated array text at native request construction time.
+- `validatePISearchVersionSupport` owns local configured-version gates for search-only flags before selector validation or remote search starts.
+- v8.7 process-instance search must reject non-empty `VariableFilters` before building the Operate request body, preserving existing non-variable search behavior.
+- v8.8 and v8.9 native variable filters compose with the existing tenant filter in the same process-instance search request body.
 
 ## Architecture Grounding
 
@@ -234,4 +237,33 @@
 - `$notin` normalization already lived in the command parser; US4 extended coverage to all advanced operators and made malformed JSON arrays fail locally before remote search.
 - Native v8.8/v8.9 request construction should parse `$in` and `$notIn` arrays only at the generated-client boundary because the intermediate model intentionally preserves serialized values.
 - Validation passed with `go test ./cmd ./c8volt/process ./internal/domain ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`.
+---
+---
+## Iteration 7 - 2026-05-25 23:15:33 CEST
+**User Story**: User Story 5 - Preserve Version And Tenant Contracts
+**Tasks Completed**:
+- [x] T060: Add 8.7 unsupported command tests for each new variable-search flag in `cmd/get_processinstance_test.go`
+- [x] T061: Add v8.7 service unsupported tests for variable filters in `internal/services/processinstance/v87/service_test.go`
+- [x] T062: Add tenant preservation tests for variable filters in `cmd/get_processinstance_test.go` or `internal/services/processinstance/v88/service_test.go`
+- [x] T063: Add regression tests proving existing 8.7 `get pi` searches without variable filters still behave as before in `cmd/get_processinstance_test.go`
+- [x] T064: Add local version support validation for variable-search flags in `cmd/get_processinstance*.go`
+- [x] T065: Add explicit 8.7 unsupported handling for domain filters with variable clauses in `internal/services/processinstance/v87/`
+- [x] T066: Preserve tenant filter composition with variable filters in `internal/services/processinstance/v88/` and `internal/services/processinstance/v89/`
+- [x] T067: Ensure no Operate fallback is used for variable-search paths in `internal/services/processinstance/v87/`, `v88/`, and `v89/`
+- [x] T068: Verify US5 with targeted command and versioned service tests
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance_validation.go
+- cmd/get_processinstance_test.go
+- internal/services/processinstance/v87/service.go
+- internal/services/processinstance/v87/service_test.go
+- internal/services/processinstance/v88/service_test.go
+- specs/139-pi-variable-search/tasks.md
+- specs/139-pi-variable-search/progress.md
+**Learnings**:
+- Command-level 8.7 rejection prevents variable-search flags from reaching selector validation, paging, or remote search code.
+- The v8.7 service-level guard protects facade callers that supply domain variable filters directly, while strict service tests prove no Operate request is made.
+- Existing v8.9 variable-filter tests already asserted tenant composition; v8.8 now has matching coverage for tenant plus native variable filters.
+- Validation passed with `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`.
 ---

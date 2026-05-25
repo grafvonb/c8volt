@@ -2749,6 +2749,35 @@ func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.
 	require.Contains(t, output, `"tenantId": "<default>"`)
 }
 
+// TestGetProcessInstanceCommand_VariableFiltersUnsupportedOnV87 verifies native variable filters fail before any 8.7 fallback path.
+func TestGetProcessInstanceCommand_VariableFiltersUnsupportedOnV87(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
+
+	tests := []struct {
+		name string
+		mode string
+	}{
+		{name: "var-exists", mode: "var-exists"},
+		{name: "var", mode: "var"},
+		{name: "var-like", mode: "var-like"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, code := executeProcessInstanceFailureHelperWithEnv(t,
+				"TestGetProcessInstanceVariableFiltersUnsupportedV87Helper",
+				cfgPath,
+				map[string]string{"C8VOLT_TEST_PI_VARIABLE_FILTER_MODE": tt.mode},
+			)
+
+			require.Equal(t, exitcode.Error, code)
+			require.Contains(t, output, "unsupported capability")
+			require.Contains(t, output, "process-instance variable search is unsupported in Camunda 8.7")
+			require.Contains(t, output, "requires Camunda 8.8 or 8.9")
+		})
+	}
+}
+
 // TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath verifies v8.9 direct lookup uses the native single-instance endpoint.
 func TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath(t *testing.T) {
 	var requests []string
@@ -4643,6 +4672,31 @@ func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87Helper(t *testing
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--has-user-tasks", "2251799815391233"}
+
+	Execute()
+}
+
+// TestGetProcessInstanceVariableFiltersUnsupportedV87Helper drives unsupported variable-search validation in a helper process.
+func TestGetProcessInstanceVariableFiltersUnsupportedV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+
+	args := []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance"}
+	switch os.Getenv("C8VOLT_TEST_PI_VARIABLE_FILTER_MODE") {
+	case "var-exists":
+		args = append(args, "--var-exists", "customerId")
+	case "var":
+		args = append(args, "--var", `status="approved"`)
+	case "var-like":
+		args = append(args, "--var-like", "email=*@example.com")
+	default:
+		t.Fatalf("unknown variable filter mode %q", os.Getenv("C8VOLT_TEST_PI_VARIABLE_FILTER_MODE"))
+	}
+	os.Args = args
 
 	Execute()
 }

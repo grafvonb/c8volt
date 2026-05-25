@@ -164,18 +164,18 @@
 
 ### Tests for User Story 5
 
-- [ ] T060 [P] [US5] Add 8.7 unsupported command tests for each new variable-search flag in `cmd/get_processinstance_test.go`
-- [ ] T061 [P] [US5] Add v8.7 service unsupported tests for variable filters in `internal/services/processinstance/v87/service_test.go`
-- [ ] T062 [P] [US5] Add tenant preservation tests for variable filters in `cmd/get_processinstance_test.go` or `internal/services/processinstance/v88/service_test.go`
-- [ ] T063 [P] [US5] Add regression tests proving existing 8.7 `get pi` searches without variable filters still behave as before in `cmd/get_processinstance_test.go`
+- [x] T060 [P] [US5] Add 8.7 unsupported command tests for each new variable-search flag in `cmd/get_processinstance_test.go`
+- [x] T061 [P] [US5] Add v8.7 service unsupported tests for variable filters in `internal/services/processinstance/v87/service_test.go`
+- [x] T062 [P] [US5] Add tenant preservation tests for variable filters in `cmd/get_processinstance_test.go` or `internal/services/processinstance/v88/service_test.go`
+- [x] T063 [P] [US5] Add regression tests proving existing 8.7 `get pi` searches without variable filters still behave as before in `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 5
 
-- [ ] T064 [US5] Add local version support validation for variable-search flags in `cmd/get_processinstance*.go`
-- [ ] T065 [US5] Add explicit 8.7 unsupported handling for domain filters with variable clauses in `internal/services/processinstance/v87/`
-- [ ] T066 [US5] Preserve tenant filter composition with variable filters in `internal/services/processinstance/v88/` and `internal/services/processinstance/v89/`
-- [ ] T067 [US5] Ensure no Operate fallback is used for variable-search paths in `internal/services/processinstance/v87/`, `v88/`, and `v89/`
-- [ ] T068 [US5] Verify US5 with targeted command and versioned service tests
+- [x] T064 [US5] Add local version support validation for variable-search flags in `cmd/get_processinstance*.go`
+- [x] T065 [US5] Add explicit 8.7 unsupported handling for domain filters with variable clauses in `internal/services/processinstance/v87/`
+- [x] T066 [US5] Preserve tenant filter composition with variable filters in `internal/services/processinstance/v88/` and `internal/services/processinstance/v89/`
+- [x] T067 [US5] Ensure no Operate fallback is used for variable-search paths in `internal/services/processinstance/v87/`, `v88/`, and `v89/`
+- [x] T068 [US5] Verify US5 with targeted command and versioned service tests
 
 **Checkpoint**: User Story 5 is complete when version and tenant behavior is explicit, tested, and free of Operate-backed variable-search fallback.
 

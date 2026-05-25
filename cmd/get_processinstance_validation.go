@@ -287,6 +287,10 @@ func validatePISearchVersionSupport(cfg *config.Config) error {
 		return ferrors.WrapClass(ferrors.ErrUnsupported,
 			fmt.Errorf("process-instance date filters require Camunda 8.8"))
 	}
+	if hasPIVariableFilterFlags() && cfg.App.CamundaVersion == toolx.V87 {
+		return ferrors.WrapClass(ferrors.ErrUnsupported,
+			fmt.Errorf("process-instance variable search is unsupported in Camunda 8.7; requires Camunda 8.8 or 8.9"))
+	}
 	if flagGetPIOrphanChildrenOnly && cfg.App.CamundaVersion == toolx.V87 {
 		return ferrors.WrapClass(ferrors.ErrUnsupported,
 			fmt.Errorf("--orphan-children-only is not supported in Camunda 8.7 because orphan-parent follow-up lookup is not tenant-safe"))
