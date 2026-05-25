@@ -135,6 +135,17 @@ func fromDomainPage(result d.JobSearchPage) Page {
 			Size: result.Request.Size,
 		},
 		OverflowState: fromDomainOverflowState(result.OverflowState),
+		ReportedTotal: fromDomainReportedTotal(result.ReportedTotal),
+	}
+}
+
+func fromDomainReportedTotal(total *d.JobReportedTotal) *ReportedTotal {
+	if total == nil {
+		return nil
+	}
+	return &ReportedTotal{
+		Count: total.Count,
+		Kind:  ReportedTotalKind(total.Kind),
 	}
 }
 

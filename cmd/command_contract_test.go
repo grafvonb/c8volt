@@ -641,6 +641,13 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Description: "number of jobs to fetch per page (max limit 1000 enforced by server)",
 	})
 	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "total",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return only the numeric total of matching jobs",
+	})
+	require.Contains(t, getCapability.Flags, FlagContract{
 		Name:        "error-message-limit",
 		Type:        "int",
 		Required:    false,
@@ -1671,11 +1678,13 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"Search mode will use list filters",
 		"Search mode pages through matching jobs by default",
 		"--batch-size tunes per-page discovery requests only",
+		"--total returns only the matching count",
 		"Use --json for the stable job payload",
 		"--error-message-limit",
 		"Camunda 8.8 and 8.9",
 		"./c8volt get job --key <job-key>",
 		"./c8volt get job --state failed --batch-size 10 --limit 50",
+		"./c8volt get job --state failed --total",
 		"./c8volt --json get job --key <job-key>",
 		"--key string",
 		"--state string",
@@ -1684,6 +1693,7 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"--listener-event-type string",
 		"-n, --batch-size int32",
 		"-l, --limit int32",
+		"--total",
 		"--error-message-limit int",
 	}, nil)
 

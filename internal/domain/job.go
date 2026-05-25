@@ -58,6 +58,18 @@ type JobSearchResult struct {
 	Limit int32 `json:"limit"`
 }
 
+type JobReportedTotalKind string
+
+const (
+	JobReportedTotalKindExact      JobReportedTotalKind = "exact"
+	JobReportedTotalKindLowerBound JobReportedTotalKind = "lower_bound"
+)
+
+type JobReportedTotal struct {
+	Count int64
+	Kind  JobReportedTotalKind
+}
+
 type JobPageRequest struct {
 	From int32
 	Size int32
@@ -67,6 +79,7 @@ type JobSearchPage struct {
 	Items         []Job
 	Request       JobPageRequest
 	OverflowState ProcessInstanceOverflowState
+	ReportedTotal *JobReportedTotal
 }
 
 type JobUpdateRequest struct {

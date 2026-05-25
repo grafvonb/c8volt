@@ -157,6 +157,7 @@ func (s *Service) SearchJobsPage(ctx context.Context, query d.JobSearchQuery, pa
 		Items:         fromJobSearchResults(items),
 		Request:       d.JobPageRequest{From: pageReq.From, Size: pageSize},
 		OverflowState: pickJobSearchOverflowState(payload.Page, pageReq.From, len(items), pageSize),
+		ReportedTotal: newJobReportedTotal(payload.Page.TotalItems, payload.Page.HasMoreTotalItems),
 	}, nil
 }
 
@@ -207,6 +208,14 @@ func pickJobSearchOverflowState(page camundav89.SearchQueryPageResponse, from in
 		return d.ProcessInstanceOverflowStateHasMore
 	}
 	return d.ProcessInstanceOverflowStateNoMore
+}
+
+func newJobReportedTotal(count int64, lowerBound bool) *d.JobReportedTotal {
+	kind := d.JobReportedTotalKindExact
+	if lowerBound {
+		kind = d.JobReportedTotalKindLowerBound
+	}
+	return &d.JobReportedTotal{Count: count, Kind: kind}
 }
 
 func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error) {

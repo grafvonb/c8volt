@@ -189,6 +189,21 @@ func TestGetJobCommand_SearchModeLimitShorthandCapsPagedSearch(t *testing.T) {
 	require.Equal(t, float64(0), page["from"])
 }
 
+func TestGetJobCommand_SearchModeTotalUsesReportedCount(t *testing.T) {
+	var bodies []map[string]any
+	srv := newJobSearchServer(t, &bodies, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0},{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":10,"hasMoreTotalItems":false}}`)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "get", "job", "--batch-size", "2", "--total")
+
+	require.Equal(t, "10\n", output)
+	require.Len(t, bodies, 1)
+	page := requireJSONObject(t, bodies[0]["page"])
+	require.Equal(t, float64(2), page["limit"])
+	require.Equal(t, float64(0), page["from"])
+}
+
 func TestGetJobCommand_SearchModeNormalizesEnumFilters(t *testing.T) {
 	req := jobSearchRequestForTest(t, " failed ", " bpmn_element ", " completing ")
 
@@ -326,6 +341,19 @@ func TestGetJobCommand_SearchValidationRejectsInvalidValues(t *testing.T) {
 			flagGetJobLimit = 0
 			require.NoError(t, getJobCmd.Flags().Set("limit", "0"))
 		}, want: "--limit must be positive integer"},
+		{name: "total json", setup: func() {
+			flagGetJobTotal = true
+			flagViewAsJson = true
+		}, want: "--total cannot be combined with --json"},
+		{name: "total keys only", setup: func() {
+			flagGetJobTotal = true
+			flagViewKeysOnly = true
+		}, want: "--total cannot be combined with --keys-only"},
+		{name: "total limit", setup: func() {
+			flagGetJobTotal = true
+			flagGetJobLimit = 10
+			require.NoError(t, getJobCmd.Flags().Set("limit", "10"))
+		}, want: "--total cannot be combined with --limit"},
 		{name: "batch size", setup: func() {
 			flagGetJobBatchSize = 0
 			require.NoError(t, getJobCmd.Flags().Set("batch-size", "0"))
@@ -338,6 +366,8 @@ func TestGetJobCommand_SearchValidationRejectsInvalidValues(t *testing.T) {
 			t.Cleanup(func() {
 				resetCommandTreeFlags(root)
 				resetGetJobFlagState()
+				flagViewAsJson = false
+				flagViewKeysOnly = false
 			})
 			tc.setup()
 
@@ -492,5 +522,6 @@ func resetGetJobFlagState() {
 	flagGetJobListenerEvent = ""
 	flagGetJobBatchSize = consts.MaxPISearchSize
 	flagGetJobLimit = 0
+	flagGetJobTotal = false
 	flagGetErrorMessageLimit = 0
 }

@@ -63,6 +63,18 @@ type PageRequest struct {
 	Size int32 `json:"size,omitempty"`
 }
 
+type ReportedTotalKind string
+
+const (
+	ReportedTotalKindExact      ReportedTotalKind = "exact"
+	ReportedTotalKindLowerBound ReportedTotalKind = "lower_bound"
+)
+
+type ReportedTotal struct {
+	Count int64             `json:"count,omitempty"`
+	Kind  ReportedTotalKind `json:"kind,omitempty"`
+}
+
 type OverflowState string
 
 const (
@@ -71,9 +83,10 @@ const (
 )
 
 type Page struct {
-	Items         []Job         `json:"items"`
-	Request       PageRequest   `json:"request,omitempty"`
-	OverflowState OverflowState `json:"overflowState,omitempty"`
+	Items         []Job          `json:"items"`
+	Request       PageRequest    `json:"request,omitempty"`
+	OverflowState OverflowState  `json:"overflowState,omitempty"`
+	ReportedTotal *ReportedTotal `json:"reportedTotal,omitempty"`
 }
 
 type UpdateRequest struct {

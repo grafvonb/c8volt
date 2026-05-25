@@ -64,6 +64,29 @@ func searchJobsWithPaging(cmd *cobra.Command, cli job.API, request job.SearchReq
 	}
 }
 
+func searchJobsTotal(cmd *cobra.Command, cli job.API, request job.SearchRequest) (int64, error) {
+	pageReq := job.PageRequest{Size: request.BatchSize}
+	total := int64(0)
+	for {
+		page, err := cli.SearchJobsPage(cmd.Context(), request, pageReq, collectOptions()...)
+		if err != nil {
+			return 0, err
+		}
+		if canUseJobExactReportedTotal(page) {
+			return page.ReportedTotal.Count, nil
+		}
+		total += int64(len(page.Items))
+		if len(page.Items) == 0 || page.OverflowState != job.OverflowStateHasMore {
+			return total, nil
+		}
+		pageReq = nextJobSearchPageRequest(pageReq, page)
+	}
+}
+
+func canUseJobExactReportedTotal(page job.Page) bool {
+	return page.ReportedTotal != nil && page.ReportedTotal.Kind == job.ReportedTotalKindExact
+}
+
 func shouldRenderJobSearchPageIncrementally(cmd *cobra.Command) bool {
 	if flagCmdAutoConfirm {
 		return false
