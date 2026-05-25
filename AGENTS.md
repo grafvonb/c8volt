@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/231-job-ops-workflows/plan.md`
+- Active Speckit implementation plan: `specs/233-element-terminology/plan.md`
 <!-- SPECKIT END -->
