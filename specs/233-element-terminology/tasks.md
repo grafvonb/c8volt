@@ -159,13 +159,13 @@
 
 **Purpose**: Final cleanup, generated docs, task/progress updates, and repository validation.
 
-- [ ] T059 [P] Run gofmt for changed Go files under `cmd/`, `c8volt/`, and `internal/`
-- [ ] T060 Run targeted Go tests for changed packages under `cmd/`, `c8volt/incident`, `c8volt/process`, `c8volt/ops`, `c8volt/resource`, `internal/services/incident`, and `internal/services/processinstance`
-- [ ] T061 Run `make docs-content` from the repository root after command metadata and README changes
-- [ ] T062 Run `make test` from the repository root before commit readiness
-- [ ] T063 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update examples if flags or output changed during implementation
-- [ ] T064 Update task completion and codebase pattern notes in `specs/233-element-terminology/tasks.md` and `specs/233-element-terminology/progress.md`
-- [ ] T065 Review `git diff` to ensure changes are scoped to issue #233 artifacts, implementation, tests, README, and generated docs
+- [x] T059 [P] Run gofmt for changed Go files under `cmd/`, `c8volt/`, and `internal/`
+- [x] T060 Run targeted Go tests for changed packages under `cmd/`, `c8volt/incident`, `c8volt/process`, `c8volt/ops`, `c8volt/resource`, `internal/services/incident`, and `internal/services/processinstance`
+- [x] T061 Run `make docs-content` from the repository root after command metadata and README changes
+- [x] T062 Run `make test` from the repository root before commit readiness
+- [x] T063 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update examples if flags or output changed during implementation
+- [x] T064 Update task completion and codebase pattern notes in `specs/233-element-terminology/tasks.md` and `specs/233-element-terminology/progress.md`
+- [x] T065 Review `git diff` to ensure changes are scoped to issue #233 artifacts, implementation, tests, README, and generated docs
 
 ---
 

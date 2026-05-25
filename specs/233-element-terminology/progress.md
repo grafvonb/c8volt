@@ -2,6 +2,7 @@
 
 ## Codebase Patterns
 
+- Final polish validation for this feature runs `gofmt` across changed Go surfaces, targeted package tests, `make docs-content`, `make test`, and `git diff --check` before marking the feature complete.
 - Process-instance parent context is now canonical end-to-end as `ParentElementInstanceKey` / `parentElementInstanceKey`; only generated clients or v8.7 adapter reads may keep `ParentFlowNodeInstanceKey`.
 - Ops incident workflows register canonical `--element-id` and `--element-instance-key` filters directly; legacy `--flow-node-id` and `--fni-key` remain unregistered and fail as unknown flags.
 - `make docs-content` regenerates `docs/cli/` and syncs `docs/index.md` from README after command metadata or README examples change.
@@ -219,4 +220,26 @@
 - Ops repair and incident-purge commands own their incident filter variables independently, so both command files need canonical flag registration and request selection updates.
 - v8.8 incident search still sends only the tenant filter and applies most filters locally; v8.9 builds a server-side filter object with default active state even for an otherwise empty filter.
 - Validation passed with `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd ./docsgen ./internal/services/incident/...`, `make docs-content`, and a scoped public legacy-term search.
+---
+---
+## Iteration 7 - 2026-05-25 19:28:20 CEST
+**User Story**: Phase 7: Polish & Cross-Cutting Validation
+**Tasks Completed**:
+- [x] T059: Run gofmt for changed Go files under `cmd/`, `c8volt/`, and `internal/`
+- [x] T060: Run targeted Go tests for changed packages under `cmd/`, `c8volt/incident`, `c8volt/process`, `c8volt/ops`, `c8volt/resource`, `internal/services/incident`, and `internal/services/processinstance`
+- [x] T061: Run `make docs-content` from the repository root after command metadata and README changes
+- [x] T062: Run `make test` from the repository root before commit readiness
+- [x] T063: Review `quickstart.md` against implemented behavior and update examples if flags or output changed during implementation
+- [x] T064: Update task completion and codebase pattern notes in `specs/233-element-terminology/tasks.md` and `specs/233-element-terminology/progress.md`
+- [x] T065: Review `git diff` to ensure changes are scoped to issue #233 artifacts, implementation, tests, README, and generated docs
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- docs/index.md
+- specs/233-element-terminology/tasks.md
+- specs/233-element-terminology/progress.md
+**Learnings**:
+- Quickstart scenarios already match the implemented canonical flags, JSON fields, compact human labels, and ops workflows; no quickstart edits were needed.
+- `make docs-content` refreshed the generated index build metadata and temporarily added a trailing blank line to `docs/cli/c8volt_get_job.md`; removing that whitespace artifact made `git diff --check` pass while leaving the generated content change scoped to `docs/index.md`.
+- Validation passed with `gofmt`, targeted package tests, `make docs-content`, race-enabled `make test`, and `git diff --check`.
 ---
