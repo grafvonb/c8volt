@@ -21,6 +21,9 @@
 - `cmd/update_processinstance_variables.go` parses JSON payloads locally and validates one source flag before backend calls; variable-search parser errors should follow the same `invalidFlagValuef`/local validation style.
 - Variable display and update confirmation treat `scopeKey` as direct process-instance scope when matching process-scope variables; docs for search must keep that direct-scope wording.
 - Generated CLI docs under `docs/cli/` are regenerated with `make docs-content`; do not hand-edit them.
+- `cmd/get_processinstance_variable_filter.go` owns CLI variable-filter grammar; it preserves top-level comma semantics, quoted values, arrays, and `$notin` alias normalization before facade mapping.
+- Variable-search flags are intentionally represented as `[]string` globals for future `StringArray`-style Cobra binding so pflag does not split comma-sensitive values before the parser.
+- Shared variable filter intent flows `cmd` -> `c8volt/process.ProcessInstanceFilter.VariableFilters` -> `internal/domain.ProcessInstanceFilter.VariableFilters`; versioned request builders should consume the domain clauses later.
 
 ## Architecture Grounding
 
@@ -61,4 +64,37 @@
 - v8.8 uses generated `camundav88.ProcessInstanceFilter` directly, while v8.9 uses a local JSON mirror of the generated filter shape before posting with `SearchProcessInstancesWithBodyWithResponse`.
 - Both generated v8.8 and v8.9 process-instance filters include native `variables` clauses, so implementation can stay in the versioned service adapters without editing generated clients.
 - Command contract tests already have a focused process-instance variable flag test and docs are regenerated from Cobra metadata with `make docs-content`.
+---
+---
+## Iteration 2 - 2026-05-25 22:45:59 CEST
+**User Story**: Phase 2: Foundational (Blocking Prerequisites)
+**Tasks Completed**:
+- [x] T009: Add failing parser tests for variable clause splitting, quoting, arrays, and operator normalization in a focused `cmd/get_processinstance_variable_filter_test.go`
+- [x] T010: Add failing domain filter string and validation tests for variable filters in `internal/domain/processinstance_test.go`
+- [x] T011: Add failing process facade mapping tests for variable filters in `c8volt/process/client_test.go`
+- [x] T012: Add version-neutral variable filter clause and filter set fields in `internal/domain/processinstance.go`
+- [x] T013: Add public process variable filter models and conversions in `c8volt/process/model.go` and `c8volt/process/convert.go`
+- [x] T014: Add command parser scaffolding for `--var-exists`, `--var`, and `--var-like` in a focused `cmd/get_processinstance_variable_filter.go`
+- [x] T015: Wire parsed variable filters into `populatePISearchFilterOpts` and search validation in the appropriate `cmd/get_processinstance_*.go` files
+- [x] T016: Run targeted compile and parser validation for `cmd`, `c8volt/process`, and `internal/domain`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance.go
+- cmd/get_processinstance_filtering.go
+- cmd/get_processinstance_validation.go
+- cmd/get_processinstance_variable_filter.go
+- cmd/get_processinstance_variable_filter_test.go
+- cmd/get_processinstance_test.go
+- c8volt/process/model.go
+- c8volt/process/convert.go
+- c8volt/process/client_test.go
+- internal/domain/processinstance.go
+- internal/domain/processinstance_test.go
+- specs/139-pi-variable-search/tasks.md
+- specs/139-pi-variable-search/progress.md
+**Learnings**:
+- Variable filters should use `StringArray`-style flag binding in future story work so the command parser, not pflag, owns comma-sensitive splitting.
+- The foundational parser can validate shape and preserve serialized values without introducing service request construction or generated-client dependencies.
+- `hasPISearchFilterFlags` now treats parsed variable-filter globals as search-mode selectors, preserving existing keyed-mode incompatibility checks once flags are registered.
 ---

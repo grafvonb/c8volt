@@ -36,14 +36,14 @@
 
 **Critical**: No user story implementation should begin until this phase is complete.
 
-- [ ] T009 Add failing parser tests for variable clause splitting, quoting, arrays, and operator normalization in a focused `cmd/get_processinstance_variable_filter_test.go`
-- [ ] T010 [P] Add failing domain filter string and validation tests for variable filters in `internal/domain/processinstance_test.go`
-- [ ] T011 [P] Add failing process facade mapping tests for variable filters in `c8volt/process/client_test.go`
-- [ ] T012 Add version-neutral variable filter clause and filter set fields in `internal/domain/processinstance.go`
-- [ ] T013 Add public process variable filter models and conversions in `c8volt/process/model.go` and `c8volt/process/convert.go`
-- [ ] T014 Add command parser scaffolding for `--var-exists`, `--var`, and `--var-like` in a focused `cmd/get_processinstance_variable_filter.go`
-- [ ] T015 Wire parsed variable filters into `populatePISearchFilterOpts` and search validation in the appropriate `cmd/get_processinstance_*.go` files
-- [ ] T016 Run targeted compile and parser validation for `cmd`, `c8volt/process`, and `internal/domain`
+- [x] T009 Add failing parser tests for variable clause splitting, quoting, arrays, and operator normalization in a focused `cmd/get_processinstance_variable_filter_test.go`
+- [x] T010 [P] Add failing domain filter string and validation tests for variable filters in `internal/domain/processinstance_test.go`
+- [x] T011 [P] Add failing process facade mapping tests for variable filters in `c8volt/process/client_test.go`
+- [x] T012 Add version-neutral variable filter clause and filter set fields in `internal/domain/processinstance.go`
+- [x] T013 Add public process variable filter models and conversions in `c8volt/process/model.go` and `c8volt/process/convert.go`
+- [x] T014 Add command parser scaffolding for `--var-exists`, `--var`, and `--var-like` in a focused `cmd/get_processinstance_variable_filter.go`
+- [x] T015 Wire parsed variable filters into `populatePISearchFilterOpts` and search validation in the appropriate `cmd/get_processinstance_*.go` files
+- [x] T016 Run targeted compile and parser validation for `cmd`, `c8volt/process`, and `internal/domain`
 
 **Checkpoint**: Shared variable filter grammar and model plumbing compile, parser tests can drive user-story implementation, and no remote behavior is required yet.
 

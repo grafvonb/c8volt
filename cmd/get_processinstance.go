@@ -40,6 +40,9 @@ var (
 	flagGetPIIncidentMessageLimit int
 	flagGetPIWithVars             bool
 	flagGetPIVarValueLimit        int
+	flagGetPIVarExists            []string
+	flagGetPIVars                 []string
+	flagGetPIVarLikes             []string
 )
 
 // command options

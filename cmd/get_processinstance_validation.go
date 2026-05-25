@@ -83,6 +83,9 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 	if isPIVarValueLimitFlagChanged(cmd) && !flagGetPIWithVars {
 		return missingDependentFlagsf("--var-value-limit requires --with-vars")
 	}
+	if _, err := parsePIVariableFilters(); err != nil {
+		return err
+	}
 	if flagGetPIProcessDefinitionKey != "" &&
 		(flagGetPIBpmnProcessID != "" ||
 			flagGetPIProcessVersion != 0 ||
