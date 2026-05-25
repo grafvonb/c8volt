@@ -19,14 +19,14 @@
 
 **Purpose**: Confirm current process-instance search ownership, generated request shapes, and docs surfaces before changing behavior.
 
-- [ ] T001 Inspect current `get pi` search flags, validation, and filter population in `cmd/get_processinstance.go` and adjacent `cmd/get_processinstance_*.go`
-- [ ] T002 [P] Inspect process facade filter mapping in `c8volt/process/api.go`, `c8volt/process/model.go`, `c8volt/process/convert.go`, and `c8volt/process/client.go`
-- [ ] T003 [P] Inspect current domain process-instance filters in `internal/domain/processinstance.go`
-- [ ] T004 [P] Inspect process-instance service interfaces and versioned search request construction in `internal/services/processinstance/api.go`, `internal/services/processinstance/v87/`, `internal/services/processinstance/v88/`, and `internal/services/processinstance/v89/`
-- [ ] T005 [P] Inspect generated Camunda variable/process-instance search request types in `internal/clients/camunda/v88/` and `internal/clients/camunda/v89/`
-- [ ] T006 [P] Inspect existing variable display and update parsing patterns in `cmd/get_processinstance*.go`, `cmd/update_processinstance*.go`, and `internal/services/processinstance/variables.go`
-- [ ] T007 [P] Inspect command contract and docs generation expectations in `cmd/command_contract_test.go`, `README.md`, `docsgen/`, and `docs/cli/`
-- [ ] T008 Record discovered ownership notes in `specs/139-pi-variable-search/progress.md`
+- [x] T001 Inspect current `get pi` search flags, validation, and filter population in `cmd/get_processinstance.go` and adjacent `cmd/get_processinstance_*.go`
+- [x] T002 [P] Inspect process facade filter mapping in `c8volt/process/api.go`, `c8volt/process/model.go`, `c8volt/process/convert.go`, and `c8volt/process/client.go`
+- [x] T003 [P] Inspect current domain process-instance filters in `internal/domain/processinstance.go`
+- [x] T004 [P] Inspect process-instance service interfaces and versioned search request construction in `internal/services/processinstance/api.go`, `internal/services/processinstance/v87/`, `internal/services/processinstance/v88/`, and `internal/services/processinstance/v89/`
+- [x] T005 [P] Inspect generated Camunda variable/process-instance search request types in `internal/clients/camunda/v88/` and `internal/clients/camunda/v89/`
+- [x] T006 [P] Inspect existing variable display and update parsing patterns in `cmd/get_processinstance*.go`, `cmd/update_processinstance*.go`, and `internal/services/processinstance/variables.go`
+- [x] T007 [P] Inspect command contract and docs generation expectations in `cmd/command_contract_test.go`, `README.md`, `docsgen/`, and `docs/cli/`
+- [x] T008 Record discovered ownership notes in `specs/139-pi-variable-search/progress.md`
 
 ---
 
