@@ -384,3 +384,67 @@ func TestClient_SubmitJobTechnicalFailure_MutationFailureReturnsFailedResult(t *
 	require.False(t, result.MutationAccepted)
 	require.Equal(t, mutationErr.Error(), result.Error)
 }
+
+func TestClient_SubmitJobBPMNError_MapsRequestAndResult(t *testing.T) {
+	api := New(fakeJobService{
+		outcome: func(_ context.Context, request d.JobWorkerOutcomeRequest, _ ...services.CallOption) (d.JobWorkerOutcomeResult, error) {
+			require.Equal(t, "2251799813711967", request.Key)
+			require.Equal(t, d.JobWorkerOutcomeBPMNError, request.Mode)
+			require.Equal(t, "PAYMENT_DECLINED", request.ErrorCode)
+			require.Equal(t, "card declined", request.Message)
+			require.Equal(t, map[string]any{"approved": false}, request.Variables)
+			require.True(t, request.SkipConfirmation)
+			return d.JobWorkerOutcomeResult{
+				Key:                request.Key,
+				Mode:               request.Mode,
+				MutationAccepted:   true,
+				ConfirmationStatus: "skipped",
+				SubmittedErrorCode: request.ErrorCode,
+			}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.SubmitJobWorkerOutcome(context.Background(), WorkerOutcomeRequest{
+		Key:       "2251799813711967",
+		Mode:      WorkerOutcomeBPMNError,
+		ErrorCode: "PAYMENT_DECLINED",
+		Message:   "card declined",
+		Variables: map[string]any{"approved": false},
+		NoWait:    true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "submitted", result.Status)
+	require.Equal(t, WorkerOutcomeBPMNError, result.Mode)
+	require.True(t, result.MutationAccepted)
+	require.Equal(t, "skipped", result.ConfirmationStatus)
+	require.Equal(t, "PAYMENT_DECLINED", result.SubmittedErrorCode)
+}
+
+func TestClient_SubmitJobBPMNError_MutationFailureReturnsFailedResult(t *testing.T) {
+	mutationErr := errors.New("camunda rejected BPMN error")
+	api := New(fakeJobService{
+		outcome: func(_ context.Context, request d.JobWorkerOutcomeRequest, _ ...services.CallOption) (d.JobWorkerOutcomeResult, error) {
+			require.Equal(t, "2251799813711967", request.Key)
+			require.Equal(t, d.JobWorkerOutcomeBPMNError, request.Mode)
+			require.Equal(t, "PAYMENT_DECLINED", request.ErrorCode)
+			return d.JobWorkerOutcomeResult{
+				Key:           request.Key,
+				Mode:          request.Mode,
+				MutationError: mutationErr.Error(),
+			}, mutationErr
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.SubmitJobWorkerOutcome(context.Background(), WorkerOutcomeRequest{
+		Key:       "2251799813711967",
+		Mode:      WorkerOutcomeBPMNError,
+		ErrorCode: "PAYMENT_DECLINED",
+	})
+
+	require.Error(t, err)
+	require.Equal(t, "mutation_failed", result.Status)
+	require.Equal(t, WorkerOutcomeBPMNError, result.Mode)
+	require.False(t, result.MutationAccepted)
+	require.Equal(t, mutationErr.Error(), result.Error)
+}

@@ -5,6 +5,7 @@ Started: 2026-05-25 15:34:07
 
 ## Codebase Patterns
 
+- BPMN error worker outcomes reuse the existing `SubmitJobWorkerOutcome` facade and mutation-plan path; command parsing owns JSON object validation for `--vars`, while v8.8/v8.9 services own generated `ThrowJobErrorWithResponse` request construction.
 - `cmd/get_job.go` currently owns keyed-only validation, full contract support, and the `--error-message-limit` JSON exclusion; list/search mode should extend this local flag grammar without bypassing the facade.
 - `cmd/update_job.go` builds a pre-mutation plan by loading the current job first, renders dry-run/plan output before prompting, and relies on JSON guardrails plus `--auto-confirm`/`--automation` for unattended mutations.
 - Existing retry/timeout plans should carry `MutationModeUpdate` so JSON dry-runs remain explicit as worker outcome plan modes are added later.
@@ -184,4 +185,37 @@ Started: 2026-05-25 15:34:07
 - Technical failure can reuse the existing update plan and confirmation gate while delegating mutation through the worker outcome facade method.
 - Generated `JobFailRequest` uses `retryBackOff` in JSON, so command and service tests assert that spelling rather than command flag spelling.
 - Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/job ./internal/domain ./internal/services/job ./internal/services/job/v87 ./internal/services/job/v88 ./internal/services/job/v89 -count=1`.
+---
+
+---
+## Iteration 6 - 2026-05-25 16:22:23 CEST
+**User Story**: User Story 4 - Throw A Modeled BPMN Error
+**Tasks Completed**:
+- [x] T044: Add command validation tests for BPMN error code, message, variables if supported, and mutual exclusion
+- [x] T045: Add command output tests for BPMN error dry-run and submitted results
+- [x] T046: Add v8.8/v8.9 service tests for `ThrowJobErrorWithResponse` request construction
+- [x] T047: Add facade tests for BPMN error request mapping and mutation error handling
+- [x] T048: Add BPMN error flags and validation
+- [x] T049: Add BPMN error request/result models and conversion
+- [x] T050: Implement BPMN error facade delegation
+- [x] T051: Implement v8.8/v8.9 BPMN error service calls
+- [x] T052: Extend job mutation plan and result rendering for BPMN error
+- [x] T053: Verify US4 with targeted tests
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/job/client_test.go
+- cmd/cmd_views_job.go
+- cmd/update_job.go
+- cmd/update_job_test.go
+- internal/services/job/v88/service.go
+- internal/services/job/v88/service_test.go
+- internal/services/job/v89/service.go
+- internal/services/job/v89/service_test.go
+- specs/231-job-ops-workflows/tasks.md
+- specs/231-job-ops-workflows/progress.md
+**Learnings**:
+- BPMN error support did not require new public/domain model fields because foundational worker outcome fields already carried mode, error code, message, variables, and submitted error code.
+- `--throw-bpmn-error` remains separate from retry, timeout, technical failure, and completion modes; completion is still fail-closed for the next work unit.
+- Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/job ./internal/services/job/v88 ./internal/services/job/v89 -count=1`.
 ---

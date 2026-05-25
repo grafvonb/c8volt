@@ -132,19 +132,19 @@
 
 ### Tests for User Story 4
 
-- [ ] T044 [P] [US4] Add command validation tests for BPMN error code, message, variables if supported, and mutual exclusion in `cmd/update_job_test.go`
-- [ ] T045 [P] [US4] Add command output tests for BPMN error dry-run and submitted results in `cmd/update_job_test.go`
-- [ ] T046 [P] [US4] Add v8.8/v8.9 service tests for `ThrowJobErrorWithResponse` request construction in `internal/services/job/v88/service_test.go` and `internal/services/job/v89/service_test.go`
-- [ ] T047 [P] [US4] Add facade tests for BPMN error request mapping and mutation error handling in `c8volt/job/client_test.go`
+- [x] T044 [P] [US4] Add command validation tests for BPMN error code, message, variables if supported, and mutual exclusion in `cmd/update_job_test.go`
+- [x] T045 [P] [US4] Add command output tests for BPMN error dry-run and submitted results in `cmd/update_job_test.go`
+- [x] T046 [P] [US4] Add v8.8/v8.9 service tests for `ThrowJobErrorWithResponse` request construction in `internal/services/job/v88/service_test.go` and `internal/services/job/v89/service_test.go`
+- [x] T047 [P] [US4] Add facade tests for BPMN error request mapping and mutation error handling in `c8volt/job/client_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T048 [US4] Add BPMN error flags and validation in `cmd/update_job.go`
-- [ ] T049 [US4] Add BPMN error request/result models and conversion in `c8volt/job/model.go` and `internal/domain/job.go`
-- [ ] T050 [US4] Implement BPMN error facade delegation in `c8volt/job/client.go`
-- [ ] T051 [US4] Implement v8.8/v8.9 BPMN error service calls in `internal/services/job/v88/service.go` and `internal/services/job/v89/service.go`
-- [ ] T052 [US4] Extend job mutation plan and result rendering for BPMN error in `cmd/cmd_views_job.go`
-- [ ] T053 [US4] Verify US4 with targeted tests for `cmd/update_job_test.go`, `c8volt/job/client_test.go`, and versioned job service tests
+- [x] T048 [US4] Add BPMN error flags and validation in `cmd/update_job.go`
+- [x] T049 [US4] Add BPMN error request/result models and conversion in `c8volt/job/model.go` and `internal/domain/job.go`
+- [x] T050 [US4] Implement BPMN error facade delegation in `c8volt/job/client.go`
+- [x] T051 [US4] Implement v8.8/v8.9 BPMN error service calls in `internal/services/job/v88/service.go` and `internal/services/job/v89/service.go`
+- [x] T052 [US4] Extend job mutation plan and result rendering for BPMN error in `cmd/cmd_views_job.go`
+- [x] T053 [US4] Verify US4 with targeted tests for `cmd/update_job_test.go`, `c8volt/job/client_test.go`, and versioned job service tests
 
 **Checkpoint**: User Story 4 is complete when modeled BPMN errors are explicit and cannot be confused with technical failures.
 

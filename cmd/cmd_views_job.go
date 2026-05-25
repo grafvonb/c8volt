@@ -89,6 +89,9 @@ func jobWorkerOutcomeResultView(cmd *cobra.Command, result job.WorkerOutcomeResu
 		if result.SubmittedBackoffMS != nil {
 			parts = append(parts, fmt.Sprintf("retryBackoff=%dms", *result.SubmittedBackoffMS))
 		}
+		if result.SubmittedErrorCode != "" {
+			parts = append(parts, fmt.Sprintf("errorCode=%s", result.SubmittedErrorCode))
+		}
 		renderHumanLine(cmd, "updated job %s: %s", result.Key, strings.Join(parts, " "))
 	case "mutation_failed":
 		renderHumanLine(cmd, "updated job %s: mutation failed: %s", result.Key, result.Error)
@@ -182,10 +185,16 @@ func formatJobUpdatePlanItems(items []job.UpdatePlanItem) string {
 			parts = append(parts, fmt.Sprintf("timeout: set to %s", item.After))
 		case string(job.MutationModeTechnicalFailure):
 			parts = append(parts, "technical failure: submit")
+		case string(job.MutationModeBPMNError):
+			parts = append(parts, "BPMN error: submit")
 		case "retryBackoff":
 			parts = append(parts, fmt.Sprintf("retry backoff: %s", item.After))
+		case "errorCode":
+			parts = append(parts, fmt.Sprintf("error code: %s", item.After))
 		case "message":
 			parts = append(parts, fmt.Sprintf("message: %s", item.After))
+		case "variables":
+			parts = append(parts, "variables: submit")
 		default:
 			parts = append(parts, fmt.Sprintf("%s: %s", item.Name, item.After))
 		}

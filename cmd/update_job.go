@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -132,6 +133,9 @@ func parseUpdateJobRequest(cmd *cobra.Command) (job.UpdateRequest, error) {
 	if strings.TrimSpace(flagUpdateJobKey) == "" {
 		return job.UpdateRequest{}, invalidFlagValuef("job update requires a non-empty --key")
 	}
+	if cmd.Flags().Changed("throw-bpmn-error") {
+		return parseUpdateJobBPMNErrorRequest(cmd)
+	}
 	if cmd.Flags().Changed("fail") {
 		return parseUpdateJobTechnicalFailureRequest(cmd)
 	}
@@ -174,8 +178,56 @@ func parseUpdateJobRequest(cmd *cobra.Command) (job.UpdateRequest, error) {
 	return request, nil
 }
 
-// parseUpdateJobTechnicalFailureRequest unlocks only the first worker outcome
-// mode while keeping later BPMN error and completion flags fail-closed.
+func parseUpdateJobBPMNErrorRequest(cmd *cobra.Command) (job.UpdateRequest, error) {
+	if cmd.Flags().Changed("fail") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--throw-bpmn-error cannot be combined with --fail")
+	}
+	if cmd.Flags().Changed("complete") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--throw-bpmn-error cannot be combined with --complete")
+	}
+	if cmd.Flags().Changed("retries") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--throw-bpmn-error cannot be combined with --retries")
+	}
+	if cmd.Flags().Changed("timeout") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--throw-bpmn-error cannot be combined with --timeout")
+	}
+	if cmd.Flags().Changed("retry-backoff") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--throw-bpmn-error cannot be combined with --retry-backoff")
+	}
+	errorCode := strings.TrimSpace(flagUpdateJobBPMNError)
+	if errorCode == "" {
+		return job.UpdateRequest{}, invalidFlagValuef("BPMN error requires a non-empty --throw-bpmn-error")
+	}
+	var variables map[string]any
+	if cmd.Flags().Changed("vars") {
+		parsed, err := parseUpdateJobVariables(flagUpdateJobVariables)
+		if err != nil {
+			return job.UpdateRequest{}, err
+		}
+		variables = parsed
+	}
+	outcome := job.WorkerOutcomeRequest{
+		Key:         flagUpdateJobKey,
+		Mode:        job.WorkerOutcomeBPMNError,
+		Message:     flagUpdateJobMessage,
+		Variables:   variables,
+		ErrorCode:   errorCode,
+		NoWait:      flagNoWait,
+		AutoConfirm: flagCmdAutoConfirm,
+		Automation:  updateJobAutomationEnabled(cmd),
+		DryRun:      flagDryRun,
+	}
+	return job.UpdateRequest{
+		Key:           flagUpdateJobKey,
+		NoWait:        flagNoWait,
+		AutoConfirm:   flagCmdAutoConfirm,
+		Automation:    updateJobAutomationEnabled(cmd),
+		DryRun:        flagDryRun,
+		WorkerOutcome: &outcome,
+	}, nil
+}
+
+// parseUpdateJobTechnicalFailureRequest keeps later completion flags fail-closed.
 func parseUpdateJobTechnicalFailureRequest(cmd *cobra.Command) (job.UpdateRequest, error) {
 	if cmd.Flags().Changed("throw-bpmn-error") {
 		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--fail cannot be combined with --throw-bpmn-error")
@@ -227,6 +279,18 @@ func parseUpdateJobTechnicalFailureRequest(cmd *cobra.Command) (job.UpdateReques
 		DryRun:        flagDryRun,
 		WorkerOutcome: &outcome,
 	}, nil
+}
+
+func parseUpdateJobVariables(raw string) (map[string]any, error) {
+	var decoded any
+	if err := json.Unmarshal([]byte(raw), &decoded); err != nil {
+		return nil, invalidFlagValuef("--vars must be a valid JSON object: %v", err)
+	}
+	variables, ok := decoded.(map[string]any)
+	if !ok || variables == nil {
+		return nil, invalidFlagValuef("--vars must be a JSON object")
+	}
+	return variables, nil
 }
 
 func changedUpdateJobWorkerOutcomeFlags(cmd *cobra.Command) []string {
@@ -358,10 +422,24 @@ func buildWorkerOutcomeUpdatePlan(current job.Job, request job.UpdateRequest) jo
 			Status: "submit",
 		})
 	}
+	if outcome.ErrorCode != "" {
+		plan.Items = append(plan.Items, job.UpdatePlanItem{
+			Name:   "errorCode",
+			After:  outcome.ErrorCode,
+			Status: "submit",
+		})
+	}
 	if outcome.Message != "" {
 		plan.Items = append(plan.Items, job.UpdatePlanItem{
 			Name:   "message",
 			After:  outcome.Message,
+			Status: "submit",
+		})
+	}
+	if outcome.Variables != nil {
+		plan.Items = append(plan.Items, job.UpdatePlanItem{
+			Name:   "variables",
+			After:  "submit",
 			Status: "submit",
 		})
 	}

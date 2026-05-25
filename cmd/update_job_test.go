@@ -434,6 +434,66 @@ func TestUpdateJobCommand_JSONDryRunTechnicalFailurePlanPayload(t *testing.T) {
 	require.Equal(t, float64(300000), payload["retryBackoffMs"])
 }
 
+func TestUpdateJobCommand_BPMNErrorDryRunLoadsCurrentJobAndSkipsMutation(t *testing.T) {
+	var requests []string
+	var errorBodies []map[string]any
+	srv := newJobBPMNErrorServer(t, &requests, &errorBodies, []string{
+		jobSearchResponse("2251799813711967", 1),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--throw-bpmn-error", "PAYMENT_DECLINED", "--message", "card declined", "--vars", `{"approved":false}`, "--dry-run")
+
+	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
+	require.Empty(t, errorBodies)
+	require.Contains(t, output, "dry run: update job 2251799813711967: BPMN error: submit; error code: PAYMENT_DECLINED; message: card declined; variables: submit; no changes applied")
+}
+
+func TestUpdateJobCommand_BPMNErrorSubmittedHumanOutput(t *testing.T) {
+	var requests []string
+	var errorBodies []map[string]any
+	srv := newJobBPMNErrorServer(t, &requests, &errorBodies, []string{
+		jobSearchResponse("2251799813711967", 1),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--throw-bpmn-error", "PAYMENT_DECLINED", "--message", "card declined", "--vars", `{"approved":false}`, "--auto-confirm")
+
+	require.Equal(t, []string{"POST /v2/jobs/search", "POST /v2/jobs/2251799813711967/error"}, requests)
+	require.Len(t, errorBodies, 1)
+	requireBPMNErrorCode(t, errorBodies[0], "PAYMENT_DECLINED")
+	require.Equal(t, "card declined", errorBodies[0]["errorMessage"])
+	require.Equal(t, map[string]any{"approved": false}, errorBodies[0]["variables"])
+	require.Contains(t, output, "updated job 2251799813711967: submitted BPMN error errorCode=PAYMENT_DECLINED")
+}
+
+func TestUpdateJobCommand_JSONDryRunBPMNErrorPlanPayload(t *testing.T) {
+	var requests []string
+	var errorBodies []map[string]any
+	srv := newJobBPMNErrorServer(t, &requests, &errorBodies, []string{
+		jobSearchResponse("2251799813711967", 1),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--throw-bpmn-error", "PAYMENT_DECLINED", "--message", "card declined", "--vars", `{"approved":false}`, "--dry-run")
+
+	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
+	require.Empty(t, errorBodies)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "bpmn_error", payload["mode"])
+	require.Equal(t, true, payload["dryRun"])
+	require.Equal(t, true, payload["materialChange"])
+	require.Equal(t, false, payload["mutationSubmitted"])
+	require.Equal(t, "PAYMENT_DECLINED", payload["errorCode"])
+	require.Equal(t, "card declined", payload["message"])
+	require.Equal(t, map[string]any{"approved": false}, payload["variables"])
+}
+
 func TestUpdateJobCommand_UnsupportedV87FailsBeforeMutation(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
 
@@ -507,6 +567,34 @@ func TestParseUpdateJobRequestParsesTechnicalFailure(t *testing.T) {
 	require.Nil(t, request.TimeoutMillis)
 }
 
+func TestParseUpdateJobRequestParsesBPMNError(t *testing.T) {
+	resetUpdateJobFlagState()
+	t.Cleanup(resetUpdateJobFlagState)
+	resetCommandTreeFlags(Root())
+	require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+	require.NoError(t, updateJobCmd.Flags().Set("vars", `{"approved":false}`))
+	t.Cleanup(func() {
+		require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", ""))
+		require.NoError(t, updateJobCmd.Flags().Set("vars", ""))
+	})
+
+	flagUpdateJobKey = "2251799813711967"
+	flagUpdateJobBPMNError = "PAYMENT_DECLINED"
+	flagUpdateJobMessage = "card declined"
+	flagUpdateJobVariables = `{"approved":false}`
+
+	request, err := parseUpdateJobRequest(updateJobCmd)
+
+	require.NoError(t, err)
+	require.NotNil(t, request.WorkerOutcome)
+	require.Equal(t, job.WorkerOutcomeBPMNError, request.WorkerOutcome.Mode)
+	require.Equal(t, "PAYMENT_DECLINED", request.WorkerOutcome.ErrorCode)
+	require.Equal(t, "card declined", request.WorkerOutcome.Message)
+	require.Equal(t, map[string]any{"approved": false}, request.WorkerOutcome.Variables)
+	require.Nil(t, request.Retries)
+	require.Nil(t, request.TimeoutMillis)
+}
+
 func TestParseUpdateJobRequestRejectsTechnicalFailureValidationErrors(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -558,7 +646,7 @@ func TestParseUpdateJobRequestRejectsTechnicalFailureValidationErrors(t *testing
 				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
 				flagUpdateJobRetries = 1
 			},
-			message: "--fail cannot be combined with --throw-bpmn-error",
+			message: "--throw-bpmn-error cannot be combined with --fail",
 		},
 		{
 			name: "complete conflict",
@@ -577,6 +665,95 @@ func TestParseUpdateJobRequestRejectsTechnicalFailureValidationErrors(t *testing
 			t.Cleanup(resetUpdateJobFlagState)
 			resetCommandTreeFlags(Root())
 			flagUpdateJobKey = "2251799813711967"
+			tt.set(t)
+
+			_, err := parseUpdateJobRequest(updateJobCmd)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.message)
+		})
+	}
+}
+
+func TestParseUpdateJobRequestRejectsBPMNErrorValidationErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		set     func(t *testing.T)
+		message string
+	}{
+		{
+			name: "empty code",
+			set: func(t *testing.T) {
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", ""))
+			},
+			message: "BPMN error requires a non-empty --throw-bpmn-error",
+		},
+		{
+			name: "fail conflict",
+			set: func(t *testing.T) {
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+				require.NoError(t, updateJobCmd.Flags().Set("fail", "true"))
+			},
+			message: "--throw-bpmn-error cannot be combined with --fail",
+		},
+		{
+			name: "complete conflict",
+			set: func(t *testing.T) {
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+				require.NoError(t, updateJobCmd.Flags().Set("complete", "true"))
+			},
+			message: "--throw-bpmn-error cannot be combined with --complete",
+		},
+		{
+			name: "retries conflict",
+			set: func(t *testing.T) {
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+				require.NoError(t, updateJobCmd.Flags().Set("retries", "1"))
+			},
+			message: "--throw-bpmn-error cannot be combined with --retries",
+		},
+		{
+			name: "timeout conflict",
+			set: func(t *testing.T) {
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+				require.NoError(t, updateJobCmd.Flags().Set("timeout", "5m"))
+			},
+			message: "--throw-bpmn-error cannot be combined with --timeout",
+		},
+		{
+			name: "retry backoff conflict",
+			set: func(t *testing.T) {
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+				require.NoError(t, updateJobCmd.Flags().Set("retry-backoff", "5m"))
+			},
+			message: "--throw-bpmn-error cannot be combined with --retry-backoff",
+		},
+		{
+			name: "invalid variables",
+			set: func(t *testing.T) {
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+				require.NoError(t, updateJobCmd.Flags().Set("vars", "{"))
+				flagUpdateJobVariables = "{"
+			},
+			message: "--vars must be a valid JSON object",
+		},
+		{
+			name: "non-object variables",
+			set: func(t *testing.T) {
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+				require.NoError(t, updateJobCmd.Flags().Set("vars", `["bad"]`))
+				flagUpdateJobVariables = `["bad"]`
+			},
+			message: "--vars must be a JSON object",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetUpdateJobFlagState()
+			t.Cleanup(resetUpdateJobFlagState)
+			resetCommandTreeFlags(Root())
+			flagUpdateJobKey = "2251799813711967"
+			flagUpdateJobBPMNError = "PAYMENT_DECLINED"
 			tt.set(t)
 
 			_, err := parseUpdateJobRequest(updateJobCmd)
@@ -639,6 +816,32 @@ func newJobFailServer(t *testing.T, requests *[]string, failBodies *[]map[string
 	}))
 }
 
+func newJobBPMNErrorServer(t *testing.T, requests *[]string, errorBodies *[]map[string]any, searchResponses []string, errorStatus int) *httptest.Server {
+	t.Helper()
+	searchIndex := 0
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*requests = append(*requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/jobs/search":
+			require.Less(t, searchIndex, len(searchResponses))
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			filter := requireJSONObject(t, body["filter"])
+			require.NotEmpty(t, filter["jobKey"])
+			_, _ = w.Write([]byte(searchResponses[searchIndex]))
+			searchIndex++
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/error"):
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			*errorBodies = append(*errorBodies, body)
+			w.WriteHeader(errorStatus)
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+	}))
+}
+
 func jobSearchResponse(key string, retries int32) string {
 	return jobSearchResponseWithState(key, retries, "FAILED")
 }
@@ -668,6 +871,11 @@ func requireFailRetries(t *testing.T, body map[string]any, want float64) {
 func requireFailRetryBackoff(t *testing.T, body map[string]any, want float64) {
 	t.Helper()
 	require.Equal(t, want, body["retryBackOff"])
+}
+
+func requireBPMNErrorCode(t *testing.T, body map[string]any, want string) {
+	t.Helper()
+	require.Equal(t, want, body["errorCode"])
 }
 
 func newJobViewTestCommand() (*cobra.Command, *bytes.Buffer) {
