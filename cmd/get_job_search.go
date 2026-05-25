@@ -112,8 +112,12 @@ func renderJobSearchPage(cmd *cobra.Command, items []job.Job) error {
 			renderOutputLine(cmd, "%s", item.Key)
 		}
 	default:
+		rows := make([]flatRow, 0, len(items))
 		for _, item := range items {
-			renderOutputLine(cmd, "%s", compactFlatRow(flatRowJobWithTimezoneForMode(cmd)(item)))
+			rows = append(rows, flatRowJobWithTimezoneForMode(cmd)(item))
+		}
+		for _, line := range formatFlatRows(rows) {
+			renderOutputLine(cmd, "%s", line)
 		}
 	}
 	return nil
