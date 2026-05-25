@@ -341,6 +341,38 @@ func TestService_SearchAndLookup(t *testing.T) {
 		require.Empty(t, page.Items)
 	})
 
+	t.Run("MapsVariableExistenceFilters", func(t *testing.T) {
+		exists := true
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
+				payload := readBody(t, body)
+				assert.Contains(t, payload, `"variables":[{"name":"customerId","value":{"$exists":true}},{"name":"payload","value":{"$exists":true}}]`)
+				assert.Contains(t, payload, `"tenantId":"tenant"`)
+				return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
+					Items: []camundav89.ProcessInstanceResult{makeProcessInstanceResult("123", "ACTIVE", "")},
+					Page:  camundav89.SearchQueryPageResponse{TotalItems: 1},
+				}), nil
+			},
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+			deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
+			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+		})
+
+		page, err := svc.SearchForProcessInstancesPage(ctx, d.ProcessInstanceFilter{
+			VariableFilters: d.ProcessInstanceVariableFilterSet{
+				Clauses: []d.ProcessInstanceVariableFilterClause{
+					{Name: "customerId", Operator: d.ProcessInstanceVariableFilterOperatorExists, Exists: &exists},
+					{Name: "payload", Operator: d.ProcessInstanceVariableFilterOperatorExists, Exists: &exists},
+				},
+			},
+		}, d.ProcessInstancePageRequest{From: 0, Size: 25})
+
+		require.NoError(t, err)
+		require.Len(t, page.Items, 1)
+		assert.Equal(t, "123", page.Items[0].Key)
+	})
+
 	t.Run("MapsCanceledSearchStateToTerminated", func(t *testing.T) {
 		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),

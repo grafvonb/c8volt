@@ -34,6 +34,38 @@ func TestParsePIVariableFilters_PreservesQuotedCommasAndArrays(t *testing.T) {
 	}, got)
 }
 
+// TestParsePIVariableFilters_ExpandsRepeatedExistsInputs verifies the
+// existence shorthand combines repeated flags and comma-separated names.
+func TestParsePIVariableFilters_ExpandsRepeatedExistsInputs(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	flagGetPIVarExists = []string{"customerId", "payload,email"}
+
+	got, err := parsePIVariableFilters()
+
+	require.NoError(t, err)
+	require.Equal(t, []process.ProcessInstanceVariableFilterClause{
+		{Name: "customerId", Operator: process.ProcessInstanceVariableFilterOperatorExists, Exists: boolValuePtr(true), Source: piVariableFilterSourceExists},
+		{Name: "payload", Operator: process.ProcessInstanceVariableFilterOperatorExists, Exists: boolValuePtr(true), Source: piVariableFilterSourceExists},
+		{Name: "email", Operator: process.ProcessInstanceVariableFilterOperatorExists, Exists: boolValuePtr(true), Source: piVariableFilterSourceExists},
+	}, got.Clauses)
+}
+
+// TestParsePIVariableFilters_RejectsBlankExistsName keeps doubled delimiters
+// from becoming ambiguous native existence clauses.
+func TestParsePIVariableFilters_RejectsBlankExistsName(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	flagGetPIVarExists = []string{"payload,,email"}
+
+	_, err := parsePIVariableFilters()
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "variable name must not be blank")
+}
+
 // TestParsePIVariableFilters_NormalizesAdvancedOperators verifies native
 // operator spelling is preserved while the accepted notin alias is canonicalized.
 func TestParsePIVariableFilters_NormalizesAdvancedOperators(t *testing.T) {

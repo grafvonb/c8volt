@@ -57,19 +57,19 @@
 
 ### Tests for User Story 1
 
-- [ ] T017 [P] [US1] Add command parser and validation tests for `--var-exists customerId` and `--var-exists payload,email` in `cmd/get_processinstance_variable_filter_test.go`
-- [ ] T018 [P] [US1] Add command execution tests for `get pi --var-exists` request flow in `cmd/get_processinstance_test.go`
-- [ ] T019 [P] [US1] Add v8.8 native request construction tests for `$exists=true` filters in `internal/services/processinstance/v88/service_test.go`
-- [ ] T020 [P] [US1] Add v8.9 native request construction tests for `$exists=true` filters in `internal/services/processinstance/v89/service_test.go`
+- [x] T017 [P] [US1] Add command parser and validation tests for `--var-exists customerId` and `--var-exists payload,email` in `cmd/get_processinstance_variable_filter_test.go`
+- [x] T018 [P] [US1] Add command execution tests for `get pi --var-exists` request flow in `cmd/get_processinstance_test.go`
+- [x] T019 [P] [US1] Add v8.8 native request construction tests for `$exists=true` filters in `internal/services/processinstance/v88/service_test.go`
+- [x] T020 [P] [US1] Add v8.9 native request construction tests for `$exists=true` filters in `internal/services/processinstance/v89/service_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T021 [US1] Register `--var-exists` flag and help text in `cmd/get_processinstance.go`
-- [ ] T022 [US1] Implement `--var-exists` parsing and validation in `cmd/get_processinstance_variable_filter.go`
-- [ ] T023 [US1] Map existence clauses through process facade and domain filters in `c8volt/process/convert.go` and `internal/domain/processinstance.go`
-- [ ] T024 [US1] Implement native existence request mapping for Camunda 8.8 in `internal/services/processinstance/v88/service.go` or a focused v88 filter file
-- [ ] T025 [US1] Implement native existence request mapping for Camunda 8.9 in `internal/services/processinstance/v89/service.go` or a focused v89 filter file
-- [ ] T026 [US1] Verify US1 with targeted tests for `cmd`, `c8volt/process`, `internal/domain`, `internal/services/processinstance/v88`, and `internal/services/processinstance/v89`
+- [x] T021 [US1] Register `--var-exists` flag and help text in `cmd/get_processinstance.go`
+- [x] T022 [US1] Implement `--var-exists` parsing and validation in `cmd/get_processinstance_variable_filter.go`
+- [x] T023 [US1] Map existence clauses through process facade and domain filters in `c8volt/process/convert.go` and `internal/domain/processinstance.go`
+- [x] T024 [US1] Implement native existence request mapping for Camunda 8.8 in `internal/services/processinstance/v88/service.go` or a focused v88 filter file
+- [x] T025 [US1] Implement native existence request mapping for Camunda 8.9 in `internal/services/processinstance/v89/service.go` or a focused v89 filter file
+- [x] T026 [US1] Verify US1 with targeted tests for `cmd`, `c8volt/process`, `internal/domain`, `internal/services/processinstance/v88`, and `internal/services/processinstance/v89`
 
 **Checkpoint**: User Story 1 is complete when existence filters work natively on 8.8/8.9 and existing searches without variable filters still pass.
 

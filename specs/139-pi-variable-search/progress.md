@@ -22,8 +22,9 @@
 - Variable display and update confirmation treat `scopeKey` as direct process-instance scope when matching process-scope variables; docs for search must keep that direct-scope wording.
 - Generated CLI docs under `docs/cli/` are regenerated with `make docs-content`; do not hand-edit them.
 - `cmd/get_processinstance_variable_filter.go` owns CLI variable-filter grammar; it preserves top-level comma semantics, quoted values, arrays, and `$notin` alias normalization before facade mapping.
-- Variable-search flags are intentionally represented as `[]string` globals for future `StringArray`-style Cobra binding so pflag does not split comma-sensitive values before the parser.
+- Variable-search flags use `StringArray`-style Cobra binding so pflag does not split comma-sensitive values before the parser.
 - Shared variable filter intent flows `cmd` -> `c8volt/process.ProcessInstanceFilter.VariableFilters` -> `internal/domain.ProcessInstanceFilter.VariableFilters`; versioned request builders should consume the domain clauses later.
+- Native process-instance variable request mapping lives in focused `internal/services/processinstance/v88/variable_filter.go` and `internal/services/processinstance/v89/variable_filter.go`; later operator stories should extend those switch statements rather than adding command-layer request code.
 
 ## Architecture Grounding
 
@@ -97,4 +98,38 @@
 - Variable filters should use `StringArray`-style flag binding in future story work so the command parser, not pflag, owns comma-sensitive splitting.
 - The foundational parser can validate shape and preserve serialized values without introducing service request construction or generated-client dependencies.
 - `hasPISearchFilterFlags` now treats parsed variable-filter globals as search-mode selectors, preserving existing keyed-mode incompatibility checks once flags are registered.
+---
+---
+## Iteration 3 - 2026-05-25 22:52:00 CEST
+**User Story**: User Story 1 - Find Instances By Variable Existence
+**Tasks Completed**:
+- [x] T017: Add command parser and validation tests for `--var-exists customerId` and `--var-exists payload,email` in `cmd/get_processinstance_variable_filter_test.go`
+- [x] T018: Add command execution tests for `get pi --var-exists` request flow in `cmd/get_processinstance_test.go`
+- [x] T019: Add v8.8 native request construction tests for `$exists=true` filters in `internal/services/processinstance/v88/service_test.go`
+- [x] T020: Add v8.9 native request construction tests for `$exists=true` filters in `internal/services/processinstance/v89/service_test.go`
+- [x] T021: Register `--var-exists` flag and help text in `cmd/get_processinstance.go`
+- [x] T022: Implement `--var-exists` parsing and validation in `cmd/get_processinstance_variable_filter.go`
+- [x] T023: Map existence clauses through process facade and domain filters in `c8volt/process/convert.go` and `internal/domain/processinstance.go`
+- [x] T024: Implement native existence request mapping for Camunda 8.8 in `internal/services/processinstance/v88/service.go` and `internal/services/processinstance/v88/variable_filter.go`
+- [x] T025: Implement native existence request mapping for Camunda 8.9 in `internal/services/processinstance/v89/service.go`, `internal/services/processinstance/v89/convert.go`, and `internal/services/processinstance/v89/variable_filter.go`
+- [x] T026: Verify US1 with targeted tests for `cmd`, `c8volt/process`, `internal/domain`, `internal/services/processinstance/v88`, and `internal/services/processinstance/v89`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/get_processinstance_variable_filter_test.go
+- internal/services/processinstance/v88/service.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v88/variable_filter.go
+- internal/services/processinstance/v89/convert.go
+- internal/services/processinstance/v89/service.go
+- internal/services/processinstance/v89/service_test.go
+- internal/services/processinstance/v89/variable_filter.go
+- specs/139-pi-variable-search/tasks.md
+- specs/139-pi-variable-search/progress.md
+**Learnings**:
+- `StringArrayVar` lets `--var-exists payload,email` reach the repository parser intact while repeated flags append independent raw inputs.
+- The generated v8.8 and v8.9 variable filter shape can reuse `AdvancedStringFilter{Exists: ...}` inside `VariableValueFilterProperty.Value`.
+- v8.9 still needs the local `processInstanceFilter` JSON mirror extended when adding generated-client fields that the service body marshals manually.
 ---

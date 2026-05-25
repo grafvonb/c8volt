@@ -115,6 +115,7 @@ type processInstanceFilter struct {
 	State                       *camundav89.ProcessInstanceStateFilterProperty `json:"state,omitempty"`
 	HasIncident                 *bool                                          `json:"hasIncident,omitempty"`
 	ParentProcessInstanceKey    *camundav89.ProcessInstanceKeyFilterProperty   `json:"parentProcessInstanceKey,omitempty"`
+	Variables                   *[]camundav89.VariableValueFilterProperty      `json:"variables,omitempty"`
 }
 
 func (f *processInstanceFilter) isEmpty() bool {
@@ -129,7 +130,8 @@ func (f *processInstanceFilter) isEmpty() bool {
 		f.EndDate == nil &&
 		f.State == nil &&
 		f.HasIncident == nil &&
-		f.ParentProcessInstanceKey == nil
+		f.ParentProcessInstanceKey == nil &&
+		f.Variables == nil
 }
 
 type processInstanceSearchQueryResult struct {

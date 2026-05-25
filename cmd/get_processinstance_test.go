@@ -120,6 +120,38 @@ func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest
 	require.Equal(t, "get process-instance", got["command"])
 }
 
+// TestGetProcessInstanceSearch_VarExistsSendsNativeVariableFilters verifies the
+// registered CLI flag reaches the native process-instance search body.
+func TestGetProcessInstanceSearch_VarExistsSendsNativeVariableFilters(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceSearchCaptureServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--var-exists", "customerId",
+		"--var-exists", "payload,email",
+		"--batch-size", "5",
+	)
+
+	filter := decodeCapturedPISearchFilter(t, requests)
+	variables, ok := filter["variables"].([]any)
+	require.True(t, ok, "expected native variable filters")
+	require.Len(t, variables, 3)
+	require.Equal(t, map[string]any{"name": "customerId", "value": map[string]any{"$exists": true}}, variables[0])
+	require.Equal(t, map[string]any{"name": "payload", "value": map[string]any{"$exists": true}}, variables[1])
+	require.Equal(t, map[string]any{"name": "email", "value": map[string]any{"$exists": true}}, variables[2])
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &got))
+	require.Equal(t, string(OutcomeSucceeded), got["outcome"])
+	require.Equal(t, "get process-instance", got["command"])
+}
+
 // TestGetProcessInstanceSearch_TenantScopedDiscoveryUsesSelectedTenant verifies
 // c8volt-produced search candidates remain scoped by the effective tenant.
 func TestGetProcessInstanceSearch_TenantScopedDiscoveryUsesSelectedTenant(t *testing.T) {

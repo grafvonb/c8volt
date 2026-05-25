@@ -275,6 +275,10 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building parent-process-instance-key filter: %w", err)
 	}
+	variableFilters, err := newVariableValueFiltersPtr(filter.VariableFilters)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building variable filters: %w", err)
+	}
 
 	bodyFilter := camundav88.ProcessInstanceFilter{
 		TenantId:                    tenantFilter,
@@ -288,6 +292,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		State:                       stateFilter,
 		HasIncident:                 filter.HasIncident,
 		ParentProcessInstanceKey:    parentProcessInstanceKeyFilter,
+		Variables:                   variableFilters,
 	}
 	page := newSearchQueryPageRequest(pageReq)
 	sort := []camundav88.ProcessInstanceSearchQuerySortRequest{
@@ -314,7 +319,8 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		bodyFilter.EndDate != nil ||
 		bodyFilter.State != nil ||
 		bodyFilter.HasIncident != nil ||
-		bodyFilter.ParentProcessInstanceKey != nil {
+		bodyFilter.ParentProcessInstanceKey != nil ||
+		bodyFilter.Variables != nil {
 		body.Filter = &bodyFilter
 	}
 	resp, err := s.cc.SearchProcessInstancesWithResponse(ctx, body)
