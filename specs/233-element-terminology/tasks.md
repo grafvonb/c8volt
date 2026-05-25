@@ -19,14 +19,14 @@
 
 **Purpose**: Confirm the current public flow-node terminology surfaces before changing behavior.
 
-- [ ] T001 Inspect current incident command flags and validation in `cmd/get_incident.go`
-- [ ] T002 [P] Inspect current incident and process human renderers in `cmd/cmd_views_processinstance_incidents.go` and nearby `cmd/cmd_views_*.go`
-- [ ] T003 [P] Inspect public incident and process models/converters in `c8volt/incident/`, `c8volt/process/`, `c8volt/ops/`, and `c8volt/resource/`
-- [ ] T004 [P] Inspect internal domain and service mappings in `internal/domain/`, `internal/services/incident/`, and `internal/services/processinstance/`
-- [ ] T005 [P] Inspect ops incident filter reuse in `cmd/ops_repair_incident*.go` and `cmd/ops_purge_processinstances_with_incidents*.go`
-- [ ] T006 [P] Inspect command contract expectations in `cmd/command_contract_test.go`
-- [ ] T007 [P] Inspect documentation surfaces in `README.md`, `docs/cli/`, `docs/ops/`, and `docs/index.md`
-- [ ] T008 Record discovered ownership notes in `specs/233-element-terminology/progress.md`
+- [x] T001 Inspect current incident command flags and validation in `cmd/get_incident.go`
+- [x] T002 [P] Inspect current incident and process human renderers in `cmd/cmd_views_processinstance_incidents.go` and nearby `cmd/cmd_views_*.go`
+- [x] T003 [P] Inspect public incident and process models/converters in `c8volt/incident/`, `c8volt/process/`, `c8volt/ops/`, and `c8volt/resource/`
+- [x] T004 [P] Inspect internal domain and service mappings in `internal/domain/`, `internal/services/incident/`, and `internal/services/processinstance/`
+- [x] T005 [P] Inspect ops incident filter reuse in `cmd/ops_repair_incident*.go` and `cmd/ops_purge_processinstances_with_incidents*.go`
+- [x] T006 [P] Inspect command contract expectations in `cmd/command_contract_test.go`
+- [x] T007 [P] Inspect documentation surfaces in `README.md`, `docs/cli/`, `docs/ops/`, and `docs/index.md`
+- [x] T008 Record discovered ownership notes in `specs/233-element-terminology/progress.md`
 
 ---
 
