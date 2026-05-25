@@ -141,6 +141,9 @@ Required workflow:
    - run `c8volt --help`
    - run help for every top-level command
    - run help for every subcommand and ops command family
+   - enumerate every nested `ops` command and alias from help output, including
+     every `ops execute ...`, `ops purge ...`, `ops repair ...`, and future ops
+     subcommand that appears in the binary
    - compare help examples with README and docs examples so they do not
      contradict each other
 7. Classify every docs/help example:
@@ -170,7 +173,23 @@ Required workflow:
    - commands that change jobs, variables, incidents, or task state
    Prefer isolated fixture data, preview first, real mutation second, and a
    post-check proving the expected cluster impact.
-12. Decide for each docs/help example whether to keep, reduce, rewrite, move behind a
+12. Build and execute a complete ops validation matrix:
+    - include every nested `ops` command discovered from help, not just commands
+      that currently have docs/help examples
+    - record command path, aliases, support status for the target v89 cluster,
+      impact class, required fixture/setup data, dry-run support, automation or
+      JSON support, confirmation behavior, and cleanup expectations
+    - for read-only or dry-run-only ops commands, run the command and verify the
+      observed output is bounded and actionable
+    - for supported mutating ops commands, run a preview/dry-run when available,
+      then run the real mutation on disposable scoped data and verify the
+      expected post-condition
+    - for unsupported or intentionally blocked ops commands, verify failure
+      happens before mutation with a clear diagnostic
+    - if an ops command has no public example but is part of the binary, still
+      validate it and decide whether it needs a docs/help example, an explicit
+      omission, or a follow-up issue
+13. Decide for each docs/help example whether to keep, reduce, rewrite, move behind a
     warning, or remove:
     - keep only examples that represent normal operator workflows
     - include destructive execution examples for ops commands where the real
@@ -182,15 +201,15 @@ Required workflow:
     - label examples as read-only, harmless, or destructive where the format
       allows it
     - add explicit destructive warnings for destructive examples that remain
-13. For each VHS tape command, verify only that the c8volt command path, flags,
+14. For each VHS tape command, verify only that the c8volt command path, flags,
     and required arguments are syntactically valid for the current binary. Do
     not run a VHS rewrite. Do not edit tape files. If a VHS command is stale,
     ambiguous, v87/v88-only, or syntactically suspicious, record the tape path
     and reason for the final VHS review warning section.
-14. If edits are needed, update source files rather than generated output
+15. If edits are needed, update source files rather than generated output
     when a generation path exists, then regenerate affected docs.
-15. After edits, rerun every changed docs/help example against the real cluster.
-16. Run targeted automated validation:
+16. After edits, rerun every changed docs/help example against the real cluster.
+17. Run targeted automated validation:
     - `go test ./cmd -count=1`
     - `go test ./docsgen -count=1` when generated documentation or docs links
       changed
@@ -218,12 +237,21 @@ Suggested investigation commands:
 - `/tmp/c8volt-release-docs-help-verify ops purge orphan-process-instances`
 - `/tmp/c8volt-release-docs-help-verify ops purge process-instances-with-incidents`
 - `/tmp/c8volt-release-docs-help-verify ops purge all-process-definitions`
+- enumerate all ops commands from help before finalizing:
+  `/tmp/c8volt-release-docs-help-verify ops --help`,
+  `/tmp/c8volt-release-docs-help-verify ops execute --help`,
+  `/tmp/c8volt-release-docs-help-verify ops purge --help`,
+  `/tmp/c8volt-release-docs-help-verify ops repair --help`, then run help for
+  every nested command listed by those outputs
 - `go test ./cmd -count=1`
 - `go test ./docsgen -count=1`
 
 Output expectations:
 - Report the docs/help/VHS surfaces scanned.
 - Report every command family validated with real cluster calls.
+- Report every nested `ops` command discovered, how it was classified, and
+  whether it was validated by dry-run, real execution, expected unsupported
+  failure, or explicit documented omission.
 - Report examples removed or rewritten because they were v87/v88-only,
   fixture-specific, stale, unbounded, unsafe, too slow, or too chatty.
 - Report examples kept as placeholders and the private real values used to

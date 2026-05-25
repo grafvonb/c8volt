@@ -133,9 +133,37 @@ state, using private fixture data wherever practical:
 - variable update paths supported by C88
 - user task lookup paths supported by C88
 - tenant-aware paths when the local C88 config uses a tenant
-- ops workflows, including normal `ops execute smoke-test`
+- every nested `ops` command discovered from help, including normal
+  `ops execute smoke-test`
 - dry-run and automation/JSON modes for representative mutating workflows, plus
   the corresponding real mutation when the workflow is not explicitly dry-run
+
+Required complete ops coverage:
+1. Enumerate the full ops command tree from the built binary before running the
+   matrix:
+   - `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 ops --help`
+   - `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 ops execute --help`
+   - `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 ops purge --help`
+   - `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 ops repair --help`
+   - help for every nested ops command listed by those outputs, including
+     aliases and future subcommands not named in this prompt
+2. Build a C88 ops matrix that includes every discovered nested ops command.
+   For each command, record command path, aliases, C88 support status, impact
+   class, required fixture/setup data, dry-run support, automation or JSON
+   support, confirmation behavior, expected output, cleanup behavior, and the
+   post-check that proves success or non-mutation.
+3. For every C88-supported ops command:
+   - run dry-run or preview first when the command supports it
+   - run the real command normally on disposable scoped data unless the matrix
+     item is explicitly dry-run-only
+   - verify the expected post-condition against the real C88 cluster
+4. For every C88-unsupported or intentionally blocked ops command:
+   - run the smallest command form that reaches the support gate
+   - verify the command fails before unsupported mutation
+   - record the exact diagnostic pattern
+5. If an ops command cannot be safely exercised because fixture/setup data is
+   unavailable, record it as a stability gap with the missing prerequisite; do
+   not silently omit it from the matrix.
 
 Required unsupported-operation expectations:
 Create explicit expected-unsupported checks for command paths that are valid
@@ -204,6 +232,10 @@ Suggested investigation commands:
 - `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 get pi --with-vars --limit 5`
 - `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 get pi --with-incidents --limit 5`
 - `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 get incident --state active --limit 5`
+- `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 ops --help`
+- `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 ops execute --help`
+- `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 ops purge --help`
+- `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 ops repair --help`
 - `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 ops execute smoke-test --dry-run`
 - `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 ops execute smoke-test -y`
 
@@ -213,6 +245,9 @@ Final output expectations:
 - State the cluster version, active profile, base URL class, tenant context, and
   fixture prefix validated.
 - List the command families covered with real C88 calls.
+- List every nested `ops` command discovered, its C88 support classification,
+  and the validation mode used: dry-run, real execution, expected unsupported
+  failure, or recorded stability gap.
 - List supported C88 workflows that passed.
 - List expected-unsupported C88 workflows and the exact diagnostic pattern that
   proved they failed before unsupported mutation.
