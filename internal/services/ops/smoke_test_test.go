@@ -516,7 +516,7 @@ func TestExecuteSmokeTestCleansUpCreatedResources(t *testing.T) {
 	require.Equal(t, got.Cleanup, got.Report.Cleanup)
 }
 
-func TestExecuteSmokeTestBlocksProcessDefinitionCleanupForUnrelatedInstances(t *testing.T) {
+func TestExecuteSmokeTestSkipsProcessDefinitionCleanupForUnrelatedInstances(t *testing.T) {
 	t.Parallel()
 
 	resource := &stubSmokeTestResourceAPI{
@@ -562,14 +562,14 @@ func TestExecuteSmokeTestBlocksProcessDefinitionCleanupForUnrelatedInstances(t *
 		Count:       1,
 	})
 
-	require.Error(t, err)
-	require.True(t, errors.Is(err, d.ErrPrecondition), "got %v", err)
-	require.Contains(t, err.Error(), "process-definition cleanup blocked")
-	require.Equal(t, d.SmokeTestOutcomePartiallyFailed, got.Outcome)
+	require.NoError(t, err)
+	require.Equal(t, d.SmokeTestOutcomePassedCleanupSkipped, got.Outcome)
 	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Cleanup.ProcessInstanceCleanup.Status)
-	require.Equal(t, d.OpsWorkflowStepStatusBlocked, got.Cleanup.ProcessDefinitionEligibility.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Cleanup.ProcessDefinitionEligibility.Status)
 	require.Equal(t, []string{"unrelated-1"}, got.Cleanup.ProcessDefinitionEligibility.Blockers)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Cleanup.ProcessDefinitionCleanup.Status)
+	require.Equal(t, "pd-88", got.Cleanup.RetainedProcessDefinitionKey)
+	require.Equal(t, "C88_MultipleSubProcessesParentProcess", got.Cleanup.RetainedBpmnProcessID)
 	require.Zero(t, resource.deleteCalls)
 }
 

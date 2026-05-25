@@ -616,7 +616,7 @@ func TestOpsExecuteSmokeTestAutomationNoCleanupDoesNotPrompt(t *testing.T) {
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
 }
 
-func TestOpsExecuteSmokeTestUnsafeCleanupBlockerExitsWithError(t *testing.T) {
+func TestOpsExecuteSmokeTestDirtyClusterSkipsProcessDefinitionCleanup(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t, &requests, nil, "999")
 	t.Cleanup(srv.Close)
@@ -630,11 +630,9 @@ func TestOpsExecuteSmokeTestUnsafeCleanupBlockerExitsWithError(t *testing.T) {
 		}),
 	})
 
-	require.Error(t, err)
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "process-definition cleanup blocked")
+	require.NoError(t, err)
+	require.Contains(t, string(output), "process-definition cleanup blockers: 1")
+	require.Contains(t, string(output), "outcome: passed_cleanup_skipped")
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
 }
 

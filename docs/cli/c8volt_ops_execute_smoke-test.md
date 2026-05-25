@@ -11,7 +11,7 @@ Execute a cluster smoke test workflow
 
 Execute a cluster smoke test workflow.
 
-The workflow validates the configured profile, selects the embedded multiple-subprocess fixture for the configured Camunda version, deploys it, creates process instances, walks their families, and cleans up created resources unless --no-cleanup is set. Cleanup removes the deployed process definition and therefore requires Camunda 8.9 or newer; use --no-cleanup for Camunda 8.8 smoke runs. Use --dry-run to validate the requested plan without submitting mutation requests.
+The workflow validates the configured profile, selects the embedded multiple-subprocess fixture for the configured Camunda version, deploys it, creates process instances, walks their families, and cleans up resources it can safely attribute to the run unless --no-cleanup is set. Cleanup always removes created process instances. Process-definition cleanup runs only when no unrelated instances still use the deployed fixture definition; dirty clusters skip that final definition cleanup and report retained resources instead of failing the smoke proof. Use --dry-run to validate the requested plan without submitting mutation requests.
 
 ```
 c8volt ops execute smoke-test [flags]
