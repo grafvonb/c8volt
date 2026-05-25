@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/233-element-terminology/plan.md`
+- Active Speckit implementation plan: `specs/139-pi-variable-search/plan.md`
 <!-- SPECKIT END -->
