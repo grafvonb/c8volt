@@ -23,6 +23,7 @@ import (
 type mockJobClient struct {
 	searchJobsWithResponse func(context.Context, camundav88.SearchJobsJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.SearchJobsResponse, error)
 	updateJobWithResponse  func(context.Context, camundav88.JobKey, camundav88.UpdateJobJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.UpdateJobResponse, error)
+	failJobWithResponse    func(context.Context, camundav88.JobKey, camundav88.FailJobJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.FailJobResponse, error)
 }
 
 func (m *mockJobClient) SearchJobsWithResponse(ctx context.Context, body camundav88.SearchJobsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchJobsResponse, error) {
@@ -44,8 +45,11 @@ func (m *mockJobClient) ThrowJobErrorWithResponse(context.Context, camundav88.Jo
 	panic("unexpected ThrowJobErrorWithResponse call")
 }
 
-func (m *mockJobClient) FailJobWithResponse(context.Context, camundav88.JobKey, camundav88.FailJobJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.FailJobResponse, error) {
-	panic("unexpected FailJobWithResponse call")
+func (m *mockJobClient) FailJobWithResponse(ctx context.Context, jobKey camundav88.JobKey, body camundav88.FailJobJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.FailJobResponse, error) {
+	if m.failJobWithResponse == nil {
+		panic("unexpected FailJobWithResponse call")
+	}
+	return m.failJobWithResponse(ctx, jobKey, body, reqEditors...)
 }
 
 func TestSearchJobsByKey(t *testing.T) {
@@ -262,6 +266,43 @@ func TestUpdateJobRetriesAndTimeoutRequest(t *testing.T) {
 	require.Equal(t, &timeoutMillis, result.SubmittedTimeoutMS)
 }
 
+func TestSubmitJobTechnicalFailureRequest(t *testing.T) {
+	retries := int32(0)
+	retryBackoffMillis := int64(300000)
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(context.Context, camundav88.SearchJobsJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.SearchJobsResponse, error) {
+			t.Fatal("unexpected worker outcome confirmation lookup")
+			return nil, nil
+		},
+		failJobWithResponse: func(_ context.Context, jobKey camundav88.JobKey, body camundav88.FailJobJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.FailJobResponse, error) {
+			require.Equal(t, camundav88.JobKey("2251799813711967"), jobKey)
+			require.Equal(t, &retries, body.Retries)
+			require.Equal(t, &retryBackoffMillis, body.RetryBackOff)
+			require.NotNil(t, body.ErrorMessage)
+			require.Equal(t, "worker unavailable", *body.ErrorMessage)
+			require.Nil(t, body.Variables)
+			return &camundav88.FailJobResponse{
+				HTTPResponse: okJobFailHTTPResponse(),
+			}, nil
+		},
+	})
+
+	result, err := svc.SubmitJobWorkerOutcome(context.Background(), d.JobWorkerOutcomeRequest{
+		Key:                "2251799813711967",
+		Mode:               d.JobWorkerOutcomeTechnicalFailure,
+		Retries:            &retries,
+		RetryBackoffMillis: &retryBackoffMillis,
+		Message:            "worker unavailable",
+	})
+
+	require.NoError(t, err)
+	require.True(t, result.MutationAccepted)
+	require.Equal(t, d.JobWorkerOutcomeTechnicalFailure, result.Mode)
+	require.Equal(t, "skipped", result.ConfirmationStatus)
+	require.Equal(t, &retries, result.SubmittedRetries)
+	require.Equal(t, &retryBackoffMillis, result.SubmittedBackoffMS)
+}
+
 func newJobServiceTest(t *testing.T, client *mockJobClient) *Service {
 	t.Helper()
 	cfg := testx.TestConfig(t)
@@ -314,6 +355,17 @@ func okJobUpdateHTTPResponse() *http.Response {
 		Request: &http.Request{
 			Method: http.MethodPatch,
 			URL:    &url.URL{Scheme: "https", Host: "camunda.example", Path: "/v2/jobs/2251799813711967"},
+		},
+	}
+}
+
+func okJobFailHTTPResponse() *http.Response {
+	return &http.Response{
+		StatusCode: http.StatusNoContent,
+		Status:     "204 No Content",
+		Request: &http.Request{
+			Method: http.MethodPost,
+			URL:    &url.URL{Scheme: "https", Host: "camunda.example", Path: "/v2/jobs/2251799813711967/failure"},
 		},
 	}
 }

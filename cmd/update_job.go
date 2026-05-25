@@ -84,6 +84,17 @@ var updateJobCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 		}
+		if request.WorkerOutcome != nil {
+			request.WorkerOutcome.OutcomePlan = &plan
+			result, err := cli.SubmitJobWorkerOutcome(cmd.Context(), *request.WorkerOutcome, collectOptions()...)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("update job: %w", err))
+			}
+			if err := jobWorkerOutcomeResultView(cmd, result); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render job update result: %w", err))
+			}
+			return
+		}
 		result, err := cli.UpdateJob(cmd.Context(), request, collectOptions()...)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("update job: %w", err))
@@ -121,8 +132,11 @@ func parseUpdateJobRequest(cmd *cobra.Command) (job.UpdateRequest, error) {
 	if strings.TrimSpace(flagUpdateJobKey) == "" {
 		return job.UpdateRequest{}, invalidFlagValuef("job update requires a non-empty --key")
 	}
+	if cmd.Flags().Changed("fail") {
+		return parseUpdateJobTechnicalFailureRequest(cmd)
+	}
 	if workerFlags := changedUpdateJobWorkerOutcomeFlags(cmd); len(workerFlags) > 0 {
-		return job.UpdateRequest{}, invalidFlagValuef("job worker outcome flags are reserved for the worker outcome implementation: %s", strings.Join(workerFlags, ", "))
+		return job.UpdateRequest{}, invalidFlagValuef("job worker outcome flags are reserved for the BPMN error and completion implementations: %s", strings.Join(workerFlags, ", "))
 	}
 	retriesChanged := cmd.Flags().Changed("retries")
 	timeoutChanged := cmd.Flags().Changed("timeout")
@@ -158,6 +172,61 @@ func parseUpdateJobRequest(cmd *cobra.Command) (job.UpdateRequest, error) {
 		request.TimeoutMillis = &timeoutMillis
 	}
 	return request, nil
+}
+
+// parseUpdateJobTechnicalFailureRequest unlocks only the first worker outcome
+// mode while keeping later BPMN error and completion flags fail-closed.
+func parseUpdateJobTechnicalFailureRequest(cmd *cobra.Command) (job.UpdateRequest, error) {
+	if cmd.Flags().Changed("throw-bpmn-error") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--fail cannot be combined with --throw-bpmn-error")
+	}
+	if cmd.Flags().Changed("complete") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--fail cannot be combined with --complete")
+	}
+	if cmd.Flags().Changed("timeout") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--fail cannot be combined with --timeout")
+	}
+	if cmd.Flags().Changed("vars") {
+		return job.UpdateRequest{}, invalidFlagValuef("--vars is reserved for BPMN error and completion implementations")
+	}
+	if !cmd.Flags().Changed("retries") {
+		return job.UpdateRequest{}, invalidFlagValuef("technical job failure requires --retries")
+	}
+	if flagUpdateJobRetries < 0 {
+		return job.UpdateRequest{}, invalidFlagValuef("invalid value for --retries: %d, expected non-negative integer", flagUpdateJobRetries)
+	}
+	retries := flagUpdateJobRetries
+	outcome := job.WorkerOutcomeRequest{
+		Key:             flagUpdateJobKey,
+		Mode:            job.WorkerOutcomeTechnicalFailure,
+		Message:         flagUpdateJobMessage,
+		Retries:         &retries,
+		RetryBackoffRaw: flagUpdateJobRetryBackoffRaw,
+		NoWait:          flagNoWait,
+		AutoConfirm:     flagCmdAutoConfirm,
+		Automation:      updateJobAutomationEnabled(cmd),
+		DryRun:          flagDryRun,
+	}
+	if cmd.Flags().Changed("retry-backoff") {
+		retryBackoff, err := time.ParseDuration(flagUpdateJobRetryBackoffRaw)
+		if err != nil || retryBackoff <= 0 {
+			return job.UpdateRequest{}, invalidFlagValuef("invalid value for --retry-backoff: %q, expected positive duration such as 60s, 5m, or 1h", flagUpdateJobRetryBackoffRaw)
+		}
+		retryBackoffMillis := retryBackoff.Milliseconds()
+		if retryBackoffMillis <= 0 {
+			return job.UpdateRequest{}, invalidFlagValuef("invalid value for --retry-backoff: %q, duration must be at least 1ms", flagUpdateJobRetryBackoffRaw)
+		}
+		outcome.RetryBackoff = &retryBackoff
+		outcome.RetryBackoffMillis = &retryBackoffMillis
+	}
+	return job.UpdateRequest{
+		Key:           flagUpdateJobKey,
+		NoWait:        flagNoWait,
+		AutoConfirm:   flagCmdAutoConfirm,
+		Automation:    updateJobAutomationEnabled(cmd),
+		DryRun:        flagDryRun,
+		WorkerOutcome: &outcome,
+	}, nil
 }
 
 func changedUpdateJobWorkerOutcomeFlags(cmd *cobra.Command) []string {
@@ -215,6 +284,9 @@ func buildUpdateJobPlan(current job.Job, request job.UpdateRequest) job.UpdatePl
 		DryRun:            request.DryRun,
 		MutationSubmitted: false,
 	}
+	if request.WorkerOutcome != nil {
+		return buildWorkerOutcomeUpdatePlan(current, request)
+	}
 	if request.Retries != nil {
 		retries := *request.Retries
 		plan.RequestedRetries = &retries
@@ -248,8 +320,59 @@ func buildUpdateJobPlan(current job.Job, request job.UpdateRequest) job.UpdatePl
 	return plan
 }
 
+// buildWorkerOutcomeUpdatePlan renders worker outcomes through the same dry-run
+// and confirmation plan shape used by existing retry and timeout updates.
+func buildWorkerOutcomeUpdatePlan(current job.Job, request job.UpdateRequest) job.UpdatePlan {
+	outcome := request.WorkerOutcome
+	plan := job.UpdatePlan{
+		Key:               request.Key,
+		Current:           current,
+		Mode:              job.MutationMode(outcome.Mode),
+		RequestedRetries:  outcome.Retries,
+		RetryStatus:       job.RetryChangeNotRequested,
+		Message:           outcome.Message,
+		RetryBackoff:      outcome.RetryBackoffRaw,
+		RetryBackoffMS:    outcome.RetryBackoffMillis,
+		ErrorCode:         outcome.ErrorCode,
+		Variables:         outcome.Variables,
+		MaterialChange:    true,
+		DryRun:            request.DryRun,
+		MutationSubmitted: false,
+	}
+	plan.Items = append(plan.Items, job.UpdatePlanItem{
+		Name:   string(outcome.Mode),
+		After:  "submit",
+		Status: "submit",
+	})
+	if outcome.Retries != nil {
+		plan.Items = append(plan.Items, job.UpdatePlanItem{
+			Name:   "retries",
+			After:  strconv.FormatInt(int64(*outcome.Retries), 10),
+			Status: "submit",
+		})
+	}
+	if outcome.RetryBackoffMillis != nil {
+		plan.Items = append(plan.Items, job.UpdatePlanItem{
+			Name:   "retryBackoff",
+			After:  outcome.RetryBackoffRaw,
+			Status: "submit",
+		})
+	}
+	if outcome.Message != "" {
+		plan.Items = append(plan.Items, job.UpdatePlanItem{
+			Name:   "message",
+			After:  outcome.Message,
+			Status: "submit",
+		})
+	}
+	return plan
+}
+
 // validateUpdateJobPlanPreconditions rejects planned updates that Camunda cannot accept for the current job state.
 func validateUpdateJobPlanPreconditions(plan job.UpdatePlan, request job.UpdateRequest) error {
+	if request.WorkerOutcome != nil {
+		return nil
+	}
 	if request.TimeoutMillis == nil {
 		return nil
 	}

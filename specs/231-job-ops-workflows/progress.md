@@ -20,6 +20,8 @@ Started: 2026-05-25 15:34:07
 - `get job` list/search mode now uses omitted `--key` as the mode selector and keeps search bounded with `consts.MaxPISearchSize` when `--limit` is omitted.
 - Job search filters use generated equality union properties directly in v8.8/v8.9 services; explicit `--retries 0` must stay pointer-backed so zero is not mistaken for an unset filter.
 - Job search rows reuse `flatRowJobWithTimezone` through `jobsView`, while JSON returns one `job.SearchResult` payload and `--keys-only` emits only job keys.
+- `update job --fail` now routes through `SubmitJobWorkerOutcome` after the same current-job planning and confirmation gates as retry/timeout updates; BPMN error, completion, and `--vars` remain fail-closed for later stories.
+- v8.8/v8.9 technical failure submission uses generated `FailJobWithResponse`, preserves explicit zero retries through pointer-backed fields, and reports accepted outcomes with skipped confirmation because no stable read-model predicate exists.
 
 ---
 
@@ -147,5 +149,39 @@ Started: 2026-05-25 15:34:07
 **Learnings**:
 - Generated job filter union types serialize simple equality filters as top-level values, which makes request-shape tests reliable without exposing generated types outside service tests.
 - `common.NewIntegerEqFilterPtr` treats zero as unset, so job retry search uses a local pointer-based filter builder to preserve explicit zero-retry discovery.
+- Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/job ./internal/domain ./internal/services/job ./internal/services/job/v87 ./internal/services/job/v88 ./internal/services/job/v89 -count=1`.
+---
+
+---
+## Iteration 5 - 2026-05-25 16:13:34 CEST
+**User Story**: User Story 3 - Report Technical Job Failure
+**Tasks Completed**:
+- [x] T034: Add command validation tests for `--fail`, retry count, retry-backoff, message, dry-run, and mutual exclusion
+- [x] T035: Add command output tests for technical failure dry-run and submitted results
+- [x] T036: Add v8.8/v8.9 service tests for `FailJobWithResponse` request construction
+- [x] T037: Add facade tests for technical failure request mapping and mutation error handling
+- [x] T038: Add technical failure flags and validation
+- [x] T039: Add technical failure request/result models and conversion
+- [x] T040: Implement technical failure facade delegation
+- [x] T041: Implement v8.8/v8.9 technical failure service calls
+- [x] T042: Extend job mutation plan and result rendering for technical failure
+- [x] T043: Verify US3 with targeted tests
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/job/client_test.go
+- c8volt/job/model.go
+- cmd/cmd_views_job.go
+- cmd/update_job.go
+- cmd/update_job_test.go
+- internal/services/job/v88/service.go
+- internal/services/job/v88/service_test.go
+- internal/services/job/v89/service.go
+- internal/services/job/v89/service_test.go
+- specs/231-job-ops-workflows/tasks.md
+- specs/231-job-ops-workflows/progress.md
+**Learnings**:
+- Technical failure can reuse the existing update plan and confirmation gate while delegating mutation through the worker outcome facade method.
+- Generated `JobFailRequest` uses `retryBackOff` in JSON, so command and service tests assert that spelling rather than command flag spelling.
 - Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/job ./internal/domain ./internal/services/job ./internal/services/job/v87 ./internal/services/job/v88 ./internal/services/job/v89 -count=1`.
 ---

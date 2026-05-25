@@ -172,10 +172,53 @@ func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opt
 }
 
 func (s *Service) SubmitJobWorkerOutcome(ctx context.Context, request d.JobWorkerOutcomeRequest, opts ...services.CallOption) (d.JobWorkerOutcomeResult, error) {
-	_ = ctx
-	_ = request
 	_ = services.ApplyCallOptions(opts)
-	return d.JobWorkerOutcomeResult{}, fmt.Errorf("%w: job worker outcome service implementation is pending", d.ErrUnsupported)
+	if request.Mode != d.JobWorkerOutcomeTechnicalFailure {
+		return d.JobWorkerOutcomeResult{}, fmt.Errorf("%w: job worker outcome service implementation is pending", d.ErrUnsupported)
+	}
+	result := d.JobWorkerOutcomeResult{
+		Key:                request.Key,
+		Mode:               request.Mode,
+		SubmittedRetries:   request.Retries,
+		SubmittedBackoffMS: request.RetryBackoffMillis,
+		ConfirmationStatus: "not_applicable",
+	}
+	body := newFailJobRequestBody(request)
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "fail job", func(ctx context.Context) (*camundav88.FailJobResponse, *http.Response, []byte, error) {
+		resp, err := s.c.FailJobWithResponse(ctx, camundav88.JobKey(request.Key), body)
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
+	if err != nil {
+		result.MutationError = err.Error()
+		return result, err
+	}
+	result.MutationAccepted = true
+	if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		result.MutationAccepted = false
+		result.MutationError = err.Error()
+		return result, err
+	}
+	result.ConfirmationStatus = "skipped"
+	return result, nil
+}
+
+// newFailJobRequestBody keeps generated v8.8 failure request details inside the
+// service adapter while preserving explicit zero retries.
+func newFailJobRequestBody(request d.JobWorkerOutcomeRequest) camundav88.FailJobJSONRequestBody {
+	body := camundav88.FailJobJSONRequestBody{
+		Retries:      request.Retries,
+		RetryBackOff: request.RetryBackoffMillis,
+	}
+	if request.Message != "" {
+		body.ErrorMessage = &request.Message
+	}
+	if request.Variables != nil {
+		body.Variables = &request.Variables
+	}
+	return body
 }
 
 var _ waiter.JobGetter = (*Service)(nil)

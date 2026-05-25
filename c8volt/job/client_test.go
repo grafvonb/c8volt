@@ -355,3 +355,32 @@ func TestClient_SubmitJobWorkerOutcome_MapsFoundationalRequestAndResult(t *testi
 	require.Equal(t, &retries, result.SubmittedRetries)
 	require.Equal(t, &backoffMillis, result.SubmittedBackoffMS)
 }
+
+func TestClient_SubmitJobTechnicalFailure_MutationFailureReturnsFailedResult(t *testing.T) {
+	retries := int32(0)
+	mutationErr := errors.New("camunda rejected failure")
+	api := New(fakeJobService{
+		outcome: func(_ context.Context, request d.JobWorkerOutcomeRequest, _ ...services.CallOption) (d.JobWorkerOutcomeResult, error) {
+			require.Equal(t, "2251799813711967", request.Key)
+			require.Equal(t, d.JobWorkerOutcomeTechnicalFailure, request.Mode)
+			require.Equal(t, &retries, request.Retries)
+			return d.JobWorkerOutcomeResult{
+				Key:           request.Key,
+				Mode:          request.Mode,
+				MutationError: mutationErr.Error(),
+			}, mutationErr
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.SubmitJobWorkerOutcome(context.Background(), WorkerOutcomeRequest{
+		Key:     "2251799813711967",
+		Mode:    WorkerOutcomeTechnicalFailure,
+		Retries: &retries,
+	})
+
+	require.Error(t, err)
+	require.Equal(t, "mutation_failed", result.Status)
+	require.Equal(t, WorkerOutcomeTechnicalFailure, result.Mode)
+	require.False(t, result.MutationAccepted)
+	require.Equal(t, mutationErr.Error(), result.Error)
+}

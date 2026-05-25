@@ -70,6 +70,7 @@ type UpdateRequest struct {
 	UpdatePlan       *UpdatePlan
 	ConfirmRetries   bool
 	SkipConfirmation bool
+	WorkerOutcome    *WorkerOutcomeRequest
 }
 
 func (r UpdateRequest) HasRetries() bool {
@@ -110,6 +111,8 @@ type UpdatePlan struct {
 	RequestedTimeout  string            `json:"requestedTimeout,omitempty"`
 	TimeoutMillis     *int64            `json:"timeoutMillis,omitempty"`
 	Message           string            `json:"message,omitempty"`
+	RetryBackoff      string            `json:"retryBackoff,omitempty"`
+	RetryBackoffMS    *int64            `json:"retryBackoffMs,omitempty"`
 	ErrorCode         string            `json:"errorCode,omitempty"`
 	Variables         map[string]any    `json:"variables,omitempty"`
 	MaterialChange    bool              `json:"materialChange"`

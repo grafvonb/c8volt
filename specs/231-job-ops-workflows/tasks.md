@@ -106,19 +106,19 @@
 
 ### Tests for User Story 3
 
-- [ ] T034 [P] [US3] Add command validation tests for `--fail`, retry count, retry-backoff, message, dry-run, and mutual exclusion in `cmd/update_job_test.go`
-- [ ] T035 [P] [US3] Add command output tests for technical failure dry-run and submitted results in `cmd/update_job_test.go`
-- [ ] T036 [P] [US3] Add v8.8/v8.9 service tests for `FailJobWithResponse` request construction in `internal/services/job/v88/service_test.go` and `internal/services/job/v89/service_test.go`
-- [ ] T037 [P] [US3] Add facade tests for technical failure request mapping and mutation error handling in `c8volt/job/client_test.go`
+- [x] T034 [P] [US3] Add command validation tests for `--fail`, retry count, retry-backoff, message, dry-run, and mutual exclusion in `cmd/update_job_test.go`
+- [x] T035 [P] [US3] Add command output tests for technical failure dry-run and submitted results in `cmd/update_job_test.go`
+- [x] T036 [P] [US3] Add v8.8/v8.9 service tests for `FailJobWithResponse` request construction in `internal/services/job/v88/service_test.go` and `internal/services/job/v89/service_test.go`
+- [x] T037 [P] [US3] Add facade tests for technical failure request mapping and mutation error handling in `c8volt/job/client_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T038 [US3] Add technical failure flags and validation in `cmd/update_job.go`
-- [ ] T039 [US3] Add technical failure request/result models and conversion in `c8volt/job/model.go` and `internal/domain/job.go`
-- [ ] T040 [US3] Implement technical failure facade delegation in `c8volt/job/client.go`
-- [ ] T041 [US3] Implement v8.8/v8.9 technical failure service calls in `internal/services/job/v88/service.go` and `internal/services/job/v89/service.go`
-- [ ] T042 [US3] Extend job mutation plan and result rendering for technical failure in `cmd/cmd_views_job.go`
-- [ ] T043 [US3] Verify US3 with targeted tests for `cmd/update_job_test.go`, `c8volt/job/client_test.go`, and versioned job service tests
+- [x] T038 [US3] Add technical failure flags and validation in `cmd/update_job.go`
+- [x] T039 [US3] Add technical failure request/result models and conversion in `c8volt/job/model.go` and `internal/domain/job.go`
+- [x] T040 [US3] Implement technical failure facade delegation in `c8volt/job/client.go`
+- [x] T041 [US3] Implement v8.8/v8.9 technical failure service calls in `internal/services/job/v88/service.go` and `internal/services/job/v89/service.go`
+- [x] T042 [US3] Extend job mutation plan and result rendering for technical failure in `cmd/cmd_views_job.go`
+- [x] T043 [US3] Verify US3 with targeted tests for `cmd/update_job_test.go`, `c8volt/job/client_test.go`, and versioned job service tests
 
 **Checkpoint**: User Story 3 is complete when technical failure is a safe, explicit worker outcome primitive.
 

@@ -76,6 +76,28 @@ func jobUpdateResultView(cmd *cobra.Command, result job.UpdateResult) error {
 	return nil
 }
 
+func jobWorkerOutcomeResultView(cmd *cobra.Command, result job.WorkerOutcomeResult) error {
+	if pickMode() == RenderModeJSON {
+		return renderJSONPayload(cmd, RenderModeJSON, result)
+	}
+	switch result.Status {
+	case "submitted":
+		parts := []string{fmt.Sprintf("submitted %s", formatJobMutationMode(job.MutationMode(result.Mode)))}
+		if result.SubmittedRetries != nil {
+			parts = append(parts, fmt.Sprintf("retries=%d", *result.SubmittedRetries))
+		}
+		if result.SubmittedBackoffMS != nil {
+			parts = append(parts, fmt.Sprintf("retryBackoff=%dms", *result.SubmittedBackoffMS))
+		}
+		renderHumanLine(cmd, "updated job %s: %s", result.Key, strings.Join(parts, " "))
+	case "mutation_failed":
+		renderHumanLine(cmd, "updated job %s: mutation failed: %s", result.Key, result.Error)
+	default:
+		renderHumanLine(cmd, "updated job %s: %s", result.Key, result.Status)
+	}
+	return nil
+}
+
 func jobUpdatePlanView(cmd *cobra.Command, plan job.UpdatePlan, label string) error {
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, plan)
@@ -158,11 +180,30 @@ func formatJobUpdatePlanItems(items []job.UpdatePlanItem) string {
 			parts = append(parts, fmt.Sprintf("retries: %s -> %s", item.Before, item.After))
 		case "timeout":
 			parts = append(parts, fmt.Sprintf("timeout: set to %s", item.After))
+		case string(job.MutationModeTechnicalFailure):
+			parts = append(parts, "technical failure: submit")
+		case "retryBackoff":
+			parts = append(parts, fmt.Sprintf("retry backoff: %s", item.After))
+		case "message":
+			parts = append(parts, fmt.Sprintf("message: %s", item.After))
 		default:
 			parts = append(parts, fmt.Sprintf("%s: %s", item.Name, item.After))
 		}
 	}
 	return strings.Join(parts, "; ")
+}
+
+func formatJobMutationMode(mode job.MutationMode) string {
+	switch mode {
+	case job.MutationModeTechnicalFailure:
+		return "technical failure"
+	case job.MutationModeBPMNError:
+		return "BPMN error"
+	case job.MutationModeCompletion:
+		return "completion"
+	default:
+		return string(mode)
+	}
 }
 
 func derefInt32(value *int32) int32 {
