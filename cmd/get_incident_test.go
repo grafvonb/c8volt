@@ -373,6 +373,39 @@ func TestGetIncidentCommand_SearchPIKeysOnlyIncrementalPagesOmitFound(t *testing
 	require.NotContains(t, output, "found:")
 }
 
+// TestGetIncidentCommand_SearchSkipsPromptForEmptyFilteredPages verifies locally filtered empty pages do not make interactive users confirm before any rows are shown.
+func TestGetIncidentCommand_SearchSkipsPromptForEmptyFilteredPages(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+		`{"items":[{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+	var prompts []string
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		require.False(t, autoConfirm)
+		prompts = append(prompts, prompt)
+		return nil
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--batch-size", "1",
+	)
+
+	require.Len(t, requests, 3)
+	require.Len(t, prompts, 1)
+	require.Contains(t, prompts[0], "Fetched 1 incident(s) on this page")
+	require.Contains(t, output, "2251799813685253")
+	require.Contains(t, output, "2251799813685254")
+	require.Contains(t, output, "found: 2")
+}
+
 func TestGetIncidentCommand_TotalUsesExactReportedBackendTotal(t *testing.T) {
 	var requests []string
 	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
