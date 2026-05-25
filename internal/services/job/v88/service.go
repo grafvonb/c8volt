@@ -178,6 +178,8 @@ func (s *Service) SubmitJobWorkerOutcome(ctx context.Context, request d.JobWorke
 		return s.submitJobTechnicalFailure(ctx, request)
 	case d.JobWorkerOutcomeBPMNError:
 		return s.submitJobBPMNError(ctx, request)
+	case d.JobWorkerOutcomeCompletion:
+		return s.submitJobCompletion(ctx, request)
 	default:
 		return d.JobWorkerOutcomeResult{}, fmt.Errorf("%w: job worker outcome service implementation is pending", d.ErrUnsupported)
 	}
@@ -242,6 +244,34 @@ func (s *Service) submitJobBPMNError(ctx context.Context, request d.JobWorkerOut
 	return result, nil
 }
 
+func (s *Service) submitJobCompletion(ctx context.Context, request d.JobWorkerOutcomeRequest) (d.JobWorkerOutcomeResult, error) {
+	result := d.JobWorkerOutcomeResult{
+		Key:                request.Key,
+		Mode:               request.Mode,
+		ConfirmationStatus: "not_applicable",
+	}
+	body := newCompleteJobRequestBody(request)
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "complete job", func(ctx context.Context) (*camundav88.CompleteJobResponse, *http.Response, []byte, error) {
+		resp, err := s.c.CompleteJobWithResponse(ctx, camundav88.JobKey(request.Key), body)
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
+	if err != nil {
+		result.MutationError = err.Error()
+		return result, err
+	}
+	result.MutationAccepted = true
+	if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		result.MutationAccepted = false
+		result.MutationError = err.Error()
+		return result, err
+	}
+	result.ConfirmationStatus = "skipped"
+	return result, nil
+}
+
 // newFailJobRequestBody keeps generated v8.8 failure request details inside the
 // service adapter while preserving explicit zero retries.
 func newFailJobRequestBody(request d.JobWorkerOutcomeRequest) camundav88.FailJobJSONRequestBody {
@@ -269,6 +299,17 @@ func newThrowJobErrorRequestBody(request d.JobWorkerOutcomeRequest) camundav88.T
 		body.Variables = &request.Variables
 	}
 	return body
+}
+
+func newCompleteJobRequestBody(request d.JobWorkerOutcomeRequest) camundav88.CompleteJobJSONRequestBody {
+	variables := request.Variables
+	if variables == nil {
+		// Camunda's generated completion request requires a variables object even when no variables are added.
+		variables = map[string]any{}
+	}
+	return camundav88.CompleteJobJSONRequestBody{
+		Variables: &variables,
+	}
 }
 
 var _ waiter.JobGetter = (*Service)(nil)

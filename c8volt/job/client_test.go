@@ -448,3 +448,59 @@ func TestClient_SubmitJobBPMNError_MutationFailureReturnsFailedResult(t *testing
 	require.False(t, result.MutationAccepted)
 	require.Equal(t, mutationErr.Error(), result.Error)
 }
+
+func TestClient_SubmitJobCompletion_MapsRequestAndResult(t *testing.T) {
+	api := New(fakeJobService{
+		outcome: func(_ context.Context, request d.JobWorkerOutcomeRequest, _ ...services.CallOption) (d.JobWorkerOutcomeResult, error) {
+			require.Equal(t, "2251799813711967", request.Key)
+			require.Equal(t, d.JobWorkerOutcomeCompletion, request.Mode)
+			require.Equal(t, map[string]any{"approved": true}, request.Variables)
+			require.True(t, request.SkipConfirmation)
+			return d.JobWorkerOutcomeResult{
+				Key:                request.Key,
+				Mode:               request.Mode,
+				MutationAccepted:   true,
+				ConfirmationStatus: "skipped",
+			}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.SubmitJobWorkerOutcome(context.Background(), WorkerOutcomeRequest{
+		Key:       "2251799813711967",
+		Mode:      WorkerOutcomeCompletion,
+		Variables: map[string]any{"approved": true},
+		NoWait:    true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "submitted", result.Status)
+	require.Equal(t, WorkerOutcomeCompletion, result.Mode)
+	require.True(t, result.MutationAccepted)
+	require.Equal(t, "skipped", result.ConfirmationStatus)
+}
+
+func TestClient_SubmitJobCompletion_MutationFailureReturnsFailedResult(t *testing.T) {
+	mutationErr := errors.New("camunda rejected completion")
+	api := New(fakeJobService{
+		outcome: func(_ context.Context, request d.JobWorkerOutcomeRequest, _ ...services.CallOption) (d.JobWorkerOutcomeResult, error) {
+			require.Equal(t, "2251799813711967", request.Key)
+			require.Equal(t, d.JobWorkerOutcomeCompletion, request.Mode)
+			return d.JobWorkerOutcomeResult{
+				Key:           request.Key,
+				Mode:          request.Mode,
+				MutationError: mutationErr.Error(),
+			}, mutationErr
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.SubmitJobWorkerOutcome(context.Background(), WorkerOutcomeRequest{
+		Key:  "2251799813711967",
+		Mode: WorkerOutcomeCompletion,
+	})
+
+	require.Error(t, err)
+	require.Equal(t, "mutation_failed", result.Status)
+	require.Equal(t, WorkerOutcomeCompletion, result.Mode)
+	require.False(t, result.MutationAccepted)
+	require.Equal(t, mutationErr.Error(), result.Error)
+}

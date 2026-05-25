@@ -494,6 +494,79 @@ func TestUpdateJobCommand_JSONDryRunBPMNErrorPlanPayload(t *testing.T) {
 	require.Equal(t, map[string]any{"approved": false}, payload["variables"])
 }
 
+func TestUpdateJobCommand_CompletionDryRunLoadsCurrentJobAndSkipsMutation(t *testing.T) {
+	var requests []string
+	var completeBodies []map[string]any
+	srv := newJobCompleteServer(t, &requests, &completeBodies, []string{
+		jobSearchResponse("2251799813711967", 1),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--complete", "--vars", `{"approved":true}`, "--dry-run")
+
+	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
+	require.Empty(t, completeBodies)
+	require.Contains(t, output, "dry run: update job 2251799813711967: completion: submit; variables: submit; no changes applied")
+}
+
+func TestUpdateJobCommand_CompletionSubmittedHumanOutput(t *testing.T) {
+	var requests []string
+	var completeBodies []map[string]any
+	srv := newJobCompleteServer(t, &requests, &completeBodies, []string{
+		jobSearchResponse("2251799813711967", 1),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--complete", "--vars", `{"approved":true}`, "--auto-confirm")
+
+	require.Equal(t, []string{"POST /v2/jobs/search", "POST /v2/jobs/2251799813711967/completion"}, requests)
+	require.Len(t, completeBodies, 1)
+	require.Equal(t, map[string]any{"approved": true}, completeBodies[0]["variables"])
+	require.Contains(t, output, "updated job 2251799813711967: submitted completion")
+}
+
+func TestUpdateJobCommand_CompletionSubmittedWithoutVariables(t *testing.T) {
+	var requests []string
+	var completeBodies []map[string]any
+	srv := newJobCompleteServer(t, &requests, &completeBodies, []string{
+		jobSearchResponse("2251799813711967", 1),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--complete", "--auto-confirm")
+
+	require.Equal(t, []string{"POST /v2/jobs/search", "POST /v2/jobs/2251799813711967/completion"}, requests)
+	require.Len(t, completeBodies, 1)
+	require.Equal(t, map[string]any{}, completeBodies[0]["variables"])
+	require.Contains(t, output, "updated job 2251799813711967: submitted completion")
+}
+
+func TestUpdateJobCommand_JSONDryRunCompletionPlanPayload(t *testing.T) {
+	var requests []string
+	var completeBodies []map[string]any
+	srv := newJobCompleteServer(t, &requests, &completeBodies, []string{
+		jobSearchResponse("2251799813711967", 1),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--complete", "--vars", `{"approved":true}`, "--dry-run")
+
+	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
+	require.Empty(t, completeBodies)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "completion", payload["mode"])
+	require.Equal(t, true, payload["dryRun"])
+	require.Equal(t, true, payload["materialChange"])
+	require.Equal(t, false, payload["mutationSubmitted"])
+	require.Equal(t, map[string]any{"approved": true}, payload["variables"])
+}
+
 func TestUpdateJobCommand_UnsupportedV87FailsBeforeMutation(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
 
@@ -591,6 +664,31 @@ func TestParseUpdateJobRequestParsesBPMNError(t *testing.T) {
 	require.Equal(t, "PAYMENT_DECLINED", request.WorkerOutcome.ErrorCode)
 	require.Equal(t, "card declined", request.WorkerOutcome.Message)
 	require.Equal(t, map[string]any{"approved": false}, request.WorkerOutcome.Variables)
+	require.Nil(t, request.Retries)
+	require.Nil(t, request.TimeoutMillis)
+}
+
+func TestParseUpdateJobRequestParsesCompletion(t *testing.T) {
+	resetUpdateJobFlagState()
+	t.Cleanup(resetUpdateJobFlagState)
+	resetCommandTreeFlags(Root())
+	require.NoError(t, updateJobCmd.Flags().Set("complete", "true"))
+	require.NoError(t, updateJobCmd.Flags().Set("vars", `{"approved":true}`))
+	t.Cleanup(func() {
+		require.NoError(t, updateJobCmd.Flags().Set("complete", "false"))
+		require.NoError(t, updateJobCmd.Flags().Set("vars", ""))
+	})
+
+	flagUpdateJobKey = "2251799813711967"
+	flagUpdateJobComplete = true
+	flagUpdateJobVariables = `{"approved":true}`
+
+	request, err := parseUpdateJobRequest(updateJobCmd)
+
+	require.NoError(t, err)
+	require.NotNil(t, request.WorkerOutcome)
+	require.Equal(t, job.WorkerOutcomeCompletion, request.WorkerOutcome.Mode)
+	require.Equal(t, map[string]any{"approved": true}, request.WorkerOutcome.Variables)
 	require.Nil(t, request.Retries)
 	require.Nil(t, request.TimeoutMillis)
 }
@@ -764,6 +862,87 @@ func TestParseUpdateJobRequestRejectsBPMNErrorValidationErrors(t *testing.T) {
 	}
 }
 
+func TestParseUpdateJobRequestRejectsCompletionValidationErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		set     func(t *testing.T)
+		message string
+	}{
+		{
+			name: "fail conflict",
+			set: func(t *testing.T) {
+				require.NoError(t, updateJobCmd.Flags().Set("complete", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("fail", "true"))
+			},
+			message: "--fail cannot be combined with --complete",
+		},
+		{
+			name: "bpmn conflict",
+			set: func(t *testing.T) {
+				require.NoError(t, updateJobCmd.Flags().Set("complete", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+			},
+			message: "--throw-bpmn-error cannot be combined with --complete",
+		},
+		{
+			name: "retries conflict",
+			set: func(t *testing.T) {
+				require.NoError(t, updateJobCmd.Flags().Set("complete", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("retries", "1"))
+			},
+			message: "--complete cannot be combined with --retries",
+		},
+		{
+			name: "timeout conflict",
+			set: func(t *testing.T) {
+				require.NoError(t, updateJobCmd.Flags().Set("complete", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("timeout", "5m"))
+			},
+			message: "--complete cannot be combined with --timeout",
+		},
+		{
+			name: "retry backoff conflict",
+			set: func(t *testing.T) {
+				require.NoError(t, updateJobCmd.Flags().Set("complete", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("retry-backoff", "5m"))
+			},
+			message: "--complete cannot be combined with --retry-backoff",
+		},
+		{
+			name: "invalid variables",
+			set: func(t *testing.T) {
+				require.NoError(t, updateJobCmd.Flags().Set("complete", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("vars", "{"))
+				flagUpdateJobVariables = "{"
+			},
+			message: "--vars must be a valid JSON object",
+		},
+		{
+			name: "non-object variables",
+			set: func(t *testing.T) {
+				require.NoError(t, updateJobCmd.Flags().Set("complete", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("vars", `["bad"]`))
+				flagUpdateJobVariables = `["bad"]`
+			},
+			message: "--vars must be a JSON object",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetUpdateJobFlagState()
+			t.Cleanup(resetUpdateJobFlagState)
+			resetCommandTreeFlags(Root())
+			flagUpdateJobKey = "2251799813711967"
+			tt.set(t)
+
+			_, err := parseUpdateJobRequest(updateJobCmd)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.message)
+		})
+	}
+}
+
 func newJobUpdateServer(t *testing.T, requests *[]string, patchBodies *[]map[string]any, searchResponses []string, updateStatus int) *httptest.Server {
 	t.Helper()
 	searchIndex := 0
@@ -836,6 +1015,32 @@ func newJobBPMNErrorServer(t *testing.T, requests *[]string, errorBodies *[]map[
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			*errorBodies = append(*errorBodies, body)
 			w.WriteHeader(errorStatus)
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+	}))
+}
+
+func newJobCompleteServer(t *testing.T, requests *[]string, completeBodies *[]map[string]any, searchResponses []string, completeStatus int) *httptest.Server {
+	t.Helper()
+	searchIndex := 0
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*requests = append(*requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/jobs/search":
+			require.Less(t, searchIndex, len(searchResponses))
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			filter := requireJSONObject(t, body["filter"])
+			require.NotEmpty(t, filter["jobKey"])
+			_, _ = w.Write([]byte(searchResponses[searchIndex]))
+			searchIndex++
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/completion"):
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			*completeBodies = append(*completeBodies, body)
+			w.WriteHeader(completeStatus)
 		default:
 			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
 		}

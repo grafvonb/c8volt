@@ -158,19 +158,19 @@
 
 ### Tests for User Story 5
 
-- [ ] T054 [P] [US5] Add command validation tests for `--complete`, optional `--vars`, invalid JSON, and mutual exclusion in `cmd/update_job_test.go`
-- [ ] T055 [P] [US5] Add command output tests for completion dry-run and submitted results in `cmd/update_job_test.go`
-- [ ] T056 [P] [US5] Add v8.8/v8.9 service tests for `CompleteJobWithResponse` request construction in `internal/services/job/v88/service_test.go` and `internal/services/job/v89/service_test.go`
-- [ ] T057 [P] [US5] Add facade tests for completion request mapping and mutation error handling in `c8volt/job/client_test.go`
+- [x] T054 [P] [US5] Add command validation tests for `--complete`, optional `--vars`, invalid JSON, and mutual exclusion in `cmd/update_job_test.go`
+- [x] T055 [P] [US5] Add command output tests for completion dry-run and submitted results in `cmd/update_job_test.go`
+- [x] T056 [P] [US5] Add v8.8/v8.9 service tests for `CompleteJobWithResponse` request construction in `internal/services/job/v88/service_test.go` and `internal/services/job/v89/service_test.go`
+- [x] T057 [P] [US5] Add facade tests for completion request mapping and mutation error handling in `c8volt/job/client_test.go`
 
 ### Implementation for User Story 5
 
-- [ ] T058 [US5] Add completion flags and variable JSON validation in `cmd/update_job.go`
-- [ ] T059 [US5] Add completion request/result models and conversion in `c8volt/job/model.go` and `internal/domain/job.go`
-- [ ] T060 [US5] Implement completion facade delegation in `c8volt/job/client.go`
-- [ ] T061 [US5] Implement v8.8/v8.9 completion service calls in `internal/services/job/v88/service.go` and `internal/services/job/v89/service.go`
-- [ ] T062 [US5] Extend job mutation plan and result rendering for completion in `cmd/cmd_views_job.go`
-- [ ] T063 [US5] Verify US5 with targeted tests for `cmd/update_job_test.go`, `c8volt/job/client_test.go`, and versioned job service tests
+- [x] T058 [US5] Add completion flags and variable JSON validation in `cmd/update_job.go`
+- [x] T059 [US5] Add completion request/result models and conversion in `c8volt/job/model.go` and `internal/domain/job.go`
+- [x] T060 [US5] Implement completion facade delegation in `c8volt/job/client.go`
+- [x] T061 [US5] Implement v8.8/v8.9 completion service calls in `internal/services/job/v88/service.go` and `internal/services/job/v89/service.go`
+- [x] T062 [US5] Extend job mutation plan and result rendering for completion in `cmd/cmd_views_job.go`
+- [x] T063 [US5] Verify US5 with targeted tests for `cmd/update_job_test.go`, `c8volt/job/client_test.go`, and versioned job service tests
 
 **Checkpoint**: User Story 5 is complete when completion is a safe, scriptable worker outcome primitive.
 

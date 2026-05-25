@@ -5,6 +5,7 @@ Started: 2026-05-25 15:34:07
 
 ## Codebase Patterns
 
+- Completion worker outcomes use the same `SubmitJobWorkerOutcome` path as failure and BPMN error; v8.8/v8.9 generated completion requests require a variables object, so omitted `--vars` is submitted as an empty object.
 - BPMN error worker outcomes reuse the existing `SubmitJobWorkerOutcome` facade and mutation-plan path; command parsing owns JSON object validation for `--vars`, while v8.8/v8.9 services own generated `ThrowJobErrorWithResponse` request construction.
 - `cmd/get_job.go` currently owns keyed-only validation, full contract support, and the `--error-message-limit` JSON exclusion; list/search mode should extend this local flag grammar without bypassing the facade.
 - `cmd/update_job.go` builds a pre-mutation plan by loading the current job first, renders dry-run/plan output before prompting, and relies on JSON guardrails plus `--auto-confirm`/`--automation` for unattended mutations.
@@ -218,4 +219,36 @@ Started: 2026-05-25 15:34:07
 - BPMN error support did not require new public/domain model fields because foundational worker outcome fields already carried mode, error code, message, variables, and submitted error code.
 - `--throw-bpmn-error` remains separate from retry, timeout, technical failure, and completion modes; completion is still fail-closed for the next work unit.
 - Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/job ./internal/services/job/v88 ./internal/services/job/v89 -count=1`.
+---
+
+---
+## Iteration 7 - 2026-05-25 16:31:48 CEST
+**User Story**: User Story 5 - Complete A Job With Variables
+**Tasks Completed**:
+- [x] T054: Add command validation tests for `--complete`, optional `--vars`, invalid JSON, and mutual exclusion
+- [x] T055: Add command output tests for completion dry-run and submitted results
+- [x] T056: Add v8.8/v8.9 service tests for `CompleteJobWithResponse` request construction
+- [x] T057: Add facade tests for completion request mapping and mutation error handling
+- [x] T058: Add completion flags and variable JSON validation
+- [x] T059: Add completion request/result models and conversion
+- [x] T060: Implement completion facade delegation
+- [x] T061: Implement v8.8/v8.9 completion service calls
+- [x] T062: Extend job mutation plan and result rendering for completion
+- [x] T063: Verify US5 with targeted tests
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/job/client_test.go
+- cmd/update_job.go
+- cmd/update_job_test.go
+- internal/services/job/v88/service.go
+- internal/services/job/v88/service_test.go
+- internal/services/job/v89/service.go
+- internal/services/job/v89/service_test.go
+- specs/231-job-ops-workflows/tasks.md
+- specs/231-job-ops-workflows/progress.md
+**Learnings**:
+- Completion did not require new facade/domain model types because foundational worker outcome fields already represented completion variables and accepted outcomes.
+- `--complete` rejects retry, timeout, fail, BPMN error, retry-backoff, and message flags locally before the current-job lookup or mutation call.
+- Validation passed with `GOCACHE=/private/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/job ./internal/domain ./internal/services/job ./internal/services/job/v87 ./internal/services/job/v88 ./internal/services/job/v89 -count=1`.
 ---

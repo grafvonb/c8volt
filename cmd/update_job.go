@@ -139,6 +139,9 @@ func parseUpdateJobRequest(cmd *cobra.Command) (job.UpdateRequest, error) {
 	if cmd.Flags().Changed("fail") {
 		return parseUpdateJobTechnicalFailureRequest(cmd)
 	}
+	if cmd.Flags().Changed("complete") {
+		return parseUpdateJobCompletionRequest(cmd)
+	}
 	if workerFlags := changedUpdateJobWorkerOutcomeFlags(cmd); len(workerFlags) > 0 {
 		return job.UpdateRequest{}, invalidFlagValuef("job worker outcome flags are reserved for the BPMN error and completion implementations: %s", strings.Join(workerFlags, ", "))
 	}
@@ -227,7 +230,52 @@ func parseUpdateJobBPMNErrorRequest(cmd *cobra.Command) (job.UpdateRequest, erro
 	}, nil
 }
 
-// parseUpdateJobTechnicalFailureRequest keeps later completion flags fail-closed.
+func parseUpdateJobCompletionRequest(cmd *cobra.Command) (job.UpdateRequest, error) {
+	if cmd.Flags().Changed("fail") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --fail")
+	}
+	if cmd.Flags().Changed("throw-bpmn-error") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --throw-bpmn-error")
+	}
+	if cmd.Flags().Changed("retries") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --retries")
+	}
+	if cmd.Flags().Changed("timeout") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --timeout")
+	}
+	if cmd.Flags().Changed("retry-backoff") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --retry-backoff")
+	}
+	if cmd.Flags().Changed("message") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --message")
+	}
+	var variables map[string]any
+	if cmd.Flags().Changed("vars") {
+		parsed, err := parseUpdateJobVariables(flagUpdateJobVariables)
+		if err != nil {
+			return job.UpdateRequest{}, err
+		}
+		variables = parsed
+	}
+	outcome := job.WorkerOutcomeRequest{
+		Key:         flagUpdateJobKey,
+		Mode:        job.WorkerOutcomeCompletion,
+		Variables:   variables,
+		NoWait:      flagNoWait,
+		AutoConfirm: flagCmdAutoConfirm,
+		Automation:  updateJobAutomationEnabled(cmd),
+		DryRun:      flagDryRun,
+	}
+	return job.UpdateRequest{
+		Key:           flagUpdateJobKey,
+		NoWait:        flagNoWait,
+		AutoConfirm:   flagCmdAutoConfirm,
+		Automation:    updateJobAutomationEnabled(cmd),
+		DryRun:        flagDryRun,
+		WorkerOutcome: &outcome,
+	}, nil
+}
+
 func parseUpdateJobTechnicalFailureRequest(cmd *cobra.Command) (job.UpdateRequest, error) {
 	if cmd.Flags().Changed("throw-bpmn-error") {
 		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--fail cannot be combined with --throw-bpmn-error")
