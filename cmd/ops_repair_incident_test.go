@@ -442,6 +442,8 @@ func resetOpsRepairIncidentFlagState() {
 	flagOpsRepairIncidentElementInstanceKey = ""
 	flagOpsRepairIncidentCreationTimeAfter = ""
 	flagOpsRepairIncidentCreationTimeBefore = ""
+	flagOpsRepairIncidentCreationTimeNewer = -1
+	flagOpsRepairIncidentCreationTimeOlder = -1
 	flagOpsRepairIncidentBatchSize = consts.MaxPISearchSize
 	flagOpsRepairIncidentLimit = 0
 	flagOpsRepairIncidentRetries = 1

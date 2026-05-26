@@ -53,7 +53,7 @@ c8volt get incident --error-message "intentional incident"
 c8volt get incident --pi-key 2251799813748687
 c8volt get incident --root-key 2251799813748682
 c8volt get incident --pd-key 2251799813687048
-c8volt get incident --bpmn-process-id C89_SimpleUserTaskWithIncident_Process
+c8volt get incident --bpmn-process-id C89_SimpleUserTaskWithIncident
 c8volt get incident --flow-node-id SimpleUserTaskWithIncident_UserTask
 c8volt get incident --fni-key 2251799813748691
 c8volt get incident --creation-time-after 2026-05-08T00:00:00Z

@@ -53,7 +53,7 @@ As a CLI user composing commands, I want `c8volt run pi --keys-only` to print on
 
 **Acceptance Scenarios**:
 
-1. **Given** a fast process definition, **When** a user runs `c8volt run pi -b C89_NoOpCompletion_Process --keys-only | c8volt expect pi --state completed -`, **Then** the pipeline succeeds when the instance completes quickly.
+1. **Given** a fast process definition, **When** a user runs `c8volt run pi -b C89_NoOpCompletion --keys-only | c8volt expect pi --state completed -`, **Then** the pipeline succeeds when the instance completes quickly.
 2. **Given** a long-running process definition, **When** a user pipes `c8volt run pi --keys-only` into `c8volt expect pi --state active -`, **Then** the pipeline succeeds only when the downstream expectation observes `active`.
 3. **Given** `c8volt run pi --keys-only` creates one or more process instances, **When** the command writes output, **Then** it prints one process instance key per line and no extra text.
 

@@ -6,7 +6,6 @@ package cmd
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/consts"
@@ -30,6 +29,8 @@ var (
 	flagGetIncidentElementInstanceKey string
 	flagGetIncidentCreationTimeAfter  string
 	flagGetIncidentCreationTimeBefore string
+	flagGetIncidentCreationTimeNewer  int
+	flagGetIncidentCreationTimeOlder  int
 	flagGetIncidentSize               int32
 	flagGetIncidentLimit              int32
 	flagGetIncidentTotal              bool
@@ -163,8 +164,10 @@ func init() {
 	fs.StringVar(&flagGetIncidentRootKey, "root-key", "", "root process instance key to filter incidents")
 	fs.StringVar(&flagGetIncidentElementID, "element-id", "", "BPMN element ID to filter incidents")
 	fs.StringVar(&flagGetIncidentElementInstanceKey, "element-instance-key", "", "element instance key to filter incidents")
-	fs.StringVar(&flagGetIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD")
-	fs.StringVar(&flagGetIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD")
+	fs.StringVar(&flagGetIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
+	fs.StringVar(&flagGetIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
+	fs.IntVar(&flagGetIncidentCreationTimeNewer, "creation-time-newer-days", -1, "only include incidents with creation time N days old or newer (0 means today)")
+	fs.IntVar(&flagGetIncidentCreationTimeOlder, "creation-time-older-days", -1, "only include incidents with creation time N days old or older")
 	fs.Int32VarP(&flagGetIncidentSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to return across all pages")
 	fs.BoolVar(&flagGetIncidentTotal, "total", false, "return only the exact numeric total of matching incidents")
@@ -193,10 +196,12 @@ func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 	if err := validateGetIncidentErrorTypeFlag(flagGetIncidentErrorType); err != nil {
 		return err
 	}
-	if err := validateGetIncidentCreationTimeFlag("--creation-time-after", flagGetIncidentCreationTimeAfter); err != nil {
-		return err
-	}
-	if err := validateGetIncidentCreationTimeFlag("--creation-time-before", flagGetIncidentCreationTimeBefore); err != nil {
+	if err := validateIncidentCreationTimeFilters(
+		"--creation-time-after", flagGetIncidentCreationTimeAfter,
+		"--creation-time-before", flagGetIncidentCreationTimeBefore,
+		"--creation-time-newer-days", flagGetIncidentCreationTimeNewer,
+		"--creation-time-older-days", flagGetIncidentCreationTimeOlder,
+	); err != nil {
 		return err
 	}
 	if flagGetIncidentTotal {
@@ -281,19 +286,6 @@ func validateGetIncidentErrorTypeFlag(value string) error {
 	return invalidFlagValuef("invalid value for --error-type: %q", value)
 }
 
-func validateGetIncidentCreationTimeFlag(name string, value string) error {
-	if value == "" {
-		return nil
-	}
-	if _, err := time.Parse(time.RFC3339Nano, value); err == nil {
-		return nil
-	}
-	if _, err := time.Parse(time.DateOnly, value); err == nil {
-		return nil
-	}
-	return invalidFlagValuef("invalid value for %s: %q, expected RFC3339 timestamp or YYYY-MM-DD", name, value)
-}
-
 func isGetIncidentLimitFlagChanged(cmd *cobra.Command) bool {
 	return cmd != nil && cmd.Flags().Changed("limit")
 }
@@ -314,6 +306,8 @@ func hasGetIncidentSearchModeFlags(cmd *cobra.Command) bool {
 		"element-instance-key",
 		"creation-time-after",
 		"creation-time-before",
+		"creation-time-newer-days",
+		"creation-time-older-days",
 		"batch-size",
 		"limit",
 	} {
@@ -327,6 +321,8 @@ func hasGetIncidentSearchModeFlags(cmd *cobra.Command) bool {
 func populateGetIncidentSearchFilter() incident.Filter {
 	errorType, _ := incidentfilter.NormalizeErrorType(flagGetIncidentErrorType)
 	state, _ := incidentfilter.NormalizeState(flagGetIncidentState)
+	creationTimeAfter, _ := pickIncidentCreationTimeLowerBound(flagGetIncidentCreationTimeAfter, flagGetIncidentCreationTimeNewer)
+	creationTimeBefore, _ := pickIncidentCreationTimeUpperBound(flagGetIncidentCreationTimeBefore, flagGetIncidentCreationTimeOlder)
 	return incident.Filter{
 		State:                  state,
 		ErrorType:              errorType,
@@ -337,8 +333,8 @@ func populateGetIncidentSearchFilter() incident.Filter {
 		ProcessDefinitionId:    flagGetIncidentBpmnProcessID,
 		ElementId:              flagGetIncidentElementID,
 		ElementInstanceKey:     flagGetIncidentElementInstanceKey,
-		CreationTimeAfter:      flagGetIncidentCreationTimeAfter,
-		CreationTimeBefore:     flagGetIncidentCreationTimeBefore,
+		CreationTimeAfter:      creationTimeAfter,
+		CreationTimeBefore:     creationTimeBefore,
 	}
 }
 
@@ -358,6 +354,8 @@ func resetGetIncidentFlagState() {
 	flagGetIncidentElementInstanceKey = ""
 	flagGetIncidentCreationTimeAfter = ""
 	flagGetIncidentCreationTimeBefore = ""
+	flagGetIncidentCreationTimeNewer = -1
+	flagGetIncidentCreationTimeOlder = -1
 	flagGetIncidentSize = consts.MaxPISearchSize
 	flagGetIncidentLimit = 0
 	flagGetIncidentTotal = false

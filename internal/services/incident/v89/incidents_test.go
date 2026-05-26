@@ -351,6 +351,69 @@ func TestSearchIncidentsPageUsesServerFiltersAndLocalMessageFiltering(t *testing
 	require.Equal(t, []string{"match"}, incidentDetailKeys(got.Items))
 }
 
+func TestSearchIncidentsPageDateOnlyCreationTimeBeforeUsesInclusiveDay(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(_ context.Context, body camundav89.SearchIncidentsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchIncidentsResponse, error) {
+			require.NotNil(t, body.Filter)
+			require.NotNil(t, body.Filter.CreationTime)
+			creationTime, err := body.Filter.CreationTime.AsAdvancedDateTimeFilter()
+			require.NoError(t, err)
+			require.NotNil(t, creationTime.Lte)
+			require.Equal(t, time.Date(2026, 5, 10, 23, 59, 59, int(time.Second-time.Nanosecond), time.UTC), *creationTime.Lte)
+
+			return &camundav89.SearchIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200: &camundav89.IncidentSearchQueryResult{
+					Items: []camundav89.IncidentResult{},
+					Page:  camundav89.SearchQueryPageResponse{TotalItems: 0},
+				},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{
+		CreationTimeBefore: "2026-05-10",
+	}, d.IncidentPageRequest{Size: 2})
+
+	require.NoError(t, err)
+	require.Empty(t, got.Items)
+}
+
+func TestSearchIncidentsPageC8voltCreationTimestampIsUTC(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(_ context.Context, body camundav89.SearchIncidentsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchIncidentsResponse, error) {
+			require.NotNil(t, body.Filter)
+			require.NotNil(t, body.Filter.CreationTime)
+			creationTime, err := body.Filter.CreationTime.AsAdvancedDateTimeFilter()
+			require.NoError(t, err)
+			require.NotNil(t, creationTime.Gte)
+			require.NotNil(t, creationTime.Lte)
+			require.Equal(t, time.Date(2026, 5, 25, 20, 9, 11, 0, time.UTC), *creationTime.Gte)
+			require.Equal(t, time.Date(2026, 5, 25, 20, 9, 11, 123000000, time.UTC), *creationTime.Lte)
+
+			return &camundav89.SearchIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200: &camundav89.IncidentSearchQueryResult{
+					Items: []camundav89.IncidentResult{},
+					Page:  camundav89.SearchQueryPageResponse{TotalItems: 0},
+				},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{
+		CreationTimeAfter:  "2026-05-25T20:09:11",
+		CreationTimeBefore: "2026-05-25T20:09:11.123",
+	}, d.IncidentPageRequest{Size: 2})
+
+	require.NoError(t, err)
+	require.Empty(t, got.Items)
+}
+
 func ptrIncidentState89(v camundav89.IncidentStateEnum) *camundav89.IncidentStateEnum {
 	return &v
 }

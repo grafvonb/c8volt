@@ -105,7 +105,7 @@ Required private C88 substitution workflow:
 3. Discover fixture availability with:
    `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 embed list`
 4. Use C88 fixtures for setup, for example:
-   - `processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn`
+   - `processdefinitions/C88_MultipleSubProcessesParent.bpmn`
    - C88 user-task, service-task, incident, and variable fixtures that exist in
      `embed list`
 5. If a C89 fixture has no C88 equivalent, do not edit docs or examples.
@@ -227,7 +227,7 @@ Suggested investigation commands:
 - `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 get cluster version`
 - `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 get cluster topology`
 - `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 get pd --latest --limit 5`
-- `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 run pi -b C88_MultipleSubProcessesParentProcess`
+- `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 run pi -b C88_MultipleSubProcessesParent`
 - `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 get pi --state active --limit 5`
 - `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 get pi --with-vars --limit 5`
 - `/tmp/c8volt-c88-stability --config ./config.yaml --profile kind-camunda-platform-local-c88 get pi --with-incidents --limit 5`

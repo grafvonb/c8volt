@@ -66,6 +66,9 @@ func populatePISearchFilterOpts() process.ProcessInstanceFilter {
 	if flagGetPINoIncidentsOnly {
 		f.HasIncident = new(false)
 	}
+	if variableFilters, err := parsePIVariableFilters(); err == nil {
+		f.VariableFilters = variableFilters
+	}
 	return f
 }
 
@@ -80,7 +83,8 @@ func hasPISearchFilterFlags() bool {
 		flagGetPIProcessDefinitionKey != "" ||
 		hasPIDateFilterFlags() ||
 		hasPIRelativeDayFilterFlags() ||
-		(flagGetPIState != "" && flagGetPIState != "all")
+		(flagGetPIState != "" && flagGetPIState != "all") ||
+		hasPIVariableFilterFlags()
 }
 
 // hasPIDateFilterFlags isolates absolute date filters from relative-day filters

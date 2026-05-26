@@ -27,13 +27,13 @@ make docs-content
 Against a configured Camunda 8.9 cluster:
 
 ```sh
-c8volt run pi -b C89_NoOpCompletion_Process
+c8volt run pi -b C89_NoOpCompletion
 ```
 
 Expected: command succeeds and rendered process instance details show the observed state, likely `COMPLETED`.
 
 ```sh
-c8volt run pi -b C89_NoOpCompletion_Process --keys-only \
+c8volt run pi -b C89_NoOpCompletion --keys-only \
   | c8volt expect pi --state completed -
 ```
 

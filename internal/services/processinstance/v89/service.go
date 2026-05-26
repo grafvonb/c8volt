@@ -266,6 +266,10 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building parent-process-instance-key filter: %w", err)
 	}
+	variableFilters, err := newVariableValueFiltersPtr(filter.VariableFilters)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building variable filters: %w", err)
+	}
 
 	bodyFilter := &processInstanceFilter{
 		TenantId:                    tenantFilter,
@@ -279,6 +283,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		State:                       stateFilter,
 		HasIncident:                 filter.HasIncident,
 		ParentProcessInstanceKey:    parentProcessInstanceKeyFilter,
+		Variables:                   variableFilters,
 	}
 	if bodyFilter.isEmpty() {
 		bodyFilter = nil

@@ -17,7 +17,7 @@ Preview cleanup:
 Preview cleanup with a bounded selection:
 
 ```bash
-/tmp/c8volt-ops-cleanup ops purge orphan-process-instances --dry-run --bpmn-process-id C89_SimpleUserTask_Process --limit 25
+/tmp/c8volt-ops-cleanup ops purge orphan-process-instances --dry-run --bpmn-process-id C89_SimpleUserTask --limit 25
 ```
 
 Run confirmed cleanup:

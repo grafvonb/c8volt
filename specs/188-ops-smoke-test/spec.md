@@ -53,9 +53,9 @@ As an operator, I want the smoke test to select the embedded multiple-subprocess
 
 **Acceptance Scenarios**:
 
-1. **Given** Camunda 8.7, **When** fixture selection runs, **Then** it selects `C87_MultipleSubProcessesParentProcess`.
-2. **Given** Camunda 8.8, **When** fixture selection runs, **Then** it selects `C88_MultipleSubProcessesParentProcess`.
-3. **Given** Camunda 8.9, **When** fixture selection runs, **Then** it selects `C89_MultipleSubProcessesParentProcess`.
+1. **Given** Camunda 8.7, **When** fixture selection runs, **Then** it selects `C87_MultipleSubProcessesParent`.
+2. **Given** Camunda 8.8, **When** fixture selection runs, **Then** it selects `C88_MultipleSubProcessesParent`.
+3. **Given** Camunda 8.9, **When** fixture selection runs, **Then** it selects `C89_MultipleSubProcessesParent`.
 4. **Given** deployment succeeds, **When** results are reported, **Then** the report includes fixture file, BPMN process ID, deployed process-definition key when available, deployed version when available, and tenant id when available.
 
 ---
@@ -170,7 +170,7 @@ As a c8volt maintainer, I want generated docs, examples, and regression tests to
 - **FR-007**: Dry-run MUST perform read-only validation and planning only, including local configuration validation, optional read-only connectivity validation, fixture existence checks, flag validation, cleanup intent, and report path/format planning.
 - **FR-008**: Dry-run MUST NOT deploy, start instances, walk newly created instances, delete process instances, or delete process definitions.
 - **FR-009**: The workflow MUST validate connectivity using the same effective behavior as `config test-connection`.
-- **FR-010**: The workflow MUST select the embedded multiple-subprocess fixture matching the configured Camunda version: 8.7 uses `C87_MultipleSubProcessesParentProcess`, 8.8 uses `C88_MultipleSubProcessesParentProcess`, and 8.9 uses `C89_MultipleSubProcessesParentProcess`.
+- **FR-010**: The workflow MUST select the embedded multiple-subprocess fixture matching the configured Camunda version: 8.7 uses `C87_MultipleSubProcessesParent`, 8.8 uses `C88_MultipleSubProcessesParent`, and 8.9 uses `C89_MultipleSubProcessesParent`.
 - **FR-011**: If the matching embedded fixture is unavailable, the command MUST fail before mutation with a clear message.
 - **FR-012**: The workflow MUST deploy the selected embedded fixture through existing resource service or facade behavior, not shell composition.
 - **FR-013**: The workflow MUST start one or more process instances through existing process-instance run behavior.

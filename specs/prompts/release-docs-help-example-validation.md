@@ -59,7 +59,7 @@ Required safety and example rules:
    `<job-key>`, `<resource-key>`, `<tenant-id>`, and
    `<bpmn-process-id>`.
 4. Do not publish examples that mention embedded fixture IDs such as
-   `C89_SimpleUserTask_Process`. The validation run may use fixtures privately
+   `C89_SimpleUserTask`. The validation run may use fixtures privately
    to discover real keys and prove syntax, but public docs/help must stay
    environment-agnostic.
 5. Keep only a small number of examples per command. Prefer the standard

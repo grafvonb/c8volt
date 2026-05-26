@@ -31,7 +31,7 @@ Example shape:
     "items": [
       {
         "key": "2251799813685249",
-        "bpmnProcessId": "C89_NoOpCompletion_Process",
+        "bpmnProcessId": "C89_NoOpCompletion",
         "state": "COMPLETED"
       }
     ]
@@ -54,7 +54,7 @@ No `found:` line, labels, warnings, or other stdout content may be emitted in ke
 The output of `run pi --keys-only` must be valid stdin for `expect pi`:
 
 ```sh
-c8volt run pi -b C89_NoOpCompletion_Process --keys-only \
+c8volt run pi -b C89_NoOpCompletion --keys-only \
   | c8volt expect pi --state completed -
 ```
 

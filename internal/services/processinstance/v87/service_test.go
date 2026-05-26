@@ -449,6 +449,24 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 		assert.Contains(t, err.Error(), "date filters require Camunda 8.8")
 	})
 
+	t.Run("RejectsVariableFiltersBeforeOperateSearch", func(t *testing.T) {
+		exists := true
+		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), newStrictOperateClient(t))
+
+		_, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{
+			VariableFilters: d.ProcessInstanceVariableFilterSet{
+				Clauses: []d.ProcessInstanceVariableFilterClause{
+					{Name: "customerId", Operator: d.ProcessInstanceVariableFilterOperatorExists, Exists: &exists},
+				},
+			},
+		}, 25)
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, d.ErrUnsupported)
+		assert.Contains(t, err.Error(), "process-instance variable search is unsupported in Camunda 8.7")
+		assert.Contains(t, err.Error(), "requires Camunda 8.8 or 8.9")
+	})
+
 	t.Run("RejectsAnyDateBoundAsUnsupported", func(t *testing.T) {
 		cases := []d.ProcessInstanceFilter{
 			{StartDateAfter: "2026-01-01"},

@@ -300,6 +300,51 @@ func TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter(t *testing.T
 	require.NoError(t, err)
 }
 
+// TestClient_SearchProcessInstances_MapsVariableFiltersToDomainFilter verifies
+// the facade passes normalized variable clauses through without backend logic.
+func TestClient_SearchProcessInstances_MapsVariableFiltersToDomainFilter(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	exists := true
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstances: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+			assert.Equal(t, int32(25), size)
+			assert.Equal(t, d.ProcessInstanceFilter{
+				BpmnProcessId: "order-process",
+				VariableFilters: d.ProcessInstanceVariableFilterSet{
+					Clauses: []d.ProcessInstanceVariableFilterClause{
+						{Name: "customerId", Operator: d.ProcessInstanceVariableFilterOperatorExists, Exists: &exists, Source: "--var-exists"},
+						{Name: "status", Operator: d.ProcessInstanceVariableFilterOperatorEq, Value: `"approved"`, Source: "--var"},
+						{Name: "state", Operator: d.ProcessInstanceVariableFilterOperatorNeq, Value: `"failed"`, Source: "--var"},
+						{Name: "kind", Operator: d.ProcessInstanceVariableFilterOperatorIn, Value: `["approved","pending"]`, Source: "--var"},
+						{Name: "segment", Operator: d.ProcessInstanceVariableFilterOperatorNotIn, Value: `["legacy","test"]`, Source: "--var"},
+						{Name: "email", Operator: d.ProcessInstanceVariableFilterOperatorLike, Value: "*@example.com", Source: "--var-like"},
+					},
+				},
+			}, filter)
+			return []d.ProcessInstance{}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	_, err := cli.SearchProcessInstances(ctx, ProcessInstanceFilter{
+		BpmnProcessId: "order-process",
+		VariableFilters: ProcessInstanceVariableFilterSet{
+			Clauses: []ProcessInstanceVariableFilterClause{
+				{Name: "customerId", Operator: ProcessInstanceVariableFilterOperatorExists, Exists: &exists, Source: "--var-exists"},
+				{Name: "status", Operator: ProcessInstanceVariableFilterOperatorEq, Value: `"approved"`, Source: "--var"},
+				{Name: "state", Operator: ProcessInstanceVariableFilterOperatorNeq, Value: `"failed"`, Source: "--var"},
+				{Name: "kind", Operator: ProcessInstanceVariableFilterOperatorIn, Value: `["approved","pending"]`, Source: "--var"},
+				{Name: "segment", Operator: ProcessInstanceVariableFilterOperatorNotIn, Value: `["legacy","test"]`, Source: "--var"},
+				{Name: "email", Operator: ProcessInstanceVariableFilterOperatorLike, Value: "*@example.com", Source: "--var-like"},
+			},
+		},
+	}, 25)
+
+	require.NoError(t, err)
+}
+
 // TestClient_SearchProcessInstances_PreservesDerivedRelativeDayBoundsAsCanonicalDateFields
 // documents that relative-day CLI handling happens before this facade call.
 // Once dates arrive here they are canonical absolute strings and must not be

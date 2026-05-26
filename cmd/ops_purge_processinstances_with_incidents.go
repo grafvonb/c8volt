@@ -33,6 +33,8 @@ var (
 	flagOpsPurgeIncidentElementInstanceKey string
 	flagOpsPurgeIncidentCreationTimeAfter  string
 	flagOpsPurgeIncidentCreationTimeBefore string
+	flagOpsPurgeIncidentCreationTimeNewer  int
+	flagOpsPurgeIncidentCreationTimeOlder  int
 	flagOpsPurgeIncidentBatchSize          int32
 	flagOpsPurgeIncidentLimit              int32
 	flagOpsPurgeIncidentReportFile         string
@@ -141,8 +143,10 @@ func init() {
 	fs.StringVar(&flagOpsPurgeIncidentRootKey, "root-key", "", "root process instance key to filter incidents")
 	fs.StringVar(&flagOpsPurgeIncidentElementID, "element-id", "", "BPMN element ID to filter incidents")
 	fs.StringVar(&flagOpsPurgeIncidentElementInstanceKey, "element-instance-key", "", "element instance key to filter incidents")
-	fs.StringVar(&flagOpsPurgeIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD")
-	fs.StringVar(&flagOpsPurgeIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD")
+	fs.StringVar(&flagOpsPurgeIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
+	fs.StringVar(&flagOpsPurgeIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
+	fs.IntVar(&flagOpsPurgeIncidentCreationTimeNewer, "creation-time-newer-days", -1, "only include incidents with creation time N days old or newer (0 means today)")
+	fs.IntVar(&flagOpsPurgeIncidentCreationTimeOlder, "creation-time-older-days", -1, "only include incidents with creation time N days old or older")
 	fs.Int32VarP(&flagOpsPurgeIncidentBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagOpsPurgeIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to freeze before candidate process-instance dedupe; omit to discover all matches")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "discover and validate incident-based process-instance cleanup without submitting deletion requests")
@@ -180,10 +184,12 @@ func validateOpsPurgeProcessInstancesWithIncidentsFlags(cmd *cobra.Command) erro
 	if err := validateGetIncidentErrorTypeFlag(flagOpsPurgeIncidentErrorType); err != nil {
 		return err
 	}
-	if err := validateGetIncidentCreationTimeFlag("--creation-time-after", flagOpsPurgeIncidentCreationTimeAfter); err != nil {
-		return err
-	}
-	if err := validateGetIncidentCreationTimeFlag("--creation-time-before", flagOpsPurgeIncidentCreationTimeBefore); err != nil {
+	if err := validateIncidentCreationTimeFilters(
+		"--creation-time-after", flagOpsPurgeIncidentCreationTimeAfter,
+		"--creation-time-before", flagOpsPurgeIncidentCreationTimeBefore,
+		"--creation-time-newer-days", flagOpsPurgeIncidentCreationTimeNewer,
+		"--creation-time-older-days", flagOpsPurgeIncidentCreationTimeOlder,
+	); err != nil {
 		return err
 	}
 	for flag, value := range map[string]string{
@@ -354,6 +360,8 @@ func formatOpsPurgeProcessInstancesWithIncidentsNonFinalScope(plan ops.IncidentP
 func populateOpsPurgeIncidentSelection() incident.Filter {
 	errorType, _ := incidentfilter.NormalizeErrorType(flagOpsPurgeIncidentErrorType)
 	state, _ := incidentfilter.NormalizeState(flagOpsPurgeIncidentState)
+	creationTimeAfter, _ := pickIncidentCreationTimeLowerBound(flagOpsPurgeIncidentCreationTimeAfter, flagOpsPurgeIncidentCreationTimeNewer)
+	creationTimeBefore, _ := pickIncidentCreationTimeUpperBound(flagOpsPurgeIncidentCreationTimeBefore, flagOpsPurgeIncidentCreationTimeOlder)
 	return incident.Filter{
 		Keys:                   append([]string(nil), flagOpsPurgeIncidentKeys...),
 		State:                  state,
@@ -365,8 +373,8 @@ func populateOpsPurgeIncidentSelection() incident.Filter {
 		RootProcessInstanceKey: flagOpsPurgeIncidentRootKey,
 		ElementId:              flagOpsPurgeIncidentElementID,
 		ElementInstanceKey:     flagOpsPurgeIncidentElementInstanceKey,
-		CreationTimeAfter:      flagOpsPurgeIncidentCreationTimeAfter,
-		CreationTimeBefore:     flagOpsPurgeIncidentCreationTimeBefore,
+		CreationTimeAfter:      creationTimeAfter,
+		CreationTimeBefore:     creationTimeBefore,
 	}
 }
 

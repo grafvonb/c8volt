@@ -456,6 +456,62 @@ func TestSearchIncidentsPaginatesCreationTimeFilteringBeyondFirstPage(t *testing
 	require.Equal(t, []string{"match-second-page"}, incidentDetailKeys(got))
 }
 
+func TestSearchIncidentsDateOnlyCreationTimeBeforeUsesInclusiveDay(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
+			require.Nil(t, body.Filter)
+			return &camundav88.SearchIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200: &camundav88.IncidentSearchQueryResult{
+					Items: []camundav88.IncidentResult{
+						{IncidentKey: "match-end-of-day", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumACTIVE, CreationTime: time.Date(2026, 5, 10, 23, 0, 0, 0, time.UTC)},
+						{IncidentKey: "skip-next-day", ProcessInstanceKey: "pi-b", State: camundav88.IncidentStateEnumACTIVE, CreationTime: time.Date(2026, 5, 11, 0, 0, 0, 0, time.UTC)},
+					},
+					Page: camundav88.SearchQueryPageResponse{TotalItems: 2},
+				},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchIncidents(context.Background(), d.IncidentFilter{
+		State:              "active",
+		CreationTimeBefore: "2026-05-10",
+	}, 10)
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"match-end-of-day"}, incidentDetailKeys(got))
+}
+
+func TestSearchIncidentsC8voltCreationTimestampIsUTC(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
+			require.Nil(t, body.Filter)
+			return &camundav88.SearchIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200: &camundav88.IncidentSearchQueryResult{
+					Items: []camundav88.IncidentResult{
+						{IncidentKey: "match", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumACTIVE, CreationTime: time.Date(2026, 5, 25, 20, 9, 11, 100000000, time.UTC)},
+						{IncidentKey: "skip-before", ProcessInstanceKey: "pi-b", State: camundav88.IncidentStateEnumACTIVE, CreationTime: time.Date(2026, 5, 25, 20, 9, 10, 999000000, time.UTC)},
+					},
+					Page: camundav88.SearchQueryPageResponse{TotalItems: 2},
+				},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchIncidents(context.Background(), d.IncidentFilter{
+		State:             "active",
+		CreationTimeAfter: "2026-05-25T20:09:11.000",
+	}, 10)
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"match"}, incidentDetailKeys(got))
+}
+
 func TestSearchIncidentsPageDoesNotSendBrokenV88FilterShapeForLocalFilters(t *testing.T) {
 	t.Parallel()
 

@@ -45,28 +45,30 @@ c8volt get incident [flags]
 ### Options
 
 ```
-  -n, --batch-size int32              number of incidents to fetch per page (max limit 1000 enforced by server) (default 1000)
-  -b, --bpmn-process-id string        BPMN process ID to validate and filter incidents
-      --creation-time-after string    only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD
-      --creation-time-before string   only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD
-      --element-id string             BPMN element ID to filter incidents
-      --element-instance-key string   element instance key to filter incidents
-      --error-message string          case-insensitive incident error message substring filter for search
-      --error-message-limit int       maximum characters to show for incident messages; 0 keeps full messages
-      --error-type string             case-insensitive incident error type filter for search
-      --fail-fast                     stop scheduling new incident lookups after the first error
-  -h, --help                          help for incident
-  -k, --key strings                   incident key(s) to fetch; repeat or combine with stdin '-'
-  -l, --limit int32                   maximum number of matching incidents to return across all pages
-      --no-worker-limit               use all queued jobs as workers when --workers is unset
-      --pd-key string                 process definition key to filter incidents
-      --pi-key string                 process instance key to filter incidents
-      --pi-keys-only                  return only process instance keys for matching incidents
-      --root-key string               root process instance key to filter incidents
-  -s, --state string                  incident state scope for search: active, pending, resolved, migrated, unknown, all (default "active")
-      --total                         return only the exact numeric total of matching incidents
-      --with-no-error-message         omit error messages from incident output
-  -w, --workers int                   maximum concurrent workers when fetching multiple incidents (default: min(count, 2*GOMAXPROCS, 32))
+  -n, --batch-size int32               number of incidents to fetch per page (max limit 1000 enforced by server) (default 1000)
+  -b, --bpmn-process-id string         BPMN process ID to validate and filter incidents
+      --creation-time-after string     only include incidents with creation time >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
+      --creation-time-before string    only include incidents with creation time <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
+      --creation-time-newer-days int   only include incidents with creation time N days old or newer (0 means today) (default -1)
+      --creation-time-older-days int   only include incidents with creation time N days old or older (default -1)
+      --element-id string              BPMN element ID to filter incidents
+      --element-instance-key string    element instance key to filter incidents
+      --error-message string           case-insensitive incident error message substring filter for search
+      --error-message-limit int        maximum characters to show for incident messages; 0 keeps full messages
+      --error-type string              case-insensitive incident error type filter for search
+      --fail-fast                      stop scheduling new incident lookups after the first error
+  -h, --help                           help for incident
+  -k, --key strings                    incident key(s) to fetch; repeat or combine with stdin '-'
+  -l, --limit int32                    maximum number of matching incidents to return across all pages
+      --no-worker-limit                use all queued jobs as workers when --workers is unset
+      --pd-key string                  process definition key to filter incidents
+      --pi-key string                  process instance key to filter incidents
+      --pi-keys-only                   return only process instance keys for matching incidents
+      --root-key string                root process instance key to filter incidents
+  -s, --state string                   incident state scope for search: active, pending, resolved, migrated, unknown, all (default "active")
+      --total                          return only the exact numeric total of matching incidents
+      --with-no-error-message          omit error messages from incident output
+  -w, --workers int                    maximum concurrent workers when fetching multiple incidents (default: min(count, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands
