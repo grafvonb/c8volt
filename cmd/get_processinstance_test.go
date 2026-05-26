@@ -47,6 +47,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "./c8volt get pi --has-user-tasks <user-task-key>")
 	require.Contains(t, output, "./c8volt get pi --incidents-only --with-incidents --limit 5")
 	require.Contains(t, output, "./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5")
+	require.Contains(t, output, `./c8volt get pi --var 'status="approved"' --limit 5`)
 	require.Contains(t, output, "./c8volt get pi --state active --with-vars --var-value-limit 120 --limit 5")
 	require.Contains(t, output, "./c8volt get pi --key <process-instance-key> --with-incidents")
 	require.Contains(t, output, "./c8volt get pi --key <process-instance-key> --with-vars")
@@ -68,6 +69,8 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "maximum number of matching process instances to return or process across all pages")
 	require.Contains(t, output, "--var-value-limit int")
 	require.Contains(t, output, "maximum characters to show for variable values when --with-vars is set")
+	require.Contains(t, output, "--var stringArray")
+	require.Contains(t, output, "require variable equality or advanced clause(s); repeat or separate clauses with commas")
 	require.Contains(t, output, "--with-incidents")
 	require.Contains(t, output, "include direct incident keys, states, and messages for keyed or list/search process-instance output")
 	require.Contains(t, output, "--direct-incidents-only")
@@ -75,6 +78,29 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "--with-vars")
 	require.Contains(t, output, "include process-instance-scope variables for keyed or list/search process-instance output")
 	require.NotContains(t, output, "--count")
+}
+
+// TestGetProcessInstanceHelp_DocumentsVariableSearchContract protects the
+// compact variable-search grammar and native wildcard documentation.
+func TestGetProcessInstanceHelp_DocumentsVariableSearchContract(t *testing.T) {
+	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
+
+	require.Contains(t, output, "Use variable-search flags to narrow list/search results natively on Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error for those flags.")
+	require.Contains(t, output, "--var-exists requires every listed variable name to exist.")
+	require.Contains(t, output, "--var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn.")
+	require.Contains(t, output, "--var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal.")
+	require.Contains(t, output, "Commas inside quoted values and JSON arrays stay inside the variable clause.")
+	require.Contains(t, output, "Variable scopeKey means the scope where the variable is directly defined.")
+	require.Contains(t, output, `./c8volt get pi --var-exists payload,email --limit 5`)
+	require.Contains(t, output, `./c8volt get pi --var 'status="approved"' --limit 5`)
+	require.Contains(t, output, `./c8volt get pi --var 'status.$in=["approved","pending"]' --limit 5`)
+	require.Contains(t, output, "./c8volt get pi --var-like 'email=*@example.com,customerId=CUST-????' --limit 5")
+	require.Contains(t, output, "--var-exists stringArray")
+	require.Contains(t, output, "require variable name(s) to exist; repeat or separate names with commas")
+	require.Contains(t, output, "--var stringArray")
+	require.Contains(t, output, "require variable equality or advanced clause(s); repeat or separate clauses with commas")
+	require.Contains(t, output, "--var-like stringArray")
+	require.Contains(t, output, "require variable value pattern clause(s); repeat or separate clauses with commas")
 }
 
 // Verifies help text documents has-user-tasks as a compact lookup selector without overloaded examples.
@@ -120,6 +146,188 @@ func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest
 	require.Equal(t, "get process-instance", got["command"])
 }
 
+// TestGetProcessInstanceSearch_VarExistsSendsNativeVariableFilters verifies the
+// registered CLI flag reaches the native process-instance search body.
+func TestGetProcessInstanceSearch_VarExistsSendsNativeVariableFilters(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceSearchCaptureServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--var-exists", "customerId",
+		"--var-exists", "payload,email",
+		"--batch-size", "5",
+	)
+
+	filter := decodeCapturedPISearchFilter(t, requests)
+	variables, ok := filter["variables"].([]any)
+	require.True(t, ok, "expected native variable filters")
+	require.Len(t, variables, 3)
+	require.Equal(t, map[string]any{"name": "customerId", "value": map[string]any{"$exists": true}}, variables[0])
+	require.Equal(t, map[string]any{"name": "payload", "value": map[string]any{"$exists": true}}, variables[1])
+	require.Equal(t, map[string]any{"name": "email", "value": map[string]any{"$exists": true}}, variables[2])
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &got))
+	require.Equal(t, string(OutcomeSucceeded), got["outcome"])
+	require.Equal(t, "get process-instance", got["command"])
+}
+
+// TestGetProcessInstanceSearch_VarSendsNativeEqualityFilters verifies equality
+// shorthand reaches the native process-instance search body without losing commas.
+func TestGetProcessInstanceSearch_VarSendsNativeEqualityFilters(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceSearchCaptureServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--var", `status="approved"`,
+		"--var", `payload="payload,with,comma"`,
+		"--batch-size", "5",
+	)
+
+	filter := decodeCapturedPISearchFilter(t, requests)
+	variables, ok := filter["variables"].([]any)
+	require.True(t, ok, "expected native variable filters")
+	require.Len(t, variables, 2)
+	require.Equal(t, map[string]any{"name": "status", "value": map[string]any{"$eq": `"approved"`}}, variables[0])
+	require.Equal(t, map[string]any{"name": "payload", "value": map[string]any{"$eq": `"payload,with,comma"`}}, variables[1])
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &got))
+	require.Equal(t, string(OutcomeSucceeded), got["outcome"])
+	require.Equal(t, "get process-instance", got["command"])
+}
+
+// TestGetProcessInstanceSearch_VarLikeSendsNativeLikeFilters verifies like
+// shorthand reaches the native search body without rewriting wildcard text.
+func TestGetProcessInstanceSearch_VarLikeSendsNativeLikeFilters(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceSearchCaptureServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--var-like", `email=*@example.com,customerId=CUST-????`,
+		"--var-like", `literal=invoice-\*`,
+		"--batch-size", "5",
+	)
+
+	filter := decodeCapturedPISearchFilter(t, requests)
+	variables, ok := filter["variables"].([]any)
+	require.True(t, ok, "expected native variable filters")
+	require.Len(t, variables, 3)
+	require.Equal(t, map[string]any{"name": "email", "value": map[string]any{"$like": `*@example.com`}}, variables[0])
+	require.Equal(t, map[string]any{"name": "customerId", "value": map[string]any{"$like": `CUST-????`}}, variables[1])
+	require.Equal(t, map[string]any{"name": "literal", "value": map[string]any{"$like": `invoice-\*`}}, variables[2])
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &got))
+	require.Equal(t, string(OutcomeSucceeded), got["outcome"])
+	require.Equal(t, "get process-instance", got["command"])
+}
+
+// TestGetProcessInstanceSearch_VarSendsNativeAdvancedFilters verifies advanced
+// operators reach the native process-instance search body with normalized names.
+func TestGetProcessInstanceSearch_VarSendsNativeAdvancedFilters(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceSearchCaptureServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--var", `status.$neq="failed",active.$exists=false,kind.$in=["approved","pending"],segment.$notin=["legacy","test"]`,
+		"--batch-size", "5",
+	)
+
+	filter := decodeCapturedPISearchFilter(t, requests)
+	variables, ok := filter["variables"].([]any)
+	require.True(t, ok, "expected native variable filters")
+	require.Len(t, variables, 4)
+	require.Equal(t, map[string]any{"name": "status", "value": map[string]any{"$neq": `"failed"`}}, variables[0])
+	require.Equal(t, map[string]any{"name": "active", "value": map[string]any{"$exists": false}}, variables[1])
+	require.Equal(t, map[string]any{"name": "kind", "value": map[string]any{"$in": []any{"approved", "pending"}}}, variables[2])
+	require.Equal(t, map[string]any{"name": "segment", "value": map[string]any{"$notIn": []any{"legacy", "test"}}}, variables[3])
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &got))
+	require.Equal(t, string(OutcomeSucceeded), got["outcome"])
+	require.Equal(t, "get process-instance", got["command"])
+}
+
+// TestGetProcessInstanceSearch_TenantScopedDiscoveryUsesSelectedTenant verifies
+// c8volt-produced search candidates remain scoped by the effective tenant.
+func TestGetProcessInstanceSearch_TenantScopedDiscoveryUsesSelectedTenant(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"hasIncident":false,"processDefinitionId":"tenant-a-process","processDefinitionKey":"9001","processDefinitionName":"tenant-a-process","processDefinitionVersion":3,"processInstanceKey":"101","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"--json",
+		"get", "process-instance",
+		"--state", "active",
+		"--batch-size", "5",
+	)
+
+	filter := decodeCapturedPISearchFilter(t, requests)
+	require.Equal(t, tenantAdminKeysSelectedTenant, filter["tenantId"])
+	require.Equal(t, "ACTIVE", filter["state"])
+	require.Contains(t, output, `"tenantId": "tenant-a"`)
+	require.NotContains(t, output, tenantAdminKeysReturnedTenant)
+}
+
+// TestGetProcessInstanceKey_SelectedTenantMismatchUsesDirectBackendLookup
+// protects explicit admin-input keys from being converted into tenant-scoped search.
+func TestGetProcessInstanceKey_SelectedTenantMismatchUsesDirectBackendLookup(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/"+tenantAdminKeysProcessInstanceKey, r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(tenantAdminKeysMismatchProcessInstanceJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"--json",
+		"get", "process-instance",
+		"--key", tenantAdminKeysProcessInstanceKey,
+	)
+
+	require.Equal(t, []string{"GET /v2/process-instances/" + tenantAdminKeysProcessInstanceKey}, requests)
+	require.Contains(t, output, `"tenantId": "tenant-b"`)
+	require.Contains(t, output, `"key": "`+tenantAdminKeysProcessInstanceKey+`"`)
+}
+
 // A missing BPMN selector should fail before process-instance search can masquerade as a real empty result.
 func TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 	var requests []string
@@ -146,6 +354,35 @@ func TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 	require.Contains(t, string(output), "no visible process definition matches the provided selector")
 	require.Contains(t, string(output), "[missing-process]")
 	require.NotContains(t, string(output), "bpmnProcessId:")
+	require.NotContains(t, string(output), "found: 0")
+}
+
+// A keys-only upstream pipeline command still validates the BPMN selector before emitting keys.
+func TestGetProcessInstanceBpmnSelectorMissingKeysOnlyPipelineFailsUpstream(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceBpmnSelectorMissingKeysOnlyPipelineFailsUpstreamHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Equal(t, []string{"POST /v2/process-definitions/search"}, requests)
+	require.Contains(t, string(output), "no visible process definition matches the provided selector")
+	require.Contains(t, string(output), "[missing-process]")
+	require.NotContains(t, string(output), "List visible process definitions?")
 	require.NotContains(t, string(output), "found: 0")
 }
 
@@ -613,17 +850,17 @@ func TestGetProcessInstanceDirectIncidentsOnly_FiltersByLoadedDirectIncidents(t 
 }
 
 func TestGetProcessInstanceDirectIncidentsOnlyWithLimitUsesIncidentSearch(t *testing.T) {
-	var requests []string
-	var incidentSearchBodies []string
+	var requests testx.SafeSlice[string]
+	var incidentSearchBodies testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r.Method+" "+r.URL.Path)
+		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/incidents/search":
 			require.Equal(t, http.MethodPost, r.Method)
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			incidentSearchBodies = append(incidentSearchBodies, string(body))
+			incidentSearchBodies.Append(string(body))
 			_, _ = w.Write([]byte(`{"items":[
 				{"errorMessage":"intentional failure","errorType":"IO_MAPPING_ERROR","incidentKey":"incident-123","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"},
 				{"errorMessage":"intentional failure","errorType":"IO_MAPPING_ERROR","incidentKey":"incident-124","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"124","state":"ACTIVE","tenantId":"tenant"}
@@ -652,14 +889,16 @@ func TestGetProcessInstanceDirectIncidentsOnlyWithLimitUsesIncidentSearch(t *tes
 		"--limit", "5",
 	)
 
-	require.NotEmpty(t, requests)
-	require.Equal(t, "POST /v2/incidents/search", requests[0])
+	gotRequests := requests.Snapshot()
+	gotIncidentSearchBodies := incidentSearchBodies.Snapshot()
+	require.NotEmpty(t, gotRequests)
+	require.Equal(t, "POST /v2/incidents/search", gotRequests[0])
 	require.ElementsMatch(t, []string{
 		"GET /v2/process-instances/123",
 		"GET /v2/process-instances/124",
-	}, requests[1:])
-	require.Len(t, incidentSearchBodies, 1)
-	require.NotContains(t, incidentSearchBodies[0], "process-instances")
+	}, gotRequests[1:])
+	require.Len(t, gotIncidentSearchBodies, 1)
+	require.NotContains(t, gotIncidentSearchBodies[0], "process-instances")
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "124 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "found: 2")
@@ -1141,6 +1380,10 @@ func TestGetProcessInstanceIncidentStateValidation(t *testing.T) {
 	}
 }
 
+func TestGetProcessInstanceIncidentStateValidationAcceptsCaseInsensitiveEnum(t *testing.T) {
+	require.NoError(t, validatePIIncidentStateFlag(" RESOLVED "))
+}
+
 func TestGetProcessInstanceIncidentDetailFilterValidation(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 
@@ -1609,7 +1852,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "demo v3")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-03-23T18:01:00.000 (48 days ago) fn:task-a fni:element-123 m:No retries left")
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-03-23T18:01:00.000 (48 days ago) e:task-a ei:element-123 m:No retries left")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -1878,7 +2121,7 @@ func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(
 	require.Contains(t, output, "│  ├─ businessKey=2234809392328")
 	require.Contains(t, output, "│  └─ hasIncident=true")
 	require.Contains(t, output, "└─ incidents:")
-	require.Contains(t, output, "   └─ incident-123 IO_MAPPING_ERROR ACTIVE j:n/a fn:task-a fni:element-123 m:No retries left")
+	require.Contains(t, output, "   └─ incident-123 IO_MAPPING_ERROR ACTIVE j:n/a e:task-a ei:element-123 m:No retries left")
 	require.Contains(t, output, "found: 1")
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
@@ -1998,8 +2241,8 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 			wantMessages: []string{
 				"└─ incidents:",
-				"├─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a 2026-03-23T18:01:00.000 (48 days ago) fn:task-a fni:element-123 m:No retries left",
-				"└─ incident-124 EXTRACT_VALUE_ERROR ACTIVE j:n/a 2026-03-23T18:02:00.000 (48 days ago) fn:task-b fni:element-124 m:Gateway failed",
+				"├─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a 2026-03-23T18:01:00.000 (48 days ago) e:task-a ei:element-123 m:No retries left",
+				"└─ incident-124 EXTRACT_VALUE_ERROR ACTIVE j:n/a 2026-03-23T18:02:00.000 (48 days ago) e:task-b ei:element-124 m:Gateway failed",
 			},
 		},
 		{
@@ -2088,7 +2331,9 @@ func TestGetProcessInstanceWithIncidents_JSONOutputShowsIncidentDetails(t *testi
 	require.Equal(t, "incident-123", incident["incidentKey"])
 	require.Equal(t, "123", incident["processInstanceKey"])
 	require.Equal(t, "No retries left", incident["errorMessage"])
-	require.Equal(t, "task-a", incident["flowNodeId"])
+	require.Equal(t, "task-a", incident["elementId"])
+	require.Equal(t, "element-123", incident["elementInstanceKey"])
+	require.NotContains(t, output, "flowNode")
 }
 
 // TestGetProcessInstanceWithIncidents_JSONOutputAssociatesMultipleKeys prevents incident details from crossing keyed lookup boundaries.
@@ -2224,7 +2469,7 @@ func TestGetProcessInstanceJSONWithIncidents_ListSearchUsesEnrichedPayloadShape(
 	require.Equal(t, "incident-123", firstIncident["incidentKey"])
 	require.Equal(t, "123", firstIncident["processInstanceKey"])
 	require.Equal(t, "First direct incident", firstIncident["errorMessage"])
-	require.Equal(t, "task-a", firstIncident["flowNodeId"])
+	require.Equal(t, "task-a", firstIncident["elementId"])
 
 	second := requireJSONObject(t, items[1])
 	secondItem := requireJSONObject(t, second["item"])
@@ -2234,7 +2479,7 @@ func TestGetProcessInstanceJSONWithIncidents_ListSearchUsesEnrichedPayloadShape(
 	require.Equal(t, "incident-124", secondIncident["incidentKey"])
 	require.Equal(t, "124", secondIncident["processInstanceKey"])
 	require.Equal(t, "Second direct incident", secondIncident["errorMessage"])
-	require.Equal(t, "task-b", secondIncident["flowNodeId"])
+	require.Equal(t, "task-b", secondIncident["elementId"])
 }
 
 func TestGetProcessInstanceJSONWithIncidents_IncidentMessageLimitKeepsFullMessages(t *testing.T) {
@@ -2342,7 +2587,7 @@ func TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault(t *testi
 		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		_, _ = w.Write([]byte(`{"hasIncident":true,"parentElementInstanceKey":"ei-parent","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
 	}))
 	t.Cleanup(srv.Close)
 
@@ -2418,7 +2663,7 @@ func TestGetProcessInstanceWithoutIncidents_JSONOutputPreservesDefaultShape(t *t
 		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		_, _ = w.Write([]byte(`{"hasIncident":true,"parentElementInstanceKey":"ei-parent","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
 	}))
 	t.Cleanup(srv.Close)
 
@@ -2445,7 +2690,10 @@ func TestGetProcessInstanceWithoutIncidents_JSONOutputPreservesDefaultShape(t *t
 	item := requireJSONObject(t, items[0])
 	require.Equal(t, "123", item["key"])
 	require.Equal(t, true, item["incident"])
+	require.Equal(t, "ei-parent", item["parentElementInstanceKey"])
 	require.NotContains(t, item, "incidents")
+	require.NotContains(t, item, "parentFlowNodeInstanceKey")
+	require.NotContains(t, output, "parentFlowNodeInstanceKey")
 }
 
 // TestGetProcessInstanceSearchIncidentFilters_PreserveDefaultSearchMode keeps incident presence filters on the paged search path.
@@ -2522,6 +2770,35 @@ func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.
 	require.Equal(t, "<default>", filter["tenantId"])
 	require.Equal(t, "ACTIVE", filter["state"])
 	require.Contains(t, output, `"tenantId": "<default>"`)
+}
+
+// TestGetProcessInstanceCommand_VariableFiltersUnsupportedOnV87 verifies native variable filters fail before any 8.7 fallback path.
+func TestGetProcessInstanceCommand_VariableFiltersUnsupportedOnV87(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
+
+	tests := []struct {
+		name string
+		mode string
+	}{
+		{name: "var-exists", mode: "var-exists"},
+		{name: "var", mode: "var"},
+		{name: "var-like", mode: "var-like"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, code := executeProcessInstanceFailureHelperWithEnv(t,
+				"TestGetProcessInstanceVariableFiltersUnsupportedV87Helper",
+				cfgPath,
+				map[string]string{"C8VOLT_TEST_PI_VARIABLE_FILTER_MODE": tt.mode},
+			)
+
+			require.Equal(t, exitcode.Error, code)
+			require.Contains(t, output, "unsupported capability")
+			require.Contains(t, output, "process-instance variable search is unsupported in Camunda 8.7")
+			require.Contains(t, output, "requires Camunda 8.8 or 8.9")
+		})
+	}
 }
 
 // TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath verifies v8.9 direct lookup uses the native single-instance endpoint.
@@ -4133,6 +4410,33 @@ func requireProcessInstanceVariableJSONPayload(t *testing.T, output string) map[
 	return requireJSONObject(t, envelope["payload"])
 }
 
+const (
+	tenantAdminKeysSelectedTenant       = "tenant-a"
+	tenantAdminKeysReturnedTenant       = "tenant-b"
+	tenantAdminKeysProcessInstanceKey   = "2251799813711967"
+	tenantAdminKeysProcessDefinitionKey = "2251799813685249"
+)
+
+// tenantAdminKeysMismatchProcessInstance returns the shared selected-tenant
+// mismatch fixture used by direct-key admin-input command tests.
+func tenantAdminKeysMismatchProcessInstance() process.ProcessInstance {
+	return process.ProcessInstance{
+		Key:                  tenantAdminKeysProcessInstanceKey,
+		TenantId:             tenantAdminKeysReturnedTenant,
+		BpmnProcessId:        "tenant-b-process",
+		ProcessDefinitionKey: tenantAdminKeysProcessDefinitionKey,
+		ProcessVersion:       3,
+		State:                process.StateActive,
+		StartDate:            "2026-03-23T18:00:00Z",
+	}
+}
+
+// tenantAdminKeysMismatchProcessInstanceJSON mirrors
+// tenantAdminKeysMismatchProcessInstance for fake Camunda v2 keyed responses.
+func tenantAdminKeysMismatchProcessInstanceJSON() string {
+	return `{"hasIncident":false,"processDefinitionId":"tenant-b-process","processDefinitionKey":"9001","processDefinitionName":"tenant-b-process","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-b"}`
+}
+
 // executeRootForProcessInstanceTest runs the root command with process-instance globals reset.
 func executeRootForProcessInstanceTest(t *testing.T, args ...string) string {
 	t.Helper()
@@ -4254,6 +4558,9 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIIncidentMessageLimit = 0
 	flagGetPIWithVars = false
 	flagGetPIVarValueLimit = 0
+	flagGetPIVarExists = nil
+	flagGetPIVars = nil
+	flagGetPIVarLikes = nil
 	flagGetPIRootsOnly = false
 	flagGetPIChildrenOnly = false
 	flagGetPIOrphanChildrenOnly = false
@@ -4362,7 +4669,7 @@ func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictHelper(t *testing.
 	case "state":
 		args = append(args, "--state", "active")
 	case "bpmn-process-id":
-		args = append(args, "--bpmn-process-id", "C88_SimpleUserTask_Process")
+		args = append(args, "--bpmn-process-id", "C88_SimpleUserTask")
 	case "start-date-after":
 		args = append(args, "--start-date-after", "2026-01-01")
 	case "roots-only":
@@ -4388,6 +4695,31 @@ func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87Helper(t *testing
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--has-user-tasks", "2251799815391233"}
+
+	Execute()
+}
+
+// TestGetProcessInstanceVariableFiltersUnsupportedV87Helper drives unsupported variable-search validation in a helper process.
+func TestGetProcessInstanceVariableFiltersUnsupportedV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+
+	args := []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance"}
+	switch os.Getenv("C8VOLT_TEST_PI_VARIABLE_FILTER_MODE") {
+	case "var-exists":
+		args = append(args, "--var-exists", "customerId")
+	case "var":
+		args = append(args, "--var", `status="approved"`)
+	case "var-like":
+		args = append(args, "--var-like", "email=*@example.com")
+	default:
+		t.Fatalf("unknown variable filter mode %q", os.Getenv("C8VOLT_TEST_PI_VARIABLE_FILTER_MODE"))
+	}
+	os.Args = args
 
 	Execute()
 }
@@ -4763,6 +5095,19 @@ func TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearchHelper(t *testing
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant-a", "get", "process-instance", "--bpmn-process-id", "missing-process"}
+
+	Execute()
+}
+
+func TestGetProcessInstanceBpmnSelectorMissingKeysOnlyPipelineFailsUpstreamHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant-a", "get", "process-instance", "--bpmn-process-id", "missing-process", "--keys-only"}
 
 	Execute()
 }

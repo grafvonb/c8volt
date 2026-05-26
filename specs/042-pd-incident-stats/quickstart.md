@@ -54,10 +54,10 @@ Run the focused suites first so model, service, and renderer failures stay isola
 Use the same process definition key or BPMN process ID across supported and unsupported configs:
 
 ```bash
-./c8volt --config /tmp/c8volt-v88.yaml get pd -b C88_SimpleUserTaskWithIncident_Process --stat
-./c8volt --config /tmp/c8volt-v89.yaml get pd -b C89_SimpleUserTaskWithIncident_Process --stat
-./c8volt --config /tmp/c8volt-v87.yaml get pd -b C87_SimpleUserTaskWithIncident_Process --stat
-./c8volt --config /tmp/c8volt-v88.yaml get pd -b C88_SimpleUserTaskWithIncident_Process --stat --json
+./c8volt --config /tmp/c8volt-v88.yaml get pd -b C88_SimpleUserTaskWithIncident --stat
+./c8volt --config /tmp/c8volt-v89.yaml get pd -b C89_SimpleUserTaskWithIncident --stat
+./c8volt --config /tmp/c8volt-v87.yaml get pd -b C87_SimpleUserTaskWithIncident --stat
+./c8volt --config /tmp/c8volt-v88.yaml get pd -b C88_SimpleUserTaskWithIncident --stat --json
 ```
 
 Check that:

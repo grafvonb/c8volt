@@ -197,7 +197,7 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 	if err != nil {
 		return finishSmokeTestResult(result, d.SmokeTestOutcomePartiallyFailed, err)
 	}
-	if result.Request.NoCleanup {
+	if result.Request.NoCleanup || result.Cleanup.ProcessDefinitionCleanup.Status == d.OpsWorkflowStepStatusSkipped {
 		return finishSmokeTestResult(result, d.SmokeTestOutcomePassedCleanupSkipped, nil)
 	}
 	return finishSmokeTestResult(result, d.SmokeTestOutcomePassed, nil)
@@ -403,6 +403,13 @@ func (s *Service) cleanupSmokeTestResources(ctx context.Context, result d.SmokeT
 		cleanup.Errors = []string{err.Error()}
 		return cleanup, err
 	}
+	if !eligibility.Eligible {
+		cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		cleanup.RetainedProcessDefinitionKey = result.Deployment.ProcessDefinitionKey
+		cleanup.RetainedBpmnProcessID = result.Deployment.BpmnProcessID
+		cleanup.RetainedTenantID = result.Deployment.TenantID
+		return cleanup, nil
+	}
 	pdCleanup, err := smokeTestCleanupProcessDefinition(ctx, s.resourceAPI, s.pdAPI, s.piAPI, s.log, result.Deployment.ProcessDefinitionKey, result.Request.Workers, opts...)
 	cleanup.ProcessDefinitionCleanup = pdCleanup
 	if err != nil {
@@ -455,11 +462,9 @@ func smokeTestProcessDefinitionCleanupEligibility(ctx context.Context, api pisvc
 		return out, err
 	}
 	if len(unrelated) > 0 {
-		out.Status = d.OpsWorkflowStepStatusBlocked
+		out.Status = d.OpsWorkflowStepStatusSkipped
 		out.Blockers = smokeTestCleanupBlockers(unrelated)
-		err := fmt.Errorf("%w: process-definition cleanup blocked by unrelated process instance(s): %s", d.ErrPrecondition, strings.Join(out.Blockers, ", "))
-		out.Errors = []string{err.Error()}
-		return out, err
+		return out, nil
 	}
 	out.Status = d.OpsWorkflowStepStatusConfirmed
 	out.Eligible = true
@@ -597,7 +602,7 @@ func smokeTestFixtureForVersion(version toolx.CamundaVersion) (d.EmbeddedSmokeTe
 	if err != nil {
 		return d.EmbeddedSmokeTestFixture{}, fmt.Errorf("%w: unsupported smoke-test fixture version %q", d.ErrPrecondition, version)
 	}
-	processID := normalized.FilePrefix() + "MultipleSubProcessesParentProcess"
+	processID := normalized.FilePrefix() + "MultipleSubProcessesParent"
 	fsPath := "processdefinitions/" + processID + ".bpmn"
 	if _, err := fs.Stat(embedded.FS, fsPath); err != nil {
 		return d.EmbeddedSmokeTestFixture{}, fmt.Errorf("%w: embedded smoke-test fixture not found: %s", d.ErrPrecondition, fsPath)

@@ -117,8 +117,8 @@ func incidentSearchNeedsPagedLocalFiltering(filter d.IncidentFilter) bool {
 		filter.RootProcessInstanceKey != "" ||
 		filter.ProcessDefinitionKey != "" ||
 		filter.ProcessDefinitionId != "" ||
-		filter.FlowNodeId != "" ||
-		filter.FlowNodeInstanceKey != "" ||
+		filter.ElementId != "" ||
+		filter.ElementInstanceKey != "" ||
 		filter.CreationTimeAfter != "" ||
 		filter.CreationTimeBefore != ""
 }
@@ -215,10 +215,10 @@ func filterIncidentSearchResults(filter d.IncidentFilter, tenant string, items [
 		if filter.ProcessDefinitionId != "" && item.ProcessDefinitionId != filter.ProcessDefinitionId {
 			continue
 		}
-		if filter.FlowNodeId != "" && item.ElementId != filter.FlowNodeId {
+		if filter.ElementId != "" && item.ElementId != filter.ElementId {
 			continue
 		}
-		if filter.FlowNodeInstanceKey != "" && item.ElementInstanceKey != filter.FlowNodeInstanceKey {
+		if filter.ElementInstanceKey != "" && item.ElementInstanceKey != filter.ElementInstanceKey {
 			continue
 		}
 		if !incidentCreationTimeMatches(incidentCreationTime(item.CreationTime), filter.CreationTimeAfter, filter.CreationTimeBefore) {
@@ -230,13 +230,17 @@ func filterIncidentSearchResults(filter d.IncidentFilter, tenant string, items [
 }
 
 func incidentStateMatches(want string, got camundav88.IncidentStateEnum) bool {
-	switch strings.ToLower(strings.TrimSpace(want)) {
+	state, ok := incidentfilter.NormalizeState(want)
+	if !ok {
+		return false
+	}
+	switch state {
 	case "", "active":
 		return got == camundav88.IncidentStateEnumACTIVE
 	case "all":
 		return true
 	default:
-		return string(got) == strings.ToUpper(strings.TrimSpace(want))
+		return strings.EqualFold(string(got), state)
 	}
 }
 
@@ -249,13 +253,13 @@ func incidentCreationTimeMatches(raw string, after string, before string) bool {
 		return false
 	}
 	if after != "" {
-		bound, err := parseIncidentTime(after)
+		bound, err := parseIncidentTimeLowerBound(after)
 		if err != nil || got.Before(bound) {
 			return false
 		}
 	}
 	if before != "" {
-		bound, err := parseIncidentTime(before)
+		bound, err := parseIncidentTimeUpperBound(before)
 		if err != nil || got.After(bound) {
 			return false
 		}
@@ -273,8 +277,41 @@ func parseIncidentTime(raw string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("parse %q as incident timestamp", raw)
 }
 
+func parseIncidentTimeLowerBound(raw string) (time.Time, error) {
+	if t, ok := parseIncidentTimestamp(raw); ok {
+		return t, nil
+	}
+	if t, err := time.Parse(time.DateOnly, raw); err == nil {
+		return t, nil
+	}
+	return time.Time{}, fmt.Errorf("parse %q as incident timestamp", raw)
+}
+
+func parseIncidentTimeUpperBound(raw string) (time.Time, error) {
+	if t, ok := parseIncidentTimestamp(raw); ok {
+		return t, nil
+	}
+	if t, err := time.Parse(time.DateOnly, raw); err == nil {
+		return t.AddDate(0, 0, 1).Add(-time.Nanosecond), nil
+	}
+	return time.Time{}, fmt.Errorf("parse %q as incident timestamp", raw)
+}
+
+func parseIncidentTimestamp(raw string) (time.Time, bool) {
+	if t, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return t, true
+	}
+	if t, err := time.ParseInLocation("2006-01-02T15:04:05.999999999", raw, time.UTC); err == nil {
+		return t, true
+	}
+	if t, err := time.ParseInLocation("2006-01-02T15:04:05", raw, time.UTC); err == nil {
+		return t, true
+	}
+	return time.Time{}, false
+}
+
 func incidentLocalFilteringRequired(filter d.IncidentFilter) bool {
-	state := strings.ToLower(strings.TrimSpace(filter.State))
+	state, _ := incidentfilter.NormalizeState(filter.State)
 	return state != "all" ||
 		filter.ErrorType != "" ||
 		filter.ErrorMessage != "" ||
@@ -282,8 +319,8 @@ func incidentLocalFilteringRequired(filter d.IncidentFilter) bool {
 		filter.RootProcessInstanceKey != "" ||
 		filter.ProcessDefinitionKey != "" ||
 		filter.ProcessDefinitionId != "" ||
-		filter.FlowNodeId != "" ||
-		filter.FlowNodeInstanceKey != "" ||
+		filter.ElementId != "" ||
+		filter.ElementInstanceKey != "" ||
 		filter.CreationTimeAfter != "" ||
 		filter.CreationTimeBefore != ""
 }
@@ -313,6 +350,9 @@ func (s *Service) searchProcessInstanceIncidentsPages(ctx context.Context, key s
 }
 
 func incidentSearchHasMore(page camundav88.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) bool {
+	if itemCount == 0 && page.TotalItems > int64(from)+int64(pageSize) {
+		return true
+	}
 	if itemCount == 0 {
 		return false
 	}
@@ -324,6 +364,9 @@ func incidentSearchHasMore(page camundav88.SearchQueryPageResponse, from int32, 
 }
 
 func incidentSearchOverflowState(page camundav88.SearchQueryPageResponse, req d.IncidentPageRequest, itemCount int) d.ProcessInstanceOverflowState {
+	if itemCount == 0 && page.TotalItems > int64(req.From)+int64(req.Size) {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
 	if itemCount == 0 {
 		return d.ProcessInstanceOverflowStateNoMore
 	}
@@ -352,7 +395,11 @@ func incidentReportedTotal(page camundav88.SearchQueryPageResponse, itemCount in
 }
 
 func newIncidentSearchStateFilter(state string) (*camundav88.IncidentStateFilterProperty, error) {
-	switch strings.ToLower(strings.TrimSpace(state)) {
+	normalized, ok := incidentfilter.NormalizeState(state)
+	if !ok {
+		return nil, fmt.Errorf("unsupported incident state %q", state)
+	}
+	switch normalized {
 	case "", "active":
 		return newIncidentStateEqFilterPtr(camundav88.IncidentStateEnumACTIVE)
 	case "pending":

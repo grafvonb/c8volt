@@ -16,17 +16,22 @@ Incident cleanup often begins with incident filters, not process-instance keys. 
 
 `c8volt ops purge process-instances-with-incidents` discovers candidate incidents, extracts candidate process-instance keys, freezes that set, then runs the same deterministic family-scope delete planning used by `delete pi`.
 
+Discovery pages through all matching incidents by default. `--batch-size` controls how many incidents are inspected per discovery page, and `--limit` is the explicit cap for the frozen incident-derived scope. Human output, JSON output, and Markdown reports show whether discovery completed or was user-limited.
+
 ## In Action
 
 The recording previews an incident-based process-instance purge for `io_mapping_error`, then runs the purge with `--force`, confirms the prompt, writes an audit report, and opens the first report section. It shows that incident matching is only discovery: c8volt still builds and reports the process-instance family delete plan before mutation.
 
 <img src="../../assets/screencasts/ops-purge-process-instances-with-incidents.gif" alt="c8volt ops purge process-instances-with-incidents demo" />
 
-Core commands shown:
+Generic command shape:
 
 ```bash
+# read-only: preview incident-derived process-instance deletion
 c8volt ops purge process-instances-with-incidents --error-type io_mapping_error --dry-run
-c8volt ops purge process-instances-with-incidents --error-type io_mapping_error --force --report-file /tmp/c8volt-vhs/reports/incident-purge.md
+
+# destructive: deletes the previewed process-instance family scope after confirmation
+c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md
 ```
 
 ## Use When
@@ -39,13 +44,11 @@ c8volt ops purge process-instances-with-incidents --error-type io_mapping_error 
 ## Command At A Glance
 
 ```bash
-c8volt ops purge process-instances-with-incidents --dry-run
+# read-only: preview incident-derived process-instance deletion
 c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
-c8volt ops purge pi-with-incidents --state active --limit 5 --dry-run
-c8volt ops purge process-instances-with-incidents --automation --json --dry-run
-c8volt ops purge process-instances-with-incidents --dry-run --report-file incident-purge.md
-c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --auto-confirm --force
-c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --auto-confirm --force --workers 4 --report-file incident-purge.json --report-format json
+
+# destructive: deletes only the bounded incident-derived process-instance scope
+c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md
 ```
 
 ## Built From Lower-Level Commands
@@ -57,7 +60,7 @@ c8volt get incident <incident-filters> --pi-keys-only
 c8volt delete pi -
 ```
 
-The command defaults to `--state active`; `--key` selects incident keys, not process-instance keys. The full command and aliases are equivalent:
+The command defaults to `--state active`; `--key` selects incident keys, not process-instance keys. `--batch-size` changes request size only and does not stop discovery. Use `--limit N` when the frozen scope should intentionally contain at most `N` matching incidents before process-instance dedupe. The full command and aliases are equivalent:
 
 ```bash
 c8volt ops purge process-instances-with-incidents
@@ -104,11 +107,17 @@ Normal output should emphasize counts:
 dry run: purge process-instances with incidents
 candidate incidents: N
 candidate process instances: M
-delete plan: planned (candidate process instances: M, roots: R, affected process instances: A)
+delete preview: N candidate incident(s), M candidate process instance(s), A affected process instance(s) across R root(s) would be deleted
+dependency expansion: D additional process instance(s) due to dependencies
+non-final affected process instances: X (use --force to cancel before delete)
 outcome: planned; no changes applied; use --verbose to list process-instance keys
 ```
 
-Verbose output can list incident keys, candidate process-instance keys, resolved root keys, affected keys, and blocked keys.
+The dependency expansion line is shown only when delete planning adds process instances beyond the candidate process-instance set.
+
+When `--limit` stops discovery, the status line changes to `discovery user-limited` and includes the limit value.
+
+Verbose output can list normal completed discovery paging, incident keys, candidate process-instance keys, resolved root keys, affected keys, and blocked keys.
 
 ## Real Execution
 

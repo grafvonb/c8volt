@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active implementation plan: `specs/183-ops-repair-workflows/plan.md`
+- Active Speckit implementation plan: `specs/139-pi-variable-search/plan.md`
 <!-- SPECKIT END -->

@@ -98,7 +98,9 @@ api/camunda-docs/.git/
 # Speckit / ai-tooling synchronized artifacts
 .codex-*
 .agents/skills/
-.specify/
+.specify/*
+!.specify/memory/
+!.specify/memory/**
 extensions/
 integrations/
 presets/

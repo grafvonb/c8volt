@@ -120,7 +120,7 @@ append_tree_files_if_present() {
 
 is_manifest_excluded_path() {
     case "$1" in
-        ai/ai-tooling-source|ai/installed-ai-tooling-manifest.txt|ai/installed-ai-tooling-version|.specify/extensions/*/*-config.yml|.specify/extensions/*/local-config.yml|.specify/extensions/*/*.local.yml)
+        ai/ai-tooling-source|ai/installed-ai-tooling-manifest.txt|ai/installed-ai-tooling-version|.specify/extensions/*/*-config.yml|.specify/extensions/*/config.yml|.specify/extensions/*/local-config.yml|.specify/extensions/*/*.local.yml)
             return 0
             ;;
         *)
@@ -155,12 +155,20 @@ is_target_local_allowed_dirty_path() {
     esac
 }
 
+write_git_status_snapshot() {
+    local output_file="$1"
+
+    git -C "$REPO_ROOT" status --porcelain --untracked-files=all > "$output_file"
+}
+
 check_target_dirty_state() {
     local blockers_file="$1"
+    local status_file="${blockers_file}.status"
     local line=""
     local path=""
 
     : > "$blockers_file"
+    write_git_status_snapshot "$status_file"
 
     while IFS= read -r line; do
         path="${line:3}"
@@ -173,7 +181,7 @@ check_target_dirty_state() {
         if ! is_installer_dirty_path "$path" && ! is_target_local_allowed_dirty_path "$path"; then
             printf '%s\n' "$line" >> "$blockers_file"
         fi
-    done < <(git -C "$REPO_ROOT" status --porcelain --untracked-files=all)
+    done < "$status_file"
 
     if [ -s "$blockers_file" ]; then
         echo "Refusing to install ai-tooling into a dirty repository." >&2
@@ -185,8 +193,11 @@ check_target_dirty_state() {
 }
 
 stage_install_changes() {
+    local status_file="$TMP_DIR/install-status.txt"
     local line=""
     local path=""
+
+    write_git_status_snapshot "$status_file"
 
     while IFS= read -r line; do
         path="${line:3}"
@@ -205,7 +216,7 @@ stage_install_changes() {
         elif ! git -C "$REPO_ROOT" check-ignore -q -- "$path"; then
             git -C "$REPO_ROOT" add -A -- "$path"
         fi
-    done < <(git -C "$REPO_ROOT" status --porcelain --untracked-files=all)
+    done < "$status_file"
 }
 
 stage_manifest_files() {

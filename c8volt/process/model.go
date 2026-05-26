@@ -5,6 +5,7 @@ package process
 
 import (
 	"fmt"
+	"strings"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/incident"
@@ -60,21 +61,21 @@ type ProcessInstanceData struct {
 }
 
 type ProcessInstance struct {
-	BpmnProcessId             string         `json:"bpmnProcessId,omitempty"`
-	EndDate                   string         `json:"endDate,omitempty"`
-	Incident                  bool           `json:"incident,omitempty"`
-	Key                       string         `json:"key,omitempty"`
-	ParentFlowNodeInstanceKey string         `json:"parentFlowNodeInstanceKey,omitempty"`
-	ParentKey                 string         `json:"parentKey,omitempty"`
-	ParentProcessInstanceKey  string         `json:"parentProcessInstanceKey,omitempty"`
-	ProcessDefinitionKey      string         `json:"processDefinitionKey,omitempty"`
-	RootProcessInstanceKey    string         `json:"rootProcessInstanceKey,omitempty"`
-	ProcessVersion            int32          `json:"processVersion,omitempty"`
-	ProcessVersionTag         string         `json:"processVersionTag,omitempty"`
-	StartDate                 string         `json:"startDate,omitempty"`
-	State                     State          `json:"state,omitempty"`
-	TenantId                  string         `json:"tenantId,omitempty"`
-	Variables                 map[string]any `json:"variables,omitempty"`
+	BpmnProcessId            string         `json:"bpmnProcessId,omitempty"`
+	EndDate                  string         `json:"endDate,omitempty"`
+	Incident                 bool           `json:"incident,omitempty"`
+	Key                      string         `json:"key,omitempty"`
+	ParentElementInstanceKey string         `json:"parentElementInstanceKey,omitempty"`
+	ParentKey                string         `json:"parentKey,omitempty"`
+	ParentProcessInstanceKey string         `json:"parentProcessInstanceKey,omitempty"`
+	ProcessDefinitionKey     string         `json:"processDefinitionKey,omitempty"`
+	RootProcessInstanceKey   string         `json:"rootProcessInstanceKey,omitempty"`
+	ProcessVersion           int32          `json:"processVersion,omitempty"`
+	ProcessVersionTag        string         `json:"processVersionTag,omitempty"`
+	StartDate                string         `json:"startDate,omitempty"`
+	State                    State          `json:"state,omitempty"`
+	TenantId                 string         `json:"tenantId,omitempty"`
+	Variables                map[string]any `json:"variables,omitempty"`
 }
 
 type ProcessInstanceIncidentDetail = incident.ProcessInstanceIncidentDetail
@@ -227,23 +228,24 @@ type OrphanDiscovery struct {
 }
 
 type ProcessInstanceFilter struct {
-	Key                  string `json:"key,omitempty"`
-	BpmnProcessId        string `json:"bpmnProcessId,omitempty"`
-	ProcessVersion       int32  `json:"version,omitempty"`
-	ProcessVersionTag    string `json:"versionTag,omitempty"`
-	ProcessDefinitionKey string `json:"processDefinitionKey,omitempty"`
-	StartDateAfter       string `json:"startDateAfter,omitempty"`
-	StartDateBefore      string `json:"startDateBefore,omitempty"`
-	EndDateAfter         string `json:"endDateAfter,omitempty"`
-	EndDateBefore        string `json:"endDateBefore,omitempty"`
-	State                State  `json:"state,omitempty"`
-	ParentKey            string `json:"parentKey,omitempty"`
-	HasParent            *bool  `json:"hasParent,omitempty"`
-	HasIncident          *bool  `json:"hasIncident,omitempty"`
+	Key                  string                           `json:"key,omitempty"`
+	BpmnProcessId        string                           `json:"bpmnProcessId,omitempty"`
+	ProcessVersion       int32                            `json:"version,omitempty"`
+	ProcessVersionTag    string                           `json:"versionTag,omitempty"`
+	ProcessDefinitionKey string                           `json:"processDefinitionKey,omitempty"`
+	StartDateAfter       string                           `json:"startDateAfter,omitempty"`
+	StartDateBefore      string                           `json:"startDateBefore,omitempty"`
+	EndDateAfter         string                           `json:"endDateAfter,omitempty"`
+	EndDateBefore        string                           `json:"endDateBefore,omitempty"`
+	State                State                            `json:"state,omitempty"`
+	ParentKey            string                           `json:"parentKey,omitempty"`
+	HasParent            *bool                            `json:"hasParent,omitempty"`
+	HasIncident          *bool                            `json:"hasIncident,omitempty"`
+	VariableFilters      ProcessInstanceVariableFilterSet `json:"variableFilters,omitempty"`
 }
 
 func (f ProcessInstanceFilter) String() string {
-	parts := make([]string, 0, 13)
+	parts := make([]string, 0, 14)
 	parts = toolx.AppendQuotedField(parts, "key", f.Key)
 	parts = toolx.AppendQuotedField(parts, "bpmnProcessId", f.BpmnProcessId)
 	parts = toolx.AppendInt32Field(parts, "processVersion", f.ProcessVersion)
@@ -257,7 +259,63 @@ func (f ProcessInstanceFilter) String() string {
 	parts = toolx.AppendQuotedField(parts, "parentKey", f.ParentKey)
 	parts = toolx.AppendBoolPtrField(parts, "hasParent", f.HasParent)
 	parts = toolx.AppendBoolPtrField(parts, "hasIncident", f.HasIncident)
+	parts = toolx.AppendRawField(parts, "variableFilters", f.VariableFilters.String())
 	return toolx.FormatActiveFields(parts)
+}
+
+// ProcessInstanceVariableFilterOperator names the public variable operators
+// accepted by process-instance search filter requests.
+type ProcessInstanceVariableFilterOperator string
+
+const (
+	// ProcessInstanceVariableFilterOperatorEq matches a variable's serialized value exactly.
+	ProcessInstanceVariableFilterOperatorEq ProcessInstanceVariableFilterOperator = "$eq"
+	// ProcessInstanceVariableFilterOperatorNeq excludes a variable's serialized value.
+	ProcessInstanceVariableFilterOperatorNeq ProcessInstanceVariableFilterOperator = "$neq"
+	// ProcessInstanceVariableFilterOperatorExists checks whether a variable is present.
+	ProcessInstanceVariableFilterOperatorExists ProcessInstanceVariableFilterOperator = "$exists"
+	// ProcessInstanceVariableFilterOperatorIn matches any serialized value in an array.
+	ProcessInstanceVariableFilterOperatorIn ProcessInstanceVariableFilterOperator = "$in"
+	// ProcessInstanceVariableFilterOperatorNotIn excludes serialized values in an array.
+	ProcessInstanceVariableFilterOperatorNotIn ProcessInstanceVariableFilterOperator = "$notIn"
+	// ProcessInstanceVariableFilterOperatorLike uses native wildcard matching.
+	ProcessInstanceVariableFilterOperatorLike ProcessInstanceVariableFilterOperator = "$like"
+)
+
+// ProcessInstanceVariableFilterClause is the facade-level representation of one
+// variable-search clause after command syntax has been normalized.
+type ProcessInstanceVariableFilterClause struct {
+	Name     string                                `json:"name"`
+	Operator ProcessInstanceVariableFilterOperator `json:"operator"`
+	Value    string                                `json:"value,omitempty"`
+	Exists   *bool                                 `json:"exists,omitempty"`
+	Source   string                                `json:"source,omitempty"`
+}
+
+// String renders a clause for debug output without losing the normalized operator.
+func (c ProcessInstanceVariableFilterClause) String() string {
+	if c.Exists != nil {
+		return fmt.Sprintf("%s.%s=%t", c.Name, c.Operator, *c.Exists)
+	}
+	return fmt.Sprintf("%s.%s=%q", c.Name, c.Operator, c.Value)
+}
+
+// ProcessInstanceVariableFilterSet keeps all variable clauses in command order
+// so downstream native request builders can preserve all-clauses-match intent.
+type ProcessInstanceVariableFilterSet struct {
+	Clauses []ProcessInstanceVariableFilterClause `json:"clauses,omitempty"`
+}
+
+// String renders all variable clauses in order for filter debug output.
+func (s ProcessInstanceVariableFilterSet) String() string {
+	if len(s.Clauses) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(s.Clauses))
+	for _, clause := range s.Clauses {
+		parts = append(parts, clause.String())
+	}
+	return "[" + strings.Join(parts, ", ") + "]"
 }
 
 type Reporter struct {

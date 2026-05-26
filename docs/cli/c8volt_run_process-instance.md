@@ -6,17 +6,19 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt run process-instance
 
-Start process instances and confirm activation
+Start process instances and confirm creation
 
 ### Synopsis
 
-Start process instances and confirm activation.
+Start process instances and confirm creation.
 
 Run by BPMN process ID for the latest version, or by process definition key for an exact definition.
 
 When running by BPMN process ID, c8volt validates all requested process definitions before creating anything. Mixed visible and missing BPMN IDs fail as one request, so no partial process instances are started; automation-oriented modes never prompt for recovery output.
 
-By default c8volt waits for active instances.
+By default c8volt waits until created instances are observable. Created instances are confirmed after Camunda observes ACTIVE, COMPLETED, CANCELED, or TERMINATED.
+
+Use --keys-only to pipe created process instance keys into strict lifecycle checks with expect pi.
 
 ```
 c8volt run process-instance [flags]
@@ -29,7 +31,8 @@ c8volt run process-instance [flags]
   ./c8volt run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
   ./c8volt run pi -b <bpmn-process-id> -n 3 --workers 2
   ./c8volt --json run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
-  ./c8volt expect pi --key <process-instance-key> --state active
+  ./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -
+  ./c8volt run pi -b <long-running-bpmn-process-id> --keys-only | ./c8volt expect pi --state active -
 ```
 
 ### Options
@@ -60,7 +63,7 @@ c8volt run process-instance [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for tenant-aware command flows (overrides env, profile, and base config)
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

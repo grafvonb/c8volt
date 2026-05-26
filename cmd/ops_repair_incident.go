@@ -27,10 +27,12 @@ var (
 	flagOpsRepairIncidentRootKey            string
 	flagOpsRepairIncidentPDKey              string
 	flagOpsRepairIncidentBpmnProcessID      string
-	flagOpsRepairIncidentFlowNodeID         string
-	flagOpsRepairIncidentFNIKey             string
+	flagOpsRepairIncidentElementID          string
+	flagOpsRepairIncidentElementInstanceKey string
 	flagOpsRepairIncidentCreationTimeAfter  string
 	flagOpsRepairIncidentCreationTimeBefore string
+	flagOpsRepairIncidentCreationTimeNewer  int
+	flagOpsRepairIncidentCreationTimeOlder  int
 	flagOpsRepairIncidentBatchSize          int32
 	flagOpsRepairIncidentLimit              int32
 	flagOpsRepairIncidentRetries            int32
@@ -45,16 +47,11 @@ var opsRepairIncidentCmd = &cobra.Command{
 	Use:   "incident",
 	Short: "Repair incidents by key or filter",
 	Long: "Repair incidents by key or filter.\n\n" +
-		"The command accepts repeated --key values, newline-separated keys from stdin with '-', or incident search filters. Keyed mode and search mode are mutually exclusive. It builds a fixed incident target set before mutation, applies process-instance-scope variable updates once per unique scope when requested, applies job retry and timeout updates only when an incident has a related job, resolves each incident, and confirms clearance unless --no-wait is set. Incidents without related jobs are reported and still proceed to incident resolution. Use --report-file with markdown or json output for an audit record of discovery, targets, step statuses, notices, errors, and final outcome.",
-	Example: `  ./c8volt ops repair incident --key <incident-key>
-  ./c8volt ops repair inc --key <incident-key> --key <another-incident-key>
-  printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt ops repair incident -
+		"The command accepts repeated --key values, newline-separated keys from stdin with '-', or incident search filters. Keyed mode and search mode are mutually exclusive. Search mode pages through all matching incidents by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. It builds a fixed incident target set before mutation, applies process-instance-scope variable updates once per unique scope when requested, applies job retry and timeout updates only when an incident has a related job, resolves each incident, and confirms clearance unless --no-wait is set. Incidents without related jobs are reported and still proceed to incident resolution. Use --report-file with markdown or json output for an audit record of discovery, targets, step statuses, notices, errors, and final outcome.",
+	Example: `  ./c8volt ops repair incident --key <incident-key> --dry-run
   ./c8volt ops repair incident --state active --error-type io_mapping_error --limit 5 --dry-run
-  ./c8volt ops repair incident --key <incident-key> --retries 0
-  ./c8volt ops repair incident --key <incident-key> --job-timeout 5m
-  ./c8volt ops repair incident --key <incident-key> --dry-run
-  ./c8volt ops repair incident --key <incident-key> --auto-confirm --report-file repair-incident.md
-  ./c8volt --json ops repair incident --key <incident-key> --automation --dry-run`,
+  ./c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --dry-run
+  ./c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --report-file repair-incident.md`,
 	Aliases: []string{"inc"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		if err := validateOptionalDashArg(args); err != nil {
@@ -138,7 +135,9 @@ var opsRepairIncidentCmd = &cobra.Command{
 		if opsRepairNeedsPreflight(cmd) {
 			planRequest := request
 			planRequest.DryRun = true
-			planned, err := cli.RepairIncidents(cmd.Context(), planRequest, collectOptions()...)
+			planned, err := repairIncidentWithCommandActivity(cmd, planRequest, func() (ops.RepairResult, error) {
+				return cli.RepairIncidents(cmd.Context(), planRequest, collectOptions()...)
+			})
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops repair incident: %w", err))
 			}
@@ -147,7 +146,9 @@ var opsRepairIncidentCmd = &cobra.Command{
 			}
 			request = opsRepairConfirmedRequestFromPlan(request, planned)
 		}
-		result, err := cli.RepairIncidents(cmd.Context(), request, collectOptions()...)
+		result, err := repairIncidentWithCommandActivity(cmd, request, func() (ops.RepairResult, error) {
+			return cli.RepairIncidents(cmd.Context(), request, collectOptions()...)
+		})
 		if reportErr := writeOpsRepairReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops repair incident: %w; write audit report: %v", err, reportErr))
@@ -177,12 +178,14 @@ func init() {
 	fs.StringVar(&flagOpsRepairIncidentPDKey, "pd-key", "", "process definition key to filter incidents")
 	fs.StringVar(&flagOpsRepairIncidentPIKey, "pi-key", "", "process instance key to filter incidents")
 	fs.StringVar(&flagOpsRepairIncidentRootKey, "root-key", "", "root process instance key to filter incidents")
-	fs.StringVar(&flagOpsRepairIncidentFlowNodeID, "flow-node-id", "", "flow node ID to filter incidents")
-	fs.StringVar(&flagOpsRepairIncidentFNIKey, "fni-key", "", "flow node instance key to filter incidents")
-	fs.StringVar(&flagOpsRepairIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD")
-	fs.StringVar(&flagOpsRepairIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD")
-	fs.Int32VarP(&flagOpsRepairIncidentBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to inspect per page (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.Int32VarP(&flagOpsRepairIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to repair")
+	fs.StringVar(&flagOpsRepairIncidentElementID, "element-id", "", "BPMN element ID to filter incidents")
+	fs.StringVar(&flagOpsRepairIncidentElementInstanceKey, "element-instance-key", "", "element instance key to filter incidents")
+	fs.StringVar(&flagOpsRepairIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
+	fs.StringVar(&flagOpsRepairIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
+	fs.IntVar(&flagOpsRepairIncidentCreationTimeNewer, "creation-time-newer-days", -1, "only include incidents with creation time N days old or newer (0 means today)")
+	fs.IntVar(&flagOpsRepairIncidentCreationTimeOlder, "creation-time-older-days", -1, "only include incidents with creation time N days old or older")
+	fs.Int32VarP(&flagOpsRepairIncidentBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagOpsRepairIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to freeze for repair; omit to discover all matches")
 	fs.Int32Var(&flagOpsRepairIncidentRetries, "retries", 1, "retry count to set on related jobs; 0 skips retry restoration")
 	fs.StringVar(&flagOpsRepairIncidentJobTimeoutRaw, "job-timeout", "", "timeout duration to submit for related jobs, for example 60s, 5m, or 1h")
 	fs.StringVar(&flagOpsRepairIncidentVars, "vars", "", "JSON object with variables to set once per process-instance scope before resolving dependent incidents")
@@ -220,10 +223,12 @@ func validateOpsRepairIncidentFlagValues(cmd *cobra.Command) error {
 	if err := validateGetIncidentErrorTypeFlag(flagOpsRepairIncidentErrorType); err != nil {
 		return err
 	}
-	if err := validateGetIncidentCreationTimeFlag("--creation-time-after", flagOpsRepairIncidentCreationTimeAfter); err != nil {
-		return err
-	}
-	if err := validateGetIncidentCreationTimeFlag("--creation-time-before", flagOpsRepairIncidentCreationTimeBefore); err != nil {
+	if err := validateIncidentCreationTimeFilters(
+		"--creation-time-after", flagOpsRepairIncidentCreationTimeAfter,
+		"--creation-time-before", flagOpsRepairIncidentCreationTimeBefore,
+		"--creation-time-newer-days", flagOpsRepairIncidentCreationTimeNewer,
+		"--creation-time-older-days", flagOpsRepairIncidentCreationTimeOlder,
+	); err != nil {
 		return err
 	}
 	if flagOpsRepairIncidentRetries < 0 {
@@ -245,10 +250,10 @@ func validateOpsRepairIncidentFlagValues(cmd *cobra.Command) error {
 		return mutuallyExclusiveFlagsf("--key cannot be combined with search filters")
 	}
 	for flag, value := range map[string]string{
-		"--pi-key":   flagOpsRepairIncidentPIKey,
-		"--root-key": flagOpsRepairIncidentRootKey,
-		"--pd-key":   flagOpsRepairIncidentPDKey,
-		"--fni-key":  flagOpsRepairIncidentFNIKey,
+		"--pi-key":               flagOpsRepairIncidentPIKey,
+		"--root-key":             flagOpsRepairIncidentRootKey,
+		"--pd-key":               flagOpsRepairIncidentPDKey,
+		"--element-instance-key": flagOpsRepairIncidentElementInstanceKey,
 	} {
 		if value == "" {
 			continue
@@ -274,6 +279,22 @@ func parseOpsRepairIncidentJobTimeout(cmd *cobra.Command) (time.Duration, error)
 	return timeout, nil
 }
 
+func repairIncidentWithCommandActivity(cmd *cobra.Command, request ops.RepairRequest, run func() (ops.RepairResult, error)) (ops.RepairResult, error) {
+	stopActivity := startCommandActivity(cmd, formatOpsRepairIncidentActivity(request))
+	defer stopActivity()
+	return run()
+}
+
+func formatOpsRepairIncidentActivity(request ops.RepairRequest) string {
+	if request.DryRun {
+		if request.DiscoveryMode == ops.RepairDiscoveryModeSearch {
+			return "discovering incident repair targets"
+		}
+		return "planning incident repair"
+	}
+	return "repairing incidents"
+}
+
 // hasOpsRepairIncidentSearchModeFlags detects explicit incident search mode without treating default state as an implicit mutation target.
 func hasOpsRepairIncidentSearchModeFlags(cmd *cobra.Command) bool {
 	if cmd == nil {
@@ -287,10 +308,12 @@ func hasOpsRepairIncidentSearchModeFlags(cmd *cobra.Command) bool {
 		"root-key",
 		"pd-key",
 		"bpmn-process-id",
-		"flow-node-id",
-		"fni-key",
+		"element-id",
+		"element-instance-key",
 		"creation-time-after",
 		"creation-time-before",
+		"creation-time-newer-days",
+		"creation-time-older-days",
 		"batch-size",
 		"limit",
 	} {
@@ -304,18 +327,21 @@ func hasOpsRepairIncidentSearchModeFlags(cmd *cobra.Command) bool {
 // populateOpsRepairIncidentSelection converts repair command search flags into the public incident filter model.
 func populateOpsRepairIncidentSelection() incident.Filter {
 	errorType, _ := incidentfilter.NormalizeErrorType(flagOpsRepairIncidentErrorType)
+	state, _ := incidentfilter.NormalizeState(flagOpsRepairIncidentState)
+	creationTimeAfter, _ := pickIncidentCreationTimeLowerBound(flagOpsRepairIncidentCreationTimeAfter, flagOpsRepairIncidentCreationTimeNewer)
+	creationTimeBefore, _ := pickIncidentCreationTimeUpperBound(flagOpsRepairIncidentCreationTimeBefore, flagOpsRepairIncidentCreationTimeOlder)
 	return incident.Filter{
-		State:                  flagOpsRepairIncidentState,
+		State:                  state,
 		ErrorType:              errorType,
 		ErrorMessage:           flagOpsRepairIncidentErrorMessage,
 		ProcessDefinitionId:    flagOpsRepairIncidentBpmnProcessID,
 		ProcessDefinitionKey:   flagOpsRepairIncidentPDKey,
 		ProcessInstanceKey:     flagOpsRepairIncidentPIKey,
 		RootProcessInstanceKey: flagOpsRepairIncidentRootKey,
-		FlowNodeId:             flagOpsRepairIncidentFlowNodeID,
-		FlowNodeInstanceKey:    flagOpsRepairIncidentFNIKey,
-		CreationTimeAfter:      flagOpsRepairIncidentCreationTimeAfter,
-		CreationTimeBefore:     flagOpsRepairIncidentCreationTimeBefore,
+		ElementId:              flagOpsRepairIncidentElementID,
+		ElementInstanceKey:     flagOpsRepairIncidentElementInstanceKey,
+		CreationTimeAfter:      creationTimeAfter,
+		CreationTimeBefore:     creationTimeBefore,
 	}
 }
 

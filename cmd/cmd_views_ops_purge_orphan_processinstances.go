@@ -55,17 +55,18 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 		renderHumanLine(cmd, "candidate keys: %s", strings.Join(result.Discovery.Keys, ", "))
 	}
 	if result.Request.DryRun {
-		renderHumanLine(cmd, "delete preview: %d orphan candidate(s), %d process-instance tree(s), %d process instance(s) would be deleted",
+		renderHumanLine(cmd, "delete preview: %d orphan candidate(s), %d affected process instance(s) across %d root(s) would be deleted",
 			len(result.DeletionPlan.RequestedKeys),
-			len(result.DeletionPlan.RootKeys),
 			len(result.DeletionPlan.AffectedKeys),
+			len(result.DeletionPlan.RootKeys),
 		)
+		renderOpsProcessInstanceDependencyExpansion(cmd, len(result.DeletionPlan.RequestedKeys), len(result.DeletionPlan.AffectedKeys))
 	} else {
-		renderHumanLine(cmd, "delete plan: %s (candidate orphan process instances: %d, roots: %d, affected process instances: %d)",
+		renderHumanLine(cmd, "delete plan: %s; %d orphan candidate(s), %d affected process instance(s) across %d root(s) will be deleted",
 			result.DeletionPlan.Status,
 			len(result.DeletionPlan.RequestedKeys),
-			len(result.DeletionPlan.RootKeys),
 			len(result.DeletionPlan.AffectedKeys),
+			len(result.DeletionPlan.RootKeys),
 		)
 	}
 	renderOpsHumanNotices(cmd, opsPurgeOrphanProcessInstancesHumanNotices(result), opsPurgeOrphanProcessInstancesNoticeFilter(result))

@@ -84,7 +84,11 @@ func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.Orp
 	}
 
 	result.DeleteRequested = true
-	reports, err := pisvc.DeleteProcessInstances(ctx, s.piAPI, s.log, plan.Roots, request.Workers, len(plan.Collected), opts...)
+	deleteOpts := compactOpsExecutionOptions(opts...)
+	if request.NoWait {
+		deleteOpts = append(deleteOpts, services.WithNoWait())
+	}
+	reports, err := pisvc.DeleteProcessInstances(ctx, s.piAPI, s.log, plan.Roots, request.Workers, len(plan.Collected), deleteOpts...)
 	result.Deletion = d.DeletionResult{
 		Status:    deletionStatusForReports(reports, cfg.NoWait, err),
 		Items:     reports,

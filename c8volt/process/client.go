@@ -70,7 +70,7 @@ func (c *client) GetProcessInstance(ctx context.Context, key string, opts ...opt
 }
 
 func (c *client) LookupProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstance, error) {
-	pi, err := pisvc.LookupProcessInstance(ctx, c.piApi, key, options.MapFacadeOptionsToCallOptions(opts)...)
+	pi, err := c.piApi.GetProcessInstance(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return ProcessInstance{}, ferr.FromDomain(err)
 	}
@@ -125,7 +125,7 @@ func (c *client) EnrichTraversalWithIncidents(ctx context.Context, result Traver
 }
 
 func (c *client) LookupProcessInstanceStateByKey(ctx context.Context, key string, opts ...options.FacadeOption) (StateReport, ProcessInstance, error) {
-	got, pi, err := pisvc.LookupProcessInstanceStateByKey(ctx, c.piApi, key, options.MapFacadeOptionsToCallOptions(opts)...)
+	got, pi, err := c.piApi.GetProcessInstanceStateByKey(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
 	pgot, _ := ParseState(got.String())
 	if err != nil {
 		return StateReport{State: pgot}, ProcessInstance{}, ferr.FromDomain(err)

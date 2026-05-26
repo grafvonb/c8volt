@@ -22,11 +22,14 @@ The recording previews the smoke-test workflow without touching the cluster, the
 
 <img src="../../assets/screencasts/ops-execute-smoke-test.gif" alt="c8volt ops execute smoke-test demo" />
 
-Core commands shown:
+Generic command shape:
 
 ```bash
+# read-only: preview the smoke-test workflow
 c8volt ops execute smoke-test --dry-run
-c8volt ops execute smoke-test --auto-confirm --report-file /tmp/c8volt-vhs/reports/smoke-test.md
+
+# harmless: deploys, runs, walks, and cleans up c8volt-owned smoke-test data
+c8volt ops execute smoke-test --report-file smoke-test.md
 ```
 
 ## Use When
@@ -39,16 +42,14 @@ c8volt ops execute smoke-test --auto-confirm --report-file /tmp/c8volt-vhs/repor
 ## Command At A Glance
 
 ```bash
+# read-only: preview the full smoke-test workflow
 c8volt ops execute smoke-test --dry-run
-c8volt ops execute smoke-test
-c8volt ops execute smoke-test --count 5
-c8volt ops execute smoke-test --no-cleanup
-c8volt ops execute smoke-test --dry-run --report-file smoke-test.md
-c8volt ops execute smoke-test --no-cleanup --report-file retained-smoke-test.md
-c8volt ops execute smoke-test --count 10 --automation --json --report-file smoke-test.json --report-format json
+
+# harmless: creates disposable smoke-test data and removes run-owned instances during cleanup
+c8volt ops execute smoke-test --report-file smoke-test.md
 ```
 
-On Camunda 8.8, prefer `--no-cleanup`: smoke-test cleanup deletes the deployed process definition, and full process-definition deletion is supported by c8volt from Camunda 8.9 onward. On dirty clusters, retained or unrelated instances can also block cleanup planning.
+On dirty clusters, smoke-test still proves deploy, run, walk, and run-owned process-instance cleanup. If unrelated instances still use the deployed fixture definition, c8volt skips process-definition cleanup, reports the retained definition, and exits successfully with `passed_cleanup_skipped`. On Camunda 8.8, prefer `--no-cleanup` because full process-definition deletion is supported by c8volt from Camunda 8.9 onward.
 
 ## Built From Lower-Level Commands
 
@@ -86,7 +87,7 @@ walk each created process tree
 delete created process instances
         |
         v
-delete process definition if unrelated instances do not exist
+delete process definition when no unrelated instances still use it
         |
         v
 write outcome and optional audit report
@@ -100,7 +101,7 @@ Dry-run output should show the selected fixture, requested count, cleanup mode, 
 
 ## Real Execution
 
-Real execution retrieves cluster topology when that service is available, deploys the embedded fixture, starts the requested number of process instances, walks each created family, and cleans up unless `--no-cleanup` is supplied. Cleanup deletes only resources created by this smoke-test run, except for normal process-instance family expansion performed by existing c8volt delete planning.
+Real execution retrieves cluster topology when that service is available, deploys the embedded fixture, starts the requested number of process instances, walks each created family, and cleans up unless `--no-cleanup` is supplied. Cleanup deletes the process-instance families created by this smoke-test run, including normal family expansion performed by existing c8volt delete planning. Process-definition cleanup runs only when no unrelated process instances still use the deployed fixture definition; otherwise the command skips that final cleanup and reports retained resources.
 
 When cleanup is enabled, the command prompts before deployment/run/cleanup unless `--auto-confirm` or `--automation` has already confirmed supported prompts. `--no-wait` applies to cleanup deletion confirmation.
 
@@ -114,7 +115,7 @@ Important fields include selected fixture, BPMN process ID, deployed process-def
 
 - Missing embedded fixture fails before mutation.
 - `--no-cleanup` leaves created resources in place and must report their keys.
-- Process-definition cleanup is skipped when unrelated instances exist.
+- Process-definition cleanup is skipped, not failed, when unrelated instances exist.
 - Automation JSON output should keep stdout deterministic.
 - Reports should not expose unrelated variables or sensitive profile details.
 

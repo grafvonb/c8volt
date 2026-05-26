@@ -62,6 +62,7 @@ func (m *mockOperateClient) DeleteProcessInstanceAndAllDependantDataByKeyWithRes
 	return m.deleteProcessInstanceAndAllDependantDataByKeyWithResp(ctx, key, reqEditors...)
 }
 
+// TestService_CreateProcessInstance verifies v8.7 creation mapping while preserving the no-key compatibility path.
 func TestService_CreateProcessInstance(t *testing.T) {
 	ctx := context.Background()
 
@@ -448,6 +449,24 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 		assert.Contains(t, err.Error(), "date filters require Camunda 8.8")
 	})
 
+	t.Run("RejectsVariableFiltersBeforeOperateSearch", func(t *testing.T) {
+		exists := true
+		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), newStrictOperateClient(t))
+
+		_, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{
+			VariableFilters: d.ProcessInstanceVariableFilterSet{
+				Clauses: []d.ProcessInstanceVariableFilterClause{
+					{Name: "customerId", Operator: d.ProcessInstanceVariableFilterOperatorExists, Exists: &exists},
+				},
+			},
+		}, 25)
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, d.ErrUnsupported)
+		assert.Contains(t, err.Error(), "process-instance variable search is unsupported in Camunda 8.7")
+		assert.Contains(t, err.Error(), "requires Camunda 8.8 or 8.9")
+	})
+
 	t.Run("RejectsAnyDateBoundAsUnsupported", func(t *testing.T) {
 		cases := []d.ProcessInstanceFilter{
 			{StartDateAfter: "2026-01-01"},
@@ -588,6 +607,7 @@ func TestService_SearchForProcessInstancesPage_FallbackOverflowDetection(t *test
 	})
 }
 
+// TestService_GetProcessInstanceStateByKey verifies state lookup uses tenant-safe search in v8.7.
 func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 	ctx := context.Background()
 
@@ -600,10 +620,60 @@ func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 		assertResult      func(*testing.T, d.State, d.ProcessInstance)
 	}{
 		{
-			name:          "TenantSafeLookupUnsupported",
-			key:           "123",
-			operate:       newStrictOperateClient(t),
-			expectedError: d.ErrUnsupported,
+			name: "Success",
+			key:  "123",
+			operate: &mockOperateClient{
+				getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
+					t.Fatalf("unexpected get call")
+					return nil, nil
+				},
+				searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
+					require.NotNil(t, body.Filter)
+					require.NotNil(t, body.Filter.Key)
+					assert.Equal(t, int64(123), *body.Filter.Key)
+					assert.Equal(t, "tenant", *body.Filter.TenantId)
+					items := []operatev87.ProcessInstance{*makeProcessInstanceResponse(123, "COMPLETED", "")}
+					return &operatev87.SearchProcessInstancesResponse{
+						HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
+						JSON200: &operatev87.ResultsProcessInstance{
+							Items: &items,
+						},
+					}, nil
+				},
+				deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
+					t.Fatalf("unexpected delete call")
+					return nil, nil
+				},
+			},
+			assertResult: func(t *testing.T, state d.State, pi d.ProcessInstance) {
+				assert.Equal(t, d.StateCompleted, state)
+				assert.Equal(t, "123", pi.Key)
+				assert.Equal(t, "2026-03-23T18:00:00Z", pi.StartDate)
+			},
+		},
+		{
+			name: "NotFound",
+			key:  "123",
+			operate: &mockOperateClient{
+				getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
+					t.Fatalf("unexpected get call")
+					return nil, nil
+				},
+				searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
+					items := []operatev87.ProcessInstance{}
+					return &operatev87.SearchProcessInstancesResponse{
+						HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
+						JSON200: &operatev87.ResultsProcessInstance{
+							Items: &items,
+						},
+					}, nil
+				},
+				deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
+					t.Fatalf("unexpected delete call")
+					return nil, nil
+				},
+			},
+			expectedError: d.ErrNotFound,
 		},
 		{
 			name:              "KeyConversionError",
@@ -628,15 +698,76 @@ func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 				require.Error(t, err)
 				assert.ErrorIs(t, err, tt.expectedError)
 				assert.Contains(t, err.Error(), "process instance state")
-				assert.NotContains(t, err.Error(), "get process instance state")
-				if errors.Is(tt.expectedError, d.ErrUnsupported) {
-					assert.Contains(t, err.Error(), "process-instance state lookup by key is not tenant-safe in Camunda 8.7")
-				}
 				return
 			}
 
 			require.NoError(t, err)
 			tt.assertResult(t, state, pi)
+		})
+	}
+}
+
+// TestService_WaitForProcessInstanceCreationStates verifies the v8.7 waiter accepts the shared creation-confirmation state set.
+func TestService_WaitForProcessInstanceCreationStates(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name        string
+		state       string
+		wantState   d.State
+		wantErrText string
+	}{
+		{name: "Active", state: "ACTIVE", wantState: d.StateActive},
+		{name: "Completed", state: "COMPLETED", wantState: d.StateCompleted},
+		{name: "Terminal", state: "TERMINATED", wantState: d.StateTerminated},
+		{name: "AbsentRejected", wantErrText: "exceeded max_retries"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			searchCalls := 0
+			svc := newTestService(t, waitTestConfig(), newStrictCamundaClient(t), &mockOperateClient{
+				getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
+					t.Fatalf("unexpected get call")
+					return nil, nil
+				},
+				searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
+					searchCalls++
+					require.NotNil(t, body.Filter)
+					require.NotNil(t, body.Filter.Key)
+					assert.Equal(t, int64(123), *body.Filter.Key)
+					items := []operatev87.ProcessInstance{}
+					if tt.state != "" {
+						items = append(items, *makeProcessInstanceResponse(123, tt.state, ""))
+					}
+					return &operatev87.SearchProcessInstancesResponse{
+						HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
+						JSON200: &operatev87.ResultsProcessInstance{
+							Items: &items,
+						},
+					}, nil
+				},
+				deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
+					t.Fatalf("unexpected delete call")
+					return nil, nil
+				},
+			})
+
+			resp, pi, err := svc.WaitForProcessInstanceState(ctx, "123", d.ObservableProcessInstanceCreationStates())
+
+			if tt.wantErrText != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErrText)
+				assert.False(t, resp.Ok)
+				assert.Equal(t, 2, searchCalls)
+				return
+			}
+			require.NoError(t, err)
+			assert.True(t, resp.Ok)
+			assert.Equal(t, tt.wantState, resp.State)
+			assert.Equal(t, tt.wantState, pi.State)
+			assert.Equal(t, "2026-03-23T18:00:00Z", pi.StartDate)
+			assert.Equal(t, 1, searchCalls)
 		})
 	}
 }

@@ -105,13 +105,43 @@ func TestGetIncidentMapsDetail(t *testing.T) {
 		State:                  "ACTIVE",
 		ErrorType:              "JOB_NO_RETRIES",
 		ErrorMessage:           "no retries left",
-		FlowNodeId:             "task-a",
-		FlowNodeInstanceKey:    "2251799813685252",
+		ElementId:              "task-a",
+		ElementInstanceKey:     "2251799813685252",
 		JobKey:                 "2251799813685251",
 		RootProcessInstanceKey: "2251799813685250",
 		ProcessDefinitionKey:   "2251799813685253",
 		ProcessDefinitionId:    "order-process",
 	}, got)
+}
+
+func TestSearchIncidentsPageKeepsAdapterBoundaryElementFields(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(_ context.Context, body camundav89.SearchIncidentsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchIncidentsResponse, error) {
+			require.NotNil(t, body.Filter)
+			return &camundav89.SearchIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200: &camundav89.IncidentSearchQueryResult{
+					Items: []camundav89.IncidentResult{{
+						IncidentKey:        "2251799813685249",
+						ProcessInstanceKey: "2251799813685250",
+						State:              camundav89.IncidentStateEnumACTIVE,
+						ElementId:          "task-a",
+						ElementInstanceKey: "2251799813685252",
+					}},
+					Page: camundav89.SearchQueryPageResponse{TotalItems: 1},
+				},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{}, d.IncidentPageRequest{Size: 10})
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 1)
+	require.Equal(t, "task-a", got.Items[0].ElementId)
+	require.Equal(t, "2251799813685252", got.Items[0].ElementInstanceKey)
 }
 
 func TestWaitForProcessInstanceIncidentsResolvedPollsInitialSetOnly(t *testing.T) {
@@ -159,6 +189,7 @@ func TestSearchProcessInstanceIncidentsUsesRequestedStateScope(t *testing.T) {
 		{name: "default active", wantState: ptrIncidentState89(camundav89.IncidentStateEnumACTIVE)},
 		{name: "pending", option: services.WithIncidentState("pending"), wantState: ptrIncidentState89(camundav89.IncidentStateEnumPENDING)},
 		{name: "resolved", option: services.WithIncidentState("resolved"), wantState: ptrIncidentState89(camundav89.IncidentStateEnumRESOLVED)},
+		{name: "resolved uppercase", option: services.WithIncidentState("RESOLVED"), wantState: ptrIncidentState89(camundav89.IncidentStateEnumRESOLVED)},
 		{name: "migrated", option: services.WithIncidentState("migrated"), wantState: ptrIncidentState89(camundav89.IncidentStateEnumMIGRATED)},
 		{name: "unknown", option: services.WithIncidentState("unknown"), wantState: ptrIncidentState89(camundav89.IncidentStateEnumUNKNOWN)},
 		{name: "all", option: services.WithIncidentState("all"), wantState: nil},
@@ -308,8 +339,8 @@ func TestSearchIncidentsPageUsesServerFiltersAndLocalMessageFiltering(t *testing
 		ProcessInstanceKey:     "pi-a",
 		ProcessDefinitionKey:   "pd-key",
 		ProcessDefinitionId:    "pd-id",
-		FlowNodeId:             "task-a",
-		FlowNodeInstanceKey:    "fni-a",
+		ElementId:              "task-a",
+		ElementInstanceKey:     "fni-a",
 		CreationTimeAfter:      "2026-05-09T09:00:00Z",
 		CreationTimeBefore:     "2026-05-09T11:00:00Z",
 		RootProcessInstanceKey: "root-a",
@@ -318,6 +349,69 @@ func TestSearchIncidentsPageUsesServerFiltersAndLocalMessageFiltering(t *testing
 	require.NoError(t, err)
 	require.Nil(t, got.ReportedTotal)
 	require.Equal(t, []string{"match"}, incidentDetailKeys(got.Items))
+}
+
+func TestSearchIncidentsPageDateOnlyCreationTimeBeforeUsesInclusiveDay(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(_ context.Context, body camundav89.SearchIncidentsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchIncidentsResponse, error) {
+			require.NotNil(t, body.Filter)
+			require.NotNil(t, body.Filter.CreationTime)
+			creationTime, err := body.Filter.CreationTime.AsAdvancedDateTimeFilter()
+			require.NoError(t, err)
+			require.NotNil(t, creationTime.Lte)
+			require.Equal(t, time.Date(2026, 5, 10, 23, 59, 59, int(time.Second-time.Nanosecond), time.UTC), *creationTime.Lte)
+
+			return &camundav89.SearchIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200: &camundav89.IncidentSearchQueryResult{
+					Items: []camundav89.IncidentResult{},
+					Page:  camundav89.SearchQueryPageResponse{TotalItems: 0},
+				},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{
+		CreationTimeBefore: "2026-05-10",
+	}, d.IncidentPageRequest{Size: 2})
+
+	require.NoError(t, err)
+	require.Empty(t, got.Items)
+}
+
+func TestSearchIncidentsPageC8voltCreationTimestampIsUTC(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(_ context.Context, body camundav89.SearchIncidentsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchIncidentsResponse, error) {
+			require.NotNil(t, body.Filter)
+			require.NotNil(t, body.Filter.CreationTime)
+			creationTime, err := body.Filter.CreationTime.AsAdvancedDateTimeFilter()
+			require.NoError(t, err)
+			require.NotNil(t, creationTime.Gte)
+			require.NotNil(t, creationTime.Lte)
+			require.Equal(t, time.Date(2026, 5, 25, 20, 9, 11, 0, time.UTC), *creationTime.Gte)
+			require.Equal(t, time.Date(2026, 5, 25, 20, 9, 11, 123000000, time.UTC), *creationTime.Lte)
+
+			return &camundav89.SearchIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200: &camundav89.IncidentSearchQueryResult{
+					Items: []camundav89.IncidentResult{},
+					Page:  camundav89.SearchQueryPageResponse{TotalItems: 0},
+				},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{
+		CreationTimeAfter:  "2026-05-25T20:09:11",
+		CreationTimeBefore: "2026-05-25T20:09:11.123",
+	}, d.IncidentPageRequest{Size: 2})
+
+	require.NoError(t, err)
+	require.Empty(t, got.Items)
 }
 
 func ptrIncidentState89(v camundav89.IncidentStateEnum) *camundav89.IncidentStateEnum {

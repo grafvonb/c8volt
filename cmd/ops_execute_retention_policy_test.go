@@ -40,7 +40,8 @@ func TestOpsExecuteRetentionPolicyHelpDocumentsCommand(t *testing.T) {
 		"Execute process-instance retention cleanup",
 		"--retention-days int",
 		"./c8volt ops execute retention-policy --retention-days 90 --dry-run",
-		"./c8volt ops execute retention-policy --retention-days 90 --automation --json --dry-run",
+		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --dry-run",
+		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25 --report-file retention-report.md",
 	)
 	assertHelpOutputOmitsAll(t, commandOutput,
 		"./c8volt ops execute retention-policy --retention-days 90 --automation --json --no-wait",
@@ -616,9 +617,10 @@ func TestOpsExecuteRetentionPolicyDryRunPlanRendering(t *testing.T) {
 	require.Contains(t, got, "retention days: 90")
 	require.Contains(t, got, "retention boundary: endDate <= 2026-02-13")
 	require.Contains(t, got, "retention discovery: planned")
-	require.Contains(t, got, "delete preview: 2 retention candidate(s), 1 process-instance tree(s), 3 process instance(s) would be deleted")
-	require.Contains(t, got, "duplicate process-instance trees: 1")
-	require.Contains(t, got, "non-final process instances in scope: 1 (use --force to cancel before delete)")
+	require.Contains(t, got, "delete preview: 2 retention candidate(s), 3 affected process instance(s) across 1 root(s) would be deleted")
+	require.Contains(t, got, "dependency expansion: 1 additional process instance(s) due to dependencies")
+	require.Contains(t, got, "duplicate roots: 1")
+	require.Contains(t, got, "non-final affected process instances: 1 (use --force to cancel before delete)")
 	require.Contains(t, got, "missing ancestors: 1")
 	require.Contains(t, got, "traversal warning: one or more parent process instances were not found")
 	require.Contains(t, got, "confirmation required: true")

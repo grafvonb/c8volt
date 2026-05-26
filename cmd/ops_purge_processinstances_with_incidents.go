@@ -29,10 +29,12 @@ var (
 	flagOpsPurgeIncidentPDKey              string
 	flagOpsPurgeIncidentPIKey              string
 	flagOpsPurgeIncidentRootKey            string
-	flagOpsPurgeIncidentFlowNodeID         string
-	flagOpsPurgeIncidentFNIKey             string
+	flagOpsPurgeIncidentElementID          string
+	flagOpsPurgeIncidentElementInstanceKey string
 	flagOpsPurgeIncidentCreationTimeAfter  string
 	flagOpsPurgeIncidentCreationTimeBefore string
+	flagOpsPurgeIncidentCreationTimeNewer  int
+	flagOpsPurgeIncidentCreationTimeOlder  int
 	flagOpsPurgeIncidentBatchSize          int32
 	flagOpsPurgeIncidentLimit              int32
 	flagOpsPurgeIncidentReportFile         string
@@ -43,15 +45,11 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 	Use:   "process-instances-with-incidents",
 	Short: "Purge process instances selected by incidents",
 	Long: "Purge process instances selected by incidents.\n\n" +
-		"The workflow discovers candidate incidents from incident filters, freezes the candidate process-instance keys, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
+		"The workflow discovers candidate incidents from incident filters, freezes the candidate process-instance keys, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Discovery pages through all matching incidents by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
 	Example: `  ./c8volt ops purge process-instances-with-incidents --dry-run
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
-  ./c8volt ops purge process-instances-with-incidents --state active --limit 5 --dry-run
-  ./c8volt ops purge pi-with-incidents --state active --dry-run
-  ./c8volt ops purge process-instances-with-incidents --automation --json --dry-run
-  ./c8volt ops purge process-instances-with-incidents --dry-run --report-file incident-purge.md
-  ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --auto-confirm --force
-  ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --auto-confirm --force --workers 4 --report-file incident-purge.json --report-format json`,
+  ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force
+  ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md`,
 	Aliases: []string{"pi-with-incidents", "piwi"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -90,7 +88,9 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
-			planned, err := cli.PurgeProcessInstancesWithIncidents(cmd.Context(), planRequest, collectOptions()...)
+			planned, err := purgeProcessInstancesWithIncidentsWithCommandActivity(cmd, planRequest, func() (ops.IncidentPurgeResult, error) {
+				return cli.PurgeProcessInstancesWithIncidents(cmd.Context(), planRequest, collectOptions()...)
+			})
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops purge process-instances with incidents: %w", err))
 			}
@@ -99,20 +99,20 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 				return
 			}
 			if len(planned.DeletePlan.ResolvedRootKeys) > 0 {
-				prompt := fmt.Sprintf("Incident purge matched %d candidate incident(s) and %d candidate process instance(s); delete planning will delete %d affected process instance(s) across %d root(s). Do you want to proceed?",
-					planned.Discovery.IncidentCount,
-					len(planned.DeletePlan.CandidateProcessInstanceKeys),
-					len(planned.DeletePlan.AffectedKeys),
-					len(planned.DeletePlan.ResolvedRootKeys),
-				)
+				prompt := opsPurgeProcessInstancesWithIncidentsConfirmationPrompt(planned)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsPurgeProcessInstancesWithIncidentsAfterReport(cmd, log, cfg, markOpsPurgeProcessInstancesWithIncidentsLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
 					return
 				}
 			}
 			request.DiscoveredCandidateProcessInstanceKeys = append(typex.Keys{}, planned.Discovery.CandidateProcessInstanceKeys...)
+			request.DiscoveredIncidentKeys = append(typex.Keys{}, planned.Discovery.IncidentKeys...)
+			request.DiscoveredIncidentCount = planned.Discovery.IncidentCount
+			request.DiscoveredScopeStatus = planned.Discovery.DiscoveryScopeStatus
 		}
-		result, err := cli.PurgeProcessInstancesWithIncidents(cmd.Context(), request, collectOptions()...)
+		result, err := purgeProcessInstancesWithIncidentsWithCommandActivity(cmd, request, func() (ops.IncidentPurgeResult, error) {
+			return cli.PurgeProcessInstancesWithIncidents(cmd.Context(), request, collectOptions()...)
+		})
 		if err != nil {
 			if reportErr := writeOpsPurgeProcessInstancesWithIncidentsReport(result, cfg, opsPurgeProcessInstancesWithIncidentsReportWriteMode(result)); reportErr != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge process-instances with incidents: %w; write audit report: %v", err, reportErr))
@@ -141,12 +141,14 @@ func init() {
 	fs.StringVar(&flagOpsPurgeIncidentPDKey, "pd-key", "", "process definition key to filter incidents")
 	fs.StringVar(&flagOpsPurgeIncidentPIKey, "pi-key", "", "process instance key to filter incidents")
 	fs.StringVar(&flagOpsPurgeIncidentRootKey, "root-key", "", "root process instance key to filter incidents")
-	fs.StringVar(&flagOpsPurgeIncidentFlowNodeID, "flow-node-id", "", "flow node ID to filter incidents")
-	fs.StringVar(&flagOpsPurgeIncidentFNIKey, "fni-key", "", "flow node instance key to filter incidents")
-	fs.StringVar(&flagOpsPurgeIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD")
-	fs.StringVar(&flagOpsPurgeIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD")
-	fs.Int32VarP(&flagOpsPurgeIncidentBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to inspect per page (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.Int32VarP(&flagOpsPurgeIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to inspect before candidate process-instance dedupe")
+	fs.StringVar(&flagOpsPurgeIncidentElementID, "element-id", "", "BPMN element ID to filter incidents")
+	fs.StringVar(&flagOpsPurgeIncidentElementInstanceKey, "element-instance-key", "", "element instance key to filter incidents")
+	fs.StringVar(&flagOpsPurgeIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
+	fs.StringVar(&flagOpsPurgeIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
+	fs.IntVar(&flagOpsPurgeIncidentCreationTimeNewer, "creation-time-newer-days", -1, "only include incidents with creation time N days old or newer (0 means today)")
+	fs.IntVar(&flagOpsPurgeIncidentCreationTimeOlder, "creation-time-older-days", -1, "only include incidents with creation time N days old or older")
+	fs.Int32VarP(&flagOpsPurgeIncidentBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagOpsPurgeIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to freeze before candidate process-instance dedupe; omit to discover all matches")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "discover and validate incident-based process-instance cleanup without submitting deletion requests")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when validating the delete plan and deleting roots (default: min(targets, 2*GOMAXPROCS, 32))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
@@ -182,17 +184,19 @@ func validateOpsPurgeProcessInstancesWithIncidentsFlags(cmd *cobra.Command) erro
 	if err := validateGetIncidentErrorTypeFlag(flagOpsPurgeIncidentErrorType); err != nil {
 		return err
 	}
-	if err := validateGetIncidentCreationTimeFlag("--creation-time-after", flagOpsPurgeIncidentCreationTimeAfter); err != nil {
-		return err
-	}
-	if err := validateGetIncidentCreationTimeFlag("--creation-time-before", flagOpsPurgeIncidentCreationTimeBefore); err != nil {
+	if err := validateIncidentCreationTimeFilters(
+		"--creation-time-after", flagOpsPurgeIncidentCreationTimeAfter,
+		"--creation-time-before", flagOpsPurgeIncidentCreationTimeBefore,
+		"--creation-time-newer-days", flagOpsPurgeIncidentCreationTimeNewer,
+		"--creation-time-older-days", flagOpsPurgeIncidentCreationTimeOlder,
+	); err != nil {
 		return err
 	}
 	for flag, value := range map[string]string{
-		"--pi-key":   flagOpsPurgeIncidentPIKey,
-		"--root-key": flagOpsPurgeIncidentRootKey,
-		"--pd-key":   flagOpsPurgeIncidentPDKey,
-		"--fni-key":  flagOpsPurgeIncidentFNIKey,
+		"--pi-key":               flagOpsPurgeIncidentPIKey,
+		"--root-key":             flagOpsPurgeIncidentRootKey,
+		"--pd-key":               flagOpsPurgeIncidentPDKey,
+		"--element-instance-key": flagOpsPurgeIncidentElementInstanceKey,
 	} {
 		if value == "" {
 			continue
@@ -205,6 +209,32 @@ func validateOpsPurgeProcessInstancesWithIncidentsFlags(cmd *cobra.Command) erro
 		return invalidFlagValuef("incident key %q is not a valid key", firstBadKey)
 	}
 	return validateOpsWorkflowReportFlags(flagOpsPurgeIncidentReportFile, OpsWorkflowReportFormat(flagOpsPurgeIncidentReportFormat))
+}
+
+func purgeProcessInstancesWithIncidentsWithCommandActivity(cmd *cobra.Command, request ops.IncidentPurgeRequest, run func() (ops.IncidentPurgeResult, error)) (ops.IncidentPurgeResult, error) {
+	stopActivity := startCommandActivity(cmd, formatOpsPurgeProcessInstancesWithIncidentsActivity(request))
+	defer stopActivity()
+	return run()
+}
+
+func formatOpsPurgeProcessInstancesWithIncidentsActivity(request ops.IncidentPurgeRequest) string {
+	if request.DiscoveredCandidateProcessInstanceKeys != nil {
+		return "deleting incident purge scope"
+	}
+	if request.DryRun {
+		return "planning incident purge delete scope"
+	}
+	return "running incident purge workflow"
+}
+
+func opsPurgeProcessInstancesWithIncidentsConfirmationPrompt(planned ops.IncidentPurgeResult) string {
+	return fmt.Sprintf(
+		"incident purge: %d candidate incident(s), %d candidate process instance(s), %d affected process instance(s) across %d root(s) will be deleted. Do you want to proceed?",
+		planned.Discovery.IncidentCount,
+		len(planned.DeletePlan.CandidateProcessInstanceKeys),
+		len(planned.DeletePlan.AffectedKeys),
+		len(planned.DeletePlan.ResolvedRootKeys),
+	)
 }
 
 // rejectOpsPurgeProcessInstancesWithIncidentsPlanRequiringForce blocks mutation before prompting when the plan has non-final affected instances.
@@ -329,19 +359,22 @@ func formatOpsPurgeProcessInstancesWithIncidentsNonFinalScope(plan ops.IncidentP
 // populateOpsPurgeIncidentSelection converts command flags into the public incident filter model.
 func populateOpsPurgeIncidentSelection() incident.Filter {
 	errorType, _ := incidentfilter.NormalizeErrorType(flagOpsPurgeIncidentErrorType)
+	state, _ := incidentfilter.NormalizeState(flagOpsPurgeIncidentState)
+	creationTimeAfter, _ := pickIncidentCreationTimeLowerBound(flagOpsPurgeIncidentCreationTimeAfter, flagOpsPurgeIncidentCreationTimeNewer)
+	creationTimeBefore, _ := pickIncidentCreationTimeUpperBound(flagOpsPurgeIncidentCreationTimeBefore, flagOpsPurgeIncidentCreationTimeOlder)
 	return incident.Filter{
 		Keys:                   append([]string(nil), flagOpsPurgeIncidentKeys...),
-		State:                  flagOpsPurgeIncidentState,
+		State:                  state,
 		ErrorType:              errorType,
 		ErrorMessage:           flagOpsPurgeIncidentErrorMessage,
 		ProcessDefinitionId:    flagOpsPurgeIncidentBpmnProcessID,
 		ProcessDefinitionKey:   flagOpsPurgeIncidentPDKey,
 		ProcessInstanceKey:     flagOpsPurgeIncidentPIKey,
 		RootProcessInstanceKey: flagOpsPurgeIncidentRootKey,
-		FlowNodeId:             flagOpsPurgeIncidentFlowNodeID,
-		FlowNodeInstanceKey:    flagOpsPurgeIncidentFNIKey,
-		CreationTimeAfter:      flagOpsPurgeIncidentCreationTimeAfter,
-		CreationTimeBefore:     flagOpsPurgeIncidentCreationTimeBefore,
+		ElementId:              flagOpsPurgeIncidentElementID,
+		ElementInstanceKey:     flagOpsPurgeIncidentElementInstanceKey,
+		CreationTimeAfter:      creationTimeAfter,
+		CreationTimeBefore:     creationTimeBefore,
 	}
 }
 

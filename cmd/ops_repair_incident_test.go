@@ -32,6 +32,8 @@ func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 		"--key strings",
 		"--state string",
 		"--error-type string",
+		"--element-id string",
+		"--element-instance-key string",
 		"--batch-size int32",
 		"--limit int32",
 		"--retries int32",
@@ -45,12 +47,29 @@ func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 		"--workers int",
 		"--no-worker-limit",
 		"--fail-fast",
-		"printf '%s\\n' \"$INCIDENT_KEY_A\" \"$INCIDENT_KEY_B\" | ./c8volt ops repair incident -",
+		"./c8volt ops repair incident --key <incident-key> --dry-run",
+		"./c8volt ops repair incident --key <incident-key> --vars '{\"hasIncident\":false}' --report-file repair-incident.md",
 	)
 
 	parentOutput := executeRootForProcessInstanceTest(t, "ops", "repair", "--help")
 	require.NotContains(t, parentOutput, "--key strings")
 	require.NotContains(t, parentOutput, "--retries int32")
+	require.NotContains(t, output, "--flow-node-id")
+	require.NotContains(t, output, "--fni-key")
+}
+
+func TestOpsRepairIncidentRejectsLegacyFlowNodeFilterFlags(t *testing.T) {
+	tests := []string{"--flow-node-id", "--fni-key"}
+	for _, flag := range tests {
+		t.Run(flag, func(t *testing.T) {
+			output, err := executeRootExpectErrorForTest(t, "ops", "repair", "incident", flag, "legacy-value")
+			require.Error(t, err)
+			if output == "" {
+				output = err.Error()
+			}
+			require.Contains(t, output, "unknown flag: "+flag)
+		})
+	}
 }
 
 // TestOpsRepairIncidentDryRunWritesJSONReport verifies dry-run reports write structured audit data without mutation.
@@ -73,8 +92,15 @@ func TestOpsRepairIncidentDryRunWritesJSONReport(t *testing.T) {
 	require.Contains(t, string(output), `"reportFormat": "json"`)
 	require.Contains(t, string(output), `"jobKeys": [`)
 	require.Contains(t, string(output), `"retryUpdateStatus": "not_applicable"`)
+	require.Contains(t, string(output), `"elementId": "task-a"`)
+	require.Contains(t, string(output), `"elementInstanceKey": "2251799813685300"`)
+	require.NotContains(t, string(output), "flowNode")
 	var report map[string]any
-	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportFile)), &report))
+	reportData := readReportFile(t, reportFile)
+	require.Contains(t, reportData, `"elementId": "task-a"`)
+	require.Contains(t, reportData, `"elementInstanceKey": "2251799813685300"`)
+	require.NotContains(t, reportData, "flowNode")
+	require.NoError(t, json.Unmarshal([]byte(reportData), &report))
 	require.Equal(t, "ops.repair.v1", report["schemaVersion"])
 	require.Equal(t, "ops repair incident", report["commandName"])
 	require.Equal(t, "planned", report["outcome"])
@@ -136,7 +162,7 @@ func TestOpsRepairIncidentVarsDryRunShowsVariableScopes(t *testing.T) {
 	})
 
 	require.NoError(t, err, string(output))
-	require.Contains(t, string(output), "variable scopes: 1")
+	require.Contains(t, string(output), "repair preview: 1 active incident(s) would be resolved; 1 related job(s), 1 variable scope(s) would be updated")
 	require.Contains(t, string(output), "variable scope 2251799813685251: names=approved status=planned dependents=2251799813685249")
 	require.Contains(t, string(output), "incident 2251799813685249: vars=planned")
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "PUT /v2/element-instances/")
@@ -195,8 +221,8 @@ func TestOpsRepairIncidentStdinDryRunUsesFixedKeys(t *testing.T) {
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "dry run: repair incidents")
 	require.Contains(t, string(output), "candidate incidents: 1")
-	require.Contains(t, string(output), "repair preview: 1 incident(s), 0 related job(s), 0 variable scope(s) would be updated")
-	require.Contains(t, string(output), "incidents without related jobs: 1")
+	require.Contains(t, string(output), "repair preview: 1 active incident(s) would be resolved; 0 related job(s), 0 variable scope(s) would be updated")
+	require.NotContains(t, string(output), "incidents without related jobs")
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "PATCH /v2/jobs/")
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/resolution")
 }
@@ -242,6 +268,7 @@ func TestOpsRepairIncidentSearchPreflightsBeforeMutation(t *testing.T) {
 
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "repair incidents")
+	requireRequestCount(t, requests.Snapshot(), "POST /v2/incidents/search", 1)
 	requireRequestBefore(t, requests.Snapshot(), "POST /v2/incidents/search", "GET /v2/incidents/2251799813685249")
 	requireRequestBefore(t, requests.Snapshot(), "GET /v2/incidents/2251799813685249", "POST /v2/incidents/2251799813685249/resolution")
 }
@@ -411,10 +438,12 @@ func resetOpsRepairIncidentFlagState() {
 	flagOpsRepairIncidentRootKey = ""
 	flagOpsRepairIncidentPDKey = ""
 	flagOpsRepairIncidentBpmnProcessID = ""
-	flagOpsRepairIncidentFlowNodeID = ""
-	flagOpsRepairIncidentFNIKey = ""
+	flagOpsRepairIncidentElementID = ""
+	flagOpsRepairIncidentElementInstanceKey = ""
 	flagOpsRepairIncidentCreationTimeAfter = ""
 	flagOpsRepairIncidentCreationTimeBefore = ""
+	flagOpsRepairIncidentCreationTimeNewer = -1
+	flagOpsRepairIncidentCreationTimeOlder = -1
 	flagOpsRepairIncidentBatchSize = consts.MaxPISearchSize
 	flagOpsRepairIncidentLimit = 0
 	flagOpsRepairIncidentRetries = 1
@@ -451,4 +480,16 @@ func requireRequestBefore(t *testing.T, requests []string, before string, after 
 	require.NotEqual(t, -1, beforeIndex, "missing request containing %q in %v", before, requests)
 	require.NotEqual(t, -1, afterIndex, "missing request containing %q in %v", after, requests)
 	require.Less(t, beforeIndex, afterIndex, "%q should happen before %q", before, after)
+}
+
+// requireRequestCount verifies preflight discovery is not repeated after confirmation.
+func requireRequestCount(t *testing.T, requests []string, contains string, want int) {
+	t.Helper()
+	got := 0
+	for _, request := range requests {
+		if strings.Contains(request, contains) {
+			got++
+		}
+	}
+	require.Equal(t, want, got, "request count for %q in %v", contains, requests)
 }

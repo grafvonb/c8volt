@@ -25,6 +25,8 @@ type stubProcessAPI struct {
 	searchProcessDefinitions         func(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error)
 	searchProcessDefinitionsLatest   func(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error)
 	searchProcessInstancesPage       func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
+	searchIncidents                  func(context.Context, incident.Filter, int32, ...options.FacadeOption) (incident.Incidents, error)
+	searchIncidentsPage              func(context.Context, incident.Filter, incident.PageRequest, ...options.FacadeOption) (incident.Page, error)
 	enrichProcessInstances           func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.IncidentEnrichedProcessInstances, error)
 	enrichProcessInstanceVars        func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.VariableEnrichedProcessInstances, error)
 	updateProcessInstancesVars       func(context.Context, types.Keys, map[string]any, int, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error)
@@ -191,12 +193,18 @@ func (stubProcessAPI) GetIncidents(context.Context, types.Keys, int, ...options.
 	panic("unexpected call")
 }
 
-func (stubProcessAPI) SearchIncidents(context.Context, incident.Filter, int32, ...options.FacadeOption) (incident.Incidents, error) {
-	panic("unexpected call")
+func (s stubProcessAPI) SearchIncidents(ctx context.Context, filter incident.Filter, size int32, opts ...options.FacadeOption) (incident.Incidents, error) {
+	if s.searchIncidents == nil {
+		panic("unexpected call")
+	}
+	return s.searchIncidents(ctx, filter, size, opts...)
 }
 
-func (stubProcessAPI) SearchIncidentsPage(context.Context, incident.Filter, incident.PageRequest, ...options.FacadeOption) (incident.Page, error) {
-	panic("unexpected call")
+func (s stubProcessAPI) SearchIncidentsPage(ctx context.Context, filter incident.Filter, req incident.PageRequest, opts ...options.FacadeOption) (incident.Page, error) {
+	if s.searchIncidentsPage == nil {
+		panic("unexpected call")
+	}
+	return s.searchIncidentsPage(ctx, filter, req, opts...)
 }
 
 func (stubProcessAPI) SearchProcessInstanceIncidents(context.Context, string, ...options.FacadeOption) ([]incident.ProcessInstanceIncidentDetail, error) {
@@ -258,6 +266,22 @@ func (s stubProcessAPI) SearchProcessInstancesPage(ctx context.Context, filter p
 		panic("unexpected call")
 	}
 	return s.searchProcessInstancesPage(ctx, filter, req, opts...)
+}
+
+func failProcessInstancePageSearch(t *testing.T) func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error) {
+	t.Helper()
+	return func(_ context.Context, filter process.ProcessInstanceFilter, req process.ProcessInstancePageRequest, _ ...options.FacadeOption) (process.ProcessInstancePage, error) {
+		t.Fatalf("unexpected process-instance page search before selector validation; filter=%s request=%+v", filter.String(), req)
+		return process.ProcessInstancePage{}, nil
+	}
+}
+
+func failIncidentPageSearch(t *testing.T) func(context.Context, incident.Filter, incident.PageRequest, ...options.FacadeOption) (incident.Page, error) {
+	t.Helper()
+	return func(_ context.Context, filter incident.Filter, req incident.PageRequest, _ ...options.FacadeOption) (incident.Page, error) {
+		t.Fatalf("unexpected incident page search before selector validation; filter=%s request=%+v", filter.String(), req)
+		return incident.Page{}, nil
+	}
 }
 
 func (stubProcessAPI) SearchProcessInstances(context.Context, process.ProcessInstanceFilter, int32, ...options.FacadeOption) (process.ProcessInstances, error) {

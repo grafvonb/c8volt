@@ -58,7 +58,7 @@ func newProcessInstanceSearchCaptureServerWithResponses(t *testing.T, requests *
 
 		switch r.URL.Path {
 		case "/v2/process-definitions/search":
-			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant-a","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+			writeVisibleProcessDefinitionSearchResponse(w)
 		case "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
@@ -72,6 +72,16 @@ func newProcessInstanceSearchCaptureServerWithResponses(t *testing.T, requests *
 		}
 	}))
 	return srv
+}
+
+func writeVisibleProcessDefinitionSearchResponse(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant-a","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+}
+
+func writeEmptyProcessDefinitionSearchResponse(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
 }
 
 // decodeCapturedPISearchFilter returns the JSON search filter captured by the
@@ -240,6 +250,35 @@ func TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode(t *testing.T)
 	require.Contains(t, deleteOutput, "preview delete scope without submitting deletion or cancel-before-delete requests")
 	require.Contains(t, deleteOutput, "./c8volt delete pi --key <process-instance-key> --dry-run")
 	require.Contains(t, deleteOutput, "./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run")
+}
+
+// TestProcessInstanceHelp_DocumentsTenantContract verifies command help names
+// discovery-scoped tenant behavior separately from explicit admin input.
+func TestProcessInstanceHelp_DocumentsTenantContract(t *testing.T) {
+	getOutput := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
+	require.Contains(t, getOutput, "Tenant contract:")
+	require.Contains(t, getOutput, "--tenant scopes search/list discovery and selector validation")
+	require.Contains(t, getOutput, "Explicit --key and stdin keys are backend-authorized admin input")
+
+	walkOutput := executeRootForProcessInstanceTest(t, "walk", "process-instance", "--help")
+	require.Contains(t, walkOutput, "Tenant contract:")
+	require.Contains(t, walkOutput, "explicit --key process-instance targets are backend-authorized admin input")
+
+	expectOutput := executeRootForProcessInstanceTest(t, "expect", "process-instance", "--help")
+	require.Contains(t, expectOutput, "Tenant contract:")
+	require.Contains(t, expectOutput, "explicit --key and stdin process-instance targets are backend-authorized admin input")
+
+	cancelOutput := executeRootForProcessInstanceTest(t, "cancel", "process-instance", "--help")
+	require.Contains(t, cancelOutput, "Tenant contract:")
+	require.Contains(t, cancelOutput, "--tenant scopes search-derived candidate discovery")
+	require.Contains(t, cancelOutput, "Explicit --key and stdin keys are backend-authorized admin input")
+	require.Contains(t, cancelOutput, "existing dry-run, confirmation, force, and wait safety checks still apply")
+
+	deleteOutput := executeRootForProcessInstanceTest(t, "delete", "process-instance", "--help")
+	require.Contains(t, deleteOutput, "Tenant contract:")
+	require.Contains(t, deleteOutput, "--tenant scopes search-derived candidate discovery")
+	require.Contains(t, deleteOutput, "Explicit --key and stdin keys are backend-authorized admin input")
+	require.Contains(t, deleteOutput, "existing dry-run, confirmation, force, and wait safety checks still apply")
 }
 
 func TestProcessInstanceSearchDefaultOneLineOutput_IgnoresReportedTotalMetadata(t *testing.T) {

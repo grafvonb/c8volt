@@ -44,7 +44,8 @@ func TestOpsRepairProcessInstanceHelpDocumentsSelectionShape(t *testing.T) {
 		"--dry-run",
 		"--no-wait",
 		"--workers int",
-		"printf '%s\\n' \"$PI_KEY_A\" \"$PI_KEY_B\" | ./c8volt ops repair process-instance -",
+		"./c8volt ops repair process-instance --key <process-instance-key> --dry-run",
+		"./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id <bpmn-process-id> --limit 5 --dry-run",
 	)
 	require.NotContains(t, output, "--incidents-only")
 }
@@ -98,7 +99,7 @@ func TestOpsRepairProcessInstanceVarsFileDryRunShowsVariableScopes(t *testing.T)
 	})
 
 	require.NoError(t, err, string(output))
-	require.Contains(t, string(output), "variable scopes: 1")
+	require.Contains(t, string(output), "repair preview: 1 active incident(s) would be resolved; 1 related job(s), 1 variable scope(s) would be updated")
 	require.Contains(t, string(output), "variable scope 2251799813685251: names=customerTier status=planned dependents=2251799813685249")
 	require.Contains(t, string(output), "process-instance 2251799813685251 incident 2251799813685249: vars=planned")
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "PUT /v2/element-instances/")
@@ -121,7 +122,8 @@ func TestOpsRepairProcessInstanceExplicitKeyNoWaitRepairsDiscoveredIncidents(t *
 
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "repair process-instance incidents")
-	require.Contains(t, string(output), "candidate process instances: 1")
+	require.Contains(t, string(output), "selected process instances: 1")
+	require.Contains(t, string(output), "repairable process instances: 1")
 	require.Contains(t, string(output), "active incidents: 1")
 	require.Contains(t, string(output), "outcome: repaired")
 	gotRequests := strings.Join(requests.Snapshot(), "\n")
@@ -146,9 +148,10 @@ func TestOpsRepairProcessInstanceDirectKeysReportNonIncidentTargets(t *testing.T
 	})
 
 	require.NoError(t, err, string(output))
-	require.Contains(t, string(output), "candidate process instances: 1")
+	require.Contains(t, string(output), "selected process instances: 2")
+	require.Contains(t, string(output), "repairable process instances: 1")
 	require.Contains(t, string(output), "active incidents: 1")
-	require.Contains(t, string(output), "process instances without active incidents: 1")
+	require.Contains(t, string(output), "skipped process instances: 1 without active incidents")
 	require.Contains(t, string(output), "skipped process-instance keys: 2251799813685255")
 	require.Contains(t, string(output), "outcome: planned; no changes applied")
 	gotRequests := strings.Join(requests.Snapshot(), "\n")
@@ -174,9 +177,10 @@ func TestOpsRepairProcessInstanceDirectKeyWithoutIncidentNoOps(t *testing.T) {
 
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "repair process-instance incidents")
-	require.Contains(t, string(output), "candidate process instances: 0")
+	require.Contains(t, string(output), "selected process instances: 1")
+	require.Contains(t, string(output), "repairable process instances: 0")
 	require.Contains(t, string(output), "active incidents: 0")
-	require.Contains(t, string(output), "process instances without active incidents: 1")
+	require.Contains(t, string(output), "skipped process instances: 1 without active incidents")
 	require.Contains(t, string(output), "repair plan: skipped")
 	require.Contains(t, string(output), "outcome: planned; no changes applied")
 	gotRequests := strings.Join(requests.Snapshot(), "\n")
@@ -202,6 +206,7 @@ func TestOpsRepairProcessInstanceSearchPreflightsBeforeMutation(t *testing.T) {
 
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "repair process-instance incidents")
+	requireRequestCount(t, requests.Snapshot(), "POST /v2/process-instances/search", 1)
 	requireRequestBefore(t, requests.Snapshot(), "POST /v2/process-instances/search", "GET /v2/process-instances/2251799813685251")
 	requireRequestBefore(t, requests.Snapshot(), "GET /v2/process-instances/2251799813685251", "PATCH /v2/jobs/2251799813685252")
 }
@@ -223,9 +228,10 @@ func TestOpsRepairProcessInstanceBareDryRunSearchesIncidents(t *testing.T) {
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "dry run: repair process-instance incidents")
 	require.Contains(t, string(output), "selection filters: {hasIncident=true}")
-	require.Contains(t, string(output), "candidate process instances: 1")
+	require.Contains(t, string(output), "selected process instances: 1")
+	require.Contains(t, string(output), "repairable process instances: 1")
 	require.Contains(t, string(output), "active incidents: 1")
-	require.Contains(t, string(output), "repair preview: 1 incident(s), 1 related job(s), 0 variable scope(s) would be updated")
+	require.Contains(t, string(output), "repair preview: 1 active incident(s) would be resolved; 1 related job(s), 0 variable scope(s) would be updated")
 	gotRequests := strings.Join(requests.Snapshot(), "\n")
 	require.Contains(t, gotRequests, "POST /v2/process-instances/search")
 	require.NotContains(t, gotRequests, "PATCH /v2/jobs/")
@@ -248,10 +254,11 @@ func TestOpsRepairProcessInstanceStdinDryRunUsesDiscoveredIncidents(t *testing.T
 
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "dry run: repair process-instance incidents")
-	require.Contains(t, string(output), "candidate process instances: 1")
+	require.Contains(t, string(output), "selected process instances: 1")
+	require.Contains(t, string(output), "repairable process instances: 1")
 	require.Contains(t, string(output), "active incidents: 1")
-	require.Contains(t, string(output), "repair preview: 1 incident(s), 0 related job(s), 0 variable scope(s) would be updated")
-	require.Contains(t, string(output), "incidents without related jobs: 1")
+	require.Contains(t, string(output), "repair preview: 1 active incident(s) would be resolved; 0 related job(s), 0 variable scope(s) would be updated")
+	require.NotContains(t, string(output), "incidents without related jobs")
 	gotRequests := strings.Join(requests.Snapshot(), "\n")
 	require.NotContains(t, gotRequests, "PATCH /v2/jobs/")
 	require.NotContains(t, gotRequests, "/resolution")

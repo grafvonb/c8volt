@@ -78,23 +78,24 @@ func opsRepairConfirmationPrompt(planned ops.RepairResult) string {
 	variableScopes := len(planned.FrozenSet.VariableScopes)
 	switch planned.Request.Target {
 	case ops.RepairTargetProcessInstance:
-		return fmt.Sprintf(
-			"Process-instance repair matched %d repairable process instance(s), %d active incident(s), and skipped %d process instance(s) without active incidents; repair will update %d variable scope(s), apply job repair where applicable to %d related job(s), and resolve %d incident(s). Do you want to proceed?",
+		prompt := fmt.Sprintf(
+			"process-instance repair: %d repairable process instance(s), %d active incident(s), %d related job(s), %d variable scope(s) will be repaired",
 			len(planned.FrozenSet.ProcessInstanceKeys),
 			len(planned.FrozenSet.IncidentKeys),
-			len(planned.FrozenSet.SkippedProcessInstanceKeys),
-			variableScopes,
 			jobSteps,
-			len(planned.FrozenSet.IncidentKeys),
+			variableScopes,
 		)
+		if len(planned.FrozenSet.SkippedProcessInstanceKeys) > 0 {
+			prompt += fmt.Sprintf("; %d selected process instance(s) skipped", len(planned.FrozenSet.SkippedProcessInstanceKeys))
+		}
+		return prompt + ". Do you want to proceed?"
 	default:
 		return fmt.Sprintf(
-			"Incident repair matched %d incident(s) across %d process instance(s); repair will update %d variable scope(s), apply job repair where applicable to %d related job(s), and resolve %d incident(s). Do you want to proceed?",
+			"incident repair: %d active incident(s), %d process instance(s), %d related job(s), %d variable scope(s) will be repaired. Do you want to proceed?",
 			len(planned.FrozenSet.IncidentKeys),
 			len(planned.FrozenSet.ProcessInstanceKeys),
-			variableScopes,
 			jobSteps,
-			len(planned.FrozenSet.IncidentKeys),
+			variableScopes,
 		)
 	}
 }

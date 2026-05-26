@@ -99,9 +99,9 @@ internal/services/
     └── existing deployment support
 
 embedded/processdefinitions/
-├── C87_MultipleSubProcessesParentProcess.bpmn
-├── C88_MultipleSubProcessesParentProcess.bpmn
-└── C89_MultipleSubProcessesParentProcess.bpmn
+├── C87_MultipleSubProcessesParent.bpmn
+├── C88_MultipleSubProcessesParent.bpmn
+└── C89_MultipleSubProcessesParent.bpmn
 ```
 
 **Structure Decision**: Extend the existing ops execute command and ops facade/service layout. The ops workflow should orchestrate steps and aggregate reports, while connectivity validation, embedded fixture loading/deployment, process-instance creation, traversal, process-instance deletion, and process-definition deletion remain owned by existing lower-level packages or new primitives added to those owning packages.

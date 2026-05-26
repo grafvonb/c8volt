@@ -11,8 +11,8 @@ type ProcessInstanceIncidentDetail struct {
 	State                  string
 	ErrorType              string
 	ErrorMessage           string
-	FlowNodeId             string
-	FlowNodeInstanceKey    string
+	ElementId              string
+	ElementInstanceKey     string
 	JobKey                 string
 	RootProcessInstanceKey string
 	ProcessDefinitionKey   string
@@ -28,8 +28,8 @@ type IncidentFilter struct {
 	RootProcessInstanceKey string
 	ProcessDefinitionKey   string
 	ProcessDefinitionId    string
-	FlowNodeId             string
-	FlowNodeInstanceKey    string
+	ElementId              string
+	ElementInstanceKey     string
 	CreationTimeAfter      string
 	CreationTimeBefore     string
 }

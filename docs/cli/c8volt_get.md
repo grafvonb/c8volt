@@ -51,7 +51,7 @@ c8volt get [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for tenant-aware command flows (overrides env, profile, and base config)
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```
@@ -61,7 +61,7 @@ c8volt get [flags]
 * [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
 * [c8volt get cluster](c8volt_get_cluster)	 - Inspect cluster-wide topology, version, and license information
 * [c8volt get incident](c8volt_get_incident)	 - List or fetch incidents
-* [c8volt get job](c8volt_get_job)	 - Inspect a job by key
+* [c8volt get job](c8volt_get_job)	 - Inspect or search jobs
 * [c8volt get process-definition](c8volt_get_process-definition)	 - List or fetch deployed process definitions
 * [c8volt get process-instance](c8volt_get_process-instance)	 - List or fetch process instances
 * [c8volt get resource](c8volt_get_resource)	 - Get a resource by id

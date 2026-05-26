@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
@@ -150,19 +149,19 @@ func (s *Service) newIncidentFilter(filter d.IncidentFilter) (*camundav89.Incide
 	if err != nil {
 		return nil, fmt.Errorf("building incident process-definition-id filter: %w", err)
 	}
-	flowNodeIDFilter, err := newStringEqFilterPtr(filter.FlowNodeId)
+	elementIDFilter, err := newStringEqFilterPtr(filter.ElementId)
 	if err != nil {
-		return nil, fmt.Errorf("building incident flow-node-id filter: %w", err)
+		return nil, fmt.Errorf("building incident element-id filter: %w", err)
 	}
-	flowNodeInstanceKeyFilter, err := newElementInstanceKeyEqFilterPtr(filter.FlowNodeInstanceKey)
+	elementInstanceKeyFilter, err := newElementInstanceKeyEqFilterPtr(filter.ElementInstanceKey)
 	if err != nil {
-		return nil, fmt.Errorf("building incident flow-node-instance-key filter: %w", err)
+		return nil, fmt.Errorf("building incident element-instance-key filter: %w", err)
 	}
-	creationTimeAfter, err := parseIncidentTimeBound(filter.CreationTimeAfter)
+	creationTimeAfter, err := parseIncidentTimeLowerBound(filter.CreationTimeAfter)
 	if err != nil {
 		return nil, fmt.Errorf("building incident creation-time-after filter: %w", err)
 	}
-	creationTimeBefore, err := parseIncidentTimeBound(filter.CreationTimeBefore)
+	creationTimeBefore, err := parseIncidentTimeUpperBound(filter.CreationTimeBefore)
 	if err != nil {
 		return nil, fmt.Errorf("building incident creation-time-before filter: %w", err)
 	}
@@ -177,8 +176,8 @@ func (s *Service) newIncidentFilter(filter d.IncidentFilter) (*camundav89.Incide
 		ProcessInstanceKey:   processInstanceKeyFilter,
 		ProcessDefinitionKey: processDefinitionKeyFilter,
 		ProcessDefinitionId:  processDefinitionIDFilter,
-		ElementId:            flowNodeIDFilter,
-		ElementInstanceKey:   flowNodeInstanceKeyFilter,
+		ElementId:            elementIDFilter,
+		ElementInstanceKey:   elementInstanceKeyFilter,
 		CreationTime:         creationTimeFilter,
 	}
 	if bodyFilter.TenantId == nil &&
@@ -196,7 +195,11 @@ func (s *Service) newIncidentFilter(filter d.IncidentFilter) (*camundav89.Incide
 }
 
 func newIncidentSearchStateFilter(state string) (*camundav89.IncidentStateFilterProperty, error) {
-	switch strings.ToLower(strings.TrimSpace(state)) {
+	normalized, ok := incidentfilter.NormalizeState(state)
+	if !ok {
+		return nil, fmt.Errorf("unsupported incident state %q", state)
+	}
+	switch normalized {
 	case "", "active":
 		return newIncidentStateEqFilterPtr(camundav89.IncidentStateEnumACTIVE)
 	case "pending":
@@ -232,17 +235,44 @@ func incidentLocalFilteringRequired(filter d.IncidentFilter) bool {
 	return filter.RootProcessInstanceKey != "" || filter.ErrorMessage != ""
 }
 
-func parseIncidentTimeBound(raw string) (*time.Time, error) {
+func parseIncidentTimeLowerBound(raw string) (*time.Time, error) {
 	if raw == "" {
 		return nil, nil
 	}
-	if t, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+	if t, ok := parseIncidentTimestamp(raw); ok {
 		return &t, nil
 	}
 	if t, err := time.Parse(time.DateOnly, raw); err == nil {
 		return &t, nil
 	}
 	return nil, fmt.Errorf("parse %q as incident timestamp", raw)
+}
+
+func parseIncidentTimeUpperBound(raw string) (*time.Time, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	if t, ok := parseIncidentTimestamp(raw); ok {
+		return &t, nil
+	}
+	if t, err := time.Parse(time.DateOnly, raw); err == nil {
+		t = t.AddDate(0, 0, 1).Add(-time.Nanosecond)
+		return &t, nil
+	}
+	return nil, fmt.Errorf("parse %q as incident timestamp", raw)
+}
+
+func parseIncidentTimestamp(raw string) (time.Time, bool) {
+	if t, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return t, true
+	}
+	if t, err := time.ParseInLocation("2006-01-02T15:04:05.999999999", raw, time.UTC); err == nil {
+		return t, true
+	}
+	if t, err := time.ParseInLocation("2006-01-02T15:04:05", raw, time.UTC); err == nil {
+		return t, true
+	}
+	return time.Time{}, false
 }
 
 func newIncidentSearchErrorTypeFilter(errorType string) (*camundav89.IncidentErrorTypeFilterProperty, error) {
@@ -293,6 +323,9 @@ func filterIncidentDetailsByMessage(errorMessage string, items []d.ProcessInstan
 }
 
 func incidentSearchHasMore(page camundav89.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) bool {
+	if itemCount == 0 && page.TotalItems > int64(from)+int64(pageSize) {
+		return true
+	}
 	if itemCount == 0 {
 		return false
 	}
@@ -304,6 +337,9 @@ func incidentSearchHasMore(page camundav89.SearchQueryPageResponse, from int32, 
 }
 
 func incidentSearchOverflowState(page camundav89.SearchQueryPageResponse, req d.IncidentPageRequest, itemCount int) d.ProcessInstanceOverflowState {
+	if itemCount == 0 && page.TotalItems > int64(req.From)+int64(req.Size) {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
 	if itemCount == 0 {
 		return d.ProcessInstanceOverflowStateNoMore
 	}

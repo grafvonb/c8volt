@@ -83,6 +83,9 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 	if isPIVarValueLimitFlagChanged(cmd) && !flagGetPIWithVars {
 		return missingDependentFlagsf("--var-value-limit requires --with-vars")
 	}
+	if _, err := parsePIVariableFilters(); err != nil {
+		return err
+	}
 	if flagGetPIProcessDefinitionKey != "" &&
 		(flagGetPIBpmnProcessID != "" ||
 			flagGetPIProcessVersion != 0 ||
@@ -167,12 +170,13 @@ func isPIIncidentErrorMessageFlagChanged(cmd *cobra.Command) bool {
 }
 
 func validatePIIncidentStateFlag(value string) error {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "active", "pending", "resolved", "migrated", "unknown", "all":
-		return nil
-	default:
-		return invalidFlagValuef("invalid value for --incident-state: %q, valid values are: active, pending, resolved, migrated, unknown, all", value)
+	if strings.TrimSpace(value) == "" {
+		return invalidFlagValuef("invalid value for --incident-state: %q, valid values are: %s", value, incidentfilter.ValidStatesString())
 	}
+	if _, ok := incidentfilter.NormalizeState(value); ok {
+		return nil
+	}
+	return invalidFlagValuef("invalid value for --incident-state: %q, valid values are: %s", value, incidentfilter.ValidStatesString())
 }
 
 func validatePIIncidentErrorTypeFlag(value string) error {
@@ -282,6 +286,10 @@ func validatePISearchVersionSupport(cfg *config.Config) error {
 	if (hasPIDateFilterFlags() || hasPIRelativeDayFilterFlags()) && cfg.App.CamundaVersion == toolx.V87 {
 		return ferrors.WrapClass(ferrors.ErrUnsupported,
 			fmt.Errorf("process-instance date filters require Camunda 8.8"))
+	}
+	if hasPIVariableFilterFlags() && cfg.App.CamundaVersion == toolx.V87 {
+		return ferrors.WrapClass(ferrors.ErrUnsupported,
+			fmt.Errorf("process-instance variable search is unsupported in Camunda 8.7; requires Camunda 8.8 or 8.9"))
 	}
 	if flagGetPIOrphanChildrenOnly && cfg.App.CamundaVersion == toolx.V87 {
 		return ferrors.WrapClass(ferrors.ErrUnsupported,

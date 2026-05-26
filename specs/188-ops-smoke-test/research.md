@@ -21,7 +21,7 @@
 
 ## Decision: Use version-matched embedded multiple-subprocess fixtures
 
-**Rationale**: The repository already ships `C87_MultipleSubProcessesParentProcess.bpmn`, `C88_MultipleSubProcessesParentProcess.bpmn`, and `C89_MultipleSubProcessesParentProcess.bpmn`. Selecting from the configured Camunda version proves the same fixture family across supported runtimes and fails early if a fixture is missing.
+**Rationale**: The repository already ships `C87_MultipleSubProcessesParent.bpmn`, `C88_MultipleSubProcessesParent.bpmn`, and `C89_MultipleSubProcessesParent.bpmn`. Selecting from the configured Camunda version proves the same fixture family across supported runtimes and fails early if a fixture is missing.
 
 **Alternatives considered**:
 

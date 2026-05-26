@@ -142,8 +142,8 @@ func TestExecuteSmokeTestDryRunPlansReadOnlyWorkflow(t *testing.T) {
 	require.Equal(t, d.SmokeTestOutcomePlanned, got.Outcome)
 	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Plan.Status)
 	require.Equal(t, "8.8", got.Plan.CamundaVersion)
-	require.Equal(t, "embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn", got.Fixture.File)
-	require.Equal(t, "C88_MultipleSubProcessesParentProcess", got.Fixture.BpmnProcessID)
+	require.Equal(t, "embedded/processdefinitions/C88_MultipleSubProcessesParent.bpmn", got.Fixture.File)
+	require.Equal(t, "C88_MultipleSubProcessesParent", got.Fixture.BpmnProcessID)
 	require.True(t, got.Fixture.Available)
 	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Deployment.Status)
 	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Run.Status)
@@ -175,18 +175,18 @@ func TestExecuteSmokeTestSelectsVersionMatchedFixtures(t *testing.T) {
 	}{
 		{
 			version: toolx.V87,
-			file:    "embedded/processdefinitions/C87_MultipleSubProcessesParentProcess.bpmn",
-			process: "C87_MultipleSubProcessesParentProcess",
+			file:    "embedded/processdefinitions/C87_MultipleSubProcessesParent.bpmn",
+			process: "C87_MultipleSubProcessesParent",
 		},
 		{
 			version: toolx.V88,
-			file:    "embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn",
-			process: "C88_MultipleSubProcessesParentProcess",
+			file:    "embedded/processdefinitions/C88_MultipleSubProcessesParent.bpmn",
+			process: "C88_MultipleSubProcessesParent",
 		},
 		{
 			version: toolx.V89,
-			file:    "embedded/processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn",
-			process: "C89_MultipleSubProcessesParentProcess",
+			file:    "embedded/processdefinitions/C89_MultipleSubProcessesParent.bpmn",
+			process: "C89_MultipleSubProcessesParent",
 		},
 	}
 
@@ -233,18 +233,18 @@ func TestExecuteSmokeTestDeploysSelectedFixtureThroughResourceAPI(t *testing.T) 
 	resource := &stubSmokeTestResourceAPI{
 		deploy: func(_ context.Context, units []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
 			require.Len(t, units, 1)
-			require.Equal(t, "processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn", units[0].Name)
+			require.Equal(t, "processdefinitions/C88_MultipleSubProcessesParent.bpmn", units[0].Name)
 			require.Equal(t, "application/xml", units[0].ContentType)
-			require.Contains(t, string(units[0].Data), "C88_MultipleSubProcessesParentProcess")
+			require.Contains(t, string(units[0].Data), "C88_MultipleSubProcessesParent")
 			return d.Deployment{
 				Key:      "deployment-1",
 				TenantId: "tenant-a",
 				Units: []d.DeploymentUnit{{
 					ProcessDefinition: d.ProcessDefinitionDeployment{
-						ProcessDefinitionId:      "C88_MultipleSubProcessesParentProcess",
+						ProcessDefinitionId:      "C88_MultipleSubProcessesParent",
 						ProcessDefinitionKey:     "pd-88",
 						ProcessDefinitionVersion: 4,
-						ResourceName:             "processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn",
+						ResourceName:             "processdefinitions/C88_MultipleSubProcessesParent.bpmn",
 						TenantId:                 "tenant-a",
 					},
 				}},
@@ -258,7 +258,7 @@ func TestExecuteSmokeTestDeploysSelectedFixtureThroughResourceAPI(t *testing.T) 
 			require.Empty(t, data.BpmnProcessId)
 			return d.ProcessInstanceCreation{
 				Key:                  "pi-1",
-				BpmnProcessId:        "C88_MultipleSubProcessesParentProcess",
+				BpmnProcessId:        "C88_MultipleSubProcessesParent",
 				ProcessDefinitionKey: "pd-88",
 				TenantId:             "tenant-a",
 			}, nil
@@ -286,8 +286,8 @@ func TestExecuteSmokeTestDeploysSelectedFixtureThroughResourceAPI(t *testing.T) 
 	require.Equal(t, 1, resource.deployCalls)
 	require.Equal(t, d.SmokeTestOutcomePassedCleanupSkipped, got.Outcome)
 	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Deployment.Status)
-	require.Equal(t, "embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn", got.Deployment.FixtureFile)
-	require.Equal(t, "C88_MultipleSubProcessesParentProcess", got.Deployment.BpmnProcessID)
+	require.Equal(t, "embedded/processdefinitions/C88_MultipleSubProcessesParent.bpmn", got.Deployment.FixtureFile)
+	require.Equal(t, "C88_MultipleSubProcessesParent", got.Deployment.BpmnProcessID)
 	require.Equal(t, "pd-88", got.Deployment.ProcessDefinitionKey)
 	require.Equal(t, int32(4), got.Deployment.ProcessDefinitionVersion)
 	require.Equal(t, "tenant-a", got.Deployment.TenantID)
@@ -311,7 +311,7 @@ func TestExecuteSmokeTestStartsCreatedInstancesByDeployedProcessDefinitionKey(t 
 		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
 			return d.Deployment{Units: []d.DeploymentUnit{{
 				ProcessDefinition: d.ProcessDefinitionDeployment{
-					ProcessDefinitionId:  "C88_MultipleSubProcessesParentProcess",
+					ProcessDefinitionId:  "C88_MultipleSubProcessesParent",
 					ProcessDefinitionKey: "pd-exact",
 					TenantId:             "tenant-a",
 				},
@@ -327,7 +327,7 @@ func TestExecuteSmokeTestStartsCreatedInstancesByDeployedProcessDefinitionKey(t 
 			require.True(t, cfg.NoWorkerLimit)
 			return d.ProcessInstanceCreation{
 				Key:                  "pi-" + string(rune('0'+len(created))),
-				BpmnProcessId:        "C88_MultipleSubProcessesParentProcess",
+				BpmnProcessId:        "C88_MultipleSubProcessesParent",
 				ProcessDefinitionKey: data.ProcessDefinitionSpecificId,
 				TenantId:             data.TenantId,
 			}, nil
@@ -378,7 +378,7 @@ func TestExecuteSmokeTestFallsBackToBPMNProcessIDWhenDeploymentKeyMissing(t *tes
 	piAPI := stubProcessInstanceAPI{
 		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
 			require.Empty(t, data.ProcessDefinitionSpecificId)
-			require.Equal(t, "C88_MultipleSubProcessesParentProcess", data.BpmnProcessId)
+			require.Equal(t, "C88_MultipleSubProcessesParent", data.BpmnProcessId)
 			return d.ProcessInstanceCreation{Key: "pi-fallback", BpmnProcessId: data.BpmnProcessId}, nil
 		},
 		familyResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
@@ -445,7 +445,7 @@ func TestExecuteSmokeTestCleansUpCreatedResources(t *testing.T) {
 	resource := &stubSmokeTestResourceAPI{
 		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
 			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
-				ProcessDefinitionId:  "C88_MultipleSubProcessesParentProcess",
+				ProcessDefinitionId:  "C88_MultipleSubProcessesParent",
 				ProcessDefinitionKey: "pd-88",
 			}}}}, nil
 		},
@@ -491,7 +491,7 @@ func TestExecuteSmokeTestCleansUpCreatedResources(t *testing.T) {
 				return d.ProcessDefinition{}, d.ErrNotFound
 			}
 			require.True(t, cfg.WithStat)
-			return d.ProcessDefinition{Key: key, BpmnProcessId: "C88_MultipleSubProcessesParentProcess", Statistics: &d.ProcessDefinitionStatistics{}}, nil
+			return d.ProcessDefinition{Key: key, BpmnProcessId: "C88_MultipleSubProcessesParent", Statistics: &d.ProcessDefinitionStatistics{}}, nil
 		},
 	}
 
@@ -516,13 +516,13 @@ func TestExecuteSmokeTestCleansUpCreatedResources(t *testing.T) {
 	require.Equal(t, got.Cleanup, got.Report.Cleanup)
 }
 
-func TestExecuteSmokeTestBlocksProcessDefinitionCleanupForUnrelatedInstances(t *testing.T) {
+func TestExecuteSmokeTestSkipsProcessDefinitionCleanupForUnrelatedInstances(t *testing.T) {
 	t.Parallel()
 
 	resource := &stubSmokeTestResourceAPI{
 		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
 			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
-				ProcessDefinitionId:  "C88_MultipleSubProcessesParentProcess",
+				ProcessDefinitionId:  "C88_MultipleSubProcessesParent",
 				ProcessDefinitionKey: "pd-88",
 			}}}}, nil
 		},
@@ -562,14 +562,14 @@ func TestExecuteSmokeTestBlocksProcessDefinitionCleanupForUnrelatedInstances(t *
 		Count:       1,
 	})
 
-	require.Error(t, err)
-	require.True(t, errors.Is(err, d.ErrPrecondition), "got %v", err)
-	require.Contains(t, err.Error(), "process-definition cleanup blocked")
-	require.Equal(t, d.SmokeTestOutcomePartiallyFailed, got.Outcome)
+	require.NoError(t, err)
+	require.Equal(t, d.SmokeTestOutcomePassedCleanupSkipped, got.Outcome)
 	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Cleanup.ProcessInstanceCleanup.Status)
-	require.Equal(t, d.OpsWorkflowStepStatusBlocked, got.Cleanup.ProcessDefinitionEligibility.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Cleanup.ProcessDefinitionEligibility.Status)
 	require.Equal(t, []string{"unrelated-1"}, got.Cleanup.ProcessDefinitionEligibility.Blockers)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Cleanup.ProcessDefinitionCleanup.Status)
+	require.Equal(t, "pd-88", got.Cleanup.RetainedProcessDefinitionKey)
+	require.Equal(t, "C88_MultipleSubProcessesParent", got.Cleanup.RetainedBpmnProcessID)
 	require.Zero(t, resource.deleteCalls)
 }
 
@@ -579,7 +579,7 @@ func TestExecuteSmokeTestNoCleanupRetainsCreatedResources(t *testing.T) {
 	resource := &stubSmokeTestResourceAPI{
 		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
 			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
-				ProcessDefinitionId:  "C88_MultipleSubProcessesParentProcess",
+				ProcessDefinitionId:  "C88_MultipleSubProcessesParent",
 				ProcessDefinitionKey: "pd-retained",
 				TenantId:             "tenant-a",
 			}}}}, nil
@@ -611,7 +611,7 @@ func TestExecuteSmokeTestNoCleanupRetainsCreatedResources(t *testing.T) {
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Cleanup.ProcessDefinitionCleanup.Status)
 	require.Equal(t, typexKeys("pi-retained"), got.Cleanup.RetainedProcessInstanceKeys)
 	require.Equal(t, "pd-retained", got.Cleanup.RetainedProcessDefinitionKey)
-	require.Equal(t, "C88_MultipleSubProcessesParentProcess", got.Cleanup.RetainedBpmnProcessID)
+	require.Equal(t, "C88_MultipleSubProcessesParent", got.Cleanup.RetainedBpmnProcessID)
 	require.Equal(t, "tenant-a", got.Cleanup.RetainedTenantID)
 	require.Equal(t, got.Cleanup, got.Report.Cleanup)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Plan.PlannedSteps[5].Status)

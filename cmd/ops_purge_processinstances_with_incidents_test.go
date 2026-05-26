@@ -45,8 +45,8 @@ func TestOpsPurgeProcessInstancesWithIncidentsHelpDocumentsCommandShape(t *testi
 		"--pd-key string",
 		"--pi-key string",
 		"--root-key string",
-		"--flow-node-id string",
-		"--fni-key string",
+		"--element-id string",
+		"--element-instance-key string",
 		"--creation-time-after string",
 		"--creation-time-before string",
 		"--batch-size int32",
@@ -59,7 +59,8 @@ func TestOpsPurgeProcessInstancesWithIncidentsHelpDocumentsCommandShape(t *testi
 		"--force",
 		"--report-file string",
 		"--report-format string",
-		"./c8volt ops purge process-instances-with-incidents --automation --json --dry-run",
+		"./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run",
+		"./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md",
 	)
 	assertHelpOutputOmitsAll(t, output,
 		"incident-pis",
@@ -68,6 +69,8 @@ func TestOpsPurgeProcessInstancesWithIncidentsHelpDocumentsCommandShape(t *testi
 		"--total",
 		"--error-message-limit",
 		"--with-no-error-message",
+		"--flow-node-id",
+		"--fni-key",
 	)
 
 	aliasOutput := executeRootForProcessInstanceTest(t, "ops", "purge", "pi-with-incidents", "--help")
@@ -85,6 +88,8 @@ func TestOpsPurgeProcessInstancesWithIncidentsRejectsIncidentDisplayOnlyFlags(t 
 		{name: "total", args: []string{"--total"}, want: "unknown flag: --total"},
 		{name: "message limit", args: []string{"--error-message-limit", "20"}, want: "unknown flag: --error-message-limit"},
 		{name: "omit message", args: []string{"--with-no-error-message"}, want: "unknown flag: --with-no-error-message"},
+		{name: "legacy element id", args: []string{"--flow-node-id", "task-a"}, want: "unknown flag: --flow-node-id"},
+		{name: "legacy element instance key", args: []string{"--fni-key", "2251799813685252"}, want: "unknown flag: --fni-key"},
 	}
 
 	for _, tt := range tests {
@@ -169,9 +174,10 @@ func TestOpsPurgeProcessInstancesWithIncidentsDryRunDiscoveryOutput(t *testing.T
 	require.Contains(t, output, `selection filters: {state=active}`)
 	require.Contains(t, output, "candidate incidents: 3")
 	require.Contains(t, output, "candidate process instances: 1")
+	require.NotContains(t, output, "discovery complete:")
 	require.Contains(t, output, "duplicate candidate process instances: 1")
 	require.Contains(t, output, "skipped incidents: 1")
-	require.Contains(t, output, "delete preview: 3 incident(s), 1 process-instance candidate(s), 1 process-instance tree(s), 1 process instance(s) would be deleted")
+	require.Contains(t, output, "delete preview: 3 candidate incident(s), 1 candidate process instance(s), 1 affected process instance(s) across 1 root(s) would be deleted")
 	require.Contains(t, output, "outcome: planned; no changes applied; use --verbose to list process-instance keys")
 }
 
@@ -191,12 +197,23 @@ func TestOpsPurgeProcessInstancesWithIncidentsDryRunJSONDiscoveryData(t *testing
 	require.Equal(t, "succeeded", envelope["outcome"])
 	payload := requireJSONObject(t, envelope["payload"])
 	discovery := requireJSONObject(t, payload["discovery"])
+	require.Equal(t, true, discovery["complete"])
+	require.NotContains(t, discovery, "limited")
+	require.Equal(t, float64(2), discovery["batchSize"])
+	require.Equal(t, float64(2), discovery["pages"])
+	require.Equal(t, float64(4), discovery["candidatesSeen"])
+	require.Equal(t, float64(1), discovery["candidatesFrozen"])
 	require.Equal(t, float64(3), discovery["incidentCount"])
 	require.Equal(t, float64(1), discovery["candidateProcessInstanceCount"])
 	require.Len(t, discovery["incidentKeys"], 3)
 	require.Len(t, discovery["candidateProcessInstanceKeys"], 1)
 	require.Len(t, discovery["duplicateCandidateProcessInstanceKeys"], 1)
 	require.Len(t, discovery["skippedIncidents"], 1)
+	skipped := requireJSONItems(t, discovery["skippedIncidents"], 1)
+	skippedIncident := requireJSONObject(t, requireJSONObject(t, skipped[0])["incident"])
+	require.Equal(t, "task-a", skippedIncident["elementId"])
+	require.Equal(t, "element-123", skippedIncident["elementInstanceKey"])
+	require.NotContains(t, output, "flowNode")
 	require.Len(t, discovery["notices"], 2)
 	deletePlan := requireJSONObject(t, payload["deletePlan"])
 	require.Equal(t, "planned", deletePlan["status"])
@@ -235,7 +252,8 @@ func TestOpsPurgeProcessInstancesWithIncidentsDryRunPlanRendering(t *testing.T) 
 	cmd := &cobra.Command{}
 	cmd.SetOut(&compact)
 	require.NoError(t, renderOpsPurgeProcessInstancesWithIncidentsResult(cmd, result))
-	require.Contains(t, compact.String(), "delete preview: 2 incident(s), 2 process-instance candidate(s), 1 process-instance tree(s), 3 process instance(s) would be deleted")
+	require.Contains(t, compact.String(), "delete preview: 2 candidate incident(s), 2 candidate process instance(s), 3 affected process instance(s) across 1 root(s) would be deleted")
+	require.Contains(t, compact.String(), "dependency expansion: 1 additional process instance(s) due to dependencies")
 	require.NotContains(t, compact.String(), "resolved root keys:")
 	require.NotContains(t, compact.String(), "affected process-instance keys:")
 
@@ -312,6 +330,9 @@ func TestOpsPurgeProcessInstancesWithIncidentsJSONOutputsStayMachineReadable(t *
 	require.Equal(t, true, requireJSONObject(t, dryRunPayload["request"])["dryRun"])
 	require.Equal(t, "planned", requireJSONObject(t, dryRunPayload["deletePlan"])["status"])
 	require.Equal(t, "skipped", requireJSONObject(t, dryRunPayload["deletion"])["status"])
+	require.Contains(t, dryRunStdout, `"elementId": "task-a"`)
+	require.Contains(t, dryRunStdout, `"elementInstanceKey": "element-123"`)
+	require.NotContains(t, dryRunStdout, "flowNode")
 	require.Empty(t, deleted.Snapshot())
 
 	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
@@ -371,6 +392,9 @@ func TestOpsPurgeProcessInstancesWithIncidentsWritesMarkdownReport(t *testing.T)
 	require.Contains(t, report, "- Profile: default")
 	require.Contains(t, report, "- Outcome: planned")
 	require.Contains(t, report, "## Discovery")
+	require.Contains(t, report, "- Completeness: discovery complete")
+	require.Contains(t, report, "- Discovery Batch Size: 1000")
+	require.Contains(t, report, "- Discovery Pages: 1")
 	require.Contains(t, report, "- Incident Keys:")
 	require.Contains(t, report, "  - 2251799813685299")
 	require.Contains(t, report, "## Delete Plan")
@@ -405,15 +429,22 @@ func TestOpsPurgeProcessInstancesWithIncidentsWritesJSONReport(t *testing.T) {
 	require.Contains(t, output, "elapsed:")
 	require.Contains(t, output, "report: written "+reportPath)
 	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: deleted"))
-	require.NotContains(t, readReportFile(t, reportPath), "old report")
+	reportData := readReportFile(t, reportPath)
+	require.NotContains(t, reportData, "old report")
+	require.Contains(t, reportData, `"elementId": "task-a"`)
+	require.Contains(t, reportData, `"elementInstanceKey": "element-123"`)
+	require.NotContains(t, reportData, "flowNode")
 	var report map[string]any
-	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.NoError(t, json.Unmarshal([]byte(reportData), &report))
 	require.Equal(t, "ops.process-instances-with-incidents.v1", report["schemaVersion"])
 	require.Equal(t, "ops purge process-instances-with-incidents", report["commandName"])
 	require.Equal(t, "deleted", report["outcome"])
 	require.Equal(t, true, report["noWait"])
 	require.Equal(t, "8.9", report["camundaVersion"])
 	discovery := requireJSONObject(t, report["discovery"])
+	require.Equal(t, true, discovery["complete"])
+	require.Equal(t, float64(1000), discovery["batchSize"])
+	require.Equal(t, float64(1), discovery["pages"])
 	require.Equal(t, float64(1), discovery["incidentCount"])
 	require.Equal(t, float64(1), discovery["candidateProcessInstanceCount"])
 	deletePlan := requireJSONObject(t, report["deletePlan"])
@@ -510,12 +541,43 @@ func TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionUsesFrozenPlanRoo
 	prompt = readReportFile(t, promptPath)
 	output := string(outputBytes)
 
-	require.Contains(t, prompt, "Incident purge matched 1 candidate incident(s)")
+	require.Contains(t, prompt, "incident purge: 1 candidate incident(s)")
 	require.Contains(t, output, "deletion: submitted 1 process-instance tree (--no-wait)")
 	require.NotContains(t, output, "deletion confirmation:")
 	require.Contains(t, output, "outcome: deleted")
 	require.Equal(t, []string{"/v2/process-instances/" + opsIncidentPurgeRootKey + "/deletion"}, deleted.Snapshot())
 	require.Equal(t, 1, countOpsIncidentPurgeRequests(requests.Snapshot(), "POST /v2/incidents/search "))
+}
+
+// TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionReusesMultiPageFrozenScope verifies confirmation does not trigger a second incident discovery pass.
+func TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionReusesMultiPageFrozenScope(t *testing.T) {
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
+
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsIncidentPurgeMultiPageServer(t, &requests, &deleted)
+	t.Cleanup(srv.Close)
+	promptPath := filepath.Join(t.TempDir(), "prompt.txt")
+
+	outputBytes, err := testx.RunCmdSubprocess(t, "TestOpsPurgeProcessInstancesWithIncidentsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":                     writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_INCIDENT_PURGE_PROMPT_FILE": promptPath,
+		"C8VOLT_TEST_INCIDENT_PURGE_ARGS": marshalOpsPurgeProcessInstancesWithIncidentsArgsForEnv(t, []string{
+			"ops", "purge", "process-instances-with-incidents",
+			"--batch-size", "1",
+			"--no-wait",
+		}),
+	})
+	require.NoError(t, err, string(outputBytes))
+
+	prompt := readReportFile(t, promptPath)
+	require.Contains(t, prompt, "incident purge: 2 candidate incident(s), 2 candidate process instance(s)")
+	require.ElementsMatch(t, []string{
+		"/v2/process-instances/" + opsIncidentPurgeRootKey + "/deletion",
+		"/v2/process-instances/" + opsIncidentPurgeChildKey + "/deletion",
+	}, deleted.Snapshot())
+	require.Equal(t, 2, countOpsIncidentPurgeRequests(requests.Snapshot(), "POST /v2/incidents/search "))
 }
 
 // TestOpsPurgeProcessInstancesWithIncidentsAutomationJSONExecutesWithoutAutoConfirm verifies automation mode confirms the supported purge path.
@@ -697,10 +759,12 @@ func resetOpsPurgeProcessInstancesWithIncidentsFlagState() {
 	flagOpsPurgeIncidentPDKey = ""
 	flagOpsPurgeIncidentPIKey = ""
 	flagOpsPurgeIncidentRootKey = ""
-	flagOpsPurgeIncidentFlowNodeID = ""
-	flagOpsPurgeIncidentFNIKey = ""
+	flagOpsPurgeIncidentElementID = ""
+	flagOpsPurgeIncidentElementInstanceKey = ""
 	flagOpsPurgeIncidentCreationTimeAfter = ""
 	flagOpsPurgeIncidentCreationTimeBefore = ""
+	flagOpsPurgeIncidentCreationTimeNewer = -1
+	flagOpsPurgeIncidentCreationTimeOlder = -1
 	flagOpsPurgeIncidentBatchSize = consts.MaxPISearchSize
 	flagOpsPurgeIncidentLimit = 0
 	flagOpsPurgeIncidentReportFile = ""
@@ -723,13 +787,20 @@ func sampleIncidentPurgeDryRunPlanResult() ops.IncidentPurgeResult {
 			DryRun: true,
 		},
 		Discovery: ops.IncidentDiscoveryResult{
+			DiscoveryScopeStatus: ops.DiscoveryScopeStatus{
+				Complete:         true,
+				BatchSize:        2,
+				Pages:            2,
+				CandidatesSeen:   4,
+				CandidatesFrozen: 1,
+			},
 			Status:                                ops.WorkflowStepStatusPlanned,
 			Filters:                               incidentPurgeActiveFilter(),
 			IncidentKeys:                          typex.Keys{"2251799813685253", "2251799813685254", "2251799813685255"},
 			CandidateProcessInstanceKeys:          typex.Keys{"2251799813711972"},
 			DuplicateCandidateProcessInstanceKeys: typex.Keys{"2251799813711972"},
 			SkippedIncidents: []ops.IncidentPurgeSkippedIncident{
-				{Incident: incident.ProcessInstanceIncidentDetail{IncidentKey: "2251799813685255"}, Reason: "missing process-instance key"},
+				{Incident: incident.ProcessInstanceIncidentDetail{IncidentKey: "2251799813685255", ElementId: "task-a", ElementInstanceKey: "element-123"}, Reason: "missing process-instance key"},
 			},
 			IncidentCount:                 3,
 			CandidateProcessInstanceCount: 1,
@@ -802,8 +873,50 @@ func newOpsIncidentPurgeServer(t *testing.T, requests *testx.SafeSlice[string], 
 	}))
 }
 
+func newOpsIncidentPurgeMultiPageServer(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string]) *httptest.Server {
+	t.Helper()
+
+	var incidentSearches testx.AtomicCounter
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/incidents/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
+			w.Header().Set("Content-Type", "application/json")
+			switch incidentSearches.Inc() {
+			case 1:
+				_, _ = w.Write([]byte(`{"items":[` + opsIncidentPurgeIncidentJSON("2251799813685299", opsIncidentPurgeRootKey) + `],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+			case 2:
+				_, _ = w.Write([]byte(`{"items":[` + opsIncidentPurgeIncidentJSON("2251799813685300", opsIncidentPurgeChildKey) + `],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+			default:
+				t.Fatalf("unexpected incident rediscovery request: %s", string(body))
+			}
+		case r.Method == http.MethodGet && (r.URL.Path == "/v2/process-instances/"+opsIncidentPurgeRootKey || r.URL.Path == "/v2/process-instances/"+opsIncidentPurgeChildKey):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(opsIncidentPurgeProcessInstanceJSON(key, "", "COMPLETED")))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodPost && (r.URL.Path == "/v2/process-instances/"+opsIncidentPurgeRootKey+"/deletion" || r.URL.Path == "/v2/process-instances/"+opsIncidentPurgeChildKey+"/deletion"):
+			if deleted != nil {
+				deleted.Append(r.URL.Path)
+			}
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+}
+
 func opsIncidentPurgeIncidentJSON(key string, piKey string) string {
-	return `{"incidentKey":"` + key + `","processInstanceKey":"` + piKey + `","tenantId":"tenant","state":"ACTIVE","errorType":"JOB_NO_RETRIES","errorMessage":"no retries left"}`
+	return `{"incidentKey":"` + key + `","processInstanceKey":"` + piKey + `","tenantId":"tenant","state":"ACTIVE","errorType":"JOB_NO_RETRIES","errorMessage":"no retries left","elementId":"task-a","elementInstanceKey":"element-123"}`
 }
 
 func opsIncidentPurgeProcessInstanceJSON(key string, parentKey string, state string) string {

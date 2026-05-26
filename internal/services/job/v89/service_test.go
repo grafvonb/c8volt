@@ -5,6 +5,7 @@ package v89
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -20,8 +21,11 @@ import (
 )
 
 type mockJobClient struct {
-	searchJobsWithResponse func(context.Context, camundav89.SearchJobsJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchJobsResponse, error)
-	updateJobWithResponse  func(context.Context, camundav89.JobKey, camundav89.UpdateJobJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.UpdateJobResponse, error)
+	searchJobsWithResponse    func(context.Context, camundav89.SearchJobsJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchJobsResponse, error)
+	updateJobWithResponse     func(context.Context, camundav89.JobKey, camundav89.UpdateJobJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.UpdateJobResponse, error)
+	completeJobWithResponse   func(context.Context, camundav89.JobKey, camundav89.CompleteJobJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.CompleteJobResponse, error)
+	throwJobErrorWithResponse func(context.Context, camundav89.JobKey, camundav89.ThrowJobErrorJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.ThrowJobErrorResponse, error)
+	failJobWithResponse       func(context.Context, camundav89.JobKey, camundav89.FailJobJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.FailJobResponse, error)
 }
 
 func (m *mockJobClient) SearchJobsWithResponse(ctx context.Context, body camundav89.SearchJobsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchJobsResponse, error) {
@@ -33,6 +37,27 @@ func (m *mockJobClient) UpdateJobWithResponse(ctx context.Context, jobKey camund
 		panic("unexpected UpdateJobWithResponse call")
 	}
 	return m.updateJobWithResponse(ctx, jobKey, body, reqEditors...)
+}
+
+func (m *mockJobClient) CompleteJobWithResponse(ctx context.Context, jobKey camundav89.JobKey, body camundav89.CompleteJobJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CompleteJobResponse, error) {
+	if m.completeJobWithResponse == nil {
+		panic("unexpected CompleteJobWithResponse call")
+	}
+	return m.completeJobWithResponse(ctx, jobKey, body, reqEditors...)
+}
+
+func (m *mockJobClient) ThrowJobErrorWithResponse(ctx context.Context, jobKey camundav89.JobKey, body camundav89.ThrowJobErrorJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.ThrowJobErrorResponse, error) {
+	if m.throwJobErrorWithResponse == nil {
+		panic("unexpected ThrowJobErrorWithResponse call")
+	}
+	return m.throwJobErrorWithResponse(ctx, jobKey, body, reqEditors...)
+}
+
+func (m *mockJobClient) FailJobWithResponse(ctx context.Context, jobKey camundav89.JobKey, body camundav89.FailJobJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.FailJobResponse, error) {
+	if m.failJobWithResponse == nil {
+		panic("unexpected FailJobWithResponse call")
+	}
+	return m.failJobWithResponse(ctx, jobKey, body, reqEditors...)
 }
 
 func TestSearchJobsByKey(t *testing.T) {
@@ -90,6 +115,143 @@ func TestService_GetJob_NotFound(t *testing.T) {
 
 	require.ErrorIs(t, err, d.ErrNotFound)
 	require.Empty(t, job)
+}
+
+// TestService_SearchJobs_ConstructsFiltersAndConvertsRows verifies v8.9 job
+// discovery maps every supported search filter into the generated request body.
+func TestService_SearchJobs_ConstructsFiltersAndConvertsRows(t *testing.T) {
+	retries := int32(0)
+	elementID := camundav89.ElementId("charge-card")
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(_ context.Context, body camundav89.SearchJobsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchJobsResponse, error) {
+			requireJobSearchFilterJSON(t, body, map[string]any{
+				"state":              "FAILED",
+				"type":               "payment-worker",
+				"processInstanceKey": "2251799813711000",
+				"elementInstanceKey": "2251799813711001",
+				"elementId":          "charge-card",
+				"worker":             "worker-a",
+				"retries":            float64(0),
+				"kind":               "BPMN_ELEMENT",
+				"listenerEventType":  "COMPLETING",
+			}, 25)
+			return &camundav89.SearchJobsResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav89.JobSearchQueryResult{
+					Items: []camundav89.JobSearchResult{{
+						JobKey:             "2251799813711967",
+						State:              camundav89.JobStateEnumFAILED,
+						Retries:            retries,
+						Type:               "payment-worker",
+						Worker:             "worker-a",
+						Kind:               camundav89.BPMNELEMENT,
+						ListenerEventType:  camundav89.JobListenerEventTypeEnumCOMPLETING,
+						ProcessInstanceKey: "2251799813711000",
+						ElementInstanceKey: "2251799813711001",
+						ElementId:          &elementID,
+						TenantId:           "tenant-a",
+					}},
+				},
+			}, nil
+		},
+	})
+
+	result, err := svc.SearchJobs(context.Background(), d.JobSearchQuery{
+		State:              "FAILED",
+		Type:               "payment-worker",
+		ProcessInstanceKey: "2251799813711000",
+		ElementInstanceKey: "2251799813711001",
+		ElementId:          "charge-card",
+		Worker:             "worker-a",
+		Retries:            &retries,
+		Kind:               "BPMN_ELEMENT",
+		ListenerEventType:  "COMPLETING",
+		Limit:              25,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int32(25), result.Limit)
+	require.Len(t, result.Items, 1)
+	require.Equal(t, "2251799813711967", result.Items[0].Key)
+	require.Equal(t, "payment-worker", result.Items[0].Type)
+	require.Equal(t, "worker-a", result.Items[0].Worker)
+	require.Equal(t, "BPMN_ELEMENT", result.Items[0].Kind)
+	require.Equal(t, "COMPLETING", result.Items[0].ListenerEventType)
+	require.Equal(t, "charge-card", result.Items[0].ElementId)
+}
+
+func TestService_SearchJobsPagesByBatchSizeUntilComplete(t *testing.T) {
+	var requests []camundav89.SearchJobsJSONRequestBody
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(_ context.Context, body camundav89.SearchJobsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchJobsResponse, error) {
+			requests = append(requests, body)
+			key := camundav89.JobKey("2251799813711967")
+			if len(requests) == 2 {
+				key = "2251799813711968"
+			}
+			return &camundav89.SearchJobsResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav89.JobSearchQueryResult{
+					Items: []camundav89.JobSearchResult{{
+						JobKey:  key,
+						State:   camundav89.JobStateEnumFAILED,
+						Retries: int32(len(requests) - 1),
+					}},
+					Page: camundav89.SearchQueryPageResponse{
+						TotalItems: 2,
+					},
+				},
+			}, nil
+		},
+	})
+
+	result, err := svc.SearchJobs(context.Background(), d.JobSearchQuery{
+		State:     "FAILED",
+		BatchSize: 1,
+	})
+
+	require.NoError(t, err)
+	require.Zero(t, result.Limit)
+	require.Len(t, result.Items, 2)
+	require.Equal(t, "2251799813711967", result.Items[0].Key)
+	require.Equal(t, "2251799813711968", result.Items[1].Key)
+	require.Len(t, requests, 2)
+	requireJobSearchPageJSON(t, requests[0], 0, 1)
+	requireJobSearchPageJSON(t, requests[1], 1, 1)
+}
+
+func TestService_SearchJobsLimitCapsPagedSearch(t *testing.T) {
+	var requests []camundav89.SearchJobsJSONRequestBody
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(_ context.Context, body camundav89.SearchJobsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchJobsResponse, error) {
+			requests = append(requests, body)
+			return &camundav89.SearchJobsResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav89.JobSearchQueryResult{
+					Items: []camundav89.JobSearchResult{{
+						JobKey:  "2251799813711967",
+						State:   camundav89.JobStateEnumFAILED,
+						Retries: 0,
+					}},
+					Page: camundav89.SearchQueryPageResponse{
+						TotalItems: 2,
+					},
+				},
+			}, nil
+		},
+	})
+
+	result, err := svc.SearchJobs(context.Background(), d.JobSearchQuery{
+		State:     "FAILED",
+		BatchSize: 1,
+		Limit:     1,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int32(1), result.Limit)
+	require.Len(t, result.Items, 1)
+	require.Len(t, requests, 1)
+	requireJobSearchPageJSON(t, requests[0], 0, 1)
 }
 
 func TestJobUpdateRetriesRequest(t *testing.T) {
@@ -152,6 +314,165 @@ func TestUpdateJobTimeoutRequest(t *testing.T) {
 	require.Nil(t, result.ConfirmedRetries)
 }
 
+func TestUpdateJobRetriesAndTimeoutRequest(t *testing.T) {
+	retries := int32(3)
+	timeoutMillis := int64(300000)
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(context.Context, camundav89.SearchJobsJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchJobsResponse, error) {
+			t.Fatal("unexpected combined update confirmation lookup")
+			return nil, nil
+		},
+		updateJobWithResponse: func(_ context.Context, jobKey camundav89.JobKey, body camundav89.UpdateJobJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.UpdateJobResponse, error) {
+			require.Equal(t, camundav89.JobKey("2251799813711967"), jobKey)
+			require.NotNil(t, body.Changeset.Retries)
+			require.Equal(t, retries, *body.Changeset.Retries)
+			require.NotNil(t, body.Changeset.Timeout)
+			require.Equal(t, timeoutMillis, *body.Changeset.Timeout)
+			return &camundav89.UpdateJobResponse{
+				HTTPResponse: okJobUpdateHTTPResponse(),
+			}, nil
+		},
+	})
+
+	result, err := svc.UpdateJob(context.Background(), d.JobUpdateRequest{
+		Key:              "2251799813711967",
+		Retries:          &retries,
+		TimeoutMillis:    &timeoutMillis,
+		SkipConfirmation: true,
+	})
+
+	require.NoError(t, err)
+	require.True(t, result.MutationAccepted)
+	require.Equal(t, "skipped", result.ConfirmationStatus)
+	require.Equal(t, &retries, result.SubmittedRetries)
+	require.Equal(t, &timeoutMillis, result.SubmittedTimeoutMS)
+}
+
+func TestSubmitJobTechnicalFailureRequest(t *testing.T) {
+	retries := int32(0)
+	retryBackoffMillis := int64(300000)
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(context.Context, camundav89.SearchJobsJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchJobsResponse, error) {
+			t.Fatal("unexpected worker outcome confirmation lookup")
+			return nil, nil
+		},
+		failJobWithResponse: func(_ context.Context, jobKey camundav89.JobKey, body camundav89.FailJobJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.FailJobResponse, error) {
+			require.Equal(t, camundav89.JobKey("2251799813711967"), jobKey)
+			require.Equal(t, &retries, body.Retries)
+			require.Equal(t, &retryBackoffMillis, body.RetryBackOff)
+			require.NotNil(t, body.ErrorMessage)
+			require.Equal(t, "worker unavailable", *body.ErrorMessage)
+			require.Nil(t, body.Variables)
+			return &camundav89.FailJobResponse{
+				HTTPResponse: okJobFailHTTPResponse(),
+			}, nil
+		},
+	})
+
+	result, err := svc.SubmitJobWorkerOutcome(context.Background(), d.JobWorkerOutcomeRequest{
+		Key:                "2251799813711967",
+		Mode:               d.JobWorkerOutcomeTechnicalFailure,
+		Retries:            &retries,
+		RetryBackoffMillis: &retryBackoffMillis,
+		Message:            "worker unavailable",
+	})
+
+	require.NoError(t, err)
+	require.True(t, result.MutationAccepted)
+	require.Equal(t, d.JobWorkerOutcomeTechnicalFailure, result.Mode)
+	require.Equal(t, "skipped", result.ConfirmationStatus)
+	require.Equal(t, &retries, result.SubmittedRetries)
+	require.Equal(t, &retryBackoffMillis, result.SubmittedBackoffMS)
+}
+
+func TestSubmitJobBPMNErrorRequest(t *testing.T) {
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(context.Context, camundav89.SearchJobsJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchJobsResponse, error) {
+			t.Fatal("unexpected worker outcome confirmation lookup")
+			return nil, nil
+		},
+		throwJobErrorWithResponse: func(_ context.Context, jobKey camundav89.JobKey, body camundav89.ThrowJobErrorJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.ThrowJobErrorResponse, error) {
+			require.Equal(t, camundav89.JobKey("2251799813711967"), jobKey)
+			require.Equal(t, "PAYMENT_DECLINED", body.ErrorCode)
+			require.NotNil(t, body.ErrorMessage)
+			require.Equal(t, "card declined", *body.ErrorMessage)
+			require.NotNil(t, body.Variables)
+			require.Equal(t, map[string]any{"approved": false}, *body.Variables)
+			return &camundav89.ThrowJobErrorResponse{
+				HTTPResponse: okJobBPMNErrorHTTPResponse(),
+			}, nil
+		},
+	})
+
+	result, err := svc.SubmitJobWorkerOutcome(context.Background(), d.JobWorkerOutcomeRequest{
+		Key:       "2251799813711967",
+		Mode:      d.JobWorkerOutcomeBPMNError,
+		ErrorCode: "PAYMENT_DECLINED",
+		Message:   "card declined",
+		Variables: map[string]any{"approved": false},
+	})
+
+	require.NoError(t, err)
+	require.True(t, result.MutationAccepted)
+	require.Equal(t, d.JobWorkerOutcomeBPMNError, result.Mode)
+	require.Equal(t, "skipped", result.ConfirmationStatus)
+	require.Equal(t, "PAYMENT_DECLINED", result.SubmittedErrorCode)
+}
+
+func TestSubmitJobCompletionRequest(t *testing.T) {
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(context.Context, camundav89.SearchJobsJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchJobsResponse, error) {
+			t.Fatal("unexpected worker outcome confirmation lookup")
+			return nil, nil
+		},
+		completeJobWithResponse: func(_ context.Context, jobKey camundav89.JobKey, body camundav89.CompleteJobJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.CompleteJobResponse, error) {
+			require.Equal(t, camundav89.JobKey("2251799813711967"), jobKey)
+			require.NotNil(t, body.Variables)
+			require.Equal(t, map[string]any{"approved": true}, *body.Variables)
+			return &camundav89.CompleteJobResponse{
+				HTTPResponse: okJobCompleteHTTPResponse(),
+			}, nil
+		},
+	})
+
+	result, err := svc.SubmitJobWorkerOutcome(context.Background(), d.JobWorkerOutcomeRequest{
+		Key:       "2251799813711967",
+		Mode:      d.JobWorkerOutcomeCompletion,
+		Variables: map[string]any{"approved": true},
+	})
+
+	require.NoError(t, err)
+	require.True(t, result.MutationAccepted)
+	require.Equal(t, d.JobWorkerOutcomeCompletion, result.Mode)
+	require.Equal(t, "skipped", result.ConfirmationStatus)
+}
+
+func TestSubmitJobCompletionWithoutVariables(t *testing.T) {
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(context.Context, camundav89.SearchJobsJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchJobsResponse, error) {
+			t.Fatal("unexpected worker outcome confirmation lookup")
+			return nil, nil
+		},
+		completeJobWithResponse: func(_ context.Context, _ camundav89.JobKey, body camundav89.CompleteJobJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.CompleteJobResponse, error) {
+			require.NotNil(t, body.Variables)
+			require.Empty(t, *body.Variables)
+			return &camundav89.CompleteJobResponse{
+				HTTPResponse: okJobCompleteHTTPResponse(),
+			}, nil
+		},
+	})
+
+	result, err := svc.SubmitJobWorkerOutcome(context.Background(), d.JobWorkerOutcomeRequest{
+		Key:  "2251799813711967",
+		Mode: d.JobWorkerOutcomeCompletion,
+	})
+
+	require.NoError(t, err)
+	require.True(t, result.MutationAccepted)
+	require.Equal(t, d.JobWorkerOutcomeCompletion, result.Mode)
+	require.Equal(t, "skipped", result.ConfirmationStatus)
+}
+
 func newJobServiceTest(t *testing.T, client *mockJobClient) *Service {
 	t.Helper()
 	cfg := testx.TestConfig(t)
@@ -171,6 +492,33 @@ func requireJobSearchBody(t *testing.T, body camundav89.SearchJobsJSONRequestBod
 	require.NotNil(t, body.Page)
 }
 
+// requireJobSearchFilterJSON asserts generated union filters serialize to the
+// simple equality values expected by the Camunda search endpoint.
+func requireJobSearchFilterJSON(t *testing.T, body camundav89.SearchJobsJSONRequestBody, want map[string]any, wantLimit int32) {
+	t.Helper()
+	raw, err := json.Marshal(body)
+	require.NoError(t, err)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(raw, &got))
+	filter := got["filter"].(map[string]any)
+	for name, value := range want {
+		require.Equal(t, value, filter[name], "filter %s", name)
+	}
+	page := got["page"].(map[string]any)
+	require.Equal(t, float64(wantLimit), page["limit"])
+}
+
+func requireJobSearchPageJSON(t *testing.T, body camundav89.SearchJobsJSONRequestBody, wantFrom int32, wantLimit int32) {
+	t.Helper()
+	raw, err := json.Marshal(body)
+	require.NoError(t, err)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(raw, &got))
+	page := got["page"].(map[string]any)
+	require.Equal(t, float64(wantFrom), page["from"])
+	require.Equal(t, float64(wantLimit), page["limit"])
+}
+
 func okHTTPResponse() *http.Response {
 	return &http.Response{
 		StatusCode: http.StatusOK,
@@ -188,6 +536,39 @@ func okJobUpdateHTTPResponse() *http.Response {
 		Request: &http.Request{
 			Method: http.MethodPatch,
 			URL:    &url.URL{Scheme: "https", Host: "camunda.example", Path: "/v2/jobs/2251799813711967"},
+		},
+	}
+}
+
+func okJobFailHTTPResponse() *http.Response {
+	return &http.Response{
+		StatusCode: http.StatusNoContent,
+		Status:     "204 No Content",
+		Request: &http.Request{
+			Method: http.MethodPost,
+			URL:    &url.URL{Scheme: "https", Host: "camunda.example", Path: "/v2/jobs/2251799813711967/failure"},
+		},
+	}
+}
+
+func okJobBPMNErrorHTTPResponse() *http.Response {
+	return &http.Response{
+		StatusCode: http.StatusNoContent,
+		Status:     "204 No Content",
+		Request: &http.Request{
+			Method: http.MethodPost,
+			URL:    &url.URL{Scheme: "https", Host: "camunda.example", Path: "/v2/jobs/2251799813711967/error"},
+		},
+	}
+}
+
+func okJobCompleteHTTPResponse() *http.Response {
+	return &http.Response{
+		StatusCode: http.StatusNoContent,
+		Status:     "204 No Content",
+		Request: &http.Request{
+			Method: http.MethodPost,
+			URL:    &url.URL{Scheme: "https", Host: "camunda.example", Path: "/v2/jobs/2251799813711967/completion"},
 		},
 	}
 }

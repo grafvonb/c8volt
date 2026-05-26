@@ -166,18 +166,20 @@ func TestWalkIncidentLines_RenderGroupedIncidentDetails(t *testing.T) {
 
 	var out strings.Builder
 	writeIncidentLines(&out, "  ", []incident.ProcessInstanceIncidentDetail{{
-		IncidentKey:         "incident-1",
-		CreationTime:        "2026-05-06T09:29:42.711Z",
-		ErrorMessage:        "Root job failed",
-		FlowNodeId:          "task-a",
-		FlowNodeInstanceKey: "element-123",
-		State:               "ACTIVE",
-		ErrorType:           "JOB_NO_RETRIES",
-		JobKey:              "job-123",
+		IncidentKey:        "incident-1",
+		CreationTime:       "2026-05-06T09:29:42.711Z",
+		ErrorMessage:       "Root job failed",
+		ElementId:          "task-a",
+		ElementInstanceKey: "element-123",
+		State:              "ACTIVE",
+		ErrorType:          "JOB_NO_RETRIES",
+		JobKey:             "job-123",
 	}})
 
-	require.Equal(t, "\n  └─ incident-1 JOB_NO_RETRIES ACTIVE j:job-123 2026-05-06T09:29:42.711 (4 days ago) fn:task-a fni:element-123 m:Root job failed", out.String())
+	require.Equal(t, "\n  └─ incident-1 JOB_NO_RETRIES ACTIVE j:job-123 2026-05-06T09:29:42.711 (4 days ago) e:task-a ei:element-123 m:Root job failed", out.String())
 	require.NotContains(t, out.String(), "incident incident-1:")
+	require.NotContains(t, out.String(), "fn:")
+	require.NotContains(t, out.String(), "fni:")
 }
 
 // TestWalkProcessInstanceCommand_WithIncidentsChildrenHumanOutputShowsIncident renders incident keys under child-walk rows.
@@ -236,7 +238,7 @@ func TestWalkProcessInstanceCommand_WithVarsAndIncidentsChildrenHumanOutputShows
 			require.Contains(t, string(body), `"parentProcessInstanceKey":"123"`)
 			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
-			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "123", "Root job failed")))
+			_, _ = w.Write([]byte(`{"items":[{"elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"Root job failed","errorType":"JOB_NO_RETRIES","incidentKey":"incident-1","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/variables/search":
 			require.Equal(t, "false", r.URL.Query().Get("truncateValues"))
 			_, _ = w.Write([]byte(`{"items":[{"name":"businessKey","value":"2234809392328","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"},{"name":"hasIncident","value":"true","variableKey":"902","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
@@ -268,7 +270,7 @@ func TestWalkProcessInstanceCommand_WithVarsAndIncidentsChildrenHumanOutputShows
 	require.Contains(t, output, "│  ├─ businessKey=2234809392328")
 	require.Contains(t, output, "│  └─ hasIncident=true")
 	require.Contains(t, output, "└─ incidents:")
-	require.Contains(t, output, "   └─ incident-1 JOB_NO_RETRIES ACTIVE j:n/a m:Root job failed")
+	require.Contains(t, output, "   └─ incident-1 JOB_NO_RETRIES ACTIVE j:n/a e:task-a ei:element-123 m:Root job failed")
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
 
@@ -427,7 +429,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsIncidentDetails(
 			require.Contains(t, string(body), `"parentProcessInstanceKey":"123"`)
 			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
-			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "123", "Root job failed")))
+			_, _ = w.Write([]byte(`{"items":[{"elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"Root job failed","errorType":"JOB_NO_RETRIES","incidentKey":"incident-1","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
@@ -456,6 +458,9 @@ func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsIncidentDetails(
 	require.Equal(t, "incident-1", incident["incidentKey"])
 	require.Equal(t, "123", incident["processInstanceKey"])
 	require.Equal(t, "Root job failed", incident["errorMessage"])
+	require.Equal(t, "task-a", incident["elementId"])
+	require.Equal(t, "element-123", incident["elementInstanceKey"])
+	require.NotContains(t, output, "flowNode")
 }
 
 // TestWalkProcessInstanceCommand_WithIncidentsJSONOutputAssociatesMultipleKeys prevents cross-key incident leakage.
@@ -616,7 +621,7 @@ func TestWalkProcessInstanceCommand_DefaultChildrenHumanOutputUnchangedWithoutWi
 			require.NoError(t, err)
 			switch {
 			case strings.Contains(string(body), `"parentProcessInstanceKey":"123"`):
-				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t, walkedProcessInstanceJSON("124", "123", false))))
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t, walkedProcessInstanceJSONWithParentElement("124", "123", "ei-parent", false))))
 			case strings.Contains(string(body), `"parentProcessInstanceKey":"124"`):
 				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
 			default:
@@ -659,7 +664,7 @@ func TestWalkProcessInstanceCommand_DefaultJSONOutputUnchangedWithoutWithInciden
 			require.NoError(t, err)
 			switch {
 			case strings.Contains(string(body), `"parentProcessInstanceKey":"123"`):
-				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t, walkedProcessInstanceJSON("124", "123", false))))
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t, walkedProcessInstanceJSONWithParentElement("124", "123", "ei-parent", false))))
 			case strings.Contains(string(body), `"parentProcessInstanceKey":"124"`):
 				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
 			default:
@@ -690,7 +695,10 @@ func TestWalkProcessInstanceCommand_DefaultJSONOutputUnchangedWithoutWithInciden
 	require.NotContains(t, first, "incidents")
 	second := requireJSONObject(t, items[1])
 	require.Equal(t, "124", second["key"])
+	require.Equal(t, "ei-parent", second["parentElementInstanceKey"])
 	require.NotContains(t, second, "incidents")
+	require.NotContains(t, second, "parentFlowNodeInstanceKey")
+	require.NotContains(t, output, "parentFlowNodeInstanceKey")
 }
 
 // TestWalkProcessInstanceCommand_DefaultFamilyTreeLayoutUnchangedWithoutWithIncidents protects the plain tree renderer.
@@ -1008,7 +1016,7 @@ func TestWalkProcessInstanceCommand_PartialTraversalRendersWarningsAndJSONMetada
 	})
 }
 
-func TestWalkProcessInstanceCommand_UsesEffectiveTenantForTraversalSearches(t *testing.T) {
+func TestWalkProcessInstanceCommand_KeyTraversalOmitsSelectedTenant(t *testing.T) {
 	var requests []string
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1063,10 +1071,52 @@ apis:
 		body := decodeCapturedPISearchRequest(t, request)
 		filter, ok := body["filter"].(map[string]any)
 		require.True(t, ok, "expected search request filter object")
-		require.Equal(t, "tenant-a", filter["tenantId"])
+		require.NotContains(t, filter, "tenantId")
 	}
 	require.Contains(t, output, `"tenantId": "tenant-a"`)
 	require.NotContains(t, output, "base-tenant")
+}
+
+// TestWalkProcessInstanceCommand_KeyTenantMismatchUsesAdminTraversal ensures
+// explicit-key walks do not apply the selected tenant to backend traversal.
+func TestWalkProcessInstanceCommand_KeyTenantMismatchUsesAdminTraversal(t *testing.T) {
+	var searchRequests []string
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/"+tenantAdminKeysProcessInstanceKey:
+			_, _ = w.Write([]byte(tenantAdminKeysMismatchProcessInstanceJSON()))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			searchRequests = append(searchRequests, string(body))
+			request := decodeCapturedPISearchRequest(t, string(body))
+			filter, ok := request["filter"].(map[string]any)
+			require.True(t, ok, "expected search request filter object")
+			require.Equal(t, tenantAdminKeysProcessInstanceKey, filter["parentProcessInstanceKey"])
+			require.NotContains(t, filter, "tenantId")
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"--json",
+		"walk", "process-instance",
+		"--key", tenantAdminKeysProcessInstanceKey,
+		"--children",
+	)
+
+	require.Len(t, searchRequests, 1)
+	require.Contains(t, output, `"tenantId": "tenant-b"`)
+	require.Contains(t, output, `"key": "`+tenantAdminKeysProcessInstanceKey+`"`)
 }
 
 // TestWalkProcessInstanceCommand_WithIncidentsUsesEffectiveTenantForIncidentSearches applies command tenant overrides to incident lookup.
@@ -1081,7 +1131,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsUsesEffectiveTenantForIncidentS
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			require.Contains(t, string(body), `"tenantId":"tenant-a"`)
+			require.NotContains(t, string(body), `"tenantId"`)
 			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
 			body, err := io.ReadAll(r.Body)
@@ -1344,6 +1394,14 @@ func walkedProcessInstanceJSON(key, parentKey string, hasIncident bool) string {
 		incident = "true"
 	}
 	return `{"processInstanceKey":"` + key + `"` + parent + `,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant","hasIncident":` + incident + `}`
+}
+
+func walkedProcessInstanceJSONWithParentElement(key, parentKey, parentElementKey string, hasIncident bool) string {
+	raw := walkedProcessInstanceJSON(key, parentKey, hasIncident)
+	if parentElementKey == "" {
+		return raw
+	}
+	return strings.TrimSuffix(raw, "}") + `,"parentElementInstanceKey":"` + parentElementKey + `"}`
 }
 
 // walkedProcessInstanceSearchJSON wraps process-instance fixtures in the generated search response shape.

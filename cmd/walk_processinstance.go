@@ -6,6 +6,7 @@ package cmd
 import (
 	"strings"
 
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
@@ -30,6 +31,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 	Short: "Inspect the parent/child tree of process instances",
 	Long: "Inspect the parent/child tree of process instances.\n\n" +
 		"By default, walk shows the full process-instance family as an ASCII tree. Use --parent for ancestry, --children for descendants, or --flat for a path-style family view.\n\n" +
+		"Tenant contract: explicit --key process-instance targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.\n\n" +
 		"Add --with-incidents and/or --with-vars to keyed walks to show incident details and process-instance-scope variables below matching rows.\n\n" +
 		"When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.",
 	Example: `  ./c8volt walk pi --key <process-instance-key>
@@ -62,7 +64,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 		walkers := map[string]walker{
 			walkPIModeParent: {
 				fetch: func() (process.TraversalResult, error) {
-					return cli.AncestryResult(cmd.Context(), flagWalkPIKey, collectOptions()...)
+					return cli.AncestryResult(cmd.Context(), flagWalkPIKey, collectExplicitPIAdminInputOptions()...)
 				},
 				view: func(cmd *cobra.Command, result process.TraversalResult) error {
 					if pickMode() == RenderModeJSON {
@@ -84,7 +86,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 			},
 			walkPIModeChildren: {
 				fetch: func() (process.TraversalResult, error) {
-					return cli.DescendantsResult(cmd.Context(), flagWalkPIKey, collectOptions()...)
+					return cli.DescendantsResult(cmd.Context(), flagWalkPIKey, collectExplicitPIAdminInputOptions()...)
 				},
 				view: func(cmd *cobra.Command, result process.TraversalResult) error {
 					if pickMode() == RenderModeJSON {
@@ -98,7 +100,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 			},
 			walkPIModeFamily: {
 				fetch: func() (process.TraversalResult, error) {
-					return cli.FamilyResult(cmd.Context(), flagWalkPIKey, collectOptions()...)
+					return cli.FamilyResult(cmd.Context(), flagWalkPIKey, collectExplicitPIAdminInputOptions()...)
 				},
 				view: func(cmd *cobra.Command, result process.TraversalResult) error {
 					if pickMode() == RenderModeJSON {
@@ -142,16 +144,18 @@ var walkProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if flagWalkPIWithIncidents || flagWalkPIWithVars {
+			adminInputOpts := collectExplicitPIAdminInputOptions()
+			adminInputIncidentOpts := append(collectIncidentEnrichmentOptions(), options.WithIgnoreTenant())
 			var incidentEnriched process.IncidentEnrichedTraversalResult
 			if flagWalkPIWithIncidents {
-				incidentEnriched, err = cli.EnrichTraversalWithIncidents(cmd.Context(), result, collectIncidentEnrichmentOptions()...)
+				incidentEnriched, err = cli.EnrichTraversalWithIncidents(cmd.Context(), result, adminInputIncidentOpts...)
 				if err != nil {
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}
 			}
 			var variableEnriched process.VariableEnrichedProcessInstances
 			if flagWalkPIWithVars {
-				variableEnriched, err = cli.EnrichProcessInstancesWithVariables(cmd.Context(), processInstancesFromTraversal(result), collectOptions()...)
+				variableEnriched, err = cli.EnrichProcessInstancesWithVariables(cmd.Context(), processInstancesFromTraversal(result), adminInputOpts...)
 				if err != nil {
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}

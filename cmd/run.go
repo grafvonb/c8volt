@@ -12,10 +12,11 @@ var runCmd = &cobra.Command{
 	Short: "Start process instances",
 	Long: `Start process instances.
 
-The process-instance command waits for active instances by default.`,
+The process-instance command waits until created instances are observable as ACTIVE, COMPLETED, CANCELED, or TERMINATED.`,
 	Example: `  ./c8volt run pi -b <bpmn-process-id>
   ./c8volt run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
-  ./c8volt run pi -b <bpmn-process-id> -n 3 --workers 2`,
+  ./c8volt run pi -b <bpmn-process-id> -n 3 --workers 2
+  ./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -`,
 	Aliases: []string{"r"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

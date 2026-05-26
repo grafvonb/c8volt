@@ -108,16 +108,14 @@ func (s *Service) repairExplicitIncidents(ctx context.Context, request d.OpsRepa
 // repairFilteredIncidents discovers matching incidents once, freezes them, and then reuses the shared incident repair execution path.
 func (s *Service) repairFilteredIncidents(ctx context.Context, request d.OpsRepairRequest, opts ...services.CallOption) (d.OpsRepairResult, error) {
 	result := newRepairResult(request)
-	discoverySize := repairIncidentDiscoverySize(request)
-	incidents, err := incsvc.SearchIncidents(ctx, s.incAPI, request.IncidentSelection, discoverySize, opts...)
+	frozen, err := s.discoverRepairIncidentSearchSet(ctx, request, opts...)
 	if err != nil {
 		result.FrozenSet.Status = d.OpsWorkflowStepStatusFailed
 		result.FrozenSet.Errors = []string{err.Error()}
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
 	}
-	incidents = limitRepairIncidents(incidents, request.Limit)
-	result.FrozenSet = freezeIncidentSearchSet(request, incidents)
-	result.Notices = append(result.Notices, repairBoundedSearchNotice(request.Limit, discoverySize, len(incidents), "incidents")...)
+	result.FrozenSet = frozen
+	incidents := frozen.OriginalIncidents
 	if len(incidents) == 0 {
 		result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
 		result.Notices = append(result.Notices, d.OpsRepairWorkflowNotice{
@@ -185,14 +183,13 @@ func (s *Service) repairExplicitProcessInstances(ctx context.Context, request d.
 // repairFilteredProcessInstances searches incident-bearing process instances before freezing and repairing their active incidents.
 func (s *Service) repairFilteredProcessInstances(ctx context.Context, request d.OpsRepairRequest, opts ...services.CallOption) (d.OpsRepairResult, error) {
 	result := newRepairResult(request)
-	discoverySize := repairProcessInstanceDiscoverySize(request)
-	pis, err := s.piAPI.SearchForProcessInstances(ctx, request.ProcessInstanceSelection, discoverySize, opts...)
+	pis, status, err := s.discoverRepairProcessInstanceSearchCandidates(ctx, request, opts...)
 	if err != nil {
 		result.FrozenSet.Status = d.OpsWorkflowStepStatusFailed
 		result.FrozenSet.Errors = []string{err.Error()}
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
 	}
-	processInstanceKeys := processInstanceKeysFromDetails(limitRepairProcessInstances(pis, request.Limit))
+	processInstanceKeys := processInstanceKeysFromDetails(pis)
 	incidents, err := s.discoverProcessInstanceRepairIncidents(ctx, request, processInstanceKeys, opts...)
 	if err != nil {
 		result.FrozenSet.Status = d.OpsWorkflowStepStatusFailed
@@ -206,7 +203,8 @@ func (s *Service) repairFilteredProcessInstances(ctx context.Context, request d.
 	result.FrozenSet.DiscoveryMode = d.OpsRepairDiscoveryModeSearch
 	result.FrozenSet.InputKeys = nil
 	result.FrozenSet.ProcessFilters = request.ProcessInstanceSelection
-	result.Notices = append(result.Notices, repairBoundedSearchNotice(request.Limit, discoverySize, len(pis), "pi")...)
+	status.CandidatesFrozen = len(result.FrozenSet.ProcessInstanceKeys)
+	result.FrozenSet.DiscoveryScopeStatus = status
 	return s.finishProcessInstanceIncidentRepair(ctx, request, result, incidents, opts...)
 }
 
@@ -329,57 +327,138 @@ func freezeProcessInstanceRepairSet(request d.OpsRepairRequest, selectedProcessI
 	return frozen
 }
 
-// repairIncidentDiscoverySize normalizes the search size while allowing --limit to cap repair targets first.
+// discoverRepairIncidentSearchSet walks incident pages and freezes the incident repair scope before planning.
+func (s *Service) discoverRepairIncidentSearchSet(ctx context.Context, request d.OpsRepairRequest, opts ...services.CallOption) (d.OpsRepairFrozenSet, error) {
+	status := d.DiscoveryScopeStatus{
+		BatchSize: repairIncidentDiscoverySize(request),
+		Limit:     request.Limit,
+	}
+	pageReq := d.IncidentPageRequest{Size: status.BatchSize}
+	var incidents []d.ProcessInstanceIncidentDetail
+	limited := false
+	for {
+		page, err := s.incAPI.SearchIncidentsPage(ctx, request.IncidentSelection, pageReq, opts...)
+		if err != nil {
+			return d.OpsRepairFrozenSet{}, err
+		}
+		status.Pages++
+		status.CandidatesSeen += len(page.Items)
+		items := limitRepairIncidentPageItems(page.Items, request.Limit, len(incidents))
+		incidents = append(incidents, items...)
+		if request.Limit > 0 && len(incidents) >= int(request.Limit) {
+			limited = true
+		}
+		if limited || repairIncidentDiscoveryPageComplete(page) {
+			status.Complete = !limited
+			status.Limited = limited
+			break
+		}
+		pageReq = nextRepairIncidentDiscoveryPageRequest(pageReq, page)
+	}
+	frozen := freezeIncidentSearchSet(request, incidents)
+	status.CandidatesFrozen = len(frozen.IncidentKeys)
+	frozen.DiscoveryScopeStatus = status
+	return frozen, nil
+}
+
+// discoverRepairProcessInstanceSearchCandidates walks process-instance pages before incident repair planning.
+func (s *Service) discoverRepairProcessInstanceSearchCandidates(ctx context.Context, request d.OpsRepairRequest, opts ...services.CallOption) ([]d.ProcessInstance, d.DiscoveryScopeStatus, error) {
+	status := d.DiscoveryScopeStatus{
+		BatchSize: repairProcessInstanceDiscoverySize(request),
+		Limit:     request.Limit,
+	}
+	pageReq := d.ProcessInstancePageRequest{Size: status.BatchSize}
+	var out []d.ProcessInstance
+	limited := false
+	for {
+		page, err := s.piAPI.SearchForProcessInstancesPage(ctx, request.ProcessInstanceSelection, pageReq, opts...)
+		if err != nil {
+			return nil, d.DiscoveryScopeStatus{}, err
+		}
+		status.Pages++
+		status.CandidatesSeen += len(page.Items)
+		items := limitRepairProcessInstancePageItems(page.Items, request.Limit, len(out))
+		out = append(out, items...)
+		if request.Limit > 0 && len(out) >= int(request.Limit) {
+			limited = true
+		}
+		if limited || repairProcessInstanceDiscoveryPageComplete(page) {
+			status.Complete = !limited
+			status.Limited = limited
+			break
+		}
+		pageReq = nextRepairProcessInstanceDiscoveryPageRequest(pageReq, page)
+	}
+	status.CandidatesFrozen = len(processInstanceKeysFromDetails(out))
+	return out, status, nil
+}
+
+// repairIncidentDiscoverySize normalizes page size; --limit caps total repair targets separately.
 func repairIncidentDiscoverySize(request d.OpsRepairRequest) int32 {
-	if request.Limit > 0 {
-		return request.Limit
-	}
 	if request.BatchSize > 0 && request.BatchSize <= consts.MaxPISearchSize {
 		return request.BatchSize
 	}
 	return consts.MaxPISearchSize
 }
 
-// repairProcessInstanceDiscoverySize normalizes process-instance discovery size for bounded repair searches.
+// repairProcessInstanceDiscoverySize normalizes page size for repair searches.
 func repairProcessInstanceDiscoverySize(request d.OpsRepairRequest) int32 {
-	if request.Limit > 0 {
-		return request.Limit
-	}
 	if request.BatchSize > 0 && request.BatchSize <= consts.MaxPISearchSize {
 		return request.BatchSize
 	}
 	return consts.MaxPISearchSize
 }
 
-func repairBoundedSearchNotice(limit int32, discoverySize int32, count int, target string) []d.OpsRepairWorkflowNotice {
-	if limit > 0 || discoverySize <= 0 || count < int(discoverySize) {
+// limitRepairIncidentPageItems applies the total repair target cap after page retrieval.
+func limitRepairIncidentPageItems(items []d.ProcessInstanceIncidentDetail, limit int32, cumulative int) []d.ProcessInstanceIncidentDetail {
+	if limit <= 0 {
+		return items
+	}
+	remaining := int(limit) - cumulative
+	if remaining <= 0 {
 		return nil
 	}
-	return []d.OpsRepairWorkflowNotice{{
-		Code:     "bounded_search_scope",
-		Severity: "info",
-		Message:  fmt.Sprintf("candidate %s reached batch size %d; more matching %s may exist", target, discoverySize, target),
-		Details: map[string]string{
-			"batchSize": fmt.Sprintf("%d", discoverySize),
-			"target":    target,
-		},
-	}}
+	if len(items) > remaining {
+		return items[:remaining]
+	}
+	return items
 }
 
-// limitRepairIncidents protects repair scope even when a stub or backend over-returns.
-func limitRepairIncidents(items []d.ProcessInstanceIncidentDetail, limit int32) []d.ProcessInstanceIncidentDetail {
-	if limit <= 0 || len(items) <= int(limit) {
+// limitRepairProcessInstancePageItems applies the total PI repair target cap after page retrieval.
+func limitRepairProcessInstancePageItems(items []d.ProcessInstance, limit int32, cumulative int) []d.ProcessInstance {
+	if limit <= 0 {
 		return items
 	}
-	return items[:limit]
+	remaining := int(limit) - cumulative
+	if remaining <= 0 {
+		return nil
+	}
+	if len(items) > remaining {
+		return items[:remaining]
+	}
+	return items
 }
 
-// limitRepairProcessInstances protects repair scope even when a stub or backend over-returns.
-func limitRepairProcessInstances(items []d.ProcessInstance, limit int32) []d.ProcessInstance {
-	if limit <= 0 || len(items) <= int(limit) {
-		return items
+func repairIncidentDiscoveryPageComplete(page d.IncidentPage) bool {
+	return page.OverflowState == d.ProcessInstanceOverflowStateNoMore
+}
+
+func nextRepairIncidentDiscoveryPageRequest(current d.IncidentPageRequest, page d.IncidentPage) d.IncidentPageRequest {
+	if page.EndCursor != "" {
+		return d.IncidentPageRequest{Size: current.Size, After: page.EndCursor}
 	}
-	return items[:limit]
+	return d.IncidentPageRequest{From: current.From + current.Size, Size: current.Size}
+}
+
+func repairProcessInstanceDiscoveryPageComplete(page d.ProcessInstancePage) bool {
+	return page.OverflowState == d.ProcessInstanceOverflowStateNoMore
+}
+
+func nextRepairProcessInstanceDiscoveryPageRequest(current d.ProcessInstancePageRequest, page d.ProcessInstancePage) d.ProcessInstancePageRequest {
+	if page.EndCursor != "" {
+		return d.ProcessInstancePageRequest{Size: current.Size, After: page.EndCursor}
+	}
+	return d.ProcessInstancePageRequest{From: current.From + current.Size, Size: current.Size}
 }
 
 // skippedProcessInstanceKeysWithoutActiveIncidents reports selected process instances that are not repair targets.

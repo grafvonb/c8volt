@@ -55,11 +55,33 @@ func (s *Service) GetJob(ctx context.Context, key string, opts ...services.CallO
 	return d.Job{}, unsupportedJobOperation("get job")
 }
 
+func (s *Service) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error) {
+	_ = ctx
+	_ = query
+	_ = services.ApplyCallOptions(opts)
+	return d.JobSearchResult{}, unsupportedJobOperation("search jobs")
+}
+
+func (s *Service) SearchJobsPage(ctx context.Context, query d.JobSearchQuery, page d.JobPageRequest, opts ...services.CallOption) (d.JobSearchPage, error) {
+	_ = ctx
+	_ = query
+	_ = page
+	_ = services.ApplyCallOptions(opts)
+	return d.JobSearchPage{}, unsupportedJobOperation("search jobs")
+}
+
 func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error) {
 	_ = ctx
 	_ = request
 	_ = services.ApplyCallOptions(opts)
 	return d.JobUpdateResult{}, unsupportedJobOperation("job update")
+}
+
+func (s *Service) SubmitJobWorkerOutcome(ctx context.Context, request d.JobWorkerOutcomeRequest, opts ...services.CallOption) (d.JobWorkerOutcomeResult, error) {
+	_ = ctx
+	_ = request
+	_ = services.ApplyCallOptions(opts)
+	return d.JobWorkerOutcomeResult{}, unsupportedJobOperation("job worker outcome")
 }
 
 func unsupportedJobOperation(operation string) error {

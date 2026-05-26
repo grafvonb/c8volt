@@ -24,7 +24,8 @@ var deleteProcessInstanceCmd = &cobra.Command{
 	Short: "Delete process instances by key or filters",
 	Long: "Delete process instances by key or search filters, optionally cancelling first.\n\n" +
 		"By default c8volt validates the complete affected tree before submitting any delete request, prompts before deletion, and waits until deletion is observed. If any affected process instance is not in a final state, the whole delete batch is refused before mutation. Use --force to cancel the affected scope first, then delete it.\n\n" +
-		"When --bpmn-process-id is set, c8volt applies the selector directly to the non-mutating process-instance search. If no matching instances are found, no deletion request is submitted.\n\n" +
+		"Tenant contract: --tenant scopes search-derived candidate discovery where supported. Explicit --key and stdin keys are backend-authorized admin input; existing dry-run, confirmation, force, and wait safety checks still apply.\n\n" +
+		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, cancellation, or deletion; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no deletion request is submitted.\n\n" +
 		"Use --dry-run to preview selected, in-scope, final-state, non-final, and partial-scope instances without deleting or cancelling.\n\n" +
 		"Use --auto-confirm for unattended destructive runs.",
 	Example: `  ./c8volt delete pi --key <process-instance-key> --force
@@ -71,6 +72,15 @@ var deleteProcessInstanceCmd = &cobra.Command{
 			}
 			if err := validatePISearchVersionSupport(cfg); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			if flagGetPIBpmnProcessID != "" {
+				result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newPIProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+				if err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
+				if !result.Valid() {
+					handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
+				}
 			}
 			searchFilterOpts := populatePISearchFilterOpts()
 			results, err := deleteProcessInstanceSearchPages(cmd, cli, cfg, searchFilterOpts)
@@ -126,13 +136,19 @@ var deleteProcessInstanceCmd = &cobra.Command{
 // deleteProcessInstancesWithPlan validates the delete scope, renders dry-run
 // output when requested, and submits the mutation otherwise.
 func deleteProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (processInstancePageActionResult, error) {
-	return deleteProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, true)
+	return deleteProcessInstancesWithPlanAndRenderWithOptions(cmd, cli, keys, firstPage, true, collectExplicitPIAdminInputOptions())
 }
 
 // deleteProcessInstancesWithPlanAndRender shares delete planning for keyed and
 // paged flows while allowing callers to defer dry-run rendering.
 func deleteProcessInstancesWithPlanAndRender(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool, renderDryRun bool) (processInstancePageActionResult, error) {
-	planned, err := planProcessInstanceDryRunPreview(cmd, cli, "delete", keys)
+	return deleteProcessInstancesWithPlanAndRenderWithOptions(cmd, cli, keys, firstPage, renderDryRun, collectOptions())
+}
+
+// deleteProcessInstancesWithPlanAndRenderWithOptions keeps direct-key admin
+// input separate from tenant-scoped search-derived candidates.
+func deleteProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool, renderDryRun bool, opts []processOptions.FacadeOption) (processInstancePageActionResult, error) {
+	planned, err := planProcessInstanceDryRunPreviewWithOptions(cmd, cli, "delete", keys, opts)
 	if err != nil {
 		return processInstancePageActionResult{}, err
 	}
@@ -166,8 +182,8 @@ func deleteProcessInstancesWithPlanAndRender(cmd *cobra.Command, cli process.API
 		}
 	}
 
-	opts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
-	reports, err := cli.DeleteProcessInstances(cmd.Context(), plan.Roots, flagWorkers, opts...)
+	mutationOpts := append(opts, processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+	reports, err := cli.DeleteProcessInstances(cmd.Context(), plan.Roots, flagWorkers, mutationOpts...)
 	if err != nil {
 		return processInstancePageActionResult{}, fmt.Errorf("delete process instances: %w", err)
 	}

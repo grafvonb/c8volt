@@ -78,6 +78,39 @@ func newRunPIProcessDefinitionSelectorValidationRequest() processDefinitionSelec
 	}
 }
 
+func newSingleProcessDefinitionSelectorValidationRequest(bpmnProcessID string, processVersion int32, processVersionTag string, mode processDefinitionSelectorValidationMode) processDefinitionSelectorValidationRequest {
+	return processDefinitionSelectorValidationRequest{
+		BpmnProcessIds:    normalizeSelectorBpmnProcessIDs([]string{bpmnProcessID}),
+		ProcessVersion:    processVersion,
+		ProcessVersionTag: processVersionTag,
+		Mode:              mode,
+	}
+}
+
+func newAnyProcessDefinitionSelectorValidationRequest(bpmnProcessID string, processVersion int32, processVersionTag string) processDefinitionSelectorValidationRequest {
+	return newSingleProcessDefinitionSelectorValidationRequest(bpmnProcessID, processVersion, processVersionTag, processDefinitionSelectorValidationAny)
+}
+
+func newLatestAwareProcessDefinitionSelectorValidationRequest(bpmnProcessID string, processVersion int32, processVersionTag string, latest bool) processDefinitionSelectorValidationRequest {
+	mode := processDefinitionSelectorValidationAny
+	if latest {
+		mode = processDefinitionSelectorValidationLatest
+	}
+	return newSingleProcessDefinitionSelectorValidationRequest(bpmnProcessID, processVersion, processVersionTag, mode)
+}
+
+func newIncidentProcessDefinitionSelectorValidationRequest() processDefinitionSelectorValidationRequest {
+	return newAnyProcessDefinitionSelectorValidationRequest(flagGetIncidentBpmnProcessID, 0, "")
+}
+
+func newGetPDProcessDefinitionSelectorValidationRequest() processDefinitionSelectorValidationRequest {
+	return newLatestAwareProcessDefinitionSelectorValidationRequest(flagGetPDBpmnProcessId, flagGetPDProcessVersion, flagGetPDProcessVersionTag, flagGetPDLatest)
+}
+
+func newDeletePDProcessDefinitionSelectorValidationRequest() processDefinitionSelectorValidationRequest {
+	return newLatestAwareProcessDefinitionSelectorValidationRequest(flagDeletePDBpmnProcessId, flagDeletePDProcessVersion, flagDeletePDProcessVersionTag, flagDeletePDLatest)
+}
+
 func (r processDefinitionSelectorValidationRequest) filterForBpmnProcessID(bpmnProcessID string) process.ProcessDefinitionFilter {
 	return process.ProcessDefinitionFilter{
 		BpmnProcessId:     bpmnProcessID,
@@ -132,6 +165,17 @@ func validateProcessDefinitionSelectors(ctx context.Context, cli process.API, re
 		}
 	}
 
+	return result, nil
+}
+
+func validateProcessDefinitionSelectorsForCommand(ctx context.Context, cmd *cobra.Command, cli process.API, req processDefinitionSelectorValidationRequest, opts ...options.FacadeOption) (processDefinitionSelectorValidationResult, error) {
+	result, err := validateProcessDefinitionSelectors(ctx, cli, req, opts...)
+	if err != nil {
+		return result, err
+	}
+	if !result.Valid() && !processDefinitionSelectorPromptAllowed(cmd) {
+		return result, processDefinitionSelectorNoPromptError(result)
+	}
 	return result, nil
 }
 

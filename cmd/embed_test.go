@@ -32,8 +32,8 @@ func TestEmbedListCommand_FiltersFilesForConfiguredCamundaVersion(t *testing.T) 
 
 	output := executeRootForTest(t, "--config", cfgPath, "embed", "list")
 
-	require.Contains(t, output, "C88_SimpleUserTaskProcess.bpmn")
-	require.Contains(t, output, "C88_MultipleSubProcessesParentProcess.bpmn")
+	require.Contains(t, output, "C88_SimpleUserTask.bpmn")
+	require.Contains(t, output, "C88_MultipleSubProcessesParent.bpmn")
 	require.NotContains(t, output, "C87_")
 	require.NotContains(t, output, "C89_")
 	require.NotContains(t, output, "processdefinitions/")
@@ -45,8 +45,8 @@ func TestEmbedListCommand_DetailsFiltersFilesForConfiguredCamundaVersion(t *test
 
 	output := executeRootForTest(t, "--config", cfgPath, "embed", "list", "--details")
 
-	require.Contains(t, output, "processdefinitions/C89_SimpleUserTaskProcess.bpmn")
-	require.Contains(t, output, "processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn")
+	require.Contains(t, output, "processdefinitions/C89_SimpleUserTask.bpmn")
+	require.Contains(t, output, "processdefinitions/C89_MultipleSubProcessesParent.bpmn")
 	require.NotContains(t, output, "processdefinitions/C87_")
 	require.NotContains(t, output, "processdefinitions/C88_")
 }
@@ -60,6 +60,15 @@ func TestEmbedExportHelp_DocumentsSelectionWorkflow(t *testing.T) {
 	require.Contains(t, output, "quote patterns in the shell like zsh")
 }
 
+// Verifies embed deploy keeps --run as a creation shortcut without adding state expectation flags.
+func TestEmbedDeployHelp_DocumentsRunWithoutExpectationFlags(t *testing.T) {
+	output := executeRootForTest(t, "embed", "deploy", "--help")
+
+	require.Contains(t, output, "Add --run to start one process instance")
+	require.Contains(t, output, "--run")
+	require.NotContains(t, output, "--expected-status")
+}
+
 func TestEmbedExportCommand_AllFiltersFilesForConfiguredCamundaVersion(t *testing.T) {
 	resetEmbedCommandStateForTest()
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
@@ -68,10 +77,10 @@ func TestEmbedExportCommand_AllFiltersFilesForConfiguredCamundaVersion(t *testin
 	output := executeRootForTest(t, "--config", cfgPath, "embed", "export", "--all", "--out", outDir)
 
 	require.Contains(t, output, "exported")
-	require.FileExists(t, filepath.Join(outDir, "processdefinitions", "C88_SimpleUserTaskProcess.bpmn"))
-	require.FileExists(t, filepath.Join(outDir, "processdefinitions", "C88_MultipleSubProcessesParentProcess.bpmn"))
-	require.NoFileExists(t, filepath.Join(outDir, "processdefinitions", "C87_SimpleUserTaskProcess.bpmn"))
-	require.NoFileExists(t, filepath.Join(outDir, "processdefinitions", "C89_SimpleUserTaskProcess.bpmn"))
+	require.FileExists(t, filepath.Join(outDir, "processdefinitions", "C88_SimpleUserTask.bpmn"))
+	require.FileExists(t, filepath.Join(outDir, "processdefinitions", "C88_MultipleSubProcessesParent.bpmn"))
+	require.NoFileExists(t, filepath.Join(outDir, "processdefinitions", "C87_SimpleUserTask.bpmn"))
+	require.NoFileExists(t, filepath.Join(outDir, "processdefinitions", "C89_SimpleUserTask.bpmn"))
 }
 
 func TestEmbedExportCommand_FileSelectionCanStillExportOtherVersions(t *testing.T) {
@@ -86,8 +95,8 @@ func TestEmbedExportCommand_FileSelectionCanStillExportOtherVersions(t *testing.
 	require.NoError(t, err, string(output))
 
 	require.Contains(t, string(output), "exported 1 embedded resource")
-	require.FileExists(t, filepath.Join(outDir, "processdefinitions", "C89_SimpleUserTaskProcess.bpmn"))
-	require.NoFileExists(t, filepath.Join(outDir, "processdefinitions", "C88_SimpleUserTaskProcess.bpmn"))
+	require.FileExists(t, filepath.Join(outDir, "processdefinitions", "C89_SimpleUserTask.bpmn"))
+	require.NoFileExists(t, filepath.Join(outDir, "processdefinitions", "C88_SimpleUserTask.bpmn"))
 }
 
 func TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnly(t *testing.T) {
@@ -108,14 +117,14 @@ func TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnly(t *test
 				}
 				_, params, err := mime.ParseMediaType(part.Header.Get("Content-Disposition"))
 				require.NoError(t, err)
-				require.Equal(t, "processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn", params["filename"])
+				require.Equal(t, "processdefinitions/C89_MultipleSubProcessesParent.bpmn", params["filename"])
 				break
 			}
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"deploymentKey":"deployment-188","tenantId":"<default>","deployments":[{"processDefinition":{"processDefinitionId":"C89_MultipleSubProcessesParentProcess","processDefinitionKey":"188001","processDefinitionVersion":1,"resourceName":"processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn","tenantId":"<default>"}}]}`))
+			_, _ = w.Write([]byte(`{"deploymentKey":"deployment-188","tenantId":"<default>","deployments":[{"processDefinition":{"processDefinitionId":"C89_MultipleSubProcessesParent","processDefinitionKey":"188001","processDefinitionVersion":1,"resourceName":"processdefinitions/C89_MultipleSubProcessesParent.bpmn","tenantId":"<default>"}}]}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-definitions/188001":
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"processDefinitionId":"C89_MultipleSubProcessesParentProcess","processDefinitionKey":"188001","processDefinitionVersion":1,"resourceName":"processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn","tenantId":"<default>"}`))
+			_, _ = w.Write([]byte(`{"processDefinitionId":"C89_MultipleSubProcessesParent","processDefinitionKey":"188001","processDefinitionVersion":1,"resourceName":"processdefinitions/C89_MultipleSubProcessesParent.bpmn","tenantId":"<default>"}`))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
@@ -178,7 +187,7 @@ func TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnlyHelper(t
 	root.SetArgs([]string{
 		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
 		"embed", "deploy",
-		"--file", "processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn",
+		"--file", "processdefinitions/C89_MultipleSubProcessesParent.bpmn",
 	})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
@@ -194,7 +203,7 @@ func TestEmbedExportCommand_FileSelectionCanStillExportOtherVersionsHelper(t *te
 	root.SetArgs([]string{
 		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
 		"embed", "export",
-		"--file", "processdefinitions/C89_SimpleUserTaskProcess.bpmn",
+		"--file", "processdefinitions/C89_SimpleUserTask.bpmn",
 		"--out", os.Getenv("C8VOLT_TEST_EXPORT_OUT"),
 	})
 	root.SetOut(os.Stdout)

@@ -14,6 +14,8 @@ Get a single resource by id.
 
 Requires --id. The id must be a Camunda resource id; process-definition keys and deployment response keys are not resource ids.
 
+Tenant contract: explicit --id resource targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.
+
 ```
 c8volt get resource [flags]
 ```
@@ -46,7 +48,7 @@ c8volt get resource [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for tenant-aware command flows (overrides env, profile, and base config)
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

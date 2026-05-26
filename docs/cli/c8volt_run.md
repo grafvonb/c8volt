@@ -12,7 +12,7 @@ Start process instances
 
 Start process instances.
 
-The process-instance command waits for active instances by default.
+The process-instance command waits until created instances are observable as ACTIVE, COMPLETED, CANCELED, or TERMINATED.
 
 ```
 c8volt run [flags]
@@ -24,6 +24,7 @@ c8volt run [flags]
   ./c8volt run pi -b <bpmn-process-id>
   ./c8volt run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
   ./c8volt run pi -b <bpmn-process-id> -n 3 --workers 2
+  ./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -
 ```
 
 ### Options
@@ -45,7 +46,7 @@ c8volt run [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for tenant-aware command flows (overrides env, profile, and base config)
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```
@@ -53,5 +54,5 @@ c8volt run [flags]
 ### SEE ALSO
 
 * [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
-* [c8volt run process-instance](c8volt_run_process-instance)	 - Start process instances and confirm activation
+* [c8volt run process-instance](c8volt_run_process-instance)	 - Start process instances and confirm creation
 

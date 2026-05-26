@@ -14,17 +14,17 @@
 
 The v4 release introduces the C8 Ops CLI: high-level operational commands that finish the whole workflow. Low-level commands do work. `c8volt ops` gets the job done.
 
-The `ops` command group turns multi-command Camunda operations into audited, previewable playbooks. Instead of making operators manually chain `get`, `walk`, `delete`, `resolve`, `update`, and cleanup commands, an ops command discovers the target set, freezes it, builds the same lower-level c8volt plan you would trust by hand, then runs it with dry-run previews, confirmation controls, JSON output, and audit reports.
+The `ops` command group turns multi-command Camunda operations into audited, previewable playbooks. Instead of making operators manually chain `get`, `walk`, `delete`, `resolve`, `update`, and cleanup commands, an ops command discovers the target set, freezes it, builds the same lower-level c8volt plan you would trust by hand, then runs it with dry-run previews, confirmation controls, JSON output, and audit reports. Discovery pages through the full matching scope by default; `--batch-size` only tunes page size, while `--limit` is the explicit way to cap the frozen scope. Human, JSON, and Markdown reports identify whether discovery completed or was user-limited.
 
 | Command | What it finishes | Playbook |
 | --- | --- | --- |
 | `c8volt ops execute smoke-test` | Proves that a profile can connect, deploy, run, walk, and clean up a real process. | [Execute Smoke Test](docs/ops/execute-smoke-test.md) |
 | `c8volt ops execute retention-policy` | Deletes old finished process instances with a retention-age plan and audit report. | [Execute Retention Policy](docs/ops/execute-retention-policy.md) |
 | `c8volt ops purge orphan-process-instances` | Finds orphan child process instances and deletes the frozen set through c8volt delete planning. | [Purge Orphan Process Instances](docs/ops/purge-orphan-process-instances.md) |
-| `c8volt ops purge process-instances-with-incidents` | Finds process instances through incident filters, then purges them through deterministic family-scope delete planning. | [Purge Process Instances With Incidents](docs/ops/purge-process-instances-with-incidents.md) |
-| `c8volt ops purge all-process-definitions` | Finds process-definition versions, plans their process-instance impact, then deletes the selected definitions. | [Purge All Process Definitions](docs/ops/purge-all-process-definitions.md) |
-| `c8volt ops repair incident` | Freezes incident targets, repairs variables/jobs where requested, resolves incidents, and reports every step. | [Repair Incident](docs/ops/repair-incident.md) |
-| `c8volt ops repair process-instance` | Selects process instances, discovers their active incidents, then runs the same audited repair workflow. | [Repair Process Instance](docs/ops/repair-process-instance.md) |
+| `c8volt ops purge process-instances-with-incidents` | Pages incident discovery, freezes process-instance candidates, then purges them through deterministic family-scope delete planning. | [Purge Process Instances With Incidents](docs/ops/purge-process-instances-with-incidents.md) |
+| `c8volt ops purge all-process-definitions` | Pages process-definition discovery, plans process-instance impact, then deletes the selected definitions. | [Purge All Process Definitions](docs/ops/purge-all-process-definitions.md) |
+| `c8volt ops repair incident` | Pages incident discovery or uses keyed input, repairs variables/jobs where requested, resolves incidents, and reports every step. | [Repair Incident](docs/ops/repair-incident.md) |
+| `c8volt ops repair process-instance` | Pages incident-bearing process-instance discovery, discovers active incidents, then runs the same audited repair workflow. | [Repair Process Instance](docs/ops/repair-process-instance.md) |
 
 Start every destructive or repair workflow with a plan:
 
@@ -62,7 +62,7 @@ That is the gap `c8volt` closes.
 ## At A Glance
 
 - deploy BPMN and start using it immediately
-- run process instances and confirm they become active
+- run process instances and confirm they are observable
 - update process-instance-scope variables and confirm visibility
 - inspect jobs from incident output and safely adjust retries or timeout
 - list, fetch, filter, and count incidents directly
@@ -130,7 +130,7 @@ cluster already has other data:
 ```bash
 ./c8volt config test-connection
 ./c8volt embed deploy --all
-./c8volt run pi -b C89_SimpleUserTask_Process
+./c8volt run pi -b <bpmn-process-id>
 ```
 
 Then look around at the latest process definitions visible in the cluster:
@@ -170,7 +170,12 @@ Commands that change state, such as `run`, `update`, `resolve`, `cancel`, and `d
 ./c8volt run pi -b <bpmn-process-id>
 ```
 
-By default, `c8volt` waits until the process instance is actually active.
+By default, `c8volt` waits until the created process instance is observable as `ACTIVE`, `COMPLETED`, `CANCELED`, or `TERMINATED`. Pipe keys into `expect pi` when a script needs a strict lifecycle assertion:
+
+```bash
+./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -
+./c8volt run pi -b <long-running-bpmn-process-id> --keys-only | ./c8volt expect pi --state active -
+```
 
 For batch execution:
 
@@ -197,13 +202,22 @@ Process-instance variable updates are available on Camunda `8.8` and `8.9`. Camu
 
 ```bash
 ./c8volt get job --key <job-key>
+./c8volt get job --state failed --batch-size 10 --limit 50
+./c8volt get job --state failed --total
+./c8volt get job --type payment-worker --worker worker-a
+./c8volt get job --kind task_listener --listener-event-type completing
 ./c8volt --json get job --key <job-key>
 ./c8volt update job --key <job-key> --retries 3 --dry-run
 ./c8volt update job --key <job-key> --retries 3 --auto-confirm
 ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
+./c8volt update job --key <job-key> --fail --retries 0 --message "worker unavailable" --dry-run
+./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED --message "card declined" --dry-run
+./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run
 ```
 
-Use `get job` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Job output keeps the full error message by default; use `--error-message-limit` when terminal output should be shortened. `update job` supports retry and timeout changes on Camunda `8.8` and `8.9`; retry changes are confirmed by reading the job by key by default, while timeout changes report submitted milliseconds without claiming deadline confirmation. Use `--dry-run` to preview the plan without mutation, and `--auto-confirm` or `--automation` for unattended mutations.
+Use `get job --key` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Omit `--key` to list or search jobs; `--batch-size` tunes page size, `--limit` caps returned rows, `--total` prints only the count, and `--keys-only` emits pipeline keys. Use `--error-message-limit` when terminal output should be shortened.
+
+`update job` supports retry and timeout changes plus worker outcome modes on Camunda `8.8` and `8.9`: `--fail`, `--throw-bpmn-error`, and `--complete`. Retry changes are confirmed by reading the job by key by default, while timeout changes and worker outcomes report accepted submission without claiming a stable read-model confirmation. Use `--dry-run` to preview the plan without mutation, and `--auto-confirm` or `--automation` for unattended mutations. Camunda `8.7` returns an unsupported-version error for job search and worker outcome paths before unsupported mutation requests are submitted.
 
 ### Resolve Incidents
 
@@ -281,6 +295,8 @@ Deletion in real environments often means preview the family scope, cancel-first
 
 Search-based `get pi`, `cancel pi`, and `delete pi` work page by page instead of silently stopping at the first large result set. Interactive modes prompt before continuing unless `--auto-confirm` or `--json` is set. JSON mode consumes remaining pages and returns one aggregated result.
 
+When `--bpmn-process-id` is set, `get pi`, `cancel pi`, and `delete pi` validate that the process definition is visible before process-instance paging, dry-run planning, confirmation, cancellation, or deletion. A typo, tenant mismatch, version mismatch, or invisible definition fails with the shared selector diagnostic instead of looking like a legitimate `found: 0`. Piped key workflows keep validation upstream: `get pi -b <id> --keys-only | cancel pi -` validates in `get pi`, while the downstream command operates only on keys.
+
 For bulk work, check the batch first, then act:
 
 ```bash
@@ -314,6 +330,8 @@ On Camunda `8.8` and `8.9`, a not-found v2 user-task result falls back to deprec
 
 For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for the exact process-definition version: `ac:<count>` for active, `cp:<count>` for completed, `cx:<count>` for canceled, and `inc:<count>` for process instances having at least one incident. Camunda `8.7` rejects statistics because the generated client surface does not provide the same native statistics endpoints.
 
+Direct `get pd --bpmn-process-id` and `delete pd --bpmn-process-id` also validate visible process-definition matches. Missing BPMN selectors fail explicitly before `get pd` renders output or `delete pd` plans impact.
+
 ### Narrow Process Instances
 
 ```bash
@@ -322,6 +340,10 @@ For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for 
 ./c8volt get pi --direct-incidents-only --with-incidents --limit 5
 ./c8volt get pi --with-incidents --incident-message-limit 80 --limit 5
 ./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5
+./c8volt get pi --var-exists payload,email --limit 5
+./c8volt get pi --var 'status="approved"' --limit 5
+./c8volt get pi --var 'status.$in=["approved","pending"]' --limit 5
+./c8volt get pi --var-like 'email=*@example.com,customerId=CUST-????' --limit 5
 ./c8volt get pi --key <process-instance-key> --with-incidents
 ./c8volt get pi --key <process-instance-key> --with-incidents --incident-state all
 ./c8volt get pi --key <process-instance-key> --with-incidents --json
@@ -346,24 +368,30 @@ For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` 
 
 When incident output includes `jobKey`, use `get job --key <job-key>` for direct job details. To remediate job retries or timeout, preview with `update job --dry-run`, then submit with `--auto-confirm` or `--automation`. To resolve the incident itself, preview with `resolve incident --dry-run` or let `resolve pi --dry-run` discover the active incident set for a process instance first.
 
+For native process-instance variable search on Camunda `8.8` and `8.9`, use `--var-exists` for required variable names, `--var name=value` for equality shorthand, `--var name.$operator=value` for `$eq`, `$neq`, `$exists`, `$in`, `$notIn`, and `$like`, and `--var-like name=pattern` for wildcard patterns. Repeated flags and comma-separated clauses are combined, while commas inside quoted values and JSON arrays stay inside the clause. Native `$like` patterns use `*` for zero or more characters and `?` for one character; escaped wildcards remain literal. Camunda `8.7` returns an unsupported-version error for variable-search flags instead of falling back to Operate-backed filtering.
+
 ### Inspect Incidents Directly
 
 ```bash
 ./c8volt get incident --key <incident-key>
 ./c8volt get incident --key <incident-key> --json
 ./c8volt get incident --state active --limit 5
+./c8volt get incident --bpmn-process-id <bpmn-process-id> --state active --limit 5
 ./c8volt get incident --error-type io_mapping_error --error-message intentional --limit 5
 ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
 ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel pi --dry-run -
 ./c8volt get incident --creation-time-after 2026-05-01T00:00:00Z --creation-time-before 2026-05-31T00:00:00Z --limit 5
-./c8volt get incident --pi-key <process-instance-key> --flow-node-id <flow-node-id>
+./c8volt get incident --creation-time-newer-days 30 --creation-time-older-days 7 --limit 5
+./c8volt get incident --pi-key <process-instance-key> --element-id <element-id>
 ./c8volt get incident --total --state resolved
 printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt get inc -
 ```
 
-Use `get incident` when the incident itself is the target. Repeated `--key` values and stdin `-` are merged and deduplicated for keyed lookup. Without keys, the command lists incidents with plain incident filters such as `--state`, `--error-type`, `--error-message`, process and flow-node selectors, and creation-time bounds. Rows include tenant, state, type, creation time, process context, job key, message, and age; `--json`, `--keys-only`, `--pi-keys-only`, and `--total` preserve script-friendly output contracts. Use `--keys-only` when piping incident keys and `--pi-keys-only` when piping matching process instance keys into process-instance commands.
+Use `get incident` when the incident itself is the target. Repeated `--key` values and stdin `-` are merged and deduplicated for keyed lookup. Without keys, the command lists incidents with plain incident filters such as `--state`, `--error-type`, `--error-message`, process and element selectors, and creation-time bounds. Creation-time bounds accept RFC3339 timestamps for precise windows, c8volt display timestamps such as `YYYY-MM-DDTHH:MM:SS.000` as UTC, or `YYYY-MM-DD` for inclusive calendar days; relative day filters use `--creation-time-older-days N` for `N` days old or older and `--creation-time-newer-days N` for `N` days old or newer. When `--bpmn-process-id` is present, c8volt validates the visible process-definition selector before totals, key-only output, process-instance-key output, or incident paging; missing selectors fail without recovery prompts in machine-oriented modes. Rows include tenant, state, type, creation time, process context, job key, message, and age; `--json`, `--keys-only`, `--pi-keys-only`, and `--total` preserve script-friendly output contracts. Use `--keys-only` when piping incident keys and `--pi-keys-only` when piping matching process instance keys into process-instance commands.
 
 For variable inspection, add `--with-vars` to keyed or list/search `get pi` output, or to keyed `walk pi` output. Combine it with `--with-incidents` when you need runtime data and failure context in one view. Values are full by default; add `--var-value-limit <chars>` for noisy payloads. JSON keeps received values and metadata intact.
+
+Variable `scopeKey` means the scope where the variable is directly defined. For process-level variables it matches the process instance key; for local variables it is the element-instance key where the variable was set.
 
 The `--start-date-*` and `--end-date-*` flags are inclusive `YYYY-MM-DD` bounds for search/list usage. Relative day filters use `--*-date-older-days N` for `N` days old or older and `--*-date-newer-days N` for `N` days old or newer.
 
@@ -422,7 +450,9 @@ app:
 - `app.tenant` in the config file
 - the global `--tenant` flag for per-command override
 
-Commands that create tenant-owned data, including `deploy pd`, `embed deploy`, `deploy pd --run`, and `run pi`, use Camunda's `<default>` tenant when the effective tenant is empty. Read/search commands preserve an empty tenant as an unscoped visible-tenants query unless `--tenant` is provided.
+Commands that create tenant-owned data, including `deploy pd`, `embed deploy`, `deploy pd --run`, and `run pi`, use Camunda's `<default>` tenant when the effective tenant is empty. Read/search, selector validation, and discovery-derived preview or mutation flows preserve an empty tenant as an unscoped visible-tenants query unless `--tenant` is provided; when `--tenant` is provided and the Camunda version supports tenant filtering, c8volt keeps those c8volt-produced candidate sets tenant-scoped.
+
+Direct keys, stdin keys, resource IDs, and direct flag values are explicit admin input. c8volt sends them to Camunda and relies on backend authorization instead of rejecting solely because returned tenant metadata differs from the selected `--tenant`. The returned tenant may still appear in normal output so operators can see what Camunda authorized.
 
 ```yaml
 app:
@@ -525,6 +555,7 @@ For supported command paths, combine `--automation` with `--json` when you need 
 ./c8volt --automation --json update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
 ./c8volt --automation --json update pi --key <process-instance-key> --vars-file ./vars.json --dry-run
 ./c8volt --automation --json update job --key <job-key> --retries 3 --auto-confirm
+./c8volt --automation --json update job --key <job-key> --complete --vars '{"approved":true}' --auto-confirm
 ./c8volt --automation --json resolve incident --key <incident-key> --dry-run
 ./c8volt --automation --json resolve pi --key <process-instance-key>
 ./c8volt --automation --json ops repair incident --key <incident-key> --dry-run
@@ -547,6 +578,7 @@ Examples:
 
 ```bash
 ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm -
+./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -
 ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 3 --keys-only | ./c8volt update pi - --vars '{"priority":"high"}' --dry-run
 ./c8volt get job --key <job-key>
 ./c8volt update job --key <job-key> --retries 3 --dry-run
@@ -560,6 +592,8 @@ Examples:
 ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 3 --keys-only | ./c8volt cancel pi --dry-run -
 ```
 
+Selector validation happens in the command that receives `--bpmn-process-id`. A downstream command that reads `-` from stdin receives keys only and does not infer BPMN selector context.
+
 ## Command Map
 
 ```text
@@ -571,7 +605,7 @@ c8volt
 |-- deploy                                     Deploy resources from files or stdin
 |   `-- pd                                     Deploy BPMN process definitions
 |-- run                                        Start runnable resources
-|   `-- pi                                     Start process instances and confirm activation by default
+|   `-- pi                                     Start process instances and confirm creation by default
 |-- update                                     Update existing resources
 |   |-- pi                                     Update process-instance variables and confirm visibility by default
 |   `-- job                                    Update job retries and timeout by key
@@ -636,6 +670,7 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 # Start process instances from the latest version.
 ./c8volt run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
 ./c8volt run pi -b <bpmn-process-id> -n 3 --workers 2
+./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -
 
 # Update process-instance-scope variables.
 ./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}'
@@ -644,9 +679,14 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 
 # Inspect and update jobs from incident job keys.
 ./c8volt get job --key <job-key>
+./c8volt get job --state failed --batch-size 10 --limit 50
+./c8volt get job --state failed --total
 ./c8volt update job --key <job-key> --retries 3 --dry-run
 ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
 ./c8volt update job --key <job-key> --retries 3 --auto-confirm
+./c8volt update job --key <job-key> --fail --retries 0 --message "worker unavailable" --dry-run
+./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED --message "card declined" --dry-run
+./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run
 
 # Preview and resolve incidents.
 ./c8volt resolve incident --key <incident-key> --dry-run

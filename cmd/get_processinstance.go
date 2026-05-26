@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 
+	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
 	types "github.com/grafvonb/c8volt/typex"
@@ -39,6 +40,9 @@ var (
 	flagGetPIIncidentMessageLimit int
 	flagGetPIWithVars             bool
 	flagGetPIVarValueLimit        int
+	flagGetPIVarExists            []string
+	flagGetPIVars                 []string
+	flagGetPIVarLikes             []string
 )
 
 // command options
@@ -57,9 +61,11 @@ var getProcessInstanceCmd = &cobra.Command{
 	Long: "Get process instances by key or by search criteria.\n\n" +
 		"Use direct lookup when you know a process-instance key, or combine search filters to inspect matching process instances by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges.\n\n" +
 		"Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. Direct key lookup stays strict: missing keys return not-found.\n\n" +
+		"Tenant contract: --tenant scopes search/list discovery and selector validation where supported. Explicit --key and stdin keys are backend-authorized admin input; c8volt displays returned tenant metadata without rejecting solely because it differs from the selected tenant.\n\n" +
 		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic instead of looking like a valid empty result; --json, --automation, --keys-only, and non-TTY runs never prompt for recovery output.\n\n" +
 		"Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.\n\n" +
 		"Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.\n\n" +
+		"Use variable-search flags to narrow list/search results natively on Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error for those flags. --var-exists requires every listed variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable scopeKey means the scope where the variable is directly defined.\n\n" +
 		"Use --has-user-tasks to fetch process instances by their owning user-task keys.\n\n" +
 		"Run `c8volt get pi --help` for the complete flag reference.",
 	Example: `  ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 5
@@ -68,6 +74,10 @@ var getProcessInstanceCmd = &cobra.Command{
   ./c8volt get pi --has-user-tasks <user-task-key>
   ./c8volt get pi --incidents-only --with-incidents --limit 5
   ./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5
+  ./c8volt get pi --var-exists payload,email --limit 5
+  ./c8volt get pi --var 'status="approved"' --limit 5
+  ./c8volt get pi --var 'status.$in=["approved","pending"]' --limit 5
+  ./c8volt get pi --var-like 'email=*@example.com,customerId=CUST-????' --limit 5
   ./c8volt get pi --state active --with-vars --var-value-limit 120 --limit 5
   ./c8volt get pi --key <process-instance-key> --with-incidents
   ./c8volt get pi --key <process-instance-key> --with-vars
@@ -148,6 +158,8 @@ var getProcessInstanceCmd = &cobra.Command{
 			}
 		case lk > 0:
 			log.Debug(fmt.Sprintf("getting pi keys [%s]", keys))
+			adminInputOpts := collectExplicitPIAdminInputOptions()
+			adminInputIncidentOpts := append(collectIncidentEnrichmentOptions(), processOptions.WithIgnoreTenant())
 			if err := validatePIKeyedModeDateFilters(lk); err != nil {
 				fail(err)
 			}
@@ -164,7 +176,7 @@ var getProcessInstanceCmd = &cobra.Command{
 			if cmd.Flags().Changed("workers") {
 				lk = flagWorkers
 			}
-			pis, err = cli.GetProcessInstances(ctx, ukeys, lk, collectOptions()...)
+			pis, err = cli.GetProcessInstances(ctx, ukeys, lk, adminInputOpts...)
 			if err != nil {
 				msg := fmt.Errorf("get process instances: %w", err)
 				if flagVerbose {
@@ -173,11 +185,11 @@ var getProcessInstanceCmd = &cobra.Command{
 				fail(msg)
 			}
 			if flagGetPIWithIncidents && flagGetPIWithVars {
-				incidentEnriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, pis)
+				incidentEnriched, err := enrichProcessInstancesWithIncidentActivityOptions(cmd, cli, pis, adminInputIncidentOpts)
 				if err != nil {
 					fail(fmt.Errorf("get process instance incidents: %w", err))
 				}
-				variableEnriched, err := enrichProcessInstancesWithVariableActivity(cmd, cli, pis)
+				variableEnriched, err := enrichProcessInstancesWithVariableActivityOptions(cmd, cli, pis, adminInputOpts)
 				if err != nil {
 					fail(fmt.Errorf("get process instance variables: %w", err))
 				}
@@ -187,7 +199,7 @@ var getProcessInstanceCmd = &cobra.Command{
 				return
 			}
 			if flagGetPIWithIncidents {
-				enriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, pis)
+				enriched, err := enrichProcessInstancesWithIncidentActivityOptions(cmd, cli, pis, adminInputIncidentOpts)
 				if err != nil {
 					fail(fmt.Errorf("get process instance incidents: %w", err))
 				}
@@ -197,7 +209,7 @@ var getProcessInstanceCmd = &cobra.Command{
 				return
 			}
 			if flagGetPIWithVars {
-				enriched, err := enrichProcessInstancesWithVariableActivity(cmd, cli, pis)
+				enriched, err := enrichProcessInstancesWithVariableActivityOptions(cmd, cli, pis, adminInputOpts)
 				if err != nil {
 					fail(fmt.Errorf("get process instance variables: %w", err))
 				}
@@ -311,6 +323,9 @@ func init() {
 	fs.IntVar(&flagGetPIIncidentMessageLimit, "incident-message-limit", 0, "maximum characters to show for incident messages when --with-incidents is set; 0 disables truncation")
 	fs.BoolVar(&flagGetPIWithVars, "with-vars", false, "include process-instance-scope variables for keyed or list/search process-instance output")
 	fs.IntVar(&flagGetPIVarValueLimit, "var-value-limit", 0, "maximum characters to show for variable values when --with-vars is set; 0 disables truncation")
+	fs.StringArrayVar(&flagGetPIVarExists, "var-exists", nil, "require variable name(s) to exist; repeat or separate names with commas")
+	fs.StringArrayVar(&flagGetPIVars, "var", nil, "require variable equality or advanced clause(s); repeat or separate clauses with commas")
+	fs.StringArrayVar(&flagGetPIVarLikes, "var-like", nil, "require variable value pattern clause(s); repeat or separate clauses with commas")
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")

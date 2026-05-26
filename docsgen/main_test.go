@@ -199,7 +199,7 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 		"--pi-keys-only",
 		"return only process instance keys for matching incidents",
 		"--creation-time-after string",
-		"only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD",
+		"only include incidents with creation time >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD",
 		"--total",
 		"return only the exact numeric total of matching incidents",
 	} {
@@ -216,6 +216,47 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 	} {
 		if strings.Contains(incidentDoc, unwanted) {
 			t.Fatalf("expected generated get incident docs to omit %q, got %q", unwanted, incidentDoc)
+		}
+	}
+}
+
+// TestGeneratedRunProcessInstanceDocsDocumentPipeline protects generated docs for keys-only run composition.
+func TestGeneratedRunProcessInstanceDocsDocumentPipeline(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	runDoc := readGeneratedDocForTest(t, out, "c8volt_run.md")
+	for _, want := range []string{
+		"waits until created instances are observable",
+		"./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -",
+		"[c8volt run process-instance](c8volt_run_process-instance)",
+	} {
+		if !strings.Contains(runDoc, want) {
+			t.Fatalf("expected generated run docs to contain %q, got %q", want, runDoc)
+		}
+	}
+
+	processInstanceDoc := readGeneratedDocForTest(t, out, "c8volt_run_process-instance.md")
+	for _, want := range []string{
+		"Start process instances and confirm creation",
+		"Created instances are confirmed after Camunda observes ACTIVE, COMPLETED, CANCELED, or TERMINATED.",
+		"./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -",
+		"./c8volt run pi -b <long-running-bpmn-process-id> --keys-only | ./c8volt expect pi --state active -",
+	} {
+		if !strings.Contains(processInstanceDoc, want) {
+			t.Fatalf("expected generated run process-instance docs to contain %q, got %q", want, processInstanceDoc)
 		}
 	}
 }
@@ -352,12 +393,19 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 	for _, want := range []string{
 		"Repair incidents by key",
 		"--key strings",
+		"--element-id string",
+		"--element-instance-key string",
 		"--retries int32",
 		"--job-timeout string",
 		"[c8volt ops repair](c8volt_ops_repair)",
 	} {
 		if !strings.Contains(repairIncidentDoc, want) {
 			t.Fatalf("expected generated ops repair incident docs to contain %q, got %q", want, repairIncidentDoc)
+		}
+	}
+	for _, unwanted := range []string{"--flow-node-id", "--fni-key"} {
+		if strings.Contains(repairIncidentDoc, unwanted) {
+			t.Fatalf("expected generated ops repair incident docs to omit %q", unwanted)
 		}
 	}
 	repairProcessInstanceDoc := readGeneratedDocForTest(t, out, "c8volt_ops_repair_process-instance.md")
@@ -388,6 +436,95 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 	}
 	if strings.Contains(repairDoc, "--key strings") {
 		t.Fatalf("expected generated ops repair grouping docs to omit target flags")
+	}
+}
+
+// TestGeneratedOpsPagedDiscoveryDocsDocumentHelp verifies generated ops docs preserve the complete-discovery flag contract.
+func TestGeneratedOpsPagedDiscoveryDocsDocumentHelp(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		file      string
+		fragments []string
+	}{
+		{
+			name: "incident purge",
+			file: "c8volt_ops_purge_process-instances-with-incidents.md",
+			fragments: []string{
+				"Discovery pages through all matching incidents by default.",
+				"--batch-size tunes per-page discovery requests only",
+				"--limit intentionally caps the frozen scope",
+				"--element-id string",
+				"--element-instance-key string",
+				"number of incidents to inspect per discovery page; does not cap total frozen scope",
+				"maximum number of matching incidents to freeze before candidate process-instance dedupe; omit to discover all matches",
+			},
+		},
+		{
+			name: "repair incident",
+			file: "c8volt_ops_repair_incident.md",
+			fragments: []string{
+				"Search mode pages through all matching incidents by default.",
+				"--batch-size tunes per-page discovery requests only",
+				"--limit intentionally caps the frozen scope",
+				"--element-id string",
+				"--element-instance-key string",
+				"number of incidents to inspect per discovery page; does not cap total frozen scope",
+				"maximum number of matching incidents to freeze for repair; omit to discover all matches",
+			},
+		},
+		{
+			name: "repair process-instance",
+			file: "c8volt_ops_repair_process-instance.md",
+			fragments: []string{
+				"Search mode pages through all matching incident-bearing process instances by default.",
+				"--batch-size tunes per-page discovery requests only",
+				"--limit intentionally caps the frozen scope",
+				"number of process instances to inspect per discovery page; does not cap total frozen scope",
+				"maximum number of matching process instances to freeze for repair; omit to discover all matches",
+			},
+		},
+		{
+			name: "all process definitions purge",
+			file: "c8volt_ops_purge_all-process-definitions.md",
+			fragments: []string{
+				"Discovery pages through all matching process definitions by default.",
+				"--batch-size tunes per-page discovery requests only",
+				"--limit intentionally caps the frozen scope",
+				"number of process definitions to inspect per discovery page; does not cap total frozen scope",
+				"maximum number of matching process definitions to freeze for purge; omit to discover all matches",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := readGeneratedDocForTest(t, out, tt.file)
+			for _, want := range tt.fragments {
+				if !strings.Contains(got, want) {
+					t.Fatalf("expected generated docs to contain %q, got %q", want, got)
+				}
+			}
+			for _, unwanted := range []string{"--flow-node-id", "--fni-key"} {
+				if strings.Contains(got, unwanted) {
+					t.Fatalf("expected generated docs to omit %q, got %q", unwanted, got)
+				}
+			}
+		})
 	}
 }
 
@@ -436,6 +573,41 @@ func TestGeneratedConfigDocsDocumentSplitDiagnostics(t *testing.T) {
 	} {
 		if !strings.Contains(showDoc, want) {
 			t.Fatalf("expected generated config show docs to contain %q, got %q", want, showDoc)
+		}
+	}
+}
+
+// TestGeneratedGetProcessInstanceDocsDocumentVariableSearch verifies generated
+// CLI markdown carries the same variable-search contract as command help.
+func TestGeneratedGetProcessInstanceDocsDocumentVariableSearch(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	piDoc := readGeneratedDocForTest(t, out, "c8volt_get_process-instance.md")
+	for _, want := range []string{
+		"Use variable-search flags to narrow list/search results natively on Camunda 8.8 and 8.9",
+		"--var accepts name=value equality shorthand plus advanced name.$operator=value clauses",
+		"--var-like uses native wildcard patterns",
+		"Variable scopeKey means the scope where the variable is directly defined.",
+		"./c8volt get pi --var-exists payload,email --limit 5",
+		"./c8volt get pi --var 'status.$in=[\"approved\",\"pending\"]' --limit 5",
+		"--var-exists stringArray",
+		"--var-like stringArray",
+	} {
+		if !strings.Contains(piDoc, want) {
+			t.Fatalf("expected generated get process-instance docs to contain %q, got %q", want, piDoc)
 		}
 	}
 }

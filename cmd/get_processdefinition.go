@@ -33,6 +33,15 @@ var getProcessDefinitionCmd = &cobra.Command{
 Inspect deployed BPMN models by key, BPMN process ID, version selectors, or
 latest deployed version. Use ` + "`--xml`" + ` only with ` + "`--key`" + `.
 
+Tenant contract: ` + "`--tenant`" + ` scopes list/latest and BPMN selector discovery where
+supported. Explicit ` + "`--key`" + ` and XML key lookups are backend-authorized admin input;
+c8volt displays returned tenant metadata without rejecting solely because it differs
+from the selected tenant.
+
+When ` + "`--bpmn-process-id`" + ` is set, c8volt validates that at least one visible
+process definition matches the selector before rendering output. A missing selector
+fails with the shared local diagnostic instead of rendering an ambiguous empty list.
+
 ` + "`--stat`" + ` requires Camunda ` + "`8.8`" + ` or ` + "`8.9`" + ` and prints exact-version
 counts. Camunda ` + "`8.7`" + ` does not support native statistics.`,
 	Example: `  ./c8volt get pd --latest
@@ -68,7 +77,7 @@ func runGetProcessDefinitionXML(cmd *cobra.Command, cli c8volt.API, log *slog.Lo
 	}
 
 	log.Debug(fmt.Sprintf("getting pd %s xml", filter.Key))
-	xml, err := cli.GetProcessDefinitionXML(cmd.Context(), filter.Key, collectOptions()...)
+	xml, err := cli.GetProcessDefinitionXML(cmd.Context(), filter.Key, collectExplicitAdminInputOptions()...)
 	if err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("get process definition xml: %w", err))
 	}
@@ -79,7 +88,7 @@ func runGetProcessDefinitionXML(cmd *cobra.Command, cli c8volt.API, log *slog.Lo
 
 func runGetProcessDefinitionByKey(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, key string) {
 	log.Debug(fmt.Sprintf("getting pd %s", key))
-	pd, err := cli.GetProcessDefinition(cmd.Context(), key, collectOptions()...)
+	pd, err := cli.GetProcessDefinition(cmd.Context(), key, collectExplicitAdminInputOptions()...)
 	if err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("get process definition: %w", err))
 	}
@@ -95,7 +104,18 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 		pds process.ProcessDefinitions
 		err error
 	)
-	if !flagGetPDLatest {
+	if filter.BpmnProcessId != "" {
+		result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newGetPDProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+		if err != nil {
+			ferrors.HandleAndExit(log, noErrCodes, err)
+		}
+		if !result.Valid() {
+			handleProcessDefinitionSelectorValidationError(cmd, log, noErrCodes, cli, result)
+		}
+		if len(result.Request.BpmnProcessIds) > 0 {
+			pds = result.MatchesByBpmnProcessID[result.Request.BpmnProcessIds[0]]
+		}
+	} else if !flagGetPDLatest {
 		pds, err = cli.SearchProcessDefinitions(cmd.Context(), filter, collectOptions()...)
 	} else {
 		pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter, collectOptions()...)

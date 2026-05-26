@@ -251,12 +251,138 @@ func TestRepairProcessInstancesSearchDedupeAndRoutesThroughIncidentRepair(t *tes
 
 	require.NoError(t, err)
 	require.Equal(t, d.ProcessInstanceFilter{State: d.StateActive, HasIncident: &hasIncident}, gotFilter)
-	require.EqualValues(t, 2, gotSize)
+	require.EqualValues(t, 25, gotSize)
 	require.Equal(t, d.OpsRepairOutcomeRepaired, got.Outcome)
 	require.Equal(t, []string{"2251799813685251", "2251799813685253"}, []string(got.FrozenSet.ProcessInstanceKeys))
 	require.Equal(t, []string{"2251799813685249", "2251799813685254"}, []string(got.FrozenSet.IncidentKeys))
+	require.True(t, got.FrozenSet.Limited)
+	require.False(t, got.FrozenSet.Complete)
+	require.EqualValues(t, 2, got.FrozenSet.Limit)
+	require.EqualValues(t, 25, got.FrozenSet.BatchSize)
 	require.Equal(t, []string{"2251799813685249", "2251799813685254"}, resolved)
 	require.Len(t, got.Plan, 2)
+}
+
+// TestRepairProcessInstancesSearchModeDiscoversMultiplePages protects complete-by-default PI repair discovery.
+func TestRepairProcessInstancesSearchModeDiscoversMultiplePages(t *testing.T) {
+	t.Parallel()
+
+	hasIncident := true
+	var pageRequests []d.ProcessInstancePageRequest
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			require.Equal(t, d.ProcessInstanceFilter{State: d.StateActive, HasIncident: &hasIncident}, filter)
+			require.EqualValues(t, 2, page.Size)
+			pageRequests = append(pageRequests, page)
+			switch len(pageRequests) {
+			case 1:
+				return d.ProcessInstancePage{
+					Items: []d.ProcessInstance{
+						{Key: "2251799813685251", State: d.StateActive},
+						{Key: "2251799813685253", State: d.StateActive},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					EndCursor:     "cursor-1",
+				}, nil
+			case 2:
+				require.Equal(t, "cursor-1", page.After)
+				return d.ProcessInstancePage{
+					Items:         []d.ProcessInstance{{Key: "2251799813685255", State: d.StateActive}},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				}, nil
+			default:
+				t.Fatalf("unexpected process-instance page request %d", len(pageRequests))
+				return d.ProcessInstancePage{}, nil
+			}
+		},
+	}, repairIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			return []d.ProcessInstanceIncidentDetail{{IncidentKey: "inc-" + key, ProcessInstanceKey: key, State: "ACTIVE"}}, nil
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	got, err := api.RepairProcessInstances(context.Background(), d.OpsRepairRequest{
+		CommandName:              "ops repair process-instance",
+		DiscoveryMode:            d.OpsRepairDiscoveryModeSearch,
+		ProcessInstanceSelection: d.ProcessInstanceFilter{State: d.StateActive, HasIncident: &hasIncident},
+		BatchSize:                2,
+		DryRun:                   true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
+	require.Len(t, pageRequests, 2)
+	require.Equal(t, []string{"2251799813685251", "2251799813685253", "2251799813685255"}, []string(got.FrozenSet.ProcessInstanceKeys))
+	require.Equal(t, []string{"inc-2251799813685251", "inc-2251799813685253", "inc-2251799813685255"}, []string(got.FrozenSet.IncidentKeys))
+	require.True(t, got.FrozenSet.Complete)
+	require.False(t, got.FrozenSet.Limited)
+	require.EqualValues(t, 2, got.FrozenSet.BatchSize)
+	require.Equal(t, 2, got.FrozenSet.Pages)
+	require.Equal(t, 3, got.FrozenSet.CandidatesSeen)
+	require.Equal(t, 3, got.FrozenSet.CandidatesFrozen)
+	require.Equal(t, got.FrozenSet, got.Report.FrozenSet)
+}
+
+// TestRepairProcessInstancesSearchModeLimitStopsDiscovery verifies --limit caps total PI candidates, not page size.
+func TestRepairProcessInstancesSearchModeLimitStopsDiscovery(t *testing.T) {
+	t.Parallel()
+
+	var pageRequests []d.ProcessInstancePageRequest
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			require.EqualValues(t, 2, page.Size)
+			pageRequests = append(pageRequests, page)
+			switch len(pageRequests) {
+			case 1:
+				return d.ProcessInstancePage{
+					Items: []d.ProcessInstance{
+						{Key: "2251799813685251", State: d.StateActive},
+						{Key: "2251799813685253", State: d.StateActive},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				}, nil
+			case 2:
+				require.EqualValues(t, 2, page.From)
+				return d.ProcessInstancePage{
+					Items: []d.ProcessInstance{
+						{Key: "2251799813685255", State: d.StateActive},
+						{Key: "2251799813685257", State: d.StateActive},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				}, nil
+			default:
+				t.Fatalf("unexpected process-instance page request %d", len(pageRequests))
+				return d.ProcessInstancePage{}, nil
+			}
+		},
+	}, repairIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			return []d.ProcessInstanceIncidentDetail{{IncidentKey: "inc-" + key, ProcessInstanceKey: key, State: "ACTIVE"}}, nil
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	got, err := api.RepairProcessInstances(context.Background(), d.OpsRepairRequest{
+		CommandName:   "ops repair process-instance",
+		DiscoveryMode: d.OpsRepairDiscoveryModeSearch,
+		BatchSize:     2,
+		Limit:         3,
+		DryRun:        true,
+	})
+
+	require.NoError(t, err)
+	require.Len(t, pageRequests, 2)
+	require.Equal(t, []string{"2251799813685251", "2251799813685253", "2251799813685255"}, []string(got.FrozenSet.ProcessInstanceKeys))
+	require.False(t, got.FrozenSet.Complete)
+	require.True(t, got.FrozenSet.Limited)
+	require.EqualValues(t, 3, got.FrozenSet.Limit)
+	require.EqualValues(t, 2, got.FrozenSet.BatchSize)
+	require.Equal(t, 2, got.FrozenSet.Pages)
+	require.Equal(t, 4, got.FrozenSet.CandidatesSeen)
+	require.Equal(t, 3, got.FrozenSet.CandidatesFrozen)
 }
 
 // TestRepairIncidentsFreezesExplicitTargetsAndPlansMixedJobs verifies explicit incident repair freezes lookup results before mutation.
@@ -392,20 +518,140 @@ func TestRepairIncidentsSearchModeFreezesFilteredTargets(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, d.IncidentFilter{State: "active", ErrorType: "io_mapping_error"}, gotFilter)
-	require.EqualValues(t, 2, gotSize)
+	require.EqualValues(t, 25, gotSize)
 	require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
 	require.Equal(t, d.OpsRepairDiscoveryModeSearch, got.FrozenSet.DiscoveryMode)
 	require.Equal(t, []string{"2251799813685249", "2251799813685250"}, []string(got.FrozenSet.IncidentKeys))
 	require.Equal(t, []string{"2251799813685251", "2251799813685253"}, []string(got.FrozenSet.ProcessInstanceKeys))
 	require.Equal(t, []string{"2251799813685252"}, []string(got.FrozenSet.JobKeys))
+	require.True(t, got.FrozenSet.Limited)
+	require.False(t, got.FrozenSet.Complete)
+	require.EqualValues(t, 2, got.FrozenSet.Limit)
+	require.EqualValues(t, 25, got.FrozenSet.BatchSize)
 	require.Len(t, got.FrozenSet.OriginalIncidents, 2)
 	require.Len(t, got.Plan, 2)
 	require.Equal(t, d.OpsWorkflowStepStatusNotApplicable, got.Plan[1].RetryUpdateStatus)
 	require.Equal(t, got.FrozenSet, got.Report.FrozenSet)
 }
 
-// TestRepairIncidentsSearchModeReportsBoundedSearchScope verifies search-mode previews identify batch-limited candidate scope.
-func TestRepairIncidentsSearchModeReportsBoundedSearchScope(t *testing.T) {
+// TestRepairIncidentsSearchModeDiscoversMultiplePages protects complete-by-default incident repair discovery.
+func TestRepairIncidentsSearchModeDiscoversMultiplePages(t *testing.T) {
+	t.Parallel()
+
+	retries := int32(1)
+	var pageRequests []d.IncidentPageRequest
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
+		searchIncidentsPage: func(_ context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, _ ...services.CallOption) (d.IncidentPage, error) {
+			require.Equal(t, d.IncidentFilter{State: "active", ErrorType: "io_mapping_error"}, filter)
+			require.EqualValues(t, 2, page.Size)
+			pageRequests = append(pageRequests, page)
+			switch len(pageRequests) {
+			case 1:
+				return d.IncidentPage{
+					Items: []d.ProcessInstanceIncidentDetail{
+						{IncidentKey: "2251799813685249", ProcessInstanceKey: "2251799813685251", JobKey: "2251799813685252", State: "ACTIVE"},
+						{IncidentKey: "2251799813685250", ProcessInstanceKey: "2251799813685253", State: "ACTIVE"},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					EndCursor:     "cursor-1",
+				}, nil
+			case 2:
+				require.Equal(t, "cursor-1", page.After)
+				return d.IncidentPage{
+					Items:         []d.ProcessInstanceIncidentDetail{{IncidentKey: "2251799813685254", ProcessInstanceKey: "2251799813685255", State: "ACTIVE"}},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				}, nil
+			default:
+				t.Fatalf("unexpected incident page request %d", len(pageRequests))
+				return d.IncidentPage{}, nil
+			}
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{
+		CommandName:       "ops repair incident",
+		DiscoveryMode:     d.OpsRepairDiscoveryModeSearch,
+		IncidentSelection: d.IncidentFilter{State: "active", ErrorType: "io_mapping_error"},
+		BatchSize:         2,
+		RequestedRetries:  &retries,
+		DryRun:            true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
+	require.Len(t, pageRequests, 2)
+	require.Equal(t, []string{"2251799813685249", "2251799813685250", "2251799813685254"}, []string(got.FrozenSet.IncidentKeys))
+	require.Equal(t, []string{"2251799813685251", "2251799813685253", "2251799813685255"}, []string(got.FrozenSet.ProcessInstanceKeys))
+	require.True(t, got.FrozenSet.Complete)
+	require.False(t, got.FrozenSet.Limited)
+	require.EqualValues(t, 2, got.FrozenSet.BatchSize)
+	require.Equal(t, 2, got.FrozenSet.Pages)
+	require.Equal(t, 3, got.FrozenSet.CandidatesSeen)
+	require.Equal(t, 3, got.FrozenSet.CandidatesFrozen)
+	require.Empty(t, got.Notices)
+	require.Equal(t, got.FrozenSet, got.Report.FrozenSet)
+}
+
+// TestRepairIncidentsSearchModeLimitStopsDiscovery verifies --limit caps total incidents, not page size.
+func TestRepairIncidentsSearchModeLimitStopsDiscovery(t *testing.T) {
+	t.Parallel()
+
+	var pageRequests []d.IncidentPageRequest
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
+		searchIncidentsPage: func(_ context.Context, _ d.IncidentFilter, page d.IncidentPageRequest, _ ...services.CallOption) (d.IncidentPage, error) {
+			require.EqualValues(t, 2, page.Size)
+			pageRequests = append(pageRequests, page)
+			switch len(pageRequests) {
+			case 1:
+				return d.IncidentPage{
+					Items: []d.ProcessInstanceIncidentDetail{
+						{IncidentKey: "2251799813685249", ProcessInstanceKey: "2251799813685251", State: "ACTIVE"},
+						{IncidentKey: "2251799813685250", ProcessInstanceKey: "2251799813685253", State: "ACTIVE"},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				}, nil
+			case 2:
+				require.EqualValues(t, 2, page.From)
+				return d.IncidentPage{
+					Items: []d.ProcessInstanceIncidentDetail{
+						{IncidentKey: "2251799813685254", ProcessInstanceKey: "2251799813685255", State: "ACTIVE"},
+						{IncidentKey: "2251799813685256", ProcessInstanceKey: "2251799813685257", State: "ACTIVE"},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				}, nil
+			default:
+				t.Fatalf("unexpected incident page request %d", len(pageRequests))
+				return d.IncidentPage{}, nil
+			}
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{
+		CommandName:   "ops repair incident",
+		DiscoveryMode: d.OpsRepairDiscoveryModeSearch,
+		BatchSize:     2,
+		Limit:         3,
+		DryRun:        true,
+	})
+
+	require.NoError(t, err)
+	require.Len(t, pageRequests, 2)
+	require.Equal(t, []string{"2251799813685249", "2251799813685250", "2251799813685254"}, []string(got.FrozenSet.IncidentKeys))
+	require.False(t, got.FrozenSet.Complete)
+	require.True(t, got.FrozenSet.Limited)
+	require.EqualValues(t, 3, got.FrozenSet.Limit)
+	require.EqualValues(t, 2, got.FrozenSet.BatchSize)
+	require.Equal(t, 2, got.FrozenSet.Pages)
+	require.Equal(t, 4, got.FrozenSet.CandidatesSeen)
+	require.Equal(t, 3, got.FrozenSet.CandidatesFrozen)
+}
+
+// TestRepairIncidentsSearchModeReportsCompleteDiscovery verifies search-mode previews record completed discovery.
+func TestRepairIncidentsSearchModeReportsCompleteDiscovery(t *testing.T) {
 	t.Parallel()
 
 	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
@@ -428,9 +674,11 @@ func TestRepairIncidentsSearchModeReportsBoundedSearchScope(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
-	require.Len(t, got.Notices, 1)
-	require.Equal(t, "bounded_search_scope", got.Notices[0].Code)
-	require.Contains(t, got.Notices[0].Message, "candidate incidents reached batch size 2")
+	require.Empty(t, got.Notices)
+	require.True(t, got.FrozenSet.Complete)
+	require.False(t, got.FrozenSet.Limited)
+	require.EqualValues(t, 2, got.FrozenSet.BatchSize)
+	require.Equal(t, 1, got.FrozenSet.Pages)
 	require.Equal(t, got.Notices, got.Report.Notices)
 }
 
@@ -558,8 +806,10 @@ func TestOpsRepairProcessInstancesSearchDryRunPlansMixedApplicabilityWithoutMuta
 	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Plan[0].RetryUpdateStatus)
 	require.Equal(t, d.OpsWorkflowStepStatusNotApplicable, got.Plan[1].RetryUpdateStatus)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Remaining.Status)
-	require.Len(t, got.Notices, 1)
-	require.Equal(t, "bounded_search_scope", got.Notices[0].Code)
+	require.Empty(t, got.Notices)
+	require.True(t, got.FrozenSet.Complete)
+	require.False(t, got.FrozenSet.Limited)
+	require.EqualValues(t, 2, got.FrozenSet.BatchSize)
 }
 
 // TestRepairIncidentsDedupesVariableScopesAndConfirmsRequestedNames verifies shared scope updates run once before dependent incidents resolve.
@@ -657,6 +907,7 @@ type repairIncidentAPI struct {
 	resolveIncident                 func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
 	waitForIncidentResolved         func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
 	searchIncidents                 func(context.Context, d.IncidentFilter, int32, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+	searchIncidentsPage             func(context.Context, d.IncidentFilter, d.IncidentPageRequest, ...services.CallOption) (d.IncidentPage, error)
 	searchProcessInstanceIncidents  func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
 	waitForProcessIncidentsResolved func(context.Context, string, []string, ...services.CallOption) (d.IncidentResolutionResponse, error)
 }
@@ -689,8 +940,15 @@ func (s repairIncidentAPI) SearchIncidents(ctx context.Context, filter d.Inciden
 	return s.searchIncidents(ctx, filter, size, opts...)
 }
 
-func (s repairIncidentAPI) SearchIncidentsPage(context.Context, d.IncidentFilter, d.IncidentPageRequest, ...services.CallOption) (d.IncidentPage, error) {
-	panic("unexpected search incidents page")
+func (s repairIncidentAPI) SearchIncidentsPage(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error) {
+	if s.searchIncidentsPage != nil {
+		return s.searchIncidentsPage(ctx, filter, page, opts...)
+	}
+	if s.searchIncidents == nil {
+		panic("unexpected search incidents page")
+	}
+	items, err := s.searchIncidents(ctx, filter, page.Size, opts...)
+	return d.IncidentPage{Items: items, Request: page, OverflowState: d.ProcessInstanceOverflowStateNoMore}, err
 }
 
 func (s repairIncidentAPI) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {

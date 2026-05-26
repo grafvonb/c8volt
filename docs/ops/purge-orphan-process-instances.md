@@ -22,11 +22,14 @@ The recording previews the orphan process-instance purge before deleting anythin
 
 <img src="../../assets/screencasts/ops-purge-orphan-process-instances.gif" alt="c8volt ops purge orphan-process-instances demo" />
 
-Core commands shown:
+Generic command shape:
 
 ```bash
+# read-only: preview orphan cleanup
 c8volt ops purge orphan-process-instances --dry-run
-c8volt ops purge orphan-process-instances --report-file /tmp/c8volt-vhs/reports/orphan-purge.md
+
+# destructive: deletes the frozen orphan process-instance family scope after confirmation
+c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md
 ```
 
 ## Use When
@@ -39,12 +42,11 @@ c8volt ops purge orphan-process-instances --report-file /tmp/c8volt-vhs/reports/
 ## Command At A Glance
 
 ```bash
+# read-only: preview orphan cleanup
 c8volt ops purge orphan-process-instances --dry-run
-c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id <bpmn-process-id> --limit 25
-c8volt ops purge orphan-process-instances --automation --json --dry-run
-c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm
-c8volt ops purge orphan-process-instances --dry-run --report-file orphan-purge.md
-c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm --report-file orphan-purge.json --report-format json
+
+# destructive: deletes only the bounded orphan scope selected at command start
+c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md
 ```
 
 ## Built From Lower-Level Commands
@@ -56,7 +58,7 @@ c8volt get pi --orphan-children-only --keys-only [filters...]
 c8volt delete pi -
 ```
 
-Implemented selection controls include process-definition filters, `--pd-key`, date ranges, `--batch-size`, `--limit`, `--parent-key`, `--state`, `--incidents-only`, and `--no-incidents-only`. Execution controls include `--workers`, `--no-worker-limit`, `--fail-fast`, `--no-wait`, `--force`, `--automation`, `--json`, `--report-file`, and `--report-format`.
+Implemented selection controls include process-definition filters, `--pd-key`, date ranges, `--batch-size`, `--limit`, `--parent-key`, `--state`, `--incidents-only`, and `--no-incidents-only`. When the discovery filters include `--bpmn-process-id`, c8volt validates the visible process-definition selector before freezing orphan process-instance keys. Execution controls include `--workers`, `--no-worker-limit`, `--fail-fast`, `--no-wait`, `--force`, `--automation`, `--json`, `--report-file`, and `--report-format`.
 
 ## Workflow
 
@@ -89,7 +91,7 @@ write optional audit report
 
 ## Dry Run
 
-`--dry-run` performs discovery and delete-plan validation only. Human output shows candidate orphan count and the delete preview: orphan candidates, process-instance trees, and affected process instances. Verbose output lists candidate keys.
+`--dry-run` performs discovery and delete-plan validation only. Human output shows candidate orphan count and the delete preview: orphan candidates, affected process instances, roots, and any additional process instances due to dependencies. Verbose output lists candidate keys.
 
 When no orphan candidates are found, the command reports a skipped preview and exits successfully with outcome `planned`.
 

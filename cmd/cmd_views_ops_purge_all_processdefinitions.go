@@ -46,6 +46,7 @@ func renderOpsPurgeAllProcessDefinitionsDiscovery(cmd *cobra.Command, result ops
 		return
 	}
 	renderHumanLine(cmd, "candidate process definitions: %d", result.Discovery.CandidateProcessDefinitionCount)
+	renderOpsPurgeAllProcessDefinitionsDiscoveryStatus(cmd, result.Discovery.DiscoveryScopeStatus)
 	renderOpsPurgeAllProcessDefinitionsImpactSummary(cmd, result)
 	if result.Discovery.LatestOnly {
 		renderHumanLine(cmd, "candidate scope: latest matching process definitions")
@@ -57,6 +58,17 @@ func renderOpsPurgeAllProcessDefinitionsDiscovery(cmd *cobra.Command, result ops
 		renderOpsPurgeAllProcessDefinitionsDefinitions(cmd, result.Discovery.CandidateProcessDefinitions)
 		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "candidate process-definition keys", result.Discovery.CandidateProcessDefinitionKeys)
 		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "duplicate candidate process-definition keys", result.Discovery.DuplicateCandidateProcessDefinitionKeys)
+	}
+}
+
+// renderOpsPurgeAllProcessDefinitionsDiscoveryStatus exposes whether the frozen APD scope was complete or limited.
+func renderOpsPurgeAllProcessDefinitionsDiscoveryStatus(cmd *cobra.Command, status ops.DiscoveryScopeStatus) {
+	if status.Limited {
+		renderHumanLine(cmd, "discovery user-limited: limit %d; pages %d; batch size %d", status.Limit, status.Pages, status.BatchSize)
+		return
+	}
+	if status.Complete && flagVerbose {
+		renderHumanLine(cmd, "discovery complete: pages %d; batch size %d", status.Pages, status.BatchSize)
 	}
 }
 
@@ -73,7 +85,7 @@ func renderOpsPurgeAllProcessDefinitionsPlan(cmd *cobra.Command, result ops.AllP
 		renderHumanLine(cmd, "delete plan: skipped")
 		return
 	}
-	renderHumanLine(cmd, "delete plan: %s (candidate process definitions: %d, affected process instances: %d)",
+	renderHumanLine(cmd, "delete plan: %s; %d candidate process definition(s), %d affected process instance(s) will be deleted",
 		result.DeletePlan.Status,
 		len(result.DeletePlan.CandidateProcessDefinitionKeys),
 		result.DeletePlan.AffectedProcessInstanceCount,
@@ -91,7 +103,7 @@ func renderOpsPurgeAllProcessDefinitionsDryRunDeletePreview(cmd *cobra.Command, 
 		renderHumanLine(cmd, "delete preview: skipped (no matching process definitions)")
 		return
 	}
-	renderHumanLine(cmd, "delete preview: %d process definition(s) would be deleted; %d process instance(s) affected",
+	renderHumanLine(cmd, "delete preview: %d candidate process definition(s), %d affected process instance(s) would be deleted",
 		len(result.DeletePlan.CandidateProcessDefinitionKeys),
 		result.DeletePlan.AffectedProcessInstanceCount,
 	)
@@ -320,6 +332,12 @@ func renderOpsPurgeAllProcessDefinitionsMarkdownReport(report ops.AllProcessDefi
 
 	out.WriteString("\n## Discovery\n\n")
 	writeMarkdownReportField(&out, "Status", string(report.Discovery.Status))
+	writeMarkdownReportField(&out, "Completeness", incidentPurgeDiscoveryCompletenessText(report.Discovery.DiscoveryScopeStatus))
+	writeMarkdownReportField(&out, "Discovery Limit", fmt.Sprintf("%d", report.Discovery.Limit))
+	writeMarkdownReportField(&out, "Discovery Batch Size", fmt.Sprintf("%d", report.Discovery.BatchSize))
+	writeMarkdownReportField(&out, "Discovery Pages", fmt.Sprintf("%d", report.Discovery.Pages))
+	writeMarkdownReportField(&out, "Discovery Candidates Seen", fmt.Sprintf("%d", report.Discovery.CandidatesSeen))
+	writeMarkdownReportField(&out, "Discovery Candidates Frozen", fmt.Sprintf("%d", report.Discovery.CandidatesFrozen))
 	writeMarkdownReportField(&out, "Candidate Process Definitions", fmt.Sprintf("%d", report.Discovery.CandidateProcessDefinitionCount))
 	writeMarkdownReportField(&out, "Latest Only", fmt.Sprintf("%t", report.Discovery.LatestOnly))
 	writeMarkdownReportList(&out, "Candidate Process-Definition Keys", report.Discovery.CandidateProcessDefinitionKeys)

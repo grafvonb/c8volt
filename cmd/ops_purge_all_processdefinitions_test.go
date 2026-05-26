@@ -19,6 +19,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
+	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/toolx"
@@ -43,6 +44,8 @@ func TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape(t *testing.T) {
 		"--pd-version int32",
 		"--pd-version-tag string",
 		"--latest",
+		"--batch-size int32",
+		"--limit int32",
 		"--dry-run",
 		"--workers int",
 		"--no-worker-limit",
@@ -53,7 +56,8 @@ func TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape(t *testing.T) {
 		"--report-format string",
 		"./c8volt ops purge all-process-definitions --dry-run",
 		"./c8volt ops purge all-pds --bpmn-process-id <bpmn-process-id> --latest --dry-run",
-		"./c8volt ops purge all-process-definitions --automation --json --dry-run",
+		"./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --force",
+		"./c8volt ops purge all-process-definitions --key <process-definition-key> --force --report-file process-definition-purge.md",
 	)
 	assertHelpOutputOmitsAll(t, output,
 		"purge-definitions",
@@ -110,6 +114,16 @@ func TestOpsPurgeAllProcessDefinitionsInvalidFlagsUseInvalidInput(t *testing.T) 
 			want: "--pd-version must be positive integer",
 		},
 		{
+			name: "invalid batch size",
+			args: []string{"--batch-size", "0"},
+			want: "invalid value for --batch-size: 0",
+		},
+		{
+			name: "invalid limit",
+			args: []string{"--limit", "0"},
+			want: "--limit must be positive integer",
+		},
+		{
 			name: "invalid worker count",
 			args: []string{"--workers", "0"},
 			want: "--workers must be positive integer",
@@ -149,6 +163,7 @@ func TestOpsPurgeAllProcessDefinitionsDryRunDiscoveryOutput(t *testing.T) {
 	require.Contains(t, output, "dry run: purge all process definitions")
 	require.Contains(t, output, `selection filters: {bpmnProcessId="invoice", processVersion=3, processVersionTag="stable", latestOnly=true}`)
 	require.Contains(t, output, "candidate process definitions: 1")
+	require.NotContains(t, output, "discovery complete:")
 	require.Contains(t, output, "candidate scope: latest matching process definitions")
 	require.Contains(t, output, "duplicate candidate process definitions: 1")
 	require.Contains(t, output, "delete preview: skipped (no matching process definitions)")
@@ -160,6 +175,7 @@ func TestOpsPurgeAllProcessDefinitionsDryRunDiscoveryOutput(t *testing.T) {
 	cmd = &cobra.Command{}
 	cmd.SetOut(&verbose)
 	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, sampleAllProcessDefinitionsPurgeDryRunDiscoveryResult()))
+	require.Contains(t, verbose.String(), "discovery complete: pages 2; batch size 25")
 	require.Contains(t, verbose.String(), "candidate process-definition keys: 2251799813685255")
 	require.Contains(t, verbose.String(), "candidate process-definition details: 2251799813685255 (bpmnProcessId=invoice, version=3, versionTag=stable)")
 	require.Contains(t, verbose.String(), "duplicate candidate process-definition keys: 2251799813685255")
@@ -184,6 +200,10 @@ func TestOpsPurgeAllProcessDefinitionsDryRunJSONDiscoveryData(t *testing.T) {
 	discovery := requireJSONObject(t, payload["discovery"])
 	require.Equal(t, "planned", discovery["status"])
 	require.Equal(t, float64(1), discovery["candidateProcessDefinitionCount"])
+	require.Equal(t, true, discovery["complete"])
+	require.Equal(t, float64(25), discovery["batchSize"])
+	require.Equal(t, float64(2), discovery["pages"])
+	require.Equal(t, float64(1), discovery["candidatesFrozen"])
 	require.Equal(t, true, discovery["latestOnly"])
 	require.Len(t, discovery["candidateProcessDefinitionKeys"], 1)
 	require.Len(t, discovery["candidateProcessDefinitions"], 1)
@@ -204,7 +224,7 @@ func TestOpsPurgeAllProcessDefinitionsDryRunPlanOutput(t *testing.T) {
 	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, sampleAllProcessDefinitionsPurgeDryRunPlanResult()))
 	output := buf.String()
 
-	require.Contains(t, output, "delete preview: 2 process definition(s) would be deleted; 3 process instance(s) affected")
+	require.Contains(t, output, "delete preview: 2 candidate process definition(s), 3 affected process instance(s) would be deleted")
 	require.NotContains(t, output, "\nprocess definitions:\n")
 	require.Contains(t, output, "invoice [v1: 3, v2/stable: 0]")
 	require.Contains(t, output, "active-instance blocker: 3 active process instances require --force before deletion")
@@ -299,7 +319,7 @@ func TestOpsPurgeAllProcessDefinitionsConfirmedDeletionUsesFrozenCandidates(t *t
 	require.NoError(t, err, string(outputBytes))
 	output := string(outputBytes)
 
-	require.Contains(t, readReportFile(t, promptPath), "All process-definitions purge matched 2 candidate process definition(s)")
+	require.Contains(t, readReportFile(t, promptPath), "process-definition purge: 2 candidate process definition(s)")
 	require.Contains(t, output, "deletion: submitted 2 process definitions (--no-wait)")
 	require.NotContains(t, output, "deletion confirmation:")
 	require.Contains(t, output, "outcome: deleted")
@@ -308,6 +328,76 @@ func TestOpsPurgeAllProcessDefinitionsConfirmedDeletionUsesFrozenCandidates(t *t
 		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyA + "/deletion",
 		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyB + "/deletion",
 	}, deleted.Snapshot())
+	require.Equal(t, 1, countOpsPurgeAllProcessDefinitionsRequests(requests.Snapshot(), "POST /v2/process-definitions/search "))
+}
+
+// TestOpsPurgeAllProcessDefinitionsPagedConfirmationReusesFrozenCandidates verifies confirmed APD mutation does not rediscover.
+func TestOpsPurgeAllProcessDefinitionsPagedConfirmationReusesFrozenCandidates(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	t.Cleanup(srv.Close)
+	promptPath := filepath.Join(t.TempDir(), "prompt.txt")
+
+	outputBytes, err := testx.RunCmdSubprocess(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":              writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_ALL_PD_PURGE_PROMPT": promptPath,
+		"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, []string{
+			"ops", "purge", "all-process-definitions",
+			"--batch-size", "1",
+			"--no-wait",
+		}),
+	})
+	require.NoError(t, err, string(outputBytes))
+
+	require.Contains(t, readReportFile(t, promptPath), "process-definition purge: 2 candidate process definition(s)")
+	require.ElementsMatch(t, []string{
+		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyA + "/deletion",
+		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyB + "/deletion",
+	}, deleted.Snapshot())
+	require.Equal(t, 2, countOpsPurgeAllProcessDefinitionsRequests(requests.Snapshot(), "POST /v2/process-definitions/search "))
+}
+
+// TestOpsPurgeAllProcessDefinitionsLimitJSONOutput verifies APD flags reach discovery and machine output.
+func TestOpsPurgeAllProcessDefinitionsLimitJSONOutput(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	t.Cleanup(srv.Close)
+
+	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, []string{
+			"--json",
+			"ops", "purge", "all-process-definitions",
+			"--batch-size", "2",
+			"--limit", "1",
+			"--dry-run",
+		}),
+	})
+	require.NoError(t, err, stderr)
+	require.Empty(t, deleted.Snapshot())
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &envelope), stdout)
+	payload := requireJSONObject(t, envelope["payload"])
+	request := requireJSONObject(t, payload["request"])
+	require.Equal(t, float64(2), request["batchSize"])
+	require.Equal(t, float64(1), request["limit"])
+	discovery := requireJSONObject(t, payload["discovery"])
+	require.NotContains(t, discovery, "complete")
+	require.Equal(t, true, discovery["limited"])
+	require.Equal(t, float64(1), discovery["limit"])
+	require.Equal(t, float64(2), discovery["batchSize"])
+	require.Equal(t, float64(1), discovery["pages"])
+	require.Equal(t, float64(1), discovery["candidatesFrozen"])
+	require.Len(t, discovery["candidateProcessDefinitionKeys"], 1)
 	require.Equal(t, 1, countOpsPurgeAllProcessDefinitionsRequests(requests.Snapshot(), "POST /v2/process-definitions/search "))
 }
 
@@ -437,6 +527,8 @@ func TestOpsPurgeAllProcessDefinitionsWritesMarkdownReport(t *testing.T) {
 	require.Contains(t, report, "- Profile: default")
 	require.Contains(t, report, "- Outcome: planned")
 	require.Contains(t, report, "## Discovery")
+	require.Contains(t, report, "- Completeness: discovery complete")
+	require.Contains(t, report, "- Discovery Batch Size: 1000")
 	require.Contains(t, report, "- Candidate Process-Definition Keys:")
 	require.Contains(t, report, "  - "+opsAllProcessDefinitionsPurgePDKeyA)
 	require.Contains(t, report, "## Delete Plan")
@@ -691,10 +783,12 @@ func sampleAllProcessDefinitionsPurgeDryRunPlanResult() ops.AllProcessDefinition
 
 // sampleAllProcessDefinitionsPurgeDryRunDiscoveryResult returns a discovery-only purge result for command rendering tests.
 func sampleAllProcessDefinitionsPurgeDryRunDiscoveryResult() ops.AllProcessDefinitionsPurgeResult {
-	return ops.AllProcessDefinitionsPurgeResult{
+	result := ops.AllProcessDefinitionsPurgeResult{
 		Request: ops.AllProcessDefinitionsPurgeRequest{
 			CommandName: "ops purge all-process-definitions",
 			DryRun:      true,
+			BatchSize:   25,
+			Limit:       10,
 			Selection: ops.ProcessDefinitionSelection{
 				BpmnProcessId:     "invoice",
 				ProcessVersion:    3,
@@ -724,6 +818,15 @@ func sampleAllProcessDefinitionsPurgeDryRunDiscoveryResult() ops.AllProcessDefin
 		Deletion:   ops.AllProcessDefinitionsPurgeDeletionResult{Status: ops.WorkflowStepStatusSkipped},
 		Outcome:    ops.AllProcessDefinitionsPurgeOutcomePlanned,
 	}
+	result.Discovery.DiscoveryScopeStatus = ops.DiscoveryScopeStatus{
+		Complete:         true,
+		BatchSize:        25,
+		Pages:            2,
+		CandidatesSeen:   2,
+		CandidatesFrozen: 1,
+	}
+	result.Report.Discovery = result.Discovery
+	return result
 }
 
 // marshalOpsPurgeAllProcessDefinitionsArgsForEnv preserves argument boundaries for subprocess helpers.
@@ -742,6 +845,8 @@ func resetOpsPurgeAllProcessDefinitionsFlagState() {
 	flagOpsPurgeAllPDProcessVersion = 0
 	flagOpsPurgeAllPDProcessVersionTag = ""
 	flagOpsPurgeAllPDLatest = false
+	flagOpsPurgeAllPDBatchSize = consts.MaxPISearchSize
+	flagOpsPurgeAllPDLimit = 0
 	flagOpsPurgeAllPDReportFile = ""
 	flagOpsPurgeAllPDReportFormat = ""
 	flagDryRun = false
@@ -770,12 +875,9 @@ func newOpsPurgeAllProcessDefinitionsServer(t *testing.T, requests *testx.SafeSl
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
-			_, _ = w.Write([]byte(`{"items":[` +
-				opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyA, "invoice", 2) + `,` +
-				opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyA, "invoice", 2) + `,` +
-				opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyB, "payment", 1) +
-				`],"page":{"totalItems":3,"hasMoreTotalItems":false}}`))
+			payload := string(body)
+			requests.Append(r.Method + " " + r.URL.Path + " " + payload)
+			_, _ = w.Write([]byte(opsAllProcessDefinitionsPurgeSearchResponse(t, payload)))
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-definitions/"):
 			key := strings.TrimPrefix(r.URL.Path, "/v2/process-definitions/")
 			requests.Append(r.Method + " " + r.URL.Path)
@@ -803,6 +905,47 @@ func newOpsPurgeAllProcessDefinitionsServer(t *testing.T, requests *testx.SafeSl
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 	}))
+}
+
+// opsAllProcessDefinitionsPurgeSearchResponse returns one or two APD discovery pages based on the request page size.
+func opsAllProcessDefinitionsPurgeSearchResponse(t *testing.T, payload string) string {
+	t.Helper()
+
+	limit, from, after := opsAllProcessDefinitionsPurgeSearchPage(t, payload)
+	if limit == 1 {
+		if after == "" && from == 0 {
+			return `{"items":[` +
+				opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyA, "invoice", 2) +
+				`],"page":{"totalItems":2,"hasMoreTotalItems":true,"endCursor":"pd-page-2"}}`
+		}
+		return `{"items":[` +
+			opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyB, "payment", 1) +
+			`],"page":{"totalItems":2,"hasMoreTotalItems":false}}`
+	}
+	return `{"items":[` +
+		opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyA, "invoice", 2) + `,` +
+		opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyA, "invoice", 2) + `,` +
+		opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyB, "payment", 1) +
+		`],"page":{"totalItems":3,"hasMoreTotalItems":false}}`
+}
+
+// opsAllProcessDefinitionsPurgeSearchPage extracts the generated v8.9 page request fields used by command tests.
+func opsAllProcessDefinitionsPurgeSearchPage(t *testing.T, payload string) (limit int32, from int32, after string) {
+	t.Helper()
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal([]byte(payload), &body))
+	page, _ := body["page"].(map[string]any)
+	if raw, ok := page["limit"].(float64); ok {
+		limit = int32(raw)
+	}
+	if raw, ok := page["from"].(float64); ok {
+		from = int32(raw)
+	}
+	if raw, ok := page["after"].(string); ok {
+		after = raw
+	}
+	return limit, from, after
 }
 
 func opsAllProcessDefinitionsPurgeDefinitionJSON(key string, id string, version int32) string {

@@ -131,15 +131,16 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 		if !cCfg.SuppressWorkflowDetailLogs {
 			s.log.Info(fmt.Sprintf("waiting for pi %s; pd %s", pi.Key, pi.ProcessDefinitionKey))
 		}
-		states := []d.State{d.StateActive}
+		states := d.ObservableProcessInstanceCreationStates()
 		_, created, err := waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, pi.Key, states, opts...)
 		if err != nil {
-			return d.ProcessInstanceCreation{}, fmt.Errorf("wait for started state: %w", err)
+			return d.ProcessInstanceCreation{}, fmt.Errorf("wait for observable state: %w", err)
 		}
 		pi.StartDate = created.StartDate
+		pi.State = created.State
 		pi.StartConfirmedAt = time.Now().UTC().Format(time.RFC3339)
 		if !cCfg.SuppressWorkflowDetailLogs {
-			s.log.Info(fmt.Sprintf("pi %s created; pd %s %s v%d %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
+			s.log.Info(fmt.Sprintf("pi %s created; pd %s %s v%d %s; state %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId, pi.State))
 		}
 	} else {
 		pi.StartDate = time.Now().UTC().Format(time.RFC3339)
@@ -202,7 +203,7 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 }
 
 func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, pageReq d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
-	_ = services.ApplyCallOptions(opts)
+	cCfg := services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching pi; filter %s", filter.String()))
 
 	startDateAfter, err := parseInclusiveDateLowerBound(filter.StartDateAfter)
@@ -221,7 +222,11 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building end-date filter: %w", err)
 	}
-	tenantFilter, err := newStringEqFilterPtr(s.cfg.App.Tenant)
+	tenant := s.cfg.App.Tenant
+	if cCfg.IgnoreTenant {
+		tenant = ""
+	}
+	tenantFilter, err := newStringEqFilterPtr(tenant)
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building tenant filter: %w", err)
 	}
@@ -261,6 +266,10 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building parent-process-instance-key filter: %w", err)
 	}
+	variableFilters, err := newVariableValueFiltersPtr(filter.VariableFilters)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building variable filters: %w", err)
+	}
 
 	bodyFilter := &processInstanceFilter{
 		TenantId:                    tenantFilter,
@@ -274,6 +283,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		State:                       stateFilter,
 		HasIncident:                 filter.HasIncident,
 		ParentProcessInstanceKey:    parentProcessInstanceKeyFilter,
+		Variables:                   variableFilters,
 	}
 	if bodyFilter.isEmpty() {
 		bodyFilter = nil
@@ -467,12 +477,14 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 						Status:     fmt.Sprintf("dry-run: would cancel %d process instances with keys %v", len(keys), keys),
 					}, pis, nil
 				}
-				logging.InfoOrVerbose(
-					fmt.Sprintf("force: cancelling %d pi", len(keys)),
-					fmt.Sprintf("force: cancelling %d pi; keys %v", len(keys), keys),
-					s.log,
-					cCfg.Verbose,
-				)
+				if !cCfg.SuppressProcessInstanceDetailLogs {
+					logging.InfoOrVerbose(
+						fmt.Sprintf("force: cancelling %d pi", len(keys)),
+						fmt.Sprintf("force: cancelling %d pi; keys %v", len(keys), keys),
+						s.log,
+						cCfg.Verbose,
+					)
+				}
 				return s.CancelProcessInstance(ctx, rootPIKey, opts...)
 			}
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s is child of root %s; use --force to cancel tree", key, rootPIKey))

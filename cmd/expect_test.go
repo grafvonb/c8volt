@@ -213,6 +213,47 @@ apis:
 	require.Contains(t, string(output), "2251799813685255")
 }
 
+// Strict state expectations must not inherit run confirmation's broader observable-state success set.
+func TestExpectProcessInstanceCommand_StateMismatchRemainsStrict(t *testing.T) {
+	var attempts atomic.Int32
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/2251799813685255", r.URL.Path)
+
+		attempts.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813685255","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.8
+  backoff:
+    strategy: fixed
+    initial_delay: 1ms
+    max_retries: 2
+    timeout: 50ms
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperExpectProcessInstanceCommand_StateMismatchRemainsStrict", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	}, "2251799813685255\n")
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.GreaterOrEqual(t, attempts.Load(), int32(2))
+	require.Contains(t, string(output), "expecting process instance")
+	require.Contains(t, string(output), "state")
+	require.Contains(t, string(output), "COMPLETED")
+}
+
 // Incident waits must poll the full process instance until the marker changes, not only inspect state.
 func TestExpectProcessInstanceCommand_IncidentTrueWaitsUntilMatched(t *testing.T) {
 	var attempts atomic.Int32
@@ -251,6 +292,47 @@ apis:
 	require.Equal(t, int32(2), attempts.Load())
 	require.Contains(t, output, `"incident": true`)
 	require.Contains(t, output, `"ok": true`)
+}
+
+// TestExpectProcessInstanceCommand_KeyTenantMismatchUsesDirectStateLookup keeps
+// explicit wait keys backend-authorized even when returned tenant metadata differs.
+func TestExpectProcessInstanceCommand_KeyTenantMismatchUsesDirectStateLookup(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/"+tenantAdminKeysProcessInstanceKey, r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(tenantAdminKeysMismatchProcessInstanceJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.8
+  backoff:
+    strategy: fixed
+    initial_delay: 1ms
+    max_retries: 3
+    timeout: 100ms
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", tenantAdminKeysSelectedTenant,
+		"--json",
+		"expect", "pi",
+		"--key", tenantAdminKeysProcessInstanceKey,
+		"--state", "active",
+	)
+
+	require.Equal(t, []string{"GET /v2/process-instances/" + tenantAdminKeysProcessInstanceKey}, requests)
+	require.Contains(t, output, `"outcome": "succeeded"`)
+	require.Contains(t, output, `"state": "ACTIVE"`)
 }
 
 // Incident=false is only satisfied by a present instance, which keeps missing instances from looking healthy.
@@ -446,6 +528,21 @@ func TestHelperExpectProcessInstanceCommand_StateDashReadsKeysFromStdin(t *testi
 	resetCommandTreeFlags(root)
 	resetProcessInstanceCommandGlobals()
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "expect", "process-instance", "--state", "active", "-"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+// Helper-process entrypoint for strict state mismatch validation.
+func TestHelperExpectProcessInstanceCommand_StateMismatchRemainsStrict(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "expect", "process-instance", "--state", "completed", "-"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()

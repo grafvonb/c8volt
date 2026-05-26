@@ -16,11 +16,15 @@ Use direct lookup when you know a process-instance key, or combine search filter
 
 Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. Direct key lookup stays strict: missing keys return not-found.
 
+Tenant contract: --tenant scopes search/list discovery and selector validation where supported. Explicit --key and stdin keys are backend-authorized admin input; c8volt displays returned tenant metadata without rejecting solely because it differs from the selected tenant.
+
 When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic instead of looking like a valid empty result; --json, --automation, --keys-only, and non-TTY runs never prompt for recovery output.
 
 Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.
 
 Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.
+
+Use variable-search flags to narrow list/search results natively on Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error for those flags. --var-exists requires every listed variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable scopeKey means the scope where the variable is directly defined.
 
 Use --has-user-tasks to fetch process instances by their owning user-task keys.
 
@@ -39,6 +43,10 @@ c8volt get process-instance [flags]
   ./c8volt get pi --has-user-tasks <user-task-key>
   ./c8volt get pi --incidents-only --with-incidents --limit 5
   ./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5
+  ./c8volt get pi --var-exists payload,email --limit 5
+  ./c8volt get pi --var 'status="approved"' --limit 5
+  ./c8volt get pi --var 'status.$in=["approved","pending"]' --limit 5
+  ./c8volt get pi --var-like 'email=*@example.com,customerId=CUST-????' --limit 5
   ./c8volt get pi --state active --with-vars --var-value-limit 120 --limit 5
   ./c8volt get pi --key <process-instance-key> --with-incidents
   ./c8volt get pi --key <process-instance-key> --with-vars
@@ -82,6 +90,9 @@ c8volt get process-instance [flags]
       --start-date-older-days int       only include process instances N days old or older (default -1)
   -s, --state string                    state to filter process instances: all, active, completed, canceled, terminated (default "all")
       --total                           return only the numeric total of matching process instances; capped backend totals are counted by paging
+      --var stringArray                 require variable equality or advanced clause(s); repeat or separate clauses with commas
+      --var-exists stringArray          require variable name(s) to exist; repeat or separate names with commas
+      --var-like stringArray            require variable value pattern clause(s); repeat or separate clauses with commas
       --var-value-limit int             maximum characters to show for variable values when --with-vars is set; 0 disables truncation
       --with-incidents                  include direct incident keys, states, and messages for keyed or list/search process-instance output
       --with-vars                       include process-instance-scope variables for keyed or list/search process-instance output
@@ -101,7 +112,7 @@ c8volt get process-instance [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for tenant-aware command flows (overrides env, profile, and base config)
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

@@ -47,3 +47,30 @@ func TestService_UpdateJob_Unsupported(t *testing.T) {
 	assert.Contains(t, err.Error(), "job update")
 	assert.Contains(t, err.Error(), "Camunda 8.8")
 }
+
+func TestService_SearchJobs_Unsupported(t *testing.T) {
+	svc := newTestService(t)
+
+	result, err := svc.SearchJobs(context.Background(), domain.JobSearchQuery{State: "FAILED", Limit: 10})
+
+	require.Error(t, err)
+	assert.Empty(t, result)
+	assert.ErrorIs(t, err, domain.ErrUnsupported)
+	assert.Contains(t, err.Error(), "search jobs")
+	assert.Contains(t, err.Error(), "Camunda 8.8")
+}
+
+func TestService_SubmitJobWorkerOutcome_Unsupported(t *testing.T) {
+	svc := newTestService(t)
+
+	result, err := svc.SubmitJobWorkerOutcome(context.Background(), domain.JobWorkerOutcomeRequest{
+		Key:  "2251799813711967",
+		Mode: domain.JobWorkerOutcomeCompletion,
+	})
+
+	require.Error(t, err)
+	assert.Empty(t, result)
+	assert.ErrorIs(t, err, domain.ErrUnsupported)
+	assert.Contains(t, err.Error(), "job worker outcome")
+	assert.Contains(t, err.Error(), "Camunda 8.8")
+}

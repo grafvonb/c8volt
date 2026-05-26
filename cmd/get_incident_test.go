@@ -13,11 +13,14 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
+
+const testGetIncidentArgsEnv = "C8VOLT_TEST_GET_INCIDENT_ARGS"
 
 func TestGetIncidentCommand_KeyedLookupDeduplicatesFlagAndStdinKeys(t *testing.T) {
 	var requests []string
@@ -79,6 +82,9 @@ func TestGetIncidentCommand_JSONOutputUsesIncidentListPayload(t *testing.T) {
 	require.Equal(t, "2251799813685249", item["incidentKey"])
 	require.Equal(t, longMessage, item["errorMessage"])
 	require.Equal(t, "2026-03-23T18:01:00Z", item["creationTime"])
+	require.Equal(t, "task-a", item["elementId"])
+	require.Equal(t, "2251799813685300", item["elementInstanceKey"])
+	require.NotContains(t, output, "flowNode")
 }
 
 func TestGetIncidentCommand_KeysOnlyOutputUsesIncidentKeys(t *testing.T) {
@@ -163,6 +169,142 @@ func TestGetIncidentCommand_SearchPIKeysOnlyOutputUsesProcessInstanceKeys(t *tes
 	require.Equal(t, "2251799813711972\n2251799813711972\n", output)
 }
 
+func TestGetIncidentBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		switch r.URL.Path {
+		case "/v2/process-definitions/search":
+			writeEmptyProcessDefinitionSearchResponse(w)
+		case "/v2/incidents/search":
+			t.Fatal("unexpected incident search before selector validation")
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output, code := executeGetIncidentFailureHelper(t, cfgPath,
+		"get", "incident",
+		"--state", "active",
+		"--bpmn-process-id", "missing-process",
+	)
+
+	require.Equal(t, exitcode.Error, code)
+	require.Equal(t, []string{"POST /v2/process-definitions/search"}, requests)
+	require.Contains(t, output, "no visible process definition matches the provided selector")
+	require.Contains(t, output, "[missing-process]")
+	require.NotContains(t, output, "found: 0")
+}
+
+func TestGetIncidentBpmnSelectorVisiblePreservesEmptyOutput(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-definitions/search":
+			writeVisibleProcessDefinitionSearchResponse(w)
+		case "/v2/incidents/search":
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--state", "active",
+		"--bpmn-process-id", "order-process",
+	)
+
+	require.Equal(t, []string{"POST /v2/process-definitions/search", "POST /v2/incidents/search"}, requests)
+	require.Equal(t, "found: 0\n", output)
+}
+
+func TestGetIncidentBpmnSelectorMissingNoPromptModes(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "total", args: []string{"get", "incident", "--bpmn-process-id", "missing-process", "--total"}},
+		{name: "keys only", args: []string{"--keys-only", "get", "incident", "--bpmn-process-id", "missing-process"}},
+		{name: "pi keys only", args: []string{"get", "incident", "--bpmn-process-id", "missing-process", "--pi-keys-only"}},
+		{name: "json", args: []string{"--json", "get", "incident", "--bpmn-process-id", "missing-process"}},
+		{name: "automation", args: []string{"--automation", "get", "incident", "--bpmn-process-id", "missing-process"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests = append(requests, r.Method+" "+r.URL.Path)
+				require.Equal(t, http.MethodPost, r.Method)
+				switch r.URL.Path {
+				case "/v2/process-definitions/search":
+					writeEmptyProcessDefinitionSearchResponse(w)
+				case "/v2/incidents/search":
+					t.Fatal("unexpected incident search before selector validation")
+				default:
+					t.Fatalf("unexpected request path: %s", r.URL.Path)
+				}
+			}))
+			t.Cleanup(srv.Close)
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+			output, code := executeGetIncidentFailureHelper(t, cfgPath, tt.args...)
+
+			require.Equal(t, exitcode.Error, code)
+			require.Equal(t, []string{"POST /v2/process-definitions/search"}, requests)
+			require.Contains(t, output, "no visible process definition matches the provided selector")
+			require.NotContains(t, output, "List visible process definitions?")
+		})
+	}
+}
+
+func TestGetIncidentBpmnSelectorValidationUsesTenantContext(t *testing.T) {
+	var processDefinitionSearchBody string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		switch r.URL.Path {
+		case "/v2/process-definitions/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			processDefinitionSearchBody = string(body)
+			writeEmptyProcessDefinitionSearchResponse(w)
+		case "/v2/incidents/search":
+			t.Fatal("unexpected incident search before selector validation")
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output, code := executeGetIncidentFailureHelper(t, cfgPath,
+		"--tenant", "tenant-a",
+		"get", "incident",
+		"--bpmn-process-id", "missing-process",
+	)
+
+	require.Equal(t, exitcode.Error, code)
+	require.Contains(t, output, "no visible process definition matches the provided selector")
+	var request map[string]any
+	require.NoError(t, json.Unmarshal([]byte(processDefinitionSearchBody), &request))
+	filter, ok := request["filter"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "missing-process", filter["processDefinitionId"])
+	require.Equal(t, "tenant-a", filter["tenantId"])
+	require.NotContains(t, filter, "version")
+	require.NotContains(t, filter, "versionTag")
+}
+
 // TestGetIncidentCommand_RegressionSelectionAndDisplayFlagsRemainDistinct
 // protects the original incident command surface while incident purge reuses
 // only the selection subset.
@@ -230,6 +372,39 @@ func TestGetIncidentCommand_SearchPIKeysOnlyIncrementalPagesOmitFound(t *testing
 	require.Equal(t, 1, promptCalls)
 	require.Equal(t, "2251799813711972\n2251799813711973\n2251799813711974\n2251799813711975\n", output)
 	require.NotContains(t, output, "found:")
+}
+
+// TestGetIncidentCommand_SearchSkipsPromptForEmptyFilteredPages verifies locally filtered empty pages do not make interactive users confirm before any rows are shown.
+func TestGetIncidentCommand_SearchSkipsPromptForEmptyFilteredPages(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+		`{"items":[{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+	var prompts []string
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		require.False(t, autoConfirm)
+		prompts = append(prompts, prompt)
+		return nil
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--batch-size", "1",
+	)
+
+	require.Len(t, requests, 3)
+	require.Len(t, prompts, 1)
+	require.Contains(t, prompts[0], "Fetched 1 incident(s) on this page")
+	require.Contains(t, output, "2251799813685253")
+	require.Contains(t, output, "2251799813685254")
+	require.Contains(t, output, "found: 2")
 }
 
 func TestGetIncidentCommand_TotalUsesExactReportedBackendTotal(t *testing.T) {
@@ -560,6 +735,26 @@ func TestGetIncidentCommand_SearchStateAllOmitsStateFilter(t *testing.T) {
 	require.Contains(t, output, "found: 1")
 }
 
+func TestGetIncidentCommand_SearchNormalizesCaseInsensitiveState(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"errorMessage":"resolved earlier","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685250","processInstanceKey":"2251799813711968","state":"RESOLVED","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--state", "RESOLVED",
+	)
+
+	require.Len(t, requests, 1)
+	require.Contains(t, requests[0], `"state":"RESOLVED"`)
+	require.Contains(t, output, "RESOLVED")
+	require.Contains(t, output, "found: 1")
+}
+
 func TestGetIncidentCommand_RejectsInvalidStateBeforeLookup(t *testing.T) {
 	output, err := executeRootExpectErrorForIncidentTest(t, "get", "incident", "--state", "done")
 
@@ -599,7 +794,7 @@ func TestGetIncidentCommand_RejectsInvalidErrorType(t *testing.T) {
 	require.Empty(t, output)
 }
 
-func TestGetIncidentCommand_SearchCoreProcessAndFlowNodeFilters(t *testing.T) {
+func TestGetIncidentCommand_SearchCoreProcessAndElementFilters(t *testing.T) {
 	var requests []string
 	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
 		`{"items":[{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"2251799813685303","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685252","processDefinitionId":"order-process","processDefinitionKey":"2251799813685201","processInstanceKey":"2251799813711970","rootProcessInstanceKey":"2251799813711971","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
@@ -614,8 +809,8 @@ func TestGetIncidentCommand_SearchCoreProcessAndFlowNodeFilters(t *testing.T) {
 		"--root-key", "2251799813711971",
 		"--pd-key", "2251799813685201",
 		"--bpmn-process-id", "order-process",
-		"--flow-node-id", "task-a",
-		"--fni-key", "2251799813685303",
+		"--element-id", "task-a",
+		"--element-instance-key", "2251799813685303",
 	)
 
 	require.Len(t, requests, 1)
@@ -626,12 +821,28 @@ func TestGetIncidentCommand_SearchCoreProcessAndFlowNodeFilters(t *testing.T) {
 	require.Contains(t, requests[0], "task-a")
 	require.Contains(t, requests[0], "2251799813685303")
 	require.Contains(t, output, "2251799813685252")
-	require.Contains(t, output, "fn:task-a")
-	require.Contains(t, output, "fni:2251799813685303")
+	require.Contains(t, output, "e:task-a")
+	require.Contains(t, output, "ei:2251799813685303")
+	require.NotContains(t, output, "fn:")
+	require.NotContains(t, output, "fni:")
 	require.Contains(t, output, "pi:2251799813711970")
 	require.Contains(t, output, "root:2251799813711971")
 	require.Contains(t, output, "order-process")
 	require.Contains(t, output, "found: 1")
+}
+
+func TestGetIncidentCommand_RejectsLegacyFlowNodeFilterFlags(t *testing.T) {
+	tests := []string{"--flow-node-id", "--fni-key"}
+
+	for _, flag := range tests {
+		t.Run(flag, func(t *testing.T) {
+			output, err := executeRootExpectErrorForIncidentTest(t, "get", "incident", flag, "legacy-value")
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "unknown flag: "+flag)
+			require.Empty(t, output)
+		})
+	}
 }
 
 func TestGetIncidentCommand_SearchCreationTimeWindow(t *testing.T) {
@@ -675,7 +886,57 @@ func TestGetIncidentCommand_SearchCreationTimeAcceptsDateOnlyBounds(t *testing.T
 
 	require.Len(t, requests, 1)
 	require.Contains(t, requests[0], `"$gte":"2026-05-09T00:00:00Z"`)
-	require.Contains(t, requests[0], `"$lte":"2026-05-10T00:00:00Z"`)
+	require.Contains(t, requests[0], `"$lte":"2026-05-10T23:59:59.999999999Z"`)
+	require.Contains(t, output, "found: 0")
+}
+
+func TestGetIncidentCommand_SearchCreationTimeAcceptsDisplayedTimestamps(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--creation-time-after", "2026-05-25T20:09:11",
+		"--creation-time-before", "2026-05-25T20:09:11.000",
+	)
+
+	require.Len(t, requests, 1)
+	require.Contains(t, requests[0], `"$gte":"2026-05-25T20:09:11Z"`)
+	require.Contains(t, requests[0], `"$lte":"2026-05-25T20:09:11Z"`)
+	require.Contains(t, output, "found: 0")
+}
+
+func TestGetIncidentCommand_SearchCreationTimeRelativeDayBounds(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 5, 26, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--creation-time-newer-days", "30",
+		"--creation-time-older-days", "7",
+	)
+
+	require.Len(t, requests, 1)
+	require.Contains(t, requests[0], `"$gte":"2026-04-26T00:00:00Z"`)
+	require.Contains(t, requests[0], `"$lte":"2026-05-19T23:59:59.999999999Z"`)
 	require.Contains(t, output, "found: 0")
 }
 
@@ -687,7 +948,31 @@ func TestGetIncidentCommand_RejectsInvalidCreationTimeBeforeLookup(t *testing.T)
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid input")
-	require.Contains(t, err.Error(), `invalid value for --creation-time-after: "last-friday", expected RFC3339 timestamp or YYYY-MM-DD`)
+	require.Contains(t, err.Error(), `invalid value for --creation-time-after: "last-friday", expected RFC3339 timestamp, c8volt timestamp YYYY-MM-DDTHH:MM:SS[.fraction], or YYYY-MM-DD`)
+	require.Empty(t, output)
+}
+
+func TestGetIncidentCommand_RejectsInvalidCreationTimeCombinationsBeforeLookup(t *testing.T) {
+	output, err := executeRootExpectErrorForIncidentTest(t,
+		"get", "incident",
+		"--creation-time-after", "2026-05-09T09:00:00Z",
+		"--creation-time-newer-days", "7",
+	)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid input")
+	require.Contains(t, err.Error(), "creation-time absolute and relative day filters cannot be combined")
+	require.Empty(t, output)
+
+	output, err = executeRootExpectErrorForIncidentTest(t,
+		"get", "incident",
+		"--creation-time-newer-days", "7",
+		"--creation-time-older-days", "30",
+	)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid input")
+	require.Contains(t, err.Error(), "invalid range for --creation-time-newer-days and --creation-time-older-days")
 	require.Empty(t, output)
 }
 
@@ -782,6 +1067,10 @@ func newIncidentSearchCaptureServerWithResponses(t *testing.T, requests *[]strin
 	served := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
+		if r.URL.Path == "/v2/process-definitions/search" {
+			writeVisibleProcessDefinitionSearchResponse(w)
+			return
+		}
 		require.Equal(t, "/v2/incidents/search", r.URL.Path)
 		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
@@ -860,6 +1149,38 @@ func executeRootExpectErrorForIncidentTest(t *testing.T, args ...string) (string
 
 	_, err := root.ExecuteC()
 	return buf.String(), err
+}
+
+func executeGetIncidentFailureHelper(t *testing.T, cfgPath string, args ...string) (string, int) {
+	t.Helper()
+
+	argsJSON, err := json.Marshal(args)
+	require.NoError(t, err)
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetIncidentCommand_HelperProcess", map[string]string{
+		"C8VOLT_TEST_CONFIG":   cfgPath,
+		testGetIncidentArgsEnv: string(argsJSON),
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	return string(output), exitErr.ExitCode()
+}
+
+func TestGetIncidentCommand_HelperProcess(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	var args []string
+	require.NoError(t, json.Unmarshal([]byte(os.Getenv(testGetIncidentArgsEnv)), &args))
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = append([]string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG")}, args...)
+
+	Execute()
 }
 
 func strconvQuote(value string) string {

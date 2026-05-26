@@ -8,13 +8,78 @@ import "time"
 type Job struct {
 	Key                string     `json:"key,omitempty"`
 	State              string     `json:"state,omitempty"`
-	Retries            int32      `json:"retries,omitempty"`
+	Retries            int32      `json:"retries"`
 	Deadline           *time.Time `json:"deadline,omitempty"`
+	Type               string     `json:"type,omitempty"`
+	Worker             string     `json:"worker,omitempty"`
+	Kind               string     `json:"kind,omitempty"`
+	ListenerEventType  string     `json:"listenerEventType,omitempty"`
 	ProcessInstanceKey string     `json:"processInstanceKey,omitempty"`
 	ElementInstanceKey string     `json:"elementInstanceKey,omitempty"`
+	ElementId          string     `json:"elementId,omitempty"`
 	ErrorCode          string     `json:"errorCode,omitempty"`
 	ErrorMessage       string     `json:"errorMessage,omitempty"`
 	TenantId           string     `json:"tenantId,omitempty"`
+}
+
+type JobSearchQuery struct {
+	Key                string
+	State              string
+	Type               string
+	ProcessInstanceKey string
+	ElementInstanceKey string
+	ElementId          string
+	Worker             string
+	Retries            *int32
+	Kind               string
+	ListenerEventType  string
+	BatchSize          int32
+	Limit              int32
+}
+
+func (q JobSearchQuery) HasKey() bool {
+	return q.Key != ""
+}
+
+func (q JobSearchQuery) HasSearchFilters() bool {
+	return q.State != "" ||
+		q.Type != "" ||
+		q.ProcessInstanceKey != "" ||
+		q.ElementInstanceKey != "" ||
+		q.ElementId != "" ||
+		q.Worker != "" ||
+		q.Retries != nil ||
+		q.Kind != "" ||
+		q.ListenerEventType != ""
+}
+
+type JobSearchResult struct {
+	Items []Job `json:"items"`
+	Limit int32 `json:"limit"`
+}
+
+type JobReportedTotalKind string
+
+const (
+	JobReportedTotalKindExact      JobReportedTotalKind = "exact"
+	JobReportedTotalKindLowerBound JobReportedTotalKind = "lower_bound"
+)
+
+type JobReportedTotal struct {
+	Count int64
+	Kind  JobReportedTotalKind
+}
+
+type JobPageRequest struct {
+	From int32
+	Size int32
+}
+
+type JobSearchPage struct {
+	Items         []Job
+	Request       JobPageRequest
+	OverflowState ProcessInstanceOverflowState
+	ReportedTotal *JobReportedTotal
 }
 
 type JobUpdateRequest struct {
@@ -49,4 +114,35 @@ type JobUpdateResult struct {
 	ConfirmationError    string `json:"confirmationError,omitempty"`
 	MutationError        string `json:"mutationError,omitempty"`
 	UnsupportedOperation bool   `json:"unsupportedOperation,omitempty"`
+}
+
+type JobWorkerOutcomeMode string
+
+const (
+	JobWorkerOutcomeTechnicalFailure JobWorkerOutcomeMode = "technical_failure"
+	JobWorkerOutcomeBPMNError        JobWorkerOutcomeMode = "bpmn_error"
+	JobWorkerOutcomeCompletion       JobWorkerOutcomeMode = "completion"
+)
+
+type JobWorkerOutcomeRequest struct {
+	Key                string
+	Mode               JobWorkerOutcomeMode
+	Message            string
+	Variables          map[string]any
+	Retries            *int32
+	RetryBackoffMillis *int64
+	ErrorCode          string
+	SkipConfirmation   bool
+}
+
+type JobWorkerOutcomeResult struct {
+	Key                  string               `json:"key,omitempty"`
+	Mode                 JobWorkerOutcomeMode `json:"mode,omitempty"`
+	MutationAccepted     bool                 `json:"mutationAccepted"`
+	ConfirmationStatus   string               `json:"confirmationStatus,omitempty"`
+	SubmittedRetries     *int32               `json:"submittedRetries,omitempty"`
+	SubmittedBackoffMS   *int64               `json:"submittedBackoffMs,omitempty"`
+	SubmittedErrorCode   string               `json:"submittedErrorCode,omitempty"`
+	MutationError        string               `json:"mutationError,omitempty"`
+	UnsupportedOperation bool                 `json:"unsupportedOperation,omitempty"`
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 var validErrorTypes = []string{
@@ -28,6 +29,15 @@ var validErrorTypes = []string{
 	string(camundav89.IncidentErrorTypeEnumUNSPECIFIED),
 }
 
+var validStates = []string{
+	"active",
+	"pending",
+	"resolved",
+	"migrated",
+	"unknown",
+	"all",
+}
+
 // ValidErrorTypes returns incident error type values from the generated Camunda enum.
 func ValidErrorTypes() []string {
 	out := make([]string, len(validErrorTypes))
@@ -39,17 +49,22 @@ func ValidErrorTypesString() string {
 	return strings.Join(validErrorTypes, ", ")
 }
 
-func NormalizeErrorType(value string) (string, bool) {
-	want := strings.ToUpper(strings.TrimSpace(value))
-	if want == "" {
+func ValidStatesString() string {
+	return strings.Join(validStates, ", ")
+}
+
+func NormalizeState(value string) (string, bool) {
+	if strings.TrimSpace(value) == "" {
 		return "", true
 	}
-	for _, valid := range validErrorTypes {
-		if strings.EqualFold(want, valid) {
-			return valid, true
-		}
+	return toolx.CanonicalEnumString(value, validStates)
+}
+
+func NormalizeErrorType(value string) (string, bool) {
+	if strings.TrimSpace(value) == "" {
+		return "", true
 	}
-	return "", false
+	return toolx.CanonicalEnumString(value, validErrorTypes)
 }
 
 func ErrorTypeMatches(want string, got string) bool {

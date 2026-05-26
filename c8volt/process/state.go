@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 type State string
@@ -38,22 +39,15 @@ func (s State) In(states ...State) bool {
 }
 
 func ParseState(in string) (State, bool) {
-	switch strings.ToLower(in) {
-	case "all":
-		return StateAll, true
-	case "active":
-		return StateActive, true
-	case "completed":
-		return StateCompleted, true
-	case "canceled", "cancelled":
+	value := strings.TrimSpace(in)
+	if strings.EqualFold(value, "cancelled") {
 		return StateCanceled, true
-	case "terminated":
-		return StateTerminated, true
-	case "absent":
-		return StateAbsent, true
-	default:
+	}
+	state, ok := toolx.CanonicalEnumValue(value, validStates)
+	if !ok {
 		return StateUnknown, false
 	}
+	return state, true
 }
 
 func (s State) IsTerminal() bool {

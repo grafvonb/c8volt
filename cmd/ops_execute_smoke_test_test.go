@@ -44,7 +44,8 @@ func TestOpsExecuteSmokeTestHelpDocumentsCommand(t *testing.T) {
 		"--report-file string",
 		"--report-format string",
 		"./c8volt ops execute smoke-test --dry-run",
-		"./c8volt ops execute smoke-test --count 10 --automation --json --report-file smoke-test.json --report-format json",
+		"./c8volt ops execute smoke-test --report-file smoke-test.md",
+		"./c8volt ops execute smoke-test --count 5 --report-file smoke-test.md",
 	)
 }
 
@@ -135,8 +136,8 @@ func TestOpsExecuteSmokeTestDryRunHumanOutputPlansWithoutMutation(t *testing.T) 
 	)
 
 	require.Contains(t, output, "dry run: execute smoke test")
-	require.Contains(t, output, "fixture: embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn")
-	require.Contains(t, output, "workflow: would deploy the fixture, start 2 process instances, and walk their process-instance families")
+	require.Contains(t, output, "fixture: embedded/processdefinitions/C88_MultipleSubProcessesParent.bpmn")
+	require.Contains(t, output, "smoke-test preview: would deploy the fixture, start 2 process instances, and walk their process-instance families")
 	require.Contains(t, output, "cleanup: skipped (--no-cleanup)")
 	require.NotContains(t, output, "connectivity: confirmed")
 	require.NotContains(t, output, "deployment: planned -")
@@ -173,7 +174,7 @@ func TestOpsExecuteSmokeTestDryRunJSONOutputIsStructured(t *testing.T) {
 	require.Equal(t, "planned", plan["status"])
 	require.Equal(t, "8.9", plan["camundaVersion"])
 	fixture := requireJSONObject(t, plan["fixture"])
-	require.Equal(t, "embedded/processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn", fixture["file"])
+	require.Equal(t, "embedded/processdefinitions/C89_MultipleSubProcessesParent.bpmn", fixture["file"])
 	steps := plan["plannedSteps"].([]any)
 	require.Len(t, steps, 7)
 	connectivity := requireJSONObject(t, steps[0])
@@ -203,7 +204,7 @@ func TestOpsExecuteSmokeTestDryRunWritesMarkdownReport(t *testing.T) {
 	require.Contains(t, report, "- Command: ops execute smoke-test")
 	require.Contains(t, report, "- Dry Run: true")
 	require.Contains(t, report, "- Camunda Version: 8.8")
-	require.Contains(t, report, "- File: embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn")
+	require.Contains(t, report, "- File: embedded/processdefinitions/C88_MultipleSubProcessesParent.bpmn")
 	require.Contains(t, report, "- Requested Count: 1")
 	require.Contains(t, report, "- Outcome: planned")
 	require.Equal(t, []string{"GET /v2/topology"}, requests.Snapshot())
@@ -256,7 +257,7 @@ func TestOpsExecuteSmokeTestWritesMarkdownAuditReport(t *testing.T) {
 	require.Contains(t, report, "- Command: ops execute smoke-test")
 	require.Contains(t, report, "- Dry Run: false")
 	require.Contains(t, report, "- Camunda Version: 8.8")
-	require.Contains(t, report, "- File: embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn")
+	require.Contains(t, report, "- File: embedded/processdefinitions/C88_MultipleSubProcessesParent.bpmn")
 	require.Contains(t, report, "- Process Definition Key: pd-88")
 	require.Contains(t, report, "- Requested Count: 1")
 	require.Contains(t, report, "- Created Count: 1")
@@ -292,7 +293,7 @@ func TestOpsExecuteSmokeTestWritesJSONAuditReportWithInferredFormat(t *testing.T
 	require.Equal(t, "<default>", report["tenantId"])
 	require.Equal(t, "passed_cleanup_skipped", report["outcome"])
 	fixture := requireJSONObject(t, report["fixture"])
-	require.Equal(t, "embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn", fixture["file"])
+	require.Equal(t, "embedded/processdefinitions/C88_MultipleSubProcessesParent.bpmn", fixture["file"])
 	deployment := requireJSONObject(t, report["deployment"])
 	require.Equal(t, "confirmed", deployment["status"])
 	require.Equal(t, "pd-88", deployment["processDefinitionKey"])
@@ -400,14 +401,14 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 	)
 
 	require.Contains(t, output, "execute smoke test")
-	require.Contains(t, output, "deploy: fixture embedded/processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn")
+	require.Contains(t, output, "deploy: fixture embedded/processdefinitions/C89_MultipleSubProcessesParent.bpmn")
 	require.Contains(t, output, "deploy: confirmed process definition pd-88")
 	require.Contains(t, output, "start: 1 process instance")
 	require.Contains(t, output, "start: created 1/1")
 	require.Contains(t, output, "walk: 1 process-instance family")
 	require.Contains(t, output, "walk: confirmed 1 process-instance family")
 	require.Contains(t, output, "cleanup: deleting created resources")
-	require.Contains(t, output, "fixture: embedded/processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn")
+	require.Contains(t, output, "fixture: embedded/processdefinitions/C89_MultipleSubProcessesParent.bpmn")
 	require.Contains(t, output, "deployment: confirmed")
 	require.Contains(t, output, "created process instances: 1/1")
 	require.Contains(t, output, "walk: confirmed (process instances: 1)")
@@ -506,7 +507,7 @@ func TestOpsExecuteSmokeTestNoCleanupHumanOutputReportsRetainedResources(t *test
 
 	require.Contains(t, output, "cleanup: skipped (--no-cleanup)")
 	require.Contains(t, output, "retained process instances: 101")
-	require.Contains(t, output, "retained process definition: pd-88 (C88_MultipleSubProcessesParentProcess)")
+	require.Contains(t, output, "retained process definition: pd-88 (C88_MultipleSubProcessesParent)")
 	require.Contains(t, output, "outcome: passed_cleanup_skipped")
 	requestLog := strings.Join(requests.Snapshot(), "\n")
 	require.NotContains(t, requestLog, "DELETE /v1/process-instances/")
@@ -534,7 +535,7 @@ func TestOpsExecuteSmokeTestNoCleanupJSONOutputReportsRetainedResources(t *testi
 	require.Equal(t, true, cleanup["noCleanup"])
 	require.Equal(t, []any{"101"}, cleanup["retainedProcessInstanceKeys"])
 	require.Equal(t, "pd-88", cleanup["retainedProcessDefinitionKey"])
-	require.Equal(t, "C88_MultipleSubProcessesParentProcess", cleanup["retainedBpmnProcessId"])
+	require.Equal(t, "C88_MultipleSubProcessesParent", cleanup["retainedBpmnProcessId"])
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
 }
 
@@ -590,7 +591,7 @@ func TestOpsExecuteSmokeTestUsesImplicitConfirmationForCleanup(t *testing.T) {
 	require.Contains(t, output, "cleanup: submitted 1 process instance and fixture process definition (--no-wait)")
 	require.NotContains(t, output, "cleanup confirmation:")
 	require.Len(t, prompts, 1)
-	require.Contains(t, prompts[0], "clean up the created instances and eligible process definition")
+	require.Contains(t, prompts[0], "smoke test: deploy fixture, start 1 process instance(s), walk process-instance families, then clean up created resources")
 }
 
 func TestOpsExecuteSmokeTestAutomationNoCleanupDoesNotPrompt(t *testing.T) {
@@ -615,7 +616,7 @@ func TestOpsExecuteSmokeTestAutomationNoCleanupDoesNotPrompt(t *testing.T) {
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
 }
 
-func TestOpsExecuteSmokeTestUnsafeCleanupBlockerExitsWithError(t *testing.T) {
+func TestOpsExecuteSmokeTestDirtyClusterSkipsProcessDefinitionCleanup(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t, &requests, nil, "999")
 	t.Cleanup(srv.Close)
@@ -629,11 +630,9 @@ func TestOpsExecuteSmokeTestUnsafeCleanupBlockerExitsWithError(t *testing.T) {
 		}),
 	})
 
-	require.Error(t, err)
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "process-definition cleanup blocked")
+	require.NoError(t, err)
+	require.Contains(t, string(output), "process-definition cleanup blockers: 1")
+	require.Contains(t, string(output), "outcome: passed_cleanup_skipped")
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
 }
 
@@ -680,10 +679,10 @@ func newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t *testing.T, request
 				"deployments": [
 					{
 						"processDefinition": {
-							"processDefinitionId": "C88_MultipleSubProcessesParentProcess",
+							"processDefinitionId": "C88_MultipleSubProcessesParent",
 							"processDefinitionKey": "pd-88",
 							"processDefinitionVersion": 4,
-							"resourceName": "processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn",
+							"resourceName": "processdefinitions/C88_MultipleSubProcessesParent.bpmn",
 							"tenantId": "<default>"
 						}
 					}
@@ -693,7 +692,7 @@ func newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t *testing.T, request
 			requests.Append(r.Method + " " + r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{
-				"processDefinitionId": "C88_MultipleSubProcessesParentProcess",
+				"processDefinitionId": "C88_MultipleSubProcessesParent",
 				"processDefinitionKey": "pd-88"
 			}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances":
@@ -743,7 +742,7 @@ func newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t *testing.T, request
 func processInstanceCreationJSON(key string) string {
 	return fmt.Sprintf(`{
 		"processInstanceKey": %q,
-		"processDefinitionId": "C88_MultipleSubProcessesParentProcess",
+		"processDefinitionId": "C88_MultipleSubProcessesParent",
 		"processDefinitionKey": "pd-88",
 		"processDefinitionVersion": 4,
 		"tenantId": "<default>"
@@ -753,9 +752,9 @@ func processInstanceCreationJSON(key string) string {
 func processInstanceJSON(key string) string {
 	return fmt.Sprintf(`{
 		"hasIncident": false,
-		"processDefinitionId": "C88_MultipleSubProcessesParentProcess",
+		"processDefinitionId": "C88_MultipleSubProcessesParent",
 		"processDefinitionKey": "pd-88",
-		"processDefinitionName": "C88_MultipleSubProcessesParentProcess",
+		"processDefinitionName": "C88_MultipleSubProcessesParent",
 		"processDefinitionVersion": 4,
 		"processInstanceKey": %q,
 		"startDate": "2026-05-17T08:00:00Z",

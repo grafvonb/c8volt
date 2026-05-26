@@ -42,20 +42,20 @@ func fromDomainProcessDefinitions(xs []d.ProcessDefinition) ProcessDefinitions {
 
 func fromDomainProcessInstance(x d.ProcessInstance) ProcessInstance {
 	return ProcessInstance{
-		BpmnProcessId:             x.BpmnProcessId,
-		EndDate:                   x.EndDate,
-		Incident:                  x.Incident,
-		Key:                       x.Key,
-		ParentFlowNodeInstanceKey: x.ParentFlowNodeInstanceKey,
-		ParentKey:                 x.ParentKey,
-		ProcessDefinitionKey:      x.ProcessDefinitionKey,
-		RootProcessInstanceKey:    x.RootProcessInstanceKey,
-		ProcessVersion:            x.ProcessVersion,
-		ProcessVersionTag:         x.ProcessVersionTag,
-		StartDate:                 x.StartDate,
-		State:                     State(x.State),
-		TenantId:                  x.TenantId,
-		Variables:                 toolx.CopyMap(x.Variables),
+		BpmnProcessId:            x.BpmnProcessId,
+		EndDate:                  x.EndDate,
+		Incident:                 x.Incident,
+		Key:                      x.Key,
+		ParentElementInstanceKey: x.ParentElementInstanceKey,
+		ParentKey:                x.ParentKey,
+		ProcessDefinitionKey:     x.ProcessDefinitionKey,
+		RootProcessInstanceKey:   x.RootProcessInstanceKey,
+		ProcessVersion:           x.ProcessVersion,
+		ProcessVersionTag:        x.ProcessVersionTag,
+		StartDate:                x.StartDate,
+		State:                    State(x.State),
+		TenantId:                 x.TenantId,
+		Variables:                toolx.CopyMap(x.Variables),
 	}
 }
 
@@ -65,6 +65,7 @@ func fromDomainProcessInstanceCreation(x d.ProcessInstanceCreation) ProcessInsta
 		BpmnProcessId:        x.BpmnProcessId,
 		ProcessDefinitionKey: x.ProcessDefinitionKey,
 		ProcessVersion:       x.ProcessDefinitionVersion,
+		State:                State(x.State),
 		Variables:            toolx.CopyMap(x.Variables),
 		TenantId:             x.TenantId,
 		StartDate:            x.StartDate,
@@ -88,8 +89,8 @@ func fromDomainProcessInstanceIncidentDetail(x d.ProcessInstanceIncidentDetail) 
 		State:                  x.State,
 		ErrorType:              x.ErrorType,
 		ErrorMessage:           x.ErrorMessage,
-		FlowNodeId:             x.FlowNodeId,
-		FlowNodeInstanceKey:    x.FlowNodeInstanceKey,
+		ElementId:              x.ElementId,
+		ElementInstanceKey:     x.ElementInstanceKey,
 		JobKey:                 x.JobKey,
 		RootProcessInstanceKey: x.RootProcessInstanceKey,
 		ProcessDefinitionKey:   x.ProcessDefinitionKey,
@@ -356,20 +357,20 @@ func fromDomainIncidentExpectation(x *bool) *IncidentExpectation {
 
 func toDomainProcessInstance(x ProcessInstance) d.ProcessInstance {
 	return d.ProcessInstance{
-		BpmnProcessId:             x.BpmnProcessId,
-		EndDate:                   x.EndDate,
-		Incident:                  x.Incident,
-		Key:                       x.Key,
-		ParentFlowNodeInstanceKey: x.ParentFlowNodeInstanceKey,
-		ParentKey:                 x.ParentKey,
-		ProcessDefinitionKey:      x.ProcessDefinitionKey,
-		RootProcessInstanceKey:    x.RootProcessInstanceKey,
-		ProcessVersion:            x.ProcessVersion,
-		ProcessVersionTag:         x.ProcessVersionTag,
-		StartDate:                 x.StartDate,
-		State:                     d.State(x.State),
-		TenantId:                  x.TenantId,
-		Variables:                 toolx.CopyMap(x.Variables),
+		BpmnProcessId:            x.BpmnProcessId,
+		EndDate:                  x.EndDate,
+		Incident:                 x.Incident,
+		Key:                      x.Key,
+		ParentElementInstanceKey: x.ParentElementInstanceKey,
+		ParentKey:                x.ParentKey,
+		ProcessDefinitionKey:     x.ProcessDefinitionKey,
+		RootProcessInstanceKey:   x.RootProcessInstanceKey,
+		ProcessVersion:           x.ProcessVersion,
+		ProcessVersionTag:        x.ProcessVersionTag,
+		StartDate:                x.StartDate,
+		State:                    d.State(x.State),
+		TenantId:                 x.TenantId,
+		Variables:                toolx.CopyMap(x.Variables),
 	}
 }
 
@@ -397,8 +398,8 @@ func toDomainProcessInstanceIncidentDetail(x ProcessInstanceIncidentDetail) d.Pr
 		State:                  x.State,
 		ErrorType:              x.ErrorType,
 		ErrorMessage:           x.ErrorMessage,
-		FlowNodeId:             x.FlowNodeId,
-		FlowNodeInstanceKey:    x.FlowNodeInstanceKey,
+		ElementId:              x.ElementId,
+		ElementInstanceKey:     x.ElementInstanceKey,
 		JobKey:                 x.JobKey,
 		RootProcessInstanceKey: x.RootProcessInstanceKey,
 		ProcessDefinitionKey:   x.ProcessDefinitionKey,
@@ -430,6 +431,7 @@ func toDomainProcessInstanceFilter(x ProcessInstanceFilter) d.ProcessInstanceFil
 		ParentKey:            x.ParentKey,
 		HasParent:            x.HasParent,
 		HasIncident:          x.HasIncident,
+		VariableFilters:      toDomainProcessInstanceVariableFilterSet(x.VariableFilters),
 	}
 }
 
@@ -448,6 +450,43 @@ func fromDomainProcessInstanceFilter(x d.ProcessInstanceFilter) ProcessInstanceF
 		ParentKey:            x.ParentKey,
 		HasParent:            x.HasParent,
 		HasIncident:          x.HasIncident,
+		VariableFilters:      fromDomainProcessInstanceVariableFilterSet(x.VariableFilters),
+	}
+}
+
+// toDomainProcessInstanceVariableFilterSet copies facade variable clauses into the service-facing domain filter.
+func toDomainProcessInstanceVariableFilterSet(x ProcessInstanceVariableFilterSet) d.ProcessInstanceVariableFilterSet {
+	return d.ProcessInstanceVariableFilterSet{
+		Clauses: toolx.MapSlice(x.Clauses, toDomainProcessInstanceVariableFilterClause),
+	}
+}
+
+// toDomainProcessInstanceVariableFilterClause maps one normalized facade clause without interpreting its value.
+func toDomainProcessInstanceVariableFilterClause(x ProcessInstanceVariableFilterClause) d.ProcessInstanceVariableFilterClause {
+	return d.ProcessInstanceVariableFilterClause{
+		Name:     x.Name,
+		Operator: d.ProcessInstanceVariableFilterOperator(x.Operator),
+		Value:    x.Value,
+		Exists:   toolx.CopyPtr(x.Exists),
+		Source:   x.Source,
+	}
+}
+
+// fromDomainProcessInstanceVariableFilterSet copies domain variable clauses back to the public model.
+func fromDomainProcessInstanceVariableFilterSet(x d.ProcessInstanceVariableFilterSet) ProcessInstanceVariableFilterSet {
+	return ProcessInstanceVariableFilterSet{
+		Clauses: toolx.MapSlice(x.Clauses, fromDomainProcessInstanceVariableFilterClause),
+	}
+}
+
+// fromDomainProcessInstanceVariableFilterClause maps one service-facing clause back to the facade type.
+func fromDomainProcessInstanceVariableFilterClause(x d.ProcessInstanceVariableFilterClause) ProcessInstanceVariableFilterClause {
+	return ProcessInstanceVariableFilterClause{
+		Name:     x.Name,
+		Operator: ProcessInstanceVariableFilterOperator(x.Operator),
+		Value:    x.Value,
+		Exists:   toolx.CopyPtr(x.Exists),
+		Source:   x.Source,
 	}
 }
 

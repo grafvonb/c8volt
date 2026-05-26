@@ -5,9 +5,9 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/grafvonb/c8volt/c8volt/incident"
-	"time"
+	"strings"
 
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/services/incidentfilter"
 	"github.com/spf13/cobra"
@@ -25,10 +25,12 @@ var (
 	flagGetIncidentRootKey            string
 	flagGetIncidentPDKey              string
 	flagGetIncidentBpmnProcessID      string
-	flagGetIncidentFlowNodeID         string
-	flagGetIncidentFNIKey             string
+	flagGetIncidentElementID          string
+	flagGetIncidentElementInstanceKey string
 	flagGetIncidentCreationTimeAfter  string
 	flagGetIncidentCreationTimeBefore string
+	flagGetIncidentCreationTimeNewer  int
+	flagGetIncidentCreationTimeOlder  int
 	flagGetIncidentSize               int32
 	flagGetIncidentLimit              int32
 	flagGetIncidentTotal              bool
@@ -39,7 +41,8 @@ var getIncidentCmd = &cobra.Command{
 	Short: "List or fetch incidents",
 	Long: "Get Camunda incidents by key or by search criteria.\n\n" +
 		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once and rendered through the shared get output modes.\n\n" +
-		"When no keys are supplied, incidents are searched by state, error type, error message, process context, flow-node context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions.\n\n" +
+		"When no keys are supplied, incidents are searched by state, error type, error message, process context, element context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions.\n\n" +
+		"When --bpmn-process-id is supplied in search mode, the BPMN process definition selector is validated before incident totals, key-only output, process-instance-key output, or paging. Missing or invisible definitions fail explicitly; --json, --automation, --keys-only, --pi-keys-only, and non-TTY runs never prompt for recovery output.\n\n" +
 		"Use --json for the stable incident payload, --keys-only for incident keys, --pi-keys-only for process instance keys, --error-message-limit to shorten long error messages, or --with-no-error-message to omit them.",
 	Example: `  ./c8volt get incident --key <incident-key>
   ./c8volt get inc --key <incident-key> --key <another-incident-key>
@@ -51,7 +54,7 @@ var getIncidentCmd = &cobra.Command{
   ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel pi --dry-run -
   ./c8volt get incident --error-message "intentional" --limit 5
   ./c8volt get incident --creation-time-after 2026-05-01T00:00:00Z --creation-time-before 2026-05-31T00:00:00Z --limit 5
-  ./c8volt get incident --pi-key <process-instance-key> --flow-node-id <flow-node-id>
+  ./c8volt get incident --pi-key <process-instance-key> --element-id <element-id>
   ./c8volt --json get incident --key <incident-key>
   ./c8volt --keys-only get incident --key <incident-key>`,
 	Aliases: []string{"incidents", "inc"},
@@ -113,6 +116,15 @@ var getIncidentCmd = &cobra.Command{
 		}
 
 		filter := populateGetIncidentSearchFilter()
+		if flagGetIncidentBpmnProcessID != "" {
+			result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newIncidentProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			if !result.Valid() {
+				handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
+			}
+		}
 		log.Debug(fmt.Sprintf("searching incidents; mode %s", pickMode()))
 		if flagGetIncidentTotal {
 			total, err := searchIncidentsTotal(cmd, cli, cfg, filter)
@@ -146,14 +158,16 @@ func init() {
 	fs.StringVarP(&flagGetIncidentState, "state", "s", "active", "incident state scope for search: active, pending, resolved, migrated, unknown, all")
 	fs.StringVar(&flagGetIncidentErrorType, "error-type", "", "case-insensitive incident error type filter for search")
 	fs.StringVar(&flagGetIncidentErrorMessage, "error-message", "", "case-insensitive incident error message substring filter for search")
-	fs.StringVarP(&flagGetIncidentBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter incidents")
+	fs.StringVarP(&flagGetIncidentBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to validate and filter incidents")
 	fs.StringVar(&flagGetIncidentPDKey, "pd-key", "", "process definition key to filter incidents")
 	fs.StringVar(&flagGetIncidentPIKey, "pi-key", "", "process instance key to filter incidents")
 	fs.StringVar(&flagGetIncidentRootKey, "root-key", "", "root process instance key to filter incidents")
-	fs.StringVar(&flagGetIncidentFlowNodeID, "flow-node-id", "", "flow node ID to filter incidents")
-	fs.StringVar(&flagGetIncidentFNIKey, "fni-key", "", "flow node instance key to filter incidents")
-	fs.StringVar(&flagGetIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD")
-	fs.StringVar(&flagGetIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD")
+	fs.StringVar(&flagGetIncidentElementID, "element-id", "", "BPMN element ID to filter incidents")
+	fs.StringVar(&flagGetIncidentElementInstanceKey, "element-instance-key", "", "element instance key to filter incidents")
+	fs.StringVar(&flagGetIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
+	fs.StringVar(&flagGetIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
+	fs.IntVar(&flagGetIncidentCreationTimeNewer, "creation-time-newer-days", -1, "only include incidents with creation time N days old or newer (0 means today)")
+	fs.IntVar(&flagGetIncidentCreationTimeOlder, "creation-time-older-days", -1, "only include incidents with creation time N days old or older")
 	fs.Int32VarP(&flagGetIncidentSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to return across all pages")
 	fs.BoolVar(&flagGetIncidentTotal, "total", false, "return only the exact numeric total of matching incidents")
@@ -182,10 +196,12 @@ func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 	if err := validateGetIncidentErrorTypeFlag(flagGetIncidentErrorType); err != nil {
 		return err
 	}
-	if err := validateGetIncidentCreationTimeFlag("--creation-time-after", flagGetIncidentCreationTimeAfter); err != nil {
-		return err
-	}
-	if err := validateGetIncidentCreationTimeFlag("--creation-time-before", flagGetIncidentCreationTimeBefore); err != nil {
+	if err := validateIncidentCreationTimeFilters(
+		"--creation-time-after", flagGetIncidentCreationTimeAfter,
+		"--creation-time-before", flagGetIncidentCreationTimeBefore,
+		"--creation-time-newer-days", flagGetIncidentCreationTimeNewer,
+		"--creation-time-older-days", flagGetIncidentCreationTimeOlder,
+	); err != nil {
 		return err
 	}
 	if flagGetIncidentTotal {
@@ -211,10 +227,10 @@ func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 		return mutuallyExclusiveFlagsf("--key cannot be combined with search filters")
 	}
 	for flag, value := range map[string]string{
-		"--pi-key":   flagGetIncidentPIKey,
-		"--root-key": flagGetIncidentRootKey,
-		"--pd-key":   flagGetIncidentPDKey,
-		"--fni-key":  flagGetIncidentFNIKey,
+		"--pi-key":               flagGetIncidentPIKey,
+		"--root-key":             flagGetIncidentRootKey,
+		"--pd-key":               flagGetIncidentPDKey,
+		"--element-instance-key": flagGetIncidentElementInstanceKey,
 	} {
 		if value == "" {
 			continue
@@ -254,12 +270,13 @@ func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 }
 
 func validateGetIncidentStateFlag(value string) error {
-	switch value {
-	case "active", "pending", "resolved", "migrated", "unknown", "all":
-		return nil
-	default:
-		return invalidFlagValuef("invalid value for --state: %q, valid values are: active, pending, resolved, migrated, unknown, all", value)
+	if strings.TrimSpace(value) == "" {
+		return invalidFlagValuef("invalid value for --state: %q, valid values are: %s", value, incidentfilter.ValidStatesString())
 	}
+	if _, ok := incidentfilter.NormalizeState(value); ok {
+		return nil
+	}
+	return invalidFlagValuef("invalid value for --state: %q, valid values are: %s", value, incidentfilter.ValidStatesString())
 }
 
 func validateGetIncidentErrorTypeFlag(value string) error {
@@ -267,19 +284,6 @@ func validateGetIncidentErrorTypeFlag(value string) error {
 		return nil
 	}
 	return invalidFlagValuef("invalid value for --error-type: %q", value)
-}
-
-func validateGetIncidentCreationTimeFlag(name string, value string) error {
-	if value == "" {
-		return nil
-	}
-	if _, err := time.Parse(time.RFC3339Nano, value); err == nil {
-		return nil
-	}
-	if _, err := time.Parse(time.DateOnly, value); err == nil {
-		return nil
-	}
-	return invalidFlagValuef("invalid value for %s: %q, expected RFC3339 timestamp or YYYY-MM-DD", name, value)
 }
 
 func isGetIncidentLimitFlagChanged(cmd *cobra.Command) bool {
@@ -298,10 +302,12 @@ func hasGetIncidentSearchModeFlags(cmd *cobra.Command) bool {
 		"root-key",
 		"pd-key",
 		"bpmn-process-id",
-		"flow-node-id",
-		"fni-key",
+		"element-id",
+		"element-instance-key",
 		"creation-time-after",
 		"creation-time-before",
+		"creation-time-newer-days",
+		"creation-time-older-days",
 		"batch-size",
 		"limit",
 	} {
@@ -314,18 +320,21 @@ func hasGetIncidentSearchModeFlags(cmd *cobra.Command) bool {
 
 func populateGetIncidentSearchFilter() incident.Filter {
 	errorType, _ := incidentfilter.NormalizeErrorType(flagGetIncidentErrorType)
+	state, _ := incidentfilter.NormalizeState(flagGetIncidentState)
+	creationTimeAfter, _ := pickIncidentCreationTimeLowerBound(flagGetIncidentCreationTimeAfter, flagGetIncidentCreationTimeNewer)
+	creationTimeBefore, _ := pickIncidentCreationTimeUpperBound(flagGetIncidentCreationTimeBefore, flagGetIncidentCreationTimeOlder)
 	return incident.Filter{
-		State:                  flagGetIncidentState,
+		State:                  state,
 		ErrorType:              errorType,
 		ErrorMessage:           flagGetIncidentErrorMessage,
 		ProcessInstanceKey:     flagGetIncidentPIKey,
 		RootProcessInstanceKey: flagGetIncidentRootKey,
 		ProcessDefinitionKey:   flagGetIncidentPDKey,
 		ProcessDefinitionId:    flagGetIncidentBpmnProcessID,
-		FlowNodeId:             flagGetIncidentFlowNodeID,
-		FlowNodeInstanceKey:    flagGetIncidentFNIKey,
-		CreationTimeAfter:      flagGetIncidentCreationTimeAfter,
-		CreationTimeBefore:     flagGetIncidentCreationTimeBefore,
+		ElementId:              flagGetIncidentElementID,
+		ElementInstanceKey:     flagGetIncidentElementInstanceKey,
+		CreationTimeAfter:      creationTimeAfter,
+		CreationTimeBefore:     creationTimeBefore,
 	}
 }
 
@@ -341,10 +350,12 @@ func resetGetIncidentFlagState() {
 	flagGetIncidentRootKey = ""
 	flagGetIncidentPDKey = ""
 	flagGetIncidentBpmnProcessID = ""
-	flagGetIncidentFlowNodeID = ""
-	flagGetIncidentFNIKey = ""
+	flagGetIncidentElementID = ""
+	flagGetIncidentElementInstanceKey = ""
 	flagGetIncidentCreationTimeAfter = ""
 	flagGetIncidentCreationTimeBefore = ""
+	flagGetIncidentCreationTimeNewer = -1
+	flagGetIncidentCreationTimeOlder = -1
 	flagGetIncidentSize = consts.MaxPISearchSize
 	flagGetIncidentLimit = 0
 	flagGetIncidentTotal = false

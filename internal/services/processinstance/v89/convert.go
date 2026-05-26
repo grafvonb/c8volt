@@ -16,19 +16,19 @@ import (
 
 func fromProcessInstanceResult(r camundav89.ProcessInstanceResult) d.ProcessInstance {
 	return d.ProcessInstance{
-		BpmnProcessId:             r.ProcessDefinitionId,
-		EndDate:                   formatTimePtr(r.EndDate),
-		Incident:                  r.HasIncident,
-		Key:                       r.ProcessInstanceKey,
-		ParentFlowNodeInstanceKey: valueOrEmpty(r.ParentElementInstanceKey),
-		ParentKey:                 valueOrEmpty(r.ParentProcessInstanceKey),
-		ProcessDefinitionKey:      r.ProcessDefinitionKey,
-		RootProcessInstanceKey:    valueOrEmpty(r.RootProcessInstanceKey),
-		ProcessVersion:            r.ProcessDefinitionVersion,
-		ProcessVersionTag:         valueOrEmpty(r.ProcessDefinitionVersionTag),
-		StartDate:                 formatTime(r.StartDate),
-		State:                     d.State(r.State),
-		TenantId:                  r.TenantId,
+		BpmnProcessId:            r.ProcessDefinitionId,
+		EndDate:                  formatTimePtr(r.EndDate),
+		Incident:                 r.HasIncident,
+		Key:                      r.ProcessInstanceKey,
+		ParentElementInstanceKey: valueOrEmpty(r.ParentElementInstanceKey),
+		ParentKey:                valueOrEmpty(r.ParentProcessInstanceKey),
+		ProcessDefinitionKey:     r.ProcessDefinitionKey,
+		RootProcessInstanceKey:   valueOrEmpty(r.RootProcessInstanceKey),
+		ProcessVersion:           r.ProcessDefinitionVersion,
+		ProcessVersionTag:        valueOrEmpty(r.ProcessDefinitionVersionTag),
+		StartDate:                formatTime(r.StartDate),
+		State:                    d.State(r.State),
+		TenantId:                 r.TenantId,
 	}
 }
 
@@ -115,6 +115,7 @@ type processInstanceFilter struct {
 	State                       *camundav89.ProcessInstanceStateFilterProperty `json:"state,omitempty"`
 	HasIncident                 *bool                                          `json:"hasIncident,omitempty"`
 	ParentProcessInstanceKey    *camundav89.ProcessInstanceKeyFilterProperty   `json:"parentProcessInstanceKey,omitempty"`
+	Variables                   *[]camundav89.VariableValueFilterProperty      `json:"variables,omitempty"`
 }
 
 func (f *processInstanceFilter) isEmpty() bool {
@@ -129,7 +130,8 @@ func (f *processInstanceFilter) isEmpty() bool {
 		f.EndDate == nil &&
 		f.State == nil &&
 		f.HasIncident == nil &&
-		f.ParentProcessInstanceKey == nil
+		f.ParentProcessInstanceKey == nil &&
+		f.Variables == nil
 }
 
 type processInstanceSearchQueryResult struct {

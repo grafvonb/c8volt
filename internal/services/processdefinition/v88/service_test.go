@@ -367,6 +367,47 @@ func TestService_SearchProcessDefinitions_IncidentSearchIncludesTenantFilterWhen
 	m.AssertExpectations(t)
 }
 
+// TestService_SearchProcessDefinitionsPage_UsesNativePageMetadata protects cursor continuation for process-definition discovery.
+func TestService_SearchProcessDefinitionsPage_UsesNativePageMetadata(t *testing.T) {
+	ctx := context.Background()
+	m := &mockProcessDefinitionClient{}
+	end := camundav88.EndCursor("cursor-next")
+	resp := &camundav88.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
+		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
+			Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+			Page: camundav88.SearchQueryPageResponse{
+				EndCursor:         &end,
+				HasMoreTotalItems: true,
+				TotalItems:        10000,
+			},
+		},
+	}
+	m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			body := args.Get(1).(camundav88.SearchProcessDefinitionsJSONRequestBody)
+			page, err := body.Page.AsCursorForwardPagination()
+			require.NoError(t, err)
+			assert.Equal(t, camundav88.EndCursor("cursor-prev"), page.After)
+			require.NotNil(t, page.Limit)
+			assert.Equal(t, int32(2), *page.Limit)
+		}).
+		Return(resp, nil)
+
+	svc, err := v88.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v88.WithClientCamunda(m))
+	require.NoError(t, err)
+	page, err := svc.SearchProcessDefinitionsPage(ctx, domain.ProcessDefinitionFilter{}, domain.ProcessDefinitionPageRequest{After: "cursor-prev", Size: 2})
+
+	require.NoError(t, err)
+	require.Len(t, page.Items, 1)
+	assert.Equal(t, domain.ProcessInstanceOverflowStateHasMore, page.OverflowState)
+	assert.Equal(t, "cursor-next", page.EndCursor)
+	require.NotNil(t, page.ReportedTotal)
+	assert.Equal(t, int64(10000), page.ReportedTotal.Count)
+	assert.Equal(t, domain.ProcessDefinitionReportedTotalKindLowerBound, page.ReportedTotal.Kind)
+	m.AssertExpectations(t)
+}
+
 func TestService_GetProcessDefinition(t *testing.T) {
 	ctx := context.Background()
 	mockErr := errors.New("get failed")

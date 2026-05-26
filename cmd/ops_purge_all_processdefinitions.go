@@ -10,6 +10,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
@@ -22,6 +23,8 @@ var (
 	flagOpsPurgeAllPDProcessVersion    int32
 	flagOpsPurgeAllPDProcessVersionTag string
 	flagOpsPurgeAllPDLatest            bool
+	flagOpsPurgeAllPDBatchSize         int32
+	flagOpsPurgeAllPDLimit             int32
 	flagOpsPurgeAllPDReportFile        string
 	flagOpsPurgeAllPDReportFormat      string
 )
@@ -30,13 +33,11 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 	Use:   "all-process-definitions",
 	Short: "Purge all selected process definitions",
 	Long: "Purge all selected process definitions.\n\n" +
-		"The workflow discovers candidate process-definition versions using the same filters as `get pd`, freezes the candidate keys, validates the existing delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. This purge requires Camunda 8.9 or newer because earlier endpoints do not support full process-definition history deletion. Preview with --dry-run before confirmed deletion. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
+		"The workflow discovers candidate process-definition versions using the same filters as `get pd`, freezes the candidate keys, validates the existing delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Discovery pages through all matching process definitions by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. This purge requires Camunda 8.9 or newer because earlier endpoints do not support full process-definition history deletion. Preview with --dry-run before confirmed deletion. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
 	Example: `  ./c8volt ops purge all-process-definitions --dry-run
-  ./c8volt ops purge all-process-definitions --dry-run --report-file process-definition-purge.md
   ./c8volt ops purge all-pds --bpmn-process-id <bpmn-process-id> --latest --dry-run
-  ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --pd-version 3 --dry-run --report-file process-definition-purge.json --report-format json
-  ./c8volt ops purge all-process-definitions --automation --json --dry-run
-  ./c8volt ops purge all-process-definitions --key <process-definition-key> --auto-confirm --force --report-file process-definition-purge.md`,
+  ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --force
+  ./c8volt ops purge all-process-definitions --key <process-definition-key> --force --report-file process-definition-purge.md`,
 	Aliases: []string{"all-pds", "apd"},
 	Args:    validateOpsPurgeAllProcessDefinitionsArgs,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -58,6 +59,8 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			Automation:    automationModeEnabled(cmd),
 			OutputMode:    pickMode().String(),
 			Selection:     populateOpsPurgeAllProcessDefinitionsSelection(),
+			BatchSize:     resolveOpsPurgeAllProcessDefinitionsSearchSize(cmd, cfg),
+			Limit:         flagOpsPurgeAllPDLimit,
 			Workers:       flagWorkers,
 			FailFast:      flagFailFast,
 			NoWorkerLimit: flagNoWorkerLimit,
@@ -70,7 +73,9 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
-			planned, err := cli.PurgeAllProcessDefinitions(cmd.Context(), planRequest, collectOptions()...)
+			planned, err := purgeAllProcessDefinitionsWithCommandActivity(cmd, planRequest, func() (ops.AllProcessDefinitionsPurgeResult, error) {
+				return cli.PurgeAllProcessDefinitions(cmd.Context(), planRequest, collectOptions()...)
+			})
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops purge all process definitions: %w", err))
 			}
@@ -86,8 +91,11 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 				}
 			}
 			request.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, planned.Discovery.CandidateProcessDefinitionKeys...)
+			request.DiscoveredScopeStatus = planned.Discovery.DiscoveryScopeStatus
 		}
-		result, err := cli.PurgeAllProcessDefinitions(cmd.Context(), request, collectOptions()...)
+		result, err := purgeAllProcessDefinitionsWithCommandActivity(cmd, request, func() (ops.AllProcessDefinitionsPurgeResult, error) {
+			return cli.PurgeAllProcessDefinitions(cmd.Context(), request, collectOptions()...)
+		})
 		if err != nil {
 			if reportErr := writeOpsPurgeAllProcessDefinitionsReport(result, cfg, opsPurgeAllProcessDefinitionsReportWriteMode(result)); reportErr != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge all process definitions: %w; write audit report: %v", err, reportErr))
@@ -113,6 +121,8 @@ func init() {
 	fs.Int32Var(&flagOpsPurgeAllPDProcessVersion, "pd-version", 0, "process definition version to filter candidate discovery")
 	fs.StringVar(&flagOpsPurgeAllPDProcessVersionTag, "pd-version-tag", "", "process definition version tag to filter candidate discovery")
 	fs.BoolVar(&flagOpsPurgeAllPDLatest, "latest", false, "only include the latest matching process-definition version(s)")
+	fs.Int32VarP(&flagOpsPurgeAllPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process definitions to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagOpsPurgeAllPDLimit, "limit", "l", 0, "maximum number of matching process definitions to freeze for purge; omit to discover all matches")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "discover and validate process-definition cleanup without submitting deletion requests")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when validating the delete plan and deleting process definitions (default: min(targets, 2*GOMAXPROCS, 32))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
@@ -148,6 +158,12 @@ func validateOpsPurgeAllProcessDefinitionsFlags(cmd *cobra.Command) error {
 	if cmd != nil && cmd.Flags().Changed("pd-version") && flagOpsPurgeAllPDProcessVersion <= 0 {
 		return invalidFlagValuef("--pd-version must be positive integer")
 	}
+	if flagOpsPurgeAllPDBatchSize <= 0 || flagOpsPurgeAllPDBatchSize > consts.MaxPISearchSize {
+		return invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagOpsPurgeAllPDBatchSize, consts.MaxPISearchSize)
+	}
+	if flagOpsPurgeAllPDLimit < 0 || (flagOpsPurgeAllPDLimit == 0 && cmd != nil && cmd.Flags().Changed("limit")) {
+		return invalidFlagValuef("--limit must be positive integer")
+	}
 	if cmd != nil && cmd.Flags().Changed("workers") && flagWorkers < 1 {
 		return invalidFlagValuef("--workers must be positive integer")
 	}
@@ -156,11 +172,26 @@ func validateOpsPurgeAllProcessDefinitionsFlags(cmd *cobra.Command) error {
 
 // opsPurgeAllProcessDefinitionsConfirmationPrompt summarizes the frozen destructive scope and version-specific limitations.
 func opsPurgeAllProcessDefinitionsConfirmationPrompt(planned ops.AllProcessDefinitionsPurgeResult) string {
-	return fmt.Sprintf("All process-definitions purge matched %d candidate process definition(s); delete planning will affect %d process instance(s) across %d unique process definition(s). Do you want to proceed?",
+	return fmt.Sprintf("process-definition purge: %d candidate process definition(s), %d affected process instance(s) will be deleted. Do you want to proceed?",
 		planned.Discovery.CandidateProcessDefinitionCount,
 		planned.DeletePlan.AffectedProcessInstanceCount,
-		len(planned.DeletePlan.CandidateProcessDefinitionKeys),
 	)
+}
+
+func purgeAllProcessDefinitionsWithCommandActivity(cmd *cobra.Command, request ops.AllProcessDefinitionsPurgeRequest, run func() (ops.AllProcessDefinitionsPurgeResult, error)) (ops.AllProcessDefinitionsPurgeResult, error) {
+	stopActivity := startCommandActivity(cmd, formatOpsPurgeAllProcessDefinitionsActivity(request))
+	defer stopActivity()
+	return run()
+}
+
+func formatOpsPurgeAllProcessDefinitionsActivity(request ops.AllProcessDefinitionsPurgeRequest) string {
+	if request.DiscoveredCandidateProcessDefinitionKeys != nil {
+		return "deleting process definitions"
+	}
+	if request.DryRun {
+		return "checking process-definition delete impact"
+	}
+	return "running process-definition purge workflow"
 }
 
 // rejectOpsPurgeAllProcessDefinitionsPlanRequiringForce blocks mutation before prompting when active process instances are affected.
@@ -273,4 +304,15 @@ func populateOpsPurgeAllProcessDefinitionsSelection() ops.ProcessDefinitionSelec
 		ProcessVersionTag: flagOpsPurgeAllPDProcessVersionTag,
 		LatestOnly:        flagOpsPurgeAllPDLatest,
 	}
+}
+
+// resolveOpsPurgeAllProcessDefinitionsSearchSize applies the existing page-size default policy.
+func resolveOpsPurgeAllProcessDefinitionsSearchSize(cmd *cobra.Command, cfg *config.Config) int32 {
+	if cmd != nil && cmd.Flags().Changed("batch-size") {
+		return flagOpsPurgeAllPDBatchSize
+	}
+	if cfg != nil && cfg.App.ProcessInstancePageSize > 0 && cfg.App.ProcessInstancePageSize <= consts.MaxPISearchSize {
+		return cfg.App.ProcessInstancePageSize
+	}
+	return consts.MaxPISearchSize
 }

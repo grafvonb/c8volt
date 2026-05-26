@@ -22,10 +22,8 @@ c8volt ops purge orphan-process-instances [flags]
 ```
   ./c8volt ops purge orphan-process-instances --dry-run
   ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id <bpmn-process-id> --limit 25
-  ./c8volt ops purge orphan-process-instances --automation --json --dry-run
-  ./c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm
-  ./c8volt ops purge orphan-process-instances --dry-run --report-file orphan-purge.md
-  ./c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm --report-file orphan-purge.json --report-format json
+  ./c8volt ops purge orphan-process-instances --state completed --limit 25
+  ./c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md
 ```
 
 ### Options
@@ -73,7 +71,7 @@ c8volt ops purge orphan-process-instances [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for tenant-aware command flows (overrides env, profile, and base config)
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

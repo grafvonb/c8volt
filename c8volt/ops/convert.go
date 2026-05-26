@@ -74,6 +74,19 @@ func fromDomainWorkflowStepResult(x d.WorkflowStepResult) WorkflowStepResult {
 	}
 }
 
+// fromDomainDiscoveryScopeStatus maps shared discovery completeness metadata to public output.
+func fromDomainDiscoveryScopeStatus(x d.DiscoveryScopeStatus) DiscoveryScopeStatus {
+	return DiscoveryScopeStatus{
+		Complete:         x.Complete,
+		Limited:          x.Limited,
+		Limit:            x.Limit,
+		BatchSize:        x.BatchSize,
+		Pages:            x.Pages,
+		CandidatesSeen:   x.CandidatesSeen,
+		CandidatesFrozen: x.CandidatesFrozen,
+	}
+}
+
 func fromDomainEmbeddedSmokeTestFixture(x d.EmbeddedSmokeTestFixture) EmbeddedSmokeTestFixture {
 	return EmbeddedSmokeTestFixture{
 		CamundaVersion: x.CamundaVersion,
@@ -510,11 +523,24 @@ func toDomainIncidentPurgeRequest(x IncidentPurgeRequest) d.IncidentPurgeRequest
 		Force:         x.Force,
 		ReportFile:    x.ReportFile,
 		ReportFormat:  x.ReportFormat,
-		StartedAt:     x.StartedAt,
+		DiscoveredScopeStatus: d.DiscoveryScopeStatus{
+			Complete:         x.DiscoveredScopeStatus.Complete,
+			Limited:          x.DiscoveredScopeStatus.Limited,
+			Limit:            x.DiscoveredScopeStatus.Limit,
+			BatchSize:        x.DiscoveredScopeStatus.BatchSize,
+			Pages:            x.DiscoveredScopeStatus.Pages,
+			CandidatesSeen:   x.DiscoveredScopeStatus.CandidatesSeen,
+			CandidatesFrozen: x.DiscoveredScopeStatus.CandidatesFrozen,
+		},
+		StartedAt: x.StartedAt,
 	}
 	if x.DiscoveredCandidateProcessInstanceKeys != nil {
 		out.DiscoveredCandidateProcessInstanceKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessInstanceKeys...)
 	}
+	if x.DiscoveredIncidentKeys != nil {
+		out.DiscoveredIncidentKeys = append(typex.Keys{}, x.DiscoveredIncidentKeys...)
+	}
+	out.DiscoveredIncidentCount = x.DiscoveredIncidentCount
 	return out
 }
 
@@ -535,32 +561,38 @@ func fromDomainIncidentPurgeResult(x d.IncidentPurgeResult) IncidentPurgeResult 
 // fromDomainIncidentPurgeRequest maps a service request back to public output.
 func fromDomainIncidentPurgeRequest(x d.IncidentPurgeRequest) IncidentPurgeRequest {
 	out := IncidentPurgeRequest{
-		CommandName:   x.CommandName,
-		DryRun:        x.DryRun,
-		AutoConfirm:   x.AutoConfirm,
-		Automation:    x.Automation,
-		OutputMode:    x.OutputMode,
-		Selection:     fromDomainIncidentFilter(x.Selection),
-		BatchSize:     x.BatchSize,
-		Limit:         x.Limit,
-		Workers:       x.Workers,
-		FailFast:      x.FailFast,
-		NoWorkerLimit: x.NoWorkerLimit,
-		NoWait:        x.NoWait,
-		Force:         x.Force,
-		ReportFile:    x.ReportFile,
-		ReportFormat:  x.ReportFormat,
-		StartedAt:     x.StartedAt,
+		CommandName:           x.CommandName,
+		DryRun:                x.DryRun,
+		AutoConfirm:           x.AutoConfirm,
+		Automation:            x.Automation,
+		OutputMode:            x.OutputMode,
+		Selection:             fromDomainIncidentFilter(x.Selection),
+		BatchSize:             x.BatchSize,
+		Limit:                 x.Limit,
+		Workers:               x.Workers,
+		FailFast:              x.FailFast,
+		NoWorkerLimit:         x.NoWorkerLimit,
+		NoWait:                x.NoWait,
+		Force:                 x.Force,
+		ReportFile:            x.ReportFile,
+		ReportFormat:          x.ReportFormat,
+		DiscoveredScopeStatus: fromDomainDiscoveryScopeStatus(x.DiscoveredScopeStatus),
+		StartedAt:             x.StartedAt,
 	}
 	if x.DiscoveredCandidateProcessInstanceKeys != nil {
 		out.DiscoveredCandidateProcessInstanceKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessInstanceKeys...)
 	}
+	if x.DiscoveredIncidentKeys != nil {
+		out.DiscoveredIncidentKeys = append(typex.Keys{}, x.DiscoveredIncidentKeys...)
+	}
+	out.DiscoveredIncidentCount = x.DiscoveredIncidentCount
 	return out
 }
 
 // fromDomainIncidentDiscoveryResult maps discovery details to the public model.
 func fromDomainIncidentDiscoveryResult(x d.IncidentDiscoveryResult) IncidentDiscoveryResult {
 	return IncidentDiscoveryResult{
+		DiscoveryScopeStatus:                  fromDomainDiscoveryScopeStatus(x.DiscoveryScopeStatus),
 		Status:                                WorkflowStepStatus(x.Status),
 		Filters:                               fromDomainIncidentFilter(x.Filters),
 		CandidateIncidents:                    toolx.MapSlice(x.CandidateIncidents, fromDomainIncidentDetail),
@@ -732,6 +764,7 @@ func fromDomainRepairRequest(x d.OpsRepairRequest) RepairRequest {
 // fromDomainRepairFrozenSet maps frozen repair targets to public output.
 func fromDomainRepairFrozenSet(x d.OpsRepairFrozenSet) RepairFrozenSet {
 	return RepairFrozenSet{
+		DiscoveryScopeStatus:       fromDomainDiscoveryScopeStatus(x.DiscoveryScopeStatus),
 		Status:                     WorkflowStepStatus(x.Status),
 		Target:                     RepairTarget(x.Target),
 		DiscoveryMode:              RepairDiscoveryMode(x.DiscoveryMode),
@@ -856,6 +889,8 @@ func toDomainAllProcessDefinitionsPurgeRequest(x AllProcessDefinitionsPurgeReque
 		Automation:    x.Automation,
 		OutputMode:    x.OutputMode,
 		Selection:     toDomainProcessDefinitionSelection(x.Selection),
+		BatchSize:     x.BatchSize,
+		Limit:         x.Limit,
 		Workers:       x.Workers,
 		FailFast:      x.FailFast,
 		NoWorkerLimit: x.NoWorkerLimit,
@@ -863,7 +898,16 @@ func toDomainAllProcessDefinitionsPurgeRequest(x AllProcessDefinitionsPurgeReque
 		Force:         x.Force,
 		ReportFile:    x.ReportFile,
 		ReportFormat:  x.ReportFormat,
-		StartedAt:     x.StartedAt,
+		DiscoveredScopeStatus: d.DiscoveryScopeStatus{
+			Complete:         x.DiscoveredScopeStatus.Complete,
+			Limited:          x.DiscoveredScopeStatus.Limited,
+			Limit:            x.DiscoveredScopeStatus.Limit,
+			BatchSize:        x.DiscoveredScopeStatus.BatchSize,
+			Pages:            x.DiscoveredScopeStatus.Pages,
+			CandidatesSeen:   x.DiscoveredScopeStatus.CandidatesSeen,
+			CandidatesFrozen: x.DiscoveredScopeStatus.CandidatesFrozen,
+		},
+		StartedAt: x.StartedAt,
 	}
 	if x.DiscoveredCandidateProcessDefinitionKeys != nil {
 		out.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessDefinitionKeys...)
@@ -888,20 +932,23 @@ func fromDomainAllProcessDefinitionsPurgeResult(x d.AllProcessDefinitionsPurgeRe
 // fromDomainAllProcessDefinitionsPurgeRequest maps a service request back to public output.
 func fromDomainAllProcessDefinitionsPurgeRequest(x d.AllProcessDefinitionsPurgeRequest) AllProcessDefinitionsPurgeRequest {
 	out := AllProcessDefinitionsPurgeRequest{
-		CommandName:   x.CommandName,
-		DryRun:        x.DryRun,
-		AutoConfirm:   x.AutoConfirm,
-		Automation:    x.Automation,
-		OutputMode:    x.OutputMode,
-		Selection:     fromDomainProcessDefinitionSelection(x.Selection),
-		Workers:       x.Workers,
-		FailFast:      x.FailFast,
-		NoWorkerLimit: x.NoWorkerLimit,
-		NoWait:        x.NoWait,
-		Force:         x.Force,
-		ReportFile:    x.ReportFile,
-		ReportFormat:  x.ReportFormat,
-		StartedAt:     x.StartedAt,
+		CommandName:           x.CommandName,
+		DryRun:                x.DryRun,
+		AutoConfirm:           x.AutoConfirm,
+		Automation:            x.Automation,
+		OutputMode:            x.OutputMode,
+		Selection:             fromDomainProcessDefinitionSelection(x.Selection),
+		BatchSize:             x.BatchSize,
+		Limit:                 x.Limit,
+		Workers:               x.Workers,
+		FailFast:              x.FailFast,
+		NoWorkerLimit:         x.NoWorkerLimit,
+		NoWait:                x.NoWait,
+		Force:                 x.Force,
+		ReportFile:            x.ReportFile,
+		ReportFormat:          x.ReportFormat,
+		DiscoveredScopeStatus: fromDomainDiscoveryScopeStatus(x.DiscoveredScopeStatus),
+		StartedAt:             x.StartedAt,
 	}
 	if x.DiscoveredCandidateProcessDefinitionKeys != nil {
 		out.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessDefinitionKeys...)
@@ -912,6 +959,7 @@ func fromDomainAllProcessDefinitionsPurgeRequest(x d.AllProcessDefinitionsPurgeR
 // fromDomainProcessDefinitionDiscoveryResult maps discovery details to the public model.
 func fromDomainProcessDefinitionDiscoveryResult(x d.ProcessDefinitionDiscoveryResult) ProcessDefinitionDiscoveryResult {
 	return ProcessDefinitionDiscoveryResult{
+		DiscoveryScopeStatus:                    fromDomainDiscoveryScopeStatus(x.DiscoveryScopeStatus),
 		Status:                                  WorkflowStepStatus(x.Status),
 		Filters:                                 fromDomainProcessDefinitionSelection(x.Filters),
 		CandidateProcessDefinitionKeys:          append(typex.Keys{}, x.CandidateProcessDefinitionKeys...),
@@ -1002,8 +1050,8 @@ func toDomainIncidentFilter(x incident.Filter) d.IncidentFilter {
 		RootProcessInstanceKey: x.RootProcessInstanceKey,
 		ProcessDefinitionKey:   x.ProcessDefinitionKey,
 		ProcessDefinitionId:    x.ProcessDefinitionId,
-		FlowNodeId:             x.FlowNodeId,
-		FlowNodeInstanceKey:    x.FlowNodeInstanceKey,
+		ElementId:              x.ElementId,
+		ElementInstanceKey:     x.ElementInstanceKey,
 		CreationTimeAfter:      x.CreationTimeAfter,
 		CreationTimeBefore:     x.CreationTimeBefore,
 	}
@@ -1020,8 +1068,8 @@ func fromDomainIncidentFilter(x d.IncidentFilter) incident.Filter {
 		RootProcessInstanceKey: x.RootProcessInstanceKey,
 		ProcessDefinitionKey:   x.ProcessDefinitionKey,
 		ProcessDefinitionId:    x.ProcessDefinitionId,
-		FlowNodeId:             x.FlowNodeId,
-		FlowNodeInstanceKey:    x.FlowNodeInstanceKey,
+		ElementId:              x.ElementId,
+		ElementInstanceKey:     x.ElementInstanceKey,
 		CreationTimeAfter:      x.CreationTimeAfter,
 		CreationTimeBefore:     x.CreationTimeBefore,
 	}
@@ -1037,8 +1085,8 @@ func fromDomainIncidentDetail(x d.ProcessInstanceIncidentDetail) incident.Proces
 		State:                  x.State,
 		ErrorType:              x.ErrorType,
 		ErrorMessage:           x.ErrorMessage,
-		FlowNodeId:             x.FlowNodeId,
-		FlowNodeInstanceKey:    x.FlowNodeInstanceKey,
+		ElementId:              x.ElementId,
+		ElementInstanceKey:     x.ElementInstanceKey,
 		JobKey:                 x.JobKey,
 		RootProcessInstanceKey: x.RootProcessInstanceKey,
 		ProcessDefinitionKey:   x.ProcessDefinitionKey,
@@ -1096,20 +1144,20 @@ func fromDomainDryRunPIKeyExpansion(x d.DryRunPIKeyExpansion) process.DryRunPIKe
 
 func fromDomainProcessInstance(x d.ProcessInstance) process.ProcessInstance {
 	return process.ProcessInstance{
-		BpmnProcessId:             x.BpmnProcessId,
-		EndDate:                   x.EndDate,
-		Incident:                  x.Incident,
-		Key:                       x.Key,
-		ParentFlowNodeInstanceKey: x.ParentFlowNodeInstanceKey,
-		ParentKey:                 x.ParentKey,
-		ProcessDefinitionKey:      x.ProcessDefinitionKey,
-		RootProcessInstanceKey:    x.RootProcessInstanceKey,
-		ProcessVersion:            x.ProcessVersion,
-		ProcessVersionTag:         x.ProcessVersionTag,
-		StartDate:                 x.StartDate,
-		State:                     process.State(x.State),
-		TenantId:                  x.TenantId,
-		Variables:                 toolx.CopyMap(x.Variables),
+		BpmnProcessId:            x.BpmnProcessId,
+		EndDate:                  x.EndDate,
+		Incident:                 x.Incident,
+		Key:                      x.Key,
+		ParentElementInstanceKey: x.ParentElementInstanceKey,
+		ParentKey:                x.ParentKey,
+		ProcessDefinitionKey:     x.ProcessDefinitionKey,
+		RootProcessInstanceKey:   x.RootProcessInstanceKey,
+		ProcessVersion:           x.ProcessVersion,
+		ProcessVersionTag:        x.ProcessVersionTag,
+		StartDate:                x.StartDate,
+		State:                    process.State(x.State),
+		TenantId:                 x.TenantId,
+		Variables:                toolx.CopyMap(x.Variables),
 	}
 }
 
