@@ -67,10 +67,10 @@ it_run_case "Command Inventory" "ops-execute-help" "read-only" "pass" c8 ops exe
 it_run_case "Command Inventory" "ops-purge-help" "read-only" "pass" c8 ops purge --help
 it_run_case "Command Inventory" "ops-repair-help" "read-only" "pass" c8 ops repair --help
 
-simple_user_task="${IT_FIXTURE_PREFIX}_SimpleUserTaskProcess"
-service_task="${IT_FIXTURE_PREFIX}_SimpleServiceTaskProcess"
-incident_process="${IT_FIXTURE_PREFIX}_SimpleUserTaskWithIncidentProcess"
-multi_subprocess="${IT_FIXTURE_PREFIX}_MultipleSubProcessesParentProcess"
+simple_user_task="${IT_FIXTURE_PREFIX}_SimpleUserTask"
+service_task="${IT_FIXTURE_PREFIX}_SimpleServiceTask"
+incident_process="${IT_FIXTURE_PREFIX}_SimpleUserTaskWithIncident"
+multi_subprocess="${IT_FIXTURE_PREFIX}_MultipleSubProcessesParent"
 pd_fixture="processdefinitions/${simple_user_task}.bpmn"
 
 it_run_case "Fixture Setup" "embed-list" "read-only" "pass" c8 embed list
@@ -92,7 +92,7 @@ key_count="$(awk '/^[0-9]+$/ { count++ } END { print count + 0 }' "$keys_file" 2
   printf -- '- dirty-cluster full force: `%s`\n' "$IT_FULL_FORCE"
 } >> "$IT_REPORT"
 
-it_run_case "Read Workflows" "get-pd-latest" "read-only" "pass" c8 get pd --bpmn-process-id "$simple_user_task" --latest --limit 5
+it_run_case "Read Workflows" "get-pd-latest" "read-only" "pass" c8 get pd --bpmn-process-id "$simple_user_task" --latest
 it_run_case "Read Workflows" "get-pi-active-limited" "read-only" "pass" c8 get pi --bpmn-process-id "$simple_user_task" --state active --limit 5
 it_run_case "Read Workflows" "get-pi-total" "read-only" "pass" c8 get pi --bpmn-process-id "$simple_user_task" --state active --total
 it_run_case "Read Workflows" "get-pi-with-vars-limited" "read-only" "pass" c8 get pi --bpmn-process-id "$simple_user_task" --state active --with-vars --var-value-limit 120 --limit 5

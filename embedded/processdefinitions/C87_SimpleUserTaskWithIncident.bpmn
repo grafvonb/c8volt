@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0ty5i8n" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.46.1" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.7.0">
-  <bpmn:process id="C87_SimpleUserTaskWithIncident_Process" name="C87 Simple User Task with Incident Process" isExecutable="true">
-    <bpmn:documentation>v1.1.0 - update incident assertion to depend on process variable</bpmn:documentation>
+  <bpmn:process id="C87_SimpleUserTaskWithIncident" name="C87 Simple User Task with Incident Process" isExecutable="true">
+    <bpmn:documentation>v2.0.0 - normalized demo fixture ids and incident assertion to depend on process variable</bpmn:documentation>
     <bpmn:extensionElements>
-      <zeebe:versionTag value="v1.1.0" />
+      <zeebe:versionTag value="v2.0.0" />
     </bpmn:extensionElements>
     <bpmn:startEvent id="SimpleUserTaskRequested_StartEvent" name="Simple User Task requested">
       <bpmn:extensionElements>
@@ -30,7 +30,7 @@
     <bpmn:sequenceFlow id="Flow_0nwy12g" sourceRef="SimpleUserTaskWithIncident_UserTask" targetRef="SimpleUserTaskFinished_EndEvent" />
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="C87_SimpleUserTaskWithIncident_Process">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="C87_SimpleUserTaskWithIncident">
       <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="SimpleUserTaskRequested_StartEvent">
         <dc:Bounds x="182" y="102" width="36" height="36" />
         <bpmndi:BPMNLabel>

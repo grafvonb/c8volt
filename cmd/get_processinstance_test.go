@@ -4669,7 +4669,7 @@ func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictHelper(t *testing.
 	case "state":
 		args = append(args, "--state", "active")
 	case "bpmn-process-id":
-		args = append(args, "--bpmn-process-id", "C88_SimpleUserTask_Process")
+		args = append(args, "--bpmn-process-id", "C88_SimpleUserTask")
 	case "start-date-after":
 		args = append(args, "--start-date-after", "2026-01-01")
 	case "roots-only":

@@ -33,7 +33,7 @@
 - Command subprocess tests cover `os.Exit` paths with `testx.RunCmdSubprocess`, a JSON-encoded args env var, and a helper test that calls `handleBootstrapError` on `root.Execute`.
 - Read-only smoke-test connectivity should reuse the cluster topology service path used by `config test-connection` instead of adding command-owned HTTP behavior.
 - Smoke-test human output/report rendering belongs in `cmd/cmd_views_ops_execute_smoke_test.go`; the command should call the facade, write the optional report, then render the result.
-- Smoke-test deployment can reuse `internal/services/resource.API.Deploy` directly from the ops service; pass `DeploymentUnitData.Name` as the embedded FS path such as `processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn`.
+- Smoke-test deployment can reuse `internal/services/resource.API.Deploy` directly from the ops service; pass `DeploymentUnitData.Name` as the embedded FS path such as `processdefinitions/C88_MultipleSubProcessesParent.bpmn`.
 - Deployment metadata should be read from the first `Deployment.Units[].ProcessDefinition`, with deployment tenant as fallback when the unit omits tenant id.
 - Smoke-test process-instance creation can reuse `internal/services/processinstance.CreateNProcessInstances`; set `ProcessInstanceData.ProcessDefinitionSpecificId` from deployment `ProcessDefinitionKey` to run the exact deployed definition, with BPMN process id fallback only when no key is available.
 - Smoke-test family traversal can reuse `processinstance.API.FamilyResult` and summarize `Result.Keys`, missing ancestors, warnings, root key, and outcome without adding command-owned traversal logic.

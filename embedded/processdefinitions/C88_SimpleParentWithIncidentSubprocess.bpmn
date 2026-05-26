@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0nsrc8i" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.46.1" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.8.0">
-  <bpmn:process id="C88_SimpleParentProcessWithIncidentSubprocess" name="C88 Simple Parent Process With Incident Subprocess" isExecutable="true">
+  <bpmn:process id="C88_SimpleParentWithIncidentSubprocess" name="C88 Simple Parent Process With Incident Subprocess" isExecutable="true">
     <bpmn:extensionElements>
-      <zeebe:versionTag value="v1.0.0" />
+      <zeebe:versionTag value="v2.0.0" />
     </bpmn:extensionElements>
     <bpmn:sequenceFlow id="Flow_0h0n1mq" sourceRef="SimpleUserTaskProcessWithIncident_Activity" targetRef="SimpleParentProcess_EndEvent" />
     <bpmn:sequenceFlow id="Flow_1ssmhqo" sourceRef="SimpleParentProcess_StartEvent" targetRef="SimpleUserTaskProcessWithIncident_Activity" />
@@ -14,14 +14,14 @@
     </bpmn:startEvent>
     <bpmn:callActivity id="SimpleUserTaskProcessWithIncident_Activity" name="Simple User Task Process w/ Incident">
       <bpmn:extensionElements>
-        <zeebe:calledElement processId="C88_SimpleUserTaskWithIncident_Process" propagateAllChildVariables="false" />
+        <zeebe:calledElement processId="C88_SimpleUserTaskWithIncident" propagateAllChildVariables="false" />
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_1ssmhqo</bpmn:incoming>
       <bpmn:outgoing>Flow_0h0n1mq</bpmn:outgoing>
     </bpmn:callActivity>
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="C88_SimpleParentProcessWithIncidentSubprocess">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="C88_SimpleParentWithIncidentSubprocess">
       <bpmndi:BPMNShape id="Event_03kjsr2_di" bpmnElement="SimpleParentProcess_EndEvent">
         <dc:Bounds x="422" y="82" width="36" height="36" />
         <bpmndi:BPMNLabel>

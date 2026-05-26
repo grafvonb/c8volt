@@ -33,7 +33,7 @@ Each invocation below must fail before API resolution:
 ./c8volt get pi --has-user-tasks=2251799815391233 --key=2251799813711967
 printf '2251799813711967\n' | ./c8volt get pi --has-user-tasks=2251799815391233 -
 ./c8volt get pi --has-user-tasks=2251799815391233 --state=active
-./c8volt get pi --has-user-tasks=2251799815391233 --bpmn-process-id C88_SimpleUserTask_Process
+./c8volt get pi --has-user-tasks=2251799815391233 --bpmn-process-id C88_SimpleUserTask
 ./c8volt get pi --has-user-tasks=2251799815391233 --total
 ./c8volt get pi --has-user-tasks=2251799815391233 --limit=1
 ```

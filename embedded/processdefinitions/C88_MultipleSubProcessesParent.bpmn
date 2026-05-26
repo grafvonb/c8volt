@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0nsrc8i" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.40.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.8.0">
-  <bpmn:process id="C88_MultipleSubProcessesParentProcess" name="C88 Multiple SubProcesses Parent Process" isExecutable="true">
+  <bpmn:process id="C88_MultipleSubProcessesParent" name="C88 Multiple SubProcesses Parent Process" isExecutable="true">
     <bpmn:extensionElements>
-      <zeebe:versionTag value="v1.0.0" />
+      <zeebe:versionTag value="v2.0.0" />
     </bpmn:extensionElements>
     <bpmn:startEvent id="SimpleParentProcess_StartEvent" name="Simple Parent Process requested">
       <bpmn:outgoing>Flow_03q0fiq</bpmn:outgoing>
@@ -13,7 +13,7 @@
     <bpmn:sequenceFlow id="Flow_0h0n1mq" sourceRef="SimpleParentProcess_Activity" targetRef="SimpleUserTask_UserTask" />
     <bpmn:callActivity id="SimpleParentProcess_Activity" name="Simple Parent Process">
       <bpmn:extensionElements>
-        <zeebe:calledElement processId="C88_SimpleParentProcess" propagateAllChildVariables="false" />
+        <zeebe:calledElement processId="C88_SimpleParent" propagateAllChildVariables="false" />
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_10sh1uh</bpmn:incoming>
       <bpmn:outgoing>Flow_0h0n1mq</bpmn:outgoing>
@@ -27,7 +27,7 @@
     <bpmn:sequenceFlow id="Flow_10sh1uh" sourceRef="MultipleProcesses_Gateway" targetRef="SimpleParentProcess_Activity" />
     <bpmn:callActivity id="SimpleUserTaskProcess_Activity" name="Simple User Task Process">
       <bpmn:extensionElements>
-        <zeebe:calledElement processId="C88_SimpleUserTask_Process" propagateAllChildVariables="false" />
+        <zeebe:calledElement processId="C88_SimpleUserTask" propagateAllChildVariables="false" />
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_1jyi5q7</bpmn:incoming>
       <bpmn:outgoing>Flow_1dkt39e</bpmn:outgoing>
@@ -50,7 +50,7 @@
     <bpmn:sequenceFlow id="Flow_1dkt39e" sourceRef="SimpleUserTaskProcess_Activity" targetRef="MergeMultipleProcesses_Gateway" />
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="C88_MultipleSubProcessesParentProcess">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="C88_MultipleSubProcessesParent">
       <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="SimpleParentProcess_StartEvent">
         <dc:Bounds x="182" y="82" width="36" height="36" />
         <bpmndi:BPMNLabel>
