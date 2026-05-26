@@ -31,6 +31,8 @@ var (
 	flagOpsRepairIncidentElementInstanceKey string
 	flagOpsRepairIncidentCreationTimeAfter  string
 	flagOpsRepairIncidentCreationTimeBefore string
+	flagOpsRepairIncidentCreationTimeNewer  int
+	flagOpsRepairIncidentCreationTimeOlder  int
 	flagOpsRepairIncidentBatchSize          int32
 	flagOpsRepairIncidentLimit              int32
 	flagOpsRepairIncidentRetries            int32
@@ -178,8 +180,10 @@ func init() {
 	fs.StringVar(&flagOpsRepairIncidentRootKey, "root-key", "", "root process instance key to filter incidents")
 	fs.StringVar(&flagOpsRepairIncidentElementID, "element-id", "", "BPMN element ID to filter incidents")
 	fs.StringVar(&flagOpsRepairIncidentElementInstanceKey, "element-instance-key", "", "element instance key to filter incidents")
-	fs.StringVar(&flagOpsRepairIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD")
-	fs.StringVar(&flagOpsRepairIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD")
+	fs.StringVar(&flagOpsRepairIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
+	fs.StringVar(&flagOpsRepairIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
+	fs.IntVar(&flagOpsRepairIncidentCreationTimeNewer, "creation-time-newer-days", -1, "only include incidents with creation time N days old or newer (0 means today)")
+	fs.IntVar(&flagOpsRepairIncidentCreationTimeOlder, "creation-time-older-days", -1, "only include incidents with creation time N days old or older")
 	fs.Int32VarP(&flagOpsRepairIncidentBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagOpsRepairIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to freeze for repair; omit to discover all matches")
 	fs.Int32Var(&flagOpsRepairIncidentRetries, "retries", 1, "retry count to set on related jobs; 0 skips retry restoration")
@@ -219,10 +223,12 @@ func validateOpsRepairIncidentFlagValues(cmd *cobra.Command) error {
 	if err := validateGetIncidentErrorTypeFlag(flagOpsRepairIncidentErrorType); err != nil {
 		return err
 	}
-	if err := validateGetIncidentCreationTimeFlag("--creation-time-after", flagOpsRepairIncidentCreationTimeAfter); err != nil {
-		return err
-	}
-	if err := validateGetIncidentCreationTimeFlag("--creation-time-before", flagOpsRepairIncidentCreationTimeBefore); err != nil {
+	if err := validateIncidentCreationTimeFilters(
+		"--creation-time-after", flagOpsRepairIncidentCreationTimeAfter,
+		"--creation-time-before", flagOpsRepairIncidentCreationTimeBefore,
+		"--creation-time-newer-days", flagOpsRepairIncidentCreationTimeNewer,
+		"--creation-time-older-days", flagOpsRepairIncidentCreationTimeOlder,
+	); err != nil {
 		return err
 	}
 	if flagOpsRepairIncidentRetries < 0 {
@@ -306,6 +312,8 @@ func hasOpsRepairIncidentSearchModeFlags(cmd *cobra.Command) bool {
 		"element-instance-key",
 		"creation-time-after",
 		"creation-time-before",
+		"creation-time-newer-days",
+		"creation-time-older-days",
 		"batch-size",
 		"limit",
 	} {
@@ -320,6 +328,8 @@ func hasOpsRepairIncidentSearchModeFlags(cmd *cobra.Command) bool {
 func populateOpsRepairIncidentSelection() incident.Filter {
 	errorType, _ := incidentfilter.NormalizeErrorType(flagOpsRepairIncidentErrorType)
 	state, _ := incidentfilter.NormalizeState(flagOpsRepairIncidentState)
+	creationTimeAfter, _ := pickIncidentCreationTimeLowerBound(flagOpsRepairIncidentCreationTimeAfter, flagOpsRepairIncidentCreationTimeNewer)
+	creationTimeBefore, _ := pickIncidentCreationTimeUpperBound(flagOpsRepairIncidentCreationTimeBefore, flagOpsRepairIncidentCreationTimeOlder)
 	return incident.Filter{
 		State:                  state,
 		ErrorType:              errorType,
@@ -330,8 +340,8 @@ func populateOpsRepairIncidentSelection() incident.Filter {
 		RootProcessInstanceKey: flagOpsRepairIncidentRootKey,
 		ElementId:              flagOpsRepairIncidentElementID,
 		ElementInstanceKey:     flagOpsRepairIncidentElementInstanceKey,
-		CreationTimeAfter:      flagOpsRepairIncidentCreationTimeAfter,
-		CreationTimeBefore:     flagOpsRepairIncidentCreationTimeBefore,
+		CreationTimeAfter:      creationTimeAfter,
+		CreationTimeBefore:     creationTimeBefore,
 	}
 }
 

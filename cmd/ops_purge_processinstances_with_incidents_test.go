@@ -763,6 +763,8 @@ func resetOpsPurgeProcessInstancesWithIncidentsFlagState() {
 	flagOpsPurgeIncidentElementInstanceKey = ""
 	flagOpsPurgeIncidentCreationTimeAfter = ""
 	flagOpsPurgeIncidentCreationTimeBefore = ""
+	flagOpsPurgeIncidentCreationTimeNewer = -1
+	flagOpsPurgeIncidentCreationTimeOlder = -1
 	flagOpsPurgeIncidentBatchSize = consts.MaxPISearchSize
 	flagOpsPurgeIncidentLimit = 0
 	flagOpsPurgeIncidentReportFile = ""

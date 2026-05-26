@@ -199,7 +199,7 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 		"--pi-keys-only",
 		"return only process instance keys for matching incidents",
 		"--creation-time-after string",
-		"only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD",
+		"only include incidents with creation time >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD",
 		"--total",
 		"return only the exact numeric total of matching incidents",
 	} {

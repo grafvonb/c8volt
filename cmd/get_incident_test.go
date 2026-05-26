@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
@@ -885,7 +886,57 @@ func TestGetIncidentCommand_SearchCreationTimeAcceptsDateOnlyBounds(t *testing.T
 
 	require.Len(t, requests, 1)
 	require.Contains(t, requests[0], `"$gte":"2026-05-09T00:00:00Z"`)
-	require.Contains(t, requests[0], `"$lte":"2026-05-10T00:00:00Z"`)
+	require.Contains(t, requests[0], `"$lte":"2026-05-10T23:59:59.999999999Z"`)
+	require.Contains(t, output, "found: 0")
+}
+
+func TestGetIncidentCommand_SearchCreationTimeAcceptsDisplayedTimestamps(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--creation-time-after", "2026-05-25T20:09:11",
+		"--creation-time-before", "2026-05-25T20:09:11.000",
+	)
+
+	require.Len(t, requests, 1)
+	require.Contains(t, requests[0], `"$gte":"2026-05-25T20:09:11Z"`)
+	require.Contains(t, requests[0], `"$lte":"2026-05-25T20:09:11Z"`)
+	require.Contains(t, output, "found: 0")
+}
+
+func TestGetIncidentCommand_SearchCreationTimeRelativeDayBounds(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 5, 26, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--creation-time-newer-days", "30",
+		"--creation-time-older-days", "7",
+	)
+
+	require.Len(t, requests, 1)
+	require.Contains(t, requests[0], `"$gte":"2026-04-26T00:00:00Z"`)
+	require.Contains(t, requests[0], `"$lte":"2026-05-19T23:59:59.999999999Z"`)
 	require.Contains(t, output, "found: 0")
 }
 
@@ -897,7 +948,31 @@ func TestGetIncidentCommand_RejectsInvalidCreationTimeBeforeLookup(t *testing.T)
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid input")
-	require.Contains(t, err.Error(), `invalid value for --creation-time-after: "last-friday", expected RFC3339 timestamp or YYYY-MM-DD`)
+	require.Contains(t, err.Error(), `invalid value for --creation-time-after: "last-friday", expected RFC3339 timestamp, c8volt timestamp YYYY-MM-DDTHH:MM:SS[.fraction], or YYYY-MM-DD`)
+	require.Empty(t, output)
+}
+
+func TestGetIncidentCommand_RejectsInvalidCreationTimeCombinationsBeforeLookup(t *testing.T) {
+	output, err := executeRootExpectErrorForIncidentTest(t,
+		"get", "incident",
+		"--creation-time-after", "2026-05-09T09:00:00Z",
+		"--creation-time-newer-days", "7",
+	)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid input")
+	require.Contains(t, err.Error(), "creation-time absolute and relative day filters cannot be combined")
+	require.Empty(t, output)
+
+	output, err = executeRootExpectErrorForIncidentTest(t,
+		"get", "incident",
+		"--creation-time-newer-days", "7",
+		"--creation-time-older-days", "30",
+	)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid input")
+	require.Contains(t, err.Error(), "invalid range for --creation-time-newer-days and --creation-time-older-days")
 	require.Empty(t, output)
 }
 

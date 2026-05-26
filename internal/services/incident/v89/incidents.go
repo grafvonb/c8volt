@@ -157,11 +157,11 @@ func (s *Service) newIncidentFilter(filter d.IncidentFilter) (*camundav89.Incide
 	if err != nil {
 		return nil, fmt.Errorf("building incident element-instance-key filter: %w", err)
 	}
-	creationTimeAfter, err := parseIncidentTimeBound(filter.CreationTimeAfter)
+	creationTimeAfter, err := parseIncidentTimeLowerBound(filter.CreationTimeAfter)
 	if err != nil {
 		return nil, fmt.Errorf("building incident creation-time-after filter: %w", err)
 	}
-	creationTimeBefore, err := parseIncidentTimeBound(filter.CreationTimeBefore)
+	creationTimeBefore, err := parseIncidentTimeUpperBound(filter.CreationTimeBefore)
 	if err != nil {
 		return nil, fmt.Errorf("building incident creation-time-before filter: %w", err)
 	}
@@ -235,17 +235,44 @@ func incidentLocalFilteringRequired(filter d.IncidentFilter) bool {
 	return filter.RootProcessInstanceKey != "" || filter.ErrorMessage != ""
 }
 
-func parseIncidentTimeBound(raw string) (*time.Time, error) {
+func parseIncidentTimeLowerBound(raw string) (*time.Time, error) {
 	if raw == "" {
 		return nil, nil
 	}
-	if t, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+	if t, ok := parseIncidentTimestamp(raw); ok {
 		return &t, nil
 	}
 	if t, err := time.Parse(time.DateOnly, raw); err == nil {
 		return &t, nil
 	}
 	return nil, fmt.Errorf("parse %q as incident timestamp", raw)
+}
+
+func parseIncidentTimeUpperBound(raw string) (*time.Time, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	if t, ok := parseIncidentTimestamp(raw); ok {
+		return &t, nil
+	}
+	if t, err := time.Parse(time.DateOnly, raw); err == nil {
+		t = t.AddDate(0, 0, 1).Add(-time.Nanosecond)
+		return &t, nil
+	}
+	return nil, fmt.Errorf("parse %q as incident timestamp", raw)
+}
+
+func parseIncidentTimestamp(raw string) (time.Time, bool) {
+	if t, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return t, true
+	}
+	if t, err := time.ParseInLocation("2006-01-02T15:04:05.999999999", raw, time.UTC); err == nil {
+		return t, true
+	}
+	if t, err := time.ParseInLocation("2006-01-02T15:04:05", raw, time.UTC); err == nil {
+		return t, true
+	}
+	return time.Time{}, false
 }
 
 func newIncidentSearchErrorTypeFilter(errorType string) (*camundav89.IncidentErrorTypeFilterProperty, error) {
