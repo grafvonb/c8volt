@@ -1,7 +1,7 @@
 <link rel="apple-touch-icon" href="{{ '/favicon/apple-touch-icon.png' | relative_url }}">
 <link rel="manifest" href="{{ '/favicon/site.webmanifest' | relative_url }}">
 <meta name="theme-color" content="#fc6f0a">
-<meta name="keywords" content="Camunda 8 CLI, Camunda CLI, BPMN deployment CLI, workflow operations CLI, process instance management, Camunda automation, workflow debugging">
+<meta name="keywords" content="Camunda CLI, Camunda 8 CLI, c8volt, c8ctl alternative, zbctl alternative, Zeebe CLI, Camunda operations CLI, BPMN deployment CLI, workflow operations CLI, process instance cleanup, incident repair, Camunda automation, workflow-state verification">
 <meta property="og:image" content="{{ '/logo/c8volt_logo_1300x790_dim.png' | absolute_url }}">
 <meta name="twitter:image" content="{{ '/logo/c8volt_logo_1300x790_dim.png' | absolute_url }}">
 <script defer src="{{ '/assets/js/c8volt-code.js' | relative_url }}"></script>
@@ -10,20 +10,31 @@
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "c8volt",
+  "alternateName": "c8volt Camunda 8 CLI",
   "applicationCategory": "DeveloperApplication",
-  "operatingSystem": "Linux, macOS",
-  "description": "c8volt is a Camunda 8 CLI for deploying BPMN, running workflows, canceling and deleting process instances, and verifying workflow state from the terminal.",
+  "operatingSystem": "Linux, macOS, Windows",
+  "description": "c8volt is an independent Camunda 8 CLI for operations, automation, recovery, cleanup, and workflow-state verification.",
   "url": "{{ '/' | absolute_url }}",
   "downloadUrl": "https://github.com/grafvonb/c8volt/releases",
   "codeRepository": "https://github.com/grafvonb/c8volt",
+  "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+  "programmingLanguage": "Go",
   "softwareHelp": "{{ '/cli/' | absolute_url }}",
   "keywords": [
-    "Camunda 8 CLI",
     "Camunda CLI",
+    "Camunda 8 CLI",
+    "c8volt",
+    "c8ctl alternative",
+    "zbctl alternative",
+    "Zeebe CLI",
+    "Camunda operations CLI",
     "BPMN deployment CLI",
     "workflow operations",
-    "process instance management"
+    "process instance cleanup",
+    "incident repair",
+    "workflow-state verification"
   ],
+  "isAccessibleForFree": true,
   "offers": {
     "@type": "Offer",
     "price": "0",

@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 title: "c8volt Camunda 8 CLI"
-description: "c8volt is a Camunda 8 CLI for deploying BPMN, running workflows, canceling and deleting process instances, and verifying workflow state from the terminal."
-tagline: "Camunda 8 CLI for workflow automation, BPMN deployment, and process-instance management"
+description: "c8volt is an independent Camunda 8 CLI for operations, automation, recovery, cleanup, and workflow-state verification."
+tagline: "Independent Camunda 8 CLI for workflow operations, automation, recovery, cleanup, and verification"
 logo: "/logo/c8volt_logo_transparent_w_shadow_400x244_dim.png"
 lang: "en-US"
 
