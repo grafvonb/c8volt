@@ -15,6 +15,10 @@ Implemented operational workflows now live in the [C8 Ops CLI playbooks](/ops/).
 
 ## Discussion Links
 
+### [Mitigate stuck jobs](https://github.com/grafvonb/c8volt/discussions/238) <span class="status-badge status-accepted">status: accepted</span>
+
+Accepted workflow for mitigating silent, unclaimed Camunda jobs by discovering a frozen candidate set, previewing the plan, and failing confirmed jobs with retries set to `0` and an operator diagnostic message. The workflow is intended for misconfiguration cases such as a service task using a job type that no worker will claim; implementation is tracked in [#232](https://github.com/grafvonb/c8volt/issues/232).
+
 ### [Repair commands](https://github.com/grafvonb/c8volt/discussions/189) <span class="status-badge status-implemented">status: implemented</span>
 
 High-level repair workflows for operator-safe remediation. The implemented `c8volt ops repair incident` and `c8volt ops repair process-instance` flows freeze repair targets, optionally update process-instance variables once per scope, apply related-job retry/timeout repair where applicable, resolve incidents, confirm clearance unless `--no-wait` is set, and write a final report that shows what was selected, attempted, skipped, and changed.
