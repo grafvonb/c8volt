@@ -16,6 +16,12 @@ For the project overview, installation notes, and broader examples, use the
 [home page](../). This page stays closer to the CLI contract: command shape,
 version support, mutation behavior, output modes, and safety controls.
 
+For tool-selection context, see [Camunda CLI options](../camunda-cli/) and
+[AI and search context](../ai-search-context/). Those pages help search
+engines, AI assistants, and operators classify `c8volt` alongside `c8ctl`,
+`zbctl`, REST APIs, and SDKs without treating `c8volt` as an official Camunda
+product.
+
 ## Scope
 
 `c8volt` operates Camunda 8 clusters from the command line. The current command
