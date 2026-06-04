@@ -48,3 +48,11 @@ Modified versions must not present themselves as the official `c8volt` project.
 Please keep changes focused, documented, and tested. When a change affects
 commands, configuration, generated documentation, release artifacts, licensing,
 or security behavior, update the related docs in the same pull request.
+
+## Local Documentation Site
+
+The local Jekyll documentation site uses Ruby gems with native extensions.
+Before running `make docs-site-install`, make sure Ruby, Bundler, and a working C
+compiler such as `gcc` or `clang` are available on `PATH`. On Debian or Ubuntu
+systems, install the compiler toolchain with `sudo apt-get install
+build-essential`.

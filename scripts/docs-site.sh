@@ -81,6 +81,28 @@ check_bundler() {
   fi
 }
 
+check_native_build_tools() {
+  if [[ -n "${CC:-}" ]]; then
+    local cc_cmd="${CC%% *}"
+    if command -v "${cc_cmd}" >/dev/null 2>&1; then
+      return
+    fi
+  fi
+
+  local candidate
+  for candidate in cc gcc clang; do
+    if command -v "${candidate}" >/dev/null 2>&1; then
+      export CC="${candidate}"
+      return
+    fi
+  done
+
+  echo "error: no C compiler found in PATH" >&2
+  echo "expected: a working C compiler such as gcc or clang for Ruby native gems" >&2
+  echo "hint: install system build tools, then retry 'make docs-site-install'" >&2
+  exit 1
+}
+
 bundle_install_if_needed() {
   cd "${DOCS_DIR}"
   if ! run_bundle check >/dev/null 2>&1; then
@@ -91,6 +113,7 @@ bundle_install_if_needed() {
 do_install() {
   check_ruby_version
   check_bundler
+  check_native_build_tools
   configure_bundler_env
   cd "${DOCS_DIR}"
   run_bundle install
@@ -99,6 +122,7 @@ do_install() {
 do_build() {
   check_ruby_version
   check_bundler
+  check_native_build_tools
   configure_bundler_env
   bundle_install_if_needed
   cd "${DOCS_DIR}"
@@ -108,6 +132,7 @@ do_build() {
 do_build_root() {
   check_ruby_version
   check_bundler
+  check_native_build_tools
   configure_bundler_env
   bundle_install_if_needed
   cd "${DOCS_DIR}"
@@ -117,6 +142,7 @@ do_build_root() {
 do_serve() {
   check_ruby_version
   check_bundler
+  check_native_build_tools
   configure_bundler_env
   bundle_install_if_needed
   local livereload_args=(--livereload)
@@ -130,6 +156,7 @@ do_serve() {
 do_check() {
   check_ruby_version
   check_bundler
+  check_native_build_tools
   echo "ok: docs Ruby and Bundler checks passed"
 }
 
@@ -172,4 +199,3 @@ case "${cmd}" in
     exit 1
     ;;
 esac
-
