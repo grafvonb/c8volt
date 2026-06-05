@@ -96,6 +96,25 @@ func TestRewriteDocsIndexLinks(t *testing.T) {
 	}
 }
 
+func TestStripDocsIndexExcludedBlocks(t *testing.T) {
+	body := strings.Join([]string{
+		"# c8volt Camunda 8 CLI",
+		"<!-- docs-index-exclude-start -->",
+		"**Full documentation:** [c8volt.info](https://c8volt.info)",
+		"<!-- docs-index-exclude-end -->",
+		"> **done is done**",
+	}, "\n")
+
+	got := stripDocsIndexExcludedBlocks(body)
+
+	if strings.Contains(got, "Full documentation") || strings.Contains(got, "docs-index-exclude") {
+		t.Fatalf("expected README-only docs block to be stripped, got %q", got)
+	}
+	if !strings.Contains(got, "# c8volt Camunda 8 CLI") || !strings.Contains(got, "> **done is done**") {
+		t.Fatalf("expected surrounding README content to remain, got %q", got)
+	}
+}
+
 func TestCLIMarkdownPreludeOmitsOpsBreadcrumb(t *testing.T) {
 	opsPrelude := cliMarkdownPrelude("c8volt_ops_repair_incident")
 	if strings.Contains(opsPrelude, "CLI Reference") {

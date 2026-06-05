@@ -88,6 +88,7 @@ func syncDocsIndexFromReadme(src, dst string) error {
 	}
 
 	body := string(b)
+	body = stripDocsIndexExcludedBlocks(body)
 	body = rewriteDocsIndexLinks(body)
 
 	const frontMatter = `---
@@ -108,6 +109,11 @@ has_toc: true
 	return nil
 }
 
+// stripDocsIndexExcludedBlocks removes README-only content before generating the docs homepage.
+func stripDocsIndexExcludedBlocks(body string) string {
+	return docsIndexExcludePattern.ReplaceAllString(body, "")
+}
+
 // rewriteDocsIndexLinks converts README-relative links into links valid from the generated docs index.
 func rewriteDocsIndexLinks(body string) string {
 	body = strings.ReplaceAll(body, "./docs/logo/", "./logo/")
@@ -124,6 +130,7 @@ func rewriteDocsIndexLinks(body string) string {
 }
 
 var (
+	docsIndexExcludePattern       = regexp.MustCompile(`(?s)<!--\s*docs-index-exclude-start\s*-->.*?<!--\s*docs-index-exclude-end\s*-->\s*`)
 	opsPlaybookLinkTargetPattern = regexp.MustCompile(`\]\((\./)?docs/ops/([A-Za-z0-9_.-]+)\.md\)`)
 	governanceLinkTargetPattern = regexp.MustCompile(`\]\((\./)?([A-Za-z0-9_.-]+)\)`)
 	governanceDocs              = map[string]string{

@@ -4,6 +4,10 @@
 
 **Operator-grade Camunda 8 control for people and pipelines. 8.9-ready, script-safe, and built to finish the job.**
 
+<!-- docs-index-exclude-start -->
+**Full documentation:** [c8volt.info](https://c8volt.info)
+<!-- docs-index-exclude-end -->
+
 > **done is done**
 >
 > If an action needs retries, waiting, tree traversal, state checks, cleanup, or deterministic machine output before it is truly finished, `c8volt` should do that work for you.
