@@ -1,4 +1,0 @@
-database_url: sqlite:///:memory:
-port: 8080
-debug: false
-log_level: INFO
