@@ -28,9 +28,12 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		"By default c8volt first checks delete impact without changing anything: active process instances, required cancellation roots and process-instance tree scope when --force is used, and batch-operation read access before prompting. Process-definition deletion requires Camunda 8.9 or newer so c8volt can request full process-definition history deletion. With --force, it cancels the root process instances, deletes the affected process-instance history, then asks Camunda to delete the process definition and remaining associated history. If you only want to delete process instances for a definition, use `c8volt delete process-instance --bpmn-process-id <bpmn-process-id>`.\n\n" +
 		"Tenant contract: --tenant scopes BPMN selector discovery where supported. Explicit --key and stdin process-definition keys are backend-authorized admin input; existing impact, confirmation, force, and wait safety checks still apply.\n\n" +
 		"When --bpmn-process-id is set, c8volt validates visible process-definition matches before delete impact planning, confirmation, cancellation, or deletion. A missing selector fails with the shared local diagnostic.\n\n" +
+		"Use --dry-run to preview process-definition delete impact without submitting deletion or cancellation requests.\n\n" +
 		"Use --auto-confirm for unattended destructive runs.",
 	Example: `  ./c8volt delete pd --key <process-definition-key> --auto-confirm
+  ./c8volt delete pd --key <process-definition-key> --dry-run
   ./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --force
+  ./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
   ./c8volt get pd --bpmn-process-id <bpmn-process-id> --latest --json
   ./c8volt get pd --bpmn-process-id <bpmn-process-id> --latest --keys-only | ./c8volt delete pd --auto-confirm -`,
@@ -109,6 +112,12 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("checking process-definition delete impact: %w", err))
 		}
+		if flagDryRun {
+			if err := renderDeleteProcessDefinitionDryRun(cmd, impactPlan); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render delete dry-run result: %w", err))
+			}
+			return
+		}
 		renderDeleteProcessDefinitionImpact(cmd, impactPlan)
 		totals := impactPlan.Totals()
 		if !flagNoStateCheck && !flagForce && totals.ActiveProcessInstances > 0 {
@@ -140,16 +149,38 @@ func validateDeleteProcessDefinitionSupportedVersion(version toolx.CamundaVersio
 	return fmt.Errorf("%w: process-definition deletion requires Camunda 8.9 or newer for full history deletion; configured Camunda version is %s; to delete process instances for a process definition instead, use c8volt delete process-instance --bpmn-process-id <bpmn-process-id>", d.ErrUnsupported, version.String())
 }
 
+type deleteProcessDefinitionDryRunPreview struct {
+	Operation         string                                     `json:"operation"`
+	Plan              resource.DeleteProcessDefinitionPlan       `json:"plan"`
+	Totals            resource.DeleteProcessDefinitionPlanTotals `json:"totals"`
+	MutationSubmitted bool                                       `json:"mutationSubmitted"`
+}
+
+func renderDeleteProcessDefinitionDryRun(cmd *cobra.Command, plan resource.DeleteProcessDefinitionPlan) error {
+	preview := deleteProcessDefinitionDryRunPreview{
+		Operation:         "delete",
+		Plan:              plan,
+		Totals:            plan.Totals(),
+		MutationSubmitted: false,
+	}
+	if commandUsesSharedEnvelope(cmd, pickMode()) {
+		return renderSucceededResult(cmd, preview)
+	}
+	renderHumanLine(cmd, "dry run: delete process-definition")
+	renderDeleteProcessDefinitionImpact(cmd, plan)
+	return nil
+}
+
 func renderDeleteProcessDefinitionImpact(cmd *cobra.Command, plan resource.DeleteProcessDefinitionPlan) {
 	totals := plan.Totals()
 	if plan.StateCheckSkipped {
 		renderHumanLine(cmd, "delete impact check: %d process definition(s); process-instance state check skipped; no changes made yet", totals.ProcessDefinitions)
-		renderHumanWarningLine(cmd, "Deletion is irreversible: process-definition resources and associated history will be removed.")
+		renderHumanWarningLine(cmd, "deletion is irreversible: process-definition resources and associated history will be removed.")
 		return
 	}
 	if totals.ActiveProcessInstances == 0 {
 		renderHumanLine(cmd, "delete impact check: %d process definition(s); no active process instances found; no changes made yet", totals.ProcessDefinitions)
-		renderHumanWarningLine(cmd, "Deletion is irreversible: process-definition resources and associated history will be removed.")
+		renderHumanWarningLine(cmd, "deletion is irreversible: process-definition resources and associated history will be removed.")
 		return
 	}
 	if flagForce {
@@ -162,7 +193,7 @@ func renderDeleteProcessDefinitionImpact(cmd *cobra.Command, plan resource.Delet
 	for _, warning := range plan.Warnings {
 		renderHumanWarningLine(cmd, "%s", warning)
 	}
-	renderHumanWarningLine(cmd, "Deletion is irreversible: process-definition resources and associated history will be removed.")
+	renderHumanWarningLine(cmd, "deletion is irreversible: process-definition resources and associated history will be removed.")
 }
 
 func init() {
@@ -171,6 +202,7 @@ func init() {
 	fs := deleteProcessDefinitionCmd.Flags()
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion work is accepted")
 	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking process-instance state before deleting")
+	fs.BoolVar(&flagDryRun, "dry-run", false, "preview process-definition delete impact without submitting deletion or cancellation requests")
 	fs.StringSliceVarP(&flagDeletePDKeys, "key", "k", nil, "process definition key(s) to delete")
 	fs.StringVarP(&flagDeletePDBpmnProcessId, "bpmn-process-id", "b", "", "BPMN process ID of the process definition (all versions) to delete")
 	fs.Int32Var(&flagDeletePDProcessVersion, "pd-version", 0, "process definition version")
@@ -184,5 +216,5 @@ func init() {
 
 	setCommandMutation(deleteProcessDefinitionCmd, CommandMutationStateChanging)
 	setContractSupport(deleteProcessDefinitionCmd, ContractSupportFull)
-	setAutomationSupport(deleteProcessDefinitionCmd, AutomationSupportFull, "supports unattended destructive confirmation")
+	setAutomationSupport(deleteProcessDefinitionCmd, AutomationSupportFull, "supports unattended destructive confirmation and non-mutating dry-run previews")
 }

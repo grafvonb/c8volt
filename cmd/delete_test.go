@@ -200,6 +200,13 @@ func TestDeleteCommands_RegressionPreservesCleanupContracts(t *testing.T) {
 		Description: "BPMN process ID of the process definition (all versions) to delete",
 	})
 	require.Contains(t, pdCapability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview process-definition delete impact without submitting deletion or cancellation requests",
+	})
+	require.Contains(t, pdCapability.Flags, FlagContract{
 		Name:        "force",
 		Type:        "bool",
 		Required:    false,
@@ -920,6 +927,9 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"requires Camunda 8.9 or newer",
 		"associated history",
 		"c8volt delete process-instance --bpmn-process-id <bpmn-process-id>",
+		"Use --dry-run to preview process-definition delete impact without submitting deletion or cancellation requests",
+		"./c8volt delete pd --key <process-definition-key> --dry-run",
+		"./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --dry-run",
 		"Use --auto-confirm for unattended destructive runs",
 		"./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
 	}, nil)
@@ -952,7 +962,7 @@ func TestDeleteProcessDefinitionImpact_RenderForceImpact(t *testing.T) {
 	})
 
 	output := buf.String()
-	require.Contains(t, output, "Deletion is irreversible")
+	require.Contains(t, output, "deletion is irreversible")
 	require.Contains(t, output, "delete impact check: 1 process definition(s); 2 active process instance(s) found; no changes made yet")
 	require.Contains(t, output, "--force will cancel 1 root process instance(s), then delete 2 affected process instance(s), before deleting process definitions")
 	require.NotContains(t, output, "WARNING:")
@@ -2723,6 +2733,37 @@ func TestDeleteProcessDefinitionBpmnSelectorVisiblePreservesPreviewAndDeletion(t
 	require.Contains(t, string(output), "pd 2251799813685255; delete accepted; batch batch-2251799813685255")
 }
 
+func TestDeleteProcessDefinitionDryRunStopsAfterImpactPreview(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			requests.Append(r.Method + " " + r.URL.Path)
+			_, _ = w.Write([]byte(`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"order-process","name":"Order Process","version":3,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/batch-operations/search":
+			t.Fatal("dry-run must not check batch-operation read access")
+		case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v2/resources/"):
+			t.Fatal("dry-run must not submit process-definition deletion")
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+	output, err := testx.RunCmdSubprocess(t, "TestDeleteProcessDefinitionDryRunStopsAfterImpactPreviewHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+
+	require.NoError(t, err, string(output))
+	require.Equal(t, []string{"POST /v2/process-definitions/search"}, requests.Snapshot())
+	require.Contains(t, string(output), "dry run: delete process-definition")
+	require.Contains(t, string(output), "delete impact check: 1 process definition(s); process-instance state check skipped; no changes made yet")
+	require.NotContains(t, string(output), "Proceed with this deletion")
+	require.NotContains(t, string(output), "delete accepted")
+}
+
 func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWait(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -3208,6 +3249,28 @@ func TestDeleteProcessDefinitionBpmnSelectorVisiblePreservesPreviewAndDeletionHe
 		"--auto-confirm",
 		"--no-state-check",
 		"--no-wait",
+	})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestDeleteProcessDefinitionDryRunStopsAfterImpactPreviewHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"delete", "process-definition",
+		"--bpmn-process-id", "order-process",
+		"--pd-version", "3",
+		"--pd-version-tag", "stable",
+		"--dry-run",
+		"--no-state-check",
 	})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
