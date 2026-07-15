@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.1.0-alpha2-5-ge173ecc-dirty`, commit `e173ecc`, built `2026-06-05T20:28:06Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v4.1.0-alpha2-10-ge6836674-dirty`, commit `e6836674`, built `2026-07-15T13:02:39Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 

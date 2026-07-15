@@ -930,6 +930,7 @@ func TestCommandCapabilityForCommand_BpmnSelectorAlignedCommandContracts(t *test
 			wantAutomation:  "unattended destructive confirmation",
 			wantOutputMode:  OutputModeContract{Name: "json", Supported: true, MachinePreferred: true},
 			wantBpmnFlag:    "BPMN process ID of the process definition (all versions) to delete",
+			wantDryRun:      true,
 			wantAutoConfirm: true,
 		},
 	}

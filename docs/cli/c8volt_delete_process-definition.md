@@ -18,6 +18,8 @@ Tenant contract: --tenant scopes BPMN selector discovery where supported. Explic
 
 When --bpmn-process-id is set, c8volt validates visible process-definition matches before delete impact planning, confirmation, cancellation, or deletion. A missing selector fails with the shared local diagnostic.
 
+Use --dry-run to preview process-definition delete impact without submitting deletion or cancellation requests.
+
 Use --auto-confirm for unattended destructive runs.
 
 ```
@@ -28,7 +30,9 @@ c8volt delete process-definition [flags]
 
 ```
   ./c8volt delete pd --key <process-definition-key> --auto-confirm
+  ./c8volt delete pd --key <process-definition-key> --dry-run
   ./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --force
+  ./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
   ./c8volt get pd --bpmn-process-id <bpmn-process-id> --latest --json
   ./c8volt get pd --bpmn-process-id <bpmn-process-id> --latest --keys-only | ./c8volt delete pd --auto-confirm -
@@ -38,6 +42,7 @@ c8volt delete process-definition [flags]
 
 ```
   -b, --bpmn-process-id string   BPMN process ID of the process definition (all versions) to delete
+      --dry-run                  preview process-definition delete impact without submitting deletion or cancellation requests
       --fail-fast                stop scheduling new instances after the first error
       --force                    force cancellation of the process instance(s), prior to deletion
   -h, --help                     help for process-definition
