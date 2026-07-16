@@ -61,33 +61,13 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 		filtered.Items = limitPIItems(filtered.Items, processedTotal)
 		filtered.Total = int32(len(filtered.Items))
 		if incremental {
-			if flagGetPIWithIncidents && flagGetPIWithVars && pickMode() == RenderModeOneLine {
-				incidentEnriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, filtered)
-				if err != nil {
-					return process.ProcessInstances{}, false, fmt.Errorf("get process instance incidents: %w", err)
-				}
-				variableEnriched, err := enrichProcessInstancesWithVariableActivity(cmd, cli, filtered)
-				if err != nil {
-					return process.ProcessInstances{}, false, fmt.Errorf("get process instance variables: %w", err)
-				}
-				pageNeedsIndirectIncidentWarning := renderProcessInstanceActivityRows(cmd, mergeIncidentAndVariableActivity(incidentEnriched, variableEnriched).Items)
-				needsIndirectIncidentWarning = needsIndirectIncidentWarning || pageNeedsIndirectIncidentWarning
-			} else if flagGetPIWithIncidents && pickMode() == RenderModeOneLine {
-				enriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, filtered)
-				if err != nil {
-					return process.ProcessInstances{}, false, fmt.Errorf("get process instance incidents: %w", err)
-				}
-				pageNeedsIndirectIncidentWarning, err := renderIncidentEnrichedProcessInstanceRows(cmd, enriched)
+			if (flagGetPIWithIncidents || flagGetPIWithVars || flagGetPIWithElements) && pickMode() == RenderModeOneLine {
+				activity, err := collectRequestedProcessInstanceActivity(cmd, cli, filtered)
 				if err != nil {
 					return process.ProcessInstances{}, false, err
 				}
+				pageNeedsIndirectIncidentWarning := renderProcessInstanceActivityRows(cmd, activity.Items)
 				needsIndirectIncidentWarning = needsIndirectIncidentWarning || pageNeedsIndirectIncidentWarning
-			} else if flagGetPIWithVars && pickMode() == RenderModeOneLine {
-				enriched, err := enrichProcessInstancesWithVariableActivity(cmd, cli, filtered)
-				if err != nil {
-					return process.ProcessInstances{}, false, fmt.Errorf("get process instance variables: %w", err)
-				}
-				renderProcessInstanceActivityRows(cmd, activityFromVariableEnriched(enriched).Items)
 			} else if pickMode() == RenderModeOneLine {
 				if err := renderProcessInstanceFlatRows(cmd, filtered.Items); err != nil {
 					return process.ProcessInstances{}, false, err

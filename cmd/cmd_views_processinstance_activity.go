@@ -4,10 +4,12 @@
 package cmd
 
 import (
-	"github.com/grafvonb/c8volt/c8volt/incident"
+	"encoding/json"
 	"strings"
 
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +17,28 @@ type processInstanceActivityItem struct {
 	Item          process.ProcessInstance                  `json:"item"`
 	Variables     []process.ProcessInstanceVariable        `json:"variables,omitempty"`
 	Incidents     []incident.ProcessInstanceIncidentDetail `json:"incidents,omitempty"`
+	Elements      []process.ProcessInstanceElement         `json:"elements,omitempty"`
 	ShowIncidents bool                                     `json:"-"`
+}
+
+// MarshalJSON includes requested-but-empty enrichment sections as empty arrays
+// while leaving unrequested sections absent from the payload.
+func (it processInstanceActivityItem) MarshalJSON() ([]byte, error) {
+	payload := map[string]any{"item": it.Item}
+	if it.Variables != nil {
+		payload["variables"] = it.Variables
+	}
+	if it.ShowIncidents {
+		if it.Incidents == nil {
+			payload["incidents"] = []incident.ProcessInstanceIncidentDetail{}
+		} else {
+			payload["incidents"] = it.Incidents
+		}
+	}
+	if it.Elements != nil {
+		payload["elements"] = it.Elements
+	}
+	return json.Marshal(payload)
 }
 
 type processInstanceActivityInstances struct {
@@ -68,7 +91,7 @@ func renderProcessInstanceActivityRows(cmd *cobra.Command, items []processInstan
 	needsIndirectIncidentWarning := false
 	for i, it := range items {
 		renderOutputLine(cmd, "%s", lines[i])
-		detailLines, needsWarning := formatProcessInstanceActivityLinesWithTimezone("", it.Variables, it.Incidents, it.ShowIncidents, it.Item.Incident, 0, showTimezoneOffset)
+		detailLines, needsWarning := formatProcessInstanceActivityLinesWithElementsWithTimezone("", it.Variables, it.Incidents, it.Elements, it.ShowIncidents, it.Item.Incident, 0, showTimezoneOffset)
 		for _, line := range detailLines {
 			renderOutputLine(cmd, "%s", line)
 		}
@@ -82,13 +105,21 @@ func formatProcessInstanceActivityLines(prefix string, variables []process.Proce
 }
 
 func formatProcessInstanceActivityLinesWithTimezone(prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int, showTimezoneOffset bool) ([]string, bool) {
+	return formatProcessInstanceActivityLinesWithElementsWithTimezone(prefix, variables, incidents, nil, showIncidents, hasIncidentMarker, followingChildren, showTimezoneOffset)
+}
+
+func formatProcessInstanceActivityLinesWithElementsWithTimezone(prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, elements []process.ProcessInstanceElement, showIncidents bool, hasIncidentMarker bool, followingChildren int, showTimezoneOffset bool) ([]string, bool) {
 	hasVars := len(variables) > 0
 	hasIncidents := showIncidents && (len(incidents) > 0 || hasIncidentMarker)
+	hasElements := len(elements) > 0
 	sectionCount := 0
 	if hasVars {
 		sectionCount++
 	}
 	if hasIncidents {
+		sectionCount++
+	}
+	if hasElements {
 		sectionCount++
 	}
 	if sectionCount == 0 {
@@ -97,7 +128,7 @@ func formatProcessInstanceActivityLinesWithTimezone(prefix string, variables []p
 
 	totalBranches := sectionCount + followingChildren
 	sectionIndex := 0
-	lines := make([]string, 0, sectionCount+len(variables)+len(incidents)+1)
+	lines := make([]string, 0, sectionCount+len(variables)+len(incidents)+len(elements)+1)
 	if hasVars {
 		branch := incidentTreeBranch(sectionIndex, totalBranches)
 		childPrefix := treeChildPrefix(prefix, sectionIndex, totalBranches)
@@ -120,6 +151,17 @@ func formatProcessInstanceActivityLinesWithTimezone(prefix string, variables []p
 		} else {
 			lines = append(lines, childPrefix+"└─ "+indirectProcessTreeIncidentNote)
 			needsIndirectIncidentWarning = true
+		}
+		sectionIndex++
+	}
+
+	if hasElements {
+		branch := incidentTreeBranch(sectionIndex, totalBranches)
+		childPrefix := treeChildPrefix(prefix, sectionIndex, totalBranches)
+		lines = append(lines, prefix+branch+"elements:")
+		elementLines := formatProcessInstanceElementRows(elements, showTimezoneOffset)
+		for i, line := range elementLines {
+			lines = append(lines, childPrefix+incidentTreeBranch(i, len(elementLines))+line)
 		}
 	}
 	return lines, needsIndirectIncidentWarning
@@ -168,25 +210,135 @@ func activityFromVariableEnriched(resp process.VariableEnrichedProcessInstances)
 	return processInstanceActivityInstances{Total: resp.Total, Items: items}
 }
 
-func mergeIncidentAndVariableActivity(incidents process.IncidentEnrichedProcessInstances, variables process.VariableEnrichedProcessInstances) processInstanceActivityInstances {
-	varsByKey := make(map[string][]process.ProcessInstanceVariable, len(variables.Items))
-	for _, it := range variables.Items {
-		varsByKey[it.Item.Key] = it.Variables
+func activityFromElementEnriched(resp process.ElementEnrichedProcessInstances) processInstanceActivityInstances {
+	items := make([]processInstanceActivityItem, 0, len(resp.Items))
+	for _, it := range resp.Items {
+		items = append(items, processInstanceActivityItem{
+			Item:     it.Item,
+			Elements: it.Elements,
+		})
+	}
+	return processInstanceActivityInstances{Total: resp.Total, Items: items}
+}
+
+func elementEnrichedProcessInstancesView(cmd *cobra.Command, resp process.ElementEnrichedProcessInstances) error {
+	return processInstanceActivityInstancesView(cmd, activityFromElementEnriched(resp))
+}
+
+type processInstanceActivityEnrichments struct {
+	Incidents *process.IncidentEnrichedProcessInstances
+	Variables *process.VariableEnrichedProcessInstances
+	Elements  *process.ElementEnrichedProcessInstances
+}
+
+// mergeProcessInstanceActivity preserves the selected process-instance order
+// while attaching whichever enrichment sections the command requested.
+func mergeProcessInstanceActivity(pis process.ProcessInstances, enrichments processInstanceActivityEnrichments) processInstanceActivityInstances {
+	incidentsByKey := map[string][]incident.ProcessInstanceIncidentDetail{}
+	if enrichments.Incidents != nil {
+		incidentsByKey = make(map[string][]incident.ProcessInstanceIncidentDetail, len(enrichments.Incidents.Items))
+		for _, it := range enrichments.Incidents.Items {
+			incidentsByKey[it.Item.Key] = it.Incidents
+		}
 	}
 
-	items := make([]processInstanceActivityItem, 0, len(incidents.Items))
-	for _, it := range incidents.Items {
+	varsByKey := map[string][]process.ProcessInstanceVariable{}
+	if enrichments.Variables != nil {
+		varsByKey = make(map[string][]process.ProcessInstanceVariable, len(enrichments.Variables.Items))
+		for _, it := range enrichments.Variables.Items {
+			varsByKey[it.Item.Key] = it.Variables
+		}
+	}
+
+	elementsByKey := map[string][]process.ProcessInstanceElement{}
+	if enrichments.Elements != nil {
+		elementsByKey = make(map[string][]process.ProcessInstanceElement, len(enrichments.Elements.Items))
+		for _, it := range enrichments.Elements.Items {
+			elementsByKey[it.Item.Key] = it.Elements
+		}
+	}
+
+	items := make([]processInstanceActivityItem, 0, len(pis.Items))
+	for _, item := range pis.Items {
+		var variables []process.ProcessInstanceVariable
+		if enrichments.Variables != nil {
+			variables = varsByKey[item.Key]
+			if variables == nil {
+				variables = []process.ProcessInstanceVariable{}
+			}
+		}
+		var incidents []incident.ProcessInstanceIncidentDetail
+		if enrichments.Incidents != nil {
+			incidents = incidentsByKey[item.Key]
+			if incidents == nil {
+				incidents = []incident.ProcessInstanceIncidentDetail{}
+			}
+		}
+		var elements []process.ProcessInstanceElement
+		if enrichments.Elements != nil {
+			elements = elementsByKey[item.Key]
+			if elements == nil {
+				elements = []process.ProcessInstanceElement{}
+			}
+		}
 		items = append(items, processInstanceActivityItem{
-			Item:          it.Item,
-			Variables:     varsByKey[it.Item.Key],
-			Incidents:     it.Incidents,
-			ShowIncidents: true,
+			Item:          item,
+			Variables:     variables,
+			Incidents:     incidents,
+			Elements:      elements,
+			ShowIncidents: enrichments.Incidents != nil,
 		})
 	}
 	return processInstanceActivityInstances{
-		Total: int32(len(items)),
+		Total: pis.Total,
 		Items: items,
 	}
+}
+
+// mergeIncidentAndVariableActivity keeps the existing two-section call sites
+// and tests on the general merger used by combined element enrichment.
+func mergeIncidentAndVariableActivity(incidents process.IncidentEnrichedProcessInstances, variables process.VariableEnrichedProcessInstances) processInstanceActivityInstances {
+	pis := process.ProcessInstances{Total: incidents.Total, Items: make([]process.ProcessInstance, 0, len(incidents.Items))}
+	for _, it := range incidents.Items {
+		pis.Items = append(pis.Items, it.Item)
+	}
+	return mergeProcessInstanceActivity(pis, processInstanceActivityEnrichments{
+		Incidents: &incidents,
+		Variables: &variables,
+	})
+}
+
+func formatProcessInstanceElementRows(elements []process.ProcessInstanceElement, showTimezoneOffset bool) []string {
+	rows := make([]flatRow, 0, len(elements))
+	for _, element := range elements {
+		rows = append(rows, flatRowProcessInstanceElementWithTimezone(element, showTimezoneOffset))
+	}
+	return formatFlatRows(rows)
+}
+
+func flatRowProcessInstanceElementWithTimezone(item process.ProcessInstanceElement, showTimezoneOffset bool) flatRow {
+	parts := flatRow{
+		item.ElementInstanceKey,
+		item.Type,
+		item.ElementId,
+		item.State,
+		prefixedElementField("s", toolx.FormatTimestamp(item.StartDate, showTimezoneOffset)),
+		prefixedElementField("e", toolx.FormatTimestamp(item.EndDate, showTimezoneOffset)),
+	}
+	if marker := processInstanceElementIncidentMarker(item); marker != "" {
+		parts = append(parts, marker)
+	}
+	return parts
+}
+
+func processInstanceElementIncidentMarker(item process.ProcessInstanceElement) string {
+	if !item.HasIncident {
+		return ""
+	}
+	if item.IncidentKey != "" {
+		return "inc!:" + item.IncidentKey
+	}
+	return "inc!"
 }
 
 func processInstancesFromTraversal(result process.TraversalResult) process.ProcessInstances {

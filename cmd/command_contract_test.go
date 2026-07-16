@@ -513,6 +513,33 @@ func TestCommandCapabilityForCommand_ProcessInstanceVariableFlags(t *testing.T) 
 	})
 }
 
+// TestCommandCapabilityForCommand_ProcessInstanceElementFlagAndContract verifies element enrichment is discoverable as read-only command metadata.
+func TestCommandCapabilityForCommand_ProcessInstanceElementFlagAndContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(getProcessInstanceCmd)
+
+	require.Equal(t, "get process-instance", capability.Path)
+	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.Aliases, "pi")
+	require.Contains(t, capability.Aliases, "pis")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-elements",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "include runtime element instances for keyed or list/search process-instance output",
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
+	require.Contains(t, getProcessInstanceCmd.Long, "Use --with-elements to include runtime element instances under matching process-instance rows.")
+	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get pi --key <process-instance-key> --with-elements")
+}
+
 func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -789,9 +816,9 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 	require.Equal(t, []string{"ei"}, capability.Aliases)
-	require.Contains(t, getElementCmd.Long, "Search mode uses filters")
-	require.Contains(t, getElementCmd.Long, "`ei` alias follows the compact element-instance tag")
-	require.Contains(t, getElementCmd.Long, "standard paging controls")
+	require.Contains(t, getElementCmd.Long, "Use --key when you know an element instance key.")
+	require.Contains(t, getElementCmd.Long, "Search mode follows the shared get paging and limit conventions.")
+	require.Contains(t, getElementCmd.Long, "Use --json for the stable element payload and --keys-only when piping element instance keys.")
 	require.Contains(t, getElementCmd.Example, "./c8volt get ei --pi-key <process-instance-key> --limit 10")
 	require.Contains(t, getElementCmd.Example, "./c8volt get element --pi-key <process-instance-key> --total")
 	require.Contains(t, getElementCmd.Example, "./c8volt --json get ei --pi-key <process-instance-key> --limit 5")
@@ -1861,15 +1888,14 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 // sync with the element CLI contract and generated documentation source.
 func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"get", "element"}, []string{
-		"Inspect or search Camunda runtime element instances",
-		"Use --key with an elementInstanceKey",
-		"The `ei` alias follows the compact element-instance tag",
-		"Search mode uses filters such as --pi-key, --element-id, --state, --type, --pd-key, and --bpmn-process-id",
-		"Search mode pages through matching runtime elements by default",
-		"--batch-size tunes per-page discovery requests only",
-		"--total returns only the matching count",
-		"Use --json for the stable element payload",
-		"Camunda 8.8 and 8.9",
+		"List or fetch Camunda runtime element instances",
+		"Use --key when you know an element instance key",
+		"Omit --key to list or search element instances by process instance, BPMN element ID, state, type, process definition, or BPMN process ID",
+		"Search mode follows the shared get paging and limit conventions",
+		"--batch-size controls per-page discovery requests",
+		"--total prints only the matching count",
+		"Use --json for the stable element payload and --keys-only when piping element instance keys",
+		"Element lookup and search require Camunda 8.8 or 8.9",
 		"Aliases:",
 		"ei",
 		"./c8volt get ei -k <element-instance-key>",
