@@ -259,7 +259,7 @@ func TestGeneratedGetElementDocsDocumentLookupSearchAndOutput(t *testing.T) {
 	getDoc := readGeneratedDocForTest(t, out, "c8volt_get.md")
 	for _, want := range []string{
 		"Inspect cluster, process, job, element, incident, tenant, and resource state without changing it.",
-		"./c8volt get element --pi-key <process-instance-key> --limit 10",
+		"./c8volt get ei --pi-key <process-instance-key> --limit 10",
 		"[c8volt get element](c8volt_get_element)",
 	} {
 		if !strings.Contains(getDoc, want) {
@@ -271,10 +271,11 @@ func TestGeneratedGetElementDocsDocumentLookupSearchAndOutput(t *testing.T) {
 	for _, want := range []string{
 		"Inspect or search runtime element instances",
 		"Inspect or search Camunda runtime element instances.",
-		"./c8volt get element --key <element-instance-key>",
-		"./c8volt get element --pi-key <process-instance-key> --limit 10",
+		"The `ei` alias follows the compact element-instance tag used in human output.",
+		"./c8volt get ei -k <element-instance-key>",
+		"./c8volt get ei --pi-key <process-instance-key> --limit 10",
 		"./c8volt get element --pi-key <process-instance-key> --total",
-		"./c8volt --json get element --pi-key <process-instance-key> --limit 5",
+		"./c8volt --json get ei --pi-key <process-instance-key> --limit 5",
 		"--element-id string",
 		"BPMN element ID to filter in search mode",
 		"--pi-key string",

@@ -235,15 +235,15 @@ Use `get job --key` with the `jobKey` from incident-aware process-instance outpu
 ### Inspect Runtime Elements
 
 ```bash
-./c8volt get element --key <element-instance-key>
-./c8volt get element --pi-key <process-instance-key> --limit 10
-./c8volt get element --pi-key <process-instance-key> --element-id <bpmn-element-id> --state active --limit 10
+./c8volt get ei -k <element-instance-key>
+./c8volt get ei --pi-key <process-instance-key> --limit 10
+./c8volt get ei --pi-key <process-instance-key> --element-id <bpmn-element-id> --state active --limit 10
 ./c8volt get element --bpmn-process-id <bpmn-process-id> --type service_task --total
-./c8volt get element --pi-key <process-instance-key> --keys-only
-./c8volt --json get element --pi-key <process-instance-key> --limit 5
+./c8volt get ei --pi-key <process-instance-key> --keys-only
+./c8volt --json get ei --pi-key <process-instance-key> --limit 5
 ```
 
-Use `get element` when the runtime BPMN element execution record is the target. `--key` fetches one element instance directly; without `--key`, filters such as `--pi-key`, `--element-id`, `--state`, `--type`, `--pd-key`, and `--bpmn-process-id` combine with AND semantics. `--batch-size` tunes page size, `--limit` caps returned rows, `--total` prints only the count, and `--keys-only` emits element instance keys. Compact rows show process context plus one incident marker, `inc!` or `inc!:<incidentKey>`, when the element has an incident. Runtime element inspection is available on Camunda `8.8` and `8.9`; Camunda `8.7` returns an unsupported-version error.
+Use `get element` or its `get ei` alias when the runtime BPMN element execution record is the target. `--key` fetches one element instance directly; without `--key`, filters such as `--pi-key`, `--element-id`, `--state`, `--type`, `--pd-key`, and `--bpmn-process-id` combine with AND semantics. `--batch-size` tunes page size, `--limit` caps returned rows, `--total` prints only the count, and `--keys-only` emits element instance keys. Compact rows show process context plus one incident marker, `inc!` or `inc!:<incidentKey>`, when the element has an incident. Runtime element inspection is available on Camunda `8.8` and `8.9`; Camunda `8.7` returns an unsupported-version error.
 
 ### Resolve Incidents
 

@@ -788,12 +788,13 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 	require.Contains(t, capability.AutomationNotes, "unattended element reads")
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
-	require.Empty(t, capability.Aliases)
+	require.Equal(t, []string{"ei"}, capability.Aliases)
 	require.Contains(t, getElementCmd.Long, "Search mode uses filters")
+	require.Contains(t, getElementCmd.Long, "`ei` alias follows the compact element-instance tag")
 	require.Contains(t, getElementCmd.Long, "standard paging controls")
-	require.Contains(t, getElementCmd.Example, "./c8volt get element --pi-key <process-instance-key> --limit 10")
+	require.Contains(t, getElementCmd.Example, "./c8volt get ei --pi-key <process-instance-key> --limit 10")
 	require.Contains(t, getElementCmd.Example, "./c8volt get element --pi-key <process-instance-key> --total")
-	require.Contains(t, getElementCmd.Example, "./c8volt --json get element --pi-key <process-instance-key> --limit 5")
+	require.Contains(t, getElementCmd.Example, "./c8volt --json get ei --pi-key <process-instance-key> --limit 5")
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "key",
 		Shorthand:   "k",
@@ -1862,16 +1863,19 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"get", "element"}, []string{
 		"Inspect or search Camunda runtime element instances",
 		"Use --key with an elementInstanceKey",
+		"The `ei` alias follows the compact element-instance tag",
 		"Search mode uses filters such as --pi-key, --element-id, --state, --type, --pd-key, and --bpmn-process-id",
 		"Search mode pages through matching runtime elements by default",
 		"--batch-size tunes per-page discovery requests only",
 		"--total returns only the matching count",
 		"Use --json for the stable element payload",
 		"Camunda 8.8 and 8.9",
-		"./c8volt get element --key <element-instance-key>",
-		"./c8volt get element --pi-key <process-instance-key> --limit 10",
+		"Aliases:",
+		"ei",
+		"./c8volt get ei -k <element-instance-key>",
+		"./c8volt get ei --pi-key <process-instance-key> --limit 10",
 		"./c8volt get element --pi-key <process-instance-key> --total",
-		"./c8volt --json get element --pi-key <process-instance-key> --limit 5",
+		"./c8volt --json get ei --pi-key <process-instance-key> --limit 5",
 		"-k, --key string",
 		"--pi-key string",
 		"--element-id string",

@@ -17,7 +17,7 @@ go build -o /tmp/c8volt-get-element .
 ### 1. Fetch one element instance
 
 ```bash
-/tmp/c8volt-get-element get element --key <element-instance-key>
+/tmp/c8volt-get-element get ei -k <element-instance-key>
 ```
 
 Expected:
@@ -29,7 +29,7 @@ Expected:
 ### 2. Search by process instance
 
 ```bash
-/tmp/c8volt-get-element get element --pi-key <process-instance-key> --limit 10
+/tmp/c8volt-get-element get ei --pi-key <process-instance-key> --limit 10
 ```
 
 Expected:
@@ -41,7 +41,7 @@ Expected:
 ### 3. Combine search filters
 
 ```bash
-/tmp/c8volt-get-element get element --pi-key <process-instance-key> --element-id <bpmn-element-id> --state active --limit 10
+/tmp/c8volt-get-element get ei --pi-key <process-instance-key> --element-id <bpmn-element-id> --state active --limit 10
 ```
 
 Expected:
@@ -52,7 +52,7 @@ Expected:
 ### 4. Reject direct lookup mixed with search filters
 
 ```bash
-/tmp/c8volt-get-element get element --key <element-instance-key> --pi-key <process-instance-key>
+/tmp/c8volt-get-element get ei -k <element-instance-key> --pi-key <process-instance-key>
 ```
 
 Expected:
@@ -63,7 +63,7 @@ Expected:
 ### 5. Keys-only output
 
 ```bash
-/tmp/c8volt-get-element get element --pi-key <process-instance-key> --limit 5 --keys-only
+/tmp/c8volt-get-element get ei --pi-key <process-instance-key> --limit 5 --keys-only
 ```
 
 Expected:
@@ -74,7 +74,7 @@ Expected:
 ### 6. Total-only output
 
 ```bash
-/tmp/c8volt-get-element get element --pi-key <process-instance-key> --total
+/tmp/c8volt-get-element get ei --pi-key <process-instance-key> --total
 ```
 
 Expected:
@@ -84,7 +84,7 @@ Expected:
 ### 7. JSON output
 
 ```bash
-/tmp/c8volt-get-element get element --pi-key <process-instance-key> --limit 5 --json
+/tmp/c8volt-get-element get ei --pi-key <process-instance-key> --limit 5 --json
 ```
 
 Expected:
@@ -96,7 +96,7 @@ Expected:
 ### 8. Incident markers
 
 ```bash
-/tmp/c8volt-get-element get element --pi-key <process-instance-key> --limit 10
+/tmp/c8volt-get-element get ei --pi-key <process-instance-key> --limit 10
 ```
 
 Expected when matching elements have incidents:
@@ -108,7 +108,7 @@ Expected when matching elements have incidents:
 ### 9. Unsupported Camunda 8.7
 
 ```bash
-/tmp/c8volt-get-element --config <camunda-87-config> get element --key <element-instance-key>
+/tmp/c8volt-get-element --config <camunda-87-config> get ei -k <element-instance-key>
 ```
 
 Expected:
@@ -134,5 +134,5 @@ make test
 
 Expected:
 
-- Generated CLI docs include `get element` command metadata and examples.
+- Generated CLI docs include `get element` command metadata, the `ei` alias, and examples.
 - Full repository tests pass with the race-enabled project test target.

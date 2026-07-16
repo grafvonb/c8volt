@@ -19,7 +19,7 @@ Started: 2026-07-16T11:27:27Z
 - US1 kept v87 as explicit `domain.ErrUnsupported` behavior and replaced only the v88/v89 direct-lookup stubs; search stubs still return the pending unsupported error until US2.
 - US2 maps `--bpmn-process-id` to generated `processDefinitionId`, because Camunda's element search filter names the BPMN process identifier field that way.
 - Element `SearchResult.Total` is the bounded collected count; exact/lower-bound backend totals stay on page metadata for command `--total` and future callers.
-- `get element` has no aliases for now; command discovery explicitly reports read-only mutation, full contract support, full automation support, JSON, and keys-only modes.
+- `get element` exposes the `ei` alias to match the compact `ei:<elementInstanceKey>` human-output tag; command discovery explicitly reports read-only mutation, full contract support, full automation support, JSON, and keys-only modes.
 - Quickstart JSON expectations should mention the shared result envelope, with the stable element `total` and `items` payload inside `payload`.
 
 ## Gotchas

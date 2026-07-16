@@ -6,12 +6,18 @@
 c8volt get element [flags]
 ```
 
-Aliases, if added, must not conflict with existing `get` subcommands. The canonical command name is `element`.
+Alias:
+
+```text
+c8volt get ei [flags]
+```
+
+The canonical command name is `element`; `ei` is the compact alias for element-instance workflows and matches the existing `ei:<elementInstanceKey>` human-output tag used by related command rows.
 
 ## Direct Lookup
 
 ```text
-c8volt get element --key <element-instance-key>
+c8volt get ei --key <element-instance-key>
 ```
 
 ### Rules
@@ -23,7 +29,7 @@ c8volt get element --key <element-instance-key>
 ## Search
 
 ```text
-c8volt get element [search filters] [output controls]
+c8volt get ei [search filters] [output controls]
 ```
 
 ### Search Filters
