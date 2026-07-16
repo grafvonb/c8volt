@@ -123,6 +123,35 @@ func TestGetElementCommand_RejectsInvalidSearchControls(t *testing.T) {
 	}
 }
 
+// TestGetElementCommand_RejectsTotalModeConflicts keeps total-only output
+// script-safe by preventing other machine output modes from changing it.
+func TestGetElementCommand_RejectsTotalModeConflicts(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		setup func()
+		want  string
+	}{
+		{name: "json", setup: func() { flagViewAsJson = true }, want: "--total cannot be combined with --json"},
+		{name: "keys only", setup: func() { flagViewKeysOnly = true }, want: "--total cannot be combined with --keys-only"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resetGetElementFlagState()
+			t.Cleanup(func() {
+				resetGetElementFlagState()
+				flagViewAsJson = false
+				flagViewKeysOnly = false
+			})
+			flagGetElementTotal = true
+			tc.setup()
+
+			err := validateGetElementFlags(getElementCmd)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.want)
+		})
+	}
+}
+
 func TestGetElementCommand_SearchHumanOutput(t *testing.T) {
 	var requests []string
 	srv := newElementSearchServer(t, &requests, `{
@@ -168,6 +197,103 @@ func TestGetElementCommand_SearchHumanOutput(t *testing.T) {
 	require.Contains(t, output, "found: 1")
 }
 
+// TestGetElementCommand_SearchJSONOutput emits one shared result envelope with
+// a stable total/items payload for bounded element search results.
+func TestGetElementCommand_SearchJSONOutput(t *testing.T) {
+	var bodies []map[string]any
+	srv := newElementSearchServerResponses(t, &bodies, `{
+  "items": [
+    {
+      "elementInstanceKey": "2251799813689002",
+      "elementId": "ship-order",
+      "type": "SERVICE_TASK",
+      "state": "ACTIVE",
+      "startDate": "2026-07-15T10:12:01Z",
+      "processInstanceKey": "2251799813688001",
+      "processDefinitionKey": "2251799813687001",
+      "tenantId": "tenant-a",
+      "hasIncident": true,
+      "incidentKey": "2251799813687777"
+    },
+    {
+      "elementInstanceKey": "2251799813689003",
+      "elementId": "finish-order",
+      "type": "END_EVENT",
+      "state": "COMPLETED",
+      "startDate": "2026-07-15T10:12:02Z",
+      "endDate": "2026-07-15T10:12:03Z",
+      "processInstanceKey": "2251799813688001",
+      "processDefinitionKey": "2251799813687001",
+      "tenantId": "tenant-a",
+      "hasIncident": false
+    }
+  ],
+  "page": {
+    "totalItems": 2,
+    "hasMoreTotalItems": false
+  }
+}`)
+	t.Cleanup(srv.Close)
+	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForElementTest(t, "--config", cfgPath, "--json", "get", "element", "--pi-key", "2251799813688001", "--limit", "2")
+
+	require.Len(t, bodies, 1)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	require.Equal(t, "get element", envelope["command"])
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, float64(2), payload["total"])
+	items := payload["items"].([]any)
+	require.Len(t, items, 2)
+	first := requireJSONObject(t, items[0])
+	require.Equal(t, "2251799813689002", first["elementInstanceKey"])
+	require.Equal(t, "ship-order", first["elementId"])
+	require.Equal(t, "SERVICE_TASK", first["type"])
+	require.Equal(t, true, first["hasIncident"])
+	require.Equal(t, "2251799813687777", first["incidentKey"])
+}
+
+// TestGetElementCommand_SearchKeysOnlyOutput emits only element instance keys
+// so automation can pipe runtime element identifiers without row text.
+func TestGetElementCommand_SearchKeysOnlyOutput(t *testing.T) {
+	var bodies []map[string]any
+	srv := newElementSearchServerResponses(t, &bodies, `{
+  "items": [
+    {"elementInstanceKey": "2251799813689002", "state": "ACTIVE"},
+    {"elementInstanceKey": "2251799813689003", "state": "COMPLETED"}
+  ],
+  "page": {"totalItems": 2, "hasMoreTotalItems": false}
+}`)
+	t.Cleanup(srv.Close)
+	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForElementTest(t, "--config", cfgPath, "--keys-only", "get", "element", "--pi-key", "2251799813688001", "--limit", "2")
+
+	require.Equal(t, "2251799813689002\n2251799813689003\n", output)
+	require.Len(t, bodies, 1)
+}
+
+// TestGetElementCommand_SearchTotalOnlyOutput keeps total mode quiet by
+// rendering only the numeric count reported by the backend when exact.
+func TestGetElementCommand_SearchTotalOnlyOutput(t *testing.T) {
+	var bodies []map[string]any
+	srv := newElementSearchServerResponses(t, &bodies, `{
+  "items": [
+    {"elementInstanceKey": "2251799813689002", "state": "ACTIVE"}
+  ],
+  "page": {"totalItems": 42, "hasMoreTotalItems": false}
+}`)
+	t.Cleanup(srv.Close)
+	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForElementTest(t, "--config", cfgPath, "get", "element", "--pi-key", "2251799813688001", "--total")
+
+	require.Equal(t, "42\n", output)
+	require.Len(t, bodies, 1)
+}
+
 func TestGetElementCommand_KeyedLookupHumanOutput(t *testing.T) {
 	var requests []string
 	srv := newElementLookupServer(t, &requests, http.StatusOK, `{
@@ -196,6 +322,7 @@ func TestGetElementCommand_KeyedLookupHumanOutput(t *testing.T) {
 	require.Equal(t, []string{"GET /v2/element-instances/2251799813689002"}, requests)
 	require.Contains(t, string(output), "2251799813689002")
 	require.Contains(t, string(output), "SERVICE_TASK")
+	require.Contains(t, string(output), "s:2026-07-15T10:12:01.000")
 	require.Contains(t, string(output), "pi:2251799813688001")
 	require.Contains(t, string(output), "element:ship-order")
 	require.Contains(t, string(output), "inc!:2251799813687777")
@@ -232,8 +359,11 @@ func TestGetElementCommand_KeyedLookupJSONOutput(t *testing.T) {
 
 	output := executeRootForElementTest(t, "--config", cfgPath, "--json", "get", "element", "--key", "2251799813689002")
 
-	var payload map[string]any
-	require.NoError(t, json.Unmarshal([]byte(output), &payload))
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	require.Equal(t, "get element", envelope["command"])
+	payload := requireJSONObject(t, envelope["payload"])
 	require.Equal(t, "2251799813689002", payload["elementInstanceKey"])
 	require.Equal(t, "ship-order", payload["elementId"])
 	require.Equal(t, "SERVICE_TASK", payload["type"])
@@ -294,6 +424,25 @@ func newElementSearchServer(t *testing.T, requests *[]string, response string) *
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(response))
+	}))
+}
+
+// newElementSearchServerResponses captures element search request bodies while
+// returning one generated-client-compatible response per request.
+func newElementSearchServerResponses(t *testing.T, bodies *[]map[string]any, responses ...string) *httptest.Server {
+	t.Helper()
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/element-instances/search", r.URL.Path)
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		*bodies = append(*bodies, body)
+		responseIndex := len(*bodies) - 1
+		if responseIndex >= len(responses) {
+			responseIndex = len(responses) - 1
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(responses[responseIndex]))
 	}))
 }
 

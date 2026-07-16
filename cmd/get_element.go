@@ -28,10 +28,13 @@ var (
 
 var getElementCmd = &cobra.Command{
 	Use:   "element",
-	Short: "Inspect runtime element instances",
-	Long: "Inspect Camunda runtime element instances.\n\n" +
-		"Use --key with an elementInstanceKey to inspect one runtime BPMN element execution record directly. Element lookup is supported for Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error.",
+	Short: "Inspect or search runtime element instances",
+	Long: "Inspect or search Camunda runtime element instances.\n\n" +
+		"Use --key with an elementInstanceKey to inspect one runtime BPMN element execution record directly. Search mode uses filters such as --pi-key, --element-id, --state, --type, --pd-key, and --bpmn-process-id. Search mode pages through matching runtime elements by default with the standard paging controls. --batch-size tunes per-page discovery requests only, --limit intentionally caps total returned elements, and --total returns only the matching count. Use --json for the stable element payload. Element lookup and search are supported for Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error.",
 	Example: `  ./c8volt get element --key <element-instance-key>
+  ./c8volt get element --pi-key <process-instance-key> --limit 10
+  ./c8volt get element --pi-key <process-instance-key> --total
+  ./c8volt --json get element --pi-key <process-instance-key> --limit 5
   ./c8volt --json get element --key <element-instance-key>`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -83,7 +86,7 @@ func init() {
 	getCmd.AddCommand(getElementCmd)
 
 	fs := getElementCmd.Flags()
-	fs.StringVar(&flagGetElementKey, "key", "", "element instance key for exact lookup")
+	fs.StringVar(&flagGetElementKey, "key", "", "element instance key for exact lookup; omit to list or search runtime elements")
 	fs.StringVar(&flagGetElementProcessKey, "pi-key", "", "process instance key to filter in search mode")
 	fs.StringVar(&flagGetElementID, "element-id", "", "BPMN element ID to filter in search mode")
 	fs.StringVar(&flagGetElementState, "state", "", "runtime element state to filter in search mode; case-insensitive")
@@ -96,6 +99,8 @@ func init() {
 
 	useInvalidInputFlagErrors(getElementCmd)
 	setCommandMutation(getElementCmd, CommandMutationReadOnly)
+	setContractSupport(getElementCmd, ContractSupportFull)
+	setAutomationSupport(getElementCmd, AutomationSupportFull, "supports shared machine output and unattended element reads")
 }
 
 func validateGetElementFlags(cmd *cobra.Command) error {

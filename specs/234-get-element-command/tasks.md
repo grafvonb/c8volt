@@ -107,16 +107,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T036 [P] [US3] Add compact human row rendering tests for active/completed elements, missing end dates, incident markers, and timestamp formatting in `cmd/cmd_views_element_test.go`
-- [ ] T037 [P] [US3] Add command output tests for JSON payload shape, keys-only output, total-only output, and mode conflicts in `cmd/get_element_test.go`
-- [ ] T038 [P] [US3] Add command contract tests for `get element` flags, output modes, examples, read-only mutation metadata, and automation support in `cmd/command_contract_test.go`
+- [x] T036 [P] [US3] Add compact human row rendering tests for active/completed elements, missing end dates, incident markers, and timestamp formatting in `cmd/cmd_views_element_test.go`
+- [x] T037 [P] [US3] Add command output tests for JSON payload shape, keys-only output, total-only output, and mode conflicts in `cmd/get_element_test.go`
+- [x] T038 [P] [US3] Add command contract tests for `get element` flags, output modes, examples, read-only mutation metadata, and automation support in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T039 [US3] Implement compact list row formatting with exactly one incident marker, `inc!` or `inc!:<incidentKey>`, plus `s:`, optional `e:`, `pi:`, `pd:`, and `element:` tags in `cmd/cmd_views_element.go`
-- [ ] T040 [US3] Implement JSON list payload, keys-only output, total-only output, and final `found: N` behavior in `cmd/cmd_views_element.go` and `cmd/get_element_search.go`
-- [ ] T041 [US3] Register command contract metadata, automation support, read-only mutation metadata, examples, aliases if any, and help text in `cmd/get_element.go` and `cmd/command_contract.go`
-- [ ] T042 [US3] Ensure normal human output omits request, cursor, backend target, and per-page lifecycle diagnostics in `cmd/get_element_search.go` and `cmd/cmd_views_element.go`
+- [x] T039 [US3] Implement compact list row formatting with exactly one incident marker, `inc!` or `inc!:<incidentKey>`, plus `s:`, optional `e:`, `pi:`, `pd:`, and `element:` tags in `cmd/cmd_views_element.go`
+- [x] T040 [US3] Implement JSON list payload, keys-only output, total-only output, and final `found: N` behavior in `cmd/cmd_views_element.go` and `cmd/get_element_search.go`
+- [x] T041 [US3] Register command contract metadata, automation support, read-only mutation metadata, examples, aliases if any, and help text in `cmd/get_element.go` and `cmd/command_contract.go`
+- [x] T042 [US3] Ensure normal human output omits request, cursor, backend target, and per-page lifecycle diagnostics in `cmd/get_element_search.go` and `cmd/cmd_views_element.go`
 
 **Checkpoint**: All output modes and CLI contracts are script-safe and operator-friendly.
 

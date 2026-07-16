@@ -773,6 +773,101 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 	})
 }
 
+// TestCommandCapabilityForCommand_GetElementContract verifies discovery
+// metadata for the runtime element read command added to the get family.
+func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(getElementCmd)
+
+	require.Equal(t, "get element", capability.Path)
+	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.AutomationNotes, "unattended element reads")
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
+	require.Empty(t, capability.Aliases)
+	require.Contains(t, getElementCmd.Long, "Search mode uses filters")
+	require.Contains(t, getElementCmd.Long, "standard paging controls")
+	require.Contains(t, getElementCmd.Example, "./c8volt get element --pi-key <process-instance-key> --limit 10")
+	require.Contains(t, getElementCmd.Example, "./c8volt get element --pi-key <process-instance-key> --total")
+	require.Contains(t, getElementCmd.Example, "./c8volt --json get element --pi-key <process-instance-key> --limit 5")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "element instance key for exact lookup; omit to list or search runtime elements",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "pi-key",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "process instance key to filter in search mode",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "element-id",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN element ID to filter in search mode",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "state",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "runtime element state to filter in search mode; case-insensitive",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "type",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "runtime element type to filter in search mode; case-insensitive",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "pd-key",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "process definition key to filter in search mode",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "bpmn-process-id",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN process ID to filter in search mode",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "batch-size",
+		Shorthand:   "n",
+		Type:        "int32",
+		Required:    false,
+		Repeated:    false,
+		Description: "number of elements to fetch per page (max limit 1000 enforced by server)",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "limit",
+		Shorthand:   "l",
+		Type:        "int32",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum number of elements to return in search mode",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "total",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return only the numeric total of matching elements",
+	})
+}
+
 func TestCommandCapabilityForCommand_GetIncidentContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -1689,7 +1784,7 @@ func TestCapabilityDocumentForRoot_ResolveCommandFamily(t *testing.T) {
 
 func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"get"}, []string{
-		"Inspect cluster, process, job, incident, tenant, and resource state",
+		"Inspect cluster, process, job, element, incident, tenant, and resource state",
 		"./c8volt get job --key <job-key>",
 	}, nil)
 	require.Contains(t, output, "job")
@@ -1756,6 +1851,38 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"--dry-run",
 		"--auto-confirm",
 	}, nil)
+}
+
+// TestGetElementHelp_DocumentsSearchAndOutputModes keeps user-facing help in
+// sync with the element CLI contract and generated documentation source.
+func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
+	output := assertCommandHelpOutput(t, []string{"get", "element"}, []string{
+		"Inspect or search Camunda runtime element instances",
+		"Use --key with an elementInstanceKey",
+		"Search mode uses filters such as --pi-key, --element-id, --state, --type, --pd-key, and --bpmn-process-id",
+		"Search mode pages through matching runtime elements by default",
+		"--batch-size tunes per-page discovery requests only",
+		"--total returns only the matching count",
+		"Use --json for the stable element payload",
+		"Camunda 8.8 and 8.9",
+		"./c8volt get element --key <element-instance-key>",
+		"./c8volt get element --pi-key <process-instance-key> --limit 10",
+		"./c8volt get element --pi-key <process-instance-key> --total",
+		"./c8volt --json get element --pi-key <process-instance-key> --limit 5",
+		"--key string",
+		"--pi-key string",
+		"--element-id string",
+		"--state string",
+		"--type string",
+		"--pd-key string",
+		"--bpmn-process-id string",
+		"-n, --batch-size int32",
+		"-l, --limit int32",
+		"--total",
+		"--json",
+		"--keys-only",
+	}, nil)
+	require.NotContains(t, output, "--all")
 }
 
 func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *testing.T) {

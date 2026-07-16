@@ -9,7 +9,8 @@ Started: 2026-07-16T11:27:27Z
 - Public and internal element models keep keys and timestamps as strings, matching the feature data model and existing process-instance-style JSON contracts.
 - US1 direct lookup uses the generated `GetElementInstanceWithResponse` endpoint for v88/v89, maps `ElementInstanceResult` directly to `domain.Element`, and uses `common.RequirePayload` for HTTP status/malformed-payload handling.
 - US2 search uses generated v88/v89 `SearchElementInstancesWithResponse`, typed generated filters, offset pagination, reported-total metadata, and command-side page iteration modeled after `get job`.
-- `get element` now allows no-key search, unfiltered search, AND-combined filters, `--batch-size`, `--limit`, and `--total`; US3 still owns final output-mode polish and command contract metadata.
+- `get element` now allows no-key search, unfiltered search, AND-combined filters, `--batch-size`, `--limit`, and `--total`.
+- US3 output now mirrors `get job`: element rows use `toolx.FormatTimestamp`, optional `e:` is omitted when empty, exactly one incident marker is emitted, JSON uses the shared result envelope after `ContractSupportFull`, keys-only and total-only remain quiet, and `found: N` is only human list output.
 
 ## Decisions
 - Phase 1 confirmed that generated runtime element instance methods already exist in Camunda v8.8/v8.9 clients and should be used directly by later adapter tasks.
@@ -17,11 +18,12 @@ Started: 2026-07-16T11:27:27Z
 - US1 kept v87 as explicit `domain.ErrUnsupported` behavior and replaced only the v88/v89 direct-lookup stubs; search stubs still return the pending unsupported error until US2.
 - US2 maps `--bpmn-process-id` to generated `processDefinitionId`, because Camunda's element search filter names the BPMN process identifier field that way.
 - Element `SearchResult.Total` is the bounded collected count; exact/lower-bound backend totals stay on page metadata for command `--total` and future callers.
+- `get element` has no aliases for now; command discovery explicitly reports read-only mutation, full contract support, full automation support, JSON, and keys-only modes.
 
 ## Gotchas
 - Camunda v8.7 has no generated runtime element instance lookup/search methods; keep v87 behavior as explicit unsupported-operation service behavior.
 - Generated element `ElementInstanceKey` search filter fields are direct key pointers, while `State` uses a union filter wrapper; do not copy the job key union pattern for element key filters.
-- US3 should avoid assuming command contract metadata is complete: `get element` is read-only, but full contract/automation metadata and docs examples remain task T041/T048 work.
+- Parent `get` help/completion tests assert the exact command-family summary; update those tests when adding `element` to generated/help-facing text.
 
 ## Reusable Commands
 - `rg -n "GetElementInstanceWithResponse|SearchElementInstancesWithResponse" internal/clients/camunda/v87 internal/clients/camunda/v88 internal/clients/camunda/v89`
@@ -33,4 +35,4 @@ Started: 2026-07-16T11:27:27Z
 ## Do Not Repeat
 
 ## Current Handoff
-- US2 search is complete and validated. Next iteration should start US3 at T036 by adding compact row rendering/output-mode/command-contract tests before polishing `cmd/cmd_views_element.go`, JSON/keys/total behavior, and `get element` contract metadata.
+- US3 output modes and command contract metadata are complete and validated with `go test ./cmd -count=1`. Next iteration should start Phase 6 polish at T043/T044: update README and docsgen coverage expectations, then run gofmt/targeted validation/docs generation/full validation tasks T045-T050.

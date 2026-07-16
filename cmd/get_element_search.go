@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// searchElementsWithPaging walks element search pages and either streams rows
+// incrementally or returns one bounded collection for JSON rendering.
 func searchElementsWithPaging(cmd *cobra.Command, cli element.API, request element.SearchRequest) (element.SearchResult, bool, error) {
 	pageReq := newElementSearchPageRequest(0, request.BatchSize, request.Limit, 0)
 	collected := element.SearchResult{Items: []element.Element{}}
@@ -65,6 +67,8 @@ func searchElementsWithPaging(cmd *cobra.Command, cli element.API, request eleme
 	}
 }
 
+// searchElementsTotal counts matching elements, trusting exact backend totals
+// when available and otherwise walking pages quietly.
 func searchElementsTotal(cmd *cobra.Command, cli element.API, request element.SearchRequest) (int64, error) {
 	pageReq := element.PageRequest{Size: request.BatchSize}
 	total := int64(0)
@@ -84,10 +88,12 @@ func searchElementsTotal(cmd *cobra.Command, cli element.API, request element.Se
 	}
 }
 
+// canUseElementExactReportedTotal reports whether the backend total can be used without paging.
 func canUseElementExactReportedTotal(page element.Page) bool {
 	return page.ReportedTotal != nil && page.ReportedTotal.Kind == element.ReportedTotalKindExact
 }
 
+// shouldRenderElementSearchPageIncrementally keeps human and key-only output streaming by page.
 func shouldRenderElementSearchPageIncrementally(cmd *cobra.Command) bool {
 	if flagCmdAutoConfirm {
 		return false
@@ -99,10 +105,12 @@ func shouldRenderElementSearchPageIncrementally(cmd *cobra.Command) bool {
 	return mode == RenderModeOneLine || mode == RenderModeKeysOnly
 }
 
+// shouldAutoContinueElementSearchPages reports whether paging may proceed without a prompt.
 func shouldAutoContinueElementSearchPages(cmd *cobra.Command) bool {
 	return shouldImplicitlyConfirm(cmd) || pickMode() == RenderModeJSON
 }
 
+// limitElementItems trims the current page to the remaining user-requested limit.
 func limitElementItems(items []element.Element, cumulative int, limit int32) []element.Element {
 	if limit <= 0 {
 		return items
@@ -117,10 +125,12 @@ func limitElementItems(items []element.Element, cumulative int, limit int32) []e
 	return items
 }
 
+// isElementLimitReached reports whether the cross-page limit has been satisfied.
 func isElementLimitReached(cumulative int, limit int32) bool {
 	return limit > 0 && cumulative >= int(limit)
 }
 
+// nextElementSearchPageRequest advances offset pagination using the actual page size.
 func nextElementSearchPageRequest(current element.PageRequest, page element.Page, limit int32, loaded int) element.PageRequest {
 	nextFrom := current.From + int32(len(page.Items))
 	if len(page.Items) == 0 {
@@ -129,6 +139,7 @@ func nextElementSearchPageRequest(current element.PageRequest, page element.Page
 	return newElementSearchPageRequest(nextFrom, page.Request.Size, limit, loaded)
 }
 
+// newElementSearchPageRequest computes an effective page size bounded by any remaining limit.
 func newElementSearchPageRequest(from int32, batchSize int32, limit int32, loaded int) element.PageRequest {
 	size := batchSize
 	if size <= 0 {
@@ -143,6 +154,7 @@ func newElementSearchPageRequest(from int32, batchSize int32, limit int32, loade
 	return element.PageRequest{From: from, Size: size}
 }
 
+// renderElementSearchPage renders one page in the current incremental output mode.
 func renderElementSearchPage(cmd *cobra.Command, items []element.Element) error {
 	switch pickMode() {
 	case RenderModeKeysOnly:
@@ -150,9 +162,10 @@ func renderElementSearchPage(cmd *cobra.Command, items []element.Element) error 
 			renderOutputLine(cmd, "%s", item.ElementInstanceKey)
 		}
 	default:
+		rowOf := flatRowElementWithTimezoneForMode(cmd)
 		rows := make([]flatRow, 0, len(items))
 		for _, item := range items {
-			rows = append(rows, flatRowElement(item))
+			rows = append(rows, rowOf(item))
 		}
 		for _, line := range formatFlatRows(rows) {
 			renderOutputLine(cmd, "%s", line)
