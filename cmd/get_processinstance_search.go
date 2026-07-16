@@ -88,6 +88,12 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 					return process.ProcessInstances{}, false, fmt.Errorf("get process instance variables: %w", err)
 				}
 				renderProcessInstanceActivityRows(cmd, activityFromVariableEnriched(enriched).Items)
+			} else if flagGetPIWithElements && pickMode() == RenderModeOneLine {
+				enriched, err := enrichProcessInstancesWithElementActivity(cmd, cli, filtered)
+				if err != nil {
+					return process.ProcessInstances{}, false, fmt.Errorf("get process instance elements: %w", err)
+				}
+				renderProcessInstanceActivityRows(cmd, activityFromElementEnriched(enriched).Items)
 			} else if pickMode() == RenderModeOneLine {
 				if err := renderProcessInstanceFlatRows(cmd, filtered.Items); err != nil {
 					return process.ProcessInstances{}, false, err

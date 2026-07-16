@@ -678,6 +678,42 @@ func TestProcessInstanceActivityInstancesView_HumanRowsRenderElements(t *testing
 	require.Contains(t, output, "found: 1")
 }
 
+// TestProcessInstanceActivityInstancesView_HumanRowsRenderRepeatedElementsSeparately verifies looped BPMN executions remain distinct rows.
+func TestProcessInstanceActivityInstancesView_HumanRowsRenderRepeatedElementsSeparately(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = false
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := processInstanceActivityInstancesView(cmd, processInstanceActivityInstances{
+		Total: 1,
+		Items: []processInstanceActivityItem{{
+			Item: process.ProcessInstance{
+				Key:            "123",
+				TenantId:       "tenant",
+				BpmnProcessId:  "demo",
+				ProcessVersion: 3,
+				State:          process.StateActive,
+			},
+			Elements: []process.ProcessInstanceElement{
+				{ElementInstanceKey: "element-loop-1", Type: "SERVICE_TASK", ElementId: "retry-task", State: "COMPLETED", StartDate: "2026-07-15T10:12:01Z", EndDate: "2026-07-15T10:12:02Z", ProcessInstanceKey: "123"},
+				{ElementInstanceKey: "element-loop-2", Type: "SERVICE_TASK", ElementId: "retry-task", State: "ACTIVE", StartDate: "2026-07-15T10:12:03Z", ProcessInstanceKey: "123"},
+			},
+		}},
+	})
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "element-loop-1 SERVICE_TASK retry-task COMPLETED")
+	require.Contains(t, output, "element-loop-2 SERVICE_TASK retry-task ACTIVE")
+	require.Equal(t, 2, strings.Count(output, "retry-task"))
+}
+
 func TestProcessInstanceActivityInstancesView_JSONIncludesElements(t *testing.T) {
 	prevJSON := flagViewAsJson
 	flagViewAsJson = true

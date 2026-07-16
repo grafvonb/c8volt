@@ -309,6 +309,16 @@ var getProcessInstanceCmd = &cobra.Command{
 			}
 			return
 		}
+		if flagGetPIWithElements {
+			enriched, err := enrichProcessInstancesWithElementActivity(cmd, cli, pis)
+			if err != nil {
+				fail(fmt.Errorf("get process instance elements: %w", err))
+			}
+			if err := elementEnrichedProcessInstancesView(cmd, enriched); err != nil {
+				fail(fmt.Errorf("render process instances with elements: %w", err))
+			}
+			return
+		}
 		if err := listProcessInstancesView(cmd, pis); err != nil {
 			fail(fmt.Errorf("render process instances: %w", err))
 		}

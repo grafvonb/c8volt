@@ -79,18 +79,18 @@
 
 ### Tests for User Story 2
 
-- [ ] T024 [P] [US2] Add list/search command tests for `--state active --limit 5 --with-elements` and BPMN process selector enrichment in `cmd/get_processinstance_test.go`
-- [ ] T025 [P] [US2] Add incremental paging tests proving `--batch-size`, prompts, and `found: N` remain process-instance scoped with `--with-elements` in `cmd/get_processinstance_test.go`
-- [ ] T026 [P] [US2] Add bounded JSON search tests proving process-instance limits are preserved while attached elements are included in `cmd/get_processinstance_test.go`
-- [ ] T027 [P] [US2] Add command activity tests for repeated or looped BPMN elements rendering as separate rows in `cmd/cmd_views_get_test.go`
+- [x] T024 [P] [US2] Add list/search command tests for `--state active --limit 5 --with-elements` and BPMN process selector enrichment in `cmd/get_processinstance_test.go`
+- [x] T025 [P] [US2] Add incremental paging tests proving `--batch-size`, prompts, and `found: N` remain process-instance scoped with `--with-elements` in `cmd/get_processinstance_test.go`
+- [x] T026 [P] [US2] Add bounded JSON search tests proving process-instance limits are preserved while attached elements are included in `cmd/get_processinstance_test.go`
+- [x] T027 [P] [US2] Add command activity tests for repeated or looped BPMN elements rendering as separate rows in `cmd/cmd_views_get_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T028 [US2] Apply element enrichment to bounded list/search result aggregation in `cmd/get_processinstance.go`
-- [ ] T029 [US2] Apply element enrichment to incremental one-line/page rendering paths in `cmd/get_processinstance_search.go`
-- [ ] T030 [US2] Preserve process-instance page counts, limits, and continuation prompts while rendering enriched rows in `cmd/get_processinstance_paging.go` and `cmd/get_processinstance_search.go`
-- [ ] T031 [US2] Ensure process-instance filters remain authoritative and element-specific filters are not added in `cmd/get_processinstance.go` and `cmd/get_processinstance_validation.go`
-- [ ] T032 [US2] Surface reused element-service Camunda 8.7 unsupported errors as command failures in `cmd/get_processinstance.go` and `c8volt/process/client.go`
+- [x] T028 [US2] Apply element enrichment to bounded list/search result aggregation in `cmd/get_processinstance.go`
+- [x] T029 [US2] Apply element enrichment to incremental one-line/page rendering paths in `cmd/get_processinstance_search.go`
+- [x] T030 [US2] Preserve process-instance page counts, limits, and continuation prompts while rendering enriched rows in `cmd/get_processinstance_paging.go` and `cmd/get_processinstance_search.go`
+- [x] T031 [US2] Ensure process-instance filters remain authoritative and element-specific filters are not added in `cmd/get_processinstance.go` and `cmd/get_processinstance_validation.go`
+- [x] T032 [US2] Surface reused element-service Camunda 8.7 unsupported errors as command failures in `cmd/get_processinstance.go` and `c8volt/process/client.go`
 
 **Checkpoint**: User Stories 1 and 2 both work independently, with list/search preserving process-instance selection semantics.
 

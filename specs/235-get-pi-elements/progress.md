@@ -86,3 +86,29 @@ Started: 2026-07-16 17:20:23
 **Learnings**:
 - Keyed element enrichment reuses explicit-key admin options, so tenant filtering is not asserted on the element search body.
 ---
+---
+## Iteration 4 - 2026-07-16 17:47
+**Work Unit**: Phase 4: User Story 2 - Attach Elements To Process Instance Search Results
+**Tasks Completed**:
+- [x] T024: Add list/search command tests for state/limit and BPMN selector element enrichment
+- [x] T025: Add incremental paging tests for process-instance-scoped batch prompts and `found: N`
+- [x] T026: Add bounded JSON search tests for process-instance limits with attached elements
+- [x] T027: Add command activity tests for repeated BPMN elements as separate rows
+- [x] T028: Apply element enrichment to bounded list/search aggregation
+- [x] T029: Apply element enrichment to incremental page rendering
+- [x] T030: Preserve process-instance page counts, limits, and prompts while rendering enriched rows
+- [x] T031: Keep process-instance filters authoritative without element-specific filters
+- [x] T032: Surface reused element-service Camunda 8.7 unsupported errors for list/search
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processinstance.go
+- cmd/get_processinstance_search.go
+- cmd/get_processinstance_test.go
+- cmd/cmd_views_get_test.go
+- specs/235-get-pi-elements/tasks.md
+- specs/235-get-pi-elements/ralph-memory.md
+- specs/235-get-pi-elements/progress.md
+**Learnings**:
+- List/search element enrichment belongs after process-instance filtering/limiting in both aggregate and incremental command paths.
+---
