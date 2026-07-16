@@ -269,9 +269,11 @@ func TestGeneratedGetElementDocsDocumentLookupSearchAndOutput(t *testing.T) {
 
 	elementDoc := readGeneratedDocForTest(t, out, "c8volt_get_element.md")
 	for _, want := range []string{
-		"Inspect or search runtime element instances",
-		"Inspect or search Camunda runtime element instances.",
-		"The `ei` alias follows the compact element-instance tag used in human output.",
+		"List or fetch runtime element instances",
+		"List or fetch Camunda runtime element instances.",
+		"Use --key when you know an element instance key.",
+		"Search mode follows the shared get paging and limit conventions.",
+		"Use --json for the stable element payload and --keys-only when piping element instance keys.",
 		"./c8volt get ei -k <element-instance-key>",
 		"./c8volt get ei --pi-key <process-instance-key> --limit 10",
 		"./c8volt get element --pi-key <process-instance-key> --total",
