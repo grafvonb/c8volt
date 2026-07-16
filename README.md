@@ -76,6 +76,7 @@ The most useful entry points for tools are the [CLI reference](./docs/cli/index.
 - deploy BPMN and start using it immediately
 - run process instances and confirm they are observable
 - update process-instance-scope variables and confirm visibility
+- inspect runtime element instances by key or process scope
 - inspect jobs from incident output and safely adjust retries or timeout
 - list, fetch, filter, and count incidents directly
 - inspect process trees with incidents and variables in context
@@ -230,6 +231,19 @@ Process-instance variable updates are available on Camunda `8.8` and `8.9`. Camu
 Use `get job --key` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Omit `--key` to list or search jobs; `--batch-size` tunes page size, `--limit` caps returned rows, `--total` prints only the count, and `--keys-only` emits pipeline keys. Use `--error-message-limit` when terminal output should be shortened.
 
 `update job` supports retry and timeout changes plus worker outcome modes on Camunda `8.8` and `8.9`: `--fail`, `--throw-bpmn-error`, and `--complete`. Retry changes are confirmed by reading the job by key by default, while timeout changes and worker outcomes report accepted submission without claiming a stable read-model confirmation. Use `--dry-run` to preview the plan without mutation, and `--auto-confirm` or `--automation` for unattended mutations. Camunda `8.7` returns an unsupported-version error for job search and worker outcome paths before unsupported mutation requests are submitted.
+
+### Inspect Runtime Elements
+
+```bash
+./c8volt get ei -k <element-instance-key>
+./c8volt get ei --pi-key <process-instance-key> --limit 10
+./c8volt get ei --pi-key <process-instance-key> --element-id <bpmn-element-id> --state active --limit 10
+./c8volt get element --bpmn-process-id <bpmn-process-id> --type service_task --total
+./c8volt get ei --pi-key <process-instance-key> --keys-only
+./c8volt --json get ei --pi-key <process-instance-key> --limit 5
+```
+
+Use `get element` or its `get ei` alias when the runtime BPMN element execution record is the target. `--key` fetches one element instance directly; without `--key`, filters such as `--pi-key`, `--element-id`, `--state`, `--type`, `--pd-key`, and `--bpmn-process-id` combine with AND semantics. `--batch-size` tunes page size, `--limit` caps returned rows, `--total` prints only the count, and `--keys-only` emits element instance keys. Compact rows show process context plus one incident marker, `inc!` or `inc!:<incidentKey>`, when the element has an incident. Runtime element inspection is available on Camunda `8.8` and `8.9`; Camunda `8.7` returns an unsupported-version error.
 
 ### Resolve Incidents
 

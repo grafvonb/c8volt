@@ -8,6 +8,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/batchoperation"
 	"github.com/grafvonb/c8volt/c8volt/cluster"
+	"github.com/grafvonb/c8volt/c8volt/element"
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/grafvonb/c8volt/c8volt/ops"
@@ -24,6 +25,7 @@ type API interface {
 	task.API
 	cluster.API
 	job.API
+	element.API
 	ops.API
 	batchoperation.API
 	resource.API

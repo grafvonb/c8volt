@@ -195,7 +195,7 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 
 	getDoc := readGeneratedDocForTest(t, out, "c8volt_get.md")
 	for _, want := range []string{
-		"Inspect cluster, process, job, incident, tenant, and resource state without changing it.",
+		"Inspect cluster, process, job, element, incident, tenant, and resource state without changing it.",
 		"./c8volt get incident --key <incident-key>",
 		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only",
 		"[c8volt get incident](c8volt_get_incident)",
@@ -235,6 +235,58 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 	} {
 		if strings.Contains(incidentDoc, unwanted) {
 			t.Fatalf("expected generated get incident docs to omit %q, got %q", unwanted, incidentDoc)
+		}
+	}
+}
+
+// TestGeneratedGetElementDocsDocumentLookupSearchAndOutput protects generated docs for runtime element lookup and search.
+func TestGeneratedGetElementDocsDocumentLookupSearchAndOutput(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	getDoc := readGeneratedDocForTest(t, out, "c8volt_get.md")
+	for _, want := range []string{
+		"Inspect cluster, process, job, element, incident, tenant, and resource state without changing it.",
+		"./c8volt get ei --pi-key <process-instance-key> --limit 10",
+		"[c8volt get element](c8volt_get_element)",
+	} {
+		if !strings.Contains(getDoc, want) {
+			t.Fatalf("expected generated get docs to contain %q, got %q", want, getDoc)
+		}
+	}
+
+	elementDoc := readGeneratedDocForTest(t, out, "c8volt_get_element.md")
+	for _, want := range []string{
+		"Inspect or search runtime element instances",
+		"Inspect or search Camunda runtime element instances.",
+		"The `ei` alias follows the compact element-instance tag used in human output.",
+		"./c8volt get ei -k <element-instance-key>",
+		"./c8volt get ei --pi-key <process-instance-key> --limit 10",
+		"./c8volt get element --pi-key <process-instance-key> --total",
+		"./c8volt --json get ei --pi-key <process-instance-key> --limit 5",
+		"--element-id string",
+		"BPMN element ID to filter in search mode",
+		"--pi-key string",
+		"process instance key to filter in search mode",
+		"--batch-size int32",
+		"number of elements to fetch per page",
+		"--total",
+		"return only the numeric total of matching elements",
+	} {
+		if !strings.Contains(elementDoc, want) {
+			t.Fatalf("expected generated get element docs to contain %q, got %q", want, elementDoc)
 		}
 	}
 }
