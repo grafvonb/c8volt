@@ -796,6 +796,7 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 	require.Contains(t, getElementCmd.Example, "./c8volt --json get element --pi-key <process-instance-key> --limit 5")
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "key",
+		Shorthand:   "k",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
@@ -817,6 +818,7 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "state",
+		Shorthand:   "s",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
@@ -838,6 +840,7 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "bpmn-process-id",
+		Shorthand:   "b",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
@@ -1869,13 +1872,13 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 		"./c8volt get element --pi-key <process-instance-key> --limit 10",
 		"./c8volt get element --pi-key <process-instance-key> --total",
 		"./c8volt --json get element --pi-key <process-instance-key> --limit 5",
-		"--key string",
+		"-k, --key string",
 		"--pi-key string",
 		"--element-id string",
-		"--state string",
+		"-s, --state string",
 		"--type string",
 		"--pd-key string",
-		"--bpmn-process-id string",
+		"-b, --bpmn-process-id string",
 		"-n, --batch-size int32",
 		"-l, --limit int32",
 		"--total",

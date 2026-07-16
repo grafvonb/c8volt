@@ -32,14 +32,14 @@ c8volt get element [flags]
 
 ```
   -n, --batch-size int32         number of elements to fetch per page (max limit 1000 enforced by server) (default 1000)
-      --bpmn-process-id string   BPMN process ID to filter in search mode
+  -b, --bpmn-process-id string   BPMN process ID to filter in search mode
       --element-id string        BPMN element ID to filter in search mode
   -h, --help                     help for element
-      --key string               element instance key for exact lookup; omit to list or search runtime elements
+  -k, --key string               element instance key for exact lookup; omit to list or search runtime elements
   -l, --limit int32              maximum number of elements to return in search mode
       --pd-key string            process definition key to filter in search mode
       --pi-key string            process instance key to filter in search mode
-      --state string             runtime element state to filter in search mode; case-insensitive
+  -s, --state string             runtime element state to filter in search mode; case-insensitive
       --total                    return only the numeric total of matching elements
       --type string              runtime element type to filter in search mode; case-insensitive
 ```
