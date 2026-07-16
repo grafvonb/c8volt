@@ -5,11 +5,13 @@ package process
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
+	esvc "github.com/grafvonb/c8volt/internal/services/element"
 	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
@@ -20,15 +22,23 @@ type client struct {
 	pdApi  pdsvc.API
 	piApi  pisvc.API
 	incApi incsvc.API
+	elApi  esvc.API
 	log    *slog.Logger
 }
 
 // New creates a process facade with incident lookup routed through the incident service layer.
 func New(pdApi pdsvc.API, piApi pisvc.API, incApi incsvc.API, log *slog.Logger) API {
+	return NewWithElements(pdApi, piApi, incApi, nil, log)
+}
+
+// NewWithElements creates a process facade with incident and runtime-element
+// lookup dependencies routed through their service layers.
+func NewWithElements(pdApi pdsvc.API, piApi pisvc.API, incApi incsvc.API, elApi esvc.API, log *slog.Logger) API {
 	return &client{
 		pdApi:  pdApi,
 		piApi:  piApi,
 		incApi: incApi,
+		elApi:  elApi,
 		log:    log,
 	}
 }
@@ -113,6 +123,16 @@ func (c *client) EnrichProcessInstancesWithVariables(ctx context.Context, pis Pr
 		return VariableEnrichedProcessInstances{}, ferr.FromDomain(err)
 	}
 	return fromDomainVariableEnrichedProcessInstances(got), nil
+}
+
+// EnrichProcessInstancesWithElements reserves the facade contract for runtime
+// element enrichment; the service attachment workflow is implemented in the
+// process-instance service before command paths call this method.
+func (c *client) EnrichProcessInstancesWithElements(context.Context, ProcessInstances, ...options.FacadeOption) (ElementEnrichedProcessInstances, error) {
+	if c.elApi == nil {
+		return ElementEnrichedProcessInstances{}, ferr.FromDomain(fmt.Errorf("%w: process-instance element enrichment requires an element service", d.ErrUnsupported))
+	}
+	return ElementEnrichedProcessInstances{}, ferr.FromDomain(fmt.Errorf("%w: process-instance element enrichment is pending implementation", d.ErrUnsupported))
 }
 
 // EnrichTraversalWithIncidents overlays incident details onto walked items while preserving traversal metadata and warnings.

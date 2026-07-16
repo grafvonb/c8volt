@@ -150,6 +150,47 @@ func fromDomainVariableEnrichedProcessInstances(x d.VariableEnrichedProcessInsta
 	}
 }
 
+// fromDomainProcessInstanceElement maps one attached runtime element into the public process facade model.
+func fromDomainProcessInstanceElement(x d.Element) ProcessInstanceElement {
+	return ProcessInstanceElement{
+		ElementInstanceKey:     x.ElementInstanceKey,
+		ElementId:              x.ElementId,
+		ElementName:            x.ElementName,
+		Type:                   x.Type,
+		State:                  x.State,
+		StartDate:              x.StartDate,
+		EndDate:                x.EndDate,
+		ProcessInstanceKey:     x.ProcessInstanceKey,
+		RootProcessInstanceKey: x.RootProcessInstanceKey,
+		ProcessDefinitionId:    x.ProcessDefinitionId,
+		ProcessDefinitionKey:   x.ProcessDefinitionKey,
+		TenantId:               x.TenantId,
+		HasIncident:            x.HasIncident,
+		IncidentKey:            x.IncidentKey,
+	}
+}
+
+// fromDomainProcessInstanceElements copies attached runtime element rows across the facade boundary.
+func fromDomainProcessInstanceElements(xs []d.Element) []ProcessInstanceElement {
+	return toolx.MapSlice(xs, fromDomainProcessInstanceElement)
+}
+
+// fromDomainElementEnrichedProcessInstance maps one element-enriched process instance into the public facade model.
+func fromDomainElementEnrichedProcessInstance(x d.ElementEnrichedProcessInstance) ElementEnrichedProcessInstance {
+	return ElementEnrichedProcessInstance{
+		Item:     fromDomainProcessInstance(x.Item),
+		Elements: fromDomainProcessInstanceElements(x.Elements),
+	}
+}
+
+// fromDomainElementEnrichedProcessInstances maps service-enriched elements into the public facade model.
+func fromDomainElementEnrichedProcessInstances(x d.ElementEnrichedProcessInstances) ElementEnrichedProcessInstances {
+	return ElementEnrichedProcessInstances{
+		Total: x.Total,
+		Items: toolx.MapSlice(x.Items, fromDomainElementEnrichedProcessInstance),
+	}
+}
+
 // fromDomainIncidentEnrichedTraversalItem maps one service-enriched traversal item into the public facade model.
 func fromDomainIncidentEnrichedTraversalItem(x d.IncidentEnrichedTraversalItem) IncidentEnrichedTraversalItem {
 	return IncidentEnrichedTraversalItem{

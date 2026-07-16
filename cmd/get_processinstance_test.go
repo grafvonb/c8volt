@@ -4558,6 +4558,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIIncidentMessageLimit = 0
 	flagGetPIWithVars = false
 	flagGetPIVarValueLimit = 0
+	flagGetPIWithElements = false
 	flagGetPIVarExists = nil
 	flagGetPIVars = nil
 	flagGetPIVarLikes = nil

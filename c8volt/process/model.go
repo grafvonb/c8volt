@@ -147,6 +147,39 @@ type VariableEnrichedProcessInstances struct {
 	Items []VariableEnrichedProcessInstance `json:"items"`
 }
 
+// ProcessInstanceElement represents one runtime BPMN element execution
+// attached to an owning process instance in enriched process output.
+type ProcessInstanceElement struct {
+	ElementInstanceKey     string `json:"elementInstanceKey,omitempty"`
+	ElementId              string `json:"elementId,omitempty"`
+	ElementName            string `json:"elementName,omitempty"`
+	Type                   string `json:"type,omitempty"`
+	State                  string `json:"state,omitempty"`
+	StartDate              string `json:"startDate,omitempty"`
+	EndDate                string `json:"endDate,omitempty"`
+	ProcessInstanceKey     string `json:"processInstanceKey,omitempty"`
+	RootProcessInstanceKey string `json:"rootProcessInstanceKey,omitempty"`
+	ProcessDefinitionId    string `json:"processDefinitionId,omitempty"`
+	ProcessDefinitionKey   string `json:"processDefinitionKey,omitempty"`
+	TenantId               string `json:"tenantId,omitempty"`
+	HasIncident            bool   `json:"hasIncident"`
+	IncidentKey            string `json:"incidentKey,omitempty"`
+}
+
+// ElementEnrichedProcessInstance is the public JSON shape for one selected
+// process instance plus attached runtime element instances.
+type ElementEnrichedProcessInstance struct {
+	Item     ProcessInstance          `json:"item"`
+	Elements []ProcessInstanceElement `json:"elements"`
+}
+
+// ElementEnrichedProcessInstances contains process-instance results with
+// attached runtime elements while preserving process-instance result counts.
+type ElementEnrichedProcessInstances struct {
+	Total int32                            `json:"total"`
+	Items []ElementEnrichedProcessInstance `json:"items"`
+}
+
 type IncidentEnrichedTraversalItem struct {
 	Item      ProcessInstance                 `json:"item"`
 	Incidents []ProcessInstanceIncidentDetail `json:"incidents"`

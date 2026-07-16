@@ -40,6 +40,7 @@ var (
 	flagGetPIIncidentMessageLimit int
 	flagGetPIWithVars             bool
 	flagGetPIVarValueLimit        int
+	flagGetPIWithElements         bool
 	flagGetPIVarExists            []string
 	flagGetPIVars                 []string
 	flagGetPIVarLikes             []string
@@ -323,6 +324,7 @@ func init() {
 	fs.IntVar(&flagGetPIIncidentMessageLimit, "incident-message-limit", 0, "maximum characters to show for incident messages when --with-incidents is set; 0 disables truncation")
 	fs.BoolVar(&flagGetPIWithVars, "with-vars", false, "include process-instance-scope variables for keyed or list/search process-instance output")
 	fs.IntVar(&flagGetPIVarValueLimit, "var-value-limit", 0, "maximum characters to show for variable values when --with-vars is set; 0 disables truncation")
+	fs.BoolVar(&flagGetPIWithElements, "with-elements", false, "include runtime element instances for keyed or list/search process-instance output")
 	fs.StringArrayVar(&flagGetPIVarExists, "var-exists", nil, "require variable name(s) to exist; repeat or separate names with commas")
 	fs.StringArrayVar(&flagGetPIVars, "var", nil, "require variable equality or advanced clause(s); repeat or separate clauses with commas")
 	fs.StringArrayVar(&flagGetPIVarLikes, "var-like", nil, "require variable value pattern clause(s); repeat or separate clauses with commas")

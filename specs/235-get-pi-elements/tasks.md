@@ -32,14 +32,14 @@
 
 **CRITICAL**: No user story implementation should begin until this phase is complete.
 
-- [ ] T006 Define element-enriched process-instance domain types in `internal/domain/processinstance_enrichment.go`
-- [ ] T007 Define public process element enrichment models and JSON field tags in `c8volt/process/model.go`
-- [ ] T008 [P] Add public/internal conversion helpers for attached runtime elements in `c8volt/process/convert.go`
-- [ ] T009 Add `EnrichProcessInstancesWithElements` to the process facade API in `c8volt/process/api.go`
-- [ ] T010 Add an element service dependency to the process facade client in `c8volt/process/client.go`
-- [ ] T011 Wire the element service into the process facade construction in `c8volt/client.go`
-- [ ] T012 Extend the process API command stub with element enrichment support in `cmd/process_api_stub_test.go`
-- [ ] T013 Add `flagGetPIWithElements` reset and command-level plumbing alongside existing enrichment flags in `cmd/get_processinstance.go` and `cmd/get_processinstance_test.go`
+- [x] T006 Define element-enriched process-instance domain types in `internal/domain/processinstance_enrichment.go`
+- [x] T007 Define public process element enrichment models and JSON field tags in `c8volt/process/model.go`
+- [x] T008 [P] Add public/internal conversion helpers for attached runtime elements in `c8volt/process/convert.go`
+- [x] T009 Add `EnrichProcessInstancesWithElements` to the process facade API in `c8volt/process/api.go`
+- [x] T010 Add an element service dependency to the process facade client in `c8volt/process/client.go`
+- [x] T011 Wire the element service into the process facade construction in `c8volt/client.go`
+- [x] T012 Extend the process API command stub with element enrichment support in `cmd/process_api_stub_test.go`
+- [x] T013 Add `flagGetPIWithElements` reset and command-level plumbing alongside existing enrichment flags in `cmd/get_processinstance.go` and `cmd/get_processinstance_test.go`
 
 **Checkpoint**: Shared contracts compile and command tests can stub element enrichment before story behavior is implemented.
 
