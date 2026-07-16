@@ -80,10 +80,17 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 
 // GetElement will use the generated direct lookup endpoint once US1 fills the adapter.
 func (s *Service) GetElement(ctx context.Context, key string, opts ...services.CallOption) (d.Element, error) {
-	_ = ctx
-	_ = key
 	_ = services.ApplyCallOptions(opts)
-	return d.Element{}, pendingElementOperation("element lookup")
+
+	resp, err := s.c.GetElementInstanceWithResponse(ctx, camundav88.ElementInstanceKey(key))
+	if err != nil {
+		return d.Element{}, err
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.Element{}, err
+	}
+	return fromElementInstanceResult(*payload), nil
 }
 
 // SearchElements will collect pages once US2 fills the adapter.

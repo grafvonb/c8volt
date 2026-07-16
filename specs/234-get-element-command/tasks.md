@@ -51,21 +51,21 @@
 
 ### Tests for User Story 1
 
-- [ ] T012 [P] [US1] Add v87 unsupported direct lookup service tests in `internal/services/element/v87/service_test.go`
-- [ ] T013 [P] [US1] Add v88 direct lookup service tests for successful payload mapping and missing/not-found handling in `internal/services/element/v88/service_test.go`
-- [ ] T014 [P] [US1] Add v89 direct lookup service tests for successful payload mapping and missing/not-found handling in `internal/services/element/v89/service_test.go`
-- [ ] T015 [P] [US1] Add facade direct lookup conversion and error mapping tests in `c8volt/element/client_test.go`
-- [ ] T016 [P] [US1] Add command direct lookup validation tests for `--key`, invalid keys, and `--key` plus search filters in `cmd/get_element_test.go`
+- [x] T012 [P] [US1] Add v87 unsupported direct lookup service tests in `internal/services/element/v87/service_test.go`
+- [x] T013 [P] [US1] Add v88 direct lookup service tests for successful payload mapping and missing/not-found handling in `internal/services/element/v88/service_test.go`
+- [x] T014 [P] [US1] Add v89 direct lookup service tests for successful payload mapping and missing/not-found handling in `internal/services/element/v89/service_test.go`
+- [x] T015 [P] [US1] Add facade direct lookup conversion and error mapping tests in `c8volt/element/client_test.go`
+- [x] T016 [P] [US1] Add command direct lookup validation tests for `--key`, invalid keys, and `--key` plus search filters in `cmd/get_element_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T017 [US1] Implement Camunda 8.7 unsupported element operations in `internal/services/element/v87/service.go`
-- [ ] T018 [US1] Implement v88 generated client contract and direct lookup conversion helpers in `internal/services/element/v88/contract.go` and `internal/services/element/v88/convert.go`
-- [ ] T019 [US1] Implement v88 direct lookup using `GetElementInstanceWithResponse` in `internal/services/element/v88/service.go`
-- [ ] T020 [US1] Implement v89 generated client contract and direct lookup conversion helpers in `internal/services/element/v89/contract.go` and `internal/services/element/v89/convert.go`
-- [ ] T021 [US1] Implement v89 direct lookup using `GetElementInstanceWithResponse` in `internal/services/element/v89/service.go`
-- [ ] T022 [US1] Implement `c8volt get element --key` command parsing, validation, and facade call in `cmd/get_element.go`
-- [ ] T023 [US1] Implement single element human/JSON/keys rendering helpers in `cmd/cmd_views_element.go`
+- [x] T017 [US1] Implement Camunda 8.7 unsupported element operations in `internal/services/element/v87/service.go`
+- [x] T018 [US1] Implement v88 generated client contract and direct lookup conversion helpers in `internal/services/element/v88/contract.go` and `internal/services/element/v88/convert.go`
+- [x] T019 [US1] Implement v88 direct lookup using `GetElementInstanceWithResponse` in `internal/services/element/v88/service.go`
+- [x] T020 [US1] Implement v89 generated client contract and direct lookup conversion helpers in `internal/services/element/v89/contract.go` and `internal/services/element/v89/convert.go`
+- [x] T021 [US1] Implement v89 direct lookup using `GetElementInstanceWithResponse` in `internal/services/element/v89/service.go`
+- [x] T022 [US1] Implement `c8volt get element --key` command parsing, validation, and facade call in `cmd/get_element.go`
+- [x] T023 [US1] Implement single element human/JSON/keys rendering helpers in `cmd/cmd_views_element.go`
 
 **Checkpoint**: User Story 1 is fully functional and independently testable as the MVP.
 
