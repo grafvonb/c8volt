@@ -106,6 +106,12 @@ docsgen/
 - Each Ralph work unit must complete only one story or validation slice and must not stage or commit until validation passes.
 - Commit subjects must use Conventional Commits and end with `#242`.
 
+## Ralph Iteration 1 Setup Review
+
+- Reviewed `spec.md`, `contracts/cli.md`, and `specs/ralph-implementation-rules.md`; no implementation conflict was found for the planned command, facade, service, or renderer boundaries.
+- The Ralph launch context requirement is present here and in `tasks.md`: `--implementation-context specs/ralph-implementation-rules.md`.
+- Commit-policy note: this plan records GitHub issue #242, while the iteration resolved commit policy is `commit.issue: auto`; the iteration must follow the resolved policy for the actual commit subject.
+
 ## Phase 0: Research
 
 See [research.md](research.md). All planning unknowns are resolved.

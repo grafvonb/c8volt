@@ -18,11 +18,11 @@
 
 **Purpose**: Confirm the feature context and prepare shared implementation touchpoints without behavior changes.
 
-- [ ] T001 Review the feature artifacts and record any implementation conflicts in `specs/235-get-pi-elements/plan.md`, `specs/235-get-pi-elements/spec.md`, `specs/235-get-pi-elements/contracts/cli.md`, and `specs/ralph-implementation-rules.md`
-- [ ] T002 [P] Inspect existing process-instance enrichment patterns in `cmd/get_processinstance.go`, `cmd/get_processinstance_enrichment.go`, `cmd/cmd_views_processinstance_activity.go`, and `cmd/process_api_stub_test.go`
-- [ ] T003 [P] Inspect existing element facade/service contracts for reuse in `c8volt/element/api.go`, `c8volt/element/model.go`, `internal/services/element/api.go`, and `internal/domain/element.go`
-- [ ] T004 [P] Inspect existing process facade and internal enrichment contracts in `c8volt/process/api.go`, `c8volt/process/client.go`, `c8volt/process/model.go`, `c8volt/process/convert.go`, and `internal/services/processinstance/enrichment.go`
-- [ ] T005 Confirm Ralph launch instructions include `--implementation-context specs/ralph-implementation-rules.md` in `specs/235-get-pi-elements/plan.md` and `specs/235-get-pi-elements/tasks.md`
+- [x] T001 Review the feature artifacts and record any implementation conflicts in `specs/235-get-pi-elements/plan.md`, `specs/235-get-pi-elements/spec.md`, `specs/235-get-pi-elements/contracts/cli.md`, and `specs/ralph-implementation-rules.md`
+- [x] T002 [P] Inspect existing process-instance enrichment patterns in `cmd/get_processinstance.go`, `cmd/get_processinstance_enrichment.go`, `cmd/cmd_views_processinstance_activity.go`, and `cmd/process_api_stub_test.go`
+- [x] T003 [P] Inspect existing element facade/service contracts for reuse in `c8volt/element/api.go`, `c8volt/element/model.go`, `internal/services/element/api.go`, and `internal/domain/element.go`
+- [x] T004 [P] Inspect existing process facade and internal enrichment contracts in `c8volt/process/api.go`, `c8volt/process/client.go`, `c8volt/process/model.go`, `c8volt/process/convert.go`, and `internal/services/processinstance/enrichment.go`
+- [x] T005 Confirm Ralph launch instructions include `--implementation-context specs/ralph-implementation-rules.md` in `specs/235-get-pi-elements/plan.md` and `specs/235-get-pi-elements/tasks.md`
 
 ---
 
