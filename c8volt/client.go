@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/batchoperation"
+	"github.com/grafvonb/c8volt/c8volt/element"
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/resource"
@@ -17,6 +18,7 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	batchsvc "github.com/grafvonb/c8volt/internal/services/batchoperation"
 	csvc "github.com/grafvonb/c8volt/internal/services/cluster"
+	esvc "github.com/grafvonb/c8volt/internal/services/element"
 	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
 	jsvc "github.com/grafvonb/c8volt/internal/services/job"
 	opsvc "github.com/grafvonb/c8volt/internal/services/ops"
@@ -99,6 +101,10 @@ func New(opts ...Option) (API, error) {
 	if err != nil {
 		return nil, err
 	}
+	eAPI, err := esvc.New(c.cfg, c.http, c.log)
+	if err != nil {
+		return nil, err
+	}
 	opsAPI := opsvc.NewWithRepairDependencies(cAPI, piAPI, incAPI, pdAPI, rAPI, jAPI, c.cfg.App.CamundaVersion, c.log)
 	utAPI, err := utsvc.New(c.cfg, c.http, c.log)
 	if err != nil {
@@ -111,6 +117,7 @@ func New(opts ...Option) (API, error) {
 		IncidentAPI:       incident.New(incAPI, c.log),
 		TaskAPI:           task.New(pdAPI, piAPI, utAPI, c.log),
 		JobAPI:            job.New(jAPI, c.log),
+		ElementAPI:        element.New(eAPI, c.log),
 		OpsAPI:            ops.New(opsAPI, c.log),
 		BatchOperationAPI: batchoperation.New(batchAPI, c.log),
 		TenantAPI:         tenant.New(tAPI, c.log),
@@ -138,6 +145,7 @@ type TaskAPI = task.API
 type ResourceAPI = resource.API
 type TenantAPI = tenant.API
 type JobAPI = job.API
+type ElementAPI = element.API
 type BatchOperationAPI = batchoperation.API
 type OpsAPI = ops.API
 
@@ -149,6 +157,7 @@ type client struct {
 	IncidentAPI
 	TaskAPI
 	JobAPI
+	ElementAPI
 	OpsAPI
 	BatchOperationAPI
 	ResourceAPI

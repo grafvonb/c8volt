@@ -31,13 +31,13 @@
 
 **CRITICAL**: No user story implementation should begin until this phase is complete.
 
-- [ ] T005 Define version-neutral element domain types, page types, reported-total types, and search query types in `internal/domain/element.go`
-- [ ] T006 Define the internal element service API and version assertions in `internal/services/element/api.go`
-- [ ] T007 Implement the element service factory for Camunda 8.7, 8.8, and 8.9 in `internal/services/element/factory.go`
-- [ ] T008 Implement public element facade models and JSON field tags in `c8volt/element/model.go`
-- [ ] T009 Implement public/internal conversion helpers in `c8volt/element/convert.go`
-- [ ] T010 Implement the public element facade API and thin client delegation in `c8volt/element/api.go` and `c8volt/element/client.go`
-- [ ] T011 Wire ElementAPI into the aggregate c8volt client in `c8volt/client.go` and `c8volt/contract.go`
+- [x] T005 Define version-neutral element domain types, page types, reported-total types, and search query types in `internal/domain/element.go`
+- [x] T006 Define the internal element service API and version assertions in `internal/services/element/api.go`
+- [x] T007 Implement the element service factory for Camunda 8.7, 8.8, and 8.9 in `internal/services/element/factory.go`
+- [x] T008 Implement public element facade models and JSON field tags in `c8volt/element/model.go`
+- [x] T009 Implement public/internal conversion helpers in `c8volt/element/convert.go`
+- [x] T010 Implement the public element facade API and thin client delegation in `c8volt/element/api.go` and `c8volt/element/client.go`
+- [x] T011 Wire ElementAPI into the aggregate c8volt client in `c8volt/client.go` and `c8volt/contract.go`
 
 **Checkpoint**: Element facade and internal service contracts compile as empty behavior and are ready for story work.
 
