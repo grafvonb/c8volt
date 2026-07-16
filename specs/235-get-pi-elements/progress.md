@@ -53,3 +53,36 @@ Started: 2026-07-16 17:20:23
 **Learnings**:
 - The process facade now has explicit element-service wiring through `NewWithElements`; US1 must replace the temporary unsupported facade placeholder with the real service enrichment workflow.
 ---
+---
+## Iteration 3 - 2026-07-16 17:39
+**Work Unit**: Phase 3: User Story 1 - Inspect Elements For One Process Instance
+**Tasks Completed**:
+- [x] T014: Add service tests for element attachment, per-key filtering, process-instance order, element sorting, and search error propagation
+- [x] T015: Add process facade tests for element enrichment conversion and error mapping
+- [x] T016: Add keyed command validation tests for `--with-elements`
+- [x] T017: Add keyed activity rendering tests for nested element rows
+- [x] T018: Implement service element attachment
+- [x] T019: Implement process facade element enrichment delegation
+- [x] T020: Implement the command activity wrapper for element enrichment
+- [x] T021: Add `--with-elements` help, examples, and keyed validation
+- [x] T022: Invoke element enrichment for keyed process-instance lookup
+- [x] T023: Render nested runtime element rows under `elements:`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/enrichment.go
+- internal/services/processinstance/enrichment_test.go
+- c8volt/process/client.go
+- c8volt/process/client_test.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_enrichment.go
+- cmd/get_processinstance_validation.go
+- cmd/cmd_views_processinstance_activity.go
+- cmd/get_processinstance_test.go
+- cmd/cmd_views_get_test.go
+- specs/235-get-pi-elements/tasks.md
+- specs/235-get-pi-elements/ralph-memory.md
+- specs/235-get-pi-elements/progress.md
+**Learnings**:
+- Keyed element enrichment reuses explicit-key admin options, so tenant filtering is not asserted on the element search body.
+---

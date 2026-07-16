@@ -62,6 +62,25 @@ func EnrichProcessInstancesWithVariables(ctx context.Context, api variableSearch
 	}, nil
 }
 
+// EnrichProcessInstancesWithElements attaches runtime element instances to selected process-instance results without reordering them.
+func EnrichProcessInstancesWithElements(ctx context.Context, api elementSearcher, pis []d.ProcessInstance, opts ...services.CallOption) (d.ElementEnrichedProcessInstances, error) {
+	items := make([]d.ElementEnrichedProcessInstance, 0, len(pis))
+	for _, pi := range pis {
+		result, err := api.SearchElements(ctx, d.ElementSearchQuery{ProcessInstanceKey: pi.Key}, opts...)
+		if err != nil {
+			return d.ElementEnrichedProcessInstances{}, err
+		}
+		items = append(items, d.ElementEnrichedProcessInstance{
+			Item:     pi,
+			Elements: elementsForProcessInstance(pi.Key, result.Items),
+		})
+	}
+	return d.ElementEnrichedProcessInstances{
+		Total: int32(len(items)),
+		Items: items,
+	}, nil
+}
+
 // EnrichTraversalWithIncidents overlays incident details onto walked items while preserving traversal metadata and warnings.
 func EnrichTraversalWithIncidents(ctx context.Context, api incidentSearcher, result pitraversal.Result, opts ...services.CallOption) (d.IncidentEnrichedTraversalResult, error) {
 	items := make([]d.IncidentEnrichedTraversalItem, 0, len(result.Keys))
@@ -113,6 +132,23 @@ func variablesForProcessInstance(key string, variables []d.ProcessInstanceVariab
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		return out[i].Name < out[j].Name
+	})
+	return out
+}
+
+// elementsForProcessInstance keeps only elements owned by the requested key in stable runtime order.
+func elementsForProcessInstance(key string, elements []d.Element) []d.Element {
+	out := make([]d.Element, 0, len(elements))
+	for _, element := range elements {
+		if element.ProcessInstanceKey == key {
+			out = append(out, element)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].StartDate == out[j].StartDate {
+			return out[i].ElementInstanceKey < out[j].ElementInstanceKey
+		}
+		return out[i].StartDate < out[j].StartDate
 	})
 	return out
 }

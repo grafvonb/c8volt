@@ -58,3 +58,18 @@ func enrichProcessInstancesWithVariableActivityOptions(cmd *cobra.Command, cli p
 	defer stopActivity()
 	return cli.EnrichProcessInstancesWithVariables(cmd.Context(), pis, opts...)
 }
+
+// enrichProcessInstancesWithElementActivity wraps runtime element enrichment with the shared command activity behavior.
+func enrichProcessInstancesWithElementActivity(cmd *cobra.Command, cli process.API, pis process.ProcessInstances) (process.ElementEnrichedProcessInstances, error) {
+	return enrichProcessInstancesWithElementActivityOptions(cmd, cli, pis, collectOptions())
+}
+
+// enrichProcessInstancesWithElementActivityOptions lets explicit-key callers keep admin-input options.
+func enrichProcessInstancesWithElementActivityOptions(cmd *cobra.Command, cli process.API, pis process.ProcessInstances, opts []options.FacadeOption) (process.ElementEnrichedProcessInstances, error) {
+	if len(pis.Items) == 0 {
+		return cli.EnrichProcessInstancesWithElements(cmd.Context(), pis, opts...)
+	}
+	stopActivity := startCommandActivity(cmd, fmt.Sprintf("loading element details for %d process instance(s)", len(pis.Items)))
+	defer stopActivity()
+	return cli.EnrichProcessInstancesWithElements(cmd.Context(), pis, opts...)
+}

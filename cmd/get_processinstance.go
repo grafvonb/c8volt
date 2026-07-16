@@ -66,6 +66,7 @@ var getProcessInstanceCmd = &cobra.Command{
 		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic instead of looking like a valid empty result; --json, --automation, --keys-only, and non-TTY runs never prompt for recovery output.\n\n" +
 		"Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.\n\n" +
 		"Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.\n\n" +
+		"Use --with-elements to include runtime element instances under matching process-instance rows.\n\n" +
 		"Use variable-search flags to narrow list/search results natively on Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error for those flags. --var-exists requires every listed variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable scopeKey means the scope where the variable is directly defined.\n\n" +
 		"Use --has-user-tasks to fetch process instances by their owning user-task keys.\n\n" +
 		"Run `c8volt get pi --help` for the complete flag reference.",
@@ -83,6 +84,7 @@ var getProcessInstanceCmd = &cobra.Command{
   ./c8volt get pi --key <process-instance-key> --with-incidents
   ./c8volt get pi --key <process-instance-key> --with-vars
   ./c8volt get pi --key <process-instance-key> --with-vars --var-value-limit 120
+  ./c8volt get pi --key <process-instance-key> --with-elements
   ./c8volt get pi --start-date-after 2026-05-01 --start-date-before 2026-05-31 --limit 5
   ./c8volt get pi --key <process-instance-key> --key <another-process-instance-key>`,
 	Aliases: []string{"process-instances", "pi", "pis"},
@@ -131,6 +133,9 @@ var getProcessInstanceCmd = &cobra.Command{
 			fail(err)
 		}
 		if err := validatePIWithVarsUsage(lk, filterFlagsSet); err != nil {
+			fail(err)
+		}
+		if err := validatePIWithElementsUsage(lk, filterFlagsSet); err != nil {
 			fail(err)
 		}
 		if lk == 0 && ltk == 0 {
@@ -216,6 +221,16 @@ var getProcessInstanceCmd = &cobra.Command{
 				}
 				if err := variableEnrichedProcessInstancesView(cmd, enriched); err != nil {
 					fail(fmt.Errorf("render process instances with variables: %w", err))
+				}
+				return
+			}
+			if flagGetPIWithElements {
+				enriched, err := enrichProcessInstancesWithElementActivityOptions(cmd, cli, pis, adminInputOpts)
+				if err != nil {
+					fail(fmt.Errorf("get process instance elements: %w", err))
+				}
+				if err := elementEnrichedProcessInstancesView(cmd, enriched); err != nil {
+					fail(fmt.Errorf("render process instances with elements: %w", err))
 				}
 				return
 			}

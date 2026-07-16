@@ -39,6 +39,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "Direct key lookup stays strict")
 	require.Contains(t, output, "Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.")
 	require.Contains(t, output, "Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.")
+	require.Contains(t, output, "Use --with-elements to include runtime element instances under matching process-instance rows.")
 	require.NotContains(t, output, "Add --incident-message-limit <chars> to shorten incident messages")
 	require.Contains(t, output, "Run `c8volt get pi --help` for the complete flag reference.")
 	require.Contains(t, output, "./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 5")
@@ -52,6 +53,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "./c8volt get pi --key <process-instance-key> --with-incidents")
 	require.Contains(t, output, "./c8volt get pi --key <process-instance-key> --with-vars")
 	require.Contains(t, output, "./c8volt get pi --key <process-instance-key> --with-vars --var-value-limit 120")
+	require.Contains(t, output, "./c8volt get pi --key <process-instance-key> --with-elements")
 	require.Contains(t, output, "capped backend totals are counted by paging")
 	require.Contains(t, output, "--auto-confirm")
 	require.Contains(t, output, "--batch-size int32")
@@ -77,6 +79,8 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "show only process instances with direct incident details")
 	require.Contains(t, output, "--with-vars")
 	require.Contains(t, output, "include process-instance-scope variables for keyed or list/search process-instance output")
+	require.Contains(t, output, "--with-elements")
+	require.Contains(t, output, "include runtime element instances for keyed or list/search process-instance output")
 	require.NotContains(t, output, "--count")
 }
 
@@ -795,6 +799,39 @@ func TestGetProcessInstanceWithIncidentsValidation(t *testing.T) {
 
 			require.Equal(t, exitcode.InvalidArgs, code)
 			require.Contains(t, output, "invalid input")
+			require.Contains(t, output, tt.want)
+		})
+	}
+}
+
+func TestGetProcessInstanceWithElementsValidation(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	tests := []struct {
+		name   string
+		helper string
+		want   string
+	}{
+		{
+			name:   "total output is rejected",
+			helper: "TestGetProcessInstanceWithElementsWithTotalHelper",
+			want:   "--total cannot be combined with --with-elements",
+		},
+		{
+			name:   "keys-only output is rejected",
+			helper: "TestGetProcessInstanceWithElementsWithKeysOnlyHelper",
+			want:   "--keys-only cannot be combined with --with-elements",
+		},
+		{
+			name:   "keyed search-mode filters are rejected",
+			helper: "TestGetProcessInstanceWithElementsWithSearchFilterHelper",
+			want:   "--with-elements cannot be combined with search-mode filters",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, code := executeProcessInstanceFailureHelper(t, tt.helper, cfgPath)
+			require.NotEqual(t, 0, code)
 			require.Contains(t, output, tt.want)
 		})
 	}
@@ -2083,6 +2120,60 @@ func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(
 	require.Less(t, strings.Index(output, "alpha=1"), strings.Index(output, "zeta=2"))
 }
 
+func TestGetProcessInstanceWithElements_HumanOutputShowsRuntimeElements(t *testing.T) {
+	var requests []string
+	var elementFilters []map[string]any
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-07-15T10:12:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/element-instances/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			filter := requireJSONObject(t, body["filter"])
+			elementFilters = append(elementFilters, filter)
+			_, _ = w.Write([]byte(`{"items":[
+				{"elementInstanceKey":"element-3","elementId":"ship-order","elementName":"Ship order","type":"SERVICE_TASK","state":"ACTIVE","startDate":"2026-07-15T10:12:04Z","processInstanceKey":"123","rootProcessInstanceKey":"123","processDefinitionId":"demo","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":true,"incidentKey":"incident-777"},
+				{"elementInstanceKey":"element-1","elementId":"start","elementName":"Start","type":"START_EVENT","state":"COMPLETED","startDate":"2026-07-15T10:12:01Z","endDate":"2026-07-15T10:12:02Z","processInstanceKey":"123","rootProcessInstanceKey":"123","processDefinitionId":"demo","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false},
+				{"elementInstanceKey":"ignored","elementId":"other","type":"SERVICE_TASK","state":"ACTIVE","startDate":"2026-07-15T10:12:03Z","processInstanceKey":"999","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false},
+				{"elementInstanceKey":"element-2","elementId":"review","elementName":"Review","type":"USER_TASK","state":"ACTIVE","startDate":"2026-07-15T10:12:04Z","processInstanceKey":"123","rootProcessInstanceKey":"123","processDefinitionId":"demo","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":true}
+			],"page":{"totalItems":4,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "process-instance",
+		"--key", "123",
+		"--with-elements",
+	)
+
+	require.Equal(t, []string{"GET /v2/process-instances/123", "POST /v2/element-instances/search"}, requests)
+	require.Len(t, elementFilters, 1)
+	require.Equal(t, "123", elementFilters[0]["processInstanceKey"])
+	require.NotContains(t, elementFilters[0], "tenantId")
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "└─ elements:")
+	require.Contains(t, output, "element-1 START_EVENT  start      COMPLETED s:2026-07-15T10:12:01.000 e:2026-07-15T10:12:02.000")
+	require.Contains(t, output, "element-2 USER_TASK    review     ACTIVE    s:2026-07-15T10:12:04.000                           inc!")
+	require.Contains(t, output, "element-3 SERVICE_TASK ship-order ACTIVE    s:2026-07-15T10:12:04.000                           inc!:incident-777")
+	require.NotContains(t, output, "ignored")
+	require.NotContains(t, output, "element:ship-order")
+	require.Contains(t, output, "found: 1")
+	require.Less(t, strings.Index(output, "element-1"), strings.Index(output, "element-2"))
+	require.Less(t, strings.Index(output, "element-2"), strings.Index(output, "element-3"))
+}
+
 func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -2576,6 +2667,18 @@ func TestGetProcessInstanceWithIncidents_V87ReportsUnsupported(t *testing.T) {
 	require.Equal(t, exitcode.Error, exitErr.ExitCode())
 	require.Contains(t, string(output), "unsupported capability")
 	require.Contains(t, string(output), "not tenant-safe in Camunda 8.7")
+}
+
+func TestGetProcessInstanceWithElements_V87ReportsUnsupported(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceWithElementsUnsupportedV87Helper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+
+	require.Error(t, err)
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "process-instance direct lookup by key is not tenant-safe in Camunda 8.7")
 }
 
 // TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault keeps default keyed output free of enrichment lines.
@@ -4947,6 +5050,48 @@ func TestGetProcessInstanceWithIncidentsWithTotalHelper(t *testing.T) {
 	Execute()
 }
 
+// Helper-process entrypoint for --with-elements with --total validation.
+func TestGetProcessInstanceWithElementsWithTotalHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--with-elements", "--total"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for --with-elements with --keys-only validation.
+func TestGetProcessInstanceWithElementsWithKeysOnlyHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--keys-only", "--with-elements"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for --with-elements with search-mode filter validation.
+func TestGetProcessInstanceWithElementsWithSearchFilterHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-elements", "--incidents-only"}
+
+	Execute()
+}
+
 // Helper-process entrypoint for mutually exclusive direct and marker incident filter validation.
 func TestGetProcessInstanceDirectIncidentsOnlyWithIncidentsOnlyHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -5083,6 +5228,20 @@ func TestGetProcessInstanceWithIncidentsUnsupportedV87Helper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-incidents"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for unsupported v8.7 --with-elements coverage.
+func TestGetProcessInstanceWithElementsUnsupportedV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-elements"}
 
 	Execute()
 }

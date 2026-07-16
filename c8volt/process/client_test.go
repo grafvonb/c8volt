@@ -16,6 +16,7 @@ import (
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	esvc "github.com/grafvonb/c8volt/internal/services/element"
 	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
@@ -531,6 +532,129 @@ func TestClient_EnrichProcessInstancesWithVariables_SortsVariablesAndPreservesJS
 		{Name: "alpha", Value: `"C-123"`, VariableKey: "v-1", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: true},
 		{Name: "zeta", Value: "2", VariableKey: "v-2", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: false},
 	}, got.Items[0].Variables)
+}
+
+func TestClient_EnrichProcessInstancesWithElements_PreservesOrderAndMapsElements(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var calls []d.ElementSearchQuery
+	elAPI := stubElementAPI{
+		searchElements: func(_ context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (d.ElementSearchResult, error) {
+			calls = append(calls, query)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			switch query.ProcessInstanceKey {
+			case "123":
+				return d.ElementSearchResult{Items: []d.Element{
+					{
+						ElementInstanceKey:     "element-2",
+						ElementId:              "ship-order",
+						ElementName:            "Ship order",
+						Type:                   "SERVICE_TASK",
+						State:                  "ACTIVE",
+						StartDate:              "2026-07-15T10:12:03Z",
+						ProcessInstanceKey:     "123",
+						RootProcessInstanceKey: "123",
+						ProcessDefinitionId:    "order-process",
+						ProcessDefinitionKey:   "9001",
+						TenantId:               "tenant-a",
+						HasIncident:            true,
+						IncidentKey:            "incident-1",
+					},
+					{
+						ElementInstanceKey:   "ignored",
+						ElementId:            "wrong-owner",
+						ProcessInstanceKey:   "999",
+						ProcessDefinitionKey: "9001",
+					},
+					{
+						ElementInstanceKey:     "element-1",
+						ElementId:              "start",
+						ElementName:            "Start",
+						Type:                   "START_EVENT",
+						State:                  "COMPLETED",
+						StartDate:              "2026-07-15T10:12:01Z",
+						EndDate:                "2026-07-15T10:12:02Z",
+						ProcessInstanceKey:     "123",
+						RootProcessInstanceKey: "123",
+						ProcessDefinitionId:    "order-process",
+						ProcessDefinitionKey:   "9001",
+						TenantId:               "tenant-a",
+					},
+				}}, nil
+			case "124":
+				return d.ElementSearchResult{Items: nil}, nil
+			default:
+				t.Fatalf("unexpected element search for key %s", query.ProcessInstanceKey)
+				return d.ElementSearchResult{}, nil
+			}
+		},
+	}
+
+	cli := NewWithElements(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, elAPI, slog.Default())
+	got, err := cli.EnrichProcessInstancesWithElements(ctx, ProcessInstances{
+		Total: 2,
+		Items: []ProcessInstance{
+			{Key: "123", BpmnProcessId: "order-process"},
+			{Key: "124", BpmnProcessId: "invoice-process"},
+		},
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, []d.ElementSearchQuery{{ProcessInstanceKey: "123"}, {ProcessInstanceKey: "124"}}, calls)
+	require.Equal(t, int32(2), got.Total)
+	require.Equal(t, "123", got.Items[0].Item.Key)
+	require.Equal(t, []ProcessInstanceElement{
+		{
+			ElementInstanceKey:     "element-1",
+			ElementId:              "start",
+			ElementName:            "Start",
+			Type:                   "START_EVENT",
+			State:                  "COMPLETED",
+			StartDate:              "2026-07-15T10:12:01Z",
+			EndDate:                "2026-07-15T10:12:02Z",
+			ProcessInstanceKey:     "123",
+			RootProcessInstanceKey: "123",
+			ProcessDefinitionId:    "order-process",
+			ProcessDefinitionKey:   "9001",
+			TenantId:               "tenant-a",
+		},
+		{
+			ElementInstanceKey:     "element-2",
+			ElementId:              "ship-order",
+			ElementName:            "Ship order",
+			Type:                   "SERVICE_TASK",
+			State:                  "ACTIVE",
+			StartDate:              "2026-07-15T10:12:03Z",
+			ProcessInstanceKey:     "123",
+			RootProcessInstanceKey: "123",
+			ProcessDefinitionId:    "order-process",
+			ProcessDefinitionKey:   "9001",
+			TenantId:               "tenant-a",
+			HasIncident:            true,
+			IncidentKey:            "incident-1",
+		},
+	}, got.Items[0].Elements)
+	require.Equal(t, "124", got.Items[1].Item.Key)
+	require.Empty(t, got.Items[1].Elements)
+	require.NotNil(t, got.Items[1].Elements)
+}
+
+func TestClient_EnrichProcessInstancesWithElements_MapsErrors(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	cli := NewWithElements(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, stubElementAPI{
+		searchElements: func(context.Context, d.ElementSearchQuery, ...services.CallOption) (d.ElementSearchResult, error) {
+			return d.ElementSearchResult{}, d.ErrUnsupported
+		},
+	}, slog.Default())
+
+	got, err := cli.EnrichProcessInstancesWithElements(ctx, ProcessInstances{Items: []ProcessInstance{{Key: "123"}}})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unsupported capability")
+	require.Empty(t, got)
 }
 
 func TestUpdateProcessInstanceVariablesMapsConfirmedServiceResponse(t *testing.T) {
@@ -1771,6 +1895,35 @@ func (s *stubProcessDefinitionAPI) GetProcessDefinitionXML(ctx context.Context, 
 }
 
 var _ pdsvc.API = (*stubProcessDefinitionAPI)(nil)
+
+type stubElementAPI struct {
+	getElement         func(context.Context, string, ...services.CallOption) (d.Element, error)
+	searchElements     func(context.Context, d.ElementSearchQuery, ...services.CallOption) (d.ElementSearchResult, error)
+	searchElementsPage func(context.Context, d.ElementSearchQuery, d.ElementPageRequest, ...services.CallOption) (d.ElementSearchPage, error)
+}
+
+func (s stubElementAPI) GetElement(ctx context.Context, key string, opts ...services.CallOption) (d.Element, error) {
+	if s.getElement == nil {
+		panic("unexpected call")
+	}
+	return s.getElement(ctx, key, opts...)
+}
+
+func (s stubElementAPI) SearchElements(ctx context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (d.ElementSearchResult, error) {
+	if s.searchElements == nil {
+		panic("unexpected call")
+	}
+	return s.searchElements(ctx, query, opts...)
+}
+
+func (s stubElementAPI) SearchElementsPage(ctx context.Context, query d.ElementSearchQuery, page d.ElementPageRequest, opts ...services.CallOption) (d.ElementSearchPage, error) {
+	if s.searchElementsPage == nil {
+		panic("unexpected call")
+	}
+	return s.searchElementsPage(ctx, query, page, opts...)
+}
+
+var _ esvc.API = stubElementAPI{}
 
 type stubProcessInstanceAPI struct {
 	createProcessInstance              func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)

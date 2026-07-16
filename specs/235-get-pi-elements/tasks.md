@@ -53,19 +53,19 @@
 
 ### Tests for User Story 1
 
-- [ ] T014 [P] [US1] Add service tests for element attachment, per-key filtering, process-instance order, element sorting, and search error propagation in `internal/services/processinstance/enrichment_test.go`
-- [ ] T015 [P] [US1] Add process facade tests for element enrichment conversion and error mapping in `c8volt/process/client_test.go`
-- [ ] T016 [P] [US1] Add keyed command validation tests for `--with-elements`, `--with-elements --total`, `--keys-only --with-elements`, keyed search-filter conflicts, and Camunda 8.7 unsupported behavior in `cmd/get_processinstance_test.go`
-- [ ] T017 [P] [US1] Add keyed activity rendering tests for `elements:`, active rows without `e:`, incident markers, aligned element columns, and no `element:<id>` suffix in `cmd/cmd_views_get_test.go`
+- [x] T014 [P] [US1] Add service tests for element attachment, per-key filtering, process-instance order, element sorting, and search error propagation in `internal/services/processinstance/enrichment_test.go`
+- [x] T015 [P] [US1] Add process facade tests for element enrichment conversion and error mapping in `c8volt/process/client_test.go`
+- [x] T016 [P] [US1] Add keyed command validation tests for `--with-elements`, `--with-elements --total`, `--keys-only --with-elements`, keyed search-filter conflicts, and Camunda 8.7 unsupported behavior in `cmd/get_processinstance_test.go`
+- [x] T017 [P] [US1] Add keyed activity rendering tests for `elements:`, active rows without `e:`, incident markers, aligned element columns, and no `element:<id>` suffix in `cmd/cmd_views_get_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] Implement `elementSearcher` and `EnrichProcessInstancesWithElements` in `internal/services/processinstance/enrichment.go`
-- [ ] T019 [US1] Implement process facade element enrichment delegation and conversion in `c8volt/process/client.go` and `c8volt/process/convert.go`
-- [ ] T020 [US1] Implement the command activity wrapper for element enrichment in `cmd/get_processinstance_enrichment.go`
-- [ ] T021 [US1] Add the `--with-elements` flag, help text, examples, and keyed validation in `cmd/get_processinstance.go` and `cmd/get_processinstance_validation.go`
-- [ ] T022 [US1] Invoke element enrichment for keyed `get pi --key <key> --with-elements` in `cmd/get_processinstance.go`
-- [ ] T023 [US1] Render nested runtime element rows under `elements:` in `cmd/cmd_views_processinstance_activity.go`
+- [x] T018 [US1] Implement `elementSearcher` and `EnrichProcessInstancesWithElements` in `internal/services/processinstance/enrichment.go`
+- [x] T019 [US1] Implement process facade element enrichment delegation and conversion in `c8volt/process/client.go` and `c8volt/process/convert.go`
+- [x] T020 [US1] Implement the command activity wrapper for element enrichment in `cmd/get_processinstance_enrichment.go`
+- [x] T021 [US1] Add the `--with-elements` flag, help text, examples, and keyed validation in `cmd/get_processinstance.go` and `cmd/get_processinstance_validation.go`
+- [x] T022 [US1] Invoke element enrichment for keyed `get pi --key <key> --with-elements` in `cmd/get_processinstance.go`
+- [x] T023 [US1] Render nested runtime element rows under `elements:` in `cmd/cmd_views_processinstance_activity.go`
 
 **Checkpoint**: User Story 1 is fully functional and independently testable as the MVP.
 

@@ -4,10 +4,11 @@
 package cmd
 
 import (
-	"github.com/grafvonb/c8volt/c8volt/incident"
 	"strings"
 
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -15,6 +16,7 @@ type processInstanceActivityItem struct {
 	Item          process.ProcessInstance                  `json:"item"`
 	Variables     []process.ProcessInstanceVariable        `json:"variables,omitempty"`
 	Incidents     []incident.ProcessInstanceIncidentDetail `json:"incidents,omitempty"`
+	Elements      []process.ProcessInstanceElement         `json:"elements,omitempty"`
 	ShowIncidents bool                                     `json:"-"`
 }
 
@@ -68,7 +70,7 @@ func renderProcessInstanceActivityRows(cmd *cobra.Command, items []processInstan
 	needsIndirectIncidentWarning := false
 	for i, it := range items {
 		renderOutputLine(cmd, "%s", lines[i])
-		detailLines, needsWarning := formatProcessInstanceActivityLinesWithTimezone("", it.Variables, it.Incidents, it.ShowIncidents, it.Item.Incident, 0, showTimezoneOffset)
+		detailLines, needsWarning := formatProcessInstanceActivityLinesWithElementsWithTimezone("", it.Variables, it.Incidents, it.Elements, it.ShowIncidents, it.Item.Incident, 0, showTimezoneOffset)
 		for _, line := range detailLines {
 			renderOutputLine(cmd, "%s", line)
 		}
@@ -82,13 +84,21 @@ func formatProcessInstanceActivityLines(prefix string, variables []process.Proce
 }
 
 func formatProcessInstanceActivityLinesWithTimezone(prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int, showTimezoneOffset bool) ([]string, bool) {
+	return formatProcessInstanceActivityLinesWithElementsWithTimezone(prefix, variables, incidents, nil, showIncidents, hasIncidentMarker, followingChildren, showTimezoneOffset)
+}
+
+func formatProcessInstanceActivityLinesWithElementsWithTimezone(prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, elements []process.ProcessInstanceElement, showIncidents bool, hasIncidentMarker bool, followingChildren int, showTimezoneOffset bool) ([]string, bool) {
 	hasVars := len(variables) > 0
 	hasIncidents := showIncidents && (len(incidents) > 0 || hasIncidentMarker)
+	hasElements := len(elements) > 0
 	sectionCount := 0
 	if hasVars {
 		sectionCount++
 	}
 	if hasIncidents {
+		sectionCount++
+	}
+	if hasElements {
 		sectionCount++
 	}
 	if sectionCount == 0 {
@@ -97,7 +107,7 @@ func formatProcessInstanceActivityLinesWithTimezone(prefix string, variables []p
 
 	totalBranches := sectionCount + followingChildren
 	sectionIndex := 0
-	lines := make([]string, 0, sectionCount+len(variables)+len(incidents)+1)
+	lines := make([]string, 0, sectionCount+len(variables)+len(incidents)+len(elements)+1)
 	if hasVars {
 		branch := incidentTreeBranch(sectionIndex, totalBranches)
 		childPrefix := treeChildPrefix(prefix, sectionIndex, totalBranches)
@@ -120,6 +130,17 @@ func formatProcessInstanceActivityLinesWithTimezone(prefix string, variables []p
 		} else {
 			lines = append(lines, childPrefix+"└─ "+indirectProcessTreeIncidentNote)
 			needsIndirectIncidentWarning = true
+		}
+		sectionIndex++
+	}
+
+	if hasElements {
+		branch := incidentTreeBranch(sectionIndex, totalBranches)
+		childPrefix := treeChildPrefix(prefix, sectionIndex, totalBranches)
+		lines = append(lines, prefix+branch+"elements:")
+		elementLines := formatProcessInstanceElementRows(elements, showTimezoneOffset)
+		for i, line := range elementLines {
+			lines = append(lines, childPrefix+incidentTreeBranch(i, len(elementLines))+line)
 		}
 	}
 	return lines, needsIndirectIncidentWarning
@@ -168,6 +189,21 @@ func activityFromVariableEnriched(resp process.VariableEnrichedProcessInstances)
 	return processInstanceActivityInstances{Total: resp.Total, Items: items}
 }
 
+func activityFromElementEnriched(resp process.ElementEnrichedProcessInstances) processInstanceActivityInstances {
+	items := make([]processInstanceActivityItem, 0, len(resp.Items))
+	for _, it := range resp.Items {
+		items = append(items, processInstanceActivityItem{
+			Item:     it.Item,
+			Elements: it.Elements,
+		})
+	}
+	return processInstanceActivityInstances{Total: resp.Total, Items: items}
+}
+
+func elementEnrichedProcessInstancesView(cmd *cobra.Command, resp process.ElementEnrichedProcessInstances) error {
+	return processInstanceActivityInstancesView(cmd, activityFromElementEnriched(resp))
+}
+
 func mergeIncidentAndVariableActivity(incidents process.IncidentEnrichedProcessInstances, variables process.VariableEnrichedProcessInstances) processInstanceActivityInstances {
 	varsByKey := make(map[string][]process.ProcessInstanceVariable, len(variables.Items))
 	for _, it := range variables.Items {
@@ -187,6 +223,39 @@ func mergeIncidentAndVariableActivity(incidents process.IncidentEnrichedProcessI
 		Total: int32(len(items)),
 		Items: items,
 	}
+}
+
+func formatProcessInstanceElementRows(elements []process.ProcessInstanceElement, showTimezoneOffset bool) []string {
+	rows := make([]flatRow, 0, len(elements))
+	for _, element := range elements {
+		rows = append(rows, flatRowProcessInstanceElementWithTimezone(element, showTimezoneOffset))
+	}
+	return formatFlatRows(rows)
+}
+
+func flatRowProcessInstanceElementWithTimezone(item process.ProcessInstanceElement, showTimezoneOffset bool) flatRow {
+	parts := flatRow{
+		item.ElementInstanceKey,
+		item.Type,
+		item.ElementId,
+		item.State,
+		prefixedElementField("s", toolx.FormatTimestamp(item.StartDate, showTimezoneOffset)),
+		prefixedElementField("e", toolx.FormatTimestamp(item.EndDate, showTimezoneOffset)),
+	}
+	if marker := processInstanceElementIncidentMarker(item); marker != "" {
+		parts = append(parts, marker)
+	}
+	return parts
+}
+
+func processInstanceElementIncidentMarker(item process.ProcessInstanceElement) string {
+	if !item.HasIncident {
+		return ""
+	}
+	if item.IncidentKey != "" {
+		return "inc!:" + item.IncidentKey
+	}
+	return "inc!"
 }
 
 func processInstancesFromTraversal(result process.TraversalResult) process.ProcessInstances {

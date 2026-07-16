@@ -637,6 +637,110 @@ func TestProcessInstanceActivityInstancesView_HumanRowsGroupVarsBeforeIncidents(
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
 
+func TestProcessInstanceActivityInstancesView_HumanRowsRenderElements(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = false
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := processInstanceActivityInstancesView(cmd, processInstanceActivityInstances{
+		Total: 1,
+		Items: []processInstanceActivityItem{{
+			Item: process.ProcessInstance{
+				Key:            "123",
+				TenantId:       "tenant",
+				BpmnProcessId:  "demo",
+				ProcessVersion: 3,
+				State:          process.StateActive,
+				StartDate:      "2026-07-15T10:12:00Z",
+			},
+			Elements: []process.ProcessInstanceElement{
+				{ElementInstanceKey: "element-1", Type: "START_EVENT", ElementId: "start", State: "COMPLETED", StartDate: "2026-07-15T10:12:01Z", EndDate: "2026-07-15T10:12:02Z", ProcessInstanceKey: "123"},
+				{ElementInstanceKey: "element-2", Type: "USER_TASK", ElementId: "review", State: "ACTIVE", StartDate: "2026-07-15T10:12:03Z", ProcessInstanceKey: "123", HasIncident: true},
+				{ElementInstanceKey: "element-3", Type: "SERVICE_TASK", ElementId: "ship-order", State: "ACTIVE", StartDate: "2026-07-15T10:12:03Z", ProcessInstanceKey: "123", HasIncident: true, IncidentKey: "incident-777"},
+			},
+		}},
+	})
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "└─ elements:")
+	require.Contains(t, output, "element-1 START_EVENT  start      COMPLETED s:2026-07-15T10:12:01.000 e:2026-07-15T10:12:02.000")
+	require.Contains(t, output, "element-2 USER_TASK    review     ACTIVE    s:2026-07-15T10:12:03.000                           inc!")
+	require.Contains(t, output, "element-3 SERVICE_TASK ship-order ACTIVE    s:2026-07-15T10:12:03.000                           inc!:incident-777")
+	require.NotContains(t, output, "element:ship-order")
+	require.Contains(t, output, "found: 1")
+}
+
+func TestProcessInstanceActivityInstancesView_JSONIncludesElements(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = true
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	setContractSupport(cmd, ContractSupportFull)
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := elementEnrichedProcessInstancesView(cmd, process.ElementEnrichedProcessInstances{
+		Total: 1,
+		Items: []process.ElementEnrichedProcessInstance{{
+			Item: process.ProcessInstance{
+				Key:       "123",
+				StartDate: "2026-07-15T10:12:00Z",
+			},
+			Elements: []process.ProcessInstanceElement{{
+				ElementInstanceKey:     "element-1",
+				ElementId:              "start",
+				ElementName:            "Start",
+				Type:                   "START_EVENT",
+				State:                  "COMPLETED",
+				StartDate:              "2026-07-15T10:12:01Z",
+				EndDate:                "2026-07-15T10:12:02Z",
+				ProcessInstanceKey:     "123",
+				RootProcessInstanceKey: "123",
+				ProcessDefinitionId:    "demo",
+				ProcessDefinitionKey:   "9001",
+				TenantId:               "tenant",
+				HasIncident:            true,
+				IncidentKey:            "incident-777",
+			}},
+		}},
+	})
+
+	require.NoError(t, err)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	payload := requireJSONObject(t, envelope["payload"])
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	elements := requireJSONItems(t, first["elements"], 1)
+	element := requireJSONObject(t, elements[0])
+	require.Equal(t, "element-1", element["elementInstanceKey"])
+	require.Equal(t, "start", element["elementId"])
+	require.Equal(t, "Start", element["elementName"])
+	require.Equal(t, "START_EVENT", element["type"])
+	require.Equal(t, "COMPLETED", element["state"])
+	require.Equal(t, "2026-07-15T10:12:01Z", element["startDate"])
+	require.Equal(t, "2026-07-15T10:12:02Z", element["endDate"])
+	require.Equal(t, "123", element["processInstanceKey"])
+	require.Equal(t, "123", element["rootProcessInstanceKey"])
+	require.Equal(t, "demo", element["processDefinitionId"])
+	require.Equal(t, "9001", element["processDefinitionKey"])
+	require.Equal(t, "tenant", element["tenantId"])
+	require.Equal(t, true, element["hasIncident"])
+	require.Equal(t, "incident-777", element["incidentKey"])
+}
+
 func TestVariableEnrichedProcessInstancesView_JSONUsesSharedEnvelopeAndAgeMeta(t *testing.T) {
 	prevJSON := flagViewAsJson
 	flagViewAsJson = true
