@@ -67,5 +67,5 @@ c8volt get job [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Inspect cluster, process, incident, tenant, and resource state
+* [c8volt get](c8volt_get)	 - Inspect cluster, process, job, element, incident, tenant, and resource state
 

@@ -11,6 +11,7 @@ Started: 2026-07-16T11:27:27Z
 - US2 search uses generated v88/v89 `SearchElementInstancesWithResponse`, typed generated filters, offset pagination, reported-total metadata, and command-side page iteration modeled after `get job`.
 - `get element` now allows no-key search, unfiltered search, AND-combined filters, `--batch-size`, `--limit`, and `--total`.
 - US3 output now mirrors `get job`: element rows use `toolx.FormatTimestamp`, optional `e:` is omitted when empty, exactly one incident marker is emitted, JSON uses the shared result envelope after `ContractSupportFull`, keys-only and total-only remain quiet, and `found: N` is only human list output.
+- Phase 6 documentation keeps README usage examples near the job/process inspection flow; generated CLI docs are covered by `docsgen/main_test.go` and refreshed through `make docs-content`.
 
 ## Decisions
 - Phase 1 confirmed that generated runtime element instance methods already exist in Camunda v8.8/v8.9 clients and should be used directly by later adapter tasks.
@@ -19,6 +20,7 @@ Started: 2026-07-16T11:27:27Z
 - US2 maps `--bpmn-process-id` to generated `processDefinitionId`, because Camunda's element search filter names the BPMN process identifier field that way.
 - Element `SearchResult.Total` is the bounded collected count; exact/lower-bound backend totals stay on page metadata for command `--total` and future callers.
 - `get element` has no aliases for now; command discovery explicitly reports read-only mutation, full contract support, full automation support, JSON, and keys-only modes.
+- Quickstart JSON expectations should mention the shared result envelope, with the stable element `total` and `items` payload inside `payload`.
 
 ## Gotchas
 - Camunda v8.7 has no generated runtime element instance lookup/search methods; keep v87 behavior as explicit unsupported-operation service behavior.
@@ -31,8 +33,12 @@ Started: 2026-07-16T11:27:27Z
 - `go test ./internal/services/element/... ./c8volt/element ./c8volt -count=1`
 - `go test ./cmd -run 'TestGetElement|TestElement' -count=1`
 - `go test ./internal/services/element/... ./c8volt/element -count=1`
+- `go test ./cmd -run 'TestGetElement|TestElement|TestCommandContract' -count=1`
+- `go test ./docsgen -count=1`
+- `make docs-content`
+- `make test`
 
 ## Do Not Repeat
 
 ## Current Handoff
-- US3 output modes and command contract metadata are complete and validated with `go test ./cmd -count=1`. Next iteration should start Phase 6 polish at T043/T044: update README and docsgen coverage expectations, then run gofmt/targeted validation/docs generation/full validation tasks T045-T050.
+- Feature complete; no handoff required.

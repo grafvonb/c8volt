@@ -89,7 +89,8 @@ Expected:
 
 Expected:
 
-- One valid JSON payload with `total` and `items`.
+- One valid shared JSON result envelope.
+- The envelope `payload` contains `total` and `items`.
 - Each item includes stable element fields listed in [data-model.md](data-model.md).
 
 ### 8. Incident markers

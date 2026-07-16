@@ -175,3 +175,38 @@ Started: 2026-07-16 13:27:27
 **Learnings**:
 - Full contract support changes element JSON output to the shared result envelope and requires parent `get` help/completion expectations to include `element`.
 ---
+---
+## Iteration 6 - 2026-07-16 14:12
+**Work Unit**: Phase 6 Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T043: Update README usage examples and behavioral notes for `get element`
+- [x] T044: Add generated documentation coverage expectations for `get element`
+- [x] T045: Run `gofmt` on touched Go files
+- [x] T046: Run targeted service and facade validation
+- [x] T047: Run targeted command validation
+- [x] T048: Regenerate CLI documentation
+- [x] T049: Run full repository validation
+- [x] T050: Verify quickstart scenarios and update expected outputs
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- docs/cli/c8volt.md
+- docs/cli/c8volt_get.md
+- docs/cli/c8volt_get_cluster.md
+- docs/cli/c8volt_get_element.md
+- docs/cli/c8volt_get_incident.md
+- docs/cli/c8volt_get_job.md
+- docs/cli/c8volt_get_process-definition.md
+- docs/cli/c8volt_get_process-instance.md
+- docs/cli/c8volt_get_resource.md
+- docs/cli/c8volt_get_tenant.md
+- docs/index.md
+- docsgen/main_test.go
+- specs/234-get-element-command/quickstart.md
+- specs/234-get-element-command/tasks.md
+- specs/234-get-element-command/ralph-memory.md
+- specs/234-get-element-command/progress.md
+**Learnings**:
+- Generated docs now include a dedicated `get element` page and the quickstart must describe JSON as the shared result envelope with the element payload nested under `payload`.
+---

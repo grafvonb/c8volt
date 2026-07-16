@@ -126,14 +126,14 @@
 
 **Purpose**: Documentation, generated artifacts, validation, and cleanup across all user stories.
 
-- [ ] T043 [P] Update README usage examples and behavioral notes for `get element` in `README.md`
-- [ ] T044 [P] Add or update generated documentation coverage expectations for `get element` in `docsgen/main_test.go`
-- [ ] T045 Run `gofmt` on touched Go files in `cmd/`, `c8volt/element/`, `internal/domain/`, and `internal/services/element/`
-- [ ] T046 Run targeted service and facade validation with `go test ./internal/services/element/... ./c8volt/element -count=1`
-- [ ] T047 Run targeted command validation with `go test ./cmd -run 'TestGetElement|TestElement|TestCommandContract' -count=1`
-- [ ] T048 Regenerate CLI documentation with `make docs-content`
-- [ ] T049 Run full repository validation with `make test`
-- [ ] T050 Verify quickstart scenarios and update expected outputs if needed in `specs/234-get-element-command/quickstart.md`
+- [x] T043 [P] Update README usage examples and behavioral notes for `get element` in `README.md`
+- [x] T044 [P] Add or update generated documentation coverage expectations for `get element` in `docsgen/main_test.go`
+- [x] T045 Run `gofmt` on touched Go files in `cmd/`, `c8volt/element/`, `internal/domain/`, and `internal/services/element/`
+- [x] T046 Run targeted service and facade validation with `go test ./internal/services/element/... ./c8volt/element -count=1`
+- [x] T047 Run targeted command validation with `go test ./cmd -run 'TestGetElement|TestElement|TestCommandContract' -count=1`
+- [x] T048 Regenerate CLI documentation with `make docs-content`
+- [x] T049 Run full repository validation with `make test`
+- [x] T050 Verify quickstart scenarios and update expected outputs if needed in `specs/234-get-element-command/quickstart.md`
 
 ---
 
