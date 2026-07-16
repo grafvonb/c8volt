@@ -58,6 +58,7 @@
 ## Git And Commit Rules
 - Reuse existing issue or feature branches when they already exist.
 - Do not create or switch branches unless the user explicitly asks.
+- For GitHub issue-backed Spec Kit work, the GitHub issue number is authoritative for the `specs/<number>-<slug>/` prefix and feature branch label. This overrides `.specify/extensions/git/git-config.yml` `branch_numbering: sequential`; pass the issue number explicitly with `--number <issue>` or correct the generated folder and references before planning or implementation continues.
 - Commit messages must follow Conventional Commits format.
 - Add a scope in parentheses when a clear scope exists.
 - Reference the issue in the subject when applicable.
