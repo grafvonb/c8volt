@@ -1,6 +1,6 @@
 # Tasks: Runtime Element Instance Command
 
-**Input**: Design documents from `/specs/234-get-element-command/`
+**Input**: Design documents from `/specs/241-get-element-command/`
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/cli.md, quickstart.md
 
@@ -21,7 +21,7 @@
 - [x] T001 Create public facade package placeholders in `c8volt/element/api.go`, `c8volt/element/model.go`, `c8volt/element/client.go`, `c8volt/element/convert.go`, and `c8volt/element/client_test.go`
 - [x] T002 [P] Create internal element service package placeholders in `internal/services/element/api.go`, `internal/services/element/factory.go`, `internal/services/element/v87/service.go`, `internal/services/element/v88/contract.go`, `internal/services/element/v88/convert.go`, `internal/services/element/v88/service.go`, `internal/services/element/v88/service_test.go`, `internal/services/element/v89/contract.go`, `internal/services/element/v89/convert.go`, `internal/services/element/v89/service.go`, and `internal/services/element/v89/service_test.go`
 - [x] T003 [P] Create command package placeholders in `cmd/get_element.go`, `cmd/get_element_search.go`, `cmd/get_element_test.go`, `cmd/cmd_views_element.go`, and `cmd/cmd_views_element_test.go`
-- [x] T004 [P] Verify generated Camunda element instance operations are present and record no generated-client edits are needed in `specs/234-get-element-command/research.md`
+- [x] T004 [P] Verify generated Camunda element instance operations are present and record no generated-client edits are needed in `specs/241-get-element-command/research.md`
 
 ---
 
@@ -133,7 +133,7 @@
 - [x] T047 Run targeted command validation with `go test ./cmd -run 'TestGetElement|TestElement|TestCommandContract' -count=1`
 - [x] T048 Regenerate CLI documentation with `make docs-content`
 - [x] T049 Run full repository validation with `make test`
-- [x] T050 Verify quickstart scenarios and update expected outputs if needed in `specs/234-get-element-command/quickstart.md`
+- [x] T050 Verify quickstart scenarios and update expected outputs if needed in `specs/241-get-element-command/quickstart.md`
 
 ---
 

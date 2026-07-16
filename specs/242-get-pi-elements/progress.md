@@ -1,6 +1,6 @@
 # Ralph Progress Log
 
-Feature: 235-get-pi-elements
+Feature: 242-get-pi-elements
 Started: 2026-07-16 17:20:23
 
 ---
@@ -15,10 +15,10 @@ Started: 2026-07-16 17:20:23
 **Tasks Remaining in Work Unit**: 0
 **Commit**: This work-unit commit
 **Files Changed**:
-- specs/235-get-pi-elements/plan.md
-- specs/235-get-pi-elements/tasks.md
-- specs/235-get-pi-elements/ralph-memory.md
-- specs/235-get-pi-elements/progress.md
+- specs/242-get-pi-elements/plan.md
+- specs/242-get-pi-elements/tasks.md
+- specs/242-get-pi-elements/ralph-memory.md
+- specs/242-get-pi-elements/progress.md
 **Learnings**:
 - Existing incident/variable enrichment gives the target pattern for adding element enrichment without command-layer element lookups.
 ---
@@ -47,9 +47,9 @@ Started: 2026-07-16 17:20:23
 - cmd/get_processinstance.go
 - cmd/process_api_stub_test.go
 - cmd/get_processinstance_test.go
-- specs/235-get-pi-elements/tasks.md
-- specs/235-get-pi-elements/ralph-memory.md
-- specs/235-get-pi-elements/progress.md
+- specs/242-get-pi-elements/tasks.md
+- specs/242-get-pi-elements/ralph-memory.md
+- specs/242-get-pi-elements/progress.md
 **Learnings**:
 - The process facade now has explicit element-service wiring through `NewWithElements`; US1 must replace the temporary unsupported facade placeholder with the real service enrichment workflow.
 ---
@@ -80,9 +80,9 @@ Started: 2026-07-16 17:20:23
 - cmd/cmd_views_processinstance_activity.go
 - cmd/get_processinstance_test.go
 - cmd/cmd_views_get_test.go
-- specs/235-get-pi-elements/tasks.md
-- specs/235-get-pi-elements/ralph-memory.md
-- specs/235-get-pi-elements/progress.md
+- specs/242-get-pi-elements/tasks.md
+- specs/242-get-pi-elements/ralph-memory.md
+- specs/242-get-pi-elements/progress.md
 **Learnings**:
 - Keyed element enrichment reuses explicit-key admin options, so tenant filtering is not asserted on the element search body.
 ---
@@ -106,9 +106,9 @@ Started: 2026-07-16 17:20:23
 - cmd/get_processinstance_search.go
 - cmd/get_processinstance_test.go
 - cmd/cmd_views_get_test.go
-- specs/235-get-pi-elements/tasks.md
-- specs/235-get-pi-elements/ralph-memory.md
-- specs/235-get-pi-elements/progress.md
+- specs/242-get-pi-elements/tasks.md
+- specs/242-get-pi-elements/ralph-memory.md
+- specs/242-get-pi-elements/progress.md
 **Learnings**:
 - List/search element enrichment belongs after process-instance filtering/limiting in both aggregate and incremental command paths.
 ---
@@ -136,9 +136,9 @@ Started: 2026-07-16 17:20:23
 - cmd/get_processinstance_enrichment.go
 - cmd/get_processinstance_search.go
 - cmd/get_processinstance_test.go
-- specs/235-get-pi-elements/tasks.md
-- specs/235-get-pi-elements/ralph-memory.md
-- specs/235-get-pi-elements/progress.md
+- specs/242-get-pi-elements/tasks.md
+- specs/242-get-pi-elements/ralph-memory.md
+- specs/242-get-pi-elements/progress.md
 **Learnings**:
 - Combined enrichment should flow through one shared activity model, and requested empty JSON sections must stay explicit for automation compatibility.
 ---
@@ -163,10 +163,10 @@ Started: 2026-07-16 17:20:23
 - docs/cli/c8volt_get_process-instance.md
 - docs/index.md
 - docsgen/main_test.go
-- specs/235-get-pi-elements/quickstart.md
-- specs/235-get-pi-elements/tasks.md
-- specs/235-get-pi-elements/ralph-memory.md
-- specs/235-get-pi-elements/progress.md
+- specs/242-get-pi-elements/quickstart.md
+- specs/242-get-pi-elements/tasks.md
+- specs/242-get-pi-elements/ralph-memory.md
+- specs/242-get-pi-elements/progress.md
 **Learnings**:
 - Full validation surfaced a second `process.API` test double in `c8volt/resource`; durable detail is recorded in Ralph memory.
 ---

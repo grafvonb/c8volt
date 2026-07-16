@@ -1,6 +1,6 @@
 # Feature Specification: Runtime Element Instance Command
 
-**Feature Branch**: `240-get-element-command`
+**Feature Branch**: `241-get-element-command`
 
 **Created**: 2026-07-16
 

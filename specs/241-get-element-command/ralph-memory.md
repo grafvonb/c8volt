@@ -1,6 +1,6 @@
 # Ralph Memory
 
-Feature: 234-get-element-command
+Feature: 241-get-element-command
 Started: 2026-07-16T11:27:27Z
 
 ## Codebase Patterns

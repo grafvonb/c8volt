@@ -1,10 +1,10 @@
 # Implementation Plan: Runtime Element Instance Command
 
-**Branch**: `234-get-element-command` (Spec Kit), `240-get-element-command` (git) | **Date**: 2026-07-16 | **Spec**: [spec.md](spec.md)
+**Branch**: `241-get-element-command` | **Date**: 2026-07-16 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/234-get-element-command/spec.md`
+**Input**: Feature specification from `/specs/241-get-element-command/spec.md`
 
-**Note**: Spec Kit reports the active feature branch label as `234-get-element-command` from `.specify/feature.json`; the checked-out git branch created by the specify hook is `240-get-element-command`.
+**Note**: This feature folder and branch label are aligned with GitHub issue #241.
 
 ## Summary
 
@@ -45,7 +45,7 @@ Add a read-only `c8volt get element` command that fetches or searches Camunda ru
 ### Documentation (this feature)
 
 ```text
-specs/234-get-element-command/
+specs/241-get-element-command/
 ├── plan.md
 ├── research.md
 ├── data-model.md

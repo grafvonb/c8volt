@@ -1,6 +1,6 @@
 # Ralph Progress Log
 
-Feature: 234-get-element-command
+Feature: 241-get-element-command
 Started: 2026-07-16 13:27:27
 
 ## Iteration 1 - 2026-07-16 13:29
@@ -34,10 +34,10 @@ Started: 2026-07-16 13:27:27
 - cmd/get_element_test.go
 - cmd/cmd_views_element.go
 - cmd/cmd_views_element_test.go
-- specs/234-get-element-command/research.md
-- specs/234-get-element-command/tasks.md
-- specs/234-get-element-command/ralph-memory.md
-- specs/234-get-element-command/progress.md
+- specs/241-get-element-command/research.md
+- specs/241-get-element-command/tasks.md
+- specs/241-get-element-command/ralph-memory.md
+- specs/241-get-element-command/progress.md
 **Learnings**:
 - v8.8 and v8.9 generated clients expose element lookup/search methods; v8.7 does not.
 ---
@@ -69,9 +69,9 @@ Started: 2026-07-16 13:27:27
 - c8volt/element/convert.go
 - c8volt/client.go
 - c8volt/contract.go
-- specs/234-get-element-command/tasks.md
-- specs/234-get-element-command/ralph-memory.md
-- specs/234-get-element-command/progress.md
+- specs/241-get-element-command/tasks.md
+- specs/241-get-element-command/ralph-memory.md
+- specs/241-get-element-command/progress.md
 **Learnings**:
 - Element foundational wiring can compile before story behavior by using real constructors plus explicit pending/unsupported method stubs.
 ---
@@ -104,9 +104,9 @@ Started: 2026-07-16 13:27:27
 - internal/services/element/v89/convert.go
 - internal/services/element/v89/service.go
 - internal/services/element/v89/service_test.go
-- specs/234-get-element-command/tasks.md
-- specs/234-get-element-command/ralph-memory.md
-- specs/234-get-element-command/progress.md
+- specs/241-get-element-command/tasks.md
+- specs/241-get-element-command/ralph-memory.md
+- specs/241-get-element-command/progress.md
 **Learnings**:
 - Direct element lookup can use the generated v88/v89 `GetElementInstanceWithResponse` endpoint directly; search remains the only pending adapter behavior.
 ---
@@ -141,9 +141,9 @@ Started: 2026-07-16 13:27:27
 - cmd/get_element_search.go
 - cmd/get_element_test.go
 - cmd/cmd_views_element.go
-- specs/234-get-element-command/tasks.md
-- specs/234-get-element-command/ralph-memory.md
-- specs/234-get-element-command/progress.md
+- specs/241-get-element-command/tasks.md
+- specs/241-get-element-command/ralph-memory.md
+- specs/241-get-element-command/progress.md
 **Learnings**:
 - Element search uses direct generated key pointers for key-like filters, except state which remains a generated union wrapper.
 ---
@@ -169,9 +169,9 @@ Started: 2026-07-16 13:27:27
 - cmd/get_element_search.go
 - cmd/get_element_test.go
 - cmd/get_test.go
-- specs/234-get-element-command/tasks.md
-- specs/234-get-element-command/ralph-memory.md
-- specs/234-get-element-command/progress.md
+- specs/241-get-element-command/tasks.md
+- specs/241-get-element-command/ralph-memory.md
+- specs/241-get-element-command/progress.md
 **Learnings**:
 - Full contract support changes element JSON output to the shared result envelope and requires parent `get` help/completion expectations to include `element`.
 ---
@@ -203,10 +203,10 @@ Started: 2026-07-16 13:27:27
 - docs/cli/c8volt_get_tenant.md
 - docs/index.md
 - docsgen/main_test.go
-- specs/234-get-element-command/quickstart.md
-- specs/234-get-element-command/tasks.md
-- specs/234-get-element-command/ralph-memory.md
-- specs/234-get-element-command/progress.md
+- specs/241-get-element-command/quickstart.md
+- specs/241-get-element-command/tasks.md
+- specs/241-get-element-command/ralph-memory.md
+- specs/241-get-element-command/progress.md
 **Learnings**:
 - Generated docs now include a dedicated `get element` page and the quickstart must describe JSON as the shared result envelope with the element payload nested under `payload`.
 ---

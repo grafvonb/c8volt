@@ -1,8 +1,8 @@
 # Implementation Plan: Process Instance Element Enrichment
 
-**Branch**: `235-get-pi-elements` | **Date**: 2026-07-16 | **Spec**: [spec.md](spec.md)
+**Branch**: `242-get-pi-elements` | **Date**: 2026-07-16 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/235-get-pi-elements/spec.md`
+**Input**: Feature specification from `/specs/242-get-pi-elements/spec.md`
 
 ## Summary
 
@@ -43,7 +43,7 @@ Add `--with-elements` to `c8volt get process-instance` and aliases `pi`/`pis` so
 ### Documentation (this feature)
 
 ```text
-specs/235-get-pi-elements/
+specs/242-get-pi-elements/
 ├── plan.md
 ├── research.md
 ├── data-model.md

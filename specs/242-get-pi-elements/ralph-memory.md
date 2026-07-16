@@ -1,6 +1,6 @@
 # Ralph Memory
 
-Feature: 235-get-pi-elements
+Feature: 242-get-pi-elements
 Started: 2026-07-16T15:20:23Z
 
 ## Codebase Patterns
@@ -25,7 +25,7 @@ Started: 2026-07-16T15:20:23Z
 - Iteration 6 completed Phase 6 polish. README and generated CLI docs now document `--with-elements`, quickstart wording matches the `inc!|inc!:<incidentKey>` element marker contract, and all quickstart scenarios passed against `/tmp/c8volt-get-pi-elements` with a local fake Camunda API.
 
 ## Gotchas
-- `plan.md` records GitHub issue #242, but branch-prefix issue inference on `235-get-pi-elements` produces `#235` under `commit.issue: auto`.
+- `plan.md` records GitHub issue #242, and the issue-aligned folder name now keeps branch-prefix inference on `242-get-pi-elements` consistent under `commit.issue: auto`.
 - Direct keyed lookup on Camunda 8.7 currently fails at the existing process-instance direct-lookup unsupported boundary before element lookup; command coverage asserts a clear unsupported capability result for `--with-elements` on 8.7.
 - Do not assert tenant filters on keyed `--with-elements` element searches: explicit `--key` admin input uses `collectExplicitPIAdminInputOptions`, so the element search is owner-key scoped without a tenant filter.
 - When changing activity JSON, preserve the distinction between unrequested sections and requested empty sections. Existing automation tests expect requested empty `incidents`, `variables`, or `elements` arrays to remain present rather than omitted.

@@ -1,6 +1,6 @@
 # Tasks: Process Instance Element Enrichment
 
-**Input**: Design documents from `/specs/235-get-pi-elements/`
+**Input**: Design documents from `/specs/242-get-pi-elements/`
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/cli.md, quickstart.md, specs/ralph-implementation-rules.md
 
@@ -18,11 +18,11 @@
 
 **Purpose**: Confirm the feature context and prepare shared implementation touchpoints without behavior changes.
 
-- [x] T001 Review the feature artifacts and record any implementation conflicts in `specs/235-get-pi-elements/plan.md`, `specs/235-get-pi-elements/spec.md`, `specs/235-get-pi-elements/contracts/cli.md`, and `specs/ralph-implementation-rules.md`
+- [x] T001 Review the feature artifacts and record any implementation conflicts in `specs/242-get-pi-elements/plan.md`, `specs/242-get-pi-elements/spec.md`, `specs/242-get-pi-elements/contracts/cli.md`, and `specs/ralph-implementation-rules.md`
 - [x] T002 [P] Inspect existing process-instance enrichment patterns in `cmd/get_processinstance.go`, `cmd/get_processinstance_enrichment.go`, `cmd/cmd_views_processinstance_activity.go`, and `cmd/process_api_stub_test.go`
 - [x] T003 [P] Inspect existing element facade/service contracts for reuse in `c8volt/element/api.go`, `c8volt/element/model.go`, `internal/services/element/api.go`, and `internal/domain/element.go`
 - [x] T004 [P] Inspect existing process facade and internal enrichment contracts in `c8volt/process/api.go`, `c8volt/process/client.go`, `c8volt/process/model.go`, `c8volt/process/convert.go`, and `internal/services/processinstance/enrichment.go`
-- [x] T005 Confirm Ralph launch instructions include `--implementation-context specs/ralph-implementation-rules.md` in `specs/235-get-pi-elements/plan.md` and `specs/235-get-pi-elements/tasks.md`
+- [x] T005 Confirm Ralph launch instructions include `--implementation-context specs/ralph-implementation-rules.md` in `specs/242-get-pi-elements/plan.md` and `specs/242-get-pi-elements/tasks.md`
 
 ---
 
@@ -128,13 +128,13 @@
 
 - [x] T043 [P] Update README process-instance examples and behavior notes for `--with-elements` in `README.md`
 - [x] T044 [P] Update docs generator or metadata expectations for `--with-elements` command documentation in `docsgen/main_test.go` and `cmd/command_contract_test.go`
-- [x] T045 [P] Update quickstart examples if implementation output wording changes in `specs/235-get-pi-elements/quickstart.md`
+- [x] T045 [P] Update quickstart examples if implementation output wording changes in `specs/242-get-pi-elements/quickstart.md`
 - [x] T046 Run `gofmt` on touched Go files in `cmd/`, `c8volt/process/`, `c8volt/client.go`, `internal/domain/`, and `internal/services/processinstance/`
 - [x] T047 Run targeted service and facade validation for element enrichment tests in `internal/services/processinstance/enrichment_test.go` and `c8volt/process/client_test.go`
 - [x] T048 Run targeted command validation for element enrichment tests in `cmd/get_processinstance_test.go`, `cmd/cmd_views_get_test.go`, and `cmd/command_contract_test.go`
 - [x] T049 Run generated documentation validation and regenerate CLI docs with `docsgen/main_test.go` and `Makefile`
 - [x] T050 Run full repository validation with `make test` using `Makefile`
-- [x] T051 Verify all manual scenarios from `specs/235-get-pi-elements/quickstart.md` against the built binary `/tmp/c8volt-get-pi-elements`
+- [x] T051 Verify all manual scenarios from `specs/242-get-pi-elements/quickstart.md` against the built binary `/tmp/c8volt-get-pi-elements`
 
 ---
 
