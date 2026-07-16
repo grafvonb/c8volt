@@ -12,6 +12,10 @@ func elementView(cmd *cobra.Command, item element.Element) error {
 	return itemView(cmd, item, pickMode(), oneLineElement, elementKey)
 }
 
+func elementsView(cmd *cobra.Command, result element.SearchResult) error {
+	return listOrJSONFlat(cmd, result, result.Items, pickMode(), flatRowElement, elementKey)
+}
+
 func oneLineElement(item element.Element) string {
 	return compactFlatRow(flatRowElement(item))
 }

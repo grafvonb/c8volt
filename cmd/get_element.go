@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/grafvonb/c8volt/c8volt/element"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -43,16 +45,36 @@ var getElementCmd = &cobra.Command{
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		if strings.TrimSpace(flagGetElementKey) == "" {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("element search is not implemented yet; use --key for direct lookup")))
+		if strings.TrimSpace(flagGetElementKey) != "" {
+			item, err := cli.GetElement(cmd.Context(), strings.TrimSpace(flagGetElementKey), collectOptions()...)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get element: %w", err))
+			}
+			if err := elementView(cmd, item); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render element: %w", err))
+			}
 			return
 		}
-		item, err := cli.GetElement(cmd.Context(), strings.TrimSpace(flagGetElementKey), collectOptions()...)
-		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get element: %w", err))
+		searchRequest := newGetElementSearchRequest(cmd)
+		if flagGetElementTotal {
+			total, err := searchElementsTotal(cmd, cli, searchRequest)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get elements total: %w", err))
+			}
+			if err := processInstanceTotalView(cmd, total); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render elements total: %w", err))
+			}
+			return
 		}
-		if err := elementView(cmd, item); err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render element: %w", err))
+		result, renderedIncrementally, err := searchElementsWithPaging(cmd, cli, searchRequest)
+		if err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get elements: %w", err))
+		}
+		if renderedIncrementally {
+			return
+		}
+		if err := elementsView(cmd, result); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render elements: %w", err))
 		}
 	},
 }
@@ -112,6 +134,12 @@ func validateGetElementFlagValues(cmd *cobra.Command) error {
 	if cmd.Flags().Changed("limit") && flagGetElementLimit <= 0 {
 		return invalidFlagValuef("--limit must be positive integer")
 	}
+	if flagGetElementState != "" && !validElementState(flagGetElementState) {
+		return invalidFlagValuef("invalid value for --state: %q, valid values are: %s", flagGetElementState, strings.Join(validElementStates, ", "))
+	}
+	if flagGetElementType != "" && !validElementType(flagGetElementType) {
+		return invalidFlagValuef("invalid value for --type: %q, valid values are: %s", flagGetElementType, strings.Join(validElementTypes, ", "))
+	}
 	if flagGetElementTotal {
 		switch pickMode() {
 		case RenderModeJSON:
@@ -121,6 +149,77 @@ func validateGetElementFlagValues(cmd *cobra.Command) error {
 		}
 	}
 	return nil
+}
+
+func newGetElementSearchRequest(cmd *cobra.Command) element.SearchRequest {
+	_ = cmd
+	return element.SearchRequest{
+		ProcessInstanceKey:   strings.TrimSpace(flagGetElementProcessKey),
+		ElementId:            strings.TrimSpace(flagGetElementID),
+		State:                normalizedElementState(flagGetElementState),
+		Type:                 normalizedElementType(flagGetElementType),
+		ProcessDefinitionKey: strings.TrimSpace(flagGetElementProcessDefKey),
+		BpmnProcessId:        strings.TrimSpace(flagGetElementBpmnProcessID),
+		BatchSize:            flagGetElementBatchSize,
+		Limit:                flagGetElementLimit,
+	}
+}
+
+var validElementStates = []string{
+	"ACTIVE",
+	"COMPLETED",
+	"TERMINATED",
+}
+
+var validElementTypes = []string{
+	"AD_HOC_SUB_PROCESS",
+	"AD_HOC_SUB_PROCESS_INNER_INSTANCE",
+	"BOUNDARY_EVENT",
+	"BUSINESS_RULE_TASK",
+	"CALL_ACTIVITY",
+	"END_EVENT",
+	"EVENT_BASED_GATEWAY",
+	"EVENT_SUB_PROCESS",
+	"EXCLUSIVE_GATEWAY",
+	"INCLUSIVE_GATEWAY",
+	"INTERMEDIATE_CATCH_EVENT",
+	"INTERMEDIATE_THROW_EVENT",
+	"MANUAL_TASK",
+	"MULTI_INSTANCE_BODY",
+	"PARALLEL_GATEWAY",
+	"PROCESS",
+	"RECEIVE_TASK",
+	"SCRIPT_TASK",
+	"SEND_TASK",
+	"SEQUENCE_FLOW",
+	"SERVICE_TASK",
+	"START_EVENT",
+	"SUB_PROCESS",
+	"TASK",
+	"UNKNOWN",
+	"UNSPECIFIED",
+	"USER_TASK",
+}
+
+func validElementState(value string) bool {
+	return toolx.ValidEnumString(value, validElementStates)
+}
+
+func validElementType(value string) bool {
+	return toolx.ValidEnumString(value, validElementTypes)
+}
+
+func normalizedElementState(value string) string {
+	return normalizedElementEnum(value, validElementStates)
+}
+
+func normalizedElementType(value string) string {
+	return normalizedElementEnum(value, validElementTypes)
+}
+
+func normalizedElementEnum(value string, valid []string) string {
+	canonical, _ := toolx.CanonicalEnumString(value, valid)
+	return canonical
 }
 
 func changedGetElementSearchFilterFlags(cmd *cobra.Command) []string {

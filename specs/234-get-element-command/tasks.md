@@ -79,21 +79,21 @@
 
 ### Tests for User Story 2
 
-- [ ] T024 [P] [US2] Add v88 search service tests for filter mapping, AND semantics, paging, limits, and reported totals in `internal/services/element/v88/service_test.go`
-- [ ] T025 [P] [US2] Add v89 search service tests for filter mapping, AND semantics, paging, limits, and reported totals in `internal/services/element/v89/service_test.go`
-- [ ] T026 [P] [US2] Add facade search page/result mapping tests in `c8volt/element/client_test.go`
-- [ ] T027 [P] [US2] Add command search validation tests for `--pi-key`, `--pd-key`, `--state`, `--type`, `--batch-size`, `--limit`, and unfiltered search in `cmd/get_element_test.go`
+- [x] T024 [P] [US2] Add v88 search service tests for filter mapping, AND semantics, paging, limits, and reported totals in `internal/services/element/v88/service_test.go`
+- [x] T025 [P] [US2] Add v89 search service tests for filter mapping, AND semantics, paging, limits, and reported totals in `internal/services/element/v89/service_test.go`
+- [x] T026 [P] [US2] Add facade search page/result mapping tests in `c8volt/element/client_test.go`
+- [x] T027 [P] [US2] Add command search validation tests for `--pi-key`, `--pd-key`, `--state`, `--type`, `--batch-size`, `--limit`, and unfiltered search in `cmd/get_element_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T028 [US2] Add element search request helpers and filter detection to `c8volt/element/model.go` and `internal/domain/element.go`
-- [ ] T029 [US2] Implement v88 search filter construction, enum normalization, and page conversion in `internal/services/element/v88/convert.go`
-- [ ] T030 [US2] Implement v88 paged search and collected search result behavior in `internal/services/element/v88/service.go`
-- [ ] T031 [US2] Implement v89 search filter construction, enum normalization, and page conversion in `internal/services/element/v89/convert.go`
-- [ ] T032 [US2] Implement v89 paged search and collected search result behavior in `internal/services/element/v89/service.go`
-- [ ] T033 [US2] Implement facade `SearchElements` and `SearchElementsPage` delegation in `c8volt/element/api.go` and `c8volt/element/client.go`
-- [ ] T034 [US2] Implement `c8volt get element` search flags, search request construction, key/search mutual exclusion, and local flag validation in `cmd/get_element.go`
-- [ ] T035 [US2] Implement element search paging, total counting, page continuation, and limit trimming in `cmd/get_element_search.go`
+- [x] T028 [US2] Add element search request helpers and filter detection to `c8volt/element/model.go` and `internal/domain/element.go`
+- [x] T029 [US2] Implement v88 search filter construction, enum normalization, and page conversion in `internal/services/element/v88/convert.go`
+- [x] T030 [US2] Implement v88 paged search and collected search result behavior in `internal/services/element/v88/service.go`
+- [x] T031 [US2] Implement v89 search filter construction, enum normalization, and page conversion in `internal/services/element/v89/convert.go`
+- [x] T032 [US2] Implement v89 paged search and collected search result behavior in `internal/services/element/v89/service.go`
+- [x] T033 [US2] Implement facade `SearchElements` and `SearchElementsPage` delegation in `c8volt/element/api.go` and `c8volt/element/client.go`
+- [x] T034 [US2] Implement `c8volt get element` search flags, search request construction, key/search mutual exclusion, and local flag validation in `cmd/get_element.go`
+- [x] T035 [US2] Implement element search paging, total counting, page continuation, and limit trimming in `cmd/get_element_search.go`
 
 **Checkpoint**: User Stories 1 and 2 both work independently, with search delivering the operational inspection flow.
 

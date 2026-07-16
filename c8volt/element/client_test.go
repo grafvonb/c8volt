@@ -97,3 +97,79 @@ func TestClient_GetElement_NotFound(t *testing.T) {
 	require.ErrorIs(t, err, ferrors.ErrNotFound)
 	require.Empty(t, result)
 }
+
+func TestClient_SearchElements_MapsRequestAndResult(t *testing.T) {
+	api := New(fakeElementService{
+		search: func(_ context.Context, request d.ElementSearchQuery, _ ...services.CallOption) (d.ElementSearchResult, error) {
+			require.Equal(t, d.ElementSearchQuery{
+				ProcessInstanceKey:   "2251799813688001",
+				ElementId:            "ship-order",
+				State:                "ACTIVE",
+				Type:                 "SERVICE_TASK",
+				ProcessDefinitionKey: "2251799813687001",
+				BpmnProcessId:        "order-process",
+				BatchSize:            25,
+				Limit:                50,
+			}, request)
+			return d.ElementSearchResult{
+				Total: 1,
+				Items: []d.Element{{
+					ElementInstanceKey: "2251799813689002",
+					ElementId:          "ship-order",
+					Type:               "SERVICE_TASK",
+					State:              "ACTIVE",
+					ProcessInstanceKey: "2251799813688001",
+				}},
+			}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.SearchElements(context.Background(), SearchRequest{
+		ProcessInstanceKey:   "2251799813688001",
+		ElementId:            "ship-order",
+		State:                "ACTIVE",
+		Type:                 "SERVICE_TASK",
+		ProcessDefinitionKey: "2251799813687001",
+		BpmnProcessId:        "order-process",
+		BatchSize:            25,
+		Limit:                50,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int32(1), result.Total)
+	require.Len(t, result.Items, 1)
+	require.Equal(t, "2251799813689002", result.Items[0].ElementInstanceKey)
+	require.Equal(t, "ship-order", result.Items[0].ElementId)
+}
+
+func TestClient_SearchElementsPage_MapsPagingMetadata(t *testing.T) {
+	api := New(fakeElementService{
+		page: func(_ context.Context, request d.ElementSearchQuery, page d.ElementPageRequest, _ ...services.CallOption) (d.ElementSearchPage, error) {
+			require.Equal(t, d.ElementSearchQuery{BpmnProcessId: "order-process"}, request)
+			require.Equal(t, d.ElementPageRequest{From: 25, Size: 10}, page)
+			return d.ElementSearchPage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				ReportedTotal: &d.ElementReportedTotal{
+					Count: 10000,
+					Kind:  d.ElementReportedTotalKindLowerBound,
+				},
+				Items: []d.Element{{
+					ElementInstanceKey: "2251799813689002",
+					ElementId:          "ship-order",
+				}},
+			}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	page, err := api.SearchElementsPage(context.Background(), SearchRequest{BpmnProcessId: "order-process"}, PageRequest{From: 25, Size: 10})
+
+	require.NoError(t, err)
+	require.Equal(t, PageRequest{From: 25, Size: 10}, page.Request)
+	require.Equal(t, OverflowStateHasMore, page.OverflowState)
+	require.NotNil(t, page.ReportedTotal)
+	require.Equal(t, int64(10000), page.ReportedTotal.Count)
+	require.Equal(t, ReportedTotalKindLowerBound, page.ReportedTotal.Kind)
+	require.Len(t, page.Items, 1)
+	require.Equal(t, "2251799813689002", page.Items[0].ElementInstanceKey)
+}

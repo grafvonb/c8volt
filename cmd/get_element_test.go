@@ -11,6 +11,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
@@ -58,6 +59,113 @@ func TestGetElementCommand_KeyedLookupRejectsSearchFiltersBeforeLookup(t *testin
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "--key cannot be combined with element search filters: --pi-key")
+}
+
+func TestGetElementCommand_ValidateSearchFlagsAndBuildsRequest(t *testing.T) {
+	resetGetElementFlagState()
+	t.Cleanup(resetGetElementFlagState)
+	require.NoError(t, getElementCmd.Flags().Set("pi-key", "2251799813688001"))
+	require.NoError(t, getElementCmd.Flags().Set("element-id", "ship-order"))
+	require.NoError(t, getElementCmd.Flags().Set("state", "active"))
+	require.NoError(t, getElementCmd.Flags().Set("type", "service_task"))
+	require.NoError(t, getElementCmd.Flags().Set("pd-key", "2251799813687001"))
+	require.NoError(t, getElementCmd.Flags().Set("bpmn-process-id", "order-process"))
+	require.NoError(t, getElementCmd.Flags().Set("batch-size", "25"))
+	require.NoError(t, getElementCmd.Flags().Set("limit", "50"))
+
+	require.NoError(t, validateGetElementFlags(getElementCmd))
+
+	request := newGetElementSearchRequest(getElementCmd)
+	require.Equal(t, "2251799813688001", request.ProcessInstanceKey)
+	require.Equal(t, "ship-order", request.ElementId)
+	require.Equal(t, "ACTIVE", request.State)
+	require.Equal(t, "SERVICE_TASK", request.Type)
+	require.Equal(t, "2251799813687001", request.ProcessDefinitionKey)
+	require.Equal(t, "order-process", request.BpmnProcessId)
+	require.Equal(t, int32(25), request.BatchSize)
+	require.Equal(t, int32(50), request.Limit)
+}
+
+func TestGetElementCommand_UnfilteredSearchIsAllowed(t *testing.T) {
+	resetGetElementFlagState()
+	t.Cleanup(resetGetElementFlagState)
+
+	require.NoError(t, validateGetElementFlags(getElementCmd))
+
+	request := newGetElementSearchRequest(getElementCmd)
+	require.False(t, request.HasKey())
+	require.False(t, request.HasSearchFilters())
+	require.Equal(t, int32(consts.MaxPISearchSize), request.BatchSize)
+}
+
+func TestGetElementCommand_RejectsInvalidSearchControls(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		flag string
+		val  string
+		want string
+	}{
+		{name: "state", flag: "state", val: "running", want: `invalid value for --state: "running"`},
+		{name: "type", flag: "type", val: "mail_task", want: `invalid value for --type: "mail_task"`},
+		{name: "batch size", flag: "batch-size", val: "0", want: "invalid value for --batch-size: 0"},
+		{name: "limit", flag: "limit", val: "0", want: "--limit must be positive integer"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resetGetElementFlagState()
+			t.Cleanup(resetGetElementFlagState)
+			require.NoError(t, getElementCmd.Flags().Set(tc.flag, tc.val))
+
+			err := validateGetElementFlags(getElementCmd)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.want)
+		})
+	}
+}
+
+func TestGetElementCommand_SearchHumanOutput(t *testing.T) {
+	var requests []string
+	srv := newElementSearchServer(t, &requests, `{
+  "items": [
+    {
+      "elementInstanceKey": "2251799813689002",
+      "elementId": "ship-order",
+      "elementName": "Ship order",
+      "type": "SERVICE_TASK",
+      "state": "ACTIVE",
+      "startDate": "2026-07-15T10:12:01Z",
+      "processInstanceKey": "2251799813688001",
+      "rootProcessInstanceKey": "2251799813688001",
+      "processDefinitionId": "order-process",
+      "processDefinitionKey": "2251799813687001",
+      "tenantId": "tenant-a",
+      "hasIncident": false
+    }
+  ],
+  "page": {
+    "totalItems": 1,
+    "hasMoreTotalItems": false
+  }
+}`)
+	t.Cleanup(srv.Close)
+	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForElementTest(t,
+		"--config", cfgPath,
+		"get", "element",
+		"--pi-key", "2251799813688001",
+		"--state", "active",
+		"--type", "service_task",
+		"--batch-size", "5",
+		"--limit", "7",
+	)
+
+	require.Equal(t, []string{"POST /v2/element-instances/search"}, requests)
+	require.Contains(t, output, "2251799813689002")
+	require.Contains(t, output, "SERVICE_TASK")
+	require.Contains(t, output, "pi:2251799813688001")
+	require.Contains(t, output, "element:ship-order")
+	require.Contains(t, output, "found: 1")
 }
 
 func TestGetElementCommand_KeyedLookupHumanOutput(t *testing.T) {
@@ -168,6 +276,27 @@ func newElementLookupServer(t *testing.T, requests *[]string, status int, respon
 	}))
 }
 
+func newElementSearchServer(t *testing.T, requests *[]string, response string) *httptest.Server {
+	t.Helper()
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/element-instances/search", r.URL.Path)
+		*requests = append(*requests, r.Method+" "+r.URL.Path)
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		filter := body["filter"].(map[string]any)
+		require.Equal(t, "2251799813688001", filter["processInstanceKey"])
+		require.Equal(t, "ACTIVE", filter["state"])
+		require.Equal(t, "SERVICE_TASK", filter["type"])
+		page := body["page"].(map[string]any)
+		require.Equal(t, float64(0), page["from"])
+		require.Equal(t, float64(5), page["limit"])
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(response))
+	}))
+}
+
 func executeRootForElementTest(t *testing.T, args ...string) string {
 	t.Helper()
 
@@ -195,7 +324,7 @@ func resetGetElementFlagState() {
 	flagGetElementType = ""
 	flagGetElementProcessDefKey = ""
 	flagGetElementBpmnProcessID = ""
-	flagGetElementBatchSize = 100
+	flagGetElementBatchSize = consts.MaxPISearchSize
 	flagGetElementLimit = 0
 	flagGetElementTotal = false
 	testx.ResetCommandTreeFlags(getElementCmd)

@@ -5,11 +5,11 @@ package v89
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/consts"
 	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
@@ -93,24 +93,131 @@ func (s *Service) GetElement(ctx context.Context, key string, opts ...services.C
 	return fromElementInstanceResult(*payload), nil
 }
 
-// SearchElements will collect pages once US2 fills the adapter.
+// SearchElements collects runtime element instances matching the query filters.
 func (s *Service) SearchElements(ctx context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (d.ElementSearchResult, error) {
-	_ = ctx
-	_ = query
 	_ = services.ApplyCallOptions(opts)
-	return d.ElementSearchResult{}, pendingElementOperation("element search")
+
+	batchSize := query.BatchSize
+	if batchSize <= 0 {
+		batchSize = consts.MaxPISearchSize
+	}
+	limit := query.Limit
+	items := make([]d.Element, 0, minPositiveElementSearchSize(batchSize, limit))
+	from := int32(0)
+	for {
+		pageLimit := nextElementSearchPageLimit(batchSize, limit, int32(len(items)))
+		if pageLimit <= 0 {
+			break
+		}
+		page, err := s.SearchElementsPage(ctx, query, d.ElementPageRequest{From: from, Size: pageLimit}, opts...)
+		if err != nil {
+			return d.ElementSearchResult{}, err
+		}
+		items = append(items, page.Items...)
+		if limit > 0 && int32(len(items)) >= limit {
+			break
+		}
+		if page.OverflowState != d.ProcessInstanceOverflowStateHasMore {
+			break
+		}
+		advance := int32(len(page.Items))
+		if advance <= 0 {
+			advance = pageLimit
+		}
+		from += advance
+	}
+	return d.ElementSearchResult{
+		Items: items,
+		Total: int32(len(items)),
+	}, nil
 }
 
-// SearchElementsPage will call the generated search endpoint once US2 fills the adapter.
-func (s *Service) SearchElementsPage(ctx context.Context, query d.ElementSearchQuery, page d.ElementPageRequest, opts ...services.CallOption) (d.ElementSearchPage, error) {
-	_ = ctx
-	_ = query
-	_ = page
+// SearchElementsPage fetches one runtime element search page.
+func (s *Service) SearchElementsPage(ctx context.Context, query d.ElementSearchQuery, pageReq d.ElementPageRequest, opts ...services.CallOption) (d.ElementSearchPage, error) {
 	_ = services.ApplyCallOptions(opts)
-	return d.ElementSearchPage{}, pendingElementOperation("element search")
+
+	filter, err := newElementSearchFilter(query)
+	if err != nil {
+		return d.ElementSearchPage{}, err
+	}
+	pageSize := pageReq.Size
+	if pageSize <= 0 {
+		pageSize = consts.MaxPISearchSize
+	}
+	page := newSearchQueryPageRequest(pageReq.From, pageSize)
+	resp, err := s.c.SearchElementInstancesWithResponse(ctx, camundav89.SearchElementInstancesJSONRequestBody{
+		Filter: filter,
+		Page:   &page,
+	})
+	if err != nil {
+		return d.ElementSearchPage{}, err
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.ElementSearchPage{}, err
+	}
+	items := trimElementSearchPageResults(payload.Items, payload.Page, pageReq.From, pageSize)
+	return d.ElementSearchPage{
+		Items:         fromElementInstanceResults(items),
+		Request:       d.ElementPageRequest{From: pageReq.From, Size: pageSize},
+		OverflowState: pickElementSearchOverflowState(payload.Page, pageReq.From, len(items), pageSize),
+		ReportedTotal: newElementReportedTotal(payload.Page.TotalItems, payload.Page.HasMoreTotalItems),
+	}, nil
 }
 
-// pendingElementOperation prevents accidental success before the version adapter is implemented.
-func pendingElementOperation(operation string) error {
-	return fmt.Errorf("%w: %s service implementation is pending", d.ErrUnsupported, operation)
+func minPositiveElementSearchSize(batchSize int32, limit int32) int {
+	if limit > 0 && limit < batchSize {
+		return int(limit)
+	}
+	return int(batchSize)
+}
+
+func nextElementSearchPageLimit(batchSize int32, limit int32, loaded int32) int32 {
+	if limit <= 0 {
+		return batchSize
+	}
+	remaining := limit - loaded
+	if remaining < batchSize {
+		return remaining
+	}
+	return batchSize
+}
+
+func trimElementSearchPageResults(items []camundav89.ElementInstanceResult, page camundav89.SearchQueryPageResponse, from int32, pageSize int32) []camundav89.ElementInstanceResult {
+	if pageSize <= 0 || len(items) <= int(pageSize) {
+		return items
+	}
+	if page.TotalItems == int64(len(items)) && from > 0 {
+		start := int(from)
+		if start >= len(items) {
+			return nil
+		}
+		items = items[start:]
+	}
+	if len(items) > int(pageSize) {
+		return items[:pageSize]
+	}
+	return items
+}
+
+func pickElementSearchOverflowState(page camundav89.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) d.ProcessInstanceOverflowState {
+	if itemCount == 0 {
+		return d.ProcessInstanceOverflowStateNoMore
+	}
+	nextFrom := int64(from) + int64(itemCount)
+	if page.TotalItems > nextFrom {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
+	if page.HasMoreTotalItems && itemCount >= int(pageSize) {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
+	return d.ProcessInstanceOverflowStateNoMore
+}
+
+func newElementReportedTotal(count int64, lowerBound bool) *d.ElementReportedTotal {
+	kind := d.ElementReportedTotalKindExact
+	if lowerBound {
+		kind = d.ElementReportedTotalKindLowerBound
+	}
+	return &d.ElementReportedTotal{Count: count, Kind: kind}
 }

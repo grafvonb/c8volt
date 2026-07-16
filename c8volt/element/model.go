@@ -49,6 +49,11 @@ func (r SearchRequest) HasSearchFilters() bool {
 		r.BpmnProcessId != ""
 }
 
+// HasSearchControls reports whether the request carries paging or bounding controls.
+func (r SearchRequest) HasSearchControls() bool {
+	return r.BatchSize > 0 || r.Limit > 0
+}
+
 // SearchResult contains a bounded collected element search result.
 type SearchResult struct {
 	Total int32     `json:"total"`

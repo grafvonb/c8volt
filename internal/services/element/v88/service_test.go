@@ -5,6 +5,7 @@ package v88
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -105,6 +106,141 @@ func TestService_GetElement_NotFound(t *testing.T) {
 	require.Empty(t, element)
 }
 
+func TestService_SearchElements_ConstructsFiltersAndConvertsRows(t *testing.T) {
+	start := time.Date(2026, 7, 15, 10, 12, 1, 0, time.UTC)
+	end := time.Date(2026, 7, 15, 10, 13, 2, 0, time.UTC)
+	rootKey := camundav88.ProcessInstanceKey("2251799813688001")
+	incidentKey := camundav88.IncidentKey("2251799813687777")
+	svc := newElementServiceTest(t, &mockElementClient{
+		searchElementInstancesWithResponse: func(_ context.Context, body camundav88.SearchElementInstancesJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchElementInstancesResponse, error) {
+			requireElementSearchFilterJSON(t, body, map[string]any{
+				"processInstanceKey":   "2251799813688001",
+				"elementId":            "ship-order",
+				"state":                "ACTIVE",
+				"type":                 "SERVICE_TASK",
+				"processDefinitionKey": "2251799813687001",
+				"processDefinitionId":  "order-process",
+			}, 25)
+			return &camundav88.SearchElementInstancesResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav88.ElementInstanceSearchQueryResult{
+					Items: []camundav88.ElementInstanceResult{{
+						ElementInstanceKey:     "2251799813689002",
+						ElementId:              "ship-order",
+						ElementName:            "Ship order",
+						Type:                   camundav88.ElementInstanceResultType("SERVICE_TASK"),
+						State:                  camundav88.ElementInstanceStateEnumACTIVE,
+						StartDate:              start,
+						EndDate:                &end,
+						ProcessInstanceKey:     "2251799813688001",
+						RootProcessInstanceKey: &rootKey,
+						ProcessDefinitionId:    "order-process",
+						ProcessDefinitionKey:   "2251799813687001",
+						TenantId:               "tenant-a",
+						HasIncident:            true,
+						IncidentKey:            &incidentKey,
+					}},
+					Page: camundav88.SearchQueryPageResponse{TotalItems: 1},
+				},
+			}, nil
+		},
+	})
+
+	result, err := svc.SearchElements(context.Background(), d.ElementSearchQuery{
+		ProcessInstanceKey:   "2251799813688001",
+		ElementId:            "ship-order",
+		State:                "ACTIVE",
+		Type:                 "SERVICE_TASK",
+		ProcessDefinitionKey: "2251799813687001",
+		BpmnProcessId:        "order-process",
+		Limit:                25,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int32(1), result.Total)
+	require.Len(t, result.Items, 1)
+	require.Equal(t, d.Element{
+		ElementInstanceKey:     "2251799813689002",
+		ElementId:              "ship-order",
+		ElementName:            "Ship order",
+		Type:                   "SERVICE_TASK",
+		State:                  "ACTIVE",
+		StartDate:              "2026-07-15T10:12:01Z",
+		EndDate:                "2026-07-15T10:13:02Z",
+		ProcessInstanceKey:     "2251799813688001",
+		RootProcessInstanceKey: "2251799813688001",
+		ProcessDefinitionId:    "order-process",
+		ProcessDefinitionKey:   "2251799813687001",
+		TenantId:               "tenant-a",
+		HasIncident:            true,
+		IncidentKey:            "2251799813687777",
+	}, result.Items[0])
+}
+
+func TestService_SearchElementsPagesByBatchSizeUntilLimit(t *testing.T) {
+	var requests []camundav88.SearchElementInstancesJSONRequestBody
+	svc := newElementServiceTest(t, &mockElementClient{
+		searchElementInstancesWithResponse: func(_ context.Context, body camundav88.SearchElementInstancesJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchElementInstancesResponse, error) {
+			requests = append(requests, body)
+			key := camundav88.ElementInstanceKey("2251799813689002")
+			if len(requests) == 2 {
+				key = "2251799813689003"
+			}
+			return &camundav88.SearchElementInstancesResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav88.ElementInstanceSearchQueryResult{
+					Items: []camundav88.ElementInstanceResult{{
+						ElementInstanceKey: key,
+						ElementId:          "ship-order",
+						Type:               camundav88.ElementInstanceResultType("SERVICE_TASK"),
+						State:              camundav88.ElementInstanceStateEnumACTIVE,
+					}},
+					Page: camundav88.SearchQueryPageResponse{TotalItems: 3},
+				},
+			}, nil
+		},
+	})
+
+	result, err := svc.SearchElements(context.Background(), d.ElementSearchQuery{BatchSize: 1, Limit: 2})
+
+	require.NoError(t, err)
+	require.Equal(t, int32(2), result.Total)
+	require.Len(t, result.Items, 2)
+	requireElementSearchPageJSON(t, requests[0], 0, 1)
+	requireElementSearchPageJSON(t, requests[1], 1, 1)
+	require.Equal(t, "2251799813689002", result.Items[0].ElementInstanceKey)
+	require.Equal(t, "2251799813689003", result.Items[1].ElementInstanceKey)
+}
+
+func TestService_SearchElementsPageReportsLowerBoundTotal(t *testing.T) {
+	svc := newElementServiceTest(t, &mockElementClient{
+		searchElementInstancesWithResponse: func(_ context.Context, body camundav88.SearchElementInstancesJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchElementInstancesResponse, error) {
+			requireElementSearchPageJSON(t, body, 100, 25)
+			return &camundav88.SearchElementInstancesResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav88.ElementInstanceSearchQueryResult{
+					Items: []camundav88.ElementInstanceResult{{
+						ElementInstanceKey: "2251799813689002",
+						ElementId:          "ship-order",
+						Type:               camundav88.ElementInstanceResultType("SERVICE_TASK"),
+						State:              camundav88.ElementInstanceStateEnumACTIVE,
+					}},
+					Page: camundav88.SearchQueryPageResponse{TotalItems: 10000, HasMoreTotalItems: true},
+				},
+			}, nil
+		},
+	})
+
+	page, err := svc.SearchElementsPage(context.Background(), d.ElementSearchQuery{State: "ACTIVE"}, d.ElementPageRequest{From: 100, Size: 25})
+
+	require.NoError(t, err)
+	require.Equal(t, d.ElementPageRequest{From: 100, Size: 25}, page.Request)
+	require.Equal(t, d.ProcessInstanceOverflowStateHasMore, page.OverflowState)
+	require.NotNil(t, page.ReportedTotal)
+	require.Equal(t, int64(10000), page.ReportedTotal.Count)
+	require.Equal(t, d.ElementReportedTotalKindLowerBound, page.ReportedTotal.Kind)
+}
+
 func newElementServiceTest(t *testing.T, client GenElementClient) *Service {
 	t.Helper()
 
@@ -124,4 +260,29 @@ func responseWithStatus(status int) *http.Response {
 		Status:     http.StatusText(status),
 		Request:    &http.Request{Method: http.MethodGet, URL: u},
 	}
+}
+
+func requireElementSearchFilterJSON(t *testing.T, body camundav88.SearchElementInstancesJSONRequestBody, want map[string]any, wantLimit int32) {
+	t.Helper()
+	raw, err := json.Marshal(body)
+	require.NoError(t, err)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(raw, &got))
+	filter := got["filter"].(map[string]any)
+	for name, value := range want {
+		require.Equal(t, value, filter[name], "filter %s", name)
+	}
+	page := got["page"].(map[string]any)
+	require.Equal(t, float64(wantLimit), page["limit"])
+}
+
+func requireElementSearchPageJSON(t *testing.T, body camundav88.SearchElementInstancesJSONRequestBody, wantFrom int32, wantLimit int32) {
+	t.Helper()
+	raw, err := json.Marshal(body)
+	require.NoError(t, err)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(raw, &got))
+	page := got["page"].(map[string]any)
+	require.Equal(t, float64(wantFrom), page["from"])
+	require.Equal(t, float64(wantLimit), page["limit"])
 }

@@ -49,6 +49,11 @@ func (q ElementSearchQuery) HasSearchFilters() bool {
 		q.BpmnProcessId != ""
 }
 
+// HasSearchControls reports whether the query carries paging or bounding controls.
+func (q ElementSearchQuery) HasSearchControls() bool {
+	return q.BatchSize > 0 || q.Limit > 0
+}
+
 // ElementSearchResult contains a bounded collected element search result.
 type ElementSearchResult struct {
 	Items []Element
