@@ -113,7 +113,7 @@
 
 ### Implementation for User Story 3
 
-- [x] T039 [US3] Implement compact list row formatting with exactly one incident marker, `inc!` or `inc!:<incidentKey>`, plus `s:`, optional `e:`, `pi:`, `pd:`, and `element:` tags in `cmd/cmd_views_element.go`
+- [x] T039 [US3] Implement compact list row formatting with an aligned `elementId` column, exactly one incident marker, `inc!` or `inc!:<incidentKey>`, plus `s:`, optional `e:`, `pi:`, and `pd:` tags in `cmd/cmd_views_element.go`
 - [x] T040 [US3] Implement JSON list payload, keys-only output, total-only output, and final `found: N` behavior in `cmd/cmd_views_element.go` and `cmd/get_element_search.go`
 - [x] T041 [US3] Register command contract metadata, automation support, read-only mutation metadata, examples, aliases if any, and help text in `cmd/get_element.go` and `cmd/command_contract.go`
 - [x] T042 [US3] Ensure normal human output omits request, cursor, backend target, and per-page lifecycle diagnostics in `cmd/get_element_search.go` and `cmd/cmd_views_element.go`

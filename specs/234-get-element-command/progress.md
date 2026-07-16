@@ -153,7 +153,7 @@ Started: 2026-07-16 13:27:27
 - [x] T036: Add compact human row rendering tests for active/completed elements, missing end dates, incident markers, and timestamp formatting
 - [x] T037: Add command output tests for JSON payload shape, keys-only output, total-only output, and mode conflicts
 - [x] T038: Add command contract tests for `get element` flags, output modes, examples, read-only mutation metadata, and automation support
-- [x] T039: Implement compact list row formatting with exactly one incident marker, `inc!` or `inc!:<incidentKey>`, plus `s:`, optional `e:`, `pi:`, `pd:`, and `element:` tags
+- [x] T039: Implement compact list row formatting with an aligned `elementId` column, exactly one incident marker, `inc!` or `inc!:<incidentKey>`, plus `s:`, optional `e:`, `pi:`, and `pd:` tags
 - [x] T040: Implement JSON list payload, keys-only output, total-only output, and final `found: N` behavior
 - [x] T041: Register command contract metadata, automation support, read-only mutation metadata, examples, aliases if any, and help text
 - [x] T042: Ensure normal human output omits request, cursor, backend target, and per-page lifecycle diagnostics

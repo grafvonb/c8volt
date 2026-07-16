@@ -61,12 +61,12 @@ func flatRowElementWithTimezone(item element.Element, showTimezoneOffset bool) f
 		item.ElementInstanceKey,
 		item.TenantId,
 		item.Type,
+		item.ElementId,
 		item.State,
 		prefixedElementField("s", toolx.FormatTimestamp(item.StartDate, showTimezoneOffset)),
 		prefixedElementField("e", toolx.FormatTimestamp(item.EndDate, showTimezoneOffset)),
 		prefixedElementField("pi", item.ProcessInstanceKey),
 		prefixedElementField("pd", item.ProcessDefinitionKey),
-		prefixedElementField("element", item.ElementId),
 	}
 	if marker := elementIncidentMarker(item); marker != "" {
 		parts = append(parts, marker)

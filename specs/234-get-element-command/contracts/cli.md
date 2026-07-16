@@ -64,12 +64,13 @@ Human list output uses compact aligned rows, primary key first, short tags, and 
 Required row semantics:
 
 ```text
-<elementInstanceKey> <tenantId> <type> <state> s:<startDate> [e:<endDate>] pi:<processInstanceKey> pd:<processDefinitionKey> element:<elementId> [inc!|inc!:<incidentKey>]
+<elementInstanceKey> <tenantId> <type> <elementId> <state> s:<startDate> [e:<endDate>] pi:<processInstanceKey> pd:<processDefinitionKey> [inc!|inc!:<incidentKey>]
 found: <N>
 ```
 
 Rules:
 
+- `elementId` is an aligned positional column between element type and runtime state.
 - `e:` is omitted when no end date exists.
 - `inc!` is present when `hasIncident` is true and no incident key is available.
 - `inc!:<incidentKey>` is present when `hasIncident` is true and an incident key is available.

@@ -192,8 +192,9 @@ func TestGetElementCommand_SearchHumanOutput(t *testing.T) {
 	require.Equal(t, []string{"POST /v2/element-instances/search"}, requests)
 	require.Contains(t, output, "2251799813689002")
 	require.Contains(t, output, "SERVICE_TASK")
+	require.Contains(t, output, "SERVICE_TASK ship-order ACTIVE")
 	require.Contains(t, output, "pi:2251799813688001")
-	require.Contains(t, output, "element:ship-order")
+	require.NotContains(t, output, "element:ship-order")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -322,9 +323,10 @@ func TestGetElementCommand_KeyedLookupHumanOutput(t *testing.T) {
 	require.Equal(t, []string{"GET /v2/element-instances/2251799813689002"}, requests)
 	require.Contains(t, string(output), "2251799813689002")
 	require.Contains(t, string(output), "SERVICE_TASK")
+	require.Contains(t, string(output), "SERVICE_TASK ship-order ACTIVE")
 	require.Contains(t, string(output), "s:2026-07-15T10:12:01.000")
 	require.Contains(t, string(output), "pi:2251799813688001")
-	require.Contains(t, string(output), "element:ship-order")
+	require.NotContains(t, string(output), "element:ship-order")
 	require.Contains(t, string(output), "inc!:2251799813687777")
 	require.NotContains(t, string(output), "found:")
 }
