@@ -513,6 +513,33 @@ func TestCommandCapabilityForCommand_ProcessInstanceVariableFlags(t *testing.T) 
 	})
 }
 
+// TestCommandCapabilityForCommand_ProcessInstanceElementFlagAndContract verifies element enrichment is discoverable as read-only command metadata.
+func TestCommandCapabilityForCommand_ProcessInstanceElementFlagAndContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(getProcessInstanceCmd)
+
+	require.Equal(t, "get process-instance", capability.Path)
+	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.Aliases, "pi")
+	require.Contains(t, capability.Aliases, "pis")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-elements",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "include runtime element instances for keyed or list/search process-instance output",
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
+	require.Contains(t, getProcessInstanceCmd.Long, "Use --with-elements to include runtime element instances under matching process-instance rows.")
+	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get pi --key <process-instance-key> --with-elements")
+}
+
 func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)

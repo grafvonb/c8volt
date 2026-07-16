@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/incident"
@@ -18,6 +19,26 @@ type processInstanceActivityItem struct {
 	Incidents     []incident.ProcessInstanceIncidentDetail `json:"incidents,omitempty"`
 	Elements      []process.ProcessInstanceElement         `json:"elements,omitempty"`
 	ShowIncidents bool                                     `json:"-"`
+}
+
+// MarshalJSON includes requested-but-empty enrichment sections as empty arrays
+// while leaving unrequested sections absent from the payload.
+func (it processInstanceActivityItem) MarshalJSON() ([]byte, error) {
+	payload := map[string]any{"item": it.Item}
+	if it.Variables != nil {
+		payload["variables"] = it.Variables
+	}
+	if it.ShowIncidents {
+		if it.Incidents == nil {
+			payload["incidents"] = []incident.ProcessInstanceIncidentDetail{}
+		} else {
+			payload["incidents"] = it.Incidents
+		}
+	}
+	if it.Elements != nil {
+		payload["elements"] = it.Elements
+	}
+	return json.Marshal(payload)
 }
 
 type processInstanceActivityInstances struct {
@@ -204,25 +225,87 @@ func elementEnrichedProcessInstancesView(cmd *cobra.Command, resp process.Elemen
 	return processInstanceActivityInstancesView(cmd, activityFromElementEnriched(resp))
 }
 
-func mergeIncidentAndVariableActivity(incidents process.IncidentEnrichedProcessInstances, variables process.VariableEnrichedProcessInstances) processInstanceActivityInstances {
-	varsByKey := make(map[string][]process.ProcessInstanceVariable, len(variables.Items))
-	for _, it := range variables.Items {
-		varsByKey[it.Item.Key] = it.Variables
+type processInstanceActivityEnrichments struct {
+	Incidents *process.IncidentEnrichedProcessInstances
+	Variables *process.VariableEnrichedProcessInstances
+	Elements  *process.ElementEnrichedProcessInstances
+}
+
+// mergeProcessInstanceActivity preserves the selected process-instance order
+// while attaching whichever enrichment sections the command requested.
+func mergeProcessInstanceActivity(pis process.ProcessInstances, enrichments processInstanceActivityEnrichments) processInstanceActivityInstances {
+	incidentsByKey := map[string][]incident.ProcessInstanceIncidentDetail{}
+	if enrichments.Incidents != nil {
+		incidentsByKey = make(map[string][]incident.ProcessInstanceIncidentDetail, len(enrichments.Incidents.Items))
+		for _, it := range enrichments.Incidents.Items {
+			incidentsByKey[it.Item.Key] = it.Incidents
+		}
 	}
 
-	items := make([]processInstanceActivityItem, 0, len(incidents.Items))
-	for _, it := range incidents.Items {
+	varsByKey := map[string][]process.ProcessInstanceVariable{}
+	if enrichments.Variables != nil {
+		varsByKey = make(map[string][]process.ProcessInstanceVariable, len(enrichments.Variables.Items))
+		for _, it := range enrichments.Variables.Items {
+			varsByKey[it.Item.Key] = it.Variables
+		}
+	}
+
+	elementsByKey := map[string][]process.ProcessInstanceElement{}
+	if enrichments.Elements != nil {
+		elementsByKey = make(map[string][]process.ProcessInstanceElement, len(enrichments.Elements.Items))
+		for _, it := range enrichments.Elements.Items {
+			elementsByKey[it.Item.Key] = it.Elements
+		}
+	}
+
+	items := make([]processInstanceActivityItem, 0, len(pis.Items))
+	for _, item := range pis.Items {
+		var variables []process.ProcessInstanceVariable
+		if enrichments.Variables != nil {
+			variables = varsByKey[item.Key]
+			if variables == nil {
+				variables = []process.ProcessInstanceVariable{}
+			}
+		}
+		var incidents []incident.ProcessInstanceIncidentDetail
+		if enrichments.Incidents != nil {
+			incidents = incidentsByKey[item.Key]
+			if incidents == nil {
+				incidents = []incident.ProcessInstanceIncidentDetail{}
+			}
+		}
+		var elements []process.ProcessInstanceElement
+		if enrichments.Elements != nil {
+			elements = elementsByKey[item.Key]
+			if elements == nil {
+				elements = []process.ProcessInstanceElement{}
+			}
+		}
 		items = append(items, processInstanceActivityItem{
-			Item:          it.Item,
-			Variables:     varsByKey[it.Item.Key],
-			Incidents:     it.Incidents,
-			ShowIncidents: true,
+			Item:          item,
+			Variables:     variables,
+			Incidents:     incidents,
+			Elements:      elements,
+			ShowIncidents: enrichments.Incidents != nil,
 		})
 	}
 	return processInstanceActivityInstances{
-		Total: int32(len(items)),
+		Total: pis.Total,
 		Items: items,
 	}
+}
+
+// mergeIncidentAndVariableActivity keeps the existing two-section call sites
+// and tests on the general merger used by combined element enrichment.
+func mergeIncidentAndVariableActivity(incidents process.IncidentEnrichedProcessInstances, variables process.VariableEnrichedProcessInstances) processInstanceActivityInstances {
+	pis := process.ProcessInstances{Total: incidents.Total, Items: make([]process.ProcessInstance, 0, len(incidents.Items))}
+	for _, it := range incidents.Items {
+		pis.Items = append(pis.Items, it.Item)
+	}
+	return mergeProcessInstanceActivity(pis, processInstanceActivityEnrichments{
+		Incidents: &incidents,
+		Variables: &variables,
+	})
 }
 
 func formatProcessInstanceElementRows(elements []process.ProcessInstanceElement, showTimezoneOffset bool) []string {

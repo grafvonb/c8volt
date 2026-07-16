@@ -104,19 +104,19 @@
 
 ### Tests for User Story 3
 
-- [ ] T033 [P] [US3] Add combined human output tests for `vars:`, `incidents:`, and `elements:` section order in `cmd/cmd_views_get_test.go`
-- [ ] T034 [P] [US3] Add combined JSON payload tests for `variables`, `incidents`, and `elements` fields in `cmd/cmd_views_get_test.go`
-- [ ] T035 [P] [US3] Add command integration tests for keyed combined enrichment and bounded list/search combined enrichment in `cmd/get_processinstance_test.go`
-- [ ] T036 [P] [US3] Add command contract tests for the `--with-elements` flag, help metadata, output modes, examples, and read-only capability in `cmd/command_contract_test.go`
+- [x] T033 [P] [US3] Add combined human output tests for `vars:`, `incidents:`, and `elements:` section order in `cmd/cmd_views_get_test.go`
+- [x] T034 [P] [US3] Add combined JSON payload tests for `variables`, `incidents`, and `elements` fields in `cmd/cmd_views_get_test.go`
+- [x] T035 [P] [US3] Add command integration tests for keyed combined enrichment and bounded list/search combined enrichment in `cmd/get_processinstance_test.go`
+- [x] T036 [P] [US3] Add command contract tests for the `--with-elements` flag, help metadata, output modes, examples, and read-only capability in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T037 [US3] Extend process-instance activity view models with attached elements for human and JSON output in `cmd/cmd_views_processinstance_activity.go`
-- [ ] T038 [US3] Replace incident/variable-only merge logic with combined activity merge support for variables, incidents, and elements in `cmd/cmd_views_processinstance_activity.go`
-- [ ] T039 [US3] Orchestrate all requested enrichment combinations in keyed mode without duplicate facade calls in `cmd/get_processinstance.go`
-- [ ] T040 [US3] Orchestrate all requested enrichment combinations in list/search mode without duplicate facade calls in `cmd/get_processinstance.go` and `cmd/get_processinstance_search.go`
-- [ ] T041 [US3] Ensure JSON output uses the shared command envelope and includes attached element fields from `c8volt/process/model.go` in `cmd/cmd_views_processinstance_activity.go`
-- [ ] T042 [US3] Keep keys-only invalid for element enrichment while preserving existing keys-only behavior without `--with-elements` in `cmd/get_processinstance_validation.go`
+- [x] T037 [US3] Extend process-instance activity view models with attached elements for human and JSON output in `cmd/cmd_views_processinstance_activity.go`
+- [x] T038 [US3] Replace incident/variable-only merge logic with combined activity merge support for variables, incidents, and elements in `cmd/cmd_views_processinstance_activity.go`
+- [x] T039 [US3] Orchestrate all requested enrichment combinations in keyed mode without duplicate facade calls in `cmd/get_processinstance.go`
+- [x] T040 [US3] Orchestrate all requested enrichment combinations in list/search mode without duplicate facade calls in `cmd/get_processinstance.go` and `cmd/get_processinstance_search.go`
+- [x] T041 [US3] Ensure JSON output uses the shared command envelope and includes attached element fields from `c8volt/process/model.go` in `cmd/cmd_views_processinstance_activity.go`
+- [x] T042 [US3] Keep keys-only invalid for element enrichment while preserving existing keys-only behavior without `--with-elements` in `cmd/get_processinstance_validation.go`
 
 **Checkpoint**: All enrichment combinations are independently functional in human and JSON output.
 

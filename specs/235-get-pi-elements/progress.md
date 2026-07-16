@@ -112,3 +112,33 @@ Started: 2026-07-16 17:20:23
 **Learnings**:
 - List/search element enrichment belongs after process-instance filtering/limiting in both aggregate and incremental command paths.
 ---
+---
+## Iteration 5 - 2026-07-16 17:56
+**Work Unit**: Phase 5: User Story 3 - Combine Elements With Existing Enrichment
+**Tasks Completed**:
+- [x] T033: Add combined human output tests for vars/incidents/elements section order
+- [x] T034: Add combined JSON payload tests for variables, incidents, and elements fields
+- [x] T035: Add keyed and bounded list/search command integration tests for combined enrichment
+- [x] T036: Add command contract tests for the `--with-elements` flag and read-only metadata
+- [x] T037: Extend process-instance activity view models with attached elements for human and JSON output
+- [x] T038: Replace incident/variable-only merge logic with combined activity merge support
+- [x] T039: Orchestrate keyed combined enrichment without duplicate facade calls
+- [x] T040: Orchestrate list/search combined enrichment without duplicate facade calls
+- [x] T041: Ensure shared-envelope JSON includes combined attached element fields
+- [x] T042: Preserve keys-only validation for element enrichment
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_get_test.go
+- cmd/cmd_views_processinstance_activity.go
+- cmd/command_contract_test.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_enrichment.go
+- cmd/get_processinstance_search.go
+- cmd/get_processinstance_test.go
+- specs/235-get-pi-elements/tasks.md
+- specs/235-get-pi-elements/ralph-memory.md
+- specs/235-get-pi-elements/progress.md
+**Learnings**:
+- Combined enrichment should flow through one shared activity model, and requested empty JSON sections must stay explicit for automation compatibility.
+---

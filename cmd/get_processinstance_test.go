@@ -1200,6 +1200,59 @@ func TestGetProcessInstanceListWithVarsAndIncidents_HumanOutputShowsGroupedSecti
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
 
+// TestGetProcessInstanceListWithVarsIncidentsAndElements_HumanOutputShowsGroupedSections verifies bounded search combines each requested enrichment once.
+func TestGetProcessInstanceListWithVarsIncidentsAndElements_HumanOutputShowsGroupedSections(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-07-15T10:12:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"incident-123","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/variables/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"name":"hasIncident","value":"true","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/element-instances/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"elementInstanceKey":"element-1","elementId":"task-a","type":"SERVICE_TASK","state":"ACTIVE","startDate":"2026-07-15T10:12:01Z","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":true,"incidentKey":"incident-123"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "process-instance",
+		"--state", "active",
+		"--limit", "1",
+		"--with-vars",
+		"--with-incidents",
+		"--with-elements",
+	)
+
+	require.Equal(t, []string{
+		"POST /v2/process-instances/search",
+		"POST /v2/process-instances/123/incidents/search",
+		"POST /v2/variables/search",
+		"POST /v2/element-instances/search",
+	}, requests)
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "├─ vars:\n│  └─ hasIncident=true")
+	require.Contains(t, output, "├─ incidents:\n│  └─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a e:task-a ei:element-123 m:No retries left")
+	require.Contains(t, output, "└─ elements:\n   └─ element-1 SERVICE_TASK task-a ACTIVE s:2026-07-15T10:12:01.000 inc!:incident-123")
+	require.Contains(t, output, "found: 1")
+	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "├─ incidents:"))
+	require.Less(t, strings.Index(output, "├─ incidents:"), strings.Index(output, "└─ elements:"))
+}
+
 // TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines verifies list/search incident enrichment keeps incidents under their owning rows.
 func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines(t *testing.T) {
 	var requests []string
@@ -2459,6 +2512,104 @@ func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(
 	require.Contains(t, output, "   └─ incident-123 IO_MAPPING_ERROR ACTIVE j:n/a e:task-a ei:element-123 m:No retries left")
 	require.Contains(t, output, "found: 1")
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
+}
+
+// TestGetProcessInstanceWithVarsIncidentsAndElements_HumanOutputShowsGroupedSections verifies keyed lookup combines each requested enrichment once.
+func TestGetProcessInstanceWithVarsIncidentsAndElements_HumanOutputShowsGroupedSections(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-07-15T10:12:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"No retries left","errorType":"IO_MAPPING_ERROR","incidentKey":"incident-123","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/variables/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"name":"businessKey","value":"2234809392328","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/element-instances/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"elementInstanceKey":"element-1","elementId":"task-a","type":"SERVICE_TASK","state":"ACTIVE","startDate":"2026-07-15T10:12:01Z","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":true,"incidentKey":"incident-123"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "process-instance",
+		"--key", "123",
+		"--with-vars",
+		"--with-incidents",
+		"--with-elements",
+	)
+
+	require.Equal(t, []string{
+		"GET /v2/process-instances/123",
+		"POST /v2/process-instances/123/incidents/search",
+		"POST /v2/variables/search",
+		"POST /v2/element-instances/search",
+	}, requests)
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "├─ vars:\n│  └─ businessKey=2234809392328")
+	require.Contains(t, output, "├─ incidents:\n│  └─ incident-123 IO_MAPPING_ERROR ACTIVE j:n/a e:task-a ei:element-123 m:No retries left")
+	require.Contains(t, output, "└─ elements:\n   └─ element-1 SERVICE_TASK task-a ACTIVE s:2026-07-15T10:12:01.000 inc!:incident-123")
+	require.Contains(t, output, "found: 1")
+	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "├─ incidents:"))
+	require.Less(t, strings.Index(output, "├─ incidents:"), strings.Index(output, "└─ elements:"))
+}
+
+// TestGetProcessInstanceWithVarsIncidentsAndElements_JSONOutputShowsCombinedPayload verifies keyed JSON includes all enrichment fields.
+func TestGetProcessInstanceWithVarsIncidentsAndElements_JSONOutputShowsCombinedPayload(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-07-15T10:12:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"errorMessage":"No retries left","errorType":"IO_MAPPING_ERROR","incidentKey":"incident-123","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/variables/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"name":"businessKey","value":"2234809392328","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/element-instances/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"elementInstanceKey":"element-1","elementId":"task-a","elementName":"Task A","type":"SERVICE_TASK","state":"ACTIVE","startDate":"2026-07-15T10:12:01Z","processInstanceKey":"123","processDefinitionId":"demo","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"--json",
+		"get", "process-instance",
+		"--key", "123",
+		"--with-vars",
+		"--with-incidents",
+		"--with-elements",
+	)
+
+	payload := requireProcessInstanceElementJSONPayload(t, output)
+	require.Equal(t, float64(1), payload["total"])
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	require.Equal(t, "123", requireJSONObject(t, first["item"])["key"])
+	require.Equal(t, "businessKey", requireJSONObject(t, requireJSONItems(t, first["variables"], 1)[0])["name"])
+	require.Equal(t, "incident-123", requireJSONObject(t, requireJSONItems(t, first["incidents"], 1)[0])["incidentKey"])
+	require.Equal(t, "element-1", requireJSONObject(t, requireJSONItems(t, first["elements"], 1)[0])["elementInstanceKey"])
 }
 
 // JSON enrichment keeps variable metadata stable for automation even when compact formatting changes.

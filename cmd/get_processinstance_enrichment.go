@@ -73,3 +73,37 @@ func enrichProcessInstancesWithElementActivityOptions(cmd *cobra.Command, cli pr
 	defer stopActivity()
 	return cli.EnrichProcessInstancesWithElements(cmd.Context(), pis, opts...)
 }
+
+// collectRequestedProcessInstanceActivity builds the shared activity view model
+// by invoking each requested enrichment facade exactly once.
+func collectRequestedProcessInstanceActivity(cmd *cobra.Command, cli process.API, pis process.ProcessInstances) (processInstanceActivityInstances, error) {
+	return collectRequestedProcessInstanceActivityOptions(cmd, cli, pis, collectOptions(), collectIncidentEnrichmentOptions())
+}
+
+// collectRequestedProcessInstanceActivityOptions lets explicit-key callers
+// preserve admin-input options while sharing combined enrichment orchestration.
+func collectRequestedProcessInstanceActivityOptions(cmd *cobra.Command, cli process.API, pis process.ProcessInstances, generalOpts []options.FacadeOption, incidentOpts []options.FacadeOption) (processInstanceActivityInstances, error) {
+	enrichments := processInstanceActivityEnrichments{}
+	if flagGetPIWithIncidents {
+		incidentEnriched, err := enrichProcessInstancesWithIncidentActivityOptions(cmd, cli, pis, incidentOpts)
+		if err != nil {
+			return processInstanceActivityInstances{}, fmt.Errorf("get process instance incidents: %w", err)
+		}
+		enrichments.Incidents = &incidentEnriched
+	}
+	if flagGetPIWithVars {
+		variableEnriched, err := enrichProcessInstancesWithVariableActivityOptions(cmd, cli, pis, generalOpts)
+		if err != nil {
+			return processInstanceActivityInstances{}, fmt.Errorf("get process instance variables: %w", err)
+		}
+		enrichments.Variables = &variableEnriched
+	}
+	if flagGetPIWithElements {
+		elementEnriched, err := enrichProcessInstancesWithElementActivityOptions(cmd, cli, pis, generalOpts)
+		if err != nil {
+			return processInstanceActivityInstances{}, fmt.Errorf("get process instance elements: %w", err)
+		}
+		enrichments.Elements = &elementEnriched
+	}
+	return mergeProcessInstanceActivity(pis, enrichments), nil
+}

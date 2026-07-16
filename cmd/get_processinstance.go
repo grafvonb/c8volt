@@ -190,47 +190,13 @@ var getProcessInstanceCmd = &cobra.Command{
 				}
 				fail(msg)
 			}
-			if flagGetPIWithIncidents && flagGetPIWithVars {
-				incidentEnriched, err := enrichProcessInstancesWithIncidentActivityOptions(cmd, cli, pis, adminInputIncidentOpts)
+			if flagGetPIWithIncidents || flagGetPIWithVars || flagGetPIWithElements {
+				activity, err := collectRequestedProcessInstanceActivityOptions(cmd, cli, pis, adminInputOpts, adminInputIncidentOpts)
 				if err != nil {
-					fail(fmt.Errorf("get process instance incidents: %w", err))
+					fail(err)
 				}
-				variableEnriched, err := enrichProcessInstancesWithVariableActivityOptions(cmd, cli, pis, adminInputOpts)
-				if err != nil {
-					fail(fmt.Errorf("get process instance variables: %w", err))
-				}
-				if err := processInstanceActivityInstancesView(cmd, mergeIncidentAndVariableActivity(incidentEnriched, variableEnriched)); err != nil {
-					fail(fmt.Errorf("render process instances with variables and incidents: %w", err))
-				}
-				return
-			}
-			if flagGetPIWithIncidents {
-				enriched, err := enrichProcessInstancesWithIncidentActivityOptions(cmd, cli, pis, adminInputIncidentOpts)
-				if err != nil {
-					fail(fmt.Errorf("get process instance incidents: %w", err))
-				}
-				if err := incidentEnrichedProcessInstancesView(cmd, enriched); err != nil {
-					fail(fmt.Errorf("render process instances with incidents: %w", err))
-				}
-				return
-			}
-			if flagGetPIWithVars {
-				enriched, err := enrichProcessInstancesWithVariableActivityOptions(cmd, cli, pis, adminInputOpts)
-				if err != nil {
-					fail(fmt.Errorf("get process instance variables: %w", err))
-				}
-				if err := variableEnrichedProcessInstancesView(cmd, enriched); err != nil {
-					fail(fmt.Errorf("render process instances with variables: %w", err))
-				}
-				return
-			}
-			if flagGetPIWithElements {
-				enriched, err := enrichProcessInstancesWithElementActivityOptions(cmd, cli, pis, adminInputOpts)
-				if err != nil {
-					fail(fmt.Errorf("get process instance elements: %w", err))
-				}
-				if err := elementEnrichedProcessInstancesView(cmd, enriched); err != nil {
-					fail(fmt.Errorf("render process instances with elements: %w", err))
+				if err := processInstanceActivityInstancesView(cmd, activity); err != nil {
+					fail(fmt.Errorf("render enriched process instances: %w", err))
 				}
 				return
 			}
@@ -275,47 +241,13 @@ var getProcessInstanceCmd = &cobra.Command{
 				return
 			}
 		}
-		if flagGetPIWithIncidents && flagGetPIWithVars {
-			incidentEnriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, pis)
+		if flagGetPIWithIncidents || flagGetPIWithVars || flagGetPIWithElements {
+			activity, err := collectRequestedProcessInstanceActivity(cmd, cli, pis)
 			if err != nil {
-				fail(fmt.Errorf("get process instance incidents: %w", err))
+				fail(err)
 			}
-			variableEnriched, err := enrichProcessInstancesWithVariableActivity(cmd, cli, pis)
-			if err != nil {
-				fail(fmt.Errorf("get process instance variables: %w", err))
-			}
-			if err := processInstanceActivityInstancesView(cmd, mergeIncidentAndVariableActivity(incidentEnriched, variableEnriched)); err != nil {
-				fail(fmt.Errorf("render process instances with variables and incidents: %w", err))
-			}
-			return
-		}
-		if flagGetPIWithIncidents {
-			enriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, pis)
-			if err != nil {
-				fail(fmt.Errorf("get process instance incidents: %w", err))
-			}
-			if err := incidentEnrichedProcessInstancesView(cmd, enriched); err != nil {
-				fail(fmt.Errorf("render process instances with incidents: %w", err))
-			}
-			return
-		}
-		if flagGetPIWithVars {
-			enriched, err := enrichProcessInstancesWithVariableActivity(cmd, cli, pis)
-			if err != nil {
-				fail(fmt.Errorf("get process instance variables: %w", err))
-			}
-			if err := variableEnrichedProcessInstancesView(cmd, enriched); err != nil {
-				fail(fmt.Errorf("render process instances with variables: %w", err))
-			}
-			return
-		}
-		if flagGetPIWithElements {
-			enriched, err := enrichProcessInstancesWithElementActivity(cmd, cli, pis)
-			if err != nil {
-				fail(fmt.Errorf("get process instance elements: %w", err))
-			}
-			if err := elementEnrichedProcessInstancesView(cmd, enriched); err != nil {
-				fail(fmt.Errorf("render process instances with elements: %w", err))
+			if err := processInstanceActivityInstancesView(cmd, activity); err != nil {
+				fail(fmt.Errorf("render enriched process instances: %w", err))
 			}
 			return
 		}

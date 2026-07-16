@@ -637,6 +637,70 @@ func TestProcessInstanceActivityInstancesView_HumanRowsGroupVarsBeforeIncidents(
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
 
+// TestProcessInstanceActivityInstancesView_HumanRowsGroupVarsIncidentsAndElements verifies combined sections stay in contract order.
+func TestProcessInstanceActivityInstancesView_HumanRowsGroupVarsIncidentsAndElements(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = false
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := processInstanceActivityInstancesView(cmd, processInstanceActivityInstances{
+		Total: 1,
+		Items: []processInstanceActivityItem{{
+			Item: process.ProcessInstance{
+				Key:            "123",
+				TenantId:       "tenant",
+				BpmnProcessId:  "demo",
+				ProcessVersion: 3,
+				State:          process.StateActive,
+				StartDate:      "2026-07-15T10:12:00Z",
+				Incident:       true,
+			},
+			Variables: []process.ProcessInstanceVariable{{
+				Name:               "businessKey",
+				Value:              "2234809392328",
+				ProcessInstanceKey: "123",
+				ScopeKey:           "123",
+			}},
+			Incidents: []incident.ProcessInstanceIncidentDetail{{
+				IncidentKey:        "incident-123",
+				ProcessInstanceKey: "123",
+				ElementId:          "task-a",
+				ElementInstanceKey: "element-123",
+				State:              "ACTIVE",
+				ErrorType:          "IO_MAPPING_ERROR",
+				ErrorMessage:       "failed",
+			}},
+			Elements: []process.ProcessInstanceElement{{
+				ElementInstanceKey: "element-1",
+				ElementId:          "task-a",
+				Type:               "SERVICE_TASK",
+				State:              "ACTIVE",
+				StartDate:          "2026-07-15T10:12:01Z",
+				ProcessInstanceKey: "123",
+			}},
+			ShowIncidents: true,
+		}},
+	})
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "├─ vars:\n│  └─ businessKey=2234809392328")
+	require.Contains(t, output, "├─ incidents:\n│  └─ incident-123 IO_MAPPING_ERROR ACTIVE j:n/a e:task-a ei:element-123 m:failed")
+	require.Contains(t, output, "└─ elements:\n   └─ element-1 SERVICE_TASK task-a ACTIVE s:2026-07-15T10:12:01.000")
+	require.Equal(t, 1, strings.Count(output, "vars:"))
+	require.Equal(t, 1, strings.Count(output, "incidents:"))
+	require.Equal(t, 1, strings.Count(output, "elements:"))
+	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "├─ incidents:"))
+	require.Less(t, strings.Index(output, "├─ incidents:"), strings.Index(output, "└─ elements:"))
+}
+
 func TestProcessInstanceActivityInstancesView_HumanRowsRenderElements(t *testing.T) {
 	prevJSON := flagViewAsJson
 	flagViewAsJson = false
@@ -712,6 +776,65 @@ func TestProcessInstanceActivityInstancesView_HumanRowsRenderRepeatedElementsSep
 	require.Contains(t, output, "element-loop-1 SERVICE_TASK retry-task COMPLETED")
 	require.Contains(t, output, "element-loop-2 SERVICE_TASK retry-task ACTIVE")
 	require.Equal(t, 2, strings.Count(output, "retry-task"))
+}
+
+// TestProcessInstanceActivityInstancesView_JSONIncludesCombinedEnrichmentFields verifies one payload item can carry all enrichment arrays.
+func TestProcessInstanceActivityInstancesView_JSONIncludesCombinedEnrichmentFields(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = true
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	setContractSupport(cmd, ContractSupportFull)
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := processInstanceActivityInstancesView(cmd, processInstanceActivityInstances{
+		Total: 1,
+		Items: []processInstanceActivityItem{{
+			Item: process.ProcessInstance{
+				Key:       "123",
+				StartDate: "2026-07-15T10:12:00Z",
+			},
+			Variables: []process.ProcessInstanceVariable{{
+				Name:               "businessKey",
+				Value:              `"C-123"`,
+				VariableKey:        "901",
+				ProcessInstanceKey: "123",
+				ScopeKey:           "123",
+			}},
+			Incidents: []incident.ProcessInstanceIncidentDetail{{
+				IncidentKey:        "incident-123",
+				ProcessInstanceKey: "123",
+				ErrorType:          "IO_MAPPING_ERROR",
+				State:              "ACTIVE",
+			}},
+			Elements: []process.ProcessInstanceElement{{
+				ElementInstanceKey: "element-1",
+				ElementId:          "task-a",
+				ElementName:        "Task A",
+				Type:               "SERVICE_TASK",
+				State:              "ACTIVE",
+				StartDate:          "2026-07-15T10:12:01Z",
+				ProcessInstanceKey: "123",
+			}},
+			ShowIncidents: true,
+		}},
+	})
+
+	require.NoError(t, err)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	payload := requireJSONObject(t, envelope["payload"])
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	require.Equal(t, "123", requireJSONObject(t, first["item"])["key"])
+	require.Equal(t, "businessKey", requireJSONObject(t, requireJSONItems(t, first["variables"], 1)[0])["name"])
+	require.Equal(t, "incident-123", requireJSONObject(t, requireJSONItems(t, first["incidents"], 1)[0])["incidentKey"])
+	require.Equal(t, "element-1", requireJSONObject(t, requireJSONItems(t, first["elements"], 1)[0])["elementInstanceKey"])
 }
 
 func TestProcessInstanceActivityInstancesView_JSONIncludesElements(t *testing.T) {
