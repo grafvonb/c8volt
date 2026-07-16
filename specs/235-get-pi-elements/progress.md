@@ -142,3 +142,31 @@ Started: 2026-07-16 17:20:23
 **Learnings**:
 - Combined enrichment should flow through one shared activity model, and requested empty JSON sections must stay explicit for automation compatibility.
 ---
+---
+## Iteration 6 - 2026-07-16 18:08
+**Work Unit**: Phase 6: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T043: Update README process-instance examples and behavior notes for `--with-elements`
+- [x] T044: Update docs generator or metadata expectations for `--with-elements` command documentation
+- [x] T045: Update quickstart examples for element incident marker wording
+- [x] T046: Run `gofmt` on touched Go files
+- [x] T047: Run targeted service and facade validation for element enrichment tests
+- [x] T048: Run targeted command validation for element enrichment tests
+- [x] T049: Run generated documentation validation and regenerate CLI docs
+- [x] T050: Run full repository validation with `make test`
+- [x] T051: Verify all manual quickstart scenarios against `/tmp/c8volt-get-pi-elements`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/resource/client_test.go
+- docs/cli/c8volt_get_process-instance.md
+- docs/index.md
+- docsgen/main_test.go
+- specs/235-get-pi-elements/quickstart.md
+- specs/235-get-pi-elements/tasks.md
+- specs/235-get-pi-elements/ralph-memory.md
+- specs/235-get-pi-elements/progress.md
+**Learnings**:
+- Full validation surfaced a second `process.API` test double in `c8volt/resource`; durable detail is recorded in Ralph memory.
+---

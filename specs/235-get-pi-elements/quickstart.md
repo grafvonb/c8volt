@@ -25,7 +25,7 @@ Expected:
 
 - One process-instance row is printed.
 - An `elements:` section appears below the process instance when matching runtime elements exist.
-- Element rows use `<elementInstanceKey> <type> <elementId> <state> s:<startDate> [e:<endDate>] [inc!]`.
+- Element rows use `<elementInstanceKey> <type> <elementId> <state> s:<startDate> [e:<endDate>] [inc!|inc!:<incidentKey>]`.
 
 ### 2. Search process instances with elements
 

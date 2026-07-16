@@ -676,6 +676,10 @@ func TestGeneratedGetProcessInstanceDocsDocumentVariableSearch(t *testing.T) {
 		"./c8volt get pi --var 'status.$in=[\"approved\",\"pending\"]' --limit 5",
 		"--var-exists stringArray",
 		"--var-like stringArray",
+		"Use --with-elements to include runtime element instances under matching process-instance rows.",
+		"./c8volt get pi --key <process-instance-key> --with-elements",
+		"--with-elements",
+		"include runtime element instances for keyed or list/search process-instance output",
 	} {
 		if !strings.Contains(piDoc, want) {
 			t.Fatalf("expected generated get process-instance docs to contain %q, got %q", want, piDoc)

@@ -126,15 +126,15 @@
 
 **Purpose**: Documentation, generated artifacts, validation, and cleanup across all user stories.
 
-- [ ] T043 [P] Update README process-instance examples and behavior notes for `--with-elements` in `README.md`
-- [ ] T044 [P] Update docs generator or metadata expectations for `--with-elements` command documentation in `docsgen/main_test.go` and `cmd/command_contract_test.go`
-- [ ] T045 [P] Update quickstart examples if implementation output wording changes in `specs/235-get-pi-elements/quickstart.md`
-- [ ] T046 Run `gofmt` on touched Go files in `cmd/`, `c8volt/process/`, `c8volt/client.go`, `internal/domain/`, and `internal/services/processinstance/`
-- [ ] T047 Run targeted service and facade validation for element enrichment tests in `internal/services/processinstance/enrichment_test.go` and `c8volt/process/client_test.go`
-- [ ] T048 Run targeted command validation for element enrichment tests in `cmd/get_processinstance_test.go`, `cmd/cmd_views_get_test.go`, and `cmd/command_contract_test.go`
-- [ ] T049 Run generated documentation validation and regenerate CLI docs with `docsgen/main_test.go` and `Makefile`
-- [ ] T050 Run full repository validation with `make test` using `Makefile`
-- [ ] T051 Verify all manual scenarios from `specs/235-get-pi-elements/quickstart.md` against the built binary `/tmp/c8volt-get-pi-elements`
+- [x] T043 [P] Update README process-instance examples and behavior notes for `--with-elements` in `README.md`
+- [x] T044 [P] Update docs generator or metadata expectations for `--with-elements` command documentation in `docsgen/main_test.go` and `cmd/command_contract_test.go`
+- [x] T045 [P] Update quickstart examples if implementation output wording changes in `specs/235-get-pi-elements/quickstart.md`
+- [x] T046 Run `gofmt` on touched Go files in `cmd/`, `c8volt/process/`, `c8volt/client.go`, `internal/domain/`, and `internal/services/processinstance/`
+- [x] T047 Run targeted service and facade validation for element enrichment tests in `internal/services/processinstance/enrichment_test.go` and `c8volt/process/client_test.go`
+- [x] T048 Run targeted command validation for element enrichment tests in `cmd/get_processinstance_test.go`, `cmd/cmd_views_get_test.go`, and `cmd/command_contract_test.go`
+- [x] T049 Run generated documentation validation and regenerate CLI docs with `docsgen/main_test.go` and `Makefile`
+- [x] T050 Run full repository validation with `make test` using `Makefile`
+- [x] T051 Verify all manual scenarios from `specs/235-get-pi-elements/quickstart.md` against the built binary `/tmp/c8volt-get-pi-elements`
 
 ---
 

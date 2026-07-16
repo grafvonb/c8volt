@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.1.0-alpha2-20-g06f9119f-dirty`, commit `06f9119f`, built `2026-07-16T13:24:13Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v4.1.0-alpha2-29-g641ebed5-dirty`, commit `641ebed5`, built `2026-07-16T16:01:13Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -384,6 +384,10 @@ Direct `get pd --bpmn-process-id` and `delete pd --bpmn-process-id` also validat
 ./c8volt get pi --key <process-instance-key> --with-vars --with-incidents
 ./c8volt get pi --key <process-instance-key> --with-vars --var-value-limit 120
 ./c8volt get pi --key <process-instance-key> --with-vars --json
+./c8volt get pi --state active --with-elements --limit 5
+./c8volt get pi --key <process-instance-key> --with-elements
+./c8volt get pi --key <process-instance-key> --with-vars --with-incidents --with-elements
+./c8volt get pi --key <process-instance-key> --with-elements --json
 ./c8volt get pi --roots-only --limit 5
 ./c8volt get pi --children-only --limit 5
 ./c8volt get pi --orphan-children-only --limit 5
@@ -399,6 +403,8 @@ Use `--json` when a script needs stable fields and `--keys-only` when piping pro
 For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` output. List/search `--incidents-only` uses the active `hasIncident` process-instance marker; use `--direct-incidents-only` when the result set should be narrowed by actually loaded direct incidents instead. Direct active incident keys, states, and messages appear beneath the matching process-instance row. If the row only tells you there is an incident somewhere in the tree, jump to `walk pi --key <key> --with-incidents`. Add `--incident-error-type <type>` to match a Camunda incident error type case-insensitively, and `--incident-error-message <text>` to match an error-message substring case-insensitively. In list/search mode, those incident detail filters refine `--direct-incidents-only`; in keyed mode, they refine displayed incidents under `--with-incidents`. Use `get incident --total` when you need a direct count by incident filters. Add `--incident-message-limit <chars>` for terminal-friendly output; JSON keeps full messages. For keyed inspection of incident history, add `--incident-state pending`, `resolved`, `migrated`, `unknown`, or `all`.
 
 When incident output includes `jobKey`, use `get job --key <job-key>` for direct job details. To remediate job retries or timeout, preview with `update job --dry-run`, then submit with `--auto-confirm` or `--automation`. To resolve the incident itself, preview with `resolve incident --dry-run` or let `resolve pi --dry-run` discover the active incident set for a process instance first.
+
+For runtime execution context, add `--with-elements` to keyed or list/search `get pi` output. Element rows appear under an `elements:` section for each selected process instance and include the element instance key, type, BPMN element ID, state, start time, optional end time, and optional incident marker. `--limit`, `--batch-size`, prompts, and `found: N` still count process instances, not attached element rows. Use `get ei` when you need element-specific filters, keys-only element output, or element totals.
 
 For native process-instance variable search on Camunda `8.8` and `8.9`, use `--var-exists` for required variable names, `--var name=value` for equality shorthand, `--var name.$operator=value` for `$eq`, `$neq`, `$exists`, `$in`, `$notIn`, and `$like`, and `--var-like name=pattern` for wildcard patterns. Repeated flags and comma-separated clauses are combined, while commas inside quoted values and JSON arrays stay inside the clause. Native `$like` patterns use `*` for zero or more characters and `?` for one character; escaped wildcards remain literal. Camunda `8.7` returns an unsupported-version error for variable-search flags instead of falling back to Operate-backed filtering.
 

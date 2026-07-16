@@ -1061,6 +1061,10 @@ func (stubProcessAPI) GetProcessInstances(context.Context, typex.Keys, int, ...o
 	panic("unexpected call")
 }
 
+func (stubProcessAPI) EnrichProcessInstancesWithElements(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error) {
+	panic("unexpected call")
+}
+
 func (stubProcessAPI) CreateNProcessInstances(context.Context, process.ProcessInstanceData, int, int, ...options.FacadeOption) ([]process.ProcessInstance, error) {
 	panic("unexpected call")
 }

@@ -22,12 +22,14 @@ Started: 2026-07-16T15:20:23Z
 - Keyed `get pi --key <key> --with-elements` now validates `--total`, `--keys-only`, and keyed search-filter conflicts, calls the process facade, and renders `elements:` rows under the process instance.
 - Iteration 4 completed US2 list/search element enrichment without introducing process-instance element filters. Bounded JSON and aggregate human output enrich only selected process instances; incremental human output enriches each limited page before prompts and final `found: N`.
 - Iteration 5 completed US3 combined enrichment. Keyed, bounded list/search, and incremental list/search paths now render every requested combination of `--with-vars`, `--with-incidents`, and `--with-elements` through the shared activity model with stable human section order `vars:`, `incidents:`, `elements:` and combined JSON payload fields.
+- Iteration 6 completed Phase 6 polish. README and generated CLI docs now document `--with-elements`, quickstart wording matches the `inc!|inc!:<incidentKey>` element marker contract, and all quickstart scenarios passed against `/tmp/c8volt-get-pi-elements` with a local fake Camunda API.
 
 ## Gotchas
 - `plan.md` records GitHub issue #242, but branch-prefix issue inference on `235-get-pi-elements` produces `#235` under `commit.issue: auto`.
 - Direct keyed lookup on Camunda 8.7 currently fails at the existing process-instance direct-lookup unsupported boundary before element lookup; command coverage asserts a clear unsupported capability result for `--with-elements` on 8.7.
 - Do not assert tenant filters on keyed `--with-elements` element searches: explicit `--key` admin input uses `collectExplicitPIAdminInputOptions`, so the element search is owner-key scoped without a tenant filter.
 - When changing activity JSON, preserve the distinction between unrequested sections and requested empty sections. Existing automation tests expect requested empty `incidents`, `variables`, or `elements` arrays to remain present rather than omitted.
+- `c8volt/resource/client_test.go` has its own `stubProcessAPI`; future additions to `process.API` must update both the command stub and this resource facade test stub or `make test` will fail at compile time.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -38,10 +40,17 @@ Started: 2026-07-16T15:20:23Z
 - `go test ./cmd -count=1`
 - `go test ./c8volt/process ./internal/services/processinstance -count=1`
 - `go test ./internal/services/processinstance ./c8volt/process ./cmd -count=1`
+- `go test ./internal/services/processinstance -run 'TestEnrichProcessInstancesWithElements' -count=1`
+- `go test ./c8volt/process -run 'TestClient_EnrichProcessInstancesWithElements' -count=1`
+- `go test ./cmd -run 'TestGetProcessInstance.*Elements|TestProcessInstanceActivity.*Elements|TestCommandCapabilityForCommand_GetProcessInstance|TestCommandCapabilityForCommand_ProcessInstanceElementFlagAndContract' -count=1`
+- `go test ./docsgen -count=1`
+- `make docs-content`
+- `go build -o /tmp/c8volt-get-pi-elements .`
+- `make test`
 
 ## Do Not Repeat
 - Do not duplicate element lookup logic in `cmd`; reuse the element service through the process facade/service enrichment boundary.
 - Do not add a process-instance-specific generated-client path for runtime element lookup.
 
 ## Current Handoff
-- Next iteration starts Phase 6 polish. Work only on documentation/generated-doc/validation tasks T043-T051: update README/examples and docs metadata as needed, regenerate docs with `make docs-content`, then run the remaining targeted docs/command validation and broader validation requested by tasks.
+- Feature complete; no handoff required.
