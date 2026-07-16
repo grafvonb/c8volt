@@ -18,10 +18,10 @@
 
 **Purpose**: Create the feature package/file structure without behavior.
 
-- [ ] T001 Create public facade package placeholders in `c8volt/element/api.go`, `c8volt/element/model.go`, `c8volt/element/client.go`, `c8volt/element/convert.go`, and `c8volt/element/client_test.go`
-- [ ] T002 [P] Create internal element service package placeholders in `internal/services/element/api.go`, `internal/services/element/factory.go`, `internal/services/element/v87/service.go`, `internal/services/element/v88/contract.go`, `internal/services/element/v88/convert.go`, `internal/services/element/v88/service.go`, `internal/services/element/v88/service_test.go`, `internal/services/element/v89/contract.go`, `internal/services/element/v89/convert.go`, `internal/services/element/v89/service.go`, and `internal/services/element/v89/service_test.go`
-- [ ] T003 [P] Create command package placeholders in `cmd/get_element.go`, `cmd/get_element_search.go`, `cmd/get_element_test.go`, `cmd/cmd_views_element.go`, and `cmd/cmd_views_element_test.go`
-- [ ] T004 [P] Verify generated Camunda element instance operations are present and record no generated-client edits are needed in `specs/234-get-element-command/research.md`
+- [x] T001 Create public facade package placeholders in `c8volt/element/api.go`, `c8volt/element/model.go`, `c8volt/element/client.go`, `c8volt/element/convert.go`, and `c8volt/element/client_test.go`
+- [x] T002 [P] Create internal element service package placeholders in `internal/services/element/api.go`, `internal/services/element/factory.go`, `internal/services/element/v87/service.go`, `internal/services/element/v88/contract.go`, `internal/services/element/v88/convert.go`, `internal/services/element/v88/service.go`, `internal/services/element/v88/service_test.go`, `internal/services/element/v89/contract.go`, `internal/services/element/v89/convert.go`, `internal/services/element/v89/service.go`, and `internal/services/element/v89/service_test.go`
+- [x] T003 [P] Create command package placeholders in `cmd/get_element.go`, `cmd/get_element_search.go`, `cmd/get_element_test.go`, `cmd/cmd_views_element.go`, and `cmd/cmd_views_element_test.go`
+- [x] T004 [P] Verify generated Camunda element instance operations are present and record no generated-client edits are needed in `specs/234-get-element-command/research.md`
 
 ---
 

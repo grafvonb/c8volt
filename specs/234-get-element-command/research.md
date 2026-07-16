@@ -20,6 +20,8 @@
 
 **Rationale**: The generated clients already expose `SearchElementInstancesWithResponse` and `GetElementInstanceWithResponse` for v8.8 and v8.9. Using them avoids hand-written HTTP calls and keeps version-specific request/response differences in adapter packages.
 
+**Verification**: Confirmed on 2026-07-16 that `internal/clients/camunda/v88/camunda/client.gen.go` and `internal/clients/camunda/v89/camunda/client.gen.go` both expose `SearchElementInstancesWithResponse` and `GetElementInstanceWithResponse`. No generated-client edits are needed for Phase 1. The v8.7 generated client does not expose matching runtime element instance operations, so the planned unsupported-version adapter remains required.
+
 **Alternatives considered**:
 - Hand-edit generated clients: rejected because the required operations already exist.
 - Search by key only: rejected because the spec requires direct lookup and search filters.
