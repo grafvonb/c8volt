@@ -10,6 +10,9 @@ Started: 2026-07-18T10:01:26Z
 - `internal/services/ops.Service` owns cross-resource workflow orchestration and dependency fields; existing constructors wire process-instance, incident, process-definition, resource, job, cluster, and version dependencies.
 - Process-instance services expose `GetProcessInstances`, tenant-safe lookup via search, and paged search. Element services expose runtime element lookup plus search/page by process instance, element ID, state, type, process definition key, and BPMN process ID.
 - Slow-analysis foundation now has version-neutral domain models in `internal/domain/ops_slow_process_analysis.go`, public facade models/converters in `c8volt/ops`, and a read-only `ops analyse/analyze slow-process-instances` command scaffold with full machine-contract metadata.
+- US2 process-definition search uses the existing process-instance `SearchForProcessInstancesPage` API, freezes unique roots before timing analysis, records `DiscoveredScopeStatus`, and then reuses explicit-key root duration sorting.
+- Slow-analysis command date filters normalize RFC3339, c8volt timestamp, and `YYYY-MM-DD` bounds to RFC3339Nano before facade delegation; date-only upper bounds expand to the end of the UTC day.
+- Supported process-instance v8.8/v8.9 search adapters now accept RFC3339 bounds in addition to date-only values, keeping ops-normalized search filters compatible with generated request builders.
 
 ## Decisions
 - No implementation conflicts were found between `spec.md`, `plan.md`, `contracts/cli.md`, and `specs/ralph-implementation-rules.md`.
@@ -26,6 +29,8 @@ Started: 2026-07-18T10:01:26Z
 - US1 keyed analysis validates selector combinations in Cobra `Args`, then reads stdin after CLI bootstrap, merges keys through `mergeAndValidateKeys`, deduplicates with `typex.Keys.Unique()`, and delegates a normalized explicit-key request to the ops facade.
 - Internal slow-analysis keyed selection uses `pisvc.LookupProcessInstance` for tenant-safe lookup, returns unsupported for Camunda 8.7 before remote lookup, captures one analysis timestamp, measures active roots against that timestamp, treats terminal roots without usable end timestamps as unavailable, and sorts available durations longest-to-shortest with unavailable roots last.
 - Human US1 rendering reuses `flatRowPIWithTimezone` for root identity fields and appends `dur:<value>` or `dur:-`; keys-only still emits one root key per line.
+- `--batch-size` and `--limit` are process-definition discovery-only flags; explicit-key mode rejects them when explicitly set and never truncates keyed roots.
+- `--incidents-only` remains unsupported and unregistered; `--no-incidents-only` maps to `HasIncident=false` in process-instance discovery.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -35,9 +40,10 @@ Started: 2026-07-18T10:01:26Z
 - `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/ops -run 'TestSlowProcessAnalysis' -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/ops -run 'TestClientAnalyseSlowProcessInstances' -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances|TestRenderOpsSlowProcessAnalysis' -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`
 
 ## Do Not Repeat
 - Do not re-open a separate investigation for the Phase 1 artifact consistency check unless later specs change; the current artifacts are aligned.
 
 ## Current Handoff
-- Next iteration should start US2 tasks T024-T032 only. Add process-definition discovery/search-mode validation and implementation without changing US1 keyed semantics: search filters must be rejected in explicit-key mode, `--incidents-only` must remain unavailable, process-definition discovery should freeze the selected set before analysis, and empty searches should succeed with count 0.
+- Next iteration should start US3 tasks T033-T043 only. Add runtime element timeline and transition analysis on top of the already-frozen US1/US2 root selection; keep detail filters post-calculation and do not change root ordering or keys-only root visibility.

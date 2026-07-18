@@ -286,7 +286,9 @@ func TestService_SearchAndLookup(t *testing.T) {
 				assert.Contains(t, payload, `"processDefinitionVersion":3`)
 				assert.Contains(t, payload, `"processDefinitionVersionTag":"stable"`)
 				assert.Contains(t, payload, `"state":"ACTIVE"`)
+				assert.Contains(t, payload, `"startDate":{"$gte":"2026-07-18T10:00:00.123Z","$lte":"2026-07-19T23:59:59.999999999Z"}`)
 				assert.Contains(t, payload, `"parentProcessInstanceKey":"456"`)
+				assert.Contains(t, payload, `"endDate":{"$exists":true,"$lte":"2026-04-03T23:59:59.999999999Z"}`)
 				assert.Contains(t, payload, `"limit":25`)
 				assert.Contains(t, payload, `"$exists":true`)
 				return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
@@ -306,6 +308,8 @@ func TestService_SearchAndLookup(t *testing.T) {
 			ProcessVersionTag:    "stable",
 			State:                d.StateActive,
 			ParentKey:            "456",
+			StartDateAfter:       "2026-07-18T10:00:00.123Z",
+			StartDateBefore:      "2026-07-19",
 			EndDateBefore:        "2026-04-03",
 		}, d.ProcessInstancePageRequest{From: 0, Size: 25})
 

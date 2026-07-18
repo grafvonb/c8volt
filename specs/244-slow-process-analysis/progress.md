@@ -88,3 +88,38 @@ Started: 2026-07-18 12:01:26
 **Learnings**:
 - US1 validation passed with targeted service, facade, command, and broader touched-package `go test` runs; next work should extend search-mode behavior without loosening keyed-mode validation.
 ---
+---
+## Iteration 4 - 2026-07-18 13:36
+**Work Unit**: User Story 2 - Discover Slow Runs For One Process Definition
+**Tasks Completed**:
+- [x] T024: Add internal service tests for process-definition discovery filters, paging, limits, frozen selection, and empty success
+- [x] T025: Add command validation tests for search selectors, explicit-key conflicts, and unsupported `--incidents-only`
+- [x] T026: Add command request tests for search mode state, date normalization, batch size, and limit
+- [x] T027: Add empty-result rendering tests for human, JSON, and keys-only modes
+- [x] T028: Implement process-definition selector and process-instance search filter parsing
+- [x] T029: Implement process-definition search discovery, paging controls, limits, empty success, and frozen selected-set construction
+- [x] T030: Map process-definition search requests and discovery result metadata through the ops facade
+- [x] T031: Render empty analysis results consistently for human, JSON, and keys-only modes
+- [x] T032: Ensure discovery paging controls do not affect explicit keys or timeline details
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/ops/client_test.go
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- cmd/cmd_views_ops_slow_process_analysis_test.go
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/ops_analyse_slow_process_instances_test.go
+- internal/domain/ops_slow_process_analysis.go
+- internal/services/ops/slow_process_analysis.go
+- internal/services/ops/slow_process_analysis_test.go
+- internal/services/processinstance/v88/service.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v89/service.go
+- internal/services/processinstance/v89/service_test.go
+- specs/244-slow-process-analysis/tasks.md
+- specs/244-slow-process-analysis/ralph-memory.md
+- specs/244-slow-process-analysis/progress.md
+**Learnings**:
+- Process-definition search now freezes selected roots before analysis, with local command date normalization and adapter support for RFC3339 bounds.
+---

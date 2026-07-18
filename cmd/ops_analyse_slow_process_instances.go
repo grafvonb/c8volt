@@ -16,6 +16,12 @@ import (
 
 const opsAnalyseSlowProcessInstancesCommandName = "ops analyse slow-process-instances"
 
+const (
+	opsSlowProcessAnalysisTimeExpectedFormat = "RFC3339 timestamp, c8volt timestamp YYYY-MM-DDTHH:MM:SS[.fraction], or YYYY-MM-DD"
+	opsSlowProcessAnalysisTimeLayout         = "2006-01-02T15:04:05"
+	opsSlowProcessAnalysisTimeFractionLayout = "2006-01-02T15:04:05.999999999"
+)
+
 var (
 	flagOpsAnalyseSlowProcessInstanceKeys            []string
 	flagOpsAnalyseSlowProcessInstanceBpmnProcessID   string
@@ -167,6 +173,12 @@ func validateOpsSlowProcessAnalysisCommandArgs(cmd *cobra.Command, args []string
 	if _, err := parseOpsSlowProcessAnalysisState(); err != nil {
 		return err
 	}
+	if _, _, err := parseOpsSlowProcessAnalysisDateRange("--start-date-after", flagOpsAnalyseSlowProcessInstanceStartDateAfter, "--start-date-before", flagOpsAnalyseSlowProcessInstanceStartDateBefore); err != nil {
+		return err
+	}
+	if _, _, err := parseOpsSlowProcessAnalysisDateRange("--end-date-after", flagOpsAnalyseSlowProcessInstanceEndDateAfter, "--end-date-before", flagOpsAnalyseSlowProcessInstanceEndDateBefore); err != nil {
+		return err
+	}
 	if ok, firstBadKey, _ := validateKeys(flagOpsAnalyseSlowProcessInstanceKeys); len(flagOpsAnalyseSlowProcessInstanceKeys) > 0 && !ok {
 		return invalidFlagValuef("process-instance key %q is not a valid key", firstBadKey)
 	}
@@ -183,6 +195,14 @@ func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string
 		return opsSlowProcessAnalysisCommandRequest{}, err
 	}
 	state, err := parseOpsSlowProcessAnalysisState()
+	if err != nil {
+		return opsSlowProcessAnalysisCommandRequest{}, err
+	}
+	startDateAfter, startDateBefore, err := parseOpsSlowProcessAnalysisDateRange("--start-date-after", flagOpsAnalyseSlowProcessInstanceStartDateAfter, "--start-date-before", flagOpsAnalyseSlowProcessInstanceStartDateBefore)
+	if err != nil {
+		return opsSlowProcessAnalysisCommandRequest{}, err
+	}
+	endDateAfter, endDateBefore, err := parseOpsSlowProcessAnalysisDateRange("--end-date-after", flagOpsAnalyseSlowProcessInstanceEndDateAfter, "--end-date-before", flagOpsAnalyseSlowProcessInstanceEndDateBefore)
 	if err != nil {
 		return opsSlowProcessAnalysisCommandRequest{}, err
 	}
@@ -207,10 +227,10 @@ func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string
 			},
 			ProcessInstanceFilters: ops.SlowProcessAnalysisProcessInstanceSearchFilters{
 				State:           state,
-				StartDateAfter:  flagOpsAnalyseSlowProcessInstanceStartDateAfter,
-				StartDateBefore: flagOpsAnalyseSlowProcessInstanceStartDateBefore,
-				EndDateAfter:    flagOpsAnalyseSlowProcessInstanceEndDateAfter,
-				EndDateBefore:   flagOpsAnalyseSlowProcessInstanceEndDateBefore,
+				StartDateAfter:  startDateAfter,
+				StartDateBefore: startDateBefore,
+				EndDateAfter:    endDateAfter,
+				EndDateBefore:   endDateBefore,
 				NoIncidentsOnly: flagOpsAnalyseSlowProcessInstanceNoIncidentsOnly,
 			},
 			DetailFilters: ops.SlowProcessAnalysisDetailFilters{
@@ -264,4 +284,73 @@ func parseOpsSlowProcessAnalysisDurationAfter() (time.Duration, error) {
 		return 0, invalidFlagValuef("--duration-after must not be negative")
 	}
 	return value, nil
+}
+
+// parseOpsSlowProcessAnalysisDateRange validates and normalizes inclusive search bounds for process-instance discovery.
+func parseOpsSlowProcessAnalysisDateRange(afterFlag string, afterValue string, beforeFlag string, beforeValue string) (string, string, error) {
+	after, err := normalizeOpsSlowProcessAnalysisLowerBound(afterValue)
+	if err != nil {
+		return "", "", invalidFlagValuef("invalid value for %s: %q, expected %s", afterFlag, afterValue, opsSlowProcessAnalysisTimeExpectedFormat)
+	}
+	before, err := normalizeOpsSlowProcessAnalysisUpperBound(beforeValue)
+	if err != nil {
+		return "", "", invalidFlagValuef("invalid value for %s: %q, expected %s", beforeFlag, beforeValue, opsSlowProcessAnalysisTimeExpectedFormat)
+	}
+	if after != "" && before != "" {
+		afterTime, err := time.Parse(time.RFC3339Nano, after)
+		if err != nil {
+			return "", "", err
+		}
+		beforeTime, err := time.Parse(time.RFC3339Nano, before)
+		if err != nil {
+			return "", "", err
+		}
+		if afterTime.After(beforeTime) {
+			return "", "", invalidFlagValuef("invalid range for %s and %s: %q is later than %q", afterFlag, beforeFlag, afterValue, beforeValue)
+		}
+	}
+	return after, before, nil
+}
+
+// normalizeOpsSlowProcessAnalysisLowerBound preserves precise timestamps and expands date-only lower bounds to day start.
+func normalizeOpsSlowProcessAnalysisLowerBound(raw string) (string, error) {
+	if raw == "" {
+		return "", nil
+	}
+	if t, ok := parseOpsSlowProcessAnalysisTimestamp(raw); ok {
+		return t.UTC().Format(time.RFC3339Nano), nil
+	}
+	if t, err := time.Parse(time.DateOnly, raw); err == nil {
+		return t.UTC().Format(time.RFC3339Nano), nil
+	}
+	return "", fmt.Errorf("parse %q as process-instance date bound", raw)
+}
+
+// normalizeOpsSlowProcessAnalysisUpperBound preserves precise timestamps and expands date-only upper bounds to day end.
+func normalizeOpsSlowProcessAnalysisUpperBound(raw string) (string, error) {
+	if raw == "" {
+		return "", nil
+	}
+	if t, ok := parseOpsSlowProcessAnalysisTimestamp(raw); ok {
+		return t.UTC().Format(time.RFC3339Nano), nil
+	}
+	if t, err := time.Parse(time.DateOnly, raw); err == nil {
+		t = t.AddDate(0, 0, 1).Add(-time.Nanosecond)
+		return t.UTC().Format(time.RFC3339Nano), nil
+	}
+	return "", fmt.Errorf("parse %q as process-instance date bound", raw)
+}
+
+// parseOpsSlowProcessAnalysisTimestamp accepts RFC3339 and c8volt's compact UTC timestamp forms.
+func parseOpsSlowProcessAnalysisTimestamp(raw string) (time.Time, bool) {
+	if t, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return t, true
+	}
+	if t, err := time.ParseInLocation(opsSlowProcessAnalysisTimeFractionLayout, raw, time.UTC); err == nil {
+		return t, true
+	}
+	if t, err := time.ParseInLocation(opsSlowProcessAnalysisTimeLayout, raw, time.UTC); err == nil {
+		return t, true
+	}
+	return time.Time{}, false
 }

@@ -173,12 +173,13 @@ func fromDomainSlowProcessAnalysisDetailFilters(x d.SlowProcessAnalysisDetailFil
 
 func fromDomainSlowProcessAnalysisResult(x d.SlowProcessAnalysisResult) SlowProcessAnalysisResult {
 	return SlowProcessAnalysisResult{
-		Request:    fromDomainSlowProcessAnalysisRequest(x.Request),
-		CapturedAt: x.CapturedAt,
-		Items:      toolx.MapSlice(x.Items, fromDomainSlowProcessAnalysisProcessInstance),
-		Count:      x.Count,
-		Empty:      x.Empty,
-		Warnings:   append([]string(nil), x.Warnings...),
+		Request:               fromDomainSlowProcessAnalysisRequest(x.Request),
+		DiscoveredScopeStatus: fromDomainDiscoveryScopeStatus(x.DiscoveredScopeStatus),
+		CapturedAt:            x.CapturedAt,
+		Items:                 toolx.MapSlice(x.Items, fromDomainSlowProcessAnalysisProcessInstance),
+		Count:                 x.Count,
+		Empty:                 x.Empty,
+		Warnings:              append([]string(nil), x.Warnings...),
 	}
 }
 

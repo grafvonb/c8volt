@@ -5,9 +5,11 @@ package cmd
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
@@ -90,6 +92,122 @@ func TestOpsAnalyseSlowProcessInstancesRejectsInvalidExplicitKeyInputs(t *testin
 			require.Contains(t, err.Error(), tc.want)
 		})
 	}
+}
+
+// TestOpsAnalyseSlowProcessInstancesBuildsProcessDefinitionSearchRequests verifies selector and discovery flags normalize to search mode.
+func TestOpsAnalyseSlowProcessInstancesBuildsProcessDefinitionSearchRequests(t *testing.T) {
+	tests := []struct {
+		name       string
+		setup      func(*cobra.Command)
+		wantBPMN   string
+		wantPDKey  string
+		wantState  process.State
+		wantAfter  string
+		wantBefore string
+	}{
+		{
+			name: "bpmn selector with all state and date filters",
+			setup: func(cmd *cobra.Command) {
+				flagOpsAnalyseSlowProcessInstanceBpmnProcessID = "OrderProcess"
+				flagOpsAnalyseSlowProcessInstanceState = "all"
+				require.NoError(t, cmd.Flags().Set("state", "all"))
+				flagOpsAnalyseSlowProcessInstanceStartDateAfter = "2026-07-18T10:00:00Z"
+				flagOpsAnalyseSlowProcessInstanceStartDateBefore = "2026-07-19"
+				flagOpsAnalyseSlowProcessInstanceNoIncidentsOnly = true
+				flagOpsAnalyseSlowProcessInstanceBatchSize = 25
+				require.NoError(t, cmd.Flags().Set("batch-size", "25"))
+				flagOpsAnalyseSlowProcessInstanceLimit = 10
+				require.NoError(t, cmd.Flags().Set("limit", "10"))
+			},
+			wantBPMN:   "OrderProcess",
+			wantState:  "",
+			wantAfter:  "2026-07-18T10:00:00Z",
+			wantBefore: "2026-07-19T23:59:59.999999999Z",
+		},
+		{
+			name: "process-definition-key selector with completed state",
+			setup: func(cmd *cobra.Command) {
+				flagOpsAnalyseSlowProcessInstancePDKey = "2251799813687001"
+				flagOpsAnalyseSlowProcessInstanceState = "completed"
+				require.NoError(t, cmd.Flags().Set("state", "completed"))
+				flagOpsAnalyseSlowProcessInstanceEndDateAfter = "2026-07-18T10:00:00.123"
+			},
+			wantPDKey: "2251799813687001",
+			wantState: process.StateCompleted,
+			wantAfter: "2026-07-18T10:00:00.123Z",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+			tc.setup(cmd)
+
+			got, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, nil, nil)
+
+			require.NoError(t, err)
+			require.Equal(t, ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch, got.Request.SelectionMode)
+			require.Equal(t, tc.wantBPMN, got.Request.ProcessDefinitionSelector.BpmnProcessID)
+			require.Equal(t, tc.wantPDKey, got.Request.ProcessDefinitionSelector.ProcessDefinitionKey)
+			require.Equal(t, tc.wantState, got.Request.ProcessInstanceFilters.State)
+			if tc.wantBefore != "" {
+				require.Equal(t, tc.wantAfter, got.Request.ProcessInstanceFilters.StartDateAfter)
+				require.Equal(t, tc.wantBefore, got.Request.ProcessInstanceFilters.StartDateBefore)
+				require.True(t, got.Request.ProcessInstanceFilters.NoIncidentsOnly)
+				require.EqualValues(t, 25, got.Request.BatchSize)
+				require.EqualValues(t, 10, got.Request.Limit)
+			} else {
+				require.Equal(t, tc.wantAfter, got.Request.ProcessInstanceFilters.EndDateAfter)
+			}
+		})
+	}
+}
+
+// TestOpsAnalyseSlowProcessInstancesRejectsInvalidSearchInputs verifies search-mode validation stays local.
+func TestOpsAnalyseSlowProcessInstancesRejectsInvalidSearchInputs(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(*cobra.Command)
+		want  string
+	}{
+		{name: "required selector", want: "select process instances"},
+		{name: "both selectors", setup: func(*cobra.Command) {
+			flagOpsAnalyseSlowProcessInstanceBpmnProcessID = "OrderProcess"
+			flagOpsAnalyseSlowProcessInstancePDKey = "2251799813687001"
+		}, want: "cannot be combined"},
+		{name: "bad date", setup: func(*cobra.Command) {
+			flagOpsAnalyseSlowProcessInstanceBpmnProcessID = "OrderProcess"
+			flagOpsAnalyseSlowProcessInstanceStartDateAfter = "2026-02-30"
+		}, want: "invalid value for --start-date-after"},
+		{name: "reversed date range", setup: func(*cobra.Command) {
+			flagOpsAnalyseSlowProcessInstanceBpmnProcessID = "OrderProcess"
+			flagOpsAnalyseSlowProcessInstanceEndDateAfter = "2026-07-20"
+			flagOpsAnalyseSlowProcessInstanceEndDateBefore = "2026-07-19"
+		}, want: "invalid range for --end-date-after and --end-date-before"},
+		{name: "key with batch size", setup: func(cmd *cobra.Command) {
+			flagOpsAnalyseSlowProcessInstanceKeys = []string{"2251799813685249"}
+			flagOpsAnalyseSlowProcessInstanceBatchSize = 25
+			require.NoError(t, cmd.Flags().Set("batch-size", "25"))
+		}, want: "search filters"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+			if tc.setup != nil {
+				tc.setup(cmd)
+			}
+
+			err := validateOpsSlowProcessAnalysisCommandArgs(cmd, nil)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.want)
+		})
+	}
+}
+
+// TestOpsAnalyseSlowProcessInstancesDoesNotExposeIncidentsOnly verifies the unsupported positive incident filter is absent.
+func TestOpsAnalyseSlowProcessInstancesDoesNotExposeIncidentsOnly(t *testing.T) {
+	require.Nil(t, opsAnalyseSlowProcessInstancesCmd.Flags().Lookup("incidents-only"))
+	require.NotContains(t, strings.ReplaceAll(opsAnalyseSlowProcessInstancesCmd.Flags().FlagUsages(), "--no-incidents-only", ""), "--incidents-only")
 }
 
 // TestOpsAnalyseSlowProcessInstancesRejectsEmptyStdin verifies dash input fails before remote analysis.

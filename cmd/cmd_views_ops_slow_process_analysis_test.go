@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -78,6 +79,44 @@ func TestRenderOpsSlowProcessAnalysisResultKeysOnlyRendersRootKeys(t *testing.T)
 
 	require.NoError(t, err)
 	require.Equal(t, "2251799813685249\n2251799813685250\n", buf.String())
+}
+
+// TestRenderOpsSlowProcessAnalysisResultEmptySearchOutputs verifies all output modes represent no-match discovery cleanly.
+func TestRenderOpsSlowProcessAnalysisResultEmptySearchOutputs(t *testing.T) {
+	t.Run("human count only", func(t *testing.T) {
+		cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+
+		err := renderOpsSlowProcessAnalysisResult(cmd, ops.SlowProcessAnalysisResult{Items: []ops.SlowProcessAnalysisProcessInstance{}, Count: 0, Empty: true})
+
+		require.NoError(t, err)
+		require.Equal(t, "process instances: 0\n", buf.String())
+	})
+
+	t.Run("json empty items", func(t *testing.T) {
+		cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+		flagViewAsJson = true
+		t.Cleanup(func() { flagViewAsJson = false })
+
+		err := renderOpsSlowProcessAnalysisResult(cmd, ops.SlowProcessAnalysisResult{Items: []ops.SlowProcessAnalysisProcessInstance{}, Count: 0, Empty: true})
+
+		require.NoError(t, err)
+		var payload map[string]any
+		require.NoError(t, json.Unmarshal(buf.Bytes(), &payload))
+		require.Equal(t, float64(0), payload["count"])
+		require.Equal(t, true, payload["empty"])
+		require.Equal(t, []any{}, payload["items"])
+	})
+
+	t.Run("keys-only silence", func(t *testing.T) {
+		cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+		flagViewKeysOnly = true
+		t.Cleanup(func() { flagViewKeysOnly = false })
+
+		err := renderOpsSlowProcessAnalysisResult(cmd, ops.SlowProcessAnalysisResult{Items: []ops.SlowProcessAnalysisProcessInstance{}, Count: 0, Empty: true})
+
+		require.NoError(t, err)
+		require.Empty(t, buf.String())
+	})
 }
 
 // newOpsSlowProcessAnalysisRenderTestCommand captures command output without mutating the root command.

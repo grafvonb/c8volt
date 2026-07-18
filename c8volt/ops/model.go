@@ -146,12 +146,13 @@ type SlowProcessAnalysisTimelineEntry struct {
 
 // SlowProcessAnalysisResult carries the complete render-independent analysis payload.
 type SlowProcessAnalysisResult struct {
-	Request    SlowProcessAnalysisRequest           `json:"request,omitempty"`
-	CapturedAt time.Time                            `json:"capturedAt,omitempty"`
-	Items      []SlowProcessAnalysisProcessInstance `json:"items,omitempty"`
-	Count      int                                  `json:"count"`
-	Empty      bool                                 `json:"empty"`
-	Warnings   []string                             `json:"warnings,omitempty"`
+	Request               SlowProcessAnalysisRequest           `json:"request,omitempty"`
+	DiscoveredScopeStatus DiscoveryScopeStatus                 `json:"discoveredScopeStatus,omitempty"`
+	CapturedAt            time.Time                            `json:"capturedAt,omitempty"`
+	Items                 []SlowProcessAnalysisProcessInstance `json:"items"`
+	Count                 int                                  `json:"count"`
+	Empty                 bool                                 `json:"empty"`
+	Warnings              []string                             `json:"warnings,omitempty"`
 }
 
 // RepairTarget identifies the repair workflow entry point.

@@ -422,9 +422,12 @@ func parseInclusiveDateLowerBound(raw string) (*time.Time, error) {
 	if raw == "" {
 		return nil, nil
 	}
+	if t, ok := parseProcessInstanceTimestamp(raw); ok {
+		return &t, nil
+	}
 	t, err := time.Parse(time.DateOnly, raw)
 	if err != nil {
-		return nil, fmt.Errorf("parse %q as YYYY-MM-DD: %w", raw, err)
+		return nil, fmt.Errorf("parse %q as process-instance date/time: %w", raw, err)
 	}
 	return new(t), nil
 }
@@ -435,12 +438,23 @@ func parseInclusiveDateUpperBound(raw string) (*time.Time, error) {
 	if raw == "" {
 		return nil, nil
 	}
+	if t, ok := parseProcessInstanceTimestamp(raw); ok {
+		return &t, nil
+	}
 	t, err := time.Parse(time.DateOnly, raw)
 	if err != nil {
-		return nil, fmt.Errorf("parse %q as YYYY-MM-DD: %w", raw, err)
+		return nil, fmt.Errorf("parse %q as process-instance date/time: %w", raw, err)
 	}
 	t = t.AddDate(0, 0, 1).Add(-time.Nanosecond)
 	return new(t), nil
+}
+
+// parseProcessInstanceTimestamp accepts precise UTC or offset timestamps for process-instance search bounds.
+func parseProcessInstanceTimestamp(raw string) (time.Time, bool) {
+	if t, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return t, true
+	}
+	return time.Time{}, false
 }
 
 func endDateExistsFilter(filter d.ProcessInstanceFilter) *bool {

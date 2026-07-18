@@ -79,18 +79,18 @@
 
 ### Tests for User Story 2
 
-- [ ] T024 [P] [US2] Add internal service tests for `--bpmn-process-id`, `--pd-key`, state values `active`/`completed`/`canceled`/`terminated`/`all`, precise timestamp and `YYYY-MM-DD` date filters, no-incidents filters, batch size, limit, frozen selection, and empty search success in `internal/services/ops/slow_process_analysis_test.go`
-- [ ] T025 [P] [US2] Add command validation tests for required selector, mutually exclusive `--bpmn-process-id` and `--pd-key`, search filters rejected in explicit-key mode, and `--incidents-only` not accepted or advertised in `cmd/ops_analyse_slow_process_instances_test.go`
-- [ ] T026 [P] [US2] Add command integration tests for process-definition search with `--state all`, precise timestamp and `YYYY-MM-DD` date filters, `--batch-size`, `--limit`, and empty results in `cmd/ops_analyse_slow_process_instances_test.go`
-- [ ] T027 [P] [US2] Add empty-result rendering tests for human count, JSON empty items, and keys-only silence in `cmd/cmd_views_ops_slow_process_analysis_test.go`
+- [x] T024 [P] [US2] Add internal service tests for `--bpmn-process-id`, `--pd-key`, state values `active`/`completed`/`canceled`/`terminated`/`all`, precise timestamp and `YYYY-MM-DD` date filters, no-incidents filters, batch size, limit, frozen selection, and empty search success in `internal/services/ops/slow_process_analysis_test.go`
+- [x] T025 [P] [US2] Add command validation tests for required selector, mutually exclusive `--bpmn-process-id` and `--pd-key`, search filters rejected in explicit-key mode, and `--incidents-only` not accepted or advertised in `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T026 [P] [US2] Add command integration tests for process-definition search with `--state all`, precise timestamp and `YYYY-MM-DD` date filters, `--batch-size`, `--limit`, and empty results in `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T027 [P] [US2] Add empty-result rendering tests for human count, JSON empty items, and keys-only silence in `cmd/cmd_views_ops_slow_process_analysis_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T028 [US2] Implement process-definition selector and process-instance search filter parsing in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T029 [US2] Implement process-definition search discovery, paging controls, limits, empty success, and frozen selected-set construction in `internal/services/ops/slow_process_analysis.go`
-- [ ] T030 [US2] Map process-definition search requests and discovery result metadata through the ops facade in `c8volt/ops/model.go`, `c8volt/ops/convert.go`, and `c8volt/ops/client.go`
-- [ ] T031 [US2] Render empty analysis results consistently for human, JSON, and keys-only modes in `cmd/cmd_views_ops_slow_process_analysis.go`
-- [ ] T032 [US2] Ensure `--batch-size` and `--limit` affect process-instance discovery only and never truncate explicit keys or timeline details in `internal/services/ops/slow_process_analysis.go`
+- [x] T028 [US2] Implement process-definition selector and process-instance search filter parsing in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T029 [US2] Implement process-definition search discovery, paging controls, limits, empty success, and frozen selected-set construction in `internal/services/ops/slow_process_analysis.go`
+- [x] T030 [US2] Map process-definition search requests and discovery result metadata through the ops facade in `c8volt/ops/model.go`, `c8volt/ops/convert.go`, and `c8volt/ops/client.go`
+- [x] T031 [US2] Render empty analysis results consistently for human, JSON, and keys-only modes in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T032 [US2] Ensure `--batch-size` and `--limit` affect process-instance discovery only and never truncate explicit keys or timeline details in `internal/services/ops/slow_process_analysis.go`
 
 **Checkpoint**: User Stories 1 and 2 both work independently, with search mode preserving process-instance selection semantics.
 

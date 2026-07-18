@@ -319,7 +319,16 @@ func TestClientAnalyseSlowProcessInstancesMapsServiceBoundary(t *testing.T) {
 			}, request)
 			require.True(t, services.ApplyCallOptions(opts).Verbose)
 			return d.SlowProcessAnalysisResult{
-				Request:    request,
+				Request: request,
+				DiscoveredScopeStatus: d.DiscoveryScopeStatus{
+					Complete:         false,
+					Limited:          true,
+					Limit:            10,
+					BatchSize:        250,
+					Pages:            2,
+					CandidatesSeen:   12,
+					CandidatesFrozen: 10,
+				},
 				CapturedAt: captured,
 				Items: []d.SlowProcessAnalysisProcessInstance{{
 					Key:                    "2251799813685249",
@@ -387,6 +396,15 @@ func TestClientAnalyseSlowProcessInstancesMapsServiceBoundary(t *testing.T) {
 	require.Equal(t, captured, got.CapturedAt)
 	require.Equal(t, 1, got.Count)
 	require.Equal(t, []string{"sample warning"}, got.Warnings)
+	require.Equal(t, DiscoveryScopeStatus{
+		Complete:         false,
+		Limited:          true,
+		Limit:            10,
+		BatchSize:        250,
+		Pages:            2,
+		CandidatesSeen:   12,
+		CandidatesFrozen: 10,
+	}, got.DiscoveredScopeStatus)
 	require.Equal(t, process.StateCompleted, got.Items[0].State)
 	require.Equal(t, SlowProcessAnalysisTimelineEntryKindElement, got.Items[0].Timeline[0].Kind)
 	require.Equal(t, 1, got.Items[0].Timeline[0].ProcessDurationShare)

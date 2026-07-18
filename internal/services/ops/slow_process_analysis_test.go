@@ -187,3 +187,148 @@ func TestSlowProcessAnalysisCamunda87Unsupported(t *testing.T) {
 	require.Empty(t, got.Items)
 	require.True(t, got.Empty)
 }
+
+// TestSlowProcessAnalysisProcessDefinitionSearchDiscoversFrozenSelection verifies search filters page into one frozen root set.
+func TestSlowProcessAnalysisProcessDefinitionSearchDiscoversFrozenSelection(t *testing.T) {
+	captured := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:30:00Z")
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	pageCalls := 0
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			pageCalls++
+			require.Equal(t, "OrderProcess", filter.BpmnProcessId)
+			require.Empty(t, filter.ProcessDefinitionKey)
+			require.Equal(t, d.StateActive, filter.State)
+			require.Equal(t, "2026-07-18T09:00:00Z", filter.StartDateAfter)
+			require.Equal(t, "2026-07-19T23:59:59.999999999Z", filter.StartDateBefore)
+			require.Equal(t, "2026-07-18T10:00:00Z", filter.EndDateAfter)
+			require.Equal(t, "2026-07-20T23:59:59.999999999Z", filter.EndDateBefore)
+			require.NotNil(t, filter.HasIncident)
+			require.False(t, *filter.HasIncident)
+			require.EqualValues(t, 2, page.Size)
+			switch pageCalls {
+			case 1:
+				require.Zero(t, page.From)
+				return d.ProcessInstancePage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					Items: []d.ProcessInstance{
+						slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(2*time.Minute)),
+						slowProcessAnalysisFixtureProcessInstance("2251799813685250", start, start.Add(5*time.Minute)),
+					},
+				}, nil
+			case 2:
+				require.EqualValues(t, 2, page.From)
+				return d.ProcessInstancePage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					Items: []d.ProcessInstance{
+						slowProcessAnalysisFixtureProcessInstance("2251799813685251", start, start.Add(time.Minute)),
+					},
+				}, nil
+			default:
+				t.Fatalf("unexpected discovery page %d", pageCalls)
+				return d.ProcessInstancePage{}, nil
+			}
+		},
+		search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+			t.Fatal("search-mode analysis should not perform explicit-key lookup")
+			return nil, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, nil, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeProcessDefinitionSearch,
+		ProcessDefinitionSelector: d.SlowProcessAnalysisProcessDefinitionSelector{
+			BpmnProcessID: "OrderProcess",
+		},
+		ProcessInstanceFilters: d.SlowProcessAnalysisProcessInstanceSearchFilters{
+			State:           d.StateActive,
+			StartDateAfter:  "2026-07-18T09:00:00Z",
+			StartDateBefore: "2026-07-19T23:59:59.999999999Z",
+			EndDateAfter:    "2026-07-18T10:00:00Z",
+			EndDateBefore:   "2026-07-20T23:59:59.999999999Z",
+			NoIncidentsOnly: true,
+		},
+		BatchSize:   2,
+		Limit:       3,
+		CapturedNow: captured,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 2, pageCalls)
+	require.Equal(t, []string{"2251799813685250", "2251799813685249", "2251799813685251"}, []string{got.Items[0].Key, got.Items[1].Key, got.Items[2].Key})
+	require.Equal(t, 3, got.Count)
+	require.False(t, got.Empty)
+	require.Equal(t, d.DiscoveryScopeStatus{
+		Complete:         false,
+		Limited:          true,
+		Limit:            3,
+		BatchSize:        2,
+		Pages:            2,
+		CandidatesSeen:   3,
+		CandidatesFrozen: 3,
+	}, got.DiscoveredScopeStatus)
+	require.Equal(t, captured, got.CapturedAt)
+}
+
+// TestSlowProcessAnalysisProcessDefinitionSearchSupportsSelectorsAndStates verifies accepted state values and selector modes.
+func TestSlowProcessAnalysisProcessDefinitionSearchSupportsSelectorsAndStates(t *testing.T) {
+	tests := []struct {
+		name       string
+		selector   d.SlowProcessAnalysisProcessDefinitionSelector
+		state      d.State
+		wantFilter d.ProcessInstanceFilter
+	}{
+		{name: "bpmn all", selector: d.SlowProcessAnalysisProcessDefinitionSelector{BpmnProcessID: "OrderProcess"}, state: d.StateAll, wantFilter: d.ProcessInstanceFilter{BpmnProcessId: "OrderProcess"}},
+		{name: "pd active", selector: d.SlowProcessAnalysisProcessDefinitionSelector{ProcessDefinitionKey: "2251799813687001"}, state: d.StateActive, wantFilter: d.ProcessInstanceFilter{ProcessDefinitionKey: "2251799813687001", State: d.StateActive}},
+		{name: "pd completed", selector: d.SlowProcessAnalysisProcessDefinitionSelector{ProcessDefinitionKey: "2251799813687001"}, state: d.StateCompleted, wantFilter: d.ProcessInstanceFilter{ProcessDefinitionKey: "2251799813687001", State: d.StateCompleted}},
+		{name: "pd canceled", selector: d.SlowProcessAnalysisProcessDefinitionSelector{ProcessDefinitionKey: "2251799813687001"}, state: d.StateCanceled, wantFilter: d.ProcessInstanceFilter{ProcessDefinitionKey: "2251799813687001", State: d.StateCanceled}},
+		{name: "pd terminated", selector: d.SlowProcessAnalysisProcessDefinitionSelector{ProcessDefinitionKey: "2251799813687001"}, state: d.StateTerminated, wantFilter: d.ProcessInstanceFilter{ProcessDefinitionKey: "2251799813687001", State: d.StateTerminated}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			piAPI := stubProcessInstanceAPI{
+				searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+					require.Equal(t, tc.wantFilter, filter)
+					require.EqualValues(t, 1000, page.Size)
+					return d.ProcessInstancePage{Request: page, OverflowState: d.ProcessInstanceOverflowStateNoMore, Items: nil}, nil
+				},
+			}
+
+			got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, nil, toolx.V89).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+				SelectionMode:             d.SlowProcessAnalysisSelectionModeProcessDefinitionSearch,
+				ProcessDefinitionSelector: tc.selector,
+				ProcessInstanceFilters:    d.SlowProcessAnalysisProcessInstanceSearchFilters{State: tc.state},
+			})
+
+			require.NoError(t, err)
+			require.Empty(t, got.Items)
+			require.True(t, got.Empty)
+			require.Equal(t, 0, got.Count)
+		})
+	}
+}
+
+// TestSlowProcessAnalysisProcessDefinitionSearchEmptyResultSucceeds verifies no-match discovery is not an error.
+func TestSlowProcessAnalysisProcessDefinitionSearchEmptyResultSucceeds(t *testing.T) {
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			return d.ProcessInstancePage{Request: page, OverflowState: d.ProcessInstanceOverflowStateNoMore, Items: []d.ProcessInstance{}}, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, nil, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeProcessDefinitionSearch,
+		ProcessDefinitionSelector: d.SlowProcessAnalysisProcessDefinitionSelector{
+			BpmnProcessID: "EmptyProcess",
+		},
+	})
+
+	require.NoError(t, err)
+	require.Empty(t, got.Items)
+	require.Equal(t, 0, got.Count)
+	require.True(t, got.Empty)
+	require.Equal(t, 1, got.DiscoveredScopeStatus.Pages)
+	require.True(t, got.DiscoveredScopeStatus.Complete)
+}
