@@ -40,6 +40,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.")
 	require.Contains(t, output, "Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.")
 	require.Contains(t, output, "Use --with-elements to include runtime element instances under matching process-instance rows.")
+	require.Contains(t, output, "Nested human element rows include dur:<duration>")
 	require.NotContains(t, output, "Add --incident-message-limit <chars> to shorten incident messages")
 	require.Contains(t, output, "Run `c8volt get pi --help` for the complete flag reference.")
 	require.Contains(t, output, "./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 5")

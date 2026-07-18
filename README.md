@@ -243,7 +243,7 @@ Use `get job --key` with the `jobKey` from incident-aware process-instance outpu
 ./c8volt --json get ei --pi-key <process-instance-key> --limit 5
 ```
 
-Use `get element` or its `get ei` alias when the runtime BPMN element execution record is the target. `--key` fetches one element instance directly; without `--key`, filters such as `--pi-key`, `--element-id`, `--state`, `--type`, `--pd-key`, and `--bpmn-process-id` combine with AND semantics. `--batch-size` tunes page size, `--limit` caps returned rows, `--total` prints only the count, and `--keys-only` emits element instance keys. Compact rows show process context plus one incident marker, `inc!` or `inc!:<incidentKey>`, when the element has an incident. Runtime element inspection is available on Camunda `8.8` and `8.9`; Camunda `8.7` returns an unsupported-version error.
+Use `get element` or its `get ei` alias when the runtime BPMN element execution record is the target. `--key` fetches one element instance directly; without `--key`, filters such as `--pi-key`, `--element-id`, `--state`, `--type`, `--pd-key`, and `--bpmn-process-id` combine with AND semantics. `--batch-size` tunes page size, `--limit` caps returned rows, `--total` prints only the count, and `--keys-only` emits element instance keys. Compact human rows include `dur:<duration>` when timestamps support a runtime duration and show process context plus one incident marker, `inc!` or `inc!:<incidentKey>`, when the element has an incident. Runtime element inspection is available on Camunda `8.8` and `8.9`; Camunda `8.7` returns an unsupported-version error.
 
 ### Resolve Incidents
 
@@ -398,7 +398,7 @@ For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` 
 
 When incident output includes `jobKey`, use `get job --key <job-key>` for direct job details. To remediate job retries or timeout, preview with `update job --dry-run`, then submit with `--auto-confirm` or `--automation`. To resolve the incident itself, preview with `resolve incident --dry-run` or let `resolve pi --dry-run` discover the active incident set for a process instance first.
 
-For runtime execution context, add `--with-elements` to keyed or list/search `get pi` output. Element rows appear under an `elements:` section for each selected process instance and include the element instance key, type, BPMN element ID, state, start time, optional end time, and optional incident marker. `--limit`, `--batch-size`, prompts, and `found: N` still count process instances, not attached element rows. Use `get ei` when you need element-specific filters, keys-only element output, or element totals.
+For runtime execution context, add `--with-elements` to keyed or list/search `get pi` output. Element rows appear under an `elements:` section for each selected process instance and include the element instance key, type, BPMN element ID, state, start time, optional end time, `dur:<duration>` when calculable, and optional incident marker. `--limit`, `--batch-size`, prompts, and `found: N` still count process instances, not attached element rows. Use `get ei` when you need element-specific filters, keys-only element output, or element totals.
 
 For slow-run inspection, use `ops analyse slow-process-instances` with explicit process-instance keys or one process-definition selector:
 

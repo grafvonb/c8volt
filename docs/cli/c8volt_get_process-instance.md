@@ -24,7 +24,7 @@ Use --with-incidents to include direct incident details under matching process-i
 
 Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.
 
-Use --with-elements to include runtime element instances under matching process-instance rows.
+Use --with-elements to include runtime element instances under matching process-instance rows. Nested human element rows include dur:<duration> when start/end timestamps or active state support a runtime duration.
 
 Use variable-search flags to narrow list/search results natively on Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error for those flags. --var-exists requires every listed variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable scopeKey means the scope where the variable is directly defined.
 

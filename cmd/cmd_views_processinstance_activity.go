@@ -6,6 +6,7 @@ package cmd
 import (
 	"encoding/json"
 	"strings"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -84,6 +85,7 @@ func processInstanceActivityInstancesWithAgeMeta(resp processInstanceActivityIns
 func renderProcessInstanceActivityRows(cmd *cobra.Command, items []processInstanceActivityItem) bool {
 	rows := make([]flatRow, 0, len(items))
 	showTimezoneOffset := commandShowTimezoneOffset(cmd)
+	capturedNow := time.Now().UTC()
 	for _, it := range items {
 		rows = append(rows, flatRowPIWithTimezone(it.Item, showTimezoneOffset))
 	}
@@ -91,7 +93,7 @@ func renderProcessInstanceActivityRows(cmd *cobra.Command, items []processInstan
 	needsIndirectIncidentWarning := false
 	for i, it := range items {
 		renderOutputLine(cmd, "%s", lines[i])
-		detailLines, needsWarning := formatProcessInstanceActivityLinesWithElementsWithTimezone("", it.Variables, it.Incidents, it.Elements, it.ShowIncidents, it.Item.Incident, 0, showTimezoneOffset)
+		detailLines, needsWarning := formatProcessInstanceActivityLinesWithElementsWithTimezone("", it.Variables, it.Incidents, it.Elements, it.ShowIncidents, it.Item.Incident, 0, showTimezoneOffset, capturedNow)
 		for _, line := range detailLines {
 			renderOutputLine(cmd, "%s", line)
 		}
@@ -105,10 +107,10 @@ func formatProcessInstanceActivityLines(prefix string, variables []process.Proce
 }
 
 func formatProcessInstanceActivityLinesWithTimezone(prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int, showTimezoneOffset bool) ([]string, bool) {
-	return formatProcessInstanceActivityLinesWithElementsWithTimezone(prefix, variables, incidents, nil, showIncidents, hasIncidentMarker, followingChildren, showTimezoneOffset)
+	return formatProcessInstanceActivityLinesWithElementsWithTimezone(prefix, variables, incidents, nil, showIncidents, hasIncidentMarker, followingChildren, showTimezoneOffset, time.Now().UTC())
 }
 
-func formatProcessInstanceActivityLinesWithElementsWithTimezone(prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, elements []process.ProcessInstanceElement, showIncidents bool, hasIncidentMarker bool, followingChildren int, showTimezoneOffset bool) ([]string, bool) {
+func formatProcessInstanceActivityLinesWithElementsWithTimezone(prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, elements []process.ProcessInstanceElement, showIncidents bool, hasIncidentMarker bool, followingChildren int, showTimezoneOffset bool, capturedNow time.Time) ([]string, bool) {
 	hasVars := len(variables) > 0
 	hasIncidents := showIncidents && (len(incidents) > 0 || hasIncidentMarker)
 	hasElements := len(elements) > 0
@@ -159,7 +161,7 @@ func formatProcessInstanceActivityLinesWithElementsWithTimezone(prefix string, v
 		branch := incidentTreeBranch(sectionIndex, totalBranches)
 		childPrefix := treeChildPrefix(prefix, sectionIndex, totalBranches)
 		lines = append(lines, prefix+branch+"elements:")
-		elementLines := formatProcessInstanceElementRows(elements, showTimezoneOffset)
+		elementLines := formatProcessInstanceElementRows(elements, showTimezoneOffset, capturedNow)
 		for i, line := range elementLines {
 			lines = append(lines, childPrefix+incidentTreeBranch(i, len(elementLines))+line)
 		}
@@ -308,15 +310,15 @@ func mergeIncidentAndVariableActivity(incidents process.IncidentEnrichedProcessI
 	})
 }
 
-func formatProcessInstanceElementRows(elements []process.ProcessInstanceElement, showTimezoneOffset bool) []string {
+func formatProcessInstanceElementRows(elements []process.ProcessInstanceElement, showTimezoneOffset bool, capturedNow time.Time) []string {
 	rows := make([]flatRow, 0, len(elements))
 	for _, element := range elements {
-		rows = append(rows, flatRowProcessInstanceElementWithTimezone(element, showTimezoneOffset))
+		rows = append(rows, flatRowProcessInstanceElementWithTimezone(element, showTimezoneOffset, capturedNow))
 	}
 	return formatFlatRows(rows)
 }
 
-func flatRowProcessInstanceElementWithTimezone(item process.ProcessInstanceElement, showTimezoneOffset bool) flatRow {
+func flatRowProcessInstanceElementWithTimezone(item process.ProcessInstanceElement, showTimezoneOffset bool, capturedNow time.Time) flatRow {
 	parts := flatRow{
 		item.ElementInstanceKey,
 		item.Type,
@@ -324,6 +326,7 @@ func flatRowProcessInstanceElementWithTimezone(item process.ProcessInstanceEleme
 		item.State,
 		prefixedElementField("s", toolx.FormatTimestamp(item.StartDate, showTimezoneOffset)),
 		prefixedElementField("e", toolx.FormatTimestamp(item.EndDate, showTimezoneOffset)),
+		prefixedElementField("dur", runtimeElementDuration(item.StartDate, item.EndDate, item.State, capturedNow)),
 	}
 	if marker := processInstanceElementIncidentMarker(item); marker != "" {
 		parts = append(parts, marker)

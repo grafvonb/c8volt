@@ -650,6 +650,7 @@ func TestCommandCapabilityForCommand_ProcessInstanceElementFlagAndContract(t *te
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 	require.Contains(t, getProcessInstanceCmd.Long, "Use --with-elements to include runtime element instances under matching process-instance rows.")
+	require.Contains(t, getProcessInstanceCmd.Long, "Nested human element rows include dur:<duration>")
 	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get pi --key <process-instance-key> --with-elements")
 }
 
@@ -931,6 +932,7 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 	require.Equal(t, []string{"ei"}, capability.Aliases)
 	require.Contains(t, getElementCmd.Long, "Use --key when you know an element instance key.")
 	require.Contains(t, getElementCmd.Long, "Search mode follows the shared get paging and limit conventions.")
+	require.Contains(t, getElementCmd.Long, "Compact human rows include dur:<duration>")
 	require.Contains(t, getElementCmd.Long, "Use --json for the stable element payload and --keys-only when piping element instance keys.")
 	require.Contains(t, getElementCmd.Example, "./c8volt get ei --pi-key <process-instance-key> --limit 10")
 	require.Contains(t, getElementCmd.Example, "./c8volt get element --pi-key <process-instance-key> --total")
@@ -2007,6 +2009,7 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 		"Search mode follows the shared get paging and limit conventions",
 		"--batch-size controls per-page discovery requests",
 		"--total prints only the matching count",
+		"Compact human rows include dur:<duration>",
 		"Use --json for the stable element payload and --keys-only when piping element instance keys",
 		"Element lookup and search require Camunda 8.8 or 8.9",
 		"Aliases:",

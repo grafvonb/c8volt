@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/element"
 	"github.com/grafvonb/c8volt/consts"
@@ -19,6 +20,7 @@ func searchElementsWithPaging(cmd *cobra.Command, cli element.API, request eleme
 	incremental := shouldRenderElementSearchPageIncrementally(cmd)
 	autoContinue := shouldAutoContinueElementSearchPages(cmd)
 	processedTotal := 0
+	capturedNow := time.Now().UTC()
 	printFoundAndReturn := func() (element.SearchResult, bool, error) {
 		if incremental {
 			if pickMode() == RenderModeOneLine {
@@ -37,7 +39,7 @@ func searchElementsWithPaging(cmd *cobra.Command, cli element.API, request eleme
 		}
 		items := limitElementItems(page.Items, processedTotal, request.Limit)
 		if incremental {
-			if err := renderElementSearchPage(cmd, items); err != nil {
+			if err := renderElementSearchPage(cmd, items, capturedNow); err != nil {
 				return element.SearchResult{}, false, err
 			}
 		} else {
@@ -155,14 +157,14 @@ func newElementSearchPageRequest(from int32, batchSize int32, limit int32, loade
 }
 
 // renderElementSearchPage renders one page in the current incremental output mode.
-func renderElementSearchPage(cmd *cobra.Command, items []element.Element) error {
+func renderElementSearchPage(cmd *cobra.Command, items []element.Element, capturedNow time.Time) error {
 	switch pickMode() {
 	case RenderModeKeysOnly:
 		for _, item := range items {
 			renderOutputLine(cmd, "%s", item.ElementInstanceKey)
 		}
 	default:
-		rowOf := flatRowElementWithTimezoneForMode(cmd)
+		rowOf := flatRowElementWithTimezoneForMode(cmd, capturedNow)
 		rows := make([]flatRow, 0, len(items))
 		for _, item := range items {
 			rows = append(rows, rowOf(item))

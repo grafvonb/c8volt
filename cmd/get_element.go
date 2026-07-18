@@ -32,6 +32,7 @@ var getElementCmd = &cobra.Command{
 	Long: "List or fetch Camunda runtime element instances.\n\n" +
 		"Use --key when you know an element instance key. Omit --key to list or search element instances by process instance, BPMN element ID, state, type, process definition, or BPMN process ID.\n\n" +
 		"Search mode follows the shared get paging and limit conventions. --batch-size controls per-page discovery requests, --limit caps returned element rows, and --total prints only the matching count.\n\n" +
+		"Compact human rows include dur:<duration> when start/end timestamps or active state support a runtime duration.\n\n" +
 		"Use --json for the stable element payload and --keys-only when piping element instance keys.\n\n" +
 		"Element lookup and search require Camunda 8.8 or 8.9. Camunda 8.7 returns an unsupported-version error.",
 	Example: `  ./c8volt get ei -k <element-instance-key>
