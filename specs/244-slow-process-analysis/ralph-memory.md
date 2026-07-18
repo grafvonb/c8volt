@@ -38,7 +38,7 @@ Started: 2026-07-18T10:01:26Z
 - `--incidents-only` remains unsupported and unregistered; `--no-incidents-only` maps to `HasIncident=false` in process-instance discovery.
 - Runtime element ordering is delegated to existing process-instance enrichment semantics: start date ascending, then element-instance key; keep this when adding JSON or comparison indicators.
 - Detail filters are post-calculation visibility filters: element predicates must match all supplied predicates, transitions remain visible when either original endpoint matches the active predicates, and `--duration-after` applies to measured detail row durations only.
-- Generated CLI docs have not been regenerated in US4; Phase 7 T059 still owns `make docs-content` and generated `docs/cli/` updates.
+- Phase 7 regenerated CLI docs with `make docs-content`, added generated `ops analyse` command docs, corrected the quickstart facade test regex to the actual `TestClientAnalyseSlowProcessInstances` names, and verified feasible local binary scenarios without live Camunda access.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -55,4 +55,4 @@ Started: 2026-07-18T10:01:26Z
 - Do not re-open a separate investigation for the Phase 1 artifact consistency check unless later specs change; the current artifacts are aligned.
 
 ## Current Handoff
-- Next iteration should start Phase 7 polish tasks T054-T062 only. Regenerate CLI docs with `make docs-content`, update quickstart only if output wording changed, run targeted validations, build `/tmp/c8volt-slow-pi-analysis`, verify quickstart scenarios where feasible, and finish with `make test`.
+- Feature complete; no handoff required.

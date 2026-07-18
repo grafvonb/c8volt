@@ -181,8 +181,8 @@ Expected:
 
 ```bash
 go test ./internal/services/ops -run 'TestSlowProcessAnalysis' -count=1
-go test ./c8volt/ops -run 'TestClient_.*SlowProcessAnalysis' -count=1
-go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances|TestOpsAnalyzeSlowProcessInstances|TestSlowProcessAnalysisView|TestCommandCapabilityForCommand_Ops' -count=1
+go test ./c8volt/ops -run 'TestClientAnalyseSlowProcessInstances' -count=1
+go test ./cmd -run 'Test.*SlowProcessAnalysis|TestOps.*SlowProcess|TestCommandContract|TestOpsContract' -count=1
 go test ./docsgen -count=1
 ```
 

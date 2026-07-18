@@ -153,15 +153,15 @@
 
 **Purpose**: Documentation, generated artifacts, validation, and cleanup across all user stories.
 
-- [ ] T054 [P] Update quickstart examples if implementation output wording changes in `specs/244-slow-process-analysis/quickstart.md`
-- [ ] T055 Run `gofmt` on `cmd/ops_analyse_slow_process_instances.go`, `cmd/cmd_views_ops_slow_process_analysis.go`, `c8volt/ops/api.go`, `c8volt/ops/client.go`, `c8volt/ops/convert.go`, `c8volt/ops/model.go`, `c8volt/client.go`, `internal/domain/ops_slow_process_analysis.go`, and `internal/services/ops/slow_process_analysis.go`
-- [ ] T056 Run targeted internal service validation for `internal/services/ops/slow_process_analysis_test.go` with `go test ./internal/services/ops -run 'TestSlowProcessAnalysis' -count=1`
-- [ ] T057 Run targeted facade validation for `c8volt/ops/client_test.go` with `go test ./c8volt/ops -run 'TestClient_.*SlowProcessAnalysis' -count=1`
-- [ ] T058 Run targeted command validation for `cmd/ops_analyse_slow_process_instances_test.go`, `cmd/cmd_views_ops_slow_process_analysis_test.go`, `cmd/ops_contract_test.go`, and `cmd/command_contract_test.go` with `go test ./cmd -run 'Test.*SlowProcessAnalysis|TestOps.*SlowProcess|TestCommandContract|TestOpsContract' -count=1`
-- [ ] T059 Run docs validation and regenerate generated CLI docs for `docsgen/main_test.go`, `docs/cli/`, and `docs/index.md` with `go test ./docsgen -count=1` and `make docs-content`
-- [ ] T060 Build the quickstart binary from `go.mod` with `go build -o /tmp/c8volt-slow-pi-analysis .`
-- [ ] T061 Verify manual scenarios from `specs/244-slow-process-analysis/quickstart.md` against `/tmp/c8volt-slow-pi-analysis`
-- [ ] T062 Run full repository validation through `Makefile` with `make test`
+- [x] T054 [P] Update quickstart examples if implementation output wording changes in `specs/244-slow-process-analysis/quickstart.md`
+- [x] T055 Run `gofmt` on `cmd/ops_analyse_slow_process_instances.go`, `cmd/cmd_views_ops_slow_process_analysis.go`, `c8volt/ops/api.go`, `c8volt/ops/client.go`, `c8volt/ops/convert.go`, `c8volt/ops/model.go`, `c8volt/client.go`, `internal/domain/ops_slow_process_analysis.go`, and `internal/services/ops/slow_process_analysis.go`
+- [x] T056 Run targeted internal service validation for `internal/services/ops/slow_process_analysis_test.go` with `go test ./internal/services/ops -run 'TestSlowProcessAnalysis' -count=1`
+- [x] T057 Run targeted facade validation for `c8volt/ops/client_test.go` with `go test ./c8volt/ops -run 'TestClient_.*SlowProcessAnalysis' -count=1`
+- [x] T058 Run targeted command validation for `cmd/ops_analyse_slow_process_instances_test.go`, `cmd/cmd_views_ops_slow_process_analysis_test.go`, `cmd/ops_contract_test.go`, and `cmd/command_contract_test.go` with `go test ./cmd -run 'Test.*SlowProcessAnalysis|TestOps.*SlowProcess|TestCommandContract|TestOpsContract' -count=1`
+- [x] T059 Run docs validation and regenerate generated CLI docs for `docsgen/main_test.go`, `docs/cli/`, and `docs/index.md` with `go test ./docsgen -count=1` and `make docs-content`
+- [x] T060 Build the quickstart binary from `go.mod` with `go build -o /tmp/c8volt-slow-pi-analysis .`
+- [x] T061 Verify manual scenarios from `specs/244-slow-process-analysis/quickstart.md` against `/tmp/c8volt-slow-pi-analysis`
+- [x] T062 Run full repository validation through `Makefile` with `make test`
 
 ---
 
