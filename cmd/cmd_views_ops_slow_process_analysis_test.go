@@ -64,73 +64,105 @@ func TestRenderOpsSlowProcessAnalysisResultHumanRendersKeyedRoots(t *testing.T) 
 	require.True(t, strings.HasSuffix(output, "process instances: 2\n"))
 }
 
-// TestRenderOpsSlowProcessAnalysisResultHumanRendersRelativeBars verifies visual indicators stay compact and unlabeled.
-func TestRenderOpsSlowProcessAnalysisResultHumanRendersRelativeBars(t *testing.T) {
+// TestRenderOpsSlowProcessAnalysisResultHumanRendersDurationShareBars verifies visual indicators show duration shares without labels.
+func TestRenderOpsSlowProcessAnalysisResultHumanRendersDurationShareBars(t *testing.T) {
 	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
 	result := ops.SlowProcessAnalysisResult{
-		Items: []ops.SlowProcessAnalysisProcessInstance{{
-			Key:                    "2251799813685249",
-			ProcessDefinitionKey:   "2251799813687001",
-			State:                  process.StateCompleted,
-			StartDate:              "2026-07-18T10:00:00Z",
-			EndDate:                "2026-07-18T10:05:00Z",
-			RootProcessInstanceKey: "2251799813685249",
-			Duration:               "5m0s",
-			DurationMillis:         300000,
-			DurationAvailable:      true,
-			RelativePercentile:     88,
-			ComparisonSampleCount:  4,
-			RelativeBar:            "[#########-]",
-			Timeline: []ops.SlowProcessAnalysisTimelineEntry{
-				{
-					Kind:                 ops.SlowProcessAnalysisTimelineEntryKindElement,
-					ElementInstanceKey:   "2251799813685250",
-					ElementID:            "ReserveStock",
-					Type:                 "SERVICE_TASK",
-					State:                "COMPLETED",
-					StartDate:            "2026-07-18T10:00:00Z",
-					EndDate:              "2026-07-18T10:00:04Z",
-					Duration:             "4s",
-					DurationMillis:       4000,
-					DurationAvailable:    true,
-					RelativePercentile:   50,
-					RelativeBar:          "[#####-----]",
-					ProcessDurationShare: 1,
-				},
-				{
-					Kind:                   ops.SlowProcessAnalysisTimelineEntryKindTransition,
-					FromElementID:          "ReserveStock",
-					FromElementType:        "SERVICE_TASK",
-					FromElementInstanceKey: "2251799813685250",
-					ToElementID:            "OrderFinished",
-					ToElementType:          "END_EVENT",
-					ToElementInstanceKey:   "2251799813685251",
-					Duration:               "4m56s",
-					DurationMillis:         296000,
-					DurationAvailable:      true,
-					RelativePercentile:     83,
-					RelativeBar:            "[########--]",
-					ProcessDurationShare:   99,
+		Items: []ops.SlowProcessAnalysisProcessInstance{
+			{
+				Key:                    "root-100",
+				ProcessDefinitionKey:   "2251799813687001",
+				State:                  process.StateCompleted,
+				StartDate:              "2026-07-18T10:00:00Z",
+				EndDate:                "2026-07-18T10:01:40Z",
+				RootProcessInstanceKey: "root-100",
+				Duration:               "1m40s",
+				DurationMillis:         100000,
+				DurationAvailable:      true,
+				RelativePercentile:     17,
+				RelativeBar:            "[##--------]",
+			},
+			{
+				Key:                    "root-50",
+				ProcessDefinitionKey:   "2251799813687001",
+				State:                  process.StateCompleted,
+				StartDate:              "2026-07-18T10:00:00Z",
+				EndDate:                "2026-07-18T10:00:50Z",
+				RootProcessInstanceKey: "root-50",
+				Duration:               "50s",
+				DurationMillis:         50000,
+				DurationAvailable:      true,
+				RelativePercentile:     50,
+				RelativeBar:            "[#####-----]",
+			},
+			{
+				Key:                    "root-10",
+				ProcessDefinitionKey:   "2251799813687001",
+				State:                  process.StateCompleted,
+				StartDate:              "2026-07-18T10:00:00Z",
+				EndDate:                "2026-07-18T10:00:10Z",
+				RootProcessInstanceKey: "root-10",
+				Duration:               "10s",
+				DurationMillis:         10000,
+				DurationAvailable:      true,
+				RelativePercentile:     83,
+				RelativeBar:            "[########--]",
+				Timeline: []ops.SlowProcessAnalysisTimelineEntry{
+					{
+						Kind:               ops.SlowProcessAnalysisTimelineEntryKindElement,
+						ElementInstanceKey: "2251799813685250",
+						ElementID:          "ReserveStock",
+						Type:               "SERVICE_TASK",
+						State:              "COMPLETED",
+						StartDate:          "2026-07-18T10:00:00Z",
+						EndDate:            "2026-07-18T10:00:00Z",
+						Duration:           "0s",
+						DurationAvailable:  true,
+						RelativePercentile: 50,
+						RelativeBar:        "[#####-----]",
+					},
+					{
+						Kind:               ops.SlowProcessAnalysisTimelineEntryKindElement,
+						ElementInstanceKey: "2251799813685251",
+						ElementID:          "Work",
+						Type:               "SERVICE_TASK",
+						State:              "COMPLETED",
+						StartDate:          "2026-07-18T10:00:00Z",
+						EndDate:            "2026-07-18T10:00:05Z",
+						Duration:           "5s",
+						DurationMillis:     5000,
+						DurationAvailable:  true,
+						RelativePercentile: 83,
+						RelativeBar:        "[########--]",
+					},
 				},
 			},
-		}},
-		Count: 1,
+		},
+		Count: 3,
 	}
 
 	err := renderOpsSlowProcessAnalysisResult(cmd, result)
 
 	require.NoError(t, err)
 	output := buf.String()
-	require.Contains(t, output, "dur:5m0s [█████████░ 88%]")
+	require.Contains(t, output, "root-100")
+	require.Contains(t, output, "dur:1m40s [██████████] 100%")
+	require.Contains(t, output, "root-50")
+	require.Contains(t, output, "dur:50s [█████░░░░░] 50%")
+	require.Contains(t, output, "root-10")
+	require.Contains(t, output, "dur:10s [█░░░░░░░░░] 10%")
 	require.Contains(t, output, "└─ elements:\n")
-	require.Contains(t, output, "   ├─ 2251799813685250 SERVICE_TASK ReserveStock COMPLETED s:10:00:00.000 e:10:00:04.000 dur:4s [█████░░░░░ 50%] PI:1%")
-	require.Contains(t, output, "   └─ ReserveStock -> OrderFinished: 4m56s [████████░░ 83%] PI:99%")
+	require.Contains(t, output, "   ├─ 2251799813685250 SERVICE_TASK ReserveStock COMPLETED s:10:00:00.000 e:10:00:00.000 dur:0s")
+	require.NotContains(t, output, "dur:0s [")
+	require.Contains(t, output, "   └─ 2251799813685251 SERVICE_TASK Work COMPLETED s:10:00:00.000 e:10:00:05.000 dur:5s [█████░░░░░] 50%")
 	require.NotContains(t, output, "cohort")
 	require.NotContains(t, output, "peer")
 	require.NotContains(t, output, "compared")
+	require.NotContains(t, output, "rank")
+	require.NotContains(t, output, "share")
 }
 
-// TestRenderOpsSlowProcessAnalysisResultHumanRendersSubPercentProcessShare verifies issue #244's PI:<1% shape.
+// TestRenderOpsSlowProcessAnalysisResultHumanRendersSubPercentDurationShare verifies issue #244's sub-percent shape.
 func TestRenderOpsSlowProcessAnalysisResultHumanRendersSubPercentProcessShare(t *testing.T) {
 	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
 	result := ops.SlowProcessAnalysisResult{
@@ -205,10 +237,12 @@ func TestRenderOpsSlowProcessAnalysisResultHumanRendersSubPercentProcessShare(t 
 
 	require.NoError(t, err)
 	require.Contains(t, buf.String(), "2251799813694100 tenant-a OrderProcess v7 COMPLETED s:2026-07-18T08:10:00.000 e:2026-07-18T08:24:32.000 p:<root>")
-	require.Contains(t, buf.String(), "dur:14m32s [█████████░ 93%]")
-	require.Contains(t, buf.String(), "└─ elements:\n   ├─ 4108 SERVICE_TASK ReserveStock COMPLETED s:08:10:00.300 e:08:10:04.500 dur:4.2s [██████░░░░ 64%] PI:<1%")
-	require.Contains(t, buf.String(), "   ├─ ReserveStock -> OrderFinished: 14m20s [██████████ 99%] PI:99%")
-	require.Contains(t, buf.String(), "   └─ 4122 END_EVENT OrderFinished COMPLETED s:08:24:24.500 e:08:24:24.508 dur:8ms [███░░░░░░░ 31%] PI:<1%")
+	require.Contains(t, buf.String(), "dur:14m32s")
+	require.NotContains(t, buf.String(), "dur:14m32s [")
+	require.Contains(t, buf.String(), "└─ elements:\n   ├─ 4108 SERVICE_TASK ReserveStock COMPLETED s:08:10:00.300 e:08:10:04.500 dur:4.2s [░░░░░░░░░░] <1%")
+	require.Contains(t, buf.String(), "   ├─ ReserveStock -> OrderFinished: 14m20s [██████████] 99%")
+	require.Contains(t, buf.String(), "   └─ 4122 END_EVENT OrderFinished COMPLETED s:08:24:24.500 e:08:24:24.508 dur:8ms [░░░░░░░░░░] <1%")
+	require.NotContains(t, buf.String(), "PI:")
 }
 
 // TestRenderOpsSlowProcessAnalysisResultHumanRendersTimelineDetails verifies compact element and transition detail rows.
@@ -269,10 +303,11 @@ func TestRenderOpsSlowProcessAnalysisResultHumanRendersTimelineDetails(t *testin
 	require.NoError(t, err)
 	output := buf.String()
 	require.Contains(t, output, "└─ elements:\n")
-	require.Contains(t, output, "   ├─ 2251799813685250 SERVICE_TASK ReserveStock COMPLETED s:10:00:00.000 e:10:00:04.000 dur:4s PI:1% inc!:2251799813687777")
-	require.Contains(t, output, "   └─ ReserveStock -> OrderFinished: 4m56s PI:99%")
+	require.Contains(t, output, "   ├─ 2251799813685250 SERVICE_TASK ReserveStock COMPLETED s:10:00:00.000 e:10:00:04.000 dur:4s [░░░░░░░░░░] 1% inc!:2251799813687777")
+	require.Contains(t, output, "   └─ ReserveStock -> OrderFinished: 4m56s [██████████] 99%")
 	require.NotContains(t, output, "between:")
 	require.NotContains(t, output, "transition:")
+	require.NotContains(t, output, "PI:")
 	require.True(t, strings.HasSuffix(output, "process instances: 1\n"))
 }
 

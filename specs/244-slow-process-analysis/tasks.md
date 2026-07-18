@@ -179,6 +179,19 @@
 
 ---
 
+## Phase 9: Convergence - Ops Bar Semantics Simplification
+
+**Purpose**: Make slow-analysis human bars self-explaining for operators by showing duration share instead of percentile rank.
+
+- [x] T070 [P] Update slow-analysis spec and CLI contract so human root bars mean duration relative to the longest visible root and human detail bars mean duration relative to the current root in `specs/244-slow-process-analysis/spec.md` and `specs/244-slow-process-analysis/contracts/cli.md`
+- [x] T071 [P] Update renderer tests for root duration-share bars, detail duration-share bars, omitted zero-duration bars, and unchanged JSON fields in `cmd/cmd_views_ops_slow_process_analysis_test.go`
+- [x] T072 Implement human root duration-share bar calculation in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T073 Implement human detail duration-share bars and remove human `PI:` share tokens in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T074 Update README and quickstart wording to describe human bars as duration shares in `README.md` and `specs/244-slow-process-analysis/quickstart.md`
+- [x] T075 Run `gofmt`, focused renderer tests, relevant package tests, and `git diff --check`
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -191,6 +204,7 @@
 - **Phase 6 US4**: Depends on US1-US3 data being available for stable output and comparison indicators.
 - **Phase 7 Polish**: Depends on all desired user stories.
 - **Phase 8 Convergence**: Depends on completed implementation and restores the formatting-sensitive issue output contract.
+- **Phase 9 Convergence**: Depends on Phase 8 and simplifies human bar semantics without changing JSON or keys-only output.
 
 ### User Story Dependencies
 

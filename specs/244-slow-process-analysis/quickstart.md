@@ -28,7 +28,8 @@ Expected:
 - Runtime details appear under a nested `└─ elements:` section when runtime elements exist.
 - Element rows appear in chronological order using `├─` and `└─` child connectors.
 - Transition timing rows use `A -> B: duration`.
-- Relative-duration bars include ten visual cells plus a rounded percentile when enough comparable measurements exist.
+- Human duration bars compare root rows to the longest visible root and detail rows to their root duration.
+- Zero-duration rows do not show bars.
 - Output ends with the final process-instance count.
 
 ### 2. Analyze repeated keys and stdin keys

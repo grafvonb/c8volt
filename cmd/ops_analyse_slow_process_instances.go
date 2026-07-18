@@ -64,7 +64,7 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 	Example: `  ./c8volt ops analyse slow-process-instances --key 2251799813685249
   ./c8volt ops analyze slow-process-instances --bpmn-process-id OrderProcess --state all --limit 20
   ./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -`,
-	Aliases: []string{"slow-pi"},
+	Aliases: []string{"slow-pi", "spi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		if err := validateOpsSlowProcessAnalysisCommandArgs(cmd, args); err != nil {
 			return silenceUsageForError(cmd, err)

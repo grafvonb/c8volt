@@ -153,9 +153,9 @@ Elements are listed below each process instance in a nested tree-shaped section:
 ```text
 2251799813694100 tenant-a OrderProcess v7 COMPLETED s:2026-07-18T08:10:00.000 e:2026-07-18T08:24:32.000 p:<root> dur:14m32s [█████████░ 93%]
 └─ elements:
-   ├─ 4108 SERVICE_TASK ReserveStock COMPLETED s:08:10:00.300 e:08:10:04.500 dur:4.2s [██████░░░░ 64%] PI:<1%
-   ├─ ReserveStock -> OrderFinished: 14m20s [██████████ 99%] PI:99%
-   └─ 4122 END_EVENT OrderFinished COMPLETED s:08:24:24.500 e:08:24:24.508 dur:8ms [███░░░░░░░ 31%] PI:<1%
+   ├─ 4108 SERVICE_TASK ReserveStock COMPLETED s:08:10:00.300 e:08:10:04.500 dur:4.2s [░░░░░░░░░░] <1%
+   ├─ ReserveStock -> OrderFinished: 14m20s [██████████] 99%
+   └─ 4122 END_EVENT OrderFinished COMPLETED s:08:24:24.500 e:08:24:24.508 dur:8ms [░░░░░░░░░░] <1%
 ```
 
 Element rows are listed in chronological order:
@@ -180,11 +180,13 @@ Rules:
 - Do not add `between:` or `transition:` prefixes.
 - Do not claim causality.
 - Do not emit negative transitions.
-- Place relative-duration indicators directly after durations.
-- Render human visual comparison indicators as ten visual cells plus the rounded percentile text in one bracket, for example `[█████████░ 93%]`.
-- Do not label visual indicators with terms such as `cohort`, `peer`, `similar`, or `compared`.
-- Show `PI:<percentage>` for valid process-duration shares, using `PI:<1%` when a positive detail duration is less than one percent of the root process duration.
-- Omit relative comparison bars when fewer than three comparable measurements exist.
+- Place visual duration-share indicators directly after durations.
+- Root-row bars compare the root duration to the longest visible root duration and appear only when multiple visible roots have available durations.
+- Detail-row bars compare the detail duration to the current root process-instance duration.
+- Do not label visual indicators with terms such as `cohort`, `peer`, `similar`, `compared`, `rank`, or `share`.
+- Use `<1%` when a positive duration is less than one percent of its comparison duration.
+- Omit bars for zero-duration rows and unavailable durations.
+- Keep JSON relative comparison fields separate from human duration-share bars.
 - End with the final process-instance count.
 
 Empty process-definition search output:

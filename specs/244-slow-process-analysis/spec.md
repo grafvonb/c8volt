@@ -102,8 +102,8 @@ As a c8volt operator or automation author, I want slow-run analysis in establish
 - Missing, invalid, or filtered-out elements must not be bridged by synthetic transition timings.
 - Detail filters must keep the process-instance root even when no detail rows match.
 - `--duration-after` applies only to element and transition durations, never to process-instance root visibility.
-- Relative indicators must be omitted when fewer than three comparable measurements exist.
-- A single selected process instance must remain useful without a process-relative comparison bar, while element and transition comparison indicators may still appear when enough comparable measurements exist.
+- Human duration bars must be omitted for zero-duration rows and for single-root root comparisons.
+- JSON relative indicators must be omitted when fewer than three comparable measurements exist.
 
 ## Requirements *(mandatory)*
 
@@ -154,17 +154,19 @@ As a c8volt operator or automation author, I want slow-run analysis in establish
 - **FR-043**: Original transition timing lines MUST be shown when at least one endpoint matches the active detail filters.
 - **FR-044**: Filtering MUST preserve original endpoint identifiers and MUST never create synthetic transitions across hidden elements.
 - **FR-045**: Process-instance roots MUST remain visible even when no detail rows match.
-- **FR-046**: Human output MUST place visual relative-duration indicators directly after durations without labels such as `cohort`, `peer`, `similar`, or `compared`.
-- **FR-047**: Process-instance relative indicators MUST compare selected process instances with the same process-definition key.
-- **FR-048**: Element relative indicators MUST compare executions with the same process-definition key, element ID, and type.
-- **FR-049**: Transition relative indicators MUST compare measurements with the same process-definition key and the same from/to element IDs and types.
+- **FR-046**: Human output MUST place visual duration-share indicators directly after durations without labels such as `cohort`, `peer`, `similar`, `compared`, `rank`, or `share`.
+- **FR-047**: JSON process-instance relative indicators MUST compare selected process instances with the same process-definition key.
+- **FR-048**: JSON element relative indicators MUST compare executions with the same process-definition key, element ID, and type.
+- **FR-049**: JSON transition relative indicators MUST compare measurements with the same process-definition key and the same from/to element IDs and types.
 - **FR-050**: Process-duration share indicators MUST show each element or transition timing divided by the process instance's whole duration when a valid share can be calculated.
-- **FR-051**: Relative percentile MUST be based on shorter values plus half of equal values divided by all comparable values, rounded to the nearest whole percent.
-- **FR-052**: Visual comparison bars MUST render ten cells based on the rounded percentile.
-- **FR-053**: Relative comparison indicators MUST be omitted when fewer than three comparable measurements exist.
-- **FR-054**: Human output MUST include process instances sorted longest to shortest, root rows, chronological element rows, compact arrow timing lines, relative-duration indicators, and a final process-instance count.
+- **FR-051**: JSON relative percentile MUST be based on shorter values plus half of equal values divided by all comparable values, rounded to the nearest whole percent.
+- **FR-052**: Human duration bars MUST render ten cells based on the duration's rounded percentage of its comparison duration.
+- **FR-053**: JSON relative comparison indicators MUST be omitted when fewer than three comparable measurements exist.
+- **FR-054**: Human output MUST include process instances sorted longest to shortest, root rows, chronological element rows, compact arrow timing lines, duration-share indicators, and a final process-instance count.
 - **FR-054a**: Human output MUST render each process instance as an unindented root row with detail rows nested under a tree-shaped `└─ elements:` section using `├─` and `└─` child connectors.
-- **FR-054b**: Human visual comparison bars MUST include ten visual cells and the rounded percentile text inside the same bracket, such as `[█████████░ 93%]`, while keeping comparison labels omitted.
+- **FR-054b**: Human root rows MUST render a ten-cell duration bar only when multiple visible roots have available durations; the root bar percentage MUST be the root duration divided by the longest visible root duration.
+- **FR-054c**: Human detail rows MUST render a ten-cell duration bar only when the detail duration is positive and the root duration is available; the detail bar percentage MUST be the detail duration divided by that root process-instance duration.
+- **FR-054d**: Human output MUST omit bars for zero-duration rows and unavailable durations, while JSON output MUST keep explicit relative percentile and comparison fields for machine consumers.
 - **FR-055**: JSON output MUST provide stable process-instance data and an ordered timeline containing element and transition timing entries.
 - **FR-056**: JSON output MUST include process-instance duration and milliseconds, captured analysis time, element fields and timestamps, element duration and milliseconds, transition endpoints and timestamps, transition duration and milliseconds, relative percentile, comparison sample count, and process-duration share.
 - **FR-057**: Keys-only output MUST emit only unique process-instance keys, one per line, longest to shortest.
@@ -178,7 +180,8 @@ As a c8volt operator or automation author, I want slow-run analysis in establish
 - **Runtime Element Instance**: A chronological execution occurrence under a process instance. Key attributes include element-instance key, element ID, type, state, start and end dates, duration, and incident marker.
 - **Transition Timing**: The elapsed time between adjacent chronological element executions when the previous end and next start are valid and non-overlapping.
 - **Selection Cohort**: The frozen set of process instances used for sorting, timeline inspection, and comparison calculations.
-- **Relative-Duration Indicator**: A compact human and structured machine-readable measure showing where a process, element, or transition duration sits among comparable measurements.
+- **Duration-Share Indicator**: A compact human measure showing a root duration relative to the longest visible root, or a detail duration relative to its root process-instance duration.
+- **Relative-Duration Indicator**: A structured machine-readable measure showing where a process, element, or transition duration sits among comparable measurements.
 
 ## Success Criteria *(mandatory)*
 
@@ -192,7 +195,7 @@ As a c8volt operator or automation author, I want slow-run analysis in establish
 - **SC-006**: 100% of active process instances and active elements with valid start dates use the same captured analysis time for duration calculation within one run.
 - **SC-007**: 100% of transition timing lines use the `A -> B: duration` shape and omit negative, bridged, or causality-claiming timings.
 - **SC-008**: Detail filtering never changes relative-duration calculations, never creates synthetic transitions, and keeps the process-instance root visible.
-- **SC-009**: Relative indicators appear only when at least three comparable measurements exist and tied durations receive the same percentile.
+- **SC-009**: Human bars always describe duration share, while JSON relative indicators appear only when at least three comparable measurements exist and tied durations receive the same percentile.
 - **SC-010**: JSON consumers can read captured analysis time, process durations, ordered timeline entries, comparison sample counts, relative percentiles, and process-duration shares using explicit field names.
 - **SC-011**: Camunda 8.7 attempts return the established unsupported-version result without mutating operational state.
 - **SC-012**: The command remains read-only across all successful and failed scenarios.
@@ -202,7 +205,7 @@ As a c8volt operator or automation author, I want slow-run analysis in establish
 - Operators already have configured c8volt access and permissions sufficient to inspect process instances and runtime element instances.
 - Existing `get pi` and `get pi --with-elements` presentation rules remain the source of truth for root rows, element ordering, tenant handling, incident markers, and compact timestamps unless this specification explicitly changes them.
 - Process-definition search mode is intended to compare one process-definition cohort, while explicit-key mode remains an ad hoc investigation mode that can include keys from different process definitions.
-- Relative-duration indicators are informational and not additive because element executions and transition scopes can overlap.
+- Human duration-share indicators are informational and not additive because element executions and transition scopes can overlap.
 - Documentation and generated command references will be updated in the same feature work because the command, flags, examples, and output contracts are user-facing.
 
 ## Out of Scope

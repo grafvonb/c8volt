@@ -34,8 +34,9 @@ func renderOpsSlowProcessAnalysisResult(cmd *cobra.Command, result ops.SlowProce
 		}
 	default:
 		showTimezoneOffset := commandShowTimezoneOffset(cmd)
+		rootBarContext := opsSlowProcessAnalysisRootBarContext(result.Items)
 		for _, item := range result.Items {
-			renderOutputLine(cmd, "%s", formatOpsSlowProcessAnalysisRootRow(item, showTimezoneOffset))
+			renderOutputLine(cmd, "%s", formatOpsSlowProcessAnalysisRootRow(item, rootBarContext, showTimezoneOffset))
 			if len(item.Timeline) > 0 {
 				renderOutputLine(cmd, "└─ elements:")
 				for i, entry := range item.Timeline {
@@ -48,8 +49,29 @@ func renderOpsSlowProcessAnalysisResult(cmd *cobra.Command, result ops.SlowProce
 	return nil
 }
 
+type opsSlowProcessAnalysisRootBar struct {
+	enabled          bool
+	maxDurationMilli int64
+}
+
+func opsSlowProcessAnalysisRootBarContext(items []ops.SlowProcessAnalysisProcessInstance) opsSlowProcessAnalysisRootBar {
+	out := opsSlowProcessAnalysisRootBar{}
+	available := 0
+	for _, item := range items {
+		if !item.DurationAvailable || item.DurationMillis <= 0 {
+			continue
+		}
+		available++
+		if item.DurationMillis > out.maxDurationMilli {
+			out.maxDurationMilli = item.DurationMillis
+		}
+	}
+	out.enabled = available > 1 && out.maxDurationMilli > 0
+	return out
+}
+
 // formatOpsSlowProcessAnalysisRootRow keeps slow-analysis root rows aligned with process-instance list output.
-func formatOpsSlowProcessAnalysisRootRow(item ops.SlowProcessAnalysisProcessInstance, showTimezoneOffset bool) string {
+func formatOpsSlowProcessAnalysisRootRow(item ops.SlowProcessAnalysisProcessInstance, rootBarContext opsSlowProcessAnalysisRootBar, showTimezoneOffset bool) string {
 	row := flatRowPIWithTimezone(process.ProcessInstance{
 		BpmnProcessId:          item.BpmnProcessID,
 		EndDate:                item.EndDate,
@@ -68,8 +90,10 @@ func formatOpsSlowProcessAnalysisRootRow(item ops.SlowProcessAnalysisProcessInst
 	} else {
 		row = append(row, "dur:-")
 	}
-	if relative := opsSlowProcessAnalysisHumanRelativeBar(item.RelativeBar, item.RelativePercentile); relative != "" {
-		row = append(row, relative)
+	if rootBarContext.enabled {
+		if bar := opsSlowProcessAnalysisHumanDurationBar(item.DurationMillis, rootBarContext.maxDurationMilli); bar != "" {
+			row = append(row, bar)
+		}
 	}
 	return compactFlatRow(row)
 }
@@ -94,8 +118,7 @@ func formatOpsSlowProcessAnalysisElementRow(entry ops.SlowProcessAnalysisTimelin
 		prefixedElementField("s", opsSlowProcessAnalysisDetailTimestamp(entry.StartDate, root.StartDate, showTimezoneOffset)),
 		prefixedElementField("e", opsSlowProcessAnalysisDetailTimestamp(entry.EndDate, root.StartDate, showTimezoneOffset)),
 		opsSlowProcessAnalysisDurationField(entry.Duration, entry.DurationAvailable),
-		opsSlowProcessAnalysisHumanRelativeBar(entry.RelativeBar, entry.RelativePercentile),
-		opsSlowProcessAnalysisProcessShareField(entry, root),
+		opsSlowProcessAnalysisHumanDurationBar(entry.DurationMillis, root.DurationMillis),
 	}
 	if marker := opsSlowProcessAnalysisIncidentMarker(entry); marker != "" {
 		row = append(row, marker)
@@ -108,8 +131,7 @@ func formatOpsSlowProcessAnalysisTransitionRow(entry ops.SlowProcessAnalysisTime
 	row := flatRow{
 		entry.FromElementID + " -> " + entry.ToElementID + ":",
 		entry.Duration,
-		opsSlowProcessAnalysisHumanRelativeBar(entry.RelativeBar, entry.RelativePercentile),
-		opsSlowProcessAnalysisProcessShareField(entry, root),
+		opsSlowProcessAnalysisHumanDurationBar(entry.DurationMillis, root.DurationMillis),
 	}
 	return compactFlatRow(row)
 }
@@ -122,25 +144,27 @@ func opsSlowProcessAnalysisDurationField(duration string, available bool) string
 	return "dur:-"
 }
 
-// opsSlowProcessAnalysisHumanRelativeBar keeps unlabeled comparison bars adjacent to durations.
-func opsSlowProcessAnalysisHumanRelativeBar(raw string, percentile int) string {
-	if raw == "" {
+// opsSlowProcessAnalysisHumanDurationBar renders a duration as a share of the visible comparison duration.
+func opsSlowProcessAnalysisHumanDurationBar(durationMillis int64, comparisonMillis int64) string {
+	if durationMillis <= 0 || comparisonMillis <= 0 {
 		return ""
 	}
-	if percentile < 0 {
-		percentile = 0
+	share := float64(durationMillis) * 100 / float64(comparisonMillis)
+	if share > 0 && share < 1 {
+		return "[" + strings.Repeat("░", 10) + "] <1%"
 	}
-	if percentile > 100 {
-		percentile = 100
+	percent := int(math.Round(share))
+	if percent <= 0 {
+		return ""
 	}
-	filled := int(math.Round(float64(percentile) / 10))
-	if filled < 0 {
-		filled = 0
+	if percent > 100 {
+		percent = 100
 	}
+	filled := int(math.Round(float64(percent) / 10))
 	if filled > 10 {
 		filled = 10
 	}
-	return "[" + strings.Repeat("█", filled) + strings.Repeat("░", 10-filled) + " " + strconv.Itoa(percentile) + "%]"
+	return "[" + strings.Repeat("█", filled) + strings.Repeat("░", 10-filled) + "] " + strconv.Itoa(percent) + "%"
 }
 
 // opsSlowProcessAnalysisDetailTimestamp renders child rows compactly when the root row already carries the same date.
@@ -160,24 +184,6 @@ func opsSlowProcessAnalysisDetailTimestamp(value string, rootStartDate string, s
 		return toolx.FormatTimestamp(value, showTimezoneOffset)
 	}
 	return t.Format("15:04:05.000")
-}
-
-// opsSlowProcessAnalysisProcessShareField renders the process-duration share when service calculations provide one.
-func opsSlowProcessAnalysisProcessShareField(entry ops.SlowProcessAnalysisTimelineEntry, root ops.SlowProcessAnalysisProcessInstance) string {
-	if root.DurationAvailable && root.DurationMillis > 0 && entry.DurationAvailable && entry.DurationMillis > 0 {
-		share := float64(entry.DurationMillis) * 100 / float64(root.DurationMillis)
-		if share > 0 && share < 1 {
-			return "PI:<1%"
-		}
-		rounded := int(math.Round(share))
-		if rounded > 0 {
-			return "PI:" + strconv.Itoa(rounded) + "%"
-		}
-	}
-	if entry.ProcessDurationShare <= 0 {
-		return ""
-	}
-	return "PI:" + strconv.Itoa(entry.ProcessDurationShare) + "%"
 }
 
 // opsSlowProcessAnalysisIncidentMarker returns the compact incident marker allowed in element rows.
