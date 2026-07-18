@@ -54,7 +54,7 @@
 
 ### Tests for User Story 1
 
-- [ ] T015 [P] [US1] Add internal service tests for explicit-key deduplication, lookup, missing-key failure, unavailable-duration ordering, and Camunda 8.7 unsupported behavior in `internal/services/ops/slow_process_analysis_test.go`
+- [ ] T015 [P] [US1] Add internal service tests for explicit-key deduplication, lookup, missing-key and unauthorized-key failures, unavailable-duration ordering, and Camunda 8.7 unsupported behavior in `internal/services/ops/slow_process_analysis_test.go`
 - [ ] T016 [P] [US1] Add ops facade tests for explicit-key request conversion, service delegation, result conversion, and error mapping in `c8volt/ops/client_test.go`
 - [ ] T017 [P] [US1] Add command validation tests for repeated `--key`, `-k`, stdin `-`, mixed keys, empty stdin, invalid keys, extra positional args, and mutually exclusive selectors in `cmd/ops_analyse_slow_process_instances_test.go`
 - [ ] T018 [P] [US1] Add keyed human rendering tests for root rows, `dur:`, unavailable duration placement, and final process-instance count in `cmd/cmd_views_ops_slow_process_analysis_test.go`
@@ -79,9 +79,9 @@
 
 ### Tests for User Story 2
 
-- [ ] T024 [P] [US2] Add internal service tests for `--bpmn-process-id`, `--pd-key`, state/date/no-incidents filters, batch size, limit, frozen selection, and empty search success in `internal/services/ops/slow_process_analysis_test.go`
-- [ ] T025 [P] [US2] Add command validation tests for required selector, mutually exclusive `--bpmn-process-id` and `--pd-key`, search filters rejected in explicit-key mode, and unsupported `--incidents-only` absence in `cmd/ops_analyse_slow_process_instances_test.go`
-- [ ] T026 [P] [US2] Add command integration tests for process-definition search with `--state all`, date filters, `--batch-size`, `--limit`, and empty results in `cmd/ops_analyse_slow_process_instances_test.go`
+- [ ] T024 [P] [US2] Add internal service tests for `--bpmn-process-id`, `--pd-key`, state values `active`/`completed`/`canceled`/`terminated`/`all`, precise timestamp and `YYYY-MM-DD` date filters, no-incidents filters, batch size, limit, frozen selection, and empty search success in `internal/services/ops/slow_process_analysis_test.go`
+- [ ] T025 [P] [US2] Add command validation tests for required selector, mutually exclusive `--bpmn-process-id` and `--pd-key`, search filters rejected in explicit-key mode, and `--incidents-only` not accepted or advertised in `cmd/ops_analyse_slow_process_instances_test.go`
+- [ ] T026 [P] [US2] Add command integration tests for process-definition search with `--state all`, precise timestamp and `YYYY-MM-DD` date filters, `--batch-size`, `--limit`, and empty results in `cmd/ops_analyse_slow_process_instances_test.go`
 - [ ] T027 [P] [US2] Add empty-result rendering tests for human count, JSON empty items, and keys-only silence in `cmd/cmd_views_ops_slow_process_analysis_test.go`
 
 ### Implementation for User Story 2
@@ -157,7 +157,7 @@
 - [ ] T055 Run `gofmt` on `cmd/ops_analyse_slow_process_instances.go`, `cmd/cmd_views_ops_slow_process_analysis.go`, `c8volt/ops/api.go`, `c8volt/ops/client.go`, `c8volt/ops/convert.go`, `c8volt/ops/model.go`, `c8volt/client.go`, `internal/domain/ops_slow_process_analysis.go`, and `internal/services/ops/slow_process_analysis.go`
 - [ ] T056 Run targeted internal service validation for `internal/services/ops/slow_process_analysis_test.go` with `go test ./internal/services/ops -run 'TestSlowProcessAnalysis' -count=1`
 - [ ] T057 Run targeted facade validation for `c8volt/ops/client_test.go` with `go test ./c8volt/ops -run 'TestClient_.*SlowProcessAnalysis' -count=1`
-- [ ] T058 Run targeted command validation for `cmd/ops_analyse_slow_process_instances_test.go`, `cmd/cmd_views_ops_slow_process_analysis_test.go`, `cmd/ops_contract_test.go`, and `cmd/command_contract_test.go`
+- [ ] T058 Run targeted command validation for `cmd/ops_analyse_slow_process_instances_test.go`, `cmd/cmd_views_ops_slow_process_analysis_test.go`, `cmd/ops_contract_test.go`, and `cmd/command_contract_test.go` with `go test ./cmd -run 'Test.*SlowProcessAnalysis|TestOps.*SlowProcess|TestCommandContract|TestOpsContract' -count=1`
 - [ ] T059 Run docs validation and regenerate generated CLI docs for `docsgen/main_test.go`, `docs/cli/`, and `docs/index.md` with `go test ./docsgen -count=1` and `make docs-content`
 - [ ] T060 Build the quickstart binary from `go.mod` with `go build -o /tmp/c8volt-slow-pi-analysis .`
 - [ ] T061 Verify manual scenarios from `specs/244-slow-process-analysis/quickstart.md` against `/tmp/c8volt-slow-pi-analysis`
