@@ -192,6 +192,19 @@
 
 ---
 
+## Phase 10: Convergence - Duration Threshold Filters
+
+**Purpose**: Let operators focus slow-analysis output on long process instances or long timeline details with explicit root/detail duration filters.
+
+- [x] T076 [P] Update slow-analysis spec, CLI contract, quickstart, and README to distinguish root duration filtering from detail duration filtering
+- [x] T077 [P] Add command parsing and validation tests for `--dur-longer`, `--dur-element-longer`, and legacy `--duration-after`
+- [x] T078 Add root duration threshold fields to public and domain slow-analysis requests and facade conversion tests
+- [x] T079 Implement service-side root duration filtering after duration calculation and before comparison/detail filtering
+- [x] T080 Update command help, command contract, and docsgen tests for the new duration flags
+- [x] T081 Run `gofmt`, focused package tests, regenerated docs, relevant package tests, and `git diff --check`
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -205,6 +218,7 @@
 - **Phase 7 Polish**: Depends on all desired user stories.
 - **Phase 8 Convergence**: Depends on completed implementation and restores the formatting-sensitive issue output contract.
 - **Phase 9 Convergence**: Depends on Phase 8 and simplifies human bar semantics without changing JSON or keys-only output.
+- **Phase 10 Convergence**: Depends on Phase 9 and adds explicit root/detail duration filters for operator focus.
 
 ### User Story Dependencies
 

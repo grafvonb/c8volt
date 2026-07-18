@@ -141,6 +141,46 @@ func TestSlowProcessAnalysisExplicitKeysMeasuresActiveFromCapturedNow(t *testing
 	require.True(t, got.Items[0].DurationAvailable)
 }
 
+// TestSlowProcessAnalysisRootDurationFilterKeepsOnlyLongRoots verifies PI thresholds hide whole roots, not details.
+func TestSlowProcessAnalysisRootDurationFilterKeepsOnlyLongRoots(t *testing.T) {
+	captured := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:06:00Z")
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	active := slowProcessAnalysisFixtureProcessInstance("2251799813685252", start, time.Time{})
+	active.State = d.StateActive
+	active.EndDate = ""
+	unknownDuration := slowProcessAnalysisFixtureProcessInstance("2251799813685253", start, time.Time{})
+	unknownDuration.EndDate = ""
+	instances := map[string]d.ProcessInstance{
+		"2251799813685249": slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(10*time.Minute)),
+		"2251799813685250": slowProcessAnalysisFixtureProcessInstance("2251799813685250", start, start.Add(5*time.Minute)),
+		"2251799813685251": slowProcessAnalysisFixtureProcessInstance("2251799813685251", start, start.Add(2*time.Minute)),
+		"2251799813685252": active,
+		"2251799813685253": unknownDuration,
+	}
+	piAPI := stubProcessInstanceAPI{
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			if item, ok := instances[filter.Key]; ok {
+				return []d.ProcessInstance{item}, nil
+			}
+			return nil, fmt.Errorf("%w: missing", d.ErrNotFound)
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, stubSlowProcessAnalysisElementAPI{}, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode:      d.SlowProcessAnalysisSelectionModeExplicitKeys,
+		InputKeys:          typex.Keys{"2251799813685249", "2251799813685250", "2251799813685251", "2251799813685252", "2251799813685253"},
+		RootDurationLonger: 5 * time.Minute,
+		CapturedNow:        captured,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"2251799813685249", "2251799813685252"}, []string{got.Items[0].Key, got.Items[1].Key})
+	require.Equal(t, "10m0s", got.Items[0].Duration)
+	require.Equal(t, "6m0s", got.Items[1].Duration)
+	require.Equal(t, 2, got.Count)
+	require.False(t, got.Empty)
+}
+
 // TestSlowProcessAnalysisExplicitKeysPropagatesLookupFailures verifies missing or unauthorized keys do not become partial success.
 func TestSlowProcessAnalysisExplicitKeysPropagatesLookupFailures(t *testing.T) {
 	for _, tc := range []struct {

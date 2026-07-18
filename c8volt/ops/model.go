@@ -66,6 +66,7 @@ type SlowProcessAnalysisRequest struct {
 	ProcessDefinitionSelector SlowProcessAnalysisProcessDefinitionSelector    `json:"processDefinitionSelector,omitempty"`
 	ProcessInstanceFilters    SlowProcessAnalysisProcessInstanceSearchFilters `json:"processInstanceFilters,omitempty"`
 	DetailFilters             SlowProcessAnalysisDetailFilters                `json:"detailFilters,omitempty"`
+	RootDurationLonger        time.Duration                                   `json:"rootDurationLonger,omitempty"`
 	BatchSize                 int32                                           `json:"batchSize,omitempty"`
 	Limit                     int32                                           `json:"limit,omitempty"`
 	CapturedNow               time.Time                                       `json:"capturedNow,omitempty"`

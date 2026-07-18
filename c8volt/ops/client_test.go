@@ -287,6 +287,7 @@ func TestClientAnalyseSlowProcessInstancesMapsServiceBoundary(t *testing.T) {
 	t.Parallel()
 
 	captured := time.Date(2026, 7, 18, 10, 30, 0, 0, time.UTC)
+	rootDurationLonger := 10 * time.Minute
 	durationAfter := 5 * time.Second
 	api := stubOpsService{
 		slowProcessAnalysis: func(_ context.Context, request d.SlowProcessAnalysisRequest, opts ...services.CallOption) (d.SlowProcessAnalysisResult, error) {
@@ -312,10 +313,11 @@ func TestClientAnalyseSlowProcessInstancesMapsServiceBoundary(t *testing.T) {
 					ElementState:  "COMPLETED",
 					DurationAfter: durationAfter,
 				},
-				BatchSize:   250,
-				Limit:       10,
-				CapturedNow: captured,
-				OutputMode:  "json",
+				RootDurationLonger: rootDurationLonger,
+				BatchSize:          250,
+				Limit:              10,
+				CapturedNow:        captured,
+				OutputMode:         "json",
 			}, request)
 			require.True(t, services.ApplyCallOptions(opts).Verbose)
 			return d.SlowProcessAnalysisResult{
@@ -386,10 +388,11 @@ func TestClientAnalyseSlowProcessInstancesMapsServiceBoundary(t *testing.T) {
 			ElementState:  "COMPLETED",
 			DurationAfter: durationAfter,
 		},
-		BatchSize:   250,
-		Limit:       10,
-		CapturedNow: captured,
-		OutputMode:  "json",
+		RootDurationLonger: rootDurationLonger,
+		BatchSize:          250,
+		Limit:              10,
+		CapturedNow:        captured,
+		OutputMode:         "json",
 	}, foptions.WithVerbose())
 
 	require.NoError(t, err)

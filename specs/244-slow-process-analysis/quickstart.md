@@ -101,13 +101,25 @@ Expected:
 - Human output shows a zero process-instance count.
 - No root or detail rows are rendered.
 
-### 7. Detail filtering
+### 7. Root and detail duration filtering
+
+```bash
+/tmp/c8volt-slow-pi-analysis ops analyse slow-process-instances \
+  --bpmn-process-id <bpmn-process-id> \
+  --dur-longer 5m
+```
+
+Expected:
+
+- Only process-instance roots with measured duration greater than 5 minutes are rendered.
+- Keys-only output uses the same filtered root set.
+- Duration thresholds use Go duration strings such as `30s`, `5m`, `1h30m`, or `24h`; use `24h` instead of `1d`.
 
 ```bash
 /tmp/c8volt-slow-pi-analysis ops analyse slow-process-instances \
   --key <process-instance-key> \
   --element-id <element-id> \
-  --duration-after 2s
+  --dur-element-longer 2s
 ```
 
 Expected:

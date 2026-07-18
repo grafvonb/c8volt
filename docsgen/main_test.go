@@ -501,7 +501,10 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"Analyze slow process-instance timings",
 		"./c8volt ops analyse slow-process-instances --key 2251799813685249",
 		"./c8volt ops analyze slow-process-instances --bpmn-process-id OrderProcess --state all --limit 20",
+		"./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 1h30m --dur-element-longer 30s",
 		"./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -",
+		"Duration thresholds use Go duration syntax",
+		"Calendar units such as 1d are not accepted",
 		"--key strings",
 		"--bpmn-process-id string",
 		"--pd-key string",
@@ -512,6 +515,8 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"--element-id string",
 		"--type string",
 		"--element-state string",
+		"--dur-longer string",
+		"--dur-element-longer string",
 		"--duration-after string",
 	} {
 		if !strings.Contains(analyseDoc, want) {

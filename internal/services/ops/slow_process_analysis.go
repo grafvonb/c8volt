@@ -80,6 +80,7 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 		item.Timeline = slowProcessAnalysisCompleteTimeline(enrichedItem.Elements, capturedAt, item.DurationMillis, item.DurationAvailable)
 		items = append(items, item)
 	}
+	items = slowProcessAnalysisApplyRootDurationFilter(items, request.RootDurationLonger)
 	slowProcessAnalysisApplyComparisons(items)
 	slowProcessAnalysisApplyDetailFilters(items, request.DetailFilters)
 	sort.SliceStable(items, func(i, j int) bool {
@@ -98,6 +99,20 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 	result.Empty = len(items) == 0
 	result.Request = request
 	return result, nil
+}
+
+// slowProcessAnalysisApplyRootDurationFilter hides roots whose measured whole-process duration is not above the threshold.
+func slowProcessAnalysisApplyRootDurationFilter(items []d.SlowProcessAnalysisProcessInstance, threshold time.Duration) []d.SlowProcessAnalysisProcessInstance {
+	if threshold <= 0 {
+		return items
+	}
+	out := make([]d.SlowProcessAnalysisProcessInstance, 0, len(items))
+	for _, item := range items {
+		if item.DurationAvailable && time.Duration(item.DurationMillis)*time.Millisecond > threshold {
+			out = append(out, item)
+		}
+	}
+	return out
 }
 
 // slowProcessAnalysisLookupExplicitKeys resolves already-deduplicated keys through tenant-safe lookup.

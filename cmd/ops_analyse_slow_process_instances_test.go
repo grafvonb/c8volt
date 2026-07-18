@@ -170,7 +170,7 @@ func TestOpsAnalyseSlowProcessInstancesBuildsDetailFilters(t *testing.T) {
 	flagOpsAnalyseSlowProcessInstanceElementID = "ReserveStock"
 	flagOpsAnalyseSlowProcessInstanceType = "service_task"
 	flagOpsAnalyseSlowProcessInstanceElementState = "active"
-	flagOpsAnalyseSlowProcessInstanceDurationAfter = "2m"
+	flagOpsAnalyseSlowProcessInstanceElementDurationLonger = "2m"
 
 	got, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, nil, nil)
 
@@ -178,6 +178,33 @@ func TestOpsAnalyseSlowProcessInstancesBuildsDetailFilters(t *testing.T) {
 	require.Equal(t, "ReserveStock", got.Request.DetailFilters.ElementID)
 	require.Equal(t, "SERVICE_TASK", got.Request.DetailFilters.Type)
 	require.Equal(t, "ACTIVE", got.Request.DetailFilters.ElementState)
+	require.Equal(t, 2*time.Minute, got.Request.DetailFilters.DurationAfter)
+}
+
+// TestOpsAnalyseSlowProcessInstancesBuildsRootDurationFilter verifies root duration filters are separate from detail filters.
+func TestOpsAnalyseSlowProcessInstancesBuildsRootDurationFilter(t *testing.T) {
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	flagOpsAnalyseSlowProcessInstanceBpmnProcessID = "OrderProcess"
+	flagOpsAnalyseSlowProcessInstanceDurationLonger = "5m"
+	flagOpsAnalyseSlowProcessInstanceElementDurationLonger = "30s"
+
+	got, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, nil, nil)
+
+	require.NoError(t, err)
+	require.Equal(t, 5*time.Minute, got.Request.RootDurationLonger)
+	require.Equal(t, 30*time.Second, got.Request.DetailFilters.DurationAfter)
+}
+
+// TestOpsAnalyseSlowProcessInstancesDurationAfterAlias verifies legacy detail duration filtering stays compatible.
+func TestOpsAnalyseSlowProcessInstancesDurationAfterAlias(t *testing.T) {
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	flagOpsAnalyseSlowProcessInstanceBpmnProcessID = "OrderProcess"
+	flagOpsAnalyseSlowProcessInstanceDurationAfter = "2m"
+
+	got, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, nil, nil)
+
+	require.NoError(t, err)
+	require.Zero(t, got.Request.RootDurationLonger)
 	require.Equal(t, 2*time.Minute, got.Request.DetailFilters.DurationAfter)
 }
 
@@ -232,6 +259,12 @@ func TestOpsAnalyseSlowProcessInstancesRejectsInvalidDetailFilters(t *testing.T)
 	}{
 		{name: "bad duration", setup: func() { flagOpsAnalyseSlowProcessInstanceDurationAfter = "soon" }, want: "invalid value for --duration-after"},
 		{name: "negative duration", setup: func() { flagOpsAnalyseSlowProcessInstanceDurationAfter = "-1s" }, want: "--duration-after must not be negative"},
+		{name: "bad root duration", setup: func() { flagOpsAnalyseSlowProcessInstanceDurationLonger = "soon" }, want: "invalid value for --dur-longer"},
+		{name: "negative element duration", setup: func() { flagOpsAnalyseSlowProcessInstanceElementDurationLonger = "-1s" }, want: "--dur-element-longer must not be negative"},
+		{name: "legacy and new detail duration", setup: func() {
+			flagOpsAnalyseSlowProcessInstanceDurationAfter = "1m"
+			flagOpsAnalyseSlowProcessInstanceElementDurationLonger = "30s"
+		}, want: "cannot be combined"},
 		{name: "bad type", setup: func() { flagOpsAnalyseSlowProcessInstanceType = "not-a-type" }, want: "invalid value for --type"},
 		{name: "bad element state", setup: func() { flagOpsAnalyseSlowProcessInstanceElementState = "waiting" }, want: "invalid value for --element-state"},
 	}
@@ -291,6 +324,8 @@ func resetOpsSlowProcessAnalysisTestFlags(t *testing.T) *cobra.Command {
 	flagOpsAnalyseSlowProcessInstanceElementID = ""
 	flagOpsAnalyseSlowProcessInstanceType = ""
 	flagOpsAnalyseSlowProcessInstanceElementState = ""
+	flagOpsAnalyseSlowProcessInstanceDurationLonger = ""
+	flagOpsAnalyseSlowProcessInstanceElementDurationLonger = ""
 	flagOpsAnalyseSlowProcessInstanceDurationAfter = ""
 
 	cmd := &cobra.Command{Use: "slow-process-instances"}

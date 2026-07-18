@@ -184,7 +184,12 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 	require.Same(t, opsAnalyseSlowProcessInstancesCmd, aliasCmd)
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyse slow-process-instances --key")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyze slow-process-instances --bpmn-process-id")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyse spi --bpmn-process-id")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--dur-longer 1h30m --dur-element-longer 30s")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "get pi --state active --keys-only")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --dur-longer to keep only process-instance roots")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Duration thresholds use Go duration syntax")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Calendar units such as 1d are not accepted")
 	require.Equal(t, []OutputModeContract{
 		{Name: "one-line", Supported: true},
 		{Name: "json", Supported: true, MachinePreferred: true},
@@ -245,11 +250,25 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 		Description: "maximum number of matching process instances to freeze during discovery; omit to discover all matches",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dur-longer",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "only include process instances whose whole duration is longer than this duration, for example 5m or 1h30m",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dur-element-longer",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "only show element or transition detail rows longer than this duration, for example 30s or 2m",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "duration-after",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
-		Description: "only show element or transition detail rows longer than this duration",
+		Description: "deprecated alias for --dur-element-longer",
 	})
 	require.False(t, hasFlagContractNamed(capability.Flags, "incidents-only"))
 }

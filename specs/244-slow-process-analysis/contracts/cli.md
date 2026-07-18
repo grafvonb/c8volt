@@ -87,7 +87,22 @@ Rules:
 | Explicit keys plus process-instance search filters | Reject before remote lookup with a clear validation error. |
 | More than one positional `-` | Reject before remote lookup with a clear validation error. |
 | Empty stdin in explicit-key mode | Reject with a clear validation error. |
-| Invalid duration value for `--duration-after` | Reject before remote lookup with a clear validation error. |
+| Invalid duration value for `--dur-longer`, `--dur-element-longer`, or `--duration-after` | Reject before remote lookup with a clear validation error. |
+| Both `--dur-element-longer` and `--duration-after` | Reject before remote lookup with a clear validation error. |
+
+## Root Filters
+
+Supported in both selection modes:
+
+- `--dur-longer <duration>`
+
+Rules:
+
+- `--dur-longer` filters process-instance root rows by whole process-instance duration.
+- A process instance matches only when its measured duration is greater than the threshold.
+- Process instances without an available measured duration do not match a positive `--dur-longer` threshold.
+- Root filtering applies to human, JSON, and keys-only output.
+- Duration values use Go duration syntax such as `500ms`, `30s`, `5m`, `1h`, `1h30m`, or `24h`; calendar units such as `1d` are not accepted.
 
 ## Detail Filters
 
@@ -96,17 +111,19 @@ Supported in both selection modes:
 - `--element-id`
 - `--type`
 - `--element-state`
-- `--duration-after <duration>`
+- `--dur-element-longer <duration>`
+- `--duration-after <duration>` as a backward-compatible alias for `--dur-element-longer`
 
 Rules:
 
 - `--state` remains the process-instance state filter.
 - `--element-state` filters runtime element state.
-- Duration values accept unit forms such as `500ms`, `1s`, `2m`, and `1h`.
+- Duration values use Go duration syntax such as `500ms`, `30s`, `5m`, `1h`, `1h30m`, or `24h`; calendar units such as `1d` are not accepted.
 - Detail filters apply after complete timeline construction and all timing/comparison calculations.
 - Element rows match only when all element predicates match.
 - Transition rows remain visible when at least one endpoint matches the element predicates.
-- `--duration-after` applies independently to element durations and transition durations.
+- `--dur-element-longer` applies independently to element durations and transition durations.
+- `--duration-after` cannot be combined with `--dur-element-longer`.
 - Process-instance root rows are never removed by detail filters.
 - Filtering never creates synthetic transition timings across hidden elements.
 

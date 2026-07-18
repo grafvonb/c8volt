@@ -406,12 +406,14 @@ For slow-run inspection, use `ops analyse slow-process-instances` with explicit 
 ./c8volt ops analyse slow-process-instances --key <process-instance-key>
 ./c8volt ops analyze slow-process-instances --bpmn-process-id <bpmn-process-id> --state all --limit 20
 ./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -
-./c8volt ops analyse slow-process-instances --pd-key <process-definition-key> --element-id <element-id> --duration-after 2s
+./c8volt ops analyse spi --bpmn-process-id <bpmn-process-id> --dur-longer 5m
+./c8volt ops analyse slow-process-instances --pd-key <process-definition-key> --element-id <element-id> --dur-element-longer 2s
+./c8volt ops analyse spi --bpmn-process-id <bpmn-process-id> --dur-longer 1h30m --dur-element-longer 30s
 ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --json
 ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --keys-only
 ```
 
-The analysis is read-only. Roots are ordered by available duration longest to shortest, followed by unavailable durations, and detail filters never remove roots or change keys-only output. Human output renders each process instance as the root row with a nested `└─ elements:` tree containing chronological element rows and adjacent `A -> B: duration` timings. Root bars compare each visible root to the longest visible root, while detail bars compare each positive detail duration to its root duration; zero-duration rows omit bars. JSON output exposes the same timings, comparison sample counts, relative percentiles, and process-duration shares as named fields.
+The analysis is read-only. Roots are ordered by available duration longest to shortest, followed by unavailable durations. Use `--dur-longer` to keep only process-instance roots whose whole duration is above a threshold, and `--dur-element-longer` to hide shorter element and transition detail rows while keeping roots visible. Duration filters use Go duration strings such as `500ms`, `30s`, `5m`, `1h`, `1h30m`, or `24h`; calendar units such as `1d` are not accepted. Human output renders each process instance as the root row with a nested `└─ elements:` tree containing chronological element rows and adjacent `A -> B: duration` timings. Root bars compare each visible root to the longest visible root, while detail bars compare each positive detail duration to its root duration; zero-duration rows omit bars. JSON output exposes the same timings, comparison sample counts, relative percentiles, and process-duration shares as named fields.
 
 For native process-instance variable search on Camunda `8.8` and `8.9`, use `--var-exists` for required variable names, `--var name=value` for equality shorthand, `--var name.$operator=value` for `$eq`, `$neq`, `$exists`, `$in`, `$notIn`, and `$like`, and `--var-like name=pattern` for wildcard patterns. Repeated flags and comma-separated clauses are combined, while commas inside quoted values and JSON arrays stay inside the clause. Native `$like` patterns use `*` for zero or more characters and `?` for one character; escaped wildcards remain literal. Camunda `8.7` returns an unsupported-version error for variable-search flags instead of falling back to Operate-backed filtering.
 

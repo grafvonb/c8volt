@@ -37,7 +37,7 @@ Started: 2026-07-18T10:01:26Z
 - `--batch-size` and `--limit` are process-definition discovery-only flags; explicit-key mode rejects them when explicitly set and never truncates keyed roots.
 - `--incidents-only` remains unsupported and unregistered; `--no-incidents-only` maps to `HasIncident=false` in process-instance discovery.
 - Runtime element ordering is delegated to existing process-instance enrichment semantics: start date ascending, then element-instance key; keep this when adding JSON or comparison indicators.
-- Detail filters are post-calculation visibility filters: element predicates must match all supplied predicates, transitions remain visible when either original endpoint matches the active predicates, and `--duration-after` applies to measured detail row durations only.
+- Duration filters are explicit by level: `--dur-longer` filters process-instance roots by whole measured duration, `--dur-element-longer` filters measured detail rows only, and legacy `--duration-after` remains a backward-compatible alias for `--dur-element-longer`.
 - Phase 7 regenerated CLI docs with `make docs-content`, added generated `ops analyse` command docs, corrected the quickstart facade test regex to the actual `TestClientAnalyseSlowProcessInstances` names, and verified feasible local binary scenarios without live Camunda access.
 
 ## Reusable Commands

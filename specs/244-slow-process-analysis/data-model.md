@@ -14,6 +14,7 @@ Represents one invocation of the slow process-instance analysis command.
 | `processDefinitionSelector` | Process Definition Selector | Conditional | Required for process-definition search mode. |
 | `processInstanceFilters` | Process Instance Search Filters | No | Discovery filters used only in process-definition search mode. |
 | `detailFilters` | Detail Filters | No | Element and transition detail filters applied after complete timeline construction. |
+| `rootDurationLonger` | duration | No | Filters process-instance root rows by whole duration after duration calculation. |
 | `batchSize` | int32 | No | Applies only to process-instance discovery. |
 | `limit` | int32 | No | Applies only to process-instance discovery. |
 | `capturedNow` | timestamp | Yes | One analysis timestamp used for active process and element duration calculations. |
@@ -27,6 +28,7 @@ Represents one invocation of the slow process-instance analysis command.
 - Explicit-key mode rejects process-definition selectors and process-instance search filters.
 - Process-definition search mode requires exactly one of `bpmnProcessId` or `processDefinitionKey`.
 - `batchSize` and `limit` are valid only for process-definition search discovery.
+- `rootDurationLonger` is valid in both selection modes and excludes roots without an available measured duration when positive.
 - Detail filters are valid in both selection modes.
 
 ## Process Definition Selector
@@ -66,7 +68,7 @@ Controls which element and transition detail rows remain visible after calculati
 | `elementId` | string | No | Element rows must match when supplied. |
 | `type` | string | No | Element type must match when supplied. |
 | `elementState` | string | No | Element state must match when supplied. |
-| `durationAfter` | duration | No | Applies independently to element durations and transition durations. |
+| `durationAfter` | duration | No | Normalized detail duration threshold from `--dur-element-longer` or legacy `--duration-after`; applies independently to element durations and transition durations. |
 
 ### Filter Rules
 
@@ -74,6 +76,7 @@ Controls which element and transition detail rows remain visible after calculati
 - Detail filters are applied after complete timeline, duration, transition, and relative indicator calculations.
 - Transition rows remain visible when at least one endpoint matches active element predicates.
 - Filtering never creates synthetic transitions across hidden elements.
+- Duration thresholds use Go duration syntax such as `500ms`, `30s`, `5m`, `1h`, `1h30m`, or `24h`; calendar units such as `1d` are not accepted.
 
 ## Analyzed Process Instance
 

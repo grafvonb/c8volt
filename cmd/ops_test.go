@@ -88,7 +88,11 @@ func TestOpsAnalyseSlowProcessInstancesHelpDocumentsScaffold(t *testing.T) {
 		"--batch-size int32",
 		"--limit int32",
 		"--element-id string",
+		"--dur-longer string",
+		"--dur-element-longer string",
 		"--duration-after string",
+		"Duration thresholds use Go duration syntax",
+		"Calendar units such as 1d are not accepted",
 		"./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -",
 	)
 	assertHelpOutputOmitsAll(t, output, "--incidents-only")

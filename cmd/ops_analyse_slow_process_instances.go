@@ -24,21 +24,23 @@ const (
 )
 
 var (
-	flagOpsAnalyseSlowProcessInstanceKeys            []string
-	flagOpsAnalyseSlowProcessInstanceBpmnProcessID   string
-	flagOpsAnalyseSlowProcessInstancePDKey           string
-	flagOpsAnalyseSlowProcessInstanceState           string
-	flagOpsAnalyseSlowProcessInstanceStartDateAfter  string
-	flagOpsAnalyseSlowProcessInstanceStartDateBefore string
-	flagOpsAnalyseSlowProcessInstanceEndDateAfter    string
-	flagOpsAnalyseSlowProcessInstanceEndDateBefore   string
-	flagOpsAnalyseSlowProcessInstanceNoIncidentsOnly bool
-	flagOpsAnalyseSlowProcessInstanceBatchSize       int32
-	flagOpsAnalyseSlowProcessInstanceLimit           int32
-	flagOpsAnalyseSlowProcessInstanceElementID       string
-	flagOpsAnalyseSlowProcessInstanceType            string
-	flagOpsAnalyseSlowProcessInstanceElementState    string
-	flagOpsAnalyseSlowProcessInstanceDurationAfter   string
+	flagOpsAnalyseSlowProcessInstanceKeys                  []string
+	flagOpsAnalyseSlowProcessInstanceBpmnProcessID         string
+	flagOpsAnalyseSlowProcessInstancePDKey                 string
+	flagOpsAnalyseSlowProcessInstanceState                 string
+	flagOpsAnalyseSlowProcessInstanceStartDateAfter        string
+	flagOpsAnalyseSlowProcessInstanceStartDateBefore       string
+	flagOpsAnalyseSlowProcessInstanceEndDateAfter          string
+	flagOpsAnalyseSlowProcessInstanceEndDateBefore         string
+	flagOpsAnalyseSlowProcessInstanceNoIncidentsOnly       bool
+	flagOpsAnalyseSlowProcessInstanceBatchSize             int32
+	flagOpsAnalyseSlowProcessInstanceLimit                 int32
+	flagOpsAnalyseSlowProcessInstanceElementID             string
+	flagOpsAnalyseSlowProcessInstanceType                  string
+	flagOpsAnalyseSlowProcessInstanceElementState          string
+	flagOpsAnalyseSlowProcessInstanceDurationLonger        string
+	flagOpsAnalyseSlowProcessInstanceElementDurationLonger string
+	flagOpsAnalyseSlowProcessInstanceDurationAfter         string
 )
 
 var opsAnalyseCmd = &cobra.Command{
@@ -60,9 +62,14 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 	Short: "Analyze slow process-instance timings",
 	Long: "Analyze slow process-instance timings.\n\n" +
 		"The command is read-only. Select process instances by explicit --key values or by exactly one process-definition selector, then inspect process and runtime element timing without changing cluster state.\n\n" +
+		"Use --dur-longer to keep only process-instance roots whose whole duration is above a threshold. Use --dur-element-longer to hide shorter element and transition detail rows while keeping the root visible. --duration-after is a backward-compatible alias for --dur-element-longer.\n\n" +
+		"Duration thresholds use Go duration syntax such as 500ms, 30s, 5m, 1h, 1h30m, or 24h. Calendar units such as 1d are not accepted.\n\n" +
 		"JSON output exposes stable duration, comparison, and timeline fields. Keys-only output prints selected process-instance keys in result order, one per line.",
 	Example: `  ./c8volt ops analyse slow-process-instances --key 2251799813685249
   ./c8volt ops analyze slow-process-instances --bpmn-process-id OrderProcess --state all --limit 20
+  ./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 5m
+  ./c8volt ops analyse slow-process-instances --pd-key 2251799813687001 --dur-element-longer 30s
+  ./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 1h30m --dur-element-longer 30s
   ./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -`,
 	Aliases: []string{"slow-pi", "spi"},
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -127,7 +134,9 @@ func init() {
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementID, "element-id", "", "BPMN element ID to keep in detail rows")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceType, "type", "", "runtime element type to keep in detail rows")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementState, "element-state", "", "runtime element state to keep in detail rows")
-	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceDurationAfter, "duration-after", "", "only show element or transition detail rows longer than this duration")
+	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceDurationLonger, "dur-longer", "", "only include process instances whose whole duration is longer than this duration, for example 5m or 1h30m")
+	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementDurationLonger, "dur-element-longer", "", "only show element or transition detail rows longer than this duration, for example 30s or 2m")
+	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceDurationAfter, "duration-after", "", "deprecated alias for --dur-element-longer")
 
 	setCommandMutation(opsAnalyseCmd, CommandMutationReadOnly)
 	setCommandMutation(opsAnalyseSlowProcessInstancesCmd, CommandMutationReadOnly)
@@ -154,7 +163,10 @@ func validateOpsSlowProcessAnalysisCommandArgs(cmd *cobra.Command, args []string
 	if flagOpsAnalyseSlowProcessInstanceLimit < 0 || (flagOpsAnalyseSlowProcessInstanceLimit == 0 && cmd != nil && cmd.Flags().Changed("limit")) {
 		return invalidFlagValuef("--limit must be positive integer")
 	}
-	if _, err := parseOpsSlowProcessAnalysisDurationAfter(); err != nil {
+	if _, err := parseOpsSlowProcessAnalysisRootDurationLonger(); err != nil {
+		return err
+	}
+	if _, err := parseOpsSlowProcessAnalysisDetailDurationLonger(); err != nil {
 		return err
 	}
 	if _, err := parseOpsSlowProcessAnalysisElementType(); err != nil {
@@ -198,7 +210,11 @@ func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string
 	if err := validateOpsSlowProcessAnalysisCommandArgs(cmd, args); err != nil {
 		return opsSlowProcessAnalysisCommandRequest{}, err
 	}
-	durationAfter, err := parseOpsSlowProcessAnalysisDurationAfter()
+	rootDurationLonger, err := parseOpsSlowProcessAnalysisRootDurationLonger()
+	if err != nil {
+		return opsSlowProcessAnalysisCommandRequest{}, err
+	}
+	detailDurationLonger, err := parseOpsSlowProcessAnalysisDetailDurationLonger()
 	if err != nil {
 		return opsSlowProcessAnalysisCommandRequest{}, err
 	}
@@ -253,12 +269,13 @@ func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string
 				ElementID:     flagOpsAnalyseSlowProcessInstanceElementID,
 				Type:          elementType,
 				ElementState:  elementState,
-				DurationAfter: durationAfter,
+				DurationAfter: detailDurationLonger,
 			},
-			BatchSize:   flagOpsAnalyseSlowProcessInstanceBatchSize,
-			Limit:       flagOpsAnalyseSlowProcessInstanceLimit,
-			CapturedNow: time.Now().UTC(),
-			OutputMode:  pickMode().String(),
+			RootDurationLonger: rootDurationLonger,
+			BatchSize:          flagOpsAnalyseSlowProcessInstanceBatchSize,
+			Limit:              flagOpsAnalyseSlowProcessInstanceLimit,
+			CapturedNow:        time.Now().UTC(),
+			OutputMode:         pickMode().String(),
 		},
 	}, nil
 }
@@ -309,17 +326,33 @@ func parseOpsSlowProcessAnalysisState() (process.State, error) {
 	return state, nil
 }
 
-// parseOpsSlowProcessAnalysisDurationAfter validates duration syntax without applying detail filtering yet.
-func parseOpsSlowProcessAnalysisDurationAfter() (time.Duration, error) {
-	if flagOpsAnalyseSlowProcessInstanceDurationAfter == "" {
+// parseOpsSlowProcessAnalysisRootDurationLonger validates root process-instance duration filtering.
+func parseOpsSlowProcessAnalysisRootDurationLonger() (time.Duration, error) {
+	return parseOpsSlowProcessAnalysisDurationFlag("--dur-longer", flagOpsAnalyseSlowProcessInstanceDurationLonger)
+}
+
+// parseOpsSlowProcessAnalysisDetailDurationLonger validates detail duration filtering.
+func parseOpsSlowProcessAnalysisDetailDurationLonger() (time.Duration, error) {
+	if flagOpsAnalyseSlowProcessInstanceElementDurationLonger != "" && flagOpsAnalyseSlowProcessInstanceDurationAfter != "" {
+		return 0, mutuallyExclusiveFlagsf("--duration-after cannot be combined with --dur-element-longer")
+	}
+	if flagOpsAnalyseSlowProcessInstanceElementDurationLonger != "" {
+		return parseOpsSlowProcessAnalysisDurationFlag("--dur-element-longer", flagOpsAnalyseSlowProcessInstanceElementDurationLonger)
+	}
+	return parseOpsSlowProcessAnalysisDurationFlag("--duration-after", flagOpsAnalyseSlowProcessInstanceDurationAfter)
+}
+
+// parseOpsSlowProcessAnalysisDurationFlag validates Go duration syntax for ops thresholds.
+func parseOpsSlowProcessAnalysisDurationFlag(flagName string, raw string) (time.Duration, error) {
+	if raw == "" {
 		return 0, nil
 	}
-	value, err := time.ParseDuration(flagOpsAnalyseSlowProcessInstanceDurationAfter)
+	value, err := time.ParseDuration(raw)
 	if err != nil {
-		return 0, invalidFlagValuef("invalid value for --duration-after: %q, expected duration such as 500ms, 1s, 2m, or 1h", flagOpsAnalyseSlowProcessInstanceDurationAfter)
+		return 0, invalidFlagValuef("invalid value for %s: %q, expected duration such as 500ms, 1s, 2m, or 1h", flagName, raw)
 	}
 	if value < 0 {
-		return 0, invalidFlagValuef("--duration-after must not be negative")
+		return 0, invalidFlagValuef("%s must not be negative", flagName)
 	}
 	return value, nil
 }

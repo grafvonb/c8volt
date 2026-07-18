@@ -13,6 +13,10 @@ Analyze slow process-instance timings.
 
 The command is read-only. Select process instances by explicit --key values or by exactly one process-definition selector, then inspect process and runtime element timing without changing cluster state.
 
+Use --dur-longer to keep only process-instance roots whose whole duration is above a threshold. Use --dur-element-longer to hide shorter element and transition detail rows while keeping the root visible. --duration-after is a backward-compatible alias for --dur-element-longer.
+
+Duration thresholds use Go duration syntax such as 500ms, 30s, 5m, 1h, 1h30m, or 24h. Calendar units such as 1d are not accepted.
+
 JSON output exposes stable duration, comparison, and timeline fields. Keys-only output prints selected process-instance keys in result order, one per line.
 
 ```
@@ -24,28 +28,33 @@ c8volt ops analyse slow-process-instances [-] [flags]
 ```
   ./c8volt ops analyse slow-process-instances --key 2251799813685249
   ./c8volt ops analyze slow-process-instances --bpmn-process-id OrderProcess --state all --limit 20
+  ./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 5m
+  ./c8volt ops analyse slow-process-instances --pd-key 2251799813687001 --dur-element-longer 30s
+  ./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 1h30m --dur-element-longer 30s
   ./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -
 ```
 
 ### Options
 
 ```
-  -n, --batch-size int32           number of process instances to inspect per discovery page; does not cap explicit keys or timeline details (max limit 1000 enforced by server) (default 1000)
-  -b, --bpmn-process-id string     BPMN process ID to discover process instances
-      --duration-after string      only show element or transition detail rows longer than this duration
-      --element-id string          BPMN element ID to keep in detail rows
-      --element-state string       runtime element state to keep in detail rows
-      --end-date-after string      only include process instances with end date >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
-      --end-date-before string     only include process instances with end date <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
-  -h, --help                       help for slow-process-instances
-  -k, --key strings                process-instance key(s) to analyze; repeat or combine with stdin '-'
-  -l, --limit int32                maximum number of matching process instances to freeze during discovery; omit to discover all matches
-      --no-incidents-only          only include process instances without incidents during discovery
-      --pd-key string              process definition key to discover process instances
-      --start-date-after string    only include process instances with start date >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
-      --start-date-before string   only include process instances with start date <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
-  -s, --state string               state to filter discovered process instances: all, active, completed, canceled, terminated (default "all")
-      --type string                runtime element type to keep in detail rows
+  -n, --batch-size int32            number of process instances to inspect per discovery page; does not cap explicit keys or timeline details (max limit 1000 enforced by server) (default 1000)
+  -b, --bpmn-process-id string      BPMN process ID to discover process instances
+      --dur-element-longer string   only show element or transition detail rows longer than this duration, for example 30s or 2m
+      --dur-longer string           only include process instances whose whole duration is longer than this duration, for example 5m or 1h30m
+      --duration-after string       deprecated alias for --dur-element-longer
+      --element-id string           BPMN element ID to keep in detail rows
+      --element-state string        runtime element state to keep in detail rows
+      --end-date-after string       only include process instances with end date >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
+      --end-date-before string      only include process instances with end date <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
+  -h, --help                        help for slow-process-instances
+  -k, --key strings                 process-instance key(s) to analyze; repeat or combine with stdin '-'
+  -l, --limit int32                 maximum number of matching process instances to freeze during discovery; omit to discover all matches
+      --no-incidents-only           only include process instances without incidents during discovery
+      --pd-key string               process definition key to discover process instances
+      --start-date-after string     only include process instances with start date >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
+      --start-date-before string    only include process instances with start date <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
+  -s, --state string                state to filter discovered process instances: all, active, completed, canceled, terminated (default "all")
+      --type string                 runtime element type to keep in detail rows
 ```
 
 ### Options inherited from parent commands

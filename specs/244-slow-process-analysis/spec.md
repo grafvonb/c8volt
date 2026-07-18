@@ -63,7 +63,7 @@ As a c8volt operator, I want each analyzed process instance to include chronolog
 
 1. **Given** a process instance with runtime elements, **When** the command renders the analysis, **Then** element rows appear in the same chronological order as `c8volt get pi --with-elements` and include duration values where timestamps support them.
 2. **Given** adjacent chronological elements with valid timestamps where the next start is at or after the previous end, **When** the command renders transition timing, **Then** it emits a compact `A -> B: duration` line without claiming BPMN causality.
-3. **Given** detail filters such as `--element-id`, `--type`, `--element-state`, or `--duration-after`, **When** the command renders details, **Then** calculations still use the complete unfiltered timeline and filtering never creates synthetic transitions across hidden elements.
+3. **Given** detail filters such as `--element-id`, `--type`, `--element-state`, or `--dur-element-longer`, **When** the command renders details, **Then** calculations still use the complete unfiltered timeline and filtering never creates synthetic transitions across hidden elements.
 
 ---
 
@@ -101,7 +101,9 @@ As a c8volt operator or automation author, I want slow-run analysis in establish
 - Overlapping elements must not produce negative transition durations.
 - Missing, invalid, or filtered-out elements must not be bridged by synthetic transition timings.
 - Detail filters must keep the process-instance root even when no detail rows match.
-- `--duration-after` applies only to element and transition durations, never to process-instance root visibility.
+- `--dur-longer` applies only to process-instance root visibility and excludes roots without an available measured duration.
+- `--dur-element-longer` applies only to element and transition durations, never to process-instance root visibility.
+- `--duration-after` remains a backward-compatible alias for `--dur-element-longer` and cannot be combined with it.
 - Human duration bars must be omitted for zero-duration rows and for single-root root comparisons.
 - JSON relative indicators must be omitted when fewer than three comparable measurements exist.
 
@@ -145,15 +147,17 @@ As a c8volt operator or automation author, I want slow-run analysis in establish
 - **FR-034**: Transition timing lines MUST be emitted only when both adjacent timestamps are valid and the next start is at or after the previous end.
 - **FR-035**: Human transition timing MUST use the compact form `FromElement -> ToElement: duration` without `between:` or `transition:` prefixes.
 - **FR-036**: The command MUST NOT emit negative transition durations and MUST NOT bridge over missing, invalid, or filtered-out elements.
-- **FR-037**: The command MUST support detail filters `--element-id`, `--type`, `--element-state`, and `--duration-after`.
+- **FR-037**: The command MUST support detail filters `--element-id`, `--type`, `--element-state`, and `--dur-element-longer`.
 - **FR-038**: `--state` MUST remain the process-instance state filter; element state filtering MUST use `--element-state`.
-- **FR-039**: Duration filter values MUST accept common unit forms such as milliseconds, seconds, minutes, and hours.
-- **FR-040**: `--duration-after` MUST apply only to element and transition durations and MUST never remove the process-instance root.
+- **FR-039**: Duration filter values MUST use Go duration syntax such as `500ms`, `30s`, `5m`, `1h`, `1h30m`, or `24h`; calendar units such as `1d` MUST NOT be accepted.
+- **FR-040**: `--dur-element-longer` MUST apply only to element and transition durations and MUST never remove the process-instance root.
 - **FR-041**: Detail filters MUST be applied after constructing the complete timeline and calculating durations, transition timings, and relative indicators.
 - **FR-042**: Element rows MUST be shown only when they match all element predicates.
 - **FR-043**: Original transition timing lines MUST be shown when at least one endpoint matches the active detail filters.
 - **FR-044**: Filtering MUST preserve original endpoint identifiers and MUST never create synthetic transitions across hidden elements.
 - **FR-045**: Process-instance roots MUST remain visible even when no detail rows match.
+- **FR-045a**: The command MUST support a root duration filter `--dur-longer` that includes only process-instance roots with an available whole-process duration greater than the supplied threshold.
+- **FR-045b**: `--duration-after` MUST remain a backward-compatible alias for `--dur-element-longer` and MUST be rejected when combined with `--dur-element-longer`.
 - **FR-046**: Human output MUST place visual duration-share indicators directly after durations without labels such as `cohort`, `peer`, `similar`, `compared`, `rank`, or `share`.
 - **FR-047**: JSON process-instance relative indicators MUST compare selected process instances with the same process-definition key.
 - **FR-048**: JSON element relative indicators MUST compare executions with the same process-definition key, element ID, and type.
