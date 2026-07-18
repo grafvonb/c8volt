@@ -172,6 +172,14 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 	require.Equal(t, ContractSupportFull, capability.ContractSupport)
 	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
 	require.Contains(t, capability.Aliases, "slow-pi")
+	require.Contains(t, opsAnalyseCmd.Aliases, "analyze")
+	aliasCmd, remaining, err := root.Find([]string{"ops", "analyze", "slow-process-instances"})
+	require.NoError(t, err)
+	require.Empty(t, remaining)
+	require.Same(t, opsAnalyseSlowProcessInstancesCmd, aliasCmd)
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyse slow-process-instances --key")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyze slow-process-instances --bpmn-process-id")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "get pi --state active --keys-only")
 	require.Equal(t, []OutputModeContract{
 		{Name: "one-line", Supported: true},
 		{Name: "json", Supported: true, MachinePreferred: true},
@@ -194,11 +202,49 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 		Description: "BPMN process ID to discover process instances",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "pd-key",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "process definition key to discover process instances",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "state",
+		Shorthand:   "s",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "state to filter discovered process instances: all, active, completed, canceled, terminated",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "no-incidents-only",
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
 		Description: "only include process instances without incidents during discovery",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "batch-size",
+		Shorthand:   "n",
+		Type:        "int32",
+		Required:    false,
+		Repeated:    false,
+		Description: "number of process instances to inspect per discovery page; does not cap explicit keys or timeline details (max limit 1000 enforced by server)",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "limit",
+		Shorthand:   "l",
+		Type:        "int32",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum number of matching process instances to freeze during discovery; omit to discover all matches",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "duration-after",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "only show element or transition detail rows longer than this duration",
 	})
 	require.False(t, hasFlagContractNamed(capability.Flags, "incidents-only"))
 }

@@ -201,6 +201,7 @@ func fromDomainSlowProcessAnalysisProcessInstance(x d.SlowProcessAnalysisProcess
 		DurationAvailable:      x.DurationAvailable,
 		RelativePercentile:     x.RelativePercentile,
 		ComparisonSampleCount:  x.ComparisonSampleCount,
+		RelativeBar:            x.RelativeBar,
 		Timeline:               toolx.MapSlice(x.Timeline, fromDomainSlowProcessAnalysisTimelineEntry),
 	}
 }
@@ -229,6 +230,7 @@ func fromDomainSlowProcessAnalysisTimelineEntry(x d.SlowProcessAnalysisTimelineE
 		DurationAvailable:      x.DurationAvailable,
 		RelativePercentile:     x.RelativePercentile,
 		ComparisonSampleCount:  x.ComparisonSampleCount,
+		RelativeBar:            x.RelativeBar,
 		ProcessDurationShare:   x.ProcessDurationShare,
 	}
 }

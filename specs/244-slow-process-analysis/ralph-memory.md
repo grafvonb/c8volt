@@ -15,6 +15,9 @@ Started: 2026-07-18T10:01:26Z
 - Supported process-instance v8.8/v8.9 search adapters now accept RFC3339 bounds in addition to date-only values, keeping ops-normalized search filters compatible with generated request builders.
 - US3 timeline analysis uses `pisvc.EnrichProcessInstancesWithElements` after root selection is frozen, calculates element rows and adjacent transition rows from the complete chronological element list, then applies detail filters without creating bridged transitions.
 - Slow-analysis human detail rendering prints an `elements:` section under each root, compact element rows with `dur:`/`inc!`, and transition rows in `A -> B: duration` form; keys-only output remains root-only and ignores detail filters.
+- US4 comparison metrics are calculated in `internal/services/ops` on complete, unfiltered timelines before detail filters are applied; process scopes group by process-definition key, element scopes by process-definition key plus element ID/type, and transition scopes by process-definition key plus from/to element IDs/types.
+- Relative indicators use the spec formula `(shorter + equal/2) / sample_count`, require at least three measured samples, and store both `relativePercentile` and a ten-cell ASCII `relativeBar` such as `[#########-]` for human and JSON consumers.
+- Slow-analysis keys-only rendering defensively deduplicates root keys while preserving result ordering; root ordering still belongs to the service.
 
 ## Decisions
 - No implementation conflicts were found between `spec.md`, `plan.md`, `contracts/cli.md`, and `specs/ralph-implementation-rules.md`.
@@ -35,6 +38,7 @@ Started: 2026-07-18T10:01:26Z
 - `--incidents-only` remains unsupported and unregistered; `--no-incidents-only` maps to `HasIncident=false` in process-instance discovery.
 - Runtime element ordering is delegated to existing process-instance enrichment semantics: start date ascending, then element-instance key; keep this when adding JSON or comparison indicators.
 - Detail filters are post-calculation visibility filters: element predicates must match all supplied predicates, transitions remain visible when either original endpoint matches the active predicates, and `--duration-after` applies to measured detail row durations only.
+- Generated CLI docs have not been regenerated in US4; Phase 7 T059 still owns `make docs-content` and generated `docs/cli/` updates.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -45,9 +49,10 @@ Started: 2026-07-18T10:01:26Z
 - `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/ops -run 'TestClientAnalyseSlowProcessInstances' -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances|TestRenderOpsSlowProcessAnalysis' -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/ops ./internal/services/ops ./docsgen -count=1`
 
 ## Do Not Repeat
 - Do not re-open a separate investigation for the Phase 1 artifact consistency check unless later specs change; the current artifacts are aligned.
 
 ## Current Handoff
-- Next iteration should start US4 tasks T044-T053 only. Add comparison indicators, JSON payload coverage, keys-only assertions, command/docs metadata, and README examples without changing US3's complete-timeline-before-filtering behavior or root ordering.
+- Next iteration should start Phase 7 polish tasks T054-T062 only. Regenerate CLI docs with `make docs-content`, update quickstart only if output wording changed, run targeted validations, build `/tmp/c8volt-slow-pi-analysis`, verify quickstart scenarios where feasible, and finish with `make test`.

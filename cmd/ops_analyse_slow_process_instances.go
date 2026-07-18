@@ -59,7 +59,8 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 	Use:   "slow-process-instances [-]",
 	Short: "Analyze slow process-instance timings",
 	Long: "Analyze slow process-instance timings.\n\n" +
-		"The command is read-only. Select process instances by explicit --key values or by exactly one process-definition selector, then inspect process and runtime element timing without changing cluster state.",
+		"The command is read-only. Select process instances by explicit --key values or by exactly one process-definition selector, then inspect process and runtime element timing without changing cluster state.\n\n" +
+		"JSON output exposes stable duration, comparison, and timeline fields. Keys-only output prints selected process-instance keys in result order, one per line.",
 	Example: `  ./c8volt ops analyse slow-process-instances --key 2251799813685249
   ./c8volt ops analyze slow-process-instances --bpmn-process-id OrderProcess --state all --limit 20
   ./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -`,

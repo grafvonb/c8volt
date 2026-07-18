@@ -153,3 +153,38 @@ Started: 2026-07-18 12:01:26
 **Learnings**:
 - Timeline analysis now enriches selected roots with complete runtime elements before applying detail filters, preserving root ordering and root-only keys output.
 ---
+---
+## Iteration 4 - 2026-07-18 13:56
+**Work Unit**: User Story 4 - Consume Stable Human, JSON, And Keys-Only Results
+**Tasks Completed**:
+- [x] T044: Add internal service tests for process, element, and transition comparison scopes, percentile calculation, tie handling, minimum sample count, and ten-cell bar inputs
+- [x] T045: Add JSON rendering tests for captured analysis time, root durations, timeline entries, endpoints, comparison sample counts, relative percentiles, and process-duration shares
+- [x] T046: Add keys-only rendering tests for unique root keys, longest-to-shortest ordering, unavailable-duration ordering, empty output, and detail-filter independence
+- [x] T047: Add command contract tests for both command spellings, output modes, read-only metadata, automation compatibility, and help examples
+- [x] T048: Add docs metadata tests for generated CLI docs covering slow-analysis commands and flags
+- [x] T049: Implement relative percentile, comparison sample count, ten-cell bar, and `PI:<percentage>` calculations
+- [x] T050: Implement JSON payload structs and shared envelope rendering for slow analysis
+- [x] T051: Implement keys-only output for unique process-instance keys in result ordering
+- [x] T052: Finalize command metadata, aliases, examples, output mode declarations, and docs-visible flag descriptions
+- [x] T053: Update README examples and behavior notes for slow process-instance analysis
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- cmd/cmd_views_ops_slow_process_analysis.go
+- cmd/cmd_views_ops_slow_process_analysis_test.go
+- cmd/command_contract_test.go
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/ops_contract_test.go
+- docsgen/main_test.go
+- internal/domain/ops_slow_process_analysis.go
+- internal/services/ops/slow_process_analysis.go
+- internal/services/ops/slow_process_analysis_test.go
+- specs/244-slow-process-analysis/tasks.md
+- specs/244-slow-process-analysis/ralph-memory.md
+- specs/244-slow-process-analysis/progress.md
+**Learnings**:
+- Slow-analysis comparison metrics now run on complete timelines before detail filtering, with compact ASCII bars shared by human and JSON output.
+---

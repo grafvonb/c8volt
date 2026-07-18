@@ -77,9 +77,11 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 	items := make([]d.SlowProcessAnalysisProcessInstance, 0, len(enriched.Items))
 	for _, enrichedItem := range enriched.Items {
 		item := slowProcessAnalysisProcessInstanceFromDomain(enrichedItem.Item, capturedAt)
-		item.Timeline = slowProcessAnalysisTimeline(enrichedItem.Elements, capturedAt, item.DurationMillis, item.DurationAvailable, request.DetailFilters)
+		item.Timeline = slowProcessAnalysisCompleteTimeline(enrichedItem.Elements, capturedAt, item.DurationMillis, item.DurationAvailable)
 		items = append(items, item)
 	}
+	slowProcessAnalysisApplyComparisons(items)
+	slowProcessAnalysisApplyDetailFilters(items, request.DetailFilters)
 	sort.SliceStable(items, func(i, j int) bool {
 		left, right := items[i], items[j]
 		if left.DurationAvailable != right.DurationAvailable {
@@ -271,8 +273,8 @@ func slowProcessAnalysisRootFromProcessInstance(pi d.ProcessInstance, duration s
 	}
 }
 
-// slowProcessAnalysisTimeline calculates complete element and transition timings before applying visibility filters.
-func slowProcessAnalysisTimeline(elements []d.Element, capturedAt time.Time, processMillis int64, processDurationAvailable bool, filters d.SlowProcessAnalysisDetailFilters) []d.SlowProcessAnalysisTimelineEntry {
+// slowProcessAnalysisCompleteTimeline calculates complete element and transition timings before applying visibility filters.
+func slowProcessAnalysisCompleteTimeline(elements []d.Element, capturedAt time.Time, processMillis int64, processDurationAvailable bool) []d.SlowProcessAnalysisTimelineEntry {
 	elementRows := make([]d.SlowProcessAnalysisTimelineEntry, 0, len(elements))
 	for _, element := range elements {
 		elementRows = append(elementRows, slowProcessAnalysisElementEntry(element, capturedAt, processMillis, processDurationAvailable))
@@ -280,18 +282,160 @@ func slowProcessAnalysisTimeline(elements []d.Element, capturedAt time.Time, pro
 
 	out := make([]d.SlowProcessAnalysisTimelineEntry, 0, len(elementRows)*2)
 	for i, entry := range elementRows {
-		if slowProcessAnalysisElementVisible(entry, filters) {
-			out = append(out, entry)
-		}
+		out = append(out, entry)
 		if i+1 >= len(elementRows) {
 			continue
 		}
 		transition, ok := slowProcessAnalysisTransitionEntry(entry, elementRows[i+1], processMillis, processDurationAvailable)
-		if ok && slowProcessAnalysisTransitionVisible(transition, entry, elementRows[i+1], filters) {
+		if ok {
 			out = append(out, transition)
 		}
 	}
 	return out
+}
+
+// slowProcessAnalysisApplyComparisons assigns percentile metadata from complete frozen analysis scopes.
+func slowProcessAnalysisApplyComparisons(items []d.SlowProcessAnalysisProcessInstance) {
+	rootGroups := map[string][]*d.SlowProcessAnalysisProcessInstance{}
+	elementGroups := map[string][]*d.SlowProcessAnalysisTimelineEntry{}
+	transitionGroups := map[string][]*d.SlowProcessAnalysisTimelineEntry{}
+
+	for i := range items {
+		item := &items[i]
+		if item.DurationAvailable {
+			rootGroups[item.ProcessDefinitionKey] = append(rootGroups[item.ProcessDefinitionKey], item)
+		}
+		for j := range item.Timeline {
+			entry := &item.Timeline[j]
+			if !entry.DurationAvailable {
+				continue
+			}
+			switch entry.Kind {
+			case d.SlowProcessAnalysisTimelineEntryKindElement:
+				key := slowProcessAnalysisElementComparisonKey(item.ProcessDefinitionKey, *entry)
+				elementGroups[key] = append(elementGroups[key], entry)
+			case d.SlowProcessAnalysisTimelineEntryKindTransition:
+				key := slowProcessAnalysisTransitionComparisonKey(item.ProcessDefinitionKey, *entry)
+				transitionGroups[key] = append(transitionGroups[key], entry)
+			}
+		}
+	}
+
+	for _, group := range rootGroups {
+		slowProcessAnalysisAssignRootComparison(group)
+	}
+	for _, group := range elementGroups {
+		slowProcessAnalysisAssignTimelineComparison(group)
+	}
+	for _, group := range transitionGroups {
+		slowProcessAnalysisAssignTimelineComparison(group)
+	}
+}
+
+// slowProcessAnalysisApplyDetailFilters preserves root rows while hiding only filtered timeline details.
+func slowProcessAnalysisApplyDetailFilters(items []d.SlowProcessAnalysisProcessInstance, filters d.SlowProcessAnalysisDetailFilters) {
+	for i := range items {
+		source := items[i].Timeline
+		out := make([]d.SlowProcessAnalysisTimelineEntry, 0, len(source))
+		for j, entry := range source {
+			switch entry.Kind {
+			case d.SlowProcessAnalysisTimelineEntryKindTransition:
+				from, to, ok := slowProcessAnalysisAdjacentEndpoints(source, j)
+				if ok && slowProcessAnalysisTransitionVisible(entry, from, to, filters) {
+					out = append(out, entry)
+				}
+			default:
+				if slowProcessAnalysisElementVisible(entry, filters) {
+					out = append(out, entry)
+				}
+			}
+		}
+		items[i].Timeline = out
+	}
+}
+
+// slowProcessAnalysisAdjacentEndpoints returns the original element rows surrounding a transition.
+func slowProcessAnalysisAdjacentEndpoints(entries []d.SlowProcessAnalysisTimelineEntry, transitionIndex int) (d.SlowProcessAnalysisTimelineEntry, d.SlowProcessAnalysisTimelineEntry, bool) {
+	if transitionIndex <= 0 || transitionIndex+1 >= len(entries) {
+		return d.SlowProcessAnalysisTimelineEntry{}, d.SlowProcessAnalysisTimelineEntry{}, false
+	}
+	from := entries[transitionIndex-1]
+	to := entries[transitionIndex+1]
+	if from.Kind != d.SlowProcessAnalysisTimelineEntryKindElement || to.Kind != d.SlowProcessAnalysisTimelineEntryKindElement {
+		return d.SlowProcessAnalysisTimelineEntry{}, d.SlowProcessAnalysisTimelineEntry{}, false
+	}
+	return from, to, true
+}
+
+func slowProcessAnalysisElementComparisonKey(processDefinitionKey string, entry d.SlowProcessAnalysisTimelineEntry) string {
+	return strings.Join([]string{processDefinitionKey, entry.ElementID, entry.Type}, "\x00")
+}
+
+func slowProcessAnalysisTransitionComparisonKey(processDefinitionKey string, entry d.SlowProcessAnalysisTimelineEntry) string {
+	return strings.Join([]string{processDefinitionKey, entry.FromElementID, entry.FromElementType, entry.ToElementID, entry.ToElementType}, "\x00")
+}
+
+func slowProcessAnalysisAssignRootComparison(group []*d.SlowProcessAnalysisProcessInstance) {
+	if len(group) < 3 {
+		return
+	}
+	values := make([]int64, 0, len(group))
+	for _, item := range group {
+		values = append(values, item.DurationMillis)
+	}
+	for _, item := range group {
+		item.ComparisonSampleCount = len(group)
+		item.RelativePercentile = slowProcessAnalysisRelativePercentile(item.DurationMillis, values)
+		item.RelativeBar = slowProcessAnalysisRelativeBar(item.RelativePercentile)
+	}
+}
+
+func slowProcessAnalysisAssignTimelineComparison(group []*d.SlowProcessAnalysisTimelineEntry) {
+	if len(group) < 3 {
+		return
+	}
+	values := make([]int64, 0, len(group))
+	for _, item := range group {
+		values = append(values, item.DurationMillis)
+	}
+	for _, item := range group {
+		item.ComparisonSampleCount = len(group)
+		item.RelativePercentile = slowProcessAnalysisRelativePercentile(item.DurationMillis, values)
+		item.RelativeBar = slowProcessAnalysisRelativeBar(item.RelativePercentile)
+	}
+}
+
+// slowProcessAnalysisRelativePercentile ranks a duration by shorter plus half of equal samples.
+func slowProcessAnalysisRelativePercentile(value int64, values []int64) int {
+	if len(values) == 0 {
+		return 0
+	}
+	shorter := 0
+	equal := 0
+	for _, candidate := range values {
+		switch {
+		case candidate < value:
+			shorter++
+		case candidate == value:
+			equal++
+		}
+	}
+	return int(math.Round((float64(shorter) + float64(equal)/2) * 100 / float64(len(values))))
+}
+
+// slowProcessAnalysisRelativeBar renders ten ASCII cells from the rounded percentile.
+func slowProcessAnalysisRelativeBar(percentile int) string {
+	if percentile <= 0 {
+		return "[----------]"
+	}
+	if percentile > 100 {
+		percentile = 100
+	}
+	filled := int(math.Round(float64(percentile) / 10))
+	if filled > 10 {
+		filled = 10
+	}
+	return "[" + strings.Repeat("#", filled) + strings.Repeat("-", 10-filled) + "]"
 }
 
 // slowProcessAnalysisElementEntry copies runtime element identity and adds measured duration fields.

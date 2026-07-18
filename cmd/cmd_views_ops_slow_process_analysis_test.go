@@ -8,9 +8,11 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -60,6 +62,66 @@ func TestRenderOpsSlowProcessAnalysisResultHumanRendersKeyedRoots(t *testing.T) 
 	require.Contains(t, output, "2251799813685250")
 	require.Contains(t, output, "dur:-")
 	require.True(t, strings.HasSuffix(output, "process instances: 2\n"))
+}
+
+// TestRenderOpsSlowProcessAnalysisResultHumanRendersRelativeBars verifies visual indicators stay compact and unlabeled.
+func TestRenderOpsSlowProcessAnalysisResultHumanRendersRelativeBars(t *testing.T) {
+	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+	result := ops.SlowProcessAnalysisResult{
+		Items: []ops.SlowProcessAnalysisProcessInstance{{
+			Key:                    "2251799813685249",
+			ProcessDefinitionKey:   "2251799813687001",
+			State:                  process.StateCompleted,
+			StartDate:              "2026-07-18T10:00:00Z",
+			EndDate:                "2026-07-18T10:05:00Z",
+			RootProcessInstanceKey: "2251799813685249",
+			Duration:               "5m0s",
+			DurationAvailable:      true,
+			RelativePercentile:     88,
+			ComparisonSampleCount:  4,
+			RelativeBar:            "[#########-]",
+			Timeline: []ops.SlowProcessAnalysisTimelineEntry{
+				{
+					Kind:                 ops.SlowProcessAnalysisTimelineEntryKindElement,
+					ElementInstanceKey:   "2251799813685250",
+					ElementID:            "ReserveStock",
+					Type:                 "SERVICE_TASK",
+					State:                "COMPLETED",
+					StartDate:            "2026-07-18T10:00:00Z",
+					EndDate:              "2026-07-18T10:00:04Z",
+					Duration:             "4s",
+					DurationAvailable:    true,
+					RelativeBar:          "[#####-----]",
+					ProcessDurationShare: 1,
+				},
+				{
+					Kind:                   ops.SlowProcessAnalysisTimelineEntryKindTransition,
+					FromElementID:          "ReserveStock",
+					FromElementType:        "SERVICE_TASK",
+					FromElementInstanceKey: "2251799813685250",
+					ToElementID:            "OrderFinished",
+					ToElementType:          "END_EVENT",
+					ToElementInstanceKey:   "2251799813685251",
+					Duration:               "4m56s",
+					DurationAvailable:      true,
+					RelativeBar:            "[########--]",
+					ProcessDurationShare:   99,
+				},
+			},
+		}},
+		Count: 1,
+	}
+
+	err := renderOpsSlowProcessAnalysisResult(cmd, result)
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "dur:5m0s [#########-]")
+	require.Contains(t, output, "dur:4s [#####-----] PI:1%")
+	require.Contains(t, output, "ReserveStock -> OrderFinished: 4m56s [########--] PI:99%")
+	require.NotContains(t, output, "cohort")
+	require.NotContains(t, output, "peer")
+	require.NotContains(t, output, "compared")
 }
 
 // TestRenderOpsSlowProcessAnalysisResultHumanRendersTimelineDetails verifies compact element and transition detail rows.
@@ -125,7 +187,7 @@ func TestRenderOpsSlowProcessAnalysisResultHumanRendersTimelineDetails(t *testin
 }
 
 // TestRenderOpsSlowProcessAnalysisResultKeysOnlyRendersRootKeys verifies keyed output remains pipeline-safe.
-func TestRenderOpsSlowProcessAnalysisResultKeysOnlyRendersRootKeys(t *testing.T) {
+func TestRenderOpsSlowProcessAnalysisResultKeysOnlyRendersUniqueRootKeys(t *testing.T) {
 	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
 	flagViewKeysOnly = true
 	t.Cleanup(func() { flagViewKeysOnly = false })
@@ -133,6 +195,7 @@ func TestRenderOpsSlowProcessAnalysisResultKeysOnlyRendersRootKeys(t *testing.T)
 		Items: []ops.SlowProcessAnalysisProcessInstance{
 			{Key: "2251799813685249"},
 			{Key: "2251799813685250"},
+			{Key: "2251799813685249"},
 		},
 		Count: 2,
 	}
@@ -141,6 +204,101 @@ func TestRenderOpsSlowProcessAnalysisResultKeysOnlyRendersRootKeys(t *testing.T)
 
 	require.NoError(t, err)
 	require.Equal(t, "2251799813685249\n2251799813685250\n", buf.String())
+}
+
+// TestRenderOpsSlowProcessAnalysisResultJSONIncludesStableAnalysisFields verifies automation-visible payload fields.
+func TestRenderOpsSlowProcessAnalysisResultJSONIncludesStableAnalysisFields(t *testing.T) {
+	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+	flagViewAsJson = true
+	t.Cleanup(func() { flagViewAsJson = false })
+	captured := time.Date(2026, 7, 18, 10, 30, 0, 0, time.UTC)
+	result := ops.SlowProcessAnalysisResult{
+		Request: ops.SlowProcessAnalysisRequest{
+			CommandName:   "ops analyse slow-process-instances",
+			SelectionMode: ops.SlowProcessAnalysisSelectionModeExplicitKeys,
+			InputKeys:     typex.Keys{"2251799813685249"},
+			OutputMode:    "json",
+		},
+		CapturedAt: captured,
+		Items: []ops.SlowProcessAnalysisProcessInstance{{
+			Key:                   "2251799813685249",
+			TenantID:              "tenant-a",
+			BpmnProcessID:         "OrderProcess",
+			ProcessDefinitionKey:  "2251799813687001",
+			ProcessVersion:        7,
+			State:                 process.StateCompleted,
+			StartDate:             "2026-07-18T10:00:00Z",
+			EndDate:               "2026-07-18T10:05:00Z",
+			Duration:              "5m0s",
+			DurationMillis:        300000,
+			DurationAvailable:     true,
+			RelativePercentile:    88,
+			ComparisonSampleCount: 4,
+			RelativeBar:           "[#########-]",
+			Timeline: []ops.SlowProcessAnalysisTimelineEntry{
+				{
+					Kind:                  ops.SlowProcessAnalysisTimelineEntryKindElement,
+					ElementInstanceKey:    "2251799813685250",
+					ElementID:             "ReserveStock",
+					Type:                  "SERVICE_TASK",
+					State:                 "COMPLETED",
+					StartDate:             "2026-07-18T10:00:00Z",
+					EndDate:               "2026-07-18T10:00:04Z",
+					Duration:              "4s",
+					DurationMillis:        4000,
+					DurationAvailable:     true,
+					RelativePercentile:    50,
+					ComparisonSampleCount: 4,
+					RelativeBar:           "[#####-----]",
+					ProcessDurationShare:  1,
+				},
+				{
+					Kind:                   ops.SlowProcessAnalysisTimelineEntryKindTransition,
+					FromElementInstanceKey: "2251799813685250",
+					FromElementID:          "ReserveStock",
+					FromElementType:        "SERVICE_TASK",
+					FromEndDate:            "2026-07-18T10:00:04Z",
+					ToElementInstanceKey:   "2251799813685251",
+					ToElementID:            "OrderFinished",
+					ToElementType:          "END_EVENT",
+					ToStartDate:            "2026-07-18T10:04:00Z",
+					Duration:               "3m56s",
+					DurationMillis:         236000,
+					DurationAvailable:      true,
+					RelativePercentile:     83,
+					ComparisonSampleCount:  3,
+					RelativeBar:            "[########--]",
+					ProcessDurationShare:   79,
+				},
+			},
+		}},
+		Count: 1,
+		Empty: false,
+	}
+
+	err := renderOpsSlowProcessAnalysisResult(cmd, result)
+
+	require.NoError(t, err)
+	var payload ops.SlowProcessAnalysisResult
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &payload))
+	require.Equal(t, captured, payload.CapturedAt)
+	require.Equal(t, "ops analyse slow-process-instances", payload.Request.CommandName)
+	require.Equal(t, "2251799813685249", payload.Items[0].Key)
+	require.Equal(t, int64(300000), payload.Items[0].DurationMillis)
+	require.Equal(t, 88, payload.Items[0].RelativePercentile)
+	require.Equal(t, 4, payload.Items[0].ComparisonSampleCount)
+	require.Equal(t, "[#########-]", payload.Items[0].RelativeBar)
+	require.Equal(t, ops.SlowProcessAnalysisTimelineEntryKindElement, payload.Items[0].Timeline[0].Kind)
+	require.Equal(t, int64(4000), payload.Items[0].Timeline[0].DurationMillis)
+	require.Equal(t, 1, payload.Items[0].Timeline[0].ProcessDurationShare)
+	require.Equal(t, ops.SlowProcessAnalysisTimelineEntryKindTransition, payload.Items[0].Timeline[1].Kind)
+	require.Equal(t, "ReserveStock", payload.Items[0].Timeline[1].FromElementID)
+	require.Equal(t, "OrderFinished", payload.Items[0].Timeline[1].ToElementID)
+	require.Equal(t, int64(236000), payload.Items[0].Timeline[1].DurationMillis)
+	require.Equal(t, 83, payload.Items[0].Timeline[1].RelativePercentile)
+	require.Contains(t, buf.String(), `"capturedAt"`)
+	require.Contains(t, buf.String(), `"comparisonSampleCount"`)
+	require.Contains(t, buf.String(), `"processDurationShare"`)
 }
 
 // TestRenderOpsSlowProcessAnalysisResultEmptySearchOutputs verifies all output modes represent no-match discovery cleanly.

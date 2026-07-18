@@ -131,19 +131,19 @@
 
 ### Tests for User Story 4
 
-- [ ] T044 [P] [US4] Add internal service tests for process, element, and transition comparison scopes, percentile calculation, tie handling, minimum sample count, and ten-cell bar inputs in `internal/services/ops/slow_process_analysis_test.go`
-- [ ] T045 [P] [US4] Add JSON rendering tests for captured analysis time, root durations, timeline entries, endpoints, comparison sample counts, relative percentiles, and process-duration shares in `cmd/cmd_views_ops_slow_process_analysis_test.go`
-- [ ] T046 [P] [US4] Add keys-only rendering tests for unique root keys, longest-to-shortest ordering, unavailable-duration ordering, empty output, and detail-filter independence in `cmd/cmd_views_ops_slow_process_analysis_test.go`
-- [ ] T047 [P] [US4] Add command contract tests for both command spellings, output modes, read-only metadata, automation compatibility, and help examples in `cmd/ops_contract_test.go` and `cmd/command_contract_test.go`
-- [ ] T048 [P] [US4] Add docs metadata tests for generated CLI docs covering slow-analysis commands and flags in `docsgen/main_test.go`
+- [x] T044 [P] [US4] Add internal service tests for process, element, and transition comparison scopes, percentile calculation, tie handling, minimum sample count, and ten-cell bar inputs in `internal/services/ops/slow_process_analysis_test.go`
+- [x] T045 [P] [US4] Add JSON rendering tests for captured analysis time, root durations, timeline entries, endpoints, comparison sample counts, relative percentiles, and process-duration shares in `cmd/cmd_views_ops_slow_process_analysis_test.go`
+- [x] T046 [P] [US4] Add keys-only rendering tests for unique root keys, longest-to-shortest ordering, unavailable-duration ordering, empty output, and detail-filter independence in `cmd/cmd_views_ops_slow_process_analysis_test.go`
+- [x] T047 [P] [US4] Add command contract tests for both command spellings, output modes, read-only metadata, automation compatibility, and help examples in `cmd/ops_contract_test.go` and `cmd/command_contract_test.go`
+- [x] T048 [P] [US4] Add docs metadata tests for generated CLI docs covering slow-analysis commands and flags in `docsgen/main_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T049 [US4] Implement relative percentile, comparison sample count, ten-cell bar, and `PI:<percentage>` calculations in `internal/services/ops/slow_process_analysis.go`
-- [ ] T050 [US4] Implement JSON payload structs and shared envelope rendering for slow analysis in `cmd/cmd_views_ops_slow_process_analysis.go`
-- [ ] T051 [US4] Implement keys-only output for unique process-instance keys in result ordering in `cmd/ops_analyse_slow_process_instances.go` and `cmd/cmd_views_ops_slow_process_analysis.go`
-- [ ] T052 [US4] Finalize command metadata, aliases, examples, output mode declarations, and docs-visible flag descriptions in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T053 [US4] Update README examples and behavior notes for slow process-instance analysis in `README.md`
+- [x] T049 [US4] Implement relative percentile, comparison sample count, ten-cell bar, and `PI:<percentage>` calculations in `internal/services/ops/slow_process_analysis.go`
+- [x] T050 [US4] Implement JSON payload structs and shared envelope rendering for slow analysis in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T051 [US4] Implement keys-only output for unique process-instance keys in result ordering in `cmd/ops_analyse_slow_process_instances.go` and `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T052 [US4] Finalize command metadata, aliases, examples, output mode declarations, and docs-visible flag descriptions in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T053 [US4] Update README examples and behavior notes for slow process-instance analysis in `README.md`
 
 **Checkpoint**: All user stories are independently functional across supported output modes.
 

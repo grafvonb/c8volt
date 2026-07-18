@@ -496,6 +496,32 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		t.Fatalf("expected generated ops repair process-instance docs not to contain --incidents-only, got %q", repairProcessInstanceDoc)
 	}
 
+	analyseDoc := readGeneratedDocForTest(t, out, "c8volt_ops_analyse_slow-process-instances.md")
+	for _, want := range []string{
+		"Analyze slow process-instance timings",
+		"./c8volt ops analyse slow-process-instances --key 2251799813685249",
+		"./c8volt ops analyze slow-process-instances --bpmn-process-id OrderProcess --state all --limit 20",
+		"./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -",
+		"--key strings",
+		"--bpmn-process-id string",
+		"--pd-key string",
+		"--state string",
+		"--no-incidents-only",
+		"--batch-size int32",
+		"--limit int32",
+		"--element-id string",
+		"--type string",
+		"--element-state string",
+		"--duration-after string",
+	} {
+		if !strings.Contains(analyseDoc, want) {
+			t.Fatalf("expected generated ops analyse slow-process-instances docs to contain %q, got %q", want, analyseDoc)
+		}
+	}
+	if strings.Contains(strings.ReplaceAll(analyseDoc, "--no-incidents-only", ""), "--incidents-only") {
+		t.Fatalf("expected generated ops analyse slow-process-instances docs not to contain --incidents-only, got %q", analyseDoc)
+	}
+
 	for _, unwanted := range []string{
 		"orphan-cleanup",
 		"smoke-test",

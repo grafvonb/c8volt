@@ -18,7 +18,15 @@ func renderOpsSlowProcessAnalysisResult(cmd *cobra.Command, result ops.SlowProce
 	case RenderModeJSON:
 		return renderJSONPayload(cmd, RenderModeJSON, result)
 	case RenderModeKeysOnly:
+		seen := map[string]struct{}{}
 		for _, item := range result.Items {
+			if item.Key == "" {
+				continue
+			}
+			if _, ok := seen[item.Key]; ok {
+				continue
+			}
+			seen[item.Key] = struct{}{}
 			renderOutputLine(cmd, "%s", item.Key)
 		}
 	default:
@@ -57,6 +65,9 @@ func formatOpsSlowProcessAnalysisRootRow(item ops.SlowProcessAnalysisProcessInst
 	} else {
 		row = append(row, "dur:-")
 	}
+	if item.RelativeBar != "" {
+		row = append(row, item.RelativeBar)
+	}
 	return compactFlatRow(row)
 }
 
@@ -80,6 +91,7 @@ func formatOpsSlowProcessAnalysisElementRow(entry ops.SlowProcessAnalysisTimelin
 		prefixedElementField("s", toolx.FormatTimestamp(entry.StartDate, showTimezoneOffset)),
 		prefixedElementField("e", toolx.FormatTimestamp(entry.EndDate, showTimezoneOffset)),
 		opsSlowProcessAnalysisDurationField(entry.Duration, entry.DurationAvailable),
+		opsSlowProcessAnalysisRelativeBarField(entry.RelativeBar),
 		opsSlowProcessAnalysisProcessShareField(entry.ProcessDurationShare),
 	}
 	if marker := opsSlowProcessAnalysisIncidentMarker(entry); marker != "" {
@@ -93,6 +105,7 @@ func formatOpsSlowProcessAnalysisTransitionRow(entry ops.SlowProcessAnalysisTime
 	row := flatRow{
 		entry.FromElementID + " -> " + entry.ToElementID + ":",
 		entry.Duration,
+		opsSlowProcessAnalysisRelativeBarField(entry.RelativeBar),
 		opsSlowProcessAnalysisProcessShareField(entry.ProcessDurationShare),
 	}
 	return compactFlatRow(row)
@@ -104,6 +117,11 @@ func opsSlowProcessAnalysisDurationField(duration string, available bool) string
 		return "dur:" + duration
 	}
 	return "dur:-"
+}
+
+// opsSlowProcessAnalysisRelativeBarField keeps unlabeled comparison bars adjacent to durations.
+func opsSlowProcessAnalysisRelativeBarField(value string) string {
+	return value
 }
 
 // opsSlowProcessAnalysisProcessShareField renders the process-duration share when service calculations provide one.

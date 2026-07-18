@@ -58,6 +58,11 @@ func TestOpsAnalyseSlowProcessInstancesMetadataRecordsReadOnlyContract(t *testin
 	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
 	require.Equal(t, ContractSupportFull, capability.ContractSupport)
 	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, opsAnalyseCmd.Aliases, "analyze")
+	require.Contains(t, capability.Aliases, "slow-pi")
+	require.Contains(t, capability.AutomationNotes, "read-only analysis")
+	require.Contains(t, capability.AutomationNotes, "key pipelines")
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
 }

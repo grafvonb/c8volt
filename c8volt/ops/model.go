@@ -114,6 +114,7 @@ type SlowProcessAnalysisProcessInstance struct {
 	DurationAvailable      bool                               `json:"durationAvailable"`
 	RelativePercentile     int                                `json:"relativePercentile,omitempty"`
 	ComparisonSampleCount  int                                `json:"comparisonSampleCount,omitempty"`
+	RelativeBar            string                             `json:"relativeBar,omitempty"`
 	Timeline               []SlowProcessAnalysisTimelineEntry `json:"timeline,omitempty"`
 }
 
@@ -141,6 +142,7 @@ type SlowProcessAnalysisTimelineEntry struct {
 	DurationAvailable      bool                                 `json:"durationAvailable"`
 	RelativePercentile     int                                  `json:"relativePercentile,omitempty"`
 	ComparisonSampleCount  int                                  `json:"comparisonSampleCount,omitempty"`
+	RelativeBar            string                               `json:"relativeBar,omitempty"`
 	ProcessDurationShare   int                                  `json:"processDurationShare,omitempty"`
 }
 

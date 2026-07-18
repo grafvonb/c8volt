@@ -464,6 +464,139 @@ func TestSlowProcessAnalysisDetailFiltersApplyAfterCompleteTimelineCalculations(
 	require.Equal(t, "C", got.Items[0].Timeline[2].ToElementID)
 }
 
+// TestSlowProcessAnalysisComparisonIndicatorsUseScopedSamples verifies relative indicators use explicit comparable groups.
+func TestSlowProcessAnalysisComparisonIndicatorsUseScopedSamples(t *testing.T) {
+	captured := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:30:00Z")
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	roots := []d.ProcessInstance{
+		slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(10*time.Minute)),
+		slowProcessAnalysisFixtureProcessInstance("2251799813685250", start, start.Add(5*time.Minute)),
+		slowProcessAnalysisFixtureProcessInstance("2251799813685251", start, start.Add(5*time.Minute)),
+		slowProcessAnalysisFixtureProcessInstance("2251799813685252", start, start.Add(time.Minute)),
+		func() d.ProcessInstance {
+			pi := slowProcessAnalysisFixtureProcessInstance("2251799813685253", start, start.Add(20*time.Minute))
+			pi.ProcessDefinitionKey = "2251799813687999"
+			return pi
+		}(),
+	}
+	elementSets := map[string][]d.Element{
+		"2251799813685249": {
+			slowProcessAnalysisFixtureElement("2251799813685249", "2251799813685301", "ReserveStock", start, start.Add(9*time.Second)),
+			slowProcessAnalysisFixtureElement("2251799813685249", "2251799813685302", "OrderFinished", start.Add(20*time.Second), start.Add(30*time.Second)),
+		},
+		"2251799813685250": {
+			slowProcessAnalysisFixtureElement("2251799813685250", "2251799813685303", "ReserveStock", start, start.Add(4*time.Second)),
+			slowProcessAnalysisFixtureElement("2251799813685250", "2251799813685304", "OrderFinished", start.Add(10*time.Second), start.Add(20*time.Second)),
+		},
+		"2251799813685251": {
+			slowProcessAnalysisFixtureElement("2251799813685251", "2251799813685305", "ReserveStock", start, start.Add(4*time.Second)),
+			slowProcessAnalysisFixtureElement("2251799813685251", "2251799813685306", "OrderFinished", start.Add(10*time.Second), start.Add(20*time.Second)),
+		},
+		"2251799813685252": {
+			slowProcessAnalysisFixtureElement("2251799813685252", "2251799813685307", "ReserveStock", start, start.Add(time.Second)),
+			slowProcessAnalysisFixtureElement("2251799813685252", "2251799813685308", "OrderFinished", start.Add(3*time.Second), start.Add(4*time.Second)),
+		},
+		"2251799813685253": {
+			slowProcessAnalysisFixtureElement("2251799813685253", "2251799813685309", "ReserveStock", start, start.Add(30*time.Second)),
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			return d.ProcessInstancePage{Request: page, OverflowState: d.ProcessInstanceOverflowStateNoMore, Items: roots}, nil
+		},
+	}
+	elementAPI := stubSlowProcessAnalysisElementAPI{
+		search: func(_ context.Context, query d.ElementSearchQuery, _ ...services.CallOption) (d.ElementSearchResult, error) {
+			return d.ElementSearchResult{Items: elementSets[query.ProcessInstanceKey]}, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, elementAPI, toolx.V89).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeProcessDefinitionSearch,
+		ProcessDefinitionSelector: d.SlowProcessAnalysisProcessDefinitionSelector{
+			BpmnProcessID: "OrderProcess",
+		},
+		CapturedNow: captured,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"2251799813685253", "2251799813685249", "2251799813685250", "2251799813685251", "2251799813685252"}, []string{got.Items[0].Key, got.Items[1].Key, got.Items[2].Key, got.Items[3].Key, got.Items[4].Key})
+	require.Zero(t, got.Items[0].ComparisonSampleCount)
+	require.Zero(t, got.Items[0].RelativePercentile)
+	require.Empty(t, got.Items[0].RelativeBar)
+	require.Equal(t, 4, got.Items[1].ComparisonSampleCount)
+	require.Equal(t, 88, got.Items[1].RelativePercentile)
+	require.Equal(t, "[#########-]", got.Items[1].RelativeBar)
+	require.Equal(t, 4, got.Items[2].ComparisonSampleCount)
+	require.Equal(t, 50, got.Items[2].RelativePercentile)
+	require.Equal(t, got.Items[2].RelativePercentile, got.Items[3].RelativePercentile)
+	require.Equal(t, got.Items[2].RelativeBar, got.Items[3].RelativeBar)
+	require.Equal(t, 4, got.Items[4].ComparisonSampleCount)
+	require.Equal(t, 13, got.Items[4].RelativePercentile)
+	require.Equal(t, "[#---------]", got.Items[4].RelativeBar)
+
+	root := got.Items[1]
+	elementRows := slowProcessAnalysisTimelineElements(root.Timeline)
+	transitions := slowProcessAnalysisTimelineTransitions(root.Timeline)
+	require.Equal(t, 4, elementRows[0].ComparisonSampleCount)
+	require.Equal(t, 88, elementRows[0].RelativePercentile)
+	require.Equal(t, "[#########-]", elementRows[0].RelativeBar)
+	require.Equal(t, 4, transitions[0].ComparisonSampleCount)
+	require.Equal(t, 88, transitions[0].RelativePercentile)
+	require.Equal(t, "[#########-]", transitions[0].RelativeBar)
+}
+
+// TestSlowProcessAnalysisComparisonIndicatorsSurviveDetailFiltering verifies metrics are calculated before visibility filters.
+func TestSlowProcessAnalysisComparisonIndicatorsSurviveDetailFiltering(t *testing.T) {
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	roots := []d.ProcessInstance{
+		slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(10*time.Minute)),
+		slowProcessAnalysisFixtureProcessInstance("2251799813685250", start, start.Add(5*time.Minute)),
+		slowProcessAnalysisFixtureProcessInstance("2251799813685251", start, start.Add(time.Minute)),
+	}
+	elementSets := map[string][]d.Element{
+		"2251799813685249": {
+			slowProcessAnalysisFixtureElement("2251799813685249", "2251799813685301", "ReserveStock", start, start.Add(9*time.Second)),
+			slowProcessAnalysisFixtureElement("2251799813685249", "2251799813685302", "OrderFinished", start.Add(20*time.Second), start.Add(30*time.Second)),
+		},
+		"2251799813685250": {
+			slowProcessAnalysisFixtureElement("2251799813685250", "2251799813685303", "ReserveStock", start, start.Add(4*time.Second)),
+			slowProcessAnalysisFixtureElement("2251799813685250", "2251799813685304", "OrderFinished", start.Add(10*time.Second), start.Add(20*time.Second)),
+		},
+		"2251799813685251": {
+			slowProcessAnalysisFixtureElement("2251799813685251", "2251799813685305", "ReserveStock", start, start.Add(time.Second)),
+			slowProcessAnalysisFixtureElement("2251799813685251", "2251799813685306", "OrderFinished", start.Add(3*time.Second), start.Add(4*time.Second)),
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			return d.ProcessInstancePage{Request: page, OverflowState: d.ProcessInstanceOverflowStateNoMore, Items: roots}, nil
+		},
+	}
+	elementAPI := stubSlowProcessAnalysisElementAPI{
+		search: func(_ context.Context, query d.ElementSearchQuery, _ ...services.CallOption) (d.ElementSearchResult, error) {
+			return d.ElementSearchResult{Items: elementSets[query.ProcessInstanceKey]}, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, elementAPI, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeProcessDefinitionSearch,
+		ProcessDefinitionSelector: d.SlowProcessAnalysisProcessDefinitionSelector{
+			BpmnProcessID: "OrderProcess",
+		},
+		DetailFilters: d.SlowProcessAnalysisDetailFilters{ElementID: "OrderFinished"},
+		CapturedNow:   start.Add(30 * time.Minute),
+	})
+
+	require.NoError(t, err)
+	require.Len(t, got.Items[0].Timeline, 2)
+	require.Equal(t, d.SlowProcessAnalysisTimelineEntryKindTransition, got.Items[0].Timeline[0].Kind)
+	require.Equal(t, 3, got.Items[0].Timeline[0].ComparisonSampleCount)
+	require.Equal(t, 83, got.Items[0].Timeline[0].RelativePercentile)
+	require.Equal(t, d.SlowProcessAnalysisTimelineEntryKindElement, got.Items[0].Timeline[1].Kind)
+	require.Equal(t, "OrderFinished", got.Items[0].Timeline[1].ElementID)
+}
+
 // slowProcessAnalysisTimelineElements extracts element rows from a mixed timeline for assertions.
 func slowProcessAnalysisTimelineElements(entries []d.SlowProcessAnalysisTimelineEntry) []d.SlowProcessAnalysisTimelineEntry {
 	out := make([]d.SlowProcessAnalysisTimelineEntry, 0, len(entries))

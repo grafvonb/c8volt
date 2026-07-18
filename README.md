@@ -400,6 +400,19 @@ When incident output includes `jobKey`, use `get job --key <job-key>` for direct
 
 For runtime execution context, add `--with-elements` to keyed or list/search `get pi` output. Element rows appear under an `elements:` section for each selected process instance and include the element instance key, type, BPMN element ID, state, start time, optional end time, and optional incident marker. `--limit`, `--batch-size`, prompts, and `found: N` still count process instances, not attached element rows. Use `get ei` when you need element-specific filters, keys-only element output, or element totals.
 
+For slow-run inspection, use `ops analyse slow-process-instances` with explicit process-instance keys or one process-definition selector:
+
+```bash
+./c8volt ops analyse slow-process-instances --key <process-instance-key>
+./c8volt ops analyze slow-process-instances --bpmn-process-id <bpmn-process-id> --state all --limit 20
+./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -
+./c8volt ops analyse slow-process-instances --pd-key <process-definition-key> --element-id <element-id> --duration-after 2s
+./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --json
+./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --keys-only
+```
+
+The analysis is read-only. Roots are ordered by available duration longest to shortest, followed by unavailable durations, and detail filters never remove roots or change keys-only output. Human output groups chronological element rows and adjacent `A -> B: duration` timings under each root, adds compact relative-duration bars when at least three comparable measurements exist, and shows `PI:<percentage>` shares when a detail duration can be compared with the root duration. JSON output exposes the same timings, comparison sample counts, relative percentiles, and process-duration shares as named fields.
+
 For native process-instance variable search on Camunda `8.8` and `8.9`, use `--var-exists` for required variable names, `--var name=value` for equality shorthand, `--var name.$operator=value` for `$eq`, `$neq`, `$exists`, `$in`, `$notIn`, and `$like`, and `--var-like name=pattern` for wildcard patterns. Repeated flags and comma-separated clauses are combined, while commas inside quoted values and JSON arrays stay inside the clause. Native `$like` patterns use `*` for zero or more characters and `?` for one character; escaped wildcards remain literal. Camunda `8.7` returns an unsupported-version error for variable-search flags instead of falling back to Operate-backed filtering.
 
 ### Inspect Incidents Directly
