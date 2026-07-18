@@ -57,17 +57,30 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
   ./c8volt ops analyze slow-process-instances --bpmn-process-id OrderProcess --state all --limit 20
   ./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -`,
 	Aliases: []string{"slow-pi"},
-	Args:    cobra.MaximumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		parsed, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, args)
-		if err != nil {
-			failBeforeCli(cmd, err)
+	Args: func(cmd *cobra.Command, args []string) error {
+		if err := validateOpsSlowProcessAnalysisCommandArgs(cmd, args); err != nil {
+			return silenceUsageForError(cmd, err)
 		}
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
 		}
 		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		stdinKeys, err := readKeysIfDash(args)
+		if err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		keys := mergeAndValidateKeys(flagOpsAnalyseSlowProcessInstanceKeys, stdinKeys, log, cfg).Unique()
+		if ok, firstBadKey, _ := validateKeys(keys); !ok {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("process-instance key %q is not a valid key", firstBadKey))
+		}
+		parsed, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, args, keys)
+		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		result, err := cli.AnalyseSlowProcessInstances(cmd.Context(), parsed.Request, collectOptions()...)
@@ -119,16 +132,51 @@ func init() {
 	)
 }
 
-// buildOpsSlowProcessAnalysisCommandRequest turns validated command flags into facade input.
-func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string) (opsSlowProcessAnalysisCommandRequest, error) {
+// validateOpsSlowProcessAnalysisCommandArgs rejects invalid selector combinations before client setup.
+func validateOpsSlowProcessAnalysisCommandArgs(cmd *cobra.Command, args []string) error {
 	if len(args) == 1 && args[0] != "-" {
-		return opsSlowProcessAnalysisCommandRequest{}, invalidFlagValuef("unexpected positional argument %q; use '-' to read process-instance keys from stdin", args[0])
+		return invalidFlagValuef("unexpected positional argument %q; use '-' to read process-instance keys from stdin", args[0])
+	}
+	if len(args) > 1 {
+		return invalidFlagValuef("unexpected positional arguments %v; use one '-' to read process-instance keys from stdin", args)
 	}
 	if flagOpsAnalyseSlowProcessInstanceBatchSize <= 0 || flagOpsAnalyseSlowProcessInstanceBatchSize > consts.MaxPISearchSize {
-		return opsSlowProcessAnalysisCommandRequest{}, invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagOpsAnalyseSlowProcessInstanceBatchSize, consts.MaxPISearchSize)
+		return invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagOpsAnalyseSlowProcessInstanceBatchSize, consts.MaxPISearchSize)
 	}
 	if flagOpsAnalyseSlowProcessInstanceLimit < 0 || (flagOpsAnalyseSlowProcessInstanceLimit == 0 && cmd != nil && cmd.Flags().Changed("limit")) {
-		return opsSlowProcessAnalysisCommandRequest{}, invalidFlagValuef("--limit must be positive integer")
+		return invalidFlagValuef("--limit must be positive integer")
+	}
+	if _, err := parseOpsSlowProcessAnalysisDurationAfter(); err != nil {
+		return err
+	}
+	stdinRequested := len(args) == 1 && args[0] == "-"
+	keyedMode := len(flagOpsAnalyseSlowProcessInstanceKeys) > 0 || stdinRequested
+	processDefinitionSelectorMode := flagOpsAnalyseSlowProcessInstanceBpmnProcessID != "" || flagOpsAnalyseSlowProcessInstancePDKey != ""
+	if flagOpsAnalyseSlowProcessInstanceBpmnProcessID != "" && flagOpsAnalyseSlowProcessInstancePDKey != "" {
+		return mutuallyExclusiveFlagsf("--bpmn-process-id cannot be combined with --pd-key")
+	}
+	if keyedMode && processDefinitionSelectorMode {
+		return mutuallyExclusiveFlagsf("--key/stdin '-' cannot be combined with process-definition selectors")
+	}
+	if keyedMode && hasOpsSlowProcessAnalysisSearchFilterFlags(cmd) {
+		return mutuallyExclusiveFlagsf("explicit process-instance keys cannot be combined with process-instance search filters")
+	}
+	if !keyedMode && !processDefinitionSelectorMode {
+		return localPreconditionError(fmt.Errorf("select process instances with --key, stdin '-', --bpmn-process-id, or --pd-key"))
+	}
+	if _, err := parseOpsSlowProcessAnalysisState(); err != nil {
+		return err
+	}
+	if ok, firstBadKey, _ := validateKeys(flagOpsAnalyseSlowProcessInstanceKeys); len(flagOpsAnalyseSlowProcessInstanceKeys) > 0 && !ok {
+		return invalidFlagValuef("process-instance key %q is not a valid key", firstBadKey)
+	}
+	return nil
+}
+
+// buildOpsSlowProcessAnalysisCommandRequest turns validated command flags into facade input.
+func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string, keys typex.Keys) (opsSlowProcessAnalysisCommandRequest, error) {
+	if err := validateOpsSlowProcessAnalysisCommandArgs(cmd, args); err != nil {
+		return opsSlowProcessAnalysisCommandRequest{}, err
 	}
 	durationAfter, err := parseOpsSlowProcessAnalysisDurationAfter()
 	if err != nil {
@@ -140,11 +188,11 @@ func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string
 	}
 
 	stdinRequested := len(args) == 1 && args[0] == "-"
-	selectionMode := ops.SlowProcessAnalysisSelectionMode("")
-	if len(flagOpsAnalyseSlowProcessInstanceKeys) > 0 || stdinRequested {
+	selectionMode := ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch
+	inputKeys := typex.Keys(nil)
+	if len(keys) > 0 || stdinRequested {
 		selectionMode = ops.SlowProcessAnalysisSelectionModeExplicitKeys
-	} else if flagOpsAnalyseSlowProcessInstanceBpmnProcessID != "" || flagOpsAnalyseSlowProcessInstancePDKey != "" {
-		selectionMode = ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch
+		inputKeys = append(typex.Keys(nil), keys...)
 	}
 
 	return opsSlowProcessAnalysisCommandRequest{
@@ -152,7 +200,7 @@ func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string
 		Request: ops.SlowProcessAnalysisRequest{
 			CommandName:   opsAnalyseSlowProcessInstancesCommandName,
 			SelectionMode: selectionMode,
-			InputKeys:     append(typex.Keys(nil), flagOpsAnalyseSlowProcessInstanceKeys...),
+			InputKeys:     inputKeys,
 			ProcessDefinitionSelector: ops.SlowProcessAnalysisProcessDefinitionSelector{
 				BpmnProcessID:        flagOpsAnalyseSlowProcessInstanceBpmnProcessID,
 				ProcessDefinitionKey: flagOpsAnalyseSlowProcessInstancePDKey,
@@ -177,6 +225,18 @@ func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string
 			OutputMode:  pickMode().String(),
 		},
 	}, nil
+}
+
+// hasOpsSlowProcessAnalysisSearchFilterFlags identifies flags valid only for process-definition discovery.
+func hasOpsSlowProcessAnalysisSearchFilterFlags(cmd *cobra.Command) bool {
+	return flagOpsAnalyseSlowProcessInstanceStartDateAfter != "" ||
+		flagOpsAnalyseSlowProcessInstanceStartDateBefore != "" ||
+		flagOpsAnalyseSlowProcessInstanceEndDateAfter != "" ||
+		flagOpsAnalyseSlowProcessInstanceEndDateBefore != "" ||
+		flagOpsAnalyseSlowProcessInstanceNoIncidentsOnly ||
+		(cmd != nil && cmd.Flags().Changed("state")) ||
+		(cmd != nil && cmd.Flags().Changed("batch-size")) ||
+		(cmd != nil && cmd.Flags().Changed("limit"))
 }
 
 // parseOpsSlowProcessAnalysisState keeps accepted state tokens aligned with process-instance search.

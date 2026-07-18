@@ -54,18 +54,18 @@
 
 ### Tests for User Story 1
 
-- [ ] T015 [P] [US1] Add internal service tests for explicit-key deduplication, lookup, missing-key and unauthorized-key failures, unavailable-duration ordering, and Camunda 8.7 unsupported behavior in `internal/services/ops/slow_process_analysis_test.go`
-- [ ] T016 [P] [US1] Add ops facade tests for explicit-key request conversion, service delegation, result conversion, and error mapping in `c8volt/ops/client_test.go`
-- [ ] T017 [P] [US1] Add command validation tests for repeated `--key`, `-k`, stdin `-`, mixed keys, empty stdin, invalid keys, extra positional args, and mutually exclusive selectors in `cmd/ops_analyse_slow_process_instances_test.go`
-- [ ] T018 [P] [US1] Add keyed human rendering tests for root rows, `dur:`, unavailable duration placement, and final process-instance count in `cmd/cmd_views_ops_slow_process_analysis_test.go`
+- [x] T015 [P] [US1] Add internal service tests for explicit-key deduplication, lookup, missing-key and unauthorized-key failures, unavailable-duration ordering, and Camunda 8.7 unsupported behavior in `internal/services/ops/slow_process_analysis_test.go`
+- [x] T016 [P] [US1] Add ops facade tests for explicit-key request conversion, service delegation, result conversion, and error mapping in `c8volt/ops/client_test.go`
+- [x] T017 [P] [US1] Add command validation tests for repeated `--key`, `-k`, stdin `-`, mixed keys, empty stdin, invalid keys, extra positional args, and mutually exclusive selectors in `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T018 [P] [US1] Add keyed human rendering tests for root rows, `dur:`, unavailable duration placement, and final process-instance count in `cmd/cmd_views_ops_slow_process_analysis_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T019 [US1] Implement explicit-key request validation and stdin key merging in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T020 [US1] Implement public ops facade delegation for keyed slow analysis in `c8volt/ops/client.go` and `c8volt/ops/convert.go`
-- [ ] T021 [US1] Implement explicit-key selection, deduplication, tenant-safe lookup, Camunda 8.7 unsupported handling, captured analysis time, and root duration sorting in `internal/services/ops/slow_process_analysis.go`
-- [ ] T022 [US1] Register `ops analyse slow-process-instances` and `ops analyze slow-process-instances` with `--key`/`-k`, stdin `-`, read-only metadata, help text, and examples in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T023 [US1] Render keyed analysis root rows and final process-instance count in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T019 [US1] Implement explicit-key request validation and stdin key merging in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T020 [US1] Implement public ops facade delegation for keyed slow analysis in `c8volt/ops/client.go` and `c8volt/ops/convert.go`
+- [x] T021 [US1] Implement explicit-key selection, deduplication, tenant-safe lookup, Camunda 8.7 unsupported handling, captured analysis time, and root duration sorting in `internal/services/ops/slow_process_analysis.go`
+- [x] T022 [US1] Register `ops analyse slow-process-instances` and `ops analyze slow-process-instances` with `--key`/`-k`, stdin `-`, read-only metadata, help text, and examples in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T023 [US1] Render keyed analysis root rows and final process-instance count in `cmd/cmd_views_ops_slow_process_analysis.go`
 
 **Checkpoint**: User Story 1 is fully functional and independently testable as the MVP.
 

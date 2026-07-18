@@ -392,6 +392,42 @@ func TestClientAnalyseSlowProcessInstancesMapsServiceBoundary(t *testing.T) {
 	require.Equal(t, 1, got.Items[0].Timeline[0].ProcessDurationShare)
 }
 
+// TestClientAnalyseSlowProcessInstancesCopiesKeysAndMapsErrors verifies public slices and domain errors stay boundary-safe.
+func TestClientAnalyseSlowProcessInstancesCopiesKeysAndMapsErrors(t *testing.T) {
+	t.Parallel()
+
+	inputKeys := typex.Keys{"2251799813685249"}
+	api := stubOpsService{
+		slowProcessAnalysis: func(_ context.Context, request d.SlowProcessAnalysisRequest, _ ...services.CallOption) (d.SlowProcessAnalysisResult, error) {
+			inputKeys[0] = "2251799813685250"
+			require.Equal(t, typex.Keys{"2251799813685249"}, request.InputKeys)
+			request.InputKeys[0] = "2251799813685251"
+			return d.SlowProcessAnalysisResult{
+				Request: request,
+				Items: []d.SlowProcessAnalysisProcessInstance{{
+					Key:               "2251799813685249",
+					DurationAvailable: true,
+					Timeline: []d.SlowProcessAnalysisTimelineEntry{{
+						Kind: d.SlowProcessAnalysisTimelineEntryKindElement,
+					}},
+				}},
+				Count: 1,
+			}, fmt.Errorf("%w: blocked", d.ErrForbidden)
+		},
+	}
+
+	got, err := New(api, slog.Default()).AnalyseSlowProcessInstances(context.Background(), SlowProcessAnalysisRequest{
+		SelectionMode: SlowProcessAnalysisSelectionModeExplicitKeys,
+		InputKeys:     inputKeys,
+	})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "blocked")
+	require.Equal(t, typex.Keys{"2251799813685251"}, got.Request.InputKeys)
+	require.Equal(t, "2251799813685249", got.Items[0].Key)
+	require.Equal(t, SlowProcessAnalysisTimelineEntryKindElement, got.Items[0].Timeline[0].Kind)
+}
+
 func TestClientExecuteSmokeTestMapsDeploymentResult(t *testing.T) {
 	t.Parallel()
 
