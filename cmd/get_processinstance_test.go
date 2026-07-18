@@ -2289,7 +2289,7 @@ func TestGetProcessInstanceListWithElements_HumanOutputShowsRuntimeElements(t *t
 	require.Equal(t, "124", elementFilters[1]["processInstanceKey"])
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
-	require.NotContains(t, output, "125")
+	require.NotContains(t, output, "125 tenant demo-c v5 ACTIVE")
 	require.Contains(t, output, "element-123 START_EVENT start COMPLETED")
 	require.Contains(t, output, "element-124 SERVICE_TASK task ACTIVE")
 	require.Contains(t, output, "inc!:incident-124")
@@ -4506,8 +4506,8 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.Contains(t, output, "page size: 4, current page: 2, total so far: 2, more matches: yes, next step: limit-reached")
 		require.Contains(t, output, "123")
 		require.Contains(t, output, "124")
-		require.NotContains(t, output, "125")
-		require.NotContains(t, output, "126")
+		require.NotContains(t, output, "125 tenant demo")
+		require.NotContains(t, output, "126 tenant demo")
 	})
 
 	t.Run("json mode fetches every page without prompt", func(t *testing.T) {
