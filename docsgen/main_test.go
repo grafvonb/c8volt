@@ -273,6 +273,7 @@ func TestGeneratedGetElementDocsDocumentLookupSearchAndOutput(t *testing.T) {
 		"List or fetch Camunda runtime element instances.",
 		"Use --key when you know an element instance key.",
 		"Search mode follows the shared get paging and limit conventions.",
+		"Compact human rows include dur:<duration>",
 		"Use --json for the stable element payload and --keys-only when piping element instance keys.",
 		"./c8volt get ei -k <element-instance-key>",
 		"./c8volt get ei --pi-key <process-instance-key> --limit 10",
@@ -496,6 +497,37 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		t.Fatalf("expected generated ops repair process-instance docs not to contain --incidents-only, got %q", repairProcessInstanceDoc)
 	}
 
+	analyseDoc := readGeneratedDocForTest(t, out, "c8volt_ops_analyse_slow-process-instances.md")
+	for _, want := range []string{
+		"Analyze slow process-instance timings",
+		"./c8volt ops analyse slow-process-instances --key 2251799813685249",
+		"./c8volt ops analyze slow-process-instances --bpmn-process-id OrderProcess --state all --limit 20",
+		"./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 1h30m --dur-element-longer 30s",
+		"./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -",
+		"Duration thresholds use Go duration syntax",
+		"Calendar units such as 1d are not accepted",
+		"--key strings",
+		"--bpmn-process-id string",
+		"--pd-key string",
+		"--state string",
+		"--no-incidents-only",
+		"--batch-size int32",
+		"--limit int32",
+		"--element-id string",
+		"--type string",
+		"--element-state string",
+		"--dur-longer string",
+		"--dur-element-longer string",
+		"--duration-after string",
+	} {
+		if !strings.Contains(analyseDoc, want) {
+			t.Fatalf("expected generated ops analyse slow-process-instances docs to contain %q, got %q", want, analyseDoc)
+		}
+	}
+	if strings.Contains(strings.ReplaceAll(analyseDoc, "--no-incidents-only", ""), "--incidents-only") {
+		t.Fatalf("expected generated ops analyse slow-process-instances docs not to contain --incidents-only, got %q", analyseDoc)
+	}
+
 	for _, unwanted := range []string{
 		"orphan-cleanup",
 		"smoke-test",
@@ -679,6 +711,7 @@ func TestGeneratedGetProcessInstanceDocsDocumentVariableSearch(t *testing.T) {
 		"--var-exists stringArray",
 		"--var-like stringArray",
 		"Use --with-elements to include runtime element instances under matching process-instance rows.",
+		"Nested human element rows include dur:<duration>",
 		"./c8volt get pi --key <process-instance-key> --with-elements",
 		"--with-elements",
 		"include runtime element instances for keyed or list/search process-instance output",

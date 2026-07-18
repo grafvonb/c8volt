@@ -51,6 +51,23 @@ func TestOpsWorkflowElapsedSuffixUsesApproximateDuration(t *testing.T) {
 	require.Equal(t, "; elapsed: about five minutes", opsWorkflowElapsedSuffix("about five minutes"))
 }
 
+// TestOpsAnalyseSlowProcessInstancesMetadataRecordsReadOnlyContract protects the analysis command's ops contract.
+func TestOpsAnalyseSlowProcessInstancesMetadataRecordsReadOnlyContract(t *testing.T) {
+	capability := commandCapabilityForCommand(opsAnalyseSlowProcessInstancesCmd)
+
+	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, opsAnalyseCmd.Aliases, "analyze")
+	require.Contains(t, capability.Aliases, "slow-pi")
+	require.Contains(t, capability.Aliases, "spi")
+	require.Contains(t, capability.AutomationNotes, "read-only analysis")
+	require.Contains(t, capability.AutomationNotes, "key pipelines")
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
+}
+
 // TestOpsWorkflowReportFormatForPath documents explicit and extension-inferred report format behavior.
 func TestOpsWorkflowReportFormatForPath(t *testing.T) {
 	tests := []struct {

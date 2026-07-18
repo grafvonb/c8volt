@@ -30,6 +30,16 @@ func (c *client) ExecuteSmokeTest(ctx context.Context, request SmokeTestRequest,
 	return out, nil
 }
 
+// AnalyseSlowProcessInstances delegates slow analysis orchestration to the internal ops service.
+func (c *client) AnalyseSlowProcessInstances(ctx context.Context, request SlowProcessAnalysisRequest, opts ...options.FacadeOption) (SlowProcessAnalysisResult, error) {
+	result, err := c.api.AnalyseSlowProcessInstances(ctx, toDomainSlowProcessAnalysisRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainSlowProcessAnalysisResult(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
+}
+
 func (c *client) PurgeOrphanProcessInstances(ctx context.Context, request OrphanPurgeRequest, opts ...options.FacadeOption) (OrphanPurgeResult, error) {
 	result, err := c.api.PurgeOrphanProcessInstances(ctx, toDomainOrphanPurgeRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
 	out := fromDomainOrphanPurgeResult(result)

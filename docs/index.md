@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.1.0-alpha2-30-g8c456a04-dirty`, commit `8c456a04`, built `2026-07-16T18:41:16Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v4.1.0-alpha2-45-g850217fb-dirty`, commit `850217fb`, built `2026-07-18T16:17:53Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -249,7 +249,7 @@ Use `get job --key` with the `jobKey` from incident-aware process-instance outpu
 ./c8volt --json get ei --pi-key <process-instance-key> --limit 5
 ```
 
-Use `get element` or its `get ei` alias when the runtime BPMN element execution record is the target. `--key` fetches one element instance directly; without `--key`, filters such as `--pi-key`, `--element-id`, `--state`, `--type`, `--pd-key`, and `--bpmn-process-id` combine with AND semantics. `--batch-size` tunes page size, `--limit` caps returned rows, `--total` prints only the count, and `--keys-only` emits element instance keys. Compact rows show process context plus one incident marker, `inc!` or `inc!:<incidentKey>`, when the element has an incident. Runtime element inspection is available on Camunda `8.8` and `8.9`; Camunda `8.7` returns an unsupported-version error.
+Use `get element` or its `get ei` alias when the runtime BPMN element execution record is the target. `--key` fetches one element instance directly; without `--key`, filters such as `--pi-key`, `--element-id`, `--state`, `--type`, `--pd-key`, and `--bpmn-process-id` combine with AND semantics. `--batch-size` tunes page size, `--limit` caps returned rows, `--total` prints only the count, and `--keys-only` emits element instance keys. Compact human rows include `dur:<duration>` when timestamps support a runtime duration and show process context plus one incident marker, `inc!` or `inc!:<incidentKey>`, when the element has an incident. Runtime element inspection is available on Camunda `8.8` and `8.9`; Camunda `8.7` returns an unsupported-version error.
 
 ### Resolve Incidents
 
@@ -404,7 +404,22 @@ For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` 
 
 When incident output includes `jobKey`, use `get job --key <job-key>` for direct job details. To remediate job retries or timeout, preview with `update job --dry-run`, then submit with `--auto-confirm` or `--automation`. To resolve the incident itself, preview with `resolve incident --dry-run` or let `resolve pi --dry-run` discover the active incident set for a process instance first.
 
-For runtime execution context, add `--with-elements` to keyed or list/search `get pi` output. Element rows appear under an `elements:` section for each selected process instance and include the element instance key, type, BPMN element ID, state, start time, optional end time, and optional incident marker. `--limit`, `--batch-size`, prompts, and `found: N` still count process instances, not attached element rows. Use `get ei` when you need element-specific filters, keys-only element output, or element totals.
+For runtime execution context, add `--with-elements` to keyed or list/search `get pi` output. Element rows appear under an `elements:` section for each selected process instance and include the element instance key, type, BPMN element ID, state, start time, optional end time, `dur:<duration>` when calculable, and optional incident marker. `--limit`, `--batch-size`, prompts, and `found: N` still count process instances, not attached element rows. Use `get ei` when you need element-specific filters, keys-only element output, or element totals.
+
+For slow-run inspection, use `ops analyse slow-process-instances` with explicit process-instance keys or one process-definition selector:
+
+```bash
+./c8volt ops analyse slow-process-instances --key <process-instance-key>
+./c8volt ops analyze slow-process-instances --bpmn-process-id <bpmn-process-id> --state all --limit 20
+./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -
+./c8volt ops analyse spi --bpmn-process-id <bpmn-process-id> --dur-longer 5m
+./c8volt ops analyse slow-process-instances --pd-key <process-definition-key> --element-id <element-id> --dur-element-longer 2s
+./c8volt ops analyse spi --bpmn-process-id <bpmn-process-id> --dur-longer 1h30m --dur-element-longer 30s
+./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --json
+./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --keys-only
+```
+
+The analysis is read-only. Roots are ordered by available duration longest to shortest, followed by unavailable durations. Use `--dur-longer` to keep only process-instance roots whose whole duration is above a threshold, and `--dur-element-longer` to hide shorter element and transition detail rows while keeping roots visible. Duration filters use Go duration strings such as `500ms`, `30s`, `5m`, `1h`, `1h30m`, or `24h`; calendar units such as `1d` are not accepted. Human output renders each process instance as the root row with a nested `└─ elements:` tree containing chronological element rows and adjacent `A -> B: duration` timings. Root bars compare each visible root to the longest visible root, while detail bars compare each positive detail duration to its root duration; zero-duration rows omit bars. JSON output exposes the same timings, comparison sample counts, relative percentiles, and process-duration shares as named fields.
 
 For native process-instance variable search on Camunda `8.8` and `8.9`, use `--var-exists` for required variable names, `--var name=value` for equality shorthand, `--var name.$operator=value` for `$eq`, `$neq`, `$exists`, `$in`, `$notIn`, and `$like`, and `--var-like name=pattern` for wildcard patterns. Repeated flags and comma-separated clauses are combined, while commas inside quoted values and JSON arrays stay inside the clause. Native `$like` patterns use `*` for zero or more characters and `?` for one character; escaped wildcards remain literal. Camunda `8.7` returns an unsupported-version error for variable-search flags instead of falling back to Operate-backed filtering.
 

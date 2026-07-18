@@ -6,6 +6,7 @@ package cmd
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/element"
 	"github.com/stretchr/testify/require"
@@ -14,7 +15,8 @@ import (
 // TestElementFlatRowsFormatTimestampsAndIncidents verifies the compact element
 // row grammar for active, completed, and incident-bearing runtime elements.
 func TestElementFlatRowsFormatTimestampsAndIncidents(t *testing.T) {
-	active := oneLineElement(element.Element{
+	capturedNow := time.Date(2026, 7, 15, 10, 15, 1, 0, time.UTC)
+	active := oneLineElementWithTimezone(element.Element{
 		ElementInstanceKey:   "2251799813689002",
 		ElementId:            "ship-order",
 		Type:                 "SERVICE_TASK",
@@ -23,13 +25,13 @@ func TestElementFlatRowsFormatTimestampsAndIncidents(t *testing.T) {
 		ProcessInstanceKey:   "2251799813688001",
 		ProcessDefinitionKey: "2251799813687001",
 		TenantId:             "tenant-a",
-	})
-	require.Equal(t, "2251799813689002 tenant-a SERVICE_TASK ship-order ACTIVE s:2026-07-15T10:12:01.000 pi:2251799813688001 pd:2251799813687001", active)
+	}, false, capturedNow)
+	require.Equal(t, "2251799813689002 tenant-a SERVICE_TASK ship-order ACTIVE s:2026-07-15T10:12:01.000 dur:3m0s pi:2251799813688001 pd:2251799813687001", active)
 	require.NotContains(t, active, " e:")
 	require.NotContains(t, active, "element:")
 	require.NotContains(t, active, "inc!")
 
-	completed := oneLineElement(element.Element{
+	completed := oneLineElementWithTimezone(element.Element{
 		ElementInstanceKey:   "2251799813689003",
 		ElementId:            "finish-order",
 		Type:                 "END_EVENT",
@@ -40,11 +42,11 @@ func TestElementFlatRowsFormatTimestampsAndIncidents(t *testing.T) {
 		ProcessDefinitionKey: "2251799813687001",
 		TenantId:             "tenant-a",
 		HasIncident:          true,
-	})
-	require.Equal(t, "2251799813689003 tenant-a END_EVENT finish-order COMPLETED s:2026-07-15T10:12:01.210 e:2026-07-15T10:12:02.000 pi:2251799813688001 pd:2251799813687001 inc!", completed)
+	}, false, capturedNow)
+	require.Equal(t, "2251799813689003 tenant-a END_EVENT finish-order COMPLETED s:2026-07-15T10:12:01.210 e:2026-07-15T10:12:02.000 dur:790ms pi:2251799813688001 pd:2251799813687001 inc!", completed)
 	require.Equal(t, 1, strings.Count(completed, "inc!"))
 
-	incidentWithKey := oneLineElement(element.Element{
+	incidentWithKey := oneLineElementWithTimezone(element.Element{
 		ElementInstanceKey:   "2251799813689004",
 		ElementId:            "charge-card",
 		Type:                 "SERVICE_TASK",
@@ -55,17 +57,30 @@ func TestElementFlatRowsFormatTimestampsAndIncidents(t *testing.T) {
 		TenantId:             "tenant-a",
 		HasIncident:          true,
 		IncidentKey:          "2251799813687777",
-	})
+	}, false, capturedNow)
 	require.Contains(t, incidentWithKey, "s:not-a-date")
+	require.NotContains(t, incidentWithKey, "dur:")
 	require.Contains(t, incidentWithKey, "inc!:2251799813687777")
 	require.Equal(t, 1, strings.Count(incidentWithKey, "inc!"))
 	require.NotContains(t, incidentWithKey, " inc! inc!:")
 	require.NotContains(t, incidentWithKey, "element:")
 }
 
+// TestRuntimeElementDurationOmitsUnprovenDurations verifies display-only duration calculation is conservative.
+func TestRuntimeElementDurationOmitsUnprovenDurations(t *testing.T) {
+	capturedNow := time.Date(2026, 7, 15, 10, 15, 1, 0, time.UTC)
+
+	require.Equal(t, "3m0s", runtimeElementDuration("2026-07-15T10:12:01Z", "", "ACTIVE", capturedNow))
+	require.Equal(t, "790ms", runtimeElementDuration("2026-07-15T10:12:01.21Z", "2026-07-15T10:12:02Z", "COMPLETED", capturedNow))
+	require.Empty(t, runtimeElementDuration("2026-07-15T10:12:01Z", "", "COMPLETED", capturedNow))
+	require.Empty(t, runtimeElementDuration("2026-07-15T10:12:02Z", "2026-07-15T10:12:01Z", "COMPLETED", capturedNow))
+	require.Empty(t, runtimeElementDuration("not-a-date", "", "ACTIVE", capturedNow))
+}
+
 func TestElementFlatRowsAlignElementIDColumn(t *testing.T) {
+	capturedNow := time.Date(2026, 7, 15, 10, 15, 1, 0, time.UTC)
 	lines := formatFlatRows([]flatRow{
-		flatRowElement(element.Element{
+		flatRowElementWithTimezone(element.Element{
 			ElementInstanceKey:   "1",
 			ElementId:            "short",
 			Type:                 "SERVICE_TASK",
@@ -74,8 +89,8 @@ func TestElementFlatRowsAlignElementIDColumn(t *testing.T) {
 			ProcessInstanceKey:   "10",
 			ProcessDefinitionKey: "20",
 			TenantId:             "tenant-a",
-		}),
-		flatRowElement(element.Element{
+		}, false, capturedNow),
+		flatRowElementWithTimezone(element.Element{
 			ElementInstanceKey:   "22",
 			ElementId:            "SimpleUserTaskRequested_StartEvent",
 			Type:                 "START_EVENT",
@@ -85,7 +100,7 @@ func TestElementFlatRowsAlignElementIDColumn(t *testing.T) {
 			ProcessInstanceKey:   "100",
 			ProcessDefinitionKey: "200",
 			TenantId:             "<default>",
-		}),
+		}, false, capturedNow),
 	})
 
 	require.Len(t, lines, 2)

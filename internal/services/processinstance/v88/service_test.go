@@ -610,7 +610,7 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, startDate.Gte)
 				require.NotNil(t, startDate.Lte)
-				assert.Equal(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC), *startDate.Gte)
+				assert.Equal(t, time.Date(2026, time.January, 1, 10, 0, 0, 123000000, time.UTC), *startDate.Gte)
 				assert.Equal(t, time.Date(2026, time.January, 31, 23, 59, 59, int(time.Second-time.Nanosecond), time.UTC), *startDate.Lte)
 
 				return &camundav88.SearchProcessInstancesResponse{
@@ -624,7 +624,7 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 		}, newStrictOperateClient(t))
 
 		items, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{
-			StartDateAfter:  "2026-01-01",
+			StartDateAfter:  "2026-01-01T10:00:00.123Z",
 			StartDateBefore: "2026-01-31",
 		}, 25)
 
@@ -647,8 +647,8 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 				require.NotNil(t, endDate.Lte)
 				require.NotNil(t, endDate.Exists)
 				assert.Equal(t, true, *endDate.Exists)
-				assert.Equal(t, time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC), *endDate.Gte)
-				assert.Equal(t, time.Date(2026, time.March, 31, 23, 59, 59, int(time.Second-time.Nanosecond), time.UTC), *endDate.Lte)
+				assert.Equal(t, time.Date(2026, time.February, 1, 10, 0, 0, 0, time.UTC), *endDate.Gte)
+				assert.Equal(t, time.Date(2026, time.March, 31, 18, 30, 0, 0, time.UTC), *endDate.Lte)
 				assert.Nil(t, body.Filter.StartDate)
 
 				return &camundav88.SearchProcessInstancesResponse{
@@ -662,8 +662,8 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 		}, newStrictOperateClient(t))
 
 		items, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{
-			EndDateAfter:  "2026-02-01",
-			EndDateBefore: "2026-03-31",
+			EndDateAfter:  "2026-02-01T10:00:00Z",
+			EndDateBefore: "2026-03-31T18:30:00Z",
 		}, 25)
 
 		require.NoError(t, err)

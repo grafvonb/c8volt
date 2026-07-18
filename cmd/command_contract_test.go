@@ -160,6 +160,119 @@ func TestCommandContractOpsRepairIncident(t *testing.T) {
 	require.False(t, hasFlagContractNamed(capability.Flags, "fni-key"))
 }
 
+// TestCommandContractOpsAnalyseSlowProcessInstances captures the read-only analysis machine contract.
+func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(opsAnalyseSlowProcessInstancesCmd)
+
+	require.Equal(t, "ops analyse slow-process-instances", capability.Path)
+	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.Aliases, "slow-pi")
+	require.Contains(t, capability.Aliases, "spi")
+	require.Contains(t, opsAnalyseCmd.Aliases, "analyze")
+	aliasCmd, remaining, err := root.Find([]string{"ops", "analyze", "slow-process-instances"})
+	require.NoError(t, err)
+	require.Empty(t, remaining)
+	require.Same(t, opsAnalyseSlowProcessInstancesCmd, aliasCmd)
+	aliasCmd, remaining, err = root.Find([]string{"ops", "analyse", "spi"})
+	require.NoError(t, err)
+	require.Empty(t, remaining)
+	require.Same(t, opsAnalyseSlowProcessInstancesCmd, aliasCmd)
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyse slow-process-instances --key")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyze slow-process-instances --bpmn-process-id")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyse spi --bpmn-process-id")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--dur-longer 1h30m --dur-element-longer 30s")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "get pi --state active --keys-only")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --dur-longer to keep only process-instance roots")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Duration thresholds use Go duration syntax")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Calendar units such as 1d are not accepted")
+	require.Equal(t, []OutputModeContract{
+		{Name: "one-line", Supported: true},
+		{Name: "json", Supported: true, MachinePreferred: true},
+		{Name: "keys-only", Supported: true},
+	}, capability.OutputModes)
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "process-instance key(s) to analyze; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "bpmn-process-id",
+		Shorthand:   "b",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN process ID to discover process instances",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "pd-key",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "process definition key to discover process instances",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "state",
+		Shorthand:   "s",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "state to filter discovered process instances: all, active, completed, canceled, terminated",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-incidents-only",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "only include process instances without incidents during discovery",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "batch-size",
+		Shorthand:   "n",
+		Type:        "int32",
+		Required:    false,
+		Repeated:    false,
+		Description: "number of process instances to inspect per discovery page; does not cap explicit keys or timeline details (max limit 1000 enforced by server)",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "limit",
+		Shorthand:   "l",
+		Type:        "int32",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum number of matching process instances to freeze during discovery; omit to discover all matches",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dur-longer",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "only include process instances whose whole duration is longer than this duration, for example 5m or 1h30m",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dur-element-longer",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "only show element or transition detail rows longer than this duration, for example 30s or 2m",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "duration-after",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "deprecated alias for --dur-element-longer",
+	})
+	require.False(t, hasFlagContractNamed(capability.Flags, "incidents-only"))
+}
+
 // TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts verifies discovery flags describe page size and explicit caps distinctly.
 func TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts(t *testing.T) {
 	root := Root()
@@ -537,6 +650,7 @@ func TestCommandCapabilityForCommand_ProcessInstanceElementFlagAndContract(t *te
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 	require.Contains(t, getProcessInstanceCmd.Long, "Use --with-elements to include runtime element instances under matching process-instance rows.")
+	require.Contains(t, getProcessInstanceCmd.Long, "Nested human element rows include dur:<duration>")
 	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get pi --key <process-instance-key> --with-elements")
 }
 
@@ -818,6 +932,7 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 	require.Equal(t, []string{"ei"}, capability.Aliases)
 	require.Contains(t, getElementCmd.Long, "Use --key when you know an element instance key.")
 	require.Contains(t, getElementCmd.Long, "Search mode follows the shared get paging and limit conventions.")
+	require.Contains(t, getElementCmd.Long, "Compact human rows include dur:<duration>")
 	require.Contains(t, getElementCmd.Long, "Use --json for the stable element payload and --keys-only when piping element instance keys.")
 	require.Contains(t, getElementCmd.Example, "./c8volt get ei --pi-key <process-instance-key> --limit 10")
 	require.Contains(t, getElementCmd.Example, "./c8volt get element --pi-key <process-instance-key> --total")
@@ -1894,6 +2009,7 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 		"Search mode follows the shared get paging and limit conventions",
 		"--batch-size controls per-page discovery requests",
 		"--total prints only the matching count",
+		"Compact human rows include dur:<duration>",
 		"Use --json for the stable element payload and --keys-only when piping element instance keys",
 		"Element lookup and search require Camunda 8.8 or 8.9",
 		"Aliases:",

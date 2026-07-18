@@ -17,6 +17,7 @@ type API interface {
 	PurgeAllProcessDefinitions(ctx context.Context, request AllProcessDefinitionsPurgeRequest, opts ...options.FacadeOption) (AllProcessDefinitionsPurgeResult, error)
 	RepairIncidents(ctx context.Context, request RepairRequest, opts ...options.FacadeOption) (RepairResult, error)
 	RepairProcessInstances(ctx context.Context, request RepairRequest, opts ...options.FacadeOption) (RepairResult, error)
+	AnalyseSlowProcessInstances(ctx context.Context, request SlowProcessAnalysisRequest, opts ...options.FacadeOption) (SlowProcessAnalysisResult, error)
 }
 
 var _ API = (*client)(nil)

@@ -4,6 +4,8 @@
 package cmd
 
 import (
+	"time"
+
 	"github.com/grafvonb/c8volt/c8volt/element"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
@@ -11,30 +13,32 @@ import (
 
 // elementView renders one runtime element in the selected command output mode.
 func elementView(cmd *cobra.Command, item element.Element) error {
-	return itemView(cmd, item, pickMode(), oneLineElementWithTimezoneForMode(cmd), elementKey)
+	capturedNow := time.Now().UTC()
+	return itemView(cmd, item, pickMode(), oneLineElementWithTimezoneForMode(cmd, capturedNow), elementKey)
 }
 
 // elementsView renders collected runtime elements as aligned rows, keys, or JSON.
 func elementsView(cmd *cobra.Command, result element.SearchResult) error {
-	return listOrJSONFlat(cmd, result, result.Items, pickMode(), flatRowElementWithTimezoneForMode(cmd), elementKey)
+	capturedNow := time.Now().UTC()
+	return listOrJSONFlat(cmd, result, result.Items, pickMode(), flatRowElementWithTimezoneForMode(cmd, capturedNow), elementKey)
 }
 
 // oneLineElement renders a compact single element row using default timestamp display.
 func oneLineElement(item element.Element) string {
-	return oneLineElementWithTimezone(item, false)
+	return oneLineElementWithTimezone(item, false, time.Now().UTC())
 }
 
 // oneLineElementWithTimezoneForMode binds command timezone display for keyed output.
-func oneLineElementWithTimezoneForMode(cmd *cobra.Command) func(element.Element) string {
+func oneLineElementWithTimezoneForMode(cmd *cobra.Command, capturedNow time.Time) func(element.Element) string {
 	showTimezoneOffset := commandShowTimezoneOffset(cmd)
 	return func(item element.Element) string {
-		return oneLineElementWithTimezone(item, showTimezoneOffset)
+		return oneLineElementWithTimezone(item, showTimezoneOffset, capturedNow)
 	}
 }
 
 // oneLineElementWithTimezone renders one compact row without alignment padding.
-func oneLineElementWithTimezone(item element.Element, showTimezoneOffset bool) string {
-	return compactFlatRow(flatRowElementWithTimezone(item, showTimezoneOffset))
+func oneLineElementWithTimezone(item element.Element, showTimezoneOffset bool, capturedNow time.Time) string {
+	return compactFlatRow(flatRowElementWithTimezone(item, showTimezoneOffset, capturedNow))
 }
 
 // elementKey returns the stable element instance key for machine output modes.
@@ -44,19 +48,19 @@ func elementKey(item element.Element) string {
 
 // flatRowElement renders a row using default timestamp display for unit tests and callers without command context.
 func flatRowElement(item element.Element) flatRow {
-	return flatRowElementWithTimezone(item, false)
+	return flatRowElementWithTimezone(item, false, time.Now().UTC())
 }
 
 // flatRowElementWithTimezoneForMode binds command timezone display for list output.
-func flatRowElementWithTimezoneForMode(cmd *cobra.Command) func(element.Element) flatRow {
+func flatRowElementWithTimezoneForMode(cmd *cobra.Command, capturedNow time.Time) func(element.Element) flatRow {
 	showTimezoneOffset := commandShowTimezoneOffset(cmd)
 	return func(item element.Element) flatRow {
-		return flatRowElementWithTimezone(item, showTimezoneOffset)
+		return flatRowElementWithTimezone(item, showTimezoneOffset, capturedNow)
 	}
 }
 
 // flatRowElementWithTimezone formats element timestamps and optional incident markers in the compact row grammar.
-func flatRowElementWithTimezone(item element.Element, showTimezoneOffset bool) flatRow {
+func flatRowElementWithTimezone(item element.Element, showTimezoneOffset bool, capturedNow time.Time) flatRow {
 	parts := flatRow{
 		item.ElementInstanceKey,
 		item.TenantId,
@@ -65,6 +69,7 @@ func flatRowElementWithTimezone(item element.Element, showTimezoneOffset bool) f
 		item.State,
 		prefixedElementField("s", toolx.FormatTimestamp(item.StartDate, showTimezoneOffset)),
 		prefixedElementField("e", toolx.FormatTimestamp(item.EndDate, showTimezoneOffset)),
+		prefixedElementField("dur", runtimeElementDuration(item.StartDate, item.EndDate, item.State, capturedNow)),
 		prefixedElementField("pi", item.ProcessInstanceKey),
 		prefixedElementField("pd", item.ProcessDefinitionKey),
 	}
