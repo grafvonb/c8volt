@@ -4,7 +4,10 @@
 package cmd
 
 import (
+	"math"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -34,9 +37,9 @@ func renderOpsSlowProcessAnalysisResult(cmd *cobra.Command, result ops.SlowProce
 		for _, item := range result.Items {
 			renderOutputLine(cmd, "%s", formatOpsSlowProcessAnalysisRootRow(item, showTimezoneOffset))
 			if len(item.Timeline) > 0 {
-				renderOutputLine(cmd, "elements:")
-				for _, entry := range item.Timeline {
-					renderOutputLine(cmd, "%s", formatOpsSlowProcessAnalysisTimelineRow(entry, showTimezoneOffset))
+				renderOutputLine(cmd, "└─ elements:")
+				for i, entry := range item.Timeline {
+					renderOutputLine(cmd, "   %s%s", incidentTreeBranch(i, len(item.Timeline)), formatOpsSlowProcessAnalysisTimelineRow(entry, item, showTimezoneOffset))
 				}
 			}
 		}
@@ -65,34 +68,34 @@ func formatOpsSlowProcessAnalysisRootRow(item ops.SlowProcessAnalysisProcessInst
 	} else {
 		row = append(row, "dur:-")
 	}
-	if item.RelativeBar != "" {
-		row = append(row, item.RelativeBar)
+	if relative := opsSlowProcessAnalysisHumanRelativeBar(item.RelativeBar, item.RelativePercentile); relative != "" {
+		row = append(row, relative)
 	}
 	return compactFlatRow(row)
 }
 
 // formatOpsSlowProcessAnalysisTimelineRow renders one calculated detail row without implying BPMN causality.
-func formatOpsSlowProcessAnalysisTimelineRow(entry ops.SlowProcessAnalysisTimelineEntry, showTimezoneOffset bool) string {
+func formatOpsSlowProcessAnalysisTimelineRow(entry ops.SlowProcessAnalysisTimelineEntry, root ops.SlowProcessAnalysisProcessInstance, showTimezoneOffset bool) string {
 	switch entry.Kind {
 	case ops.SlowProcessAnalysisTimelineEntryKindTransition:
-		return formatOpsSlowProcessAnalysisTransitionRow(entry)
+		return formatOpsSlowProcessAnalysisTransitionRow(entry, root)
 	default:
-		return formatOpsSlowProcessAnalysisElementRow(entry, showTimezoneOffset)
+		return formatOpsSlowProcessAnalysisElementRow(entry, root, showTimezoneOffset)
 	}
 }
 
 // formatOpsSlowProcessAnalysisElementRow keeps runtime element details compact beneath a process-instance root.
-func formatOpsSlowProcessAnalysisElementRow(entry ops.SlowProcessAnalysisTimelineEntry, showTimezoneOffset bool) string {
+func formatOpsSlowProcessAnalysisElementRow(entry ops.SlowProcessAnalysisTimelineEntry, root ops.SlowProcessAnalysisProcessInstance, showTimezoneOffset bool) string {
 	row := flatRow{
 		entry.ElementInstanceKey,
 		entry.Type,
 		entry.ElementID,
 		entry.State,
-		prefixedElementField("s", toolx.FormatTimestamp(entry.StartDate, showTimezoneOffset)),
-		prefixedElementField("e", toolx.FormatTimestamp(entry.EndDate, showTimezoneOffset)),
+		prefixedElementField("s", opsSlowProcessAnalysisDetailTimestamp(entry.StartDate, root.StartDate, showTimezoneOffset)),
+		prefixedElementField("e", opsSlowProcessAnalysisDetailTimestamp(entry.EndDate, root.StartDate, showTimezoneOffset)),
 		opsSlowProcessAnalysisDurationField(entry.Duration, entry.DurationAvailable),
-		opsSlowProcessAnalysisRelativeBarField(entry.RelativeBar),
-		opsSlowProcessAnalysisProcessShareField(entry.ProcessDurationShare),
+		opsSlowProcessAnalysisHumanRelativeBar(entry.RelativeBar, entry.RelativePercentile),
+		opsSlowProcessAnalysisProcessShareField(entry, root),
 	}
 	if marker := opsSlowProcessAnalysisIncidentMarker(entry); marker != "" {
 		row = append(row, marker)
@@ -101,12 +104,12 @@ func formatOpsSlowProcessAnalysisElementRow(entry ops.SlowProcessAnalysisTimelin
 }
 
 // formatOpsSlowProcessAnalysisTransitionRow renders adjacent chronological timing with the required arrow grammar.
-func formatOpsSlowProcessAnalysisTransitionRow(entry ops.SlowProcessAnalysisTimelineEntry) string {
+func formatOpsSlowProcessAnalysisTransitionRow(entry ops.SlowProcessAnalysisTimelineEntry, root ops.SlowProcessAnalysisProcessInstance) string {
 	row := flatRow{
 		entry.FromElementID + " -> " + entry.ToElementID + ":",
 		entry.Duration,
-		opsSlowProcessAnalysisRelativeBarField(entry.RelativeBar),
-		opsSlowProcessAnalysisProcessShareField(entry.ProcessDurationShare),
+		opsSlowProcessAnalysisHumanRelativeBar(entry.RelativeBar, entry.RelativePercentile),
+		opsSlowProcessAnalysisProcessShareField(entry, root),
 	}
 	return compactFlatRow(row)
 }
@@ -119,17 +122,62 @@ func opsSlowProcessAnalysisDurationField(duration string, available bool) string
 	return "dur:-"
 }
 
-// opsSlowProcessAnalysisRelativeBarField keeps unlabeled comparison bars adjacent to durations.
-func opsSlowProcessAnalysisRelativeBarField(value string) string {
-	return value
+// opsSlowProcessAnalysisHumanRelativeBar keeps unlabeled comparison bars adjacent to durations.
+func opsSlowProcessAnalysisHumanRelativeBar(raw string, percentile int) string {
+	if raw == "" {
+		return ""
+	}
+	if percentile < 0 {
+		percentile = 0
+	}
+	if percentile > 100 {
+		percentile = 100
+	}
+	filled := int(math.Round(float64(percentile) / 10))
+	if filled < 0 {
+		filled = 0
+	}
+	if filled > 10 {
+		filled = 10
+	}
+	return "[" + strings.Repeat("█", filled) + strings.Repeat("░", 10-filled) + " " + strconv.Itoa(percentile) + "%]"
+}
+
+// opsSlowProcessAnalysisDetailTimestamp renders child rows compactly when the root row already carries the same date.
+func opsSlowProcessAnalysisDetailTimestamp(value string, rootStartDate string, showTimezoneOffset bool) string {
+	if value == "" {
+		return ""
+	}
+	if showTimezoneOffset {
+		return toolx.FormatTimestamp(value, showTimezoneOffset)
+	}
+	t, err := time.Parse(time.RFC3339Nano, value)
+	if err != nil {
+		return value
+	}
+	rootStart, err := time.Parse(time.RFC3339Nano, rootStartDate)
+	if err != nil || t.Year() != rootStart.Year() || t.YearDay() != rootStart.YearDay() {
+		return toolx.FormatTimestamp(value, showTimezoneOffset)
+	}
+	return t.Format("15:04:05.000")
 }
 
 // opsSlowProcessAnalysisProcessShareField renders the process-duration share when service calculations provide one.
-func opsSlowProcessAnalysisProcessShareField(value int) string {
-	if value <= 0 {
+func opsSlowProcessAnalysisProcessShareField(entry ops.SlowProcessAnalysisTimelineEntry, root ops.SlowProcessAnalysisProcessInstance) string {
+	if root.DurationAvailable && root.DurationMillis > 0 && entry.DurationAvailable && entry.DurationMillis > 0 {
+		share := float64(entry.DurationMillis) * 100 / float64(root.DurationMillis)
+		if share > 0 && share < 1 {
+			return "PI:<1%"
+		}
+		rounded := int(math.Round(share))
+		if rounded > 0 {
+			return "PI:" + strconv.Itoa(rounded) + "%"
+		}
+	}
+	if entry.ProcessDurationShare <= 0 {
 		return ""
 	}
-	return "PI:" + strconv.Itoa(value) + "%"
+	return "PI:" + strconv.Itoa(entry.ProcessDurationShare) + "%"
 }
 
 // opsSlowProcessAnalysisIncidentMarker returns the compact incident marker allowed in element rows.

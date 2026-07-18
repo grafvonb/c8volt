@@ -25,8 +25,10 @@ Expected:
 
 - One process-instance root row is printed.
 - The root row includes `dur:`.
-- Element rows appear in chronological order when runtime elements exist.
+- Runtime details appear under a nested `└─ elements:` section when runtime elements exist.
+- Element rows appear in chronological order using `├─` and `└─` child connectors.
 - Transition timing rows use `A -> B: duration`.
+- Relative-duration bars include ten visual cells plus a rounded percentile when enough comparable measurements exist.
 - Output ends with the final process-instance count.
 
 ### 2. Analyze repeated keys and stdin keys
@@ -113,6 +115,7 @@ Expected:
 - Element rows match all element predicates and the duration threshold.
 - Transition rows remain visible only when at least one original endpoint matches the element predicates and the transition duration passes the threshold.
 - No synthetic transition across hidden elements appears.
+- Matching detail rows remain nested under the original process-instance root.
 
 ### 8. JSON output
 

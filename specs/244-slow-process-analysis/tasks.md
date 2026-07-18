@@ -165,6 +165,20 @@
 
 ---
 
+## Phase 8: Convergence - Issue Output Shape Restoration
+
+**Purpose**: Restore the formatting-sensitive human output contract from GitHub issue #244 that was generalized during specification generation.
+
+- [x] T063 [P] Update the slow-analysis specification and CLI contract to preserve the issue's tree-shaped expected human output, ten-cell percent bars, and `PI:<1%` display rule in `specs/244-slow-process-analysis/spec.md` and `specs/244-slow-process-analysis/contracts/cli.md`
+- [x] T064 [P] Add renderer test coverage for tree-shaped slow-analysis human output with `└─ elements:`, `├─`/`└─` child rows, percent-bearing comparison bars, and `PI:<1%` shares in `cmd/cmd_views_ops_slow_process_analysis_test.go`
+- [x] T065 Implement tree-shaped human rendering for slow-analysis detail rows in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T066 Implement human comparison bar formatting with ten visual cells and rounded percentile text while preserving JSON and keys-only output contracts in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T067 Implement human `PI:<1%` display for positive detail durations below one percent of the root process duration in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T068 Update README and quickstart wording so human output is described as nested under the process-instance root in `README.md` and `specs/244-slow-process-analysis/quickstart.md`
+- [x] T069 Run focused validation for slow-analysis renderer behavior with `go test ./cmd -run 'TestRenderOpsSlowProcessAnalysisResult' -count=1`, then run `gofmt`, `git diff --check`, and the relevant package test set
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -176,6 +190,7 @@
 - **Phase 5 US3**: Depends on US1 and US2 because timeline details attach to selected process-instance roots.
 - **Phase 6 US4**: Depends on US1-US3 data being available for stable output and comparison indicators.
 - **Phase 7 Polish**: Depends on all desired user stories.
+- **Phase 8 Convergence**: Depends on completed implementation and restores the formatting-sensitive issue output contract.
 
 ### User Story Dependencies
 

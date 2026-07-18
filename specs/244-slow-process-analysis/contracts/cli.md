@@ -148,7 +148,17 @@ Root rows follow established `c8volt get pi` style and include available process
 
 Process instances are ordered by available duration longest to shortest, followed by unavailable durations.
 
-Elements are listed below each process instance in chronological order:
+Elements are listed below each process instance in a nested tree-shaped section:
+
+```text
+2251799813694100 tenant-a OrderProcess v7 COMPLETED s:2026-07-18T08:10:00.000 e:2026-07-18T08:24:32.000 p:<root> dur:14m32s [█████████░ 93%]
+└─ elements:
+   ├─ 4108 SERVICE_TASK ReserveStock COMPLETED s:08:10:00.300 e:08:10:04.500 dur:4.2s [██████░░░░ 64%] PI:<1%
+   ├─ ReserveStock -> OrderFinished: 14m20s [██████████ 99%] PI:99%
+   └─ 4122 END_EVENT OrderFinished COMPLETED s:08:24:24.500 e:08:24:24.508 dur:8ms [███░░░░░░░ 31%] PI:<1%
+```
+
+Element rows are listed in chronological order:
 
 1. `startDate` ascending
 2. element-instance key as deterministic tie-breaker
@@ -171,8 +181,9 @@ Rules:
 - Do not claim causality.
 - Do not emit negative transitions.
 - Place relative-duration indicators directly after durations.
+- Render human visual comparison indicators as ten visual cells plus the rounded percentile text in one bracket, for example `[█████████░ 93%]`.
 - Do not label visual indicators with terms such as `cohort`, `peer`, `similar`, or `compared`.
-- Show `PI:<percentage>` for valid process-duration shares.
+- Show `PI:<percentage>` for valid process-duration shares, using `PI:<1%` when a positive detail duration is less than one percent of the root process duration.
 - Omit relative comparison bars when fewer than three comparable measurements exist.
 - End with the final process-instance count.
 

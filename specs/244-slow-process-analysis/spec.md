@@ -163,6 +163,8 @@ As a c8volt operator or automation author, I want slow-run analysis in establish
 - **FR-052**: Visual comparison bars MUST render ten cells based on the rounded percentile.
 - **FR-053**: Relative comparison indicators MUST be omitted when fewer than three comparable measurements exist.
 - **FR-054**: Human output MUST include process instances sorted longest to shortest, root rows, chronological element rows, compact arrow timing lines, relative-duration indicators, and a final process-instance count.
+- **FR-054a**: Human output MUST render each process instance as an unindented root row with detail rows nested under a tree-shaped `└─ elements:` section using `├─` and `└─` child connectors.
+- **FR-054b**: Human visual comparison bars MUST include ten visual cells and the rounded percentile text inside the same bracket, such as `[█████████░ 93%]`, while keeping comparison labels omitted.
 - **FR-055**: JSON output MUST provide stable process-instance data and an ordered timeline containing element and transition timing entries.
 - **FR-056**: JSON output MUST include process-instance duration and milliseconds, captured analysis time, element fields and timestamps, element duration and milliseconds, transition endpoints and timestamps, transition duration and milliseconds, relative percentile, comparison sample count, and process-duration share.
 - **FR-057**: Keys-only output MUST emit only unique process-instance keys, one per line, longest to shortest.
