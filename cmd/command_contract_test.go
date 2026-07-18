@@ -160,6 +160,49 @@ func TestCommandContractOpsRepairIncident(t *testing.T) {
 	require.False(t, hasFlagContractNamed(capability.Flags, "fni-key"))
 }
 
+// TestCommandContractOpsAnalyseSlowProcessInstances captures the read-only analysis machine contract.
+func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(opsAnalyseSlowProcessInstancesCmd)
+
+	require.Equal(t, "ops analyse slow-process-instances", capability.Path)
+	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.Aliases, "slow-pi")
+	require.Equal(t, []OutputModeContract{
+		{Name: "one-line", Supported: true},
+		{Name: "json", Supported: true, MachinePreferred: true},
+		{Name: "keys-only", Supported: true},
+	}, capability.OutputModes)
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "process-instance key(s) to analyze; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "bpmn-process-id",
+		Shorthand:   "b",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN process ID to discover process instances",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-incidents-only",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "only include process instances without incidents during discovery",
+	})
+	require.False(t, hasFlagContractNamed(capability.Flags, "incidents-only"))
+}
+
 // TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts verifies discovery flags describe page size and explicit caps distinctly.
 func TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts(t *testing.T) {
 	root := Root()

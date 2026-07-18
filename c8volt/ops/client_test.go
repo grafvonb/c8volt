@@ -282,6 +282,116 @@ func TestClientExecuteSmokeTestMapsServiceBoundary(t *testing.T) {
 	require.True(t, got.Report.NoCleanup)
 }
 
+// TestClientAnalyseSlowProcessInstancesMapsServiceBoundary verifies the slow-analysis facade stays thin.
+func TestClientAnalyseSlowProcessInstancesMapsServiceBoundary(t *testing.T) {
+	t.Parallel()
+
+	captured := time.Date(2026, 7, 18, 10, 30, 0, 0, time.UTC)
+	durationAfter := 5 * time.Second
+	api := stubOpsService{
+		slowProcessAnalysis: func(_ context.Context, request d.SlowProcessAnalysisRequest, opts ...services.CallOption) (d.SlowProcessAnalysisResult, error) {
+			require.Equal(t, d.SlowProcessAnalysisRequest{
+				CommandName:   "ops analyse slow-process-instances",
+				SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
+				InputKeys:     typex.Keys{"2251799813685249"},
+				ProcessDefinitionSelector: d.SlowProcessAnalysisProcessDefinitionSelector{
+					BpmnProcessID:        "OrderProcess",
+					ProcessDefinitionKey: "2251799813687001",
+				},
+				ProcessInstanceFilters: d.SlowProcessAnalysisProcessInstanceSearchFilters{
+					State:           d.StateCompleted,
+					StartDateAfter:  "2026-07-18",
+					StartDateBefore: "2026-07-19",
+					EndDateAfter:    "2026-07-18T10:00:00Z",
+					EndDateBefore:   "2026-07-18T11:00:00Z",
+					NoIncidentsOnly: true,
+				},
+				DetailFilters: d.SlowProcessAnalysisDetailFilters{
+					ElementID:     "ReserveStock",
+					Type:          "SERVICE_TASK",
+					ElementState:  "COMPLETED",
+					DurationAfter: durationAfter,
+				},
+				BatchSize:   250,
+				Limit:       10,
+				CapturedNow: captured,
+				OutputMode:  "json",
+			}, request)
+			require.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.SlowProcessAnalysisResult{
+				Request:    request,
+				CapturedAt: captured,
+				Items: []d.SlowProcessAnalysisProcessInstance{{
+					Key:                    "2251799813685249",
+					TenantID:               "tenant-a",
+					BpmnProcessID:          "OrderProcess",
+					ProcessDefinitionKey:   "2251799813687001",
+					ProcessVersion:         7,
+					State:                  d.StateCompleted,
+					StartDate:              "2026-07-18T10:00:00Z",
+					EndDate:                "2026-07-18T10:10:00Z",
+					RootProcessInstanceKey: "2251799813685249",
+					Duration:               "10m0s",
+					DurationMillis:         600000,
+					DurationAvailable:      true,
+					RelativePercentile:     95,
+					ComparisonSampleCount:  12,
+					Timeline: []d.SlowProcessAnalysisTimelineEntry{{
+						Kind:                  d.SlowProcessAnalysisTimelineEntryKindElement,
+						ElementInstanceKey:    "2251799813685250",
+						ElementID:             "ReserveStock",
+						Type:                  "SERVICE_TASK",
+						State:                 "COMPLETED",
+						Duration:              "5s",
+						DurationMillis:        5000,
+						DurationAvailable:     true,
+						ProcessDurationShare:  1,
+						ComparisonSampleCount: 3,
+					}},
+				}},
+				Count:    1,
+				Warnings: []string{"sample warning"},
+			}, nil
+		},
+	}
+
+	got, err := New(api, slog.Default()).AnalyseSlowProcessInstances(context.Background(), SlowProcessAnalysisRequest{
+		CommandName:   "ops analyse slow-process-instances",
+		SelectionMode: SlowProcessAnalysisSelectionModeExplicitKeys,
+		InputKeys:     typex.Keys{"2251799813685249"},
+		ProcessDefinitionSelector: SlowProcessAnalysisProcessDefinitionSelector{
+			BpmnProcessID:        "OrderProcess",
+			ProcessDefinitionKey: "2251799813687001",
+		},
+		ProcessInstanceFilters: SlowProcessAnalysisProcessInstanceSearchFilters{
+			State:           process.StateCompleted,
+			StartDateAfter:  "2026-07-18",
+			StartDateBefore: "2026-07-19",
+			EndDateAfter:    "2026-07-18T10:00:00Z",
+			EndDateBefore:   "2026-07-18T11:00:00Z",
+			NoIncidentsOnly: true,
+		},
+		DetailFilters: SlowProcessAnalysisDetailFilters{
+			ElementID:     "ReserveStock",
+			Type:          "SERVICE_TASK",
+			ElementState:  "COMPLETED",
+			DurationAfter: durationAfter,
+		},
+		BatchSize:   250,
+		Limit:       10,
+		CapturedNow: captured,
+		OutputMode:  "json",
+	}, foptions.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, captured, got.CapturedAt)
+	require.Equal(t, 1, got.Count)
+	require.Equal(t, []string{"sample warning"}, got.Warnings)
+	require.Equal(t, process.StateCompleted, got.Items[0].State)
+	require.Equal(t, SlowProcessAnalysisTimelineEntryKindElement, got.Items[0].Timeline[0].Kind)
+	require.Equal(t, 1, got.Items[0].Timeline[0].ProcessDurationShare)
+}
+
 func TestClientExecuteSmokeTestMapsDeploymentResult(t *testing.T) {
 	t.Parallel()
 
@@ -910,6 +1020,7 @@ type stubOpsService struct {
 	allProcessDefinitionsPurge func(context.Context, d.AllProcessDefinitionsPurgeRequest, ...services.CallOption) (d.AllProcessDefinitionsPurgeResult, error)
 	repairIncidents            func(context.Context, d.OpsRepairRequest, ...services.CallOption) (d.OpsRepairResult, error)
 	repairProcessInstances     func(context.Context, d.OpsRepairRequest, ...services.CallOption) (d.OpsRepairResult, error)
+	slowProcessAnalysis        func(context.Context, d.SlowProcessAnalysisRequest, ...services.CallOption) (d.SlowProcessAnalysisResult, error)
 }
 
 func (s stubOpsService) ExecuteSmokeTest(ctx context.Context, request d.SmokeTestRequest, opts ...services.CallOption) (d.SmokeTestResult, error) {
@@ -959,6 +1070,13 @@ func (s stubOpsService) RepairProcessInstances(ctx context.Context, request d.Op
 		panic("unexpected call")
 	}
 	return s.repairProcessInstances(ctx, request, opts...)
+}
+
+func (s stubOpsService) AnalyseSlowProcessInstances(ctx context.Context, request d.SlowProcessAnalysisRequest, opts ...services.CallOption) (d.SlowProcessAnalysisResult, error) {
+	if s.slowProcessAnalysis == nil {
+		panic("unexpected call")
+	}
+	return s.slowProcessAnalysis(ctx, request, opts...)
 }
 
 var _ opsvc.API = stubOpsService{}

@@ -18,11 +18,11 @@
 
 **Purpose**: Confirm feature context and prepare shared implementation touchpoints without behavior changes.
 
-- [ ] T001 Review feature artifacts and record any implementation conflicts in `specs/244-slow-process-analysis/spec.md`, `specs/244-slow-process-analysis/plan.md`, `specs/244-slow-process-analysis/contracts/cli.md`, and `specs/ralph-implementation-rules.md`
-- [ ] T002 [P] Inspect existing ops command and contract patterns in `cmd/ops.go`, `cmd/ops_contract.go`, `cmd/ops_contract_test.go`, and `cmd/command_contract_test.go`
-- [ ] T003 [P] Inspect existing ops facade and service patterns in `c8volt/ops/api.go`, `c8volt/ops/client.go`, `c8volt/ops/model.go`, and `internal/services/ops/api.go`
-- [ ] T004 [P] Inspect reusable process-instance and element service contracts in `internal/services/processinstance/api.go`, `internal/services/element/api.go`, `c8volt/process/api.go`, and `c8volt/element/api.go`
-- [ ] T005 Confirm Ralph launch instructions include `--implementation-context specs/ralph-implementation-rules.md` in `specs/244-slow-process-analysis/plan.md` and `specs/244-slow-process-analysis/tasks.md`
+- [x] T001 Review feature artifacts and record any implementation conflicts in `specs/244-slow-process-analysis/spec.md`, `specs/244-slow-process-analysis/plan.md`, `specs/244-slow-process-analysis/contracts/cli.md`, and `specs/ralph-implementation-rules.md`
+- [x] T002 [P] Inspect existing ops command and contract patterns in `cmd/ops.go`, `cmd/ops_contract.go`, `cmd/ops_contract_test.go`, and `cmd/command_contract_test.go`
+- [x] T003 [P] Inspect existing ops facade and service patterns in `c8volt/ops/api.go`, `c8volt/ops/client.go`, `c8volt/ops/model.go`, and `internal/services/ops/api.go`
+- [x] T004 [P] Inspect reusable process-instance and element service contracts in `internal/services/processinstance/api.go`, `internal/services/element/api.go`, `c8volt/process/api.go`, and `c8volt/element/api.go`
+- [x] T005 Confirm Ralph launch instructions include `--implementation-context specs/ralph-implementation-rules.md` in `specs/244-slow-process-analysis/plan.md` and `specs/244-slow-process-analysis/tasks.md`
 
 ---
 
@@ -32,15 +32,15 @@
 
 **CRITICAL**: No user story implementation should begin until this phase is complete.
 
-- [ ] T006 Define version-neutral slow analysis request, result, duration, timeline, comparison, and filter domain types in `internal/domain/ops_slow_process_analysis.go`
-- [ ] T007 Define public slow analysis request/result models with stable JSON field tags in `c8volt/ops/model.go`
-- [ ] T008 [P] Add public/domain conversion helpers for slow analysis request and result models in `c8volt/ops/convert.go`
-- [ ] T009 Add `AnalyseSlowProcessInstances` to the public ops facade API in `c8volt/ops/api.go`
-- [ ] T010 Add `AnalyseSlowProcessInstances` to the internal ops service API in `internal/services/ops/api.go`
-- [ ] T011 Add process-instance and runtime element dependencies needed by slow analysis orchestration in `internal/services/ops/api.go` and `c8volt/client.go`
-- [ ] T012 Add command-level request parsing structures and test stubs for slow analysis in `cmd/ops_analyse_slow_process_instances.go` and `cmd/ops_test.go`
-- [ ] T013 Add slow analysis command metadata expectations for read-only behavior, output modes, and automation suitability in `cmd/ops_contract_test.go` and `cmd/command_contract_test.go`
-- [ ] T014 Add reusable slow analysis fixture builders for process instances, elements, and timestamps in `internal/services/ops/slow_process_analysis_test.go`
+- [x] T006 Define version-neutral slow analysis request, result, duration, timeline, comparison, and filter domain types in `internal/domain/ops_slow_process_analysis.go`
+- [x] T007 Define public slow analysis request/result models with stable JSON field tags in `c8volt/ops/model.go`
+- [x] T008 [P] Add public/domain conversion helpers for slow analysis request and result models in `c8volt/ops/convert.go`
+- [x] T009 Add `AnalyseSlowProcessInstances` to the public ops facade API in `c8volt/ops/api.go`
+- [x] T010 Add `AnalyseSlowProcessInstances` to the internal ops service API in `internal/services/ops/api.go`
+- [x] T011 Add process-instance and runtime element dependencies needed by slow analysis orchestration in `internal/services/ops/api.go` and `c8volt/client.go`
+- [x] T012 Add command-level request parsing structures and test stubs for slow analysis in `cmd/ops_analyse_slow_process_instances.go` and `cmd/ops_test.go`
+- [x] T013 Add slow analysis command metadata expectations for read-only behavior, output modes, and automation suitability in `cmd/ops_contract_test.go` and `cmd/command_contract_test.go`
+- [x] T014 Add reusable slow analysis fixture builders for process instances, elements, and timestamps in `internal/services/ops/slow_process_analysis_test.go`
 
 **Checkpoint**: Shared contracts compile and tests can stub the analysis flow before user story behavior is implemented.
 
