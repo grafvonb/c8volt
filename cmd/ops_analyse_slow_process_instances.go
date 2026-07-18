@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
@@ -155,6 +156,12 @@ func validateOpsSlowProcessAnalysisCommandArgs(cmd *cobra.Command, args []string
 	if _, err := parseOpsSlowProcessAnalysisDurationAfter(); err != nil {
 		return err
 	}
+	if _, err := parseOpsSlowProcessAnalysisElementType(); err != nil {
+		return err
+	}
+	if _, err := parseOpsSlowProcessAnalysisElementState(); err != nil {
+		return err
+	}
 	stdinRequested := len(args) == 1 && args[0] == "-"
 	keyedMode := len(flagOpsAnalyseSlowProcessInstanceKeys) > 0 || stdinRequested
 	processDefinitionSelectorMode := flagOpsAnalyseSlowProcessInstanceBpmnProcessID != "" || flagOpsAnalyseSlowProcessInstancePDKey != ""
@@ -191,6 +198,14 @@ func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string
 		return opsSlowProcessAnalysisCommandRequest{}, err
 	}
 	durationAfter, err := parseOpsSlowProcessAnalysisDurationAfter()
+	if err != nil {
+		return opsSlowProcessAnalysisCommandRequest{}, err
+	}
+	elementType, err := parseOpsSlowProcessAnalysisElementType()
+	if err != nil {
+		return opsSlowProcessAnalysisCommandRequest{}, err
+	}
+	elementState, err := parseOpsSlowProcessAnalysisElementState()
 	if err != nil {
 		return opsSlowProcessAnalysisCommandRequest{}, err
 	}
@@ -235,8 +250,8 @@ func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string
 			},
 			DetailFilters: ops.SlowProcessAnalysisDetailFilters{
 				ElementID:     flagOpsAnalyseSlowProcessInstanceElementID,
-				Type:          flagOpsAnalyseSlowProcessInstanceType,
-				ElementState:  flagOpsAnalyseSlowProcessInstanceElementState,
+				Type:          elementType,
+				ElementState:  elementState,
 				DurationAfter: durationAfter,
 			},
 			BatchSize:   flagOpsAnalyseSlowProcessInstanceBatchSize,
@@ -245,6 +260,28 @@ func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string
 			OutputMode:  pickMode().String(),
 		},
 	}, nil
+}
+
+// parseOpsSlowProcessAnalysisElementType keeps detail type filters aligned with runtime element search values.
+func parseOpsSlowProcessAnalysisElementType() (string, error) {
+	if strings.TrimSpace(flagOpsAnalyseSlowProcessInstanceType) == "" {
+		return "", nil
+	}
+	if !validElementType(flagOpsAnalyseSlowProcessInstanceType) {
+		return "", invalidFlagValuef("invalid value for --type: %q, valid values are: %s", flagOpsAnalyseSlowProcessInstanceType, strings.Join(validElementTypes, ", "))
+	}
+	return normalizedElementType(flagOpsAnalyseSlowProcessInstanceType), nil
+}
+
+// parseOpsSlowProcessAnalysisElementState keeps detail state filters separate from the process-instance --state flag.
+func parseOpsSlowProcessAnalysisElementState() (string, error) {
+	if strings.TrimSpace(flagOpsAnalyseSlowProcessInstanceElementState) == "" {
+		return "", nil
+	}
+	if !validElementState(flagOpsAnalyseSlowProcessInstanceElementState) {
+		return "", invalidFlagValuef("invalid value for --element-state: %q, valid values are: %s", flagOpsAnalyseSlowProcessInstanceElementState, strings.Join(validElementStates, ", "))
+	}
+	return normalizedElementState(flagOpsAnalyseSlowProcessInstanceElementState), nil
 }
 
 // hasOpsSlowProcessAnalysisSearchFilterFlags identifies flags valid only for process-definition discovery.

@@ -13,6 +13,8 @@ Started: 2026-07-18T10:01:26Z
 - US2 process-definition search uses the existing process-instance `SearchForProcessInstancesPage` API, freezes unique roots before timing analysis, records `DiscoveredScopeStatus`, and then reuses explicit-key root duration sorting.
 - Slow-analysis command date filters normalize RFC3339, c8volt timestamp, and `YYYY-MM-DD` bounds to RFC3339Nano before facade delegation; date-only upper bounds expand to the end of the UTC day.
 - Supported process-instance v8.8/v8.9 search adapters now accept RFC3339 bounds in addition to date-only values, keeping ops-normalized search filters compatible with generated request builders.
+- US3 timeline analysis uses `pisvc.EnrichProcessInstancesWithElements` after root selection is frozen, calculates element rows and adjacent transition rows from the complete chronological element list, then applies detail filters without creating bridged transitions.
+- Slow-analysis human detail rendering prints an `elements:` section under each root, compact element rows with `dur:`/`inc!`, and transition rows in `A -> B: duration` form; keys-only output remains root-only and ignores detail filters.
 
 ## Decisions
 - No implementation conflicts were found between `spec.md`, `plan.md`, `contracts/cli.md`, and `specs/ralph-implementation-rules.md`.
@@ -31,6 +33,8 @@ Started: 2026-07-18T10:01:26Z
 - Human US1 rendering reuses `flatRowPIWithTimezone` for root identity fields and appends `dur:<value>` or `dur:-`; keys-only still emits one root key per line.
 - `--batch-size` and `--limit` are process-definition discovery-only flags; explicit-key mode rejects them when explicitly set and never truncates keyed roots.
 - `--incidents-only` remains unsupported and unregistered; `--no-incidents-only` maps to `HasIncident=false` in process-instance discovery.
+- Runtime element ordering is delegated to existing process-instance enrichment semantics: start date ascending, then element-instance key; keep this when adding JSON or comparison indicators.
+- Detail filters are post-calculation visibility filters: element predicates must match all supplied predicates, transitions remain visible when either original endpoint matches the active predicates, and `--duration-after` applies to measured detail row durations only.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -46,4 +50,4 @@ Started: 2026-07-18T10:01:26Z
 - Do not re-open a separate investigation for the Phase 1 artifact consistency check unless later specs change; the current artifacts are aligned.
 
 ## Current Handoff
-- Next iteration should start US3 tasks T033-T043 only. Add runtime element timeline and transition analysis on top of the already-frozen US1/US2 root selection; keep detail filters post-calculation and do not change root ordering or keys-only root visibility.
+- Next iteration should start US4 tasks T044-T053 only. Add comparison indicators, JSON payload coverage, keys-only assertions, command/docs metadata, and README examples without changing US3's complete-timeline-before-filtering behavior or root ordering.

@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -162,6 +163,24 @@ func TestOpsAnalyseSlowProcessInstancesBuildsProcessDefinitionSearchRequests(t *
 	}
 }
 
+// TestOpsAnalyseSlowProcessInstancesBuildsDetailFilters verifies timeline filters normalize into facade input.
+func TestOpsAnalyseSlowProcessInstancesBuildsDetailFilters(t *testing.T) {
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	flagOpsAnalyseSlowProcessInstanceBpmnProcessID = "OrderProcess"
+	flagOpsAnalyseSlowProcessInstanceElementID = "ReserveStock"
+	flagOpsAnalyseSlowProcessInstanceType = "service_task"
+	flagOpsAnalyseSlowProcessInstanceElementState = "active"
+	flagOpsAnalyseSlowProcessInstanceDurationAfter = "2m"
+
+	got, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, nil, nil)
+
+	require.NoError(t, err)
+	require.Equal(t, "ReserveStock", got.Request.DetailFilters.ElementID)
+	require.Equal(t, "SERVICE_TASK", got.Request.DetailFilters.Type)
+	require.Equal(t, "ACTIVE", got.Request.DetailFilters.ElementState)
+	require.Equal(t, 2*time.Minute, got.Request.DetailFilters.DurationAfter)
+}
+
 // TestOpsAnalyseSlowProcessInstancesRejectsInvalidSearchInputs verifies search-mode validation stays local.
 func TestOpsAnalyseSlowProcessInstancesRejectsInvalidSearchInputs(t *testing.T) {
 	tests := []struct {
@@ -195,6 +214,32 @@ func TestOpsAnalyseSlowProcessInstancesRejectsInvalidSearchInputs(t *testing.T) 
 			if tc.setup != nil {
 				tc.setup(cmd)
 			}
+
+			err := validateOpsSlowProcessAnalysisCommandArgs(cmd, nil)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.want)
+		})
+	}
+}
+
+// TestOpsAnalyseSlowProcessInstancesRejectsInvalidDetailFilters verifies bad timeline filter values fail locally.
+func TestOpsAnalyseSlowProcessInstancesRejectsInvalidDetailFilters(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func()
+		want  string
+	}{
+		{name: "bad duration", setup: func() { flagOpsAnalyseSlowProcessInstanceDurationAfter = "soon" }, want: "invalid value for --duration-after"},
+		{name: "negative duration", setup: func() { flagOpsAnalyseSlowProcessInstanceDurationAfter = "-1s" }, want: "--duration-after must not be negative"},
+		{name: "bad type", setup: func() { flagOpsAnalyseSlowProcessInstanceType = "not-a-type" }, want: "invalid value for --type"},
+		{name: "bad element state", setup: func() { flagOpsAnalyseSlowProcessInstanceElementState = "waiting" }, want: "invalid value for --element-state"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+			flagOpsAnalyseSlowProcessInstanceBpmnProcessID = "OrderProcess"
+			tc.setup()
 
 			err := validateOpsSlowProcessAnalysisCommandArgs(cmd, nil)
 

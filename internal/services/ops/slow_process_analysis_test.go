@@ -12,6 +12,7 @@ import (
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	esvc "github.com/grafvonb/c8volt/internal/services/element"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
@@ -95,7 +96,7 @@ func TestSlowProcessAnalysisExplicitKeysDeduplicatesLooksUpAndSortsRoots(t *test
 		},
 	}
 
-	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, nil, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, stubSlowProcessAnalysisElementAPI{}, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
 		SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
 		InputKeys:     typex.Keys{"2251799813685249", "2251799813685250", "2251799813685249", "2251799813685251"},
 		CapturedNow:   captured,
@@ -128,7 +129,7 @@ func TestSlowProcessAnalysisExplicitKeysMeasuresActiveFromCapturedNow(t *testing
 		},
 	}
 
-	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, nil, toolx.V89).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, stubSlowProcessAnalysisElementAPI{}, toolx.V89).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
 		SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
 		InputKeys:     typex.Keys{"2251799813685249"},
 		CapturedNow:   captured,
@@ -156,7 +157,7 @@ func TestSlowProcessAnalysisExplicitKeysPropagatesLookupFailures(t *testing.T) {
 				},
 			}
 
-			got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, nil, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+			got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, stubSlowProcessAnalysisElementAPI{}, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
 				SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
 				InputKeys:     typex.Keys{"2251799813685249"},
 			})
@@ -178,7 +179,7 @@ func TestSlowProcessAnalysisCamunda87Unsupported(t *testing.T) {
 		},
 	}
 
-	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, nil, toolx.V87).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, stubSlowProcessAnalysisElementAPI{}, toolx.V87).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
 		SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
 		InputKeys:     typex.Keys{"2251799813685249"},
 	})
@@ -237,7 +238,7 @@ func TestSlowProcessAnalysisProcessDefinitionSearchDiscoversFrozenSelection(t *t
 		},
 	}
 
-	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, nil, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, stubSlowProcessAnalysisElementAPI{}, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
 		SelectionMode: d.SlowProcessAnalysisSelectionModeProcessDefinitionSearch,
 		ProcessDefinitionSelector: d.SlowProcessAnalysisProcessDefinitionSelector{
 			BpmnProcessID: "OrderProcess",
@@ -296,7 +297,7 @@ func TestSlowProcessAnalysisProcessDefinitionSearchSupportsSelectorsAndStates(t 
 				},
 			}
 
-			got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, nil, toolx.V89).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+			got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, stubSlowProcessAnalysisElementAPI{}, toolx.V89).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
 				SelectionMode:             d.SlowProcessAnalysisSelectionModeProcessDefinitionSearch,
 				ProcessDefinitionSelector: tc.selector,
 				ProcessInstanceFilters:    d.SlowProcessAnalysisProcessInstanceSearchFilters{State: tc.state},
@@ -331,4 +332,170 @@ func TestSlowProcessAnalysisProcessDefinitionSearchEmptyResultSucceeds(t *testin
 	require.True(t, got.Empty)
 	require.Equal(t, 1, got.DiscoveredScopeStatus.Pages)
 	require.True(t, got.DiscoveredScopeStatus.Complete)
+}
+
+// TestSlowProcessAnalysisRuntimeElementsBuildChronologicalTimeline verifies element lookup, ordering, duration states, and incident markers.
+func TestSlowProcessAnalysisRuntimeElementsBuildChronologicalTimeline(t *testing.T) {
+	captured := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:10:00Z")
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	root := slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(10*time.Minute))
+	elements := []d.Element{
+		slowProcessAnalysisFixtureElement(root.Key, "2251799813685251", "ActiveWait", start.Add(2*time.Minute), time.Time{}),
+		slowProcessAnalysisFixtureElement(root.Key, "2251799813685250", "ReserveStock", start.Add(10*time.Second), start.Add(time.Minute)),
+		slowProcessAnalysisFixtureElement(root.Key, "2251799813685253", "MissingEnd", start.Add(4*time.Minute), time.Time{}),
+		slowProcessAnalysisFixtureElement(root.Key, "2251799813685252", "TerminatePath", start.Add(3*time.Minute), start.Add(4*time.Minute)),
+	}
+	elements[0].State = "ACTIVE"
+	elements[0].Type = "USER_TASK"
+	elements[0].EndDate = ""
+	elements[2].EndDate = ""
+	elements[2].HasIncident = true
+	elements[2].IncidentKey = "2251799813687777"
+	elements[3].State = "TERMINATED"
+	piAPI := stubProcessInstanceAPI{
+		search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+			return []d.ProcessInstance{root}, nil
+		},
+	}
+	elementAPI := stubSlowProcessAnalysisElementAPI{
+		search: func(_ context.Context, query d.ElementSearchQuery, _ ...services.CallOption) (d.ElementSearchResult, error) {
+			require.Equal(t, d.ElementSearchQuery{ProcessInstanceKey: root.Key}, query)
+			return d.ElementSearchResult{Items: elements}, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, elementAPI, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
+		InputKeys:     typex.Keys{root.Key},
+		CapturedNow:   captured,
+	})
+
+	require.NoError(t, err)
+	elementRows := slowProcessAnalysisTimelineElements(got.Items[0].Timeline)
+	require.Equal(t, []string{"2251799813685250", "2251799813685251", "2251799813685252", "2251799813685253"}, []string{elementRows[0].ElementInstanceKey, elementRows[1].ElementInstanceKey, elementRows[2].ElementInstanceKey, elementRows[3].ElementInstanceKey})
+	require.Equal(t, "50s", elementRows[0].Duration)
+	require.Equal(t, "8m0s", elementRows[1].Duration)
+	require.Equal(t, "1m0s", elementRows[2].Duration)
+	require.True(t, elementRows[2].DurationAvailable)
+	require.False(t, elementRows[3].DurationAvailable)
+	require.True(t, elementRows[3].HasIncident)
+	require.Equal(t, "2251799813687777", elementRows[3].IncidentKey)
+}
+
+// TestSlowProcessAnalysisTransitionsUseOnlyAdjacentChronologicalElements verifies gap timing without overlap or synthetic bridging.
+func TestSlowProcessAnalysisTransitionsUseOnlyAdjacentChronologicalElements(t *testing.T) {
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	root := slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(10*time.Minute))
+	elements := []d.Element{
+		slowProcessAnalysisFixtureElement(root.Key, "2251799813685250", "A", start, start.Add(time.Minute)),
+		slowProcessAnalysisFixtureElement(root.Key, "2251799813685251", "B", start.Add(2*time.Minute), start.Add(3*time.Minute)),
+		slowProcessAnalysisFixtureElement(root.Key, "2251799813685252", "C", start.Add(150*time.Second), start.Add(4*time.Minute)),
+		slowProcessAnalysisFixtureElement(root.Key, "2251799813685253", "D", start.Add(5*time.Minute), time.Time{}),
+		slowProcessAnalysisFixtureElement(root.Key, "2251799813685254", "E", start.Add(6*time.Minute), start.Add(7*time.Minute)),
+	}
+	elements[3].EndDate = ""
+	piAPI := stubProcessInstanceAPI{
+		search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+			return []d.ProcessInstance{root}, nil
+		},
+	}
+	elementAPI := stubSlowProcessAnalysisElementAPI{
+		search: func(context.Context, d.ElementSearchQuery, ...services.CallOption) (d.ElementSearchResult, error) {
+			return d.ElementSearchResult{Items: elements}, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, elementAPI, toolx.V89).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
+		InputKeys:     typex.Keys{root.Key},
+		CapturedNow:   start.Add(30 * time.Minute),
+	})
+
+	require.NoError(t, err)
+	transitions := slowProcessAnalysisTimelineTransitions(got.Items[0].Timeline)
+	require.Equal(t, []string{"A -> B", "C -> D"}, []string{transitions[0].FromElementID + " -> " + transitions[0].ToElementID, transitions[1].FromElementID + " -> " + transitions[1].ToElementID})
+	require.Equal(t, "1m0s", transitions[0].Duration)
+	require.Equal(t, "1m0s", transitions[1].Duration)
+}
+
+// TestSlowProcessAnalysisDetailFiltersApplyAfterCompleteTimelineCalculations verifies visible rows never bridge hidden elements.
+func TestSlowProcessAnalysisDetailFiltersApplyAfterCompleteTimelineCalculations(t *testing.T) {
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	root := slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(10*time.Minute))
+	elements := []d.Element{
+		slowProcessAnalysisFixtureElement(root.Key, "2251799813685250", "A", start, start.Add(2*time.Minute)),
+		slowProcessAnalysisFixtureElement(root.Key, "2251799813685251", "B", start.Add(4*time.Minute), start.Add(5*time.Minute)),
+		slowProcessAnalysisFixtureElement(root.Key, "2251799813685252", "C", start.Add(6*time.Minute), start.Add(7*time.Minute)),
+	}
+	elements[1].Type = "USER_TASK"
+	piAPI := stubProcessInstanceAPI{
+		search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+			return []d.ProcessInstance{root}, nil
+		},
+	}
+	elementAPI := stubSlowProcessAnalysisElementAPI{
+		search: func(context.Context, d.ElementSearchQuery, ...services.CallOption) (d.ElementSearchResult, error) {
+			return d.ElementSearchResult{Items: elements}, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, elementAPI, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
+		InputKeys:     typex.Keys{root.Key},
+		CapturedNow:   start.Add(30 * time.Minute),
+		DetailFilters: d.SlowProcessAnalysisDetailFilters{
+			ElementID:     "B",
+			Type:          "USER_TASK",
+			ElementState:  "COMPLETED",
+			DurationAfter: 45 * time.Second,
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, root.Key, got.Items[0].Key)
+	require.Equal(t, 3, len(got.Items[0].Timeline))
+	require.Equal(t, d.SlowProcessAnalysisTimelineEntryKindTransition, got.Items[0].Timeline[0].Kind)
+	require.Equal(t, "A", got.Items[0].Timeline[0].FromElementID)
+	require.Equal(t, "B", got.Items[0].Timeline[0].ToElementID)
+	require.Equal(t, d.SlowProcessAnalysisTimelineEntryKindElement, got.Items[0].Timeline[1].Kind)
+	require.Equal(t, "B", got.Items[0].Timeline[1].ElementID)
+	require.Equal(t, d.SlowProcessAnalysisTimelineEntryKindTransition, got.Items[0].Timeline[2].Kind)
+	require.Equal(t, "B", got.Items[0].Timeline[2].FromElementID)
+	require.Equal(t, "C", got.Items[0].Timeline[2].ToElementID)
+}
+
+// slowProcessAnalysisTimelineElements extracts element rows from a mixed timeline for assertions.
+func slowProcessAnalysisTimelineElements(entries []d.SlowProcessAnalysisTimelineEntry) []d.SlowProcessAnalysisTimelineEntry {
+	out := make([]d.SlowProcessAnalysisTimelineEntry, 0, len(entries))
+	for _, entry := range entries {
+		if entry.Kind == d.SlowProcessAnalysisTimelineEntryKindElement {
+			out = append(out, entry)
+		}
+	}
+	return out
+}
+
+// slowProcessAnalysisTimelineTransitions extracts transition rows from a mixed timeline for assertions.
+func slowProcessAnalysisTimelineTransitions(entries []d.SlowProcessAnalysisTimelineEntry) []d.SlowProcessAnalysisTimelineEntry {
+	out := make([]d.SlowProcessAnalysisTimelineEntry, 0, len(entries))
+	for _, entry := range entries {
+		if entry.Kind == d.SlowProcessAnalysisTimelineEntryKindTransition {
+			out = append(out, entry)
+		}
+	}
+	return out
+}
+
+// stubSlowProcessAnalysisElementAPI provides runtime elements to slow-analysis service tests.
+type stubSlowProcessAnalysisElementAPI struct {
+	esvc.API
+	search func(context.Context, d.ElementSearchQuery, ...services.CallOption) (d.ElementSearchResult, error)
+}
+
+// SearchElements delegates runtime element search to the configured test callback.
+func (s stubSlowProcessAnalysisElementAPI) SearchElements(ctx context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (d.ElementSearchResult, error) {
+	if s.search == nil {
+		return d.ElementSearchResult{}, nil
+	}
+	return s.search(ctx, query, opts...)
 }

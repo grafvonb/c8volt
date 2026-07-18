@@ -62,6 +62,68 @@ func TestRenderOpsSlowProcessAnalysisResultHumanRendersKeyedRoots(t *testing.T) 
 	require.True(t, strings.HasSuffix(output, "process instances: 2\n"))
 }
 
+// TestRenderOpsSlowProcessAnalysisResultHumanRendersTimelineDetails verifies compact element and transition detail rows.
+func TestRenderOpsSlowProcessAnalysisResultHumanRendersTimelineDetails(t *testing.T) {
+	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+	result := ops.SlowProcessAnalysisResult{
+		Items: []ops.SlowProcessAnalysisProcessInstance{
+			{
+				Key:                    "2251799813685249",
+				TenantID:               "tenant-a",
+				BpmnProcessID:          "OrderProcess",
+				ProcessDefinitionKey:   "2251799813687001",
+				ProcessVersion:         7,
+				State:                  process.StateCompleted,
+				StartDate:              "2026-07-18T10:00:00Z",
+				EndDate:                "2026-07-18T10:05:00Z",
+				RootProcessInstanceKey: "2251799813685249",
+				Duration:               "5m0s",
+				DurationAvailable:      true,
+				Timeline: []ops.SlowProcessAnalysisTimelineEntry{
+					{
+						Kind:                 ops.SlowProcessAnalysisTimelineEntryKindElement,
+						ElementInstanceKey:   "2251799813685250",
+						ElementID:            "ReserveStock",
+						Type:                 "SERVICE_TASK",
+						State:                "COMPLETED",
+						StartDate:            "2026-07-18T10:00:00Z",
+						EndDate:              "2026-07-18T10:00:04Z",
+						Duration:             "4s",
+						DurationAvailable:    true,
+						ProcessDurationShare: 1,
+						HasIncident:          true,
+						IncidentKey:          "2251799813687777",
+					},
+					{
+						Kind:                   ops.SlowProcessAnalysisTimelineEntryKindTransition,
+						FromElementID:          "ReserveStock",
+						FromElementType:        "SERVICE_TASK",
+						FromElementInstanceKey: "2251799813685250",
+						ToElementID:            "OrderFinished",
+						ToElementType:          "END_EVENT",
+						ToElementInstanceKey:   "2251799813685251",
+						Duration:               "4m56s",
+						DurationAvailable:      true,
+						ProcessDurationShare:   99,
+					},
+				},
+			},
+		},
+		Count: 1,
+	}
+
+	err := renderOpsSlowProcessAnalysisResult(cmd, result)
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "elements:\n")
+	require.Contains(t, output, "2251799813685250 SERVICE_TASK ReserveStock COMPLETED s:2026-07-18T10:00:00.000 e:2026-07-18T10:00:04.000 dur:4s PI:1% inc!:2251799813687777")
+	require.Contains(t, output, "ReserveStock -> OrderFinished: 4m56s PI:99%")
+	require.NotContains(t, output, "between:")
+	require.NotContains(t, output, "transition:")
+	require.True(t, strings.HasSuffix(output, "process instances: 1\n"))
+}
+
 // TestRenderOpsSlowProcessAnalysisResultKeysOnlyRendersRootKeys verifies keyed output remains pipeline-safe.
 func TestRenderOpsSlowProcessAnalysisResultKeysOnlyRendersRootKeys(t *testing.T) {
 	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()

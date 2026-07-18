@@ -6,7 +6,9 @@ package ops
 import (
 	"context"
 	"fmt"
+	"math"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/grafvonb/c8volt/consts"
@@ -60,9 +62,23 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 		return result, fmt.Errorf("%w: select process instances with explicit keys or one process-definition selector", d.ErrValidation)
 	}
 
-	items := make([]d.SlowProcessAnalysisProcessInstance, 0, len(instances))
-	for _, pi := range instances {
-		items = append(items, slowProcessAnalysisProcessInstanceFromDomain(pi, capturedAt))
+	enriched := d.ElementEnrichedProcessInstances{Items: make([]d.ElementEnrichedProcessInstance, 0, len(instances))}
+	if len(instances) > 0 {
+		if s.elementAPI == nil {
+			return result, fmt.Errorf("%w: runtime element service is required for slow process analysis", d.ErrPrecondition)
+		}
+		var err error
+		enriched, err = pisvc.EnrichProcessInstancesWithElements(ctx, s.elementAPI, instances, opts...)
+		if err != nil {
+			return result, fmt.Errorf("lookup runtime elements for slow analysis: %w", err)
+		}
+	}
+
+	items := make([]d.SlowProcessAnalysisProcessInstance, 0, len(enriched.Items))
+	for _, enrichedItem := range enriched.Items {
+		item := slowProcessAnalysisProcessInstanceFromDomain(enrichedItem.Item, capturedAt)
+		item.Timeline = slowProcessAnalysisTimeline(enrichedItem.Elements, capturedAt, item.DurationMillis, item.DurationAvailable, request.DetailFilters)
+		items = append(items, item)
 	}
 	sort.SliceStable(items, func(i, j int) bool {
 		left, right := items[i], items[j]
@@ -253,4 +269,142 @@ func slowProcessAnalysisRootFromProcessInstance(pi d.ProcessInstance, duration s
 		DurationAvailable:      available,
 		Timeline:               []d.SlowProcessAnalysisTimelineEntry{},
 	}
+}
+
+// slowProcessAnalysisTimeline calculates complete element and transition timings before applying visibility filters.
+func slowProcessAnalysisTimeline(elements []d.Element, capturedAt time.Time, processMillis int64, processDurationAvailable bool, filters d.SlowProcessAnalysisDetailFilters) []d.SlowProcessAnalysisTimelineEntry {
+	elementRows := make([]d.SlowProcessAnalysisTimelineEntry, 0, len(elements))
+	for _, element := range elements {
+		elementRows = append(elementRows, slowProcessAnalysisElementEntry(element, capturedAt, processMillis, processDurationAvailable))
+	}
+
+	out := make([]d.SlowProcessAnalysisTimelineEntry, 0, len(elementRows)*2)
+	for i, entry := range elementRows {
+		if slowProcessAnalysisElementVisible(entry, filters) {
+			out = append(out, entry)
+		}
+		if i+1 >= len(elementRows) {
+			continue
+		}
+		transition, ok := slowProcessAnalysisTransitionEntry(entry, elementRows[i+1], processMillis, processDurationAvailable)
+		if ok && slowProcessAnalysisTransitionVisible(transition, entry, elementRows[i+1], filters) {
+			out = append(out, transition)
+		}
+	}
+	return out
+}
+
+// slowProcessAnalysisElementEntry copies runtime element identity and adds measured duration fields.
+func slowProcessAnalysisElementEntry(element d.Element, capturedAt time.Time, processMillis int64, processDurationAvailable bool) d.SlowProcessAnalysisTimelineEntry {
+	duration, millis, available := slowProcessAnalysisElementDuration(element, capturedAt)
+	return d.SlowProcessAnalysisTimelineEntry{
+		Kind:                 d.SlowProcessAnalysisTimelineEntryKindElement,
+		ElementInstanceKey:   element.ElementInstanceKey,
+		ElementID:            element.ElementId,
+		Type:                 element.Type,
+		State:                element.State,
+		StartDate:            element.StartDate,
+		EndDate:              element.EndDate,
+		HasIncident:          element.HasIncident,
+		IncidentKey:          element.IncidentKey,
+		Duration:             duration,
+		DurationMillis:       millis,
+		DurationAvailable:    available,
+		ProcessDurationShare: slowProcessAnalysisProcessDurationShare(millis, available, processMillis, processDurationAvailable),
+	}
+}
+
+// slowProcessAnalysisElementDuration returns active element durations from the captured analysis time only for runtime-active elements.
+func slowProcessAnalysisElementDuration(element d.Element, capturedAt time.Time) (string, int64, bool) {
+	start, err := time.Parse(time.RFC3339Nano, element.StartDate)
+	if err != nil || start.IsZero() {
+		return "", 0, false
+	}
+	var end time.Time
+	switch {
+	case element.EndDate != "":
+		end, err = time.Parse(time.RFC3339Nano, element.EndDate)
+		if err != nil || end.Before(start) {
+			return "", 0, false
+		}
+	case strings.EqualFold(element.State, "ACTIVE"):
+		end = capturedAt
+		if end.Before(start) {
+			return "", 0, false
+		}
+	default:
+		return "", 0, false
+	}
+	duration := end.Sub(start)
+	return duration.String(), duration.Milliseconds(), true
+}
+
+// slowProcessAnalysisTransitionEntry measures only adjacent chronological elements with explicit end/start timestamps.
+func slowProcessAnalysisTransitionEntry(from d.SlowProcessAnalysisTimelineEntry, to d.SlowProcessAnalysisTimelineEntry, processMillis int64, processDurationAvailable bool) (d.SlowProcessAnalysisTimelineEntry, bool) {
+	fromEnd, err := time.Parse(time.RFC3339Nano, from.EndDate)
+	if err != nil || fromEnd.IsZero() {
+		return d.SlowProcessAnalysisTimelineEntry{}, false
+	}
+	toStart, err := time.Parse(time.RFC3339Nano, to.StartDate)
+	if err != nil || toStart.IsZero() || toStart.Before(fromEnd) {
+		return d.SlowProcessAnalysisTimelineEntry{}, false
+	}
+	duration := toStart.Sub(fromEnd)
+	millis := duration.Milliseconds()
+	return d.SlowProcessAnalysisTimelineEntry{
+		Kind:                   d.SlowProcessAnalysisTimelineEntryKindTransition,
+		FromElementInstanceKey: from.ElementInstanceKey,
+		FromElementID:          from.ElementID,
+		FromElementType:        from.Type,
+		FromEndDate:            from.EndDate,
+		ToElementInstanceKey:   to.ElementInstanceKey,
+		ToElementID:            to.ElementID,
+		ToElementType:          to.Type,
+		ToStartDate:            to.StartDate,
+		Duration:               duration.String(),
+		DurationMillis:         millis,
+		DurationAvailable:      true,
+		ProcessDurationShare:   slowProcessAnalysisProcessDurationShare(millis, true, processMillis, processDurationAvailable),
+	}, true
+}
+
+// slowProcessAnalysisProcessDurationShare rounds a detail duration as a percentage of the measured root duration.
+func slowProcessAnalysisProcessDurationShare(millis int64, available bool, processMillis int64, processDurationAvailable bool) int {
+	if !available || !processDurationAvailable || processMillis <= 0 {
+		return 0
+	}
+	return int(math.Round(float64(millis) * 100 / float64(processMillis)))
+}
+
+// slowProcessAnalysisElementVisible applies detail filters to element rows after all timings are calculated.
+func slowProcessAnalysisElementVisible(entry d.SlowProcessAnalysisTimelineEntry, filters d.SlowProcessAnalysisDetailFilters) bool {
+	return slowProcessAnalysisElementMatchesPredicates(entry, filters) && slowProcessAnalysisDurationPassesFilter(entry.DurationAvailable, entry.DurationMillis, filters.DurationAfter)
+}
+
+// slowProcessAnalysisTransitionVisible keeps original adjacent transitions when an endpoint matches active element predicates.
+func slowProcessAnalysisTransitionVisible(entry d.SlowProcessAnalysisTimelineEntry, from d.SlowProcessAnalysisTimelineEntry, to d.SlowProcessAnalysisTimelineEntry, filters d.SlowProcessAnalysisDetailFilters) bool {
+	predicateMatch := slowProcessAnalysisElementMatchesPredicates(from, filters) || slowProcessAnalysisElementMatchesPredicates(to, filters)
+	return predicateMatch && slowProcessAnalysisDurationPassesFilter(entry.DurationAvailable, entry.DurationMillis, filters.DurationAfter)
+}
+
+// slowProcessAnalysisElementMatchesPredicates checks only element identity predicates, leaving duration filtering separate.
+func slowProcessAnalysisElementMatchesPredicates(entry d.SlowProcessAnalysisTimelineEntry, filters d.SlowProcessAnalysisDetailFilters) bool {
+	if filters.ElementID != "" && entry.ElementID != filters.ElementID {
+		return false
+	}
+	if filters.Type != "" && !strings.EqualFold(entry.Type, filters.Type) {
+		return false
+	}
+	if filters.ElementState != "" && !strings.EqualFold(entry.State, filters.ElementState) {
+		return false
+	}
+	return true
+}
+
+// slowProcessAnalysisDurationPassesFilter applies the detail duration threshold only to measured detail rows.
+func slowProcessAnalysisDurationPassesFilter(available bool, millis int64, threshold time.Duration) bool {
+	if threshold <= 0 {
+		return true
+	}
+	return available && time.Duration(millis)*time.Millisecond > threshold
 }

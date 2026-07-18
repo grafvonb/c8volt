@@ -104,20 +104,20 @@
 
 ### Tests for User Story 3
 
-- [ ] T033 [P] [US3] Add internal service tests for runtime element ordering, active/completed/terminated element durations, missing timestamps, incident markers, and captured analysis time reuse in `internal/services/ops/slow_process_analysis_test.go`
-- [ ] T034 [P] [US3] Add internal service tests for adjacent transition timings, overlap rejection, missing timestamp gaps, no synthetic bridging, and chronological-only semantics in `internal/services/ops/slow_process_analysis_test.go`
-- [ ] T035 [P] [US3] Add internal service tests for `--element-id`, `--type`, `--element-state`, and `--duration-after` detail filtering after complete timeline calculations in `internal/services/ops/slow_process_analysis_test.go`
-- [ ] T036 [P] [US3] Add renderer tests for `elements:` sections, compact element rows, `A -> B: duration`, no `between:`/`transition:` prefix, and `PI:<percentage>` placement in `cmd/cmd_views_ops_slow_process_analysis_test.go`
-- [ ] T037 [P] [US3] Add command tests for detail filter parsing and invalid duration values in `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T033 [P] [US3] Add internal service tests for runtime element ordering, active/completed/terminated element durations, missing timestamps, incident markers, and captured analysis time reuse in `internal/services/ops/slow_process_analysis_test.go`
+- [x] T034 [P] [US3] Add internal service tests for adjacent transition timings, overlap rejection, missing timestamp gaps, no synthetic bridging, and chronological-only semantics in `internal/services/ops/slow_process_analysis_test.go`
+- [x] T035 [P] [US3] Add internal service tests for `--element-id`, `--type`, `--element-state`, and `--duration-after` detail filtering after complete timeline calculations in `internal/services/ops/slow_process_analysis_test.go`
+- [x] T036 [P] [US3] Add renderer tests for `elements:` sections, compact element rows, `A -> B: duration`, no `between:`/`transition:` prefix, and `PI:<percentage>` placement in `cmd/cmd_views_ops_slow_process_analysis_test.go`
+- [x] T037 [P] [US3] Add command tests for detail filter parsing and invalid duration values in `cmd/ops_analyse_slow_process_instances_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T038 [US3] Implement runtime element lookup coordination for every selected process instance in `internal/services/ops/slow_process_analysis.go`
-- [ ] T039 [US3] Implement element duration calculation and chronological element timeline construction in `internal/services/ops/slow_process_analysis.go`
-- [ ] T040 [US3] Implement adjacent transition timing calculation with overlap, missing timestamp, and no-bridging rules in `internal/services/ops/slow_process_analysis.go`
-- [ ] T041 [US3] Implement detail filter parsing and duration value validation in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T042 [US3] Implement post-calculation detail filtering for elements and transitions in `internal/services/ops/slow_process_analysis.go`
-- [ ] T043 [US3] Render element rows, transition rows, incident markers, durations, and process-duration shares in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T038 [US3] Implement runtime element lookup coordination for every selected process instance in `internal/services/ops/slow_process_analysis.go`
+- [x] T039 [US3] Implement element duration calculation and chronological element timeline construction in `internal/services/ops/slow_process_analysis.go`
+- [x] T040 [US3] Implement adjacent transition timing calculation with overlap, missing timestamp, and no-bridging rules in `internal/services/ops/slow_process_analysis.go`
+- [x] T041 [US3] Implement detail filter parsing and duration value validation in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T042 [US3] Implement post-calculation detail filtering for elements and transitions in `internal/services/ops/slow_process_analysis.go`
+- [x] T043 [US3] Render element rows, transition rows, incident markers, durations, and process-duration shares in `cmd/cmd_views_ops_slow_process_analysis.go`
 
 **Checkpoint**: User Stories 1, 2, and 3 provide complete timeline analysis in human output.
 

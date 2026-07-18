@@ -123,3 +123,33 @@ Started: 2026-07-18 12:01:26
 **Learnings**:
 - Process-definition search now freezes selected roots before analysis, with local command date normalization and adapter support for RFC3339 bounds.
 ---
+---
+## Iteration 3 - 2026-07-18 13:46
+**Work Unit**: User Story 3 - Inspect Timelines, Transitions, And Slow Details
+**Tasks Completed**:
+- [x] T033: Add internal service tests for runtime element ordering, durations, missing timestamps, incident markers, and captured analysis time reuse
+- [x] T034: Add internal service tests for adjacent transition timings, overlap rejection, missing timestamp gaps, no synthetic bridging, and chronological-only semantics
+- [x] T035: Add internal service tests for detail filtering after complete timeline calculations
+- [x] T036: Add renderer tests for compact element and transition detail output
+- [x] T037: Add command tests for detail filter parsing and invalid duration values
+- [x] T038: Implement runtime element lookup coordination for selected process instances
+- [x] T039: Implement element duration calculation and chronological timeline construction
+- [x] T040: Implement adjacent transition timing with overlap, missing timestamp, and no-bridging rules
+- [x] T041: Implement detail filter parsing and duration value validation
+- [x] T042: Implement post-calculation detail filtering for elements and transitions
+- [x] T043: Render element rows, transition rows, incident markers, durations, and process-duration shares
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/ops/slow_process_analysis.go
+- internal/services/ops/slow_process_analysis_test.go
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/ops_analyse_slow_process_instances_test.go
+- cmd/cmd_views_ops_slow_process_analysis.go
+- cmd/cmd_views_ops_slow_process_analysis_test.go
+- specs/244-slow-process-analysis/tasks.md
+- specs/244-slow-process-analysis/ralph-memory.md
+- specs/244-slow-process-analysis/progress.md
+**Learnings**:
+- Timeline analysis now enriches selected roots with complete runtime elements before applying detail filters, preserving root ordering and root-only keys output.
+---
