@@ -97,19 +97,19 @@
 
 ### Tests for User Story 3
 
-- [ ] T026 [US3] Add failing JSON output test for `walk pi --key <key> --with-elements` preserving traversal metadata and per-item `elements` in `cmd/walk_test.go`
-- [ ] T027 [US3] Add failing combined `--with-vars --with-incidents --with-elements` human and JSON output tests preserving section order and arrays in `cmd/walk_test.go`
-- [ ] T028 [US3] Add failing `--keys-only --with-elements` validation test proving element lookup is not called in `cmd/walk_test.go`
-- [ ] T029 [US3] Add failing Camunda 8.7 unsupported element-search test for `walk pi --with-elements` in `cmd/walk_test.go`
-- [ ] T030 [US3] Add failing element lookup failure test proving no partial success output is rendered in `cmd/walk_test.go`
+- [x] T026 [US3] Add failing JSON output test for `walk pi --key <key> --with-elements` preserving traversal metadata and per-item `elements` in `cmd/walk_test.go`
+- [x] T027 [US3] Add failing combined `--with-vars --with-incidents --with-elements` human and JSON output tests preserving section order and arrays in `cmd/walk_test.go`
+- [x] T028 [US3] Add failing `--keys-only --with-elements` validation test proving element lookup is not called in `cmd/walk_test.go`
+- [x] T029 [US3] Add failing Camunda 8.7 unsupported element-search test for `walk pi --with-elements` in `cmd/walk_test.go`
+- [x] T030 [US3] Add failing element lookup failure test proving no partial success output is rendered in `cmd/walk_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] Add `validateWalkPIWithElementsUsage` for `--key` and `--keys-only` constraints in `cmd/walk_processinstance.go`
-- [ ] T032 [US3] Use `activityTraversalPayload` for JSON whenever variables, incidents, or elements are combined in `cmd/walk_processinstance.go` and `cmd/cmd_views_walk_incidents.go`
-- [ ] T033 [US3] Wrap element enrichment failures with command context and stop before rendering any success output in `cmd/walk_processinstance.go`
-- [ ] T034 [US3] Preserve Camunda 8.7 unsupported capability propagation from existing element enrichment in `cmd/walk_processinstance.go`
-- [ ] T035 [US3] Run targeted US3 tests covering `cmd/walk_test.go` with `go test ./cmd -run 'TestWalkProcessInstanceCommand_.*Elements|TestWalkProcessInstanceCommand_RejectsKeysOnlyWithElements|TestWalkProcessInstanceCommand_WithElementsUnsupportedV87' -count=1`
+- [x] T031 [US3] Add `validateWalkPIWithElementsUsage` for `--key` and `--keys-only` constraints in `cmd/walk_processinstance.go`
+- [x] T032 [US3] Use `activityTraversalPayload` for JSON whenever variables, incidents, or elements are combined in `cmd/walk_processinstance.go` and `cmd/cmd_views_walk_incidents.go`
+- [x] T033 [US3] Wrap element enrichment failures with command context and stop before rendering any success output in `cmd/walk_processinstance.go`
+- [x] T034 [US3] Preserve Camunda 8.7 unsupported capability propagation from existing element enrichment in `cmd/walk_processinstance.go`
+- [x] T035 [US3] Run targeted US3 tests covering `cmd/walk_test.go` with `go test ./cmd -run 'TestWalkProcessInstanceCommand_.*Elements|TestWalkProcessInstanceCommand_RejectsKeysOnlyWithElements|TestWalkProcessInstanceCommand_WithElementsUnsupportedV87' -count=1`
 
 **Checkpoint**: All user stories are independently functional.
 

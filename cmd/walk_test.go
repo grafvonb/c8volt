@@ -597,6 +597,225 @@ func TestWalkProcessInstanceCommand_WithElementsPartialTraversalPreservesWarning
 	require.Contains(t, output, "missing ancestor keys: 999")
 }
 
+// TestWalkProcessInstanceCommand_WithElementsJSONOutputPreservesTraversalMetadata keeps scripted walk metadata and per-item element arrays together.
+func TestWalkProcessInstanceCommand_WithElementsJSONOutputPreservesTraversalMetadata(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", false)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			switch {
+			case strings.Contains(string(body), `"parentProcessInstanceKey":"123"`):
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t, walkedProcessInstanceJSON("124", "123", false))))
+			case strings.Contains(string(body), `"parentProcessInstanceKey":"124"`):
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+			default:
+				t.Fatalf("unexpected search body: %s", string(body))
+			}
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/element-instances/search":
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			filter := requireJSONObject(t, body["filter"])
+			switch filter["processInstanceKey"] {
+			case "123":
+				_, _ = w.Write([]byte(walkedElementInstancesSearchJSON(t,
+					walkedElementInstanceFixture("element-root", "123", "root-task", false, ""),
+				)))
+			case "124":
+				_, _ = w.Write([]byte(walkedElementInstancesSearchJSON(t)))
+			default:
+				t.Fatalf("unexpected element filter: %v", filter)
+			}
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"walk", "process-instance",
+		"--key", "123",
+		"--with-elements",
+	)
+
+	payload := requireWalkProcessInstanceJSONPayload(t, output)
+	require.Equal(t, "family", payload["mode"])
+	require.Equal(t, "complete", payload["outcome"])
+	require.Equal(t, "123", payload["rootKey"])
+	requireJSONItems(t, payload["keys"], 2)
+	edges := requireJSONObject(t, payload["edges"])
+	requireJSONItems(t, edges["123"], 1)
+
+	items := requireJSONItems(t, payload["items"], 2)
+	root := requireJSONObject(t, items[0])
+	require.Equal(t, "123", requireJSONObject(t, root["item"])["key"])
+	rootElements := requireJSONItems(t, root["elements"], 1)
+	require.Equal(t, "element-root", requireJSONObject(t, rootElements[0])["elementInstanceKey"])
+	require.Equal(t, "root-task", requireJSONObject(t, rootElements[0])["elementId"])
+
+	child := requireJSONObject(t, items[1])
+	require.Equal(t, "124", requireJSONObject(t, child["item"])["key"])
+	require.Empty(t, requireJSONItems(t, child["elements"], 0))
+}
+
+// TestWalkProcessInstanceCommand_WithVarsIncidentsAndElementsOutputShowsGroupedSections verifies combined enrichment uses stable section and JSON fields.
+func TestWalkProcessInstanceCommand_WithVarsIncidentsAndElementsOutputShowsGroupedSections(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", true)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
+			_, _ = w.Write([]byte(`{"items":[{"elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"Root job failed","errorType":"JOB_NO_RETRIES","incidentKey":"incident-1","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/variables/search":
+			_, _ = w.Write([]byte(`{"items":[{"name":"businessKey","value":"2234809392328","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/element-instances/search":
+			_, _ = w.Write([]byte(walkedElementInstancesSearchJSON(t,
+				walkedElementInstanceFixture("element-root", "123", "root-task", true, "incident-1"),
+			)))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	humanOutput := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "123",
+		"--children",
+		"--with-vars",
+		"--with-incidents",
+		"--with-elements",
+	)
+
+	require.Contains(t, humanOutput, "├─ vars:\n│  └─ businessKey=2234809392328")
+	require.Contains(t, humanOutput, "├─ incidents:\n│  └─ incident-1 JOB_NO_RETRIES ACTIVE j:n/a e:task-a ei:element-123 m:Root job failed")
+	require.Contains(t, humanOutput, "└─ elements:\n   └─ element-root SERVICE_TASK root-task ACTIVE")
+	require.Less(t, strings.Index(humanOutput, "├─ vars:"), strings.Index(humanOutput, "├─ incidents:"))
+	require.Less(t, strings.Index(humanOutput, "├─ incidents:"), strings.Index(humanOutput, "└─ elements:"))
+
+	jsonOutput := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"walk", "process-instance",
+		"--key", "123",
+		"--children",
+		"--with-vars",
+		"--with-incidents",
+		"--with-elements",
+	)
+
+	payload := requireWalkProcessInstanceJSONPayload(t, jsonOutput)
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	require.Equal(t, "123", requireJSONObject(t, first["item"])["key"])
+	require.Equal(t, "businessKey", requireJSONObject(t, requireJSONItems(t, first["variables"], 1)[0])["name"])
+	require.Equal(t, "incident-1", requireJSONObject(t, requireJSONItems(t, first["incidents"], 1)[0])["incidentKey"])
+	require.Equal(t, "element-root", requireJSONObject(t, requireJSONItems(t, first["elements"], 1)[0])["elementInstanceKey"])
+}
+
+// TestWalkProcessInstanceCommand_RejectsKeysOnlyWithElements rejects output modes that cannot carry element details before remote work.
+func TestWalkProcessInstanceCommand_RejectsKeysOnlyWithElements(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	output, err := testx.RunCmdSubprocess(t, "TestWalkProcessInstanceCommand_RejectsKeysOnlyWithElementsHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+	require.Contains(t, string(output), "invalid input")
+	require.Contains(t, string(output), "--with-elements cannot be combined with --keys-only")
+	require.NotContains(t, string(output), "127.0.0.1:1")
+}
+
+// TestWalkProcessInstanceCommand_WithElementsUnsupportedV87 preserves the reused element-service unsupported-version boundary.
+func TestWalkProcessInstanceCommand_WithElementsUnsupportedV87(t *testing.T) {
+	searchCalls := 0
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
+
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		request := decodeCapturedPISearchRequest(t, string(body))
+		filter, _ := request["filter"].(map[string]any)
+
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case searchCalls == 0:
+			require.NotContains(t, filter, "parentKey")
+			searchCalls++
+			_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"}],"total":1}`))
+		case filter["parentKey"] == float64(123):
+			searchCalls++
+			_, _ = w.Write([]byte(`{"items":[],"total":0}`))
+		default:
+			t.Fatalf("unexpected search body: %s", string(body))
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+
+	output, err := testx.RunCmdSubprocess(t, "TestWalkProcessInstanceCommand_WithElementsUnsupportedV87Helper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Equal(t, 2, searchCalls)
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "element search requires Camunda 8.8 or newer")
+	require.NotContains(t, string(output), "tenant demo v3")
+	require.NotContains(t, string(output), "└─ elements:")
+}
+
+// TestWalkProcessInstanceCommand_WithElementsLookupFailureDoesNotRenderPartialTraversal fails before showing partial enriched output.
+func TestWalkProcessInstanceCommand_WithElementsLookupFailureDoesNotRenderPartialTraversal(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", true)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/element-instances/search":
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"title":"element lookup failed","status":500,"detail":"element lookup failed"}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output, err := testx.RunCmdSubprocess(t, "TestWalkProcessInstanceCommand_WithElementsLookupFailureDoesNotRenderPartialTraversalHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+	require.Contains(t, string(output), "element lookup failed")
+	require.NotContains(t, string(output), "tenant demo v3")
+	require.NotContains(t, string(output), "└─ elements:")
+}
+
 // TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey keeps incident enrichment scoped to keyed walks.
 func TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
@@ -1805,6 +2024,20 @@ func TestWalkProcessInstanceCommand_RejectsKeysOnlyWithIncidentsHelper(t *testin
 	_ = root.Execute()
 }
 
+// TestWalkProcessInstanceCommand_RejectsKeysOnlyWithElementsHelper exercises invalid key-only element enrichment in a subprocess.
+func TestWalkProcessInstanceCommand_RejectsKeysOnlyWithElementsHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--keys-only", "walk", "process-instance", "--key", "123", "--with-elements"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
 // TestWalkProcessInstanceCommand_WithIncidentsLookupFailureDoesNotRenderPartialTraversalHelper exercises lookup failure in a subprocess.
 func TestWalkProcessInstanceCommand_WithIncidentsLookupFailureDoesNotRenderPartialTraversalHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -1819,6 +2052,20 @@ func TestWalkProcessInstanceCommand_WithIncidentsLookupFailureDoesNotRenderParti
 	_ = root.Execute()
 }
 
+// TestWalkProcessInstanceCommand_WithElementsLookupFailureDoesNotRenderPartialTraversalHelper exercises element lookup failure in a subprocess.
+func TestWalkProcessInstanceCommand_WithElementsLookupFailureDoesNotRenderPartialTraversalHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "walk", "process-instance", "--key", "123", "--children", "--with-elements"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
 // TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87Helper exercises unsupported v8.7 enrichment in a subprocess.
 func TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87Helper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -1828,6 +2075,20 @@ func TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87Helper(t *testing
 	root := Root()
 	resetCommandTreeFlags(root)
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "walk", "process-instance", "--key", "123", "--children", "--with-incidents"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+// TestWalkProcessInstanceCommand_WithElementsUnsupportedV87Helper exercises unsupported v8.7 element enrichment in a subprocess.
+func TestWalkProcessInstanceCommand_WithElementsUnsupportedV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "walk", "process-instance", "--key", "123", "--children", "--with-elements"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()

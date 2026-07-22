@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -54,6 +55,9 @@ var walkProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if err := validateWalkPIWithVarsUsage(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if err := validateWalkPIWithElementsUsage(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 
@@ -167,7 +171,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 			if flagWalkPIWithElements {
 				elementEnriched, err = enrichProcessInstancesWithElementActivityOptions(cmd, cli, walkedInstances, adminInputOpts)
 				if err != nil {
-					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("walk process instance elements: %w", err))
 				}
 			}
 			activityItems := activityItemsFromTraversal(result, incidentEnriched, variableEnriched, elementEnriched, flagWalkPIWithIncidents)
@@ -269,6 +273,21 @@ func validateWalkPIWithIncidentsUsage(cmd *cobra.Command) error {
 	}
 	if flagViewKeysOnly {
 		return mutuallyExclusiveFlagsf("--with-incidents cannot be combined with --keys-only")
+	}
+	return nil
+}
+
+// validateWalkPIWithElementsUsage keeps runtime element enrichment in keyed
+// render modes that can carry element detail rows or JSON arrays.
+func validateWalkPIWithElementsUsage(cmd *cobra.Command) error {
+	if !flagWalkPIWithElements {
+		return nil
+	}
+	if strings.TrimSpace(flagWalkPIKey) == "" {
+		return invalidFlagValuef("--with-elements requires --key")
+	}
+	if flagViewKeysOnly {
+		return mutuallyExclusiveFlagsf("--with-elements cannot be combined with --keys-only")
 	}
 	return nil
 }

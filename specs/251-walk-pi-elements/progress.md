@@ -76,3 +76,28 @@ Started: 2026-07-22 23:14:46
 **Learnings**:
 - Existing walk activity orchestration already preserves traversal-mode order and warnings for element enrichment; US2 locks this behavior with command tests.
 ---
+---
+## Iteration 4 - 2026-07-22 23:41
+**Work Unit**: User Story 3 - Use Elements In Scripted Output Safely
+**Tasks Completed**:
+- [x] T026: Add JSON output test for `walk pi --key <key> --with-elements` preserving traversal metadata and per-item `elements`
+- [x] T027: Add combined `--with-vars --with-incidents --with-elements` human and JSON output tests preserving section order and arrays
+- [x] T028: Add `--keys-only --with-elements` validation test proving element lookup is not called
+- [x] T029: Add Camunda 8.7 unsupported element-search test for `walk pi --with-elements`
+- [x] T030: Add element lookup failure test proving no partial success output is rendered
+- [x] T031: Add `validateWalkPIWithElementsUsage` for `--key` and `--keys-only` constraints
+- [x] T032: Use `activityTraversalPayload` for JSON whenever variables, incidents, or elements are combined
+- [x] T033: Wrap element enrichment failures with command context and stop before rendering success output
+- [x] T034: Preserve Camunda 8.7 unsupported capability propagation from existing element enrichment
+- [x] T035: Run targeted US3 tests
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/walk_processinstance.go
+- cmd/walk_test.go
+- specs/251-walk-pi-elements/tasks.md
+- specs/251-walk-pi-elements/ralph-memory.md
+- specs/251-walk-pi-elements/progress.md
+**Learnings**:
+- Element lookup failures now carry walk command context; assertions should check absence of rendered rows, not absence of the context term.
+---
