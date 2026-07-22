@@ -504,6 +504,54 @@ func TestSlowProcessAnalysisDetailFiltersApplyAfterCompleteTimelineCalculations(
 	require.Equal(t, "C", got.Items[0].Timeline[2].ToElementID)
 }
 
+// TestSlowProcessAnalysisDetailFiltersDropRootsWithoutMatchingTimelineRows verifies detail filters narrow result roots.
+func TestSlowProcessAnalysisDetailFiltersDropRootsWithoutMatchingTimelineRows(t *testing.T) {
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	roots := []d.ProcessInstance{
+		slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(800*time.Hour)),
+		slowProcessAnalysisFixtureProcessInstance("2251799813685250", start, start.Add(800*time.Hour)),
+		slowProcessAnalysisFixtureProcessInstance("2251799813685251", start, start.Add(145*time.Hour)),
+	}
+	elementSets := map[string][]d.Element{
+		"2251799813685249": {
+			slowProcessAnalysisFixtureElement("2251799813685249", "2251799813685301", "LongCallActivity", start, start.Add(701*time.Hour)),
+		},
+		"2251799813685250": {
+			slowProcessAnalysisFixtureElement("2251799813685250", "2251799813685302", "ShortCallActivity", start, start.Add(699*time.Hour)),
+		},
+		"2251799813685251": {
+			slowProcessAnalysisFixtureElement("2251799813685251", "2251799813685303", "ShortRecentActivity", start, start.Add(10*time.Hour)),
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			return d.ProcessInstancePage{Request: page, OverflowState: d.ProcessInstanceOverflowStateNoMore, Items: roots}, nil
+		},
+	}
+	elementAPI := stubSlowProcessAnalysisElementAPI{
+		search: func(_ context.Context, query d.ElementSearchQuery, _ ...services.CallOption) (d.ElementSearchResult, error) {
+			return d.ElementSearchResult{Items: elementSets[query.ProcessInstanceKey]}, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, elementAPI, toolx.V89).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeProcessDefinitionSearch,
+		ProcessDefinitionSelector: d.SlowProcessAnalysisProcessDefinitionSelector{
+			BpmnProcessID: "OrderProcess",
+		},
+		DetailFilters: d.SlowProcessAnalysisDetailFilters{DurationAfter: 700 * time.Hour},
+		CapturedNow:   start.Add(900 * time.Hour),
+	})
+
+	require.NoError(t, err)
+	require.False(t, got.Empty)
+	require.Equal(t, 1, got.Count)
+	require.Equal(t, "2251799813685249", got.Items[0].Key)
+	require.Len(t, got.Items[0].Timeline, 1)
+	require.Equal(t, "LongCallActivity", got.Items[0].Timeline[0].ElementID)
+	require.Equal(t, "701h0m0s", got.Items[0].Timeline[0].Duration)
+}
+
 // TestSlowProcessAnalysisComparisonIndicatorsUseScopedSamples verifies relative indicators use explicit comparable groups.
 func TestSlowProcessAnalysisComparisonIndicatorsUseScopedSamples(t *testing.T) {
 	captured := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:30:00Z")

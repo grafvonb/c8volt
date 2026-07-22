@@ -40,7 +40,6 @@ var (
 	flagOpsAnalyseSlowProcessInstanceElementState          string
 	flagOpsAnalyseSlowProcessInstanceDurationLonger        string
 	flagOpsAnalyseSlowProcessInstanceElementDurationLonger string
-	flagOpsAnalyseSlowProcessInstanceDurationAfter         string
 	flagOpsAnalyseSlowProcessInstanceWithFullTimeline      bool
 )
 
@@ -63,7 +62,7 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 	Short: "Analyze slow process-instance timings",
 	Long: "Analyze slow process-instance timings.\n\n" +
 		"The command is read-only. Select process instances by explicit --key values or by exactly one process-definition selector, then inspect process and runtime element timing without changing cluster state.\n\n" +
-		"Use --dur-longer to keep only process-instance roots whose whole duration is above a threshold. Use --dur-element-longer to hide shorter element and transition detail rows while keeping the root visible. --duration-after is a backward-compatible alias for --dur-element-longer.\n\n" +
+		"Use --dur-longer to keep only process-instance roots whose whole duration is above a threshold. Detail filters such as --element-id, --type, --element-state, and --dur-element-longer keep only process instances with matching element or transition detail rows, then show those matching rows under the root.\n\n" +
 		"Default output shows compact slowest element contributors. Use --with-full-timeline to inspect complete chronological element and transition detail.\n\n" +
 		"Duration thresholds use Go duration syntax such as 500ms, 30s, 5m, 1h, 1h30m, or 24h. Calendar units such as 1d are not accepted.\n\n" +
 		"JSON output exposes stable duration, comparison, and timeline fields. Keys-only output prints selected process-instance keys in result order, one per line.",
@@ -139,8 +138,7 @@ func init() {
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceType, "type", "", "runtime element type to keep in detail rows")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementState, "element-state", "", "runtime element state to keep in detail rows")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceDurationLonger, "dur-longer", "", "only include process instances whose whole duration is longer than this duration, for example 5m or 1h30m")
-	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementDurationLonger, "dur-element-longer", "", "only show element or transition detail rows longer than this duration, for example 30s or 2m")
-	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceDurationAfter, "duration-after", "", "deprecated alias for --dur-element-longer")
+	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementDurationLonger, "dur-element-longer", "", "only include process instances with element or transition detail rows longer than this duration, for example 30s or 2m")
 	fs.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithFullTimeline, "with-full-timeline", false, "show complete chronological element and transition detail")
 
 	setCommandMutation(opsAnalyseCmd, CommandMutationReadOnly)
@@ -339,13 +337,7 @@ func parseOpsSlowProcessAnalysisRootDurationLonger() (time.Duration, error) {
 
 // parseOpsSlowProcessAnalysisDetailDurationLonger validates detail duration filtering.
 func parseOpsSlowProcessAnalysisDetailDurationLonger() (time.Duration, error) {
-	if flagOpsAnalyseSlowProcessInstanceElementDurationLonger != "" && flagOpsAnalyseSlowProcessInstanceDurationAfter != "" {
-		return 0, mutuallyExclusiveFlagsf("--duration-after cannot be combined with --dur-element-longer")
-	}
-	if flagOpsAnalyseSlowProcessInstanceElementDurationLonger != "" {
-		return parseOpsSlowProcessAnalysisDurationFlag("--dur-element-longer", flagOpsAnalyseSlowProcessInstanceElementDurationLonger)
-	}
-	return parseOpsSlowProcessAnalysisDurationFlag("--duration-after", flagOpsAnalyseSlowProcessInstanceDurationAfter)
+	return parseOpsSlowProcessAnalysisDurationFlag("--dur-element-longer", flagOpsAnalyseSlowProcessInstanceElementDurationLonger)
 }
 
 // parseOpsSlowProcessAnalysisDurationFlag validates Go duration syntax for ops thresholds.

@@ -72,6 +72,7 @@ As an automation author, I want JSON and keys-only output to remain unchanged so
 - Default human output must not show element instance keys unless the row needs the key to identify an incident or the operator explicitly requests the full timeline.
 - Hidden-row counts must include omitted element and transition timeline rows from the analyzed detail set and must not count the process-instance root.
 - Detail filters must not create synthetic transitions across hidden rows.
+- Detail filters must exclude process-instance roots that have no matching analyzed detail rows after filtering.
 - The `--with-full-timeline` flag must not change process-instance selection, sorting, duration calculation, filtering, JSON output, or keys-only output.
 - The British and American command spellings must expose equivalent behavior.
 
@@ -94,7 +95,7 @@ As an automation author, I want JSON and keys-only output to remain unchanged so
 - **FR-013**: When `--with-full-timeline` is set, human output MUST show the complete chronological timeline detail that remains available for audit and debugging.
 - **FR-014**: Full-timeline human output MUST include zero-duration gateways, transitions, and other rows that default human output may summarize or hide.
 - **FR-015**: Existing process-instance selection filters, including duration filters for root visibility, MUST keep their current meaning in both default and full-timeline human output.
-- **FR-016**: Existing element and detail filters, including element-duration filters, MUST keep their current meaning before the default summary decides which eligible human rows to show.
+- **FR-016**: Existing element and detail filters, including element-duration filters, MUST keep their current meaning by including only process instances with matching analyzed detail rows and then showing those matching rows under the root.
 - **FR-017**: Detail filtering MUST still be based on the complete analyzed timeline and MUST NOT create synthetic transitions across hidden or filtered rows.
 - **FR-018**: JSON output MUST remain unchanged by this feature.
 - **FR-019**: Keys-only output MUST remain unchanged by this feature.

@@ -51,6 +51,7 @@ Rules:
 - When analyzed timeline rows are omitted, output includes a hidden-row summary with the omitted count and `--with-full-timeline` guidance.
 - When no analyzed timeline rows are omitted, no hidden-row summary is rendered.
 - The process-instance final count remains present.
+- Detail filters such as `--element-id`, `--type`, `--element-state`, and `--dur-element-longer` keep only process instances with matching analyzed element or transition rows, then render those matching rows under the root.
 
 ## Full-Timeline Human Output Contract
 
@@ -67,7 +68,7 @@ Expected behavior:
 - Complete analyzed timeline rows are rendered under the root.
 - Zero-duration gateways, transitions, and sub-1% rows remain visible when included by existing detail filters.
 - Element instance keys remain visible as in the current full timeline style.
-- Existing detail filters keep their meaning and do not create synthetic transitions.
+- Existing detail filters keep their meaning by excluding roots with no matching detail rows and do not create synthetic transitions.
 - Hidden-row summaries are not rendered in full-timeline mode.
 
 ## JSON Output Contract
@@ -77,7 +78,7 @@ JSON output remains unchanged.
 Rules:
 
 - `--with-full-timeline` does not add, remove, rename, or reorder JSON fields.
-- JSON continues to expose the complete ordered analysis payload available before this feature.
+- JSON continues to expose the complete ordered analysis payload for process instances that pass selection and detail filters.
 - Summary-only fields such as hidden-row counts are not emitted in JSON.
 - Values may still vary only for reasons that already existed, such as captured analysis time or live process state.
 
@@ -90,7 +91,7 @@ Rules:
 - Only unique process-instance keys are printed.
 - One key appears per line.
 - No hidden-row, summary, or full-timeline text appears.
-- Detail filters still do not change which root keys are emitted.
+- Detail filters emit only root keys for process instances with matching analyzed detail rows.
 - `--with-full-timeline` has no effect on keys-only output.
 
 ## Documentation Contract

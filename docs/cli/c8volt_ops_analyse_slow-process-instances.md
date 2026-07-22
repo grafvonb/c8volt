@@ -13,7 +13,7 @@ Analyze slow process-instance timings.
 
 The command is read-only. Select process instances by explicit --key values or by exactly one process-definition selector, then inspect process and runtime element timing without changing cluster state.
 
-Use --dur-longer to keep only process-instance roots whose whole duration is above a threshold. Use --dur-element-longer to hide shorter element and transition detail rows while keeping the root visible. --duration-after is a backward-compatible alias for --dur-element-longer.
+Use --dur-longer to keep only process-instance roots whose whole duration is above a threshold. Detail filters such as --element-id, --type, --element-state, and --dur-element-longer keep only process instances with matching element or transition detail rows, then show those matching rows under the root.
 
 Default output shows compact slowest element contributors. Use --with-full-timeline to inspect complete chronological element and transition detail.
 
@@ -42,9 +42,8 @@ c8volt ops analyse slow-process-instances [-] [flags]
 ```
   -n, --batch-size int32            number of process instances to inspect per discovery page; does not cap explicit keys or timeline details (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string      BPMN process ID to discover process instances
-      --dur-element-longer string   only show element or transition detail rows longer than this duration, for example 30s or 2m
+      --dur-element-longer string   only include process instances with element or transition detail rows longer than this duration, for example 30s or 2m
       --dur-longer string           only include process instances whose whole duration is longer than this duration, for example 5m or 1h30m
-      --duration-after string       deprecated alias for --dur-element-longer
       --element-id string           BPMN element ID to keep in detail rows
       --element-state string        runtime element state to keep in detail rows
       --end-date-after string       only include process instances with end date >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD

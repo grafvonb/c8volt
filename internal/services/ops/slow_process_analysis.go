@@ -82,7 +82,7 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 	}
 	items = slowProcessAnalysisApplyRootDurationFilter(items, request.RootDurationLonger)
 	slowProcessAnalysisApplyComparisons(items)
-	slowProcessAnalysisApplyDetailFilters(items, request.DetailFilters)
+	items = slowProcessAnalysisApplyDetailFilters(items, request.DetailFilters)
 	sort.SliceStable(items, func(i, j int) bool {
 		left, right := items[i], items[j]
 		if left.DurationAvailable != right.DurationAvailable {
@@ -347,8 +347,10 @@ func slowProcessAnalysisApplyComparisons(items []d.SlowProcessAnalysisProcessIns
 	}
 }
 
-// slowProcessAnalysisApplyDetailFilters preserves root rows while hiding only filtered timeline details.
-func slowProcessAnalysisApplyDetailFilters(items []d.SlowProcessAnalysisProcessInstance, filters d.SlowProcessAnalysisDetailFilters) {
+// slowProcessAnalysisApplyDetailFilters keeps only roots that still have matching detail rows when a detail filter is active.
+func slowProcessAnalysisApplyDetailFilters(items []d.SlowProcessAnalysisProcessInstance, filters d.SlowProcessAnalysisDetailFilters) []d.SlowProcessAnalysisProcessInstance {
+	dropEmptyRoots := slowProcessAnalysisDetailFiltersActive(filters)
+	outItems := items[:0]
 	for i := range items {
 		source := items[i].Timeline
 		out := make([]d.SlowProcessAnalysisTimelineEntry, 0, len(source))
@@ -366,7 +368,19 @@ func slowProcessAnalysisApplyDetailFilters(items []d.SlowProcessAnalysisProcessI
 			}
 		}
 		items[i].Timeline = out
+		if !dropEmptyRoots || len(out) > 0 {
+			outItems = append(outItems, items[i])
+		}
 	}
+	return outItems
+}
+
+// slowProcessAnalysisDetailFiltersActive reports whether detail predicates should narrow result roots.
+func slowProcessAnalysisDetailFiltersActive(filters d.SlowProcessAnalysisDetailFilters) bool {
+	return filters.ElementID != "" ||
+		filters.Type != "" ||
+		filters.ElementState != "" ||
+		filters.DurationAfter > 0
 }
 
 // slowProcessAnalysisAdjacentEndpoints returns the original element rows surrounding a transition.

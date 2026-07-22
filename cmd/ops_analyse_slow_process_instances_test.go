@@ -272,19 +272,6 @@ func TestOpsAnalyseSlowProcessInstancesBuildsRootDurationFilter(t *testing.T) {
 	require.Equal(t, 30*time.Second, got.Request.DetailFilters.DurationAfter)
 }
 
-// TestOpsAnalyseSlowProcessInstancesDurationAfterAlias verifies legacy detail duration filtering stays compatible.
-func TestOpsAnalyseSlowProcessInstancesDurationAfterAlias(t *testing.T) {
-	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
-	flagOpsAnalyseSlowProcessInstanceBpmnProcessID = "OrderProcess"
-	flagOpsAnalyseSlowProcessInstanceDurationAfter = "2m"
-
-	got, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, nil, nil)
-
-	require.NoError(t, err)
-	require.Zero(t, got.Request.RootDurationLonger)
-	require.Equal(t, 2*time.Minute, got.Request.DetailFilters.DurationAfter)
-}
-
 // TestOpsAnalyseSlowProcessInstancesRejectsInvalidSearchInputs verifies search-mode validation stays local.
 func TestOpsAnalyseSlowProcessInstancesRejectsInvalidSearchInputs(t *testing.T) {
 	tests := []struct {
@@ -334,14 +321,9 @@ func TestOpsAnalyseSlowProcessInstancesRejectsInvalidDetailFilters(t *testing.T)
 		setup func()
 		want  string
 	}{
-		{name: "bad duration", setup: func() { flagOpsAnalyseSlowProcessInstanceDurationAfter = "soon" }, want: "invalid value for --duration-after"},
-		{name: "negative duration", setup: func() { flagOpsAnalyseSlowProcessInstanceDurationAfter = "-1s" }, want: "--duration-after must not be negative"},
 		{name: "bad root duration", setup: func() { flagOpsAnalyseSlowProcessInstanceDurationLonger = "soon" }, want: "invalid value for --dur-longer"},
+		{name: "bad element duration", setup: func() { flagOpsAnalyseSlowProcessInstanceElementDurationLonger = "soon" }, want: "invalid value for --dur-element-longer"},
 		{name: "negative element duration", setup: func() { flagOpsAnalyseSlowProcessInstanceElementDurationLonger = "-1s" }, want: "--dur-element-longer must not be negative"},
-		{name: "legacy and new detail duration", setup: func() {
-			flagOpsAnalyseSlowProcessInstanceDurationAfter = "1m"
-			flagOpsAnalyseSlowProcessInstanceElementDurationLonger = "30s"
-		}, want: "cannot be combined"},
 		{name: "bad type", setup: func() { flagOpsAnalyseSlowProcessInstanceType = "not-a-type" }, want: "invalid value for --type"},
 		{name: "bad element state", setup: func() { flagOpsAnalyseSlowProcessInstanceElementState = "waiting" }, want: "invalid value for --element-state"},
 	}
@@ -363,6 +345,14 @@ func TestOpsAnalyseSlowProcessInstancesRejectsInvalidDetailFilters(t *testing.T)
 func TestOpsAnalyseSlowProcessInstancesDoesNotExposeIncidentsOnly(t *testing.T) {
 	require.Nil(t, opsAnalyseSlowProcessInstancesCmd.Flags().Lookup("incidents-only"))
 	require.NotContains(t, strings.ReplaceAll(opsAnalyseSlowProcessInstancesCmd.Flags().FlagUsages(), "--no-incidents-only", ""), "--incidents-only")
+}
+
+// TestOpsAnalyseSlowProcessInstancesDoesNotExposeDurationAfter verifies the old alias is not user-facing.
+func TestOpsAnalyseSlowProcessInstancesDoesNotExposeDurationAfter(t *testing.T) {
+	require.Nil(t, opsAnalyseSlowProcessInstancesCmd.Flags().Lookup("duration-after"))
+	require.NotContains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--duration-after")
+	require.NotContains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--duration-after")
+	require.NotContains(t, opsAnalyseSlowProcessInstancesCmd.Flags().FlagUsages(), "--duration-after")
 }
 
 // TestOpsAnalyseSlowProcessInstancesRejectsEmptyStdin verifies dash input fails before remote analysis.
@@ -403,7 +393,6 @@ func resetOpsSlowProcessAnalysisTestFlags(t *testing.T) *cobra.Command {
 	flagOpsAnalyseSlowProcessInstanceElementState = ""
 	flagOpsAnalyseSlowProcessInstanceDurationLonger = ""
 	flagOpsAnalyseSlowProcessInstanceElementDurationLonger = ""
-	flagOpsAnalyseSlowProcessInstanceDurationAfter = ""
 	flagOpsAnalyseSlowProcessInstanceWithFullTimeline = false
 
 	cmd := &cobra.Command{Use: "slow-process-instances"}
