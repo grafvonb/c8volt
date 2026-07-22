@@ -18,10 +18,10 @@
 
 **Purpose**: Confirm feature context and current implementation boundaries before changing behavior.
 
-- [ ] T001 Review feature artifacts and record any conflicts in `specs/248-slow-process-timeline/spec.md`, `specs/248-slow-process-timeline/plan.md`, `specs/248-slow-process-timeline/contracts/cli.md`, and `specs/ralph-implementation-rules.md`
-- [ ] T002 [P] Inspect the existing slow-process command flags, examples, aliases, and validation in `cmd/ops_analyse_slow_process_instances.go` and `cmd/ops_analyse_slow_process_instances_test.go`
-- [ ] T003 [P] Inspect the existing slow-process human, JSON, and keys-only renderers in `cmd/cmd_views_ops_slow_process_analysis.go` and `cmd/cmd_views_ops_slow_process_analysis_test.go`
-- [ ] T004 [P] Inspect existing command metadata and docs expectations in `cmd/command_contract_test.go`, `cmd/ops_contract_test.go`, `docsgen/main_test.go`, and `README.md`
+- [x] T001 Review feature artifacts and record any conflicts in `specs/248-slow-process-timeline/spec.md`, `specs/248-slow-process-timeline/plan.md`, `specs/248-slow-process-timeline/contracts/cli.md`, and `specs/ralph-implementation-rules.md`
+- [x] T002 [P] Inspect the existing slow-process command flags, examples, aliases, and validation in `cmd/ops_analyse_slow_process_instances.go` and `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T003 [P] Inspect the existing slow-process human, JSON, and keys-only renderers in `cmd/cmd_views_ops_slow_process_analysis.go` and `cmd/cmd_views_ops_slow_process_analysis_test.go`
+- [x] T004 [P] Inspect existing command metadata and docs expectations in `cmd/command_contract_test.go`, `cmd/ops_contract_test.go`, `docsgen/main_test.go`, and `README.md`
 
 ---
 
@@ -31,9 +31,9 @@
 
 **CRITICAL**: No user story implementation should begin until this phase is complete.
 
-- [ ] T005 Confirm the existing service payload remains complete before rendering by reviewing `internal/services/ops/slow_process_analysis.go`, `internal/domain/ops_slow_process_analysis.go`, and `c8volt/ops/model.go`
-- [ ] T006 Add command-renderer helper scaffolding for hotspot summary row selection without changing output behavior in `cmd/cmd_views_ops_slow_process_analysis.go`
-- [ ] T007 Add neutral renderer fixture builders for slow-process summary/full-timeline tests in `cmd/cmd_views_ops_slow_process_analysis_test.go`
+- [x] T005 Confirm the existing service payload remains complete before rendering by reviewing `internal/services/ops/slow_process_analysis.go`, `internal/domain/ops_slow_process_analysis.go`, and `c8volt/ops/model.go`
+- [x] T006 Add command-renderer helper scaffolding for hotspot summary row selection without changing output behavior in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T007 Add neutral renderer fixture builders for slow-process summary/full-timeline tests in `cmd/cmd_views_ops_slow_process_analysis_test.go`
 
 **Checkpoint**: Foundation ready - user story implementation can begin without modifying service analysis semantics.
 

@@ -49,6 +49,19 @@ func renderOpsSlowProcessAnalysisResult(cmd *cobra.Command, result ops.SlowProce
 	return nil
 }
 
+const opsSlowProcessAnalysisHotspotMinimumProcessShare = 1
+
+type opsSlowProcessAnalysisHotspotSummary struct {
+	Rows           []ops.SlowProcessAnalysisTimelineEntry
+	HiddenRowCount int
+}
+
+// opsSlowProcessAnalysisDefaultHotspotSummary prepares the summary projection while preserving current full-detail behavior.
+func opsSlowProcessAnalysisDefaultHotspotSummary(item ops.SlowProcessAnalysisProcessInstance) opsSlowProcessAnalysisHotspotSummary {
+	rows := append([]ops.SlowProcessAnalysisTimelineEntry(nil), item.Timeline...)
+	return opsSlowProcessAnalysisHotspotSummary{Rows: rows}
+}
+
 type opsSlowProcessAnalysisRootBar struct {
 	enabled          bool
 	maxDurationMilli int64

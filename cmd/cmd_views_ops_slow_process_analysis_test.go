@@ -464,10 +464,89 @@ func TestRenderOpsSlowProcessAnalysisResultEmptySearchOutputs(t *testing.T) {
 	})
 }
 
+// TestOpsSlowProcessAnalysisDefaultHotspotSummaryScaffoldPreservesTimelineRows verifies the foundation helper is behavior-neutral.
+func TestOpsSlowProcessAnalysisDefaultHotspotSummaryScaffoldPreservesTimelineRows(t *testing.T) {
+	result := opsSlowProcessAnalysisRenderTestResult(
+		opsSlowProcessAnalysisRenderTestElement("4108", "ReserveStock", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:00Z", "2026-07-18T10:00:04Z", "4s", 4000, 1),
+		opsSlowProcessAnalysisRenderTestTransition("ReserveStock", "SERVICE_TASK", "OrderFinished", "END_EVENT", "2026-07-18T10:00:04Z", "2026-07-18T10:05:00Z", "4m56s", 296000, 99),
+	)
+
+	summary := opsSlowProcessAnalysisDefaultHotspotSummary(result.Items[0])
+
+	require.Equal(t, result.Items[0].Timeline, summary.Rows)
+	require.Zero(t, summary.HiddenRowCount)
+	require.Equal(t, opsSlowProcessAnalysisHotspotMinimumProcessShare, 1)
+	summary.Rows[0].ElementID = "changed"
+	require.Equal(t, "ReserveStock", result.Items[0].Timeline[0].ElementID)
+}
+
 // newOpsSlowProcessAnalysisRenderTestCommand captures command output without mutating the root command.
 func newOpsSlowProcessAnalysisRenderTestCommand() (*cobra.Command, *bytes.Buffer) {
 	buf := &bytes.Buffer{}
 	cmd := &cobra.Command{Use: "slow-process-instances"}
 	cmd.SetOut(buf)
 	return cmd, buf
+}
+
+// opsSlowProcessAnalysisRenderTestResult builds one complete root with caller-supplied detail rows.
+func opsSlowProcessAnalysisRenderTestResult(entries ...ops.SlowProcessAnalysisTimelineEntry) ops.SlowProcessAnalysisResult {
+	return ops.SlowProcessAnalysisResult{
+		Items: []ops.SlowProcessAnalysisProcessInstance{
+			opsSlowProcessAnalysisRenderTestRoot(entries...),
+		},
+		Count: 1,
+	}
+}
+
+// opsSlowProcessAnalysisRenderTestRoot keeps fixture roots consistent across summary and full-timeline tests.
+func opsSlowProcessAnalysisRenderTestRoot(entries ...ops.SlowProcessAnalysisTimelineEntry) ops.SlowProcessAnalysisProcessInstance {
+	return ops.SlowProcessAnalysisProcessInstance{
+		Key:                    "2251799813685249",
+		TenantID:               "tenant-a",
+		BpmnProcessID:          "OrderProcess",
+		ProcessDefinitionKey:   "2251799813687001",
+		ProcessVersion:         7,
+		State:                  process.StateCompleted,
+		StartDate:              "2026-07-18T10:00:00Z",
+		EndDate:                "2026-07-18T10:05:00Z",
+		RootProcessInstanceKey: "2251799813685249",
+		Duration:               "5m0s",
+		DurationMillis:         300000,
+		DurationAvailable:      true,
+		Timeline:               append([]ops.SlowProcessAnalysisTimelineEntry(nil), entries...),
+	}
+}
+
+// opsSlowProcessAnalysisRenderTestElement builds an element timeline row with only renderer-relevant fields.
+func opsSlowProcessAnalysisRenderTestElement(key string, id string, typ string, state string, start string, end string, duration string, millis int64, share int) ops.SlowProcessAnalysisTimelineEntry {
+	return ops.SlowProcessAnalysisTimelineEntry{
+		Kind:                 ops.SlowProcessAnalysisTimelineEntryKindElement,
+		ElementInstanceKey:   key,
+		ElementID:            id,
+		Type:                 typ,
+		State:                state,
+		StartDate:            start,
+		EndDate:              end,
+		Duration:             duration,
+		DurationMillis:       millis,
+		DurationAvailable:    duration != "",
+		ProcessDurationShare: share,
+	}
+}
+
+// opsSlowProcessAnalysisRenderTestTransition builds an adjacent timing row with only renderer-relevant fields.
+func opsSlowProcessAnalysisRenderTestTransition(fromID string, fromType string, toID string, toType string, fromEnd string, toStart string, duration string, millis int64, share int) ops.SlowProcessAnalysisTimelineEntry {
+	return ops.SlowProcessAnalysisTimelineEntry{
+		Kind:                 ops.SlowProcessAnalysisTimelineEntryKindTransition,
+		FromElementID:        fromID,
+		FromElementType:      fromType,
+		FromEndDate:          fromEnd,
+		ToElementID:          toID,
+		ToElementType:        toType,
+		ToStartDate:          toStart,
+		Duration:             duration,
+		DurationMillis:       millis,
+		DurationAvailable:    duration != "",
+		ProcessDurationShare: share,
+	}
 }
