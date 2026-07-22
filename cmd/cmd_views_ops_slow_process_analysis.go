@@ -39,23 +39,40 @@ func renderOpsSlowProcessAnalysisResult(cmd *cobra.Command, result ops.SlowProce
 		for _, item := range result.Items {
 			renderOutputLine(cmd, "%s", formatOpsSlowProcessAnalysisRootRow(item, rootBarContext, showTimezoneOffset))
 			if len(item.Timeline) > 0 {
-				summary := opsSlowProcessAnalysisDefaultHotspotSummary(item)
-				renderOutputLine(cmd, "└─ slowest elements:")
-				totalRows := len(summary.Rows)
-				if summary.HiddenRowCount > 0 {
-					totalRows++
-				}
-				for i, entry := range summary.Rows {
-					renderOutputLine(cmd, "   %s%s", incidentTreeBranch(i, totalRows), formatOpsSlowProcessAnalysisSummaryRow(entry, item, showTimezoneOffset))
-				}
-				if summary.HiddenRowCount > 0 {
-					renderOutputLine(cmd, "   %s%s", incidentTreeBranch(totalRows-1, totalRows), opsSlowProcessAnalysisHiddenRowsSummary(summary.HiddenRowCount))
+				if flagOpsAnalyseSlowProcessInstanceWithFullTimeline {
+					renderOpsSlowProcessAnalysisFullTimeline(cmd, item, showTimezoneOffset)
+				} else {
+					renderOpsSlowProcessAnalysisHotspotSummary(cmd, item, showTimezoneOffset)
 				}
 			}
 		}
 		renderOutputLine(cmd, "process instances: %d", result.Count)
 	}
 	return nil
+}
+
+// renderOpsSlowProcessAnalysisHotspotSummary renders the compact default detail view.
+func renderOpsSlowProcessAnalysisHotspotSummary(cmd *cobra.Command, item ops.SlowProcessAnalysisProcessInstance, showTimezoneOffset bool) {
+	summary := opsSlowProcessAnalysisDefaultHotspotSummary(item)
+	renderOutputLine(cmd, "└─ slowest elements:")
+	totalRows := len(summary.Rows)
+	if summary.HiddenRowCount > 0 {
+		totalRows++
+	}
+	for i, entry := range summary.Rows {
+		renderOutputLine(cmd, "   %s%s", incidentTreeBranch(i, totalRows), formatOpsSlowProcessAnalysisSummaryRow(entry, item, showTimezoneOffset))
+	}
+	if summary.HiddenRowCount > 0 {
+		renderOutputLine(cmd, "   %s%s", incidentTreeBranch(totalRows-1, totalRows), opsSlowProcessAnalysisHiddenRowsSummary(summary.HiddenRowCount))
+	}
+}
+
+// renderOpsSlowProcessAnalysisFullTimeline restores the chronological detail tree for audit/debug inspection.
+func renderOpsSlowProcessAnalysisFullTimeline(cmd *cobra.Command, item ops.SlowProcessAnalysisProcessInstance, showTimezoneOffset bool) {
+	renderOutputLine(cmd, "└─ elements:")
+	for i, entry := range item.Timeline {
+		renderOutputLine(cmd, "   %s%s", incidentTreeBranch(i, len(item.Timeline)), formatOpsSlowProcessAnalysisTimelineRow(entry, item, showTimezoneOffset))
+	}
 }
 
 const opsSlowProcessAnalysisHotspotMinimumProcessShare = 1

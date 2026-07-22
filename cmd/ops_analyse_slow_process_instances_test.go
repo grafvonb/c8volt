@@ -54,6 +54,39 @@ func TestOpsAnalyseSlowProcessInstancesKeyFlagHasShortAlias(t *testing.T) {
 	require.Equal(t, "key", opsAnalyseSlowProcessInstancesCmd.Flags().ShorthandLookup("k").Name)
 }
 
+// TestOpsAnalyseSlowProcessInstancesWithFullTimelineFlagIsCommandLocal verifies the full detail switch stays out of facade input.
+func TestOpsAnalyseSlowProcessInstancesWithFullTimelineFlagIsCommandLocal(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	t.Cleanup(func() {
+		resetCommandTreeFlags(root)
+		flagOpsAnalyseSlowProcessInstanceWithFullTimeline = false
+	})
+
+	flag := opsAnalyseSlowProcessInstancesCmd.Flags().Lookup("with-full-timeline")
+	require.NotNil(t, flag)
+	require.Equal(t, "false", flag.DefValue)
+	require.Empty(t, flag.Shorthand)
+	require.Contains(t, flag.Usage, "complete chronological element and transition detail")
+
+	aliasCmd, remaining, err := root.Find([]string{"ops", "analyze", "spi", "--with-full-timeline"})
+	require.NoError(t, err)
+	require.Equal(t, []string{"--with-full-timeline"}, remaining)
+	require.Same(t, opsAnalyseSlowProcessInstancesCmd, aliasCmd)
+	require.NoError(t, aliasCmd.Flags().Set("with-full-timeline", "true"))
+
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	flagOpsAnalyseSlowProcessInstanceBpmnProcessID = "OrderProcess"
+	flagOpsAnalyseSlowProcessInstanceWithFullTimeline = true
+
+	got, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, nil, nil)
+
+	require.NoError(t, err)
+	require.True(t, got.WithFullTimeline)
+	require.Equal(t, ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch, got.Request.SelectionMode)
+	require.Equal(t, "one-line", got.Request.OutputMode)
+}
+
 // TestOpsAnalyseSlowProcessInstancesRejectsInvalidExplicitKeyInputs verifies local key-mode validation.
 func TestOpsAnalyseSlowProcessInstancesRejectsInvalidExplicitKeyInputs(t *testing.T) {
 	tests := []struct {
@@ -327,11 +360,13 @@ func resetOpsSlowProcessAnalysisTestFlags(t *testing.T) *cobra.Command {
 	flagOpsAnalyseSlowProcessInstanceDurationLonger = ""
 	flagOpsAnalyseSlowProcessInstanceElementDurationLonger = ""
 	flagOpsAnalyseSlowProcessInstanceDurationAfter = ""
+	flagOpsAnalyseSlowProcessInstanceWithFullTimeline = false
 
 	cmd := &cobra.Command{Use: "slow-process-instances"}
 	flags := cmd.Flags()
 	flags.StringVar(&flagOpsAnalyseSlowProcessInstanceState, "state", "all", "")
 	flags.Int32Var(&flagOpsAnalyseSlowProcessInstanceBatchSize, "batch-size", consts.MaxPISearchSize, "")
 	flags.Int32Var(&flagOpsAnalyseSlowProcessInstanceLimit, "limit", 0, "")
+	flags.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithFullTimeline, "with-full-timeline", false, "")
 	return cmd
 }

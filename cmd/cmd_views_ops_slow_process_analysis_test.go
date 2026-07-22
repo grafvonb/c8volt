@@ -532,6 +532,33 @@ func TestRenderOpsSlowProcessAnalysisResultHumanIncludesActiveAndIncidentRows(t 
 	require.NotContains(t, output, "hidden:")
 }
 
+// TestRenderOpsSlowProcessAnalysisResultHumanWithFullTimelineRestoresChronologicalDetails verifies the explicit audit view.
+func TestRenderOpsSlowProcessAnalysisResultHumanWithFullTimelineRestoresChronologicalDetails(t *testing.T) {
+	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+	flagOpsAnalyseSlowProcessInstanceWithFullTimeline = true
+	t.Cleanup(func() { flagOpsAnalyseSlowProcessInstanceWithFullTimeline = false })
+	result := opsSlowProcessAnalysisRenderTestResult(
+		opsSlowProcessAnalysisRenderTestElement("4108", "ReserveStock", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:00Z", "2026-07-18T10:00:00Z", "0s", 0, 0),
+		opsSlowProcessAnalysisRenderTestTransition("ReserveStock", "SERVICE_TASK", "PackOrder", "SERVICE_TASK", "2026-07-18T10:00:00Z", "2026-07-18T10:00:04Z", "4s", 4000, 1),
+		opsSlowProcessAnalysisRenderTestElement("4109", "PackOrder", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:04Z", "2026-07-18T10:00:12Z", "8s", 8000, 3),
+	)
+
+	err := renderOpsSlowProcessAnalysisResult(cmd, result)
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "└─ elements:\n")
+	require.Contains(t, output, "   ├─ 4108 SERVICE_TASK ReserveStock COMPLETED s:10:00:00.000 e:10:00:00.000 dur:0s")
+	require.Contains(t, output, "   ├─ ReserveStock -> PackOrder: 4s [░░░░░░░░░░] 1%")
+	require.Contains(t, output, "   └─ 4109 SERVICE_TASK PackOrder COMPLETED s:10:00:04.000 e:10:00:12.000 dur:8s [░░░░░░░░░░] 3%")
+	require.Less(t, strings.Index(output, "4108 SERVICE_TASK ReserveStock"), strings.Index(output, "ReserveStock -> PackOrder"))
+	require.Less(t, strings.Index(output, "ReserveStock -> PackOrder"), strings.Index(output, "4109 SERVICE_TASK PackOrder"))
+	require.NotContains(t, output, "slowest elements:")
+	require.NotContains(t, output, "hidden:")
+	require.NotContains(t, output, "PackOrder -> ReserveStock")
+	require.True(t, strings.HasSuffix(output, "process instances: 1\n"))
+}
+
 // TestRenderOpsSlowProcessAnalysisResultHumanOmitsHiddenSummaryForEmptyTimeline verifies roots without details do not imply hidden rows.
 func TestRenderOpsSlowProcessAnalysisResultHumanOmitsHiddenSummaryForEmptyTimeline(t *testing.T) {
 	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()

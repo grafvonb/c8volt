@@ -69,16 +69,16 @@
 
 ### Tests for User Story 2
 
-- [ ] T014 [P] [US2] Add command flag tests for `--with-full-timeline` registration, aliases, and request/render parsing in `cmd/ops_analyse_slow_process_instances_test.go`
-- [ ] T015 [P] [US2] Add renderer tests for full-timeline human output preserving existing `elements:` rows, element instance keys, zero-duration rows, transitions, existing detail/root filter behavior, no synthetic transitions, and no hidden summary in `cmd/cmd_views_ops_slow_process_analysis_test.go`
-- [ ] T016 [P] [US2] Add command contract tests for `--with-full-timeline` help, examples, and metadata in `cmd/command_contract_test.go`
+- [x] T014 [P] [US2] Add command flag tests for `--with-full-timeline` registration, aliases, and request/render parsing in `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T015 [P] [US2] Add renderer tests for full-timeline human output preserving existing `elements:` rows, element instance keys, zero-duration rows, transitions, existing detail/root filter behavior, no synthetic transitions, and no hidden summary in `cmd/cmd_views_ops_slow_process_analysis_test.go`
+- [x] T016 [P] [US2] Add command contract tests for `--with-full-timeline` help, examples, and metadata in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Add `--with-full-timeline` flag state, flag registration, help text, and examples in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T018 [US2] Implement human renderer dispatch between default hotspot summary and full chronological timeline in `cmd/cmd_views_ops_slow_process_analysis.go`
-- [ ] T019 [US2] Preserve the existing full-timeline row style by reusing chronological element and transition row formatting in `cmd/cmd_views_ops_slow_process_analysis.go`
-- [ ] T020 [US2] Run targeted command and renderer validation for full-timeline behavior with `go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances|TestRenderOpsSlowProcessAnalysisResultHuman|TestCommandContractOpsAnalyseSlowProcessInstances' -count=1` covering `cmd/ops_analyse_slow_process_instances_test.go`, `cmd/cmd_views_ops_slow_process_analysis_test.go`, and `cmd/command_contract_test.go`
+- [x] T017 [US2] Add `--with-full-timeline` flag state, flag registration, help text, and examples in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T018 [US2] Implement human renderer dispatch between default hotspot summary and full chronological timeline in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T019 [US2] Preserve the existing full-timeline row style by reusing chronological element and transition row formatting in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T020 [US2] Run targeted command and renderer validation for full-timeline behavior with `go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances|TestRenderOpsSlowProcessAnalysisResultHuman|TestCommandContractOpsAnalyseSlowProcessInstances' -count=1` covering `cmd/ops_analyse_slow_process_instances_test.go`, `cmd/cmd_views_ops_slow_process_analysis_test.go`, and `cmd/command_contract_test.go`
 
 **Checkpoint**: User Stories 1 and 2 both work independently: compact default output and explicit full-timeline output.
 

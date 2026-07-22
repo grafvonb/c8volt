@@ -48,3 +48,28 @@ Started: 2026-07-22 17:43:37
 **Learnings**:
 - Default human summary selection remains command-local; the complete timeline payload is still available before output-mode dispatch for JSON and later full-timeline rendering.
 ---
+---
+## Iteration 3 - 2026-07-22 17:57
+**Work Unit**: User Story 2 - Inspect The Complete Timeline On Demand
+**Tasks Completed**:
+- [x] T014: Add command flag tests for `--with-full-timeline` registration, aliases, and request/render parsing
+- [x] T015: Add renderer tests for full-timeline human output preserving `elements:` rows and chronological detail
+- [x] T016: Add command contract tests for `--with-full-timeline` help, examples, and metadata
+- [x] T017: Add `--with-full-timeline` flag state, registration, help text, and examples
+- [x] T018: Implement human renderer dispatch between default hotspot summary and full chronological timeline
+- [x] T019: Preserve the existing full-timeline row style by reusing chronological element and transition row formatting
+- [x] T020: Run targeted command and renderer validation for full-timeline behavior
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/cmd_views_ops_slow_process_analysis.go
+- cmd/ops_analyse_slow_process_instances_test.go
+- cmd/cmd_views_ops_slow_process_analysis_test.go
+- cmd/command_contract_test.go
+- specs/248-slow-process-timeline/tasks.md
+- specs/248-slow-process-timeline/ralph-memory.md
+- specs/248-slow-process-timeline/progress.md
+**Learnings**:
+- `--with-full-timeline` can remain command-local while the renderer restores the existing chronological `elements:` tree after machine-output dispatch.
+---

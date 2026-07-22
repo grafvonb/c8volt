@@ -186,7 +186,10 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyze slow-process-instances --bpmn-process-id")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyse spi --bpmn-process-id")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--dur-longer 1h30m --dur-element-longer 30s")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--with-full-timeline")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "get pi --state active --keys-only")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Default output shows compact slowest element contributors")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --with-full-timeline to inspect complete chronological element and transition detail")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --dur-longer to keep only process-instance roots")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Duration thresholds use Go duration syntax")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Calendar units such as 1d are not accepted")
@@ -269,6 +272,13 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 		Required:    false,
 		Repeated:    false,
 		Description: "deprecated alias for --dur-element-longer",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-full-timeline",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "show complete chronological element and transition detail",
 	})
 	require.False(t, hasFlagContractNamed(capability.Flags, "incidents-only"))
 }
