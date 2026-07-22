@@ -186,8 +186,13 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyze slow-process-instances --bpmn-process-id")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyse spi --bpmn-process-id")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--dur-longer 1h30m --dur-element-longer 30s")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--with-full-timeline")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "get pi --state active --keys-only")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Default output shows compact slowest element contributors")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --with-full-timeline to inspect complete chronological element and transition detail")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --dur-longer to keep only process-instance roots")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Detail filters such as --element-id, --type, --element-state, and --dur-element-longer keep only process instances with matching element or transition detail rows")
+	require.NotContains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--duration-after")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Duration thresholds use Go duration syntax")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Calendar units such as 1d are not accepted")
 	require.Equal(t, []OutputModeContract{
@@ -261,15 +266,16 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
-		Description: "only show element or transition detail rows longer than this duration, for example 30s or 2m",
+		Description: "only include process instances with element or transition detail rows longer than this duration, for example 30s or 2m",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
-		Name:        "duration-after",
-		Type:        "string",
+		Name:        "with-full-timeline",
+		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "deprecated alias for --dur-element-longer",
+		Description: "show complete chronological element and transition detail",
 	})
+	require.False(t, hasFlagContractNamed(capability.Flags, "duration-after"))
 	require.False(t, hasFlagContractNamed(capability.Flags, "incidents-only"))
 }
 

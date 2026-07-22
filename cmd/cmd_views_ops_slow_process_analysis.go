@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -38,15 +39,110 @@ func renderOpsSlowProcessAnalysisResult(cmd *cobra.Command, result ops.SlowProce
 		for _, item := range result.Items {
 			renderOutputLine(cmd, "%s", formatOpsSlowProcessAnalysisRootRow(item, rootBarContext, showTimezoneOffset))
 			if len(item.Timeline) > 0 {
-				renderOutputLine(cmd, "└─ elements:")
-				for i, entry := range item.Timeline {
-					renderOutputLine(cmd, "   %s%s", incidentTreeBranch(i, len(item.Timeline)), formatOpsSlowProcessAnalysisTimelineRow(entry, item, showTimezoneOffset))
+				if flagOpsAnalyseSlowProcessInstanceWithFullTimeline {
+					renderOpsSlowProcessAnalysisFullTimeline(cmd, item, showTimezoneOffset)
+				} else {
+					renderOpsSlowProcessAnalysisHotspotSummary(cmd, item, showTimezoneOffset)
 				}
 			}
 		}
 		renderOutputLine(cmd, "process instances: %d", result.Count)
 	}
 	return nil
+}
+
+// renderOpsSlowProcessAnalysisHotspotSummary renders the compact default detail view.
+func renderOpsSlowProcessAnalysisHotspotSummary(cmd *cobra.Command, item ops.SlowProcessAnalysisProcessInstance, showTimezoneOffset bool) {
+	summary := opsSlowProcessAnalysisDefaultHotspotSummary(item)
+	renderOutputLine(cmd, "└─ slowest elements:")
+	totalRows := len(summary.Rows)
+	if summary.HiddenRowCount > 0 {
+		totalRows++
+	}
+	for i, entry := range summary.Rows {
+		renderOutputLine(cmd, "   %s%s", incidentTreeBranch(i, totalRows), formatOpsSlowProcessAnalysisSummaryRow(entry, item, showTimezoneOffset))
+	}
+	if summary.HiddenRowCount > 0 {
+		renderOutputLine(cmd, "   %s%s", incidentTreeBranch(totalRows-1, totalRows), opsSlowProcessAnalysisHiddenRowsSummary(summary.HiddenRowCount))
+	}
+}
+
+// renderOpsSlowProcessAnalysisFullTimeline restores the chronological detail tree for audit/debug inspection.
+func renderOpsSlowProcessAnalysisFullTimeline(cmd *cobra.Command, item ops.SlowProcessAnalysisProcessInstance, showTimezoneOffset bool) {
+	renderOutputLine(cmd, "└─ elements:")
+	for i, entry := range item.Timeline {
+		renderOutputLine(cmd, "   %s%s", incidentTreeBranch(i, len(item.Timeline)), formatOpsSlowProcessAnalysisTimelineRow(entry, item, showTimezoneOffset))
+	}
+}
+
+const opsSlowProcessAnalysisHotspotMinimumProcessShare = 1
+
+type opsSlowProcessAnalysisHotspotSummary struct {
+	Rows           []ops.SlowProcessAnalysisTimelineEntry
+	HiddenRowCount int
+}
+
+// opsSlowProcessAnalysisDefaultHotspotSummary selects the default rows that make slow, active, or incident work visible.
+func opsSlowProcessAnalysisDefaultHotspotSummary(item ops.SlowProcessAnalysisProcessInstance) opsSlowProcessAnalysisHotspotSummary {
+	out := opsSlowProcessAnalysisHotspotSummary{}
+	for _, entry := range item.Timeline {
+		if !opsSlowProcessAnalysisVisibleInDefaultSummary(entry) {
+			out.HiddenRowCount++
+			continue
+		}
+		out.Rows = append(out.Rows, entry)
+	}
+	sort.SliceStable(out.Rows, func(i, j int) bool {
+		if out.Rows[i].ProcessDurationShare != out.Rows[j].ProcessDurationShare {
+			return out.Rows[i].ProcessDurationShare > out.Rows[j].ProcessDurationShare
+		}
+		return out.Rows[i].DurationMillis > out.Rows[j].DurationMillis
+	})
+	return out
+}
+
+// opsSlowProcessAnalysisVisibleInDefaultSummary keeps one inclusion pass so rows matching multiple reasons appear once.
+func opsSlowProcessAnalysisVisibleInDefaultSummary(entry ops.SlowProcessAnalysisTimelineEntry) bool {
+	if entry.Kind != ops.SlowProcessAnalysisTimelineEntryKindElement {
+		return false
+	}
+	if strings.EqualFold(entry.State, string(process.StateActive)) {
+		return true
+	}
+	if entry.HasIncident {
+		return true
+	}
+	return strings.EqualFold(entry.State, string(process.StateCompleted)) &&
+		entry.ProcessDurationShare >= opsSlowProcessAnalysisHotspotMinimumProcessShare
+}
+
+// formatOpsSlowProcessAnalysisSummaryRow omits element instance keys except when an incident row has no incident key.
+func formatOpsSlowProcessAnalysisSummaryRow(entry ops.SlowProcessAnalysisTimelineEntry, root ops.SlowProcessAnalysisProcessInstance, showTimezoneOffset bool) string {
+	row := flatRow{
+		entry.Type,
+		entry.ElementID,
+		entry.State,
+		prefixedElementField("s", opsSlowProcessAnalysisDetailTimestamp(entry.StartDate, root.StartDate, showTimezoneOffset)),
+		prefixedElementField("e", opsSlowProcessAnalysisDetailTimestamp(entry.EndDate, root.StartDate, showTimezoneOffset)),
+		opsSlowProcessAnalysisDurationField(entry.Duration, entry.DurationAvailable),
+		opsSlowProcessAnalysisHumanDurationBar(entry.DurationMillis, root.DurationMillis),
+	}
+	if entry.HasIncident && entry.IncidentKey == "" && entry.ElementInstanceKey != "" {
+		row = append(row, "eik:"+entry.ElementInstanceKey)
+	}
+	if marker := opsSlowProcessAnalysisIncidentMarker(entry); marker != "" {
+		row = append(row, marker)
+	}
+	return compactFlatRow(row)
+}
+
+// opsSlowProcessAnalysisHiddenRowsSummary describes omitted detail rows and the escape hatch for chronological detail.
+func opsSlowProcessAnalysisHiddenRowsSummary(count int) string {
+	suffix := "rows"
+	if count == 1 {
+		suffix = "row"
+	}
+	return "hidden: " + strconv.Itoa(count) + " instant/fast timeline " + suffix + "; use --with-full-timeline"
 }
 
 type opsSlowProcessAnalysisRootBar struct {

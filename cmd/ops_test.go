@@ -90,12 +90,11 @@ func TestOpsAnalyseSlowProcessInstancesHelpDocumentsScaffold(t *testing.T) {
 		"--element-id string",
 		"--dur-longer string",
 		"--dur-element-longer string",
-		"--duration-after string",
 		"Duration thresholds use Go duration syntax",
 		"Calendar units such as 1d are not accepted",
 		"./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -",
 	)
-	assertHelpOutputOmitsAll(t, output, "--incidents-only")
+	assertHelpOutputOmitsAll(t, output, "--duration-after", "--incidents-only")
 }
 
 // TestOpsExecuteHelpDocumentsGroupingCommand verifies execute is only a discoverable parent for future playbooks.

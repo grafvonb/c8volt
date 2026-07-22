@@ -54,6 +54,83 @@ func TestOpsAnalyseSlowProcessInstancesKeyFlagHasShortAlias(t *testing.T) {
 	require.Equal(t, "key", opsAnalyseSlowProcessInstancesCmd.Flags().ShorthandLookup("k").Name)
 }
 
+// TestOpsAnalyseSlowProcessInstancesWithFullTimelineFlagIsCommandLocal verifies the full detail switch stays out of facade input.
+func TestOpsAnalyseSlowProcessInstancesWithFullTimelineFlagIsCommandLocal(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	t.Cleanup(func() {
+		resetCommandTreeFlags(root)
+		flagOpsAnalyseSlowProcessInstanceWithFullTimeline = false
+	})
+
+	flag := opsAnalyseSlowProcessInstancesCmd.Flags().Lookup("with-full-timeline")
+	require.NotNil(t, flag)
+	require.Equal(t, "false", flag.DefValue)
+	require.Empty(t, flag.Shorthand)
+	require.Contains(t, flag.Usage, "complete chronological element and transition detail")
+
+	aliasCmd, remaining, err := root.Find([]string{"ops", "analyze", "spi", "--with-full-timeline"})
+	require.NoError(t, err)
+	require.Equal(t, []string{"--with-full-timeline"}, remaining)
+	require.Same(t, opsAnalyseSlowProcessInstancesCmd, aliasCmd)
+	require.NoError(t, aliasCmd.Flags().Set("with-full-timeline", "true"))
+
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	flagOpsAnalyseSlowProcessInstanceBpmnProcessID = "OrderProcess"
+	flagOpsAnalyseSlowProcessInstanceWithFullTimeline = true
+
+	got, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, nil, nil)
+
+	require.NoError(t, err)
+	require.True(t, got.WithFullTimeline)
+	require.Equal(t, ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch, got.Request.SelectionMode)
+	require.Equal(t, "one-line", got.Request.OutputMode)
+}
+
+// TestOpsAnalyseSlowProcessInstancesWithFullTimelineAllowsMachineModes verifies parse output mode remains independent.
+func TestOpsAnalyseSlowProcessInstancesWithFullTimelineAllowsMachineModes(t *testing.T) {
+	tests := []struct {
+		name string
+		mode string
+		json bool
+		keys bool
+	}{
+		{name: "json", mode: "json", json: true},
+		{name: "keys-only", mode: "keys-only", keys: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+			prevJSON := flagViewAsJson
+			prevKeysOnly := flagViewKeysOnly
+			t.Cleanup(func() {
+				flagViewAsJson = prevJSON
+				flagViewKeysOnly = prevKeysOnly
+			})
+			flagViewAsJson = tc.json
+			flagViewKeysOnly = tc.keys
+			flagOpsAnalyseSlowProcessInstanceBpmnProcessID = "OrderProcess"
+
+			withoutFullTimeline, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, nil, nil)
+			require.NoError(t, err)
+			flagOpsAnalyseSlowProcessInstanceWithFullTimeline = true
+			withFullTimeline, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, nil, nil)
+
+			require.NoError(t, err)
+			require.False(t, withoutFullTimeline.WithFullTimeline)
+			require.True(t, withFullTimeline.WithFullTimeline)
+			require.Equal(t, tc.mode, withFullTimeline.Request.OutputMode)
+			require.Equal(t, withoutFullTimeline.Request.SelectionMode, withFullTimeline.Request.SelectionMode)
+			require.Equal(t, withoutFullTimeline.Request.ProcessDefinitionSelector, withFullTimeline.Request.ProcessDefinitionSelector)
+			require.Equal(t, withoutFullTimeline.Request.ProcessInstanceFilters, withFullTimeline.Request.ProcessInstanceFilters)
+			require.Equal(t, withoutFullTimeline.Request.DetailFilters, withFullTimeline.Request.DetailFilters)
+			require.Equal(t, withoutFullTimeline.Request.RootDurationLonger, withFullTimeline.Request.RootDurationLonger)
+			require.Equal(t, withoutFullTimeline.Request.BatchSize, withFullTimeline.Request.BatchSize)
+			require.Equal(t, withoutFullTimeline.Request.Limit, withFullTimeline.Request.Limit)
+		})
+	}
+}
+
 // TestOpsAnalyseSlowProcessInstancesRejectsInvalidExplicitKeyInputs verifies local key-mode validation.
 func TestOpsAnalyseSlowProcessInstancesRejectsInvalidExplicitKeyInputs(t *testing.T) {
 	tests := []struct {
@@ -195,19 +272,6 @@ func TestOpsAnalyseSlowProcessInstancesBuildsRootDurationFilter(t *testing.T) {
 	require.Equal(t, 30*time.Second, got.Request.DetailFilters.DurationAfter)
 }
 
-// TestOpsAnalyseSlowProcessInstancesDurationAfterAlias verifies legacy detail duration filtering stays compatible.
-func TestOpsAnalyseSlowProcessInstancesDurationAfterAlias(t *testing.T) {
-	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
-	flagOpsAnalyseSlowProcessInstanceBpmnProcessID = "OrderProcess"
-	flagOpsAnalyseSlowProcessInstanceDurationAfter = "2m"
-
-	got, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, nil, nil)
-
-	require.NoError(t, err)
-	require.Zero(t, got.Request.RootDurationLonger)
-	require.Equal(t, 2*time.Minute, got.Request.DetailFilters.DurationAfter)
-}
-
 // TestOpsAnalyseSlowProcessInstancesRejectsInvalidSearchInputs verifies search-mode validation stays local.
 func TestOpsAnalyseSlowProcessInstancesRejectsInvalidSearchInputs(t *testing.T) {
 	tests := []struct {
@@ -257,14 +321,9 @@ func TestOpsAnalyseSlowProcessInstancesRejectsInvalidDetailFilters(t *testing.T)
 		setup func()
 		want  string
 	}{
-		{name: "bad duration", setup: func() { flagOpsAnalyseSlowProcessInstanceDurationAfter = "soon" }, want: "invalid value for --duration-after"},
-		{name: "negative duration", setup: func() { flagOpsAnalyseSlowProcessInstanceDurationAfter = "-1s" }, want: "--duration-after must not be negative"},
 		{name: "bad root duration", setup: func() { flagOpsAnalyseSlowProcessInstanceDurationLonger = "soon" }, want: "invalid value for --dur-longer"},
+		{name: "bad element duration", setup: func() { flagOpsAnalyseSlowProcessInstanceElementDurationLonger = "soon" }, want: "invalid value for --dur-element-longer"},
 		{name: "negative element duration", setup: func() { flagOpsAnalyseSlowProcessInstanceElementDurationLonger = "-1s" }, want: "--dur-element-longer must not be negative"},
-		{name: "legacy and new detail duration", setup: func() {
-			flagOpsAnalyseSlowProcessInstanceDurationAfter = "1m"
-			flagOpsAnalyseSlowProcessInstanceElementDurationLonger = "30s"
-		}, want: "cannot be combined"},
 		{name: "bad type", setup: func() { flagOpsAnalyseSlowProcessInstanceType = "not-a-type" }, want: "invalid value for --type"},
 		{name: "bad element state", setup: func() { flagOpsAnalyseSlowProcessInstanceElementState = "waiting" }, want: "invalid value for --element-state"},
 	}
@@ -286,6 +345,14 @@ func TestOpsAnalyseSlowProcessInstancesRejectsInvalidDetailFilters(t *testing.T)
 func TestOpsAnalyseSlowProcessInstancesDoesNotExposeIncidentsOnly(t *testing.T) {
 	require.Nil(t, opsAnalyseSlowProcessInstancesCmd.Flags().Lookup("incidents-only"))
 	require.NotContains(t, strings.ReplaceAll(opsAnalyseSlowProcessInstancesCmd.Flags().FlagUsages(), "--no-incidents-only", ""), "--incidents-only")
+}
+
+// TestOpsAnalyseSlowProcessInstancesDoesNotExposeDurationAfter verifies the old alias is not user-facing.
+func TestOpsAnalyseSlowProcessInstancesDoesNotExposeDurationAfter(t *testing.T) {
+	require.Nil(t, opsAnalyseSlowProcessInstancesCmd.Flags().Lookup("duration-after"))
+	require.NotContains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--duration-after")
+	require.NotContains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--duration-after")
+	require.NotContains(t, opsAnalyseSlowProcessInstancesCmd.Flags().FlagUsages(), "--duration-after")
 }
 
 // TestOpsAnalyseSlowProcessInstancesRejectsEmptyStdin verifies dash input fails before remote analysis.
@@ -326,12 +393,13 @@ func resetOpsSlowProcessAnalysisTestFlags(t *testing.T) *cobra.Command {
 	flagOpsAnalyseSlowProcessInstanceElementState = ""
 	flagOpsAnalyseSlowProcessInstanceDurationLonger = ""
 	flagOpsAnalyseSlowProcessInstanceElementDurationLonger = ""
-	flagOpsAnalyseSlowProcessInstanceDurationAfter = ""
+	flagOpsAnalyseSlowProcessInstanceWithFullTimeline = false
 
 	cmd := &cobra.Command{Use: "slow-process-instances"}
 	flags := cmd.Flags()
 	flags.StringVar(&flagOpsAnalyseSlowProcessInstanceState, "state", "all", "")
 	flags.Int32Var(&flagOpsAnalyseSlowProcessInstanceBatchSize, "batch-size", consts.MaxPISearchSize, "")
 	flags.Int32Var(&flagOpsAnalyseSlowProcessInstanceLimit, "limit", 0, "")
+	flags.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithFullTimeline, "with-full-timeline", false, "")
 	return cmd
 }

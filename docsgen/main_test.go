@@ -502,8 +502,12 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"Analyze slow process-instance timings",
 		"./c8volt ops analyse slow-process-instances --key 2251799813685249",
 		"./c8volt ops analyze slow-process-instances --bpmn-process-id OrderProcess --state all --limit 20",
+		"./c8volt ops analyse slow-process-instances --key 2251799813685249 --with-full-timeline",
 		"./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 1h30m --dur-element-longer 30s",
 		"./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -",
+		"Default output shows compact slowest element contributors",
+		"Detail filters such as --element-id, --type, --element-state, and --dur-element-longer keep only process instances with matching element or transition detail rows",
+		"Use --with-full-timeline to inspect complete chronological element and transition detail",
 		"Duration thresholds use Go duration syntax",
 		"Calendar units such as 1d are not accepted",
 		"--key strings",
@@ -518,7 +522,8 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"--element-state string",
 		"--dur-longer string",
 		"--dur-element-longer string",
-		"--duration-after string",
+		"--with-full-timeline",
+		"show complete chronological element and transition detail",
 	} {
 		if !strings.Contains(analyseDoc, want) {
 			t.Fatalf("expected generated ops analyse slow-process-instances docs to contain %q, got %q", want, analyseDoc)
@@ -526,6 +531,9 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 	}
 	if strings.Contains(strings.ReplaceAll(analyseDoc, "--no-incidents-only", ""), "--incidents-only") {
 		t.Fatalf("expected generated ops analyse slow-process-instances docs not to contain --incidents-only, got %q", analyseDoc)
+	}
+	if strings.Contains(analyseDoc, "--duration-after") {
+		t.Fatalf("expected generated ops analyse slow-process-instances docs not to contain --duration-after, got %q", analyseDoc)
 	}
 
 	for _, unwanted := range []string{

@@ -122,18 +122,19 @@ func TestRenderOpsSlowProcessAnalysisResultHumanRendersDurationShareBars(t *test
 						RelativeBar:        "[#####-----]",
 					},
 					{
-						Kind:               ops.SlowProcessAnalysisTimelineEntryKindElement,
-						ElementInstanceKey: "2251799813685251",
-						ElementID:          "Work",
-						Type:               "SERVICE_TASK",
-						State:              "COMPLETED",
-						StartDate:          "2026-07-18T10:00:00Z",
-						EndDate:            "2026-07-18T10:00:05Z",
-						Duration:           "5s",
-						DurationMillis:     5000,
-						DurationAvailable:  true,
-						RelativePercentile: 83,
-						RelativeBar:        "[########--]",
+						Kind:                 ops.SlowProcessAnalysisTimelineEntryKindElement,
+						ElementInstanceKey:   "2251799813685251",
+						ElementID:            "Work",
+						Type:                 "SERVICE_TASK",
+						State:                "COMPLETED",
+						StartDate:            "2026-07-18T10:00:00Z",
+						EndDate:              "2026-07-18T10:00:05Z",
+						Duration:             "5s",
+						DurationMillis:       5000,
+						DurationAvailable:    true,
+						ProcessDurationShare: 50,
+						RelativePercentile:   83,
+						RelativeBar:          "[########--]",
 					},
 				},
 			},
@@ -151,10 +152,11 @@ func TestRenderOpsSlowProcessAnalysisResultHumanRendersDurationShareBars(t *test
 	require.Contains(t, output, "dur:50s [█████░░░░░] 50%")
 	require.Contains(t, output, "root-10")
 	require.Contains(t, output, "dur:10s [█░░░░░░░░░] 10%")
-	require.Contains(t, output, "└─ elements:\n")
-	require.Contains(t, output, "   ├─ 2251799813685250 SERVICE_TASK ReserveStock COMPLETED s:10:00:00.000 e:10:00:00.000 dur:0s")
+	require.Contains(t, output, "└─ slowest elements:\n")
+	require.NotContains(t, output, "ReserveStock")
 	require.NotContains(t, output, "dur:0s [")
-	require.Contains(t, output, "   └─ 2251799813685251 SERVICE_TASK Work COMPLETED s:10:00:00.000 e:10:00:05.000 dur:5s [█████░░░░░] 50%")
+	require.Contains(t, output, "   ├─ SERVICE_TASK Work COMPLETED s:10:00:00.000 e:10:00:05.000 dur:5s [█████░░░░░] 50%")
+	require.Contains(t, output, "   └─ hidden: 1 instant/fast timeline row; use --with-full-timeline")
 	require.NotContains(t, output, "cohort")
 	require.NotContains(t, output, "peer")
 	require.NotContains(t, output, "compared")
@@ -239,14 +241,15 @@ func TestRenderOpsSlowProcessAnalysisResultHumanRendersSubPercentProcessShare(t 
 	require.Contains(t, buf.String(), "2251799813694100 tenant-a OrderProcess v7 COMPLETED s:2026-07-18T08:10:00.000 e:2026-07-18T08:24:32.000 p:<root>")
 	require.Contains(t, buf.String(), "dur:14m32s")
 	require.NotContains(t, buf.String(), "dur:14m32s [")
-	require.Contains(t, buf.String(), "└─ elements:\n   ├─ 4108 SERVICE_TASK ReserveStock COMPLETED s:08:10:00.300 e:08:10:04.500 dur:4.2s [░░░░░░░░░░] <1%")
-	require.Contains(t, buf.String(), "   ├─ ReserveStock -> OrderFinished: 14m20s [██████████] 99%")
-	require.Contains(t, buf.String(), "   └─ 4122 END_EVENT OrderFinished COMPLETED s:08:24:24.500 e:08:24:24.508 dur:8ms [░░░░░░░░░░] <1%")
+	require.Contains(t, buf.String(), "└─ slowest elements:\n   └─ hidden: 3 instant/fast timeline rows; use --with-full-timeline")
+	require.NotContains(t, buf.String(), "4108 SERVICE_TASK ReserveStock")
+	require.NotContains(t, buf.String(), "ReserveStock -> OrderFinished")
+	require.NotContains(t, buf.String(), "4122 END_EVENT OrderFinished")
 	require.NotContains(t, buf.String(), "PI:")
 }
 
-// TestRenderOpsSlowProcessAnalysisResultHumanRendersTimelineDetails verifies compact element and transition detail rows.
-func TestRenderOpsSlowProcessAnalysisResultHumanRendersTimelineDetails(t *testing.T) {
+// TestRenderOpsSlowProcessAnalysisResultHumanRendersHotspotSummaryDetails verifies default detail rows stay compact and omit noisy transitions.
+func TestRenderOpsSlowProcessAnalysisResultHumanRendersHotspotSummaryDetails(t *testing.T) {
 	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
 	result := ops.SlowProcessAnalysisResult{
 		Items: []ops.SlowProcessAnalysisProcessInstance{
@@ -302,9 +305,11 @@ func TestRenderOpsSlowProcessAnalysisResultHumanRendersTimelineDetails(t *testin
 
 	require.NoError(t, err)
 	output := buf.String()
-	require.Contains(t, output, "└─ elements:\n")
-	require.Contains(t, output, "   ├─ 2251799813685250 SERVICE_TASK ReserveStock COMPLETED s:10:00:00.000 e:10:00:04.000 dur:4s [░░░░░░░░░░] 1% inc!:2251799813687777")
-	require.Contains(t, output, "   └─ ReserveStock -> OrderFinished: 4m56s [██████████] 99%")
+	require.Contains(t, output, "└─ slowest elements:\n")
+	require.Contains(t, output, "   ├─ SERVICE_TASK ReserveStock COMPLETED s:10:00:00.000 e:10:00:04.000 dur:4s [░░░░░░░░░░] 1% inc!:2251799813687777")
+	require.Contains(t, output, "   └─ hidden: 1 instant/fast timeline row; use --with-full-timeline")
+	require.NotContains(t, output, "2251799813685250 SERVICE_TASK")
+	require.NotContains(t, output, "ReserveStock -> OrderFinished")
 	require.NotContains(t, output, "between:")
 	require.NotContains(t, output, "transition:")
 	require.NotContains(t, output, "PI:")
@@ -329,6 +334,31 @@ func TestRenderOpsSlowProcessAnalysisResultKeysOnlyRendersUniqueRootKeys(t *test
 
 	require.NoError(t, err)
 	require.Equal(t, "2251799813685249\n2251799813685250\n", buf.String())
+}
+
+// TestRenderOpsSlowProcessAnalysisResultKeysOnlyIgnoresFullTimelineFlag verifies the audit switch cannot affect pipelines.
+func TestRenderOpsSlowProcessAnalysisResultKeysOnlyIgnoresFullTimelineFlag(t *testing.T) {
+	result := ops.SlowProcessAnalysisResult{
+		Items: []ops.SlowProcessAnalysisProcessInstance{
+			opsSlowProcessAnalysisRenderTestRoot(
+				opsSlowProcessAnalysisRenderTestElement("4108", "ReserveStock", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:00Z", "2026-07-18T10:00:00Z", "0s", 0, 0),
+				opsSlowProcessAnalysisRenderTestElement("4109", "PackOrder", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:04Z", "2026-07-18T10:00:12Z", "8s", 8000, 3),
+			),
+			{Key: "2251799813685250"},
+			{Key: "2251799813685249"},
+		},
+		Count: 2,
+	}
+
+	defaultOutput := renderOpsSlowProcessAnalysisKeysOnlyForTest(t, result, false)
+	fullTimelineOutput := renderOpsSlowProcessAnalysisKeysOnlyForTest(t, result, true)
+
+	require.Equal(t, defaultOutput, fullTimelineOutput)
+	require.Equal(t, "2251799813685249\n2251799813685250\n", fullTimelineOutput)
+	require.NotContains(t, fullTimelineOutput, "slowest elements:")
+	require.NotContains(t, fullTimelineOutput, "hidden:")
+	require.NotContains(t, fullTimelineOutput, "with-full-timeline")
+	require.NotContains(t, fullTimelineOutput, "elements:")
 }
 
 // TestRenderOpsSlowProcessAnalysisResultJSONIncludesStableAnalysisFields verifies automation-visible payload fields.
@@ -426,6 +456,48 @@ func TestRenderOpsSlowProcessAnalysisResultJSONIncludesStableAnalysisFields(t *t
 	require.Contains(t, buf.String(), `"processDurationShare"`)
 }
 
+// TestRenderOpsSlowProcessAnalysisResultJSONIgnoresFullTimelineFlag verifies summary-only state never enters JSON output.
+func TestRenderOpsSlowProcessAnalysisResultJSONIgnoresFullTimelineFlag(t *testing.T) {
+	captured := time.Date(2026, 7, 18, 10, 30, 0, 0, time.UTC)
+	result := ops.SlowProcessAnalysisResult{
+		Request: ops.SlowProcessAnalysisRequest{
+			CommandName:   "ops analyse slow-process-instances",
+			SelectionMode: ops.SlowProcessAnalysisSelectionModeExplicitKeys,
+			InputKeys:     typex.Keys{"2251799813685249"},
+			OutputMode:    "json",
+		},
+		CapturedAt: captured,
+		Items: []ops.SlowProcessAnalysisProcessInstance{
+			opsSlowProcessAnalysisRenderTestRoot(
+				opsSlowProcessAnalysisRenderTestElement("4108", "ReserveStock", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:00Z", "2026-07-18T10:00:00Z", "0s", 0, 0),
+				opsSlowProcessAnalysisRenderTestTransition("ReserveStock", "SERVICE_TASK", "PackOrder", "SERVICE_TASK", "2026-07-18T10:00:00Z", "2026-07-18T10:00:04Z", "4s", 4000, 1),
+				opsSlowProcessAnalysisRenderTestElement("4109", "PackOrder", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:04Z", "2026-07-18T10:00:12Z", "8s", 8000, 3),
+			),
+		},
+		Count: 1,
+	}
+
+	defaultJSON := renderOpsSlowProcessAnalysisJSONForTest(t, result, false)
+	fullTimelineJSON := renderOpsSlowProcessAnalysisJSONForTest(t, result, true)
+
+	require.JSONEq(t, defaultJSON, fullTimelineJSON)
+	require.Contains(t, fullTimelineJSON, `"timeline"`)
+	require.Contains(t, fullTimelineJSON, `"ReserveStock"`)
+	require.Contains(t, fullTimelineJSON, `"PackOrder"`)
+	require.NotContains(t, fullTimelineJSON, "slowest elements:")
+	require.NotContains(t, fullTimelineJSON, "hidden:")
+	require.NotContains(t, fullTimelineJSON, "with-full-timeline")
+	require.NotContains(t, fullTimelineJSON, "hiddenRow")
+	require.NotContains(t, fullTimelineJSON, "slowestElements")
+	require.NotContains(t, fullTimelineJSON, "fullTimeline")
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal([]byte(fullTimelineJSON), &payload))
+	require.NotContains(t, payload, "hiddenRowCount")
+	require.NotContains(t, payload, "slowestElements")
+	require.NotContains(t, payload, "withFullTimeline")
+}
+
 // TestRenderOpsSlowProcessAnalysisResultEmptySearchOutputs verifies all output modes represent no-match discovery cleanly.
 func TestRenderOpsSlowProcessAnalysisResultEmptySearchOutputs(t *testing.T) {
 	t.Run("human count only", func(t *testing.T) {
@@ -464,10 +536,216 @@ func TestRenderOpsSlowProcessAnalysisResultEmptySearchOutputs(t *testing.T) {
 	})
 }
 
+// TestOpsSlowProcessAnalysisDefaultHotspotSummarySelectsCompletedContributors verifies the default summary picks only actionable completed rows.
+func TestOpsSlowProcessAnalysisDefaultHotspotSummarySelectsCompletedContributors(t *testing.T) {
+	result := opsSlowProcessAnalysisRenderTestResult(
+		opsSlowProcessAnalysisRenderTestElement("4109", "PackOrder", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:04Z", "2026-07-18T10:00:12Z", "8s", 8000, 3),
+		opsSlowProcessAnalysisRenderTestElement("4108", "ReserveStock", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:00Z", "2026-07-18T10:00:04Z", "4s", 4000, 1),
+		opsSlowProcessAnalysisRenderTestElement("4110", "AuditTrail", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:12Z", "2026-07-18T10:00:13Z", "1s", 1000, 0),
+		opsSlowProcessAnalysisRenderTestTransition("ReserveStock", "SERVICE_TASK", "OrderFinished", "END_EVENT", "2026-07-18T10:00:04Z", "2026-07-18T10:05:00Z", "4m56s", 296000, 99),
+	)
+
+	summary := opsSlowProcessAnalysisDefaultHotspotSummary(result.Items[0])
+
+	require.Len(t, summary.Rows, 2)
+	require.Equal(t, "PackOrder", summary.Rows[0].ElementID)
+	require.Equal(t, "ReserveStock", summary.Rows[1].ElementID)
+	require.Equal(t, 2, summary.HiddenRowCount)
+	require.Equal(t, opsSlowProcessAnalysisHotspotMinimumProcessShare, 1)
+	summary.Rows[0].ElementID = "changed"
+	require.Equal(t, "PackOrder", result.Items[0].Timeline[0].ElementID)
+}
+
+// TestOpsSlowProcessAnalysisDefaultHotspotSummarySelectsActiveAndIncidentRows verifies operational rows are never hidden by duration threshold.
+func TestOpsSlowProcessAnalysisDefaultHotspotSummarySelectsActiveAndIncidentRows(t *testing.T) {
+	active := opsSlowProcessAnalysisRenderTestElement("4110", "WaitForCallback", "RECEIVE_TASK", "ACTIVE", "2026-07-18T10:04:59Z", "", "", 0, 0)
+	incident := opsSlowProcessAnalysisRenderTestElement("4111", "NotifyCustomer", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:12Z", "2026-07-18T10:00:13Z", "1s", 1000, 0)
+	incident.HasIncident = true
+	incident.IncidentKey = "2251799813687777"
+	result := opsSlowProcessAnalysisRenderTestResult(
+		active,
+		incident,
+		opsSlowProcessAnalysisRenderTestElement("4112", "FastAudit", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:13Z", "2026-07-18T10:00:13Z", "0s", 0, 0),
+	)
+
+	summary := opsSlowProcessAnalysisDefaultHotspotSummary(result.Items[0])
+
+	require.Len(t, summary.Rows, 2)
+	require.ElementsMatch(t, []string{"WaitForCallback", "NotifyCustomer"}, []string{summary.Rows[0].ElementID, summary.Rows[1].ElementID})
+	require.Equal(t, 1, summary.HiddenRowCount)
+}
+
+// TestRenderOpsSlowProcessAnalysisResultHumanIncludesActiveAndIncidentRows verifies default output shows active and incident rows once.
+func TestRenderOpsSlowProcessAnalysisResultHumanIncludesActiveAndIncidentRows(t *testing.T) {
+	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+	active := opsSlowProcessAnalysisRenderTestElement("4110", "WaitForCallback", "RECEIVE_TASK", "ACTIVE", "2026-07-18T10:04:59Z", "", "", 0, 0)
+	incident := opsSlowProcessAnalysisRenderTestElement("4111", "NotifyCustomer", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:12Z", "2026-07-18T10:00:13Z", "1s", 1000, 0)
+	incident.HasIncident = true
+	incident.IncidentKey = "2251799813687777"
+	alsoSlowIncident := opsSlowProcessAnalysisRenderTestElement("4112", "ReviewOrder", "USER_TASK", "COMPLETED", "2026-07-18T10:00:13Z", "2026-07-18T10:01:13Z", "1m0s", 60000, 20)
+	alsoSlowIncident.HasIncident = true
+	alsoSlowIncident.IncidentKey = "2251799813687778"
+	result := opsSlowProcessAnalysisRenderTestResult(active, incident, alsoSlowIncident)
+
+	err := renderOpsSlowProcessAnalysisResult(cmd, result)
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "└─ slowest elements:\n")
+	require.Contains(t, output, "USER_TASK ReviewOrder COMPLETED s:10:00:13.000 e:10:01:13.000 dur:1m0s [██░░░░░░░░] 20% inc!:2251799813687778")
+	require.Contains(t, output, "SERVICE_TASK NotifyCustomer COMPLETED s:10:00:12.000 e:10:00:13.000 dur:1s [░░░░░░░░░░] <1% inc!:2251799813687777")
+	require.Contains(t, output, "RECEIVE_TASK WaitForCallback ACTIVE s:10:04:59.000 dur:-")
+	require.Equal(t, 1, strings.Count(output, "ReviewOrder"))
+	require.NotContains(t, output, "hidden:")
+}
+
+// TestRenderOpsSlowProcessAnalysisResultHumanWithFullTimelineRestoresChronologicalDetails verifies the explicit audit view.
+func TestRenderOpsSlowProcessAnalysisResultHumanWithFullTimelineRestoresChronologicalDetails(t *testing.T) {
+	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+	flagOpsAnalyseSlowProcessInstanceWithFullTimeline = true
+	t.Cleanup(func() { flagOpsAnalyseSlowProcessInstanceWithFullTimeline = false })
+	result := opsSlowProcessAnalysisRenderTestResult(
+		opsSlowProcessAnalysisRenderTestElement("4108", "ReserveStock", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:00Z", "2026-07-18T10:00:00Z", "0s", 0, 0),
+		opsSlowProcessAnalysisRenderTestTransition("ReserveStock", "SERVICE_TASK", "PackOrder", "SERVICE_TASK", "2026-07-18T10:00:00Z", "2026-07-18T10:00:04Z", "4s", 4000, 1),
+		opsSlowProcessAnalysisRenderTestElement("4109", "PackOrder", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:04Z", "2026-07-18T10:00:12Z", "8s", 8000, 3),
+	)
+
+	err := renderOpsSlowProcessAnalysisResult(cmd, result)
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "└─ elements:\n")
+	require.Contains(t, output, "   ├─ 4108 SERVICE_TASK ReserveStock COMPLETED s:10:00:00.000 e:10:00:00.000 dur:0s")
+	require.Contains(t, output, "   ├─ ReserveStock -> PackOrder: 4s [░░░░░░░░░░] 1%")
+	require.Contains(t, output, "   └─ 4109 SERVICE_TASK PackOrder COMPLETED s:10:00:04.000 e:10:00:12.000 dur:8s [░░░░░░░░░░] 3%")
+	require.Less(t, strings.Index(output, "4108 SERVICE_TASK ReserveStock"), strings.Index(output, "ReserveStock -> PackOrder"))
+	require.Less(t, strings.Index(output, "ReserveStock -> PackOrder"), strings.Index(output, "4109 SERVICE_TASK PackOrder"))
+	require.NotContains(t, output, "slowest elements:")
+	require.NotContains(t, output, "hidden:")
+	require.NotContains(t, output, "PackOrder -> ReserveStock")
+	require.True(t, strings.HasSuffix(output, "process instances: 1\n"))
+}
+
+// TestRenderOpsSlowProcessAnalysisResultHumanOmitsHiddenSummaryForEmptyTimeline verifies roots without details do not imply hidden rows.
+func TestRenderOpsSlowProcessAnalysisResultHumanOmitsHiddenSummaryForEmptyTimeline(t *testing.T) {
+	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+	result := opsSlowProcessAnalysisRenderTestResult()
+
+	err := renderOpsSlowProcessAnalysisResult(cmd, result)
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.NotContains(t, output, "slowest elements:")
+	require.NotContains(t, output, "hidden:")
+}
+
 // newOpsSlowProcessAnalysisRenderTestCommand captures command output without mutating the root command.
 func newOpsSlowProcessAnalysisRenderTestCommand() (*cobra.Command, *bytes.Buffer) {
 	buf := &bytes.Buffer{}
 	cmd := &cobra.Command{Use: "slow-process-instances"}
 	cmd.SetOut(buf)
 	return cmd, buf
+}
+
+// renderOpsSlowProcessAnalysisJSONForTest captures JSON output while restoring global render flags.
+func renderOpsSlowProcessAnalysisJSONForTest(t *testing.T, result ops.SlowProcessAnalysisResult, fullTimeline bool) string {
+	t.Helper()
+	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+	prevJSON := flagViewAsJson
+	prevKeysOnly := flagViewKeysOnly
+	prevFullTimeline := flagOpsAnalyseSlowProcessInstanceWithFullTimeline
+	flagViewAsJson = true
+	flagViewKeysOnly = false
+	flagOpsAnalyseSlowProcessInstanceWithFullTimeline = fullTimeline
+	defer func() {
+		flagViewAsJson = prevJSON
+		flagViewKeysOnly = prevKeysOnly
+		flagOpsAnalyseSlowProcessInstanceWithFullTimeline = prevFullTimeline
+	}()
+
+	require.NoError(t, renderOpsSlowProcessAnalysisResult(cmd, result))
+	return buf.String()
+}
+
+// renderOpsSlowProcessAnalysisKeysOnlyForTest captures keys-only output while restoring global render flags.
+func renderOpsSlowProcessAnalysisKeysOnlyForTest(t *testing.T, result ops.SlowProcessAnalysisResult, fullTimeline bool) string {
+	t.Helper()
+	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+	prevJSON := flagViewAsJson
+	prevKeysOnly := flagViewKeysOnly
+	prevFullTimeline := flagOpsAnalyseSlowProcessInstanceWithFullTimeline
+	flagViewAsJson = false
+	flagViewKeysOnly = true
+	flagOpsAnalyseSlowProcessInstanceWithFullTimeline = fullTimeline
+	defer func() {
+		flagViewAsJson = prevJSON
+		flagViewKeysOnly = prevKeysOnly
+		flagOpsAnalyseSlowProcessInstanceWithFullTimeline = prevFullTimeline
+	}()
+
+	require.NoError(t, renderOpsSlowProcessAnalysisResult(cmd, result))
+	return buf.String()
+}
+
+// opsSlowProcessAnalysisRenderTestResult builds one complete root with caller-supplied detail rows.
+func opsSlowProcessAnalysisRenderTestResult(entries ...ops.SlowProcessAnalysisTimelineEntry) ops.SlowProcessAnalysisResult {
+	return ops.SlowProcessAnalysisResult{
+		Items: []ops.SlowProcessAnalysisProcessInstance{
+			opsSlowProcessAnalysisRenderTestRoot(entries...),
+		},
+		Count: 1,
+	}
+}
+
+// opsSlowProcessAnalysisRenderTestRoot keeps fixture roots consistent across summary and full-timeline tests.
+func opsSlowProcessAnalysisRenderTestRoot(entries ...ops.SlowProcessAnalysisTimelineEntry) ops.SlowProcessAnalysisProcessInstance {
+	return ops.SlowProcessAnalysisProcessInstance{
+		Key:                    "2251799813685249",
+		TenantID:               "tenant-a",
+		BpmnProcessID:          "OrderProcess",
+		ProcessDefinitionKey:   "2251799813687001",
+		ProcessVersion:         7,
+		State:                  process.StateCompleted,
+		StartDate:              "2026-07-18T10:00:00Z",
+		EndDate:                "2026-07-18T10:05:00Z",
+		RootProcessInstanceKey: "2251799813685249",
+		Duration:               "5m0s",
+		DurationMillis:         300000,
+		DurationAvailable:      true,
+		Timeline:               append([]ops.SlowProcessAnalysisTimelineEntry(nil), entries...),
+	}
+}
+
+// opsSlowProcessAnalysisRenderTestElement builds an element timeline row with only renderer-relevant fields.
+func opsSlowProcessAnalysisRenderTestElement(key string, id string, typ string, state string, start string, end string, duration string, millis int64, share int) ops.SlowProcessAnalysisTimelineEntry {
+	return ops.SlowProcessAnalysisTimelineEntry{
+		Kind:                 ops.SlowProcessAnalysisTimelineEntryKindElement,
+		ElementInstanceKey:   key,
+		ElementID:            id,
+		Type:                 typ,
+		State:                state,
+		StartDate:            start,
+		EndDate:              end,
+		Duration:             duration,
+		DurationMillis:       millis,
+		DurationAvailable:    duration != "",
+		ProcessDurationShare: share,
+	}
+}
+
+// opsSlowProcessAnalysisRenderTestTransition builds an adjacent timing row with only renderer-relevant fields.
+func opsSlowProcessAnalysisRenderTestTransition(fromID string, fromType string, toID string, toType string, fromEnd string, toStart string, duration string, millis int64, share int) ops.SlowProcessAnalysisTimelineEntry {
+	return ops.SlowProcessAnalysisTimelineEntry{
+		Kind:                 ops.SlowProcessAnalysisTimelineEntryKindTransition,
+		FromElementID:        fromID,
+		FromElementType:      fromType,
+		FromEndDate:          fromEnd,
+		ToElementID:          toID,
+		ToElementType:        toType,
+		ToStartDate:          toStart,
+		Duration:             duration,
+		DurationMillis:       millis,
+		DurationAvailable:    duration != "",
+		ProcessDurationShare: share,
+	}
 }
