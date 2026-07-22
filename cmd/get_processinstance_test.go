@@ -5091,6 +5091,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagWalkPIFlat = false
 	flagWalkPIWithIncidents = false
 	flagWalkPIWithVars = false
+	flagWalkPIWithElements = false
 	flagCmdAutoConfirm = false
 	flagVerbose = false
 	flagViewAsJson = false

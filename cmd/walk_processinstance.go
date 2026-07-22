@@ -18,6 +18,7 @@ var (
 	flagWalkPIFlat          bool
 	flagWalkPIWithIncidents bool
 	flagWalkPIWithVars      bool
+	flagWalkPIWithElements  bool
 )
 
 const (
@@ -160,7 +161,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}
 			}
-			activityItems := activityItemsFromTraversal(result, incidentEnriched, variableEnriched, flagWalkPIWithIncidents)
+			activityItems := activityItemsFromTraversal(result, incidentEnriched, variableEnriched, process.ElementEnrichedProcessInstances{}, flagWalkPIWithIncidents)
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}

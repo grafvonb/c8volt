@@ -18,10 +18,10 @@
 
 **Purpose**: Establish the current behavior and implementation references before changing command behavior.
 
-- [ ] T001 Review existing `get pi --with-elements` behavior and helpers in `cmd/get_processinstance.go`, `cmd/get_processinstance_enrichment.go`, and `cmd/cmd_views_processinstance_activity.go`
-- [ ] T002 Review existing walk enrichment behavior and tests in `cmd/walk_processinstance.go`, `cmd/cmd_views_walk_incidents.go`, and `cmd/walk_test.go`
-- [ ] T003 [P] Review public and internal element enrichment contracts in `c8volt/process/api.go`, `c8volt/process/model.go`, `c8volt/process/client.go`, and `internal/services/processinstance/enrichment.go`
-- [ ] T004 [P] Review command metadata expectations in `cmd/command_contract.go` and `cmd/command_contract_test.go`
+- [x] T001 Review existing `get pi --with-elements` behavior and helpers in `cmd/get_processinstance.go`, `cmd/get_processinstance_enrichment.go`, and `cmd/cmd_views_processinstance_activity.go`
+- [x] T002 Review existing walk enrichment behavior and tests in `cmd/walk_processinstance.go`, `cmd/cmd_views_walk_incidents.go`, and `cmd/walk_test.go`
+- [x] T003 [P] Review public and internal element enrichment contracts in `c8volt/process/api.go`, `c8volt/process/model.go`, `c8volt/process/client.go`, and `internal/services/processinstance/enrichment.go`
+- [x] T004 [P] Review command metadata expectations in `cmd/command_contract.go` and `cmd/command_contract_test.go`
 
 ---
 
@@ -31,10 +31,10 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T005 Add a walk-specific element enrichment flag variable and reset coverage location in `cmd/walk_processinstance.go` and `cmd/walk_test.go`
-- [ ] T006 Extend `activityItemsFromTraversal` to accept element-enriched process instances and populate `processInstanceActivityItem.Elements` in `cmd/cmd_views_processinstance_activity.go`
-- [ ] T007 Route `activityPathView`, `renderActivityFamilyTree`, `formatMustActivityLinesWithTimezone`, and `writeProcessInstanceActivityLinesWithTimezone` through element-aware formatting in `cmd/cmd_views_walk_incidents.go`
-- [ ] T008 Run `gofmt` on `cmd/walk_processinstance.go`, `cmd/cmd_views_processinstance_activity.go`, and `cmd/cmd_views_walk_incidents.go`
+- [x] T005 Add a walk-specific element enrichment flag variable and reset coverage location in `cmd/walk_processinstance.go` and `cmd/walk_test.go`
+- [x] T006 Extend `activityItemsFromTraversal` to accept element-enriched process instances and populate `processInstanceActivityItem.Elements` in `cmd/cmd_views_processinstance_activity.go`
+- [x] T007 Route `activityPathView`, `renderActivityFamilyTree`, `formatMustActivityLinesWithTimezone`, and `writeProcessInstanceActivityLinesWithTimezone` through element-aware formatting in `cmd/cmd_views_walk_incidents.go`
+- [x] T008 Run `gofmt` on `cmd/walk_processinstance.go`, `cmd/cmd_views_processinstance_activity.go`, and `cmd/cmd_views_walk_incidents.go`
 
 **Checkpoint**: Walk activity items can carry elements and render element detail sections without yet exposing the full user-facing contract.
 

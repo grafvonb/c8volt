@@ -19,6 +19,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -97,9 +98,11 @@ func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
 	require.NotContains(t, output, "--family")
 }
 
+// TestWalkProcessInstanceCommand_RegressionPreservesReadOnlyTraversalContract keeps walk metadata and flag-state reset behavior stable.
 func TestWalkProcessInstanceCommand_RegressionPreservesReadOnlyTraversalContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
+	flagWalkPIWithElements = true
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
@@ -131,6 +134,78 @@ func TestWalkProcessInstanceCommand_RegressionPreservesReadOnlyTraversalContract
 		Repeated:    false,
 		Description: "show process-instance-scope variables for keyed process-instance walks",
 	})
+	require.False(t, flagWalkPIWithElements)
+}
+
+// TestActivityItemsFromTraversal_AttachesElementsPreservingTraversalOrder verifies shared walk activity items can carry element enrichment without changing selection order.
+func TestActivityItemsFromTraversal_AttachesElementsPreservingTraversalOrder(t *testing.T) {
+	result := process.TraversalResult{
+		Keys: []string{"root", "child", "missing"},
+		Chain: map[string]process.ProcessInstance{
+			"root":  {Key: "root"},
+			"child": {Key: "child"},
+		},
+	}
+	elements := process.ElementEnrichedProcessInstances{
+		Items: []process.ElementEnrichedProcessInstance{
+			{
+				Item: process.ProcessInstance{Key: "child"},
+				Elements: []process.ProcessInstanceElement{{
+					ElementInstanceKey: "element-child",
+					ProcessInstanceKey: "child",
+				}},
+			},
+			{
+				Item:     process.ProcessInstance{Key: "root"},
+				Elements: []process.ProcessInstanceElement{},
+			},
+		},
+	}
+
+	items := activityItemsFromTraversal(result, process.IncidentEnrichedTraversalResult{}, process.VariableEnrichedProcessInstances{}, elements, false)
+
+	require.Len(t, items, 2)
+	require.Equal(t, "root", items[0].Item.Key)
+	require.Empty(t, items[0].Elements)
+	require.NotNil(t, items[0].Elements)
+	require.Equal(t, "child", items[1].Item.Key)
+	require.Equal(t, "element-child", items[1].Elements[0].ElementInstanceKey)
+}
+
+// TestWalkActivityView_RendersElementsAsProcessInstanceDetails verifies element detail rows stay separate from child process-instance tree rows.
+func TestWalkActivityView_RendersElementsAsProcessInstanceDetails(t *testing.T) {
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	result := process.TraversalResult{
+		RootKey: "root",
+		Keys:    []string{"root", "child"},
+		Edges:   map[string][]string{"root": {"child"}},
+	}
+	items := []processInstanceActivityItem{
+		{
+			Item: process.ProcessInstance{Key: "root", TenantId: "tenant", BpmnProcessId: "demo", ProcessVersion: 1, State: process.StateActive},
+			Elements: []process.ProcessInstanceElement{{
+				ElementInstanceKey: "element-root",
+				Type:               "SERVICE_TASK",
+				ElementId:          "task-a",
+				State:              "ACTIVE",
+				StartDate:          "2026-07-15T10:12:01Z",
+				ProcessInstanceKey: "root",
+			}},
+		},
+		{
+			Item: process.ProcessInstance{Key: "child", TenantId: "tenant", BpmnProcessId: "demo", ProcessVersion: 1, State: process.StateActive},
+		},
+	}
+
+	require.NoError(t, walkActivityView(cmd, walkPIModeFamily, result, items))
+
+	output := buf.String()
+	require.Contains(t, output, "root tenant demo v1 ACTIVE")
+	require.Contains(t, output, "├─ elements:\n│  └─ element-root SERVICE_TASK task-a ACTIVE")
+	require.Contains(t, output, "└─ child tenant demo v1 ACTIVE")
+	require.Less(t, strings.Index(output, "elements:"), strings.Index(output, "child tenant"))
 }
 
 // TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey keeps incident enrichment scoped to keyed walks.
