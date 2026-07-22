@@ -47,15 +47,15 @@
 
 ### Tests for User Story 1
 
-- [ ] T008 [US1] Add renderer tests for default `slowest elements:` output, 1% completed element contributor inclusion, sub-1% completed element row omission, omitted-row count/kind wording, and hidden-row summary in `cmd/cmd_views_ops_slow_process_analysis_test.go`
-- [ ] T009 [US1] Add renderer tests for active-row inclusion, incident-row inclusion, duplicate visibility prevention, and no misleading hidden count for empty timelines in `cmd/cmd_views_ops_slow_process_analysis_test.go`
+- [x] T008 [US1] Add renderer tests for default `slowest elements:` output, 1% completed element contributor inclusion, sub-1% completed element row omission, omitted-row count/kind wording, and hidden-row summary in `cmd/cmd_views_ops_slow_process_analysis_test.go`
+- [x] T009 [US1] Add renderer tests for active-row inclusion, incident-row inclusion, duplicate visibility prevention, and no misleading hidden count for empty timelines in `cmd/cmd_views_ops_slow_process_analysis_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Implement hotspot summary row selection for completed element rows at or above 1%, active element rows, incident-bearing element rows, and duplicate prevention in `cmd/cmd_views_ops_slow_process_analysis.go`
-- [ ] T011 [US1] Implement default human `slowest elements:` rendering and hidden-row summary text in `cmd/cmd_views_ops_slow_process_analysis.go`
-- [ ] T012 [US1] Adjust default summary row formatting to omit element instance keys except incident identity when needed in `cmd/cmd_views_ops_slow_process_analysis.go`
-- [ ] T013 [US1] Run targeted renderer validation for default summary behavior with `go test ./cmd -run 'TestRenderOpsSlowProcessAnalysisResultHuman' -count=1` covering `cmd/cmd_views_ops_slow_process_analysis_test.go`
+- [x] T010 [US1] Implement hotspot summary row selection for completed element rows at or above 1%, active element rows, incident-bearing element rows, and duplicate prevention in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T011 [US1] Implement default human `slowest elements:` rendering and hidden-row summary text in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T012 [US1] Adjust default summary row formatting to omit element instance keys except incident identity when needed in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T013 [US1] Run targeted renderer validation for default summary behavior with `go test ./cmd -run 'TestRenderOpsSlowProcessAnalysisResultHuman' -count=1` covering `cmd/cmd_views_ops_slow_process_analysis_test.go`
 
 **Checkpoint**: User Story 1 delivers the MVP default operator summary and is independently testable.
 
