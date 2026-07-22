@@ -502,8 +502,11 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"Analyze slow process-instance timings",
 		"./c8volt ops analyse slow-process-instances --key 2251799813685249",
 		"./c8volt ops analyze slow-process-instances --bpmn-process-id OrderProcess --state all --limit 20",
+		"./c8volt ops analyse slow-process-instances --key 2251799813685249 --with-full-timeline",
 		"./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 1h30m --dur-element-longer 30s",
 		"./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -",
+		"Default output shows compact slowest element contributors",
+		"Use --with-full-timeline to inspect complete chronological element and transition detail",
 		"Duration thresholds use Go duration syntax",
 		"Calendar units such as 1d are not accepted",
 		"--key strings",
@@ -519,6 +522,8 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"--dur-longer string",
 		"--dur-element-longer string",
 		"--duration-after string",
+		"--with-full-timeline",
+		"show complete chronological element and transition detail",
 	} {
 		if !strings.Contains(analyseDoc, want) {
 			t.Fatalf("expected generated ops analyse slow-process-instances docs to contain %q, got %q", want, analyseDoc)

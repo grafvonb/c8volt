@@ -110,15 +110,15 @@
 
 **Purpose**: Documentation, generated artifacts, formatting, and full validation across all user stories.
 
-- [ ] T027 [P] Update README examples and behavior notes for compact default summaries and `--with-full-timeline` in `README.md`
-- [ ] T028 [P] Update quickstart wording if implementation output differs from the planned examples in `specs/248-slow-process-timeline/quickstart.md`
-- [ ] T029 Update docs generator expectations for the new flag and examples in `docsgen/main_test.go`
-- [ ] T030 Run `gofmt` on `cmd/ops_analyse_slow_process_instances.go`, `cmd/cmd_views_ops_slow_process_analysis.go`, `cmd/ops_analyse_slow_process_instances_test.go`, `cmd/cmd_views_ops_slow_process_analysis_test.go`, `cmd/command_contract_test.go`, and `docsgen/main_test.go`
-- [ ] T031 Run targeted command validation with `go test ./cmd -run 'TestRenderOpsSlowProcessAnalysisResultHuman|TestOpsAnalyseSlowProcessInstances|TestCommandContractOpsAnalyseSlowProcessInstances|TestOpsContract' -count=1` covering `cmd/`
-- [ ] T032 Run docs validation and regenerate generated CLI docs with `go test ./docsgen -count=1` and `make docs-content` covering `docsgen/`, `docs/cli/`, and `docs/index.md`
-- [ ] T033 Build the quickstart binary with `go build -o /tmp/c8volt-slow-timeline .` from `go.mod`
-- [ ] T034 Verify feasible manual scenarios from `specs/248-slow-process-timeline/quickstart.md` against `/tmp/c8volt-slow-timeline`
-- [ ] T035 Run full repository validation with `make test` from `Makefile`
+- [x] T027 [P] Update README examples and behavior notes for compact default summaries and `--with-full-timeline` in `README.md`
+- [x] T028 [P] Update quickstart wording if implementation output differs from the planned examples in `specs/248-slow-process-timeline/quickstart.md`
+- [x] T029 Update docs generator expectations for the new flag and examples in `docsgen/main_test.go`
+- [x] T030 Run `gofmt` on `cmd/ops_analyse_slow_process_instances.go`, `cmd/cmd_views_ops_slow_process_analysis.go`, `cmd/ops_analyse_slow_process_instances_test.go`, `cmd/cmd_views_ops_slow_process_analysis_test.go`, `cmd/command_contract_test.go`, and `docsgen/main_test.go`
+- [x] T031 Run targeted command validation with `go test ./cmd -run 'TestRenderOpsSlowProcessAnalysisResultHuman|TestOpsAnalyseSlowProcessInstances|TestCommandContractOpsAnalyseSlowProcessInstances|TestOpsContract' -count=1` covering `cmd/`
+- [x] T032 Run docs validation and regenerate generated CLI docs with `go test ./docsgen -count=1` and `make docs-content` covering `docsgen/`, `docs/cli/`, and `docs/index.md`
+- [x] T033 Build the quickstart binary with `go build -o /tmp/c8volt-slow-timeline .` from `go.mod`
+- [x] T034 Verify feasible manual scenarios from `specs/248-slow-process-timeline/quickstart.md` against `/tmp/c8volt-slow-timeline`
+- [x] T035 Run full repository validation with `make test` from `Makefile`
 
 ---
 

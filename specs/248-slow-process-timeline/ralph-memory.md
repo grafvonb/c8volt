@@ -15,6 +15,8 @@ Started: 2026-07-22T15:43:37Z
 - Full-timeline human rendering is dispatched only after JSON and keys-only handling in `renderOpsSlowProcessAnalysisResult`; it calls `renderOpsSlowProcessAnalysisFullTimeline`, prints `└─ elements:`, and reuses `formatOpsSlowProcessAnalysisTimelineRow` for chronological element/transition rows.
 - US3 locks machine output with renderer tests that compare JSON and keys-only output with and without `flagOpsAnalyseSlowProcessInstanceWithFullTimeline`; those tests assert no `hidden:`, `slowest elements:`, or summary/full-timeline fields leak into machine output.
 - Command parsing tests now prove `--with-full-timeline` is accepted while `--json` or `--keys-only` is active and does not alter selection, filters, root duration, batch size, or limit in `ops.SlowProcessAnalysisRequest`.
+- README slow-process guidance now describes the compact default `└─ slowest elements:` summary, the `--with-full-timeline` escape hatch, and the complete JSON timeline payload.
+- Generated CLI docs are refreshed through `make docs-content`; `docsgen/main_test.go` now guards the flag, example, and long-description text for `ops analyse slow-process-instances`.
 
 ## Decisions
 - No feature-artifact conflict found between spec, plan, CLI contract, and `specs/ralph-implementation-rules.md` during setup.
@@ -23,21 +25,27 @@ Started: 2026-07-22T15:43:37Z
 - US2 keeps `--with-full-timeline` human-only; it restores the pre-US1 chronological row style without changing selection, detail filtering, service payload, JSON, or keys-only output.
 - US3 confirmed the existing renderer dispatch already checks JSON and keys-only before human full-timeline branching; no renderer implementation change was needed.
 - US3 confirmed `c8volt/ops/model.go`, `c8volt/ops/convert.go`, and `internal/domain/ops_slow_process_analysis.go` have no human-only full-timeline or hidden-row fields.
+- Quickstart wording already matched the implemented output shape, so no quickstart text change was required in Phase 6.
 
 ## Gotchas
 - Do not move summary or hidden-row data into `c8volt/ops/model.go` or `internal/domain/ops_slow_process_analysis.go`; those structs are part of the JSON/public payload and must not gain human-only fields.
 - Existing full chronological `elements:` formatting helpers remain in `cmd/cmd_views_ops_slow_process_analysis.go` but are no longer used by the default human path; US2 should reuse them for `--with-full-timeline`.
 - Command metadata/docs tests cover examples and flag contracts in `cmd/command_contract_test.go`; docs content under `docs/cli/` must be regenerated only after command metadata changes.
-- Because command metadata changed for `--with-full-timeline`, the later polish phase must update `docsgen/main_test.go` expectations and run `make docs-content`; this iteration intentionally did not hand-edit generated docs.
+- `/tmp/c8volt-slow-timeline ops analyse slow-process-instances --help` and the American spelling help both expose the compact-summary text, example, and `--with-full-timeline`; live timeline scenarios still require a configured Camunda target and real process-instance data.
 
 ## Reusable Commands
 - `go test ./cmd -run 'TestRenderOpsSlowProcessAnalysisResultHuman' -count=1`
 - `go test ./cmd -run 'TestRenderOpsSlowProcessAnalysisResult' -count=1`
 - `go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances|TestRenderOpsSlowProcessAnalysisResultHuman|TestCommandContractOpsAnalyseSlowProcessInstances' -count=1`
 - `go test ./cmd -run 'TestRenderOpsSlowProcessAnalysisResult.*JSON|TestRenderOpsSlowProcessAnalysisResult.*KeysOnly|TestOpsAnalyseSlowProcessInstances' -count=1`
+- `go test ./cmd -run 'TestRenderOpsSlowProcessAnalysisResultHuman|TestOpsAnalyseSlowProcessInstances|TestCommandContractOpsAnalyseSlowProcessInstances|TestOpsContract' -count=1`
+- `go test ./docsgen -count=1`
+- `make docs-content`
+- `go build -o /tmp/c8volt-slow-timeline .`
+- `make test`
 
 ## Do Not Repeat
 - Do not re-review the entire service/facade payload for T005 unless behavior changes require it; setup confirmed it remains complete and render-independent.
 
 ## Current Handoff
-- Next iteration should start Phase 6 polish at T027/T028/T029. Update README/quickstart/docsgen expectations for compact default summaries and `--with-full-timeline`, then run docs generation and broader validation.
+- Feature complete; no handoff required.

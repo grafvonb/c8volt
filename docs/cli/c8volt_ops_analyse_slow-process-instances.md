@@ -15,6 +15,8 @@ The command is read-only. Select process instances by explicit --key values or b
 
 Use --dur-longer to keep only process-instance roots whose whole duration is above a threshold. Use --dur-element-longer to hide shorter element and transition detail rows while keeping the root visible. --duration-after is a backward-compatible alias for --dur-element-longer.
 
+Default output shows compact slowest element contributors. Use --with-full-timeline to inspect complete chronological element and transition detail.
+
 Duration thresholds use Go duration syntax such as 500ms, 30s, 5m, 1h, 1h30m, or 24h. Calendar units such as 1d are not accepted.
 
 JSON output exposes stable duration, comparison, and timeline fields. Keys-only output prints selected process-instance keys in result order, one per line.
@@ -30,6 +32,7 @@ c8volt ops analyse slow-process-instances [-] [flags]
   ./c8volt ops analyze slow-process-instances --bpmn-process-id OrderProcess --state all --limit 20
   ./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 5m
   ./c8volt ops analyse slow-process-instances --pd-key 2251799813687001 --dur-element-longer 30s
+  ./c8volt ops analyse slow-process-instances --key 2251799813685249 --with-full-timeline
   ./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 1h30m --dur-element-longer 30s
   ./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -
 ```
@@ -55,6 +58,7 @@ c8volt ops analyse slow-process-instances [-] [flags]
       --start-date-before string    only include process instances with start date <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
   -s, --state string                state to filter discovered process instances: all, active, completed, canceled, terminated (default "all")
       --type string                 runtime element type to keep in detail rows
+      --with-full-timeline          show complete chronological element and transition detail
 ```
 
 ### Options inherited from parent commands

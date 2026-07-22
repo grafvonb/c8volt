@@ -94,3 +94,29 @@ Started: 2026-07-22 17:43:37
 **Learnings**:
 - Existing output dispatch already isolates JSON and keys-only from human full-timeline branching; US3 now has regression coverage for that contract.
 ---
+---
+## Iteration 5 - 2026-07-22 18:08
+**Work Unit**: Phase 6 Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T027: Update README examples and behavior notes for compact default summaries and `--with-full-timeline`
+- [x] T028: Review quickstart wording against implementation output
+- [x] T029: Update docs generator expectations for the new flag and examples
+- [x] T030: Run gofmt on touched command and docsgen Go files
+- [x] T031: Run targeted command validation
+- [x] T032: Run docs validation and regenerate generated CLI docs
+- [x] T033: Build the quickstart binary
+- [x] T034: Verify feasible quickstart scenarios against the quickstart binary
+- [x] T035: Run full repository validation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- docs/cli/c8volt_ops_analyse_slow-process-instances.md
+- docs/index.md
+- docsgen/main_test.go
+- specs/248-slow-process-timeline/tasks.md
+- specs/248-slow-process-timeline/ralph-memory.md
+- specs/248-slow-process-timeline/progress.md
+**Learnings**:
+- Generated docs now include the compact default summary wording, full-timeline example, and `--with-full-timeline` flag; quickstart wording already matched the implemented output shape.
+---
