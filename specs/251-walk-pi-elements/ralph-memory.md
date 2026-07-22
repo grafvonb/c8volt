@@ -15,6 +15,7 @@ Started: 2026-07-22T21:14:46Z
 - US2 confirms children, parent, and flat modes already reuse traversal key order for element enrichment; regression coverage lives in `cmd/walk_test.go`.
 - US3 keeps combined JSON on `activityTraversalPayload` when variables, incidents, or elements are combined, while incident-only JSON continues to use the existing incident traversal payload for compatibility.
 - `walk pi --with-elements` now validates local `--keys-only` incompatibility before traversal/enrichment and wraps element lookup failures as `walk process instance elements: ...`.
+- Final polish updates README walk guidance, regenerates CLI docs with `make docs-content`, and passes targeted command validation plus full `make test`.
 
 ## Gotchas
 - `resetProcessInstanceCommandGlobals` lives in `cmd/get_processinstance_test.go` but is shared by walk tests; new walk command globals must be reset there.
@@ -34,4 +35,4 @@ Started: 2026-07-22T21:14:46Z
 - Do not call generated Camunda clients or versioned services from `cmd`; use `process.API.EnrichProcessInstancesWithElements`.
 
 ## Current Handoff
-- US3 tasks T026-T035 are complete and committed once this work-unit commit lands; next iteration starts polish tasks T036-T041 for README guidance, generated CLI docs, gofmt, targeted command validation, full `make test`, and final task bookkeeping.
+- Feature complete; no handoff required.

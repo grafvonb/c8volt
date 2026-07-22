@@ -119,12 +119,12 @@
 
 **Purpose**: Finish documentation, generated references, formatting, and validation across the feature.
 
-- [ ] T036 [P] Update walk process-instance guidance and examples in `README.md`
-- [ ] T037 Update generated CLI documentation by running `make docs-content` and reviewing `docs/cli/c8volt_walk_process-instance.md`, `docs/cli/c8volt_walk.md`, and `docs/index.md`
-- [ ] T038 Run `gofmt` on all touched Go files in `cmd/`
-- [ ] T039 Run targeted command validation covering `cmd/walk_test.go` and `cmd/command_contract_test.go` with `go test ./cmd -run 'TestWalkProcessInstanceCommand|TestWalkHelp|TestCommandCapabilityForCommand' -count=1`
-- [ ] T040 Run full repository validation through `Makefile` with `make test`
-- [ ] T041 Update task checkboxes in `specs/251-walk-pi-elements/tasks.md` as work completes
+- [x] T036 [P] Update walk process-instance guidance and examples in `README.md`
+- [x] T037 Update generated CLI documentation by running `make docs-content` and reviewing `docs/cli/c8volt_walk_process-instance.md`, `docs/cli/c8volt_walk.md`, and `docs/index.md`
+- [x] T038 Run `gofmt` on all touched Go files in `cmd/`
+- [x] T039 Run targeted command validation covering `cmd/walk_test.go` and `cmd/command_contract_test.go` with `go test ./cmd -run 'TestWalkProcessInstanceCommand|TestWalkHelp|TestCommandCapabilityForCommand' -count=1`
+- [x] T040 Run full repository validation through `Makefile` with `make test`
+- [x] T041 Update task checkboxes in `specs/251-walk-pi-elements/tasks.md` as work completes
 
 ---
 

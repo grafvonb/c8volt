@@ -101,3 +101,25 @@ Started: 2026-07-22 23:14:46
 **Learnings**:
 - Element lookup failures now carry walk command context; assertions should check absence of rendered rows, not absence of the context term.
 ---
+---
+## Iteration 5 - 2026-07-22 23:46
+**Work Unit**: Phase 6 Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T036: Update walk process-instance guidance and examples in `README.md`
+- [x] T037: Update generated CLI documentation with `make docs-content`
+- [x] T038: Run `gofmt` on all touched Go files in `cmd/`
+- [x] T039: Run targeted command validation for walk command and capability tests
+- [x] T040: Run full repository validation with `make test`
+- [x] T041: Update task checkboxes in `specs/251-walk-pi-elements/tasks.md`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- docs/cli/c8volt_walk_process-instance.md
+- docs/index.md
+- specs/251-walk-pi-elements/tasks.md
+- specs/251-walk-pi-elements/ralph-memory.md
+- specs/251-walk-pi-elements/progress.md
+**Learnings**:
+- README now documents walk element enrichment alongside incidents and variables; generated `c8volt_walk.md` had no content delta while `c8volt_walk_process-instance.md` and `docs/index.md` updated as expected.
+---
