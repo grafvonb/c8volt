@@ -33,11 +33,12 @@ var walkProcessInstanceCmd = &cobra.Command{
 	Long: "Inspect the parent/child tree of process instances.\n\n" +
 		"By default, walk shows the full process-instance family as an ASCII tree. Use --parent for ancestry, --children for descendants, or --flat for a path-style family view.\n\n" +
 		"Tenant contract: explicit --key process-instance targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.\n\n" +
-		"Add --with-incidents and/or --with-vars to keyed walks to show incident details and process-instance-scope variables below matching rows.\n\n" +
+		"Add --with-incidents, --with-vars, and/or --with-elements to keyed walks to show incident details, process-instance-scope variables, and runtime element instances below matching rows.\n\n" +
 		"When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.",
 	Example: `  ./c8volt walk pi --key <process-instance-key>
   ./c8volt walk pi --key <process-instance-key> --with-incidents
   ./c8volt walk pi --key <process-instance-key> --with-vars
+  ./c8volt walk pi --key <process-instance-key> --with-elements
   ./c8volt walk pi --key <process-instance-key> --flat
   ./c8volt walk pi --key <process-instance-key> --parent`,
 	Aliases: []string{"pi", "pis"},
@@ -144,9 +145,10 @@ var walkProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		if flagWalkPIWithIncidents || flagWalkPIWithVars {
+		if flagWalkPIWithIncidents || flagWalkPIWithVars || flagWalkPIWithElements {
 			adminInputOpts := collectExplicitPIAdminInputOptions()
 			adminInputIncidentOpts := append(collectIncidentEnrichmentOptions(), options.WithIgnoreTenant())
+			walkedInstances := processInstancesFromTraversal(result)
 			var incidentEnriched process.IncidentEnrichedTraversalResult
 			if flagWalkPIWithIncidents {
 				incidentEnriched, err = cli.EnrichTraversalWithIncidents(cmd.Context(), result, adminInputIncidentOpts...)
@@ -156,18 +158,25 @@ var walkProcessInstanceCmd = &cobra.Command{
 			}
 			var variableEnriched process.VariableEnrichedProcessInstances
 			if flagWalkPIWithVars {
-				variableEnriched, err = cli.EnrichProcessInstancesWithVariables(cmd.Context(), processInstancesFromTraversal(result), adminInputOpts...)
+				variableEnriched, err = cli.EnrichProcessInstancesWithVariables(cmd.Context(), walkedInstances, adminInputOpts...)
 				if err != nil {
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}
 			}
-			activityItems := activityItemsFromTraversal(result, incidentEnriched, variableEnriched, process.ElementEnrichedProcessInstances{}, flagWalkPIWithIncidents)
+			var elementEnriched process.ElementEnrichedProcessInstances
+			if flagWalkPIWithElements {
+				elementEnriched, err = enrichProcessInstancesWithElementActivityOptions(cmd, cli, walkedInstances, adminInputOpts)
+				if err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
+			}
+			activityItems := activityItemsFromTraversal(result, incidentEnriched, variableEnriched, elementEnriched, flagWalkPIWithIncidents)
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 			switch pickMode() {
 			case RenderModeJSON:
-				if flagWalkPIWithIncidents && !flagWalkPIWithVars {
+				if flagWalkPIWithIncidents && !flagWalkPIWithVars && !flagWalkPIWithElements {
 					if err := renderJSONPayload(cmd, RenderModeJSON, incidentEnrichedTraversalPayload(incidentEnriched)); err != nil {
 						handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 					}
@@ -178,7 +187,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 				}
 				return
 			case RenderModeOneLine:
-				if flagWalkPIWithIncidents && !flagWalkPIWithVars {
+				if flagWalkPIWithIncidents && !flagWalkPIWithVars && !flagWalkPIWithElements {
 					if err := w.enrichedView(cmd, incidentEnriched); err != nil {
 						handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 					}
@@ -211,6 +220,7 @@ func init() {
 	fs.IntVar(&flagGetPIIncidentMessageLimit, "incident-message-limit", 0, "maximum characters to show for incident messages when --with-incidents is set; 0 disables truncation")
 	fs.BoolVar(&flagWalkPIWithVars, "with-vars", false, "show process-instance-scope variables for keyed process-instance walks")
 	fs.IntVar(&flagGetPIVarValueLimit, "var-value-limit", 0, "maximum characters to show for variable values when --with-vars is set; 0 disables truncation")
+	fs.BoolVar(&flagWalkPIWithElements, "with-elements", false, "show runtime element instances for keyed process-instance walks")
 
 	setCommandMutation(walkProcessInstanceCmd, CommandMutationReadOnly)
 	setContractSupport(walkProcessInstanceCmd, ContractSupportFull)

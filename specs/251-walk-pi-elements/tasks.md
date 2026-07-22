@@ -48,18 +48,18 @@
 
 ### Tests for User Story 1
 
-- [ ] T009 [P] [US1] Add failing command capability assertions for `walk pi --with-elements` in `cmd/command_contract_test.go`
-- [ ] T010 [US1] Add failing help assertions and family human output test with root and child process instances plus `elements:` sections in `cmd/walk_test.go`
-- [ ] T011 [US1] Add failing empty-elements ownership test ensuring rows with no elements stay visible without placeholder element rows in `cmd/walk_test.go`
-- [ ] T012 [US1] Add failing element incident marker rendering coverage for walked element rows in `cmd/walk_test.go`
+- [x] T009 [P] [US1] Add failing command capability assertions for `walk pi --with-elements` in `cmd/command_contract_test.go`
+- [x] T010 [US1] Add failing help assertions and family human output test with root and child process instances plus `elements:` sections in `cmd/walk_test.go`
+- [x] T011 [US1] Add failing empty-elements ownership test ensuring rows with no elements stay visible without placeholder element rows in `cmd/walk_test.go`
+- [x] T012 [US1] Add failing element incident marker rendering coverage for walked element rows in `cmd/walk_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Register `--with-elements`, update long help and examples, and expose command capability metadata in `cmd/walk_processinstance.go` and `cmd/command_contract.go`
-- [ ] T014 [US1] Invoke `EnrichProcessInstancesWithElements` after traversal using existing admin input options and element activity helpers in `cmd/walk_processinstance.go`
-- [ ] T015 [US1] Merge element enrichments into walked activity items while preserving traversal key order and owner mapping in `cmd/cmd_views_processinstance_activity.go`
-- [ ] T016 [US1] Render default family tree `elements:` sections without nesting child process instances under detail sections in `cmd/cmd_views_walk_incidents.go`
-- [ ] T017 [US1] Run targeted US1 tests covering `cmd/walk_test.go` and `cmd/command_contract_test.go` with `go test ./cmd -run 'TestWalkHelp|TestCommandCapabilityForCommand|TestWalkProcessInstanceCommand_.*Elements' -count=1`
+- [x] T013 [US1] Register `--with-elements`, update long help and examples, and expose command capability metadata in `cmd/walk_processinstance.go` and `cmd/command_contract.go`
+- [x] T014 [US1] Invoke `EnrichProcessInstancesWithElements` after traversal using existing admin input options and element activity helpers in `cmd/walk_processinstance.go`
+- [x] T015 [US1] Merge element enrichments into walked activity items while preserving traversal key order and owner mapping in `cmd/cmd_views_processinstance_activity.go`
+- [x] T016 [US1] Render default family tree `elements:` sections without nesting child process instances under detail sections in `cmd/cmd_views_walk_incidents.go`
+- [x] T017 [US1] Run targeted US1 tests covering `cmd/walk_test.go` and `cmd/command_contract_test.go` with `go test ./cmd -run 'TestWalkHelp|TestCommandCapabilityForCommand|TestWalkProcessInstanceCommand_.*Elements' -count=1`
 
 **Checkpoint**: User Story 1 is functional and testable as the MVP.
 

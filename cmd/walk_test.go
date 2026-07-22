@@ -88,9 +88,11 @@ func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
 		"returns the partial tree plus a warning",
 		"./c8volt walk pi --key <process-instance-key> --with-incidents",
 		"./c8volt walk pi --key <process-instance-key> --with-vars",
+		"./c8volt walk pi --key <process-instance-key> --with-elements",
 		"./c8volt walk pi --key <process-instance-key> --flat",
 	}, nil)
 	require.Contains(t, output, "--flat")
+	require.Contains(t, output, "--with-elements")
 	require.Contains(t, output, "--incident-message-limit int")
 	require.Contains(t, output, "--incident-state string")
 	require.Contains(t, output, "incident state scope for --with-incidents: active, pending, resolved, migrated, unknown, all")
@@ -206,6 +208,149 @@ func TestWalkActivityView_RendersElementsAsProcessInstanceDetails(t *testing.T) 
 	require.Contains(t, output, "├─ elements:\n│  └─ element-root SERVICE_TASK task-a ACTIVE")
 	require.Contains(t, output, "└─ child tenant demo v1 ACTIVE")
 	require.Less(t, strings.Index(output, "elements:"), strings.Index(output, "child tenant"))
+}
+
+// TestWalkProcessInstanceCommand_WithElementsFamilyHumanOutputShowsRuntimeElements verifies the default family walk enriches each walked owner without changing tree order.
+func TestWalkProcessInstanceCommand_WithElementsFamilyHumanOutputShowsRuntimeElements(t *testing.T) {
+	var requests []string
+	var elementFilters []map[string]any
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", false)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			switch {
+			case strings.Contains(string(body), `"parentProcessInstanceKey":"123"`):
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t, walkedProcessInstanceJSON("124", "123", false))))
+			case strings.Contains(string(body), `"parentProcessInstanceKey":"124"`):
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+			default:
+				t.Fatalf("unexpected search body: %s", string(body))
+			}
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/element-instances/search":
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			filter := requireJSONObject(t, body["filter"])
+			elementFilters = append(elementFilters, filter)
+			switch filter["processInstanceKey"] {
+			case "123":
+				_, _ = w.Write([]byte(walkedElementInstancesSearchJSON(t,
+					walkedElementInstanceFixture("element-root", "123", "root-task", false, ""),
+				)))
+			case "124":
+				_, _ = w.Write([]byte(walkedElementInstancesSearchJSON(t,
+					walkedElementInstanceFixture("element-child", "124", "child-task", false, ""),
+				)))
+			default:
+				t.Fatalf("unexpected element filter: %v", filter)
+			}
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "123",
+		"--with-elements",
+	)
+
+	require.Equal(t, []string{
+		"GET /v2/process-instances/123",
+		"GET /v2/process-instances/123",
+		"POST /v2/process-instances/search",
+		"POST /v2/process-instances/search",
+		"POST /v2/element-instances/search",
+		"POST /v2/element-instances/search",
+	}, requests)
+	require.Len(t, elementFilters, 2)
+	require.Equal(t, "123", elementFilters[0]["processInstanceKey"])
+	require.Equal(t, "124", elementFilters[1]["processInstanceKey"])
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "├─ elements:")
+	require.Contains(t, output, "element-root SERVICE_TASK root-task")
+	require.Contains(t, output, "└─ 124 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "   └─ elements:")
+	require.Contains(t, output, "element-child SERVICE_TASK child-task")
+	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "element-root"))
+	require.Less(t, strings.Index(output, "element-root"), strings.Index(output, "124 tenant demo"))
+	require.Less(t, strings.Index(output, "124 tenant demo"), strings.Index(output, "element-child"))
+}
+
+// TestWalkProcessInstanceCommand_WithElementsKeepsEmptyOwnersVisible verifies a walked row with no elements does not gain placeholder detail rows.
+func TestWalkProcessInstanceCommand_WithElementsKeepsEmptyOwnersVisible(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", false)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/element-instances/search":
+			_, _ = w.Write([]byte(walkedElementInstancesSearchJSON(t)))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "123",
+		"--with-elements",
+	)
+
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.NotContains(t, output, "elements:")
+	require.NotContains(t, output, "element-")
+}
+
+// TestWalkProcessInstanceCommand_WithElementsRendersIncidentMarkers keeps element incident markers aligned with get pi output.
+func TestWalkProcessInstanceCommand_WithElementsRendersIncidentMarkers(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", false)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/element-instances/search":
+			_, _ = w.Write([]byte(walkedElementInstancesSearchJSON(t,
+				walkedElementInstanceFixture("element-with-key", "123", "service-a", true, "incident-777"),
+				walkedElementInstanceFixture("element-with-marker", "123", "service-b", true, ""),
+			)))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "123",
+		"--with-elements",
+	)
+
+	require.Contains(t, output, "└─ elements:")
+	require.Contains(t, output, "element-with-key")
+	require.Contains(t, output, "inc!:incident-777")
+	require.Contains(t, output, "element-with-marker")
+	require.Contains(t, output, "inc!")
 }
 
 // TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey keeps incident enrichment scoped to keyed walks.
@@ -1514,6 +1659,44 @@ func walkedIncidentDetailsJSON(t *testing.T, processInstanceKey string, messages
 			"errorMessage":       message,
 		})
 	}
+	payload := map[string]any{
+		"items": items,
+		"page": map[string]any{
+			"totalItems":        len(items),
+			"hasMoreTotalItems": false,
+		},
+	}
+	raw, err := json.Marshal(payload)
+	require.NoError(t, err)
+	return string(raw)
+}
+
+// walkedElementInstanceFixture builds runtime element rows with stable process-instance ownership for walk enrichment tests.
+func walkedElementInstanceFixture(elementInstanceKey, processInstanceKey, elementID string, hasIncident bool, incidentKey string) map[string]any {
+	item := map[string]any{
+		"elementInstanceKey":     elementInstanceKey,
+		"elementId":              elementID,
+		"elementName":            elementID,
+		"type":                   "SERVICE_TASK",
+		"state":                  "ACTIVE",
+		"startDate":              "2026-07-15T10:12:04Z",
+		"processInstanceKey":     processInstanceKey,
+		"rootProcessInstanceKey": "123",
+		"processDefinitionId":    "demo",
+		"processDefinitionKey":   "9001",
+		"tenantId":               "tenant",
+		"hasIncident":            hasIncident,
+	}
+	if incidentKey != "" {
+		item["incidentKey"] = incidentKey
+	}
+	return item
+}
+
+// walkedElementInstancesSearchJSON wraps runtime element fixtures in the generated search response shape.
+func walkedElementInstancesSearchJSON(t *testing.T, items ...map[string]any) string {
+	t.Helper()
+
 	payload := map[string]any{
 		"items": items,
 		"page": map[string]any{
