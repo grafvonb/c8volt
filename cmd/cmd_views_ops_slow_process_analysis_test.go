@@ -336,6 +336,31 @@ func TestRenderOpsSlowProcessAnalysisResultKeysOnlyRendersUniqueRootKeys(t *test
 	require.Equal(t, "2251799813685249\n2251799813685250\n", buf.String())
 }
 
+// TestRenderOpsSlowProcessAnalysisResultKeysOnlyIgnoresFullTimelineFlag verifies the audit switch cannot affect pipelines.
+func TestRenderOpsSlowProcessAnalysisResultKeysOnlyIgnoresFullTimelineFlag(t *testing.T) {
+	result := ops.SlowProcessAnalysisResult{
+		Items: []ops.SlowProcessAnalysisProcessInstance{
+			opsSlowProcessAnalysisRenderTestRoot(
+				opsSlowProcessAnalysisRenderTestElement("4108", "ReserveStock", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:00Z", "2026-07-18T10:00:00Z", "0s", 0, 0),
+				opsSlowProcessAnalysisRenderTestElement("4109", "PackOrder", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:04Z", "2026-07-18T10:00:12Z", "8s", 8000, 3),
+			),
+			{Key: "2251799813685250"},
+			{Key: "2251799813685249"},
+		},
+		Count: 2,
+	}
+
+	defaultOutput := renderOpsSlowProcessAnalysisKeysOnlyForTest(t, result, false)
+	fullTimelineOutput := renderOpsSlowProcessAnalysisKeysOnlyForTest(t, result, true)
+
+	require.Equal(t, defaultOutput, fullTimelineOutput)
+	require.Equal(t, "2251799813685249\n2251799813685250\n", fullTimelineOutput)
+	require.NotContains(t, fullTimelineOutput, "slowest elements:")
+	require.NotContains(t, fullTimelineOutput, "hidden:")
+	require.NotContains(t, fullTimelineOutput, "with-full-timeline")
+	require.NotContains(t, fullTimelineOutput, "elements:")
+}
+
 // TestRenderOpsSlowProcessAnalysisResultJSONIncludesStableAnalysisFields verifies automation-visible payload fields.
 func TestRenderOpsSlowProcessAnalysisResultJSONIncludesStableAnalysisFields(t *testing.T) {
 	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
@@ -429,6 +454,48 @@ func TestRenderOpsSlowProcessAnalysisResultJSONIncludesStableAnalysisFields(t *t
 	require.Contains(t, buf.String(), `"capturedAt"`)
 	require.Contains(t, buf.String(), `"comparisonSampleCount"`)
 	require.Contains(t, buf.String(), `"processDurationShare"`)
+}
+
+// TestRenderOpsSlowProcessAnalysisResultJSONIgnoresFullTimelineFlag verifies summary-only state never enters JSON output.
+func TestRenderOpsSlowProcessAnalysisResultJSONIgnoresFullTimelineFlag(t *testing.T) {
+	captured := time.Date(2026, 7, 18, 10, 30, 0, 0, time.UTC)
+	result := ops.SlowProcessAnalysisResult{
+		Request: ops.SlowProcessAnalysisRequest{
+			CommandName:   "ops analyse slow-process-instances",
+			SelectionMode: ops.SlowProcessAnalysisSelectionModeExplicitKeys,
+			InputKeys:     typex.Keys{"2251799813685249"},
+			OutputMode:    "json",
+		},
+		CapturedAt: captured,
+		Items: []ops.SlowProcessAnalysisProcessInstance{
+			opsSlowProcessAnalysisRenderTestRoot(
+				opsSlowProcessAnalysisRenderTestElement("4108", "ReserveStock", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:00Z", "2026-07-18T10:00:00Z", "0s", 0, 0),
+				opsSlowProcessAnalysisRenderTestTransition("ReserveStock", "SERVICE_TASK", "PackOrder", "SERVICE_TASK", "2026-07-18T10:00:00Z", "2026-07-18T10:00:04Z", "4s", 4000, 1),
+				opsSlowProcessAnalysisRenderTestElement("4109", "PackOrder", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:04Z", "2026-07-18T10:00:12Z", "8s", 8000, 3),
+			),
+		},
+		Count: 1,
+	}
+
+	defaultJSON := renderOpsSlowProcessAnalysisJSONForTest(t, result, false)
+	fullTimelineJSON := renderOpsSlowProcessAnalysisJSONForTest(t, result, true)
+
+	require.JSONEq(t, defaultJSON, fullTimelineJSON)
+	require.Contains(t, fullTimelineJSON, `"timeline"`)
+	require.Contains(t, fullTimelineJSON, `"ReserveStock"`)
+	require.Contains(t, fullTimelineJSON, `"PackOrder"`)
+	require.NotContains(t, fullTimelineJSON, "slowest elements:")
+	require.NotContains(t, fullTimelineJSON, "hidden:")
+	require.NotContains(t, fullTimelineJSON, "with-full-timeline")
+	require.NotContains(t, fullTimelineJSON, "hiddenRow")
+	require.NotContains(t, fullTimelineJSON, "slowestElements")
+	require.NotContains(t, fullTimelineJSON, "fullTimeline")
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal([]byte(fullTimelineJSON), &payload))
+	require.NotContains(t, payload, "hiddenRowCount")
+	require.NotContains(t, payload, "slowestElements")
+	require.NotContains(t, payload, "withFullTimeline")
 }
 
 // TestRenderOpsSlowProcessAnalysisResultEmptySearchOutputs verifies all output modes represent no-match discovery cleanly.
@@ -578,6 +645,46 @@ func newOpsSlowProcessAnalysisRenderTestCommand() (*cobra.Command, *bytes.Buffer
 	cmd := &cobra.Command{Use: "slow-process-instances"}
 	cmd.SetOut(buf)
 	return cmd, buf
+}
+
+// renderOpsSlowProcessAnalysisJSONForTest captures JSON output while restoring global render flags.
+func renderOpsSlowProcessAnalysisJSONForTest(t *testing.T, result ops.SlowProcessAnalysisResult, fullTimeline bool) string {
+	t.Helper()
+	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+	prevJSON := flagViewAsJson
+	prevKeysOnly := flagViewKeysOnly
+	prevFullTimeline := flagOpsAnalyseSlowProcessInstanceWithFullTimeline
+	flagViewAsJson = true
+	flagViewKeysOnly = false
+	flagOpsAnalyseSlowProcessInstanceWithFullTimeline = fullTimeline
+	defer func() {
+		flagViewAsJson = prevJSON
+		flagViewKeysOnly = prevKeysOnly
+		flagOpsAnalyseSlowProcessInstanceWithFullTimeline = prevFullTimeline
+	}()
+
+	require.NoError(t, renderOpsSlowProcessAnalysisResult(cmd, result))
+	return buf.String()
+}
+
+// renderOpsSlowProcessAnalysisKeysOnlyForTest captures keys-only output while restoring global render flags.
+func renderOpsSlowProcessAnalysisKeysOnlyForTest(t *testing.T, result ops.SlowProcessAnalysisResult, fullTimeline bool) string {
+	t.Helper()
+	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+	prevJSON := flagViewAsJson
+	prevKeysOnly := flagViewKeysOnly
+	prevFullTimeline := flagOpsAnalyseSlowProcessInstanceWithFullTimeline
+	flagViewAsJson = false
+	flagViewKeysOnly = true
+	flagOpsAnalyseSlowProcessInstanceWithFullTimeline = fullTimeline
+	defer func() {
+		flagViewAsJson = prevJSON
+		flagViewKeysOnly = prevKeysOnly
+		flagOpsAnalyseSlowProcessInstanceWithFullTimeline = prevFullTimeline
+	}()
+
+	require.NoError(t, renderOpsSlowProcessAnalysisResult(cmd, result))
+	return buf.String()
 }
 
 // opsSlowProcessAnalysisRenderTestResult builds one complete root with caller-supplied detail rows.

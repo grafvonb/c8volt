@@ -87,6 +87,50 @@ func TestOpsAnalyseSlowProcessInstancesWithFullTimelineFlagIsCommandLocal(t *tes
 	require.Equal(t, "one-line", got.Request.OutputMode)
 }
 
+// TestOpsAnalyseSlowProcessInstancesWithFullTimelineAllowsMachineModes verifies parse output mode remains independent.
+func TestOpsAnalyseSlowProcessInstancesWithFullTimelineAllowsMachineModes(t *testing.T) {
+	tests := []struct {
+		name string
+		mode string
+		json bool
+		keys bool
+	}{
+		{name: "json", mode: "json", json: true},
+		{name: "keys-only", mode: "keys-only", keys: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+			prevJSON := flagViewAsJson
+			prevKeysOnly := flagViewKeysOnly
+			t.Cleanup(func() {
+				flagViewAsJson = prevJSON
+				flagViewKeysOnly = prevKeysOnly
+			})
+			flagViewAsJson = tc.json
+			flagViewKeysOnly = tc.keys
+			flagOpsAnalyseSlowProcessInstanceBpmnProcessID = "OrderProcess"
+
+			withoutFullTimeline, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, nil, nil)
+			require.NoError(t, err)
+			flagOpsAnalyseSlowProcessInstanceWithFullTimeline = true
+			withFullTimeline, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, nil, nil)
+
+			require.NoError(t, err)
+			require.False(t, withoutFullTimeline.WithFullTimeline)
+			require.True(t, withFullTimeline.WithFullTimeline)
+			require.Equal(t, tc.mode, withFullTimeline.Request.OutputMode)
+			require.Equal(t, withoutFullTimeline.Request.SelectionMode, withFullTimeline.Request.SelectionMode)
+			require.Equal(t, withoutFullTimeline.Request.ProcessDefinitionSelector, withFullTimeline.Request.ProcessDefinitionSelector)
+			require.Equal(t, withoutFullTimeline.Request.ProcessInstanceFilters, withFullTimeline.Request.ProcessInstanceFilters)
+			require.Equal(t, withoutFullTimeline.Request.DetailFilters, withFullTimeline.Request.DetailFilters)
+			require.Equal(t, withoutFullTimeline.Request.RootDurationLonger, withFullTimeline.Request.RootDurationLonger)
+			require.Equal(t, withoutFullTimeline.Request.BatchSize, withFullTimeline.Request.BatchSize)
+			require.Equal(t, withoutFullTimeline.Request.Limit, withFullTimeline.Request.Limit)
+		})
+	}
+}
+
 // TestOpsAnalyseSlowProcessInstancesRejectsInvalidExplicitKeyInputs verifies local key-mode validation.
 func TestOpsAnalyseSlowProcessInstancesRejectsInvalidExplicitKeyInputs(t *testing.T) {
 	tests := []struct {

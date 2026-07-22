@@ -92,15 +92,15 @@
 
 ### Tests for User Story 3
 
-- [ ] T021 [US3] Add JSON stability tests for output with and without `--with-full-timeline`, including no hidden-row or summary-only fields, in `cmd/cmd_views_ops_slow_process_analysis_test.go`
-- [ ] T022 [US3] Add keys-only stability tests for output with and without `--with-full-timeline`, including one key per line and no summary text, in `cmd/cmd_views_ops_slow_process_analysis_test.go`
-- [ ] T023 [P] [US3] Add command validation tests proving `--with-full-timeline` is accepted with `--json` and `--keys-only` without changing request selection semantics in `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T021 [US3] Add JSON stability tests for output with and without `--with-full-timeline`, including no hidden-row or summary-only fields, in `cmd/cmd_views_ops_slow_process_analysis_test.go`
+- [x] T022 [US3] Add keys-only stability tests for output with and without `--with-full-timeline`, including one key per line and no summary text, in `cmd/cmd_views_ops_slow_process_analysis_test.go`
+- [x] T023 [P] [US3] Add command validation tests proving `--with-full-timeline` is accepted with `--json` and `--keys-only` without changing request selection semantics in `cmd/ops_analyse_slow_process_instances_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T024 [US3] Ensure `renderOpsSlowProcessAnalysisResult` checks JSON and keys-only modes before any human full-timeline branching in `cmd/cmd_views_ops_slow_process_analysis.go`
-- [ ] T025 [US3] Remove or avoid any human-only full-timeline or hidden-row fields in `c8volt/ops/model.go`, `c8volt/ops/convert.go`, and `internal/domain/ops_slow_process_analysis.go`
-- [ ] T026 [US3] Run targeted machine-output validation with `go test ./cmd -run 'TestRenderOpsSlowProcessAnalysisResult.*JSON|TestRenderOpsSlowProcessAnalysisResult.*KeysOnly|TestOpsAnalyseSlowProcessInstances' -count=1` covering `cmd/cmd_views_ops_slow_process_analysis_test.go` and `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T024 [US3] Ensure `renderOpsSlowProcessAnalysisResult` checks JSON and keys-only modes before any human full-timeline branching in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T025 [US3] Remove or avoid any human-only full-timeline or hidden-row fields in `c8volt/ops/model.go`, `c8volt/ops/convert.go`, and `internal/domain/ops_slow_process_analysis.go`
+- [x] T026 [US3] Run targeted machine-output validation with `go test ./cmd -run 'TestRenderOpsSlowProcessAnalysisResult.*JSON|TestRenderOpsSlowProcessAnalysisResult.*KeysOnly|TestOpsAnalyseSlowProcessInstances' -count=1` covering `cmd/cmd_views_ops_slow_process_analysis_test.go` and `cmd/ops_analyse_slow_process_instances_test.go`
 
 **Checkpoint**: All user stories are independently functional and machine output contracts remain stable.
 

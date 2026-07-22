@@ -73,3 +73,24 @@ Started: 2026-07-22 17:43:37
 **Learnings**:
 - `--with-full-timeline` can remain command-local while the renderer restores the existing chronological `elements:` tree after machine-output dispatch.
 ---
+---
+## Iteration 4 - 2026-07-22 18:02
+**Work Unit**: User Story 3 - Preserve Script And Machine Output Contracts
+**Tasks Completed**:
+- [x] T021: Add JSON stability tests for `--with-full-timeline`
+- [x] T022: Add keys-only stability tests for `--with-full-timeline`
+- [x] T023: Add command validation tests for machine modes with `--with-full-timeline`
+- [x] T024: Ensure machine-output dispatch precedes human full-timeline branching
+- [x] T025: Avoid human-only fields in facade and domain slow-process models
+- [x] T026: Run targeted machine-output validation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_ops_slow_process_analysis_test.go
+- cmd/ops_analyse_slow_process_instances_test.go
+- specs/248-slow-process-timeline/tasks.md
+- specs/248-slow-process-timeline/ralph-memory.md
+- specs/248-slow-process-timeline/progress.md
+**Learnings**:
+- Existing output dispatch already isolates JSON and keys-only from human full-timeline branching; US3 now has regression coverage for that contract.
+---

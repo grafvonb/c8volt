@@ -13,12 +13,16 @@ Started: 2026-07-22T15:43:37Z
 - Hidden default detail is rendered as `hidden: N instant/fast timeline row(s); use --with-full-timeline` and counts omitted analyzed timeline rows only, not the root.
 - `--with-full-timeline` is a command-local bool flag (`flagOpsAnalyseSlowProcessInstanceWithFullTimeline`) registered in `cmd/ops_analyse_slow_process_instances.go`; it is parsed into `opsSlowProcessAnalysisCommandRequest.WithFullTimeline` for command tests but is intentionally not added to facade/domain request structs.
 - Full-timeline human rendering is dispatched only after JSON and keys-only handling in `renderOpsSlowProcessAnalysisResult`; it calls `renderOpsSlowProcessAnalysisFullTimeline`, prints `└─ elements:`, and reuses `formatOpsSlowProcessAnalysisTimelineRow` for chronological element/transition rows.
+- US3 locks machine output with renderer tests that compare JSON and keys-only output with and without `flagOpsAnalyseSlowProcessInstanceWithFullTimeline`; those tests assert no `hidden:`, `slowest elements:`, or summary/full-timeline fields leak into machine output.
+- Command parsing tests now prove `--with-full-timeline` is accepted while `--json` or `--keys-only` is active and does not alter selection, filters, root duration, batch size, or limit in `ops.SlowProcessAnalysisRequest`.
 
 ## Decisions
 - No feature-artifact conflict found between spec, plan, CLI contract, and `specs/ralph-implementation-rules.md` during setup.
 - Keep the service/domain/facade slow-process payload unchanged; `internal/services/ops/slow_process_analysis.go` builds the complete timeline, applies existing detail filters, and JSON exposes that complete render-independent result.
 - US1 intentionally changed default human output only; JSON and keys-only dispatch still happens before human summary selection.
 - US2 keeps `--with-full-timeline` human-only; it restores the pre-US1 chronological row style without changing selection, detail filtering, service payload, JSON, or keys-only output.
+- US3 confirmed the existing renderer dispatch already checks JSON and keys-only before human full-timeline branching; no renderer implementation change was needed.
+- US3 confirmed `c8volt/ops/model.go`, `c8volt/ops/convert.go`, and `internal/domain/ops_slow_process_analysis.go` have no human-only full-timeline or hidden-row fields.
 
 ## Gotchas
 - Do not move summary or hidden-row data into `c8volt/ops/model.go` or `internal/domain/ops_slow_process_analysis.go`; those structs are part of the JSON/public payload and must not gain human-only fields.
@@ -30,9 +34,10 @@ Started: 2026-07-22T15:43:37Z
 - `go test ./cmd -run 'TestRenderOpsSlowProcessAnalysisResultHuman' -count=1`
 - `go test ./cmd -run 'TestRenderOpsSlowProcessAnalysisResult' -count=1`
 - `go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances|TestRenderOpsSlowProcessAnalysisResultHuman|TestCommandContractOpsAnalyseSlowProcessInstances' -count=1`
+- `go test ./cmd -run 'TestRenderOpsSlowProcessAnalysisResult.*JSON|TestRenderOpsSlowProcessAnalysisResult.*KeysOnly|TestOpsAnalyseSlowProcessInstances' -count=1`
 
 ## Do Not Repeat
 - Do not re-review the entire service/facade payload for T005 unless behavior changes require it; setup confirmed it remains complete and render-independent.
 
 ## Current Handoff
-- Next iteration should start User Story 3 at T021/T022/T023. Add JSON and keys-only stability tests with and without `--with-full-timeline`, then confirm output-mode dispatch still checks JSON/keys-only before human branching and no facade/domain fields were added.
+- Next iteration should start Phase 6 polish at T027/T028/T029. Update README/quickstart/docsgen expectations for compact default summaries and `--with-full-timeline`, then run docs generation and broader validation.
