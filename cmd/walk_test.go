@@ -353,6 +353,250 @@ func TestWalkProcessInstanceCommand_WithElementsRendersIncidentMarkers(t *testin
 	require.Contains(t, output, "inc!")
 }
 
+// TestWalkProcessInstanceCommand_ChildrenWithElementsPreservesDescendantSelection verifies child traversal order is reused for owner-specific element lookup.
+func TestWalkProcessInstanceCommand_ChildrenWithElementsPreservesDescendantSelection(t *testing.T) {
+	var elementFilters []map[string]any
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", false)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			switch {
+			case strings.Contains(string(body), `"parentProcessInstanceKey":"123"`):
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t, walkedProcessInstanceJSON("124", "123", false))))
+			case strings.Contains(string(body), `"parentProcessInstanceKey":"124"`):
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t, walkedProcessInstanceJSON("125", "124", false))))
+			case strings.Contains(string(body), `"parentProcessInstanceKey":"125"`):
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+			default:
+				t.Fatalf("unexpected search body: %s", string(body))
+			}
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/element-instances/search":
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			filter := requireJSONObject(t, body["filter"])
+			elementFilters = append(elementFilters, filter)
+			key, _ := filter["processInstanceKey"].(string)
+			_, _ = w.Write([]byte(walkedElementInstancesSearchJSON(t,
+				walkedElementInstanceFixture("element-"+key, key, "task-"+key, false, ""),
+			)))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "123",
+		"--children",
+		"--with-elements",
+	)
+
+	require.Len(t, elementFilters, 3)
+	require.Equal(t, "123", elementFilters[0]["processInstanceKey"])
+	require.Equal(t, "124", elementFilters[1]["processInstanceKey"])
+	require.Equal(t, "125", elementFilters[2]["processInstanceKey"])
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "element-123 SERVICE_TASK task-123 ACTIVE")
+	require.Contains(t, output, "124 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "element-124 SERVICE_TASK task-124 ACTIVE")
+	require.Contains(t, output, "125 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "element-125 SERVICE_TASK task-125 ACTIVE")
+	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "element-123"))
+	require.Less(t, strings.Index(output, "element-123"), strings.Index(output, "124 tenant demo"))
+	require.Less(t, strings.Index(output, "124 tenant demo"), strings.Index(output, "element-124"))
+	require.Less(t, strings.Index(output, "element-124"), strings.Index(output, "125 tenant demo"))
+	require.Less(t, strings.Index(output, "125 tenant demo"), strings.Index(output, "element-125"))
+}
+
+// TestWalkProcessInstanceCommand_ParentWithElementsPreservesAncestryOrder verifies parent traversal enriches the selected row before ancestors.
+func TestWalkProcessInstanceCommand_ParentWithElementsPreservesAncestryOrder(t *testing.T) {
+	var elementFilters []map[string]any
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/125":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("125", "124", false)))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/124":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("124", "123", false)))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", false)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/element-instances/search":
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			filter := requireJSONObject(t, body["filter"])
+			elementFilters = append(elementFilters, filter)
+			key, _ := filter["processInstanceKey"].(string)
+			_, _ = w.Write([]byte(walkedElementInstancesSearchJSON(t,
+				walkedElementInstanceFixture("element-"+key, key, "task-"+key, false, ""),
+			)))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "125",
+		"--parent",
+		"--with-elements",
+	)
+
+	require.Len(t, elementFilters, 3)
+	require.Equal(t, "125", elementFilters[0]["processInstanceKey"])
+	require.Equal(t, "124", elementFilters[1]["processInstanceKey"])
+	require.Equal(t, "123", elementFilters[2]["processInstanceKey"])
+	require.Contains(t, output, "125 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "element-125 SERVICE_TASK task-125 ACTIVE")
+	require.Contains(t, output, "124 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "element-124 SERVICE_TASK task-124 ACTIVE")
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "element-123 SERVICE_TASK task-123 ACTIVE")
+	require.Less(t, strings.Index(output, "125 tenant demo"), strings.Index(output, "element-125"))
+	require.Less(t, strings.Index(output, "element-125"), strings.Index(output, "124 tenant demo"))
+	require.Less(t, strings.Index(output, "124 tenant demo"), strings.Index(output, "element-124"))
+	require.Less(t, strings.Index(output, "element-124"), strings.Index(output, "123 tenant demo"))
+	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "element-123"))
+}
+
+// TestWalkProcessInstanceCommand_FlatWithElementsPreservesPathSeparators verifies flat family rendering keeps relationship separators around detail sections.
+func TestWalkProcessInstanceCommand_FlatWithElementsPreservesPathSeparators(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", false)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			switch {
+			case strings.Contains(string(body), `"parentProcessInstanceKey":"123"`):
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t, walkedProcessInstanceJSON("124", "123", false))))
+			case strings.Contains(string(body), `"parentProcessInstanceKey":"124"`):
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+			default:
+				t.Fatalf("unexpected search body: %s", string(body))
+			}
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/element-instances/search":
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			filter := requireJSONObject(t, body["filter"])
+			key, _ := filter["processInstanceKey"].(string)
+			_, _ = w.Write([]byte(walkedElementInstancesSearchJSON(t,
+				walkedElementInstanceFixture("element-"+key, key, "task-"+key, false, ""),
+			)))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "123",
+		"--flat",
+		"--with-elements",
+	)
+
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "element-123 SERVICE_TASK task-123 ACTIVE")
+	require.Contains(t, output, " ⇄ \n124 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "element-124 SERVICE_TASK task-124 ACTIVE")
+	require.Less(t, strings.Index(output, "element-123"), strings.Index(output, " ⇄ \n124 tenant demo"))
+	require.Less(t, strings.Index(output, "124 tenant demo"), strings.Index(output, "element-124"))
+}
+
+// TestWalkProcessInstanceCommand_DefaultFamilyWithoutElementsDoesNotSearchElements proves default traversal does not run element lookup.
+func TestWalkProcessInstanceCommand_DefaultFamilyWithoutElementsDoesNotSearchElements(t *testing.T) {
+	var requests []string
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", false)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/element-instances/search":
+			t.Fatalf("element lookup should not run without --with-elements: %s %s", r.Method, r.URL.Path)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "123",
+	)
+
+	require.Equal(t, []string{
+		"GET /v2/process-instances/123",
+		"GET /v2/process-instances/123",
+		"POST /v2/process-instances/search",
+	}, requests)
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.NotContains(t, output, "elements:")
+}
+
+// TestWalkProcessInstanceCommand_WithElementsPartialTraversalPreservesWarning keeps missing-ancestor diagnostics visible after element enrichment.
+func TestWalkProcessInstanceCommand_WithElementsPartialTraversalPreservesWarning(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "999", false)))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/999":
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"title":"Not Found","status":404,"detail":"resource not found"}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/element-instances/search":
+			_, _ = w.Write([]byte(walkedElementInstancesSearchJSON(t,
+				walkedElementInstanceFixture("element-123", "123", "task-123", false, ""),
+			)))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--verbose",
+		"walk", "process-instance",
+		"--key", "123",
+		"--with-elements",
+	)
+
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "element-123 SERVICE_TASK task-123 ACTIVE")
+	require.Contains(t, output, "one or more parent process instances were not found")
+	require.Contains(t, output, "missing ancestor keys: 999")
+}
+
 // TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey keeps incident enrichment scoped to keyed walks.
 func TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")

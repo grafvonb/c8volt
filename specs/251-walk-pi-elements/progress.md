@@ -54,3 +54,25 @@ Started: 2026-07-22 23:14:46
 **Learnings**:
 - `walk pi --with-elements` can reuse the existing element activity enrichment wrapper; default family traversal performs two starting-instance GETs before descendant search.
 ---
+---
+## Iteration 3 - 2026-07-22 23:34
+**Work Unit**: User Story 2 - Preserve Traversal Modes With Elements
+**Tasks Completed**:
+- [x] T018: Add `--children --with-elements` human output test preserving descendant selection and owner-specific elements
+- [x] T019: Add `--parent --with-elements` human output test preserving ancestry order and owner-specific elements
+- [x] T020: Add `--flat --with-elements` human output test preserving flat separators and element sections
+- [x] T021: Add unchanged-default regression test proving no element lookup runs without `--with-elements`
+- [x] T022: Ensure children and parent mode enrichment uses `processInstancesFromTraversal` order
+- [x] T023: Ensure flat family mode preserves path separators while writing element detail sections
+- [x] T024: Preserve traversal warnings and missing-ancestor warning rendering when elements are requested
+- [x] T025: Run targeted US2 tests
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/walk_test.go
+- specs/251-walk-pi-elements/tasks.md
+- specs/251-walk-pi-elements/ralph-memory.md
+- specs/251-walk-pi-elements/progress.md
+**Learnings**:
+- Existing walk activity orchestration already preserves traversal-mode order and warnings for element enrichment; US2 locks this behavior with command tests.
+---

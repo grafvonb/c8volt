@@ -73,17 +73,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T018 [US2] Add failing `--children --with-elements` human output test preserving descendant selection and owner-specific elements in `cmd/walk_test.go`
-- [ ] T019 [US2] Add failing `--parent --with-elements` human output test preserving ancestry order and owner-specific elements in `cmd/walk_test.go`
-- [ ] T020 [US2] Add failing `--flat --with-elements` human output test preserving flat separators and element sections in `cmd/walk_test.go`
-- [ ] T021 [US2] Add failing unchanged-default regression test proving no element lookup runs without `--with-elements` in `cmd/walk_test.go`
+- [x] T018 [US2] Add failing `--children --with-elements` human output test preserving descendant selection and owner-specific elements in `cmd/walk_test.go`
+- [x] T019 [US2] Add failing `--parent --with-elements` human output test preserving ancestry order and owner-specific elements in `cmd/walk_test.go`
+- [x] T020 [US2] Add failing `--flat --with-elements` human output test preserving flat separators and element sections in `cmd/walk_test.go`
+- [x] T021 [US2] Add failing unchanged-default regression test proving no element lookup runs without `--with-elements` in `cmd/walk_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T022 [P] [US2] Ensure children and parent mode enrichment uses `processInstancesFromTraversal` order in `cmd/walk_processinstance.go`
-- [ ] T023 [P] [US2] Ensure flat family mode preserves path separators while writing element detail sections in `cmd/cmd_views_walk_incidents.go`
-- [ ] T024 [US2] Preserve traversal warnings and missing-ancestor warning rendering when elements are requested in `cmd/walk_processinstance.go` and `cmd/cmd_views_walk_incidents.go`
-- [ ] T025 [US2] Run targeted US2 tests covering `cmd/walk_test.go` with `go test ./cmd -run 'TestWalkProcessInstanceCommand_.*WithElements|TestWalkProcessInstanceCommand_Default.*Without' -count=1`
+- [x] T022 [P] [US2] Ensure children and parent mode enrichment uses `processInstancesFromTraversal` order in `cmd/walk_processinstance.go`
+- [x] T023 [P] [US2] Ensure flat family mode preserves path separators while writing element detail sections in `cmd/cmd_views_walk_incidents.go`
+- [x] T024 [US2] Preserve traversal warnings and missing-ancestor warning rendering when elements are requested in `cmd/walk_processinstance.go` and `cmd/cmd_views_walk_incidents.go`
+- [x] T025 [US2] Run targeted US2 tests covering `cmd/walk_test.go` with `go test ./cmd -run 'TestWalkProcessInstanceCommand_.*WithElements|TestWalkProcessInstanceCommand_Default.*Without' -count=1`
 
 **Checkpoint**: User Stories 1 and 2 both work independently.
 
