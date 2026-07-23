@@ -13,6 +13,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	esvc "github.com/grafvonb/c8volt/internal/services/element"
+	jsvc "github.com/grafvonb/c8volt/internal/services/job"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
@@ -422,6 +423,121 @@ func TestSlowProcessAnalysisRuntimeElementsBuildChronologicalTimeline(t *testing
 	require.Equal(t, "2251799813687777", elementRows[3].IncidentKey)
 }
 
+// TestSlowProcessAnalysisWithListenersAttachesOnlyMatchingElementJobs verifies listener lookup uses element ownership.
+func TestSlowProcessAnalysisWithListenersAttachesOnlyMatchingElementJobs(t *testing.T) {
+	captured := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:10:00Z")
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	root := slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(10*time.Minute))
+	elements := []d.Element{
+		slowProcessAnalysisFixtureElement(root.Key, "2251799813685250", "ReserveStock", start.Add(10*time.Second), start.Add(time.Minute)),
+		slowProcessAnalysisFixtureElement(root.Key, "2251799813685251", "PackOrder", start.Add(2*time.Minute), start.Add(3*time.Minute)),
+	}
+	piAPI := stubProcessInstanceAPI{
+		search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+			return []d.ProcessInstance{root}, nil
+		},
+	}
+	elementAPI := stubSlowProcessAnalysisElementAPI{
+		search: func(_ context.Context, query d.ElementSearchQuery, _ ...services.CallOption) (d.ElementSearchResult, error) {
+			require.Equal(t, root.Key, query.ProcessInstanceKey)
+			return d.ElementSearchResult{Items: elements}, nil
+		},
+	}
+	var jobQueries []d.JobSearchQuery
+	jobAPI := stubSlowProcessAnalysisJobAPI{
+		search: func(_ context.Context, query d.JobSearchQuery, _ ...services.CallOption) (d.JobSearchResult, error) {
+			jobQueries = append(jobQueries, query)
+			return d.JobSearchResult{Items: []d.Job{
+				{Key: "job-match", Kind: query.Kind, ListenerEventType: "START", State: "CREATED", Type: "audit", Retries: 3, ProcessInstanceKey: root.Key, ElementInstanceKey: "2251799813685250"},
+				{Key: "job-unmatched-element", Kind: query.Kind, ProcessInstanceKey: root.Key, ElementInstanceKey: "missing"},
+				{Key: "job-other-process", Kind: query.Kind, ProcessInstanceKey: "other", ElementInstanceKey: "2251799813685250"},
+			}}, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, jobAPI, elementAPI, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
+		InputKeys:     typex.Keys{root.Key},
+		CapturedNow:   captured,
+		WithListeners: true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, []d.JobSearchQuery{
+		{ProcessInstanceKey: root.Key, Kind: d.JobKindExecutionListener},
+		{ProcessInstanceKey: root.Key, Kind: d.JobKindTaskListener},
+	}, jobQueries)
+	elementRows := slowProcessAnalysisTimelineElements(got.Items[0].Timeline)
+	require.NotNil(t, elementRows[0].Listeners)
+	require.Equal(t, []string{"job-match", "job-match"}, []string{(*elementRows[0].Listeners)[0].JobKey, (*elementRows[0].Listeners)[1].JobKey})
+	require.Equal(t, []d.RuntimeListenerJob{}, *elementRows[1].Listeners)
+}
+
+// TestSlowProcessAnalysisWithoutListenersDoesNotLookupJobs verifies default output remains listener-free.
+func TestSlowProcessAnalysisWithoutListenersDoesNotLookupJobs(t *testing.T) {
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	root := slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(10*time.Minute))
+	piAPI := stubProcessInstanceAPI{
+		search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+			return []d.ProcessInstance{root}, nil
+		},
+	}
+	elementAPI := stubSlowProcessAnalysisElementAPI{
+		search: func(context.Context, d.ElementSearchQuery, ...services.CallOption) (d.ElementSearchResult, error) {
+			return d.ElementSearchResult{Items: []d.Element{
+				slowProcessAnalysisFixtureElement(root.Key, "2251799813685250", "ReserveStock", start, start.Add(time.Minute)),
+			}}, nil
+		},
+	}
+	jobAPI := stubSlowProcessAnalysisJobAPI{
+		search: func(context.Context, d.JobSearchQuery, ...services.CallOption) (d.JobSearchResult, error) {
+			t.Fatal("listener jobs should not be searched when WithListeners is false")
+			return d.JobSearchResult{}, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, jobAPI, elementAPI, toolx.V89).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
+		InputKeys:     typex.Keys{root.Key},
+		CapturedNow:   start.Add(30 * time.Minute),
+	})
+
+	require.NoError(t, err)
+	elementRows := slowProcessAnalysisTimelineElements(got.Items[0].Timeline)
+	require.Nil(t, elementRows[0].Listeners)
+}
+
+// TestSlowProcessAnalysisWithListenersPropagatesUnsupportedJobLookup verifies requested listener failures fail the run.
+func TestSlowProcessAnalysisWithListenersPropagatesUnsupportedJobLookup(t *testing.T) {
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	root := slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(10*time.Minute))
+	piAPI := stubProcessInstanceAPI{
+		search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+			return []d.ProcessInstance{root}, nil
+		},
+	}
+	elementAPI := stubSlowProcessAnalysisElementAPI{
+		search: func(context.Context, d.ElementSearchQuery, ...services.CallOption) (d.ElementSearchResult, error) {
+			return d.ElementSearchResult{Items: []d.Element{}}, nil
+		},
+	}
+	jobAPI := stubSlowProcessAnalysisJobAPI{
+		search: func(context.Context, d.JobSearchQuery, ...services.CallOption) (d.JobSearchResult, error) {
+			return d.JobSearchResult{}, fmt.Errorf("%w: search jobs requires Camunda 8.8 or newer", d.ErrUnsupported)
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, jobAPI, elementAPI, toolx.V89).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
+		InputKeys:     typex.Keys{root.Key},
+		WithListeners: true,
+	})
+
+	require.ErrorIs(t, err, d.ErrUnsupported)
+	require.Empty(t, got.Items)
+	require.True(t, got.Empty)
+}
+
 // TestSlowProcessAnalysisTransitionsUseOnlyAdjacentChronologicalElements verifies gap timing without overlap or synthetic bridging.
 func TestSlowProcessAnalysisTransitionsUseOnlyAdjacentChronologicalElements(t *testing.T) {
 	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
@@ -717,6 +833,20 @@ type stubSlowProcessAnalysisElementAPI struct {
 func (s stubSlowProcessAnalysisElementAPI) SearchElements(ctx context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (d.ElementSearchResult, error) {
 	if s.search == nil {
 		return d.ElementSearchResult{}, nil
+	}
+	return s.search(ctx, query, opts...)
+}
+
+// stubSlowProcessAnalysisJobAPI provides listener jobs to slow-analysis service tests.
+type stubSlowProcessAnalysisJobAPI struct {
+	jsvc.API
+	search func(context.Context, d.JobSearchQuery, ...services.CallOption) (d.JobSearchResult, error)
+}
+
+// SearchJobs delegates runtime job search to the configured test callback.
+func (s stubSlowProcessAnalysisJobAPI) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error) {
+	if s.search == nil {
+		return d.JobSearchResult{}, nil
 	}
 	return s.search(ctx, query, opts...)
 }

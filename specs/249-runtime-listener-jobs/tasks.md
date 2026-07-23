@@ -132,20 +132,20 @@
 
 ### Tests for User Story 4
 
-- [ ] T040 [P] [US4] Add failing slow-analysis command contract and help tests for `--with-listeners` in `cmd/ops_contract_test.go` and `docsgen/main_test.go`
-- [ ] T041 [P] [US4] Add failing slow-analysis command parse and validation tests for `--with-listeners` in `cmd/ops_analyse_slow_process_instances_test.go`
-- [ ] T042 [P] [US4] Add failing slow-analysis service tests for listener lookup, attachment, unmatched omission, unsupported-version behavior, and unchanged-default behavior in `internal/services/ops/slow_process_analysis_test.go`
-- [ ] T043 [P] [US4] Add failing slow-analysis renderer tests for human nesting, JSON listener arrays, and transition exclusion in `cmd/cmd_views_ops_slow_process_analysis_test.go`
-- [ ] T044 [P] [US4] Add failing public ops facade conversion tests for listener-enabled slow-analysis output in `c8volt/ops/client_test.go`
+- [x] T040 [P] [US4] Add failing slow-analysis command contract and help tests for `--with-listeners` in `cmd/ops_contract_test.go` and `docsgen/main_test.go`
+- [x] T041 [P] [US4] Add failing slow-analysis command parse and validation tests for `--with-listeners` in `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T042 [P] [US4] Add failing slow-analysis service tests for listener lookup, attachment, unmatched omission, unsupported-version behavior, and unchanged-default behavior in `internal/services/ops/slow_process_analysis_test.go`
+- [x] T043 [P] [US4] Add failing slow-analysis renderer tests for human nesting, JSON listener arrays, and transition exclusion in `cmd/cmd_views_ops_slow_process_analysis_test.go`
+- [x] T044 [P] [US4] Add failing public ops facade conversion tests for listener-enabled slow-analysis output in `c8volt/ops/client_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T045 [US4] Add `WithListeners` request and timeline listener fields in `internal/domain/ops_slow_process_analysis.go` and `c8volt/ops/model.go`
-- [ ] T046 [US4] Map slow-analysis listener request and response fields across the facade in `c8volt/ops/convert.go`
-- [ ] T047 [US4] Add slow-analysis listener lookup and element-timeline attachment in `internal/services/ops/slow_process_analysis.go`
-- [ ] T048 [US4] Register and validate `--with-listeners` for slow-process analysis in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T049 [US4] Render slow-analysis listener rows and JSON arrays in `cmd/cmd_views_ops_slow_process_analysis.go`
-- [ ] T050 [US4] Run US4 validation with `go test ./cmd ./c8volt/ops ./internal/services/ops -run 'Test.*SlowProcess.*Listener|TestOps.*Listener|TestGenerated.*slow-process' -count=1` and record results in `specs/249-runtime-listener-jobs/quickstart.md`
+- [x] T045 [US4] Add `WithListeners` request and timeline listener fields in `internal/domain/ops_slow_process_analysis.go` and `c8volt/ops/model.go`
+- [x] T046 [US4] Map slow-analysis listener request and response fields across the facade in `c8volt/ops/convert.go`
+- [x] T047 [US4] Add slow-analysis listener lookup and element-timeline attachment in `internal/services/ops/slow_process_analysis.go`
+- [x] T048 [US4] Register and validate `--with-listeners` for slow-process analysis in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T049 [US4] Render slow-analysis listener rows and JSON arrays in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T050 [US4] Run US4 validation with `go test ./cmd ./c8volt/ops ./internal/services/ops -run 'Test.*SlowProcess.*Listener|TestOps.*Listener|TestGenerated.*slow-process' -count=1` and record results in `specs/249-runtime-listener-jobs/quickstart.md`
 
 **Checkpoint**: Slow-process analysis listener enrichment is independently functional.
 

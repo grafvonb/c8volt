@@ -49,6 +49,8 @@ Add or update targeted cases covering:
 - 2026-07-23 12:01 Iteration 4: `go test ./cmd ./docsgen -count=1` passed.
 - 2026-07-23 12:09 Iteration 5: `go test ./cmd -run 'TestWalkProcessInstance.*Listener|TestCommandContract.*walk|TestGenerated.*walk' -count=1` passed.
 - 2026-07-23 12:09 Iteration 5: `go test ./cmd ./docsgen -count=1` passed.
+- 2026-07-23 12:18 Iteration 6: `go test ./cmd ./c8volt/ops ./internal/services/ops -run 'Test.*SlowProcess.*Listener|TestOps.*Listener|TestGenerated.*slow-process' -count=1` passed.
+- 2026-07-23 12:18 Iteration 6: `go test ./cmd ./c8volt/ops ./internal/services/ops ./docsgen -count=1` passed.
 
 ## Manual Smoke Scenarios
 

@@ -316,6 +316,35 @@ func TestRenderOpsSlowProcessAnalysisResultHumanRendersHotspotSummaryDetails(t *
 	require.True(t, strings.HasSuffix(output, "process instances: 1\n"))
 }
 
+// TestRenderOpsSlowProcessAnalysisResultHumanRendersListenerRows verifies listeners stay under element timeline rows.
+func TestRenderOpsSlowProcessAnalysisResultHumanRendersListenerRows(t *testing.T) {
+	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+	listeners := []ops.RuntimeListenerJob{{
+		JobKey:            "job-task",
+		Kind:              "TASK_LISTENER",
+		ListenerEventType: "COMPLETING",
+		Type:              "audit-task",
+		State:             "FAILED",
+		Retries:           0,
+		ErrorCode:         "LISTENER_FAILED",
+		ErrorMessage:      "handler rejected",
+	}}
+	element := opsSlowProcessAnalysisRenderTestElement("4109", "ReviewOrder", "USER_TASK", "COMPLETED", "2026-07-18T10:00:04Z", "2026-07-18T10:00:12Z", "8s", 8000, 3)
+	element.Listeners = &listeners
+	transition := opsSlowProcessAnalysisRenderTestTransition("ReviewOrder", "USER_TASK", "OrderFinished", "END_EVENT", "2026-07-18T10:00:12Z", "2026-07-18T10:00:15Z", "3s", 3000, 1)
+	result := opsSlowProcessAnalysisRenderTestResult(element, transition)
+
+	err := renderOpsSlowProcessAnalysisResult(cmd, result)
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "└─ slowest elements:\n")
+	require.Contains(t, output, "   ├─ USER_TASK ReviewOrder COMPLETED")
+	require.Contains(t, output, "   │  └─ listeners:\n")
+	require.Contains(t, output, "   │     └─ job-task TASK_LISTENER lsnr:COMPLETING FAILED tp:audit-task r:0 ec:LISTENER_FAILED err:handler rejected")
+	require.NotContains(t, output, "ReviewOrder -> OrderFinished")
+}
+
 // TestRenderOpsSlowProcessAnalysisResultKeysOnlyRendersRootKeys verifies keyed output remains pipeline-safe.
 func TestRenderOpsSlowProcessAnalysisResultKeysOnlyRendersUniqueRootKeys(t *testing.T) {
 	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
@@ -454,6 +483,45 @@ func TestRenderOpsSlowProcessAnalysisResultJSONIncludesStableAnalysisFields(t *t
 	require.Contains(t, buf.String(), `"capturedAt"`)
 	require.Contains(t, buf.String(), `"comparisonSampleCount"`)
 	require.Contains(t, buf.String(), `"processDurationShare"`)
+}
+
+// TestRenderOpsSlowProcessAnalysisResultJSONIncludesRequestedListeners verifies listener arrays stay element-only.
+func TestRenderOpsSlowProcessAnalysisResultJSONIncludesRequestedListeners(t *testing.T) {
+	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+	flagViewAsJson = true
+	t.Cleanup(func() { flagViewAsJson = false })
+	listeners := []ops.RuntimeListenerJob{{
+		JobKey:            "job-exec",
+		Kind:              "EXECUTION_LISTENER",
+		ListenerEventType: "START",
+		Type:              "audit-start",
+		State:             "CREATED",
+		Retries:           3,
+	}}
+	emptyListeners := []ops.RuntimeListenerJob{}
+	first := opsSlowProcessAnalysisRenderTestElement("4108", "ReserveStock", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:00Z", "2026-07-18T10:00:04Z", "4s", 4000, 1)
+	first.Listeners = &listeners
+	second := opsSlowProcessAnalysisRenderTestElement("4109", "PackOrder", "SERVICE_TASK", "COMPLETED", "2026-07-18T10:00:08Z", "2026-07-18T10:00:12Z", "4s", 4000, 1)
+	second.Listeners = &emptyListeners
+	result := opsSlowProcessAnalysisRenderTestResult(
+		first,
+		opsSlowProcessAnalysisRenderTestTransition("ReserveStock", "SERVICE_TASK", "PackOrder", "SERVICE_TASK", "2026-07-18T10:00:04Z", "2026-07-18T10:00:08Z", "4s", 4000, 1),
+		second,
+	)
+	result.Request.WithListeners = true
+
+	err := renderOpsSlowProcessAnalysisResult(cmd, result)
+
+	require.NoError(t, err)
+	var payload ops.SlowProcessAnalysisResult
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &payload))
+	require.True(t, payload.Request.WithListeners)
+	require.NotNil(t, payload.Items[0].Timeline[0].Listeners)
+	require.Equal(t, []ops.RuntimeListenerJob{{JobKey: "job-exec", Kind: "EXECUTION_LISTENER", ListenerEventType: "START", Type: "audit-start", State: "CREATED", Retries: 3}}, *payload.Items[0].Timeline[0].Listeners)
+	require.Nil(t, payload.Items[0].Timeline[1].Listeners)
+	require.NotNil(t, payload.Items[0].Timeline[2].Listeners)
+	require.Empty(t, *payload.Items[0].Timeline[2].Listeners)
+	require.Contains(t, buf.String(), `"listeners": []`)
 }
 
 // TestRenderOpsSlowProcessAnalysisResultJSONIgnoresFullTimelineFlag verifies summary-only state never enters JSON output.

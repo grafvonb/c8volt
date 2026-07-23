@@ -187,9 +187,11 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyse spi --bpmn-process-id")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--dur-longer 1h30m --dur-element-longer 30s")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--with-full-timeline")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--with-listeners")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "get pi --state active --keys-only")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Default output shows compact slowest element contributors")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --with-full-timeline to inspect complete chronological element and transition detail")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --with-listeners to include runtime listener jobs under matching element timeline rows")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --dur-longer to keep only process-instance roots")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Detail filters such as --element-id, --type, --element-state, and --dur-element-longer keep only process instances with matching element or transition detail rows")
 	require.NotContains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--duration-after")
@@ -274,6 +276,13 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 		Required:    false,
 		Repeated:    false,
 		Description: "show complete chronological element and transition detail",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-listeners",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "include runtime listener jobs under matching element timeline rows",
 	})
 	require.False(t, hasFlagContractNamed(capability.Flags, "duration-after"))
 	require.False(t, hasFlagContractNamed(capability.Flags, "incidents-only"))

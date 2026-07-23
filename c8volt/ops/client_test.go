@@ -282,8 +282,8 @@ func TestClientExecuteSmokeTestMapsServiceBoundary(t *testing.T) {
 	require.True(t, got.Report.NoCleanup)
 }
 
-// TestClientAnalyseSlowProcessInstancesMapsServiceBoundary verifies the slow-analysis facade stays thin.
-func TestClientAnalyseSlowProcessInstancesMapsServiceBoundary(t *testing.T) {
+// TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary verifies the slow-analysis facade stays thin.
+func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing.T) {
 	t.Parallel()
 
 	captured := time.Date(2026, 7, 18, 10, 30, 0, 0, time.UTC)
@@ -318,6 +318,7 @@ func TestClientAnalyseSlowProcessInstancesMapsServiceBoundary(t *testing.T) {
 				Limit:              10,
 				CapturedNow:        captured,
 				OutputMode:         "json",
+				WithListeners:      true,
 			}, request)
 			require.True(t, services.ApplyCallOptions(opts).Verbose)
 			return d.SlowProcessAnalysisResult{
@@ -358,6 +359,16 @@ func TestClientAnalyseSlowProcessInstancesMapsServiceBoundary(t *testing.T) {
 						DurationAvailable:     true,
 						ProcessDurationShare:  1,
 						ComparisonSampleCount: 3,
+						Listeners: &[]d.RuntimeListenerJob{{
+							JobKey:             "2251799813689101",
+							Kind:               d.JobKindTaskListener,
+							ListenerEventType:  "COMPLETING",
+							Type:               "audit-user-task",
+							State:              "CREATED",
+							Retries:            3,
+							ProcessInstanceKey: "2251799813685249",
+							ElementInstanceKey: "2251799813685250",
+						}},
 					}},
 				}},
 				Count:    1,
@@ -393,6 +404,7 @@ func TestClientAnalyseSlowProcessInstancesMapsServiceBoundary(t *testing.T) {
 		Limit:              10,
 		CapturedNow:        captured,
 		OutputMode:         "json",
+		WithListeners:      true,
 	}, foptions.WithVerbose())
 
 	require.NoError(t, err)
@@ -411,6 +423,18 @@ func TestClientAnalyseSlowProcessInstancesMapsServiceBoundary(t *testing.T) {
 	require.Equal(t, process.StateCompleted, got.Items[0].State)
 	require.Equal(t, SlowProcessAnalysisTimelineEntryKindElement, got.Items[0].Timeline[0].Kind)
 	require.Equal(t, 1, got.Items[0].Timeline[0].ProcessDurationShare)
+	require.True(t, got.Request.WithListeners)
+	require.NotNil(t, got.Items[0].Timeline[0].Listeners)
+	require.Equal(t, []RuntimeListenerJob{{
+		JobKey:             "2251799813689101",
+		Kind:               d.JobKindTaskListener,
+		ListenerEventType:  "COMPLETING",
+		Type:               "audit-user-task",
+		State:              "CREATED",
+		Retries:            3,
+		ProcessInstanceKey: "2251799813685249",
+		ElementInstanceKey: "2251799813685250",
+	}}, *got.Items[0].Timeline[0].Listeners)
 }
 
 // TestClientAnalyseSlowProcessInstancesCopiesKeysAndMapsErrors verifies public slices and domain errors stay boundary-safe.

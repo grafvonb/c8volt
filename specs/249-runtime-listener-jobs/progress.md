@@ -152,3 +152,41 @@ Started: 2026-07-23 11:30:41
 **Learnings**:
 - Walk listener enrichment can reuse the shared activity traversal payload and renderer once walked process instances use the listener-aware element enrichment helper.
 ---
+---
+## Iteration 6 - 2026-07-23 12:18
+**Work Unit**: US4 Include Listener Context In Slow Process Analysis
+**Tasks Completed**:
+- [x] T040: Add slow-analysis command contract and help tests for `--with-listeners`
+- [x] T041: Add slow-analysis command parse and validation tests for `--with-listeners`
+- [x] T042: Add slow-analysis service tests for listener lookup, attachment, omission, unsupported lookup, and unchanged default behavior
+- [x] T043: Add slow-analysis renderer tests for human nesting, JSON listener arrays, and transition exclusion
+- [x] T044: Add public ops facade conversion tests for listener-enabled slow-analysis output
+- [x] T045: Add slow-analysis `WithListeners` request fields
+- [x] T046: Map slow-analysis listener request and response fields across the facade
+- [x] T047: Add slow-analysis listener lookup and element-timeline attachment
+- [x] T048: Register and validate `--with-listeners` for slow-process analysis
+- [x] T049: Render slow-analysis listener rows and JSON arrays
+- [x] T050: Run US4 validation and record results in quickstart
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/ops/client_test.go
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- cmd/cmd_views_ops_slow_process_analysis.go
+- cmd/cmd_views_ops_slow_process_analysis_test.go
+- cmd/command_contract_test.go
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/ops_analyse_slow_process_instances_test.go
+- cmd/ops_contract_test.go
+- docsgen/main_test.go
+- internal/domain/ops_slow_process_analysis.go
+- internal/services/ops/slow_process_analysis.go
+- internal/services/ops/slow_process_analysis_test.go
+- specs/249-runtime-listener-jobs/quickstart.md
+- specs/249-runtime-listener-jobs/tasks.md
+- specs/249-runtime-listener-jobs/ralph-memory.md
+- specs/249-runtime-listener-jobs/progress.md
+**Learnings**:
+- Slow-analysis listener enrichment can reuse process-instance element listener enrichment and copy listener slices only to element timeline entries.
+---

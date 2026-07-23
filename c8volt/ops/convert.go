@@ -100,6 +100,7 @@ func toDomainSlowProcessAnalysisRequest(x SlowProcessAnalysisRequest) d.SlowProc
 		Limit:                     x.Limit,
 		CapturedNow:               x.CapturedNow,
 		OutputMode:                x.OutputMode,
+		WithListeners:             x.WithListeners,
 	}
 }
 
@@ -116,6 +117,7 @@ func fromDomainSlowProcessAnalysisRequest(x d.SlowProcessAnalysisRequest) SlowPr
 		Limit:                     x.Limit,
 		CapturedNow:               x.CapturedNow,
 		OutputMode:                x.OutputMode,
+		WithListeners:             x.WithListeners,
 	}
 }
 

@@ -41,6 +41,7 @@ var (
 	flagOpsAnalyseSlowProcessInstanceDurationLonger        string
 	flagOpsAnalyseSlowProcessInstanceElementDurationLonger string
 	flagOpsAnalyseSlowProcessInstanceWithFullTimeline      bool
+	flagOpsAnalyseSlowProcessInstanceWithListeners         bool
 )
 
 var opsAnalyseCmd = &cobra.Command{
@@ -64,6 +65,7 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 		"The command is read-only. Select process instances by explicit --key values or by exactly one process-definition selector, then inspect process and runtime element timing without changing cluster state.\n\n" +
 		"Use --dur-longer to keep only process-instance roots whose whole duration is above a threshold. Detail filters such as --element-id, --type, --element-state, and --dur-element-longer keep only process instances with matching element or transition detail rows, then show those matching rows under the root.\n\n" +
 		"Default output shows compact slowest element contributors. Use --with-full-timeline to inspect complete chronological element and transition detail.\n\n" +
+		"Use --with-listeners to include runtime listener jobs under matching element timeline rows.\n\n" +
 		"Duration thresholds use Go duration syntax such as 500ms, 30s, 5m, 1h, 1h30m, or 24h. Calendar units such as 1d are not accepted.\n\n" +
 		"JSON output exposes stable duration, comparison, and timeline fields. Keys-only output prints selected process-instance keys in result order, one per line.",
 	Example: `  ./c8volt ops analyse slow-process-instances --key 2251799813685249
@@ -71,6 +73,7 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
   ./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 5m
   ./c8volt ops analyse slow-process-instances --pd-key 2251799813687001 --dur-element-longer 30s
   ./c8volt ops analyse slow-process-instances --key 2251799813685249 --with-full-timeline
+  ./c8volt ops analyse slow-process-instances --key 2251799813685249 --with-listeners
   ./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 1h30m --dur-element-longer 30s
   ./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -`,
 	Aliases: []string{"slow-pi", "spi"},
@@ -140,6 +143,7 @@ func init() {
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceDurationLonger, "dur-longer", "", "only include process instances whose whole duration is longer than this duration, for example 5m or 1h30m")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementDurationLonger, "dur-element-longer", "", "only include process instances with element or transition detail rows longer than this duration, for example 30s or 2m")
 	fs.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithFullTimeline, "with-full-timeline", false, "show complete chronological element and transition detail")
+	fs.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithListeners, "with-listeners", false, "include runtime listener jobs under matching element timeline rows")
 
 	setCommandMutation(opsAnalyseCmd, CommandMutationReadOnly)
 	setCommandMutation(opsAnalyseSlowProcessInstancesCmd, CommandMutationReadOnly)
@@ -177,6 +181,9 @@ func validateOpsSlowProcessAnalysisCommandArgs(cmd *cobra.Command, args []string
 	}
 	if _, err := parseOpsSlowProcessAnalysisElementState(); err != nil {
 		return err
+	}
+	if flagOpsAnalyseSlowProcessInstanceWithListeners && pickMode() == RenderModeKeysOnly {
+		return mutuallyExclusiveFlagsf("--with-listeners cannot be combined with --keys-only")
 	}
 	stdinRequested := len(args) == 1 && args[0] == "-"
 	keyedMode := len(flagOpsAnalyseSlowProcessInstanceKeys) > 0 || stdinRequested
@@ -280,6 +287,7 @@ func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string
 			Limit:              flagOpsAnalyseSlowProcessInstanceLimit,
 			CapturedNow:        time.Now().UTC(),
 			OutputMode:         pickMode().String(),
+			WithListeners:      flagOpsAnalyseSlowProcessInstanceWithListeners,
 		},
 	}, nil
 }

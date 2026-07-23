@@ -66,6 +66,13 @@ func TestOpsAnalyseSlowProcessInstancesMetadataRecordsReadOnlyContract(t *testin
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-listeners",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "include runtime listener jobs under matching element timeline rows",
+	})
 }
 
 // TestOpsWorkflowReportFormatForPath documents explicit and extension-inferred report format behavior.
