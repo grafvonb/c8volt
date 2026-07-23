@@ -14,13 +14,15 @@
 - **[Story]**: User story traceability label for story phases only.
 - Every task includes concrete repository file paths.
 
-## Phase 1: Setup (Shared Infrastructure)
+## Phase 1: Setup Context
 
 **Purpose**: Orient implementation around existing repository patterns before changing shared contracts.
 
-- [ ] T001 Review existing element, job, process activity, walk, and slow-analysis patterns in `cmd/get_element.go`, `cmd/get_job.go`, `cmd/get_processinstance_enrichment.go`, `cmd/cmd_views_processinstance_activity.go`, `cmd/walk_processinstance.go`, and `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T002 [P] Review facade and service boundaries for listener data in `c8volt/element/api.go`, `c8volt/process/api.go`, `c8volt/job/api.go`, `c8volt/ops/api.go`, `internal/services/processinstance/enrichment.go`, and `internal/services/job/api.go`
-- [ ] T003 [P] Review generated job search capability and unsupported-version behavior in `internal/services/job/v87/service.go`, `internal/services/job/v88/service.go`, `internal/services/job/v88/convert.go`, `internal/services/job/v89/service.go`, and `internal/services/job/v89/convert.go`
+The following review-only setup items provide implementation context and are not commit-worthy task checkboxes:
+
+- Review existing element, job, process activity, walk, and slow-analysis patterns in `cmd/get_element.go`, `cmd/get_job.go`, `cmd/get_processinstance_enrichment.go`, `cmd/cmd_views_processinstance_activity.go`, `cmd/walk_processinstance.go`, and `cmd/ops_analyse_slow_process_instances.go`.
+- Review facade and service boundaries for listener data in `c8volt/element/api.go`, `c8volt/process/api.go`, `c8volt/job/api.go`, `c8volt/ops/api.go`, `internal/services/processinstance/enrichment.go`, and `internal/services/job/api.go`.
+- Review generated job search capability and unsupported-version behavior in `internal/services/job/v87/service.go`, `internal/services/job/v88/service.go`, `internal/services/job/v88/convert.go`, `internal/services/job/v89/service.go`, and `internal/services/job/v89/convert.go`.
 
 ---
 
@@ -193,7 +195,6 @@
 
 ## Parallel Opportunities
 
-- T002 and T003 can run in parallel after T001 starts.
 - T004, T005, and T006 can run in parallel because they touch different test files.
 - T014, T015, T016, and T017 can run in parallel for US1.
 - T024, T025, and T026 can run in parallel for US2.

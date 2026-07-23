@@ -217,3 +217,29 @@ Started: 2026-07-23 11:30:41
 **Learnings**:
 - Full validation requires updating test stubs when a facade interface grows listener-aware methods, even if the consuming package does not call them.
 ---
+---
+## Iteration 8 - 2026-07-23 12:27
+**Work Unit**: Phase 1 review-only setup audit
+**Tasks Completed**:
+- None; T001-T003 are review-only setup tasks and produced no substantive project change.
+**Tasks Remaining in Work Unit**: T001, T002, and T003 remain unchecked by Ralph rule
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/249-runtime-listener-jobs/ralph-memory.md
+- specs/249-runtime-listener-jobs/progress.md
+**Learnings**:
+- The remaining unchecked tasks are setup audits only; all implementation stories and polish tasks are already complete and validated.
+---
+---
+## Iteration 9 - 2026-07-23 12:28
+**Work Unit**: No incomplete implementation user story
+**Tasks Completed**:
+- None; T001-T003 are review-only setup audits and produced no substantive project change.
+**Tasks Remaining in Work Unit**: T001, T002, and T003 remain unchecked by Ralph rule
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/249-runtime-listener-jobs/ralph-memory.md
+- specs/249-runtime-listener-jobs/progress.md
+**Learnings**:
+- No user story section has incomplete tasks; only Phase 1 review-only setup tasks remain unchecked.
+---

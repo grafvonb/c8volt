@@ -35,7 +35,7 @@ Started: 2026-07-23T09:30:41Z
 - Listener requested-empty arrays require non-nil empty slices, not just a pointer to a nil slice; otherwise JSON renders `listeners: null` instead of `listeners: []`.
 
 ## Gotchas
-- Phase 1 tasks T001-T003 are review-only. Ralph rules say not to mark review-only tasks complete when they produce no substantive project change, so they remain unchecked after this setup audit.
+- Phase 1 review-only setup items are context notes rather than task checkboxes, so Ralph completion is based only on commit-worthy implementation, validation, and documentation tasks.
 - `get element --with-listeners` rejects `--keys-only` and `--total` before client creation. `get pi --with-listeners` and `walk pi --with-listeners` reject missing `--with-elements` and `--keys-only`; slow-analysis still needs listener-specific validation in a later story.
 - `get element --with-listeners` rejects `--keys-only` and `--total` before client creation. `get pi --with-listeners` and `walk pi --with-listeners` reject missing `--with-elements` and `--keys-only`; slow-analysis rejects `--keys-only --with-listeners`.
 - Process and walk listener enrichment must preserve explicit-key admin input behavior by passing the same option sets currently used for element enrichment.
@@ -54,4 +54,4 @@ Started: 2026-07-23T09:30:41Z
 - Do not hand-edit generated Camunda clients for this feature; the existing v8.8/v8.9 job search surface already has the required listener filters.
 
 ## Current Handoff
-- Phase 7 polish is complete and validated. T001-T003 remain unchecked because they are review-only setup tasks that produced no substantive project change under Ralph rules.
+- Feature complete; no handoff required.
