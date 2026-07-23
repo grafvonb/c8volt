@@ -152,6 +152,33 @@ func TestGetElementCommand_RejectsTotalModeConflicts(t *testing.T) {
 	}
 }
 
+// TestGetElementCommand_RejectsListenerOutputConflicts ensures nested listener output is validated locally.
+func TestGetElementCommand_RejectsListenerOutputConflicts(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		setup func()
+		want  string
+	}{
+		{name: "keys only", setup: func() { flagViewKeysOnly = true }, want: "--with-listeners cannot be combined with --keys-only"},
+		{name: "total", setup: func() { flagGetElementTotal = true }, want: "--with-listeners cannot be combined with --total"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resetGetElementFlagState()
+			t.Cleanup(func() {
+				resetGetElementFlagState()
+				flagViewKeysOnly = false
+			})
+			flagGetElementWithListeners = true
+			tc.setup()
+
+			err := validateGetElementFlags(getElementCmd)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.want)
+		})
+	}
+}
+
 func TestGetElementCommand_SearchHumanOutput(t *testing.T) {
 	var requests []string
 	srv := newElementSearchServer(t, &requests, `{
@@ -372,6 +399,75 @@ func TestGetElementCommand_KeyedLookupJSONOutput(t *testing.T) {
 	require.Equal(t, []string{"GET /v2/element-instances/2251799813689002"}, requests)
 }
 
+// TestGetElementCommand_KeyedLookupWithListenersHumanOutput nests matched listener jobs under the fetched element row.
+func TestGetElementCommand_KeyedLookupWithListenersHumanOutput(t *testing.T) {
+	var requests []string
+	srv := newElementWithListenersServer(t, &requests, []string{`{
+  "elementInstanceKey": "2251799813689002",
+  "elementId": "ship-order",
+  "type": "SERVICE_TASK",
+  "state": "ACTIVE",
+  "startDate": "2026-07-15T10:12:01Z",
+  "processInstanceKey": "2251799813688001",
+  "tenantId": "tenant-a",
+  "hasIncident": false
+}`}, []string{
+		`{"items":[{"jobKey":"2251799813689101","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"CREATED","retries":3,"processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689002","elementId":"ship-order","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+		`{"items":[{"jobKey":"2251799813689102","kind":"TASK_LISTENER","listenerEventType":"COMPLETING","type":"audit-task","state":"FAILED","retries":0,"processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689002","elementId":"ship-order","tenantId":"tenant-a","errorCode":"LISTENER_FAILED","errorMessage":"worker failed"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+	})
+	t.Cleanup(srv.Close)
+	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForElementTest(t, "--config", cfgPath, "get", "element", "--key", "2251799813689002", "--with-listeners")
+
+	require.Equal(t, []string{
+		"GET /v2/element-instances/2251799813689002",
+		"POST /v2/jobs/search",
+		"POST /v2/jobs/search",
+	}, requests)
+	require.Contains(t, output, "2251799813689002")
+	require.Contains(t, output, "└─ listeners:")
+	require.Contains(t, output, "2251799813689101 EXECUTION_LISTENER lsnr:START")
+	require.Contains(t, output, "2251799813689102 TASK_LISTENER")
+	require.Contains(t, output, "lsnr:COMPLETING FAILED")
+	require.Contains(t, output, "tp:audit-task")
+	require.Contains(t, output, "r:0")
+	require.Contains(t, output, "ec:LISTENER_FAILED")
+}
+
+// TestGetElementCommand_SearchWithListenersJSONOutput preserves requested-empty arrays and omits unmatched jobs.
+func TestGetElementCommand_SearchWithListenersJSONOutput(t *testing.T) {
+	var requests []string
+	srv := newElementWithListenersServer(t, &requests, []string{`{
+  "items": [
+    {"elementInstanceKey":"2251799813689002","elementId":"ship-order","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"2251799813688001","tenantId":"tenant-a","hasIncident":false},
+    {"elementInstanceKey":"2251799813689003","elementId":"finish-order","type":"END_EVENT","state":"COMPLETED","processInstanceKey":"2251799813688001","tenantId":"tenant-a","hasIncident":false}
+  ],
+  "page": {"totalItems":2,"hasMoreTotalItems":false}
+}`}, []string{
+		`{"items":[{"jobKey":"2251799813689101","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"CREATED","retries":3,"processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689002","elementId":"ship-order","tenantId":"tenant-a"},{"jobKey":"2251799813689999","kind":"EXECUTION_LISTENER","processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689998"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+		`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
+	})
+	t.Cleanup(srv.Close)
+	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForElementTest(t, "--config", cfgPath, "--json", "get", "element", "--pi-key", "2251799813688001", "--with-listeners")
+
+	require.Equal(t, []string{"POST /v2/element-instances/search", "POST /v2/jobs/search", "POST /v2/jobs/search"}, requests)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	payload := requireJSONObject(t, envelope["payload"])
+	items := payload["items"].([]any)
+	require.Len(t, items, 2)
+	first := requireJSONObject(t, items[0])
+	require.NotNil(t, first["listeners"], output)
+	firstListeners := first["listeners"].([]any)
+	require.Len(t, firstListeners, 1)
+	require.Equal(t, "2251799813689101", requireJSONObject(t, firstListeners[0])["jobKey"])
+	second := requireJSONObject(t, items[1])
+	require.Empty(t, second["listeners"].([]any))
+}
+
 func TestGetElementCommand_KeyedLookupUnsupportedV87(t *testing.T) {
 	cfgPath := testx.WriteTestConfigForVersion(t, "http://camunda.example.test", "8.7")
 
@@ -448,6 +544,38 @@ func newElementSearchServerResponses(t *testing.T, bodies *[]map[string]any, res
 	}))
 }
 
+// newElementWithListenersServer serves generated-compatible element and job search responses.
+func newElementWithListenersServer(t *testing.T, requests *[]string, elementResponses []string, jobResponses []string) *httptest.Server {
+	t.Helper()
+	var elementCount int
+	var jobCount int
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/element-instances/2251799813689002":
+			require.Equal(t, http.MethodGet, r.Method)
+			*requests = append(*requests, r.Method+" "+r.URL.Path)
+			response := elementResponses[min(elementCount, len(elementResponses)-1)]
+			elementCount++
+			_, _ = w.Write([]byte(response))
+		case "/v2/element-instances/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			*requests = append(*requests, r.Method+" "+r.URL.Path)
+			response := elementResponses[min(elementCount, len(elementResponses)-1)]
+			elementCount++
+			_, _ = w.Write([]byte(response))
+		case "/v2/jobs/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			*requests = append(*requests, r.Method+" "+r.URL.Path)
+			response := jobResponses[min(jobCount, len(jobResponses)-1)]
+			jobCount++
+			_, _ = w.Write([]byte(response))
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+	}))
+}
+
 func executeRootForElementTest(t *testing.T, args ...string) string {
 	t.Helper()
 
@@ -478,5 +606,6 @@ func resetGetElementFlagState() {
 	flagGetElementBatchSize = consts.MaxPISearchSize
 	flagGetElementLimit = 0
 	flagGetElementTotal = false
+	flagGetElementWithListeners = false
 	testx.ResetCommandTreeFlags(getElementCmd)
 }

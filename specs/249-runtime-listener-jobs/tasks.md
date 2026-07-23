@@ -58,19 +58,19 @@
 
 ### Tests for User Story 1
 
-- [ ] T014 [P] [US1] Add failing command contract and help tests for `get element --with-listeners` in `cmd/command_contract_test.go` and `docsgen/main_test.go`
-- [ ] T015 [P] [US1] Add failing keyed element listener human, JSON, empty, unmatched, and validation tests in `cmd/get_element_test.go`
-- [ ] T016 [US1] Add failing element search listener human, JSON, empty, unmatched, paging, total/keys-only validation, and unsupported-version tests in `cmd/get_element_test.go`
-- [ ] T017 [P] [US1] Add failing element facade listener enrichment tests in `c8volt/element/client_test.go`
+- [x] T014 [P] [US1] Add failing command contract and help tests for `get element --with-listeners` in `cmd/command_contract_test.go` and `docsgen/main_test.go`
+- [x] T015 [P] [US1] Add failing keyed element listener human, JSON, empty, unmatched, and validation tests in `cmd/get_element_test.go`
+- [x] T016 [US1] Add failing element search listener human, JSON, empty, unmatched, paging, total/keys-only validation, and unsupported-version tests in `cmd/get_element_test.go`
+- [x] T017 [P] [US1] Add failing element facade listener enrichment tests in `c8volt/element/client_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] Extend the element facade API with listener enrichment methods in `c8volt/element/api.go` and `c8volt/element/client.go`
-- [ ] T019 [US1] Wire the element facade to job-service listener enrichment in `c8volt/client.go`
-- [ ] T020 [US1] Register and validate `--with-listeners` for element lookup and search modes in `cmd/get_element.go`
-- [ ] T021 [US1] Add listener enrichment orchestration for keyed and search element results in `cmd/get_element.go` and `cmd/get_element_search.go`
-- [ ] T022 [US1] Render element listener rows and JSON arrays for keyed and list element output in `cmd/cmd_views_element.go`
-- [ ] T023 [US1] Run US1 validation with `go test ./cmd ./c8volt/element -run 'Test(GetElement|CommandContract|GeneratedDocs).*Listener' -count=1` and record results in `specs/249-runtime-listener-jobs/quickstart.md`
+- [x] T018 [US1] Extend the element facade API with listener enrichment methods in `c8volt/element/api.go` and `c8volt/element/client.go`
+- [x] T019 [US1] Wire the element facade to job-service listener enrichment in `c8volt/client.go`
+- [x] T020 [US1] Register and validate `--with-listeners` for element lookup and search modes in `cmd/get_element.go`
+- [x] T021 [US1] Add listener enrichment orchestration for keyed and search element results in `cmd/get_element.go` and `cmd/get_element_search.go`
+- [x] T022 [US1] Render element listener rows and JSON arrays for keyed and list element output in `cmd/cmd_views_element.go`
+- [x] T023 [US1] Run US1 validation with `go test ./cmd ./c8volt/element -run 'Test(GetElement|CommandContract|GeneratedDocs).*Listener' -count=1` and record results in `specs/249-runtime-listener-jobs/quickstart.md`
 
 **Checkpoint**: User Story 1 is independently functional and can serve as the MVP.
 

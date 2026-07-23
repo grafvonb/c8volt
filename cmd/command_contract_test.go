@@ -966,8 +966,11 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 	require.Contains(t, getElementCmd.Long, "Use --key when you know an element instance key.")
 	require.Contains(t, getElementCmd.Long, "Search mode follows the shared get paging and limit conventions.")
 	require.Contains(t, getElementCmd.Long, "Compact human rows include dur:<duration>")
+	require.Contains(t, getElementCmd.Long, "Use --with-listeners to include runtime listener jobs under matching element rows.")
 	require.Contains(t, getElementCmd.Long, "Use --json for the stable element payload and --keys-only when piping element instance keys.")
+	require.Contains(t, getElementCmd.Example, "./c8volt get ei -k <element-instance-key> --with-listeners")
 	require.Contains(t, getElementCmd.Example, "./c8volt get ei --pi-key <process-instance-key> --limit 10")
+	require.Contains(t, getElementCmd.Example, "./c8volt get ei --pi-key <process-instance-key> --with-listeners")
 	require.Contains(t, getElementCmd.Example, "./c8volt get element --pi-key <process-instance-key> --total")
 	require.Contains(t, getElementCmd.Example, "./c8volt --json get ei --pi-key <process-instance-key> --limit 5")
 	require.Contains(t, capability.Flags, FlagContract{
@@ -1044,6 +1047,13 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 		Required:    false,
 		Repeated:    false,
 		Description: "return only the numeric total of matching elements",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-listeners",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "include runtime listener jobs under matching element rows",
 	})
 }
 
@@ -2043,12 +2053,15 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 		"--batch-size controls per-page discovery requests",
 		"--total prints only the matching count",
 		"Compact human rows include dur:<duration>",
+		"Use --with-listeners to include runtime listener jobs under matching element rows",
 		"Use --json for the stable element payload and --keys-only when piping element instance keys",
 		"Element lookup and search require Camunda 8.8 or 8.9",
 		"Aliases:",
 		"ei",
 		"./c8volt get ei -k <element-instance-key>",
+		"./c8volt get ei -k <element-instance-key> --with-listeners",
 		"./c8volt get ei --pi-key <process-instance-key> --limit 10",
+		"./c8volt get ei --pi-key <process-instance-key> --with-listeners",
 		"./c8volt get element --pi-key <process-instance-key> --total",
 		"./c8volt --json get ei --pi-key <process-instance-key> --limit 5",
 		"-k, --key string",
@@ -2061,6 +2074,7 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 		"-n, --batch-size int32",
 		"-l, --limit int32",
 		"--total",
+		"--with-listeners",
 		"--json",
 		"--keys-only",
 	}, nil)

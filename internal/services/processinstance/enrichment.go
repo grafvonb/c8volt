@@ -213,7 +213,9 @@ func attachListenersToElements(elements []d.Element, listeners []d.RuntimeListen
 	out := make([]d.Element, len(elements))
 	for i, element := range elements {
 		out[i] = element
-		listeners := append([]d.RuntimeListenerJob(nil), listenersByElement[element.ElementInstanceKey]...)
+		matched := listenersByElement[element.ElementInstanceKey]
+		listeners := make([]d.RuntimeListenerJob, 0, len(matched))
+		listeners = append(listeners, matched...)
 		out[i].Listeners = &listeners
 	}
 	return out

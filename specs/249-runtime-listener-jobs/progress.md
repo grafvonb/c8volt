@@ -4,7 +4,6 @@ Feature: 249-runtime-listener-jobs
 Started: 2026-07-23 11:30:41
 
 ---
-
 ---
 ## Iteration 1 - 2026-07-23 11:32
 **Work Unit**: Phase 1 Setup review only
@@ -60,4 +59,40 @@ Started: 2026-07-23 11:30:41
 - specs/249-runtime-listener-jobs/progress.md
 **Learnings**:
 - Pointer-backed listener slices preserve the requested-empty JSON contract while keeping unrequested listener fields absent.
+---
+---
+## Iteration 3 - 2026-07-23 11:52
+**Work Unit**: US1 Inspect Listener Jobs For A Specific Element
+**Tasks Completed**:
+- [x] T014: Add command contract and help tests for `get element --with-listeners`
+- [x] T015: Add keyed element listener command tests
+- [x] T016: Add element search listener command tests
+- [x] T017: Add element facade listener enrichment tests
+- [x] T018: Extend the element facade API with listener enrichment methods
+- [x] T019: Wire the element facade to job-service listener enrichment
+- [x] T020: Register and validate `--with-listeners` for element lookup and search modes
+- [x] T021: Add listener enrichment orchestration for keyed and search element results
+- [x] T022: Render element listener rows and JSON arrays
+- [x] T023: Run US1 validation and record results in quickstart
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/client.go
+- c8volt/element/api.go
+- c8volt/element/client.go
+- c8volt/element/client_test.go
+- cmd/cmd_views_element.go
+- cmd/command_contract_test.go
+- cmd/get_element.go
+- cmd/get_element_search.go
+- cmd/get_element_test.go
+- docsgen/main_test.go
+- internal/services/element/enrichment.go
+- internal/services/processinstance/enrichment.go
+- specs/249-runtime-listener-jobs/quickstart.md
+- specs/249-runtime-listener-jobs/tasks.md
+- specs/249-runtime-listener-jobs/ralph-memory.md
+- specs/249-runtime-listener-jobs/progress.md
+**Learnings**:
+- Element listener enrichment needs collected search results before rendering, and requested-empty listener slices must be non-nil empty slices to serialize as `[]`.
 ---

@@ -274,11 +274,14 @@ func TestGeneratedGetElementDocsDocumentLookupSearchAndOutput(t *testing.T) {
 		"Use --key when you know an element instance key.",
 		"Search mode follows the shared get paging and limit conventions.",
 		"Compact human rows include dur:<duration>",
+		"Use --with-listeners to include runtime listener jobs under matching element rows.",
 		"Use --json for the stable element payload and --keys-only when piping element instance keys.",
 		"./c8volt get ei -k <element-instance-key>",
+		"./c8volt get ei -k <element-instance-key> --with-listeners",
 		"./c8volt get ei --pi-key <process-instance-key> --limit 10",
+		"./c8volt get ei --pi-key <process-instance-key> --with-listeners",
 		"./c8volt get element --pi-key <process-instance-key> --total",
-		"./c8volt --json get ei --pi-key <process-instance-key> --limit 5",
+		"./c8volt --json get element --key <element-instance-key> --with-listeners",
 		"--element-id string",
 		"BPMN element ID to filter in search mode",
 		"--pi-key string",
@@ -287,6 +290,8 @@ func TestGeneratedGetElementDocsDocumentLookupSearchAndOutput(t *testing.T) {
 		"number of elements to fetch per page",
 		"--total",
 		"return only the numeric total of matching elements",
+		"--with-listeners",
+		"include runtime listener jobs under matching element rows",
 	} {
 		if !strings.Contains(elementDoc, want) {
 			t.Fatalf("expected generated get element docs to contain %q, got %q", want, elementDoc)

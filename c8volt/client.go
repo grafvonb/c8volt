@@ -117,7 +117,7 @@ func New(opts ...Option) (API, error) {
 		IncidentAPI:       incident.New(incAPI, c.log),
 		TaskAPI:           task.New(pdAPI, piAPI, utAPI, c.log),
 		JobAPI:            job.New(jAPI, c.log),
-		ElementAPI:        element.New(eAPI, c.log),
+		ElementAPI:        element.NewWithListeners(eAPI, jAPI, c.log),
 		OpsAPI:            ops.New(opsAPI, c.log),
 		BatchOperationAPI: batchoperation.New(batchAPI, c.log),
 		TenantAPI:         tenant.New(tAPI, c.log),

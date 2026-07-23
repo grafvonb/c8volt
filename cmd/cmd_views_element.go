@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/element"
@@ -14,13 +15,34 @@ import (
 // elementView renders one runtime element in the selected command output mode.
 func elementView(cmd *cobra.Command, item element.Element) error {
 	capturedNow := time.Now().UTC()
-	return itemView(cmd, item, pickMode(), oneLineElementWithTimezoneForMode(cmd, capturedNow), elementKey)
+	mode := pickMode()
+	if mode == RenderModeJSON {
+		return renderJSONPayload(cmd, mode, item)
+	}
+	if mode == RenderModeKeysOnly {
+		renderOutputLine(cmd, "%s", elementKey(item))
+		return nil
+	}
+	renderElementRowsWithListeners(cmd, []element.Element{item}, capturedNow)
+	return nil
 }
 
 // elementsView renders collected runtime elements as aligned rows, keys, or JSON.
 func elementsView(cmd *cobra.Command, result element.SearchResult) error {
 	capturedNow := time.Now().UTC()
-	return listOrJSONFlat(cmd, result, result.Items, pickMode(), flatRowElementWithTimezoneForMode(cmd, capturedNow), elementKey)
+	mode := pickMode()
+	if mode == RenderModeJSON {
+		return renderJSONPayload(cmd, mode, result)
+	}
+	if mode == RenderModeKeysOnly {
+		for _, item := range result.Items {
+			renderOutputLine(cmd, "%s", elementKey(item))
+		}
+		return nil
+	}
+	renderElementRowsWithListeners(cmd, result.Items, capturedNow)
+	renderOutputLine(cmd, "found: %d", len(result.Items))
+	return nil
 }
 
 // oneLineElement renders a compact single element row using default timestamp display.
@@ -75,6 +97,68 @@ func flatRowElementWithTimezone(item element.Element, showTimezoneOffset bool, c
 	}
 	if marker := elementIncidentMarker(item); marker != "" {
 		parts = append(parts, marker)
+	}
+	return parts
+}
+
+// renderElementRowsWithListeners prints aligned element rows and optional nested listener rows.
+func renderElementRowsWithListeners(cmd *cobra.Command, items []element.Element, capturedNow time.Time) {
+	rows := make([]flatRow, 0, len(items))
+	showTimezoneOffset := commandShowTimezoneOffset(cmd)
+	for _, item := range items {
+		rows = append(rows, flatRowElementWithTimezone(item, showTimezoneOffset, capturedNow))
+	}
+	elementLines := formatFlatRows(rows)
+	for i, item := range items {
+		renderOutputLine(cmd, "%s", elementLines[i])
+		listenerRows := formatElementListenerRows(item.Listeners, showTimezoneOffset)
+		if len(listenerRows) == 0 {
+			continue
+		}
+		renderOutputLine(cmd, "└─ listeners:")
+		for j, row := range listenerRows {
+			renderOutputLine(cmd, "   %s%s", incidentTreeBranch(j, len(listenerRows)), row)
+		}
+	}
+}
+
+// formatElementListenerRows renders element-owned listener jobs using the shared listener row grammar.
+func formatElementListenerRows(listeners *[]element.RuntimeListenerJob, showTimezoneOffset bool) []string {
+	if listeners == nil || len(*listeners) == 0 {
+		return nil
+	}
+	rows := make([]flatRow, 0, len(*listeners))
+	for _, listener := range *listeners {
+		rows = append(rows, flatRowElementListenerWithTimezone(listener, showTimezoneOffset))
+	}
+	return formatFlatRows(rows)
+}
+
+// flatRowElementListenerWithTimezone formats one runtime listener job below an element row.
+func flatRowElementListenerWithTimezone(item element.RuntimeListenerJob, showTimezoneOffset bool) flatRow {
+	parts := flatRow{
+		item.JobKey,
+		item.Kind,
+		prefixedJobField("lsnr", item.ListenerEventType),
+		item.State,
+		prefixedJobField("tp", item.Type),
+		"r:" + strconv.FormatInt(int64(item.Retries), 10),
+		prefixedJobField("worker", item.Worker),
+	}
+	if item.Deadline != nil {
+		parts = append(parts, "d:"+toolx.FormatTime(*item.Deadline, showTimezoneOffset))
+	} else {
+		parts = append(parts, "")
+	}
+	if item.ErrorCode != "" {
+		parts = append(parts, "ec:"+item.ErrorCode)
+	} else {
+		parts = append(parts, "")
+	}
+	if item.ErrorMessage != "" {
+		parts = append(parts, "err:"+truncateHumanMessage(item.ErrorMessage, flagGetErrorMessageLimit))
+	} else {
+		parts = append(parts, "")
 	}
 	return parts
 }

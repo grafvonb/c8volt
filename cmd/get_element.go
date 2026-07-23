@@ -24,6 +24,7 @@ var (
 	flagGetElementBatchSize     int32
 	flagGetElementLimit         int32
 	flagGetElementTotal         bool
+	flagGetElementWithListeners bool
 )
 
 var getElementCmd = &cobra.Command{
@@ -33,13 +34,16 @@ var getElementCmd = &cobra.Command{
 		"Use --key when you know an element instance key. Omit --key to list or search element instances by process instance, BPMN element ID, state, type, process definition, or BPMN process ID.\n\n" +
 		"Search mode follows the shared get paging and limit conventions. --batch-size controls per-page discovery requests, --limit caps returned element rows, and --total prints only the matching count.\n\n" +
 		"Compact human rows include dur:<duration> when start/end timestamps or active state support a runtime duration.\n\n" +
+		"Use --with-listeners to include runtime listener jobs under matching element rows.\n\n" +
 		"Use --json for the stable element payload and --keys-only when piping element instance keys.\n\n" +
 		"Element lookup and search require Camunda 8.8 or 8.9. Camunda 8.7 returns an unsupported-version error.",
 	Example: `  ./c8volt get ei -k <element-instance-key>
+  ./c8volt get ei -k <element-instance-key> --with-listeners
   ./c8volt get ei --pi-key <process-instance-key> --limit 10
+  ./c8volt get ei --pi-key <process-instance-key> --with-listeners
   ./c8volt get element --pi-key <process-instance-key> --total
   ./c8volt --json get ei --pi-key <process-instance-key> --limit 5
-  ./c8volt --json get element --key <element-instance-key>`,
+  ./c8volt --json get element --key <element-instance-key> --with-listeners`,
 	Aliases: []string{"ei"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -54,7 +58,7 @@ var getElementCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if strings.TrimSpace(flagGetElementKey) != "" {
-			item, err := cli.GetElement(cmd.Context(), strings.TrimSpace(flagGetElementKey), collectOptions()...)
+			item, err := getElementItem(cmd, cli, strings.TrimSpace(flagGetElementKey))
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get element: %w", err))
 			}
@@ -74,7 +78,7 @@ var getElementCmd = &cobra.Command{
 			}
 			return
 		}
-		result, renderedIncrementally, err := searchElementsWithPaging(cmd, cli, searchRequest)
+		result, renderedIncrementally, err := searchElementsForCommand(cmd, cli, searchRequest)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get elements: %w", err))
 		}
@@ -101,6 +105,7 @@ func init() {
 	fs.Int32VarP(&flagGetElementBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of elements to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetElementLimit, "limit", "l", 0, "maximum number of elements to return in search mode")
 	fs.BoolVar(&flagGetElementTotal, "total", false, "return only the numeric total of matching elements")
+	fs.BoolVar(&flagGetElementWithListeners, "with-listeners", false, "include runtime listener jobs under matching element rows")
 
 	useInvalidInputFlagErrors(getElementCmd)
 	setCommandMutation(getElementCmd, CommandMutationReadOnly)
@@ -151,6 +156,9 @@ func validateGetElementFlagValues(cmd *cobra.Command) error {
 		return invalidFlagValuef("invalid value for --type: %q, valid values are: %s", flagGetElementType, strings.Join(validElementTypes, ", "))
 	}
 	if flagGetElementTotal {
+		if flagGetElementWithListeners {
+			return mutuallyExclusiveFlagsf("--with-listeners cannot be combined with --total")
+		}
 		switch pickMode() {
 		case RenderModeJSON:
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --json")
@@ -158,7 +166,18 @@ func validateGetElementFlagValues(cmd *cobra.Command) error {
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --keys-only")
 		}
 	}
+	if flagGetElementWithListeners && pickMode() == RenderModeKeysOnly {
+		return mutuallyExclusiveFlagsf("--with-listeners cannot be combined with --keys-only")
+	}
 	return nil
+}
+
+// getElementItem selects plain or listener-enriched keyed element lookup.
+func getElementItem(cmd *cobra.Command, cli element.API, key string) (element.Element, error) {
+	if flagGetElementWithListeners {
+		return cli.GetElementWithListeners(cmd.Context(), key, collectOptions()...)
+	}
+	return cli.GetElement(cmd.Context(), key, collectOptions()...)
 }
 
 func newGetElementSearchRequest(cmd *cobra.Command) element.SearchRequest {

@@ -12,6 +12,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// searchElementsForCommand selects collected listener search or the existing paging renderer.
+func searchElementsForCommand(cmd *cobra.Command, cli element.API, request element.SearchRequest) (element.SearchResult, bool, error) {
+	if flagGetElementWithListeners {
+		result, err := cli.SearchElementsWithListeners(cmd.Context(), request, collectOptions()...)
+		return result, false, err
+	}
+	return searchElementsWithPaging(cmd, cli, request)
+}
+
 // searchElementsWithPaging walks element search pages and either streams rows
 // incrementally or returns one bounded collection for JSON rendering.
 func searchElementsWithPaging(cmd *cobra.Command, cli element.API, request element.SearchRequest) (element.SearchResult, bool, error) {
