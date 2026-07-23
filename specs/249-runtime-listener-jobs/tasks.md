@@ -155,12 +155,12 @@
 
 **Purpose**: Documentation, generated CLI reference, formatting, and full validation across all stories.
 
-- [ ] T051 [P] Update README examples and behavior notes for `--with-listeners` in `README.md`
-- [ ] T052 [P] Update or add command metadata assertions for all in-scope commands in `cmd/command_contract_test.go`, `cmd/ops_contract_test.go`, and `docsgen/main_test.go`
-- [ ] T053 Regenerate CLI documentation with `make docs-content` and verify generated files under `docs/cli/`
-- [ ] T054 Run `gofmt` on touched Go files in `cmd/`, `c8volt/`, and `internal/`
-- [ ] T055 Run targeted quickstart validation from `specs/249-runtime-listener-jobs/quickstart.md`
-- [ ] T056 Run full repository validation with `make test`
+- [x] T051 [P] Update README examples and behavior notes for `--with-listeners` in `README.md`
+- [x] T052 [P] Update or add command metadata assertions for all in-scope commands in `cmd/command_contract_test.go`, `cmd/ops_contract_test.go`, and `docsgen/main_test.go`
+- [x] T053 Regenerate CLI documentation with `make docs-content` and verify generated files under `docs/cli/`
+- [x] T054 Run `gofmt` on touched Go files in `cmd/`, `c8volt/`, and `internal/`
+- [x] T055 Run targeted quickstart validation from `specs/249-runtime-listener-jobs/quickstart.md`
+- [x] T056 Run full repository validation with `make test`
 
 ---
 

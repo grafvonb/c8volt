@@ -18,6 +18,8 @@ Search mode follows the shared get paging and limit conventions. --batch-size co
 
 Compact human rows include dur:<duration> when start/end timestamps or active state support a runtime duration.
 
+Use --with-listeners to include runtime listener jobs under matching element rows.
+
 Use --json for the stable element payload and --keys-only when piping element instance keys.
 
 Element lookup and search require Camunda 8.8 or 8.9. Camunda 8.7 returns an unsupported-version error.
@@ -30,10 +32,12 @@ c8volt get element [flags]
 
 ```
   ./c8volt get ei -k <element-instance-key>
+  ./c8volt get ei -k <element-instance-key> --with-listeners
   ./c8volt get ei --pi-key <process-instance-key> --limit 10
+  ./c8volt get ei --pi-key <process-instance-key> --with-listeners
   ./c8volt get element --pi-key <process-instance-key> --total
   ./c8volt --json get ei --pi-key <process-instance-key> --limit 5
-  ./c8volt --json get element --key <element-instance-key>
+  ./c8volt --json get element --key <element-instance-key> --with-listeners
 ```
 
 ### Options
@@ -50,6 +54,7 @@ c8volt get element [flags]
   -s, --state string             runtime element state to filter in search mode; case-insensitive
       --total                    return only the numeric total of matching elements
       --type string              runtime element type to filter in search mode; case-insensitive
+      --with-listeners           include runtime listener jobs under matching element rows
 ```
 
 ### Options inherited from parent commands

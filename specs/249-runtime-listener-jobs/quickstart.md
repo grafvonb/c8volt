@@ -51,6 +51,12 @@ Add or update targeted cases covering:
 - 2026-07-23 12:09 Iteration 5: `go test ./cmd ./docsgen -count=1` passed.
 - 2026-07-23 12:18 Iteration 6: `go test ./cmd ./c8volt/ops ./internal/services/ops -run 'Test.*SlowProcess.*Listener|TestOps.*Listener|TestGenerated.*slow-process' -count=1` passed.
 - 2026-07-23 12:18 Iteration 6: `go test ./cmd ./c8volt/ops ./internal/services/ops ./docsgen -count=1` passed.
+- 2026-07-23 12:25 Iteration 7: `make docs-content` passed and regenerated listener command docs.
+- 2026-07-23 12:25 Iteration 7: `gofmt -w cmd/*.go c8volt/*.go c8volt/*/*.go internal/domain/*.go internal/services/processinstance/*.go internal/services/element/*.go internal/services/ops/*.go` passed.
+- 2026-07-23 12:25 Iteration 7: `go test ./cmd -run 'Test(GetElement|GetProcessInstance|WalkProcessInstance|OpsAnalyseSlowProcessInstances|CommandContract)' -count=1` passed.
+- 2026-07-23 12:25 Iteration 7: `go test ./c8volt/process ./c8volt/ops ./internal/services/processinstance ./internal/services/ops ./internal/services/job/... -count=1` passed.
+- 2026-07-23 12:25 Iteration 7: `go test ./c8volt/resource -count=1` passed after updating the test stub for the listener-aware process facade interface.
+- 2026-07-23 12:25 Iteration 7: `make test` passed.
 
 ## Manual Smoke Scenarios
 

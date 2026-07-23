@@ -18,6 +18,8 @@ Tenant contract: explicit --key process-instance targets are backend-authorized 
 
 Add --with-incidents, --with-vars, and/or --with-elements to keyed walks to show incident details, process-instance-scope variables, and runtime element instances below matching rows.
 
+Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.
+
 When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.
 
 ```
@@ -31,6 +33,7 @@ c8volt walk process-instance [flags]
   ./c8volt walk pi --key <process-instance-key> --with-incidents
   ./c8volt walk pi --key <process-instance-key> --with-vars
   ./c8volt walk pi --key <process-instance-key> --with-elements
+  ./c8volt walk pi --key <process-instance-key> --with-elements --with-listeners
   ./c8volt walk pi --key <process-instance-key> --flat
   ./c8volt walk pi --key <process-instance-key> --parent
 ```
@@ -48,6 +51,7 @@ c8volt walk process-instance [flags]
       --var-value-limit int          maximum characters to show for variable values when --with-vars is set; 0 disables truncation
       --with-elements                show runtime element instances for keyed process-instance walks
       --with-incidents               show incident keys, states, and messages for keyed process-instance walks
+      --with-listeners               show runtime listener jobs under matching element rows; requires --with-elements
       --with-vars                    show process-instance-scope variables for keyed process-instance walks
 ```
 

@@ -190,3 +190,30 @@ Started: 2026-07-23 11:30:41
 **Learnings**:
 - Slow-analysis listener enrichment can reuse process-instance element listener enrichment and copy listener slices only to element timeline entries.
 ---
+---
+## Iteration 7 - 2026-07-23 12:25
+**Work Unit**: Phase 7 Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T051: Update README examples and behavior notes for `--with-listeners`
+- [x] T052: Verify command metadata assertions for all in-scope commands
+- [x] T053: Regenerate CLI documentation with `make docs-content`
+- [x] T054: Run `gofmt` on touched Go files
+- [x] T055: Run targeted quickstart validation
+- [x] T056: Run full repository validation with `make test`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/resource/client_test.go
+- docs/cli/c8volt_get_element.md
+- docs/cli/c8volt_get_process-instance.md
+- docs/cli/c8volt_ops_analyse_slow-process-instances.md
+- docs/cli/c8volt_walk_process-instance.md
+- docs/index.md
+- specs/249-runtime-listener-jobs/quickstart.md
+- specs/249-runtime-listener-jobs/tasks.md
+- specs/249-runtime-listener-jobs/ralph-memory.md
+- specs/249-runtime-listener-jobs/progress.md
+**Learnings**:
+- Full validation requires updating test stubs when a facade interface grows listener-aware methods, even if the consuming package does not call them.
+---

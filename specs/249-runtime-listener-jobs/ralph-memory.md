@@ -54,4 +54,4 @@ Started: 2026-07-23T09:30:41Z
 - Do not hand-edit generated Camunda clients for this feature; the existing v8.8/v8.9 job search surface already has the required listener filters.
 
 ## Current Handoff
-- US4 `ops analyse slow-process-instances --with-listeners` is complete and validated. T001-T003 remain unchecked because they are review-only. Next iteration should start Phase 7 polish with README/docs metadata review tasks T051-T056; regenerate docs with `make docs-content` after README/metadata updates.
+- Phase 7 polish is complete and validated. T001-T003 remain unchecked because they are review-only setup tasks that produced no substantive project change under Ralph rules.
