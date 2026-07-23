@@ -413,6 +413,33 @@ func TestCommandPath_TrimsRootName(t *testing.T) {
 	require.Equal(t, "walk process-instance", commandPath(walkProcessInstanceCmd))
 }
 
+// TestCommandCapabilityForCommand_WalkProcessInstanceElementFlagAndContract verifies walk element enrichment is discoverable as read-only command metadata.
+func TestCommandCapabilityForCommand_WalkProcessInstanceElementFlagAndContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(walkProcessInstanceCmd)
+
+	require.Equal(t, "walk process-instance", capability.Path)
+	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportUnsupported, capability.AutomationSupport)
+	require.Contains(t, capability.Aliases, "pi")
+	require.Contains(t, capability.Aliases, "pis")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-elements",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "show runtime element instances for keyed process-instance walks",
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
+	require.Contains(t, walkProcessInstanceCmd.Long, "Add --with-incidents, --with-vars, and/or --with-elements")
+	require.Contains(t, walkProcessInstanceCmd.Example, "./c8volt walk pi --key <process-instance-key> --with-elements")
+}
+
 func TestCommandCapabilityForCommand_IncludesExplicitAutomationMetadata(t *testing.T) {
 	t.Parallel()
 

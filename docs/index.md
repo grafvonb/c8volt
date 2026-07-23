@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.2.0-beta.1-6-g1af029e4-dirty`, commit `1af029e4`, built `2026-07-22T18:26:22Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v4.2.0-beta.1-13-g1ee0bcd2-dirty`, commit `1ee0bcd2`, built `2026-07-22T21:44:12Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -269,13 +269,14 @@ Use `resolve incident` when you already have incident keys from `get pi --with-i
 ```bash
 ./c8volt walk pi --key <process-instance-key>
 ./c8volt walk pi --key <process-instance-key> --with-incidents
-./c8volt walk pi --key <process-instance-key> --with-vars --with-incidents
+./c8volt walk pi --key <process-instance-key> --with-elements
+./c8volt walk pi --key <process-instance-key> --with-vars --with-incidents --with-elements
 ./c8volt walk pi --key <process-instance-key> --flat
 ```
 
 Use `walk pi` before a risky action. It shows the process-instance family tree, which is usually where the real cancellation or deletion scope becomes obvious.
 
-For diagnosis, add `--with-incidents` and/or `--with-vars`. Use `--json` when scripts need the full structured details.
+For diagnosis, add `--with-incidents`, `--with-vars`, and/or `--with-elements`. Runtime element rows appear under the owning process-instance row without changing the selected tree, ancestry, descendants, or flat paths. Use `--json` when scripts need traversal metadata with per-row variables, incidents, and element arrays.
 
 ### Cancel Safely
 
@@ -405,6 +406,8 @@ For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` 
 When incident output includes `jobKey`, use `get job --key <job-key>` for direct job details. To remediate job retries or timeout, preview with `update job --dry-run`, then submit with `--auto-confirm` or `--automation`. To resolve the incident itself, preview with `resolve incident --dry-run` or let `resolve pi --dry-run` discover the active incident set for a process instance first.
 
 For runtime execution context, add `--with-elements` to keyed or list/search `get pi` output. Element rows appear under an `elements:` section for each selected process instance and include the element instance key, type, BPMN element ID, state, start time, optional end time, `dur:<duration>` when calculable, and optional incident marker. `--limit`, `--batch-size`, prompts, and `found: N` still count process instances, not attached element rows. Use `get ei` when you need element-specific filters, keys-only element output, or element totals.
+
+For related process-instance diagnosis, add `--with-elements` to keyed `walk pi` output. The walk first selects the family, children, parent chain, or flat path and then attaches each runtime element under its owning process-instance row. Combine it with `--with-vars` and `--with-incidents` when runtime data, failure context, and BPMN element state should stay in one traversal view.
 
 For slow-run inspection, use `ops analyse slow-process-instances` with explicit process-instance keys or one process-definition selector:
 
@@ -770,7 +773,8 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 # Inspect parent/child relationships before taking action.
 ./c8volt walk pi --key <process-instance-key>
 ./c8volt walk pi --key <process-instance-key> --with-incidents
-./c8volt walk pi --key <process-instance-key> --with-vars --with-incidents
+./c8volt walk pi --key <process-instance-key> --with-elements
+./c8volt walk pi --key <process-instance-key> --with-vars --with-incidents --with-elements
 ./c8volt walk pi --key <process-instance-key> --flat
 
 # Wait for automation-visible outcomes.

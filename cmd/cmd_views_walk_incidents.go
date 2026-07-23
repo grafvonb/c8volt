@@ -5,9 +5,10 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/grafvonb/c8volt/c8volt/incident"
 	"strings"
+	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
@@ -84,15 +85,18 @@ func walkActivityView(cmd *cobra.Command, mode string, result process.TraversalR
 	}
 }
 
+// activityPathView renders parent, children, and flat-family rows with any
+// requested activity sections attached below each path segment.
 func activityPathView(cmd *cobra.Command, items []processInstanceActivityItem, sep string) error {
 	var out strings.Builder
 	showTimezoneOffset := commandShowTimezoneOffset(cmd)
+	capturedNow := time.Now().UTC()
 	for i, item := range items {
 		if i > 0 {
 			out.WriteString(sep)
 		}
 		out.WriteString(oneLinePIWithTimezone(item.Item, showTimezoneOffset))
-		writeProcessInstanceActivityLinesWithTimezone(&out, "", item.Variables, item.Incidents, item.ShowIncidents, item.Item.Incident, 0, showTimezoneOffset)
+		writeProcessInstanceActivityLinesWithElementsWithTimezone(&out, "", item.Variables, item.Incidents, item.Elements, item.ShowIncidents, item.Item.Incident, 0, showTimezoneOffset, capturedNow)
 	}
 	renderOutputLine(cmd, "%s", out.String())
 	return nil
@@ -181,7 +185,7 @@ func renderIncidentEnrichedFamilyTree(cmd *cobra.Command, rootKey string, edges 
 	showTimezoneOffset := commandShowTimezoneOffset(cmd)
 	renderOutputLine(cmd, "%s", oneLinePIWithTimezone(rootItem.Item, showTimezoneOffset))
 	rootChildren := edges[rootKey]
-	for _, line := range formatMustActivityLinesWithTimezone("", nil, rootItem.Incidents, true, rootItem.Item.Incident, len(rootChildren), showTimezoneOffset) {
+	for _, line := range formatMustActivityLinesWithTimezone("", nil, rootItem.Incidents, nil, true, rootItem.Item.Incident, len(rootChildren), showTimezoneOffset) {
 		renderOutputLine(cmd, "%s", line)
 	}
 
@@ -218,6 +222,8 @@ func renderIncidentEnrichedFamilyTree(cmd *cobra.Command, rootKey string, edges 
 	return nil
 }
 
+// renderActivityFamilyTree prints walked process instances and activity detail
+// sections as siblings so element rows never capture child process-instance rows.
 func renderActivityFamilyTree(cmd *cobra.Command, rootKey string, edges map[string][]string, items []processInstanceActivityItem, markerKey string) error {
 	itemsByKey := make(map[string]processInstanceActivityItem, len(items))
 	for _, item := range items {
@@ -229,9 +235,10 @@ func renderActivityFamilyTree(cmd *cobra.Command, rootKey string, edges map[stri
 		return fmt.Errorf("root %s not found in enriched traversal items", rootKey)
 	}
 	showTimezoneOffset := commandShowTimezoneOffset(cmd)
+	capturedNow := time.Now().UTC()
 	renderOutputLine(cmd, "%s", oneLinePIWithTimezone(rootItem.Item, showTimezoneOffset))
 	rootChildren := edges[rootKey]
-	for _, line := range formatMustActivityLinesWithTimezone("", rootItem.Variables, rootItem.Incidents, rootItem.ShowIncidents, rootItem.Item.Incident, len(rootChildren), showTimezoneOffset) {
+	for _, line := range formatMustActivityLinesWithElementsWithTimezone("", rootItem.Variables, rootItem.Incidents, rootItem.Elements, rootItem.ShowIncidents, rootItem.Item.Incident, len(rootChildren), showTimezoneOffset, capturedNow) {
 		renderOutputLine(cmd, "%s", line)
 	}
 
@@ -259,7 +266,7 @@ func renderActivityFamilyTree(cmd *cobra.Command, rootKey string, edges map[stri
 			out.WriteString(branch)
 			out.WriteString(oneLinePIWithTimezone(item.Item, showTimezoneOffset))
 			out.WriteString(marker)
-			writeProcessInstanceActivityLinesWithTimezone(&out, nextPrefix, item.Variables, item.Incidents, item.ShowIncidents, item.Item.Incident, len(edges[childKey]), showTimezoneOffset)
+			writeProcessInstanceActivityLinesWithElementsWithTimezone(&out, nextPrefix, item.Variables, item.Incidents, item.Elements, item.ShowIncidents, item.Item.Incident, len(edges[childKey]), showTimezoneOffset, capturedNow)
 			renderOutputLine(cmd, "%s", out.String())
 			walk(childKey, nextPrefix)
 		}
@@ -273,7 +280,16 @@ func formatMustActivityLines(prefix string, variables []process.ProcessInstanceV
 	return lines
 }
 
-func formatMustActivityLinesWithTimezone(prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int, showTimezoneOffset bool) []string {
-	lines, _ := formatProcessInstanceActivityLinesWithTimezone(prefix, variables, incidents, showIncidents, hasIncidentMarker, followingChildren, showTimezoneOffset)
+// formatMustActivityLinesWithTimezone preserves the no-error convenience used
+// by walk renderers while accepting an optional element section.
+func formatMustActivityLinesWithTimezone(prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, elements []process.ProcessInstanceElement, showIncidents bool, hasIncidentMarker bool, followingChildren int, showTimezoneOffset bool) []string {
+	lines, _ := formatProcessInstanceActivityLinesWithElementsWithTimezone(prefix, variables, incidents, elements, showIncidents, hasIncidentMarker, followingChildren, showTimezoneOffset, time.Now().UTC())
+	return lines
+}
+
+// formatMustActivityLinesWithElementsWithTimezone lets tree renderers share one
+// captured clock when active element durations are formatted.
+func formatMustActivityLinesWithElementsWithTimezone(prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, elements []process.ProcessInstanceElement, showIncidents bool, hasIncidentMarker bool, followingChildren int, showTimezoneOffset bool, capturedNow time.Time) []string {
+	lines, _ := formatProcessInstanceActivityLinesWithElementsWithTimezone(prefix, variables, incidents, elements, showIncidents, hasIncidentMarker, followingChildren, showTimezoneOffset, capturedNow)
 	return lines
 }

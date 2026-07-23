@@ -180,8 +180,21 @@ func writeProcessInstanceActivityLines(out *strings.Builder, prefix string, vari
 	return writeProcessInstanceActivityLinesWithTimezone(out, prefix, variables, incidents, showIncidents, hasIncidentMarker, followingChildren, false)
 }
 
+// writeProcessInstanceActivityLinesWithTimezone keeps existing variable and
+// incident call sites on the element-aware formatter with no element section.
 func writeProcessInstanceActivityLinesWithTimezone(out *strings.Builder, prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int, showTimezoneOffset bool) bool {
-	lines, needsWarning := formatProcessInstanceActivityLinesWithTimezone(prefix, variables, incidents, showIncidents, hasIncidentMarker, followingChildren, showTimezoneOffset)
+	lines, needsWarning := formatProcessInstanceActivityLinesWithElementsWithTimezone(prefix, variables, incidents, nil, showIncidents, hasIncidentMarker, followingChildren, showTimezoneOffset, time.Now().UTC())
+	for _, line := range lines {
+		out.WriteByte('\n')
+		out.WriteString(line)
+	}
+	return needsWarning
+}
+
+// writeProcessInstanceActivityLinesWithElementsWithTimezone appends all
+// requested activity sections while preserving the caller's tree prefix.
+func writeProcessInstanceActivityLinesWithElementsWithTimezone(out *strings.Builder, prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, elements []process.ProcessInstanceElement, showIncidents bool, hasIncidentMarker bool, followingChildren int, showTimezoneOffset bool, capturedNow time.Time) bool {
+	lines, needsWarning := formatProcessInstanceActivityLinesWithElementsWithTimezone(prefix, variables, incidents, elements, showIncidents, hasIncidentMarker, followingChildren, showTimezoneOffset, capturedNow)
 	for _, line := range lines {
 		out.WriteByte('\n')
 		out.WriteString(line)
@@ -357,7 +370,9 @@ func processInstancesFromTraversal(result process.TraversalResult) process.Proce
 	}
 }
 
-func activityItemsFromTraversal(result process.TraversalResult, incidents process.IncidentEnrichedTraversalResult, variables process.VariableEnrichedProcessInstances, showIncidents bool) []processInstanceActivityItem {
+// activityItemsFromTraversal preserves traversal order while overlaying any
+// requested activity enrichments by owning process-instance key.
+func activityItemsFromTraversal(result process.TraversalResult, incidents process.IncidentEnrichedTraversalResult, variables process.VariableEnrichedProcessInstances, elements process.ElementEnrichedProcessInstances, showIncidents bool) []processInstanceActivityItem {
 	incidentsByKey := make(map[string][]incident.ProcessInstanceIncidentDetail, len(incidents.Items))
 	for _, item := range incidents.Items {
 		incidentsByKey[item.Item.Key] = item.Incidents
@@ -366,6 +381,11 @@ func activityItemsFromTraversal(result process.TraversalResult, incidents proces
 	for _, item := range variables.Items {
 		varsByKey[item.Item.Key] = item.Variables
 	}
+	elementsByKey := make(map[string][]process.ProcessInstanceElement, len(elements.Items))
+	for _, item := range elements.Items {
+		elementsByKey[item.Item.Key] = item.Elements
+	}
+	showElements := elements.Items != nil
 
 	items := make([]processInstanceActivityItem, 0, len(result.Keys))
 	for _, key := range result.Keys {
@@ -377,8 +397,21 @@ func activityItemsFromTraversal(result process.TraversalResult, incidents proces
 			Item:          item,
 			Variables:     varsByKey[key],
 			Incidents:     incidentsByKey[key],
+			Elements:      traversalElementsForKey(elementsByKey, key, showElements),
 			ShowIncidents: showIncidents,
 		})
 	}
 	return items
+}
+
+// traversalElementsForKey distinguishes unrequested element enrichment from a
+// requested lookup that returned no rows for a walked process instance.
+func traversalElementsForKey(elementsByKey map[string][]process.ProcessInstanceElement, key string, showElements bool) []process.ProcessInstanceElement {
+	if !showElements {
+		return nil
+	}
+	if elements := elementsByKey[key]; elements != nil {
+		return elements
+	}
+	return []process.ProcessInstanceElement{}
 }
