@@ -6,6 +6,7 @@ package process
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/incident"
@@ -147,23 +148,41 @@ type VariableEnrichedProcessInstances struct {
 	Items []VariableEnrichedProcessInstance `json:"items"`
 }
 
+type RuntimeListenerJob struct {
+	JobKey             string     `json:"jobKey,omitempty"`
+	Kind               string     `json:"kind,omitempty"`
+	ListenerEventType  string     `json:"listenerEventType,omitempty"`
+	Type               string     `json:"type,omitempty"`
+	State              string     `json:"state,omitempty"`
+	Retries            int32      `json:"retries"`
+	Worker             string     `json:"worker,omitempty"`
+	Deadline           *time.Time `json:"deadline,omitempty"`
+	ProcessInstanceKey string     `json:"processInstanceKey,omitempty"`
+	ElementInstanceKey string     `json:"elementInstanceKey,omitempty"`
+	ElementId          string     `json:"elementId,omitempty"`
+	TenantId           string     `json:"tenantId,omitempty"`
+	ErrorCode          string     `json:"errorCode,omitempty"`
+	ErrorMessage       string     `json:"errorMessage,omitempty"`
+}
+
 // ProcessInstanceElement represents one runtime BPMN element execution
 // attached to an owning process instance in enriched process output.
 type ProcessInstanceElement struct {
-	ElementInstanceKey     string `json:"elementInstanceKey,omitempty"`
-	ElementId              string `json:"elementId,omitempty"`
-	ElementName            string `json:"elementName,omitempty"`
-	Type                   string `json:"type,omitempty"`
-	State                  string `json:"state,omitempty"`
-	StartDate              string `json:"startDate,omitempty"`
-	EndDate                string `json:"endDate,omitempty"`
-	ProcessInstanceKey     string `json:"processInstanceKey,omitempty"`
-	RootProcessInstanceKey string `json:"rootProcessInstanceKey,omitempty"`
-	ProcessDefinitionId    string `json:"processDefinitionId,omitempty"`
-	ProcessDefinitionKey   string `json:"processDefinitionKey,omitempty"`
-	TenantId               string `json:"tenantId,omitempty"`
-	HasIncident            bool   `json:"hasIncident"`
-	IncidentKey            string `json:"incidentKey,omitempty"`
+	ElementInstanceKey     string                `json:"elementInstanceKey,omitempty"`
+	ElementId              string                `json:"elementId,omitempty"`
+	ElementName            string                `json:"elementName,omitempty"`
+	Type                   string                `json:"type,omitempty"`
+	State                  string                `json:"state,omitempty"`
+	StartDate              string                `json:"startDate,omitempty"`
+	EndDate                string                `json:"endDate,omitempty"`
+	ProcessInstanceKey     string                `json:"processInstanceKey,omitempty"`
+	RootProcessInstanceKey string                `json:"rootProcessInstanceKey,omitempty"`
+	ProcessDefinitionId    string                `json:"processDefinitionId,omitempty"`
+	ProcessDefinitionKey   string                `json:"processDefinitionKey,omitempty"`
+	TenantId               string                `json:"tenantId,omitempty"`
+	HasIncident            bool                  `json:"hasIncident"`
+	IncidentKey            string                `json:"incidentKey,omitempty"`
+	Listeners              *[]RuntimeListenerJob `json:"listeners,omitempty"`
 }
 
 // ElementEnrichedProcessInstance is the public JSON shape for one selected

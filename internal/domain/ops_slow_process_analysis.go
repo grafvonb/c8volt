@@ -116,6 +116,7 @@ type SlowProcessAnalysisTimelineEntry struct {
 	ComparisonSampleCount  int                                  `json:"comparisonSampleCount,omitempty"`
 	RelativeBar            string                               `json:"relativeBar,omitempty"`
 	ProcessDurationShare   int                                  `json:"processDurationShare,omitempty"`
+	Listeners              *[]RuntimeListenerJob                `json:"listeners,omitempty"`
 }
 
 // SlowProcessAnalysisResult carries the complete render-independent analysis payload.

@@ -13,6 +13,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	esvc "github.com/grafvonb/c8volt/internal/services/element"
 	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
+	jsvc "github.com/grafvonb/c8volt/internal/services/job"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	"github.com/grafvonb/c8volt/toolx"
@@ -23,6 +24,7 @@ type client struct {
 	piApi  pisvc.API
 	incApi incsvc.API
 	elApi  esvc.API
+	jobApi jsvc.API
 	log    *slog.Logger
 }
 
@@ -34,11 +36,18 @@ func New(pdApi pdsvc.API, piApi pisvc.API, incApi incsvc.API, log *slog.Logger) 
 // NewWithElements creates a process facade with incident and runtime-element
 // lookup dependencies routed through their service layers.
 func NewWithElements(pdApi pdsvc.API, piApi pisvc.API, incApi incsvc.API, elApi esvc.API, log *slog.Logger) API {
+	return NewWithElementListeners(pdApi, piApi, incApi, elApi, nil, log)
+}
+
+// NewWithElementListeners creates a process facade with runtime-element and
+// listener-job lookup dependencies routed through their service layers.
+func NewWithElementListeners(pdApi pdsvc.API, piApi pisvc.API, incApi incsvc.API, elApi esvc.API, jobApi jsvc.API, log *slog.Logger) API {
 	return &client{
 		pdApi:  pdApi,
 		piApi:  piApi,
 		incApi: incApi,
 		elApi:  elApi,
+		jobApi: jobApi,
 		log:    log,
 	}
 }
@@ -131,6 +140,21 @@ func (c *client) EnrichProcessInstancesWithElements(ctx context.Context, pis Pro
 		return ElementEnrichedProcessInstances{}, ferr.FromDomain(fmt.Errorf("%w: process-instance element enrichment requires an element service", d.ErrUnsupported))
 	}
 	got, err := pisvc.EnrichProcessInstancesWithElements(ctx, c.elApi, toolx.MapSlice(pis.Items, toDomainProcessInstance), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return ElementEnrichedProcessInstances{}, ferr.FromDomain(err)
+	}
+	return fromDomainElementEnrichedProcessInstances(got), nil
+}
+
+// EnrichProcessInstancesWithElementListeners attaches runtime elements with requested listener job arrays.
+func (c *client) EnrichProcessInstancesWithElementListeners(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (ElementEnrichedProcessInstances, error) {
+	if c.elApi == nil {
+		return ElementEnrichedProcessInstances{}, ferr.FromDomain(fmt.Errorf("%w: process-instance listener enrichment requires an element service", d.ErrUnsupported))
+	}
+	if c.jobApi == nil {
+		return ElementEnrichedProcessInstances{}, ferr.FromDomain(fmt.Errorf("%w: process-instance listener enrichment requires a job service", d.ErrUnsupported))
+	}
+	got, err := pisvc.EnrichProcessInstancesWithElementListeners(ctx, c.elApi, c.jobApi, toolx.MapSlice(pis.Items, toDomainProcessInstance), options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return ElementEnrichedProcessInstances{}, ferr.FromDomain(err)
 	}

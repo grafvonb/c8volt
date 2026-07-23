@@ -24,6 +24,10 @@ type elementSearcher interface {
 	SearchElements(ctx context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (d.ElementSearchResult, error)
 }
 
+type jobSearcher interface {
+	SearchJobs(ctx context.Context, query d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error)
+}
+
 // EnrichProcessInstancesWithIncidents attaches direct incident details to selected process-instance results without reordering them.
 func EnrichProcessInstancesWithIncidents(ctx context.Context, api incidentSearcher, pis []d.ProcessInstance, opts ...services.CallOption) (d.IncidentEnrichedProcessInstances, error) {
 	items := make([]d.IncidentEnrichedProcessInstance, 0, len(pis))
@@ -73,6 +77,31 @@ func EnrichProcessInstancesWithElements(ctx context.Context, api elementSearcher
 		items = append(items, d.ElementEnrichedProcessInstance{
 			Item:     pi,
 			Elements: elementsForProcessInstance(pi.Key, result.Items),
+		})
+	}
+	return d.ElementEnrichedProcessInstances{
+		Total: int32(len(items)),
+		Items: items,
+	}, nil
+}
+
+// EnrichProcessInstancesWithElementListeners attaches runtime elements and
+// requested listener job arrays to selected process-instance results.
+func EnrichProcessInstancesWithElementListeners(ctx context.Context, elementAPI elementSearcher, jobAPI jobSearcher, pis []d.ProcessInstance, opts ...services.CallOption) (d.ElementEnrichedProcessInstances, error) {
+	items := make([]d.ElementEnrichedProcessInstance, 0, len(pis))
+	for _, pi := range pis {
+		elementResult, err := elementAPI.SearchElements(ctx, d.ElementSearchQuery{ProcessInstanceKey: pi.Key}, opts...)
+		if err != nil {
+			return d.ElementEnrichedProcessInstances{}, err
+		}
+		elements := elementsForProcessInstance(pi.Key, elementResult.Items)
+		listeners, err := listenerJobsForProcessInstance(ctx, jobAPI, pi.Key, opts...)
+		if err != nil {
+			return d.ElementEnrichedProcessInstances{}, err
+		}
+		items = append(items, d.ElementEnrichedProcessInstance{
+			Item:     pi,
+			Elements: attachListenersToElements(elements, listeners),
 		})
 	}
 	return d.ElementEnrichedProcessInstances{
@@ -150,6 +179,43 @@ func elementsForProcessInstance(key string, elements []d.Element) []d.Element {
 		}
 		return out[i].StartDate < out[j].StartDate
 	})
+	return out
+}
+
+func listenerJobsForProcessInstance(ctx context.Context, api jobSearcher, key string, opts ...services.CallOption) ([]d.RuntimeListenerJob, error) {
+	jobs := []d.RuntimeListenerJob{}
+	for _, kind := range []string{d.JobKindExecutionListener, d.JobKindTaskListener} {
+		result, err := api.SearchJobs(ctx, d.JobSearchQuery{ProcessInstanceKey: key, Kind: kind}, opts...)
+		if err != nil {
+			return nil, err
+		}
+		for _, job := range result.Items {
+			if job.ProcessInstanceKey != key || !d.IsRuntimeListenerJobKind(job.Kind) || job.ElementInstanceKey == "" {
+				continue
+			}
+			jobs = append(jobs, d.RuntimeListenerJobFromJob(job))
+		}
+	}
+	sort.SliceStable(jobs, func(i, j int) bool {
+		return jobs[i].JobKey < jobs[j].JobKey
+	})
+	return jobs, nil
+}
+
+func attachListenersToElements(elements []d.Element, listeners []d.RuntimeListenerJob) []d.Element {
+	listenersByElement := make(map[string][]d.RuntimeListenerJob, len(elements))
+	for _, listener := range listeners {
+		if listener.ElementInstanceKey == "" {
+			continue
+		}
+		listenersByElement[listener.ElementInstanceKey] = append(listenersByElement[listener.ElementInstanceKey], listener)
+	}
+	out := make([]d.Element, len(elements))
+	for i, element := range elements {
+		out[i] = element
+		listeners := append([]d.RuntimeListenerJob(nil), listenersByElement[element.ElementInstanceKey]...)
+		out[i].Listeners = &listeners
+	}
 	return out
 }
 

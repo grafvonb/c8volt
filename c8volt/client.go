@@ -113,7 +113,7 @@ func New(opts ...Option) (API, error) {
 
 	cl := client{
 		ClusterAPI:        cluster.New(cAPI, c.log),
-		ProcessAPI:        process.NewWithElements(pdAPI, piAPI, incAPI, eAPI, c.log),
+		ProcessAPI:        process.NewWithElementListeners(pdAPI, piAPI, incAPI, eAPI, jAPI, c.log),
 		IncidentAPI:       incident.New(incAPI, c.log),
 		TaskAPI:           task.New(pdAPI, piAPI, utAPI, c.log),
 		JobAPI:            job.New(jAPI, c.log),

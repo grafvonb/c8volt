@@ -24,7 +24,8 @@ type VariableEnrichedProcessInstances struct {
 }
 
 // ElementEnrichedProcessInstance pairs a selected process instance with the
-// runtime element instances owned by that process instance.
+// runtime element instances owned by that process instance. Element rows may
+// carry requested runtime listener job arrays when listener enrichment is used.
 type ElementEnrichedProcessInstance struct {
 	Item     ProcessInstance
 	Elements []Element

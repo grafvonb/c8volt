@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 	"time"
 
@@ -161,9 +162,9 @@ func formatProcessInstanceActivityLinesWithElementsWithTimezone(prefix string, v
 		branch := incidentTreeBranch(sectionIndex, totalBranches)
 		childPrefix := treeChildPrefix(prefix, sectionIndex, totalBranches)
 		lines = append(lines, prefix+branch+"elements:")
-		elementLines := formatProcessInstanceElementRows(elements, showTimezoneOffset, capturedNow)
-		for i, line := range elementLines {
-			lines = append(lines, childPrefix+incidentTreeBranch(i, len(elementLines))+line)
+		elementLines := formatProcessInstanceElementTreeLines(elements, showTimezoneOffset, capturedNow)
+		for _, line := range elementLines {
+			lines = append(lines, childPrefix+line)
 		}
 	}
 	return lines, needsIndirectIncidentWarning
@@ -331,6 +332,25 @@ func formatProcessInstanceElementRows(elements []process.ProcessInstanceElement,
 	return formatFlatRows(rows)
 }
 
+func formatProcessInstanceElementTreeLines(elements []process.ProcessInstanceElement, showTimezoneOffset bool, capturedNow time.Time) []string {
+	elementRows := formatProcessInstanceElementRows(elements, showTimezoneOffset, capturedNow)
+	lines := make([]string, 0, len(elementRows))
+	for i, element := range elements {
+		lines = append(lines, incidentTreeBranch(i, len(elements))+elementRows[i])
+		listenerRows := formatProcessInstanceElementListenerRows(element.Listeners, showTimezoneOffset)
+		if len(listenerRows) == 0 {
+			continue
+		}
+		childPrefix := treeChildPrefix("", i, len(elements))
+		lines = append(lines, childPrefix+"└─ listeners:")
+		listenerPrefix := childPrefix + "   "
+		for j, row := range listenerRows {
+			lines = append(lines, listenerPrefix+incidentTreeBranch(j, len(listenerRows))+row)
+		}
+	}
+	return lines
+}
+
 func flatRowProcessInstanceElementWithTimezone(item process.ProcessInstanceElement, showTimezoneOffset bool, capturedNow time.Time) flatRow {
 	parts := flatRow{
 		item.ElementInstanceKey,
@@ -343,6 +363,45 @@ func flatRowProcessInstanceElementWithTimezone(item process.ProcessInstanceEleme
 	}
 	if marker := processInstanceElementIncidentMarker(item); marker != "" {
 		parts = append(parts, marker)
+	}
+	return parts
+}
+
+func formatProcessInstanceElementListenerRows(listeners *[]process.RuntimeListenerJob, showTimezoneOffset bool) []string {
+	if listeners == nil || len(*listeners) == 0 {
+		return nil
+	}
+	rows := make([]flatRow, 0, len(*listeners))
+	for _, listener := range *listeners {
+		rows = append(rows, flatRowProcessInstanceElementListenerWithTimezone(listener, showTimezoneOffset))
+	}
+	return formatFlatRows(rows)
+}
+
+func flatRowProcessInstanceElementListenerWithTimezone(item process.RuntimeListenerJob, showTimezoneOffset bool) flatRow {
+	parts := flatRow{
+		item.JobKey,
+		item.Kind,
+		prefixedJobField("lsnr", item.ListenerEventType),
+		item.State,
+		prefixedJobField("tp", item.Type),
+		"r:" + strconv.FormatInt(int64(item.Retries), 10),
+		prefixedJobField("worker", item.Worker),
+	}
+	if item.Deadline != nil {
+		parts = append(parts, "d:"+toolx.FormatTime(*item.Deadline, showTimezoneOffset))
+	} else {
+		parts = append(parts, "")
+	}
+	if item.ErrorCode != "" {
+		parts = append(parts, "ec:"+item.ErrorCode)
+	} else {
+		parts = append(parts, "")
+	}
+	if item.ErrorMessage != "" {
+		parts = append(parts, "err:"+truncateHumanMessage(item.ErrorMessage, flagGetErrorMessageLimit))
+	} else {
+		parts = append(parts, "")
 	}
 	return parts
 }

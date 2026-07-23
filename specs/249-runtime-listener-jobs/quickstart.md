@@ -37,6 +37,11 @@ Add or update targeted cases covering:
 - Camunda 8.7 returns the existing unsupported job-search or listener-lookup error style.
 - Existing output without `--with-listeners` remains unchanged.
 
+## Validation Log
+
+- 2026-07-23 11:41 Iteration 2: `go test ./internal/services/processinstance ./c8volt/process ./cmd -run 'Test.*Listener' -count=1` passed.
+- 2026-07-23 11:41 Iteration 2: `go test ./c8volt/element ./c8volt/ops -count=1` passed.
+
 ## Manual Smoke Scenarios
 
 Inspect one runtime element with listeners:

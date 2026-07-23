@@ -32,19 +32,19 @@
 
 ### Tests First
 
-- [ ] T004 [P] Add failing ownership and omission tests for element listener attachment in `internal/services/processinstance/enrichment_test.go`
-- [ ] T005 [P] Add failing public process facade conversion tests for listener-enriched elements in `c8volt/process/client_test.go`
-- [ ] T006 [P] Add failing listener row formatter tests for human output nesting and JSON empty-array behavior in `cmd/cmd_views_processinstance_activity_test.go`
+- [x] T004 [P] Add failing ownership and omission tests for element listener attachment in `internal/services/processinstance/enrichment_test.go`
+- [x] T005 [P] Add failing public process facade conversion tests for listener-enriched elements in `c8volt/process/client_test.go`
+- [x] T006 [P] Add failing listener row formatter tests for human output nesting and JSON empty-array behavior in `cmd/cmd_views_processinstance_activity_test.go`
 
 ### Implementation
 
-- [ ] T007 Add version-neutral runtime listener job fields and listener-enriched element structs in `internal/domain/job.go`, `internal/domain/element.go`, `internal/domain/processinstance_enrichment.go`, and `internal/domain/ops_slow_process_analysis.go`
-- [ ] T008 Add public listener job models and `listeners` fields in `c8volt/element/model.go`, `c8volt/process/model.go`, and `c8volt/ops/model.go`
-- [ ] T009 Implement domain-to-public listener conversion helpers in `c8volt/element/client.go`, `c8volt/process/client.go`, and `c8volt/ops/convert.go`
-- [ ] T010 Implement listener job grouping by process instance and element instance key in `internal/services/processinstance/enrichment.go`
-- [ ] T011 Extend the process facade listener-enrichment contract and root wiring in `c8volt/process/api.go`, `c8volt/process/client.go`, and `c8volt/client.go`
-- [ ] T012 Implement shared listener row formatting and requested-but-empty JSON support in `cmd/cmd_views_processinstance_activity.go`
-- [ ] T013 Run foundational tests with `go test ./internal/services/processinstance ./c8volt/process ./cmd -run 'Test.*Listener' -count=1` and record results in `specs/249-runtime-listener-jobs/quickstart.md`
+- [x] T007 Add version-neutral runtime listener job fields and listener-enriched element structs in `internal/domain/job.go`, `internal/domain/element.go`, `internal/domain/processinstance_enrichment.go`, and `internal/domain/ops_slow_process_analysis.go`
+- [x] T008 Add public listener job models and `listeners` fields in `c8volt/element/model.go`, `c8volt/process/model.go`, and `c8volt/ops/model.go`
+- [x] T009 Implement domain-to-public listener conversion helpers in `c8volt/element/client.go`, `c8volt/process/client.go`, and `c8volt/ops/convert.go`
+- [x] T010 Implement listener job grouping by process instance and element instance key in `internal/services/processinstance/enrichment.go`
+- [x] T011 Extend the process facade listener-enrichment contract and root wiring in `c8volt/process/api.go`, `c8volt/process/client.go`, and `c8volt/client.go`
+- [x] T012 Implement shared listener row formatting and requested-but-empty JSON support in `cmd/cmd_views_processinstance_activity.go`
+- [x] T013 Run foundational tests with `go test ./internal/services/processinstance ./c8volt/process ./cmd -run 'Test.*Listener' -count=1` and record results in `specs/249-runtime-listener-jobs/quickstart.md`
 
 **Checkpoint**: Listener jobs can be attached to element data by shared services and represented by shared human/JSON renderers.
 

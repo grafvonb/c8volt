@@ -145,6 +145,24 @@ type SlowProcessAnalysisTimelineEntry struct {
 	ComparisonSampleCount  int                                  `json:"comparisonSampleCount,omitempty"`
 	RelativeBar            string                               `json:"relativeBar,omitempty"`
 	ProcessDurationShare   int                                  `json:"processDurationShare,omitempty"`
+	Listeners              *[]RuntimeListenerJob                `json:"listeners,omitempty"`
+}
+
+type RuntimeListenerJob struct {
+	JobKey             string     `json:"jobKey,omitempty"`
+	Kind               string     `json:"kind,omitempty"`
+	ListenerEventType  string     `json:"listenerEventType,omitempty"`
+	Type               string     `json:"type,omitempty"`
+	State              string     `json:"state,omitempty"`
+	Retries            int32      `json:"retries"`
+	Worker             string     `json:"worker,omitempty"`
+	Deadline           *time.Time `json:"deadline,omitempty"`
+	ProcessInstanceKey string     `json:"processInstanceKey,omitempty"`
+	ElementInstanceKey string     `json:"elementInstanceKey,omitempty"`
+	ElementId          string     `json:"elementId,omitempty"`
+	TenantId           string     `json:"tenantId,omitempty"`
+	ErrorCode          string     `json:"errorCode,omitempty"`
+	ErrorMessage       string     `json:"errorMessage,omitempty"`
 }
 
 // SlowProcessAnalysisResult carries the complete render-independent analysis payload.

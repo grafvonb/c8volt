@@ -167,7 +167,35 @@ func fromDomainProcessInstanceElement(x d.Element) ProcessInstanceElement {
 		TenantId:               x.TenantId,
 		HasIncident:            x.HasIncident,
 		IncidentKey:            x.IncidentKey,
+		Listeners:              fromDomainRuntimeListenerJobsPtr(x.Listeners),
 	}
+}
+
+func fromDomainRuntimeListenerJob(x d.RuntimeListenerJob) RuntimeListenerJob {
+	return RuntimeListenerJob{
+		JobKey:             x.JobKey,
+		Kind:               x.Kind,
+		ListenerEventType:  x.ListenerEventType,
+		Type:               x.Type,
+		State:              x.State,
+		Retries:            x.Retries,
+		Worker:             x.Worker,
+		Deadline:           x.Deadline,
+		ProcessInstanceKey: x.ProcessInstanceKey,
+		ElementInstanceKey: x.ElementInstanceKey,
+		ElementId:          x.ElementId,
+		TenantId:           x.TenantId,
+		ErrorCode:          x.ErrorCode,
+		ErrorMessage:       x.ErrorMessage,
+	}
+}
+
+func fromDomainRuntimeListenerJobsPtr(xs *[]d.RuntimeListenerJob) *[]RuntimeListenerJob {
+	if xs == nil {
+		return nil
+	}
+	out := toolx.MapSlice(*xs, fromDomainRuntimeListenerJob)
+	return &out
 }
 
 // fromDomainProcessInstanceElements copies attached runtime element rows across the facade boundary.

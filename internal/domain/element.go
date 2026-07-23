@@ -19,6 +19,7 @@ type Element struct {
 	TenantId               string
 	HasIncident            bool
 	IncidentKey            string
+	Listeners              *[]RuntimeListenerJob
 }
 
 // ElementSearchQuery carries the version-neutral filters and bounds for runtime element search.

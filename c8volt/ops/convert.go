@@ -234,7 +234,35 @@ func fromDomainSlowProcessAnalysisTimelineEntry(x d.SlowProcessAnalysisTimelineE
 		ComparisonSampleCount:  x.ComparisonSampleCount,
 		RelativeBar:            x.RelativeBar,
 		ProcessDurationShare:   x.ProcessDurationShare,
+		Listeners:              fromDomainRuntimeListenerJobsPtr(x.Listeners),
 	}
+}
+
+func fromDomainRuntimeListenerJob(x d.RuntimeListenerJob) RuntimeListenerJob {
+	return RuntimeListenerJob{
+		JobKey:             x.JobKey,
+		Kind:               x.Kind,
+		ListenerEventType:  x.ListenerEventType,
+		Type:               x.Type,
+		State:              x.State,
+		Retries:            x.Retries,
+		Worker:             x.Worker,
+		Deadline:           x.Deadline,
+		ProcessInstanceKey: x.ProcessInstanceKey,
+		ElementInstanceKey: x.ElementInstanceKey,
+		ElementId:          x.ElementId,
+		TenantId:           x.TenantId,
+		ErrorCode:          x.ErrorCode,
+		ErrorMessage:       x.ErrorMessage,
+	}
+}
+
+func fromDomainRuntimeListenerJobsPtr(xs *[]d.RuntimeListenerJob) *[]RuntimeListenerJob {
+	if xs == nil {
+		return nil
+	}
+	out := toolx.MapSlice(*xs, fromDomainRuntimeListenerJob)
+	return &out
 }
 
 func fromDomainEmbeddedSmokeTestFixture(x d.EmbeddedSmokeTestFixture) EmbeddedSmokeTestFixture {
