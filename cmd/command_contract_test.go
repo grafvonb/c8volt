@@ -433,11 +433,39 @@ func TestCommandCapabilityForCommand_WalkProcessInstanceElementFlagAndContract(t
 		Repeated:    false,
 		Description: "show runtime element instances for keyed process-instance walks",
 	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-listeners",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "show runtime listener jobs under matching element rows; requires --with-elements",
+	})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 	require.Contains(t, walkProcessInstanceCmd.Long, "Add --with-incidents, --with-vars, and/or --with-elements")
+	require.Contains(t, walkProcessInstanceCmd.Long, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
 	require.Contains(t, walkProcessInstanceCmd.Example, "./c8volt walk pi --key <process-instance-key> --with-elements")
+	require.Contains(t, walkProcessInstanceCmd.Example, "./c8volt walk pi --key <process-instance-key> --with-elements --with-listeners")
+}
+
+// TestCommandContractWalkProcessInstanceWithListeners verifies listener
+// enrichment is exposed in walk command metadata and user-facing examples.
+func TestCommandContractWalkProcessInstanceWithListeners(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(walkProcessInstanceCmd)
+
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-listeners",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "show runtime listener jobs under matching element rows; requires --with-elements",
+	})
+	require.Contains(t, walkProcessInstanceCmd.Long, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
+	require.Contains(t, walkProcessInstanceCmd.Example, "./c8volt walk pi --key <process-instance-key> --with-elements --with-listeners")
 }
 
 func TestCommandCapabilityForCommand_IncludesExplicitAutomationMetadata(t *testing.T) {

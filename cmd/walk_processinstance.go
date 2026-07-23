@@ -20,6 +20,7 @@ var (
 	flagWalkPIWithIncidents bool
 	flagWalkPIWithVars      bool
 	flagWalkPIWithElements  bool
+	flagWalkPIWithListeners bool
 )
 
 const (
@@ -35,11 +36,13 @@ var walkProcessInstanceCmd = &cobra.Command{
 		"By default, walk shows the full process-instance family as an ASCII tree. Use --parent for ancestry, --children for descendants, or --flat for a path-style family view.\n\n" +
 		"Tenant contract: explicit --key process-instance targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.\n\n" +
 		"Add --with-incidents, --with-vars, and/or --with-elements to keyed walks to show incident details, process-instance-scope variables, and runtime element instances below matching rows.\n\n" +
+		"Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.\n\n" +
 		"When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.",
 	Example: `  ./c8volt walk pi --key <process-instance-key>
   ./c8volt walk pi --key <process-instance-key> --with-incidents
   ./c8volt walk pi --key <process-instance-key> --with-vars
   ./c8volt walk pi --key <process-instance-key> --with-elements
+  ./c8volt walk pi --key <process-instance-key> --with-elements --with-listeners
   ./c8volt walk pi --key <process-instance-key> --flat
   ./c8volt walk pi --key <process-instance-key> --parent`,
 	Aliases: []string{"pi", "pis"},
@@ -55,6 +58,9 @@ var walkProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if err := validateWalkPIWithVarsUsage(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if err := validateWalkPIWithListenersUsage(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if err := validateWalkPIWithElementsUsage(cmd); err != nil {
@@ -169,7 +175,11 @@ var walkProcessInstanceCmd = &cobra.Command{
 			}
 			var elementEnriched process.ElementEnrichedProcessInstances
 			if flagWalkPIWithElements {
-				elementEnriched, err = enrichProcessInstancesWithElementActivityOptions(cmd, cli, walkedInstances, adminInputOpts)
+				if flagWalkPIWithListeners {
+					elementEnriched, err = enrichProcessInstancesWithElementListenerActivityOptions(cmd, cli, walkedInstances, adminInputOpts)
+				} else {
+					elementEnriched, err = enrichProcessInstancesWithElementActivityOptions(cmd, cli, walkedInstances, adminInputOpts)
+				}
 				if err != nil {
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("walk process instance elements: %w", err))
 				}
@@ -225,6 +235,7 @@ func init() {
 	fs.BoolVar(&flagWalkPIWithVars, "with-vars", false, "show process-instance-scope variables for keyed process-instance walks")
 	fs.IntVar(&flagGetPIVarValueLimit, "var-value-limit", 0, "maximum characters to show for variable values when --with-vars is set; 0 disables truncation")
 	fs.BoolVar(&flagWalkPIWithElements, "with-elements", false, "show runtime element instances for keyed process-instance walks")
+	fs.BoolVar(&flagWalkPIWithListeners, "with-listeners", false, "show runtime listener jobs under matching element rows; requires --with-elements")
 
 	setCommandMutation(walkProcessInstanceCmd, CommandMutationReadOnly)
 	setContractSupport(walkProcessInstanceCmd, ContractSupportFull)
@@ -273,6 +284,21 @@ func validateWalkPIWithIncidentsUsage(cmd *cobra.Command) error {
 	}
 	if flagViewKeysOnly {
 		return mutuallyExclusiveFlagsf("--with-incidents cannot be combined with --keys-only")
+	}
+	return nil
+}
+
+// validateWalkPIWithListenersUsage rejects listener enrichment when walk output
+// lacks the element section needed to represent nested listener detail rows.
+func validateWalkPIWithListenersUsage(cmd *cobra.Command) error {
+	if !flagWalkPIWithListeners {
+		return nil
+	}
+	if !flagWalkPIWithElements {
+		return missingDependentFlagsf("--with-listeners requires --with-elements")
+	}
+	if flagViewKeysOnly {
+		return mutuallyExclusiveFlagsf("--with-listeners cannot be combined with --keys-only")
 	}
 	return nil
 }

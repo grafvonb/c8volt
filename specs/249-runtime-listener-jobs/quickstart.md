@@ -47,6 +47,8 @@ Add or update targeted cases covering:
 - 2026-07-23 12:01 Iteration 4: `go test ./cmd -run 'TestGetProcessInstance.*Listener|TestCommandContract.*Listener|TestGenerated.*get pi' -count=1` passed.
 - 2026-07-23 12:01 Iteration 4: `go test ./docsgen -run 'TestGeneratedGetProcessInstanceDocsDocumentVariableSearch' -count=1` passed.
 - 2026-07-23 12:01 Iteration 4: `go test ./cmd ./docsgen -count=1` passed.
+- 2026-07-23 12:09 Iteration 5: `go test ./cmd -run 'TestWalkProcessInstance.*Listener|TestCommandContract.*walk|TestGenerated.*walk' -count=1` passed.
+- 2026-07-23 12:09 Iteration 5: `go test ./cmd ./docsgen -count=1` passed.
 
 ## Manual Smoke Scenarios
 

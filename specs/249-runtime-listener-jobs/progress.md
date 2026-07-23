@@ -125,3 +125,30 @@ Started: 2026-07-23 11:30:41
 **Learnings**:
 - `get pi --with-listeners` can reuse the existing activity renderer by switching the element enrichment call to the listener-aware process facade when `--with-elements` is also requested.
 ---
+---
+## Iteration 5 - 2026-07-23 12:09
+**Work Unit**: US3 Preserve Walk Tree Readability With Listener Details
+**Tasks Completed**:
+- [x] T032: Add walk command contract and help tests for `--with-listeners`
+- [x] T033: Add default, children, parent, and flat walk listener human output tests
+- [x] T034: Add walk listener JSON, validation, unsupported-version, and unchanged-default tests
+- [x] T035: Register `--with-listeners` and update walk help/examples
+- [x] T036: Add walk listener validation for element context and keys-only output
+- [x] T037: Enrich walked process instances with listener data after traversal
+- [x] T038: Preserve listener arrays in traversal JSON and tree rendering
+- [x] T039: Run US3 validation and record results in quickstart
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/command_contract_test.go
+- cmd/get_processinstance_test.go
+- cmd/walk_processinstance.go
+- cmd/walk_test.go
+- docsgen/main_test.go
+- specs/249-runtime-listener-jobs/quickstart.md
+- specs/249-runtime-listener-jobs/tasks.md
+- specs/249-runtime-listener-jobs/ralph-memory.md
+- specs/249-runtime-listener-jobs/progress.md
+**Learnings**:
+- Walk listener enrichment can reuse the shared activity traversal payload and renderer once walked process instances use the listener-aware element enrichment helper.
+---

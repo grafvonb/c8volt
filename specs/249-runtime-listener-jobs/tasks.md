@@ -108,17 +108,17 @@
 
 ### Tests for User Story 3
 
-- [ ] T032 [P] [US3] Add failing walk command contract and help tests for `--with-listeners` in `cmd/command_contract_test.go` and `docsgen/main_test.go`
-- [ ] T033 [P] [US3] Add failing default, children, parent, and flat walk listener human output tests in `cmd/walk_test.go`
-- [ ] T034 [US3] Add failing walk listener JSON, keys-only validation, missing `--with-elements`, unsupported-version, and unchanged-default tests in `cmd/walk_test.go`
+- [x] T032 [P] [US3] Add failing walk command contract and help tests for `--with-listeners` in `cmd/command_contract_test.go` and `docsgen/main_test.go`
+- [x] T033 [P] [US3] Add failing default, children, parent, and flat walk listener human output tests in `cmd/walk_test.go`
+- [x] T034 [US3] Add failing walk listener JSON, keys-only validation, missing `--with-elements`, unsupported-version, and unchanged-default tests in `cmd/walk_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T035 [US3] Register `--with-listeners` and update walk help/examples in `cmd/walk_processinstance.go`
-- [ ] T036 [US3] Add walk listener validation for `--with-elements`, keyed traversal, and keys-only output in `cmd/walk_processinstance.go`
-- [ ] T037 [US3] Enrich walked process instances with listener data after traversal and element enrichment in `cmd/walk_processinstance.go`
-- [ ] T038 [US3] Preserve listener arrays in activity traversal JSON and tree rendering in `cmd/cmd_views_walk_incidents.go` and `cmd/cmd_views_processinstance_activity.go`
-- [ ] T039 [US3] Run US3 validation with `go test ./cmd -run 'TestWalkProcessInstance.*Listener|TestCommandContract.*walk|TestGenerated.*walk' -count=1` and record results in `specs/249-runtime-listener-jobs/quickstart.md`
+- [x] T035 [US3] Register `--with-listeners` and update walk help/examples in `cmd/walk_processinstance.go`
+- [x] T036 [US3] Add walk listener validation for `--with-elements`, keyed traversal, and keys-only output in `cmd/walk_processinstance.go`
+- [x] T037 [US3] Enrich walked process instances with listener data after traversal and element enrichment in `cmd/walk_processinstance.go`
+- [x] T038 [US3] Preserve listener arrays in activity traversal JSON and tree rendering in `cmd/cmd_views_walk_incidents.go` and `cmd/cmd_views_processinstance_activity.go`
+- [x] T039 [US3] Run US3 validation with `go test ./cmd -run 'TestWalkProcessInstance.*Listener|TestCommandContract.*walk|TestGenerated.*walk' -count=1` and record results in `specs/249-runtime-listener-jobs/quickstart.md`
 
 **Checkpoint**: Walk listener enrichment is independently functional across traversal modes.
 

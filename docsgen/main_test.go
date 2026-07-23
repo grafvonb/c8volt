@@ -739,6 +739,40 @@ func TestGeneratedGetProcessInstanceDocsDocumentVariableSearch(t *testing.T) {
 	}
 }
 
+func TestGeneratedWalkProcessInstanceDocsDocumentListeners(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	walkDoc := readGeneratedDocForTest(t, out, "c8volt_walk_process-instance.md")
+	for _, want := range []string{
+		"Inspect the parent/child tree of process instances.",
+		"Add --with-incidents, --with-vars, and/or --with-elements",
+		"Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.",
+		"./c8volt walk pi --key <process-instance-key> --with-elements",
+		"./c8volt walk pi --key <process-instance-key> --with-elements --with-listeners",
+		"--with-elements",
+		"show runtime element instances for keyed process-instance walks",
+		"--with-listeners",
+		"show runtime listener jobs under matching element rows; requires --with-elements",
+	} {
+		if !strings.Contains(walkDoc, want) {
+			t.Fatalf("expected generated walk process-instance docs to contain %q, got %q", want, walkDoc)
+		}
+	}
+}
+
 func readGeneratedDocForTest(t *testing.T, out string, name string) string {
 	t.Helper()
 
