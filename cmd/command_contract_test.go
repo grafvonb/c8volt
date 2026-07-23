@@ -679,12 +679,40 @@ func TestCommandCapabilityForCommand_ProcessInstanceElementFlagAndContract(t *te
 		Repeated:    false,
 		Description: "include runtime element instances for keyed or list/search process-instance output",
 	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-listeners",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "include runtime listener jobs under matching element rows; requires --with-elements",
+	})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 	require.Contains(t, getProcessInstanceCmd.Long, "Use --with-elements to include runtime element instances under matching process-instance rows.")
 	require.Contains(t, getProcessInstanceCmd.Long, "Nested human element rows include dur:<duration>")
+	require.Contains(t, getProcessInstanceCmd.Long, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
 	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get pi --key <process-instance-key> --with-elements")
+	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get pi --key <process-instance-key> --with-elements --with-listeners")
+}
+
+// TestCommandContractGetProcessInstanceWithListeners verifies listener
+// enrichment is exposed in the process-instance command's automation metadata.
+func TestCommandContractGetProcessInstanceWithListeners(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(getProcessInstanceCmd)
+
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-listeners",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "include runtime listener jobs under matching element rows; requires --with-elements",
+	})
+	require.Contains(t, getProcessInstanceCmd.Long, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
+	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get pi --key <process-instance-key> --with-elements --with-listeners")
 }
 
 func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T) {

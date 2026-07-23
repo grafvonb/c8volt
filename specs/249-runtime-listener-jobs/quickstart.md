@@ -44,6 +44,9 @@ Add or update targeted cases covering:
 - 2026-07-23 11:55 Iteration 3: `go test ./cmd ./c8volt/element -run 'Test(GetElement|CommandContract|GeneratedDocs).*Listener' -count=1` passed.
 - 2026-07-23 11:55 Iteration 3: `go test ./internal/services/processinstance ./cmd -run 'Test.*Listener' -count=1` passed.
 - 2026-07-23 11:55 Iteration 3: `go test ./cmd ./c8volt/element ./docsgen -count=1` passed.
+- 2026-07-23 12:01 Iteration 4: `go test ./cmd -run 'TestGetProcessInstance.*Listener|TestCommandContract.*Listener|TestGenerated.*get pi' -count=1` passed.
+- 2026-07-23 12:01 Iteration 4: `go test ./docsgen -run 'TestGeneratedGetProcessInstanceDocsDocumentVariableSearch' -count=1` passed.
+- 2026-07-23 12:01 Iteration 4: `go test ./cmd ./docsgen -count=1` passed.
 
 ## Manual Smoke Scenarios
 

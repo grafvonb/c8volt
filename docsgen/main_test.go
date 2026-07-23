@@ -725,9 +725,13 @@ func TestGeneratedGetProcessInstanceDocsDocumentVariableSearch(t *testing.T) {
 		"--var-like stringArray",
 		"Use --with-elements to include runtime element instances under matching process-instance rows.",
 		"Nested human element rows include dur:<duration>",
+		"Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.",
 		"./c8volt get pi --key <process-instance-key> --with-elements",
+		"./c8volt get pi --key <process-instance-key> --with-elements --with-listeners",
 		"--with-elements",
 		"include runtime element instances for keyed or list/search process-instance output",
+		"--with-listeners",
+		"include runtime listener jobs under matching element rows; requires --with-elements",
 	} {
 		if !strings.Contains(piDoc, want) {
 			t.Fatalf("expected generated get process-instance docs to contain %q, got %q", want, piDoc)

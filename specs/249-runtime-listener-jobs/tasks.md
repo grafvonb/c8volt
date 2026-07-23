@@ -84,17 +84,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T024 [P] [US2] Add failing process-instance command contract and help tests for `--with-listeners` in `cmd/command_contract_test.go` and `docsgen/main_test.go`
-- [ ] T025 [P] [US2] Add failing `get pi --with-elements --with-listeners` human, JSON, empty-array, unmatched, unsupported-version, and unchanged-default tests in `cmd/get_processinstance_test.go`
-- [ ] T026 [US2] Add failing process-instance listener validation tests for missing `--with-elements` and keys-only output in `cmd/get_processinstance_test.go`
+- [x] T024 [P] [US2] Add failing process-instance command contract and help tests for `--with-listeners` in `cmd/command_contract_test.go` and `docsgen/main_test.go`
+- [x] T025 [P] [US2] Add failing `get pi --with-elements --with-listeners` human, JSON, empty-array, unmatched, unsupported-version, and unchanged-default tests in `cmd/get_processinstance_test.go`
+- [x] T026 [US2] Add failing process-instance listener validation tests for missing `--with-elements` and keys-only output in `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T027 [US2] Register `--with-listeners` and update process-instance help/examples in `cmd/get_processinstance.go`
-- [ ] T028 [US2] Add process-instance listener validation for element context and output mode in `cmd/get_processinstance_validation.go` and `cmd/get_processinstance.go`
-- [ ] T029 [US2] Include requested listener enrichment in shared process-instance activity collection in `cmd/get_processinstance_enrichment.go`
-- [ ] T030 [US2] Attach listener-enriched element data to process activity items in `cmd/cmd_views_processinstance_activity.go`
-- [ ] T031 [US2] Run US2 validation with `go test ./cmd -run 'TestGetProcessInstance.*Listener|TestCommandContract.*Listener|TestGenerated.*get pi' -count=1` and record results in `specs/249-runtime-listener-jobs/quickstart.md`
+- [x] T027 [US2] Register `--with-listeners` and update process-instance help/examples in `cmd/get_processinstance.go`
+- [x] T028 [US2] Add process-instance listener validation for element context and output mode in `cmd/get_processinstance_validation.go` and `cmd/get_processinstance.go`
+- [x] T029 [US2] Include requested listener enrichment in shared process-instance activity collection in `cmd/get_processinstance_enrichment.go`
+- [x] T030 [US2] Attach listener-enriched element data to process activity items in `cmd/cmd_views_processinstance_activity.go`
+- [x] T031 [US2] Run US2 validation with `go test ./cmd -run 'TestGetProcessInstance.*Listener|TestCommandContract.*Listener|TestGenerated.*get pi' -count=1` and record results in `specs/249-runtime-listener-jobs/quickstart.md`
 
 **Checkpoint**: User Stories 1 and 2 both work independently for element-oriented and process-instance-oriented inspection.
 

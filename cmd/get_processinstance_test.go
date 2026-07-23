@@ -41,6 +41,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.")
 	require.Contains(t, output, "Use --with-elements to include runtime element instances under matching process-instance rows.")
 	require.Contains(t, output, "Nested human element rows include dur:<duration>")
+	require.Contains(t, output, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
 	require.NotContains(t, output, "Add --incident-message-limit <chars> to shorten incident messages")
 	require.Contains(t, output, "Run `c8volt get pi --help` for the complete flag reference.")
 	require.Contains(t, output, "./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 5")
@@ -55,6 +56,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "./c8volt get pi --key <process-instance-key> --with-vars")
 	require.Contains(t, output, "./c8volt get pi --key <process-instance-key> --with-vars --var-value-limit 120")
 	require.Contains(t, output, "./c8volt get pi --key <process-instance-key> --with-elements")
+	require.Contains(t, output, "./c8volt get pi --key <process-instance-key> --with-elements --with-listeners")
 	require.Contains(t, output, "capped backend totals are counted by paging")
 	require.Contains(t, output, "--auto-confirm")
 	require.Contains(t, output, "--batch-size int32")
@@ -82,6 +84,8 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "include process-instance-scope variables for keyed or list/search process-instance output")
 	require.Contains(t, output, "--with-elements")
 	require.Contains(t, output, "include runtime element instances for keyed or list/search process-instance output")
+	require.Contains(t, output, "--with-listeners")
+	require.Contains(t, output, "include runtime listener jobs under matching element rows; requires --with-elements")
 	require.NotContains(t, output, "--count")
 }
 
@@ -833,6 +837,36 @@ func TestGetProcessInstanceWithElementsValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			output, code := executeProcessInstanceFailureHelper(t, tt.helper, cfgPath)
 			require.NotEqual(t, 0, code)
+			require.Contains(t, output, tt.want)
+		})
+	}
+}
+
+// TestGetProcessInstanceWithListenersValidation verifies listener enrichment rejects modes that cannot render nested element-owned listener rows.
+func TestGetProcessInstanceWithListenersValidation(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	tests := []struct {
+		name   string
+		helper string
+		want   string
+	}{
+		{
+			name:   "missing element context is rejected",
+			helper: "TestGetProcessInstanceWithListenersWithoutElementsHelper",
+			want:   "--with-listeners requires --with-elements",
+		},
+		{
+			name:   "keys-only output is rejected",
+			helper: "TestGetProcessInstanceWithListenersWithKeysOnlyHelper",
+			want:   "--with-listeners cannot be combined with --keys-only",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, code := executeProcessInstanceFailureHelper(t, tt.helper, cfgPath)
+			require.Equal(t, exitcode.InvalidArgs, code)
+			require.Contains(t, output, "invalid input")
 			require.Contains(t, output, tt.want)
 		})
 	}
@@ -2572,6 +2606,135 @@ func TestGetProcessInstanceWithVarsIncidentsAndElements_HumanOutputShowsGroupedS
 	require.Contains(t, output, "found: 1")
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "├─ incidents:"))
 	require.Less(t, strings.Index(output, "├─ incidents:"), strings.Index(output, "└─ elements:"))
+}
+
+// TestGetProcessInstanceWithElementsAndListeners_HumanOutputNestsListenerRows verifies keyed process-instance enrichment keeps listener rows inside the elements section.
+func TestGetProcessInstanceWithElementsAndListeners_HumanOutputNestsListenerRows(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceWithElementsAndListenersServer(t, &requests, []string{`{"items":[
+		{"elementInstanceKey":"element-1","elementId":"task-a","type":"SERVICE_TASK","state":"ACTIVE","startDate":"2026-07-15T10:12:01Z","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false},
+		{"elementInstanceKey":"element-2","elementId":"user-task","type":"USER_TASK","state":"ACTIVE","startDate":"2026-07-15T10:12:02Z","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}
+	],"page":{"totalItems":2,"hasMoreTotalItems":false}}`}, []string{
+		`{"items":[{"jobKey":"job-exec-1","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"CREATED","retries":3,"worker":"worker-a","processInstanceKey":"123","elementInstanceKey":"element-1","elementId":"task-a","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+		`{"items":[{"jobKey":"job-task-1","kind":"TASK_LISTENER","listenerEventType":"COMPLETING","type":"audit-task","state":"FAILED","retries":0,"processInstanceKey":"123","elementInstanceKey":"element-2","elementId":"user-task","tenantId":"tenant","errorCode":"LISTENER_FAILED","errorMessage":"worker failed"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+	})
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "process-instance",
+		"--key", "123",
+		"--with-elements",
+		"--with-listeners",
+	)
+
+	require.Equal(t, []string{
+		"GET /v2/process-instances/123",
+		"POST /v2/element-instances/search",
+		"POST /v2/jobs/search",
+		"POST /v2/jobs/search",
+	}, requests)
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "└─ elements:")
+	require.Contains(t, output, "element-1 SERVICE_TASK task-a")
+	require.Contains(t, output, "ACTIVE")
+	require.Contains(t, output, "│  └─ listeners:")
+	require.Contains(t, output, "job-exec-1 EXECUTION_LISTENER lsnr:START CREATED tp:audit-start r:3 worker:worker-a")
+	require.Contains(t, output, "element-2 USER_TASK")
+	require.Contains(t, output, "user-task ACTIVE")
+	require.Contains(t, output, "job-task-1 TASK_LISTENER lsnr:COMPLETING FAILED tp:audit-task r:0")
+	require.Contains(t, output, "ec:LISTENER_FAILED")
+	require.Contains(t, output, "found: 1")
+}
+
+// TestGetProcessInstanceWithElementsAndListeners_JSONOutputPreservesEmptyArraysAndOmitsUnmatchedJobs verifies requested listener arrays survive JSON rendering.
+func TestGetProcessInstanceWithElementsAndListeners_JSONOutputPreservesEmptyArraysAndOmitsUnmatchedJobs(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceWithElementsAndListenersServer(t, &requests, []string{`{"items":[
+		{"elementInstanceKey":"element-1","elementId":"task-a","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false},
+		{"elementInstanceKey":"element-empty","elementId":"empty-task","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}
+	],"page":{"totalItems":2,"hasMoreTotalItems":false}}`}, []string{
+		`{"items":[{"jobKey":"job-exec-1","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"CREATED","retries":3,"processInstanceKey":"123","elementInstanceKey":"element-1","elementId":"task-a","tenantId":"tenant"},{"jobKey":"job-unmatched","kind":"EXECUTION_LISTENER","listenerEventType":"END","type":"audit-end","state":"CREATED","retries":3,"processInstanceKey":"123","elementInstanceKey":"element-missing","elementId":"missing","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+		`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
+	})
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"--json",
+		"get", "process-instance",
+		"--key", "123",
+		"--with-elements",
+		"--with-listeners",
+	)
+
+	require.Equal(t, []string{
+		"GET /v2/process-instances/123",
+		"POST /v2/element-instances/search",
+		"POST /v2/jobs/search",
+		"POST /v2/jobs/search",
+	}, requests)
+	payload := requireProcessInstanceElementJSONPayload(t, output)
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	elements := requireJSONItems(t, first["elements"], 2)
+	firstElement := requireJSONObject(t, elements[0])
+	firstListeners := requireJSONItems(t, firstElement["listeners"], 1)
+	require.Equal(t, "job-exec-1", requireJSONObject(t, firstListeners[0])["jobKey"])
+	secondElement := requireJSONObject(t, elements[1])
+	require.Empty(t, requireJSONItems(t, secondElement["listeners"], 0))
+	require.NotContains(t, output, "job-unmatched")
+}
+
+// TestGetProcessInstanceWithElementsWithoutListeners_SkipsListenerLookup keeps the existing element-only path free of job search calls and listener fields.
+func TestGetProcessInstanceWithElementsWithoutListeners_SkipsListenerLookup(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceWithElementsAndListenersServer(t, &requests, []string{`{"items":[{"elementInstanceKey":"element-1","elementId":"task-a","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`}, nil)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"--json",
+		"get", "process-instance",
+		"--key", "123",
+		"--with-elements",
+	)
+
+	require.Equal(t, []string{
+		"GET /v2/process-instances/123",
+		"POST /v2/element-instances/search",
+	}, requests)
+	require.NotContains(t, output, `"listeners"`)
+}
+
+// TestGetProcessInstanceWithElementsAndListeners_V87ReportsUnsupported verifies unsupported environments fail through the normal command error path.
+func TestGetProcessInstanceWithElementsAndListeners_V87ReportsUnsupported(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-07-15T10:12:00Z","tenantId":"tenant"}]}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceListWithElementsAndListenersUnsupportedV87Helper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+
+	require.Error(t, err)
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "element search requires Camunda 8.8 or newer")
 }
 
 // TestGetProcessInstanceWithVarsIncidentsAndElements_JSONOutputShowsCombinedPayload verifies keyed JSON includes all enrichment fields.
@@ -5076,6 +5239,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIWithVars = false
 	flagGetPIVarValueLimit = 0
 	flagGetPIWithElements = false
+	flagGetPIWithListeners = false
 	flagGetPIVarExists = nil
 	flagGetPIVars = nil
 	flagGetPIVarLikes = nil
@@ -5503,6 +5667,48 @@ func TestGetProcessInstanceWithElementsWithSearchFilterHelper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-elements", "--incidents-only"}
+
+	Execute()
+}
+
+// TestGetProcessInstanceWithListenersWithoutElementsHelper is the helper-process entrypoint for missing element context validation.
+func TestGetProcessInstanceWithListenersWithoutElementsHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-listeners"}
+
+	Execute()
+}
+
+// TestGetProcessInstanceWithListenersWithKeysOnlyHelper is the helper-process entrypoint for keys-only listener validation.
+func TestGetProcessInstanceWithListenersWithKeysOnlyHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--keys-only", "--key", "123", "--with-elements", "--with-listeners"}
+
+	Execute()
+}
+
+// TestGetProcessInstanceListWithElementsAndListenersUnsupportedV87Helper drives unsupported v8.7 listener coverage through list/search mode.
+func TestGetProcessInstanceListWithElementsAndListenersUnsupportedV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--state", "active", "--with-elements", "--with-listeners"}
 
 	Execute()
 }

@@ -96,3 +96,32 @@ Started: 2026-07-23 11:30:41
 **Learnings**:
 - Element listener enrichment needs collected search results before rendering, and requested-empty listener slices must be non-nil empty slices to serialize as `[]`.
 ---
+---
+## Iteration 4 - 2026-07-23 12:01
+**Work Unit**: US2 Correlate Listener Jobs In Process Instance Element Views
+**Tasks Completed**:
+- [x] T024: Add process-instance command contract and help tests for `--with-listeners`
+- [x] T025: Add `get pi --with-elements --with-listeners` command behavior tests
+- [x] T026: Add process-instance listener validation tests
+- [x] T027: Register `--with-listeners` and update process-instance help/examples
+- [x] T028: Add process-instance listener validation for element context and output mode
+- [x] T029: Include requested listener enrichment in shared process-instance activity collection
+- [x] T030: Attach listener-enriched element data to process activity items
+- [x] T031: Run US2 validation and record results in quickstart
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_processinstance_test.go
+- cmd/command_contract_test.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_enrichment.go
+- cmd/get_processinstance_test.go
+- cmd/get_processinstance_validation.go
+- docsgen/main_test.go
+- specs/249-runtime-listener-jobs/quickstart.md
+- specs/249-runtime-listener-jobs/tasks.md
+- specs/249-runtime-listener-jobs/ralph-memory.md
+- specs/249-runtime-listener-jobs/progress.md
+**Learnings**:
+- `get pi --with-listeners` can reuse the existing activity renderer by switching the element enrichment call to the listener-aware process facade when `--with-elements` is also requested.
+---

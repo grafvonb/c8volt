@@ -9,6 +9,7 @@ Started: 2026-07-23T09:30:41Z
 - `cmd/cmd_views_element.go` renders element-owned listener rows directly beneath keyed and list element rows. JSON uses the public element payload, where `listeners` is omitted when unrequested and an array when listener enrichment was requested.
 - `cmd/get_job.go` already exposes listener-source filters: `--kind`, `--listener-event-type`, `--pi-key`, `--element-instance-key`, and `--element-id`. Valid listener job kinds are `EXECUTION_LISTENER` and `TASK_LISTENER`; event values include `START`, `END`, `CREATING`, `COMPLETING`, and related Camunda values.
 - `cmd/get_processinstance_enrichment.go` is the shared command orchestration point for process-instance activity enrichment. Activity wrappers call facade enrichment even for zero selected process instances so requested-empty JSON behavior stays consistent.
+- `cmd/get_processinstance.go` now registers `--with-listeners` for `get pi`; validation requires `--with-elements` and rejects keys-only output before client activity. The shared activity collector uses `cli.EnrichProcessInstancesWithElementListeners` when both flags are set, so the existing activity renderer receives listener-enriched element data.
 - `cmd/cmd_views_processinstance_activity.go` preserves requested enrichment with nil versus empty slices. `processInstanceActivityItem.MarshalJSON` includes `elements` only when non-nil, and `mergeProcessInstanceActivity` converts missing requested sections to empty slices. Human section order is `vars:`, `incidents:`, then `elements:`.
 - Runtime element row formatting for process-instance activity is centralized in `formatProcessInstanceElementRows` and `flatRowProcessInstanceElementWithTimezone`; listener nesting is handled by `formatProcessInstanceElementTreeLines` plus `formatProcessInstanceElementListenerRows`. Standalone `get element` row formatting is still in `cmd/cmd_views_element.go`.
 - `cmd/walk_processinstance.go` enriches walked instances after traversal by converting traversal output with `processInstancesFromTraversal`, then renders combined activity via `activityItemsFromTraversal`, `activityTraversalPayload`, and `walkActivityView`. Existing validation rejects `--with-elements` without `--key` and with `--keys-only`.
@@ -30,7 +31,7 @@ Started: 2026-07-23T09:30:41Z
 
 ## Gotchas
 - Phase 1 tasks T001-T003 are review-only. Ralph rules say not to mark review-only tasks complete when they produce no substantive project change, so they remain unchecked after this setup audit.
-- `get element --with-listeners` rejects `--keys-only` and `--total` before client creation; process-instance, walk, and slow-analysis commands still need their listener-specific validation in later stories.
+- `get element --with-listeners` rejects `--keys-only` and `--total` before client creation. `get pi --with-listeners` rejects missing `--with-elements` and `--keys-only`; walk and slow-analysis commands still need their listener-specific validation in later stories.
 - Process and walk listener enrichment must preserve explicit-key admin input behavior by passing the same option sets currently used for element enrichment.
 - v8.8/v8.9 job search can return listener jobs, but v8.7 unsupported behavior must be allowed to flow through the normal facade/domain error conversion path.
 - `EnrichProcessInstancesWithElementListeners` performs listener job lookup even when a selected process instance has zero returned elements, so requested listener lookup errors such as v8.7 unsupported still surface.
@@ -47,4 +48,4 @@ Started: 2026-07-23T09:30:41Z
 - Do not hand-edit generated Camunda clients for this feature; the existing v8.8/v8.9 job search surface already has the required listener filters.
 
 ## Current Handoff
-- US1 `get element --with-listeners` is complete and validated. T001-T003 remain unchecked because they are review-only. Next iteration should start US2 with T024-T026 tests for `get pi --with-elements --with-listeners`, then wire process-instance command validation and activity enrichment through the existing `process.EnrichProcessInstancesWithElementListeners` facade path.
+- US2 `get pi --with-elements --with-listeners` is complete and validated. T001-T003 remain unchecked because they are review-only. Next iteration should start US3 with T032-T034 tests for `walk pi --with-elements --with-listeners`, then reuse the same process activity renderer and listener-aware facade path after traversal.

@@ -67,6 +67,14 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-elements")
 		}
 	}
+	if flagGetPIWithListeners {
+		if !flagGetPIWithElements {
+			return missingDependentFlagsf("--with-listeners requires --with-elements")
+		}
+		if flagViewKeysOnly {
+			return mutuallyExclusiveFlagsf("--with-listeners cannot be combined with --keys-only")
+		}
+	}
 	if flagGetPIWithElements && flagViewKeysOnly {
 		return mutuallyExclusiveFlagsf("--keys-only cannot be combined with --with-elements")
 	}
