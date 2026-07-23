@@ -68,9 +68,18 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 			return result, fmt.Errorf("%w: runtime element service is required for slow process analysis", d.ErrPrecondition)
 		}
 		var err error
-		enriched, err = pisvc.EnrichProcessInstancesWithElements(ctx, s.elementAPI, instances, opts...)
+		lookupContext := "lookup runtime elements for slow analysis"
+		if request.WithListeners {
+			if s.jobAPI == nil {
+				return result, fmt.Errorf("%w: runtime job service is required for slow process analysis listener enrichment", d.ErrPrecondition)
+			}
+			lookupContext = "lookup runtime elements and listener jobs for slow analysis"
+			enriched, err = pisvc.EnrichProcessInstancesWithElementListeners(ctx, s.elementAPI, s.jobAPI, instances, opts...)
+		} else {
+			enriched, err = pisvc.EnrichProcessInstancesWithElements(ctx, s.elementAPI, instances, opts...)
+		}
 		if err != nil {
-			return result, fmt.Errorf("lookup runtime elements for slow analysis: %w", err)
+			return result, fmt.Errorf("%s: %w", lookupContext, err)
 		}
 	}
 
@@ -484,6 +493,7 @@ func slowProcessAnalysisElementEntry(element d.Element, capturedAt time.Time, pr
 		DurationMillis:       millis,
 		DurationAvailable:    available,
 		ProcessDurationShare: slowProcessAnalysisProcessDurationShare(millis, available, processMillis, processDurationAvailable),
+		Listeners:            element.Listeners,
 	}
 }
 

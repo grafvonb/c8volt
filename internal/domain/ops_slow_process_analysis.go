@@ -42,6 +42,7 @@ type SlowProcessAnalysisRequest struct {
 	Limit                     int32                                           `json:"limit,omitempty"`
 	CapturedNow               time.Time                                       `json:"capturedNow,omitempty"`
 	OutputMode                string                                          `json:"outputMode,omitempty"`
+	WithListeners             bool                                            `json:"withListeners,omitempty"`
 }
 
 // SlowProcessAnalysisProcessDefinitionSelector identifies the process-definition cohort for search mode.
@@ -116,6 +117,7 @@ type SlowProcessAnalysisTimelineEntry struct {
 	ComparisonSampleCount  int                                  `json:"comparisonSampleCount,omitempty"`
 	RelativeBar            string                               `json:"relativeBar,omitempty"`
 	ProcessDurationShare   int                                  `json:"processDurationShare,omitempty"`
+	Listeners              *[]RuntimeListenerJob                `json:"listeners,omitempty"`
 }
 
 // SlowProcessAnalysisResult carries the complete render-independent analysis payload.

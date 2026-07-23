@@ -50,6 +50,18 @@ func (s stubElementSearcher) SearchElements(ctx context.Context, query d.Element
 	return s.search(ctx, query, opts...)
 }
 
+type stubJobSearcher struct {
+	search func(context.Context, d.JobSearchQuery, ...services.CallOption) (d.JobSearchResult, error)
+}
+
+// SearchJobs delegates job lookup to the configured test callback.
+func (s stubJobSearcher) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error) {
+	if s.search == nil {
+		return d.JobSearchResult{}, errors.New("unexpected job search")
+	}
+	return s.search(ctx, query, opts...)
+}
+
 // TestEnrichProcessInstancesWithIncidentsPreservesOrderAndFiltersPerKey verifies service-owned incident association semantics.
 func TestEnrichProcessInstancesWithIncidentsPreservesOrderAndFiltersPerKey(t *testing.T) {
 	seen := []string{}
@@ -165,6 +177,83 @@ func TestEnrichProcessInstancesWithElementsPropagatesSearchError(t *testing.T) {
 
 	require.ErrorIs(t, err, wantErr)
 	require.Empty(t, got)
+}
+
+func TestEnrichProcessInstancesWithElementListenersAttachesByOwnerAndOmitsUnmatched(t *testing.T) {
+	elementCalls := []string{}
+	jobCalls := []d.JobSearchQuery{}
+
+	got, err := EnrichProcessInstancesWithElementListeners(context.Background(), stubElementSearcher{
+		search: func(_ context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (d.ElementSearchResult, error) {
+			require.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			elementCalls = append(elementCalls, query.ProcessInstanceKey)
+			switch query.ProcessInstanceKey {
+			case "pi-2":
+				return d.ElementSearchResult{Items: []d.Element{
+					{ElementInstanceKey: "el-3", ElementId: "ship", StartDate: "2026-07-15T10:12:03Z", ProcessInstanceKey: "pi-2"},
+					{ElementInstanceKey: "el-1", ElementId: "start", StartDate: "2026-07-15T10:12:01Z", ProcessInstanceKey: "pi-2"},
+					{ElementInstanceKey: "el-2", ElementId: "review", StartDate: "2026-07-15T10:12:02Z", ProcessInstanceKey: "pi-2"},
+					{ElementInstanceKey: "ignored-other-pi", ProcessInstanceKey: "other"},
+				}}, nil
+			case "pi-1":
+				return d.ElementSearchResult{Items: []d.Element{
+					{ElementInstanceKey: "el-10", ElementId: "wait", StartDate: "2026-07-15T10:11:00Z", ProcessInstanceKey: "pi-1"},
+				}}, nil
+			default:
+				t.Fatalf("unexpected element search for %s", query.ProcessInstanceKey)
+				return d.ElementSearchResult{}, nil
+			}
+		},
+	}, stubJobSearcher{
+		search: func(_ context.Context, query d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error) {
+			require.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			jobCalls = append(jobCalls, query)
+			require.Contains(t, []string{d.JobKindExecutionListener, d.JobKindTaskListener}, query.Kind)
+			switch query.ProcessInstanceKey + "/" + query.Kind {
+			case "pi-2/" + d.JobKindExecutionListener:
+				return d.JobSearchResult{Items: []d.Job{
+					{Key: "job-3", Kind: d.JobKindExecutionListener, ListenerEventType: "END", Type: "ship-listener", State: "FAILED", Retries: 0, ProcessInstanceKey: "pi-2", ElementInstanceKey: "el-3", ElementId: "ship", ErrorCode: "E_SHIP"},
+					{Key: "job-unmatched", Kind: d.JobKindExecutionListener, ProcessInstanceKey: "pi-2", ElementInstanceKey: "missing"},
+					{Key: "job-wrong-pi", Kind: d.JobKindExecutionListener, ProcessInstanceKey: "other", ElementInstanceKey: "el-3"},
+				}}, nil
+			case "pi-2/" + d.JobKindTaskListener:
+				return d.JobSearchResult{Items: []d.Job{
+					{Key: "job-2", Kind: d.JobKindTaskListener, ListenerEventType: "COMPLETING", Type: "review-listener", State: "CREATED", Retries: 3, ProcessInstanceKey: "pi-2", ElementInstanceKey: "el-2", ElementId: "review", Worker: "worker-a"},
+					{Key: "job-1", Kind: d.JobKindTaskListener, ListenerEventType: "CREATING", Type: "review-listener", State: "CREATED", Retries: 1, ProcessInstanceKey: "pi-2", ElementInstanceKey: "el-2", ElementId: "review"},
+				}}, nil
+			case "pi-1/" + d.JobKindExecutionListener, "pi-1/" + d.JobKindTaskListener:
+				return d.JobSearchResult{Items: nil}, nil
+			default:
+				t.Fatalf("unexpected job search for %#v", query)
+				return d.JobSearchResult{}, nil
+			}
+		},
+	}, []d.ProcessInstance{
+		{Key: "pi-2"},
+		{Key: "pi-1"},
+	}, services.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"pi-2", "pi-1"}, elementCalls)
+	require.Equal(t, []d.JobSearchQuery{
+		{ProcessInstanceKey: "pi-2", Kind: d.JobKindExecutionListener},
+		{ProcessInstanceKey: "pi-2", Kind: d.JobKindTaskListener},
+		{ProcessInstanceKey: "pi-1", Kind: d.JobKindExecutionListener},
+		{ProcessInstanceKey: "pi-1", Kind: d.JobKindTaskListener},
+	}, jobCalls)
+	require.Equal(t, "pi-2", got.Items[0].Item.Key)
+	require.Len(t, got.Items[0].Elements, 3)
+	require.NotNil(t, got.Items[0].Elements[0].Listeners)
+	require.Empty(t, *got.Items[0].Elements[0].Listeners)
+	require.Equal(t, []d.RuntimeListenerJob{
+		{JobKey: "job-1", Kind: d.JobKindTaskListener, ListenerEventType: "CREATING", Type: "review-listener", State: "CREATED", Retries: 1, ProcessInstanceKey: "pi-2", ElementInstanceKey: "el-2", ElementId: "review"},
+		{JobKey: "job-2", Kind: d.JobKindTaskListener, ListenerEventType: "COMPLETING", Type: "review-listener", State: "CREATED", Retries: 3, Worker: "worker-a", ProcessInstanceKey: "pi-2", ElementInstanceKey: "el-2", ElementId: "review"},
+	}, *got.Items[0].Elements[1].Listeners)
+	require.Equal(t, []d.RuntimeListenerJob{
+		{JobKey: "job-3", Kind: d.JobKindExecutionListener, ListenerEventType: "END", Type: "ship-listener", State: "FAILED", Retries: 0, ProcessInstanceKey: "pi-2", ElementInstanceKey: "el-3", ElementId: "ship", ErrorCode: "E_SHIP"},
+	}, *got.Items[0].Elements[2].Listeners)
+	require.NotNil(t, got.Items[1].Elements[0].Listeners)
+	require.Empty(t, *got.Items[1].Elements[0].Listeners)
 }
 
 // TestEnrichTraversalWithIncidentsPreservesMetadataAndSelectedKeys verifies traversal enrichment stays scoped to result keys.

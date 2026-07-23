@@ -274,11 +274,14 @@ func TestGeneratedGetElementDocsDocumentLookupSearchAndOutput(t *testing.T) {
 		"Use --key when you know an element instance key.",
 		"Search mode follows the shared get paging and limit conventions.",
 		"Compact human rows include dur:<duration>",
+		"Use --with-listeners to include runtime listener jobs under matching element rows.",
 		"Use --json for the stable element payload and --keys-only when piping element instance keys.",
 		"./c8volt get ei -k <element-instance-key>",
+		"./c8volt get ei -k <element-instance-key> --with-listeners",
 		"./c8volt get ei --pi-key <process-instance-key> --limit 10",
+		"./c8volt get ei --pi-key <process-instance-key> --with-listeners",
 		"./c8volt get element --pi-key <process-instance-key> --total",
-		"./c8volt --json get ei --pi-key <process-instance-key> --limit 5",
+		"./c8volt --json get element --key <element-instance-key> --with-listeners",
 		"--element-id string",
 		"BPMN element ID to filter in search mode",
 		"--pi-key string",
@@ -287,6 +290,8 @@ func TestGeneratedGetElementDocsDocumentLookupSearchAndOutput(t *testing.T) {
 		"number of elements to fetch per page",
 		"--total",
 		"return only the numeric total of matching elements",
+		"--with-listeners",
+		"include runtime listener jobs under matching element rows",
 	} {
 		if !strings.Contains(elementDoc, want) {
 			t.Fatalf("expected generated get element docs to contain %q, got %q", want, elementDoc)
@@ -503,11 +508,13 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"./c8volt ops analyse slow-process-instances --key 2251799813685249",
 		"./c8volt ops analyze slow-process-instances --bpmn-process-id OrderProcess --state all --limit 20",
 		"./c8volt ops analyse slow-process-instances --key 2251799813685249 --with-full-timeline",
+		"./c8volt ops analyse slow-process-instances --key 2251799813685249 --with-listeners",
 		"./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 1h30m --dur-element-longer 30s",
 		"./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -",
 		"Default output shows compact slowest element contributors",
 		"Detail filters such as --element-id, --type, --element-state, and --dur-element-longer keep only process instances with matching element or transition detail rows",
 		"Use --with-full-timeline to inspect complete chronological element and transition detail",
+		"Use --with-listeners to include runtime listener jobs under matching element timeline rows",
 		"Duration thresholds use Go duration syntax",
 		"Calendar units such as 1d are not accepted",
 		"--key strings",
@@ -523,7 +530,9 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"--dur-longer string",
 		"--dur-element-longer string",
 		"--with-full-timeline",
+		"--with-listeners",
 		"show complete chronological element and transition detail",
+		"include runtime listener jobs under matching element timeline rows",
 	} {
 		if !strings.Contains(analyseDoc, want) {
 			t.Fatalf("expected generated ops analyse slow-process-instances docs to contain %q, got %q", want, analyseDoc)
@@ -720,12 +729,50 @@ func TestGeneratedGetProcessInstanceDocsDocumentVariableSearch(t *testing.T) {
 		"--var-like stringArray",
 		"Use --with-elements to include runtime element instances under matching process-instance rows.",
 		"Nested human element rows include dur:<duration>",
+		"Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.",
 		"./c8volt get pi --key <process-instance-key> --with-elements",
+		"./c8volt get pi --key <process-instance-key> --with-elements --with-listeners",
 		"--with-elements",
 		"include runtime element instances for keyed or list/search process-instance output",
+		"--with-listeners",
+		"include runtime listener jobs under matching element rows; requires --with-elements",
 	} {
 		if !strings.Contains(piDoc, want) {
 			t.Fatalf("expected generated get process-instance docs to contain %q, got %q", want, piDoc)
+		}
+	}
+}
+
+func TestGeneratedWalkProcessInstanceDocsDocumentListeners(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	walkDoc := readGeneratedDocForTest(t, out, "c8volt_walk_process-instance.md")
+	for _, want := range []string{
+		"Inspect the parent/child tree of process instances.",
+		"Add --with-incidents, --with-vars, and/or --with-elements",
+		"Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.",
+		"./c8volt walk pi --key <process-instance-key> --with-elements",
+		"./c8volt walk pi --key <process-instance-key> --with-elements --with-listeners",
+		"--with-elements",
+		"show runtime element instances for keyed process-instance walks",
+		"--with-listeners",
+		"show runtime listener jobs under matching element rows; requires --with-elements",
+	} {
+		if !strings.Contains(walkDoc, want) {
+			t.Fatalf("expected generated walk process-instance docs to contain %q, got %q", want, walkDoc)
 		}
 	}
 }

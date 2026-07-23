@@ -61,6 +61,7 @@ func renderOpsSlowProcessAnalysisHotspotSummary(cmd *cobra.Command, item ops.Slo
 	}
 	for i, entry := range summary.Rows {
 		renderOutputLine(cmd, "   %s%s", incidentTreeBranch(i, totalRows), formatOpsSlowProcessAnalysisSummaryRow(entry, item, showTimezoneOffset))
+		renderOpsSlowProcessAnalysisListenerLines(cmd, "   ", i, totalRows, entry.Listeners, showTimezoneOffset)
 	}
 	if summary.HiddenRowCount > 0 {
 		renderOutputLine(cmd, "   %s%s", incidentTreeBranch(totalRows-1, totalRows), opsSlowProcessAnalysisHiddenRowsSummary(summary.HiddenRowCount))
@@ -72,6 +73,9 @@ func renderOpsSlowProcessAnalysisFullTimeline(cmd *cobra.Command, item ops.SlowP
 	renderOutputLine(cmd, "└─ elements:")
 	for i, entry := range item.Timeline {
 		renderOutputLine(cmd, "   %s%s", incidentTreeBranch(i, len(item.Timeline)), formatOpsSlowProcessAnalysisTimelineRow(entry, item, showTimezoneOffset))
+		if entry.Kind == ops.SlowProcessAnalysisTimelineEntryKindElement {
+			renderOpsSlowProcessAnalysisListenerLines(cmd, "   ", i, len(item.Timeline), entry.Listeners, showTimezoneOffset)
+		}
 	}
 }
 
@@ -220,6 +224,61 @@ func formatOpsSlowProcessAnalysisElementRow(entry ops.SlowProcessAnalysisTimelin
 		row = append(row, marker)
 	}
 	return compactFlatRow(row)
+}
+
+// renderOpsSlowProcessAnalysisListenerLines nests listener rows below the owning element timeline row.
+func renderOpsSlowProcessAnalysisListenerLines(cmd *cobra.Command, prefix string, branchIndex int, totalBranches int, listeners *[]ops.RuntimeListenerJob, showTimezoneOffset bool) {
+	listenerRows := formatOpsSlowProcessAnalysisListenerRows(listeners, showTimezoneOffset)
+	if len(listenerRows) == 0 {
+		return
+	}
+	childPrefix := treeChildPrefix(prefix, branchIndex, totalBranches)
+	renderOutputLine(cmd, "%s└─ listeners:", childPrefix)
+	listenerPrefix := childPrefix + "   "
+	for i, row := range listenerRows {
+		renderOutputLine(cmd, "%s%s%s", listenerPrefix, incidentTreeBranch(i, len(listenerRows)), row)
+	}
+}
+
+// formatOpsSlowProcessAnalysisListenerRows renders slow-analysis listener jobs using the shared row grammar.
+func formatOpsSlowProcessAnalysisListenerRows(listeners *[]ops.RuntimeListenerJob, showTimezoneOffset bool) []string {
+	if listeners == nil || len(*listeners) == 0 {
+		return nil
+	}
+	rows := make([]flatRow, 0, len(*listeners))
+	for _, listener := range *listeners {
+		rows = append(rows, flatRowOpsSlowProcessAnalysisListenerWithTimezone(listener, showTimezoneOffset))
+	}
+	return formatFlatRows(rows)
+}
+
+// flatRowOpsSlowProcessAnalysisListenerWithTimezone formats one runtime listener job below a timeline element row.
+func flatRowOpsSlowProcessAnalysisListenerWithTimezone(item ops.RuntimeListenerJob, showTimezoneOffset bool) flatRow {
+	parts := flatRow{
+		item.JobKey,
+		item.Kind,
+		prefixedJobField("lsnr", item.ListenerEventType),
+		item.State,
+		prefixedJobField("tp", item.Type),
+		"r:" + strconv.FormatInt(int64(item.Retries), 10),
+		prefixedJobField("worker", item.Worker),
+	}
+	if item.Deadline != nil {
+		parts = append(parts, "d:"+toolx.FormatTime(*item.Deadline, showTimezoneOffset))
+	} else {
+		parts = append(parts, "")
+	}
+	if item.ErrorCode != "" {
+		parts = append(parts, "ec:"+item.ErrorCode)
+	} else {
+		parts = append(parts, "")
+	}
+	if item.ErrorMessage != "" {
+		parts = append(parts, "err:"+truncateHumanMessage(item.ErrorMessage, flagGetErrorMessageLimit))
+	} else {
+		parts = append(parts, "")
+	}
+	return parts
 }
 
 // formatOpsSlowProcessAnalysisTransitionRow renders adjacent chronological timing with the required arrow grammar.

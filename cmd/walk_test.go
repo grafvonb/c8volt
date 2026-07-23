@@ -10,6 +10,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"strings"
@@ -89,10 +90,12 @@ func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
 		"./c8volt walk pi --key <process-instance-key> --with-incidents",
 		"./c8volt walk pi --key <process-instance-key> --with-vars",
 		"./c8volt walk pi --key <process-instance-key> --with-elements",
+		"./c8volt walk pi --key <process-instance-key> --with-elements --with-listeners",
 		"./c8volt walk pi --key <process-instance-key> --flat",
 	}, nil)
 	require.Contains(t, output, "--flat")
 	require.Contains(t, output, "--with-elements")
+	require.Contains(t, output, "--with-listeners")
 	require.Contains(t, output, "--incident-message-limit int")
 	require.Contains(t, output, "--incident-state string")
 	require.Contains(t, output, "incident state scope for --with-incidents: active, pending, resolved, migrated, unknown, all")
@@ -286,6 +289,62 @@ func TestWalkProcessInstanceCommand_WithElementsFamilyHumanOutputShowsRuntimeEle
 	require.Less(t, strings.Index(output, "124 tenant demo"), strings.Index(output, "element-child"))
 }
 
+// TestWalkProcessInstanceCommand_WithListenersFamilyHumanOutputNestsListenerRows verifies default family traversal keeps listener details inside element blocks.
+func TestWalkProcessInstanceCommand_WithListenersFamilyHumanOutputNestsListenerRows(t *testing.T) {
+	var requests []string
+	srv := newWalkProcessInstanceWithListenersServer(t, &requests, map[string]string{
+		"123": walkedElementInstancesSearchJSON(t,
+			walkedElementInstanceFixture("element-root", "123", "root-task", false, ""),
+		),
+		"124": walkedElementInstancesSearchJSON(t,
+			walkedElementInstanceFixture("element-child", "124", "child-task", false, ""),
+		),
+	}, map[string][]string{
+		"123": {
+			walkedJobSearchJSON(t, map[string]any{"jobKey": "job-exec-root", "kind": "EXECUTION_LISTENER", "listenerEventType": "START", "type": "audit-start", "state": "CREATED", "retries": 3, "worker": "worker-a", "processInstanceKey": "123", "elementInstanceKey": "element-root", "elementId": "root-task", "tenantId": "tenant"}),
+			walkedJobSearchJSON(t),
+		},
+		"124": {
+			walkedJobSearchJSON(t),
+			walkedJobSearchJSON(t, map[string]any{"jobKey": "job-task-child", "kind": "TASK_LISTENER", "listenerEventType": "COMPLETING", "type": "audit-task", "state": "FAILED", "retries": 0, "processInstanceKey": "124", "elementInstanceKey": "element-child", "elementId": "child-task", "tenantId": "tenant", "errorCode": "LISTENER_FAILED", "errorMessage": "worker failed"}),
+		},
+	})
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "123",
+		"--with-elements",
+		"--with-listeners",
+	)
+
+	require.Equal(t, []string{
+		"GET /v2/process-instances/123",
+		"GET /v2/process-instances/123",
+		"POST /v2/process-instances/search",
+		"POST /v2/process-instances/search",
+		"POST /v2/element-instances/search",
+		"POST /v2/jobs/search",
+		"POST /v2/jobs/search",
+		"POST /v2/element-instances/search",
+		"POST /v2/jobs/search",
+		"POST /v2/jobs/search",
+	}, requests)
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "├─ elements:\n│  └─ element-root SERVICE_TASK root-task ACTIVE")
+	require.Contains(t, output, "│     └─ listeners:\n│        └─ job-exec-root EXECUTION_LISTENER lsnr:START CREATED tp:audit-start r:3 worker:worker-a")
+	require.Contains(t, output, "└─ 124 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "   └─ elements:\n      └─ element-child SERVICE_TASK child-task ACTIVE")
+	require.Contains(t, output, "         └─ listeners:\n            └─ job-task-child TASK_LISTENER lsnr:COMPLETING FAILED tp:audit-task r:0")
+	require.Contains(t, output, "ec:LISTENER_FAILED")
+	require.Less(t, strings.Index(output, "element-root"), strings.Index(output, "job-exec-root"))
+	require.Less(t, strings.Index(output, "job-exec-root"), strings.Index(output, "124 tenant demo"))
+	require.Less(t, strings.Index(output, "element-child"), strings.Index(output, "job-task-child"))
+}
+
 // TestWalkProcessInstanceCommand_WithElementsKeepsEmptyOwnersVisible verifies a walked row with no elements does not gain placeholder detail rows.
 func TestWalkProcessInstanceCommand_WithElementsKeepsEmptyOwnersVisible(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -415,6 +474,83 @@ func TestWalkProcessInstanceCommand_ChildrenWithElementsPreservesDescendantSelec
 	require.Less(t, strings.Index(output, "124 tenant demo"), strings.Index(output, "element-124"))
 	require.Less(t, strings.Index(output, "element-124"), strings.Index(output, "125 tenant demo"))
 	require.Less(t, strings.Index(output, "125 tenant demo"), strings.Index(output, "element-125"))
+}
+
+// TestWalkProcessInstanceCommand_WithListenersChildrenParentAndFlatModes verifies listener enrichment preserves non-default walk ordering.
+func TestWalkProcessInstanceCommand_WithListenersChildrenParentAndFlatModes(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        []string
+		wantSep     string
+		wantFirst   string
+		wantSecond  string
+		wantElement string
+		wantJob     string
+	}{
+		{
+			name:        "children",
+			args:        []string{"walk", "process-instance", "--key", "123", "--children", "--with-elements", "--with-listeners"},
+			wantSep:     " → \n124 tenant demo",
+			wantFirst:   "123 tenant demo",
+			wantSecond:  "124 tenant demo",
+			wantElement: "element-124 SERVICE_TASK task-124 ACTIVE",
+			wantJob:     "job-task-124 TASK_LISTENER lsnr:COMPLETING CREATED tp:audit-task r:1",
+		},
+		{
+			name:        "parent",
+			args:        []string{"walk", "process-instance", "--key", "124", "--parent", "--with-elements", "--with-listeners"},
+			wantSep:     " ← \n123 tenant demo",
+			wantFirst:   "124 tenant demo",
+			wantSecond:  "123 tenant demo",
+			wantElement: "element-124 SERVICE_TASK task-124 ACTIVE",
+			wantJob:     "job-task-124 TASK_LISTENER lsnr:COMPLETING CREATED tp:audit-task r:1",
+		},
+		{
+			name:        "flat",
+			args:        []string{"walk", "process-instance", "--key", "123", "--flat", "--with-elements", "--with-listeners"},
+			wantSep:     " ⇄ \n124 tenant demo",
+			wantFirst:   "123 tenant demo",
+			wantSecond:  "124 tenant demo",
+			wantElement: "element-124 SERVICE_TASK task-124 ACTIVE",
+			wantJob:     "job-task-124 TASK_LISTENER lsnr:COMPLETING CREATED tp:audit-task r:1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newWalkProcessInstanceWithListenersServer(t, &requests, map[string]string{
+				"123": walkedElementInstancesSearchJSON(t,
+					walkedElementInstanceFixture("element-123", "123", "task-123", false, ""),
+				),
+				"124": walkedElementInstancesSearchJSON(t,
+					walkedElementInstanceFixture("element-124", "124", "task-124", false, ""),
+				),
+			}, map[string][]string{
+				"123": {
+					walkedJobSearchJSON(t, map[string]any{"jobKey": "job-exec-123", "kind": "EXECUTION_LISTENER", "listenerEventType": "START", "type": "audit-start", "state": "CREATED", "retries": 3, "processInstanceKey": "123", "elementInstanceKey": "element-123", "elementId": "task-123", "tenantId": "tenant"}),
+					walkedJobSearchJSON(t),
+				},
+				"124": {
+					walkedJobSearchJSON(t),
+					walkedJobSearchJSON(t, map[string]any{"jobKey": "job-task-124", "kind": "TASK_LISTENER", "listenerEventType": "COMPLETING", "type": "audit-task", "state": "CREATED", "retries": 1, "processInstanceKey": "124", "elementInstanceKey": "element-124", "elementId": "task-124", "tenantId": "tenant"}),
+				},
+			})
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+			args := append([]string{"--config", cfgPath}, tt.args...)
+
+			output := executeRootForProcessInstanceTest(t, args...)
+
+			require.Contains(t, output, tt.wantSep)
+			require.Contains(t, output, tt.wantElement)
+			require.Contains(t, output, tt.wantJob)
+			require.Contains(t, output, "listeners:")
+			require.Less(t, strings.Index(output, tt.wantFirst), strings.Index(output, tt.wantSecond))
+			require.Less(t, strings.Index(output, tt.wantElement), strings.Index(output, tt.wantJob))
+		})
+	}
 }
 
 // TestWalkProcessInstanceCommand_ParentWithElementsPreservesAncestryOrder verifies parent traversal enriches the selected row before ancestors.
@@ -663,6 +799,157 @@ func TestWalkProcessInstanceCommand_WithElementsJSONOutputPreservesTraversalMeta
 	child := requireJSONObject(t, items[1])
 	require.Equal(t, "124", requireJSONObject(t, child["item"])["key"])
 	require.Empty(t, requireJSONItems(t, child["elements"], 0))
+}
+
+// TestWalkProcessInstanceCommand_WithListenersJSONOutputPreservesEmptyArraysAndOmitsUnmatchedJobs verifies traversal JSON carries requested listener arrays under elements.
+func TestWalkProcessInstanceCommand_WithListenersJSONOutputPreservesEmptyArraysAndOmitsUnmatchedJobs(t *testing.T) {
+	var requests []string
+	srv := newWalkProcessInstanceWithListenersServer(t, &requests, map[string]string{
+		"123": walkedElementInstancesSearchJSON(t,
+			walkedElementInstanceFixture("element-root", "123", "root-task", false, ""),
+			walkedElementInstanceFixture("element-empty", "123", "empty-task", false, ""),
+		),
+		"124": walkedElementInstancesSearchJSON(t),
+	}, map[string][]string{
+		"123": {
+			walkedJobSearchJSON(t,
+				map[string]any{"jobKey": "job-exec-root", "kind": "EXECUTION_LISTENER", "listenerEventType": "START", "type": "audit-start", "state": "CREATED", "retries": 3, "processInstanceKey": "123", "elementInstanceKey": "element-root", "elementId": "root-task", "tenantId": "tenant"},
+				map[string]any{"jobKey": "job-unmatched", "kind": "EXECUTION_LISTENER", "listenerEventType": "END", "type": "audit-end", "state": "CREATED", "retries": 3, "processInstanceKey": "123", "elementInstanceKey": "element-missing", "elementId": "missing", "tenantId": "tenant"},
+			),
+			walkedJobSearchJSON(t),
+		},
+		"124": {
+			walkedJobSearchJSON(t),
+			walkedJobSearchJSON(t),
+		},
+	})
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"walk", "process-instance",
+		"--key", "123",
+		"--with-elements",
+		"--with-listeners",
+	)
+
+	require.Contains(t, strings.Join(requests, ","), "POST /v2/jobs/search")
+	payload := requireWalkProcessInstanceJSONPayload(t, output)
+	require.Equal(t, "family", payload["mode"])
+	items := requireJSONItems(t, payload["items"], 2)
+	root := requireJSONObject(t, items[0])
+	elements := requireJSONItems(t, root["elements"], 2)
+	elementsByKey := map[string]map[string]any{}
+	for _, rawElement := range elements {
+		element := requireJSONObject(t, rawElement)
+		key, _ := element["elementInstanceKey"].(string)
+		elementsByKey[key] = element
+	}
+	firstListeners := requireJSONItems(t, elementsByKey["element-root"]["listeners"], 1)
+	require.Equal(t, "job-exec-root", requireJSONObject(t, firstListeners[0])["jobKey"])
+	require.Empty(t, requireJSONItems(t, elementsByKey["element-empty"]["listeners"], 0))
+	child := requireJSONObject(t, items[1])
+	require.Empty(t, requireJSONItems(t, child["elements"], 0))
+	require.NotContains(t, output, "job-unmatched")
+}
+
+// TestWalkProcessInstanceCommand_WithElementsWithoutListenersSkipsListenerLookup keeps existing element-only walks free of job search calls.
+func TestWalkProcessInstanceCommand_WithElementsWithoutListenersSkipsListenerLookup(t *testing.T) {
+	var requests []string
+	srv := newWalkProcessInstanceWithListenersServer(t, &requests, map[string]string{
+		"123": walkedElementInstancesSearchJSON(t,
+			walkedElementInstanceFixture("element-root", "123", "root-task", false, ""),
+		),
+		"124": walkedElementInstancesSearchJSON(t),
+	}, nil)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"walk", "process-instance",
+		"--key", "123",
+		"--with-elements",
+	)
+
+	require.NotContains(t, strings.Join(requests, ","), "/v2/jobs/search")
+	require.NotContains(t, output, `"listeners"`)
+}
+
+// TestWalkProcessInstanceCommand_WithListenersValidation rejects invalid listener combinations before remote work.
+func TestWalkProcessInstanceCommand_WithListenersValidation(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+	tests := []struct {
+		name   string
+		helper string
+		want   string
+	}{
+		{
+			name:   "missing elements",
+			helper: "TestWalkProcessInstanceCommand_WithListenersWithoutElementsHelper",
+			want:   "--with-listeners requires --with-elements",
+		},
+		{
+			name:   "keys only",
+			helper: "TestWalkProcessInstanceCommand_WithListenersWithKeysOnlyHelper",
+			want:   "--with-listeners cannot be combined with --keys-only",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, err := testx.RunCmdSubprocess(t, tt.helper, map[string]string{
+				"C8VOLT_TEST_CONFIG": cfgPath,
+			})
+			require.Error(t, err)
+			exitErr, ok := err.(*exec.ExitError)
+			require.True(t, ok)
+			require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+			require.Contains(t, string(output), "invalid input")
+			require.Contains(t, string(output), tt.want)
+			require.NotContains(t, string(output), "127.0.0.1:1")
+		})
+	}
+}
+
+// TestWalkProcessInstanceCommand_WithListenersUnsupportedV87 verifies listener lookup failures surface through the normal command error path.
+func TestWalkProcessInstanceCommand_WithListenersUnsupportedV87(t *testing.T) {
+	searchCalls := 0
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch searchCalls {
+		case 0:
+			searchCalls++
+			_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"}],"total":1}`))
+		default:
+			searchCalls++
+			_, _ = w.Write([]byte(`{"items":[],"total":0}`))
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+
+	output, err := testx.RunCmdSubprocess(t, "TestWalkProcessInstanceCommand_WithListenersUnsupportedV87Helper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Equal(t, 2, searchCalls)
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "element search requires Camunda 8.8 or newer")
+	require.NotContains(t, string(output), "tenant demo v3")
+	require.NotContains(t, string(output), "└─ elements:")
 }
 
 // TestWalkProcessInstanceCommand_WithVarsIncidentsAndElementsOutputShowsGroupedSections verifies combined enrichment uses stable section and JSON fields.
@@ -2094,6 +2381,48 @@ func TestWalkProcessInstanceCommand_WithElementsUnsupportedV87Helper(t *testing.
 	_ = root.Execute()
 }
 
+// TestWalkProcessInstanceCommand_WithListenersWithoutElementsHelper exercises missing listener element context in a subprocess.
+func TestWalkProcessInstanceCommand_WithListenersWithoutElementsHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "walk", "process-instance", "--key", "123", "--with-listeners"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+// TestWalkProcessInstanceCommand_WithListenersWithKeysOnlyHelper exercises invalid key-only listener enrichment in a subprocess.
+func TestWalkProcessInstanceCommand_WithListenersWithKeysOnlyHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--keys-only", "walk", "process-instance", "--key", "123", "--with-elements", "--with-listeners"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+// TestWalkProcessInstanceCommand_WithListenersUnsupportedV87Helper exercises unsupported listener enrichment in a subprocess.
+func TestWalkProcessInstanceCommand_WithListenersUnsupportedV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "walk", "process-instance", "--key", "123", "--children", "--with-elements", "--with-listeners"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
 // walkedProcessInstanceModel builds the canonical process-instance fixture used by walk renderer assertions.
 func walkedProcessInstanceModel(key, parentKey string, hasIncident bool) process.ProcessInstance {
 	return process.ProcessInstance{
@@ -2198,6 +2527,22 @@ func walkedElementInstanceFixture(elementInstanceKey, processInstanceKey, elemen
 	return item
 }
 
+// walkedJobSearchJSON wraps runtime job fixtures in the generated search response shape.
+func walkedJobSearchJSON(t *testing.T, items ...map[string]any) string {
+	t.Helper()
+
+	payload := map[string]any{
+		"items": items,
+		"page": map[string]any{
+			"totalItems":        len(items),
+			"hasMoreTotalItems": false,
+		},
+	}
+	raw, err := json.Marshal(payload)
+	require.NoError(t, err)
+	return string(raw)
+}
+
 // walkedElementInstancesSearchJSON wraps runtime element fixtures in the generated search response shape.
 func walkedElementInstancesSearchJSON(t *testing.T, items ...map[string]any) string {
 	t.Helper()
@@ -2212,6 +2557,56 @@ func walkedElementInstancesSearchJSON(t *testing.T, items ...map[string]any) str
 	raw, err := json.Marshal(payload)
 	require.NoError(t, err)
 	return string(raw)
+}
+
+// newWalkProcessInstanceWithListenersServer serves traversal, element, and
+// listener-job responses keyed by process instance for walk enrichment tests.
+func newWalkProcessInstanceWithListenersServer(t *testing.T, requests *[]string, elementResponses map[string]string, jobResponses map[string][]string) *httptest.Server {
+	t.Helper()
+
+	jobCounts := map[string]int{}
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*requests = append(*requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", false)))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/124":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("124", "123", false)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			switch {
+			case strings.Contains(string(body), `"parentProcessInstanceKey":"123"`):
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t, walkedProcessInstanceJSON("124", "123", false))))
+			case strings.Contains(string(body), `"parentProcessInstanceKey":"124"`):
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+			default:
+				t.Fatalf("unexpected search body: %s", string(body))
+			}
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/element-instances/search":
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			filter := requireJSONObject(t, body["filter"])
+			key, _ := filter["processInstanceKey"].(string)
+			response, ok := elementResponses[key]
+			require.True(t, ok, "missing element response for process instance %s", key)
+			_, _ = w.Write([]byte(response))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/jobs/search":
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			filter := requireJSONObject(t, body["filter"])
+			key, _ := filter["processInstanceKey"].(string)
+			responses, ok := jobResponses[key]
+			require.True(t, ok, "missing listener response for process instance %s", key)
+			responseIndex := jobCounts[key]
+			require.Less(t, responseIndex, len(responses), "unexpected extra listener lookup for process instance %s", key)
+			jobCounts[key] = responseIndex + 1
+			_, _ = w.Write([]byte(responses[responseIndex]))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
 }
 
 // requireWalkProcessInstanceJSONPayload unwraps the shared JSON envelope for walk command assertions.

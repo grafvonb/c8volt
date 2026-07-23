@@ -187,9 +187,11 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyse spi --bpmn-process-id")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--dur-longer 1h30m --dur-element-longer 30s")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--with-full-timeline")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--with-listeners")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "get pi --state active --keys-only")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Default output shows compact slowest element contributors")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --with-full-timeline to inspect complete chronological element and transition detail")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --with-listeners to include runtime listener jobs under matching element timeline rows")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --dur-longer to keep only process-instance roots")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Detail filters such as --element-id, --type, --element-state, and --dur-element-longer keep only process instances with matching element or transition detail rows")
 	require.NotContains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--duration-after")
@@ -274,6 +276,13 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 		Required:    false,
 		Repeated:    false,
 		Description: "show complete chronological element and transition detail",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-listeners",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "include runtime listener jobs under matching element timeline rows",
 	})
 	require.False(t, hasFlagContractNamed(capability.Flags, "duration-after"))
 	require.False(t, hasFlagContractNamed(capability.Flags, "incidents-only"))
@@ -433,11 +442,39 @@ func TestCommandCapabilityForCommand_WalkProcessInstanceElementFlagAndContract(t
 		Repeated:    false,
 		Description: "show runtime element instances for keyed process-instance walks",
 	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-listeners",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "show runtime listener jobs under matching element rows; requires --with-elements",
+	})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 	require.Contains(t, walkProcessInstanceCmd.Long, "Add --with-incidents, --with-vars, and/or --with-elements")
+	require.Contains(t, walkProcessInstanceCmd.Long, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
 	require.Contains(t, walkProcessInstanceCmd.Example, "./c8volt walk pi --key <process-instance-key> --with-elements")
+	require.Contains(t, walkProcessInstanceCmd.Example, "./c8volt walk pi --key <process-instance-key> --with-elements --with-listeners")
+}
+
+// TestCommandContractWalkProcessInstanceWithListeners verifies listener
+// enrichment is exposed in walk command metadata and user-facing examples.
+func TestCommandContractWalkProcessInstanceWithListeners(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(walkProcessInstanceCmd)
+
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-listeners",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "show runtime listener jobs under matching element rows; requires --with-elements",
+	})
+	require.Contains(t, walkProcessInstanceCmd.Long, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
+	require.Contains(t, walkProcessInstanceCmd.Example, "./c8volt walk pi --key <process-instance-key> --with-elements --with-listeners")
 }
 
 func TestCommandCapabilityForCommand_IncludesExplicitAutomationMetadata(t *testing.T) {
@@ -679,12 +716,40 @@ func TestCommandCapabilityForCommand_ProcessInstanceElementFlagAndContract(t *te
 		Repeated:    false,
 		Description: "include runtime element instances for keyed or list/search process-instance output",
 	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-listeners",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "include runtime listener jobs under matching element rows; requires --with-elements",
+	})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 	require.Contains(t, getProcessInstanceCmd.Long, "Use --with-elements to include runtime element instances under matching process-instance rows.")
 	require.Contains(t, getProcessInstanceCmd.Long, "Nested human element rows include dur:<duration>")
+	require.Contains(t, getProcessInstanceCmd.Long, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
 	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get pi --key <process-instance-key> --with-elements")
+	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get pi --key <process-instance-key> --with-elements --with-listeners")
+}
+
+// TestCommandContractGetProcessInstanceWithListeners verifies listener
+// enrichment is exposed in the process-instance command's automation metadata.
+func TestCommandContractGetProcessInstanceWithListeners(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(getProcessInstanceCmd)
+
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-listeners",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "include runtime listener jobs under matching element rows; requires --with-elements",
+	})
+	require.Contains(t, getProcessInstanceCmd.Long, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
+	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get pi --key <process-instance-key> --with-elements --with-listeners")
 }
 
 func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T) {
@@ -966,8 +1031,11 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 	require.Contains(t, getElementCmd.Long, "Use --key when you know an element instance key.")
 	require.Contains(t, getElementCmd.Long, "Search mode follows the shared get paging and limit conventions.")
 	require.Contains(t, getElementCmd.Long, "Compact human rows include dur:<duration>")
+	require.Contains(t, getElementCmd.Long, "Use --with-listeners to include runtime listener jobs under matching element rows.")
 	require.Contains(t, getElementCmd.Long, "Use --json for the stable element payload and --keys-only when piping element instance keys.")
+	require.Contains(t, getElementCmd.Example, "./c8volt get ei -k <element-instance-key> --with-listeners")
 	require.Contains(t, getElementCmd.Example, "./c8volt get ei --pi-key <process-instance-key> --limit 10")
+	require.Contains(t, getElementCmd.Example, "./c8volt get ei --pi-key <process-instance-key> --with-listeners")
 	require.Contains(t, getElementCmd.Example, "./c8volt get element --pi-key <process-instance-key> --total")
 	require.Contains(t, getElementCmd.Example, "./c8volt --json get ei --pi-key <process-instance-key> --limit 5")
 	require.Contains(t, capability.Flags, FlagContract{
@@ -1044,6 +1112,13 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 		Required:    false,
 		Repeated:    false,
 		Description: "return only the numeric total of matching elements",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-listeners",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "include runtime listener jobs under matching element rows",
 	})
 }
 
@@ -2043,12 +2118,15 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 		"--batch-size controls per-page discovery requests",
 		"--total prints only the matching count",
 		"Compact human rows include dur:<duration>",
+		"Use --with-listeners to include runtime listener jobs under matching element rows",
 		"Use --json for the stable element payload and --keys-only when piping element instance keys",
 		"Element lookup and search require Camunda 8.8 or 8.9",
 		"Aliases:",
 		"ei",
 		"./c8volt get ei -k <element-instance-key>",
+		"./c8volt get ei -k <element-instance-key> --with-listeners",
 		"./c8volt get ei --pi-key <process-instance-key> --limit 10",
+		"./c8volt get ei --pi-key <process-instance-key> --with-listeners",
 		"./c8volt get element --pi-key <process-instance-key> --total",
 		"./c8volt --json get ei --pi-key <process-instance-key> --limit 5",
 		"-k, --key string",
@@ -2061,6 +2139,7 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 		"-n, --batch-size int32",
 		"-l, --limit int32",
 		"--total",
+		"--with-listeners",
 		"--json",
 		"--keys-only",
 	}, nil)

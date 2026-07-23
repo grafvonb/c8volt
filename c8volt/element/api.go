@@ -12,7 +12,9 @@ import (
 // API exposes runtime element lookup and search operations.
 type API interface {
 	GetElement(ctx context.Context, key string, opts ...options.FacadeOption) (Element, error)
+	GetElementWithListeners(ctx context.Context, key string, opts ...options.FacadeOption) (Element, error)
 	SearchElements(ctx context.Context, request SearchRequest, opts ...options.FacadeOption) (SearchResult, error)
+	SearchElementsWithListeners(ctx context.Context, request SearchRequest, opts ...options.FacadeOption) (SearchResult, error)
 	SearchElementsPage(ctx context.Context, request SearchRequest, page PageRequest, opts ...options.FacadeOption) (Page, error)
 }
 

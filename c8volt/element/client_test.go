@@ -22,6 +22,33 @@ type fakeElementService struct {
 	page   func(context.Context, d.ElementSearchQuery, d.ElementPageRequest, ...services.CallOption) (d.ElementSearchPage, error)
 }
 
+type fakeJobService struct {
+	search func(context.Context, d.JobSearchQuery, ...services.CallOption) (d.JobSearchResult, error)
+}
+
+func (f fakeJobService) GetJob(context.Context, string, ...services.CallOption) (d.Job, error) {
+	return d.Job{}, errors.New("unexpected get job")
+}
+
+func (f fakeJobService) SearchJobs(ctx context.Context, request d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error) {
+	if f.search == nil {
+		return d.JobSearchResult{}, errors.New("unexpected job search")
+	}
+	return f.search(ctx, request, opts...)
+}
+
+func (f fakeJobService) SearchJobsPage(context.Context, d.JobSearchQuery, d.JobPageRequest, ...services.CallOption) (d.JobSearchPage, error) {
+	return d.JobSearchPage{}, errors.New("unexpected job search page")
+}
+
+func (f fakeJobService) UpdateJob(context.Context, d.JobUpdateRequest, ...services.CallOption) (d.JobUpdateResult, error) {
+	return d.JobUpdateResult{}, errors.New("unexpected update job")
+}
+
+func (f fakeJobService) SubmitJobWorkerOutcome(context.Context, d.JobWorkerOutcomeRequest, ...services.CallOption) (d.JobWorkerOutcomeResult, error) {
+	return d.JobWorkerOutcomeResult{}, errors.New("unexpected submit job worker outcome")
+}
+
 func (f fakeElementService) GetElement(ctx context.Context, key string, opts ...services.CallOption) (d.Element, error) {
 	return f.get(ctx, key, opts...)
 }
@@ -96,6 +123,68 @@ func TestClient_GetElement_NotFound(t *testing.T) {
 
 	require.ErrorIs(t, err, ferrors.ErrNotFound)
 	require.Empty(t, result)
+}
+
+// TestClient_GetElementWithListeners_AttachesMatchingJobs verifies keyed enrichment keeps only element-owned listener jobs.
+func TestClient_GetElementWithListeners_AttachesMatchingJobs(t *testing.T) {
+	var jobQueries []d.JobSearchQuery
+	api := NewWithListeners(fakeElementService{
+		get: func(_ context.Context, key string, _ ...services.CallOption) (d.Element, error) {
+			require.Equal(t, "2251799813689002", key)
+			return d.Element{
+				ElementInstanceKey: "2251799813689002",
+				ElementId:          "ship-order",
+				Type:               "SERVICE_TASK",
+				State:              "ACTIVE",
+				ProcessInstanceKey: "2251799813688001",
+			}, nil
+		},
+	}, fakeJobService{
+		search: func(_ context.Context, query d.JobSearchQuery, _ ...services.CallOption) (d.JobSearchResult, error) {
+			jobQueries = append(jobQueries, query)
+			return d.JobSearchResult{Items: []d.Job{
+				{Key: "2251799813689101", Kind: query.Kind, ListenerEventType: "START", Type: "audit", State: "CREATED", Retries: 3, ProcessInstanceKey: "2251799813688001", ElementInstanceKey: "2251799813689002", ElementId: "ship-order"},
+				{Key: "2251799813689999", Kind: query.Kind, ProcessInstanceKey: "2251799813688001", ElementInstanceKey: "2251799813689998"},
+			}}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.GetElementWithListeners(context.Background(), "2251799813689002")
+
+	require.NoError(t, err)
+	require.Equal(t, []d.JobSearchQuery{
+		{ProcessInstanceKey: "2251799813688001", Kind: d.JobKindExecutionListener},
+		{ProcessInstanceKey: "2251799813688001", Kind: d.JobKindTaskListener},
+	}, jobQueries)
+	require.NotNil(t, result.Listeners)
+	require.Len(t, *result.Listeners, 2)
+	require.Equal(t, "2251799813689101", (*result.Listeners)[0].JobKey)
+	require.Equal(t, d.JobKindExecutionListener, (*result.Listeners)[0].Kind)
+}
+
+// TestClient_SearchElementsWithListeners_IncludesEmptyArrays verifies requested listener enrichment survives empty matches.
+func TestClient_SearchElementsWithListeners_IncludesEmptyArrays(t *testing.T) {
+	api := NewWithListeners(fakeElementService{
+		search: func(_ context.Context, request d.ElementSearchQuery, _ ...services.CallOption) (d.ElementSearchResult, error) {
+			require.Equal(t, d.ElementSearchQuery{ProcessInstanceKey: "2251799813688001"}, request)
+			return d.ElementSearchResult{Total: 1, Items: []d.Element{{
+				ElementInstanceKey: "2251799813689002",
+				ProcessInstanceKey: "2251799813688001",
+			}}}, nil
+		},
+	}, fakeJobService{
+		search: func(_ context.Context, query d.JobSearchQuery, _ ...services.CallOption) (d.JobSearchResult, error) {
+			require.Equal(t, "2251799813688001", query.ProcessInstanceKey)
+			return d.JobSearchResult{}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.SearchElementsWithListeners(context.Background(), SearchRequest{ProcessInstanceKey: "2251799813688001"})
+
+	require.NoError(t, err)
+	require.Len(t, result.Items, 1)
+	require.NotNil(t, result.Items[0].Listeners)
+	require.Empty(t, *result.Items[0].Listeners)
 }
 
 func TestClient_SearchElements_MapsRequestAndResult(t *testing.T) {

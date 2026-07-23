@@ -18,6 +18,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	esvc "github.com/grafvonb/c8volt/internal/services/element"
 	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
+	jsvc "github.com/grafvonb/c8volt/internal/services/job"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
@@ -655,6 +656,71 @@ func TestClient_EnrichProcessInstancesWithElements_MapsErrors(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unsupported capability")
 	require.Empty(t, got)
+}
+
+func TestClient_EnrichProcessInstancesWithElementListeners_MapsListenerFields(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	elAPI := stubElementAPI{
+		searchElements: func(_ context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (d.ElementSearchResult, error) {
+			require.Equal(t, "pi-1", query.ProcessInstanceKey)
+			require.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			return d.ElementSearchResult{Items: []d.Element{
+				{ElementInstanceKey: "el-1", ElementId: "ReviewOrder", Type: "USER_TASK", State: "ACTIVE", ProcessInstanceKey: "pi-1", TenantId: "tenant-a"},
+				{ElementInstanceKey: "el-2", ElementId: "ShipOrder", Type: "SERVICE_TASK", State: "ACTIVE", ProcessInstanceKey: "pi-1", TenantId: "tenant-a"},
+			}}, nil
+		},
+	}
+	jobAPI := stubJobAPI{
+		searchJobs: func(_ context.Context, query d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error) {
+			require.Equal(t, "pi-1", query.ProcessInstanceKey)
+			require.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			if query.Kind != d.JobKindTaskListener {
+				return d.JobSearchResult{}, nil
+			}
+			return d.JobSearchResult{Items: []d.Job{{
+				Key:                "job-1",
+				Kind:               d.JobKindTaskListener,
+				ListenerEventType:  "COMPLETING",
+				Type:               "audit-user-task",
+				State:              "CREATED",
+				Retries:            3,
+				Worker:             "audit-worker",
+				ProcessInstanceKey: "pi-1",
+				ElementInstanceKey: "el-1",
+				ElementId:          "ReviewOrder",
+				TenantId:           "tenant-a",
+				ErrorCode:          "E_LISTENER",
+				ErrorMessage:       "listener failed",
+			}}}, nil
+		},
+	}
+
+	cli := NewWithElementListeners(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, elAPI, jobAPI, slog.Default())
+	got, err := cli.EnrichProcessInstancesWithElementListeners(ctx, ProcessInstances{Items: []ProcessInstance{{Key: "pi-1"}}}, options.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 1)
+	require.Len(t, got.Items[0].Elements, 2)
+	require.NotNil(t, got.Items[0].Elements[0].Listeners)
+	require.Equal(t, []RuntimeListenerJob{{
+		JobKey:             "job-1",
+		Kind:               d.JobKindTaskListener,
+		ListenerEventType:  "COMPLETING",
+		Type:               "audit-user-task",
+		State:              "CREATED",
+		Retries:            3,
+		Worker:             "audit-worker",
+		ProcessInstanceKey: "pi-1",
+		ElementInstanceKey: "el-1",
+		ElementId:          "ReviewOrder",
+		TenantId:           "tenant-a",
+		ErrorCode:          "E_LISTENER",
+		ErrorMessage:       "listener failed",
+	}}, *got.Items[0].Elements[0].Listeners)
+	require.NotNil(t, got.Items[0].Elements[1].Listeners)
+	require.Empty(t, *got.Items[0].Elements[1].Listeners)
 }
 
 func TestUpdateProcessInstanceVariablesMapsConfirmedServiceResponse(t *testing.T) {
@@ -1924,6 +1990,35 @@ func (s stubElementAPI) SearchElementsPage(ctx context.Context, query d.ElementS
 }
 
 var _ esvc.API = stubElementAPI{}
+
+type stubJobAPI struct {
+	searchJobs func(context.Context, d.JobSearchQuery, ...services.CallOption) (d.JobSearchResult, error)
+}
+
+func (s stubJobAPI) GetJob(context.Context, string, ...services.CallOption) (d.Job, error) {
+	panic("unexpected call")
+}
+
+func (s stubJobAPI) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error) {
+	if s.searchJobs == nil {
+		panic("unexpected call")
+	}
+	return s.searchJobs(ctx, query, opts...)
+}
+
+func (s stubJobAPI) SearchJobsPage(context.Context, d.JobSearchQuery, d.JobPageRequest, ...services.CallOption) (d.JobSearchPage, error) {
+	panic("unexpected call")
+}
+
+func (s stubJobAPI) UpdateJob(context.Context, d.JobUpdateRequest, ...services.CallOption) (d.JobUpdateResult, error) {
+	panic("unexpected call")
+}
+
+func (s stubJobAPI) SubmitJobWorkerOutcome(context.Context, d.JobWorkerOutcomeRequest, ...services.CallOption) (d.JobWorkerOutcomeResult, error) {
+	panic("unexpected call")
+}
+
+var _ jsvc.API = stubJobAPI{}
 
 type stubProcessInstanceAPI struct {
 	createProcessInstance              func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)

@@ -131,6 +131,35 @@ func TestOpsAnalyseSlowProcessInstancesWithFullTimelineAllowsMachineModes(t *tes
 	}
 }
 
+// TestOpsAnalyseSlowProcessInstancesWithListenersMapsRequest verifies listener enrichment is an explicit facade request.
+func TestOpsAnalyseSlowProcessInstancesWithListenersMapsRequest(t *testing.T) {
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	flagOpsAnalyseSlowProcessInstanceKeys = []string{"2251799813685249"}
+	flagOpsAnalyseSlowProcessInstanceWithListeners = true
+
+	got, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, nil, typex.Keys{"2251799813685249"})
+
+	require.NoError(t, err)
+	require.True(t, got.Request.WithListeners)
+	require.Equal(t, ops.SlowProcessAnalysisSelectionModeExplicitKeys, got.Request.SelectionMode)
+	require.Equal(t, typex.Keys{"2251799813685249"}, got.Request.InputKeys)
+}
+
+// TestOpsAnalyseSlowProcessInstancesRejectsListenersWithKeysOnly verifies local validation runs before remote analysis.
+func TestOpsAnalyseSlowProcessInstancesRejectsListenersWithKeysOnly(t *testing.T) {
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	prevKeysOnly := flagViewKeysOnly
+	t.Cleanup(func() { flagViewKeysOnly = prevKeysOnly })
+	flagViewKeysOnly = true
+	flagOpsAnalyseSlowProcessInstanceKeys = []string{"2251799813685249"}
+	flagOpsAnalyseSlowProcessInstanceWithListeners = true
+
+	err := validateOpsSlowProcessAnalysisCommandArgs(cmd, nil)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--with-listeners cannot be combined with --keys-only")
+}
+
 // TestOpsAnalyseSlowProcessInstancesRejectsInvalidExplicitKeyInputs verifies local key-mode validation.
 func TestOpsAnalyseSlowProcessInstancesRejectsInvalidExplicitKeyInputs(t *testing.T) {
 	tests := []struct {
@@ -394,6 +423,7 @@ func resetOpsSlowProcessAnalysisTestFlags(t *testing.T) *cobra.Command {
 	flagOpsAnalyseSlowProcessInstanceDurationLonger = ""
 	flagOpsAnalyseSlowProcessInstanceElementDurationLonger = ""
 	flagOpsAnalyseSlowProcessInstanceWithFullTimeline = false
+	flagOpsAnalyseSlowProcessInstanceWithListeners = false
 
 	cmd := &cobra.Command{Use: "slow-process-instances"}
 	flags := cmd.Flags()
@@ -401,5 +431,6 @@ func resetOpsSlowProcessAnalysisTestFlags(t *testing.T) *cobra.Command {
 	flags.Int32Var(&flagOpsAnalyseSlowProcessInstanceBatchSize, "batch-size", consts.MaxPISearchSize, "")
 	flags.Int32Var(&flagOpsAnalyseSlowProcessInstanceLimit, "limit", 0, "")
 	flags.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithFullTimeline, "with-full-timeline", false, "")
+	flags.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithListeners, "with-listeners", false, "")
 	return cmd
 }

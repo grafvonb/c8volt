@@ -3,7 +3,10 @@
 
 package element
 
-import d "github.com/grafvonb/c8volt/internal/domain"
+import (
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/toolx"
+)
 
 // fromDomainElement maps an internal runtime element into the public facade type.
 func fromDomainElement(result d.Element) Element {
@@ -22,7 +25,35 @@ func fromDomainElement(result d.Element) Element {
 		TenantId:               result.TenantId,
 		HasIncident:            result.HasIncident,
 		IncidentKey:            result.IncidentKey,
+		Listeners:              fromDomainRuntimeListenerJobsPtr(result.Listeners),
 	}
+}
+
+func fromDomainRuntimeListenerJob(result d.RuntimeListenerJob) RuntimeListenerJob {
+	return RuntimeListenerJob{
+		JobKey:             result.JobKey,
+		Kind:               result.Kind,
+		ListenerEventType:  result.ListenerEventType,
+		Type:               result.Type,
+		State:              result.State,
+		Retries:            result.Retries,
+		Worker:             result.Worker,
+		Deadline:           result.Deadline,
+		ProcessInstanceKey: result.ProcessInstanceKey,
+		ElementInstanceKey: result.ElementInstanceKey,
+		ElementId:          result.ElementId,
+		TenantId:           result.TenantId,
+		ErrorCode:          result.ErrorCode,
+		ErrorMessage:       result.ErrorMessage,
+	}
+}
+
+func fromDomainRuntimeListenerJobsPtr(items *[]d.RuntimeListenerJob) *[]RuntimeListenerJob {
+	if items == nil {
+		return nil
+	}
+	out := toolx.MapSlice(*items, fromDomainRuntimeListenerJob)
+	return &out
 }
 
 // toDomainSearchRequest maps public search filters into the internal service query.

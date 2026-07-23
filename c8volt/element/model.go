@@ -3,22 +3,42 @@
 
 package element
 
+import "time"
+
+type RuntimeListenerJob struct {
+	JobKey             string     `json:"jobKey,omitempty"`
+	Kind               string     `json:"kind,omitempty"`
+	ListenerEventType  string     `json:"listenerEventType,omitempty"`
+	Type               string     `json:"type,omitempty"`
+	State              string     `json:"state,omitempty"`
+	Retries            int32      `json:"retries"`
+	Worker             string     `json:"worker,omitempty"`
+	Deadline           *time.Time `json:"deadline,omitempty"`
+	ProcessInstanceKey string     `json:"processInstanceKey,omitempty"`
+	ElementInstanceKey string     `json:"elementInstanceKey,omitempty"`
+	ElementId          string     `json:"elementId,omitempty"`
+	TenantId           string     `json:"tenantId,omitempty"`
+	ErrorCode          string     `json:"errorCode,omitempty"`
+	ErrorMessage       string     `json:"errorMessage,omitempty"`
+}
+
 // Element represents one runtime BPMN element execution instance.
 type Element struct {
-	ElementInstanceKey     string `json:"elementInstanceKey,omitempty"`
-	ElementId              string `json:"elementId,omitempty"`
-	ElementName            string `json:"elementName,omitempty"`
-	Type                   string `json:"type,omitempty"`
-	State                  string `json:"state,omitempty"`
-	StartDate              string `json:"startDate,omitempty"`
-	EndDate                string `json:"endDate,omitempty"`
-	ProcessInstanceKey     string `json:"processInstanceKey,omitempty"`
-	RootProcessInstanceKey string `json:"rootProcessInstanceKey,omitempty"`
-	ProcessDefinitionId    string `json:"processDefinitionId,omitempty"`
-	ProcessDefinitionKey   string `json:"processDefinitionKey,omitempty"`
-	TenantId               string `json:"tenantId,omitempty"`
-	HasIncident            bool   `json:"hasIncident"`
-	IncidentKey            string `json:"incidentKey,omitempty"`
+	ElementInstanceKey     string                `json:"elementInstanceKey,omitempty"`
+	ElementId              string                `json:"elementId,omitempty"`
+	ElementName            string                `json:"elementName,omitempty"`
+	Type                   string                `json:"type,omitempty"`
+	State                  string                `json:"state,omitempty"`
+	StartDate              string                `json:"startDate,omitempty"`
+	EndDate                string                `json:"endDate,omitempty"`
+	ProcessInstanceKey     string                `json:"processInstanceKey,omitempty"`
+	RootProcessInstanceKey string                `json:"rootProcessInstanceKey,omitempty"`
+	ProcessDefinitionId    string                `json:"processDefinitionId,omitempty"`
+	ProcessDefinitionKey   string                `json:"processDefinitionKey,omitempty"`
+	TenantId               string                `json:"tenantId,omitempty"`
+	HasIncident            bool                  `json:"hasIncident"`
+	IncidentKey            string                `json:"incidentKey,omitempty"`
+	Listeners              *[]RuntimeListenerJob `json:"listeners,omitempty"`
 }
 
 // SearchRequest carries the public filters and bounds for runtime element search.

@@ -17,6 +17,8 @@ Use --dur-longer to keep only process-instance roots whose whole duration is abo
 
 Default output shows compact slowest element contributors. Use --with-full-timeline to inspect complete chronological element and transition detail.
 
+Use --with-listeners to include runtime listener jobs under matching element timeline rows.
+
 Duration thresholds use Go duration syntax such as 500ms, 30s, 5m, 1h, 1h30m, or 24h. Calendar units such as 1d are not accepted.
 
 JSON output exposes stable duration, comparison, and timeline fields. Keys-only output prints selected process-instance keys in result order, one per line.
@@ -33,6 +35,7 @@ c8volt ops analyse slow-process-instances [-] [flags]
   ./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 5m
   ./c8volt ops analyse slow-process-instances --pd-key 2251799813687001 --dur-element-longer 30s
   ./c8volt ops analyse slow-process-instances --key 2251799813685249 --with-full-timeline
+  ./c8volt ops analyse slow-process-instances --key 2251799813685249 --with-listeners
   ./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 1h30m --dur-element-longer 30s
   ./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -
 ```
@@ -58,6 +61,7 @@ c8volt ops analyse slow-process-instances [-] [flags]
   -s, --state string                state to filter discovered process instances: all, active, completed, canceled, terminated (default "all")
       --type string                 runtime element type to keep in detail rows
       --with-full-timeline          show complete chronological element and transition detail
+      --with-listeners              include runtime listener jobs under matching element timeline rows
 ```
 
 ### Options inherited from parent commands

@@ -30,6 +30,7 @@ type stubProcessAPI struct {
 	enrichProcessInstances           func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.IncidentEnrichedProcessInstances, error)
 	enrichProcessInstanceVars        func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.VariableEnrichedProcessInstances, error)
 	enrichProcessInstanceElements    func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error)
+	enrichProcessInstanceListeners   func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error)
 	updateProcessInstancesVars       func(context.Context, types.Keys, map[string]any, int, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error)
 	resolveProcessInstancesIncidents func(context.Context, types.Keys, int, ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error)
 }
@@ -258,6 +259,13 @@ func (s stubProcessAPI) EnrichProcessInstancesWithElements(ctx context.Context, 
 		panic("unexpected call")
 	}
 	return s.enrichProcessInstanceElements(ctx, pis, opts...)
+}
+
+func (s stubProcessAPI) EnrichProcessInstancesWithElementListeners(ctx context.Context, pis process.ProcessInstances, opts ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error) {
+	if s.enrichProcessInstanceListeners == nil {
+		panic("unexpected call")
+	}
+	return s.enrichProcessInstanceListeners(ctx, pis, opts...)
 }
 
 func (stubProcessAPI) EnrichTraversalWithIncidents(context.Context, process.TraversalResult, ...options.FacadeOption) (process.IncidentEnrichedTraversalResult, error) {

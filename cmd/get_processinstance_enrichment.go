@@ -74,6 +74,18 @@ func enrichProcessInstancesWithElementActivityOptions(cmd *cobra.Command, cli pr
 	return cli.EnrichProcessInstancesWithElements(cmd.Context(), pis, opts...)
 }
 
+// enrichProcessInstancesWithElementListenerActivityOptions routes element
+// enrichment through the listener-aware facade path while preserving explicit
+// key options and requested-empty behavior.
+func enrichProcessInstancesWithElementListenerActivityOptions(cmd *cobra.Command, cli process.API, pis process.ProcessInstances, opts []options.FacadeOption) (process.ElementEnrichedProcessInstances, error) {
+	if len(pis.Items) == 0 {
+		return cli.EnrichProcessInstancesWithElementListeners(cmd.Context(), pis, opts...)
+	}
+	stopActivity := startCommandActivity(cmd, fmt.Sprintf("loading listener jobs for %d process instance(s)", len(pis.Items)))
+	defer stopActivity()
+	return cli.EnrichProcessInstancesWithElementListeners(cmd.Context(), pis, opts...)
+}
+
 // collectRequestedProcessInstanceActivity builds the shared activity view model
 // by invoking each requested enrichment facade exactly once.
 func collectRequestedProcessInstanceActivity(cmd *cobra.Command, cli process.API, pis process.ProcessInstances) (processInstanceActivityInstances, error) {
@@ -99,7 +111,13 @@ func collectRequestedProcessInstanceActivityOptions(cmd *cobra.Command, cli proc
 		enrichments.Variables = &variableEnriched
 	}
 	if flagGetPIWithElements {
-		elementEnriched, err := enrichProcessInstancesWithElementActivityOptions(cmd, cli, pis, generalOpts)
+		var elementEnriched process.ElementEnrichedProcessInstances
+		var err error
+		if flagGetPIWithListeners {
+			elementEnriched, err = enrichProcessInstancesWithElementListenerActivityOptions(cmd, cli, pis, generalOpts)
+		} else {
+			elementEnriched, err = enrichProcessInstancesWithElementActivityOptions(cmd, cli, pis, generalOpts)
+		}
 		if err != nil {
 			return processInstanceActivityInstances{}, fmt.Errorf("get process instance elements: %w", err)
 		}

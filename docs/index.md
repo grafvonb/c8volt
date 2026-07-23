@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.2.0-beta.1-13-g1ee0bcd2-dirty`, commit `1ee0bcd2`, built `2026-07-22T21:44:12Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v4.2.0-beta.1-21-gc907b351-dirty`, commit `c907b351`, built `2026-07-23T10:21:39Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -242,14 +242,19 @@ Use `get job --key` with the `jobKey` from incident-aware process-instance outpu
 
 ```bash
 ./c8volt get ei -k <element-instance-key>
+./c8volt get ei -k <element-instance-key> --with-listeners
 ./c8volt get ei --pi-key <process-instance-key> --limit 10
+./c8volt get ei --pi-key <process-instance-key> --with-listeners
 ./c8volt get ei --pi-key <process-instance-key> --element-id <bpmn-element-id> --state active --limit 10
 ./c8volt get element --bpmn-process-id <bpmn-process-id> --type service_task --total
 ./c8volt get ei --pi-key <process-instance-key> --keys-only
 ./c8volt --json get ei --pi-key <process-instance-key> --limit 5
+./c8volt --json get ei --pi-key <process-instance-key> --with-listeners
 ```
 
 Use `get element` or its `get ei` alias when the runtime BPMN element execution record is the target. `--key` fetches one element instance directly; without `--key`, filters such as `--pi-key`, `--element-id`, `--state`, `--type`, `--pd-key`, and `--bpmn-process-id` combine with AND semantics. `--batch-size` tunes page size, `--limit` caps returned rows, `--total` prints only the count, and `--keys-only` emits element instance keys. Compact human rows include `dur:<duration>` when timestamps support a runtime duration and show process context plus one incident marker, `inc!` or `inc!:<incidentKey>`, when the element has an incident. Runtime element inspection is available on Camunda `8.8` and `8.9`; Camunda `8.7` returns an unsupported-version error.
+
+Add `--with-listeners` when runtime execution or task listener jobs should appear below their owning element rows. Listener enrichment is opt-in, rejects `--keys-only` and `--total` before remote lookup, and omits unmatched listener jobs. JSON output includes a `listeners` array on each returned element only when listener enrichment is requested; elements without matched listener jobs use an empty array.
 
 ### Resolve Incidents
 
@@ -270,13 +275,14 @@ Use `resolve incident` when you already have incident keys from `get pi --with-i
 ./c8volt walk pi --key <process-instance-key>
 ./c8volt walk pi --key <process-instance-key> --with-incidents
 ./c8volt walk pi --key <process-instance-key> --with-elements
+./c8volt walk pi --key <process-instance-key> --with-elements --with-listeners
 ./c8volt walk pi --key <process-instance-key> --with-vars --with-incidents --with-elements
 ./c8volt walk pi --key <process-instance-key> --flat
 ```
 
 Use `walk pi` before a risky action. It shows the process-instance family tree, which is usually where the real cancellation or deletion scope becomes obvious.
 
-For diagnosis, add `--with-incidents`, `--with-vars`, and/or `--with-elements`. Runtime element rows appear under the owning process-instance row without changing the selected tree, ancestry, descendants, or flat paths. Use `--json` when scripts need traversal metadata with per-row variables, incidents, and element arrays.
+For diagnosis, add `--with-incidents`, `--with-vars`, and/or `--with-elements`. Runtime element rows appear under the owning process-instance row without changing the selected tree, ancestry, descendants, or flat paths. Add `--with-listeners` with `--with-elements` when listener job state, retries, worker, deadline, or error detail should stay attached to the matching element rows. Use `--json` when scripts need traversal metadata with per-row variables, incidents, element arrays, and requested listener arrays.
 
 ### Cancel Safely
 
@@ -387,8 +393,10 @@ Direct `get pd --bpmn-process-id` and `delete pd --bpmn-process-id` also validat
 ./c8volt get pi --key <process-instance-key> --with-vars --json
 ./c8volt get pi --state active --with-elements --limit 5
 ./c8volt get pi --key <process-instance-key> --with-elements
+./c8volt get pi --key <process-instance-key> --with-elements --with-listeners
 ./c8volt get pi --key <process-instance-key> --with-vars --with-incidents --with-elements
 ./c8volt get pi --key <process-instance-key> --with-elements --json
+./c8volt get pi --key <process-instance-key> --with-elements --with-listeners --json
 ./c8volt get pi --roots-only --limit 5
 ./c8volt get pi --children-only --limit 5
 ./c8volt get pi --orphan-children-only --limit 5
@@ -405,9 +413,9 @@ For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` 
 
 When incident output includes `jobKey`, use `get job --key <job-key>` for direct job details. To remediate job retries or timeout, preview with `update job --dry-run`, then submit with `--auto-confirm` or `--automation`. To resolve the incident itself, preview with `resolve incident --dry-run` or let `resolve pi --dry-run` discover the active incident set for a process instance first.
 
-For runtime execution context, add `--with-elements` to keyed or list/search `get pi` output. Element rows appear under an `elements:` section for each selected process instance and include the element instance key, type, BPMN element ID, state, start time, optional end time, `dur:<duration>` when calculable, and optional incident marker. `--limit`, `--batch-size`, prompts, and `found: N` still count process instances, not attached element rows. Use `get ei` when you need element-specific filters, keys-only element output, or element totals.
+For runtime execution context, add `--with-elements` to keyed or list/search `get pi` output. Element rows appear under an `elements:` section for each selected process instance and include the element instance key, type, BPMN element ID, state, start time, optional end time, `dur:<duration>` when calculable, and optional incident marker. Add `--with-listeners` with `--with-elements` to nest runtime `EXECUTION_LISTENER` and `TASK_LISTENER` jobs under the matching element rows. `--limit`, `--batch-size`, prompts, and `found: N` still count process instances, not attached element or listener rows. Use `get ei` when you need element-specific filters, keys-only element output, or element totals.
 
-For related process-instance diagnosis, add `--with-elements` to keyed `walk pi` output. The walk first selects the family, children, parent chain, or flat path and then attaches each runtime element under its owning process-instance row. Combine it with `--with-vars` and `--with-incidents` when runtime data, failure context, and BPMN element state should stay in one traversal view.
+For related process-instance diagnosis, add `--with-elements` to keyed `walk pi` output. The walk first selects the family, children, parent chain, or flat path and then attaches each runtime element under its owning process-instance row. Combine it with `--with-vars` and `--with-incidents` when runtime data, failure context, and BPMN element state should stay in one traversal view. Listener enrichment requires `--with-elements` and keeps listener rows inside the owning process instance's `elements:` block.
 
 For slow-run inspection, use `ops analyse slow-process-instances` with explicit process-instance keys or one process-definition selector:
 
@@ -418,12 +426,13 @@ For slow-run inspection, use `ops analyse slow-process-instances` with explicit 
 ./c8volt ops analyse spi --bpmn-process-id <bpmn-process-id> --dur-longer 5m
 ./c8volt ops analyse slow-process-instances --pd-key <process-definition-key> --element-id <element-id> --dur-element-longer 2s
 ./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-full-timeline
+./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-listeners
 ./c8volt ops analyse spi --bpmn-process-id <bpmn-process-id> --dur-longer 1h30m --dur-element-longer 30s
 ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --json
 ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --keys-only
 ```
 
-The analysis is read-only. Roots are ordered by available duration longest to shortest, followed by unavailable durations. Use `--dur-longer` to keep only process-instance roots whose whole duration is above a threshold. Detail filters such as `--element-id`, `--type`, `--element-state`, and `--dur-element-longer` keep only process instances with matching element or transition detail rows, then show those matching rows under the root. Duration filters use Go duration strings such as `500ms`, `30s`, `5m`, `1h`, `1h30m`, or `24h`; calendar units such as `1d` are not accepted. Human output renders each process instance as the root row with a nested `└─ slowest elements:` summary. The summary keeps completed element contributors at or above 1% of the process duration plus active or incident-bearing elements, and reports hidden instant or fast timeline rows with `--with-full-timeline` guidance. Add `--with-full-timeline` when you need the complete chronological `└─ elements:` detail, including element instance keys, transitions, zero-duration rows, and sub-1% contributors. Root bars compare each visible root to the longest visible root, while detail bars compare each positive detail duration to its root duration; zero-duration rows omit bars. JSON output exposes the same timings, comparison sample counts, relative percentiles, process-duration shares, and complete timeline fields as named fields.
+The analysis is read-only. Roots are ordered by available duration longest to shortest, followed by unavailable durations. Use `--dur-longer` to keep only process-instance roots whose whole duration is above a threshold. Detail filters such as `--element-id`, `--type`, `--element-state`, and `--dur-element-longer` keep only process instances with matching element or transition detail rows, then show those matching rows under the root. Duration filters use Go duration strings such as `500ms`, `30s`, `5m`, `1h`, `1h30m`, or `24h`; calendar units such as `1d` are not accepted. Human output renders each process instance as the root row with a nested `└─ slowest elements:` summary. The summary keeps completed element contributors at or above 1% of the process duration plus active or incident-bearing elements, and reports hidden instant or fast timeline rows with `--with-full-timeline` guidance. Add `--with-full-timeline` when you need the complete chronological `└─ elements:` detail, including element instance keys, transitions, zero-duration rows, and sub-1% contributors. Add `--with-listeners` to include listener rows under matching element timeline entries; transition rows do not receive listener rows. Root bars compare each visible root to the longest visible root, while detail bars compare each positive detail duration to its root duration; zero-duration rows omit bars. JSON output exposes the same timings, comparison sample counts, relative percentiles, process-duration shares, complete timeline fields, and requested element listener arrays as named fields.
 
 For native process-instance variable search on Camunda `8.8` and `8.9`, use `--var-exists` for required variable names, `--var name=value` for equality shorthand, `--var name.$operator=value` for `$eq`, `$neq`, `$exists`, `$in`, `$notIn`, and `$like`, and `--var-like name=pattern` for wildcard patterns. Repeated flags and comma-separated clauses are combined, while commas inside quoted values and JSON arrays stay inside the clause. Native `$like` patterns use `*` for zero or more characters and `?` for one character; escaped wildcards remain literal. Camunda `8.7` returns an unsupported-version error for variable-search flags instead of falling back to Operate-backed filtering.
 
