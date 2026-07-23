@@ -35,13 +35,13 @@ c8volt get job [flags]
       --element-instance-key string   element instance key to filter in search mode
       --error-message-limit int       maximum characters to show for error messages; 0 keeps full messages
   -h, --help                          help for job
-      --key string                    job key for exact lookup; omit to list or search jobs
+  -k, --key string                    job key for exact lookup; omit to list or search jobs
       --kind string                   Camunda job kind to filter in search mode; case-insensitive
   -l, --limit int32                   maximum number of jobs to return in search mode
       --listener-event-type string    listener event type to filter in search mode; case-insensitive
       --pi-key string                 process instance key to filter in search mode
       --retries int32                 exact retry count to filter in search mode
-      --state string                  Camunda job state to filter in search mode; case-insensitive
+  -s, --state string                  Camunda job state to filter in search mode; case-insensitive
       --total                         return only the numeric total of matching jobs
       --type string                   job type to filter in search mode
       --worker string                 worker name to filter in search mode

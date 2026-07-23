@@ -98,7 +98,7 @@ func init() {
 	updateCmd.AddCommand(updateProcessInstanceCmd)
 
 	fs := updateProcessInstanceCmd.Flags()
-	fs.StringSliceVar(&flagUpdatePIKeys, "key", nil, "process instance key(s) to update; repeat or combine with stdin '-'")
+	fs.StringSliceVarP(&flagUpdatePIKeys, "key", "k", nil, "process instance key(s) to update; repeat or combine with stdin '-'")
 	fs.StringVar(&flagUpdatePIVars, "vars", "", "JSON object with variables to set on each process instance")
 	fs.StringVar(&flagUpdatePIVarsFile, "vars-file", "", "path to JSON object file with variables to set on each process instance")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview variable updates without submitting mutation")

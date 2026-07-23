@@ -89,8 +89,8 @@ func init() {
 	getCmd.AddCommand(getJobCmd)
 
 	fs := getJobCmd.Flags()
-	fs.StringVar(&flagGetJobKey, "key", "", "job key for exact lookup; omit to list or search jobs")
-	fs.StringVar(&flagGetJobState, "state", "", "Camunda job state to filter in search mode; case-insensitive")
+	fs.StringVarP(&flagGetJobKey, "key", "k", "", "job key for exact lookup; omit to list or search jobs")
+	fs.StringVarP(&flagGetJobState, "state", "s", "", "Camunda job state to filter in search mode; case-insensitive")
 	fs.StringVar(&flagGetJobType, "type", "", "job type to filter in search mode")
 	fs.StringVar(&flagGetJobProcessKey, "pi-key", "", "process instance key to filter in search mode")
 	fs.StringVar(&flagGetJobElementKey, "element-instance-key", "", "element instance key to filter in search mode")

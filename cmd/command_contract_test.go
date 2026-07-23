@@ -65,6 +65,43 @@ func TestCommandCapabilityForCommand_IncludesInheritedAndRequiredFlags(t *testin
 	})
 }
 
+// TestCommandCapabilityForCommand_UsesConsistentFlagShorthands guards the
+// recurring public CLI shortcuts that operators rely on across command groups.
+func TestCommandCapabilityForCommand_UsesConsistentFlagShorthands(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	doc := capabilityDocumentForRoot(root)
+	expected := map[string]string{
+		"batch-size":      "n",
+		"bpmn-process-id": "b",
+		"key":             "k",
+		"limit":           "l",
+		"state":           "s",
+		"workers":         "w",
+	}
+	for _, command := range flattenCommandCapabilities(doc.Commands) {
+		for _, flag := range command.Flags {
+			want, ok := expected[flag.Name]
+			if !ok {
+				continue
+			}
+			require.Equalf(t, want, flag.Shorthand, "%s --%s shorthand", command.Path, flag.Name)
+		}
+	}
+
+	incidentPurge, ok := findCommandCapability(doc.Commands, "ops purge process-instances-with-incidents")
+	require.True(t, ok)
+	require.Contains(t, incidentPurge.Flags, FlagContract{
+		Name:        "inc-key",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "incident key(s) to select for candidate discovery",
+	})
+	require.False(t, hasFlagContractNamed(incidentPurge.Flags, "key"))
+}
+
 // TestCommandCapabilityForCommand_DocumentsTenantContract keeps the machine
 // contract aligned with operator-facing tenant help.
 func TestCommandCapabilityForCommand_DocumentsTenantContract(t *testing.T) {
@@ -765,6 +802,7 @@ func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T)
 	require.Contains(t, capability.Aliases, "pi")
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "key",
+		Shorthand:   "k",
 		Type:        "stringSlice",
 		Required:    false,
 		Repeated:    true,
@@ -816,6 +854,7 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 	require.Contains(t, getJobCmd.Long, "Camunda 8.7 returns an unsupported-version error")
 	require.Contains(t, getCapability.Flags, FlagContract{
 		Name:        "key",
+		Shorthand:   "k",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
@@ -823,6 +862,7 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 	})
 	require.Contains(t, getCapability.Flags, FlagContract{
 		Name:        "state",
+		Shorthand:   "s",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
@@ -927,6 +967,7 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 	require.Contains(t, updateJobCmd.Long, "Camunda 8.7 returns an unsupported-version error before mutation")
 	require.Contains(t, updateCapability.Flags, FlagContract{
 		Name:        "key",
+		Shorthand:   "k",
 		Type:        "string",
 		Required:    true,
 		Repeated:    false,
@@ -1566,13 +1607,13 @@ func TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContra
 		MachinePreferred: true,
 	})
 	require.Contains(t, capability.Flags, FlagContract{
-		Name:        "key",
-		Shorthand:   "k",
+		Name:        "inc-key",
 		Type:        "stringSlice",
 		Required:    false,
 		Repeated:    true,
 		Description: "incident key(s) to select for candidate discovery",
 	})
+	require.False(t, hasFlagContractNamed(capability.Flags, "key"))
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "element-id",
 		Type:        "string",
@@ -2057,8 +2098,8 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"./c8volt get job --state failed --batch-size 10 --limit 50",
 		"./c8volt get job --state failed --total",
 		"./c8volt --json get job --key <job-key>",
-		"--key string",
-		"--state string",
+		"-k, --key string",
+		"-s, --state string",
 		"--element-instance-key string",
 		"--element-id string",
 		"--listener-event-type string",
@@ -2093,7 +2134,7 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED",
 		`./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run`,
 		"./c8volt --json update job --key <job-key> --retries 3 --dry-run",
-		"--key string",
+		"-k, --key string",
 		"--retries int32",
 		"--timeout string",
 		"--fail",
@@ -2228,6 +2269,7 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 		"./c8volt update pi --key <process-instance-key> --vars '{\"customerTier\":\"gold\"}' --dry-run",
 		"./c8volt update pi --key <process-instance-key-a> --key <process-instance-key-b> --vars",
 		"printf '%s\\n' \"$PROCESS_INSTANCE_KEY_A\" \"$PROCESS_INSTANCE_KEY_B\" | ./c8volt update pi - --vars",
+		"-k, --key strings",
 		"--workers",
 		"--dry-run",
 		"--fail-fast",
@@ -2344,6 +2386,16 @@ func commandCapabilityPaths(commands []CommandCapability) []string {
 		paths = append(paths, commandCapabilityPaths(command.Children)...)
 	}
 	return paths
+}
+
+// flattenCommandCapabilities gives contract tests a simple view of nested command metadata.
+func flattenCommandCapabilities(commands []CommandCapability) []CommandCapability {
+	var out []CommandCapability
+	for _, command := range commands {
+		out = append(out, command)
+		out = append(out, flattenCommandCapabilities(command.Children)...)
+	}
+	return out
 }
 
 func findCommandCapability(commands []CommandCapability, path string) (CommandCapability, bool) {
