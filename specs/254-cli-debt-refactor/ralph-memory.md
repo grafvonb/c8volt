@@ -30,6 +30,7 @@ Started: 2026-07-24T04:28:25Z
 - US3 T048 added high-volume bounded-worker tests in `internal/services/ops/repair_test.go` and `internal/services/ops/incident_purge_test.go`. The tests use release-gated worker callbacks to prove repair incident discovery and incident-purge ancestry planning start two independent calls with `Workers: 2`, do not schedule a third while both workers are blocked, and preserve deterministic result ordering.
 - US3 T049-T058 added slow-analysis explicit-key lookup concurrency through `toolx/pool.ExecuteSlice`, bounded-worker tests for slow analysis and retention planning, command worker-control regressions for cancel/delete/ops repair incident, and the US3 performance characterization table in `assessment.md`. US3 checkpoint and focused race checks passed.
 - US4 T059-T069 updated help text, flag descriptions, capability assertions, generated CLI docs, README/docs examples, and docsgen coverage for `--batch-size` as page size, `--limit` as returned/frozen scope cap, clean machine output, automation support, and destructive worker controls. `make docs-content`, `go test ./cmd ./docsgen -count=1`, and `git diff --check` passed.
+- Final T070-T075 added explicit SC-001 through SC-007 evidence and final handoff notes to `assessment.md`, refreshed generated docs, fixed full-suite test support for the current `process.API` surface and concurrent slow-analysis lookup capture, and passed `make test` plus `git diff --check`.
 
 ## Gotchas
 - `delete process-instance` search mode intentionally plans all selected pages before confirmed mutation; treating it like page-by-page cancel would weaken frozen-scope confirmation behavior.
@@ -41,6 +42,8 @@ Started: 2026-07-24T04:28:25Z
 - Dry-run process-instance dependency traversal tests deliberately block until two worker callbacks overlap; keep callback assertions as returned errors rather than `require` calls inside worker goroutines.
 - Slow-process analysis has no command-level `--workers` flag; explicit-key lookup uses the default bounded worker policy from call options. Process-definition discovery remains sequential by page to avoid cursor/offset fan-out.
 - Process-instance incident lookup order is intentionally nondeterministic after US3 bounded concurrency; command tests should assert request set membership rather than per-key lookup order.
+- Full-suite race tests can exercise slow-analysis explicit-key lookup concurrently; capture lookup observations with `testx.SafeSlice` and assert membership instead of slice append order.
+- Test stubs implementing `c8volt/process.API` must include `PlanProcessInstanceMutationPages` after the US2 process facade expansion, even when a package does not call it.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -76,4 +79,4 @@ Started: 2026-07-24T04:28:25Z
 - Do not infer that similar ops discovery loops are equivalent until the candidate counts, frozen scope, report fields, force behavior, and confirmation prompt semantics are compared.
 
 ## Current Handoff
-- Continue Final Phase at T070; US4 is validated and ready in the latest work-unit commit.
+- Feature complete; no handoff required.

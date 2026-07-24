@@ -1128,4 +1128,9 @@ func (s stubProcessAPI) DryRunCancelOrDeletePlan(ctx context.Context, keys typex
 	return s.dryRunCancelOrDeletePlan(ctx, keys, opts...)
 }
 
+// PlanProcessInstanceMutationPages is not expected in resource facade tests.
+func (stubProcessAPI) PlanProcessInstanceMutationPages(context.Context, process.ProcessInstanceMutationPlanRequest, process.ProcessInstanceMutationPlanVisitor, ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+	panic("unexpected call")
+}
+
 var _ process.API = stubProcessAPI{}

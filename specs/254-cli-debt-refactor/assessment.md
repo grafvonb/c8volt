@@ -159,3 +159,21 @@ Accepted retained serial paths:
 
 - Cursor and offset page traversal remains serial for process-instance, incident, job, element, retention discovery, and slow-process process-definition discovery to avoid skipped/duplicated pages and uncontrolled request fan-out.
 - Slow-process timeline calculation, detail filtering, comparison calculation, and final sorting remain local serial transforms after remote enrichment; no fake-latency test showed independent remote calls there beyond explicit-key lookup and existing enrichment paths.
+
+## Success Criteria Evidence
+
+| Criterion | Evidence |
+| --- | --- |
+| SC-001 | The command node assessment table contains all 55 command nodes and is guarded by `cmd/command_contract_test.go` plus docsgen assessment artifact validation. |
+| SC-002 | US1 and US4 command tests cover clean JSON, keys-only, quiet, automation, prompt, and no-indicator behavior for changed command families; validation commands are recorded in `quickstart.md`. |
+| SC-003 | The US3 performance characterization results table covers process-instance search/enrichment, cancel/delete planning, ops repair, ops purge, retention policy, slow-process analysis, and job/element/incident search. |
+| SC-004 | US3 fake-latency and worker-control validation showed bounded-worker improvements or retained serial page traversal with documented safety reasons; no changed high-volume workflow has an undocumented slowdown. |
+| SC-005 | Cancel/delete and ops destructive workflow tests cover confirmation, auto-confirm or automation controls, force behavior, partial/error handling, worker controls, and deterministic ordered reports where those workflows changed. |
+| SC-006 | US4 updated command help, generated CLI docs, README/operator docs, and capability metadata for `--batch-size`, `--limit`, progress, clean machine output, automation support, and destructive worker controls. |
+| SC-007 | The command node table plus US2 ownership before/after section identify command, facade, service, and version-specific ownership for changed paging, discovery, query strategy, progress, rendering, confirmation, and mutation planning paths. |
+
+## Final Handoff Notes
+
+- Final validation passed with `go test ./cmd ./c8volt/job ./c8volt/element ./c8volt/incident ./c8volt/process ./internal/services/ops -count=1`, `make docs-content`, `go test ./docsgen -count=1`, `make test`, and `git diff --check`.
+- Full-suite validation required two test-support fixes: `c8volt/resource/client_test.go` now implements the current `process.API` stub surface, and `internal/services/ops/slow_process_analysis_test.go` uses `testx.SafeSlice` because explicit-key lookup is intentionally concurrent.
+- Final changed source/test files are `c8volt/resource/client_test.go` and `internal/services/ops/slow_process_analysis_test.go`; final generated/artifact files are `docs/index.md`, `specs/254-cli-debt-refactor/assessment.md`, `specs/254-cli-debt-refactor/quickstart.md`, `specs/254-cli-debt-refactor/tasks.md`, `specs/254-cli-debt-refactor/ralph-memory.md`, and `specs/254-cli-debt-refactor/progress.md`.

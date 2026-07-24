@@ -171,12 +171,12 @@
 
 **Purpose**: Validate the complete feature, keep artifacts synchronized, and prepare for handoff.
 
-- [ ] T070 [P] Run `gofmt` on touched Go files in `cmd/`, `c8volt/`, `internal/services/`, `internal/domain/`, and `toolx/`, then record the result in `specs/254-cli-debt-refactor/quickstart.md`
-- [ ] T071 [P] Verify `specs/254-cli-debt-refactor/assessment.md` covers SC-001 through SC-007 and update any missing evidence in `specs/254-cli-debt-refactor/assessment.md`
-- [ ] T072 Run focused validation with `go test ./cmd ./c8volt/job ./c8volt/element ./c8volt/incident ./c8volt/process ./internal/services/ops -count=1` and record the result in `specs/254-cli-debt-refactor/quickstart.md`
-- [ ] T073 Run generated docs validation with `make docs-content` and `go test ./docsgen -count=1`, then record the result in `specs/254-cli-debt-refactor/quickstart.md`
-- [ ] T074 Run full repository validation with `make test` and record the result in `specs/254-cli-debt-refactor/quickstart.md`
-- [ ] T075 Review `git diff --check` and final changed files, then record handoff notes in `specs/254-cli-debt-refactor/assessment.md`
+- [x] T070 [P] Run `gofmt` on touched Go files in `cmd/`, `c8volt/`, `internal/services/`, `internal/domain/`, and `toolx/`, then record the result in `specs/254-cli-debt-refactor/quickstart.md`
+- [x] T071 [P] Verify `specs/254-cli-debt-refactor/assessment.md` covers SC-001 through SC-007 and update any missing evidence in `specs/254-cli-debt-refactor/assessment.md`
+- [x] T072 Run focused validation with `go test ./cmd ./c8volt/job ./c8volt/element ./c8volt/incident ./c8volt/process ./internal/services/ops -count=1` and record the result in `specs/254-cli-debt-refactor/quickstart.md`
+- [x] T073 Run generated docs validation with `make docs-content` and `go test ./docsgen -count=1`, then record the result in `specs/254-cli-debt-refactor/quickstart.md`
+- [x] T074 Run full repository validation with `make test` and record the result in `specs/254-cli-debt-refactor/quickstart.md`
+- [x] T075 Review `git diff --check` and final changed files, then record handoff notes in `specs/254-cli-debt-refactor/assessment.md`
 
 ---
 

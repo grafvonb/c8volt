@@ -440,3 +440,27 @@ Started: 2026-07-24 06:28:25
 **Learnings**:
 - US4 docs now pin page-size, returned/frozen-scope limits, clean machine output, and destructive worker-control wording through command metadata, capabilities JSON, generated docs, and README/docs assertions.
 ---
+---
+## Iteration 3 - 2026-07-24 16:54
+**Work Unit**: Final Phase Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T070: Run gofmt on touched Go files and record the result
+- [x] T071: Verify assessment coverage for SC-001 through SC-007
+- [x] T072: Run focused validation and record the result
+- [x] T073: Run generated docs validation and record the result
+- [x] T074: Run full repository validation and record the result
+- [x] T075: Review git diff checks and final changed files, then record handoff notes
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/resource/client_test.go
+- docs/index.md
+- internal/services/ops/slow_process_analysis_test.go
+- specs/254-cli-debt-refactor/assessment.md
+- specs/254-cli-debt-refactor/quickstart.md
+- specs/254-cli-debt-refactor/tasks.md
+- specs/254-cli-debt-refactor/ralph-memory.md
+- specs/254-cli-debt-refactor/progress.md
+**Learnings**:
+- Full `make test` covered packages outside the focused final validation set and required race-safe slow-analysis lookup capture plus an updated process facade test stub.
+---

@@ -15,6 +15,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	esvc "github.com/grafvonb/c8volt/internal/services/element"
 	jsvc "github.com/grafvonb/c8volt/internal/services/job"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
@@ -77,7 +78,7 @@ func TestSlowProcessAnalysisFixturesBuildConsistentTimingRows(t *testing.T) {
 func TestSlowProcessAnalysisExplicitKeysDeduplicatesLooksUpAndSortsRoots(t *testing.T) {
 	captured := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:30:00Z")
 	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
-	var lookedUp []string
+	var lookedUp testx.SafeSlice[string]
 	instances := map[string]d.ProcessInstance{
 		"2251799813685249": slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(2*time.Minute)),
 		"2251799813685250": func() d.ProcessInstance {
@@ -90,7 +91,7 @@ func TestSlowProcessAnalysisExplicitKeysDeduplicatesLooksUpAndSortsRoots(t *test
 	piAPI := stubProcessInstanceAPI{
 		search: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
 			require.Equal(t, int32(2), size)
-			lookedUp = append(lookedUp, filter.Key)
+			lookedUp.Append(filter.Key)
 			if item, ok := instances[filter.Key]; ok {
 				return []d.ProcessInstance{item}, nil
 			}
@@ -105,7 +106,7 @@ func TestSlowProcessAnalysisExplicitKeysDeduplicatesLooksUpAndSortsRoots(t *test
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"2251799813685249", "2251799813685250", "2251799813685251"}, lookedUp)
+	require.ElementsMatch(t, []string{"2251799813685249", "2251799813685250", "2251799813685251"}, lookedUp.Snapshot())
 	require.Equal(t, []string{"2251799813685251", "2251799813685249", "2251799813685250"}, []string{got.Items[0].Key, got.Items[1].Key, got.Items[2].Key})
 	require.Equal(t, "5m0s", got.Items[0].Duration)
 	require.Equal(t, int64(300000), got.Items[0].DurationMillis)
