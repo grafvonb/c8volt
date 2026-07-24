@@ -18,6 +18,8 @@ The purpose of this file is to reduce repeated project lookup cost. Read it befo
 - If a feature artifact conflicts with these rules, stop and surface the conflict before implementing.
 - Complete only the current Ralph work unit. Do not start another user story or polish section in the same iteration.
 - Preserve externally observable behavior unless the current feature explicitly requires a behavior change.
+- Before writing code, identify the owner layer for the behavior. If the owner is unclear, inspect the nearest existing command, facade, domain, service, and test files until the boundary is clear; do not place code in `cmd` or a facade merely because that is the fastest route.
+- A Ralph work unit is incomplete if it introduces a new layering shortcut, duplicates an existing service mechanic, or leaves a known regression test failing without an explicit user-approved characterization-only task.
 - Do not stage or commit unless the Ralph workflow explicitly reaches its commit step and validation passes.
 
 ## Project Map
@@ -59,7 +61,8 @@ Follow the existing direction of dependencies.
    - Calls the public facade returned by `NewCli` or helper construction.
    - Must not call generated Camunda clients directly.
    - Must not bypass facade APIs to reach versioned service packages.
-   - Should translate CLI flags into facade inputs and `c8volt/foptions` only.
+   - Must translate CLI flags into facade inputs and `c8volt/foptions` only.
+   - Must not own backend loops, local compatibility filters, retry/wait/poll mechanics, worker pools, dependency expansion, mutation planning, page traversal, or total counting.
 
 2. `c8volt/<area>` is the public facade layer.
    - Owns exported public models, facade interfaces, and method behavior used by commands and external consumers.
@@ -95,12 +98,14 @@ Follow the existing direction of dependencies.
 ## Dependency Boundaries
 
 - `cmd` may import `c8volt/*`, `config`, `consts`, `internal/services/httpc` for bootstrap/context, and test helpers in tests.
-- `cmd` should not import `internal/clients/camunda/*` or versioned service implementations.
-- Public facade packages may import `internal/domain`, `internal/services/<area>`, `c8volt/ferrors`, `c8volt/foptions`, `toolx`, `toolx/pool`, and `toolx/logging`.
+- `cmd` must not import `internal/clients/camunda/*` or versioned service implementations.
+- Public facade packages may import `internal/domain`, `internal/services/<area>`, `c8volt/ferrors`, `c8volt/foptions`, and `toolx` for mechanical conversion helpers.
+- Public facades must not add orchestration imports such as `toolx/pool`, `toolx/poller`, `toolx/logging` activity helpers, waiter packages, or generated clients. Existing exceptions should be treated as cleanup candidates, not patterns to copy.
 - Internal services may import generated clients and `internal/domain`.
 - Generated clients must not import facade or command packages.
 - `internal/services/common` can hold cross-version service helpers, but it should not become a dumping ground for facade or CLI behavior.
 - If a new dependency feels convenient but crosses these boundaries, first look for the existing path in nearby packages.
+- If two sections of this document appear to conflict, choose the stricter layering rule and record the conflict in the feature `progress.md` before proceeding.
 
 ## Where New Behavior Usually Belongs
 
@@ -114,6 +119,43 @@ Follow the existing direction of dependencies.
 - New public helper: use `toolx` only when it is general, production-safe, and not tied to one feature.
 - New test-only helper: use `testx` only when at least two test files can share it.
 - New generated CLI documentation: update command source and run `make docs-content`; do not hand-edit `docs/cli/*`.
+
+## Architecture Gate Before Implementation
+
+Before implementing a work unit, classify the change and apply the matching owner rule.
+
+- CLI-only changes may stay in `cmd` only when they are limited to flags, validation, command metadata, help text, render-mode selection, prompts, progress output, or final rendering.
+- Public API changes belong in `c8volt/<area>` only as model/interface additions, conversion, error normalization, and delegation to internal services.
+- Backend behavior belongs in `internal/services/<area>` when it performs remote traversal, query strategy selection, compatibility filtering, enrichment, dependency expansion, mutation planning, worker scheduling, retries, waits, polling, total computation, or cross-resource coordination.
+- Version-specific API shape belongs in `internal/services/<area>/v87`, `v88`, or `v89`; do not hide version differences in commands or facades.
+- Shared production helpers belong in `toolx` or `internal/services/common` only after at least two concrete call sites need the same behavior. Otherwise keep the helper in the owning service area.
+- If a work unit touches a command and adds more than flag translation, rendering, prompting, or progress logic, pause and ask whether a facade/service method is missing.
+- If a work unit touches a facade and adds loops, goroutines, retries, waits, polling, or multi-step backend behavior, move that behavior to an internal service before marking the task complete.
+- If a work unit changes user-visible output and backend behavior together, split the implementation mentally: internal service tests prove the behavior, command tests prove the output contract.
+
+## Paging, Totals, And Backend Workflow Rules
+
+Search, list, discovery, and search-derived mutation workflows must keep backend traversal mechanics below the command layer.
+
+- Commands must not implement page-until-done loops for backend resources. A command may call a facade method that accepts a page visitor so it can render, report progress, or prompt after each selected page, but the command must not own offset/cursor advancement, request page-size capping, result accumulation, total counting, local compatibility filtering, or user-limit trimming.
+- Public facades must not implement page-until-done loops either. Facades must map public request types and visitors to internal domain types, delegate to internal service traversal APIs, map results back, and convert errors.
+- Internal services own cross-page traversal. Add version-neutral traversal contracts in `internal/services/<area>/api.go` or narrowly named service files such as `internal/services/processinstance/search.go`, then implement version-specific single-page API calls in `v87`, `v88`, and `v89` as applicable.
+- Use backend API paging capabilities for single-page fetches: pass the API's page request body, cursor, offset, limit, sort, and filter fields through the versioned adapter. The repository still owns multi-page orchestration because CLI behavior, local filters, command limits, progress, prompts, and compatibility fallbacks must be stable across API versions.
+- Prefer cursor continuation when the backend returns an end cursor. Fall back to offset advancement only when cursor metadata is unavailable. When local filters can remove every item from a page, advance by the raw backend page count, not the filtered count, so sparse matches do not loop forever or skip later backend pages.
+- Treat `--batch-size` as per-request page size. Treat `--limit` as a total user-selected cap across all pages unless command-family help explicitly documents a different frozen-scope meaning.
+- Version-neutral page result types must include the metadata needed by callers: selected items, original page request, overflow/continuation state, reported total metadata when available, end cursor when available, cumulative count in visitor steps, and limit-reached state where a user cap applies.
+- Limit trimming belongs in the service traversal result, not command rendering. The page visitor should receive the service-selected page items that count toward the cumulative result. Commands must render those items as-is.
+- A page visitor may stop traversal only for command-owned reasons: user declined a prompt, output/rendering failed, a command-specific terminal state was reached, or the service reported limit reached/completed. It must not stop merely because the selected page is empty while backend overflow says more matches may exist.
+- Search-derived destructive workflows such as process-instance cancel/delete must route discovery and dependency-expansion planning through an internal service API such as `PlanProcessInstanceMutationPages`. Commands still own dry-run rendering, destructive confirmation, final mutation submission, and final output.
+- Empty selected pages are meaningful in filtered discovery. If a backend page has no selected candidates after service-owned filtering but advertises more pages, service traversal and command callbacks should continue or prompt according to normal continuation policy. Add tests for this sparse-page case when changing search-derived mutation planning.
+- Total handling is hybrid by design. Use exact backend reported totals only when they are present, marked exact, and compatible with the active request. If local filters, direct incident-index lookup, compatibility filtering, or version behavior make the backend total unsafe, count through service-owned page traversal instead.
+- `--total` output remains a command rendering concern: print only the number and newline. The total computation itself belongs in a facade/service method such as `Search<Thing>Total`.
+- Do not add new command-local helpers named like `limit<Thing>Items`, `next<Thing>PageRequest`, or `canUse<Thing>ExactReportedTotal` unless the helper is purely translating a command-owned progress state. Those names are usually a sign that pagination or totals are in the wrong layer.
+- Treat these as review-blocking smells in command or facade code: `for { ... Search...Page ... }`, local slicing to enforce a user limit, manual cursor/offset increments, total accumulation across backend pages, direct incident/process-instance compatibility filtering, or worker-pool scheduling. Move that logic into an internal service before marking the task complete.
+- For each new or refactored paged workflow, add coverage at the layer that owns each behavior:
+  - command tests for prompts, output modes, progress silence, continuation decisions, and destructive confirmation;
+  - facade tests for request/visitor mapping and error conversion;
+  - service tests for page advancement, cursor/offset fallback, local filtering, limit trimming, exact-total use, fallback counting, sparse empty pages, and unsupported-version behavior.
 
 ## File Organization And Naming Rules
 
@@ -187,7 +229,7 @@ Before adding helper code, search these locations.
 - `toolx/logging.StartActivity`: transient activity indicator for longer facade operations.
 - `toolx/logging.NewActivityWriterEnabled`, `ToActivityContext`, and `ActivityFromContext`: root command activity plumbing.
 - `internal/services/httpc.LogTransport`: HTTP request logging and activity integration.
-- Keep human progress messages in command/facade layers; keep service logs diagnostic.
+- Keep human progress messages in the command layer; keep facade and service logs diagnostic.
 
 ### Service Helpers
 
@@ -210,9 +252,10 @@ Before adding helper code, search these locations.
 
 ## Go Concurrency Rules
 
-- Prefer `toolx/pool.ExecuteSlice` or `ExecuteNTimes` for facade bulk operations.
+- Prefer `toolx/pool.ExecuteSlice` or `ExecuteNTimes` for internal service bulk operations.
 - Always pass and respect `context.Context`.
 - Use `options.ApplyFacadeOptions` or `services.ApplyCallOptions` to honor `FailFast`, `NoWorkerLimit`, `NoWait`, `DryRun`, `Verbose`, and related flags.
+- Commands and facades may pass worker controls and call options through, but they must not schedule workers themselves.
 - Deduplicate key lists before bulk work with `typex.Keys.Unique()` or `toolx.UniqueSlice`.
 - Keep output order deterministic; existing pool helpers preserve input order.
 - For fail-fast behavior, stop scheduling new work while preserving already produced results and aggregated errors.
@@ -220,13 +263,13 @@ Before adding helper code, search these locations.
 - Do not share mutable slices or maps across worker goroutines without synchronization.
 - In concurrent `httptest` handlers, prefer `testx.SafeSlice` for captured observations and `testx.AtomicCounter` for simple branch counters.
 - Run the relevant `go test -race` target after touching worker-based command tests or shared test fixtures.
-- Avoid adding worker pools in `cmd`; command code should pass worker flags into facade methods.
+- Do not add worker pools in `cmd` or public facades; command code should pass worker flags into facade methods, and facades should pass them into internal services.
 
 ## Error Handling Rules
 
-- Service and domain code should return domain errors from `internal/domain/errors.go` or transport errors normalized by `internal/services/httpc`.
-- Public facades should convert service/domain errors with `ferrors.FromDomain`.
-- CLI code should use `handleCommandError`, `handleNewCliError`, `localPreconditionError`, `invalidFlagValuef`, `mutuallyExclusiveFlagsf`, and related command helpers rather than printing and exiting directly.
+- Service and domain code must return domain errors from `internal/domain/errors.go` or transport errors normalized by `internal/services/httpc`.
+- Public facades must convert service/domain errors with `ferrors.FromDomain`.
+- CLI code must use `handleCommandError`, `handleNewCliError`, `localPreconditionError`, `invalidFlagValuef`, `mutuallyExclusiveFlagsf`, and related command helpers rather than printing and exiting directly.
 - Machine-readable error output must flow through `renderResultEnvelope` and `resultEnvelopeForError` when the command supports the shared contract.
 - Preserve wrapped error detail exactly once. Do not build nested duplicate messages.
 - For unsupported version or missing API support, use explicit unsupported errors rather than silent fallbacks.
@@ -234,7 +277,7 @@ Before adding helper code, search these locations.
 
 ## CLI Command Rules
 
-- Commands should validate local inputs before creating or calling remote clients when possible.
+- Commands must validate local inputs before creating or calling remote clients when possible.
 - Use Cobra `Args` for argument shape and flag value validation that should fail before execution.
 - Use `silenceUsageForError` for validation failures where usage should not be reprinted.
 - Use `useInvalidInputFlagErrors` on commands with custom flag validation.
@@ -246,12 +289,14 @@ Before adding helper code, search these locations.
 - Keep aliases short and compatible with existing command naming patterns (`pi`, `pd`, `inc`, etc.).
 - For stdin key pipelines, reuse existing dash helpers such as `validateOptionalDashArg`, `readKeysIfDash`, `mergeAndValidateKeys`, and `validateKeys`.
 - Do not add prompts to automation-supported paths unless `--automation` and `--auto-confirm` behavior is explicitly handled.
+- For commands that support JSON, keys-only, quiet, automation, or `--total`, treat stdout as a machine contract. Human progress, prompts, activity, diagnostics, warnings, and verbose details must not leak there.
+- Command code may decide whether to continue, prompt, or stop after a service page visitor step, but the decision must be based on service-provided continuation metadata plus command-owned prompt/output policy. Do not recompute backend continuation from raw page size in command code.
 - Keep command help and flag descriptions directly useful. Avoid filler phrases such as "human output", "human incident output", "human incident messages", "for terminal diagnosis", or similar mode labels when they do not add actionable meaning. Describe the actual behavior instead, for example "omit error messages from incident rows" or "maximum characters to show for incident messages".
 
 ## Output And Rendering Rules
 
-- Human output should be compact, scan-friendly, and use existing flat row helpers.
-- JSON output should use stable structs and shared envelopes when the command has full contract support.
+- Human output must be compact, scan-friendly, and use existing flat row helpers.
+- JSON output must use stable structs and shared envelopes when the command has full contract support.
 - Keys-only output must print one key per line and nothing else.
 - `--total` style output should print only the number and a newline.
 - Do not let human-only formatting options affect JSON or keys-only output.
@@ -287,6 +332,8 @@ These rules are mandatory for CLI and ops workflow work. They capture the comman
 - Confirmation prompts for destructive ops commands must align with the dry-run plan. They should use one compact sentence naming the workflow and the same decisive counts, ending with `will be deleted`, `will be repaired`, or the precise mutation verb.
 - Do not prompt for dry-run or read-only execution. Automation and auto-confirm paths must stay deterministic and avoid interactive prompts.
 - Real run output should not repeat every dry-run discovery line before the operator confirms. Plan first for confirmation, then execute the frozen scope, then render the final summary.
+- Destructive search mode must freeze the selected backend scope before mutation. A confirmed run must not mutate a scope that differs from the dry-run or confirmation plan unless the command explicitly documents and tests that behavior.
+- Partial completion must be explicit. If a user declines continuation or a fail-fast path stops after some work, final output and JSON/report payloads must distinguish selected, planned, executed, failed, skipped, and remaining scope where the workflow exposes those concepts.
 - During real destructive execution, default human output must be aggregate-first and compact. Per-key cancel/delete/wait/retry lifecycle lines are diagnostic chatter and must be hidden unless `--verbose` is set.
 - For ops workflows, pass existing suppression options such as `services.WithSuppressWorkflowDetailLogs()` and `services.WithSuppressProcessInstanceDetailLogs()` for default destructive execution, and leave them unset when verbose output is requested.
 - Keep detailed service logs available under `--verbose`. Do not delete diagnostics that are useful for support; route them behind the existing verbose and suppression mechanisms.
@@ -307,12 +354,13 @@ These rules are mandatory for CLI and ops workflow work. They capture the comman
 - Convert all internal domain values at the facade boundary using `convert.go`.
 - Copy maps and slices when crossing boundaries if mutation by callers could leak internal state.
 - Use `foptions.FacadeOption` in public signatures and convert to `services.CallOption` internally.
-- Public facade methods should not expose generated client types or `internal/domain` types.
-- Public facade methods should be thin: map facade inputs to domain inputs, call an internal service interface, map domain outputs back to facade outputs, and apply `ferrors.FromDomain`.
+- Public facade methods must not expose generated client types or `internal/domain` types.
+- Public facade methods must be thin: map facade inputs to domain inputs, call an internal service interface, map domain outputs back to facade outputs, and apply `ferrors.FromDomain`.
+- Public facade visitor adapters must be mechanical. They may convert domain visitor steps to facade visitor steps and convert the returned action back, but they must not reinterpret continuation state, trim items, count totals, or apply backend filters.
 - Facades must not call `toolx/pool.ExecuteSlice`, `toolx/pool.ExecuteNTimes`, `toolx/poller.WaitForCompletion`, waiter packages, or custom goroutine/channel/worker code.
 - Facades must not implement backend pagination loops that repeatedly call service methods until a limit, cursor, or overflow condition is reached. Put those loops in `internal/services/<area>` and return a domain page/list result.
 - Facades must not implement mutation confirmation workflows, wait-until-state logic, retry loops, or polling. These belong to `internal/services/<area>`, waiter subpackages, or narrowly named internal orchestration packages.
-- Facades must not implement bulk execution strategy. Deduplication, worker count selection, fail-fast behavior, and result ordering belong in internal services; the facade should pass `wantedWorkers` and call options through.
+- Facades must not implement bulk execution strategy. Deduplication, worker count selection, fail-fast behavior, and result ordering belong in internal services; the facade must pass `wantedWorkers` and call options through.
 - Facades must not implement process-definition delete impact analysis, dependency expansion, active-instance drain waiting, or cross-resource cleanup. Those are backend workflows and must live under `internal/services`.
 - Facades may perform small deterministic output-shaping that is purely public-model mapping, such as setting a missing key on a returned report before mapping it to the public type.
 - If facade code imports `toolx/pool`, `toolx/poller`, `toolx/logging` for activity orchestration, `internal/services/*/waiter`, `net/http` only for status decisions, or performs multi-step service loops, treat it as a layering smell and move the logic downward.
@@ -322,10 +370,14 @@ These rules are mandatory for CLI and ops workflow work. They capture the comman
 
 - Service interfaces live in `internal/services/<area>/api.go`.
 - Factories live in `internal/services/<area>/factory.go` and choose versions by `cfg.App.CamundaVersion`.
-- Versioned service constructors should call shared dependency preparation helpers and validate generated clients.
-- Versioned service methods should use generated `WithResponse` methods and `common.RequirePayload` for JSON payloads.
+- Versioned service constructors must call shared dependency preparation helpers and validate generated clients.
+- Versioned service methods must use generated `WithResponse` methods and `common.RequirePayload` for JSON payloads.
 - Convert generated response objects to `internal/domain` types before returning.
 - Keep version-specific filter shape, pagination, response total semantics, and compatibility behavior in the version package.
+- Service traversal APIs must expose page visitors when commands need incremental rendering, progress, or prompts, but the service must still own page advancement, limit trimming, local filtering, total fallback counting, and completion decisions.
+- If backend metadata includes `ReportedTotal`, `HasMoreTotalItems`, `EndCursor`, or equivalent fields, normalize it into domain page metadata once in the service layer and test the exact/indeterminate/no-more cases there.
+- Service methods that accept call options must call `services.ApplyCallOptions` once at the owning layer and propagate relevant options to nested service calls. Do not silently drop `FailFast`, `NoWorkerLimit`, `NoWait`, tenant, dry-run, or suppression options.
+- Service-owned workflows must return enough structured result data for commands to render truthful summaries without rediscovering backend state.
 - If v87 lacks a v2 endpoint that v88/v89 have, return a clear unsupported domain error from v87. Do not fake success.
 - Avoid introducing new service interfaces until an existing area cannot own the operation.
 
@@ -333,6 +385,8 @@ These rules are mandatory for CLI and ops workflow work. They capture the comman
 
 - Add shared internal fields to `internal/domain` before adding facade fields.
 - Add facade fields to public models only when they are part of the user-facing API or command output contract.
+- Domain types should represent backend facts and service workflow state, not command wording. Use enum-like state fields for continuation, overflow, totals, outcomes, traversal state, and mutation scope instead of strings intended only for human output.
+- Domain page and workflow result types should carry enough metadata to preserve behavior across command, facade, and versioned service boundaries without recomputing from rendered text or generated-client payloads.
 - Keep converter functions mechanical and close to the models they convert.
 - Use `toolx.MapSlice`, `MapPtr`, `CopyMap`, and related helpers in converters.
 - Do not put business logic in generated-client converters except for unavoidable version-specific representation normalization.
@@ -351,6 +405,8 @@ These rules are mandatory for CLI and ops workflow work. They capture the comman
 - Use `t.Parallel()` when the test has no shared global state, no package-level flag mutation, no command tree mutation, and no shared environment mutation.
 - Do not use `t.Parallel()` for tests that mutate package-level command flags, Cobra command tree state, global env vars, or shared fake servers unless the existing helper guarantees isolation.
 - Include tests for invalid flags, mutually exclusive flags, JSON output, keys-only output, human output, pagination/limit behavior, version behavior, and error classification when relevant.
+- For paged or search-derived mutation workflows, include sparse-page coverage where a backend page contributes zero selected items after filtering while more backend pages remain; command callbacks must not stop before later selectable pages are considered.
+- For total commands, test both exact backend total use and fallback page-counting when local filters or compatibility behavior make the reported total unsafe.
 - Every created or materially modified test function must have a concise comment explaining the behavior, regression, or contract being verified.
 - Complex test setup should include comments explaining why the setup matters.
 
