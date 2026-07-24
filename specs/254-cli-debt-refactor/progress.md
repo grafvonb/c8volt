@@ -360,3 +360,32 @@ Started: 2026-07-24 06:28:25
 **Learnings**:
 - Ops repair incident discovery and incident purge ancestry planning are now covered by release-gated bounded-worker tests.
 ---
+---
+## Iteration 1 - 2026-07-24 16:33
+**Work Unit**: US3 Faster High-Volume Operations Without Safety Loss
+**Tasks Completed**:
+- [x] T049: Add high-volume slow-process analysis and retention policy tests for serial hot paths
+- [x] T050: Add worker-control pass-through tests for `--workers`, `--fail-fast`, and `--no-worker-limit`
+- [x] T051: Add high-volume performance characterization results
+- [x] T053: Use bounded concurrency for independent cancel/delete dependency planning where safe
+- [x] T054: Use bounded concurrency for independent ops repair planning or execution where safe
+- [x] T055: Use bounded concurrency for independent purge, retention, and slow-process analysis steps where safe
+- [x] T056: Preserve deterministic result ordering and worker-limit controls
+- [x] T057: Record accepted performance tradeoffs and retained serial paths
+- [x] T058: Run US3 checkpoint validation and record the result
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_test.go
+- cmd/ops_repair_incident_test.go
+- internal/services/ops/slow_process_analysis.go
+- internal/services/ops/slow_process_analysis_test.go
+- internal/services/ops/retention_policy_test.go
+- specs/254-cli-debt-refactor/assessment.md
+- specs/254-cli-debt-refactor/quickstart.md
+- specs/254-cli-debt-refactor/tasks.md
+- specs/254-cli-debt-refactor/ralph-memory.md
+- specs/254-cli-debt-refactor/progress.md
+**Learnings**:
+- Slow-analysis explicit-key lookup now uses the shared bounded pool; retention, cancel/delete, repair, and incident-purge high-volume paths are characterized with worker-control validation.
+---

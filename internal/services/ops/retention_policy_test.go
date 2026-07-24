@@ -144,6 +144,58 @@ func TestExecuteRetentionPolicyAcceptsZeroRetentionDaysAndRecordsControls(t *tes
 	require.Equal(t, d.ProcessInstanceFilter{BpmnProcessId: "invoice", State: d.StateCompleted}, got.Report.SelectionFilters)
 }
 
+// TestExecuteRetentionPolicyUsesBoundedWorkersForDeletePlanning verifies retention dependency expansion overlaps independent lookups without exceeding requested workers.
+func TestExecuteRetentionPolicyUsesBoundedWorkersForDeletePlanning(t *testing.T) {
+	started := make(chan string, 3)
+	release := make(chan struct{})
+	t.Cleanup(func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	})
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			started <- key
+			<-release
+			return retentionPolicySingleKeyAncestryResult(key), nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return retentionPolicySingleKeyDescendantsResult(rootKey), nil
+		},
+	}
+	done := make(chan struct {
+		result d.RetentionPolicyResult
+		err    error
+	}, 1)
+
+	go func() {
+		result, err := New(piAPI, nil).ExecuteRetentionPolicy(context.Background(), d.RetentionPolicyRequest{
+			CommandName:            "ops execute retention-policy",
+			RetentionDays:          90,
+			DerivedEndDateBoundary: "2026-02-13",
+			DryRun:                 true,
+			Workers:                2,
+			DiscoveredKeys:         typexKeys("seed-1", "seed-2", "seed-3"),
+			StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
+		})
+		done <- struct {
+			result d.RetentionPolicyResult
+			err    error
+		}{result: result, err: err}
+	}()
+
+	require.ElementsMatch(t, []string{"seed-1", "seed-2"}, receiveStartedKeys(t, started, 2))
+	requireNoAdditionalStart(t, started, 25*time.Millisecond)
+	close(release)
+	out := receiveRetentionPolicyResult(t, done)
+	require.NoError(t, out.err)
+	require.Equal(t, d.RetentionPolicyOutcomePlanned, out.result.Outcome)
+	require.Equal(t, []string{"seed-1", "seed-2", "seed-3"}, []string(out.result.DeletePlan.SeedKeys))
+	require.Equal(t, []string{"seed-1", "seed-2", "seed-3"}, []string(out.result.DeletePlan.ResolvedRootKeys))
+}
+
 func TestExecuteRetentionPolicyDryRunDiscoversFrozenSeedSetAndSkipsDeleteWork(t *testing.T) {
 	t.Parallel()
 
@@ -623,4 +675,25 @@ func TestExecuteRetentionPolicyDeletesResolvedRootsWithNoWait(t *testing.T) {
 	require.False(t, got.Deletion.Confirmed)
 	require.True(t, got.Deletion.NoWait)
 	require.Equal(t, got.Deletion, got.Report.Deletion)
+}
+
+// receiveRetentionPolicyResult bounds tests that intentionally block retention planning workers behind a release gate.
+func receiveRetentionPolicyResult(t *testing.T, done <-chan struct {
+	result d.RetentionPolicyResult
+	err    error
+}) struct {
+	result d.RetentionPolicyResult
+	err    error
+} {
+	t.Helper()
+	select {
+	case out := <-done:
+		return out
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for retention policy workflow")
+		return struct {
+			result d.RetentionPolicyResult
+			err    error
+		}{}
+	}
 }

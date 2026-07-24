@@ -28,6 +28,7 @@ Started: 2026-07-24T04:28:25Z
 - US3 T046/T052 added fake-latency facade tests for process-instance incident enrichment and traversal incident-detail lookup, then moved those two independent incident lookup paths to `toolx/pool.ExecuteSlice` in `internal/services/processinstance/enrichment.go`. Result ordering remains deterministic because pool result slots follow input order; lookup call order is no longer deterministic.
 - US3 T047 added internal fake-latency coverage in `internal/services/processinstance/dryrun_test.go` for direct dry-run dependency expansion and search-selected mutation page planning. The tests pin concurrent ancestry/descendant traversal through the existing bounded pool path and confirm option pass-through plus deterministic plan ordering.
 - US3 T048 added high-volume bounded-worker tests in `internal/services/ops/repair_test.go` and `internal/services/ops/incident_purge_test.go`. The tests use release-gated worker callbacks to prove repair incident discovery and incident-purge ancestry planning start two independent calls with `Workers: 2`, do not schedule a third while both workers are blocked, and preserve deterministic result ordering.
+- US3 T049-T058 added slow-analysis explicit-key lookup concurrency through `toolx/pool.ExecuteSlice`, bounded-worker tests for slow analysis and retention planning, command worker-control regressions for cancel/delete/ops repair incident, and the US3 performance characterization table in `assessment.md`. US3 checkpoint and focused race checks passed.
 
 ## Gotchas
 - `delete process-instance` search mode intentionally plans all selected pages before confirmed mutation; treating it like page-by-page cancel would weaken frozen-scope confirmation behavior.
@@ -37,6 +38,7 @@ Started: 2026-07-24T04:28:25Z
 - Search-selected `cancel process-instance` still mutates page by page after the preserved first-page confirmation; `delete process-instance` still freezes every selected page-level plan before one aggregate confirmation and delete call. Both now get page plans from `PlanProcessInstanceMutationPages`.
 - Process-instance incident enrichment and traversal incident enrichment now perform independent lookups concurrently. Tests that observe lookup calls must use synchronized collectors such as `testx.SafeSlice` and should assert set membership rather than call order.
 - Dry-run process-instance dependency traversal tests deliberately block until two worker callbacks overlap; keep callback assertions as returned errors rather than `require` calls inside worker goroutines.
+- Slow-process analysis has no command-level `--workers` flag; explicit-key lookup uses the default bounded worker policy from call options. Process-definition discovery remains sequential by page to avoid cursor/offset fan-out.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -57,10 +59,15 @@ Started: 2026-07-24T04:28:25Z
 - `go test -race ./internal/services/processinstance -run 'Test(DryRunCancelOrDeletePlan|PlanProcessInstanceMutationPages).*(Workers|Dependency|Planning|Concurrent|Latency)' -count=1`
 - `go test ./internal/services/ops -run 'Test.*(Repair|Purge|Worker|Bounded)' -count=1`
 - `go test -race ./internal/services/ops -run 'TestRepairProcessInstancesUsesBoundedWorkersForIncidentDiscovery|TestPurgeProcessInstancesWithIncidentsUsesBoundedWorkersForDeletePlanning' -count=1`
+- `go test ./internal/services/ops -run 'TestSlowProcessAnalysisExplicitKeysUsesBoundedWorkersForLookup|TestExecuteRetentionPolicyUsesBoundedWorkersForDeletePlanning' -count=1`
+- `go test ./cmd -run 'TestCancelProcessInstancesWithPlan_RegressionWorkerControls|TestDeleteProcessInstancesWithPlan_RegressionForceNoWaitAndWorkerControls|TestOpsRepairIncidentWorkerControlsReachJSONAndReport' -count=1`
+- `go test ./cmd ./internal/services/ops ./c8volt/process -run 'Test.*(Latency|Concurrent|Performance|HighVolume|Workers|Cancel|Delete|Repair|Purge|Retention|Slow)' -count=1`
+- `go test -race ./internal/services/ops -run 'TestSlowProcessAnalysisExplicitKeysUsesBoundedWorkersForLookup|TestExecuteRetentionPolicyUsesBoundedWorkersForDeletePlanning|TestRepairProcessInstancesUsesBoundedWorkersForIncidentDiscovery|TestPurgeProcessInstancesWithIncidentsUsesBoundedWorkersForDeletePlanning' -count=1`
+- `go test -race ./cmd -run 'TestCancelProcessInstancesWithPlan_RegressionWorkerControls|TestDeleteProcessInstancesWithPlan_RegressionForceNoWaitAndWorkerControls|TestOpsRepairIncidentWorkerControlsReachJSONAndReport' -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not infer that similar ops discovery loops are equivalent until the candidate counts, frozen scope, report fields, force behavior, and confirmation prompt semantics are compared.
 
 ## Current Handoff
-- Continue Phase 5 / US3 at T049. T048 is validated and committed. T053 remains unmarked until the implementation task is addressed or explicitly reconciled against the existing bounded pool code. Do not start US4 or polish.
+- Continue Phase 6 / US4 at T059. US3 is validated and ready in the latest work-unit commit; do not start polish until US4 is complete.

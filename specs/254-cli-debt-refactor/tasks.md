@@ -122,19 +122,19 @@
 - [x] T046 [P] [US3] Add fake-latency tests for process-instance search enrichment and incident detail lookup in `c8volt/process/client_test.go`
 - [x] T047 [P] [US3] Add fake-latency tests for cancel/delete planning and dependency traversal in `internal/services/processinstance/dryrun_test.go`
 - [x] T048 [P] [US3] Add high-volume ops repair and purge tests for bounded worker behavior in `internal/services/ops/repair_test.go` and `internal/services/ops/incident_purge_test.go`
-- [ ] T049 [P] [US3] Add high-volume slow-process analysis and retention policy tests for serial hot paths in `internal/services/ops/slow_process_analysis_test.go` and `internal/services/ops/retention_policy_test.go`
-- [ ] T050 [P] [US3] Add worker-control pass-through tests for `--workers`, `--fail-fast`, and `--no-worker-limit` in `cmd/cancel_test.go`, `cmd/delete_test.go`, and `cmd/ops_repair_incident_test.go`
+- [x] T049 [P] [US3] Add high-volume slow-process analysis and retention policy tests for serial hot paths in `internal/services/ops/slow_process_analysis_test.go` and `internal/services/ops/retention_policy_test.go`
+- [x] T050 [P] [US3] Add worker-control pass-through tests for `--workers`, `--fail-fast`, and `--no-worker-limit` in `cmd/cancel_test.go`, `cmd/delete_test.go`, and `cmd/ops_repair_incident_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T051 [US3] Add high-volume performance characterization results for process-instance search, enrichment, cancel/delete planning, repair, purge, retention, slow-process analysis, job search, element search, and incident search to `specs/254-cli-debt-refactor/assessment.md`
+- [x] T051 [US3] Add high-volume performance characterization results for process-instance search, enrichment, cancel/delete planning, repair, purge, retention, slow-process analysis, job search, element search, and incident search to `specs/254-cli-debt-refactor/assessment.md`
 - [x] T052 [US3] Use bounded concurrency for independent process-instance enrichment or incident-detail lookup where safe in `internal/services/processinstance/enrichment.go`
-- [ ] T053 [US3] Use bounded concurrency for independent cancel/delete dependency planning where safe in `internal/services/processinstance/dryrun.go`
-- [ ] T054 [US3] Use bounded concurrency for independent ops repair planning or execution where safe in `internal/services/ops/repair.go`
-- [ ] T055 [US3] Use bounded concurrency for independent purge, retention, and slow-process analysis steps where safe in `internal/services/ops/incident_purge.go`, `internal/services/ops/retention_policy.go`, and `internal/services/ops/slow_process_analysis.go`
-- [ ] T056 [US3] Preserve deterministic result ordering and worker-limit controls in `toolx/pool/pool.go` and affected service call sites under `internal/services/`
-- [ ] T057 [US3] Record any accepted performance tradeoffs or intentionally retained serial paths in `specs/254-cli-debt-refactor/assessment.md`
-- [ ] T058 [US3] Run `go test ./cmd ./internal/services/ops ./c8volt/process -run 'Test.*(Latency|Concurrent|Performance|HighVolume|Workers|Cancel|Delete|Repair|Purge|Retention|Slow)' -count=1` and record the result in `specs/254-cli-debt-refactor/quickstart.md`
+- [x] T053 [US3] Use bounded concurrency for independent cancel/delete dependency planning where safe in `internal/services/processinstance/dryrun.go`
+- [x] T054 [US3] Use bounded concurrency for independent ops repair planning or execution where safe in `internal/services/ops/repair.go`
+- [x] T055 [US3] Use bounded concurrency for independent purge, retention, and slow-process analysis steps where safe in `internal/services/ops/incident_purge.go`, `internal/services/ops/retention_policy.go`, and `internal/services/ops/slow_process_analysis.go`
+- [x] T056 [US3] Preserve deterministic result ordering and worker-limit controls in `toolx/pool/pool.go` and affected service call sites under `internal/services/`
+- [x] T057 [US3] Record any accepted performance tradeoffs or intentionally retained serial paths in `specs/254-cli-debt-refactor/assessment.md`
+- [x] T058 [US3] Run `go test ./cmd ./internal/services/ops ./c8volt/process -run 'Test.*(Latency|Concurrent|Performance|HighVolume|Workers|Cancel|Delete|Repair|Purge|Retention|Slow)' -count=1` and record the result in `specs/254-cli-debt-refactor/quickstart.md`
 
 **Checkpoint**: User Story 3 is independently functional and high-volume workflows are characterized with preserved safety controls.
 
