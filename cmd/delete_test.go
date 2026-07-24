@@ -900,8 +900,8 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"Use --force to cancel the affected scope first",
 		"Use --auto-confirm for unattended destructive runs",
 		"process instance key(s) to delete; repeat or combine with stdin '-'",
-		"number of process instances to process per page",
-		"maximum number of matching process instances to process across all pages",
+		"number of process instances to inspect per discovery page; does not cap total frozen scope",
+		"maximum number of matching process instances to freeze for deletion across all pages; omit to continue through all matches",
 		"./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run",
 		"./c8volt delete pi --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run",
 	}, []string{"--count"})

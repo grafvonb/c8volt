@@ -3,7 +3,6 @@
 Feature: 254-cli-debt-refactor
 Started: 2026-07-24 06:28:25
 
----
 ## Iteration 1 - 2026-07-24 06:30
 **Work Unit**: Phase 1 Setup
 **Tasks Completed**:
@@ -388,4 +387,56 @@ Started: 2026-07-24 06:28:25
 - specs/254-cli-debt-refactor/progress.md
 **Learnings**:
 - Slow-analysis explicit-key lookup now uses the shared bounded pool; retention, cancel/delete, repair, and incident-purge high-volume paths are characterized with worker-control validation.
+---
+---
+## Iteration 2 - 2026-07-24 16:45
+**Work Unit**: US4 Help and Documentation Match Behavior
+**Tasks Completed**:
+- [x] T059: Add command contract assertions for updated `--batch-size`, `--limit`, output modes, automation support, and aliases
+- [x] T060: Add capabilities document assertions for affected commands
+- [x] T061: Add generated docs expectations for changed command help and examples
+- [x] T062: Add README/docs example expectations for user-facing workflow text
+- [x] T063: Update basic command help text and examples for paging, limits, and output modes
+- [x] T064: Update mutation command help text and examples for paging, limits, workers, fail-fast, and confirmation
+- [x] T065: Update ops command help text and examples for discovery summaries, limits, and worker behavior
+- [x] T066: Update command capability metadata for changed commands
+- [x] T067: Update README and operator documentation examples for changed behavior
+- [x] T068: Regenerate generated CLI docs with `make docs-content`
+- [x] T069: Run US4 checkpoint validation and record the result
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cancel_processinstance.go
+- cmd/cancel_test.go
+- cmd/capabilities_test.go
+- cmd/command_contract_test.go
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- cmd/get_element.go
+- cmd/get_incident.go
+- cmd/get_job.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/ops_execute_retention_policy.go
+- cmd/walk_test.go
+- docs/camunda-cli.md
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/cli/c8volt_get_element.md
+- docs/cli/c8volt_get_incident.md
+- docs/cli/c8volt_get_job.md
+- docs/cli/c8volt_get_process-instance.md
+- docs/cli/c8volt_ops_analyse_slow-process-instances.md
+- docs/cli/c8volt_ops_execute_retention-policy.md
+- docs/index.md
+- docs/use-cases.md
+- docsgen/main_test.go
+- specs/254-cli-debt-refactor/quickstart.md
+- specs/254-cli-debt-refactor/tasks.md
+- specs/254-cli-debt-refactor/ralph-memory.md
+- specs/254-cli-debt-refactor/progress.md
+**Learnings**:
+- US4 docs now pin page-size, returned/frozen-scope limits, clean machine output, and destructive worker-control wording through command metadata, capabilities JSON, generated docs, and README/docs assertions.
 ---

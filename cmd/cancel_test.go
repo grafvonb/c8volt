@@ -807,8 +807,8 @@ func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
 		"validates the affected root and descendant instances",
 		"Use --force when a selected child must be escalated",
 		"Use --auto-confirm for unattended destructive runs",
-		"number of process instances to process per page",
-		"maximum number of matching process instances to process across all pages",
+		"number of process instances to inspect per discovery page; does not cap total selected scope",
+		"maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches",
 		"./c8volt expect pi --key <process-instance-key> --state canceled",
 		"./c8volt cancel pi --state active --batch-size 250 --limit 5 --dry-run",
 	}, []string{"--count"})

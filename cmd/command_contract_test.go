@@ -134,6 +134,173 @@ func TestCommandCapabilityForCommand_DocumentsTenantContract(t *testing.T) {
 	}
 }
 
+// TestCommandCapabilityForCommand_BasicPagedReadContracts pins the public
+// meaning of page size, total limits, aliases, automation, and machine output.
+func TestCommandCapabilityForCommand_BasicPagedReadContracts(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	tests := []struct {
+		name          string
+		cmd           *cobra.Command
+		aliases       []string
+		batchDesc     string
+		limitDesc     string
+		longFragments []string
+	}{
+		{
+			name:      "job",
+			cmd:       getJobCmd,
+			batchDesc: "number of jobs to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+			limitDesc: "maximum number of matching jobs to return across all pages; omit to continue through all matches",
+			longFragments: []string{
+				"--batch-size controls each backend page request",
+				"--limit caps total returned jobs across all pages",
+				"JSON, keys-only, quiet, and automation output remain free of prompts and progress text",
+			},
+		},
+		{
+			name:      "element",
+			cmd:       getElementCmd,
+			aliases:   []string{"ei"},
+			batchDesc: "number of elements to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+			limitDesc: "maximum number of matching elements to return across all pages; omit to continue through all matches",
+			longFragments: []string{
+				"--batch-size controls each backend page request",
+				"--limit caps returned element rows across all pages",
+				"JSON, keys-only, quiet, and automation output remain free of prompts and progress text",
+			},
+		},
+		{
+			name:      "incident",
+			cmd:       getIncidentCmd,
+			aliases:   []string{"incidents", "inc"},
+			batchDesc: "number of incidents to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+			limitDesc: "maximum number of matching incidents to return across all pages; omit to continue through all matches",
+			longFragments: []string{
+				"--batch-size controls each backend page request",
+				"--limit caps total returned incidents across all pages",
+				"JSON, keys-only, pi-keys-only, quiet, and automation output remain free of prompts and progress text",
+			},
+		},
+		{
+			name:      "process instance",
+			cmd:       getProcessInstanceCmd,
+			aliases:   []string{"process-instances", "pi", "pis"},
+			batchDesc: "number of process instances to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+			limitDesc: "maximum number of matching process instances to return across all pages; omit to continue through all matches",
+			longFragments: []string{
+				"--batch-size controls each backend page request",
+				"--limit caps total returned process instances across all pages",
+				"JSON, keys-only, quiet, and automation output remain free of prompts and progress text",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			capability := commandCapabilityForCommand(tt.cmd)
+			require.Equal(t, ContractSupportFull, capability.ContractSupport)
+			require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+			require.Contains(t, capability.OutputModes, OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true})
+			require.Contains(t, capability.OutputModes, OutputModeContract{Name: RenderModeKeysOnly.String(), Supported: true})
+			for _, alias := range tt.aliases {
+				require.Contains(t, capability.Aliases, alias)
+			}
+			require.Contains(t, capability.Flags, FlagContract{
+				Name:        "batch-size",
+				Shorthand:   "n",
+				Type:        "int32",
+				Required:    false,
+				Repeated:    false,
+				Description: tt.batchDesc,
+			})
+			require.Contains(t, capability.Flags, FlagContract{
+				Name:        "limit",
+				Shorthand:   "l",
+				Type:        "int32",
+				Required:    false,
+				Repeated:    false,
+				Description: tt.limitDesc,
+			})
+			for _, want := range tt.longFragments {
+				require.Contains(t, tt.cmd.Long, want)
+			}
+		})
+	}
+}
+
+// TestCommandCapabilityForCommand_ProcessInstanceMutationPagingContracts keeps
+// destructive search-selected scope wording aligned with the frozen plan model.
+func TestCommandCapabilityForCommand_ProcessInstanceMutationPagingContracts(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	tests := []struct {
+		name          string
+		cmd           *cobra.Command
+		batchDesc     string
+		limitDesc     string
+		longFragments []string
+	}{
+		{
+			name:      "cancel",
+			cmd:       cancelProcessInstanceCmd,
+			batchDesc: "number of process instances to inspect per discovery page; does not cap total selected scope (max limit 1000 enforced by server)",
+			limitDesc: "maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches",
+			longFragments: []string{
+				"--batch-size controls each discovery page request",
+				"--limit caps the selected process-instance scope across all pages",
+				"--workers, --fail-fast, and --no-worker-limit bound independent planning or cancellation work",
+			},
+		},
+		{
+			name:      "delete",
+			cmd:       deleteProcessInstanceCmd,
+			batchDesc: "number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server)",
+			limitDesc: "maximum number of matching process instances to freeze for deletion across all pages; omit to continue through all matches",
+			longFragments: []string{
+				"freezes every selected page-level delete plan before one confirmation and mutation",
+				"--batch-size controls each discovery page request",
+				"--limit caps the frozen delete scope across all pages",
+				"--workers, --fail-fast, and --no-worker-limit bound independent planning, cancellation, or deletion work",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			capability := commandCapabilityForCommand(tt.cmd)
+			require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+			require.Equal(t, ContractSupportFull, capability.ContractSupport)
+			require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+			require.Contains(t, capability.Aliases, "pi")
+			require.Contains(t, capability.OutputModes, OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true})
+			require.Contains(t, capability.Flags, FlagContract{
+				Name:        "batch-size",
+				Shorthand:   "n",
+				Type:        "int32",
+				Required:    false,
+				Repeated:    false,
+				Description: tt.batchDesc,
+			})
+			require.Contains(t, capability.Flags, FlagContract{
+				Name:        "limit",
+				Shorthand:   "l",
+				Type:        "int32",
+				Required:    false,
+				Repeated:    false,
+				Description: tt.limitDesc,
+			})
+			for _, want := range tt.longFragments {
+				require.Contains(t, tt.cmd.Long, want)
+			}
+		})
+	}
+}
+
 func TestCommandCapabilityForCommand_UsesExplicitAutomationOutputModes(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -389,6 +556,30 @@ func TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts(t *testing.T
 				"Discovery pages through all matching process definitions by default.",
 				"--batch-size tunes per-page discovery requests only",
 				"--limit intentionally caps the frozen scope",
+			},
+		},
+		{
+			name:      "retention policy",
+			cmd:       opsExecuteRetentionPolicyCmd,
+			batchDesc: "number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server)",
+			limitDesc: "maximum number of matching process instances to freeze for retention cleanup; omit to discover all matches",
+			longFragments: []string{
+				"Discovery pages through all matching retention candidates by default.",
+				"--batch-size controls each discovery page request",
+				"--limit caps the frozen retention scope",
+				"--workers, --fail-fast, and --no-worker-limit bound independent delete planning or deletion work",
+			},
+		},
+		{
+			name:      "slow process analysis",
+			cmd:       opsAnalyseSlowProcessInstancesCmd,
+			batchDesc: "number of process instances to inspect per discovery page; does not cap explicit keys or timeline details (max limit 1000 enforced by server)",
+			limitDesc: "maximum number of matching process instances to freeze during discovery; omit to discover all matches",
+			longFragments: []string{
+				"Search mode pages through discovered process instances by default.",
+				"--batch-size controls each discovery page request",
+				"--limit caps the frozen analysis scope",
+				"JSON and keys-only output stay free of progress text",
 			},
 		},
 	}
@@ -945,7 +1136,7 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Type:        "int32",
 		Required:    false,
 		Repeated:    false,
-		Description: "maximum number of jobs to return in search mode",
+		Description: "maximum number of matching jobs to return across all pages; omit to continue through all matches",
 	})
 	require.Contains(t, getCapability.Flags, FlagContract{
 		Name:        "batch-size",
@@ -953,7 +1144,7 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Type:        "int32",
 		Required:    false,
 		Repeated:    false,
-		Description: "number of jobs to fetch per page (max limit 1000 enforced by server)",
+		Description: "number of jobs to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
 	})
 	require.Contains(t, getCapability.Flags, FlagContract{
 		Name:        "total",
@@ -1152,7 +1343,7 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 		Type:        "int32",
 		Required:    false,
 		Repeated:    false,
-		Description: "number of elements to fetch per page (max limit 1000 enforced by server)",
+		Description: "number of elements to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "limit",
@@ -1160,7 +1351,7 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 		Type:        "int32",
 		Required:    false,
 		Repeated:    false,
-		Description: "maximum number of elements to return in search mode",
+		Description: "maximum number of matching elements to return across all pages; omit to continue through all matches",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "total",
@@ -2104,7 +2295,9 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"Use --key with the jobKey exposed by incident-aware process-instance output",
 		"Search mode will use list filters",
 		"Search mode pages through matching jobs by default",
-		"--batch-size tunes per-page discovery requests only",
+		"--batch-size controls each backend page request",
+		"--limit caps total returned jobs across all pages",
+		"JSON, keys-only, quiet, and automation output remain free of prompts and progress text",
 		"--total returns only the matching count",
 		"Use --json for the stable job payload",
 		"--error-message-limit",
@@ -2171,7 +2364,9 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 		"Use --key when you know an element instance key",
 		"Omit --key to list or search element instances by process instance, BPMN element ID, state, type, process definition, or BPMN process ID",
 		"Search mode follows the shared get paging and limit conventions",
-		"--batch-size controls per-page discovery requests",
+		"--batch-size controls each backend page request",
+		"--limit caps returned element rows across all pages",
+		"JSON, keys-only, quiet, and automation output remain free of prompts and progress text",
 		"--total prints only the matching count",
 		"Compact human rows include dur:<duration>",
 		"Use --with-listeners to include runtime listener jobs under matching element rows",

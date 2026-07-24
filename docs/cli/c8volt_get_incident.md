@@ -14,7 +14,7 @@ Get Camunda incidents by key or by search criteria.
 
 The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once and rendered through the shared get output modes.
 
-When no keys are supplied, incidents are searched by state, error type, error message, process context, element context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions.
+When no keys are supplied, incidents are searched by state, error type, error message, process context, element context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions. --batch-size controls each backend page request, --limit caps total returned incidents across all pages, and --total returns only the exact matching count. Verbose paging progress is written away from stdout; JSON, keys-only, pi-keys-only, quiet, and automation output remain free of prompts and progress text.
 
 When --bpmn-process-id is supplied in search mode, the BPMN process definition selector is validated before incident totals, key-only output, process-instance-key output, or paging. Missing or invisible definitions fail explicitly; --json, --automation, --keys-only, --pi-keys-only, and non-TTY runs never prompt for recovery output.
 
@@ -45,7 +45,7 @@ c8volt get incident [flags]
 ### Options
 
 ```
-  -n, --batch-size int32               number of incidents to fetch per page (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32               number of incidents to request per page; does not cap total returned rows (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string         BPMN process ID to validate and filter incidents
       --creation-time-after string     only include incidents with creation time >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
       --creation-time-before string    only include incidents with creation time <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
@@ -59,7 +59,7 @@ c8volt get incident [flags]
       --fail-fast                      stop scheduling new incident lookups after the first error
   -h, --help                           help for incident
   -k, --key strings                    incident key(s) to fetch; repeat or combine with stdin '-'
-  -l, --limit int32                    maximum number of matching incidents to return across all pages
+  -l, --limit int32                    maximum number of matching incidents to return across all pages; omit to continue through all matches
       --no-worker-limit                use all queued jobs as workers when --workers is unset
       --pd-key string                  process definition key to filter incidents
       --pi-key string                  process instance key to filter incidents

@@ -148,20 +148,20 @@
 
 ### Tests for User Story 4
 
-- [ ] T059 [P] [US4] Add command contract assertions for updated `--batch-size`, `--limit`, output modes, automation support, and aliases in `cmd/command_contract_test.go`
-- [ ] T060 [P] [US4] Add capabilities document assertions for affected commands in `cmd/capabilities_test.go`
-- [ ] T061 [P] [US4] Add generated docs expectations for changed command help and examples in `docsgen/main_test.go`
-- [ ] T062 [P] [US4] Add README/docs example expectations for user-facing workflow text in `docsgen/main_test.go`
+- [x] T059 [P] [US4] Add command contract assertions for updated `--batch-size`, `--limit`, output modes, automation support, and aliases in `cmd/command_contract_test.go`
+- [x] T060 [P] [US4] Add capabilities document assertions for affected commands in `cmd/capabilities_test.go`
+- [x] T061 [P] [US4] Add generated docs expectations for changed command help and examples in `docsgen/main_test.go`
+- [x] T062 [P] [US4] Add README/docs example expectations for user-facing workflow text in `docsgen/main_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T063 [US4] Update basic command help text and examples for paging, limits, and output modes in `cmd/get_job.go`, `cmd/get_element.go`, `cmd/get_incident.go`, and `cmd/get_processinstance.go`
-- [ ] T064 [US4] Update mutation command help text and examples for paging, limits, workers, fail-fast, and confirmation in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`
-- [ ] T065 [US4] Update ops command help text and examples for discovery summaries, limits, and worker behavior in `cmd/ops_analyse_slow_process_instances.go`, `cmd/ops_execute_retention_policy.go`, `cmd/ops_purge_processinstances_with_incidents.go`, `cmd/ops_purge_all_processdefinitions.go`, `cmd/ops_repair_incident.go`, and `cmd/ops_repair_processinstance.go`
-- [ ] T066 [US4] Update command capability metadata for changed commands in `cmd/command_contract.go` and affected `cmd/*.go` command registrations
-- [ ] T067 [US4] Update README and operator documentation examples for changed behavior in `README.md`, `docs/use-cases.md`, and `docs/camunda-cli.md`
-- [ ] T068 [US4] Regenerate generated CLI docs with `make docs-content` and verify generated files under `docs/cli/`
-- [ ] T069 [US4] Run `go test ./cmd ./docsgen -count=1` and record the result in `specs/254-cli-debt-refactor/quickstart.md`
+- [x] T063 [US4] Update basic command help text and examples for paging, limits, and output modes in `cmd/get_job.go`, `cmd/get_element.go`, `cmd/get_incident.go`, and `cmd/get_processinstance.go`
+- [x] T064 [US4] Update mutation command help text and examples for paging, limits, workers, fail-fast, and confirmation in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`
+- [x] T065 [US4] Update ops command help text and examples for discovery summaries, limits, and worker behavior in `cmd/ops_analyse_slow_process_instances.go`, `cmd/ops_execute_retention_policy.go`, `cmd/ops_purge_processinstances_with_incidents.go`, `cmd/ops_purge_all_processdefinitions.go`, `cmd/ops_repair_incident.go`, and `cmd/ops_repair_processinstance.go`
+- [x] T066 [US4] Update command capability metadata for changed commands in `cmd/command_contract.go` and affected `cmd/*.go` command registrations
+- [x] T067 [US4] Update README and operator documentation examples for changed behavior in `README.md`, `docs/use-cases.md`, and `docs/camunda-cli.md`
+- [x] T068 [US4] Regenerate generated CLI docs with `make docs-content` and verify generated files under `docs/cli/`
+- [x] T069 [US4] Run `go test ./cmd ./docsgen -count=1` and record the result in `specs/254-cli-debt-refactor/quickstart.md`
 
 **Checkpoint**: User Story 4 is independently functional and documentation surfaces match command behavior.
 

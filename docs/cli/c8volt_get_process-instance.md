@@ -14,7 +14,7 @@ Get process instances by key or by search criteria.
 
 Use direct lookup when you know a process-instance key, or combine search filters to inspect matching process instances by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges.
 
-Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. Direct key lookup stays strict: missing keys return not-found.
+Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. --batch-size controls each backend page request, --limit caps total returned process instances across all pages, and --total prints only the matching count. Verbose paging progress is written away from stdout; JSON, keys-only, quiet, and automation output remain free of prompts and progress text. Direct key lookup stays strict: missing keys return not-found.
 
 Tenant contract: --tenant scopes search/list discovery and selector validation where supported. Explicit --key and stdin keys are backend-authorized admin input; c8volt displays returned tenant metadata without rejecting solely because it differs from the selected tenant.
 
@@ -64,7 +64,7 @@ c8volt get process-instance [flags]
 ### Options
 
 ```
-  -n, --batch-size int32                number of process instances to fetch per page (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32                number of process instances to request per page; does not cap total returned rows (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string          BPMN process ID to filter process instances
       --children-only                   show only child process instances
       --direct-incidents-only           show only process instances with direct incident details
@@ -81,7 +81,7 @@ c8volt get process-instance [flags]
       --incident-state string           incident state scope for keyed --with-incidents: active, pending, resolved, migrated, unknown, all (default "active")
       --incidents-only                  show only process instances that have incidents
   -k, --key strings                     process instance key(s) to fetch
-  -l, --limit int32                     maximum number of matching process instances to return or process across all pages
+  -l, --limit int32                     maximum number of matching process instances to return across all pages; omit to continue through all matches
       --no-incidents-only               show only process instances that have no incidents
       --no-worker-limit                 use all queued jobs as workers when --workers is unset
       --orphan-children-only            show only child instances with missing parents

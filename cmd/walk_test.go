@@ -1333,7 +1333,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleI
 		"--with-incidents",
 	)
 
-	require.Equal(t, []string{
+	require.ElementsMatch(t, []string{
 		"/v2/process-instances/123/incidents/search",
 		"/v2/process-instances/124/incidents/search",
 	}, incidentRequests)
@@ -1377,7 +1377,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentL
 		"--with-incidents",
 	)
 
-	require.Equal(t, []string{
+	require.ElementsMatch(t, []string{
 		"/v2/process-instances/124/incidents/search",
 		"/v2/process-instances/123/incidents/search",
 	}, incidentRequests)

@@ -29,6 +29,7 @@ Started: 2026-07-24T04:28:25Z
 - US3 T047 added internal fake-latency coverage in `internal/services/processinstance/dryrun_test.go` for direct dry-run dependency expansion and search-selected mutation page planning. The tests pin concurrent ancestry/descendant traversal through the existing bounded pool path and confirm option pass-through plus deterministic plan ordering.
 - US3 T048 added high-volume bounded-worker tests in `internal/services/ops/repair_test.go` and `internal/services/ops/incident_purge_test.go`. The tests use release-gated worker callbacks to prove repair incident discovery and incident-purge ancestry planning start two independent calls with `Workers: 2`, do not schedule a third while both workers are blocked, and preserve deterministic result ordering.
 - US3 T049-T058 added slow-analysis explicit-key lookup concurrency through `toolx/pool.ExecuteSlice`, bounded-worker tests for slow analysis and retention planning, command worker-control regressions for cancel/delete/ops repair incident, and the US3 performance characterization table in `assessment.md`. US3 checkpoint and focused race checks passed.
+- US4 T059-T069 updated help text, flag descriptions, capability assertions, generated CLI docs, README/docs examples, and docsgen coverage for `--batch-size` as page size, `--limit` as returned/frozen scope cap, clean machine output, automation support, and destructive worker controls. `make docs-content`, `go test ./cmd ./docsgen -count=1`, and `git diff --check` passed.
 
 ## Gotchas
 - `delete process-instance` search mode intentionally plans all selected pages before confirmed mutation; treating it like page-by-page cancel would weaken frozen-scope confirmation behavior.
@@ -39,6 +40,7 @@ Started: 2026-07-24T04:28:25Z
 - Process-instance incident enrichment and traversal incident enrichment now perform independent lookups concurrently. Tests that observe lookup calls must use synchronized collectors such as `testx.SafeSlice` and should assert set membership rather than call order.
 - Dry-run process-instance dependency traversal tests deliberately block until two worker callbacks overlap; keep callback assertions as returned errors rather than `require` calls inside worker goroutines.
 - Slow-process analysis has no command-level `--workers` flag; explicit-key lookup uses the default bounded worker policy from call options. Process-definition discovery remains sequential by page to avoid cursor/offset fan-out.
+- Process-instance incident lookup order is intentionally nondeterministic after US3 bounded concurrency; command tests should assert request set membership rather than per-key lookup order.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -64,10 +66,14 @@ Started: 2026-07-24T04:28:25Z
 - `go test ./cmd ./internal/services/ops ./c8volt/process -run 'Test.*(Latency|Concurrent|Performance|HighVolume|Workers|Cancel|Delete|Repair|Purge|Retention|Slow)' -count=1`
 - `go test -race ./internal/services/ops -run 'TestSlowProcessAnalysisExplicitKeysUsesBoundedWorkersForLookup|TestExecuteRetentionPolicyUsesBoundedWorkersForDeletePlanning|TestRepairProcessInstancesUsesBoundedWorkersForIncidentDiscovery|TestPurgeProcessInstancesWithIncidentsUsesBoundedWorkersForDeletePlanning' -count=1`
 - `go test -race ./cmd -run 'TestCancelProcessInstancesWithPlan_RegressionWorkerControls|TestDeleteProcessInstancesWithPlan_RegressionForceNoWaitAndWorkerControls|TestOpsRepairIncidentWorkerControlsReachJSONAndReport' -count=1`
+- `go test ./cmd -run 'TestCommandCapabilityForCommand_(BasicPagedReadContracts|ProcessInstanceMutationPagingContracts|OpsPagedDiscoveryFlagContracts)|TestCapabilitiesCommand_JSONIncludesPagedWorkflowContracts' -count=1`
+- `go test ./docsgen -run 'TestGeneratedPagedWorkflowDocsDocumentContracts|TestCLIDebtRefactorUserFacingDocsDocumentPagingContracts' -count=1`
+- `make docs-content`
+- `go test ./cmd ./docsgen -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not infer that similar ops discovery loops are equivalent until the candidate counts, frozen scope, report fields, force behavior, and confirmation prompt semantics are compared.
 
 ## Current Handoff
-- Continue Phase 6 / US4 at T059. US3 is validated and ready in the latest work-unit commit; do not start polish until US4 is complete.
+- Continue Final Phase at T070; US4 is validated and ready in the latest work-unit commit.
