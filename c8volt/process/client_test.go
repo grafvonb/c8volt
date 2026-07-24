@@ -2069,9 +2069,11 @@ func (s *stubProcessDefinitionAPI) GetProcessDefinitionXML(ctx context.Context, 
 var _ pdsvc.API = (*stubProcessDefinitionAPI)(nil)
 
 type stubElementAPI struct {
-	getElement         func(context.Context, string, ...services.CallOption) (d.Element, error)
-	searchElements     func(context.Context, d.ElementSearchQuery, ...services.CallOption) (d.ElementSearchResult, error)
-	searchElementsPage func(context.Context, d.ElementSearchQuery, d.ElementPageRequest, ...services.CallOption) (d.ElementSearchPage, error)
+	getElement          func(context.Context, string, ...services.CallOption) (d.Element, error)
+	searchElements      func(context.Context, d.ElementSearchQuery, ...services.CallOption) (d.ElementSearchResult, error)
+	searchElementsPages func(context.Context, d.ElementSearchQuery, d.ElementSearchPageVisitor, ...services.CallOption) (d.ElementSearchPagesResult, error)
+	searchElementsPage  func(context.Context, d.ElementSearchQuery, d.ElementPageRequest, ...services.CallOption) (d.ElementSearchPage, error)
+	searchElementsTotal func(context.Context, d.ElementSearchQuery, ...services.CallOption) (int64, error)
 }
 
 func (s stubElementAPI) GetElement(ctx context.Context, key string, opts ...services.CallOption) (d.Element, error) {
@@ -2088,11 +2090,27 @@ func (s stubElementAPI) SearchElements(ctx context.Context, query d.ElementSearc
 	return s.searchElements(ctx, query, opts...)
 }
 
+// SearchElementsPages delegates to test callbacks for process enrichment paging.
+func (s stubElementAPI) SearchElementsPages(ctx context.Context, query d.ElementSearchQuery, visitor d.ElementSearchPageVisitor, opts ...services.CallOption) (d.ElementSearchPagesResult, error) {
+	if s.searchElementsPages == nil {
+		panic("unexpected call")
+	}
+	return s.searchElementsPages(ctx, query, visitor, opts...)
+}
+
 func (s stubElementAPI) SearchElementsPage(ctx context.Context, query d.ElementSearchQuery, page d.ElementPageRequest, opts ...services.CallOption) (d.ElementSearchPage, error) {
 	if s.searchElementsPage == nil {
 		panic("unexpected call")
 	}
 	return s.searchElementsPage(ctx, query, page, opts...)
+}
+
+// SearchElementsTotal delegates to test callbacks for process enrichment totals.
+func (s stubElementAPI) SearchElementsTotal(ctx context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (int64, error) {
+	if s.searchElementsTotal == nil {
+		panic("unexpected call")
+	}
+	return s.searchElementsTotal(ctx, query, opts...)
 }
 
 var _ esvc.API = stubElementAPI{}

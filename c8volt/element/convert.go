@@ -79,6 +79,32 @@ func fromDomainSearchResult(result d.ElementSearchResult) SearchResult {
 	}
 }
 
+// fromDomainSearchPagesResult maps service-owned traversal results into the
+// public paged result shape.
+func fromDomainSearchPagesResult(result d.ElementSearchPagesResult) SearchPagesResult {
+	return SearchPagesResult{
+		Items: mapDomainElements(result.Items),
+		Total: result.Total,
+		Pages: result.Pages,
+	}
+}
+
+// toDomainSearchPageVisitor maps public page callbacks without letting facade
+// callers depend on internal domain types.
+func toDomainSearchPageVisitor(visitor SearchPageVisitor) d.ElementSearchPageVisitor {
+	if visitor == nil {
+		return nil
+	}
+	return func(step d.ElementSearchPageStep) (d.ElementSearchPageAction, error) {
+		action, err := visitor(SearchPageStep{
+			Page:            fromDomainPage(step.Page),
+			CumulativeCount: step.CumulativeCount,
+			LimitReached:    step.LimitReached,
+		})
+		return d.ElementSearchPageAction(action), err
+	}
+}
+
 // toDomainPageRequest maps public pagination controls into the internal page request.
 func toDomainPageRequest(request PageRequest) d.ElementPageRequest {
 	return d.ElementPageRequest{

@@ -19,7 +19,9 @@ import (
 type fakeElementService struct {
 	get    func(context.Context, string, ...services.CallOption) (d.Element, error)
 	search func(context.Context, d.ElementSearchQuery, ...services.CallOption) (d.ElementSearchResult, error)
+	pages  func(context.Context, d.ElementSearchQuery, d.ElementSearchPageVisitor, ...services.CallOption) (d.ElementSearchPagesResult, error)
 	page   func(context.Context, d.ElementSearchQuery, d.ElementPageRequest, ...services.CallOption) (d.ElementSearchPage, error)
+	total  func(context.Context, d.ElementSearchQuery, ...services.CallOption) (int64, error)
 }
 
 type fakeJobService struct {
@@ -70,11 +72,28 @@ func (f fakeElementService) SearchElements(ctx context.Context, request d.Elemen
 	return f.search(ctx, request, opts...)
 }
 
+// SearchElementsPages delegates to the test callback so facade page traversal
+// mapping can be asserted without a real service.
+func (f fakeElementService) SearchElementsPages(ctx context.Context, request d.ElementSearchQuery, visitor d.ElementSearchPageVisitor, opts ...services.CallOption) (d.ElementSearchPagesResult, error) {
+	if f.pages == nil {
+		return d.ElementSearchPagesResult{}, errors.New("unexpected search pages")
+	}
+	return f.pages(ctx, request, visitor, opts...)
+}
+
 func (f fakeElementService) SearchElementsPage(ctx context.Context, request d.ElementSearchQuery, page d.ElementPageRequest, opts ...services.CallOption) (d.ElementSearchPage, error) {
 	if f.page == nil {
 		return d.ElementSearchPage{}, errors.New("unexpected search page")
 	}
 	return f.page(ctx, request, page, opts...)
+}
+
+// SearchElementsTotal delegates to the test callback for total-count facade tests.
+func (f fakeElementService) SearchElementsTotal(ctx context.Context, request d.ElementSearchQuery, opts ...services.CallOption) (int64, error) {
+	if f.total == nil {
+		return 0, errors.New("unexpected search total")
+	}
+	return f.total(ctx, request, opts...)
 }
 
 func TestClient_GetElement_Found(t *testing.T) {
@@ -270,6 +289,74 @@ func TestClient_SearchElements_ForwardsPageCollectionControls(t *testing.T) {
 	require.Len(t, result.Items, 3)
 	require.Equal(t, "2251799813689002", result.Items[0].ElementInstanceKey)
 	require.Equal(t, "2251799813689004", result.Items[2].ElementInstanceKey)
+}
+
+// TestClient_SearchElementsPages_MapsVisitorStepAndAction verifies the facade
+// keeps rendering callbacks public while delegating traversal state to service.
+func TestClient_SearchElementsPages_MapsVisitorStepAndAction(t *testing.T) {
+	api := New(fakeElementService{
+		pages: func(_ context.Context, request d.ElementSearchQuery, visitor d.ElementSearchPageVisitor, _ ...services.CallOption) (d.ElementSearchPagesResult, error) {
+			require.Equal(t, int32(2), request.BatchSize)
+			require.NotNil(t, visitor)
+			action, err := visitor(d.ElementSearchPageStep{
+				Page: d.ElementSearchPage{
+					Items: []d.Element{{ElementInstanceKey: "2251799813689002", State: "ACTIVE"}},
+					Request: d.ElementPageRequest{
+						From: 0,
+						Size: 2,
+					},
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				},
+				CumulativeCount: 1,
+			})
+			require.NoError(t, err)
+			require.Equal(t, d.ElementSearchPageActionStop, action)
+			return d.ElementSearchPagesResult{
+				Items: []d.Element{{ElementInstanceKey: "2251799813689002", State: "ACTIVE"}},
+				Total: 1,
+				Pages: 1,
+			}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	var seen SearchPageStep
+	result, err := api.SearchElementsPages(context.Background(), SearchRequest{
+		State:     "ACTIVE",
+		BatchSize: 2,
+		Limit:     4,
+	}, func(step SearchPageStep) (SearchPageAction, error) {
+		seen = step
+		return SearchPageActionStop, nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int32(1), seen.CumulativeCount)
+	require.Equal(t, int32(2), seen.Page.Request.Size)
+	require.Equal(t, OverflowStateHasMore, seen.Page.OverflowState)
+	require.Equal(t, "2251799813689002", seen.Page.Items[0].ElementInstanceKey)
+	require.Equal(t, int32(1), result.Total)
+	require.Equal(t, int32(1), result.Pages)
+	require.Len(t, result.Items, 1)
+}
+
+// TestClient_SearchElementsTotal_DelegatesTotalFallback verifies the facade
+// exposes service-computed totals without reimplementing page traversal.
+func TestClient_SearchElementsTotal_DelegatesTotalFallback(t *testing.T) {
+	api := New(fakeElementService{
+		total: func(_ context.Context, request d.ElementSearchQuery, _ ...services.CallOption) (int64, error) {
+			require.Equal(t, "ACTIVE", request.State)
+			require.Equal(t, int32(2), request.BatchSize)
+			return 3, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	total, err := api.SearchElementsTotal(context.Background(), SearchRequest{
+		State:     "ACTIVE",
+		BatchSize: 2,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int64(3), total)
 }
 
 func TestClient_SearchElementsPage_MapsPagingMetadata(t *testing.T) {

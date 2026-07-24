@@ -6,6 +6,7 @@ package v88
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -304,6 +305,90 @@ func TestService_SearchElementsLimitCapsFinalPageSize(t *testing.T) {
 	requireElementSearchPageJSON(t, requests[0], 0, 2)
 	require.Equal(t, "2251799813689002", result.Items[0].ElementInstanceKey)
 	require.Equal(t, "2251799813689003", result.Items[1].ElementInstanceKey)
+}
+
+// TestService_SearchElementsPagesStopsWhenVisitorStops proves callers can stop
+// service-owned traversal after rendering or prompting on the current page.
+func TestService_SearchElementsPagesStopsWhenVisitorStops(t *testing.T) {
+	var requests []camundav88.SearchElementInstancesJSONRequestBody
+	svc := newElementServiceTest(t, &mockElementClient{
+		searchElementInstancesWithResponse: func(_ context.Context, body camundav88.SearchElementInstancesJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchElementInstancesResponse, error) {
+			requests = append(requests, body)
+			return &camundav88.SearchElementInstancesResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav88.ElementInstanceSearchQueryResult{
+					Items: []camundav88.ElementInstanceResult{{
+						ElementInstanceKey: "2251799813689002",
+						ElementId:          "ship-order",
+						Type:               camundav88.ElementInstanceResultType("SERVICE_TASK"),
+						State:              camundav88.ElementInstanceStateEnumACTIVE,
+					}},
+					Page: camundav88.SearchQueryPageResponse{TotalItems: 2},
+				},
+			}, nil
+		},
+	})
+
+	var steps []d.ElementSearchPageStep
+	result, err := svc.SearchElementsPages(context.Background(), d.ElementSearchQuery{
+		State:     "ACTIVE",
+		BatchSize: 1,
+	}, func(step d.ElementSearchPageStep) (d.ElementSearchPageAction, error) {
+		steps = append(steps, step)
+		return d.ElementSearchPageActionStop, nil
+	})
+
+	require.NoError(t, err)
+	require.Len(t, requests, 1)
+	require.Len(t, steps, 1)
+	require.Equal(t, int32(1), steps[0].CumulativeCount)
+	require.False(t, steps[0].LimitReached)
+	require.Equal(t, d.ProcessInstanceOverflowStateHasMore, steps[0].Page.OverflowState)
+	require.Equal(t, int32(1), result.Pages)
+	require.Len(t, result.Items, 1)
+	requireElementSearchPageJSON(t, requests[0], 0, 1)
+}
+
+// TestService_SearchElementsTotalFallsBackToPageCounting verifies total
+// counting is service-owned when Camunda only exposes lower-bound metadata.
+func TestService_SearchElementsTotalFallsBackToPageCounting(t *testing.T) {
+	var requests []camundav88.SearchElementInstancesJSONRequestBody
+	svc := newElementServiceTest(t, &mockElementClient{
+		searchElementInstancesWithResponse: func(_ context.Context, body camundav88.SearchElementInstancesJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchElementInstancesResponse, error) {
+			requests = append(requests, body)
+			items := []camundav88.ElementInstanceResult{{
+				ElementInstanceKey: camundav88.ElementInstanceKey(fmt.Sprintf("225179981368900%d", len(requests))),
+				ElementId:          "ship-order",
+				Type:               camundav88.ElementInstanceResultType("SERVICE_TASK"),
+				State:              camundav88.ElementInstanceStateEnumACTIVE,
+			}}
+			if len(requests) == 3 {
+				items = nil
+			}
+			return &camundav88.SearchElementInstancesResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav88.ElementInstanceSearchQueryResult{
+					Items: items,
+					Page: camundav88.SearchQueryPageResponse{
+						TotalItems:        100,
+						HasMoreTotalItems: true,
+					},
+				},
+			}, nil
+		},
+	})
+
+	total, err := svc.SearchElementsTotal(context.Background(), d.ElementSearchQuery{
+		State:     "ACTIVE",
+		BatchSize: 1,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int64(2), total)
+	require.Len(t, requests, 3)
+	requireElementSearchPageJSON(t, requests[0], 0, 1)
+	requireElementSearchPageJSON(t, requests[1], 1, 1)
+	requireElementSearchPageJSON(t, requests[2], 2, 1)
 }
 
 func TestService_SearchElementsPageReportsLowerBoundTotal(t *testing.T) {

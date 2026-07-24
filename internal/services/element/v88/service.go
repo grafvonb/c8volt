@@ -93,8 +93,22 @@ func (s *Service) GetElement(ctx context.Context, key string, opts ...services.C
 	return fromElementInstanceResult(*payload), nil
 }
 
-// SearchElements collects runtime element instances matching the query filters.
+// SearchElements collects all selected element pages using service-owned offset
+// traversal and returns the mapped rows.
 func (s *Service) SearchElements(ctx context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (d.ElementSearchResult, error) {
+	result, err := s.SearchElementsPages(ctx, query, nil, opts...)
+	if err != nil {
+		return d.ElementSearchResult{}, err
+	}
+	return d.ElementSearchResult{
+		Items: result.Items,
+		Total: result.Total,
+	}, nil
+}
+
+// SearchElementsPages owns offset advancement, per-page size capping, and user
+// limit trimming while allowing callers to render or prompt after each page.
+func (s *Service) SearchElementsPages(ctx context.Context, query d.ElementSearchQuery, visitor d.ElementSearchPageVisitor, opts ...services.CallOption) (d.ElementSearchPagesResult, error) {
 	_ = services.ApplyCallOptions(opts)
 
 	batchSize := query.BatchSize
@@ -104,6 +118,7 @@ func (s *Service) SearchElements(ctx context.Context, query d.ElementSearchQuery
 	limit := query.Limit
 	items := make([]d.Element, 0, minPositiveElementSearchSize(batchSize, limit))
 	from := int32(0)
+	pages := int32(0)
 	for {
 		pageLimit := nextElementSearchPageLimit(batchSize, limit, int32(len(items)))
 		if pageLimit <= 0 {
@@ -111,24 +126,36 @@ func (s *Service) SearchElements(ctx context.Context, query d.ElementSearchQuery
 		}
 		page, err := s.SearchElementsPage(ctx, query, d.ElementPageRequest{From: from, Size: pageLimit}, opts...)
 		if err != nil {
-			return d.ElementSearchResult{}, err
+			return d.ElementSearchPagesResult{}, err
 		}
 		items = append(items, page.Items...)
-		if limit > 0 && int32(len(items)) >= limit {
+		pages++
+		limitReached := limit > 0 && int32(len(items)) >= limit
+		if visitor != nil {
+			action, err := visitor(d.ElementSearchPageStep{
+				Page:            page,
+				CumulativeCount: int32(len(items)),
+				LimitReached:    limitReached,
+			})
+			if err != nil {
+				return d.ElementSearchPagesResult{}, err
+			}
+			if action == d.ElementSearchPageActionStop {
+				break
+			}
+		}
+		if limitReached {
 			break
 		}
 		if page.OverflowState != d.ProcessInstanceOverflowStateHasMore {
 			break
 		}
-		advance := int32(len(page.Items))
-		if advance <= 0 {
-			advance = pageLimit
-		}
-		from += advance
+		from = nextElementSearchPageOffset(from, page)
 	}
-	return d.ElementSearchResult{
+	return d.ElementSearchPagesResult{
 		Items: items,
 		Total: int32(len(items)),
+		Pages: pages,
 	}, nil
 }
 
@@ -165,6 +192,34 @@ func (s *Service) SearchElementsPage(ctx context.Context, query d.ElementSearchQ
 	}, nil
 }
 
+// SearchElementsTotal returns the exact backend total when available and
+// otherwise falls back to service-owned page counting.
+func (s *Service) SearchElementsTotal(ctx context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (int64, error) {
+	var total int64
+	_, err := s.SearchElementsPages(ctx, query, func(step d.ElementSearchPageStep) (d.ElementSearchPageAction, error) {
+		if step.Page.ReportedTotal != nil && step.Page.ReportedTotal.Kind == d.ElementReportedTotalKindExact {
+			total = step.Page.ReportedTotal.Count
+			return d.ElementSearchPageActionStop, nil
+		}
+		total += int64(len(step.Page.Items))
+		return d.ElementSearchPageActionContinue, nil
+	}, opts...)
+	if err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+// nextElementSearchPageOffset advances offset searches without looping forever
+// on empty pages that still advertise more data.
+func nextElementSearchPageOffset(from int32, page d.ElementSearchPage) int32 {
+	if len(page.Items) == 0 {
+		return from + page.Request.Size
+	}
+	return from + int32(len(page.Items))
+}
+
+// minPositiveElementSearchSize sizes the initial result slice for bounded searches.
 func minPositiveElementSearchSize(batchSize int32, limit int32) int {
 	if limit > 0 && limit < batchSize {
 		return int(limit)
@@ -172,6 +227,7 @@ func minPositiveElementSearchSize(batchSize int32, limit int32) int {
 	return int(batchSize)
 }
 
+// nextElementSearchPageLimit caps the next page request at the remaining caller limit.
 func nextElementSearchPageLimit(batchSize int32, limit int32, loaded int32) int32 {
 	if limit <= 0 {
 		return batchSize
@@ -183,6 +239,8 @@ func nextElementSearchPageLimit(batchSize int32, limit int32, loaded int32) int3
 	return batchSize
 }
 
+// trimElementSearchPageResults protects callers from backend responses that
+// include more rows than the requested page size.
 func trimElementSearchPageResults(items []camundav88.ElementInstanceResult, page camundav88.SearchQueryPageResponse, from int32, pageSize int32) []camundav88.ElementInstanceResult {
 	if pageSize <= 0 || len(items) <= int(pageSize) {
 		return items
@@ -200,6 +258,8 @@ func trimElementSearchPageResults(items []camundav88.ElementInstanceResult, page
 	return items
 }
 
+// pickElementSearchOverflowState normalizes Camunda total metadata into the
+// version-neutral continuation state used by higher layers.
 func pickElementSearchOverflowState(page camundav88.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) d.ProcessInstanceOverflowState {
 	if itemCount == 0 {
 		return d.ProcessInstanceOverflowStateNoMore
@@ -214,6 +274,7 @@ func pickElementSearchOverflowState(page camundav88.SearchQueryPageResponse, fro
 	return d.ProcessInstanceOverflowStateNoMore
 }
 
+// newElementReportedTotal preserves exact vs lower-bound total metadata.
 func newElementReportedTotal(count int64, lowerBound bool) *d.ElementReportedTotal {
 	kind := d.ElementReportedTotalKindExact
 	if lowerBound {
