@@ -119,7 +119,7 @@
 
 ### Tests for User Story 3
 
-- [ ] T046 [P] [US3] Add fake-latency tests for process-instance search enrichment and incident detail lookup in `c8volt/process/client_test.go`
+- [x] T046 [P] [US3] Add fake-latency tests for process-instance search enrichment and incident detail lookup in `c8volt/process/client_test.go`
 - [ ] T047 [P] [US3] Add fake-latency tests for cancel/delete planning and dependency traversal in `internal/services/processinstance/dryrun_test.go`
 - [ ] T048 [P] [US3] Add high-volume ops repair and purge tests for bounded worker behavior in `internal/services/ops/repair_test.go` and `internal/services/ops/incident_purge_test.go`
 - [ ] T049 [P] [US3] Add high-volume slow-process analysis and retention policy tests for serial hot paths in `internal/services/ops/slow_process_analysis_test.go` and `internal/services/ops/retention_policy_test.go`
@@ -128,7 +128,7 @@
 ### Implementation for User Story 3
 
 - [ ] T051 [US3] Add high-volume performance characterization results for process-instance search, enrichment, cancel/delete planning, repair, purge, retention, slow-process analysis, job search, element search, and incident search to `specs/254-cli-debt-refactor/assessment.md`
-- [ ] T052 [US3] Use bounded concurrency for independent process-instance enrichment or incident-detail lookup where safe in `internal/services/processinstance/enrichment.go`
+- [x] T052 [US3] Use bounded concurrency for independent process-instance enrichment or incident-detail lookup where safe in `internal/services/processinstance/enrichment.go`
 - [ ] T053 [US3] Use bounded concurrency for independent cancel/delete dependency planning where safe in `internal/services/processinstance/dryrun.go`
 - [ ] T054 [US3] Use bounded concurrency for independent ops repair planning or execution where safe in `internal/services/ops/repair.go`
 - [ ] T055 [US3] Use bounded concurrency for independent purge, retention, and slow-process analysis steps where safe in `internal/services/ops/incident_purge.go`, `internal/services/ops/retention_policy.go`, and `internal/services/ops/slow_process_analysis.go`

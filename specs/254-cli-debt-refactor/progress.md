@@ -311,3 +311,21 @@ Started: 2026-07-24 06:28:25
 **Learnings**:
 - Cancel/delete search-selected planning now uses a process facade/service page-plan visitor; delete still freezes all page plans before one confirmation.
 ---
+---
+## Iteration 5 - 2026-07-24 15:24
+**Work Unit**: Partial US3 process-instance incident enrichment latency slice
+**Tasks Completed**:
+- [x] T046: Add fake-latency tests for process-instance search enrichment and incident detail lookup
+- [x] T052: Use bounded concurrency for independent process-instance incident-detail lookup
+**Tasks Remaining in Work Unit**: US3 remains open with T047-T051 and T053-T058 incomplete
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/process/client_test.go
+- internal/services/processinstance/enrichment.go
+- internal/services/processinstance/enrichment_test.go
+- specs/254-cli-debt-refactor/tasks.md
+- specs/254-cli-debt-refactor/ralph-memory.md
+- specs/254-cli-debt-refactor/progress.md
+**Learnings**:
+- Incident enrichment now overlaps independent detail lookups through the shared ordered pool; observed lookup call order is intentionally nondeterministic.
+---

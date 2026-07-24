@@ -22,6 +22,7 @@ import (
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
@@ -417,10 +418,10 @@ func TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssoc
 	t.Parallel()
 
 	ctx := context.Background()
-	var calls []string
+	var calls testx.SafeSlice[string]
 	incAPI := stubIncidentAPI{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-			calls = append(calls, key)
+			calls.Append(key)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
 			switch key {
 			case "123":
@@ -447,7 +448,7 @@ func TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssoc
 	}, options.WithVerbose())
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"123", "124"}, calls)
+	require.ElementsMatch(t, []string{"123", "124"}, calls.Snapshot())
 	require.Equal(t, int32(2), got.Total)
 	require.Len(t, got.Items, 2)
 	require.Equal(t, "123", got.Items[0].Item.Key)
@@ -457,6 +458,59 @@ func TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssoc
 	require.Equal(t, "124", got.Items[1].Item.Key)
 	require.Empty(t, got.Items[1].Incidents)
 	require.NotNil(t, got.Items[1].Incidents)
+}
+
+// TestClient_EnrichProcessInstancesWithIncidents_FakeLatencyUsesConcurrentIncidentLookups
+// verifies high-volume search incident enrichment can overlap independent
+// incident-detail lookups while preserving result order.
+func TestClient_EnrichProcessInstancesWithIncidents_FakeLatencyUsesConcurrentIncidentLookups(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	secondLookupStarted := make(chan struct{})
+	releaseLookups := make(chan struct{})
+	var started atomic.Int32
+	incAPI := stubIncidentAPI{
+		searchProcessInstanceIncidents: func(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			assert.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			if started.Add(1) == 2 {
+				close(secondLookupStarted)
+			}
+			select {
+			case <-releaseLookups:
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+			return []d.ProcessInstanceIncidentDetail{{IncidentKey: "incident-" + key, ProcessInstanceKey: key}}, nil
+		},
+	}
+
+	type enrichResult struct {
+		items IncidentEnrichedProcessInstances
+		err   error
+	}
+	done := make(chan enrichResult, 1)
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	go func() {
+		got, err := cli.EnrichProcessInstancesWithIncidents(ctx, ProcessInstances{
+			Items: []ProcessInstance{{Key: "pi-1"}, {Key: "pi-2"}, {Key: "pi-3"}},
+		}, options.WithIgnoreTenant())
+		done <- enrichResult{items: got, err: err}
+	}()
+
+	waitForSecondConcurrentLookup(t, secondLookupStarted, releaseLookups)
+	select {
+	case result := <-done:
+		require.NoError(t, result.err)
+		require.Equal(t, []string{"pi-1", "pi-2", "pi-3"}, []string{
+			result.items.Items[0].Item.Key,
+			result.items.Items[1].Item.Key,
+			result.items.Items[2].Item.Key,
+		})
+		require.Equal(t, "incident-pi-1", result.items.Items[0].Incidents[0].IncidentKey)
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for concurrent incident enrichment")
+	}
 }
 
 func TestClient_EnrichProcessInstancesWithVariables_PreservesOrderAndPerKeyAssociation(t *testing.T) {
@@ -957,10 +1011,10 @@ func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKey
 	t.Parallel()
 
 	ctx := context.Background()
-	var calls []string
+	var calls testx.SafeSlice[string]
 	incAPI := stubIncidentAPI{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-			calls = append(calls, key)
+			calls.Append(key)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
 			switch key {
 			case "root":
@@ -994,7 +1048,7 @@ func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKey
 	}, options.WithVerbose())
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"root", "child"}, calls)
+	require.ElementsMatch(t, []string{"root", "child"}, calls.Snapshot())
 	require.Equal(t, TraversalModeDescendants, got.Mode)
 	require.Equal(t, TraversalOutcomePartial, got.Outcome)
 	require.Equal(t, "root", got.StartKey)
@@ -1013,15 +1067,75 @@ func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKey
 	}, got.Items[1].Incidents)
 }
 
+// TestClient_EnrichTraversalWithIncidents_FakeLatencyUsesConcurrentIncidentLookups
+// verifies traversal incident-detail lookup overlaps independent keys while
+// keeping the traversal result order stable.
+func TestClient_EnrichTraversalWithIncidents_FakeLatencyUsesConcurrentIncidentLookups(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	secondLookupStarted := make(chan struct{})
+	releaseLookups := make(chan struct{})
+	var started atomic.Int32
+	incAPI := stubIncidentAPI{
+		searchProcessInstanceIncidents: func(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			if started.Add(1) == 2 {
+				close(secondLookupStarted)
+			}
+			select {
+			case <-releaseLookups:
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+			return []d.ProcessInstanceIncidentDetail{{IncidentKey: "incident-" + key, ProcessInstanceKey: key}}, nil
+		},
+	}
+
+	type enrichResult struct {
+		items IncidentEnrichedTraversalResult
+		err   error
+	}
+	done := make(chan enrichResult, 1)
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	go func() {
+		got, err := cli.EnrichTraversalWithIncidents(ctx, TraversalResult{
+			Mode:    TraversalModeFamily,
+			Outcome: TraversalOutcomeComplete,
+			Keys:    []string{"root", "child", "grandchild"},
+			Chain: map[string]ProcessInstance{
+				"root":       {Key: "root"},
+				"child":      {Key: "child"},
+				"grandchild": {Key: "grandchild"},
+			},
+		}, options.WithVerbose())
+		done <- enrichResult{items: got, err: err}
+	}()
+
+	waitForSecondConcurrentLookup(t, secondLookupStarted, releaseLookups)
+	select {
+	case result := <-done:
+		require.NoError(t, result.err)
+		require.Equal(t, []string{"root", "child", "grandchild"}, []string{
+			result.items.Items[0].Item.Key,
+			result.items.Items[1].Item.Key,
+			result.items.Items[2].Item.Key,
+		})
+		require.Equal(t, "incident-root", result.items.Items[0].Incidents[0].IncidentKey)
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for concurrent traversal incident enrichment")
+	}
+}
+
 // TestClient_EnrichTraversalWithIncidents_PassesConfiguredOptionsToIncidentLookup verifies tenant and verbosity options flow into every enrichment lookup.
 func TestClient_EnrichTraversalWithIncidents_PassesConfiguredOptionsToIncidentLookup(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	var calls []string
+	var calls testx.SafeSlice[string]
 	incAPI := stubIncidentAPI{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-			calls = append(calls, key)
+			calls.Append(key)
 			cfg := services.ApplyCallOptions(opts)
 			assert.True(t, cfg.Verbose)
 			assert.True(t, cfg.WithStat)
@@ -1041,7 +1155,7 @@ func TestClient_EnrichTraversalWithIncidents_PassesConfiguredOptionsToIncidentLo
 	}, options.WithVerbose(), options.WithStat())
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"root", "child"}, calls)
+	require.ElementsMatch(t, []string{"root", "child"}, calls.Snapshot())
 	require.Len(t, got.Items, 2)
 }
 
@@ -1050,10 +1164,10 @@ func TestClient_EnrichTraversalWithIncidents_LooksUpOnlyTraversalResultKeys(t *t
 	t.Parallel()
 
 	ctx := context.Background()
-	var calls []string
+	var calls testx.SafeSlice[string]
 	incAPI := stubIncidentAPI{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-			calls = append(calls, key)
+			calls.Append(key)
 			switch key {
 			case "root", "walked":
 				return nil, nil
@@ -1077,7 +1191,7 @@ func TestClient_EnrichTraversalWithIncidents_LooksUpOnlyTraversalResultKeys(t *t
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"root", "walked"}, calls)
+	require.ElementsMatch(t, []string{"root", "walked"}, calls.Snapshot())
 	require.Len(t, got.Items, 2)
 	require.Equal(t, "root", got.Items[0].Item.Key)
 	require.Equal(t, "walked", got.Items[1].Item.Key)
@@ -1089,10 +1203,10 @@ func TestClient_EnrichTraversalWithIncidents_PropagatesIncidentLookupFailure(t *
 
 	ctx := context.Background()
 	lookupErr := errors.New("incident lookup failed")
-	var calls []string
+	var calls testx.SafeSlice[string]
 	incAPI := stubIncidentAPI{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-			calls = append(calls, key)
+			calls.Append(key)
 			if key == "child" {
 				return nil, lookupErr
 			}
@@ -1112,8 +1226,21 @@ func TestClient_EnrichTraversalWithIncidents_PropagatesIncidentLookupFailure(t *
 	})
 
 	require.ErrorIs(t, err, lookupErr)
-	require.Equal(t, []string{"root", "child"}, calls)
+	require.ElementsMatch(t, []string{"root", "child"}, calls.Snapshot())
 	require.Empty(t, got.Items)
+}
+
+// waitForSecondConcurrentLookup keeps fake-latency callbacks blocked until a
+// second lookup enters the service path, proving the work is not serialized.
+func waitForSecondConcurrentLookup(t *testing.T, secondLookupStarted <-chan struct{}, releaseLookups chan struct{}) {
+	t.Helper()
+	select {
+	case <-secondLookupStarted:
+		close(releaseLookups)
+	case <-time.After(500 * time.Millisecond):
+		close(releaseLookups)
+		t.Fatal("expected a second lookup to start before the first fake-latency lookup was released")
+	}
 }
 
 func TestClient_WaitForProcessInstancesExpectation_MapsIncidentTrueRequestAndReports(t *testing.T) {
