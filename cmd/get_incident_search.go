@@ -81,6 +81,7 @@ func nextIncidentSearchPageRequest(cmd *cobra.Command, cfg *config.Config, curre
 	return newIncidentSearchPageRequest(cmd, cfg, current.From+current.Size)
 }
 
+// incidentSearchContinuationState translates incident overflow metadata into the next CLI paging action.
 func incidentSearchContinuationState(page incident.Page, cumulative int, autoContinue bool) processInstanceContinuationState {
 	if isIncidentLimitReached(cumulative) {
 		return processInstanceContinuationLimitReached
@@ -117,6 +118,18 @@ func renderIncidentSearchPage(cmd *cobra.Command, items []incident.ProcessInstan
 
 func canUseIncidentExactReportedTotal(page incident.Page) bool {
 	return page.ReportedTotal != nil && page.ReportedTotal.Kind == incident.ReportedTotalKindExact
+}
+
+// describeIncidentOverflowState maps incident overflow metadata to verbose progress wording.
+func describeIncidentOverflowState(state incident.OverflowState) string {
+	switch state {
+	case incident.OverflowStateHasMore:
+		return "yes"
+	case incident.OverflowStateIndeterminate:
+		return "unknown"
+	default:
+		return "no"
+	}
 }
 
 func searchIncidentsTotal(cmd *cobra.Command, cli incident.API, cfg *config.Config, filter incident.Filter) (int64, error) {
@@ -174,6 +187,13 @@ func searchIncidentsWithPaging(cmd *cobra.Command, cli incident.API, cfg *config
 		processedTotal += len(items)
 
 		continuation := incidentSearchContinuationState(page, processedTotal, autoContinue)
+		printSearchPageProgress(cmd, searchPageProgressSummary{
+			PageSize:          page.Request.Size,
+			CurrentPageCount:  len(items),
+			CumulativeCount:   processedTotal,
+			MoreMatches:       describeIncidentOverflowState(page.OverflowState),
+			ContinuationState: continuation,
+		})
 		switch continuation {
 		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop, processInstanceContinuationLimitReached:
 			return printFoundAndReturn()

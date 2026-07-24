@@ -63,13 +63,7 @@ func renderOpsPurgeAllProcessDefinitionsDiscovery(cmd *cobra.Command, result ops
 
 // renderOpsPurgeAllProcessDefinitionsDiscoveryStatus exposes whether the frozen APD scope was complete or limited.
 func renderOpsPurgeAllProcessDefinitionsDiscoveryStatus(cmd *cobra.Command, status ops.DiscoveryScopeStatus) {
-	if status.Limited {
-		renderHumanLine(cmd, "discovery user-limited: limit %d; pages %d; batch size %d", status.Limit, status.Pages, status.BatchSize)
-		return
-	}
-	if status.Complete && flagVerbose {
-		renderHumanLine(cmd, "discovery complete: pages %d; batch size %d", status.Pages, status.BatchSize)
-	}
+	renderOpsDiscoveryStatus(cmd, status)
 }
 
 // renderOpsPurgeAllProcessDefinitionsPlan prints the current delete-plan step status.

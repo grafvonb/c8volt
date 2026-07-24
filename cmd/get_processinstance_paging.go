@@ -95,6 +95,17 @@ type processInstancePageActionResults struct {
 	DryRunPreviews []processInstanceDryRunPreview
 }
 
+// searchPageProgressSummary is the command-owned progress contract for basic
+// paged searches whose backend types differ but whose operator-facing paging
+// diagnostics should stay consistent.
+type searchPageProgressSummary struct {
+	PageSize          int32
+	CurrentPageCount  int
+	CumulativeCount   int
+	MoreMatches       string
+	ContinuationState processInstanceContinuationState
+}
+
 // pickPISearchSize normalizes the legacy global batch-size flag to the maximum
 // supported Operate page size whenever the flag is unset or out of range. The
 // flag validation path reports invalid user input separately; this guard keeps
@@ -279,20 +290,43 @@ func startCommandActivity(cmd *cobra.Command, msg string) func() {
 // command execution. It mirrors logPISearchProgress, but keeps human-visible
 // diagnostics out of stdout so JSON/key output remains parseable.
 func printPISearchProgress(cmd *cobra.Command, summary processInstanceProgressSummary) {
-	if cmd == nil || !flagVerbose || pickMode() != RenderModeOneLine {
+	if cmd == nil || flagQuiet || !flagVerbose || pickMode() != RenderModeOneLine {
 		return
 	}
 	fmt.Fprintln(cmd.ErrOrStderr(), formatPISearchProgress(summary))
+}
+
+// printSearchPageProgress writes verbose search progress to stderr for basic
+// read commands while keeping JSON, keys-only, quiet, and non-verbose output
+// free of durable progress text.
+func printSearchPageProgress(cmd *cobra.Command, summary searchPageProgressSummary) {
+	if cmd == nil || flagQuiet || !flagVerbose || pickMode() != RenderModeOneLine {
+		return
+	}
+	fmt.Fprintln(cmd.ErrOrStderr(), formatSearchPageProgress(summary))
 }
 
 // logPISearchProgress sends the same verbose progress text to the command
 // logger. This gives automated operators a stable diagnostic line even when
 // stderr is not collected.
 func logPISearchProgress(cmd *cobra.Command, log *slog.Logger, summary processInstanceProgressSummary) {
-	if cmd == nil || log == nil || !flagVerbose || pickMode() != RenderModeOneLine {
+	if cmd == nil || log == nil || flagQuiet || !flagVerbose || pickMode() != RenderModeOneLine {
 		return
 	}
 	log.InfoContext(cmd.Context(), formatPISearchProgress(summary))
+}
+
+// formatSearchPageProgress renders the shared basic-search progress sentence:
+// page size, current page count, cumulative count, more-data state, and the
+// next command action.
+func formatSearchPageProgress(summary searchPageProgressSummary) string {
+	return fmt.Sprintf("page size: %d, current page: %d, total so far: %d, more matches: %s, next step: %s",
+		summary.PageSize,
+		summary.CurrentPageCount,
+		summary.CumulativeCount,
+		summary.MoreMatches,
+		describePIContinuationState(summary.ContinuationState),
+	)
 }
 
 // formatPISearchProgress produces the compact progress sentence shared by

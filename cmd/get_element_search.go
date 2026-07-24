@@ -56,10 +56,19 @@ func searchElementsWithPaging(cmd *cobra.Command, cli element.API, request eleme
 		}
 		processedTotal += len(items)
 
-		if isElementLimitReached(processedTotal, request.Limit) || page.OverflowState != element.OverflowStateHasMore {
+		continuation := elementSearchContinuationState(page, processedTotal, request.Limit, autoContinue)
+		printSearchPageProgress(cmd, searchPageProgressSummary{
+			PageSize:          page.Request.Size,
+			CurrentPageCount:  len(items),
+			CumulativeCount:   processedTotal,
+			MoreMatches:       describeElementOverflowState(page.OverflowState),
+			ContinuationState: continuation,
+		})
+
+		if continuation == processInstanceContinuationLimitReached || continuation == processInstanceContinuationCompleted {
 			return printFoundAndReturn()
 		}
-		if autoContinue {
+		if continuation == processInstanceContinuationAutoContinue {
 			pageReq = nextElementSearchPageRequest(pageReq, page, request.Limit, processedTotal)
 			continue
 		}
@@ -139,6 +148,28 @@ func limitElementItems(items []element.Element, cumulative int, limit int32) []e
 // isElementLimitReached reports whether the cross-page limit has been satisfied.
 func isElementLimitReached(cumulative int, limit int32) bool {
 	return limit > 0 && cumulative >= int(limit)
+}
+
+// elementSearchContinuationState translates element overflow metadata into the next CLI paging action.
+func elementSearchContinuationState(page element.Page, cumulative int, limit int32, autoContinue bool) processInstanceContinuationState {
+	if isElementLimitReached(cumulative, limit) {
+		return processInstanceContinuationLimitReached
+	}
+	if page.OverflowState == element.OverflowStateHasMore {
+		if autoContinue {
+			return processInstanceContinuationAutoContinue
+		}
+		return processInstanceContinuationPrompt
+	}
+	return processInstanceContinuationCompleted
+}
+
+// describeElementOverflowState maps element overflow metadata to verbose progress wording.
+func describeElementOverflowState(state element.OverflowState) string {
+	if state == element.OverflowStateHasMore {
+		return "yes"
+	}
+	return "no"
 }
 
 // nextElementSearchPageRequest advances offset pagination using the actual page size.

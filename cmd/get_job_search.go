@@ -42,10 +42,19 @@ func searchJobsWithPaging(cmd *cobra.Command, cli job.API, request job.SearchReq
 		}
 		processedTotal += len(items)
 
-		if isJobLimitReached(processedTotal, request.Limit) || page.OverflowState != job.OverflowStateHasMore {
+		continuation := jobSearchContinuationState(page, processedTotal, request.Limit, autoContinue)
+		printSearchPageProgress(cmd, searchPageProgressSummary{
+			PageSize:          page.Request.Size,
+			CurrentPageCount:  len(items),
+			CumulativeCount:   processedTotal,
+			MoreMatches:       describeJobOverflowState(page.OverflowState),
+			ContinuationState: continuation,
+		})
+
+		if continuation == processInstanceContinuationLimitReached || continuation == processInstanceContinuationCompleted {
 			return printFoundAndReturn()
 		}
-		if autoContinue {
+		if continuation == processInstanceContinuationAutoContinue {
 			pageReq = nextJobSearchPageRequest(pageReq, page, request.Limit, processedTotal)
 			continue
 		}
@@ -118,6 +127,28 @@ func limitJobItems(items []job.Job, cumulative int, limit int32) []job.Job {
 
 func isJobLimitReached(cumulative int, limit int32) bool {
 	return limit > 0 && cumulative >= int(limit)
+}
+
+// jobSearchContinuationState translates job overflow metadata into the next CLI paging action.
+func jobSearchContinuationState(page job.Page, cumulative int, limit int32, autoContinue bool) processInstanceContinuationState {
+	if isJobLimitReached(cumulative, limit) {
+		return processInstanceContinuationLimitReached
+	}
+	if page.OverflowState == job.OverflowStateHasMore {
+		if autoContinue {
+			return processInstanceContinuationAutoContinue
+		}
+		return processInstanceContinuationPrompt
+	}
+	return processInstanceContinuationCompleted
+}
+
+// describeJobOverflowState maps job overflow metadata to verbose progress wording.
+func describeJobOverflowState(state job.OverflowState) string {
+	if state == job.OverflowStateHasMore {
+		return "yes"
+	}
+	return "no"
 }
 
 func nextJobSearchPageRequest(current job.PageRequest, page job.Page, limit int32, loaded int) job.PageRequest {

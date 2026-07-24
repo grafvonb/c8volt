@@ -84,3 +84,6 @@ Expected outcome: full repository validation passes with race-enabled test cover
 
 - 2026-07-24 06:37: Phase 2 T012 passed with `go test ./cmd -run 'TestCommandContract|TestCapability' -count=1`.
 - 2026-07-24 06:37: Phase 2 artifact checks passed with `go test ./cmd -run 'TestCapabilityDocumentForRoot_CoversCLIDebtAssessment' -count=1` and `go test ./docsgen -run 'TestCLIDebtRefactorAssessmentArtifactDocumentsBaseline' -count=1`.
+- 2026-07-24 06:47: US1 focused output checks passed with `go test ./cmd ./toolx/logging -run 'TestGet(Job|Element|Incident|ProcessInstance).*Progress|TestPagedSearchMachineOutputCleanliness|TestOpsPurge.*Discovery|TestRenderOpsRepair.*Discovery|TestIndicatorEnabled|TestActivityWriter_DisabledSuppressesActivityOutput' -count=1`.
+- 2026-07-24 06:47: US1 T025 passed with `go test ./cmd -run 'TestGet(Job|Element|Incident|ProcessInstance)|Test.*JSON|Test.*KeysOnly|Test.*Automation|Test.*NoIndicator|Test.*Prompt' -count=1`.
+- 2026-07-24 06:47: US1 activity package validation passed with `go test ./toolx/logging -count=1`; whitespace validation passed with `git diff --check`.

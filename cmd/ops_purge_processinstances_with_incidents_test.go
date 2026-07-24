@@ -182,6 +182,34 @@ func TestOpsPurgeProcessInstancesWithIncidentsDryRunDiscoveryOutput(t *testing.T
 	require.Contains(t, output, "outcome: planned; no changes applied; use --verbose to list process-instance keys")
 }
 
+// TestOpsPurgeProcessInstancesWithIncidentsDiscoveryStatusOutput verifies compact limited and verbose complete discovery summaries.
+func TestOpsPurgeProcessInstancesWithIncidentsDiscoveryStatusOutput(t *testing.T) {
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
+
+	limited := sampleIncidentPurgeDryRunPlanResult()
+	limited.Discovery.DiscoveryScopeStatus = ops.DiscoveryScopeStatus{
+		Limited:          true,
+		Limit:            1,
+		BatchSize:        2,
+		Pages:            1,
+		CandidatesSeen:   2,
+		CandidatesFrozen: 1,
+	}
+	var limitedOutput bytes.Buffer
+	cmd := &cobra.Command{}
+	cmd.SetOut(&limitedOutput)
+	require.NoError(t, renderOpsPurgeProcessInstancesWithIncidentsResult(cmd, limited))
+	require.Contains(t, limitedOutput.String(), "discovery user-limited: limit 1; pages 1; batch size 2")
+
+	flagVerbose = true
+	var completeOutput bytes.Buffer
+	cmd = &cobra.Command{}
+	cmd.SetOut(&completeOutput)
+	require.NoError(t, renderOpsPurgeProcessInstancesWithIncidentsResult(cmd, sampleIncidentPurgeDryRunPlanResult()))
+	require.Contains(t, completeOutput.String(), "discovery complete: pages 2; batch size 2")
+}
+
 // TestOpsPurgeProcessInstancesWithIncidentsDryRunJSONDiscoveryData verifies machine output carries complete discovery fields.
 func TestOpsPurgeProcessInstancesWithIncidentsDryRunJSONDiscoveryData(t *testing.T) {
 	resetOpsPurgeProcessInstancesWithIncidentsFlagState()

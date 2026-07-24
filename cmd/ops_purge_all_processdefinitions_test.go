@@ -181,6 +181,28 @@ func TestOpsPurgeAllProcessDefinitionsDryRunDiscoveryOutput(t *testing.T) {
 	require.Contains(t, verbose.String(), "duplicate candidate process-definition keys: 2251799813685255")
 }
 
+// TestOpsPurgeAllProcessDefinitionsUserLimitedDiscoveryOutput verifies user-limited APD discovery is visible in compact output.
+func TestOpsPurgeAllProcessDefinitionsUserLimitedDiscoveryOutput(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+
+	result := sampleAllProcessDefinitionsPurgeDryRunDiscoveryResult()
+	result.Discovery.DiscoveryScopeStatus = ops.DiscoveryScopeStatus{
+		Limited:          true,
+		Limit:            1,
+		BatchSize:        25,
+		Pages:            1,
+		CandidatesSeen:   25,
+		CandidatesFrozen: 1,
+	}
+	var buf bytes.Buffer
+	cmd := &cobra.Command{}
+	cmd.SetOut(&buf)
+	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, result))
+
+	require.Contains(t, buf.String(), "discovery user-limited: limit 1; pages 1; batch size 25")
+}
+
 // TestOpsPurgeAllProcessDefinitionsDryRunJSONDiscoveryData verifies machine output carries complete discovery fields.
 func TestOpsPurgeAllProcessDefinitionsDryRunJSONDiscoveryData(t *testing.T) {
 	resetOpsPurgeAllProcessDefinitionsFlagState()

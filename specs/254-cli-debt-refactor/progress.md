@@ -46,3 +46,46 @@ Started: 2026-07-24 06:28:25
 **Learnings**:
 - The live capability tree exposes exactly 55 discoverable command nodes; the assessment is now validated against that tree before user-story refactors begin.
 ---
+---
+## Iteration 3 - 2026-07-24 06:47
+**Work Unit**: Phase 3 User Story 1 - Consistent Output During Large CLI Workflows
+**Tasks Completed**:
+- [x] T013: Add paged search verbose progress tests for job and element output
+- [x] T014: Add paged search verbose progress tests for incident and process-instance output
+- [x] T015: Add machine-output cleanliness tests for JSON, keys-only, quiet, automation, and no-indicator modes
+- [x] T016: Add ops discovery summary renderer tests for complete vs user-limited discovery
+- [x] T017: Add shared activity indicator enablement tests
+- [x] T018: Define the CLI progress policy artifact
+- [x] T019: Align command-level progress helper behavior with the policy
+- [x] T020: Align job search progress, prompt, incremental rendering, and found-summary behavior with the policy
+- [x] T021: Align element search progress, prompt, incremental rendering, and found-summary behavior with the policy
+- [x] T022: Align incident search progress, prompt, process-instance-key output, and found-summary behavior with the policy
+- [x] T023: Align process-instance search progress, prompt, machine-output silence, and warning-stop behavior with the policy
+- [x] T024: Align ops discovery summaries with the policy
+- [x] T025: Run US1 command validation and record the result
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_json_assertions_test.go
+- cmd/cmd_views_ops_processinstance_scope.go
+- cmd/cmd_views_ops_purge_all_processdefinitions.go
+- cmd/cmd_views_ops_purge_processinstances_with_incidents.go
+- cmd/cmd_views_ops_repair.go
+- cmd/get_element_search.go
+- cmd/get_element_test.go
+- cmd/get_incident_search.go
+- cmd/get_incident_test.go
+- cmd/get_job_search.go
+- cmd/get_job_test.go
+- cmd/get_processinstance_paging.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- specs/254-cli-debt-refactor/progress-policy.md
+- specs/254-cli-debt-refactor/quickstart.md
+- specs/254-cli-debt-refactor/tasks.md
+- specs/254-cli-debt-refactor/ralph-memory.md
+- specs/254-cli-debt-refactor/progress.md
+- toolx/logging/activity_test.go
+**Learnings**:
+- Basic paged searches now share the process-instance progress vocabulary while keeping machine modes clean; ops discovery status rendering is centralized for complete vs user-limited summaries.
+---

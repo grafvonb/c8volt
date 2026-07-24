@@ -322,6 +322,30 @@ func TestGetElementCommand_SearchTotalOnlyOutput(t *testing.T) {
 	require.Len(t, bodies, 1)
 }
 
+// TestGetElementCommand_SearchVerboseProgress verifies paged element search reports durable progress away from stdout.
+func TestGetElementCommand_SearchVerboseProgress(t *testing.T) {
+	var bodies []map[string]any
+	srv := newElementSearchServerResponses(t, &bodies,
+		`{"items":[{"elementInstanceKey":"2251799813689002","state":"ACTIVE"},{"elementInstanceKey":"2251799813689003","state":"ACTIVE"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+		`{"items":[{"elementInstanceKey":"2251799813689004","state":"COMPLETED"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForElementTest(t, "--config", cfgPath, "--verbose", "--auto-confirm", "get", "element", "--batch-size", "2")
+
+	require.Len(t, bodies, 2)
+	firstPage := requireJSONObject(t, bodies[0]["page"])
+	require.Equal(t, float64(2), firstPage["limit"])
+	require.Equal(t, float64(0), firstPage["from"])
+	secondPage := requireJSONObject(t, bodies[1]["page"])
+	require.Equal(t, float64(2), secondPage["limit"])
+	require.Equal(t, float64(2), secondPage["from"])
+	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
+	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+	require.Contains(t, output, "found: 3")
+}
+
 func TestGetElementCommand_KeyedLookupHumanOutput(t *testing.T) {
 	var requests []string
 	srv := newElementLookupServer(t, &requests, http.StatusOK, `{

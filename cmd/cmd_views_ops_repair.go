@@ -125,13 +125,7 @@ func renderOpsRepairProcessInstanceResult(cmd *cobra.Command, result ops.RepairR
 }
 
 func renderOpsRepairDiscoveryStatus(cmd *cobra.Command, status ops.DiscoveryScopeStatus) {
-	if status.Limited {
-		renderHumanLine(cmd, "discovery user-limited: limit %d; pages %d; batch size %d", status.Limit, status.Pages, status.BatchSize)
-		return
-	}
-	if status.Complete && flagVerbose {
-		renderHumanLine(cmd, "discovery complete: pages %d; batch size %d", status.Pages, status.BatchSize)
-	}
+	renderOpsDiscoveryStatus(cmd, status)
 }
 
 func countOpsRepairIncidentJobNotApplicable(items []ops.RepairPlanItem) int {

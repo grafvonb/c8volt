@@ -189,6 +189,30 @@ func TestGetJobCommand_SearchModeLimitShorthandCapsPagedSearch(t *testing.T) {
 	require.Equal(t, float64(0), page["from"])
 }
 
+// TestGetJobCommand_SearchVerboseProgress verifies paged job search reports durable progress away from stdout.
+func TestGetJobCommand_SearchVerboseProgress(t *testing.T) {
+	var bodies []map[string]any
+	srv := newJobSearchServerResponses(t, &bodies,
+		`{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0},{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+		`{"items":[{"jobKey":"2251799813711969","state":"FAILED","retries":2}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "--verbose", "--auto-confirm", "get", "job", "--batch-size", "2")
+
+	require.Len(t, bodies, 2)
+	firstPage := requireJSONObject(t, bodies[0]["page"])
+	require.Equal(t, float64(2), firstPage["limit"])
+	require.Equal(t, float64(0), firstPage["from"])
+	secondPage := requireJSONObject(t, bodies[1]["page"])
+	require.Equal(t, float64(2), secondPage["limit"])
+	require.Equal(t, float64(2), secondPage["from"])
+	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
+	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+	require.Contains(t, output, "found: 3")
+}
+
 func TestGetJobCommand_SearchModeTotalUsesReportedCount(t *testing.T) {
 	var bodies []map[string]any
 	srv := newJobSearchServer(t, &bodies, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0},{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":10,"hasMoreTotalItems":false}}`)

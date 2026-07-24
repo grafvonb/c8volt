@@ -54,22 +54,22 @@
 
 ### Tests for User Story 1
 
-- [ ] T013 [P] [US1] Add paged search verbose progress tests for job and element output in `cmd/get_job_test.go` and `cmd/get_element_test.go`
-- [ ] T014 [P] [US1] Add paged search verbose progress tests for incident and process-instance output in `cmd/get_incident_test.go` and `cmd/get_processinstance_test.go`
-- [ ] T015 [P] [US1] Add machine-output cleanliness tests for JSON, keys-only, quiet, automation, and no-indicator modes in `cmd/cmd_json_assertions_test.go`
-- [ ] T016 [P] [US1] Add ops discovery summary renderer tests for complete vs user-limited discovery in `cmd/cmd_views_ops_repair_test.go`, `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`, and `cmd/cmd_views_ops_purge_all_processdefinitions.go`
-- [ ] T017 [P] [US1] Add shared activity indicator enablement tests for quiet, automation, no-indicator, and JSON log constraints in `toolx/logging/activity_test.go` and `cmd/root_test.go`
+- [x] T013 [P] [US1] Add paged search verbose progress tests for job and element output in `cmd/get_job_test.go` and `cmd/get_element_test.go`
+- [x] T014 [P] [US1] Add paged search verbose progress tests for incident and process-instance output in `cmd/get_incident_test.go` and `cmd/get_processinstance_test.go`
+- [x] T015 [P] [US1] Add machine-output cleanliness tests for JSON, keys-only, quiet, automation, and no-indicator modes in `cmd/cmd_json_assertions_test.go`
+- [x] T016 [P] [US1] Add ops discovery summary renderer tests for complete vs user-limited discovery in `cmd/cmd_views_ops_repair_test.go`, `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`, and `cmd/cmd_views_ops_purge_all_processdefinitions.go`
+- [x] T017 [P] [US1] Add shared activity indicator enablement tests for quiet, automation, no-indicator, and JSON log constraints in `toolx/logging/activity_test.go` and `cmd/root_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] Define the CLI progress policy artifact in `specs/254-cli-debt-refactor/progress-policy.md`
-- [ ] T019 [US1] Align command-level progress helper behavior with `specs/254-cli-debt-refactor/progress-policy.md` in `cmd/get_processinstance_paging.go`
-- [ ] T020 [US1] Align job search progress, prompt, incremental rendering, and found-summary behavior with the policy in `cmd/get_job_search.go`
-- [ ] T021 [US1] Align element search progress, prompt, incremental rendering, and found-summary behavior with the policy in `cmd/get_element_search.go`
-- [ ] T022 [US1] Align incident search progress, prompt, process-instance-key output, and found-summary behavior with the policy in `cmd/get_incident_search.go`
-- [ ] T023 [US1] Align process-instance search progress, prompt, machine-output silence, and warning-stop behavior with the policy in `cmd/get_processinstance_search.go`
-- [ ] T024 [US1] Align ops discovery summaries with the policy in `cmd/cmd_views_ops_processinstance_scope.go`, `cmd/cmd_views_ops_repair.go`, and `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`
-- [ ] T025 [US1] Run `go test ./cmd -run 'TestGet(Job|Element|Incident|ProcessInstance)|Test.*JSON|Test.*KeysOnly|Test.*Automation|Test.*NoIndicator|Test.*Prompt' -count=1` and record the result in `specs/254-cli-debt-refactor/quickstart.md`
+- [x] T018 [US1] Define the CLI progress policy artifact in `specs/254-cli-debt-refactor/progress-policy.md`
+- [x] T019 [US1] Align command-level progress helper behavior with `specs/254-cli-debt-refactor/progress-policy.md` in `cmd/get_processinstance_paging.go`
+- [x] T020 [US1] Align job search progress, prompt, incremental rendering, and found-summary behavior with the policy in `cmd/get_job_search.go`
+- [x] T021 [US1] Align element search progress, prompt, incremental rendering, and found-summary behavior with the policy in `cmd/get_element_search.go`
+- [x] T022 [US1] Align incident search progress, prompt, process-instance-key output, and found-summary behavior with the policy in `cmd/get_incident_search.go`
+- [x] T023 [US1] Align process-instance search progress, prompt, machine-output silence, and warning-stop behavior with the policy in `cmd/get_processinstance_search.go`
+- [x] T024 [US1] Align ops discovery summaries with the policy in `cmd/cmd_views_ops_processinstance_scope.go`, `cmd/cmd_views_ops_repair.go`, and `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`
+- [x] T025 [US1] Run `go test ./cmd -run 'TestGet(Job|Element|Incident|ProcessInstance)|Test.*JSON|Test.*KeysOnly|Test.*Automation|Test.*NoIndicator|Test.*Prompt' -count=1` and record the result in `specs/254-cli-debt-refactor/quickstart.md`
 
 **Checkpoint**: User Story 1 is independently functional as the MVP and machine output remains clean.
 

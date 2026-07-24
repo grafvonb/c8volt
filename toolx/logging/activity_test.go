@@ -61,6 +61,20 @@ func TestActivityWriter_ClearsIndicatorBeforeNormalOutput(t *testing.T) {
 	require.NotContains(t, out, "INFO done\n|")
 }
 
+// TestActivityWriter_DisabledSuppressesActivityOutput verifies root-level gating can silence the shared writer.
+func TestActivityWriter_DisabledSuppressesActivityOutput(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	w := newActivityWriter(&buf, false)
+
+	w.StartActivity("waiting")
+	w.UpdateActivity("checked 10")
+	w.StopActivity()
+
+	require.Empty(t, buf.String())
+}
+
 func TestActivityWriter_UpdateActivityRefreshesMessage(t *testing.T) {
 	t.Parallel()
 
