@@ -27,6 +27,7 @@ Started: 2026-07-24T04:28:25Z
 - US2 T042-T045 added process-instance mutation planning page contracts across `internal/domain/processinstance.go` and `c8volt/process/model.go`, moved search-selected cancel/delete page traversal, limit trimming, and page-level dry-run dependency planning into `internal/services/processinstance.PlanProcessInstanceMutationPages`, exposed it through `c8volt/process.PlanProcessInstanceMutationPages`, removed the old command-owned `processPISearchPagesWithAction` loop, and updated the assessment/quickstart after `go test ./cmd ./c8volt/job ./c8volt/element ./c8volt/incident ./c8volt/process -count=1` passed.
 - US3 T046/T052 added fake-latency facade tests for process-instance incident enrichment and traversal incident-detail lookup, then moved those two independent incident lookup paths to `toolx/pool.ExecuteSlice` in `internal/services/processinstance/enrichment.go`. Result ordering remains deterministic because pool result slots follow input order; lookup call order is no longer deterministic.
 - US3 T047 added internal fake-latency coverage in `internal/services/processinstance/dryrun_test.go` for direct dry-run dependency expansion and search-selected mutation page planning. The tests pin concurrent ancestry/descendant traversal through the existing bounded pool path and confirm option pass-through plus deterministic plan ordering.
+- US3 T048 added high-volume bounded-worker tests in `internal/services/ops/repair_test.go` and `internal/services/ops/incident_purge_test.go`. The tests use release-gated worker callbacks to prove repair incident discovery and incident-purge ancestry planning start two independent calls with `Workers: 2`, do not schedule a third while both workers are blocked, and preserve deterministic result ordering.
 
 ## Gotchas
 - `delete process-instance` search mode intentionally plans all selected pages before confirmed mutation; treating it like page-by-page cancel would weaken frozen-scope confirmation behavior.
@@ -54,10 +55,12 @@ Started: 2026-07-24T04:28:25Z
 - `go test ./c8volt/process -run 'Test.*(Latency|Concurrent|Performance|HighVolume|Workers)' -count=1`
 - `go test ./internal/services/processinstance -run 'Test(DryRunCancelOrDeletePlan|PlanProcessInstanceMutationPages).*(Workers|Dependency|Planning|Concurrent|Latency)' -count=1`
 - `go test -race ./internal/services/processinstance -run 'Test(DryRunCancelOrDeletePlan|PlanProcessInstanceMutationPages).*(Workers|Dependency|Planning|Concurrent|Latency)' -count=1`
+- `go test ./internal/services/ops -run 'Test.*(Repair|Purge|Worker|Bounded)' -count=1`
+- `go test -race ./internal/services/ops -run 'TestRepairProcessInstancesUsesBoundedWorkersForIncidentDiscovery|TestPurgeProcessInstancesWithIncidentsUsesBoundedWorkersForDeletePlanning' -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not infer that similar ops discovery loops are equivalent until the candidate counts, frozen scope, report fields, force behavior, and confirmation prompt semantics are compared.
 
 ## Current Handoff
-- Continue Phase 5 / US3 at T048. T047 is complete with `internal/services/processinstance/dryrun_test.go` coverage for dry-run dependency planning; T053 remains unmarked until the implementation task is addressed or explicitly reconciled against the existing bounded pool code. Do not start US4 or polish.
+- Continue Phase 5 / US3 at T049. T048 is validated and committed. T053 remains unmarked until the implementation task is addressed or explicitly reconciled against the existing bounded pool code. Do not start US4 or polish.

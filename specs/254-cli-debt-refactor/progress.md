@@ -344,3 +344,19 @@ Started: 2026-07-24 06:28:25
 **Learnings**:
 - Dry-run dependency planning already uses the service-owned bounded pool path; new fake-latency tests now pin concurrency and deterministic page-plan ordering.
 ---
+---
+## Iteration 2 - 2026-07-24 16:09
+**Work Unit**: Partial US3 ops repair and purge worker tests
+**Tasks Completed**:
+- [x] T048: Add high-volume ops repair and purge tests for bounded worker behavior
+**Tasks Remaining in Work Unit**: US3 remains open with T049-T051 and T053-T058 incomplete
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/ops/repair_test.go
+- internal/services/ops/incident_purge_test.go
+- specs/254-cli-debt-refactor/tasks.md
+- specs/254-cli-debt-refactor/ralph-memory.md
+- specs/254-cli-debt-refactor/progress.md
+**Learnings**:
+- Ops repair incident discovery and incident purge ancestry planning are now covered by release-gated bounded-worker tests.
+---

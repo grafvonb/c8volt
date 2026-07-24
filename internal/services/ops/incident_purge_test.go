@@ -456,6 +456,82 @@ func TestPurgeProcessInstancesWithIncidentsDryRunBuildsDeletePlan(t *testing.T) 
 	require.Equal(t, got.DeletePlan, got.Report.DeletePlan)
 }
 
+// TestPurgeProcessInstancesWithIncidentsUsesBoundedWorkersForDeletePlanning verifies incident purge overlaps independent ancestry lookups without exceeding the requested worker cap.
+func TestPurgeProcessInstancesWithIncidentsUsesBoundedWorkersForDeletePlanning(t *testing.T) {
+	t.Parallel()
+
+	incAPI := stubIncidentAPI{
+		searchIncidents: func(_ context.Context, _ d.IncidentFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			return []d.ProcessInstanceIncidentDetail{
+				{IncidentKey: "inc-1", ProcessInstanceKey: "pi-1", State: "ACTIVE"},
+				{IncidentKey: "inc-2", ProcessInstanceKey: "pi-2", State: "ACTIVE"},
+				{IncidentKey: "inc-3", ProcessInstanceKey: "pi-3", State: "ACTIVE"},
+			}, nil
+		},
+	}
+	started := make(chan string, 3)
+	release := make(chan struct{})
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			started <- startKey
+			<-release
+			rootKey := "root-" + startKey
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: startKey,
+				RootKey:  rootKey,
+				Keys:     []string{startKey, rootKey},
+				Chain: map[string]d.ProcessInstance{
+					startKey: {Key: startKey, State: d.StateCompleted},
+					rootKey:  {Key: rootKey, State: d.StateTerminated},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			startKey := rootKey[len("root-"):]
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeDescendants,
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{rootKey, startKey},
+				Chain: map[string]d.ProcessInstance{
+					rootKey:  {Key: rootKey, State: d.StateTerminated},
+					startKey: {Key: startKey, State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	done := make(chan struct {
+		result d.IncidentPurgeResult
+		err    error
+	}, 1)
+	go func() {
+		got, err := New(piAPI, incAPI).PurgeProcessInstancesWithIncidents(context.Background(), d.IncidentPurgeRequest{
+			DryRun:  true,
+			Workers: 2,
+		})
+		done <- struct {
+			result d.IncidentPurgeResult
+			err    error
+		}{result: got, err: err}
+	}()
+
+	first := receiveStartedKeys(t, started, 2)
+	require.ElementsMatch(t, []string{"pi-1", "pi-2"}, first)
+	requireNoAdditionalStart(t, started, 25*time.Millisecond)
+	close(release)
+
+	out := receiveIncidentPurgeResult(t, done)
+	require.NoError(t, out.err)
+	require.Equal(t, d.IncidentPurgeOutcomePlanned, out.result.Outcome)
+	require.Equal(t, []string{"pi-1", "pi-2", "pi-3"}, []string(out.result.DeletePlan.CandidateProcessInstanceKeys))
+	require.Equal(t, []string{"root-pi-1", "root-pi-2", "root-pi-3"}, []string(out.result.DeletePlan.ResolvedRootKeys))
+	require.Equal(t, []string{"root-pi-1", "pi-1", "root-pi-2", "pi-2", "root-pi-3", "pi-3"}, []string(out.result.DeletePlan.AffectedKeys))
+}
+
 // TestPurgeProcessInstancesWithIncidentsBlocksNonFinalDestructivePlan verifies planning stops destructive runs before mutation when --force is absent.
 func TestPurgeProcessInstancesWithIncidentsBlocksNonFinalDestructivePlan(t *testing.T) {
 	t.Parallel()
@@ -697,5 +773,72 @@ func completedRootProcessInstanceAPI() stubProcessInstanceAPI {
 				Outcome: pitraversal.OutcomeComplete,
 			}, nil
 		},
+	}
+}
+
+// receiveStartedKeys waits for worker callbacks that must begin before the test releases them.
+func receiveStartedKeys(t *testing.T, started <-chan string, count int) []string {
+	t.Helper()
+	out := make([]string, 0, count)
+	for len(out) < count {
+		select {
+		case key := <-started:
+			out = append(out, key)
+		case <-time.After(time.Second):
+			t.Fatalf("timed out waiting for %d worker starts; got %d", count, len(out))
+		}
+	}
+	return out
+}
+
+// requireNoAdditionalStart proves the worker pool has not scheduled more work while all current workers are blocked.
+func requireNoAdditionalStart(t *testing.T, started <-chan string, window time.Duration) {
+	t.Helper()
+	select {
+	case key := <-started:
+		t.Fatalf("expected worker limit to hold before release, but %s started", key)
+	case <-time.After(window):
+	}
+}
+
+// receiveRepairResult bounds tests that intentionally block service workers behind a release gate.
+func receiveRepairResult(t *testing.T, done <-chan struct {
+	result d.OpsRepairResult
+	err    error
+}) struct {
+	result d.OpsRepairResult
+	err    error
+} {
+	t.Helper()
+	select {
+	case out := <-done:
+		return out
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for repair workflow")
+		return struct {
+			result d.OpsRepairResult
+			err    error
+		}{}
+	}
+}
+
+// receiveIncidentPurgeResult bounds tests that intentionally block service workers behind a release gate.
+func receiveIncidentPurgeResult(t *testing.T, done <-chan struct {
+	result d.IncidentPurgeResult
+	err    error
+}) struct {
+	result d.IncidentPurgeResult
+	err    error
+} {
+	t.Helper()
+	select {
+	case out := <-done:
+		return out
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for incident purge workflow")
+		return struct {
+			result d.IncidentPurgeResult
+			err    error
+		}{}
 	}
 }
