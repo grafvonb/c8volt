@@ -121,3 +121,19 @@ Started: 2026-07-24 06:28:25
 **Learnings**:
 - Element collection is already service-owned; tests now pin facade control forwarding plus v8.8 offset traversal and limit-capped page sizing.
 ---
+---
+## Iteration 6 - 2026-07-24 11:07
+**Work Unit**: Partial US2 incident search page-collection tests
+**Tasks Completed**:
+- [x] T028: Add service/facade page-collection tests for incident search
+**Tasks Remaining in Work Unit**: US2 remains open with T029-T045 incomplete
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/incident/client_test.go
+- internal/services/incident/v88/incidents_test.go
+- specs/254-cli-debt-refactor/tasks.md
+- specs/254-cli-debt-refactor/ralph-memory.md
+- specs/254-cli-debt-refactor/progress.md
+**Learnings**:
+- Incident facade page collection is pinned through the compatibility-filter paging helper; v8.8 service tests now assert caller-cap trimming for locally filtered incident rows.
+---

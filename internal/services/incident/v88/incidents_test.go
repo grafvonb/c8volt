@@ -5,6 +5,7 @@ package v88_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -378,6 +379,40 @@ func TestSearchIncidentsPaginatesMessageFilteringBeyondFirstPage(t *testing.T) {
 	require.Equal(t, []string{"match-second-page"}, incidentDetailKeys(got))
 }
 
+// TestSearchIncidentsStopsAtRequestedSizeAfterLocalFiltering proves v8.8
+// collected incident search owns the caller cap even when one page has more
+// locally matched rows than the requested result size.
+func TestSearchIncidentsStopsAtRequestedSizeAfterLocalFiltering(t *testing.T) {
+	t.Parallel()
+
+	var requests []camundav88.SearchIncidentsJSONRequestBody
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
+			requests = append(requests, body)
+			require.Nil(t, body.Filter)
+			return &camundav88.SearchIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200: &camundav88.IncidentSearchQueryResult{
+					Items: []camundav88.IncidentResult{
+						{IncidentKey: "match-a", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumACTIVE, ErrorMessage: "intentional failure"},
+						{IncidentKey: "match-b", ProcessInstanceKey: "pi-b", State: camundav88.IncidentStateEnumACTIVE, ErrorMessage: "intentional failure"},
+					},
+					Page: camundav88.SearchQueryPageResponse{TotalItems: 2},
+				},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchIncidents(context.Background(), d.IncidentFilter{
+		ErrorMessage: "intentional",
+	}, 1)
+
+	require.NoError(t, err)
+	require.Len(t, requests, 1)
+	requireIncidentSearchPageJSON(t, requests[0], 0, 1)
+	require.Equal(t, []string{"match-a"}, incidentDetailKeys(got))
+}
+
 func TestSearchIncidentsPaginatesStateAndTypeFilteringBeyondFirstPage(t *testing.T) {
 	t.Parallel()
 
@@ -557,6 +592,17 @@ func TestSearchIncidentsPageDoesNotSendBrokenV88FilterShapeForLocalFilters(t *te
 
 	require.NoError(t, err)
 	require.Equal(t, []string{"match"}, incidentDetailKeys(got.Items))
+}
+
+func requireIncidentSearchPageJSON(t *testing.T, body camundav88.SearchIncidentsJSONRequestBody, wantFrom int32, wantLimit int32) {
+	t.Helper()
+	raw, err := json.Marshal(body)
+	require.NoError(t, err)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(raw, &got))
+	page := got["page"].(map[string]any)
+	require.Equal(t, float64(wantFrom), page["from"])
+	require.Equal(t, float64(wantLimit), page["limit"])
 }
 
 func incidentDetailKeys(items []d.ProcessInstanceIncidentDetail) []string {

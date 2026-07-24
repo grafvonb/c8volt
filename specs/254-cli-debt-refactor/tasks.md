@@ -85,7 +85,7 @@
 
 - [x] T026 [P] [US2] Add service/facade page-collection tests for job search in `c8volt/job/client_test.go` and `internal/services/job/v88/service_test.go`
 - [x] T027 [P] [US2] Add service/facade page-collection tests for element search in `c8volt/element/client_test.go` and `internal/services/element/v88/service_test.go`
-- [ ] T028 [P] [US2] Add service/facade page-collection tests for incident search in `c8volt/incident/client_test.go` and `internal/services/incident/v88/incidents_test.go`
+- [x] T028 [P] [US2] Add service/facade page-collection tests for incident search in `c8volt/incident/client_test.go` and `internal/services/incident/v88/incidents_test.go`
 - [ ] T029 [P] [US2] Add service/facade page-collection and local-filtering tests for process-instance search in `c8volt/process/client_test.go` and `internal/services/processinstance/v88/service_test.go`
 - [ ] T030 [P] [US2] Add cancel/delete discovery planning tests for process-instance mutation paging in `c8volt/process/client_test.go` and `cmd/delete_test.go`
 

@@ -113,6 +113,37 @@ func TestClient_SearchIncidentsWithMessageFilterPagesUntilEnoughLocalMatches(t *
 	require.Equal(t, "match", got.Items[0].IncidentKey)
 }
 
+// TestClient_SearchIncidentsWithMessageFilterStopsAtRequestedSize verifies
+// facade-owned mapping preserves the collected incident cap while paging
+// through the service API for filters that require local compatibility checks.
+func TestClient_SearchIncidentsWithMessageFilterStopsAtRequestedSize(t *testing.T) {
+	t.Parallel()
+
+	var pages []d.IncidentPageRequest
+	api := stubAPI{
+		searchIncidentsPage: func(_ context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error) {
+			assert.Equal(t, d.IncidentFilter{ErrorMessage: "intentional"}, filter)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			pages = append(pages, page)
+			return d.IncidentPage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				Items: []d.ProcessInstanceIncidentDetail{
+					{IncidentKey: "match-a"},
+					{IncidentKey: "match-b"},
+				},
+			}, nil
+		},
+	}
+
+	got, err := New(api, slog.Default()).SearchIncidents(context.Background(), Filter{ErrorMessage: "intentional"}, 1, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, []d.IncidentPageRequest{{Size: 1}}, pages)
+	require.Equal(t, int32(1), got.Total)
+	require.Equal(t, []ProcessInstanceIncidentDetail{{IncidentKey: "match-a"}}, got.Items)
+}
+
 func TestResolveIncidentWaitsForConfirmation(t *testing.T) {
 	t.Parallel()
 

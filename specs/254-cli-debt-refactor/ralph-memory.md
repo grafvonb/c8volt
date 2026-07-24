@@ -18,6 +18,7 @@ Started: 2026-07-24T04:28:25Z
 - Ops discovery status rendering is centralized in `cmd/cmd_views_ops_processinstance_scope.go`; user-limited discovery stays visible in compact output and complete discovery page details remain verbose-only.
 - US2 T026 added job facade and v8.8 service tests around service-owned job page collection. v8.9 already had equivalent service coverage; command-owned job paging remains for interactive prompts and verbose progress until the broader job ownership slice decides how to preserve that output contract.
 - US2 T027 added element facade and v8.8 service tests around service-owned element page collection, offset traversal, limit-capped page sizing, and result mapping.
+- US2 T028 added incident facade and v8.8 service tests around local-filter page collection and caller-cap trimming. Incident facade paging currently triggers through `internal/services/incident.SearchIncidents` for error-message and creation-time filters, while v8.8 service-owned collection handles broader local compatibility filters below the facade.
 
 ## Gotchas
 - `delete process-instance` search mode intentionally plans all selected pages before confirmed mutation; treating it like page-by-page cancel would weaken frozen-scope confirmation behavior.
@@ -39,4 +40,4 @@ Started: 2026-07-24T04:28:25Z
 - Do not infer that similar ops discovery loops are equivalent until the candidate counts, frozen scope, report fields, force behavior, and confirmation prompt semantics are compared.
 
 ## Current Handoff
-- Continue Phase 4 / US2 at T028-T030 test work. T026 job and T027 element page-collection tests are validated; T031-T036 remain open because command-owned job/element paging still preserves prompts and verbose progress and should be reduced only with matching command-output coverage.
+- Continue Phase 4 / US2 at T029-T030 test work. T026-T028 page-collection test slices are validated; T031-T036 remain open because command-owned job/element paging still preserves prompts and verbose progress and should be reduced only with matching command-output coverage.
