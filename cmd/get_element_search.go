@@ -39,9 +39,8 @@ func searchElementsWithPaging(cmd *cobra.Command, cli element.API, request eleme
 
 	result, err := cli.SearchElementsPages(cmd.Context(), request, func(step element.SearchPageStep) (element.SearchPageAction, error) {
 		page := step.Page
-		items := limitElementItems(page.Items, processedTotal, request.Limit)
 		if incremental {
-			if err := renderElementSearchPage(cmd, items, capturedNow); err != nil {
+			if err := renderElementSearchPage(cmd, page.Items, capturedNow); err != nil {
 				return element.SearchPageActionStop, err
 			}
 		}
@@ -50,7 +49,7 @@ func searchElementsWithPaging(cmd *cobra.Command, cli element.API, request eleme
 		continuation := elementSearchContinuationState(page, step.LimitReached, autoContinue)
 		printSearchPageProgress(cmd, searchPageProgressSummary{
 			PageSize:          page.Request.Size,
-			CurrentPageCount:  len(items),
+			CurrentPageCount:  len(page.Items),
 			CumulativeCount:   processedTotal,
 			MoreMatches:       describeElementOverflowState(page.OverflowState),
 			ContinuationState: continuation,
@@ -62,10 +61,10 @@ func searchElementsWithPaging(cmd *cobra.Command, cli element.API, request eleme
 		if continuation == processInstanceContinuationAutoContinue {
 			return element.SearchPageActionContinue, nil
 		}
-		if len(items) == 0 {
+		if len(page.Items) == 0 {
 			return element.SearchPageActionContinue, nil
 		}
-		prompt := fmt.Sprintf("Fetched %d element(s) on this page (%d loaded). More matching elements remain. Continue?", len(items), processedTotal)
+		prompt := fmt.Sprintf("Fetched %d element(s) on this page (%d loaded). More matching elements remain. Continue?", len(page.Items), processedTotal)
 		if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			if isCmdAborted(err) {
 				return element.SearchPageActionStop, nil
@@ -104,22 +103,6 @@ func shouldRenderElementSearchPageIncrementally(cmd *cobra.Command) bool {
 // shouldAutoContinueElementSearchPages reports whether paging may proceed without a prompt.
 func shouldAutoContinueElementSearchPages(cmd *cobra.Command) bool {
 	return shouldImplicitlyConfirm(cmd) || pickMode() == RenderModeJSON
-}
-
-// limitElementItems keeps rendered progress tied to the selected page contents
-// even if a backend returns more rows than the service-requested page size.
-func limitElementItems(items []element.Element, cumulative int, limit int32) []element.Element {
-	if limit <= 0 {
-		return items
-	}
-	remaining := int(limit) - cumulative
-	if remaining <= 0 {
-		return nil
-	}
-	if len(items) > remaining {
-		return items[:remaining]
-	}
-	return items
 }
 
 // elementSearchContinuationState translates element overflow metadata into the next CLI paging action.

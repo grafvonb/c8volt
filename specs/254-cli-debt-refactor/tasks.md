@@ -283,3 +283,7 @@ Task: "T062 [P] [US4] Add README/docs example expectations in docsgen/main_test.
 - Do not create a universal generic pager; extract only mechanics with identical ownership and behavior.
 - Keep JSON, keys-only, quiet, and automation output free from progress and prompt noise.
 - Keep command help and generated docs synchronized through source metadata and `make docs-content`.
+
+## Phase 7: Convergence
+
+- [x] T076 Remove command-local element search page item trimming from `cmd/get_element_search.go` and add or adjust coverage so `internal/services/element.SearchElementsPages` remains the sole user-limit trimming owner while command code only renders, reports progress, and prompts per FR-004 (partial)
