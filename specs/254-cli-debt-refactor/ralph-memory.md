@@ -20,6 +20,7 @@ Started: 2026-07-24T04:28:25Z
 - US2 T027 added element facade and v8.8 service tests around service-owned element page collection, offset traversal, limit-capped page sizing, and result mapping.
 - US2 T028 added incident facade and v8.8 service tests around local-filter page collection and caller-cap trimming. Incident facade paging currently triggers through `internal/services/incident.SearchIncidents` for error-message and creation-time filters, while v8.8 service-owned collection handles broader local compatibility filters below the facade.
 - US2 T029-T030 added process-instance facade/v8.8 service tests for paged search metadata, cursor paging, parent/incident compatibility filter forwarding, and shared dry-run planner option forwarding. Delete search-page tests now pin the frozen-scope safety contract: all page plans are collected before one confirmation and one aggregate delete call.
+- US2 T031-T033 added job paged-search visitor/result contracts across `internal/domain/job.go` and `c8volt/job/model.go`, moved job offset advancement, page-size capping, user-limit trimming, and total fallback into `internal/services/job/v88` and `v89`, and reduced `cmd/get_job_search.go` to rendering, verbose progress, and prompt decisions through `SearchJobsPages`.
 
 ## Gotchas
 - `delete process-instance` search mode intentionally plans all selected pages before confirmed mutation; treating it like page-by-page cancel would weaken frozen-scope confirmation behavior.
@@ -42,4 +43,4 @@ Started: 2026-07-24T04:28:25Z
 - Do not infer that similar ops discovery loops are equivalent until the candidate counts, frozen scope, report fields, force behavior, and confirmation prompt semantics are compared.
 
 ## Current Handoff
-- Continue Phase 4 / US2 at T031. T026-T030 page-collection and mutation-planning test slices are validated; T031-T045 remain open. Start with version-neutral job discovery result contracts before reducing command-owned job paging, and preserve prompts/verbose progress with command-output coverage when T033 changes `cmd/get_job_search.go`.
+- Continue Phase 4 / US2 at T034. Job search ownership refactor T031-T033 is validated and committed. Start the next substantive slice with element version-neutral paged search result contracts, then move element page walking and reduce `cmd/get_element_search.go` in the same pattern if behavior tests stay green.

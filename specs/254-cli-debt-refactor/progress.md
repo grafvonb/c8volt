@@ -155,3 +155,35 @@ Started: 2026-07-24 06:28:25
 **Learnings**:
 - Process-instance search and delete planning tests now pin the lower-layer paging metadata and frozen-scope mutation planning contracts before the US2 implementation refactor begins.
 ---
+---
+## Iteration 8 - 2026-07-24 11:25
+**Work Unit**: Partial US2 job search ownership refactor
+**Tasks Completed**:
+- [x] T031: Add version-neutral paged search result contracts for job discovery
+- [x] T032: Move job page walking, total fallback, and limit trimming below command ownership
+- [x] T033: Reduce command-owned job paging to rendering and prompts
+**Tasks Remaining in Work Unit**: US2 remains open with T034-T045 incomplete
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_job_search.go
+- c8volt/job/api.go
+- c8volt/job/client.go
+- c8volt/job/client_test.go
+- c8volt/job/model.go
+- c8volt/element/client_test.go
+- c8volt/process/client_test.go
+- internal/domain/job.go
+- internal/services/job/api.go
+- internal/services/job/v87/contract.go
+- internal/services/job/v87/service.go
+- internal/services/job/v88/contract.go
+- internal/services/job/v88/service.go
+- internal/services/job/v88/service_test.go
+- internal/services/job/v89/contract.go
+- internal/services/job/v89/service.go
+- specs/254-cli-debt-refactor/tasks.md
+- specs/254-cli-debt-refactor/ralph-memory.md
+- specs/254-cli-debt-refactor/progress.md
+**Learnings**:
+- Job search can preserve command-owned prompts/progress by exposing a facade page visitor while services own offset advancement, limit capping, and total fallback.
+---

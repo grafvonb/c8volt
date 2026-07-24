@@ -20,7 +20,9 @@ import (
 type fakeJobService struct {
 	get     func(context.Context, string, ...services.CallOption) (d.Job, error)
 	search  func(context.Context, d.JobSearchQuery, ...services.CallOption) (d.JobSearchResult, error)
+	pages   func(context.Context, d.JobSearchQuery, d.JobSearchPageVisitor, ...services.CallOption) (d.JobSearchPagesResult, error)
 	page    func(context.Context, d.JobSearchQuery, d.JobPageRequest, ...services.CallOption) (d.JobSearchPage, error)
+	total   func(context.Context, d.JobSearchQuery, ...services.CallOption) (int64, error)
 	update  func(context.Context, d.JobUpdateRequest, ...services.CallOption) (d.JobUpdateResult, error)
 	outcome func(context.Context, d.JobWorkerOutcomeRequest, ...services.CallOption) (d.JobWorkerOutcomeResult, error)
 }
@@ -36,11 +38,28 @@ func (f fakeJobService) SearchJobs(ctx context.Context, request d.JobSearchQuery
 	return f.search(ctx, request, opts...)
 }
 
+// SearchJobsPages delegates to the test callback so facade page traversal
+// mapping can be asserted without a real service.
+func (f fakeJobService) SearchJobsPages(ctx context.Context, request d.JobSearchQuery, visitor d.JobSearchPageVisitor, opts ...services.CallOption) (d.JobSearchPagesResult, error) {
+	if f.pages == nil {
+		return d.JobSearchPagesResult{}, errors.New("unexpected search pages")
+	}
+	return f.pages(ctx, request, visitor, opts...)
+}
+
 func (f fakeJobService) SearchJobsPage(ctx context.Context, request d.JobSearchQuery, page d.JobPageRequest, opts ...services.CallOption) (d.JobSearchPage, error) {
 	if f.page == nil {
 		return d.JobSearchPage{}, errors.New("unexpected search page")
 	}
 	return f.page(ctx, request, page, opts...)
+}
+
+// SearchJobsTotal delegates to the test callback for total-count facade tests.
+func (f fakeJobService) SearchJobsTotal(ctx context.Context, request d.JobSearchQuery, opts ...services.CallOption) (int64, error) {
+	if f.total == nil {
+		return 0, errors.New("unexpected search total")
+	}
+	return f.total(ctx, request, opts...)
 }
 
 func (f fakeJobService) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error) {
@@ -197,6 +216,74 @@ func TestClient_SearchJobs_ForwardsPageCollectionControls(t *testing.T) {
 	require.Len(t, result.Items, 3)
 	require.Equal(t, "2251799813711967", result.Items[0].Key)
 	require.Equal(t, "2251799813711969", result.Items[2].Key)
+}
+
+// TestClient_SearchJobsPages_MapsVisitorStepAndAction verifies the facade keeps
+// rendering callbacks public while delegating traversal state to the service.
+func TestClient_SearchJobsPages_MapsVisitorStepAndAction(t *testing.T) {
+	api := New(fakeJobService{
+		pages: func(_ context.Context, request d.JobSearchQuery, visitor d.JobSearchPageVisitor, _ ...services.CallOption) (d.JobSearchPagesResult, error) {
+			require.Equal(t, int32(2), request.BatchSize)
+			require.NotNil(t, visitor)
+			action, err := visitor(d.JobSearchPageStep{
+				Page: d.JobSearchPage{
+					Items: []d.Job{{Key: "2251799813711967", State: "FAILED"}},
+					Request: d.JobPageRequest{
+						From: 0,
+						Size: 2,
+					},
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				},
+				CumulativeCount: 1,
+			})
+			require.NoError(t, err)
+			require.Equal(t, d.JobSearchPageActionStop, action)
+			return d.JobSearchPagesResult{
+				Items: []d.Job{{Key: "2251799813711967", State: "FAILED"}},
+				Limit: request.Limit,
+				Pages: 1,
+			}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	var seen SearchPageStep
+	result, err := api.SearchJobsPages(context.Background(), SearchRequest{
+		State:     "FAILED",
+		BatchSize: 2,
+		Limit:     4,
+	}, func(step SearchPageStep) (SearchPageAction, error) {
+		seen = step
+		return SearchPageActionStop, nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int32(1), seen.CumulativeCount)
+	require.Equal(t, int32(2), seen.Page.Request.Size)
+	require.Equal(t, OverflowStateHasMore, seen.Page.OverflowState)
+	require.Equal(t, "2251799813711967", seen.Page.Items[0].Key)
+	require.Equal(t, int32(4), result.Limit)
+	require.Equal(t, int32(1), result.Pages)
+	require.Len(t, result.Items, 1)
+}
+
+// TestClient_SearchJobsTotal_DelegatesTotalFallback verifies the facade exposes
+// service-computed totals without reimplementing page traversal.
+func TestClient_SearchJobsTotal_DelegatesTotalFallback(t *testing.T) {
+	api := New(fakeJobService{
+		total: func(_ context.Context, request d.JobSearchQuery, _ ...services.CallOption) (int64, error) {
+			require.Equal(t, "FAILED", request.State)
+			require.Equal(t, int32(2), request.BatchSize)
+			return 3, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	total, err := api.SearchJobsTotal(context.Background(), SearchRequest{
+		State:     "FAILED",
+		BatchSize: 2,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int64(3), total)
 }
 
 func TestClient_GetJob_NotFound(t *testing.T) {

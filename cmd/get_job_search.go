@@ -7,13 +7,10 @@ import (
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/job"
-	"github.com/grafvonb/c8volt/consts"
 	"github.com/spf13/cobra"
 )
 
 func searchJobsWithPaging(cmd *cobra.Command, cli job.API, request job.SearchRequest) (job.SearchResult, bool, error) {
-	pageReq := newJobSearchPageRequest(0, request.BatchSize, request.Limit, 0)
-	collected := job.SearchResult{Items: []job.Job{}, Limit: request.Limit}
 	incremental := shouldRenderJobSearchPageIncrementally(cmd)
 	autoContinue := shouldAutoContinueJobSearchPages(cmd)
 	processedTotal := 0
@@ -24,25 +21,20 @@ func searchJobsWithPaging(cmd *cobra.Command, cli job.API, request job.SearchReq
 			}
 			return job.SearchResult{}, true, nil
 		}
-		return collected, false, nil
+		return job.SearchResult{}, false, nil
 	}
 
-	for {
-		page, err := cli.SearchJobsPage(cmd.Context(), request, pageReq, collectOptions()...)
-		if err != nil {
-			return job.SearchResult{}, false, err
-		}
-		items := limitJobItems(page.Items, processedTotal, request.Limit)
+	result, err := cli.SearchJobsPages(cmd.Context(), request, func(step job.SearchPageStep) (job.SearchPageAction, error) {
+		page := step.Page
+		items := page.Items
 		if incremental {
 			if err := renderJobSearchPage(cmd, items); err != nil {
-				return job.SearchResult{}, false, err
+				return job.SearchPageActionStop, err
 			}
-		} else {
-			collected.Items = append(collected.Items, items...)
 		}
-		processedTotal += len(items)
+		processedTotal = int(step.CumulativeCount)
 
-		continuation := jobSearchContinuationState(page, processedTotal, request.Limit, autoContinue)
+		continuation := jobSearchContinuationState(page, step.LimitReached, autoContinue)
 		printSearchPageProgress(cmd, searchPageProgressSummary{
 			PageSize:          page.Request.Size,
 			CurrentPageCount:  len(items),
@@ -52,48 +44,34 @@ func searchJobsWithPaging(cmd *cobra.Command, cli job.API, request job.SearchReq
 		})
 
 		if continuation == processInstanceContinuationLimitReached || continuation == processInstanceContinuationCompleted {
-			return printFoundAndReturn()
+			return job.SearchPageActionStop, nil
 		}
 		if continuation == processInstanceContinuationAutoContinue {
-			pageReq = nextJobSearchPageRequest(pageReq, page, request.Limit, processedTotal)
-			continue
+			return job.SearchPageActionContinue, nil
 		}
 		if len(items) == 0 {
-			pageReq = nextJobSearchPageRequest(pageReq, page, request.Limit, processedTotal)
-			continue
+			return job.SearchPageActionContinue, nil
 		}
 		prompt := fmt.Sprintf("Fetched %d job(s) on this page (%d loaded). More matching jobs remain. Continue?", len(items), processedTotal)
 		if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			if isCmdAborted(err) {
-				return printFoundAndReturn()
+				return job.SearchPageActionStop, nil
 			}
-			return job.SearchResult{}, false, err
+			return job.SearchPageActionStop, err
 		}
-		pageReq = nextJobSearchPageRequest(pageReq, page, request.Limit, processedTotal)
+		return job.SearchPageActionContinue, nil
+	}, collectOptions()...)
+	if err != nil {
+		return job.SearchResult{}, false, err
 	}
+	if incremental {
+		return printFoundAndReturn()
+	}
+	return job.SearchResult{Items: result.Items, Limit: result.Limit}, false, nil
 }
 
 func searchJobsTotal(cmd *cobra.Command, cli job.API, request job.SearchRequest) (int64, error) {
-	pageReq := job.PageRequest{Size: request.BatchSize}
-	total := int64(0)
-	for {
-		page, err := cli.SearchJobsPage(cmd.Context(), request, pageReq, collectOptions()...)
-		if err != nil {
-			return 0, err
-		}
-		if canUseJobExactReportedTotal(page) {
-			return page.ReportedTotal.Count, nil
-		}
-		total += int64(len(page.Items))
-		if len(page.Items) == 0 || page.OverflowState != job.OverflowStateHasMore {
-			return total, nil
-		}
-		pageReq = nextJobSearchPageRequest(pageReq, page, 0, int(total))
-	}
-}
-
-func canUseJobExactReportedTotal(page job.Page) bool {
-	return page.ReportedTotal != nil && page.ReportedTotal.Kind == job.ReportedTotalKindExact
+	return cli.SearchJobsTotal(cmd.Context(), request, collectOptions()...)
 }
 
 func shouldRenderJobSearchPageIncrementally(cmd *cobra.Command) bool {
@@ -111,27 +89,9 @@ func shouldAutoContinueJobSearchPages(cmd *cobra.Command) bool {
 	return shouldImplicitlyConfirm(cmd) || pickMode() == RenderModeJSON
 }
 
-func limitJobItems(items []job.Job, cumulative int, limit int32) []job.Job {
-	if limit <= 0 {
-		return items
-	}
-	remaining := int(limit) - cumulative
-	if remaining <= 0 {
-		return nil
-	}
-	if len(items) > remaining {
-		return items[:remaining]
-	}
-	return items
-}
-
-func isJobLimitReached(cumulative int, limit int32) bool {
-	return limit > 0 && cumulative >= int(limit)
-}
-
 // jobSearchContinuationState translates job overflow metadata into the next CLI paging action.
-func jobSearchContinuationState(page job.Page, cumulative int, limit int32, autoContinue bool) processInstanceContinuationState {
-	if isJobLimitReached(cumulative, limit) {
+func jobSearchContinuationState(page job.Page, limitReached bool, autoContinue bool) processInstanceContinuationState {
+	if limitReached {
 		return processInstanceContinuationLimitReached
 	}
 	if page.OverflowState == job.OverflowStateHasMore {
@@ -149,28 +109,6 @@ func describeJobOverflowState(state job.OverflowState) string {
 		return "yes"
 	}
 	return "no"
-}
-
-func nextJobSearchPageRequest(current job.PageRequest, page job.Page, limit int32, loaded int) job.PageRequest {
-	nextFrom := current.From + int32(len(page.Items))
-	if len(page.Items) == 0 {
-		nextFrom = current.From + current.Size
-	}
-	return newJobSearchPageRequest(nextFrom, page.Request.Size, limit, loaded)
-}
-
-func newJobSearchPageRequest(from int32, batchSize int32, limit int32, loaded int) job.PageRequest {
-	size := batchSize
-	if size <= 0 {
-		size = consts.MaxPISearchSize
-	}
-	if limit > 0 {
-		remaining := limit - int32(loaded)
-		if remaining < size {
-			size = remaining
-		}
-	}
-	return job.PageRequest{From: from, Size: size}
 }
 
 func renderJobSearchPage(cmd *cobra.Command, items []job.Job) error {

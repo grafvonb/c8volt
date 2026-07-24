@@ -6,6 +6,7 @@ package v88
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -283,6 +284,90 @@ func TestService_SearchJobsLimitCapsPagedSearch(t *testing.T) {
 	require.Len(t, result.Items, 1)
 	require.Len(t, requests, 1)
 	requireJobSearchPageJSON(t, requests[0], 0, 1)
+}
+
+// TestService_SearchJobsPagesStopsWhenVisitorStops proves callers can stop
+// service-owned traversal after rendering or prompting on the current page.
+func TestService_SearchJobsPagesStopsWhenVisitorStops(t *testing.T) {
+	var requests []camundav88.SearchJobsJSONRequestBody
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(_ context.Context, body camundav88.SearchJobsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchJobsResponse, error) {
+			requests = append(requests, body)
+			return &camundav88.SearchJobsResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav88.JobSearchQueryResult{
+					Items: []camundav88.JobSearchResult{{
+						JobKey:  "2251799813711967",
+						State:   camundav88.JobStateEnumFAILED,
+						Retries: 0,
+					}},
+					Page: camundav88.SearchQueryPageResponse{
+						TotalItems: 2,
+					},
+				},
+			}, nil
+		},
+	})
+
+	var steps []d.JobSearchPageStep
+	result, err := svc.SearchJobsPages(context.Background(), d.JobSearchQuery{
+		State:     "FAILED",
+		BatchSize: 1,
+	}, func(step d.JobSearchPageStep) (d.JobSearchPageAction, error) {
+		steps = append(steps, step)
+		return d.JobSearchPageActionStop, nil
+	})
+
+	require.NoError(t, err)
+	require.Len(t, requests, 1)
+	require.Len(t, steps, 1)
+	require.Equal(t, int32(1), steps[0].CumulativeCount)
+	require.False(t, steps[0].LimitReached)
+	require.Equal(t, d.ProcessInstanceOverflowStateHasMore, steps[0].Page.OverflowState)
+	require.Equal(t, int32(1), result.Pages)
+	require.Len(t, result.Items, 1)
+	requireJobSearchPageJSON(t, requests[0], 0, 1)
+}
+
+// TestService_SearchJobsTotalFallsBackToPageCounting verifies total counting is
+// service-owned when Camunda only exposes lower-bound total metadata.
+func TestService_SearchJobsTotalFallsBackToPageCounting(t *testing.T) {
+	var requests []camundav88.SearchJobsJSONRequestBody
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(_ context.Context, body camundav88.SearchJobsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchJobsResponse, error) {
+			requests = append(requests, body)
+			items := []camundav88.JobSearchResult{{
+				JobKey:  camundav88.JobKey(fmt.Sprintf("225179981371196%d", len(requests))),
+				State:   camundav88.JobStateEnumFAILED,
+				Retries: 0,
+			}}
+			if len(requests) == 3 {
+				items = nil
+			}
+			return &camundav88.SearchJobsResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav88.JobSearchQueryResult{
+					Items: items,
+					Page: camundav88.SearchQueryPageResponse{
+						TotalItems:        100,
+						HasMoreTotalItems: true,
+					},
+				},
+			}, nil
+		},
+	})
+
+	total, err := svc.SearchJobsTotal(context.Background(), d.JobSearchQuery{
+		State:     "FAILED",
+		BatchSize: 1,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int64(2), total)
+	require.Len(t, requests, 3)
+	requireJobSearchPageJSON(t, requests[0], 0, 1)
+	requireJobSearchPageJSON(t, requests[1], 1, 1)
+	requireJobSearchPageJSON(t, requests[2], 2, 1)
 }
 
 func TestJobUpdateRetriesRequest(t *testing.T) {

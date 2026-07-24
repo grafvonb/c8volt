@@ -37,8 +37,18 @@ func (f fakeJobService) SearchJobs(ctx context.Context, request d.JobSearchQuery
 	return f.search(ctx, request, opts...)
 }
 
+// SearchJobsPages rejects unexpected paged job traversal in element tests.
+func (f fakeJobService) SearchJobsPages(context.Context, d.JobSearchQuery, d.JobSearchPageVisitor, ...services.CallOption) (d.JobSearchPagesResult, error) {
+	return d.JobSearchPagesResult{}, errors.New("unexpected job search pages")
+}
+
 func (f fakeJobService) SearchJobsPage(context.Context, d.JobSearchQuery, d.JobPageRequest, ...services.CallOption) (d.JobSearchPage, error) {
 	return d.JobSearchPage{}, errors.New("unexpected job search page")
+}
+
+// SearchJobsTotal rejects unexpected job total traversal in element tests.
+func (f fakeJobService) SearchJobsTotal(context.Context, d.JobSearchQuery, ...services.CallOption) (int64, error) {
+	return 0, errors.New("unexpected job search total")
 }
 
 func (f fakeJobService) UpdateJob(context.Context, d.JobUpdateRequest, ...services.CallOption) (d.JobUpdateResult, error) {

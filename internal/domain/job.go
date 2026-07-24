@@ -103,6 +103,17 @@ type JobSearchResult struct {
 	Limit int32 `json:"limit"`
 }
 
+// JobSearchPageAction tells service-owned page traversal whether the caller
+// needs more pages after observing the current page.
+type JobSearchPageAction string
+
+const (
+	// JobSearchPageActionContinue keeps collecting the next available page.
+	JobSearchPageActionContinue JobSearchPageAction = "continue"
+	// JobSearchPageActionStop stops traversal after the current page.
+	JobSearchPageActionStop JobSearchPageAction = "stop"
+)
+
 type JobReportedTotalKind string
 
 const (
@@ -125,6 +136,25 @@ type JobSearchPage struct {
 	Request       JobPageRequest
 	OverflowState ProcessInstanceOverflowState
 	ReportedTotal *JobReportedTotal
+}
+
+// JobSearchPageStep carries one selected page plus service-owned traversal
+// state to callers that still own rendering or prompt policy.
+type JobSearchPageStep struct {
+	Page            JobSearchPage
+	CumulativeCount int32
+	LimitReached    bool
+}
+
+// JobSearchPageVisitor observes each selected page during service-owned
+// traversal and may stop collection without owning offset math.
+type JobSearchPageVisitor func(JobSearchPageStep) (JobSearchPageAction, error)
+
+// JobSearchPagesResult captures a full or caller-stopped paged discovery.
+type JobSearchPagesResult struct {
+	Items []Job
+	Limit int32
+	Pages int32
 }
 
 type JobUpdateRequest struct {

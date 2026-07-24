@@ -2112,7 +2112,18 @@ func (s stubJobAPI) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts
 	return s.searchJobs(ctx, query, opts...)
 }
 
+// SearchJobsPages panics because process facade tests wire explicit callbacks
+// only for paths expected by the scenario under test.
+func (s stubJobAPI) SearchJobsPages(context.Context, d.JobSearchQuery, d.JobSearchPageVisitor, ...services.CallOption) (d.JobSearchPagesResult, error) {
+	panic("unexpected call")
+}
+
 func (s stubJobAPI) SearchJobsPage(context.Context, d.JobSearchQuery, d.JobPageRequest, ...services.CallOption) (d.JobSearchPage, error) {
+	panic("unexpected call")
+}
+
+// SearchJobsTotal panics because process facade tests do not request job totals.
+func (s stubJobAPI) SearchJobsTotal(context.Context, d.JobSearchQuery, ...services.CallOption) (int64, error) {
 	panic("unexpected call")
 }
 
