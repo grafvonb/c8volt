@@ -149,38 +149,38 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 		SearchRequest: newProcessInstanceSearchRequest(cmd, cfg, filter),
 		Workers:       flagWorkers,
 	}, func(step process.ProcessInstanceMutationPlanStep) (process.ProcessInstanceSearchPageAction, error) {
-		if len(step.RequestedKeys) == 0 {
-			return process.ProcessInstanceSearchPageActionStop, nil
-		}
-		result := processInstancePageActionResultFromPlan("cancel", step)
-		if flagDryRun {
-			if result.DryRunPreview != nil {
-				results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
-			}
-		} else {
-			printDryRunExpansionWarning(cmd, step.Plan)
-			impact := result.Impact
-			if firstPage {
-				affectedCount, rootCount, requestedCount := impact.Affected, impact.Roots, impact.Requested
-				prompt := fmt.Sprintf("You are about to cancel %d process instance(s). Do you want to proceed?", affectedCount)
-				if affectedCount > requestedCount {
-					prompt = fmt.Sprintf("You have requested to cancel %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be canceled. Do you want to proceed?", requestedCount, affectedCount, rootCount)
+		hasSelection := len(step.RequestedKeys) > 0
+		if hasSelection {
+			result := processInstancePageActionResultFromPlan("cancel", step)
+			if flagDryRun {
+				if result.DryRunPreview != nil {
+					results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
 				}
-				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
-					return process.ProcessInstanceSearchPageActionStop, err
+			} else {
+				printDryRunExpansionWarning(cmd, step.Plan)
+				impact := result.Impact
+				if firstPage {
+					affectedCount, rootCount, requestedCount := impact.Affected, impact.Roots, impact.Requested
+					prompt := fmt.Sprintf("You are about to cancel %d process instance(s). Do you want to proceed?", affectedCount)
+					if affectedCount > requestedCount {
+						prompt = fmt.Sprintf("You have requested to cancel %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be canceled. Do you want to proceed?", requestedCount, affectedCount, rootCount)
+					}
+					if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+						return process.ProcessInstanceSearchPageActionStop, err
+					}
 				}
-			}
 
-			mutationOpts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(step.Plan.Collected)))
-			reports, err := cli.CancelProcessInstances(cmd.Context(), step.Plan.Roots, flagWorkers, mutationOpts...)
-			if err != nil {
-				return process.ProcessInstanceSearchPageActionStop, fmt.Errorf("cancel process instances: %w", err)
-			}
-			for _, report := range reports.Items {
-				results.Reports = append(results.Reports, process.Reporter(report))
-			}
-			if result.DryRunPreview != nil {
-				results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
+				mutationOpts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(step.Plan.Collected)))
+				reports, err := cli.CancelProcessInstances(cmd.Context(), step.Plan.Roots, flagWorkers, mutationOpts...)
+				if err != nil {
+					return process.ProcessInstanceSearchPageActionStop, fmt.Errorf("cancel process instances: %w", err)
+				}
+				for _, report := range reports.Items {
+					results.Reports = append(results.Reports, process.Reporter(report))
+				}
+				if result.DryRunPreview != nil {
+					results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
+				}
 			}
 		}
 
@@ -191,7 +191,9 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop, processInstanceContinuationLimitReached:
 			return process.ProcessInstanceSearchPageActionStop, nil
 		case processInstanceContinuationAutoContinue:
-			firstPage = false
+			if hasSelection {
+				firstPage = false
+			}
 			return process.ProcessInstanceSearchPageActionContinue, nil
 		case processInstanceContinuationPrompt:
 			prompt := fmt.Sprintf("Processed %d process instance(s) on this page (%s, %d including dependencies). More matching process instances remain. Continue?", summary.CurrentPageCount, formatProcessInstancePagingProgress(step.Page, summary.CumulativeCount, "requested"), step.CumulativeImpact)
@@ -208,7 +210,9 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 				}
 				return process.ProcessInstanceSearchPageActionStop, err
 			}
-			firstPage = false
+			if hasSelection {
+				firstPage = false
+			}
 			return process.ProcessInstanceSearchPageActionContinue, nil
 		}
 		return process.ProcessInstanceSearchPageActionStop, nil

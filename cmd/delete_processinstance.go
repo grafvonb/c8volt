@@ -250,12 +250,11 @@ func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, c
 		SearchRequest: newProcessInstanceSearchRequest(cmd, cfg, filter),
 		Workers:       flagWorkers,
 	}, func(step process.ProcessInstanceMutationPlanStep) (process.ProcessInstanceSearchPageAction, error) {
-		if len(step.RequestedKeys) == 0 {
-			return process.ProcessInstanceSearchPageActionStop, nil
-		}
-		result := processInstancePageActionResultFromPlan("delete", step)
-		if result.DryRunPreview != nil {
-			results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
+		if len(step.RequestedKeys) > 0 {
+			result := processInstancePageActionResultFromPlan("delete", step)
+			if result.DryRunPreview != nil {
+				results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
+			}
 		}
 		summary := newPIProgressSummary(step.Page, int(step.CumulativeCount), flagDryRun || shouldAutoContinuePISearchPages(cmd))
 		printPISearchProgress(cmd, summary)
@@ -308,12 +307,11 @@ func planDeleteProcessInstanceSearchPagesWithPrompt(cmd *cobra.Command, cli proc
 		SearchRequest: newProcessInstanceSearchRequest(cmd, cfg, filter),
 		Workers:       flagWorkers,
 	}, func(step process.ProcessInstanceMutationPlanStep) (process.ProcessInstanceSearchPageAction, error) {
-		if len(step.RequestedKeys) == 0 {
-			return process.ProcessInstanceSearchPageActionStop, nil
-		}
-		result := processInstancePageActionResultFromPlan("delete", step)
-		if result.DryRunPreview != nil {
-			results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
+		if len(step.RequestedKeys) > 0 {
+			result := processInstancePageActionResultFromPlan("delete", step)
+			if result.DryRunPreview != nil {
+				results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
+			}
 		}
 		summary := newPIProgressSummary(step.Page, int(step.CumulativeCount), shouldAutoContinuePISearchPages(cmd))
 		printPISearchProgress(cmd, summary)

@@ -860,7 +860,7 @@ func TestCancelProcessInstanceDryRun_SearchContinuesAfterEmptySelectedPage(t *te
 	}, actions)
 	require.Empty(t, results.Reports)
 	require.Len(t, results.DryRunPreviews, 1)
-	require.Equal(t, typex.Keys{"201"}, results.DryRunPreviews[0].RequestedKeys)
+	require.Equal(t, []string{"201"}, results.DryRunPreviews[0].RequestedKeys)
 	require.NotContains(t, buf.String(), "found: 0")
 }
 
