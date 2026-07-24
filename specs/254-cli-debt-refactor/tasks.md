@@ -20,11 +20,11 @@
 
 **Purpose**: Confirm project rules, active artifacts, and existing local patterns before implementation.
 
-- [ ] T001 Read `specs/ralph-implementation-rules.md` and verify no conflict with `specs/254-cli-debt-refactor/spec.md`
-- [ ] T002 [P] Review basic paging implementations in `cmd/get_job_search.go`, `cmd/get_element_search.go`, `cmd/get_incident_search.go`, `cmd/get_processinstance_search.go`, and record findings in `specs/254-cli-debt-refactor/assessment.md`
-- [ ] T003 [P] Review process-instance mutation paging in `cmd/get_processinstance_paging.go`, `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, and record findings in `specs/254-cli-debt-refactor/assessment.md`
-- [ ] T004 [P] Review high-level ops workflow ownership in `internal/services/ops/`, `cmd/ops_*.go`, and record findings in `specs/254-cli-debt-refactor/assessment.md`
-- [ ] T005 [P] Review command output, activity, and capability helpers in `cmd/root.go`, `cmd/command_contract.go`, `toolx/logging/activity.go`, and record findings in `specs/254-cli-debt-refactor/assessment.md`
+- [x] T001 Read `specs/ralph-implementation-rules.md` and verify no conflict with `specs/254-cli-debt-refactor/spec.md`
+- [x] T002 [P] Review basic paging implementations in `cmd/get_job_search.go`, `cmd/get_element_search.go`, `cmd/get_incident_search.go`, `cmd/get_processinstance_search.go`, and record findings in `specs/254-cli-debt-refactor/assessment.md`
+- [x] T003 [P] Review process-instance mutation paging in `cmd/get_processinstance_paging.go`, `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, and record findings in `specs/254-cli-debt-refactor/assessment.md`
+- [x] T004 [P] Review high-level ops workflow ownership in `internal/services/ops/`, `cmd/ops_*.go`, and record findings in `specs/254-cli-debt-refactor/assessment.md`
+- [x] T005 [P] Review command output, activity, and capability helpers in `cmd/root.go`, `cmd/command_contract.go`, `toolx/logging/activity.go`, and record findings in `specs/254-cli-debt-refactor/assessment.md`
 
 ---
 
