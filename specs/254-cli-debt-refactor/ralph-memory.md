@@ -22,11 +22,13 @@ Started: 2026-07-24T04:28:25Z
 - US2 T029-T030 added process-instance facade/v8.8 service tests for paged search metadata, cursor paging, parent/incident compatibility filter forwarding, and shared dry-run planner option forwarding. Delete search-page tests now pin the frozen-scope safety contract: all page plans are collected before one confirmation and one aggregate delete call.
 - US2 T031-T033 added job paged-search visitor/result contracts across `internal/domain/job.go` and `c8volt/job/model.go`, moved job offset advancement, page-size capping, user-limit trimming, and total fallback into `internal/services/job/v88` and `v89`, and reduced `cmd/get_job_search.go` to rendering, verbose progress, and prompt decisions through `SearchJobsPages`.
 - US2 T034-T036 added element paged-search visitor/result contracts across `internal/domain/element.go` and `c8volt/element/model.go`, moved element offset advancement, page-size capping, user-limit trimming, and total fallback into `internal/services/element/v88` and `v89`, kept v8.7 explicitly unsupported, and reduced `cmd/get_element_search.go` to rendering, verbose progress, and prompt decisions through `SearchElementsPages`.
+- US2 T037-T039 added incident paged-search visitor/result contracts across `internal/domain/incident.go` and `c8volt/incident/model.go`, moved incident page advancement, cursor-aware request building, caller-limit trimming, local compatibility filtering, and total fallback into `internal/services/incident/v88` and `v89`, kept v8.7 explicitly unsupported, and reduced `cmd/get_incident_search.go` to rendering, verbose progress, process-instance-key output, and prompt decisions through `SearchIncidentsPages`.
 
 ## Gotchas
 - `delete process-instance` search mode intentionally plans all selected pages before confirmed mutation; treating it like page-by-page cancel would weaken frozen-scope confirmation behavior.
 - `get process-instance --direct-incidents-only` is a command-owned alternate query strategy that only applies with `--limit` and compatible incident filters.
 - Do not print basic-search verbose progress for JSON or keys-only modes; machine-output tests use job search as the representative paged-read path.
+- Incident v8.8 still sends only tenant-safe top-level filters and applies richer compatibility filters locally; v8.9 sends safe server filters and still locally filters root-process-instance-key and error-message semantics.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -38,10 +40,11 @@ Started: 2026-07-24T04:28:25Z
 - `go test ./toolx/logging -count=1`
 - `go test ./c8volt/job ./internal/services/job/... -count=1`
 - `go test ./cmd ./c8volt/process ./internal/services/processinstance/v88 -count=1`
+- `go test ./cmd ./c8volt/incident ./c8volt/process ./internal/services/incident/... ./internal/services/ops -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not infer that similar ops discovery loops are equivalent until the candidate counts, frozen scope, report fields, force behavior, and confirmation prompt semantics are compared.
 
 ## Current Handoff
-- Continue Phase 4 / US2 at T037. Element search ownership refactor T034-T036 is validated and ready to commit. Start the next substantive slice with incident version-neutral paged search result contracts, preserving cursor fallback, process-instance-key projection, and local compatibility filtering semantics.
+- Continue Phase 4 / US2 at T040. Start the process-instance search ownership slice by moving query strategy, page traversal, total fallback, and local compatibility filtering below command ownership, while preserving `--direct-incidents-only`, enrichment boundaries, warning-stop behavior, and machine-output silence.

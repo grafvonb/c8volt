@@ -39,11 +39,20 @@ func (c *client) GetIncidents(ctx context.Context, keys types.Keys, wantedWorker
 }
 
 func (c *client) SearchIncidents(ctx context.Context, filter Filter, size int32, opts ...options.FacadeOption) (Incidents, error) {
-	incidents, err := incsvc.SearchIncidents(ctx, c.api, toDomainFilter(filter), size, options.MapFacadeOptionsToCallOptions(opts)...)
+	incidents, err := c.api.SearchIncidents(ctx, toDomainFilter(filter), size, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return Incidents{}, ferr.FromDomain(err)
 	}
 	return fromDomainIncidents(incidents), nil
+}
+
+func (c *client) SearchIncidentsPages(ctx context.Context, filter Filter, page PageRequest, limit int32, visitor SearchPageVisitor, opts ...options.FacadeOption) (SearchPagesResult, error) {
+	result, err := c.api.SearchIncidentsPages(ctx, toDomainFilter(filter), toDomainPageRequest(page), limit, toDomainSearchPageVisitor(visitor), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainSearchPagesResult(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
 }
 
 func (c *client) SearchIncidentsPage(ctx context.Context, filter Filter, page PageRequest, opts ...options.FacadeOption) (Page, error) {
@@ -52,6 +61,14 @@ func (c *client) SearchIncidentsPage(ctx context.Context, filter Filter, page Pa
 		return Page{}, ferr.FromDomain(err)
 	}
 	return fromDomainPage(incidents), nil
+}
+
+func (c *client) SearchIncidentsTotal(ctx context.Context, filter Filter, page PageRequest, opts ...options.FacadeOption) (int64, error) {
+	total, err := c.api.SearchIncidentsTotal(ctx, toDomainFilter(filter), toDomainPageRequest(page), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return 0, ferr.FromDomain(err)
+	}
+	return total, nil
 }
 
 func (c *client) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceIncidentDetail, error) {

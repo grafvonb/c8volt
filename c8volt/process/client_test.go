@@ -2203,7 +2203,9 @@ type stubIncidentAPI struct {
 	getIncident                    func(context.Context, string, ...services.CallOption) (d.ProcessInstanceIncidentDetail, error)
 	resolveIncident                func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
 	searchIncidents                func(context.Context, d.IncidentFilter, int32, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+	searchIncidentsPages           func(context.Context, d.IncidentFilter, d.IncidentPageRequest, int32, d.IncidentSearchPageVisitor, ...services.CallOption) (d.IncidentSearchPagesResult, error)
 	searchIncidentsPage            func(context.Context, d.IncidentFilter, d.IncidentPageRequest, ...services.CallOption) (d.IncidentPage, error)
+	searchIncidentsTotal           func(context.Context, d.IncidentFilter, d.IncidentPageRequest, ...services.CallOption) (int64, error)
 	searchProcessInstanceIncidents func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
 	waitForIncidentResolved        func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
 	waitForPIIncidentsResolved     func(context.Context, string, []string, ...services.CallOption) (d.IncidentResolutionResponse, error)
@@ -2233,12 +2235,28 @@ func (s stubIncidentAPI) SearchIncidents(ctx context.Context, filter d.IncidentF
 	return s.searchIncidents(ctx, filter, size, opts...)
 }
 
+// SearchIncidentsPages delegates to the per-test callback used by incident search facade tests.
+func (s stubIncidentAPI) SearchIncidentsPages(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, limit int32, visitor d.IncidentSearchPageVisitor, opts ...services.CallOption) (d.IncidentSearchPagesResult, error) {
+	if s.searchIncidentsPages == nil {
+		panic("unexpected call")
+	}
+	return s.searchIncidentsPages(ctx, filter, page, limit, visitor, opts...)
+}
+
 // SearchIncidentsPage delegates to the per-test callback used by incident search facade tests.
 func (s stubIncidentAPI) SearchIncidentsPage(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error) {
 	if s.searchIncidentsPage == nil {
 		panic("unexpected call")
 	}
 	return s.searchIncidentsPage(ctx, filter, page, opts...)
+}
+
+// SearchIncidentsTotal delegates to the per-test callback used by incident search facade tests.
+func (s stubIncidentAPI) SearchIncidentsTotal(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (int64, error) {
+	if s.searchIncidentsTotal == nil {
+		panic("unexpected call")
+	}
+	return s.searchIncidentsTotal(ctx, filter, page, opts...)
 }
 
 // SearchProcessInstanceIncidents delegates to the per-test callback used by incident enrichment facade tests.

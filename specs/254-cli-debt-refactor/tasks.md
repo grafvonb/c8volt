@@ -97,9 +97,9 @@
 - [x] T034 [US2] Add version-neutral paged search result contracts for element discovery in `c8volt/element/model.go` and `internal/domain/element.go`
 - [x] T035 [US2] Move element page walking, total fallback, and limit trimming below command ownership in `c8volt/element/client.go` and `internal/services/element/api.go`
 - [x] T036 [US2] Reduce command-owned element paging to rendering and prompts in `cmd/get_element_search.go`
-- [ ] T037 [US2] Add version-neutral paged search result contracts for incident discovery in `c8volt/incident/model.go` and `internal/domain/incident.go`
-- [ ] T038 [US2] Move incident page walking, cursor handling, process-instance-key projection, and local filtering below command ownership in `c8volt/incident/client.go` and `internal/services/incident/api.go`
-- [ ] T039 [US2] Reduce command-owned incident paging to rendering and prompts in `cmd/get_incident_search.go`
+- [x] T037 [US2] Add version-neutral paged search result contracts for incident discovery in `c8volt/incident/model.go` and `internal/domain/incident.go`
+- [x] T038 [US2] Move incident page walking, cursor handling, process-instance-key projection, and local filtering below command ownership in `c8volt/incident/client.go` and `internal/services/incident/api.go`
+- [x] T039 [US2] Reduce command-owned incident paging to rendering and prompts in `cmd/get_incident_search.go`
 - [ ] T040 [US2] Move process-instance query strategy, page traversal, total fallback, and local compatibility filtering below command ownership in `c8volt/process/client.go` and `internal/services/processinstance/api.go`
 - [ ] T041 [US2] Reduce command-owned process-instance search to validation, rendering, prompts, and mode selection in `cmd/get_processinstance_search.go`
 - [ ] T042 [US2] Move process-instance cancel/delete discovery and mutation planning traversal below command ownership in `c8volt/process/client.go` and `internal/services/processinstance/dryrun.go`

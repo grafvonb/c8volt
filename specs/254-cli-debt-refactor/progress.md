@@ -219,3 +219,36 @@ Started: 2026-07-24 06:28:25
 **Learnings**:
 - Element search now matches the job search ownership pattern: services own traversal and totals, while command code owns rendering, progress, and prompts.
 ---
+---
+## Iteration 2 - 2026-07-24 14:45
+**Work Unit**: Partial US2 incident search ownership refactor
+**Tasks Completed**:
+- [x] T037: Add version-neutral paged search result contracts for incident discovery
+- [x] T038: Move incident page walking, cursor handling, process-instance-key projection, and local filtering below command ownership
+- [x] T039: Reduce command-owned incident paging to rendering and prompts
+**Tasks Remaining in Work Unit**: US2 remains open with T040-T045 incomplete
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_incident_search.go
+- cmd/process_api_stub_test.go
+- c8volt/incident/api.go
+- c8volt/incident/client.go
+- c8volt/incident/client_test.go
+- c8volt/incident/convert.go
+- c8volt/incident/model.go
+- c8volt/process/client_test.go
+- internal/domain/incident.go
+- internal/services/incident/api.go
+- internal/services/incident/lookup.go
+- internal/services/incident/v87/contract.go
+- internal/services/incident/v87/incidents.go
+- internal/services/incident/v88/contract.go
+- internal/services/incident/v88/incidents.go
+- internal/services/incident/v89/contract.go
+- internal/services/incident/v89/incidents.go
+- specs/254-cli-debt-refactor/tasks.md
+- specs/254-cli-debt-refactor/ralph-memory.md
+- specs/254-cli-debt-refactor/progress.md
+**Learnings**:
+- Incident search now follows the job/element visitor ownership pattern while retaining v8.8 compatibility filtering and command-owned process-instance-key rendering.
+---

@@ -202,11 +202,19 @@ func (s stubProcessAPI) SearchIncidents(ctx context.Context, filter incident.Fil
 	return s.searchIncidents(ctx, filter, size, opts...)
 }
 
+func (stubProcessAPI) SearchIncidentsPages(context.Context, incident.Filter, incident.PageRequest, int32, incident.SearchPageVisitor, ...options.FacadeOption) (incident.SearchPagesResult, error) {
+	panic("unexpected call")
+}
+
 func (s stubProcessAPI) SearchIncidentsPage(ctx context.Context, filter incident.Filter, req incident.PageRequest, opts ...options.FacadeOption) (incident.Page, error) {
 	if s.searchIncidentsPage == nil {
 		panic("unexpected call")
 	}
 	return s.searchIncidentsPage(ctx, filter, req, opts...)
+}
+
+func (stubProcessAPI) SearchIncidentsTotal(context.Context, incident.Filter, incident.PageRequest, ...options.FacadeOption) (int64, error) {
+	panic("unexpected call")
 }
 
 func (stubProcessAPI) SearchProcessInstanceIncidents(context.Context, string, ...options.FacadeOption) ([]incident.ProcessInstanceIncidentDetail, error) {

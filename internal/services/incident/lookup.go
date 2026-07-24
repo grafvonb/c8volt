@@ -23,45 +23,5 @@ func GetIncidents(ctx context.Context, api API, keys typex.Keys, wantedWorkers i
 }
 
 func SearchIncidents(ctx context.Context, api API, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-	if incidentSearchNeedsPagedLocalFiltering(filter) {
-		return searchIncidentPagesUntilLimit(ctx, api, filter, size, opts...)
-	}
 	return api.SearchIncidents(ctx, filter, size, opts...)
-}
-
-func searchIncidentPagesUntilLimit(ctx context.Context, api API, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-	if size <= 0 {
-		return nil, nil
-	}
-	req := d.IncidentPageRequest{Size: size}
-	out := make([]d.ProcessInstanceIncidentDetail, 0, size)
-	for {
-		page, err := api.SearchIncidentsPage(ctx, filter, req, opts...)
-		if err != nil {
-			return nil, err
-		}
-		for _, item := range page.Items {
-			if int32(len(out)) >= size {
-				return out, nil
-			}
-			out = append(out, item)
-		}
-		if page.OverflowState == d.ProcessInstanceOverflowStateNoMore {
-			return out, nil
-		}
-		req = nextIncidentPageRequest(req, page)
-	}
-}
-
-func incidentSearchNeedsPagedLocalFiltering(filter d.IncidentFilter) bool {
-	return filter.ErrorMessage != "" ||
-		filter.CreationTimeAfter != "" ||
-		filter.CreationTimeBefore != ""
-}
-
-func nextIncidentPageRequest(current d.IncidentPageRequest, page d.IncidentPage) d.IncidentPageRequest {
-	if page.EndCursor != "" {
-		return d.IncidentPageRequest{Size: current.Size, After: page.EndCursor}
-	}
-	return d.IncidentPageRequest{From: current.From + current.Size, Size: current.Size}
 }

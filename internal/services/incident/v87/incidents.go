@@ -37,6 +37,18 @@ func (s *Service) SearchIncidents(ctx context.Context, filter d.IncidentFilter, 
 	return nil, fmt.Errorf("%w: incident search is not tenant-safe in Camunda 8.7", d.ErrUnsupported)
 }
 
+// SearchIncidentsPages rejects top-level incident search because Camunda 8.7 has no tenant-safe endpoint.
+func (s *Service) SearchIncidentsPages(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, limit int32, visitor d.IncidentSearchPageVisitor, opts ...services.CallOption) (d.IncidentSearchPagesResult, error) {
+	_ = ctx
+	_ = filter
+	_ = page
+	_ = limit
+	_ = visitor
+	_ = services.ApplyCallOptions(opts)
+	s.log.Debug("incident paged search rejected; v8.7 not tenant-safe")
+	return d.IncidentSearchPagesResult{}, fmt.Errorf("%w: incident search is not tenant-safe in Camunda 8.7", d.ErrUnsupported)
+}
+
 // SearchIncidentsPage rejects top-level incident search because Camunda 8.7 has no tenant-safe endpoint.
 func (s *Service) SearchIncidentsPage(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error) {
 	_ = ctx
@@ -45,6 +57,16 @@ func (s *Service) SearchIncidentsPage(ctx context.Context, filter d.IncidentFilt
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug("incident page search rejected; v8.7 not tenant-safe")
 	return d.IncidentPage{}, fmt.Errorf("%w: incident search is not tenant-safe in Camunda 8.7", d.ErrUnsupported)
+}
+
+// SearchIncidentsTotal rejects top-level incident search because Camunda 8.7 has no tenant-safe endpoint.
+func (s *Service) SearchIncidentsTotal(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (int64, error) {
+	_ = ctx
+	_ = filter
+	_ = page
+	_ = services.ApplyCallOptions(opts)
+	s.log.Debug("incident total search rejected; v8.7 not tenant-safe")
+	return 0, fmt.Errorf("%w: incident search is not tenant-safe in Camunda 8.7", d.ErrUnsupported)
 }
 
 // SearchProcessInstanceIncidents rejects incident lookup because Camunda 8.7 has no tenant-safe endpoint.
