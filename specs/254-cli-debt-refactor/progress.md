@@ -329,3 +329,18 @@ Started: 2026-07-24 06:28:25
 **Learnings**:
 - Incident enrichment now overlaps independent detail lookups through the shared ordered pool; observed lookup call order is intentionally nondeterministic.
 ---
+---
+## Iteration 1 - 2026-07-24 16:02
+**Work Unit**: Partial US3 cancel/delete planning latency tests
+**Tasks Completed**:
+- [x] T047: Add fake-latency tests for cancel/delete planning and dependency traversal
+**Tasks Remaining in Work Unit**: US3 remains open with T048-T051 and T053-T058 incomplete
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/dryrun_test.go
+- specs/254-cli-debt-refactor/tasks.md
+- specs/254-cli-debt-refactor/ralph-memory.md
+- specs/254-cli-debt-refactor/progress.md
+**Learnings**:
+- Dry-run dependency planning already uses the service-owned bounded pool path; new fake-latency tests now pin concurrency and deterministic page-plan ordering.
+---

@@ -120,7 +120,7 @@
 ### Tests for User Story 3
 
 - [x] T046 [P] [US3] Add fake-latency tests for process-instance search enrichment and incident detail lookup in `c8volt/process/client_test.go`
-- [ ] T047 [P] [US3] Add fake-latency tests for cancel/delete planning and dependency traversal in `internal/services/processinstance/dryrun_test.go`
+- [x] T047 [P] [US3] Add fake-latency tests for cancel/delete planning and dependency traversal in `internal/services/processinstance/dryrun_test.go`
 - [ ] T048 [P] [US3] Add high-volume ops repair and purge tests for bounded worker behavior in `internal/services/ops/repair_test.go` and `internal/services/ops/incident_purge_test.go`
 - [ ] T049 [P] [US3] Add high-volume slow-process analysis and retention policy tests for serial hot paths in `internal/services/ops/slow_process_analysis_test.go` and `internal/services/ops/retention_policy_test.go`
 - [ ] T050 [P] [US3] Add worker-control pass-through tests for `--workers`, `--fail-fast`, and `--no-worker-limit` in `cmd/cancel_test.go`, `cmd/delete_test.go`, and `cmd/ops_repair_incident_test.go`
