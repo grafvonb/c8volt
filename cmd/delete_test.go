@@ -1640,6 +1640,96 @@ func TestDeleteProcessInstanceSearchPages_RequiresForceBeforeAnyMutation(t *test
 	require.Contains(t, buf.String(), "next step: auto-continue")
 }
 
+// TestDeleteProcessInstanceSearchPages_FreezesAllPlansBeforeMutation verifies
+// search-derived delete collects every page-level plan before one confirmation
+// and one aggregate delete call.
+func TestDeleteProcessInstanceSearchPages_FreezesAllPlansBeforeMutation(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagCmdAutoConfirm = true
+	flagVerbose = true
+	flagGetPISize = 1
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Int32("batch-size", 1000, "")
+	require.NoError(t, cmd.Flags().Set("batch-size", "1"))
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	var events []string
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(implicit bool, prompt string) error {
+		events = append(events, "confirm")
+		require.True(t, implicit)
+		require.Contains(t, prompt, "total of 4 instance(s) with 2 root instance(s) will be deleted")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		searchProcessInstancesPage: func(_ context.Context, _ process.ProcessInstanceFilter, req process.ProcessInstancePageRequest, _ ...options.FacadeOption) (process.ProcessInstancePage, error) {
+			events = append(events, fmt.Sprintf("search:%d", req.From))
+			require.EqualValues(t, 1, req.Size)
+			switch req.From {
+			case 0:
+				return process.ProcessInstancePage{
+					Items:         []process.ProcessInstance{{Key: "401", State: process.StateCompleted}},
+					Request:       req,
+					OverflowState: process.ProcessInstanceOverflowStateHasMore,
+				}, nil
+			case 1:
+				return process.ProcessInstancePage{
+					Items:         []process.ProcessInstance{{Key: "402", State: process.StateCompleted}},
+					Request:       req,
+					OverflowState: process.ProcessInstanceOverflowStateNoMore,
+				}, nil
+			default:
+				t.Fatalf("unexpected search page offset %d", req.From)
+				return process.ProcessInstancePage{}, nil
+			}
+		},
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			events = append(events, "plan:"+keys.String())
+			switch keys.String() {
+			case "401":
+				return process.DryRunPIKeyExpansion{
+					Roots:     typex.Keys{"root-a"},
+					Collected: typex.Keys{"root-a", "401"},
+					Outcome:   process.TraversalOutcomeComplete,
+				}, nil
+			case "402":
+				return process.DryRunPIKeyExpansion{
+					Roots:     typex.Keys{"root-b"},
+					Collected: typex.Keys{"root-b", "402"},
+					Outcome:   process.TraversalOutcomeComplete,
+				}, nil
+			default:
+				t.Fatalf("unexpected dry-run plan keys %v", keys)
+				return process.DryRunPIKeyExpansion{}, nil
+			}
+		},
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.DeleteReports, error) {
+			events = append(events, "delete")
+			require.Equal(t, typex.Keys{"root-a", "root-b"}, keys)
+			require.Zero(t, wantedWorkers)
+			require.Equal(t, 4, options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount)
+			return process.DeleteReports{Items: []process.DeleteReport{
+				{Key: "root-a", Ok: true},
+				{Key: "root-b", Ok: true},
+			}}, nil
+		},
+	}
+
+	got, err := deleteProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{State: process.StateCompleted})
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"search:0", "plan:401", "search:1", "plan:402", "confirm", "delete"}, events)
+	require.Len(t, got.DryRunPreviews, 2)
+	require.Len(t, got.Reports, 2)
+	require.Contains(t, buf.String(), "next step: auto-continue")
+}
+
 // TestDeleteProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck verifies paged impact-check warnings are printed.
 func TestDeleteProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck(t *testing.T) {
 	resetProcessInstanceCommandGlobals()

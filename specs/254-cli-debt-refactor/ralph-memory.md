@@ -19,6 +19,7 @@ Started: 2026-07-24T04:28:25Z
 - US2 T026 added job facade and v8.8 service tests around service-owned job page collection. v8.9 already had equivalent service coverage; command-owned job paging remains for interactive prompts and verbose progress until the broader job ownership slice decides how to preserve that output contract.
 - US2 T027 added element facade and v8.8 service tests around service-owned element page collection, offset traversal, limit-capped page sizing, and result mapping.
 - US2 T028 added incident facade and v8.8 service tests around local-filter page collection and caller-cap trimming. Incident facade paging currently triggers through `internal/services/incident.SearchIncidents` for error-message and creation-time filters, while v8.8 service-owned collection handles broader local compatibility filters below the facade.
+- US2 T029-T030 added process-instance facade/v8.8 service tests for paged search metadata, cursor paging, parent/incident compatibility filter forwarding, and shared dry-run planner option forwarding. Delete search-page tests now pin the frozen-scope safety contract: all page plans are collected before one confirmation and one aggregate delete call.
 
 ## Gotchas
 - `delete process-instance` search mode intentionally plans all selected pages before confirmed mutation; treating it like page-by-page cancel would weaken frozen-scope confirmation behavior.
@@ -34,10 +35,11 @@ Started: 2026-07-24T04:28:25Z
 - `go test ./cmd -run 'TestGet(Job|Element|Incident|ProcessInstance)|Test.*JSON|Test.*KeysOnly|Test.*Automation|Test.*NoIndicator|Test.*Prompt' -count=1`
 - `go test ./toolx/logging -count=1`
 - `go test ./c8volt/job ./internal/services/job/... -count=1`
+- `go test ./cmd ./c8volt/process ./internal/services/processinstance/v88 -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not infer that similar ops discovery loops are equivalent until the candidate counts, frozen scope, report fields, force behavior, and confirmation prompt semantics are compared.
 
 ## Current Handoff
-- Continue Phase 4 / US2 at T029-T030 test work. T026-T028 page-collection test slices are validated; T031-T036 remain open because command-owned job/element paging still preserves prompts and verbose progress and should be reduced only with matching command-output coverage.
+- Continue Phase 4 / US2 at T031. T026-T030 page-collection and mutation-planning test slices are validated; T031-T045 remain open. Start with version-neutral job discovery result contracts before reducing command-owned job paging, and preserve prompts/verbose progress with command-output coverage when T033 changes `cmd/get_job_search.go`.

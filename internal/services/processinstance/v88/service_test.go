@@ -943,6 +943,62 @@ func TestService_SearchForProcessInstancesPage_UsesNativePageMetadata(t *testing
 	})
 }
 
+// TestService_SearchForProcessInstancesPage_UsesCursorAndCompatibilityFilters
+// protects process-instance search ownership below cmd: cursor page controls and
+// compatibility filters are converted in the versioned service request body.
+func TestService_SearchForProcessInstancesPage_UsesCursorAndCompatibilityFilters(t *testing.T) {
+	ctx := context.Background()
+	hasParent := new(false)
+	hasIncident := new(true)
+	endCursor := camundav88.EndCursor("cursor-next")
+
+	svc := newTestService(t, testConfig(), &mockCamundaClient{
+		createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+		getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+		searchProcessInstancesWithResp: func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
+			payload := marshalJSON(t, body)
+			require.Contains(t, payload, `"after":"cursor-prev"`)
+			require.Contains(t, payload, `"limit":25`)
+			require.Contains(t, payload, `"tenantId":"tenant"`)
+			require.Contains(t, payload, `"processDefinitionId":"order-process"`)
+			require.Contains(t, payload, `"processDefinitionKey":"9001"`)
+			require.Contains(t, payload, `"state":"ACTIVE"`)
+			require.Contains(t, payload, `"hasIncident":true`)
+			require.Contains(t, payload, `"parentProcessInstanceKey":{"$exists":false}`)
+			return &camundav88.SearchProcessInstancesResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/search", http.StatusOK, "200 OK"),
+				JSON200: &camundav88.ProcessInstanceSearchQueryResult{
+					Items: []camundav88.ProcessInstanceResult{
+						*makeProcessInstanceResult("123", "ACTIVE", ""),
+					},
+					Page: camundav88.SearchQueryPageResponse{
+						TotalItems:        10000,
+						HasMoreTotalItems: true,
+						EndCursor:         &endCursor,
+					},
+				},
+			}, nil
+		},
+		cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+	}, newStrictOperateClient(t))
+
+	page, err := svc.SearchForProcessInstancesPage(ctx, d.ProcessInstanceFilter{
+		BpmnProcessId:        "order-process",
+		ProcessDefinitionKey: "9001",
+		State:                d.StateActive,
+		HasParent:            hasParent,
+		HasIncident:          hasIncident,
+	}, d.ProcessInstancePageRequest{Size: 25, After: "cursor-prev"})
+
+	require.NoError(t, err)
+	require.Len(t, page.Items, 1)
+	require.NotNil(t, page.ReportedTotal)
+	require.EqualValues(t, 10000, page.ReportedTotal.Count)
+	require.Equal(t, d.ProcessInstanceReportedTotalKindLowerBound, page.ReportedTotal.Kind)
+	require.Equal(t, d.ProcessInstanceOverflowStateHasMore, page.OverflowState)
+	require.Equal(t, "cursor-next", page.EndCursor)
+}
+
 func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 	ctx := context.Background()
 

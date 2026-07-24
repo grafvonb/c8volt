@@ -137,3 +137,21 @@ Started: 2026-07-24 06:28:25
 **Learnings**:
 - Incident facade page collection is pinned through the compatibility-filter paging helper; v8.8 service tests now assert caller-cap trimming for locally filtered incident rows.
 ---
+---
+## Iteration 7 - 2026-07-24 11:15
+**Work Unit**: Partial US2 process-instance search and mutation planning tests
+**Tasks Completed**:
+- [x] T029: Add service/facade page-collection and local-filtering tests for process-instance search
+- [x] T030: Add cancel/delete discovery planning tests for process-instance mutation paging
+**Tasks Remaining in Work Unit**: US2 remains open with T031-T045 incomplete
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/process/client_test.go
+- internal/services/processinstance/v88/service_test.go
+- cmd/delete_test.go
+- specs/254-cli-debt-refactor/tasks.md
+- specs/254-cli-debt-refactor/ralph-memory.md
+- specs/254-cli-debt-refactor/progress.md
+**Learnings**:
+- Process-instance search and delete planning tests now pin the lower-layer paging metadata and frozen-scope mutation planning contracts before the US2 implementation refactor begins.
+---

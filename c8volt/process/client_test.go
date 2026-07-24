@@ -1400,6 +1400,64 @@ func TestClient_SearchProcessInstancesPage_PreservesCrossVersionOverflowStates(t
 	require.Len(t, page.Items, 1)
 }
 
+// TestClient_SearchProcessInstancesPage_ForwardsPagingAndCompatibilityFilters
+// pins the facade boundary for process-instance search. Page traversal and
+// filter compatibility stay in the service layer; the facade only maps public
+// filters, page controls, and service metadata.
+func TestClient_SearchProcessInstancesPage_ForwardsPagingAndCompatibilityFilters(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	hasParent := new(false)
+	hasIncident := new(true)
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{
+				BpmnProcessId:        "order-process",
+				ProcessDefinitionKey: "9001",
+				State:                d.StateActive,
+				HasParent:            hasParent,
+				HasIncident:          hasIncident,
+			}, filter)
+			assert.Equal(t, d.ProcessInstancePageRequest{Size: 25, After: "cursor-1"}, page)
+			assert.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				ReportedTotal: &d.ProcessInstanceReportedTotal{
+					Count: 10000,
+					Kind:  d.ProcessInstanceReportedTotalKindLowerBound,
+				},
+				EndCursor: "cursor-2",
+				Items: []d.ProcessInstance{
+					{Key: "pi-1", BpmnProcessId: "order-process", ProcessDefinitionKey: "9001", State: d.StateActive},
+					{Key: "pi-2", BpmnProcessId: "order-process", ProcessDefinitionKey: "9001", State: d.StateActive},
+				},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	page, err := cli.SearchProcessInstancesPage(ctx, ProcessInstanceFilter{
+		BpmnProcessId:        "order-process",
+		ProcessDefinitionKey: "9001",
+		State:                StateActive,
+		HasParent:            hasParent,
+		HasIncident:          hasIncident,
+	}, ProcessInstancePageRequest{Size: 25, After: "cursor-1"}, options.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	assert.Equal(t, ProcessInstancePageRequest{Size: 25, After: "cursor-1"}, page.Request)
+	assert.Equal(t, ProcessInstanceOverflowStateHasMore, page.OverflowState)
+	require.NotNil(t, page.ReportedTotal)
+	assert.Equal(t, int64(10000), page.ReportedTotal.Count)
+	assert.Equal(t, ProcessInstanceReportedTotalKindLowerBound, page.ReportedTotal.Kind)
+	assert.Equal(t, "cursor-2", page.EndCursor)
+	require.Len(t, page.Items, 2)
+	assert.Equal(t, "pi-1", page.Items[0].Key)
+	assert.Equal(t, "pi-2", page.Items[1].Key)
+}
+
 // TestClient_SearchProcessInstances_UsesPagedSearchWrapper documents the legacy
 // list facade over the newer paged service call. Total is derived from returned
 // items here, while page metadata remains available through the page API.
@@ -1761,6 +1819,54 @@ func TestClient_DryRunCancelOrDeletePlan_UsesWorkersForStructuredTraversal(t *te
 	assert.Equal(t, int32(2), descendantsMax.Load())
 	assert.Equal(t, typex.Keys{"r1", "r2"}, got.Roots)
 	assert.Equal(t, typex.Keys{"r1", "c1", "r2", "c2"}, got.Collected)
+}
+
+// TestClient_DryRunCancelOrDeletePlan_ForwardsDiscoveryOptions verifies cancel
+// and delete impact planning remains a shared service workflow while the facade
+// forwards caller options unchanged.
+func TestClient_DryRunCancelOrDeletePlan_ForwardsDiscoveryOptions(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "child-1", startKey)
+			cfg := services.ApplyCallOptions(opts)
+			require.True(t, cfg.IgnoreTenant)
+			require.True(t, cfg.FailFast)
+			require.True(t, cfg.NoWorkerLimit)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: "child-1",
+				RootKey:  "root-1",
+				Keys:     []string{"child-1", "root-1"},
+				Chain:    map[string]d.ProcessInstance{"child-1": {Key: "child-1", State: d.StateCompleted}, "root-1": {Key: "root-1", State: d.StateCompleted}},
+				Outcome:  pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "root-1", rootKey)
+			cfg := services.ApplyCallOptions(opts)
+			require.True(t, cfg.IgnoreTenant)
+			require.True(t, cfg.FailFast)
+			require.True(t, cfg.NoWorkerLimit)
+			return pitraversal.Result{
+				Mode:    pitraversal.ModeDescendants,
+				RootKey: "root-1",
+				Keys:    []string{"root-1", "child-1"},
+				Chain:   map[string]d.ProcessInstance{"root-1": {Key: "root-1", State: d.StateCompleted}, "child-1": {Key: "child-1", State: d.StateCompleted}},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	got, err := cli.DryRunCancelOrDeletePlan(ctx, typex.Keys{"child-1"}, 1, options.WithIgnoreTenant(), options.WithFailFast(), options.WithNoWorkerLimit())
+
+	require.NoError(t, err)
+	assert.Equal(t, typex.Keys{"root-1"}, got.Roots)
+	assert.Equal(t, typex.Keys{"root-1", "child-1"}, got.Collected)
+	assert.Equal(t, TraversalOutcomeComplete, got.Outcome)
 }
 
 // TestClient_DryRunCancelOrDeletePlan_FailsWhenNoActionableResultsResolve keeps
