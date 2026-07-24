@@ -79,3 +79,8 @@ make test
 ```
 
 Expected outcome: full repository validation passes with race-enabled test coverage, generated docs remain in sync, and no unrelated command behavior regresses.
+
+## Validation Log
+
+- 2026-07-24 06:37: Phase 2 T012 passed with `go test ./cmd -run 'TestCommandContract|TestCapability' -count=1`.
+- 2026-07-24 06:37: Phase 2 artifact checks passed with `go test ./cmd -run 'TestCapabilityDocumentForRoot_CoversCLIDebtAssessment' -count=1` and `go test ./docsgen -run 'TestCLIDebtRefactorAssessmentArtifactDocumentsBaseline' -count=1`.

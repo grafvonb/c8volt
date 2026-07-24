@@ -4,6 +4,8 @@
 package cmd
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -663,6 +665,19 @@ func TestCapabilityDocumentForRoot_ConfigDiagnosticsContract(t *testing.T) {
 		require.True(t, ok, "missing command capability for %s", path)
 		require.Equal(t, CommandMutationReadOnly, capability.Mutation)
 	}
+}
+
+func TestCapabilityDocumentForRoot_CoversCLIDebtAssessment(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	doc := capabilityDocumentForRoot(root)
+	paths := commandCapabilityPaths(doc.Commands)
+	require.Len(t, paths, 55)
+
+	assessmentPaths := readCLIDebtAssessmentCommandPaths(t)
+	require.Len(t, assessmentPaths, 55)
+	require.ElementsMatch(t, paths, assessmentPaths)
 }
 
 func TestCommandCapabilityForCommand_ProcessInstanceExpectIncidentFlag(t *testing.T) {
@@ -2417,4 +2432,42 @@ func hasFlagContractNamed(flags []FlagContract, name string) bool {
 		}
 	}
 	return false
+}
+
+func readCLIDebtAssessmentCommandPaths(t *testing.T) []string {
+	t.Helper()
+
+	path := filepath.Join("..", "specs", "254-cli-debt-refactor", "assessment.md")
+	body, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	const header = "## Command Node Assessment"
+	inSection := false
+	var paths []string
+	for _, line := range strings.Split(string(body), "\n") {
+		switch {
+		case line == header:
+			inSection = true
+			continue
+		case inSection && strings.HasPrefix(line, "## "):
+			return paths
+		case !inSection || !strings.HasPrefix(line, "| `"):
+			continue
+		}
+
+		cells := strings.Split(line, "|")
+		require.Lenf(t, cells, 17, "assessment row should keep 15 required cells: %s", line)
+		for _, cell := range cells[1 : len(cells)-1] {
+			value := strings.TrimSpace(cell)
+			require.NotEmptyf(t, value, "assessment cell must be populated: %s", line)
+			require.NotContainsf(t, strings.ToLower(value), "todo", "assessment cell must not be placeholder: %s", line)
+			require.NotContainsf(t, strings.ToLower(value), "tbd", "assessment cell must not be placeholder: %s", line)
+		}
+
+		commandPath := strings.Trim(strings.TrimSpace(cells[1]), "`")
+		require.NotContainsf(t, paths, commandPath, "duplicate assessment command path %q", commandPath)
+		paths = append(paths, commandPath)
+	}
+
+	return paths
 }

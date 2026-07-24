@@ -11,7 +11,8 @@ Started: 2026-07-24T04:28:25Z
 
 ## Decisions
 - Phase 1 found no conflict between `specs/ralph-implementation-rules.md` and `specs/254-cli-debt-refactor/spec.md`.
-- T006/T007 remain responsible for the full 55-command assessment table and required columns; Phase 1 only recorded review findings.
+- Phase 2 checked in the full 55-command assessment table in `specs/254-cli-debt-refactor/assessment.md` with all required columns and validation tests.
+- The command tree count is guarded in `cmd/command_contract_test.go` by comparing the live capability tree to assessment rows; docsgen also validates assessment sections and row count.
 
 ## Gotchas
 - `delete process-instance` search mode intentionally plans all selected pages before confirmed mutation; treating it like page-by-page cancel would weaken frozen-scope confirmation behavior.
@@ -20,10 +21,12 @@ Started: 2026-07-24T04:28:25Z
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
 - `go test ./cmd -run 'TestCommandContract|TestCapability' -count=1`
+- `go test ./cmd -run 'TestCapabilityDocumentForRoot_CoversCLIDebtAssessment' -count=1`
+- `go test ./docsgen -run 'TestCLIDebtRefactorAssessmentArtifactDocumentsBaseline' -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not infer that similar ops discovery loops are equivalent until the candidate counts, frozen scope, report fields, force behavior, and confirmation prompt semantics are compared.
 
 ## Current Handoff
-- Next iteration should start Phase 2 with T006: create the full command behavior assessment structure in `specs/254-cli-debt-refactor/assessment.md`, then populate the 55 command-node classifications before user-story refactors.
+- Next iteration should start Phase 3 / US1 at T013-T017 test work. Use `specs/254-cli-debt-refactor/assessment.md` as the baseline for output/progress behavior and keep machine-output silence for JSON, keys-only, quiet, automation, and no-indicator modes.

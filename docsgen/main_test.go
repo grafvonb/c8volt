@@ -130,6 +130,34 @@ func TestCLIMarkdownPreludeOmitsOpsBreadcrumb(t *testing.T) {
 	}
 }
 
+func TestCLIDebtRefactorAssessmentArtifactDocumentsBaseline(t *testing.T) {
+	bodyBytes, err := os.ReadFile(filepath.Join("..", "specs", "254-cli-debt-refactor", "assessment.md"))
+	if err != nil {
+		t.Fatalf("read assessment artifact: %v", err)
+	}
+	body := string(bodyBytes)
+
+	for _, want := range []string{
+		"## Command Node Assessment",
+		"| Path | Aliases | Family | Mutation | Contract | Automation | Output Modes | Paging | Mutates | Activity | Durable Progress | Machine Constraints | Ownership | Execution Style | Risk |",
+		"## High-Risk Workflows And Duplicated Mechanics",
+		"## Intentional Differences And Non-Goals",
+		"## Performance Characterization Plan",
+		"`get process-instance`",
+		"`delete process-instance`",
+		"`ops purge process-instances-with-incidents`",
+		"`walk process-instance`",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected assessment artifact to contain %q", want)
+		}
+	}
+
+	if got := strings.Count(body, "\n| `"); got != 55 {
+		t.Fatalf("expected assessment artifact to contain 55 command-node rows, got %d", got)
+	}
+}
+
 // TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup protects generated command docs for the task-key lookup surface.
 func TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup(t *testing.T) {
 	out := t.TempDir()

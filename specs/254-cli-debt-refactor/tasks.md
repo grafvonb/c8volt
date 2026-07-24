@@ -34,13 +34,13 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T006 Create the command behavior assessment structure with all required columns in `specs/254-cli-debt-refactor/assessment.md`
-- [ ] T007 Populate all 55 command-node classifications in `specs/254-cli-debt-refactor/assessment.md`
-- [ ] T008 Add high-risk workflow and duplicated-mechanics findings to `specs/254-cli-debt-refactor/assessment.md`
-- [ ] T009 Add intentional ops-workflow differences and non-goals to `specs/254-cli-debt-refactor/assessment.md`
-- [ ] T010 [P] Add command tree count and assessment completeness assertions in `cmd/command_contract_test.go`
-- [ ] T011 [P] Add assessment artifact validation expectations in `docsgen/main_test.go`
-- [ ] T012 Run `go test ./cmd -run 'TestCommandContract|TestCapability' -count=1` and record the result in `specs/254-cli-debt-refactor/quickstart.md`
+- [x] T006 Create the command behavior assessment structure with all required columns in `specs/254-cli-debt-refactor/assessment.md`
+- [x] T007 Populate all 55 command-node classifications in `specs/254-cli-debt-refactor/assessment.md`
+- [x] T008 Add high-risk workflow and duplicated-mechanics findings to `specs/254-cli-debt-refactor/assessment.md`
+- [x] T009 Add intentional ops-workflow differences and non-goals to `specs/254-cli-debt-refactor/assessment.md`
+- [x] T010 [P] Add command tree count and assessment completeness assertions in `cmd/command_contract_test.go`
+- [x] T011 [P] Add assessment artifact validation expectations in `docsgen/main_test.go`
+- [x] T012 Run `go test ./cmd -run 'TestCommandContract|TestCapability' -count=1` and record the result in `specs/254-cli-debt-refactor/quickstart.md`
 
 **Checkpoint**: All command nodes are classified and refactor slices can be selected without rediscovering command ownership.
 
