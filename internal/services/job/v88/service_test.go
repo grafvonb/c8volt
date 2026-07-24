@@ -207,6 +207,84 @@ func TestService_SearchJobsPageTrimsV88OverfullResponses(t *testing.T) {
 	require.Equal(t, "2251799813711968", page.Items[1].Key)
 }
 
+// TestService_SearchJobsPagesByBatchSizeUntilComplete proves v8.8 owns offset
+// page traversal for collected job discovery instead of leaving it to callers.
+func TestService_SearchJobsPagesByBatchSizeUntilComplete(t *testing.T) {
+	var requests []camundav88.SearchJobsJSONRequestBody
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(_ context.Context, body camundav88.SearchJobsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchJobsResponse, error) {
+			requests = append(requests, body)
+			key := camundav88.JobKey("2251799813711967")
+			if len(requests) == 2 {
+				key = "2251799813711968"
+			}
+			return &camundav88.SearchJobsResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav88.JobSearchQueryResult{
+					Items: []camundav88.JobSearchResult{{
+						JobKey:  key,
+						State:   camundav88.JobStateEnumFAILED,
+						Retries: int32(len(requests) - 1),
+					}},
+					Page: camundav88.SearchQueryPageResponse{
+						TotalItems: 2,
+					},
+				},
+			}, nil
+		},
+	})
+
+	result, err := svc.SearchJobs(context.Background(), d.JobSearchQuery{
+		State:     "FAILED",
+		BatchSize: 1,
+	})
+
+	require.NoError(t, err)
+	require.Zero(t, result.Limit)
+	require.Len(t, result.Items, 2)
+	require.Equal(t, "2251799813711967", result.Items[0].Key)
+	require.Equal(t, "2251799813711968", result.Items[1].Key)
+	require.Len(t, requests, 2)
+	requireJobSearchPageJSON(t, requests[0], 0, 1)
+	requireJobSearchPageJSON(t, requests[1], 1, 1)
+}
+
+// TestService_SearchJobsLimitCapsPagedSearch verifies service-owned collection
+// stops once the user cap is reached and trims the final page size.
+func TestService_SearchJobsLimitCapsPagedSearch(t *testing.T) {
+	var requests []camundav88.SearchJobsJSONRequestBody
+	svc := newJobServiceTest(t, &mockJobClient{
+		searchJobsWithResponse: func(_ context.Context, body camundav88.SearchJobsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchJobsResponse, error) {
+			requests = append(requests, body)
+			return &camundav88.SearchJobsResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav88.JobSearchQueryResult{
+					Items: []camundav88.JobSearchResult{{
+						JobKey:  "2251799813711967",
+						State:   camundav88.JobStateEnumFAILED,
+						Retries: 0,
+					}},
+					Page: camundav88.SearchQueryPageResponse{
+						TotalItems: 2,
+					},
+				},
+			}, nil
+		},
+	})
+
+	result, err := svc.SearchJobs(context.Background(), d.JobSearchQuery{
+		State:     "FAILED",
+		BatchSize: 1,
+		Limit:     1,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int32(1), result.Limit)
+	require.Len(t, result.Items, 1)
+	require.Len(t, requests, 1)
+	requireJobSearchPageJSON(t, requests[0], 0, 1)
+}
+
 func TestJobUpdateRetriesRequest(t *testing.T) {
 	retries := int32(3)
 	svc := newJobServiceTest(t, &mockJobClient{

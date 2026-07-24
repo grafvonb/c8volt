@@ -168,6 +168,37 @@ func TestClient_SearchJobs_PreservesZeroRetriesAndLimit(t *testing.T) {
 	require.Equal(t, int32(0), result.Items[0].Retries)
 }
 
+// TestClient_SearchJobs_ForwardsPageCollectionControls verifies the facade
+// preserves service-owned paging controls while mapping collected job rows.
+func TestClient_SearchJobs_ForwardsPageCollectionControls(t *testing.T) {
+	api := New(fakeJobService{
+		search: func(_ context.Context, request d.JobSearchQuery, _ ...services.CallOption) (d.JobSearchResult, error) {
+			require.Equal(t, int32(2), request.BatchSize)
+			require.Equal(t, int32(3), request.Limit)
+			return d.JobSearchResult{
+				Items: []d.Job{
+					{Key: "2251799813711967", State: "FAILED"},
+					{Key: "2251799813711968", State: "FAILED"},
+					{Key: "2251799813711969", State: "FAILED"},
+				},
+				Limit: request.Limit,
+			}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.SearchJobs(context.Background(), SearchRequest{
+		State:     "FAILED",
+		BatchSize: 2,
+		Limit:     3,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int32(3), result.Limit)
+	require.Len(t, result.Items, 3)
+	require.Equal(t, "2251799813711967", result.Items[0].Key)
+	require.Equal(t, "2251799813711969", result.Items[2].Key)
+}
+
 func TestClient_GetJob_NotFound(t *testing.T) {
 	api := New(fakeJobService{
 		get: func(_ context.Context, key string, _ ...services.CallOption) (d.Job, error) {

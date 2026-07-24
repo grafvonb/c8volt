@@ -16,6 +16,7 @@ Started: 2026-07-24T04:28:25Z
 - The command tree count is guarded in `cmd/command_contract_test.go` by comparing the live capability tree to assessment rows; docsgen also validates assessment sections and row count.
 - US1 added a shared basic-search progress formatter in `cmd/get_processinstance_paging.go` and wired it through job, element, and incident search loops. Process-instance progress now also respects `--quiet`.
 - Ops discovery status rendering is centralized in `cmd/cmd_views_ops_processinstance_scope.go`; user-limited discovery stays visible in compact output and complete discovery page details remain verbose-only.
+- US2 T026 added job facade and v8.8 service tests around service-owned job page collection. v8.9 already had equivalent service coverage; command-owned job paging remains for interactive prompts and verbose progress until the broader job ownership slice decides how to preserve that output contract.
 
 ## Gotchas
 - `delete process-instance` search mode intentionally plans all selected pages before confirmed mutation; treating it like page-by-page cancel would weaken frozen-scope confirmation behavior.
@@ -30,10 +31,11 @@ Started: 2026-07-24T04:28:25Z
 - `go test ./cmd ./toolx/logging -run 'TestGet(Job|Element|Incident|ProcessInstance).*Progress|TestPagedSearchMachineOutputCleanliness|TestOpsPurge.*Discovery|TestRenderOpsRepair.*Discovery|TestIndicatorEnabled|TestActivityWriter_DisabledSuppressesActivityOutput' -count=1`
 - `go test ./cmd -run 'TestGet(Job|Element|Incident|ProcessInstance)|Test.*JSON|Test.*KeysOnly|Test.*Automation|Test.*NoIndicator|Test.*Prompt' -count=1`
 - `go test ./toolx/logging -count=1`
+- `go test ./c8volt/job ./internal/services/job/... -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not infer that similar ops discovery loops are equivalent until the candidate counts, frozen scope, report fields, force behavior, and confirmation prompt semantics are compared.
 
 ## Current Handoff
-- Next iteration should start Phase 4 / US2 at T026-T030 test work. Use the US1 progress policy and tests as the compatibility boundary before moving basic search page walking below command ownership.
+- Continue Phase 4 / US2 at T027-T030 test work. For the job slice, T026 is validated; T031-T033 remain open because command-owned job paging still preserves prompts and verbose progress and should be reduced only with matching command-output coverage.

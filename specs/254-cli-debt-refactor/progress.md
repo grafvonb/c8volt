@@ -89,3 +89,19 @@ Started: 2026-07-24 06:28:25
 **Learnings**:
 - Basic paged searches now share the process-instance progress vocabulary while keeping machine modes clean; ops discovery status rendering is centralized for complete vs user-limited summaries.
 ---
+---
+## Iteration 4 - 2026-07-24 06:52
+**Work Unit**: Partial US2 job search page-collection tests
+**Tasks Completed**:
+- [x] T026: Add service/facade page-collection tests for job search
+**Tasks Remaining in Work Unit**: US2 remains open with T027-T045 incomplete
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/job/client_test.go
+- internal/services/job/v88/service_test.go
+- specs/254-cli-debt-refactor/tasks.md
+- specs/254-cli-debt-refactor/ralph-memory.md
+- specs/254-cli-debt-refactor/progress.md
+**Learnings**:
+- Job service collection is already implemented in the service layer; v8.8 now has matching page traversal and limit-cap tests alongside facade coverage.
+---
