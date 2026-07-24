@@ -231,6 +231,37 @@ func TestClient_SearchElements_MapsRequestAndResult(t *testing.T) {
 	require.Equal(t, "ship-order", result.Items[0].ElementId)
 }
 
+// TestClient_SearchElements_ForwardsPageCollectionControls verifies the
+// facade preserves service-owned paging controls while mapping collected rows.
+func TestClient_SearchElements_ForwardsPageCollectionControls(t *testing.T) {
+	api := New(fakeElementService{
+		search: func(_ context.Context, request d.ElementSearchQuery, _ ...services.CallOption) (d.ElementSearchResult, error) {
+			require.Equal(t, int32(2), request.BatchSize)
+			require.Equal(t, int32(3), request.Limit)
+			return d.ElementSearchResult{
+				Total: 3,
+				Items: []d.Element{
+					{ElementInstanceKey: "2251799813689002", State: "ACTIVE"},
+					{ElementInstanceKey: "2251799813689003", State: "ACTIVE"},
+					{ElementInstanceKey: "2251799813689004", State: "ACTIVE"},
+				},
+			}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.SearchElements(context.Background(), SearchRequest{
+		State:     "ACTIVE",
+		BatchSize: 2,
+		Limit:     3,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int32(3), result.Total)
+	require.Len(t, result.Items, 3)
+	require.Equal(t, "2251799813689002", result.Items[0].ElementInstanceKey)
+	require.Equal(t, "2251799813689004", result.Items[2].ElementInstanceKey)
+}
+
 func TestClient_SearchElementsPage_MapsPagingMetadata(t *testing.T) {
 	api := New(fakeElementService{
 		page: func(_ context.Context, request d.ElementSearchQuery, page d.ElementPageRequest, _ ...services.CallOption) (d.ElementSearchPage, error) {

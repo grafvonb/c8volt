@@ -177,6 +177,49 @@ func TestService_SearchElements_ConstructsFiltersAndConvertsRows(t *testing.T) {
 	}, result.Items[0])
 }
 
+// TestService_SearchElementsPagesByBatchSizeUntilComplete proves v8.8 owns
+// offset page traversal for collected element discovery instead of callers.
+func TestService_SearchElementsPagesByBatchSizeUntilComplete(t *testing.T) {
+	var requests []camundav88.SearchElementInstancesJSONRequestBody
+	svc := newElementServiceTest(t, &mockElementClient{
+		searchElementInstancesWithResponse: func(_ context.Context, body camundav88.SearchElementInstancesJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchElementInstancesResponse, error) {
+			requests = append(requests, body)
+			key := camundav88.ElementInstanceKey("2251799813689002")
+			if len(requests) == 2 {
+				key = "2251799813689003"
+			}
+			return &camundav88.SearchElementInstancesResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav88.ElementInstanceSearchQueryResult{
+					Items: []camundav88.ElementInstanceResult{{
+						ElementInstanceKey: key,
+						ElementId:          "ship-order",
+						Type:               camundav88.ElementInstanceResultType("SERVICE_TASK"),
+						State:              camundav88.ElementInstanceStateEnumACTIVE,
+					}},
+					Page: camundav88.SearchQueryPageResponse{
+						TotalItems: 2,
+					},
+				},
+			}, nil
+		},
+	})
+
+	result, err := svc.SearchElements(context.Background(), d.ElementSearchQuery{
+		State:     "ACTIVE",
+		BatchSize: 1,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int32(2), result.Total)
+	require.Len(t, result.Items, 2)
+	require.Len(t, requests, 2)
+	requireElementSearchPageJSON(t, requests[0], 0, 1)
+	requireElementSearchPageJSON(t, requests[1], 1, 1)
+	require.Equal(t, "2251799813689002", result.Items[0].ElementInstanceKey)
+	require.Equal(t, "2251799813689003", result.Items[1].ElementInstanceKey)
+}
+
 func TestService_SearchElementsPagesByBatchSizeUntilLimit(t *testing.T) {
 	var requests []camundav88.SearchElementInstancesJSONRequestBody
 	svc := newElementServiceTest(t, &mockElementClient{
@@ -208,6 +251,57 @@ func TestService_SearchElementsPagesByBatchSizeUntilLimit(t *testing.T) {
 	require.Len(t, result.Items, 2)
 	requireElementSearchPageJSON(t, requests[0], 0, 1)
 	requireElementSearchPageJSON(t, requests[1], 1, 1)
+	require.Equal(t, "2251799813689002", result.Items[0].ElementInstanceKey)
+	require.Equal(t, "2251799813689003", result.Items[1].ElementInstanceKey)
+}
+
+// TestService_SearchElementsLimitCapsFinalPageSize verifies service-owned
+// collection trims the first page request to the caller's total element cap.
+func TestService_SearchElementsLimitCapsFinalPageSize(t *testing.T) {
+	var requests []camundav88.SearchElementInstancesJSONRequestBody
+	svc := newElementServiceTest(t, &mockElementClient{
+		searchElementInstancesWithResponse: func(_ context.Context, body camundav88.SearchElementInstancesJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchElementInstancesResponse, error) {
+			requests = append(requests, body)
+			return &camundav88.SearchElementInstancesResponse{
+				HTTPResponse: okHTTPResponse(),
+				JSON200: &camundav88.ElementInstanceSearchQueryResult{
+					Items: []camundav88.ElementInstanceResult{
+						{
+							ElementInstanceKey: "2251799813689002",
+							ElementId:          "ship-order",
+							Type:               camundav88.ElementInstanceResultType("SERVICE_TASK"),
+							State:              camundav88.ElementInstanceStateEnumACTIVE,
+						},
+						{
+							ElementInstanceKey: "2251799813689003",
+							ElementId:          "charge-card",
+							Type:               camundav88.ElementInstanceResultType("SERVICE_TASK"),
+							State:              camundav88.ElementInstanceStateEnumACTIVE,
+						},
+						{
+							ElementInstanceKey: "2251799813689004",
+							ElementId:          "archive-order",
+							Type:               camundav88.ElementInstanceResultType("SERVICE_TASK"),
+							State:              camundav88.ElementInstanceStateEnumACTIVE,
+						},
+					},
+					Page: camundav88.SearchQueryPageResponse{TotalItems: 3},
+				},
+			}, nil
+		},
+	})
+
+	result, err := svc.SearchElements(context.Background(), d.ElementSearchQuery{
+		State:     "ACTIVE",
+		BatchSize: 5,
+		Limit:     2,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int32(2), result.Total)
+	require.Len(t, result.Items, 2)
+	require.Len(t, requests, 1)
+	requireElementSearchPageJSON(t, requests[0], 0, 2)
 	require.Equal(t, "2251799813689002", result.Items[0].ElementInstanceKey)
 	require.Equal(t, "2251799813689003", result.Items[1].ElementInstanceKey)
 }

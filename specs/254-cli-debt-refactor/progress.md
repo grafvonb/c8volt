@@ -105,3 +105,19 @@ Started: 2026-07-24 06:28:25
 **Learnings**:
 - Job service collection is already implemented in the service layer; v8.8 now has matching page traversal and limit-cap tests alongside facade coverage.
 ---
+---
+## Iteration 5 - 2026-07-24 11:03
+**Work Unit**: Partial US2 element search page-collection tests
+**Tasks Completed**:
+- [x] T027: Add service/facade page-collection tests for element search
+**Tasks Remaining in Work Unit**: US2 remains open with T028-T045 incomplete
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/element/client_test.go
+- internal/services/element/v88/service_test.go
+- specs/254-cli-debt-refactor/tasks.md
+- specs/254-cli-debt-refactor/ralph-memory.md
+- specs/254-cli-debt-refactor/progress.md
+**Learnings**:
+- Element collection is already service-owned; tests now pin facade control forwarding plus v8.8 offset traversal and limit-capped page sizing.
+---

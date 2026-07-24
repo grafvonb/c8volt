@@ -17,6 +17,7 @@ Started: 2026-07-24T04:28:25Z
 - US1 added a shared basic-search progress formatter in `cmd/get_processinstance_paging.go` and wired it through job, element, and incident search loops. Process-instance progress now also respects `--quiet`.
 - Ops discovery status rendering is centralized in `cmd/cmd_views_ops_processinstance_scope.go`; user-limited discovery stays visible in compact output and complete discovery page details remain verbose-only.
 - US2 T026 added job facade and v8.8 service tests around service-owned job page collection. v8.9 already had equivalent service coverage; command-owned job paging remains for interactive prompts and verbose progress until the broader job ownership slice decides how to preserve that output contract.
+- US2 T027 added element facade and v8.8 service tests around service-owned element page collection, offset traversal, limit-capped page sizing, and result mapping.
 
 ## Gotchas
 - `delete process-instance` search mode intentionally plans all selected pages before confirmed mutation; treating it like page-by-page cancel would weaken frozen-scope confirmation behavior.
@@ -38,4 +39,4 @@ Started: 2026-07-24T04:28:25Z
 - Do not infer that similar ops discovery loops are equivalent until the candidate counts, frozen scope, report fields, force behavior, and confirmation prompt semantics are compared.
 
 ## Current Handoff
-- Continue Phase 4 / US2 at T027-T030 test work. For the job slice, T026 is validated; T031-T033 remain open because command-owned job paging still preserves prompts and verbose progress and should be reduced only with matching command-output coverage.
+- Continue Phase 4 / US2 at T028-T030 test work. T026 job and T027 element page-collection tests are validated; T031-T036 remain open because command-owned job/element paging still preserves prompts and verbose progress and should be reduced only with matching command-output coverage.
