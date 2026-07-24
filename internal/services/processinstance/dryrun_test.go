@@ -169,6 +169,93 @@ func TestPlanProcessInstanceMutationPages_UsesConcurrentDependencyPlanning(t *te
 	require.Equal(t, got.Plans[0].Plan.Collected, visited[0].Plan.Collected)
 }
 
+// TestPlanProcessInstanceMutationPages_ContinuesAfterFilteredEmptyPage proves
+// sparse local-filter matches do not stop search-derived mutation planning
+// before later backend pages can contribute selected candidates.
+func TestPlanProcessInstanceMutationPages_ContinuesAfterFilteredEmptyPage(t *testing.T) {
+	ctx := context.Background()
+
+	var searchedFrom []int32
+	api := stubDryRunProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			searchedFrom = append(searchedFrom, page.From)
+			switch page.From {
+			case 0:
+				return d.ProcessInstancePage{
+					Items: []d.ProcessInstance{
+						{Key: "root-1", State: d.StateActive},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				}, nil
+			case 1:
+				return d.ProcessInstancePage{
+					Items: []d.ProcessInstance{
+						{Key: "child-1", ParentKey: "root-1", State: d.StateActive},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				}, nil
+			default:
+				t.Fatalf("unexpected search page offset %d", page.From)
+				return d.ProcessInstancePage{}, nil
+			}
+		},
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "child-1", key)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: key,
+				RootKey:  "root-1",
+				Keys:     []string{key, "root-1"},
+				Chain: map[string]d.ProcessInstance{
+					key:      {Key: key, ParentKey: "root-1", State: d.StateActive},
+					"root-1": {Key: "root-1", State: d.StateActive},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, root string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "root-1", root)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeDescendants,
+				StartKey: root,
+				RootKey:  root,
+				Keys:     []string{root, "child-1"},
+				Chain: map[string]d.ProcessInstance{
+					root:      {Key: root, State: d.StateActive},
+					"child-1": {Key: "child-1", ParentKey: root, State: d.StateActive},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	var visited [][]string
+	got, err := PlanProcessInstanceMutationPages(ctx, api, stubDryRunIncidentAPI{}, d.ProcessInstanceMutationPlanRequest{
+		SearchRequest: d.ProcessInstanceSearchRequest{
+			Page:         d.ProcessInstancePageRequest{Size: 1},
+			LocalFilters: d.ProcessInstanceSearchLocalFilters{ChildrenOnly: true},
+		},
+		Workers: 1,
+	}, func(step d.ProcessInstanceMutationPlanStep) (d.ProcessInstanceSearchPageAction, error) {
+		visited = append(visited, append([]string(nil), step.RequestedKeys...))
+		return d.ProcessInstanceSearchPageActionContinue, nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, []int32{0, 1}, searchedFrom)
+	require.Len(t, visited, 2)
+	require.Empty(t, visited[0])
+	require.Equal(t, []string{"child-1"}, visited[1])
+	require.Equal(t, int32(2), got.Pages)
+	require.Equal(t, int32(1), got.RequestedCount)
+	require.Len(t, got.Plans, 1)
+	require.Equal(t, []string{"child-1"}, got.Plans[0].RequestedKeys)
+	require.Equal(t, typex.Keys{"root-1"}, got.Plans[0].Plan.Roots)
+	require.Equal(t, typex.Keys{"root-1", "child-1"}, got.Plans[0].Plan.Collected)
+}
+
 func waitForDryRunOverlap(t *testing.T, active, max *atomic.Int32, released *atomic.Bool, release chan struct{}, phase string) func() {
 	t.Helper()
 	current := active.Add(1)

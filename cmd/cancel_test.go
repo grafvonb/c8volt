@@ -784,6 +784,86 @@ func TestCancelProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage(t *test
 	require.Equal(t, 2, results.DryRunPreviews[0].RequestedCount)
 }
 
+// TestCancelProcessInstanceDryRun_SearchContinuesAfterEmptySelectedPage protects
+// sparse search-derived cancel planning: an empty selected page with more
+// backend matches must not hide later selectable candidates.
+func TestCancelProcessInstanceDryRun_SearchContinuesAfterEmptySelectedPage(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+	flagGetPISize = 1
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Int32("batch-size", 1000, "")
+	require.NoError(t, cmd.Flags().Set("batch-size", "1"))
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	var actions []process.ProcessInstanceSearchPageAction
+	cli := stubProcessAPI{
+		planProcessInstanceMutationPages: func(_ context.Context, request process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, _ ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+			require.Equal(t, int32(1), request.SearchRequest.Page.Size)
+			emptyPage := process.ProcessInstancePage{
+				Request:       process.ProcessInstancePageRequest{From: 0, Size: 1},
+				OverflowState: process.ProcessInstanceOverflowStateHasMore,
+			}
+			action, err := visitor(process.ProcessInstanceMutationPlanStep{
+				Page:            emptyPage,
+				CumulativeCount: 0,
+			})
+			if err != nil {
+				return process.ProcessInstanceMutationPlanPagesResult{}, err
+			}
+			actions = append(actions, action)
+			if action == process.ProcessInstanceSearchPageActionStop {
+				return process.ProcessInstanceMutationPlanPagesResult{Pages: 1, Stopped: true}, nil
+			}
+
+			selectedPage := process.ProcessInstancePage{
+				Items:         []process.ProcessInstance{{Key: "201", State: process.StateActive}},
+				Request:       process.ProcessInstancePageRequest{From: 1, Size: 1},
+				OverflowState: process.ProcessInstanceOverflowStateNoMore,
+			}
+			plan := process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-201"},
+				Collected: typex.Keys{"root-201", "201"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}
+			action, err = visitor(process.ProcessInstanceMutationPlanStep{
+				Page:             selectedPage,
+				RequestedKeys:    []string{"201"},
+				Plan:             plan,
+				CumulativeCount:  1,
+				CumulativeImpact: 2,
+			})
+			if err != nil {
+				return process.ProcessInstanceMutationPlanPagesResult{}, err
+			}
+			actions = append(actions, action)
+			return process.ProcessInstanceMutationPlanPagesResult{
+				Plans:            []process.ProcessInstanceMutationPlanStep{{Page: selectedPage, RequestedKeys: []string{"201"}, Plan: plan, CumulativeCount: 1, CumulativeImpact: 2}},
+				Pages:            2,
+				RequestedCount:   1,
+				CumulativeImpact: 2,
+			}, nil
+		},
+		cancelProcessInstances: dryRunCancelMutationGuard(t),
+	}
+
+	results, err := cancelProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{})
+
+	require.NoError(t, err)
+	require.Equal(t, []process.ProcessInstanceSearchPageAction{
+		process.ProcessInstanceSearchPageActionContinue,
+		process.ProcessInstanceSearchPageActionStop,
+	}, actions)
+	require.Empty(t, results.Reports)
+	require.Len(t, results.DryRunPreviews, 1)
+	require.Equal(t, typex.Keys{"201"}, results.DryRunPreviews[0].RequestedKeys)
+	require.NotContains(t, buf.String(), "found: 0")
+}
+
 // TestCancelCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig verifies command-local timeout precedence.
 func TestCancelCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig(t *testing.T) {
 	t.Setenv("C8VOLT_APP_BACKOFF_TIMEOUT", "27s")
