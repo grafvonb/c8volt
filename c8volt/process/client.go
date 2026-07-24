@@ -235,6 +235,17 @@ func (c *client) SearchProcessInstancesTotal(ctx context.Context, request Proces
 	return total, nil
 }
 
+// PlanProcessInstanceMutationPages delegates search-selected cancel/delete
+// paging and dependency expansion below the facade.
+func (c *client) PlanProcessInstanceMutationPages(ctx context.Context, request ProcessInstanceMutationPlanRequest, visitor ProcessInstanceMutationPlanVisitor, opts ...options.FacadeOption) (ProcessInstanceMutationPlanPagesResult, error) {
+	result, err := pisvc.PlanProcessInstanceMutationPages(ctx, c.piApi, c.incApi, toDomainProcessInstanceMutationPlanRequest(request), toDomainProcessInstanceMutationPlanVisitor(visitor), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainProcessInstanceMutationPlanPagesResult(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
+}
+
 func (c *client) CancelProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (CancelReport, ProcessInstances, error) {
 	resp, pis, err := c.piApi.CancelProcessInstance(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {

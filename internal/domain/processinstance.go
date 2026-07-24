@@ -286,6 +286,39 @@ type ProcessInstanceSearchPagesResult struct {
 	Pages int32
 }
 
+// ProcessInstanceMutationPlanRequest combines search selection with dry-run
+// dependency expansion controls for cancel/delete style commands.
+type ProcessInstanceMutationPlanRequest struct {
+	SearchRequest ProcessInstanceSearchRequest
+	Workers       int
+}
+
+// ProcessInstanceMutationPlanStep carries one selected search page and its
+// expanded cancellation/deletion plan.
+type ProcessInstanceMutationPlanStep struct {
+	Page             ProcessInstancePage
+	RequestedKeys    []string
+	Plan             DryRunPIKeyExpansion
+	CumulativeCount  int32
+	CumulativeImpact int32
+	LimitReached     bool
+}
+
+// ProcessInstanceMutationPlanVisitor observes page-level plans while service
+// code owns search paging, limit trimming, and dependency-expansion traversal.
+type ProcessInstanceMutationPlanVisitor func(ProcessInstanceMutationPlanStep) (ProcessInstanceSearchPageAction, error)
+
+// ProcessInstanceMutationPlanPagesResult captures planned search-selected
+// cancel/delete pages without taking over CLI rendering or confirmation.
+type ProcessInstanceMutationPlanPagesResult struct {
+	Plans            []ProcessInstanceMutationPlanStep
+	Limit            int32
+	Pages            int32
+	RequestedCount   int32
+	CumulativeImpact int32
+	Stopped          bool
+}
+
 // ProcessInstanceSearchTotalStep exposes page-counting state for callers that
 // need diagnostics while total fallback remains service-owned.
 type ProcessInstanceSearchTotalStep struct {

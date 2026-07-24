@@ -81,6 +81,7 @@ type API interface {
 	LookupProcessInstanceStateByKey(ctx context.Context, key string, opts ...options.FacadeOption) (StateReport, ProcessInstance, error)
 	SearchProcessInstancesPages(ctx context.Context, request ProcessInstanceSearchRequest, visitor ProcessInstanceSearchPageVisitor, opts ...options.FacadeOption) (ProcessInstanceSearchPagesResult, error)
 	SearchProcessInstancesTotal(ctx context.Context, request ProcessInstanceSearchRequest, visitor ProcessInstanceSearchTotalVisitor, opts ...options.FacadeOption) (int64, error)
+	PlanProcessInstanceMutationPages(ctx context.Context, request ProcessInstanceMutationPlanRequest, visitor ProcessInstanceMutationPlanVisitor, opts ...options.FacadeOption) (ProcessInstanceMutationPlanPagesResult, error)
 	SearchProcessInstancesPage(ctx context.Context, filter ProcessInstanceFilter, page ProcessInstancePageRequest, opts ...options.FacadeOption) (ProcessInstancePage, error)
 	SearchProcessInstances(ctx context.Context, filter ProcessInstanceFilter, size int32, opts ...options.FacadeOption) (ProcessInstances, error)
 	DiscoverOrphanProcessInstances(ctx context.Context, request OrphanDiscoveryRequest, opts ...options.FacadeOption) (OrphanDiscovery, error)

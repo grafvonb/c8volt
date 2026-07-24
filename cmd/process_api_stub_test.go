@@ -27,6 +27,7 @@ type stubProcessAPI struct {
 	searchProcessInstancesPage       func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
 	searchProcessInstancesPages      func(context.Context, process.ProcessInstanceSearchRequest, process.ProcessInstanceSearchPageVisitor, ...options.FacadeOption) (process.ProcessInstanceSearchPagesResult, error)
 	searchProcessInstancesTotal      func(context.Context, process.ProcessInstanceSearchRequest, process.ProcessInstanceSearchTotalVisitor, ...options.FacadeOption) (int64, error)
+	planProcessInstanceMutationPages func(context.Context, process.ProcessInstanceMutationPlanRequest, process.ProcessInstanceMutationPlanVisitor, ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error)
 	searchIncidents                  func(context.Context, incident.Filter, int32, ...options.FacadeOption) (incident.Incidents, error)
 	searchIncidentsPage              func(context.Context, incident.Filter, incident.PageRequest, ...options.FacadeOption) (incident.Page, error)
 	enrichProcessInstances           func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.IncidentEnrichedProcessInstances, error)
@@ -372,6 +373,63 @@ func (s stubProcessAPI) SearchProcessInstancesTotal(ctx context.Context, request
 		}
 	}
 	return int64(len(page.Items)), nil
+}
+
+// PlanProcessInstanceMutationPages delegates to the optional service-owned
+// mutation planning callback used by cancel/delete command tests.
+func (s stubProcessAPI) PlanProcessInstanceMutationPages(ctx context.Context, request process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, opts ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+	if s.planProcessInstanceMutationPages != nil {
+		return s.planProcessInstanceMutationPages(ctx, request, visitor, opts...)
+	}
+	if s.searchProcessInstancesPages == nil && s.searchProcessInstancesPage == nil {
+		panic("unexpected call")
+	}
+	var out process.ProcessInstanceMutationPlanPagesResult
+	searchResult, err := s.SearchProcessInstancesPages(ctx, request.SearchRequest, func(step process.ProcessInstanceSearchPageStep) (process.ProcessInstanceSearchPageAction, error) {
+		keys := make(types.Keys, 0, len(step.Page.Items))
+		for _, item := range step.Page.Items {
+			keys = append(keys, item.Key)
+		}
+		plan := process.DryRunPIKeyExpansion{}
+		if len(keys) > 0 {
+			var err error
+			plan, err = s.DryRunCancelOrDeletePlan(ctx, keys, request.Workers, opts...)
+			if err != nil {
+				return process.ProcessInstanceSearchPageActionStop, err
+			}
+		}
+		impact := len(plan.Collected)
+		if impact == 0 {
+			impact = len(keys)
+		}
+		out.CumulativeImpact += int32(impact)
+		planStep := process.ProcessInstanceMutationPlanStep{
+			Page:             step.Page,
+			RequestedKeys:    append([]string(nil), keys...),
+			Plan:             plan,
+			CumulativeCount:  step.CumulativeCount,
+			CumulativeImpact: out.CumulativeImpact,
+			LimitReached:     step.LimitReached,
+		}
+		if len(keys) > 0 {
+			out.Plans = append(out.Plans, planStep)
+		}
+		if visitor == nil {
+			return process.ProcessInstanceSearchPageActionContinue, nil
+		}
+		action, err := visitor(planStep)
+		if action == process.ProcessInstanceSearchPageActionStop {
+			out.Stopped = true
+		}
+		return action, err
+	}, opts...)
+	if err != nil {
+		return process.ProcessInstanceMutationPlanPagesResult{}, err
+	}
+	out.Limit = searchResult.Limit
+	out.Pages = searchResult.Pages
+	out.RequestedCount = int32(len(searchResult.Items))
+	return out, nil
 }
 
 func failProcessInstancePageSearch(t *testing.T) func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error) {

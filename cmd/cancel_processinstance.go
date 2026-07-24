@@ -8,6 +8,7 @@ import (
 
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
@@ -87,13 +88,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 				}
 			}
 			searchFilterOpts := populatePISearchFilterOpts()
-			results, err := processPISearchPagesWithAction(cmd, cli, cfg, searchFilterOpts, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
-				keys := make(types.Keys, 0, len(page.Items))
-				for _, pi := range page.Items {
-					keys = append(keys, pi.Key)
-				}
-				return cancelProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, false)
-			})
+			results, err := cancelProcessInstanceSearchPages(cmd, cli, cfg, searchFilterOpts)
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("cancel process instances: %w", err))
 			}
@@ -141,6 +136,89 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		}
 		return
 	},
+}
+
+// cancelProcessInstanceSearchPages handles search-selected cancel rendering and
+// mutation while facade/service code owns page traversal and impact planning.
+func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (processInstancePageActionResults, error) {
+	firstPage := true
+	var results processInstancePageActionResults
+
+	planned, err := cli.PlanProcessInstanceMutationPages(cmd.Context(), process.ProcessInstanceMutationPlanRequest{
+		SearchRequest: newProcessInstanceSearchRequest(cmd, cfg, filter),
+		Workers:       flagWorkers,
+	}, func(step process.ProcessInstanceMutationPlanStep) (process.ProcessInstanceSearchPageAction, error) {
+		if len(step.RequestedKeys) == 0 {
+			return process.ProcessInstanceSearchPageActionStop, nil
+		}
+		result := processInstancePageActionResultFromPlan("cancel", step)
+		if flagDryRun {
+			if result.DryRunPreview != nil {
+				results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
+			}
+		} else {
+			printDryRunExpansionWarning(cmd, step.Plan)
+			impact := result.Impact
+			if firstPage {
+				affectedCount, rootCount, requestedCount := impact.Affected, impact.Roots, impact.Requested
+				prompt := fmt.Sprintf("You are about to cancel %d process instance(s). Do you want to proceed?", affectedCount)
+				if affectedCount > requestedCount {
+					prompt = fmt.Sprintf("You have requested to cancel %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be canceled. Do you want to proceed?", requestedCount, affectedCount, rootCount)
+				}
+				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+					return process.ProcessInstanceSearchPageActionStop, err
+				}
+			}
+
+			mutationOpts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(step.Plan.Collected)))
+			reports, err := cli.CancelProcessInstances(cmd.Context(), step.Plan.Roots, flagWorkers, mutationOpts...)
+			if err != nil {
+				return process.ProcessInstanceSearchPageActionStop, fmt.Errorf("cancel process instances: %w", err)
+			}
+			for _, report := range reports.Items {
+				results.Reports = append(results.Reports, process.Reporter(report))
+			}
+			if result.DryRunPreview != nil {
+				results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
+			}
+		}
+
+		summary := newPIProgressSummary(step.Page, int(step.CumulativeCount), flagDryRun || shouldAutoContinuePISearchPages(cmd))
+		printPISearchProgress(cmd, summary)
+
+		switch summary.ContinuationState {
+		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop, processInstanceContinuationLimitReached:
+			return process.ProcessInstanceSearchPageActionStop, nil
+		case processInstanceContinuationAutoContinue:
+			firstPage = false
+			return process.ProcessInstanceSearchPageActionContinue, nil
+		case processInstanceContinuationPrompt:
+			prompt := fmt.Sprintf("Processed %d process instance(s) on this page (%s, %d including dependencies). More matching process instances remain. Continue?", summary.CurrentPageCount, formatProcessInstancePagingProgress(step.Page, summary.CumulativeCount, "requested"), step.CumulativeImpact)
+			if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+				if isCmdAborted(err) {
+					printPISearchProgress(cmd, processInstanceProgressSummary{
+						PageSize:          summary.PageSize,
+						CurrentPageCount:  summary.CurrentPageCount,
+						CumulativeCount:   summary.CumulativeCount,
+						OverflowState:     summary.OverflowState,
+						ContinuationState: processInstanceContinuationPartialComplete,
+					})
+					return process.ProcessInstanceSearchPageActionStop, nil
+				}
+				return process.ProcessInstanceSearchPageActionStop, err
+			}
+			firstPage = false
+			return process.ProcessInstanceSearchPageActionContinue, nil
+		}
+		return process.ProcessInstanceSearchPageActionStop, nil
+	}, collectOptions()...)
+	if err != nil {
+		return processInstancePageActionResults{}, err
+	}
+	if planned.RequestedCount == 0 {
+		renderOutputLine(cmd, "found: %d", 0)
+	}
+	return results, nil
 }
 
 // cancelProcessInstancesWithPlan validates the cancel scope, renders dry-run

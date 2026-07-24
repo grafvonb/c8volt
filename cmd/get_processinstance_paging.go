@@ -14,6 +14,7 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/toolx/logging"
+	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
 
@@ -93,6 +94,19 @@ type processInstancePageActionResult struct {
 type processInstancePageActionResults struct {
 	Reports        []process.Reporter
 	DryRunPreviews []processInstanceDryRunPreview
+}
+
+func processInstancePageActionResultFromPlan(operation string, step process.ProcessInstanceMutationPlanStep) processInstancePageActionResult {
+	keys := types.Keys(step.RequestedKeys)
+	preview := newProcessInstanceDryRunPreview(operation, keys, step.Plan)
+	return processInstancePageActionResult{
+		Impact: processInstancePageImpact{
+			Requested: len(keys),
+			Affected:  len(step.Plan.Collected),
+			Roots:     len(step.Plan.Roots),
+		},
+		DryRunPreview: &preview,
+	}
 }
 
 // searchPageProgressSummary is the command-owned progress contract for basic
@@ -397,92 +411,5 @@ func describePIProgressDetail(summary processInstanceProgressSummary) string {
 		return fmt.Sprintf("detail: stopped after reaching limit of %d process instance(s)", flagGetPILimit)
 	default:
 		return "detail: no additional matching process instances remain"
-	}
-}
-
-// processPISearchPagesWithAction is the shared paging loop for cancel/delete
-// style operations that search first and then act page by page. It centralizes
-// limit enforcement, continuation prompts, dry-run aggregation, and partial-stop
-// reporting so mutating commands do not each encode their own paging contract.
-func processPISearchPagesWithAction(
-	cmd *cobra.Command,
-	cli process.API,
-	cfg *config.Config,
-	filter process.ProcessInstanceFilter,
-	processPage func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error),
-) (processInstancePageActionResults, error) {
-	pageReq := newPISearchPageRequest(cmd, cfg, 0)
-	cumulative := 0
-	cumulativeAffected := 0
-	firstPage := true
-	var results processInstancePageActionResults
-
-	for {
-		page, err := cli.SearchProcessInstancesPage(cmd.Context(), filter, pageReq, collectOptions()...)
-		if err != nil {
-			return processInstancePageActionResults{}, err
-		}
-		if len(page.Items) == 0 {
-			if cumulative == 0 {
-				renderOutputLine(cmd, "found: %d", 0)
-			}
-			return results, nil
-		}
-
-		limitedPage := limitPIPageItems(page, cumulative)
-		result, err := processPage(limitedPage, firstPage)
-		if err != nil {
-			if !firstPage && isCmdAborted(err) {
-				printPISearchProgress(cmd, processInstanceProgressSummary{
-					PageSize:          page.Request.Size,
-					CurrentPageCount:  len(limitedPage.Items),
-					CumulativeCount:   cumulative,
-					OverflowState:     page.OverflowState,
-					ContinuationState: processInstanceContinuationPartialComplete,
-				})
-				return results, nil
-			}
-			return processInstancePageActionResults{}, err
-		}
-
-		impact := result.Impact
-		results.Reports = append(results.Reports, result.Reports...)
-		if result.DryRunPreview != nil {
-			results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
-		}
-		cumulative += len(limitedPage.Items)
-		if impact.Affected > 0 {
-			cumulativeAffected += impact.Affected
-		} else {
-			cumulativeAffected += len(limitedPage.Items)
-		}
-		summary := newPIProgressSummary(limitedPage, cumulative, flagDryRun || shouldAutoContinuePISearchPages(cmd))
-		printPISearchProgress(cmd, summary)
-
-		switch summary.ContinuationState {
-		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop, processInstanceContinuationLimitReached:
-			return results, nil
-		case processInstanceContinuationAutoContinue:
-			firstPage = false
-			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
-			continue
-		case processInstanceContinuationPrompt:
-			prompt := fmt.Sprintf("Processed %d process instance(s) on this page (%s, %d including dependencies). More matching process instances remain. Continue?", summary.CurrentPageCount, formatProcessInstancePagingProgress(limitedPage, summary.CumulativeCount, "requested"), cumulativeAffected)
-			if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
-				if isCmdAborted(err) {
-					printPISearchProgress(cmd, processInstanceProgressSummary{
-						PageSize:          summary.PageSize,
-						CurrentPageCount:  summary.CurrentPageCount,
-						CumulativeCount:   summary.CumulativeCount,
-						OverflowState:     summary.OverflowState,
-						ContinuationState: processInstanceContinuationPartialComplete,
-					})
-					return results, nil
-				}
-				return processInstancePageActionResults{}, err
-			}
-			firstPage = false
-			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
-		}
 	}
 }

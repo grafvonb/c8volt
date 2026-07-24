@@ -320,6 +320,39 @@ type ProcessInstanceSearchPagesResult struct {
 	Pages int32             `json:"pages,omitempty"`
 }
 
+// ProcessInstanceMutationPlanRequest combines search selection with dry-run
+// dependency expansion controls for cancel/delete style commands.
+type ProcessInstanceMutationPlanRequest struct {
+	SearchRequest ProcessInstanceSearchRequest `json:"searchRequest,omitempty"`
+	Workers       int                          `json:"workers,omitempty"`
+}
+
+// ProcessInstanceMutationPlanStep carries one selected search page and its
+// expanded cancellation/deletion plan.
+type ProcessInstanceMutationPlanStep struct {
+	Page             ProcessInstancePage  `json:"page"`
+	RequestedKeys    []string             `json:"requestedKeys,omitempty"`
+	Plan             DryRunPIKeyExpansion `json:"plan"`
+	CumulativeCount  int32                `json:"cumulativeCount"`
+	CumulativeImpact int32                `json:"cumulativeImpact"`
+	LimitReached     bool                 `json:"limitReached"`
+}
+
+// ProcessInstanceMutationPlanVisitor observes page-level plans while service
+// code owns search paging, limit trimming, and dependency-expansion traversal.
+type ProcessInstanceMutationPlanVisitor func(ProcessInstanceMutationPlanStep) (ProcessInstanceSearchPageAction, error)
+
+// ProcessInstanceMutationPlanPagesResult captures planned search-selected
+// cancel/delete pages without taking over CLI rendering or confirmation.
+type ProcessInstanceMutationPlanPagesResult struct {
+	Plans            []ProcessInstanceMutationPlanStep `json:"plans,omitempty"`
+	Limit            int32                             `json:"limit,omitempty"`
+	Pages            int32                             `json:"pages,omitempty"`
+	RequestedCount   int32                             `json:"requestedCount,omitempty"`
+	CumulativeImpact int32                             `json:"cumulativeImpact,omitempty"`
+	Stopped          bool                              `json:"stopped,omitempty"`
+}
+
 // ProcessInstanceSearchTotalStep exposes page-counting state while total
 // fallback traversal stays below command ownership.
 type ProcessInstanceSearchTotalStep struct {

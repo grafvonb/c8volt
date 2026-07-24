@@ -1563,6 +1563,120 @@ func TestClient_SearchProcessInstancesPages_DelegatesTraversalAndLocalFiltering(
 	require.Equal(t, int32(2), got.Pages)
 }
 
+// TestClient_PlanProcessInstanceMutationPages_DelegatesSearchAndExpansion keeps
+// search-selected cancel/delete traversal below command ownership while the
+// facade only maps public request, visitor, and option types.
+func TestClient_PlanProcessInstanceMutationPages_DelegatesSearchAndExpansion(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	requests := []d.ProcessInstancePageRequest{}
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{State: d.StateCompleted}, filter)
+			assert.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			requests = append(requests, page)
+			switch len(requests) {
+			case 1:
+				return d.ProcessInstancePage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					Items:         []d.ProcessInstance{{Key: "401", State: d.StateCompleted}},
+				}, nil
+			case 2:
+				return d.ProcessInstancePage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+					Items:         []d.ProcessInstance{{Key: "402", State: d.StateCompleted}},
+				}, nil
+			default:
+				t.Fatalf("unexpected page request %d", len(requests))
+				return d.ProcessInstancePage{}, nil
+			}
+		},
+		ancestryResult: func(_ context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+			assert.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			switch startKey {
+			case "401":
+				return pitraversal.Result{
+					Mode:     pitraversal.ModeAncestry,
+					StartKey: "401",
+					RootKey:  "root-a",
+					Keys:     []string{"401", "root-a"},
+					Chain:    map[string]d.ProcessInstance{"401": {Key: "401", State: d.StateCompleted}, "root-a": {Key: "root-a", State: d.StateCompleted}},
+					Outcome:  pitraversal.OutcomeComplete,
+				}, nil
+			case "402":
+				return pitraversal.Result{
+					Mode:     pitraversal.ModeAncestry,
+					StartKey: "402",
+					RootKey:  "root-b",
+					Keys:     []string{"402", "root-b"},
+					Chain:    map[string]d.ProcessInstance{"402": {Key: "402", State: d.StateCompleted}, "root-b": {Key: "root-b", State: d.StateCompleted}},
+					Outcome:  pitraversal.OutcomeComplete,
+				}, nil
+			default:
+				t.Fatalf("unexpected ancestry key %q", startKey)
+				return pitraversal.Result{}, nil
+			}
+		},
+		descendantsResult: func(_ context.Context, rootKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+			assert.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			switch rootKey {
+			case "root-a":
+				return pitraversal.Result{
+					Mode:    pitraversal.ModeDescendants,
+					RootKey: "root-a",
+					Keys:    []string{"root-a", "401"},
+					Chain:   map[string]d.ProcessInstance{"root-a": {Key: "root-a", State: d.StateCompleted}, "401": {Key: "401", State: d.StateCompleted}},
+					Outcome: pitraversal.OutcomeComplete,
+				}, nil
+			case "root-b":
+				return pitraversal.Result{
+					Mode:    pitraversal.ModeDescendants,
+					RootKey: "root-b",
+					Keys:    []string{"root-b", "402"},
+					Chain:   map[string]d.ProcessInstance{"root-b": {Key: "root-b", State: d.StateCompleted}, "402": {Key: "402", State: d.StateCompleted}},
+					Outcome: pitraversal.OutcomeComplete,
+				}, nil
+			default:
+				t.Fatalf("unexpected descendants root %q", rootKey)
+				return pitraversal.Result{}, nil
+			}
+		},
+	}
+
+	var steps []ProcessInstanceMutationPlanStep
+	got, err := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default()).PlanProcessInstanceMutationPages(ctx, ProcessInstanceMutationPlanRequest{
+		SearchRequest: ProcessInstanceSearchRequest{
+			Filter: ProcessInstanceFilter{State: StateCompleted},
+			Page:   ProcessInstancePageRequest{Size: 1},
+			Limit:  2,
+		},
+		Workers: 1,
+	}, func(step ProcessInstanceMutationPlanStep) (ProcessInstanceSearchPageAction, error) {
+		steps = append(steps, step)
+		return ProcessInstanceSearchPageActionContinue, nil
+	}, options.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	require.Equal(t, []d.ProcessInstancePageRequest{
+		{Size: 1},
+		{From: 1, Size: 1},
+	}, requests)
+	require.Len(t, steps, 2)
+	require.Equal(t, []string{"401"}, steps[0].RequestedKeys)
+	require.Equal(t, typex.Keys{"root-a"}, steps[0].Plan.Roots)
+	require.Equal(t, int32(2), steps[0].CumulativeImpact)
+	require.Equal(t, []string{"402"}, steps[1].RequestedKeys)
+	require.Equal(t, typex.Keys{"root-b"}, steps[1].Plan.Roots)
+	require.True(t, steps[1].LimitReached)
+	require.Len(t, got.Plans, 2)
+	require.Equal(t, int32(2), got.RequestedCount)
+	require.Equal(t, int32(4), got.CumulativeImpact)
+	require.Equal(t, int32(2), got.Pages)
+}
+
 // TestClient_SearchProcessInstancesTotal_UsesExactTotalWhenAllowed verifies the
 // process facade delegates total fallback decisions below command ownership.
 func TestClient_SearchProcessInstancesTotal_UsesExactTotalWhenAllowed(t *testing.T) {

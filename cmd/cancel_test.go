@@ -536,13 +536,7 @@ func TestCancelProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *tes
 		cancelProcessInstances: dryRunCancelMutationGuard(t),
 	}
 
-	results, err := processPISearchPagesWithAction(cmd, cli, nil, process.ProcessInstanceFilter{}, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
-		keys := make(typex.Keys, 0, len(page.Items))
-		for _, pi := range page.Items {
-			keys = append(keys, pi.Key)
-		}
-		return cancelProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, false)
-	})
+	results, err := cancelProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{})
 	require.NoError(t, err)
 	require.Empty(t, results.Reports)
 	require.Len(t, results.DryRunPreviews, 2)
@@ -780,13 +774,7 @@ func TestCancelProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage(t *test
 		cancelProcessInstances: dryRunCancelMutationGuard(t),
 	}
 
-	results, err := processPISearchPagesWithAction(cmd, cli, nil, process.ProcessInstanceFilter{}, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
-		keys := make(typex.Keys, 0, len(page.Items))
-		for _, pi := range page.Items {
-			keys = append(keys, pi.Key)
-		}
-		return cancelProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, false)
-	})
+	results, err := cancelProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{})
 	require.NoError(t, err)
 	require.Len(t, searchRequests, 1)
 	require.EqualValues(t, 0, searchRequests[0].From)

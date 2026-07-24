@@ -351,6 +351,32 @@ func fromDomainProcessInstanceSearchPageStep(x d.ProcessInstanceSearchPageStep) 
 	}
 }
 
+// fromDomainProcessInstanceMutationPlanPagesResult maps service-owned mutation
+// planning traversal results into the public facade model.
+func fromDomainProcessInstanceMutationPlanPagesResult(x d.ProcessInstanceMutationPlanPagesResult) ProcessInstanceMutationPlanPagesResult {
+	return ProcessInstanceMutationPlanPagesResult{
+		Plans:            toolx.MapSlice(x.Plans, fromDomainProcessInstanceMutationPlanStep),
+		Limit:            x.Limit,
+		Pages:            x.Pages,
+		RequestedCount:   x.RequestedCount,
+		CumulativeImpact: x.CumulativeImpact,
+		Stopped:          x.Stopped,
+	}
+}
+
+// fromDomainProcessInstanceMutationPlanStep maps one service page-level
+// mutation plan into the public facade model.
+func fromDomainProcessInstanceMutationPlanStep(x d.ProcessInstanceMutationPlanStep) ProcessInstanceMutationPlanStep {
+	return ProcessInstanceMutationPlanStep{
+		Page:             fromDomainProcessInstancePage(x.Page),
+		RequestedKeys:    append([]string(nil), x.RequestedKeys...),
+		Plan:             fromDomainDryRunPIKeyExpansion(x.Plan),
+		CumulativeCount:  x.CumulativeCount,
+		CumulativeImpact: x.CumulativeImpact,
+		LimitReached:     x.LimitReached,
+	}
+}
+
 // fromDomainProcessInstanceSearchTotalStep maps service total diagnostics into the public facade model.
 func fromDomainProcessInstanceSearchTotalStep(x d.ProcessInstanceSearchTotalStep) ProcessInstanceSearchTotalStep {
 	return ProcessInstanceSearchTotalStep{
@@ -610,6 +636,15 @@ func toDomainProcessInstanceSearchRequest(x ProcessInstanceSearchRequest) d.Proc
 	}
 }
 
+// toDomainProcessInstanceMutationPlanRequest maps facade search-selected
+// mutation planning controls into the service contract.
+func toDomainProcessInstanceMutationPlanRequest(x ProcessInstanceMutationPlanRequest) d.ProcessInstanceMutationPlanRequest {
+	return d.ProcessInstanceMutationPlanRequest{
+		SearchRequest: toDomainProcessInstanceSearchRequest(x.SearchRequest),
+		Workers:       x.Workers,
+	}
+}
+
 // toDomainProcessInstanceSearchLocalFilters maps compatibility-filter toggles without applying CLI policy.
 func toDomainProcessInstanceSearchLocalFilters(x ProcessInstanceSearchLocalFilters) d.ProcessInstanceSearchLocalFilters {
 	return d.ProcessInstanceSearchLocalFilters{
@@ -633,6 +668,18 @@ func toDomainProcessInstanceIncidentSearchFilter(x ProcessInstanceIncidentSearch
 		ErrorMessage:         x.ErrorMessage,
 		ProcessDefinitionKey: x.ProcessDefinitionKey,
 		ProcessDefinitionId:  x.ProcessDefinitionId,
+	}
+}
+
+// toDomainProcessInstanceMutationPlanVisitor maps page-level planning visitor
+// decisions across the facade boundary.
+func toDomainProcessInstanceMutationPlanVisitor(visitor ProcessInstanceMutationPlanVisitor) d.ProcessInstanceMutationPlanVisitor {
+	if visitor == nil {
+		return nil
+	}
+	return func(step d.ProcessInstanceMutationPlanStep) (d.ProcessInstanceSearchPageAction, error) {
+		action, err := visitor(fromDomainProcessInstanceMutationPlanStep(step))
+		return d.ProcessInstanceSearchPageAction(action), err
 	}
 }
 

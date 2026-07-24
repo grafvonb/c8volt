@@ -102,10 +102,10 @@
 - [x] T039 [US2] Reduce command-owned incident paging to rendering and prompts in `cmd/get_incident_search.go`
 - [x] T040 [US2] Move process-instance query strategy, page traversal, total fallback, and local compatibility filtering below command ownership in `c8volt/process/client.go` and `internal/services/processinstance/api.go`
 - [x] T041 [US2] Reduce command-owned process-instance search to validation, rendering, prompts, and mode selection in `cmd/get_processinstance_search.go`
-- [ ] T042 [US2] Move process-instance cancel/delete discovery and mutation planning traversal below command ownership in `c8volt/process/client.go` and `internal/services/processinstance/dryrun.go`
-- [ ] T043 [US2] Reduce command-owned cancel/delete paging to confirmation, rendering, and final outcome handling in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`
-- [ ] T044 [US2] Update ownership and before/after notes in `specs/254-cli-debt-refactor/assessment.md`
-- [ ] T045 [US2] Run `go test ./cmd ./c8volt/job ./c8volt/element ./c8volt/incident ./c8volt/process -count=1` and record the result in `specs/254-cli-debt-refactor/quickstart.md`
+- [x] T042 [US2] Move process-instance cancel/delete discovery and mutation planning traversal below command ownership in `c8volt/process/client.go` and `internal/services/processinstance/dryrun.go`
+- [x] T043 [US2] Reduce command-owned cancel/delete paging to confirmation, rendering, and final outcome handling in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`
+- [x] T044 [US2] Update ownership and before/after notes in `specs/254-cli-debt-refactor/assessment.md`
+- [x] T045 [US2] Run `go test ./cmd ./c8volt/job ./c8volt/element ./c8volt/incident ./c8volt/process -count=1` and record the result in `specs/254-cli-debt-refactor/quickstart.md`
 
 **Checkpoint**: User Story 2 is independently functional and command-owned paging debt is reduced without behavior drift.
 

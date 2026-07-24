@@ -279,3 +279,35 @@ Started: 2026-07-24 06:28:25
 **Learnings**:
 - Process-instance search now uses the same visitor ownership pattern as job/element/incident while keeping direct incident-index compatibility and total fallback below command ownership.
 ---
+---
+## Iteration 4 - 2026-07-24 15:15
+**Work Unit**: US2 Clear Ownership of Paging and Discovery Behavior
+**Tasks Completed**:
+- [x] T042: Move process-instance cancel/delete discovery and mutation planning traversal below command ownership
+- [x] T043: Reduce command-owned cancel/delete paging to confirmation, rendering, and final outcome handling
+- [x] T044: Update ownership and before/after notes
+- [x] T045: Run US2 checkpoint validation and record the result
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/process/api.go
+- c8volt/process/client.go
+- c8volt/process/client_test.go
+- c8volt/process/convert.go
+- c8volt/process/model.go
+- cmd/cancel_processinstance.go
+- cmd/cancel_test.go
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- cmd/get_processinstance_paging.go
+- cmd/process_api_stub_test.go
+- internal/domain/processinstance.go
+- internal/services/processinstance/dryrun.go
+- specs/254-cli-debt-refactor/assessment.md
+- specs/254-cli-debt-refactor/quickstart.md
+- specs/254-cli-debt-refactor/tasks.md
+- specs/254-cli-debt-refactor/ralph-memory.md
+- specs/254-cli-debt-refactor/progress.md
+**Learnings**:
+- Cancel/delete search-selected planning now uses a process facade/service page-plan visitor; delete still freezes all page plans before one confirmation.
+---
