@@ -100,8 +100,8 @@
 - [x] T037 [US2] Add version-neutral paged search result contracts for incident discovery in `c8volt/incident/model.go` and `internal/domain/incident.go`
 - [x] T038 [US2] Move incident page walking, cursor handling, process-instance-key projection, and local filtering below command ownership in `c8volt/incident/client.go` and `internal/services/incident/api.go`
 - [x] T039 [US2] Reduce command-owned incident paging to rendering and prompts in `cmd/get_incident_search.go`
-- [ ] T040 [US2] Move process-instance query strategy, page traversal, total fallback, and local compatibility filtering below command ownership in `c8volt/process/client.go` and `internal/services/processinstance/api.go`
-- [ ] T041 [US2] Reduce command-owned process-instance search to validation, rendering, prompts, and mode selection in `cmd/get_processinstance_search.go`
+- [x] T040 [US2] Move process-instance query strategy, page traversal, total fallback, and local compatibility filtering below command ownership in `c8volt/process/client.go` and `internal/services/processinstance/api.go`
+- [x] T041 [US2] Reduce command-owned process-instance search to validation, rendering, prompts, and mode selection in `cmd/get_processinstance_search.go`
 - [ ] T042 [US2] Move process-instance cancel/delete discovery and mutation planning traversal below command ownership in `c8volt/process/client.go` and `internal/services/processinstance/dryrun.go`
 - [ ] T043 [US2] Reduce command-owned cancel/delete paging to confirmation, rendering, and final outcome handling in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`
 - [ ] T044 [US2] Update ownership and before/after notes in `specs/254-cli-debt-refactor/assessment.md`

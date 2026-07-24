@@ -333,6 +333,36 @@ func fromDomainProcessInstancePage(x d.ProcessInstancePage) ProcessInstancePage 
 	}
 }
 
+// fromDomainProcessInstanceSearchPagesResult maps service-owned traversal results into the public facade model.
+func fromDomainProcessInstanceSearchPagesResult(x d.ProcessInstanceSearchPagesResult) ProcessInstanceSearchPagesResult {
+	return ProcessInstanceSearchPagesResult{
+		Items: toolx.MapSlice(x.Items, fromDomainProcessInstance),
+		Limit: x.Limit,
+		Pages: x.Pages,
+	}
+}
+
+// fromDomainProcessInstanceSearchPageStep maps one service page callback into the public facade model.
+func fromDomainProcessInstanceSearchPageStep(x d.ProcessInstanceSearchPageStep) ProcessInstanceSearchPageStep {
+	return ProcessInstanceSearchPageStep{
+		Page:            fromDomainProcessInstancePage(x.Page),
+		CumulativeCount: x.CumulativeCount,
+		LimitReached:    x.LimitReached,
+	}
+}
+
+// fromDomainProcessInstanceSearchTotalStep maps service total diagnostics into the public facade model.
+func fromDomainProcessInstanceSearchTotalStep(x d.ProcessInstanceSearchTotalStep) ProcessInstanceSearchTotalStep {
+	return ProcessInstanceSearchTotalStep{
+		Page:             fromDomainProcessInstancePage(x.Page),
+		FilteredCount:    x.FilteredCount,
+		TotalBefore:      x.TotalBefore,
+		TotalAfter:       x.TotalAfter,
+		CountingByPaging: x.CountingByPaging,
+		ExactTotalUsed:   x.ExactTotalUsed,
+	}
+}
+
 func fromDomainOrphanDiscovery(x pisvc.OrphanDiscovery) OrphanDiscovery {
 	return OrphanDiscovery{
 		Filter: fromDomainProcessInstanceFilter(x.Filter),
@@ -564,6 +594,66 @@ func toDomainProcessInstancePageRequest(x ProcessInstancePageRequest) d.ProcessI
 		From:  x.From,
 		Size:  x.Size,
 		After: x.After,
+	}
+}
+
+// toDomainProcessInstanceSearchRequest copies process search mechanics into the service-facing contract.
+func toDomainProcessInstanceSearchRequest(x ProcessInstanceSearchRequest) d.ProcessInstanceSearchRequest {
+	return d.ProcessInstanceSearchRequest{
+		Filter:               toDomainProcessInstanceFilter(x.Filter),
+		Page:                 toDomainProcessInstancePageRequest(x.Page),
+		Limit:                x.Limit,
+		LocalFilters:         toDomainProcessInstanceSearchLocalFilters(x.LocalFilters),
+		DirectIncidentIndex:  x.DirectIncidentIndex,
+		DirectIncidentFilter: toDomainProcessInstanceIncidentSearchFilter(x.DirectIncidentFilter),
+		ReportedTotalAllowed: x.ReportedTotalAllowed,
+	}
+}
+
+// toDomainProcessInstanceSearchLocalFilters maps compatibility-filter toggles without applying CLI policy.
+func toDomainProcessInstanceSearchLocalFilters(x ProcessInstanceSearchLocalFilters) d.ProcessInstanceSearchLocalFilters {
+	return d.ProcessInstanceSearchLocalFilters{
+		ChildrenOnly:         x.ChildrenOnly,
+		RootsOnly:            x.RootsOnly,
+		OrphanChildrenOnly:   x.OrphanChildrenOnly,
+		IncidentsOnly:        x.IncidentsOnly,
+		DirectIncidentsOnly:  x.DirectIncidentsOnly,
+		NoIncidentsOnly:      x.NoIncidentsOnly,
+		IncidentState:        x.IncidentState,
+		IncidentErrorType:    x.IncidentErrorType,
+		IncidentErrorMessage: x.IncidentErrorMessage,
+	}
+}
+
+// toDomainProcessInstanceIncidentSearchFilter maps the direct incident-index filter.
+func toDomainProcessInstanceIncidentSearchFilter(x ProcessInstanceIncidentSearchFilter) d.IncidentFilter {
+	return d.IncidentFilter{
+		State:                x.State,
+		ErrorType:            x.ErrorType,
+		ErrorMessage:         x.ErrorMessage,
+		ProcessDefinitionKey: x.ProcessDefinitionKey,
+		ProcessDefinitionId:  x.ProcessDefinitionId,
+	}
+}
+
+// toDomainProcessInstanceSearchPageVisitor maps page visitor decisions across the facade boundary.
+func toDomainProcessInstanceSearchPageVisitor(visitor ProcessInstanceSearchPageVisitor) d.ProcessInstanceSearchPageVisitor {
+	if visitor == nil {
+		return nil
+	}
+	return func(step d.ProcessInstanceSearchPageStep) (d.ProcessInstanceSearchPageAction, error) {
+		action, err := visitor(fromDomainProcessInstanceSearchPageStep(step))
+		return d.ProcessInstanceSearchPageAction(action), err
+	}
+}
+
+// toDomainProcessInstanceSearchTotalVisitor maps total fallback diagnostics across the facade boundary.
+func toDomainProcessInstanceSearchTotalVisitor(visitor ProcessInstanceSearchTotalVisitor) d.ProcessInstanceSearchTotalVisitor {
+	if visitor == nil {
+		return nil
+	}
+	return func(step d.ProcessInstanceSearchTotalStep) error {
+		return visitor(fromDomainProcessInstanceSearchTotalStep(step))
 	}
 }
 

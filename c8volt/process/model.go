@@ -255,6 +255,85 @@ type ProcessInstancePage struct {
 	Items         []ProcessInstance             `json:"items,omitempty"`
 }
 
+// ProcessInstanceSearchPageAction tells service-owned page traversal whether
+// the caller needs more pages after observing the current selected page.
+type ProcessInstanceSearchPageAction string
+
+const (
+	// ProcessInstanceSearchPageActionContinue keeps collecting the next available page.
+	ProcessInstanceSearchPageActionContinue ProcessInstanceSearchPageAction = "continue"
+	// ProcessInstanceSearchPageActionStop stops traversal after the current selected page.
+	ProcessInstanceSearchPageActionStop ProcessInstanceSearchPageAction = "stop"
+)
+
+// ProcessInstanceSearchLocalFilters names compatibility filters that are
+// applied below command ownership after backend pages are fetched.
+type ProcessInstanceSearchLocalFilters struct {
+	ChildrenOnly         bool   `json:"childrenOnly,omitempty"`
+	RootsOnly            bool   `json:"rootsOnly,omitempty"`
+	OrphanChildrenOnly   bool   `json:"orphanChildrenOnly,omitempty"`
+	IncidentsOnly        bool   `json:"incidentsOnly,omitempty"`
+	DirectIncidentsOnly  bool   `json:"directIncidentsOnly,omitempty"`
+	NoIncidentsOnly      bool   `json:"noIncidentsOnly,omitempty"`
+	IncidentState        string `json:"incidentState,omitempty"`
+	IncidentErrorType    string `json:"incidentErrorType,omitempty"`
+	IncidentErrorMessage string `json:"incidentErrorMessage,omitempty"`
+}
+
+// ProcessInstanceIncidentSearchFilter is the process facade shape for the
+// incident-index strategy used by process-instance search.
+type ProcessInstanceIncidentSearchFilter struct {
+	State                string `json:"state,omitempty"`
+	ErrorType            string `json:"errorType,omitempty"`
+	ErrorMessage         string `json:"errorMessage,omitempty"`
+	ProcessDefinitionKey string `json:"processDefinitionKey,omitempty"`
+	ProcessDefinitionId  string `json:"processDefinitionId,omitempty"`
+}
+
+// ProcessInstanceSearchRequest contains service-owned search mechanics while
+// callers retain CLI validation, rendering, prompts, and mode selection.
+type ProcessInstanceSearchRequest struct {
+	Filter               ProcessInstanceFilter               `json:"filter,omitempty"`
+	Page                 ProcessInstancePageRequest          `json:"page,omitempty"`
+	Limit                int32                               `json:"limit,omitempty"`
+	LocalFilters         ProcessInstanceSearchLocalFilters   `json:"localFilters,omitempty"`
+	DirectIncidentIndex  bool                                `json:"directIncidentIndex,omitempty"`
+	DirectIncidentFilter ProcessInstanceIncidentSearchFilter `json:"directIncidentFilter,omitempty"`
+	ReportedTotalAllowed bool                                `json:"reportedTotalAllowed,omitempty"`
+}
+
+// ProcessInstanceSearchPageStep carries one selected page plus traversal state
+// while keeping page advancement and limit trimming below command ownership.
+type ProcessInstanceSearchPageStep struct {
+	Page            ProcessInstancePage `json:"page"`
+	CumulativeCount int32               `json:"cumulativeCount"`
+	LimitReached    bool                `json:"limitReached"`
+}
+
+// ProcessInstanceSearchPageVisitor observes selected pages during service-owned traversal.
+type ProcessInstanceSearchPageVisitor func(ProcessInstanceSearchPageStep) (ProcessInstanceSearchPageAction, error)
+
+// ProcessInstanceSearchPagesResult captures a full or caller-stopped process-instance discovery.
+type ProcessInstanceSearchPagesResult struct {
+	Items []ProcessInstance `json:"items,omitempty"`
+	Limit int32             `json:"limit,omitempty"`
+	Pages int32             `json:"pages,omitempty"`
+}
+
+// ProcessInstanceSearchTotalStep exposes page-counting state while total
+// fallback traversal stays below command ownership.
+type ProcessInstanceSearchTotalStep struct {
+	Page             ProcessInstancePage `json:"page"`
+	FilteredCount    int32               `json:"filteredCount,omitempty"`
+	TotalBefore      int64               `json:"totalBefore,omitempty"`
+	TotalAfter       int64               `json:"totalAfter,omitempty"`
+	CountingByPaging bool                `json:"countingByPaging,omitempty"`
+	ExactTotalUsed   bool                `json:"exactTotalUsed,omitempty"`
+}
+
+// ProcessInstanceSearchTotalVisitor observes total fallback pages for diagnostics.
+type ProcessInstanceSearchTotalVisitor func(ProcessInstanceSearchTotalStep) error
+
 type OrphanDiscoveryRequest struct {
 	Filter    ProcessInstanceFilter         `json:"filter,omitempty"`
 	BatchSize int32                         `json:"batchSize,omitempty"`

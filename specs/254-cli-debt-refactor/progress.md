@@ -252,3 +252,30 @@ Started: 2026-07-24 06:28:25
 **Learnings**:
 - Incident search now follows the job/element visitor ownership pattern while retaining v8.8 compatibility filtering and command-owned process-instance-key rendering.
 ---
+---
+## Iteration 3 - 2026-07-24 15:02
+**Work Unit**: Partial US2 process-instance search ownership refactor
+**Tasks Completed**:
+- [x] T040: Move process-instance query strategy, page traversal, total fallback, and local compatibility filtering below command ownership
+- [x] T041: Reduce command-owned process-instance search to validation, rendering, prompts, and mode selection
+**Tasks Remaining in Work Unit**: US2 remains open with T042-T045 incomplete
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/process/api.go
+- c8volt/process/client.go
+- c8volt/process/client_test.go
+- c8volt/process/convert.go
+- c8volt/process/model.go
+- c8volt/resource/client_test.go
+- cmd/get_processinstance_search.go
+- cmd/get_processinstance_total.go
+- cmd/process_api_stub_test.go
+- internal/domain/processinstance.go
+- internal/services/processinstance/api.go
+- internal/services/processinstance/search.go
+- specs/254-cli-debt-refactor/tasks.md
+- specs/254-cli-debt-refactor/ralph-memory.md
+- specs/254-cli-debt-refactor/progress.md
+**Learnings**:
+- Process-instance search now uses the same visitor ownership pattern as job/element/incident while keeping direct incident-index compatibility and total fallback below command ownership.
+---

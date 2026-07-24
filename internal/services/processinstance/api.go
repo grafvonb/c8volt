@@ -10,6 +10,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
+	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	v87 "github.com/grafvonb/c8volt/internal/services/processinstance/v87"
 	v88 "github.com/grafvonb/c8volt/internal/services/processinstance/v88"
@@ -50,6 +51,15 @@ type TenantSafeLookupSearcher interface {
 type RetentionDiscoveryAPI interface {
 	SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error)
 }
+
+// SearchProcessInstanceIncidentAPI captures the incident lookups needed by
+// process-instance search compatibility filtering and direct incident indexing.
+type SearchProcessInstanceIncidentAPI interface {
+	SearchIncidentsPage(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error)
+	SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+}
+
+var _ SearchProcessInstanceIncidentAPI = (incsvc.API)(nil)
 
 func TenantSafeLookupUnsupported(operation string) error {
 	return fmt.Errorf("%w: %s", d.ErrUnsupported, operation)

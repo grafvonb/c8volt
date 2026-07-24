@@ -1493,6 +1493,114 @@ func TestClient_SearchProcessInstances_UsesPagedSearchWrapper(t *testing.T) {
 	assert.Equal(t, "2251799813711968", items.Items[1].Key)
 }
 
+// TestClient_SearchProcessInstancesPages_DelegatesTraversalAndLocalFiltering
+// verifies the facade reaches the service-owned paging helper while preserving
+// visitor steps, limit trimming, and local compatibility filtering.
+func TestClient_SearchProcessInstancesPages_DelegatesTraversalAndLocalFiltering(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	requests := []d.ProcessInstancePageRequest{}
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{BpmnProcessId: "order-process"}, filter)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			requests = append(requests, page)
+			switch len(requests) {
+			case 1:
+				return d.ProcessInstancePage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					Items: []d.ProcessInstance{
+						{Key: "root", BpmnProcessId: "order-process", Incident: true},
+						{Key: "child-a", BpmnProcessId: "order-process", ParentKey: "root", Incident: true},
+					},
+				}, nil
+			case 2:
+				return d.ProcessInstancePage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+					Items: []d.ProcessInstance{
+						{Key: "child-b", BpmnProcessId: "order-process", ParentKey: "root", Incident: true},
+						{Key: "child-c", BpmnProcessId: "order-process", ParentKey: "root", Incident: true},
+					},
+				}, nil
+			default:
+				t.Fatalf("unexpected page request %d", len(requests))
+				return d.ProcessInstancePage{}, nil
+			}
+		},
+	}
+
+	var steps []ProcessInstanceSearchPageStep
+	got, err := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default()).SearchProcessInstancesPages(ctx, ProcessInstanceSearchRequest{
+		Filter: ProcessInstanceFilter{BpmnProcessId: "order-process"},
+		Page:   ProcessInstancePageRequest{Size: 2},
+		Limit:  2,
+		LocalFilters: ProcessInstanceSearchLocalFilters{
+			ChildrenOnly:  true,
+			IncidentsOnly: true,
+		},
+	}, func(step ProcessInstanceSearchPageStep) (ProcessInstanceSearchPageAction, error) {
+		steps = append(steps, step)
+		return ProcessInstanceSearchPageActionContinue, nil
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, []d.ProcessInstancePageRequest{
+		{Size: 2},
+		{From: 2, Size: 2},
+	}, requests)
+	require.Len(t, steps, 2)
+	require.Equal(t, int32(1), steps[0].CumulativeCount)
+	require.Equal(t, int32(2), steps[1].CumulativeCount)
+	require.True(t, steps[1].LimitReached)
+	require.Equal(t, []ProcessInstance{
+		{Key: "child-a", BpmnProcessId: "order-process", ParentKey: "root", Incident: true},
+		{Key: "child-b", BpmnProcessId: "order-process", ParentKey: "root", Incident: true},
+	}, got.Items)
+	require.Equal(t, int32(2), got.Limit)
+	require.Equal(t, int32(2), got.Pages)
+}
+
+// TestClient_SearchProcessInstancesTotal_UsesExactTotalWhenAllowed verifies the
+// process facade delegates total fallback decisions below command ownership.
+func TestClient_SearchProcessInstancesTotal_UsesExactTotalWhenAllowed(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{State: d.StateActive}, filter)
+			assert.Equal(t, d.ProcessInstancePageRequest{Size: 10}, page)
+			return d.ProcessInstancePage{
+				Request: page,
+				Items:   []d.ProcessInstance{{Key: "pi-a", State: d.StateActive}},
+				ReportedTotal: &d.ProcessInstanceReportedTotal{
+					Count: 42,
+					Kind:  d.ProcessInstanceReportedTotalKindExact,
+				},
+			}, nil
+		},
+	}
+
+	var steps []ProcessInstanceSearchTotalStep
+	got, err := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default()).SearchProcessInstancesTotal(ctx, ProcessInstanceSearchRequest{
+		Filter:               ProcessInstanceFilter{State: StateActive},
+		Page:                 ProcessInstancePageRequest{Size: 10},
+		ReportedTotalAllowed: true,
+	}, func(step ProcessInstanceSearchTotalStep) error {
+		steps = append(steps, step)
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int64(42), got)
+	require.Len(t, steps, 1)
+	require.True(t, steps[0].ExactTotalUsed)
+	require.Equal(t, int64(42), steps[0].TotalAfter)
+}
+
 // TestClient_LookupProcessInstance_TenantMismatchUsesDirectAdminInput protects
 // explicit keys from being narrowed by selected-tenant search before Camunda authorizes them.
 func TestClient_LookupProcessInstance_TenantMismatchUsesDirectAdminInput(t *testing.T) {

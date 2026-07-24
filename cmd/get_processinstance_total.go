@@ -18,49 +18,29 @@ import (
 // back to page-by-page counting when client-side filters or lower-bound totals
 // make the reported metadata insufficient.
 func searchProcessInstancesTotal(cmd *cobra.Command, log *slog.Logger, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (int64, error) {
-	pageReq := newPISearchPageRequest(cmd, cfg, 0)
-	total := int64(0)
+	request := newProcessInstanceSearchRequest(cmd, cfg, filter)
 	stopActivity := func() {}
 	countingByPaging := false
 	defer func() {
 		stopActivity()
 	}()
 
-	for {
-		page, err := cli.SearchProcessInstancesPage(cmd.Context(), filter, pageReq, collectOptions()...)
-		if err != nil {
-			return 0, err
-		}
-		logPITotalPage(cmd, log, pageReq, page, total)
-
-		if canUsePIExactReportedTotal(page) {
-			return page.ReportedTotal.Count, nil
+	return cli.SearchProcessInstancesTotal(cmd.Context(), request, func(step process.ProcessInstanceSearchTotalStep) error {
+		logPITotalPage(cmd, log, step.Page.Request, step.Page, step.TotalBefore)
+		if step.ExactTotalUsed {
+			return nil
 		}
 		if !countingByPaging {
 			stopActivity = startCommandActivity(cmd, "counting process instances page by page")
 			countingByPaging = true
 		}
-
-		filtered, err := applyPISearchResultFilters(cmd, cli, process.ProcessInstances{
-			Total: int32(len(page.Items)),
-			Items: page.Items,
-		})
-		if err != nil {
-			return 0, err
-		}
-
-		total += int64(len(filtered.Items))
-		summary := newPIProgressSummary(page, int(total), true)
+		summary := newPIProgressSummary(step.Page, int(step.TotalAfter), true)
 		if cmd != nil {
 			logging.UpdateActivity(cmd.Context(), formatPITotalActivityProgress(summary))
 		}
 		logPISearchProgress(cmd, log, summary)
-
-		if len(page.Items) == 0 || page.OverflowState == process.ProcessInstanceOverflowStateNoMore {
-			return total, nil
-		}
-		pageReq = nextPISearchPageRequest(cmd, cfg, pageReq, page)
-	}
+		return nil
+	}, collectOptions()...)
 }
 
 // formatPITotalActivityProgress keeps the transient --total activity indicator
