@@ -71,6 +71,15 @@ func (s *Service) SearchElements(ctx context.Context, query d.ElementSearchQuery
 	return d.ElementSearchResult{}, unsupportedElementOperation("element search")
 }
 
+// SearchElementsPages reports unsupported because Camunda 8.7 lacks runtime element search endpoints.
+func (s *Service) SearchElementsPages(ctx context.Context, query d.ElementSearchQuery, visitor d.ElementSearchPageVisitor, opts ...services.CallOption) (d.ElementSearchPagesResult, error) {
+	_ = ctx
+	_ = query
+	_ = visitor
+	_ = services.ApplyCallOptions(opts)
+	return d.ElementSearchPagesResult{}, unsupportedElementOperation("element search")
+}
+
 // SearchElementsPage reports unsupported because Camunda 8.7 lacks runtime element search endpoints.
 func (s *Service) SearchElementsPage(ctx context.Context, query d.ElementSearchQuery, page d.ElementPageRequest, opts ...services.CallOption) (d.ElementSearchPage, error) {
 	_ = ctx
@@ -78,6 +87,14 @@ func (s *Service) SearchElementsPage(ctx context.Context, query d.ElementSearchQ
 	_ = page
 	_ = services.ApplyCallOptions(opts)
 	return d.ElementSearchPage{}, unsupportedElementOperation("element search")
+}
+
+// SearchElementsTotal reports unsupported because Camunda 8.7 lacks runtime element search endpoints.
+func (s *Service) SearchElementsTotal(ctx context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (int64, error) {
+	_ = ctx
+	_ = query
+	_ = services.ApplyCallOptions(opts)
+	return 0, unsupportedElementOperation("element search")
 }
 
 // unsupportedElementOperation formats the shared unsupported-version message for element operations.

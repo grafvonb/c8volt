@@ -14,7 +14,7 @@ List or fetch Camunda runtime element instances.
 
 Use --key when you know an element instance key. Omit --key to list or search element instances by process instance, BPMN element ID, state, type, process definition, or BPMN process ID.
 
-Search mode follows the shared get paging and limit conventions. --batch-size controls per-page discovery requests, --limit caps returned element rows, and --total prints only the matching count.
+Search mode follows the shared get paging and limit conventions. --batch-size controls each backend page request, --limit caps returned element rows across all pages, and --total prints only the matching count. Verbose paging progress is written away from stdout; JSON, keys-only, quiet, and automation output remain free of prompts and progress text.
 
 Compact human rows include dur:<duration> when start/end timestamps or active state support a runtime duration.
 
@@ -43,12 +43,12 @@ c8volt get element [flags]
 ### Options
 
 ```
-  -n, --batch-size int32         number of elements to fetch per page (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32         number of elements to request per page; does not cap total returned rows (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string   BPMN process ID to filter in search mode
       --element-id string        BPMN element ID to filter in search mode
   -h, --help                     help for element
   -k, --key string               element instance key for exact lookup; omit to list or search runtime elements
-  -l, --limit int32              maximum number of elements to return in search mode
+  -l, --limit int32              maximum number of matching elements to return across all pages; omit to continue through all matches
       --pd-key string            process definition key to filter in search mode
       --pi-key string            process instance key to filter in search mode
   -s, --state string             runtime element state to filter in search mode; case-insensitive

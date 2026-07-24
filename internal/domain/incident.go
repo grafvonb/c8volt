@@ -67,6 +67,27 @@ type IncidentPage struct {
 	EndCursor     string
 }
 
+type IncidentSearchPageAction string
+
+const (
+	IncidentSearchPageActionContinue IncidentSearchPageAction = "continue"
+	IncidentSearchPageActionStop     IncidentSearchPageAction = "stop"
+)
+
+type IncidentSearchPageStep struct {
+	Page            IncidentPage
+	CumulativeCount int32
+	LimitReached    bool
+}
+
+type IncidentSearchPageVisitor func(IncidentSearchPageStep) (IncidentSearchPageAction, error)
+
+type IncidentSearchPagesResult struct {
+	Items []ProcessInstanceIncidentDetail
+	Limit int32
+	Pages int32
+}
+
 type ResolutionOperation string
 
 const (

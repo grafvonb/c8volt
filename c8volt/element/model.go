@@ -80,6 +80,17 @@ type SearchResult struct {
 	Items []Element `json:"items"`
 }
 
+// SearchPageAction tells paged element discovery whether to continue after the
+// current page has been rendered or otherwise observed.
+type SearchPageAction string
+
+const (
+	// SearchPageActionContinue keeps service-owned traversal moving.
+	SearchPageActionContinue SearchPageAction = "continue"
+	// SearchPageActionStop stops service-owned traversal after the current page.
+	SearchPageActionStop SearchPageAction = "stop"
+)
+
 // PageRequest describes one element search page request.
 type PageRequest struct {
 	From int32 `json:"from,omitempty"`
@@ -118,4 +129,23 @@ type Page struct {
 	Request       PageRequest    `json:"request,omitempty"`
 	OverflowState OverflowState  `json:"overflowState,omitempty"`
 	ReportedTotal *ReportedTotal `json:"reportedTotal,omitempty"`
+}
+
+// SearchPageStep exposes one selected element page plus traversal state while
+// keeping offset advancement and limit trimming below command ownership.
+type SearchPageStep struct {
+	Page            Page  `json:"page"`
+	CumulativeCount int32 `json:"cumulativeCount"`
+	LimitReached    bool  `json:"limitReached"`
+}
+
+// SearchPageVisitor observes selected pages during service-owned traversal.
+type SearchPageVisitor func(SearchPageStep) (SearchPageAction, error)
+
+// SearchPagesResult captures the elements selected before discovery completed
+// or a caller-owned prompt/rendering policy stopped traversal.
+type SearchPagesResult struct {
+	Items []Element `json:"items"`
+	Total int32     `json:"total"`
+	Pages int32     `json:"pages"`
 }

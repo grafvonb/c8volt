@@ -76,6 +76,17 @@ func (c *client) SearchElementsWithListeners(ctx context.Context, request Search
 	return out, nil
 }
 
+// SearchElementsPages delegates service-owned element page traversal while
+// exposing page callbacks for caller-owned rendering and prompt decisions.
+func (c *client) SearchElementsPages(ctx context.Context, request SearchRequest, visitor SearchPageVisitor, opts ...foptions.FacadeOption) (SearchPagesResult, error) {
+	result, err := c.api.SearchElementsPages(ctx, toDomainSearchRequest(request), toDomainSearchPageVisitor(visitor), foptions.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainSearchPagesResult(result)
+	if err != nil {
+		return out, ferrors.FromDomain(err)
+	}
+	return out, nil
+}
+
 // SearchElementsPage fetches one runtime element search page.
 func (c *client) SearchElementsPage(ctx context.Context, request SearchRequest, page PageRequest, opts ...foptions.FacadeOption) (Page, error) {
 	result, err := c.api.SearchElementsPage(ctx, toDomainSearchRequest(request), toDomainPageRequest(page), foptions.MapFacadeOptionsToCallOptions(opts)...)
@@ -84,4 +95,14 @@ func (c *client) SearchElementsPage(ctx context.Context, request SearchRequest, 
 		return out, ferrors.FromDomain(err)
 	}
 	return out, nil
+}
+
+// SearchElementsTotal returns the service-computed total, including fallback
+// page counting when Camunda does not provide an exact total.
+func (c *client) SearchElementsTotal(ctx context.Context, request SearchRequest, opts ...foptions.FacadeOption) (int64, error) {
+	result, err := c.api.SearchElementsTotal(ctx, toDomainSearchRequest(request), foptions.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return 0, ferrors.FromDomain(err)
+	}
+	return result, nil
 }

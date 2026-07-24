@@ -1003,6 +1003,33 @@ func TestGetIncidentCommand_SearchAutoConfirmContinuesPagesAndHonorsLimit(t *tes
 	require.Contains(t, output, "found: 3")
 }
 
+// TestGetIncidentCommand_SearchVerboseProgress verifies paged incident search reports durable progress away from stdout.
+func TestGetIncidentCommand_SearchVerboseProgress(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+		`{"items":[{"errorMessage":"third","incidentKey":"2251799813685255","processInstanceKey":"2251799813711974","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"--verbose",
+		"--auto-confirm",
+		"get", "incident",
+		"--batch-size", "2",
+	)
+
+	require.Len(t, requests, 2)
+	require.Contains(t, requests[0], `"limit":2`)
+	require.Contains(t, requests[0], `"from":0`)
+	require.Contains(t, requests[1], `"from":2`)
+	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
+	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+	require.Contains(t, output, "found: 3")
+}
+
 func TestGetIncidentCommand_SearchErrorMessageMatchesCaseInsensitiveAcrossPages(t *testing.T) {
 	var requests []string
 	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,

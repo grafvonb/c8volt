@@ -16,6 +16,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/pool"
 )
 
 // AnalyseSlowProcessInstances coordinates read-only slow process analysis below the command layer.
@@ -126,15 +127,15 @@ func slowProcessAnalysisApplyRootDurationFilter(items []d.SlowProcessAnalysisPro
 
 // slowProcessAnalysisLookupExplicitKeys resolves already-deduplicated keys through tenant-safe lookup.
 func slowProcessAnalysisLookupExplicitKeys(ctx context.Context, api pisvc.API, keys []string, opts ...services.CallOption) ([]d.ProcessInstance, error) {
-	instances := make([]d.ProcessInstance, 0, len(keys))
-	for _, key := range keys {
+	cfg := services.ApplyCallOptions(opts)
+	workers := toolx.DetermineNoOfWorkers(len(keys), 0, cfg.NoWorkerLimit)
+	return pool.ExecuteSlice[string, d.ProcessInstance](ctx, keys, workers, cfg.FailFast, func(ctx context.Context, key string, _ int) (d.ProcessInstance, error) {
 		pi, err := pisvc.LookupProcessInstance(ctx, api, key, opts...)
 		if err != nil {
-			return nil, fmt.Errorf("lookup process instance %s: %w", key, err)
+			return d.ProcessInstance{}, fmt.Errorf("lookup process instance %s: %w", key, err)
 		}
-		instances = append(instances, pi)
-	}
-	return instances, nil
+		return pi, nil
+	})
 }
 
 type slowProcessAnalysisSearchDiscovery struct {

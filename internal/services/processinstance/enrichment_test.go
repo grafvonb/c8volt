@@ -11,6 +11,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,11 +65,11 @@ func (s stubJobSearcher) SearchJobs(ctx context.Context, query d.JobSearchQuery,
 
 // TestEnrichProcessInstancesWithIncidentsPreservesOrderAndFiltersPerKey verifies service-owned incident association semantics.
 func TestEnrichProcessInstancesWithIncidentsPreservesOrderAndFiltersPerKey(t *testing.T) {
-	seen := []string{}
+	var seen testx.SafeSlice[string]
 	got, err := EnrichProcessInstancesWithIncidents(context.Background(), stubIncidentSearcher{
 		search: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 			require.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
-			seen = append(seen, key)
+			seen.Append(key)
 			return []d.ProcessInstanceIncidentDetail{
 				{IncidentKey: "incident-" + key, ProcessInstanceKey: key},
 				{IncidentKey: "broad-response-noise", ProcessInstanceKey: "other"},
@@ -80,7 +81,7 @@ func TestEnrichProcessInstancesWithIncidentsPreservesOrderAndFiltersPerKey(t *te
 	}, services.WithIgnoreTenant())
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"200", "100"}, seen)
+	require.ElementsMatch(t, []string{"200", "100"}, seen.Snapshot())
 	require.Equal(t, int32(2), got.Total)
 	require.Equal(t, "200", got.Items[0].Item.Key)
 	require.Equal(t, []d.ProcessInstanceIncidentDetail{{IncidentKey: "incident-200", ProcessInstanceKey: "200"}}, got.Items[0].Incidents)
@@ -258,11 +259,11 @@ func TestEnrichProcessInstancesWithElementListenersAttachesByOwnerAndOmitsUnmatc
 
 // TestEnrichTraversalWithIncidentsPreservesMetadataAndSelectedKeys verifies traversal enrichment stays scoped to result keys.
 func TestEnrichTraversalWithIncidentsPreservesMetadataAndSelectedKeys(t *testing.T) {
-	seen := []string{}
+	var seen testx.SafeSlice[string]
 	got, err := EnrichTraversalWithIncidents(context.Background(), stubIncidentSearcher{
 		search: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 			require.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
-			seen = append(seen, key)
+			seen.Append(key)
 			return []d.ProcessInstanceIncidentDetail{
 				{IncidentKey: "incident-" + key, ProcessInstanceKey: key},
 				{IncidentKey: "ignored", ProcessInstanceKey: "other"},
@@ -285,7 +286,7 @@ func TestEnrichTraversalWithIncidentsPreservesMetadataAndSelectedKeys(t *testing
 	}, services.WithIgnoreTenant())
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"root", "child"}, seen)
+	require.ElementsMatch(t, []string{"root", "child"}, seen.Snapshot())
 	require.Equal(t, "family", got.Mode)
 	require.Equal(t, "partial", got.Outcome)
 	require.Equal(t, "start", got.StartKey)

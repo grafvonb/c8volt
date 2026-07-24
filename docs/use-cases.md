@@ -13,6 +13,8 @@ The c8volt use-case board is the GitHub discussion space where C8 Ops CLI workfl
 
 Implemented operational workflows now live in the [C8 Ops CLI playbooks](/ops/). This page remains the idea board for accepted, upcoming, and superseded workflow concepts.
 
+Implemented ops workflows page discovery through the full matching scope by default. `--batch-size` controls discovery page size, `--limit` freezes a smaller scope, and `--automation` or `--auto-confirm` makes unattended execution explicit.
+
 ## Discussion Links
 
 ### [Mitigate stuck jobs](https://github.com/grafvonb/c8volt/discussions/238) <span class="status-badge status-accepted">status: accepted</span>

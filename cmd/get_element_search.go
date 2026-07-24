@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/element"
-	"github.com/grafvonb/c8volt/consts"
 	"github.com/spf13/cobra"
 )
 
@@ -24,8 +23,6 @@ func searchElementsForCommand(cmd *cobra.Command, cli element.API, request eleme
 // searchElementsWithPaging walks element search pages and either streams rows
 // incrementally or returns one bounded collection for JSON rendering.
 func searchElementsWithPaging(cmd *cobra.Command, cli element.API, request element.SearchRequest) (element.SearchResult, bool, error) {
-	pageReq := newElementSearchPageRequest(0, request.BatchSize, request.Limit, 0)
-	collected := element.SearchResult{Items: []element.Element{}}
 	incremental := shouldRenderElementSearchPageIncrementally(cmd)
 	autoContinue := shouldAutoContinueElementSearchPages(cmd)
 	processedTotal := 0
@@ -37,71 +34,58 @@ func searchElementsWithPaging(cmd *cobra.Command, cli element.API, request eleme
 			}
 			return element.SearchResult{}, true, nil
 		}
-		collected.Total = int32(len(collected.Items))
-		return collected, false, nil
+		return element.SearchResult{}, false, nil
 	}
 
-	for {
-		page, err := cli.SearchElementsPage(cmd.Context(), request, pageReq, collectOptions()...)
-		if err != nil {
-			return element.SearchResult{}, false, err
-		}
-		items := limitElementItems(page.Items, processedTotal, request.Limit)
+	result, err := cli.SearchElementsPages(cmd.Context(), request, func(step element.SearchPageStep) (element.SearchPageAction, error) {
+		page := step.Page
 		if incremental {
-			if err := renderElementSearchPage(cmd, items, capturedNow); err != nil {
-				return element.SearchResult{}, false, err
+			if err := renderElementSearchPage(cmd, page.Items, capturedNow); err != nil {
+				return element.SearchPageActionStop, err
 			}
-		} else {
-			collected.Items = append(collected.Items, items...)
 		}
-		processedTotal += len(items)
+		processedTotal = int(step.CumulativeCount)
 
-		if isElementLimitReached(processedTotal, request.Limit) || page.OverflowState != element.OverflowStateHasMore {
-			return printFoundAndReturn()
+		continuation := elementSearchContinuationState(page, step.LimitReached, autoContinue)
+		printSearchPageProgress(cmd, searchPageProgressSummary{
+			PageSize:          page.Request.Size,
+			CurrentPageCount:  len(page.Items),
+			CumulativeCount:   processedTotal,
+			MoreMatches:       describeElementOverflowState(page.OverflowState),
+			ContinuationState: continuation,
+		})
+
+		if continuation == processInstanceContinuationLimitReached || continuation == processInstanceContinuationCompleted {
+			return element.SearchPageActionStop, nil
 		}
-		if autoContinue {
-			pageReq = nextElementSearchPageRequest(pageReq, page, request.Limit, processedTotal)
-			continue
+		if continuation == processInstanceContinuationAutoContinue {
+			return element.SearchPageActionContinue, nil
 		}
-		if len(items) == 0 {
-			pageReq = nextElementSearchPageRequest(pageReq, page, request.Limit, processedTotal)
-			continue
+		if len(page.Items) == 0 {
+			return element.SearchPageActionContinue, nil
 		}
-		prompt := fmt.Sprintf("Fetched %d element(s) on this page (%d loaded). More matching elements remain. Continue?", len(items), processedTotal)
+		prompt := fmt.Sprintf("Fetched %d element(s) on this page (%d loaded). More matching elements remain. Continue?", len(page.Items), processedTotal)
 		if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			if isCmdAborted(err) {
-				return printFoundAndReturn()
+				return element.SearchPageActionStop, nil
 			}
-			return element.SearchResult{}, false, err
+			return element.SearchPageActionStop, err
 		}
-		pageReq = nextElementSearchPageRequest(pageReq, page, request.Limit, processedTotal)
+		return element.SearchPageActionContinue, nil
+	}, collectOptions()...)
+	if err != nil {
+		return element.SearchResult{}, false, err
 	}
+	if incremental {
+		return printFoundAndReturn()
+	}
+	return element.SearchResult{Items: result.Items, Total: result.Total}, false, nil
 }
 
 // searchElementsTotal counts matching elements, trusting exact backend totals
 // when available and otherwise walking pages quietly.
 func searchElementsTotal(cmd *cobra.Command, cli element.API, request element.SearchRequest) (int64, error) {
-	pageReq := element.PageRequest{Size: request.BatchSize}
-	total := int64(0)
-	for {
-		page, err := cli.SearchElementsPage(cmd.Context(), request, pageReq, collectOptions()...)
-		if err != nil {
-			return 0, err
-		}
-		if canUseElementExactReportedTotal(page) {
-			return page.ReportedTotal.Count, nil
-		}
-		total += int64(len(page.Items))
-		if len(page.Items) == 0 || page.OverflowState != element.OverflowStateHasMore {
-			return total, nil
-		}
-		pageReq = nextElementSearchPageRequest(pageReq, page, 0, int(total))
-	}
-}
-
-// canUseElementExactReportedTotal reports whether the backend total can be used without paging.
-func canUseElementExactReportedTotal(page element.Page) bool {
-	return page.ReportedTotal != nil && page.ReportedTotal.Kind == element.ReportedTotalKindExact
+	return cli.SearchElementsTotal(cmd.Context(), request, collectOptions()...)
 }
 
 // shouldRenderElementSearchPageIncrementally keeps human and key-only output streaming by page.
@@ -121,48 +105,26 @@ func shouldAutoContinueElementSearchPages(cmd *cobra.Command) bool {
 	return shouldImplicitlyConfirm(cmd) || pickMode() == RenderModeJSON
 }
 
-// limitElementItems trims the current page to the remaining user-requested limit.
-func limitElementItems(items []element.Element, cumulative int, limit int32) []element.Element {
-	if limit <= 0 {
-		return items
+// elementSearchContinuationState translates element overflow metadata into the next CLI paging action.
+func elementSearchContinuationState(page element.Page, limitReached bool, autoContinue bool) processInstanceContinuationState {
+	if limitReached {
+		return processInstanceContinuationLimitReached
 	}
-	remaining := int(limit) - cumulative
-	if remaining <= 0 {
-		return nil
-	}
-	if len(items) > remaining {
-		return items[:remaining]
-	}
-	return items
-}
-
-// isElementLimitReached reports whether the cross-page limit has been satisfied.
-func isElementLimitReached(cumulative int, limit int32) bool {
-	return limit > 0 && cumulative >= int(limit)
-}
-
-// nextElementSearchPageRequest advances offset pagination using the actual page size.
-func nextElementSearchPageRequest(current element.PageRequest, page element.Page, limit int32, loaded int) element.PageRequest {
-	nextFrom := current.From + int32(len(page.Items))
-	if len(page.Items) == 0 {
-		nextFrom = current.From + current.Size
-	}
-	return newElementSearchPageRequest(nextFrom, page.Request.Size, limit, loaded)
-}
-
-// newElementSearchPageRequest computes an effective page size bounded by any remaining limit.
-func newElementSearchPageRequest(from int32, batchSize int32, limit int32, loaded int) element.PageRequest {
-	size := batchSize
-	if size <= 0 {
-		size = consts.MaxPISearchSize
-	}
-	if limit > 0 {
-		remaining := limit - int32(loaded)
-		if remaining < size {
-			size = remaining
+	if page.OverflowState == element.OverflowStateHasMore {
+		if autoContinue {
+			return processInstanceContinuationAutoContinue
 		}
+		return processInstanceContinuationPrompt
 	}
-	return element.PageRequest{From: from, Size: size}
+	return processInstanceContinuationCompleted
+}
+
+// describeElementOverflowState maps element overflow metadata to verbose progress wording.
+func describeElementOverflowState(state element.OverflowState) string {
+	if state == element.OverflowStateHasMore {
+		return "yes"
+	}
+	return "no"
 }
 
 // renderElementSearchPage renders one page in the current incremental output mode.

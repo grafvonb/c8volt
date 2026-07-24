@@ -39,7 +39,7 @@ c8volt update process-instance [flags]
       --dry-run            preview variable updates without submitting mutation
       --fail-fast          stop scheduling new updates after the first error
   -h, --help               help for process-instance
-      --key strings        process instance key(s) to update; repeat or combine with stdin '-'
+  -k, --key strings        process instance key(s) to update; repeat or combine with stdin '-'
       --no-wait            return after the update request is accepted without variable confirmation
       --no-worker-limit    use all queued jobs as workers when --workers is unset
       --vars string        JSON object with variables to set on each process instance

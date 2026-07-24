@@ -11,7 +11,7 @@ Execute process-instance retention cleanup
 
 Execute process-instance retention cleanup.
 
-The workflow discovers process instances older than the required retention age, freezes that candidate set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion after confirmation. Use compatible process-instance filters to narrow discovery, --auto-confirm or --automation for unattended deletion, and --report-file to write an audit report.
+The workflow discovers process instances older than the required retention age, freezes that candidate set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion after confirmation. Discovery pages through all matching retention candidates by default. --batch-size controls each discovery page request, --limit caps the frozen retention scope, and --workers, --fail-fast, and --no-worker-limit bound independent delete planning or deletion work. Human, JSON, and audit report output identify whether discovery completed or was user-limited. Use compatible process-instance filters to narrow discovery, --auto-confirm or --automation for unattended deletion, and --report-file to write an audit report.
 
 ```
 c8volt ops execute retention-policy [flags]
@@ -29,7 +29,7 @@ c8volt ops execute retention-policy [flags]
 ### Options
 
 ```
-  -n, --batch-size int32         number of process instances to inspect per page (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32         number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string   BPMN process ID to filter process instances
       --children-only            discover only child process instances
       --dry-run                  discover and validate retention cleanup without submitting deletion requests
@@ -38,7 +38,7 @@ c8volt ops execute retention-policy [flags]
   -h, --help                     help for retention-policy
       --incidents-only           discover only process instances that have incidents
   -k, --key strings              unsupported explicit process-instance key selector
-  -l, --limit int32              maximum number of matching process instances to inspect across all pages
+  -l, --limit int32              maximum number of matching process instances to freeze for retention cleanup; omit to discover all matches
       --no-incidents-only        discover only process instances that have no incidents
       --no-state-check           skip checking process-instance state before deleting
       --no-wait                  return after deletion requests are accepted without deletion confirmation

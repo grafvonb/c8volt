@@ -18,6 +18,8 @@ Tenant contract: --tenant scopes search-derived candidate discovery where suppor
 
 When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, or cancellation; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no cancellation request is submitted.
 
+Search mode pages through matching process instances by default. --batch-size controls each discovery page request, --limit caps the selected process-instance scope across all pages, and --workers, --fail-fast, and --no-worker-limit bound independent planning or cancellation work. Verbose paging progress is written away from stdout; JSON, quiet, and automation output remain free of prompts unless confirmation is explicitly supplied.
+
 Use --dry-run to preview selected, in-scope, final-state, and partial-scope instances without cancelling.
 
 Use --auto-confirm for unattended destructive runs.
@@ -43,7 +45,7 @@ c8volt cancel process-instance [flags]
 ### Options
 
 ```
-  -n, --batch-size int32            number of process instances to process per page (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32            number of process instances to inspect per discovery page; does not cap total selected scope (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
       --dry-run                     preview cancel scope without submitting cancellation
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD
@@ -54,7 +56,7 @@ c8volt cancel process-instance [flags]
       --force                       cancel the root instance when a selected instance is a child
   -h, --help                        help for process-instance
   -k, --key strings                 process instance key(s) to cancel
-  -l, --limit int32                 maximum number of matching process instances to process across all pages
+  -l, --limit int32                 maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches
       --no-state-check              skip checking the current state of the process instance before cancelling it
       --no-wait                     return after cancellation is accepted
       --no-worker-limit             use all queued jobs as workers when --workers is unset

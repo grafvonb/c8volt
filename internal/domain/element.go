@@ -61,6 +61,17 @@ type ElementSearchResult struct {
 	Total int32
 }
 
+// ElementSearchPageAction tells service-owned page traversal whether the caller
+// needs more pages after observing the current page.
+type ElementSearchPageAction string
+
+const (
+	// ElementSearchPageActionContinue keeps collecting the next available page.
+	ElementSearchPageActionContinue ElementSearchPageAction = "continue"
+	// ElementSearchPageActionStop stops traversal after the current page.
+	ElementSearchPageActionStop ElementSearchPageAction = "stop"
+)
+
 // ElementReportedTotalKind describes the backend total count semantics.
 type ElementReportedTotalKind string
 
@@ -89,4 +100,23 @@ type ElementSearchPage struct {
 	Request       ElementPageRequest
 	OverflowState ProcessInstanceOverflowState
 	ReportedTotal *ElementReportedTotal
+}
+
+// ElementSearchPageStep carries one selected page plus service-owned traversal
+// state to callers that still own rendering or prompt policy.
+type ElementSearchPageStep struct {
+	Page            ElementSearchPage
+	CumulativeCount int32
+	LimitReached    bool
+}
+
+// ElementSearchPageVisitor observes each selected page during service-owned
+// traversal and may stop collection without owning offset math.
+type ElementSearchPageVisitor func(ElementSearchPageStep) (ElementSearchPageAction, error)
+
+// ElementSearchPagesResult captures a full or caller-stopped paged discovery.
+type ElementSearchPagesResult struct {
+	Items []Element
+	Total int32
+	Pages int32
 }

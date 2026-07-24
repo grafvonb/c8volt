@@ -40,10 +40,12 @@ Use `c8volt` when the command-line workflow needs operational guardrails and obs
 - automation-safe flags
 - JSON or key-only output for scripts and agents
 - wait modes and post-action state checks
+- paged discovery where `--batch-size` controls page size and `--limit` caps returned or frozen scope
 - incident inspection, repair, and resolution workflows
 - process-instance cleanup and retention-style workflows
 - cluster, process-definition, process-instance, job, incident, tenant, and resource inspection
 - repeatable operational runbooks and CI/CD-friendly Camunda 8 operations
+- machine-readable capability discovery with `c8volt capabilities --json`
 
 Useful starting points:
 

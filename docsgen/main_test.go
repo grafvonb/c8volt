@@ -130,6 +130,86 @@ func TestCLIMarkdownPreludeOmitsOpsBreadcrumb(t *testing.T) {
 	}
 }
 
+func TestCLIDebtRefactorAssessmentArtifactDocumentsBaseline(t *testing.T) {
+	bodyBytes, err := os.ReadFile(filepath.Join("..", "specs", "254-cli-debt-refactor", "assessment.md"))
+	if err != nil {
+		t.Fatalf("read assessment artifact: %v", err)
+	}
+	body := string(bodyBytes)
+
+	for _, want := range []string{
+		"## Command Node Assessment",
+		"| Path | Aliases | Family | Mutation | Contract | Automation | Output Modes | Paging | Mutates | Activity | Durable Progress | Machine Constraints | Ownership | Execution Style | Risk |",
+		"## High-Risk Workflows And Duplicated Mechanics",
+		"## Intentional Differences And Non-Goals",
+		"## Performance Characterization Plan",
+		"`get process-instance`",
+		"`delete process-instance`",
+		"`ops purge process-instances-with-incidents`",
+		"`walk process-instance`",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected assessment artifact to contain %q", want)
+		}
+	}
+
+	if got := strings.Count(body, "\n| `"); got != 55 {
+		t.Fatalf("expected assessment artifact to contain 55 command-node rows, got %d", got)
+	}
+}
+
+// TestCLIDebtRefactorUserFacingDocsDocumentPagingContracts keeps README and
+// docs examples aligned with generated command help for paging and automation.
+func TestCLIDebtRefactorUserFacingDocsDocumentPagingContracts(t *testing.T) {
+	tests := []struct {
+		name      string
+		path      string
+		fragments []string
+	}{
+		{
+			name: "README",
+			path: filepath.Join("..", "README.md"),
+			fragments: []string{
+				"Discovery pages through the full matching scope by default; `--batch-size` only tunes page size, while `--limit` is the explicit way to cap the frozen scope.",
+				"Use `--batch-size` or `-n` to control how many process instances each backend page may fetch.",
+				"Use `--limit` or `-l` to cap the total number of matched process instances returned or processed across all pages.",
+				"machine-readable command contract is available from `c8volt capabilities --json`",
+			},
+		},
+		{
+			name: "use cases",
+			path: filepath.Join("..", "docs", "use-cases.md"),
+			fragments: []string{
+				"Implemented ops workflows page discovery through the full matching scope by default.",
+				"`--batch-size` controls discovery page size, `--limit` freezes a smaller scope, and `--automation` or `--auto-confirm` makes unattended execution explicit.",
+			},
+		},
+		{
+			name: "Camunda CLI options",
+			path: filepath.Join("..", "docs", "camunda-cli.md"),
+			fragments: []string{
+				"paged discovery where `--batch-size` controls page size and `--limit` caps returned or frozen scope",
+				"machine-readable capability discovery with `c8volt capabilities --json`",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bodyBytes, err := os.ReadFile(tt.path)
+			if err != nil {
+				t.Fatalf("read %s: %v", tt.path, err)
+			}
+			body := string(bodyBytes)
+			for _, want := range tt.fragments {
+				if !strings.Contains(body, want) {
+					t.Fatalf("expected %s to contain %q", tt.path, want)
+				}
+			}
+		})
+	}
+}
+
 // TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup protects generated command docs for the task-key lookup surface.
 func TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup(t *testing.T) {
 	out := t.TempDir()
@@ -287,7 +367,7 @@ func TestGeneratedGetElementDocsDocumentLookupSearchAndOutput(t *testing.T) {
 		"--pi-key string",
 		"process instance key to filter in search mode",
 		"--batch-size int32",
-		"number of elements to fetch per page",
+		"number of elements to request per page; does not cap total returned rows",
 		"--total",
 		"return only the numeric total of matching elements",
 		"--with-listeners",
@@ -296,6 +376,122 @@ func TestGeneratedGetElementDocsDocumentLookupSearchAndOutput(t *testing.T) {
 		if !strings.Contains(elementDoc, want) {
 			t.Fatalf("expected generated get element docs to contain %q, got %q", want, elementDoc)
 		}
+	}
+}
+
+// TestGeneratedPagedWorkflowDocsDocumentContracts protects generated CLI docs
+// for page-size, total-limit, frozen-scope, automation, and progress wording.
+func TestGeneratedPagedWorkflowDocsDocumentContracts(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		file      string
+		fragments []string
+	}{
+		{
+			name: "get job",
+			file: "c8volt_get_job.md",
+			fragments: []string{
+				"--batch-size controls each backend page request",
+				"--limit caps total returned jobs across all pages",
+				"JSON, keys-only, quiet, and automation output remain free of prompts and progress text",
+				"number of jobs to request per page; does not cap total returned rows",
+				"maximum number of matching jobs to return across all pages; omit to continue through all matches",
+			},
+		},
+		{
+			name: "get element",
+			file: "c8volt_get_element.md",
+			fragments: []string{
+				"--batch-size controls each backend page request",
+				"--limit caps returned element rows across all pages",
+				"JSON, keys-only, quiet, and automation output remain free of prompts and progress text",
+				"number of elements to request per page; does not cap total returned rows",
+				"maximum number of matching elements to return across all pages; omit to continue through all matches",
+			},
+		},
+		{
+			name: "get incident",
+			file: "c8volt_get_incident.md",
+			fragments: []string{
+				"--batch-size controls each backend page request",
+				"--limit caps total returned incidents across all pages",
+				"JSON, keys-only, pi-keys-only, quiet, and automation output remain free of prompts and progress text",
+				"number of incidents to request per page; does not cap total returned rows",
+				"maximum number of matching incidents to return across all pages; omit to continue through all matches",
+			},
+		},
+		{
+			name: "get process instance",
+			file: "c8volt_get_process-instance.md",
+			fragments: []string{
+				"--batch-size controls each backend page request",
+				"--limit caps total returned process instances across all pages",
+				"JSON, keys-only, quiet, and automation output remain free of prompts and progress text",
+				"number of process instances to request per page; does not cap total returned rows",
+				"maximum number of matching process instances to return across all pages; omit to continue through all matches",
+			},
+		},
+		{
+			name: "cancel process instance",
+			file: "c8volt_cancel_process-instance.md",
+			fragments: []string{
+				"--batch-size controls each discovery page request",
+				"--limit caps the selected process-instance scope across all pages",
+				"--workers, --fail-fast, and --no-worker-limit bound independent planning or cancellation work",
+				"number of process instances to inspect per discovery page; does not cap total selected scope",
+				"maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches",
+			},
+		},
+		{
+			name: "delete process instance",
+			file: "c8volt_delete_process-instance.md",
+			fragments: []string{
+				"freezes every selected page-level delete plan before one confirmation and mutation",
+				"--batch-size controls each discovery page request",
+				"--limit caps the frozen delete scope across all pages",
+				"--workers, --fail-fast, and --no-worker-limit bound independent planning, cancellation, or deletion work",
+				"number of process instances to inspect per discovery page; does not cap total frozen scope",
+				"maximum number of matching process instances to freeze for deletion across all pages; omit to continue through all matches",
+			},
+		},
+		{
+			name: "retention policy",
+			file: "c8volt_ops_execute_retention-policy.md",
+			fragments: []string{
+				"Discovery pages through all matching retention candidates by default.",
+				"--batch-size controls each discovery page request",
+				"--limit caps the frozen retention scope",
+				"--workers, --fail-fast, and --no-worker-limit bound independent delete planning or deletion work",
+				"number of process instances to inspect per discovery page; does not cap total frozen scope",
+				"maximum number of matching process instances to freeze for retention cleanup; omit to discover all matches",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := readGeneratedDocForTest(t, out, tt.file)
+			for _, want := range tt.fragments {
+				if !strings.Contains(got, want) {
+					t.Fatalf("expected generated docs to contain %q, got %q", want, got)
+				}
+			}
+		})
 	}
 }
 

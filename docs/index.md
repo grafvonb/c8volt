@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.2.0-beta.1-21-gc907b351-dirty`, commit `c907b351`, built `2026-07-23T10:21:39Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v4.2.0-beta.2-19-g17506db6-dirty`, commit `17506db6`, built `2026-07-24T14:51:40Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -344,7 +344,7 @@ For bulk work, check the batch first, then act:
 ./c8volt cancel pi --bpmn-process-id <bpmn-process-id> --state active --limit 5 --auto-confirm
 ```
 
-Use `--batch-size` or `-n` to control how many process instances each backend page may fetch. Use `--limit` or `-l` to cap the total number of matched process instances returned or processed across all pages.
+Use `--batch-size` or `-n` to control how many process instances each backend page may fetch. Use `--limit` or `-l` to cap the total number of matched process instances returned or processed across all pages. Verbose paging progress is written away from stdout, while JSON, keys-only, quiet, and automation output stay parseable.
 
 When a script only needs the count of matching process instances, `./c8volt get pi --total` prints only the numeric total. If Camunda reports a capped search total, c8volt keeps paging and counts the matching process instances instead of returning the capped lower bound.
 
@@ -453,7 +453,7 @@ For native process-instance variable search on Camunda `8.8` and `8.9`, use `--v
 printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt get inc -
 ```
 
-Use `get incident` when the incident itself is the target. Repeated `--key` values and stdin `-` are merged and deduplicated for keyed lookup. Without keys, the command lists incidents with plain incident filters such as `--state`, `--error-type`, `--error-message`, process and element selectors, and creation-time bounds. Creation-time bounds accept RFC3339 timestamps for precise windows, c8volt display timestamps such as `YYYY-MM-DDTHH:MM:SS.000` as UTC, or `YYYY-MM-DD` for inclusive calendar days; relative day filters use `--creation-time-older-days N` for `N` days old or older and `--creation-time-newer-days N` for `N` days old or newer. When `--bpmn-process-id` is present, c8volt validates the visible process-definition selector before totals, key-only output, process-instance-key output, or incident paging; missing selectors fail without recovery prompts in machine-oriented modes. Rows include tenant, state, type, creation time, process context, job key, message, and age; `--json`, `--keys-only`, `--pi-keys-only`, and `--total` preserve script-friendly output contracts. Use `--keys-only` when piping incident keys and `--pi-keys-only` when piping matching process instance keys into process-instance commands.
+Use `get incident` when the incident itself is the target. Repeated `--key` values and stdin `-` are merged and deduplicated for keyed lookup. Without keys, the command lists incidents with plain incident filters such as `--state`, `--error-type`, `--error-message`, process and element selectors, and creation-time bounds. Creation-time bounds accept RFC3339 timestamps for precise windows, c8volt display timestamps such as `YYYY-MM-DDTHH:MM:SS.000` as UTC, or `YYYY-MM-DD` for inclusive calendar days; relative day filters use `--creation-time-older-days N` for `N` days old or older and `--creation-time-newer-days N` for `N` days old or newer. When `--bpmn-process-id` is present, c8volt validates the visible process-definition selector before totals, key-only output, process-instance-key output, or incident paging; missing selectors fail without recovery prompts in machine-oriented modes. Rows include tenant, state, type, creation time, process context, job key, message, and age; `--json`, `--keys-only`, `--pi-keys-only`, and `--total` preserve script-friendly output contracts. Use `--keys-only` when piping incident keys and `--pi-keys-only` when piping matching process instance keys into process-instance commands. For `ops purge process-instances-with-incidents`, use `--inc-key` to select specific incident keys.
 
 For variable inspection, add `--with-vars` to keyed or list/search `get pi` output, or to keyed `walk pi` output. Combine it with `--with-incidents` when you need runtime data and failure context in one view. Values are full by default; add `--var-value-limit <chars>` for noisy payloads. JSON keeps received values and metadata intact.
 

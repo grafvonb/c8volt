@@ -10,6 +10,8 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
+	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/pool"
 )
 
 type incidentSearcher interface {
@@ -30,16 +32,19 @@ type jobSearcher interface {
 
 // EnrichProcessInstancesWithIncidents attaches direct incident details to selected process-instance results without reordering them.
 func EnrichProcessInstancesWithIncidents(ctx context.Context, api incidentSearcher, pis []d.ProcessInstance, opts ...services.CallOption) (d.IncidentEnrichedProcessInstances, error) {
-	items := make([]d.IncidentEnrichedProcessInstance, 0, len(pis))
-	for _, pi := range pis {
+	workers, failFast := enrichmentPoolConfig(len(pis), opts)
+	items, err := pool.ExecuteSlice[d.ProcessInstance, d.IncidentEnrichedProcessInstance](ctx, pis, workers, failFast, func(ctx context.Context, pi d.ProcessInstance, _ int) (d.IncidentEnrichedProcessInstance, error) {
 		incidents, err := api.SearchProcessInstanceIncidents(ctx, pi.Key, opts...)
 		if err != nil {
-			return d.IncidentEnrichedProcessInstances{}, err
+			return d.IncidentEnrichedProcessInstance{}, err
 		}
-		items = append(items, d.IncidentEnrichedProcessInstance{
+		return d.IncidentEnrichedProcessInstance{
 			Item:      pi,
 			Incidents: incidentsForProcessInstance(pi.Key, incidents),
-		})
+		}, nil
+	})
+	if err != nil {
+		return d.IncidentEnrichedProcessInstances{}, err
 	}
 	return d.IncidentEnrichedProcessInstances{
 		Total: int32(len(items)),
@@ -112,20 +117,29 @@ func EnrichProcessInstancesWithElementListeners(ctx context.Context, elementAPI 
 
 // EnrichTraversalWithIncidents overlays incident details onto walked items while preserving traversal metadata and warnings.
 func EnrichTraversalWithIncidents(ctx context.Context, api incidentSearcher, result pitraversal.Result, opts ...services.CallOption) (d.IncidentEnrichedTraversalResult, error) {
-	items := make([]d.IncidentEnrichedTraversalItem, 0, len(result.Keys))
+	selected := make([]d.ProcessInstance, 0, len(result.Keys))
 	for _, key := range result.Keys {
 		pi, ok := result.Chain[key]
 		if !ok {
 			continue
 		}
+		selected = append(selected, pi)
+	}
+
+	workers, failFast := enrichmentPoolConfig(len(selected), opts)
+	items, err := pool.ExecuteSlice[d.ProcessInstance, d.IncidentEnrichedTraversalItem](ctx, selected, workers, failFast, func(ctx context.Context, pi d.ProcessInstance, _ int) (d.IncidentEnrichedTraversalItem, error) {
+		key := pi.Key
 		incidents, err := api.SearchProcessInstanceIncidents(ctx, key, opts...)
 		if err != nil {
-			return d.IncidentEnrichedTraversalResult{}, err
+			return d.IncidentEnrichedTraversalItem{}, err
 		}
-		items = append(items, d.IncidentEnrichedTraversalItem{
+		return d.IncidentEnrichedTraversalItem{
 			Item:      pi,
 			Incidents: incidentsForProcessInstance(key, incidents),
-		})
+		}, nil
+	})
+	if err != nil {
+		return d.IncidentEnrichedTraversalResult{}, err
 	}
 	return d.IncidentEnrichedTraversalResult{
 		Mode:             string(result.Mode),
@@ -138,6 +152,13 @@ func EnrichTraversalWithIncidents(ctx context.Context, api incidentSearcher, res
 		MissingAncestors: traversalMissingAncestors(result.MissingAncestors),
 		Warning:          result.Warning,
 	}, nil
+}
+
+// enrichmentPoolConfig applies the repository worker policy to incident
+// enrichment paths that do not expose an explicit worker argument.
+func enrichmentPoolConfig(count int, opts []services.CallOption) (int, bool) {
+	cfg := services.ApplyCallOptions(opts)
+	return toolx.DetermineNoOfWorkers(count, 0, cfg.NoWorkerLimit), cfg.FailFast
 }
 
 // incidentsForProcessInstance keeps only details owned by the requested key, guarding against broad backend incident responses.

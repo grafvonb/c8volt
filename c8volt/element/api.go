@@ -15,7 +15,9 @@ type API interface {
 	GetElementWithListeners(ctx context.Context, key string, opts ...options.FacadeOption) (Element, error)
 	SearchElements(ctx context.Context, request SearchRequest, opts ...options.FacadeOption) (SearchResult, error)
 	SearchElementsWithListeners(ctx context.Context, request SearchRequest, opts ...options.FacadeOption) (SearchResult, error)
+	SearchElementsPages(ctx context.Context, request SearchRequest, visitor SearchPageVisitor, opts ...options.FacadeOption) (SearchPagesResult, error)
 	SearchElementsPage(ctx context.Context, request SearchRequest, page PageRequest, opts ...options.FacadeOption) (Page, error)
+	SearchElementsTotal(ctx context.Context, request SearchRequest, opts ...options.FacadeOption) (int64, error)
 }
 
 var _ API = (*client)(nil)

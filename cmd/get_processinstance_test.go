@@ -60,7 +60,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "capped backend totals are counted by paging")
 	require.Contains(t, output, "--auto-confirm")
 	require.Contains(t, output, "--batch-size int32")
-	require.Contains(t, output, "number of process instances to fetch per page")
+	require.Contains(t, output, "number of process instances to request per page; does not cap total returned rows")
 	require.Contains(t, output, "--incident-message-limit int")
 	require.Contains(t, output, "maximum characters to show for incident messages when --with-incidents is set")
 	require.Contains(t, output, "--incident-error-message string")
@@ -71,7 +71,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "--incident-state string")
 	require.Contains(t, output, "incident state scope for keyed --with-incidents: active, pending, resolved, migrated, unknown, all")
 	require.Contains(t, output, "--limit int32")
-	require.Contains(t, output, "maximum number of matching process instances to return or process across all pages")
+	require.Contains(t, output, "maximum number of matching process instances to return across all pages; omit to continue through all matches")
 	require.Contains(t, output, "--var-value-limit int")
 	require.Contains(t, output, "maximum characters to show for variable values when --with-vars is set")
 	require.Contains(t, output, "--var stringArray")
@@ -608,7 +608,7 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 				args := append([]string{"--config", cfgPath, "--tenant", "tenant", "get", "process-instance"}, tt.args...)
 				stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
 
-				require.Equal(t, []string{
+				require.ElementsMatch(t, []string{
 					"POST /v2/process-instances/search",
 					"POST /v2/process-instances/123/incidents/search",
 					"POST /v2/process-instances/124/incidents/search",
@@ -909,7 +909,7 @@ func TestGetProcessInstanceDirectIncidentsOnly_FiltersByLoadedDirectIncidents(t 
 		"--direct-incidents-only",
 	)
 
-	require.Equal(t, []string{
+	require.ElementsMatch(t, []string{
 		"POST /v2/process-instances/search",
 		"POST /v2/process-instances/123/incidents/search",
 		"POST /v2/process-instances/124/incidents/search",
@@ -1072,7 +1072,7 @@ func TestGetProcessInstanceIncidentFlags_PreserveSearchAndEnrichmentContracts(t 
 
 			output := executeRootForProcessInstanceTest(t, args...)
 
-			require.Equal(t, tt.wantRequests, requests)
+			require.ElementsMatch(t, tt.wantRequests, requests)
 			require.Len(t, searchBodies, 1)
 			if tt.wantSearchFilter != "" {
 				require.Contains(t, searchBodies[0], tt.wantSearchFilter)
@@ -1331,7 +1331,7 @@ func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines
 		"--with-incidents",
 	)
 
-	require.Equal(t, []string{
+	require.ElementsMatch(t, []string{
 		"POST /v2/process-instances/search",
 		"POST /v2/process-instances/123/incidents/search",
 		"POST /v2/process-instances/124/incidents/search",
@@ -1423,7 +1423,7 @@ func TestGetProcessInstanceListWithIncidents_HumanIndirectMarkerExplainsEmptyDir
 		"--with-incidents",
 	)
 
-	require.Equal(t, []string{
+	require.ElementsMatch(t, []string{
 		"POST /v2/process-instances/search",
 		"POST /v2/process-instances/123/incidents/search",
 		"POST /v2/process-instances/124/incidents/search",

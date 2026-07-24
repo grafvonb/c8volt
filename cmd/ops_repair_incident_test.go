@@ -113,6 +113,43 @@ func TestOpsRepairIncidentDryRunWritesJSONReport(t *testing.T) {
 	require.NotContains(t, gotRequests, "/resolution")
 }
 
+// TestOpsRepairIncidentWorkerControlsReachJSONAndReport verifies CLI worker flags survive request construction.
+func TestOpsRepairIncidentWorkerControlsReachJSONAndReport(t *testing.T) {
+	resetOpsRepairIncidentFlagState()
+	t.Cleanup(resetOpsRepairIncidentFlagState)
+
+	reportFile := filepath.Join(t.TempDir(), "repair-controls.json")
+	var requests testx.SafeSlice[string]
+	srv := newOpsRepairIncidentServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairIncidentCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_OPS_REPAIR_INC_ARGS": marshalOpsRepairIncidentArgsForEnv(t, []string{
+			"--json",
+			"ops", "repair", "incident",
+			"--state", "active",
+			"--limit", "2",
+			"--workers", "3",
+			"--fail-fast",
+			"--no-worker-limit",
+			"--dry-run",
+			"--report-file", reportFile,
+			"--report-format", "json",
+			"--automation",
+		}),
+	})
+
+	require.NoError(t, err, string(output))
+	require.Contains(t, string(output), `"workers": 3`)
+	require.Contains(t, string(output), `"failFast": true`)
+	require.Contains(t, string(output), `"noWorkerLimit": true`)
+	reportData := readReportFile(t, reportFile)
+	require.Contains(t, reportData, `"failFast": true`)
+	require.Contains(t, reportData, `"noWorkerLimit": true`)
+	require.Contains(t, strings.Join(requests.Snapshot(), "\n"), "POST /v2/incidents/search")
+}
+
 // TestOpsRepairIncidentWritesReportForFailureAfterDiscovery verifies post-discovery failures keep audit output.
 func TestOpsRepairIncidentWritesReportForFailureAfterDiscovery(t *testing.T) {
 	resetOpsRepairIncidentFlagState()

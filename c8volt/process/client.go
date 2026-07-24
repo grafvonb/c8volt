@@ -215,6 +215,37 @@ func (c *client) SearchProcessInstancesPage(ctx context.Context, filter ProcessI
 	return fromDomainProcessInstancePage(pis), nil
 }
 
+// SearchProcessInstancesPages delegates process-instance traversal, local
+// filtering, direct incident-index lookup, and limit trimming below the facade.
+func (c *client) SearchProcessInstancesPages(ctx context.Context, request ProcessInstanceSearchRequest, visitor ProcessInstanceSearchPageVisitor, opts ...options.FacadeOption) (ProcessInstanceSearchPagesResult, error) {
+	result, err := pisvc.SearchProcessInstancesPages(ctx, c.piApi, c.incApi, toDomainProcessInstanceSearchRequest(request), toDomainProcessInstanceSearchPageVisitor(visitor), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainProcessInstanceSearchPagesResult(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
+}
+
+// SearchProcessInstancesTotal delegates exact-total selection and page-count fallback below the facade.
+func (c *client) SearchProcessInstancesTotal(ctx context.Context, request ProcessInstanceSearchRequest, visitor ProcessInstanceSearchTotalVisitor, opts ...options.FacadeOption) (int64, error) {
+	total, err := pisvc.SearchProcessInstancesTotal(ctx, c.piApi, c.incApi, toDomainProcessInstanceSearchRequest(request), toDomainProcessInstanceSearchTotalVisitor(visitor), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return 0, ferr.FromDomain(err)
+	}
+	return total, nil
+}
+
+// PlanProcessInstanceMutationPages delegates search-selected cancel/delete
+// paging and dependency expansion below the facade.
+func (c *client) PlanProcessInstanceMutationPages(ctx context.Context, request ProcessInstanceMutationPlanRequest, visitor ProcessInstanceMutationPlanVisitor, opts ...options.FacadeOption) (ProcessInstanceMutationPlanPagesResult, error) {
+	result, err := pisvc.PlanProcessInstanceMutationPages(ctx, c.piApi, c.incApi, toDomainProcessInstanceMutationPlanRequest(request), toDomainProcessInstanceMutationPlanVisitor(visitor), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainProcessInstanceMutationPlanPagesResult(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
+}
+
 func (c *client) CancelProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (CancelReport, ProcessInstances, error) {
 	resp, pis, err := c.piApi.CancelProcessInstance(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {

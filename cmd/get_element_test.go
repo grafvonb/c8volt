@@ -5,14 +5,18 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
+	elementapi "github.com/grafvonb/c8volt/c8volt/element"
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -303,6 +307,67 @@ func TestGetElementCommand_SearchKeysOnlyOutput(t *testing.T) {
 	require.Len(t, bodies, 1)
 }
 
+// TestSearchElementsWithPagingRendersServiceSelectedPage verifies command
+// rendering trusts the service-owned selected page instead of reapplying the
+// caller limit locally.
+func TestSearchElementsWithPagingRendersServiceSelectedPage(t *testing.T) {
+	prevJSON := flagViewAsJson
+	prevKeysOnly := flagViewKeysOnly
+	prevAutoConfirm := flagCmdAutoConfirm
+	prevAutomation := flagCmdAutomation
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+		flagViewKeysOnly = prevKeysOnly
+		flagCmdAutoConfirm = prevAutoConfirm
+		flagCmdAutomation = prevAutomation
+	})
+	flagViewAsJson = false
+	flagViewKeysOnly = true
+	flagCmdAutoConfirm = false
+	flagCmdAutomation = false
+
+	buf := &bytes.Buffer{}
+	cmd := &cobra.Command{Use: "get element"}
+	cmd.SetContext(context.Background())
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	called := false
+	api := stubElementAPI{
+		searchElementsPages: func(_ context.Context, request elementapi.SearchRequest, visitor elementapi.SearchPageVisitor, _ ...options.FacadeOption) (elementapi.SearchPagesResult, error) {
+			called = true
+			require.Equal(t, int32(2), request.Limit)
+			action, err := visitor(elementapi.SearchPageStep{
+				Page: elementapi.Page{
+					Items: []elementapi.Element{
+						{ElementInstanceKey: "2251799813689002"},
+						{ElementInstanceKey: "2251799813689003"},
+						{ElementInstanceKey: "2251799813689004"},
+					},
+					Request:       elementapi.PageRequest{From: 0, Size: 5},
+					OverflowState: elementapi.OverflowStateNoMore,
+				},
+				CumulativeCount: 3,
+				LimitReached:    true,
+			})
+			require.NoError(t, err)
+			require.Equal(t, elementapi.SearchPageActionStop, action)
+			return elementapi.SearchPagesResult{Total: 3}, nil
+		},
+	}
+
+	result, streamed, err := searchElementsWithPaging(cmd, api, elementapi.SearchRequest{
+		BatchSize: 5,
+		Limit:     2,
+	})
+
+	require.NoError(t, err)
+	require.True(t, called)
+	require.True(t, streamed)
+	require.Empty(t, result.Items)
+	require.Equal(t, "2251799813689002\n2251799813689003\n2251799813689004\n", buf.String())
+}
+
 // TestGetElementCommand_SearchTotalOnlyOutput keeps total mode quiet by
 // rendering only the numeric count reported by the backend when exact.
 func TestGetElementCommand_SearchTotalOnlyOutput(t *testing.T) {
@@ -320,6 +385,30 @@ func TestGetElementCommand_SearchTotalOnlyOutput(t *testing.T) {
 
 	require.Equal(t, "42\n", output)
 	require.Len(t, bodies, 1)
+}
+
+// TestGetElementCommand_SearchVerboseProgress verifies paged element search reports durable progress away from stdout.
+func TestGetElementCommand_SearchVerboseProgress(t *testing.T) {
+	var bodies []map[string]any
+	srv := newElementSearchServerResponses(t, &bodies,
+		`{"items":[{"elementInstanceKey":"2251799813689002","state":"ACTIVE"},{"elementInstanceKey":"2251799813689003","state":"ACTIVE"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+		`{"items":[{"elementInstanceKey":"2251799813689004","state":"COMPLETED"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForElementTest(t, "--config", cfgPath, "--verbose", "--auto-confirm", "get", "element", "--batch-size", "2")
+
+	require.Len(t, bodies, 2)
+	firstPage := requireJSONObject(t, bodies[0]["page"])
+	require.Equal(t, float64(2), firstPage["limit"])
+	require.Equal(t, float64(0), firstPage["from"])
+	secondPage := requireJSONObject(t, bodies[1]["page"])
+	require.Equal(t, float64(2), secondPage["limit"])
+	require.Equal(t, float64(2), secondPage["from"])
+	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
+	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+	require.Contains(t, output, "found: 3")
 }
 
 func TestGetElementCommand_KeyedLookupHumanOutput(t *testing.T) {
@@ -608,4 +697,19 @@ func resetGetElementFlagState() {
 	flagGetElementTotal = false
 	flagGetElementWithListeners = false
 	testx.ResetCommandTreeFlags(getElementCmd)
+}
+
+// stubElementAPI lets command tests provide just the element facade behavior
+// exercised by the unit under test.
+type stubElementAPI struct {
+	elementapi.API
+	searchElementsPages func(context.Context, elementapi.SearchRequest, elementapi.SearchPageVisitor, ...options.FacadeOption) (elementapi.SearchPagesResult, error)
+}
+
+// SearchElementsPages delegates to the configured test callback.
+func (s stubElementAPI) SearchElementsPages(ctx context.Context, request elementapi.SearchRequest, visitor elementapi.SearchPageVisitor, opts ...options.FacadeOption) (elementapi.SearchPagesResult, error) {
+	if s.searchElementsPages == nil {
+		panic("unexpected call")
+	}
+	return s.searchElementsPages(ctx, request, visitor, opts...)
 }

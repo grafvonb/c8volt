@@ -37,7 +37,7 @@ c8volt update job [flags]
       --dry-run                   preview job updates without submitting mutation
       --fail                      report a technical job failure
   -h, --help                      help for job
-      --key string                job key to update
+  -k, --key string                job key to update
       --message string            operator message for worker outcome modes
       --no-wait                   return after the update request is accepted without retry confirmation
       --retries int32             retry count to set, or remaining retries for --fail

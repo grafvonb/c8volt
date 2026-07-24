@@ -385,6 +385,58 @@ func TestRepairProcessInstancesSearchModeLimitStopsDiscovery(t *testing.T) {
 	require.Equal(t, 3, got.FrozenSet.CandidatesFrozen)
 }
 
+// TestRepairProcessInstancesUsesBoundedWorkersForIncidentDiscovery verifies high-volume PI repair overlaps independent incident lookups without unbounded fan-out.
+func TestRepairProcessInstancesUsesBoundedWorkersForIncidentDiscovery(t *testing.T) {
+	t.Parallel()
+
+	started := make(chan string, 3)
+	release := make(chan struct{})
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{
+		getProcessInstances: func(_ context.Context, keys typex.Keys, _ int, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			out := make([]d.ProcessInstance, 0, len(keys))
+			for _, key := range keys {
+				out = append(out, d.ProcessInstance{Key: key, State: d.StateActive})
+			}
+			return out, nil
+		},
+	}, repairIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			started <- key
+			<-release
+			return []d.ProcessInstanceIncidentDetail{{IncidentKey: "inc-" + key, ProcessInstanceKey: key, State: "ACTIVE"}}, nil
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	done := make(chan struct {
+		result d.OpsRepairResult
+		err    error
+	}, 1)
+	go func() {
+		got, err := api.RepairProcessInstances(context.Background(), d.OpsRepairRequest{
+			CommandName:   "ops repair process-instance",
+			DiscoveryMode: d.OpsRepairDiscoveryModeKeyed,
+			InputKeys:     typex.Keys{"pi-1", "pi-2", "pi-3"},
+			Workers:       2,
+			DryRun:        true,
+		})
+		done <- struct {
+			result d.OpsRepairResult
+			err    error
+		}{result: got, err: err}
+	}()
+
+	first := receiveStartedKeys(t, started, 2)
+	require.ElementsMatch(t, []string{"pi-1", "pi-2"}, first)
+	requireNoAdditionalStart(t, started, 25*time.Millisecond)
+	close(release)
+
+	out := receiveRepairResult(t, done)
+	require.NoError(t, out.err)
+	require.Equal(t, d.OpsRepairOutcomePlanned, out.result.Outcome)
+	require.Equal(t, []string{"pi-1", "pi-2", "pi-3"}, []string(out.result.FrozenSet.ProcessInstanceKeys))
+	require.Equal(t, []string{"inc-pi-1", "inc-pi-2", "inc-pi-3"}, []string(out.result.FrozenSet.IncidentKeys))
+}
+
 // TestRepairIncidentsFreezesExplicitTargetsAndPlansMixedJobs verifies explicit incident repair freezes lookup results before mutation.
 func TestRepairIncidentsFreezesExplicitTargetsAndPlansMixedJobs(t *testing.T) {
 	t.Parallel()

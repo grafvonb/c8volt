@@ -124,6 +124,74 @@ func dryRunCancelOrDeletePlanLegacy(ctx context.Context, api API, keys typex.Key
 	}, nil
 }
 
+// PlanProcessInstanceMutationPages owns search-selected cancel/delete paging
+// and dependency-expansion traversal while callers retain CLI prompts,
+// rendering, and mutation execution policy.
+func PlanProcessInstanceMutationPages(ctx context.Context, api API, incAPI SearchProcessInstanceIncidentAPI, request d.ProcessInstanceMutationPlanRequest, visitor d.ProcessInstanceMutationPlanVisitor, opts ...services.CallOption) (d.ProcessInstanceMutationPlanPagesResult, error) {
+	var out d.ProcessInstanceMutationPlanPagesResult
+	var cumulativeImpact int32
+
+	result, err := SearchProcessInstancesPages(ctx, api, incAPI, request.SearchRequest, func(step d.ProcessInstanceSearchPageStep) (d.ProcessInstanceSearchPageAction, error) {
+		keys := processInstancePageKeys(step.Page.Items)
+		plan := d.DryRunPIKeyExpansion{}
+		if len(keys) > 0 {
+			var err error
+			plan, err = DryRunCancelOrDeletePlan(ctx, api, keys, request.Workers, opts...)
+			if err != nil {
+				return d.ProcessInstanceSearchPageActionStop, err
+			}
+		}
+
+		impact := int32(len(plan.Collected))
+		if impact == 0 {
+			impact = int32(len(keys))
+		}
+		cumulativeImpact += impact
+		planStep := d.ProcessInstanceMutationPlanStep{
+			Page:             step.Page,
+			RequestedKeys:    append([]string(nil), keys...),
+			Plan:             plan,
+			CumulativeCount:  step.CumulativeCount,
+			CumulativeImpact: cumulativeImpact,
+			LimitReached:     step.LimitReached,
+		}
+		if len(keys) > 0 {
+			out.Plans = append(out.Plans, planStep)
+		}
+		if visitor == nil {
+			return d.ProcessInstanceSearchPageActionContinue, nil
+		}
+		action, err := visitor(planStep)
+		if err != nil {
+			return d.ProcessInstanceSearchPageActionStop, err
+		}
+		if action == d.ProcessInstanceSearchPageActionStop {
+			out.Stopped = true
+		}
+		return action, nil
+	}, opts...)
+	if err != nil {
+		return d.ProcessInstanceMutationPlanPagesResult{}, err
+	}
+
+	out.Limit = result.Limit
+	out.Pages = result.Pages
+	out.RequestedCount = int32(len(result.Items))
+	out.CumulativeImpact = cumulativeImpact
+	return out, nil
+}
+
+func processInstancePageKeys(items []d.ProcessInstance) typex.Keys {
+	if len(items) == 0 {
+		return nil
+	}
+	keys := make(typex.Keys, 0, len(items))
+	for _, item := range items {
+		keys = append(keys, item.Key)
+	}
+	return keys
+}
+
 func mapDryRunTraversalWarning(results []pitraversal.Result) (warning string, missing []d.MissingAncestor, outcome d.TraversalOutcome) {
 	outcome = d.TraversalOutcomeComplete
 	for _, result := range results {

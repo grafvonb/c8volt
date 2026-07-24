@@ -25,6 +25,9 @@ type stubProcessAPI struct {
 	searchProcessDefinitions         func(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error)
 	searchProcessDefinitionsLatest   func(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error)
 	searchProcessInstancesPage       func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
+	searchProcessInstancesPages      func(context.Context, process.ProcessInstanceSearchRequest, process.ProcessInstanceSearchPageVisitor, ...options.FacadeOption) (process.ProcessInstanceSearchPagesResult, error)
+	searchProcessInstancesTotal      func(context.Context, process.ProcessInstanceSearchRequest, process.ProcessInstanceSearchTotalVisitor, ...options.FacadeOption) (int64, error)
+	planProcessInstanceMutationPages func(context.Context, process.ProcessInstanceMutationPlanRequest, process.ProcessInstanceMutationPlanVisitor, ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error)
 	searchIncidents                  func(context.Context, incident.Filter, int32, ...options.FacadeOption) (incident.Incidents, error)
 	searchIncidentsPage              func(context.Context, incident.Filter, incident.PageRequest, ...options.FacadeOption) (incident.Page, error)
 	enrichProcessInstances           func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.IncidentEnrichedProcessInstances, error)
@@ -202,11 +205,19 @@ func (s stubProcessAPI) SearchIncidents(ctx context.Context, filter incident.Fil
 	return s.searchIncidents(ctx, filter, size, opts...)
 }
 
+func (stubProcessAPI) SearchIncidentsPages(context.Context, incident.Filter, incident.PageRequest, int32, incident.SearchPageVisitor, ...options.FacadeOption) (incident.SearchPagesResult, error) {
+	panic("unexpected call")
+}
+
 func (s stubProcessAPI) SearchIncidentsPage(ctx context.Context, filter incident.Filter, req incident.PageRequest, opts ...options.FacadeOption) (incident.Page, error) {
 	if s.searchIncidentsPage == nil {
 		panic("unexpected call")
 	}
 	return s.searchIncidentsPage(ctx, filter, req, opts...)
+}
+
+func (stubProcessAPI) SearchIncidentsTotal(context.Context, incident.Filter, incident.PageRequest, ...options.FacadeOption) (int64, error) {
+	panic("unexpected call")
 }
 
 func (stubProcessAPI) SearchProcessInstanceIncidents(context.Context, string, ...options.FacadeOption) ([]incident.ProcessInstanceIncidentDetail, error) {
@@ -282,6 +293,143 @@ func (s stubProcessAPI) SearchProcessInstancesPage(ctx context.Context, filter p
 		panic("unexpected call")
 	}
 	return s.searchProcessInstancesPage(ctx, filter, req, opts...)
+}
+
+// SearchProcessInstancesPages delegates to the optional service-owned paging callback used by search command tests.
+func (s stubProcessAPI) SearchProcessInstancesPages(ctx context.Context, request process.ProcessInstanceSearchRequest, visitor process.ProcessInstanceSearchPageVisitor, opts ...options.FacadeOption) (process.ProcessInstanceSearchPagesResult, error) {
+	if s.searchProcessInstancesPages != nil {
+		return s.searchProcessInstancesPages(ctx, request, visitor, opts...)
+	}
+	if s.searchProcessInstancesPage == nil {
+		panic("unexpected call")
+	}
+	var out process.ProcessInstanceSearchPagesResult
+	pageReq := request.Page
+	for {
+		page, err := s.searchProcessInstancesPage(ctx, request.Filter, pageReq, opts...)
+		if err != nil {
+			return process.ProcessInstanceSearchPagesResult{}, err
+		}
+		rawCount := len(page.Items)
+		if request.Limit > 0 {
+			remaining := int(request.Limit) - len(out.Items)
+			if remaining <= 0 {
+				break
+			}
+			if len(page.Items) > remaining {
+				page.Items = page.Items[:remaining]
+			}
+		}
+		out.Items = append(out.Items, page.Items...)
+		out.Limit = request.Limit
+		out.Pages++
+		limitReached := request.Limit > 0 && int32(len(out.Items)) >= request.Limit
+		if visitor != nil {
+			action, err := visitor(process.ProcessInstanceSearchPageStep{
+				Page:            page,
+				CumulativeCount: int32(len(out.Items)),
+				LimitReached:    limitReached,
+			})
+			if err != nil || action == process.ProcessInstanceSearchPageActionStop {
+				return out, err
+			}
+		}
+		if limitReached || page.OverflowState != process.ProcessInstanceOverflowStateHasMore {
+			break
+		}
+		if page.EndCursor != "" {
+			pageReq = process.ProcessInstancePageRequest{Size: pageReq.Size, After: page.EndCursor}
+		} else {
+			advance := rawCount
+			if advance == 0 {
+				advance = int(pageReq.Size)
+			}
+			pageReq = process.ProcessInstancePageRequest{From: pageReq.From + int32(advance), Size: pageReq.Size}
+		}
+	}
+	return out, nil
+}
+
+// SearchProcessInstancesTotal delegates to the optional total callback used by count command tests.
+func (s stubProcessAPI) SearchProcessInstancesTotal(ctx context.Context, request process.ProcessInstanceSearchRequest, visitor process.ProcessInstanceSearchTotalVisitor, opts ...options.FacadeOption) (int64, error) {
+	if s.searchProcessInstancesTotal != nil {
+		return s.searchProcessInstancesTotal(ctx, request, visitor, opts...)
+	}
+	if s.searchProcessInstancesPage == nil {
+		panic("unexpected call")
+	}
+	page, err := s.searchProcessInstancesPage(ctx, request.Filter, request.Page, opts...)
+	if err != nil {
+		return 0, err
+	}
+	if visitor != nil {
+		if err := visitor(process.ProcessInstanceSearchTotalStep{
+			Page:             page,
+			FilteredCount:    int32(len(page.Items)),
+			TotalAfter:       int64(len(page.Items)),
+			CountingByPaging: true,
+		}); err != nil {
+			return 0, err
+		}
+	}
+	return int64(len(page.Items)), nil
+}
+
+// PlanProcessInstanceMutationPages delegates to the optional service-owned
+// mutation planning callback used by cancel/delete command tests.
+func (s stubProcessAPI) PlanProcessInstanceMutationPages(ctx context.Context, request process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, opts ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+	if s.planProcessInstanceMutationPages != nil {
+		return s.planProcessInstanceMutationPages(ctx, request, visitor, opts...)
+	}
+	if s.searchProcessInstancesPages == nil && s.searchProcessInstancesPage == nil {
+		panic("unexpected call")
+	}
+	var out process.ProcessInstanceMutationPlanPagesResult
+	searchResult, err := s.SearchProcessInstancesPages(ctx, request.SearchRequest, func(step process.ProcessInstanceSearchPageStep) (process.ProcessInstanceSearchPageAction, error) {
+		keys := make(types.Keys, 0, len(step.Page.Items))
+		for _, item := range step.Page.Items {
+			keys = append(keys, item.Key)
+		}
+		plan := process.DryRunPIKeyExpansion{}
+		if len(keys) > 0 {
+			var err error
+			plan, err = s.DryRunCancelOrDeletePlan(ctx, keys, request.Workers, opts...)
+			if err != nil {
+				return process.ProcessInstanceSearchPageActionStop, err
+			}
+		}
+		impact := len(plan.Collected)
+		if impact == 0 {
+			impact = len(keys)
+		}
+		out.CumulativeImpact += int32(impact)
+		planStep := process.ProcessInstanceMutationPlanStep{
+			Page:             step.Page,
+			RequestedKeys:    append([]string(nil), keys...),
+			Plan:             plan,
+			CumulativeCount:  step.CumulativeCount,
+			CumulativeImpact: out.CumulativeImpact,
+			LimitReached:     step.LimitReached,
+		}
+		if len(keys) > 0 {
+			out.Plans = append(out.Plans, planStep)
+		}
+		if visitor == nil {
+			return process.ProcessInstanceSearchPageActionContinue, nil
+		}
+		action, err := visitor(planStep)
+		if action == process.ProcessInstanceSearchPageActionStop {
+			out.Stopped = true
+		}
+		return action, err
+	}, opts...)
+	if err != nil {
+		return process.ProcessInstanceMutationPlanPagesResult{}, err
+	}
+	out.Limit = searchResult.Limit
+	out.Pages = searchResult.Pages
+	out.RequestedCount = int32(len(searchResult.Items))
+	return out, nil
 }
 
 func failProcessInstancePageSearch(t *testing.T) func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error) {

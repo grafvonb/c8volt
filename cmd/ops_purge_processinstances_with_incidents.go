@@ -47,6 +47,7 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 	Long: "Purge process instances selected by incidents.\n\n" +
 		"The workflow discovers candidate incidents from incident filters, freezes the candidate process-instance keys, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Discovery pages through all matching incidents by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
 	Example: `  ./c8volt ops purge process-instances-with-incidents --dry-run
+  ./c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md`,
@@ -133,7 +134,7 @@ func init() {
 	useInvalidInputFlagErrors(opsPurgeProcessInstancesWithIncidentsCmd)
 
 	fs := opsPurgeProcessInstancesWithIncidentsCmd.Flags()
-	fs.StringSliceVarP(&flagOpsPurgeIncidentKeys, "key", "k", nil, "incident key(s) to select for candidate discovery")
+	fs.StringSliceVar(&flagOpsPurgeIncidentKeys, "inc-key", nil, "incident key(s) to select for candidate discovery")
 	fs.StringVarP(&flagOpsPurgeIncidentState, "state", "s", "active", "incident state scope for discovery: active, pending, resolved, migrated, unknown, all")
 	fs.StringVar(&flagOpsPurgeIncidentErrorType, "error-type", "", "case-insensitive incident error type filter for discovery")
 	fs.StringVar(&flagOpsPurgeIncidentErrorMessage, "error-message", "", "case-insensitive incident error message substring filter for discovery")

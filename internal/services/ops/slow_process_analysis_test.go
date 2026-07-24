@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	esvc "github.com/grafvonb/c8volt/internal/services/element"
 	jsvc "github.com/grafvonb/c8volt/internal/services/job"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
@@ -76,7 +78,7 @@ func TestSlowProcessAnalysisFixturesBuildConsistentTimingRows(t *testing.T) {
 func TestSlowProcessAnalysisExplicitKeysDeduplicatesLooksUpAndSortsRoots(t *testing.T) {
 	captured := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:30:00Z")
 	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
-	var lookedUp []string
+	var lookedUp testx.SafeSlice[string]
 	instances := map[string]d.ProcessInstance{
 		"2251799813685249": slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(2*time.Minute)),
 		"2251799813685250": func() d.ProcessInstance {
@@ -89,7 +91,7 @@ func TestSlowProcessAnalysisExplicitKeysDeduplicatesLooksUpAndSortsRoots(t *test
 	piAPI := stubProcessInstanceAPI{
 		search: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
 			require.Equal(t, int32(2), size)
-			lookedUp = append(lookedUp, filter.Key)
+			lookedUp.Append(filter.Key)
 			if item, ok := instances[filter.Key]; ok {
 				return []d.ProcessInstance{item}, nil
 			}
@@ -104,7 +106,7 @@ func TestSlowProcessAnalysisExplicitKeysDeduplicatesLooksUpAndSortsRoots(t *test
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"2251799813685249", "2251799813685250", "2251799813685251"}, lookedUp)
+	require.ElementsMatch(t, []string{"2251799813685249", "2251799813685250", "2251799813685251"}, lookedUp.Snapshot())
 	require.Equal(t, []string{"2251799813685251", "2251799813685249", "2251799813685250"}, []string{got.Items[0].Key, got.Items[1].Key, got.Items[2].Key})
 	require.Equal(t, "5m0s", got.Items[0].Duration)
 	require.Equal(t, int64(300000), got.Items[0].DurationMillis)
@@ -114,6 +116,62 @@ func TestSlowProcessAnalysisExplicitKeysDeduplicatesLooksUpAndSortsRoots(t *test
 	require.False(t, got.Empty)
 	require.Equal(t, typex.Keys{"2251799813685249", "2251799813685250", "2251799813685251"}, got.Request.InputKeys)
 	require.Equal(t, captured, got.CapturedAt)
+}
+
+// TestSlowProcessAnalysisExplicitKeysUsesBoundedWorkersForLookup verifies high-volume explicit key analysis overlaps tenant-safe lookups without unbounded fan-out.
+func TestSlowProcessAnalysisExplicitKeysUsesBoundedWorkersForLookup(t *testing.T) {
+	previousProcs := runtime.GOMAXPROCS(1)
+	t.Cleanup(func() { runtime.GOMAXPROCS(previousProcs) })
+
+	captured := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:30:00Z")
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	keys := typex.Keys{"2251799813685249", "2251799813685250", "2251799813685251"}
+	instances := map[string]d.ProcessInstance{
+		keys[0]: slowProcessAnalysisFixtureProcessInstance(keys[0], start, start.Add(2*time.Minute)),
+		keys[1]: slowProcessAnalysisFixtureProcessInstance(keys[1], start, start.Add(3*time.Minute)),
+		keys[2]: slowProcessAnalysisFixtureProcessInstance(keys[2], start, start.Add(4*time.Minute)),
+	}
+	started := make(chan string, len(keys))
+	release := make(chan struct{})
+	t.Cleanup(func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	})
+	piAPI := stubProcessInstanceAPI{
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			started <- filter.Key
+			<-release
+			return []d.ProcessInstance{instances[filter.Key]}, nil
+		},
+	}
+	done := make(chan struct {
+		result d.SlowProcessAnalysisResult
+		err    error
+	}, 1)
+
+	go func() {
+		result, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, stubSlowProcessAnalysisElementAPI{}, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+			SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
+			InputKeys:     keys,
+			CapturedNow:   captured,
+		})
+		done <- struct {
+			result d.SlowProcessAnalysisResult
+			err    error
+		}{result: result, err: err}
+	}()
+
+	firstStarted := receiveStartedKeys(t, started, 2)
+	require.Subset(t, []string(keys), firstStarted)
+	requireNoAdditionalStart(t, started, 25*time.Millisecond)
+	close(release)
+	out := receiveSlowProcessAnalysisResult(t, done)
+	require.NoError(t, out.err)
+	require.Equal(t, []string{keys[2], keys[1], keys[0]}, []string{out.result.Items[0].Key, out.result.Items[1].Key, out.result.Items[2].Key})
+	require.Equal(t, 3, out.result.Count)
 }
 
 // TestSlowProcessAnalysisExplicitKeysMeasuresActiveFromCapturedNow verifies active roots reuse one analysis timestamp.
@@ -821,6 +879,27 @@ func slowProcessAnalysisTimelineTransitions(entries []d.SlowProcessAnalysisTimel
 		}
 	}
 	return out
+}
+
+// receiveSlowProcessAnalysisResult bounds tests that intentionally block slow-analysis lookup workers behind a release gate.
+func receiveSlowProcessAnalysisResult(t *testing.T, done <-chan struct {
+	result d.SlowProcessAnalysisResult
+	err    error
+}) struct {
+	result d.SlowProcessAnalysisResult
+	err    error
+} {
+	t.Helper()
+	select {
+	case out := <-done:
+		return out
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for slow-process analysis")
+		return struct {
+			result d.SlowProcessAnalysisResult
+			err    error
+		}{}
+	}
 }
 
 // stubSlowProcessAnalysisElementAPI provides runtime elements to slow-analysis service tests.

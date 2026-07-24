@@ -58,6 +58,17 @@ type SearchResult struct {
 	Limit int32 `json:"limit"`
 }
 
+// SearchPageAction tells paged job discovery whether to continue after the
+// current page has been rendered or otherwise observed.
+type SearchPageAction string
+
+const (
+	// SearchPageActionContinue keeps service-owned traversal moving.
+	SearchPageActionContinue SearchPageAction = "continue"
+	// SearchPageActionStop stops service-owned traversal after the current page.
+	SearchPageActionStop SearchPageAction = "stop"
+)
+
 type PageRequest struct {
 	From int32 `json:"from,omitempty"`
 	Size int32 `json:"size,omitempty"`
@@ -87,6 +98,25 @@ type Page struct {
 	Request       PageRequest    `json:"request,omitempty"`
 	OverflowState OverflowState  `json:"overflowState,omitempty"`
 	ReportedTotal *ReportedTotal `json:"reportedTotal,omitempty"`
+}
+
+// SearchPageStep exposes one selected job page plus traversal state while
+// keeping offset advancement and limit trimming below command ownership.
+type SearchPageStep struct {
+	Page            Page  `json:"page"`
+	CumulativeCount int32 `json:"cumulativeCount"`
+	LimitReached    bool  `json:"limitReached"`
+}
+
+// SearchPageVisitor observes selected pages during service-owned traversal.
+type SearchPageVisitor func(SearchPageStep) (SearchPageAction, error)
+
+// SearchPagesResult captures the jobs selected before discovery completed or
+// a caller-owned prompt/rendering policy stopped traversal.
+type SearchPagesResult struct {
+	Items []Job `json:"items"`
+	Limit int32 `json:"limit"`
+	Pages int32 `json:"pages"`
 }
 
 type UpdateRequest struct {

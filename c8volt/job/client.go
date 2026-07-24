@@ -40,6 +40,17 @@ func (c *client) SearchJobs(ctx context.Context, request SearchRequest, opts ...
 	return out, nil
 }
 
+// SearchJobsPages delegates service-owned job page traversal while exposing
+// page callbacks for caller-owned rendering and prompt decisions.
+func (c *client) SearchJobsPages(ctx context.Context, request SearchRequest, visitor SearchPageVisitor, opts ...foptions.FacadeOption) (SearchPagesResult, error) {
+	result, err := c.api.SearchJobsPages(ctx, toDomainSearchRequest(request), toDomainSearchPageVisitor(visitor), foptions.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainSearchPagesResult(result)
+	if err != nil {
+		return out, ferrors.FromDomain(err)
+	}
+	return out, nil
+}
+
 func (c *client) SearchJobsPage(ctx context.Context, request SearchRequest, page PageRequest, opts ...foptions.FacadeOption) (Page, error) {
 	result, err := c.api.SearchJobsPage(ctx, toDomainSearchRequest(request), toDomainPageRequest(page), foptions.MapFacadeOptionsToCallOptions(opts)...)
 	out := fromDomainPage(result)
@@ -47,6 +58,16 @@ func (c *client) SearchJobsPage(ctx context.Context, request SearchRequest, page
 		return out, ferrors.FromDomain(err)
 	}
 	return out, nil
+}
+
+// SearchJobsTotal returns the service-computed total, including fallback page
+// counting when Camunda does not provide an exact total.
+func (c *client) SearchJobsTotal(ctx context.Context, request SearchRequest, opts ...foptions.FacadeOption) (int64, error) {
+	result, err := c.api.SearchJobsTotal(ctx, toDomainSearchRequest(request), foptions.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return 0, ferrors.FromDomain(err)
+	}
+	return result, nil
 }
 
 func (c *client) UpdateJob(ctx context.Context, request UpdateRequest, opts ...foptions.FacadeOption) (UpdateResult, error) {
@@ -117,6 +138,30 @@ func fromDomainSearchResult(result d.JobSearchResult) SearchResult {
 	return SearchResult{
 		Items: mapDomainJobs(result.Items),
 		Limit: result.Limit,
+	}
+}
+
+func fromDomainSearchPagesResult(result d.JobSearchPagesResult) SearchPagesResult {
+	return SearchPagesResult{
+		Items: mapDomainJobs(result.Items),
+		Limit: result.Limit,
+		Pages: result.Pages,
+	}
+}
+
+// toDomainSearchPageVisitor maps public page callbacks without letting facade
+// callers depend on internal domain types.
+func toDomainSearchPageVisitor(visitor SearchPageVisitor) d.JobSearchPageVisitor {
+	if visitor == nil {
+		return nil
+	}
+	return func(step d.JobSearchPageStep) (d.JobSearchPageAction, error) {
+		action, err := visitor(SearchPageStep{
+			Page:            fromDomainPage(step.Page),
+			CumulativeCount: step.CumulativeCount,
+			LimitReached:    step.LimitReached,
+		})
+		return d.JobSearchPageAction(action), err
 	}
 }
 

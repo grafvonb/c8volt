@@ -30,6 +30,9 @@ Generic command shape:
 # read-only: preview incident-derived process-instance deletion
 c8volt ops purge process-instances-with-incidents --error-type io_mapping_error --dry-run
 
+# read-only: preview one incident-derived process-instance deletion
+c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
+
 # destructive: deletes the previewed process-instance family scope after confirmation
 c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md
 ```
@@ -47,6 +50,9 @@ c8volt ops purge process-instances-with-incidents --state active --error-type io
 # read-only: preview incident-derived process-instance deletion
 c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
 
+# read-only: preview one incident-derived process-instance deletion
+c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
+
 # destructive: deletes only the bounded incident-derived process-instance scope
 c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md
 ```
@@ -60,7 +66,7 @@ c8volt get incident <incident-filters> --pi-keys-only
 c8volt delete pi -
 ```
 
-The command defaults to `--state active`; `--key` selects incident keys, not process-instance keys. `--batch-size` changes request size only and does not stop discovery. Use `--limit N` when the frozen scope should intentionally contain at most `N` matching incidents before process-instance dedupe. The full command and aliases are equivalent:
+The command defaults to `--state active`; `--inc-key` selects incident keys. `--batch-size` changes request size only and does not stop discovery. Use `--limit N` when the frozen scope should intentionally contain at most `N` matching incidents before process-instance dedupe. The full command and aliases are equivalent:
 
 ```bash
 c8volt ops purge process-instances-with-incidents
@@ -133,7 +139,7 @@ Human-facing Markdown should use candidate terminology: candidate incidents, can
 
 ## Failure And Safety Notes
 
-- `--key` means incident key, not process-instance key.
+- `--inc-key` selects incident keys; this command does not accept `--key`.
 - Duplicate incidents for the same process instance must not create duplicate delete submissions.
 - Non-final affected process instances should block deletion unless `--force` is supplied.
 - Help examples should teach safe automation first and avoid bare destructive automation examples.

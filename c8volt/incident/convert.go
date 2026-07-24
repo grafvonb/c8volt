@@ -71,6 +71,28 @@ func fromDomainPage(x d.IncidentPage) Page {
 	}
 }
 
+func fromDomainSearchPagesResult(x d.IncidentSearchPagesResult) SearchPagesResult {
+	return SearchPagesResult{
+		Items: fromDomainIncidentDetails(x.Items),
+		Limit: x.Limit,
+		Pages: x.Pages,
+	}
+}
+
+func toDomainSearchPageVisitor(visitor SearchPageVisitor) d.IncidentSearchPageVisitor {
+	if visitor == nil {
+		return nil
+	}
+	return func(step d.IncidentSearchPageStep) (d.IncidentSearchPageAction, error) {
+		action, err := visitor(SearchPageStep{
+			Page:            fromDomainPage(step.Page),
+			CumulativeCount: step.CumulativeCount,
+			LimitReached:    step.LimitReached,
+		})
+		return d.IncidentSearchPageAction(action), err
+	}
+}
+
 func fromDomainResolutionResult(x d.IncidentResolutionResult) ResolutionResult {
 	return ResolutionResult{
 		IncidentKey:        x.IncidentKey,
