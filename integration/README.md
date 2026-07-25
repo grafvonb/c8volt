@@ -115,6 +115,29 @@ Planned volume target names remain reserved for the other families. Until their
 matching `TestVolume*Family` scenarios are implemented, those Make targets exit
 with a clear not-implemented message instead of reporting a false pass.
 
+Real-state targets are a separate Camunda 8.9 foundation layer. They are more
+specific than volume targets: they must prove actual jobs, incidents with
+related jobs, listener state, BPMN error jobs, retention candidates, destructive
+post-state, mixed failures, and proposal aggregation against real cluster state.
+The target names are reserved first so scripts can depend on the stable entry
+points while each slice is implemented:
+
+```sh
+make integration-cli-real-state-proposals IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
+make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
+```
+
+Until a target's matching `TestRealState*Family` scenario is implemented, its
+Make target exits with a clear not-implemented message rather than reporting a
+false pass. Real-state targets are destructive and must only be run against
+disposable Camunda 8.9 clusters selected from the default local c8volt
+configuration.
+
 Pass extra `go test` flags with `IT_GO_TEST_FLAGS`. For example, use `-v`
 when you want scenario-level command logs in addition to the evidence files.
 The Make targets automatically set `C8VOLT_IT_VERBOSE=1` when `-v` is present:
@@ -180,6 +203,7 @@ Go suite variables:
 | `C8VOLT_IT_WORKDIR` | temp directory | Evidence directory for reruns and artifact review. |
 | `C8VOLT_IT_VOLUME_COUNT` | `12` | Number of suite-owned process instances created by Go volume targets for paging, limit, and filtering coverage. |
 | `IT_VOLUME_TIMEOUT` | `90m` | Make-level timeout used by `integration-cli-*-volume` targets. |
+| `IT_REAL_STATE_TIMEOUT` | `90m` | Make-level timeout used by `integration-cli-real-state-*` targets. |
 
 ## Outputs
 
@@ -205,6 +229,10 @@ directory:
 - `volume-<family>.json`, `volume-data-<family>.json`,
   `volume-progress-<family>.json`, `volume-pipelines-<family>.json`, and
   `volume-ops-reports-<family>.json`: opt-in volume-suite evidence.
+- `real-state-<family>.json`, `real-state-data-<family>.json`,
+  `real-state-progress-<family>.json`, and
+  `real-state-ops-reports-<family>.json`: opt-in Camunda 8.9 real-state
+  evidence.
 - `logs/`: per-command stdout and stderr evidence.
 - `data/`: seeded data, selected keys, resource IDs, and substitution evidence.
 

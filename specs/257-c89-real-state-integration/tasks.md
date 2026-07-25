@@ -12,12 +12,12 @@
 
 **Purpose**: Add the real-state lane without changing baseline or volume target behavior.
 
-- [ ] T001 Add `IT_REAL_STATE_TIMEOUT` and real-state Make target placeholders in `Makefile`
-- [ ] T002 [P] Add real-state suite overview, destructive warning, and target list in `integration/README.md`
-- [ ] T003 [P] Add real-state target catalog scaffolding in `integration/cli/real_state_harness_test.go`
-- [ ] T004 [P] Add real-state evidence structs and report writer scaffolding in `integration/cli/real_state_data_test.go`
-- [ ] T005 Add target-catalog validation for all planned real-state targets in `integration/cli/real_state_harness_test.go`
-- [ ] T006 Update runnable validation command examples in `specs/257-c89-real-state-integration/quickstart.md`
+- [x] T001 Add `IT_REAL_STATE_TIMEOUT` and real-state Make target placeholders in `Makefile`
+- [x] T002 [P] Add real-state suite overview, destructive warning, and target list in `integration/README.md`
+- [x] T003 [P] Add real-state target catalog scaffolding in `integration/cli/real_state_harness_test.go`
+- [x] T004 [P] Add real-state evidence structs and report writer scaffolding in `integration/cli/real_state_data_test.go`
+- [x] T005 Add target-catalog validation for all planned real-state targets in `integration/cli/real_state_harness_test.go`
+- [x] T006 Update runnable validation command examples in `specs/257-c89-real-state-integration/quickstart.md`
 
 ---
 
@@ -27,13 +27,13 @@
 
 **Critical**: No user-story implementation should start before this phase is complete.
 
-- [ ] T007 Implement Camunda 8.9 profile selection and skip/classification helpers in `integration/cli/real_state_harness_test.go`
-- [ ] T008 Implement real-state family, data, progress, ops, proposal report writers, and reusable JSON/keys-only stdout cleanliness assertions in `integration/cli/real_state_data_test.go`
-- [ ] T009 Implement suite-owned marker, resource-key, and dirty-cluster containment helpers in `integration/cli/real_state_data_test.go`
-- [ ] T010 Implement reusable before-state and after-state command query helpers in `integration/cli/real_state_data_test.go`
-- [ ] T011 Implement embedded fixture deployment and process-instance start wrappers that reuse existing helpers in `integration/cli/real_state_data_test.go`
-- [ ] T012 Implement proposal fallback helpers for real-state command and embedded BPMN gaps in `integration/cli/real_state_proposals_test.go`
-- [ ] T013 Add compile-only and helper validation checks for the real-state scaffolding in `integration/cli/real_state_harness_test.go`
+- [x] T007 Implement Camunda 8.9 profile selection and skip/classification helpers in `integration/cli/real_state_harness_test.go`
+- [x] T008 Implement real-state family, data, progress, ops, proposal report writers, and reusable JSON/keys-only stdout cleanliness assertions in `integration/cli/real_state_data_test.go`
+- [x] T009 Implement suite-owned marker, resource-key, and dirty-cluster containment helpers in `integration/cli/real_state_data_test.go`
+- [x] T010 Implement reusable before-state and after-state command query helpers in `integration/cli/real_state_data_test.go`
+- [x] T011 Implement embedded fixture deployment and process-instance start wrappers that reuse existing helpers in `integration/cli/real_state_data_test.go`
+- [x] T012 Implement proposal fallback helpers for real-state command and embedded BPMN gaps in `integration/cli/real_state_proposals_test.go`
+- [x] T013 Add compile-only and helper validation checks for the real-state scaffolding in `integration/cli/real_state_harness_test.go`
 
 **Checkpoint**: Real-state harness is available, targets are listed, evidence files can be written, and all later stories can create scoped evidence.
 

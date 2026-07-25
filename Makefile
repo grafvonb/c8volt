@@ -16,6 +16,7 @@ IT_GO_TEST ?= GOCACHE=/tmp/c8volt-gocache C8VOLT_IT_VERBOSE=$(IT_VERBOSE) go tes
 IT_GO_TEST_FLAGS ?=
 IT_TIMEOUT ?= 60m
 IT_VOLUME_TIMEOUT ?= 90m
+IT_REAL_STATE_TIMEOUT ?= 90m
 DEMO_VHS_TARGETS := \
 	demo-vhs-fast-start \
 	demo-vhs-ops-execute-retention-policy \
@@ -57,8 +58,16 @@ INTEGRATION_CLI_VOLUME_TARGETS := \
 	integration-cli-ops-execute-volume \
 	integration-cli-ops-purge-volume \
 	integration-cli-ops-repair-volume
+INTEGRATION_CLI_REAL_STATE_TARGETS := \
+	integration-cli-real-state-proposals \
+	integration-cli-real-state-jobs \
+	integration-cli-real-state-incidents \
+	integration-cli-real-state-listeners \
+	integration-cli-real-state-bpmn-error \
+	integration-cli-real-state-retention \
+	integration-cli-real-state-destructive
 
-.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-build docs-site-serve demo-vhs-check $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES) $(INTEGRATION_CLI_TARGETS) $(INTEGRATION_CLI_VOLUME_TARGETS)
+.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-build docs-site-serve demo-vhs-check $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES) $(INTEGRATION_CLI_TARGETS) $(INTEGRATION_CLI_VOLUME_TARGETS) $(INTEGRATION_CLI_REAL_STATE_TARGETS)
 
 help: ## Show all available Make targets with a short description.
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "%-55s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -180,6 +189,34 @@ integration-cli-ops-purge-volume: ## Run destructive volume CLI integration test
 
 integration-cli-ops-repair-volume: ## Run destructive volume CLI integration tests for ops repair commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeOpsRepairFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
+
+integration-cli-real-state-proposals: ## Reserved for C89 real-state proposal integration tests.
+	@echo "integration-cli-real-state-proposals is reserved for feature 257 and is not implemented yet."
+	@false
+
+integration-cli-real-state-jobs: ## Reserved for C89 real-state job integration tests.
+	@echo "integration-cli-real-state-jobs is reserved for feature 257 and is not implemented yet."
+	@false
+
+integration-cli-real-state-incidents: ## Reserved for C89 real-state incident integration tests.
+	@echo "integration-cli-real-state-incidents is reserved for feature 257 and is not implemented yet."
+	@false
+
+integration-cli-real-state-listeners: ## Reserved for C89 real-state listener integration tests.
+	@echo "integration-cli-real-state-listeners is reserved for feature 257 and is not implemented yet."
+	@false
+
+integration-cli-real-state-bpmn-error: ## Reserved for C89 real-state BPMN error integration tests.
+	@echo "integration-cli-real-state-bpmn-error is reserved for feature 257 and is not implemented yet."
+	@false
+
+integration-cli-real-state-retention: ## Reserved for C89 real-state retention integration tests.
+	@echo "integration-cli-real-state-retention is reserved for feature 257 and is not implemented yet."
+	@false
+
+integration-cli-real-state-destructive: ## Reserved for C89 real-state destructive integration tests.
+	@echo "integration-cli-real-state-destructive is reserved for feature 257 and is not implemented yet."
+	@false
 
 integration-cli-walk: ## Run destructive CLI integration tests for walk commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestWalkFamily -count=1 -timeout=$(IT_TIMEOUT)

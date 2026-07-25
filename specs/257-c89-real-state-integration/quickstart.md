@@ -28,7 +28,18 @@ Expected outcome:
 
 ## Proposal Gate
 
-Run proposal-only validation first:
+The initial scaffolding adds reserved Make targets and non-live helper checks.
+Before a real-state family target is implemented, reserved Make targets fail
+with a clear not-implemented message instead of producing a false pass.
+
+Validate the initial scaffolding:
+
+```sh
+GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
+GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestRealStateTargetCatalog|TestRealStateC89ProfileClassification|TestRealStateEvidenceWritersEmitArrays|TestRealStateMachineOutputAssertions|TestRealStateProposalFallbackHelpers' -count=1 -timeout=5m
+```
+
+After implementation, run proposal-only validation first:
 
 ```sh
 make integration-cli-real-state-proposals IT_GO_TEST_FLAGS=-v
