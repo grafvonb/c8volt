@@ -79,6 +79,30 @@ go test -tags=integration ./integration/cli -count=1 -timeout=60m
 go test ./integration/cli -count=1
 ```
 
+Family targets are available through `make`:
+
+```sh
+make integration-cli-get
+make integration-cli-walk
+make integration-cli-update
+make integration-cli-cancel
+make integration-cli-delete
+make integration-cli-expect-resolve
+make integration-cli-deploy-embed-run
+make integration-cli-ops-analyse
+make integration-cli-ops-execute
+make integration-cli-ops-purge
+make integration-cli-ops-repair
+```
+
+Pass extra `go test` flags with `IT_GO_TEST_FLAGS`. For example, use `-v`
+when you want test names and test logs in addition to the evidence files:
+
+```sh
+make integration-cli-get IT_GO_TEST_FLAGS=-v
+make integration-cli-ops-repair IT_GO_TEST_FLAGS='-v -failfast'
+```
+
 Run C88 against the C88 profile in `config.yaml`:
 
 ```sh

@@ -12,6 +12,7 @@ COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo unknown)
 LDFLAGS ?= -X github.com/grafvonb/c8volt/cmd.version=$(VERSION) -X github.com/grafvonb/c8volt/cmd.commit=$(COMMIT) -X github.com/grafvonb/c8volt/cmd.date=$(DATE)
 IT_GO_TEST ?= GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli
+IT_GO_TEST_FLAGS ?=
 IT_TIMEOUT ?= 60m
 DEMO_VHS_TARGETS := \
 	demo-vhs-fast-start \
@@ -131,37 +132,37 @@ test: ## Run the full Go test suite with the race detector enabled.
 	go test $(PKG) -race -count=1
 
 integration-cli-get: ## Run destructive CLI integration tests for get commands.
-	$(IT_GO_TEST) -run TestGetFamily -count=1 -timeout=$(IT_TIMEOUT)
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestGetFamily -count=1 -timeout=$(IT_TIMEOUT)
 
 integration-cli-walk: ## Run destructive CLI integration tests for walk commands.
-	$(IT_GO_TEST) -run TestWalkFamily -count=1 -timeout=$(IT_TIMEOUT)
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestWalkFamily -count=1 -timeout=$(IT_TIMEOUT)
 
 integration-cli-update: ## Run destructive CLI integration tests for update commands.
-	$(IT_GO_TEST) -run TestUpdateFamily -count=1 -timeout=$(IT_TIMEOUT)
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestUpdateFamily -count=1 -timeout=$(IT_TIMEOUT)
 
 integration-cli-cancel: ## Run destructive CLI integration tests for cancel commands.
-	$(IT_GO_TEST) -run TestCancelFamily -count=1 -timeout=$(IT_TIMEOUT)
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestCancelFamily -count=1 -timeout=$(IT_TIMEOUT)
 
 integration-cli-delete: ## Run destructive CLI integration tests for delete commands.
-	$(IT_GO_TEST) -run TestDeleteFamily -count=1 -timeout=$(IT_TIMEOUT)
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestDeleteFamily -count=1 -timeout=$(IT_TIMEOUT)
 
 integration-cli-expect-resolve: ## Run destructive CLI integration tests for expect and resolve commands.
-	$(IT_GO_TEST) -run TestExpectResolveFamily -count=1 -timeout=$(IT_TIMEOUT)
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestExpectResolveFamily -count=1 -timeout=$(IT_TIMEOUT)
 
 integration-cli-deploy-embed-run: ## Run destructive CLI integration tests for deploy, embed, and run commands.
-	$(IT_GO_TEST) -run TestDeployEmbedRunFamily -count=1 -timeout=$(IT_TIMEOUT)
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestDeployEmbedRunFamily -count=1 -timeout=$(IT_TIMEOUT)
 
 integration-cli-ops-analyse: ## Run destructive CLI integration tests for ops analyse commands.
-	$(IT_GO_TEST) -run TestOpsAnalyseFamily -count=1 -timeout=$(IT_TIMEOUT)
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestOpsAnalyseFamily -count=1 -timeout=$(IT_TIMEOUT)
 
 integration-cli-ops-execute: ## Run destructive CLI integration tests for ops execute commands.
-	$(IT_GO_TEST) -run TestOpsExecuteFamily -count=1 -timeout=$(IT_TIMEOUT)
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestOpsExecuteFamily -count=1 -timeout=$(IT_TIMEOUT)
 
 integration-cli-ops-purge: ## Run destructive CLI integration tests for ops purge commands.
-	$(IT_GO_TEST) -run TestOpsPurgeFamily -count=1 -timeout=$(IT_TIMEOUT)
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestOpsPurgeFamily -count=1 -timeout=$(IT_TIMEOUT)
 
 integration-cli-ops-repair: ## Run destructive CLI integration tests for ops repair commands.
-	$(IT_GO_TEST) -run TestOpsRepairFamily -count=1 -timeout=$(IT_TIMEOUT)
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestOpsRepairFamily -count=1 -timeout=$(IT_TIMEOUT)
 
 licenses: ## Check Go dependency licenses.
 	go tool go-licenses check $(PKG)
