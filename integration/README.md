@@ -96,12 +96,17 @@ make integration-cli-ops-repair
 ```
 
 Pass extra `go test` flags with `IT_GO_TEST_FLAGS`. For example, use `-v`
-when you want test names and test logs in addition to the evidence files:
+when you want scenario-level command logs in addition to the evidence files.
+The Make targets automatically set `C8VOLT_IT_VERBOSE=1` when `-v` is present:
 
 ```sh
 make integration-cli-get IT_GO_TEST_FLAGS=-v
 make integration-cli-ops-repair IT_GO_TEST_FLAGS='-v -failfast'
 ```
+
+Verbose integration output includes each c8volt subprocess scenario, arguments,
+exit code, duration, stdout/stderr evidence paths, and compact output snippets.
+Set `C8VOLT_IT_VERBOSE=1` directly when running raw `go test -v` commands.
 
 Run C88 against the C88 profile in `config.yaml`:
 

@@ -26,6 +26,7 @@ import (
 const (
 	envITBin      = "C8VOLT_IT_BIN"
 	envITBuild    = "C8VOLT_IT_BUILD"
+	envITVerbose  = "C8VOLT_IT_VERBOSE"
 	envITWorkdir  = "C8VOLT_IT_WORKDIR"
 	envITProfiles = "C8VOLT_IT_PROFILES"
 
@@ -374,7 +375,7 @@ func runC8Volt(t *testing.T, scenarioName string, args ...string) commandResult 
 	stdoutPath := writeLogFile(t, scenarioName, "stdout", stdout.String())
 	stderrPath := writeLogFile(t, scenarioName, "stderr", stderr.String())
 
-	return commandResult{
+	result := commandResult{
 		Args:       append([]string(nil), args...),
 		StdoutPath: stdoutPath,
 		StderrPath: stderrPath,
@@ -385,6 +386,8 @@ func runC8Volt(t *testing.T, scenarioName string, args ...string) commandResult 
 		Stderr:     stderr.String(),
 		Err:        err,
 	}
+	logCommandResult(t, scenarioName, result)
+	return result
 }
 
 func runC8VoltForProfile(t *testing.T, profile string, scenarioName string, args ...string) commandResult {
@@ -419,6 +422,7 @@ func writeJSON(t *testing.T, name string, value any) string {
 	if err := writeJSONFile(path, value); err != nil {
 		t.Fatalf("write evidence %s: %v", name, err)
 	}
+	logIntegrationf(t, "evidence %s -> %s", name, path)
 	return path
 }
 
@@ -674,6 +678,81 @@ func writeEvidenceRecords(t *testing.T, name string, records []evidenceRecord) s
 func writeDataEvidence(t *testing.T, name string, value any) string {
 	t.Helper()
 	return writeJSON(t, filepath.Join("data", name), value)
+}
+
+func logCommandResult(t *testing.T, scenarioName string, result commandResult) {
+	t.Helper()
+	if !integrationVerboseEnabled() {
+		return
+	}
+	duration := result.FinishedAt.Sub(result.StartedAt).Round(time.Millisecond)
+	logIntegrationf(t, "scenario=%s exit=%d duration=%s args=%s", scenarioName, result.ExitCode, duration, shellQuoteArgs(result.Args))
+	logIntegrationf(t, "scenario=%s stdout=%s stderr=%s", scenarioName, result.StdoutPath, result.StderrPath)
+	logIntegrationSnippet(t, scenarioName, "stdout", result.Stdout)
+	logIntegrationSnippet(t, scenarioName, "stderr", result.Stderr)
+}
+
+func logIntegrationSnippet(t *testing.T, scenarioName string, stream string, output string) {
+	t.Helper()
+	snippet := compactLogSnippet(output, 600)
+	if snippet == "" {
+		return
+	}
+	logIntegrationf(t, "scenario=%s %s: %s", scenarioName, stream, snippet)
+}
+
+func logIntegrationf(t *testing.T, format string, args ...any) {
+	t.Helper()
+	if integrationVerboseEnabled() {
+		t.Logf(format, args...)
+	}
+}
+
+func integrationVerboseEnabled() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(envITVerbose))) {
+	case "1", "true", "t", "yes", "y", "on":
+		return true
+	default:
+		return false
+	}
+}
+
+func compactLogSnippet(output string, max int) string {
+	trimmed := strings.TrimSpace(output)
+	if trimmed == "" {
+		return ""
+	}
+	trimmed = strings.Join(strings.Fields(trimmed), " ")
+	if len(trimmed) <= max {
+		return trimmed
+	}
+	if max <= 3 {
+		return trimmed[:max]
+	}
+	return trimmed[:max-3] + "..."
+}
+
+func shellQuoteArgs(args []string) string {
+	if len(args) == 0 {
+		return "<none>"
+	}
+	quoted := make([]string, 0, len(args))
+	for _, arg := range args {
+		quoted = append(quoted, shellQuoteArg(arg))
+	}
+	return strings.Join(quoted, " ")
+}
+
+func shellQuoteArg(arg string) string {
+	if arg == "" {
+		return "''"
+	}
+	if strings.IndexFunc(arg, func(r rune) bool {
+		return !(r == '-' || r == '_' || r == '.' || r == '/' || r == ':' || r == '=' || r == ',' || r == '+' || r == '@' || r == '%' || r >= '0' && r <= '9' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z')
+	}) == -1 {
+		return arg
+	}
+	return "'" + strings.ReplaceAll(arg, "'", `'\''`) + "'"
 }
 
 // decodeCommandPayload accepts either a shared command envelope or a direct JSON payload.

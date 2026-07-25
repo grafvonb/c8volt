@@ -11,7 +11,8 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo unknown)
 LDFLAGS ?= -X github.com/grafvonb/c8volt/cmd.version=$(VERSION) -X github.com/grafvonb/c8volt/cmd.commit=$(COMMIT) -X github.com/grafvonb/c8volt/cmd.date=$(DATE)
-IT_GO_TEST ?= GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli
+IT_VERBOSE ?= $(if $(findstring -v,$(IT_GO_TEST_FLAGS)),1,0)
+IT_GO_TEST ?= GOCACHE=/tmp/c8volt-gocache C8VOLT_IT_VERBOSE=$(IT_VERBOSE) go test -tags=integration ./integration/cli
 IT_GO_TEST_FLAGS ?=
 IT_TIMEOUT ?= 60m
 DEMO_VHS_TARGETS := \
