@@ -1,0 +1,15 @@
+// SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+//go:build integration
+
+package cli_test
+
+import "testing"
+
+func TestOpsAnalyseFamily(t *testing.T) {
+	runFamilyCoverageScenarios(t, "ops analyse", []string{
+		"ops analyse",
+		"ops analyse slow-process-instances",
+	})
+}

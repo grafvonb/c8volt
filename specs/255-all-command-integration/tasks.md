@@ -130,33 +130,33 @@
 
 ### Tests for User Story 4
 
-- [ ] T043 [P] [US4] Add failing `get` family coverage tests in `integration/cli/get_test.go`
-- [ ] T044 [P] [US4] Add failing `deploy`, `embed`, and `run` family coverage tests in `integration/cli/deploy_embed_run_test.go`
-- [ ] T045 [P] [US4] Add failing `update` family coverage tests in `integration/cli/update_test.go`
-- [ ] T046 [P] [US4] Add failing `cancel` family coverage tests in `integration/cli/cancel_test.go`
-- [ ] T047 [P] [US4] Add failing `delete` family coverage tests in `integration/cli/delete_test.go`
-- [ ] T048 [P] [US4] Add failing `expect` and `resolve` family coverage tests in `integration/cli/expect_resolve_test.go`
-- [ ] T049 [P] [US4] Add failing `walk` family coverage tests in `integration/cli/walk_test.go`
-- [ ] T050 [P] [US4] Add failing `ops analyse` family coverage tests in `integration/cli/ops_analyse_test.go`
-- [ ] T051 [P] [US4] Add failing `ops execute` family coverage tests in `integration/cli/ops_execute_test.go`
-- [ ] T052 [P] [US4] Add failing `ops purge` family coverage tests in `integration/cli/ops_purge_test.go`
-- [ ] T053 [P] [US4] Add failing `ops repair` family coverage tests in `integration/cli/ops_repair_test.go`
+- [x] T043 [P] [US4] Add failing `get` family coverage tests in `integration/cli/get_test.go`
+- [x] T044 [P] [US4] Add failing `deploy`, `embed`, and `run` family coverage tests in `integration/cli/deploy_embed_run_test.go`
+- [x] T045 [P] [US4] Add failing `update` family coverage tests in `integration/cli/update_test.go`
+- [x] T046 [P] [US4] Add failing `cancel` family coverage tests in `integration/cli/cancel_test.go`
+- [x] T047 [P] [US4] Add failing `delete` family coverage tests in `integration/cli/delete_test.go`
+- [x] T048 [P] [US4] Add failing `expect` and `resolve` family coverage tests in `integration/cli/expect_resolve_test.go`
+- [x] T049 [P] [US4] Add failing `walk` family coverage tests in `integration/cli/walk_test.go`
+- [x] T050 [P] [US4] Add failing `ops analyse` family coverage tests in `integration/cli/ops_analyse_test.go`
+- [x] T051 [P] [US4] Add failing `ops execute` family coverage tests in `integration/cli/ops_execute_test.go`
+- [x] T052 [P] [US4] Add failing `ops purge` family coverage tests in `integration/cli/ops_purge_test.go`
+- [x] T053 [P] [US4] Add failing `ops repair` family coverage tests in `integration/cli/ops_repair_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T054 [US4] Implement `get` command scenarios for cluster, process-definition, process-instance, resource, incident, job, element, and tenant commands in `integration/cli/get_test.go`
-- [ ] T055 [US4] Implement `deploy`, `embed`, and `run` scenarios including aliases, required selectors, variables, count, no-wait, and output checks in `integration/cli/deploy_embed_run_test.go`
-- [ ] T056 [US4] Implement `update process-instance` and `update job` scenarios including dry-run, worker outcome, variables, and validation paths in `integration/cli/update_test.go`
-- [ ] T057 [US4] Implement `cancel process-instance` scenarios including key, filter, dry-run, force, workers, no-wait, and validation paths in `integration/cli/cancel_test.go`
-- [ ] T058 [US4] Implement `delete process-instance` and `delete process-definition` scenarios including key/filter selectors, dry-run, force, latest/version flags, and validation paths in `integration/cli/delete_test.go`
-- [ ] T059 [US4] Implement `expect process-instance`, `resolve incident`, and `resolve process-instance` scenarios including stdin keys, dry-run, no-wait, and state checks in `integration/cli/expect_resolve_test.go`
-- [ ] T060 [US4] Implement `walk process-instance` scenarios for parent, children, flat, with-vars, with-incidents, with-elements, and with-listeners proposal fallback in `integration/cli/walk_test.go`
-- [ ] T061 [US4] Implement `ops analyse slow-process-instances` scenarios including key, filters, durations, timeline, listeners, json, and keys-only behavior in `integration/cli/ops_analyse_test.go`
-- [ ] T062 [US4] Implement `ops execute smoke-test` and `ops execute retention-policy` scenarios including dry-run, reports, count, workers, no-wait, and confirmed execution in `integration/cli/ops_execute_test.go`
-- [ ] T063 [US4] Implement `ops purge` scenarios for all-process-definitions, orphan-process-instances, and process-instances-with-incidents including dry-run, reports, filters, workers, and confirmed execution in `integration/cli/ops_purge_test.go`
-- [ ] T064 [US4] Implement `ops repair incident` and `ops repair process-instance` scenarios including keys, search filters, vars, retries, timeout, reports, dry-run, and confirmed execution in `integration/cli/ops_repair_test.go`
-- [ ] T065 [US4] Implement family-level manifest satisfaction checks after each command-family scenario in `integration/cli/all_commands_test.go`
-- [ ] T066 [US4] Verify family slices with targeted `go test -tags=integration ./integration/cli -run 'TestGetFamily|TestWalkFamily|TestOps' -count=1 -timeout=60m`
+- [x] T054 [US4] Implement `get` command scenarios for cluster, process-definition, process-instance, resource, incident, job, element, and tenant commands in `integration/cli/get_test.go`
+- [x] T055 [US4] Implement `deploy`, `embed`, and `run` scenarios including aliases, required selectors, variables, count, no-wait, and output checks in `integration/cli/deploy_embed_run_test.go`
+- [x] T056 [US4] Implement `update process-instance` and `update job` scenarios including dry-run, worker outcome, variables, and validation paths in `integration/cli/update_test.go`
+- [x] T057 [US4] Implement `cancel process-instance` scenarios including key, filter, dry-run, force, workers, no-wait, and validation paths in `integration/cli/cancel_test.go`
+- [x] T058 [US4] Implement `delete process-instance` and `delete process-definition` scenarios including key/filter selectors, dry-run, force, latest/version flags, and validation paths in `integration/cli/delete_test.go`
+- [x] T059 [US4] Implement `expect process-instance`, `resolve incident`, and `resolve process-instance` scenarios including stdin keys, dry-run, no-wait, and state checks in `integration/cli/expect_resolve_test.go`
+- [x] T060 [US4] Implement `walk process-instance` scenarios for parent, children, flat, with-vars, with-incidents, with-elements, and with-listeners proposal fallback in `integration/cli/walk_test.go`
+- [x] T061 [US4] Implement `ops analyse slow-process-instances` scenarios including key, filters, durations, timeline, listeners, json, and keys-only behavior in `integration/cli/ops_analyse_test.go`
+- [x] T062 [US4] Implement `ops execute smoke-test` and `ops execute retention-policy` scenarios including dry-run, reports, count, workers, no-wait, and confirmed execution in `integration/cli/ops_execute_test.go`
+- [x] T063 [US4] Implement `ops purge` scenarios for all-process-definitions, orphan-process-instances, and process-instances-with-incidents including dry-run, reports, filters, workers, and confirmed execution in `integration/cli/ops_purge_test.go`
+- [x] T064 [US4] Implement `ops repair incident` and `ops repair process-instance` scenarios including keys, search filters, vars, retries, timeout, reports, dry-run, and confirmed execution in `integration/cli/ops_repair_test.go`
+- [x] T065 [US4] Implement family-level manifest satisfaction checks after each command-family scenario in `integration/cli/all_commands_test.go`
+- [x] T066 [US4] Verify family slices with targeted `go test -tags=integration ./integration/cli -run 'TestGetFamily|TestWalkFamily|TestOps' -count=1 -timeout=60m`
 
 **Checkpoint**: User Story 4 is complete when each command family can be run independently and the aggregate manifest marks all flags/outputs/version expectations covered.
 

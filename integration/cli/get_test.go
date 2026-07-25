@@ -7,6 +7,23 @@ package cli_test
 
 import "testing"
 
+func TestGetFamily(t *testing.T) {
+	runFamilyCoverageScenarios(t, "get", []string{
+		"get",
+		"get cluster",
+		"get cluster license",
+		"get cluster topology",
+		"get cluster version",
+		"get element",
+		"get incident",
+		"get job",
+		"get process-definition",
+		"get process-instance",
+		"get resource",
+		"get tenant",
+	})
+}
+
 // TestDirtyClusterProcessInstanceAssertionIgnoresUnrelatedResults verifies seeded checks do not assume exact global counts.
 func TestDirtyClusterProcessInstanceAssertionIgnoresUnrelatedResults(t *testing.T) {
 	requireNoExactGlobalCountAssertion(t, "assert seeded keys are present among unrelated search results")

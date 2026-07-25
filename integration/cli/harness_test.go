@@ -593,3 +593,51 @@ func requireNoExactGlobalCountAssertion(t *testing.T, description string) {
 		t.Fatalf("dirty-cluster-safe scenario must not rely on exact global counts: %s", description)
 	}
 }
+
+func runFamilyCoverageScenarios(t *testing.T, family string, paths []string) {
+	t.Helper()
+	entries := requireFamilyManifestSatisfaction(t, family, paths)
+	records := make([]evidenceRecord, 0, len(entries)*2)
+	for _, entry := range entries {
+		records = append(records, runCommandHelpScenario(t, family, entry, strings.Fields(entry.Path), "canonical"))
+		for _, alias := range entry.Aliases {
+			records = append(records, runCommandHelpScenario(t, family, entry, aliasCommandArgs(entry.Path, alias), "alias-"+alias))
+		}
+	}
+	writeFamilyCoverageEvidence(t, family, entries, records)
+}
+
+func runCommandHelpScenario(t *testing.T, family string, entry coverageEntry, args []string, scenarioSuffix string) evidenceRecord {
+	t.Helper()
+	args = append(append([]string(nil), args...), "--help")
+	scenario := "family-" + family + "-" + entry.Path + "-" + scenarioSuffix + "-help"
+	result := runC8Volt(t, scenario, args...)
+	record := commandEvidence(entry.Path, scenario, result, "pass")
+	if result.Err != nil {
+		record.Outcome = "fail"
+		record.FailureClass = "product"
+		t.Fatalf("%s help scenario failed: %v\nstderr:\n%s", entry.Path, result.Err, result.Stderr)
+	}
+	requireTrimmedOutput(t, result.Stdout)
+	for _, flag := range entry.Flags {
+		if !helpContainsFlag(result.Stdout, flag) {
+			record.Outcome = "fail"
+			record.FailureClass = "product"
+			t.Fatalf("%s help output missing --%s\nstdout:\n%s", entry.Path, flag, result.Stdout)
+		}
+	}
+	return record
+}
+
+func aliasCommandArgs(path string, alias string) []string {
+	args := strings.Fields(path)
+	if len(args) == 0 {
+		return []string{alias}
+	}
+	args[len(args)-1] = alias
+	return args
+}
+
+func helpContainsFlag(output string, flag string) bool {
+	return strings.Contains(output, "--"+flag)
+}

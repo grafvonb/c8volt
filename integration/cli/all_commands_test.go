@@ -58,6 +58,19 @@ type coverageReport struct {
 	Mismatches    []string `json:"mismatches"`
 }
 
+type familyCoverageReport struct {
+	Family  string                `json:"family"`
+	Entries []coverageEntry       `json:"entries"`
+	Records []evidenceRecord      `json:"records"`
+	Summary familyCoverageSummary `json:"summary"`
+}
+
+type familyCoverageSummary struct {
+	CommandCount     int      `json:"commandCount"`
+	DestructivePaths []string `json:"destructivePaths,omitempty"`
+	OutputModes      []string `json:"outputModes,omitempty"`
+}
+
 var commandCoverageManifest = map[string]coverageEntry{
 	"cancel":                             {Path: "cancel", Family: "cancel", ScenarioOwner: "integration/cli/cancel_test.go", Aliases: []string{"abort", "c", "cn", "stop"}, Flags: []string{}, OutputModes: []string{"one-line"}, Destructive: true},
 	"cancel process-instance":            {Path: "cancel process-instance", Family: "cancel", ScenarioOwner: "integration/cli/cancel_test.go", Aliases: []string{"pi"}, Flags: []string{"batch-size", "bpmn-process-id", "dry-run", "end-date-after", "end-date-before", "end-date-newer-days", "end-date-older-days", "fail-fast", "force", "key", "limit", "no-state-check", "no-wait", "no-worker-limit", "pd-version", "pd-version-tag", "start-date-after", "start-date-before", "start-date-newer-days", "start-date-older-days", "state", "workers"}, OutputModes: []string{"one-line"}, Destructive: true},
@@ -175,6 +188,70 @@ func TestCoverageManifestValidationReportsMissingLeafFlags(t *testing.T) {
 	report := validateCoverageManifest(capabilities, manifest)
 
 	assertContainsSubstring(t, report.Mismatches, `get process-instance missing flags: ["state"]`)
+}
+
+func requireFamilyManifestSatisfaction(t *testing.T, family string, paths []string) []coverageEntry {
+	t.Helper()
+	if len(paths) == 0 {
+		t.Fatalf("family %q has no expected command paths", family)
+	}
+
+	entries := make([]coverageEntry, 0, len(paths))
+	for _, path := range paths {
+		entry, ok := commandCoverageManifest[path]
+		if !ok {
+			t.Fatalf("family %q missing manifest entry for %q", family, path)
+		}
+		if entry.Family != family {
+			t.Fatalf("manifest entry %q family = %q, want %q", path, entry.Family, family)
+		}
+		if strings.TrimSpace(entry.ScenarioOwner) == "" {
+			t.Fatalf("manifest entry %q has no scenario owner", path)
+		}
+		entries = append(entries, entry)
+	}
+	return entries
+}
+
+func writeFamilyCoverageEvidence(t *testing.T, family string, entries []coverageEntry, records []evidenceRecord) {
+	t.Helper()
+	report := familyCoverageReport{
+		Family:  family,
+		Entries: entries,
+		Records: records,
+		Summary: familyCoverageSummary{
+			CommandCount:     len(entries),
+			DestructivePaths: destructiveManifestPaths(entries),
+			OutputModes:      familyOutputModes(entries),
+		},
+	}
+	writeJSON(t, "coverage-"+sanitizeEvidenceName(family)+".json", report)
+}
+
+func destructiveManifestPaths(entries []coverageEntry) []string {
+	var paths []string
+	for _, entry := range entries {
+		if entry.Destructive {
+			paths = append(paths, entry.Path)
+		}
+	}
+	sort.Strings(paths)
+	return paths
+}
+
+func familyOutputModes(entries []coverageEntry) []string {
+	seen := make(map[string]struct{})
+	for _, entry := range entries {
+		for _, mode := range entry.OutputModes {
+			seen[mode] = struct{}{}
+		}
+	}
+	modes := make([]string, 0, len(seen))
+	for mode := range seen {
+		modes = append(modes, mode)
+	}
+	sort.Strings(modes)
+	return modes
 }
 
 func validateCoverageManifest(capabilities []commandCapability, manifest map[string]coverageEntry) coverageReport {

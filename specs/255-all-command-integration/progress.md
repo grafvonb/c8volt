@@ -1,4 +1,3 @@
----
 ## Iteration 1 - 2026-07-25 07:58
 **Work Unit**: US1 Discover Complete Command Coverage
 **Tasks Completed**:
@@ -86,4 +85,53 @@
 **Learnings**:
 - Seeded data can use version-matched SimpleUserTask embedded fixtures and parse both shared-envelope and direct JSON command payloads.
 - No-tag `go test ./integration/cli -count=1` still fails because all files are integration-tagged; T091 owns that later polish check.
+---
+## Iteration 3 - 2026-07-25 08:52
+**Work Unit**: US4 Exercise Command Families And Flags
+**Tasks Completed**:
+- [x] T043: Add `get` family coverage tests
+- [x] T044: Add `deploy`, `embed`, and `run` family coverage tests
+- [x] T045: Add `update` family coverage tests
+- [x] T046: Add `cancel` family coverage tests
+- [x] T047: Add `delete` family coverage tests
+- [x] T048: Add `expect` and `resolve` family coverage tests
+- [x] T049: Add `walk` family coverage tests
+- [x] T050: Add `ops analyse` family coverage tests
+- [x] T051: Add `ops execute` family coverage tests
+- [x] T052: Add `ops purge` family coverage tests
+- [x] T053: Add `ops repair` family coverage tests
+- [x] T054: Implement `get` command-family scenarios
+- [x] T055: Implement `deploy`, `embed`, and `run` command-family scenarios
+- [x] T056: Implement `update` command-family scenarios
+- [x] T057: Implement `cancel` command-family scenarios
+- [x] T058: Implement `delete` command-family scenarios
+- [x] T059: Implement `expect` and `resolve` command-family scenarios
+- [x] T060: Implement `walk` command-family scenarios
+- [x] T061: Implement `ops analyse` command-family scenarios
+- [x] T062: Implement `ops execute` command-family scenarios
+- [x] T063: Implement `ops purge` command-family scenarios
+- [x] T064: Implement `ops repair` command-family scenarios
+- [x] T065: Implement family-level manifest satisfaction checks
+- [x] T066: Verify family slices with targeted integration test command
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- integration/cli/all_commands_test.go
+- integration/cli/cancel_test.go
+- integration/cli/delete_test.go
+- integration/cli/deploy_embed_run_test.go
+- integration/cli/expect_resolve_test.go
+- integration/cli/get_test.go
+- integration/cli/harness_test.go
+- integration/cli/ops_analyse_test.go
+- integration/cli/ops_execute_test.go
+- integration/cli/ops_purge_test.go
+- integration/cli/ops_repair_test.go
+- integration/cli/update_test.go
+- integration/cli/walk_test.go
+- specs/255-all-command-integration/tasks.md
+- specs/255-all-command-integration/ralph-memory.md
+- specs/255-all-command-integration/progress.md
+**Learnings**:
+- Family coverage can run without selected profiles by proving canonical and alias help paths plus manifest-declared flag exposure.
 ---

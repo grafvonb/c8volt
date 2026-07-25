@@ -14,6 +14,7 @@ Started: 2026-07-25T06:27:38Z
 - `deploy_embed_run_test.go` owns seeded data setup through `embed list`, `embed deploy`, `run process-instance`, and direct `get process-instance` verification.
 - `get_test.go` owns dirty-cluster-safe assertion helpers; seeded checks assert required keys are present among unrelated results, never exact global counts.
 - `suite.marker` is the in-memory run marker used by tests and persisted to `run.json`, so later seeded-data commands use the same value recorded in evidence.
+- US4 family slices use `runFamilyCoverageScenarios` to execute canonical and alias `--help` subprocesses for every command path in the family, assert manifest-declared flags appear in help, and write `coverage-<family>.json` evidence with manifest entries, subprocess records, destructive paths, and output modes.
 
 ## Decisions
 
@@ -34,6 +35,7 @@ Started: 2026-07-25T06:27:38Z
 - `embed list --json` returns a shared envelope, while `embed deploy --json` can return a direct JSON array; use `decodeCommandPayload` for both shapes.
 - Deployment evidence may not include stable Camunda resource IDs on every version; `data/seeded-data.json` records returned resource names and falls back to the embedded fixture path.
 - `go test ./integration/cli -count=1` without `-tags=integration` currently fails with "build constraints exclude all Go files"; T091 is the planned polish task for making the no-tag package excluded or harmless.
+- US4 family coverage currently proves CLI path, alias, help flag, destructive-classification, and output-mode manifest satisfaction without needing selected profiles; later proposal/example stories can add deeper real-state scenario evidence without changing this baseline.
 
 ## Reusable Commands
 
@@ -51,4 +53,4 @@ Started: 2026-07-25T06:27:38Z
 
 ## Current Handoff
 
-- Next iteration should start with User Story 4 tasks T043-T066. Reuse US3 helpers and `data/seeded-data.json` shape for command-family targets where practical, but keep family tests independent enough to seed their own data when evidence is absent. Preserve the default-local config behavior and do not pass `--config`; leave the no-tag `go test ./integration/cli` issue for T091 unless it blocks a selected story.
+- Next iteration should start with User Story 5 tasks T067-T073. Reuse `writeCommandProposals`, `writeEmbeddedBPMNProposals`, and `proposalRecord`; wire proposal outputs into the existing family files without passing `--config`. Leave the no-tag `go test ./integration/cli` issue for T091 unless it blocks the selected story.

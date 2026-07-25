@@ -67,6 +67,23 @@ type seededProcessInstance struct {
 	TenantID             string `json:"tenantId,omitempty"`
 }
 
+func TestDeployEmbedRunFamily(t *testing.T) {
+	runFamilyCoverageScenarios(t, "deploy", []string{
+		"deploy",
+		"deploy process-definition",
+	})
+	runFamilyCoverageScenarios(t, "embed", []string{
+		"embed",
+		"embed deploy",
+		"embed export",
+		"embed list",
+	})
+	runFamilyCoverageScenarios(t, "run", []string{
+		"run",
+		"run process-instance",
+	})
+}
+
 // TestSeededData proves selected profiles can discover, deploy, run, and re-read suite-owned data.
 func TestSeededData(t *testing.T) {
 	profiles := requireSelectedProfiles(t)
