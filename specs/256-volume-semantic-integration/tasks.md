@@ -72,7 +72,7 @@
 
 ### Tests and Implementation for User Story 2
 
-- [ ] T018 [P] [US2] Implement `TestVolumeUpdateFamily` for dry-run no-mutation, confirmed mutation post-conditions, worker/no-worker-limit accounting, fail-fast mixed outcomes, version-specific unsupported behavior, and `volume-update.json` evidence in `integration/cli/volume_update_test.go`
+- [ ] T018 [P] [US2] Implement `TestVolumeUpdateFamily` for dry-run no-mutation, confirmed mutation post-conditions, worker/no-worker-limit accounting, fail-fast mixed outcomes, version-specific unsupported behavior, and `volume-update.json` evidence in `integration/cli/volume_update_test.go` (partial: process-instance variable update volume target is live; update job and multi-version unsupported behavior still need state/profile coverage)
 - [ ] T019 [P] [US2] Implement `TestVolumeCancelFamily` for multi-process-instance dry-run, auto-confirm/force behavior, limit capping, no-wait/submitted wording, and `volume-cancel.json` evidence in `integration/cli/volume_cancel_test.go`
 - [ ] T020 [P] [US2] Implement `TestVolumeDeleteFamily` for destructive delete dry-run, confirmed cleanup, stdin preview support where available, fail-fast behavior, and `volume-delete.json` evidence in `integration/cli/volume_delete_test.go`
 - [ ] T021 [P] [US2] Implement `TestVolumeExpectResolveFamily` for expect limit/timeout semantics, resolve dry-run and confirmed incident handling, worker accounting, and `volume-expect-resolve.json` evidence in `integration/cli/volume_expect_resolve_test.go`
