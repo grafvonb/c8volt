@@ -76,9 +76,9 @@ integration/
 
 ## Architecture Grounding
 
-- Feature 255 provides the baseline command inventory, profile selection, seeded data, behavioral scenario evidence, proposal reports, verbose harness logging, and family Make targets.
+- Feature 255 provides the baseline command inventory, profile selection, seeded data, behavioral scenario evidence, legacy proposal reports, verbose harness logging, and family Make targets.
 - This feature adds a volume layer that reuses the same binary-build and subprocess path so root configuration, prompts, stdout, stderr, exit codes, and machine modes are tested as operators see them.
-- Volume scenario setup should prefer c8volt commands: embedded fixture discovery/deploy, process-instance start, variable update, cancel/delete/resolve/ops workflows. Direct Camunda setup remains a proposal-recorded fallback only.
+- Volume scenario setup should prefer c8volt commands: embedded fixture discovery/deploy, process-instance start, variable update, cancel/delete/resolve/ops workflows. Direct Camunda setup must be runtime-visible, and missing command support belongs in spec-owned gap artifacts for future work.
 - Volume assertions must be dirty-cluster tolerant: verify suite-owned data and bounded/contains behavior rather than exact global counts.
 - Critical flag validation must prove semantics, not just acceptance: dry-run no mutation, limit scope caps, keys-only cleanliness, report-file behavior, stdin parsing, fail-fast behavior, and no-wait finality wording.
 

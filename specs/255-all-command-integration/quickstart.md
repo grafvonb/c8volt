@@ -62,8 +62,10 @@ Expected outcome:
 - every command-local flag in the manifest is exercised by at least one scenario
 - destructive workflows run preview first where supported
 - confirmed destructive workflows use disposable targets and record affected data
-- direct Camunda setup fallbacks generate proposal records
-- missing embedded BPMN needs generate proposal records
+- legacy direct Camunda setup fallbacks generate proposal records
+- legacy missing embedded BPMN needs generate proposal records
+
+Do not extend this generated proposal pattern for new integration work. Use `specs/integration-test-responsibility.md` and spec-owned gap artifacts instead.
 
 ## Full Suite
 
@@ -94,7 +96,7 @@ Review:
 - `summary.md`
 - `coverage.json`
 - `examples.json`
-- `proposals-command.json`
-- `proposals-embedded-bpmn.json`
+- legacy `proposals-command.json`
+- legacy `proposals-embedded-bpmn.json`
 - `logs/`
 - `data/`

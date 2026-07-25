@@ -58,8 +58,10 @@
 
 ## Decision: Preserve Proposal Reporting For Setup Gaps
 
-**Decision**: When volume scenarios require data that current c8volt commands or embedded BPMN fixtures cannot create, record command or embedded BPMN proposal evidence.
+**Decision**: When volume scenarios require data that current c8volt commands or embedded BPMN fixtures cannot create, record runtime truth in the test run and track missing setup or fixture needs in spec-owned artifacts.
+
+**Current status**: This 256-era decision is deprecated by `specs/integration-test-responsibility.md`. Future volume or real-state integration work should record runtime truth in tests and maintain missing setup or fixture needs in spec-owned gap artifacts.
 
 **Rationale**: The suite should reveal product gaps without silently skipping coverage or requiring hidden direct setup forever.
 
-**Alternatives considered**: Expanding setup through direct Camunda APIs without proposals was rejected because it hides useful future c8volt command opportunities.
+**Alternatives considered**: Expanding setup through direct Camunda APIs without spec-owned gap tracking was rejected because it hides useful future c8volt command opportunities.

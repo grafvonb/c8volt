@@ -148,8 +148,10 @@ Review:
 - `volume-progress-<family>.json`
 - `volume-pipelines-<family>.json`
 - `volume-ops-reports-<family>.json`
-- `proposals-command.json`
-- `proposals-embedded-bpmn.json`
+- legacy `proposals-command.json`
+- legacy `proposals-embedded-bpmn.json`
+
+The generated proposal JSON pattern is deprecated for new work. Use `specs/integration-test-responsibility.md` and spec-owned gap artifacts for missing setup or fixture needs.
 - `logs/`
 - `data/`
 
@@ -222,7 +224,7 @@ Observed result:
 - local volume helper tests passed
 - `integration-cli-deploy-embed-run-volume` passed against `kind-camunda-platform-local-c89`
 - evidence includes `volume-deploy-embed-run.json`, `volume-data-deploy-embed-run.json`, `volume-progress-deploy-embed-run.json`, `volume-pipelines-deploy-embed-run.json`, and `volume-ops-reports-deploy-embed-run.json`
-- proposal evidence files were written as empty arrays because this slice did not require direct Camunda setup or new embedded BPMN fixtures
+- legacy proposal evidence files were written as empty arrays because this slice did not require direct Camunda setup or new embedded BPMN fixtures
 - evidence path from the passing run: `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-3323686246`
 
 Validation recorded for the `integration-cli-update-volume` slice:
@@ -242,7 +244,7 @@ Observed result:
 - local volume helper tests passed
 - `integration-cli-update-volume` passed against `kind-camunda-platform-local-c89`
 - evidence includes `volume-update.json`, `volume-data-update.json`, `volume-progress-update.json`, `volume-pipelines-update.json`, and `volume-ops-reports-update.json`
-- proposal evidence records update-job and richer variable-shape setup gaps
+- legacy proposal evidence records update-job and richer variable-shape setup gaps; future updates should maintain these as spec-owned gaps
 - evidence path from the passing run: `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-1158420946`
 
 Validation recorded for the `integration-cli-cancel-volume` slice:
@@ -299,8 +301,8 @@ Observed result:
 - integration compile-only check passed
 - local volume helper and proposal tests passed
 - `integration-cli-expect-resolve-volume` passed against `kind-camunda-platform-local-c89`
-- evidence includes `volume-expect-resolve.json`, `volume-data-expect-resolve.json`, `volume-progress-expect-resolve.json`, `volume-pipelines-expect-resolve.json`, `volume-ops-reports-expect-resolve.json`, and `proposals-command.json`
-- proposal evidence records that state-only `expect process-instance` JSON rows should carry stable key/ok identity fields like incident expectation rows
+- evidence includes `volume-expect-resolve.json`, `volume-data-expect-resolve.json`, `volume-progress-expect-resolve.json`, `volume-pipelines-expect-resolve.json`, `volume-ops-reports-expect-resolve.json`, and legacy `proposals-command.json`
+- legacy proposal evidence records that state-only `expect process-instance` JSON rows should carry stable key/ok identity fields like incident expectation rows; future updates should maintain this as a spec-owned gap
 - evidence path from the passing run: `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-3582324578`
 
 Validation recorded for the `integration-cli-ops-analyse-volume` slice:
@@ -319,6 +321,6 @@ Observed result:
 - integration compile-only check passed
 - local volume helper and proposal tests passed
 - `integration-cli-ops-analyse-volume` passed against `kind-camunda-platform-local-c89`
-- evidence includes `volume-ops-analyse.json`, `volume-data-ops-analyse.json`, `volume-progress-ops-analyse.json`, `volume-pipelines-ops-analyse.json`, `volume-ops-reports-ops-analyse.json`, `proposals-command.json`, and `proposals-embedded-bpmn.json`
-- proposal evidence records deterministic slow-duration and listener fixture gaps
+- evidence includes `volume-ops-analyse.json`, `volume-data-ops-analyse.json`, `volume-progress-ops-analyse.json`, `volume-pipelines-ops-analyse.json`, `volume-ops-reports-ops-analyse.json`, and legacy proposal JSON files
+- legacy proposal evidence records deterministic slow-duration and listener fixture gaps; future updates should maintain these as spec-owned gaps
 - evidence path from the passing run: `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-1000040702`

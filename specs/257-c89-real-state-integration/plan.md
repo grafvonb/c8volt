@@ -6,7 +6,7 @@
 
 ## Summary
 
-Add a third integration coverage layer for c8volt that proves the highest-risk command semantics against real Camunda 8.9 cluster state. Feature 255 remains the all-command command-path and flag breadth baseline. Feature 256 remains the volume, progress, report, pipeline, and critical-flag semantics layer. This feature closes the remaining real-state gaps by creating or discovering actual jobs, incidents with related jobs, listener state, BPMN error job paths, retention candidates, purge/delete candidates, and mixed failure targets using the operator's default local c8volt configuration. Where c8volt commands or embedded BPMN fixtures cannot create a required state, the suite must record proposal evidence instead of silently skipping the topic.
+Add a third integration coverage layer for c8volt that proves the highest-risk command semantics against real Camunda 8.9 cluster state. Feature 255 remains the all-command command-path and flag breadth baseline. Feature 256 remains the volume, progress, report, pipeline, and critical-flag semantics layer. This feature closes the remaining real-state gaps by creating or discovering actual jobs, incidents with related jobs, listener state, BPMN error job paths, retention candidates, purge/delete candidates, and mixed failure targets using the operator's default local c8volt configuration. Where c8volt commands or embedded BPMN fixtures cannot create a required state, runtime tests must record skipped-prerequisite or dry-run-covered evidence while spec-owned gap artifacts describe the missing capability.
 
 ## Technical Context
 
@@ -24,9 +24,9 @@ Add a third integration coverage layer for c8volt that proves the highest-risk c
 
 **Performance Goals**: Keep 255 baseline targets and 256 volume targets separate; keep real-state slices focused enough to run independently; avoid timing-sensitive assertions; prefer deterministic state checks over sleep-heavy polling
 
-**Constraints**: Do not pass `--config`; do not generate private config files; tolerate clean and dirty clusters; destructive mutation against the selected disposable cluster is allowed; prefer c8volt commands for setup; prefer embedded BPMN models; record command or embedded BPMN proposals for setup gaps; keep reusable context outside `docs/`; focus current implementation on Camunda 8.9 while preserving version fields for future minor releases
+**Constraints**: Do not pass `--config`; do not generate private config files; tolerate clean and dirty clusters; destructive mutation against the selected disposable cluster is allowed; prefer c8volt commands for setup; prefer embedded BPMN models; keep runtime evidence separate from spec-owned setup and fixture gaps; keep reusable context outside `docs/`; focus current implementation on Camunda 8.9 while preserving version fields for future minor releases
 
-**Scale/Scope**: Real-state coverage for active jobs, job mutations, incidents with related jobs, listener state, BPMN error jobs, deterministic retention candidates, confirmed purge/delete/cancel/resolve/repair outcomes, fail-fast and partial-failure behavior, and aggregate proposal evidence
+**Scale/Scope**: Real-state coverage for active jobs, job mutations, incidents with related jobs, listener state, BPMN error jobs, deterministic retention candidates, confirmed purge/delete/cancel/resolve/repair outcomes, fail-fast and partial-failure behavior, and spec-owned gap tracking
 
 ## Constitution Check
 
@@ -36,7 +36,7 @@ Add a third integration coverage layer for c8volt that proves the highest-risk c
 - **CLI-First, Script-Safe Interfaces**: PASS. Validation goes through the built CLI, Make targets, stdin/stdout, reports, and default profile selection.
 - **Tests and Validation Are Mandatory**: PASS. The plan adds build-tagged integration tests plus non-integration guard checks; `make test` remains required for normal validation before final merge.
 - **Documentation Matches User Behavior**: PASS. Integration README and feature-local quickstart updates are planned; generated CLI docs change only if command examples or behavior change.
-- **Small, Compatible, Repository-Native Changes**: PASS. Work extends the existing `integration/cli` harness, evidence model, proposal model, and Make target style.
+- **Small, Compatible, Repository-Native Changes**: PASS. Work extends the existing `integration/cli` harness, evidence model, gap tracking artifacts, and Make target style.
 
 ## Project Structure
 
@@ -49,6 +49,7 @@ specs/257-c89-real-state-integration/
 ├── data-model.md
 ├── quickstart.md
 ├── coverage-matrix.md
+├── gaps.md
 ├── contracts/
 │   ├── real-state-targets.md
 │   └── real-state-evidence.md
@@ -75,19 +76,19 @@ integration/
     ├── real_state_bpmn_error_test.go
     ├── real_state_retention_test.go
     ├── real_state_destructive_test.go
-    └── real_state_proposals_test.go
+    └── real_state_gap_validation_test.go
 ```
 
 **Structure Decision**: Extend the existing build-tagged `integration/cli` package and Make target conventions. Keep real-state tests separate from all-command and volume tests so release validators can run the three layers independently.
 
 ## Architecture Grounding
 
-- Feature 255 supplies command inventory, family target style, selected-profile handling, default local config rules, scenario evidence, and proposal evidence.
+- Feature 255 supplies command inventory, family target style, selected-profile handling, default local config rules, and scenario evidence.
 - Feature 256 supplies volume datasets, progress/report/pipeline evidence, critical-flag semantics, and destructive target conventions.
 - This feature adds real-state fixtures and assertions where the current suite is too shallow: non-empty jobs, observable job mutations, incidents with related jobs, listener jobs, BPMN error job paths, retention/purge/delete candidates, and fail-fast/partial-failure reporting.
 - The harness must assert suite-owned identifiers and stable containment rather than global exact counts, because the selected cluster may already be dirty.
-- Direct Camunda API setup is allowed only when c8volt commands cannot create the required state, and each such usage must emit a command proposal.
-- Missing embedded BPMN behavior must remain visible as embedded BPMN proposal evidence, not as an invisible skip.
+- Direct Camunda API setup is allowed only when c8volt commands cannot create the required state; each usage must be visible in runtime setup evidence, and missing c8volt command capability must be maintained in `gaps.md`.
+- Missing embedded BPMN behavior must remain visible in `gaps.md`; runtime tests should record skipped-prerequisite evidence instead of silently passing.
 
 ## Phase 0: Research
 
@@ -102,9 +103,9 @@ See [research.md](./research.md).
 
 ## Post-Design Constitution Check
 
-- **Operational Proof Over Intent**: PASS. The design requires pre-state and post-state evidence, accepted/no-wait distinctions, and proposal records when live proof is blocked.
+- **Operational Proof Over Intent**: PASS. The design requires pre-state and post-state evidence, accepted/no-wait distinctions, and skipped-prerequisite evidence when live proof is blocked.
 - **CLI-First, Script-Safe Interfaces**: PASS. The contracts define Make targets, subprocess execution, default config usage, stdout cleanliness, and report evidence.
-- **Tests and Validation Are Mandatory**: PASS. The quickstart defines local compile checks, proposal checks, and staged destructive Camunda 8.9 validation.
+- **Tests and Validation Are Mandatory**: PASS. The quickstart defines local compile checks, gap artifact checks, and staged destructive Camunda 8.9 validation.
 - **Documentation Matches User Behavior**: PASS. The quickstart and contracts cover operator-facing integration behavior; generated docs remain untouched unless command examples change.
 - **Small, Compatible, Repository-Native Changes**: PASS. Work is scoped to the existing integration harness, Make targets, integration README, and feature-local specs.
 

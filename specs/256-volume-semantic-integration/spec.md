@@ -108,7 +108,7 @@ Maintainers can prove that ops commands produce proper audit records and consist
 - **FR-014**: The suite MUST prove consistent operator information across related commands, including selection filters, candidate counts, discovery completeness, preview plans, submitted work, skipped work, retained resources, hidden-key hints, errors, and elapsed time where applicable.
 - **FR-015**: The suite MUST prove ops report creation, report overwrite or preserve behavior, JSON report validity, Markdown report section presence, discovery completeness, step statuses, mutation accounting, notices, errors, and outcome parity with stdout.
 - **FR-016**: The suite MUST prove version-specific support and unsupported-version behavior before unsafe mutation for commands that differ across Camunda 8.7, 8.8, and 8.9.
-- **FR-017**: The suite MUST record actionable product or fixture proposals whenever the required data shape cannot be created through existing c8volt commands or embedded BPMN models.
+- **FR-017**: The suite MUST surface missing product or fixture prerequisites as runtime skipped-prerequisite or dry-run evidence, and future work MUST maintain those gaps in spec-owned artifacts rather than generating backlog proposals from tests.
 - **FR-018**: The suite MUST keep this volume layer separate from the existing baseline all-command family targets so normal baseline validation remains relatively quick.
 - **FR-019**: The suite MUST use only the operator's default local c8volt configuration and MUST NOT generate private config files or pass explicit config paths.
 
@@ -119,7 +119,7 @@ Maintainers can prove that ops commands produce proper audit records and consist
 - **Pipeline Scenario**: A workflow where keys-only output from one command is consumed by another command through stdin.
 - **Progress Evidence**: Captured human, log, or activity information proving that a long-running command made progress and ended with a clear outcome.
 - **Ops Audit Report**: Human or machine-readable report produced by an ops command, including selection, discovery, plan, execution, status vocabulary, errors, notices, accounting, and outcome.
-- **Proposal Record**: Evidence that a missing command capability or embedded BPMN fixture blocks deeper semantic coverage and should become future product work.
+- **Legacy Proposal Record**: Historical evidence that a missing command capability or embedded BPMN fixture blocks deeper semantic coverage and should become future product work. New work uses spec-owned gap artifacts instead of generating backlog proposals from integration tests.
 
 ## Success Criteria *(mandatory)*
 
@@ -133,7 +133,7 @@ Maintainers can prove that ops commands produce proper audit records and consist
 - **SC-006**: Machine-readable scenarios produce parseable output with zero prompt, spinner, progress, or human-summary contamination in stdout.
 - **SC-007**: At least one ops preview scenario and one ops confirmed execution scenario write audit reports that pass the required report-content checks.
 - **SC-008**: Every volume target can run independently in any order against a clean or dirty disposable cluster.
-- **SC-009**: All missing setup capabilities discovered during the run are recorded as proposal evidence instead of silently skipped.
+- **SC-009**: Missing setup capabilities discovered during the run are surfaced as runtime skipped-prerequisite or dry-run evidence and then maintained in spec-owned gap artifacts instead of silently skipped.
 - **SC-010**: Baseline family targets remain separate from volume targets and can still be run without invoking the slower volume layer.
 
 ## Assumptions

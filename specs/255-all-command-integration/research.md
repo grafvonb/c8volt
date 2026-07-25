@@ -34,6 +34,8 @@
 
 **Rationale**: Some states may require APIs or fixtures that c8volt cannot currently produce. Recording those gaps creates actionable product or fixture proposals without blocking the integration suite from covering existing commands.
 
+**Current status**: This was the original 255 design. It is now deprecated by `specs/integration-test-responsibility.md`; future integration work should keep runtime evidence in tests and maintain missing setup or fixture needs in spec-owned gap artifacts.
+
 **Alternatives considered**: Failing immediately on every unavailable setup path was rejected because it would prevent broad coverage. Silently using direct APIs was rejected because it would hide missing command capabilities.
 
 ## Decision: Keep Artifacts Under `integration/`

@@ -37,11 +37,11 @@
 - [x] T006 Add volume evidence record writers for `volume-<family>.json`, `volume-data-<family>.json`, `volume-progress-<family>.json`, `volume-pipelines-<family>.json`, and `volume-ops-reports-<family>.json` in `integration/cli/volume_evidence_test.go`
 - [x] T007 Add stdout cleanliness, JSON parsing, keys-only parsing, final outcome, and no-wait/submitted assertion helpers in `integration/cli/volume_assertions_test.go`
 - [x] T008 Add stdin file creation, duplicate/malformed/missing key builders, and command stdin execution helpers in `integration/cli/volume_pipeline_test.go`
-- [ ] T009 Add best-effort c8volt-first data seeding helpers for embedded deployment, process-instance start, variable mutation, cancellation, deletion, incident/job discovery, and proposal fallback recording in `integration/cli/volume_seed_test.go`
+- [ ] T009 Add best-effort c8volt-first data seeding helpers for embedded deployment, process-instance start, variable mutation, cancellation, deletion, incident/job discovery, and skipped-prerequisite runtime classification in `integration/cli/volume_seed_test.go`
 - [x] T010 Add ops report parsers and stable Markdown/JSON report assertion helpers in `integration/cli/volume_ops_report_test.go`
 - [x] T011 Add focused compile-only validation for the new volume harness with `go test -tags=integration ./integration/cli -run '^$' -count=1` documented in `specs/256-volume-semantic-integration/quickstart.md`
 
-**Checkpoint**: The volume harness compiles, writes empty summary/proposal evidence, and can run without invoking destructive story scenarios.
+**Checkpoint**: The volume harness compiles, writes runtime evidence, and can run without invoking destructive story scenarios.
 
 ---
 
@@ -76,7 +76,7 @@
 - [ ] T019 [P] [US2] Implement `TestVolumeCancelFamily` for multi-process-instance dry-run, auto-confirm/force behavior, limit capping, no-wait/submitted wording, and `volume-cancel.json` evidence in `integration/cli/volume_cancel_test.go` (partial: key/search/stdin cancellation target is live; force child-root escalation remains)
 - [ ] T020 [P] [US2] Implement `TestVolumeDeleteFamily` for destructive delete dry-run, confirmed cleanup, stdin preview support where available, fail-fast behavior, and `volume-delete.json` evidence in `integration/cli/volume_delete_test.go` (partial: process-instance force/dry-run/refusal/search-limit/stdin target is live; process-definition deletion and fail-fast mixed outcome coverage remain)
 - [ ] T021 [P] [US2] Implement `TestVolumeExpectResolveFamily` for expect limit/timeout semantics, resolve dry-run and confirmed incident handling, worker accounting, and `volume-expect-resolve.json` evidence in `integration/cli/volume_expect_resolve_test.go` (partial: expect state/incident and resolve incident/process-instance dry-run/no-wait/stdin target is live; richer timeout and confirmed incident-clearing semantics remain)
-- [ ] T022 [US2] Add semantic flag coverage matrix helpers that record supported, unsupported, skipped, and proposal-backed flag cases in `integration/cli/volume_evidence_test.go`
+- [ ] T022 [US2] Add semantic flag coverage matrix helpers that record supported, unsupported, skipped-prerequisite, and dry-run-covered flag cases in `integration/cli/volume_evidence_test.go`
 - [ ] T023 [US2] Wire `integration-cli-update-volume`, `integration-cli-cancel-volume`, `integration-cli-delete-volume`, and `integration-cli-expect-resolve-volume` to their `TestVolume*Family` patterns in `Makefile`
 - [ ] T024 [US2] Validate one destructive critical-flag target with `make integration-cli-update-volume IT_GO_TEST_FLAGS=-v` and record the command in `specs/256-volume-semantic-integration/quickstart.md`
 
@@ -132,7 +132,7 @@
 - [x] T040 Run non-integration validation with `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1` and record the result in `specs/256-volume-semantic-integration/quickstart.md`
 - [x] T041 Run focused integration harness compile validation with `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m` and record the result in `specs/256-volume-semantic-integration/quickstart.md`
 - [ ] T042 Run at least one non-ops volume target and one ops volume target against disposable default-local profiles, then record evidence paths and outcomes in `specs/256-volume-semantic-integration/quickstart.md`
-- [ ] T043 Review `proposals-command.json` and `proposals-embedded-bpmn.json` from a volume run and add any newly discovered command or embedded BPMN fixture gaps to `specs/256-volume-semantic-integration/issue-draft.md`
+- [ ] T043 Review runtime skipped-prerequisite and dry-run evidence from a volume run and add any newly discovered command or embedded BPMN fixture gaps to `specs/256-volume-semantic-integration/issue-draft.md`
 - [ ] T044 Confirm `integration/README.md` warns that volume targets are destructive, dirty-cluster tolerant, independent, opt-in, and separate from baseline family targets
 - [ ] T045 Run `git diff --check -- Makefile integration/README.md integration/cli specs/256-volume-semantic-integration` and fix any whitespace issues in touched files
 - [ ] T046 Run `GOCACHE=/tmp/c8volt-gocache make test` before commit or record the blocker in `specs/256-volume-semantic-integration/quickstart.md` and leave this task incomplete
@@ -204,7 +204,7 @@ Task: "T034 [P] [US4] Implement TestVolumeOpsRepairFamily in integration/cli/vol
 1. Complete Phase 1 and Phase 2.
 2. Complete Phase 3 for `integration-cli-get-volume`.
 3. Stop and validate with `make integration-cli-get-volume IT_GO_TEST_FLAGS=-v`.
-4. Review `volume-get.json`, progress evidence, and proposal evidence before extending to other families.
+4. Review `volume-get.json`, progress evidence, and any skipped-prerequisite evidence before extending to other families.
 
 ### Incremental Delivery
 

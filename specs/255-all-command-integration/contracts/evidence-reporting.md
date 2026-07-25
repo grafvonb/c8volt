@@ -1,4 +1,6 @@
-# Contract: Evidence And Proposal Reporting
+# Contract: Evidence And Gap Reporting
+
+> Note: The original 255 implementation generated proposal JSON files from integration tests. That runtime proposal pattern is now deprecated by `specs/integration-test-responsibility.md`. Keep this contract as historical context for 255 evidence, but do not extend generated proposal reports in new or corrected integration work.
 
 ## Evidence Directory
 
@@ -11,8 +13,8 @@ Required files:
 - `run.json`: run marker and suite metadata
 - `coverage.json`: command coverage results
 - `examples.json`: help and generated CLI example validation results
-- `proposals-command.json`: direct Camunda setup fallback proposals
-- `proposals-embedded-bpmn.json`: missing embedded model proposals
+- `proposals-command.json`: legacy direct Camunda setup fallback proposals
+- `proposals-embedded-bpmn.json`: legacy missing embedded model proposals
 - `summary.md`: human-readable run summary
 - `logs/`: per-command stdout and stderr evidence
 - `data/`: selected keys, resource IDs, and run-created identifiers
@@ -64,7 +66,7 @@ Allowed `dataOwnership` values:
 - `retained`
 - `cleanup_failed`
 
-## Proposal Record Shape
+## Legacy Proposal Record Shape
 
 Each direct setup or fixture gap must include:
 
@@ -91,4 +93,5 @@ Each direct setup or fixture gap must include:
 - Failed records must include a non-empty failure class.
 - Destructive scenarios must record known affected keys when the CLI output provides them.
 - Cleanup failures must be visible and must not overwrite the command's original result.
-- Proposal reports must be empty JSON arrays when no proposals are generated.
+- Legacy proposal reports must be empty JSON arrays when no proposals are generated.
+- New work should maintain setup and fixture gaps in spec-owned artifacts instead of generating proposal records from tests.

@@ -26,34 +26,35 @@ Expected outcome:
 - verbose output shows scenario names, arguments, exit codes, durations, and evidence paths
 - unrelated dirty cluster data does not fail the baseline target
 
-## Proposal Gate
+## Gap Boundary Gate
 
 The initial scaffolding adds reserved Make targets and non-live helper checks.
 Before a real-state family target is implemented, reserved Make targets fail
 with a clear not-implemented message instead of producing a false pass. The
-jobs, incidents, listeners, and BPMN error targets are implemented; proposals,
-retention, and destructive targets remain reserved until their family tests are
-added.
+jobs, incidents, listeners, and BPMN error targets are implemented; gap
+validation, retention, and destructive targets remain reserved until their
+family tests are added.
 
 Validate the initial scaffolding:
 
 ```sh
 GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
-GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestRealStateTargetCatalog|TestRealStateC89ProfileClassification|TestRealStateEvidenceWritersEmitArrays|TestRealStateMachineOutputAssertions|TestRealStateProposalFallbackHelpers' -count=1 -timeout=5m
+GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestRealStateTargetCatalog|TestRealStateC89ProfileClassification|TestRealStateEvidenceWritersEmitArrays|TestRealStateMachineOutputAssertions' -count=1 -timeout=5m
 ```
 
-After implementation, run proposal-only validation first:
+After the gap-validation target is implemented, run it before destructive
+real-state slices:
 
 ```sh
-make integration-cli-real-state-proposals IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v
 ```
 
 Expected outcome:
 
-- aggregate command proposals include all known command setup gaps
-- aggregate embedded BPMN proposals include all known fixture gaps
-- ops repair gaps are present in aggregate evidence
-- proposal evidence is written outside `docs/`
+- `gaps.md` includes all known command setup and embedded BPMN fixture gaps that block deeper live coverage
+- ops repair, BPMN error, timeout, retention, and destructive setup gaps are represented when still open
+- runtime tests do not generate backlog proposal JSON files
+- gap artifacts stay outside `docs/`
 
 ## Real Job State
 
@@ -70,7 +71,7 @@ Expected outcome:
 - `update job --retries` is confirmed against real state
 - `update job --fail` and `--no-wait` return accepted/submitted evidence
 - `update job --timeout` produces clean dry-run plan evidence for created jobs
-- proposal evidence records the remaining activated-job setup gap for confirmed timeout mutation
+- `gaps.md` records the remaining activated-job setup gap for confirmed timeout mutation
 
 ## Incidents With Related Jobs
 
@@ -102,7 +103,7 @@ Expected outcome:
 - `get element --with-listeners`, `walk process-instance --with-listeners`, and `ops analyse slow-process-instances --with-listeners` include the suite-owned listener job key
 - JSON listener scenarios keep stdout machine-safe; traversal JSON is run without `--automation` because traversal commands do not support automation mode
 - the BPMN error target records clean `update job --throw-bpmn-error --dry-run` evidence and verifies the job is unchanged afterward
-- missing confirmed BPMN error behavior is recorded as command and embedded BPMN proposal evidence
+- missing confirmed BPMN error behavior is skipped or reported as prerequisite-missing at runtime and tracked in `gaps.md`
 - no test passes solely because the command accepted the flag
 
 ## Retention And Destructive Semantics

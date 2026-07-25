@@ -143,9 +143,9 @@ Validation rules:
 - Step statuses must use the shared ops status vocabulary.
 - JSON stdout and JSON report must agree on frozen scope and final outcome when both are produced.
 
-## Proposal Record
+## Legacy Proposal Record
 
-Extends the baseline proposal evidence for volume-specific setup gaps.
+Extends the baseline proposal evidence for volume-specific setup gaps. This generated-test-output pattern is deprecated by `specs/integration-test-responsibility.md`; new work should use spec-owned gap artifacts.
 
 Fields:
 
@@ -160,6 +160,6 @@ Fields:
 
 Validation rules:
 
-- Direct Camunda setup fallback must produce a command proposal.
-- Missing embedded BPMN behavior must produce an embedded BPMN proposal.
-- Proposal records do not authorize product implementation by themselves.
+- Historical direct Camunda setup fallback evidence produced a command proposal.
+- Historical missing embedded BPMN behavior evidence produced an embedded BPMN proposal.
+- New work must not generate backlog proposal records from tests; maintain missing setup and fixture needs in spec-owned gap artifacts.

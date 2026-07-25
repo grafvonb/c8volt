@@ -10,8 +10,6 @@ Required file classes:
 - real-state data report, such as `real-state-data-jobs.json`
 - real-state progress or output report where human visibility matters
 - real-state ops report evidence when an ops command is involved
-- `proposals-command.json`
-- `proposals-embedded-bpmn.json`
 
 Evidence files must stay outside `docs/`.
 
@@ -29,6 +27,7 @@ Each scenario record must identify:
 - before-state and after-state evidence when a mutation claims completion
 - outcome classification
 - failure class when validation fails
+- skip reason and required state when a prerequisite is missing
 
 ## Outcome Classifications
 
@@ -36,36 +35,21 @@ Supported outcome classifications:
 
 - `live-covered`
 - `partially-live-covered`
+- `dry-run-covered`
 - `planned`
 - `submitted`
 - `no-wait`
 - `retained`
 - `cleanup-failed`
-- `skipped`
+- `skipped-prerequisite`
 - `unsupported`
-- `proposal-backed`
 - `failed`
 
 The suite must not mark a topic `live-covered` when only mocks, stubs, help output, or empty no-match results were observed.
 
-## Proposal Evidence
+## Prerequisite Gaps
 
-Command setup proposals must include:
-
-- required state
-- affected commands
-- affected versions
-- fallback used
-- operator value
-
-Embedded BPMN proposals must include:
-
-- missing process behavior
-- affected commands
-- affected versions
-- operator value
-
-Aggregate proposal reports must include all per-family proposal records, including ops repair gaps.
+When live proof is blocked by missing command setup or embedded BPMN behavior, runtime evidence may record the skipped prerequisite reason and required state. The durable gap itself belongs in spec-owned artifacts such as `gaps.md`; integration tests must not generate backlog proposal files.
 
 ## Output Cleanliness
 

@@ -76,7 +76,7 @@
 - [x] T028: Wire listener and BPMN-error real-state Make targets
 - [x] T029: Reuse `C89_SimpleServiceTask.bpmn` for live listener fixture setup
 - [x] T030: Add non-empty listener evidence for `get element`, `walk process-instance`, and `ops analyse slow-process-instances`
-- [x] T031: Classify BPMN-error coverage as proposal-backed because no embedded catchable BPMN-error fixture exists
+- [x] T031: Classify BPMN-error coverage as dry-run-covered with confirmed mutation blocked by a missing embedded catchable BPMN-error fixture
 - [x] T032: Add `update job --throw-bpmn-error --dry-run` JSON cleanliness and unchanged job-state verification
 - [x] T033: Record BPMN-error command setup proposal
 - [x] T034: Record BPMN-error embedded BPMN proposal without modifying existing embedded models
@@ -102,5 +102,44 @@
 **Learnings**:
 - The existing service-task fixture is enough for live execution-listener enrichment; no listener proposal is needed for execution listeners.
 - Traversal commands intentionally reject `--automation`, so JSON listener traversal must be run with `--json` alone.
-- Existing embedded BPMN files declare error codes but do not provide a catchable BPMN error path for confirmed `update job --throw-bpmn-error`; proposal-backed dry-run is the honest current coverage.
+- Existing embedded BPMN files declare error codes but do not provide a catchable BPMN error path for confirmed `update job --throw-bpmn-error`; dry-run-covered plus skipped-prerequisite confirmed mutation is the honest current coverage.
+---
+## Iteration 4 - 2026-07-25 22:20
+**Work Unit**: Correct integration test responsibility boundary in specs
+**Tasks Completed**:
+- [x] T037: Add repository-level integration test responsibility rules in `specs/integration-test-responsibility.md`
+- [x] T038: Add feature-local real-state gap tracking in `specs/257-c89-real-state-integration/gaps.md`
+- [x] T044: Mark inherited 255 and 256 generated proposal JSON as deprecated for future integration work
+**Tasks Remaining in Work Unit**: 0
+**Commit**: Pending
+**Files Changed**:
+- specs/integration-test-responsibility.md
+- specs/255-all-command-integration/contracts/evidence-reporting.md
+- specs/255-all-command-integration/quickstart.md
+- specs/255-all-command-integration/research.md
+- specs/255-all-command-integration/spec.md
+- specs/256-volume-semantic-integration/contracts/evidence-progress-reporting.md
+- specs/256-volume-semantic-integration/data-model.md
+- specs/256-volume-semantic-integration/quickstart.md
+- specs/256-volume-semantic-integration/research.md
+- specs/256-volume-semantic-integration/spec.md
+- specs/257-c89-real-state-integration/contracts/real-state-evidence.md
+- specs/257-c89-real-state-integration/contracts/real-state-targets.md
+- specs/257-c89-real-state-integration/coverage-matrix.md
+- specs/257-c89-real-state-integration/data-model.md
+- specs/257-c89-real-state-integration/gaps.md
+- specs/257-c89-real-state-integration/plan.md
+- specs/257-c89-real-state-integration/quickstart.md
+- specs/257-c89-real-state-integration/ralph-memory.md
+- specs/257-c89-real-state-integration/research.md
+- specs/257-c89-real-state-integration/spec.md
+- specs/257-c89-real-state-integration/tasks.md
+- specs/257-c89-real-state-integration/progress.md
+**Validation**:
+- `rg -n "MUST record.*proposal|must record proposal|proposal evidence|proposal reports|proposal-backed|real-state-proposals|TestRealStateProposal|aggregate proposal|Record proposal evidence|proposal-recorded fallback" specs/255-all-command-integration specs/256-volume-semantic-integration specs/257-c89-real-state-integration specs/integration-test-responsibility.md`
+- `git diff --check -- specs/255-all-command-integration specs/256-volume-semantic-integration specs/257-c89-real-state-integration specs/integration-test-responsibility.md`
+**Learnings**:
+- The earlier proposal evidence pattern crossed the integration-test responsibility boundary.
+- Runtime tests should report observed execution truth, including skipped prerequisites and dry-run coverage.
+- Missing c8volt setup commands and embedded BPMN assets now belong in spec-owned gap artifacts, starting with `gaps.md`.
 ---

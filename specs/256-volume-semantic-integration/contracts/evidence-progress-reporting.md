@@ -119,4 +119,4 @@ Allowed failure classes:
 - `missing_command_support`
 - `environment_availability`
 
-Blocked setup gaps must still produce proposal evidence when they reveal missing command or embedded BPMN support.
+Blocked setup gaps should produce skipped-prerequisite or dry-run runtime evidence when relevant. Missing command or embedded BPMN support belongs in spec-owned gap artifacts, not generated test proposal evidence.

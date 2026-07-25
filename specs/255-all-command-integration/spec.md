@@ -130,8 +130,8 @@ Maintainers can verify that command help and generated CLI examples remain execu
 - **FR-007**: The suite MUST be allowed to mutate, cancel, delete, resolve, repair, or purge seeded and pre-existing data in the selected disposable cluster.
 - **FR-008**: The suite MUST prefer c8volt commands for test data creation before using direct Camunda setup.
 - **FR-009**: The suite MUST prefer embedded c8volt BPMN models before using external process models or direct setup.
-- **FR-010**: The suite MUST record every direct Camunda setup fallback as a proposal for a c8volt command addition or command extension.
-- **FR-011**: The suite MUST record every missing embedded-model capability as a proposal for a new embedded process definition.
+- **FR-010**: Historical 255 proposal output recorded direct Camunda setup fallbacks; new work MUST track such gaps in spec-owned artifacts rather than generating backlog proposals during test execution.
+- **FR-011**: Historical 255 proposal output recorded missing embedded-model capabilities; new work MUST track such gaps in spec-owned artifacts rather than generating backlog proposals during test execution.
 - **FR-012**: The suite MUST group coverage by c8volt command family, including explicit groups for high-level ops commands.
 - **FR-013**: Each leaf command coverage entry MUST include aliases, required flags, command-local flags, relevant persistent flags, supported output modes, success behavior, validation behavior, and applicable version behavior.
 - **FR-014**: Parent and grouping command coverage MUST include help/discovery behavior and no-argument behavior.
@@ -149,7 +149,7 @@ Maintainers can verify that command help and generated CLI examples remain execu
 - **Integration Profile**: A named local c8volt profile from the default configuration that identifies a disposable Camunda target.
 - **Run Marker**: A unique value attached to suite-created data so results and cleanup evidence can distinguish seeded resources from pre-existing resources.
 - **Evidence Record**: A per-command result containing inputs, profile/version context, output, exit status, resource keys, and data ownership classification.
-- **Proposal Record**: A documented gap where direct Camunda setup or missing embedded BPMN support was required to complete coverage.
+- **Legacy Proposal Record**: A documented gap where direct Camunda setup or missing embedded BPMN support was required to complete coverage. This generated-test-output pattern is deprecated for new work.
 
 ## Success Criteria *(mandatory)*
 

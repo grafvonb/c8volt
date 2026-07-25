@@ -7,7 +7,7 @@ Real-state targets must be separate from baseline and volume targets.
 Initial target set:
 
 ```text
-integration-cli-real-state-proposals
+integration-cli-real-state-gaps
 integration-cli-real-state-jobs
 integration-cli-real-state-incidents
 integration-cli-real-state-listeners
@@ -70,4 +70,4 @@ Required behavior:
 
 - selected profile and observed version must be recorded in evidence
 - unsupported non-8.9 behavior must be classified before mutation
-- proposal records must keep affected versions explicit so future minor releases can extend the suite
+- gap artifacts must keep affected versions explicit so future minor releases can extend the suite
