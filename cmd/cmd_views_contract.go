@@ -67,6 +67,13 @@ func handleCommandError(cmd *cobra.Command, log *slog.Logger, noErrCodes bool, e
 	ferrors.HandleAndExit(log, noErrCodes, err)
 }
 
+func exitAfterRenderedResult(noErrCodes bool, err error) {
+	if err == nil {
+		os.Exit(0)
+	}
+	os.Exit(ferrors.ResolveExitCode(noErrCodes, err))
+}
+
 func resultEnvelopeForError(cmd *cobra.Command, err error) ResultEnvelope[any] {
 	normalized := ferrors.Normalize(err)
 	class := string(ferrors.Classify(normalized))

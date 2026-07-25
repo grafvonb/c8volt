@@ -6,6 +6,7 @@
 package cli_test
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -74,7 +75,7 @@ func seedRealStateDestructiveDataset(t *testing.T, profile integrationProfile, c
 		return realStateDestructiveDataset{Fixture: fixture, Volume: dataset}, records, err
 	}
 
-	incidentDataset, incidentRecords, err := seedVolumeIncidentDataset(t, profile, 6)
+	incidentDataset, incidentRecords, err := seedVolumeIncidentDataset(t, profile, 8)
 	records = append(records, incidentRecords...)
 	fixture.ProcessInstanceKeys = append(fixture.ProcessInstanceKeys, incidentDataset.ProcessInstanceKeys...)
 	fixture.ProcessDefinitionKeys = append(fixture.ProcessDefinitionKeys, incidentDataset.ProcessDefinitionKeys...)
@@ -99,10 +100,12 @@ func runRealStateDestructiveScenarios(t *testing.T, profile integrationProfile, 
 	if len(keys) < 4 {
 		return records, fmt.Errorf("real-state destructive dataset for profile %q has %d active keys, want at least 4", profile.Name, len(keys))
 	}
-	incidents := firstNRealStateIncidents(dataset.Incidents, 6)
-	if len(incidents) < 6 {
-		return records, fmt.Errorf("real-state destructive incident dataset for profile %q has %d incidents, want at least 6", profile.Name, len(incidents))
+	incidents := firstNRealStateIncidents(dataset.Incidents, 8)
+	if len(incidents) < 8 {
+		return records, fmt.Errorf("real-state destructive incident dataset for profile %q has %d incidents, want at least 8", profile.Name, len(incidents))
 	}
+	missingPIKey := realStateMissingProcessInstanceKey()
+	missingIncidentKey := realStateMissingIncidentKey()
 
 	cancelDryRunResult := runC8VoltForProfile(t, profile.Name, "real-state-destructive-cancel-dry-run", "--automation", "--json", "cancel", "pi", "--key", keys[0], "--dry-run", "--workers", "1")
 	cancelDryRunRecord := realStateDestructiveRecord(profile, dataset, cancelDryRunResult, "cancel process-instance", "real-state-destructive-cancel-dry-run", "json", []string{"key", "dry-run", "workers"}, []string{keys[0]}, true, false)
@@ -197,6 +200,60 @@ func runRealStateDestructiveScenarios(t *testing.T, profile integrationProfile, 
 		failures = append(failures, fmt.Sprintf("real-state-destructive-purge-incident-confirmed: %v", err))
 	}
 	records = append(records, purgeConfirmedRecord)
+
+	malformedMixedResult := runC8VoltForProfile(t, profile.Name, "real-state-destructive-delete-malformed-mixed", "--automation", "--json", "delete", "pi", "--key", keys[0], "--key", "not-a-key", "--force", "--dry-run", "--workers", "1")
+	malformedMixedRecord := realStateDestructiveRecord(profile, dataset, malformedMixedResult, "delete process-instance", "real-state-destructive-delete-malformed-mixed", "json", []string{"key", "force", "dry-run", "workers"}, []string{keys[0], "not-a-key"}, true, false)
+	if err := validateRealStateMalformedMixedRejected(t, profile, malformedMixedResult, keys[0]); err != nil {
+		malformedMixedRecord.Outcome = realStateOutcomeFailed
+		malformedMixedRecord.FailureClass = volumeFailureProduct
+		failures = append(failures, fmt.Sprintf("real-state-destructive-delete-malformed-mixed: %v", err))
+	}
+	records = append(records, malformedMixedRecord)
+
+	missingMixedResult := runC8VoltForProfile(t, profile.Name, "real-state-destructive-cancel-missing-mixed", "--automation", "--json", "cancel", "pi", "--key", keys[2], "--key", missingPIKey, "--dry-run", "--workers", "1")
+	missingMixedRecord := realStateDestructiveRecord(profile, dataset, missingMixedResult, "cancel process-instance", "real-state-destructive-cancel-missing-mixed", "json", []string{"key", "dry-run", "workers"}, []string{keys[2], missingPIKey}, true, false)
+	if err := validateRealStateMissingMixedRejected(t, profile, missingMixedResult, keys[2], missingPIKey); err != nil {
+		missingMixedRecord.Outcome = realStateOutcomeFailed
+		missingMixedRecord.FailureClass = volumeFailureProduct
+		failures = append(failures, fmt.Sprintf("real-state-destructive-cancel-missing-mixed: %v", err))
+	}
+	records = append(records, missingMixedRecord)
+
+	alreadyTerminatedResult := runC8VoltForProfile(t, profile.Name, "real-state-destructive-delete-already-terminated-dry-run", "--automation", "--json", "delete", "pi", "--key", keys[1], "--force", "--dry-run", "--workers", "1")
+	alreadyTerminatedRecord := realStateDestructiveRecord(profile, dataset, alreadyTerminatedResult, "delete process-instance", "real-state-destructive-delete-already-terminated-dry-run", "json", []string{"key", "force", "dry-run", "workers"}, []string{keys[1]}, true, false)
+	if err := validateRealStateAlreadyTerminatedDryRun(t, profile, alreadyTerminatedResult, keys[1]); err != nil {
+		alreadyTerminatedRecord.Outcome = realStateOutcomeFailed
+		alreadyTerminatedRecord.FailureClass = volumeFailureProduct
+		failures = append(failures, fmt.Sprintf("real-state-destructive-delete-already-terminated-dry-run: %v", err))
+	}
+	records = append(records, alreadyTerminatedRecord)
+
+	staleDeletedResult := runC8VoltForProfile(t, profile.Name, "real-state-destructive-delete-stale-deleted", "--automation", "--json", "delete", "pi", "--key", keys[3], "--force", "--dry-run", "--workers", "1")
+	staleDeletedRecord := realStateDestructiveRecord(profile, dataset, staleDeletedResult, "delete process-instance", "real-state-destructive-delete-stale-deleted", "json", []string{"key", "force", "dry-run", "workers"}, []string{keys[3]}, true, false)
+	if err := validateRealStateStaleDeletedRejected(staleDeletedResult, keys[3]); err != nil {
+		staleDeletedRecord.Outcome = realStateOutcomeFailed
+		staleDeletedRecord.FailureClass = volumeFailureProduct
+		failures = append(failures, fmt.Sprintf("real-state-destructive-delete-stale-deleted: %v", err))
+	}
+	records = append(records, staleDeletedRecord)
+
+	partialResolveResult := runC8VoltForProfile(t, profile.Name, "real-state-destructive-resolve-incident-partial-no-wait", "--automation", "--json", "resolve", "incident", "--key", incidents[6].IncidentKey, "--key", missingIncidentKey, "--no-wait", "--workers", "1")
+	partialResolveRecord := realStateDestructiveRecord(profile, dataset, partialResolveResult, "resolve incident", "real-state-destructive-resolve-incident-partial-no-wait", "json", []string{"key", "no-wait", "workers"}, []string{incidents[6].IncidentKey, missingIncidentKey}, false, true)
+	if err := validateRealStateResolveIncidentPartialNoWait(partialResolveResult, incidents[6].IncidentKey, missingIncidentKey); err != nil {
+		partialResolveRecord.Outcome = realStateOutcomeFailed
+		partialResolveRecord.FailureClass = volumeFailureProduct
+		failures = append(failures, fmt.Sprintf("real-state-destructive-resolve-incident-partial-no-wait: %v", err))
+	}
+	records = append(records, partialResolveRecord)
+
+	failFastResolveResult := runC8VoltForProfile(t, profile.Name, "real-state-destructive-resolve-incident-fail-fast", "--automation", "--json", "resolve", "incident", "--key", missingIncidentKey, "--key", incidents[7].IncidentKey, "--no-wait", "--workers", "1", "--fail-fast")
+	failFastResolveRecord := realStateDestructiveRecord(profile, dataset, failFastResolveResult, "resolve incident", "real-state-destructive-resolve-incident-fail-fast", "json", []string{"key", "no-wait", "workers", "fail-fast"}, []string{missingIncidentKey, incidents[7].IncidentKey}, false, true)
+	if err := validateRealStateResolveIncidentFailFast(t, profile, failFastResolveResult, incidents[7], missingIncidentKey); err != nil {
+		failFastResolveRecord.Outcome = realStateOutcomeFailed
+		failFastResolveRecord.FailureClass = volumeFailureProduct
+		failures = append(failures, fmt.Sprintf("real-state-destructive-resolve-incident-fail-fast: %v", err))
+	}
+	records = append(records, failFastResolveRecord)
 
 	if len(failures) > 0 {
 		return records, errors.New(strings.Join(failures, "\n"))
@@ -406,6 +463,112 @@ func validateRealStateOpsPurgeIncidentConfirmed(t *testing.T, profile integratio
 	return requireProcessInstanceAbsentEventually(t, profile, incident.ProcessInstanceKey, 60*time.Second)
 }
 
+func validateRealStateMalformedMixedRejected(t *testing.T, profile integrationProfile, result commandResult, validKey string) error {
+	t.Helper()
+	if err := validateRealStateErrorEnvelope(result, "invalid", "invalid_input", "not-a-key"); err != nil {
+		return err
+	}
+	return requireProcessInstanceState(t, profile, validKey, "ACTIVE")
+}
+
+func validateRealStateMissingMixedRejected(t *testing.T, profile integrationProfile, result commandResult, validKey string, missingKey string) error {
+	t.Helper()
+	if err := validateRealStateErrorEnvelope(result, "failed", "not_found", missingKey); err != nil {
+		return err
+	}
+	return requireProcessInstanceState(t, profile, validKey, "ACTIVE")
+}
+
+func validateRealStateAlreadyTerminatedDryRun(t *testing.T, profile integrationProfile, result commandResult, key string) error {
+	t.Helper()
+	if err := validateVolumeDeleteDryRunPayload(result); err != nil {
+		return err
+	}
+	var payload struct {
+		MutationSubmitted  bool `json:"mutationSubmitted"`
+		SelectedFinalState []struct {
+			Key   string `json:"key"`
+			State string `json:"state"`
+		} `json:"selectedFinalState"`
+		SelectedFinalStateCount int `json:"selectedFinalStateCount"`
+	}
+	if err := decodeCommandPayload(result.Stdout, &payload); err != nil {
+		return fmt.Errorf("decode already-terminated delete dry-run payload: %w", err)
+	}
+	if payload.MutationSubmitted {
+		return fmt.Errorf("already-terminated delete dry-run submitted mutation")
+	}
+	if payload.SelectedFinalStateCount < 1 {
+		return fmt.Errorf("already-terminated delete dry-run selectedFinalStateCount=%d, want >=1", payload.SelectedFinalStateCount)
+	}
+	for _, item := range payload.SelectedFinalState {
+		if item.Key == key && item.State == "TERMINATED" {
+			return requireProcessInstanceState(t, profile, key, "TERMINATED")
+		}
+	}
+	return fmt.Errorf("already-terminated delete dry-run missing final-state key %s: %q", key, compactLogSnippet(result.Stdout, 300))
+}
+
+func validateRealStateStaleDeletedRejected(result commandResult, key string) error {
+	return validateRealStateErrorEnvelope(result, "failed", "not_found", key)
+}
+
+func validateRealStateResolveIncidentPartialNoWait(result commandResult, validIncidentKey string, missingIncidentKey string) error {
+	if err := validateRealStateResolveIncidentPartialEnvelope(result, validIncidentKey, missingIncidentKey, 1, 1); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateRealStateResolveIncidentFailFast(t *testing.T, profile integrationProfile, result commandResult, unscheduledIncident realStateIncident, missingIncidentKey string) error {
+	t.Helper()
+	if err := validateRealStateResolveIncidentPartialEnvelope(result, "", missingIncidentKey, 0, 1); err != nil {
+		return err
+	}
+	if strings.Contains(result.Stdout, unscheduledIncident.IncidentKey) {
+		return fmt.Errorf("fail-fast output contains unscheduled incident key %s", unscheduledIncident.IncidentKey)
+	}
+	return requireRealStateActiveIncidentEventually(t, profile, unscheduledIncident.ProcessInstanceKey, true, 30*time.Second)
+}
+
+func validateRealStateResolveIncidentPartialEnvelope(result commandResult, validIncidentKey string, missingIncidentKey string, wantSubmitted int, wantFailed int) error {
+	if result.Err == nil {
+		return fmt.Errorf("resolve incident partial scenario unexpectedly succeeded")
+	}
+	if err := requireRealStateJSONStdoutClean(result, "resolve incident partial real-state"); err != nil {
+		return err
+	}
+	if err := requireVolumeEnvelopeOutcome(result.Stdout, "accepted"); err != nil {
+		return err
+	}
+	var payload struct {
+		Submitted         int  `json:"submitted"`
+		Failed            int  `json:"failed"`
+		MutationSubmitted bool `json:"mutationSubmitted"`
+		Items             []struct {
+			IncidentKey       string `json:"incidentKey"`
+			Status            string `json:"status"`
+			MutationSubmitted bool   `json:"mutationSubmitted"`
+		} `json:"items"`
+	}
+	if err := decodeCommandPayload(result.Stdout, &payload); err != nil {
+		return fmt.Errorf("decode resolve incident partial payload: %w", err)
+	}
+	if payload.Submitted != wantSubmitted || payload.Failed != wantFailed {
+		return fmt.Errorf("resolve incident partial submitted/failed=%d/%d, want %d/%d", payload.Submitted, payload.Failed, wantSubmitted, wantFailed)
+	}
+	if wantSubmitted > 0 && !payload.MutationSubmitted {
+		return fmt.Errorf("resolve incident partial mutationSubmitted=false, want true")
+	}
+	if validIncidentKey != "" && !resolveIncidentItemMatches(payload.Items, validIncidentKey, "submitted", true) {
+		return fmt.Errorf("resolve incident partial missing submitted valid incident %s: %q", validIncidentKey, compactLogSnippet(result.Stdout, 300))
+	}
+	if !resolveIncidentItemMatches(payload.Items, missingIncidentKey, "mutation_failed", false) {
+		return fmt.Errorf("resolve incident partial missing failed incident %s: %q", missingIncidentKey, compactLogSnippet(result.Stdout, 300))
+	}
+	return nil
+}
+
 func readRealStateOpsPurgeIncidentReport(path string) (realStateOpsPurgeIncidentReport, error) {
 	var report realStateOpsPurgeIncidentReport
 	if err := readVolumeOpsPurgeJSONReport(path, &report); err != nil {
@@ -424,6 +587,46 @@ type realStateOpsPurgeIncidentReport struct {
 		Submitted bool `json:"submitted"`
 		Confirmed bool `json:"confirmed"`
 	} `json:"deletion"`
+}
+
+func validateRealStateErrorEnvelope(result commandResult, wantOutcome string, wantClass string, wantMessageContains string) error {
+	if result.Err == nil {
+		return fmt.Errorf("expected command failure")
+	}
+	if err := requireRealStateJSONStdoutClean(result, "real-state expected error"); err != nil {
+		return err
+	}
+	var envelope struct {
+		Outcome string `json:"outcome"`
+		Class   string `json:"class"`
+		Detail  struct {
+			Message string `json:"message"`
+			Class   string `json:"class"`
+		} `json:"detail"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(result.Stdout)), &envelope); err != nil {
+		return fmt.Errorf("decode error envelope: %w", err)
+	}
+	if envelope.Outcome != wantOutcome || envelope.Class != wantClass || envelope.Detail.Class != wantClass {
+		return fmt.Errorf("error envelope outcome/class/detail=%q/%q/%q, want %q/%q/%q", envelope.Outcome, envelope.Class, envelope.Detail.Class, wantOutcome, wantClass, wantClass)
+	}
+	if !strings.Contains(envelope.Detail.Message, wantMessageContains) {
+		return fmt.Errorf("error envelope message does not contain %q: %q", wantMessageContains, envelope.Detail.Message)
+	}
+	return nil
+}
+
+func resolveIncidentItemMatches(items []struct {
+	IncidentKey       string `json:"incidentKey"`
+	Status            string `json:"status"`
+	MutationSubmitted bool   `json:"mutationSubmitted"`
+}, key string, status string, mutationSubmitted bool) bool {
+	for _, item := range items {
+		if item.IncidentKey == key && item.Status == status && item.MutationSubmitted == mutationSubmitted {
+			return true
+		}
+	}
+	return false
 }
 
 func requireRealStateActiveIncidentEventually(t *testing.T, profile integrationProfile, piKey string, wantIncident bool, timeout time.Duration) error {
@@ -468,6 +671,14 @@ func requireProcessInstanceAbsentEventually(t *testing.T, profile integrationPro
 		}
 		time.Sleep(2 * time.Second)
 	}
+}
+
+func realStateMissingProcessInstanceKey() string {
+	return "1000000000000001"
+}
+
+func realStateMissingIncidentKey() string {
+	return "1000000000000002"
 }
 
 func firstNRealStateIncidents(values []realStateIncident, count int) []realStateIncident {

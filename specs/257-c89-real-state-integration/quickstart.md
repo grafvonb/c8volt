@@ -123,7 +123,8 @@ Expected outcome:
 - the destructive target creates active suite-owned process instances and incident-bearing process instances, then proves cancel/delete dry-run safety and confirmed post-state
 - incident-selected purge proves exact `--inc-key` frozen selection, dry-run safety, confirmed report parity, and absent post-state for the suite-owned target
 - resolve scenarios prove dry-run and confirmed submission on real self-recreating incidents; durable incident clearing is asserted through `ops repair` because the current embedded model recreates a resolution-only incident
-- remaining process-definition purge, orphan purge, durable standalone resolve, and mixed valid, missing, malformed, stale, or already-mutated target behavior stays tracked in `gaps.md` and `coverage-matrix.md`
+- mixed-target scenarios prove malformed and missing process-instance inputs fail before mutation, stale deleted targets report not found, already-terminated targets stay dry-run safe, and `resolve incident` keeps JSON machine output clean for partial and fail-fast no-wait failures
+- remaining process-definition purge, orphan purge, durable standalone resolve, and ops repair-specific mixed failure behavior stays tracked in `gaps.md` and `coverage-matrix.md`
 - ops report evidence agrees with stdout outcomes for the implemented retention, repair, and incident-selected purge slices
 
 ## Normal Validation

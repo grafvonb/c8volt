@@ -269,3 +269,33 @@
 - `ops purge process-instances-with-incidents --inc-key` now freezes the suite-owned incident and process instance before deletion, preventing unrelated dirty data from satisfying the test.
 - The current `C89_SimpleUserTaskWithIncident.bpmn` incident is self-recreating after a resolution-only command; durable clearing is correctly proven through `ops repair` after changing `hasIncident`.
 ---
+## Iteration 9 - 2026-07-26
+**Work Unit**: Real-state mixed-target and fail-fast destructive coverage
+**Tasks Completed**:
+- [x] T053: Implement mixed valid, missing, malformed, stale, and already-mutated target sets in `integration/cli/real_state_destructive_test.go`
+- [x] T054: Add fail-fast, partial-failure accounting, and machine-output cleanliness assertions for destructive mixed scenarios
+**Tasks Remaining in Work Unit**: 0
+**Commit**: Pending
+**Files Changed**:
+- cmd/cmd_views_contract.go
+- cmd/resolve_incident.go
+- cmd/resolve_incident_test.go
+- integration/cli/real_state_destructive_test.go
+- specs/257-c89-real-state-integration/coverage-matrix.md
+- specs/257-c89-real-state-integration/quickstart.md
+- specs/257-c89-real-state-integration/ralph-memory.md
+- specs/257-c89-real-state-integration/tasks.md
+- specs/257-c89-real-state-integration/progress.md
+**Validation**:
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestResolveIncidentCommand' -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
+- `make integration-cli-real-state-destructive IT_REAL_STATE_TIMEOUT=90m`
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./integration/cli -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test ./... -count=1`
+- `make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m` (captured in `/tmp/c8volt-257-destructive-verbose.log`)
+**Learnings**:
+- Mixed process-instance cancel/delete paths correctly fail missing or malformed targets before mutation, so the suite asserts retained valid-key state rather than expecting partial mutation.
+- `resolve incident --no-wait` gives real partial accounting for one submitted incident and one valid-shaped missing incident.
+- The real partial path exposed duplicate JSON envelopes on failure; `resolve incident` now exits with the mapped failure code after rendering the partial result envelope once.
+---

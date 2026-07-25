@@ -132,14 +132,14 @@
 - [x] T050 [US3] Add `ops execute retention-policy` dry-run and confirmed execution assertions with retained, deleted, or cleanup-failed evidence in `integration/cli/real_state_retention_test.go`
 - [x] T051 [US3] Implement real purge candidate setup for incident-selected process instances in `integration/cli/real_state_destructive_test.go`; process-definition and orphan purge candidates remain tracked in `gaps.md`
 - [x] T052 [US3] Add dry-run non-mutation and confirmed post-state assertions for incident purge, delete, cancel, resolve command submission, and ops repair commands in `integration/cli/real_state_destructive_test.go`
-- [ ] T053 [US3] Implement mixed valid, missing, malformed, stale, and already-mutated target sets in `integration/cli/real_state_destructive_test.go`
-- [ ] T054 [US3] Add fail-fast, partial-failure accounting, and machine-output cleanliness assertions for command stdout and ops reports in `integration/cli/real_state_destructive_test.go`
+- [x] T053 [US3] Implement mixed valid, missing, malformed, stale, and already-mutated target sets in `integration/cli/real_state_destructive_test.go`
+- [x] T054 [US3] Add fail-fast, partial-failure accounting, and machine-output cleanliness assertions for command stdout and ops reports in `integration/cli/real_state_destructive_test.go`
 - [x] T055 [US3] Reuse or extend ops report parity checks for real-state reports in `integration/cli/real_state_destructive_test.go`
 - [x] T056 [US3] Update `gaps.md` for retention, purge, orphan, repair, or partial-failure prerequisites that still cannot be created through c8volt
 - [x] T057 [US3] Update retention and destructive rows to current statuses in `specs/257-c89-real-state-integration/coverage-matrix.md`
 - [x] T058 [US3] Validate User Story 3 with `make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m` and `make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m` documented in `specs/257-c89-real-state-integration/quickstart.md`
 
-**Checkpoint**: User Story 3 now proves destructive real-candidate semantics, dry-run safety, confirmed outcomes, and ops report parity for the covered retention, repair, and incident-purge slices. Mixed-target partial failure reporting remains open in T053/T054.
+**Checkpoint**: User Story 3 now proves destructive real-candidate semantics, dry-run safety, confirmed outcomes, mixed-target failure handling, fail-fast behavior, machine-output cleanliness, and ops report parity for the covered retention, repair, and incident-purge slices.
 
 ---
 
