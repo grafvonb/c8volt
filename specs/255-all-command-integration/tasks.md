@@ -193,20 +193,20 @@
 
 ### Tests for User Story 6
 
-- [ ] T074 [P] [US6] Add failing help example extraction test in `integration/cli/examples_test.go`
-- [ ] T075 [P] [US6] Add failing generated CLI docs example extraction test in `integration/cli/examples_test.go`
-- [ ] T076 [P] [US6] Add failing placeholder substitution test in `integration/cli/examples_test.go`
-- [ ] T077 [P] [US6] Add failing destructive-warning detection test in `integration/cli/examples_test.go`
+- [x] T074 [P] [US6] Add failing help example extraction test in `integration/cli/examples_test.go`
+- [x] T075 [P] [US6] Add failing generated CLI docs example extraction test in `integration/cli/examples_test.go`
+- [x] T076 [P] [US6] Add failing placeholder substitution test in `integration/cli/examples_test.go`
+- [x] T077 [P] [US6] Add failing destructive-warning detection test in `integration/cli/examples_test.go`
 
 ### Implementation for User Story 6
 
-- [ ] T078 [US6] Implement command help example extraction and normalization in `integration/cli/examples_test.go`
-- [ ] T079 [US6] Implement generated `docs/cli/*.md` example extraction without editing generated docs in `integration/cli/examples_test.go`
-- [ ] T080 [US6] Implement placeholder substitution from seeded data and embedded fixture evidence in `integration/cli/examples_test.go`
-- [ ] T081 [US6] Implement read-only and disposable-target example execution in `integration/cli/examples_test.go`
-- [ ] T082 [US6] Implement destructive-warning validation and source-location reporting in `integration/cli/examples_test.go`
-- [ ] T083 [US6] Write `examples.json` evidence with pass/fail/source-location details in `integration/cli/examples_test.go`
-- [ ] T084 [US6] Verify with `go test -tags=integration ./integration/cli -run TestExamples -count=1 -timeout=20m`
+- [x] T078 [US6] Implement command help example extraction and normalization in `integration/cli/examples_test.go`
+- [x] T079 [US6] Implement generated `docs/cli/*.md` example extraction without editing generated docs in `integration/cli/examples_test.go`
+- [x] T080 [US6] Implement placeholder substitution from seeded data and embedded fixture evidence in `integration/cli/examples_test.go`
+- [x] T081 [US6] Implement read-only and disposable-target example execution in `integration/cli/examples_test.go`
+- [x] T082 [US6] Implement destructive-warning validation and source-location reporting in `integration/cli/examples_test.go`
+- [x] T083 [US6] Write `examples.json` evidence with pass/fail/source-location details in `integration/cli/examples_test.go`
+- [x] T084 [US6] Verify with `go test -tags=integration ./integration/cli -run TestExamples -count=1 -timeout=20m`
 
 **Checkpoint**: User Story 6 is complete when examples are validated and unsafe mutating examples cannot pass without warnings.
 

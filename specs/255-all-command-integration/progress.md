@@ -158,3 +158,27 @@
 **Learnings**:
 - Proposal reports are harness evidence generated from per-family setup-gap declarations and nil proposal slices must persist as empty JSON arrays.
 ---
+## Iteration 5 - 2026-07-25 09:08
+**Work Unit**: US6 Validate Help And Example Trustworthiness
+**Tasks Completed**:
+- [x] T074: Add help example extraction test
+- [x] T075: Add generated CLI docs example extraction test
+- [x] T076: Add placeholder substitution test
+- [x] T077: Add destructive-warning detection test
+- [x] T078: Implement command help example extraction and normalization
+- [x] T079: Implement generated `docs/cli/*.md` example extraction without editing generated docs
+- [x] T080: Implement placeholder substitution from seeded data and embedded fixture evidence
+- [x] T081: Implement read-only and disposable-target example execution
+- [x] T082: Implement destructive-warning validation and source-location reporting
+- [x] T083: Write `examples.json` evidence with pass/fail/source-location details
+- [x] T084: Verify with `TestExamples`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- integration/cli/examples_test.go
+- specs/255-all-command-integration/tasks.md
+- specs/255-all-command-integration/ralph-memory.md
+- specs/255-all-command-integration/progress.md
+**Learnings**:
+- Example validation needs blocked/actionable evidence for documentation profiles, explicit config, pipelines, unresolved placeholders, and non-suite-owned demo selectors instead of attempting unsafe execution.
+---
