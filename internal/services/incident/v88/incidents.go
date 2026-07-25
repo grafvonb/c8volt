@@ -236,6 +236,9 @@ func filterIncidentResults(key string, tenant string, state string, errorType st
 func filterIncidentSearchResults(filter d.IncidentFilter, tenant string, items []camundav88.IncidentResult) []d.ProcessInstanceIncidentDetail {
 	out := make([]d.ProcessInstanceIncidentDetail, 0, len(items))
 	for _, item := range items {
+		if !incidentKeyMatches(filter.Keys, item.IncidentKey) {
+			continue
+		}
 		if tenant != "" && item.TenantId != tenant {
 			continue
 		}
@@ -357,7 +360,8 @@ func parseIncidentTimestamp(raw string) (time.Time, bool) {
 
 func incidentLocalFilteringRequired(filter d.IncidentFilter) bool {
 	state, _ := incidentfilter.NormalizeState(filter.State)
-	return state != "all" ||
+	return len(filter.Keys) > 0 ||
+		state != "all" ||
 		filter.ErrorType != "" ||
 		filter.ErrorMessage != "" ||
 		filter.ProcessInstanceKey != "" ||
@@ -368,6 +372,18 @@ func incidentLocalFilteringRequired(filter d.IncidentFilter) bool {
 		filter.ElementInstanceKey != "" ||
 		filter.CreationTimeAfter != "" ||
 		filter.CreationTimeBefore != ""
+}
+
+func incidentKeyMatches(keys []string, got string) bool {
+	if len(keys) == 0 {
+		return true
+	}
+	for _, key := range keys {
+		if key == got {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) searchProcessInstanceIncidentsPages(ctx context.Context, key string, tenant string, callCfg *services.CallCfg) ([]d.ProcessInstanceIncidentDetail, error) {

@@ -287,6 +287,10 @@ func TestSearchIncidentsPageUsesServerFiltersAndLocalMessageFiltering(t *testing
 			errorType, err := body.Filter.ErrorType.AsIncidentErrorTypeFilterProperty0()
 			require.NoError(t, err)
 			require.Equal(t, camundav89.IncidentErrorTypeEnumIOMAPPINGERROR, errorType)
+			incidentKey, err := body.Filter.IncidentKey.AsBasicStringFilter()
+			require.NoError(t, err)
+			require.NotNil(t, incidentKey.In)
+			require.Equal(t, []string{"match", "other-match"}, *incidentKey.In)
 			processInstanceKey, err := body.Filter.ProcessInstanceKey.AsProcessInstanceKeyFilterProperty0()
 			require.NoError(t, err)
 			require.Equal(t, camundav89.ProcessInstanceKey("pi-a"), processInstanceKey)
@@ -324,6 +328,7 @@ func TestSearchIncidentsPageUsesServerFiltersAndLocalMessageFiltering(t *testing
 				JSON200: &camundav89.IncidentSearchQueryResult{
 					Items: []camundav89.IncidentResult{
 						{IncidentKey: "match", ProcessInstanceKey: "pi-a", State: camundav89.IncidentStateEnumRESOLVED, ErrorType: camundav89.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "INTENTIONAL failure", RootProcessInstanceKey: &rootKey},
+						{IncidentKey: "skip-key", ProcessInstanceKey: "pi-a", State: camundav89.IncidentStateEnumRESOLVED, ErrorType: camundav89.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "INTENTIONAL failure", RootProcessInstanceKey: &rootKey},
 						{IncidentKey: "skip-message", ProcessInstanceKey: "pi-a", State: camundav89.IncidentStateEnumRESOLVED, ErrorType: camundav89.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "other failure", RootProcessInstanceKey: &rootKey},
 					},
 					Page: camundav89.SearchQueryPageResponse{TotalItems: 2},
@@ -333,6 +338,7 @@ func TestSearchIncidentsPageUsesServerFiltersAndLocalMessageFiltering(t *testing
 	})
 
 	got, err := svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{
+		Keys:                   []string{"match", "other-match"},
 		State:                  "resolved",
 		ErrorType:              "io_mapping_error",
 		ErrorMessage:           "intentional",

@@ -312,6 +312,7 @@ func TestSearchIncidentsPageUsesTopLevelEndpointAndLocalCompatibilityFilters(t *
 					Items: []camundav88.IncidentResult{
 						{IncidentKey: "skip-state", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumACTIVE, ErrorType: camundav88.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "intentional", ElementId: "task-a", ElementInstanceKey: "fni-a", CreationTime: createdAt, RootProcessInstanceKey: &rootKey, ProcessDefinitionKey: "pd-key", ProcessDefinitionId: "pd-id"},
 						{IncidentKey: "match", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumRESOLVED, ErrorType: camundav88.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "Intentional failure", ElementId: "task-a", ElementInstanceKey: "fni-a", CreationTime: createdAt, RootProcessInstanceKey: &rootKey, ProcessDefinitionKey: "pd-key", ProcessDefinitionId: "pd-id"},
+						{IncidentKey: "skip-key", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumRESOLVED, ErrorType: camundav88.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "Intentional failure", ElementId: "task-a", ElementInstanceKey: "fni-a", CreationTime: createdAt, RootProcessInstanceKey: &rootKey, ProcessDefinitionKey: "pd-key", ProcessDefinitionId: "pd-id"},
 						{IncidentKey: "skip-root", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumRESOLVED, ErrorType: camundav88.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "Intentional failure", ElementId: "task-a", ElementInstanceKey: "fni-a", CreationTime: createdAt, RootProcessInstanceKey: &otherRoot, ProcessDefinitionKey: "pd-key", ProcessDefinitionId: "pd-id"},
 					},
 					Page: camundav88.SearchQueryPageResponse{TotalItems: 3},
@@ -321,6 +322,7 @@ func TestSearchIncidentsPageUsesTopLevelEndpointAndLocalCompatibilityFilters(t *
 	})
 
 	got, err := svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{
+		Keys:                   []string{"match"},
 		State:                  "resolved",
 		ErrorType:              "io_mapping_error",
 		ErrorMessage:           "intentional",

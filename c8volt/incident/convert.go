@@ -37,6 +37,7 @@ func fromDomainIncidentDetails(xs []d.ProcessInstanceIncidentDetail) []ProcessIn
 
 func toDomainFilter(x Filter) d.IncidentFilter {
 	return d.IncidentFilter{
+		Keys:                   append([]string(nil), x.Keys...),
 		State:                  x.State,
 		ErrorType:              x.ErrorType,
 		ErrorMessage:           x.ErrorMessage,

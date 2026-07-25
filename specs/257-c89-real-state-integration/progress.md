@@ -204,6 +204,7 @@
 **Validation**:
 - `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
+- `GOCACHE=/tmp/c8volt-gocache go test ./... -count=1`
 - `make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m`
 - `make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m`
 **Learnings**:
@@ -230,4 +231,41 @@
 - `make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m`
 **Learnings**:
 - Confirmed retention can be tested without explicit-key selection by validating the JSON report's frozen seed, root, and affected keys, then verifying the reported affected key is absent.
+---
+## Iteration 8 - 2026-07-26
+**Work Unit**: Real-state destructive incident purge and repair slice
+**Tasks Completed**:
+- [x] T051: Implement incident-selected real purge candidate setup and track remaining process-definition/orphan prerequisites in `gaps.md`
+- [x] T052: Add dry-run and confirmed real-state assertions for cancel, delete, resolve submission, ops repair, and incident-selected purge
+- [x] T055: Extend real-state ops report parity to ops repair and incident-selected purge
+- [x] T056: Update `gaps.md` for remaining purge, resolve, and mixed-failure prerequisites
+- [x] T057: Update `coverage-matrix.md` for current destructive and retention statuses
+- [x] T058: Validate User Story 3 with the documented retention and destructive live targets
+**Tasks Remaining in Work Unit**: 0
+**Commit**: Pending
+**Files Changed**:
+- c8volt/incident/convert.go
+- c8volt/incident/client_test.go
+- internal/services/incident/v88/incidents.go
+- internal/services/incident/v88/incidents_test.go
+- internal/services/incident/v89/convert.go
+- internal/services/incident/v89/incidents.go
+- internal/services/incident/v89/incidents_test.go
+- integration/cli/real_state_destructive_test.go
+- specs/257-c89-real-state-integration/coverage-matrix.md
+- specs/257-c89-real-state-integration/gaps.md
+- specs/257-c89-real-state-integration/quickstart.md
+- specs/257-c89-real-state-integration/ralph-memory.md
+- specs/257-c89-real-state-integration/tasks.md
+- specs/257-c89-real-state-integration/progress.md
+**Validation**:
+- `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/incident ./internal/services/incident/v88 ./internal/services/incident/v89 -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
+- `make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m`
+- `make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m`
+**Learnings**:
+- Dirty-cluster coverage exposed an incident-key selection bug: public `incident.Filter.Keys` was not mapped into the domain filter, and adapter local filtering did not guard explicit incident keys.
+- `ops purge process-instances-with-incidents --inc-key` now freezes the suite-owned incident and process instance before deletion, preventing unrelated dirty data from satisfying the test.
+- The current `C89_SimpleUserTaskWithIncident.bpmn` incident is self-recreating after a resolution-only command; durable clearing is correctly proven through `ops repair` after changing `hasIncident`.
 ---

@@ -120,9 +120,11 @@ make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TI
 Expected outcome:
 
 - the retention target creates fresh completed suite-owned process instances, finds non-empty `ops execute retention-policy --retention-days 0` candidate sets, proves dry-run leaves candidates completed, and proves confirmed deletion makes report-frozen keys absent
-- the destructive target creates active suite-owned process instances and proves cancel/delete dry-run safety plus confirmed cancel/delete post-state
-- remaining confirmed retention, purge, resolve, repair, and mixed valid, missing, malformed, stale, or already-mutated target behavior stays tracked in `gaps.md` and `coverage-matrix.md`
-- ops report evidence agrees with stdout outcomes for the implemented retention dry-run and confirmed slices
+- the destructive target creates active suite-owned process instances and incident-bearing process instances, then proves cancel/delete dry-run safety and confirmed post-state
+- incident-selected purge proves exact `--inc-key` frozen selection, dry-run safety, confirmed report parity, and absent post-state for the suite-owned target
+- resolve scenarios prove dry-run and confirmed submission on real self-recreating incidents; durable incident clearing is asserted through `ops repair` because the current embedded model recreates a resolution-only incident
+- remaining process-definition purge, orphan purge, durable standalone resolve, and mixed valid, missing, malformed, stale, or already-mutated target behavior stays tracked in `gaps.md` and `coverage-matrix.md`
+- ops report evidence agrees with stdout outcomes for the implemented retention, repair, and incident-selected purge slices
 
 ## Normal Validation
 

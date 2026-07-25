@@ -32,6 +32,7 @@ func TestClient_GetIncidentAndSearchIncidentsMapServiceBoundary(t *testing.T) {
 		},
 		searchIncidents: func(_ context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 			assert.Equal(t, d.IncidentFilter{
+				Keys:                   []string{"incident-b"},
 				State:                  "active",
 				ErrorType:              "IO_MAPPING_ERROR",
 				ProcessInstanceKey:     "pi-a",
@@ -51,6 +52,7 @@ func TestClient_GetIncidentAndSearchIncidentsMapServiceBoundary(t *testing.T) {
 	gotIncident, err := cli.GetIncident(ctx, "incident-a", options.WithVerbose())
 	require.NoError(t, err)
 	gotSearch, err := cli.SearchIncidents(ctx, Filter{
+		Keys:                   []string{"incident-b"},
 		State:                  "active",
 		ErrorType:              "IO_MAPPING_ERROR",
 		ProcessInstanceKey:     "pi-a",

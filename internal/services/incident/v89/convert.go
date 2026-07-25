@@ -41,6 +41,27 @@ func newStringEqFilterPtr(v string) (*camundav89.StringFilterProperty, error) {
 	return new(f), nil
 }
 
+// newBasicStringInFilterPtr builds a v8.9 basic string filter for one or more keys.
+func newBasicStringInFilterPtr(values []string) (*camundav89.BasicStringFilterProperty, error) {
+	switch len(values) {
+	case 0:
+		return nil, nil
+	case 1:
+		var f camundav89.BasicStringFilterProperty
+		if err := f.FromBasicStringFilterProperty0(values[0]); err != nil {
+			return nil, err
+		}
+		return new(f), nil
+	default:
+		copied := append([]string(nil), values...)
+		var f camundav89.BasicStringFilterProperty
+		if err := f.FromBasicStringFilter(camundav89.BasicStringFilter{In: &copied}); err != nil {
+			return nil, err
+		}
+		return new(f), nil
+	}
+}
+
 // newIncidentStateEqFilterPtr builds a v8.9 incident state equality filter.
 func newIncidentStateEqFilterPtr(v camundav89.IncidentStateEnum) (*camundav89.IncidentStateFilterProperty, error) {
 	var f camundav89.IncidentStateFilterProperty
