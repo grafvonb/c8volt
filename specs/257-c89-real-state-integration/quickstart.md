@@ -31,9 +31,11 @@ Expected outcome:
 The initial scaffolding adds reserved Make targets and non-live helper checks.
 Before a real-state family target is implemented, reserved Make targets fail
 with a clear not-implemented message instead of producing a false pass. The
-jobs, incidents, listeners, and BPMN error targets are implemented; gap
-validation, retention, and destructive targets remain reserved until their
-family tests are added.
+jobs, incidents, listeners, BPMN error, retention, and destructive targets are
+implemented; gap validation remains reserved until its family test is added.
+Retention and destructive targets are incremental User Story 3 slices and
+remain partial until purge, resolve, repair, and mixed-failure scenarios are
+added.
 
 Validate the initial scaffolding:
 
@@ -117,10 +119,10 @@ make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TI
 
 Expected outcome:
 
-- dry-run scenarios prove no mutation of scoped suite-owned candidates
-- confirmed destructive scenarios verify deletion, cancellation, resolve, repair, purge, retained, cleanup-failed, or no-wait state
-- mixed valid, missing, malformed, stale, and already-mutated targets produce clear partial-failure or fail-fast evidence
-- ops report evidence agrees with stdout outcomes
+- the retention target creates fresh completed suite-owned process instances, finds a non-empty `ops execute retention-policy --retention-days 0 --dry-run` candidate set, and leaves them completed
+- the destructive target creates active suite-owned process instances and proves cancel/delete dry-run safety plus confirmed cancel/delete post-state
+- remaining confirmed retention, purge, resolve, repair, and mixed valid, missing, malformed, stale, or already-mutated target behavior stays tracked in `gaps.md` and `coverage-matrix.md`
+- ops report evidence agrees with stdout outcomes for the implemented retention dry-run slice
 
 ## Normal Validation
 

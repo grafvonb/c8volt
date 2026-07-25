@@ -206,13 +206,11 @@ integration-cli-real-state-listeners: ## Run destructive C89 real-state integrat
 integration-cli-real-state-bpmn-error: ## Run destructive C89 real-state integration tests for BPMN error job state.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateBPMNErrorFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-retention: ## Reserved for C89 real-state retention integration tests.
-	@echo "integration-cli-real-state-retention is reserved for feature 257 and is not implemented yet."
-	@false
+integration-cli-real-state-retention: ## Run destructive C89 real-state integration tests for retention semantics.
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateRetentionFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-destructive: ## Reserved for C89 real-state destructive integration tests.
-	@echo "integration-cli-real-state-destructive is reserved for feature 257 and is not implemented yet."
-	@false
+integration-cli-real-state-destructive: ## Run destructive C89 real-state integration tests for destructive post-state semantics.
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateDestructiveFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)
 
 integration-cli-walk: ## Run destructive CLI integration tests for walk commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestWalkFamily -count=1 -timeout=$(IT_TIMEOUT)

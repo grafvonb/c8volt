@@ -118,12 +118,12 @@ with a clear not-implemented message instead of reporting a false pass.
 Real-state targets are a separate Camunda 8.9 foundation layer. They are more
 specific than volume targets: they must prove actual jobs, incidents with
 related jobs, listener state, BPMN error jobs, retention candidates, destructive
-post-state, mixed failures, and proposal aggregation against real cluster state.
+post-state, mixed failures, and gap-boundary tracking against real cluster state.
 The target names are reserved first so scripts can depend on the stable entry
 points while each slice is implemented:
 
 ```sh
-make integration-cli-real-state-proposals IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v
 make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v
 make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v
 make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v
@@ -134,9 +134,12 @@ make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TI
 
 Until a target's matching `TestRealState*Family` scenario is implemented, its
 Make target exits with a clear not-implemented message rather than reporting a
-false pass. Real-state targets are destructive and must only be run against
-disposable Camunda 8.9 clusters selected from the default local c8volt
-configuration.
+false pass. The retention and destructive targets currently cover the first
+User Story 3 slice: fresh completed retention dry-run evidence and confirmed
+cancel/delete post-state. Remaining purge, resolve, repair, confirmed-retention, and
+mixed-failure branches stay visible in `specs/257-c89-real-state-integration/`.
+Real-state targets are destructive and must only be run against disposable
+Camunda 8.9 clusters selected from the default local c8volt configuration.
 
 Pass extra `go test` flags with `IT_GO_TEST_FLAGS`. For example, use `-v`
 when you want scenario-level command logs in addition to the evidence files.

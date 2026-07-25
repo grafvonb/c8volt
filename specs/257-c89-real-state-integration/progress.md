@@ -111,7 +111,7 @@
 - [x] T038: Add feature-local real-state gap tracking in `specs/257-c89-real-state-integration/gaps.md`
 - [x] T044: Mark inherited 255 and 256 generated proposal JSON as deprecated for future integration work
 **Tasks Remaining in Work Unit**: 0
-**Commit**: Pending
+**Commit**: This work-unit commit
 **Files Changed**:
 - specs/integration-test-responsibility.md
 - specs/255-all-command-integration/contracts/evidence-reporting.md
@@ -181,4 +181,32 @@
 - Real-state runtime reports now list only real-state family, data, progress, and ops evidence files for the corrected families.
 - BPMN-error dry-run remains useful real integration evidence because it uses a real suite-owned job and verifies unchanged job state afterward.
 - Confirmed BPMN-error mutation should not be attempted until the missing catchable BPMN fixture and setup path from `gaps.md` exist.
+---
+## Iteration 6 - 2026-07-25
+**Work Unit**: User Story 3 first retention/destructive slice
+**Tasks Completed**:
+- [x] T046: Add `TestRealStateRetentionFamily` in `integration/cli/real_state_retention_test.go`
+- [x] T047: Add `TestRealStateDestructiveFamily` in `integration/cli/real_state_destructive_test.go`
+- [x] T048: Wire `integration-cli-real-state-retention` and `integration-cli-real-state-destructive` in `Makefile`
+- [x] T049: Implement deterministic fresh completed process-instance setup for retention scenarios
+**Tasks Remaining in Work Unit**: 0
+**Commit**: Pending
+**Files Changed**:
+- Makefile
+- integration/README.md
+- integration/cli/real_state_retention_test.go
+- integration/cli/real_state_destructive_test.go
+- specs/257-c89-real-state-integration/coverage-matrix.md
+- specs/257-c89-real-state-integration/quickstart.md
+- specs/257-c89-real-state-integration/tasks.md
+- specs/257-c89-real-state-integration/ralph-memory.md
+- specs/257-c89-real-state-integration/progress.md
+**Validation**:
+- `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
+- `make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m`
+- `make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m`
+**Learnings**:
+- `C89_NoOpCompletion.bpmn` is enough to create completed suite-owned instances, and `--retention-days 0` produces a real non-empty retention candidate set without waiting for aged data.
+- Cancel/delete can already be proven on real active suite-owned process instances with explicit-key dry-runs and confirmed post-state checks.
 ---

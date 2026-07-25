@@ -28,4 +28,6 @@
 - `walk process-instance` rejects `--automation`; listener JSON traversal scenarios must use `--json` without `--automation`.
 - BPMN error coverage is dry-run-covered: `update job --throw-bpmn-error ErrorTimerCode --dry-run` produces a clean plan and follow-up `get job --key` proves the job remains unchanged. Confirmed BPMN error mutation is recorded as skipped-prerequisite runtime evidence and the missing embedded catchable BPMN error fixture plus c8volt setup path are tracked in `gaps.md`.
 - `integration-cli-real-state-proposals` has been renamed to reserved `integration-cli-real-state-gaps`; User Story 4 later wires that target to `TestRealStateGapFamily`.
-- Next iteration can start destructive User Story 3 at T046/T047.
+- User Story 3 has started with retention and destructive target entry points.
+- `integration-cli-real-state-retention` creates fresh completed `C89_NoOpCompletion.bpmn` instances and proves non-empty retention dry-run/report behavior with `--retention-days 0` plus unchanged completed state. Confirmed deletion remains open for the next retention slice.
+- `integration-cli-real-state-destructive` creates active `C89_SimpleUserTask.bpmn` instances and proves cancel/delete dry-run safety plus confirmed cancel/delete post-state. Purge, resolve, repair, and mixed failure branches remain open.
