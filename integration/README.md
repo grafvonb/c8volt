@@ -132,12 +132,14 @@ make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIME
 make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
 ```
 
-Until a target's matching `TestRealState*Family` scenario is implemented, its
-Make target exits with a clear not-implemented message rather than reporting a
-false pass. The retention and destructive targets currently cover the first
-User Story 3 slice: fresh completed retention dry-run evidence and confirmed
-cancel/delete post-state. Remaining purge, resolve, repair, confirmed-retention, and
-mixed-failure branches stay visible in `specs/257-c89-real-state-integration/`.
+The gaps target is non-destructive and validates that `gaps.md` plus the
+coverage matrix keep missing setup and fixture prerequisites in spec-owned
+artifacts. Other real-state targets create or discover suite-owned data and now
+cover jobs, incidents, listener state, BPMN error dry-runs, retention,
+destructive post-state, incident-selected purge, repair, and mixed-failure
+branches. Remaining process-definition purge, orphan purge, durable standalone
+resolve, and repair-specific mixed-failure branches stay visible in
+`specs/257-c89-real-state-integration/`.
 Real-state targets are destructive and must only be run against disposable
 Camunda 8.9 clusters selected from the default local c8volt configuration.
 

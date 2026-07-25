@@ -190,9 +190,8 @@ integration-cli-ops-purge-volume: ## Run destructive volume CLI integration test
 integration-cli-ops-repair-volume: ## Run destructive volume CLI integration tests for ops repair commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeOpsRepairFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-real-state-gaps: ## Reserved for C89 real-state gap validation.
-	@echo "integration-cli-real-state-gaps is reserved for feature 257 and is not implemented yet."
-	@false
+integration-cli-real-state-gaps: ## Run non-destructive C89 real-state gap and matrix validation.
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateGapFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)
 
 integration-cli-real-state-jobs: ## Run destructive C89 real-state integration tests for jobs.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateJobsFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)

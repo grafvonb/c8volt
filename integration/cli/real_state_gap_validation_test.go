@@ -12,33 +12,241 @@ import (
 	"testing"
 )
 
-// TestRealStateGapArtifactDocumentsCurrentPrerequisites keeps real-state gap
-// tracking in specs instead of runtime-generated proposal evidence.
+// TestRealStateGapFamily keeps real-state planning gaps in specs instead of
+// runtime-generated proposal evidence.
+func TestRealStateGapFamily(t *testing.T) {
+	t.Run("gap artifact", validateRealStateGapArtifact)
+	t.Run("coverage matrix", validateRealStateCoverageMatrix)
+}
+
+// TestRealStateGapArtifactDocumentsCurrentPrerequisites keeps the older focused
+// helper name available for direct compile-time validation commands.
 func TestRealStateGapArtifactDocumentsCurrentPrerequisites(t *testing.T) {
-	path := filepath.Join(suite.repoRoot, "specs", "257-c89-real-state-integration", "gaps.md")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read real-state gap artifact: %v", err)
-	}
-	content := string(data)
-	required := []string{
+	validateRealStateGapArtifact(t)
+}
+
+func validateRealStateGapArtifact(t *testing.T) {
+	t.Helper()
+	content := readRealStateSpecArtifact(t, "gaps.md")
+	rejectRuntimeProposalArtifactReferences(t, "gaps.md", content)
+
+	table := requireMarkdownTable(t, content, []string{
+		"Topic",
+		"Gap Type",
+		"Required State Or Capability",
+		"Blocked Proof",
+		"Affected Commands",
+		"Runtime Behavior Until Closed",
+		"Affected Versions",
+	})
+	requiredTopics := []string{
 		"Job timeout mutation",
 		"BPMN error mutation",
 		"BPMN error setup",
 		"Listener variants",
-		"Deterministic retention",
-		"Purge and delete candidates",
+		"Process-definition and orphan purge candidates",
+		"Durable standalone resolve candidate",
 		"Repair partial failures",
 		"Expect state-only identity",
-		"Runtime Behavior Until Closed",
-		realStateTargetVersion,
 	}
-	for _, want := range required {
-		if !strings.Contains(content, want) {
-			t.Fatalf("gaps.md missing %q", want)
+	rowsByTopic := mapRowsByColumn(t, table, "Topic")
+	for _, topic := range requiredTopics {
+		row, ok := rowsByTopic[topic]
+		if !ok {
+			t.Fatalf("gaps.md missing topic %q", topic)
+		}
+		requireNonEmptyMarkdownCell(t, topic, row, "Gap Type")
+		requireNonEmptyMarkdownCell(t, topic, row, "Required State Or Capability")
+		requireNonEmptyMarkdownCell(t, topic, row, "Blocked Proof")
+		requireNonEmptyMarkdownCell(t, topic, row, "Affected Commands")
+		requireNonEmptyMarkdownCell(t, topic, row, "Runtime Behavior Until Closed")
+		if !strings.Contains(row["Affected Versions"], realStateTargetVersion) {
+			t.Fatalf("gaps.md topic %q affected versions = %q, want %q", topic, row["Affected Versions"], realStateTargetVersion)
 		}
 	}
-	if strings.Contains(content, "proposals-command.json") || strings.Contains(content, "proposals-embedded-bpmn.json") {
-		t.Fatal("gaps.md must not depend on runtime proposal JSON files")
+	if !strings.Contains(content, "future Camunda minor releases") {
+		t.Fatal("gaps.md must describe how future Camunda minor releases extend affected-version rows")
 	}
+}
+
+func validateRealStateCoverageMatrix(t *testing.T) {
+	t.Helper()
+	content := readRealStateSpecArtifact(t, "coverage-matrix.md")
+	rejectRuntimeProposalArtifactReferences(t, "coverage-matrix.md", content)
+
+	table := requireMarkdownTable(t, content, []string{
+		"Topic",
+		"Current Evidence Level",
+		"Target Real-State Proof",
+		"First Follow-Up",
+	})
+	requiredTopics := []string{
+		"Gap artifact validation",
+		"Real `get job` rows",
+		"Job retries, timeout, fail, no-wait",
+		"`update job --throw-bpmn-error`",
+		"Incidents with related jobs",
+		"Listener jobs and `--with-listeners`",
+		"Deterministic retention candidates",
+		"Real purge semantics",
+		"Process-definition delete semantics",
+		"Cancel/delete/resolve post-state",
+		"Partial failure and fail-fast",
+		"Ops report parity",
+		"Version extensibility",
+	}
+	rowsByTopic := mapRowsByColumn(t, table, "Topic")
+	for _, topic := range requiredTopics {
+		row, ok := rowsByTopic[topic]
+		if !ok {
+			t.Fatalf("coverage-matrix.md missing topic %q", topic)
+		}
+		requireNonEmptyMarkdownCell(t, topic, row, "Target Real-State Proof")
+		requireNonEmptyMarkdownCell(t, topic, row, "First Follow-Up")
+		if status := coverageEvidenceStatus(row["Current Evidence Level"]); status == "" {
+			t.Fatalf("coverage-matrix.md topic %q has invalid evidence level %q", topic, row["Current Evidence Level"])
+		}
+	}
+	for _, status := range allowedCoverageEvidenceStatuses() {
+		if !strings.Contains(content, status) {
+			t.Fatalf("coverage-matrix.md evidence rules missing status %q", status)
+		}
+	}
+}
+
+type markdownTable struct {
+	headers []string
+	rows    []map[string]string
+}
+
+func readRealStateSpecArtifact(t *testing.T, name string) string {
+	t.Helper()
+	path := filepath.Join(suite.repoRoot, "specs", "257-c89-real-state-integration", name)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read real-state artifact %s: %v", path, err)
+	}
+	return string(data)
+}
+
+func rejectRuntimeProposalArtifactReferences(t *testing.T, artifact string, content string) {
+	t.Helper()
+	for _, forbidden := range []string{"proposals-command.json", "proposals-embedded-bpmn.json", "real-state-proposals"} {
+		if strings.Contains(content, forbidden) {
+			t.Fatalf("%s must not depend on runtime proposal artifact %q", artifact, forbidden)
+		}
+	}
+}
+
+func requireMarkdownTable(t *testing.T, content string, wantHeaders []string) markdownTable {
+	t.Helper()
+	lines := strings.Split(content, "\n")
+	for i := 0; i+1 < len(lines); i++ {
+		headers := markdownCells(lines[i])
+		if !sameStringSlice(headers, wantHeaders) || !isMarkdownSeparator(markdownCells(lines[i+1])) {
+			continue
+		}
+		table := markdownTable{headers: headers}
+		for j := i + 2; j < len(lines); j++ {
+			cells := markdownCells(lines[j])
+			if len(cells) == 0 {
+				break
+			}
+			if len(cells) != len(headers) {
+				t.Fatalf("markdown table row has %d cells, want %d: %q", len(cells), len(headers), lines[j])
+			}
+			row := make(map[string]string, len(headers))
+			for idx, header := range headers {
+				row[header] = cells[idx]
+			}
+			table.rows = append(table.rows, row)
+		}
+		if len(table.rows) == 0 {
+			t.Fatalf("markdown table %v has no rows", wantHeaders)
+		}
+		return table
+	}
+	t.Fatalf("markdown table with headers %v not found", wantHeaders)
+	return markdownTable{}
+}
+
+func markdownCells(line string) []string {
+	trimmed := strings.TrimSpace(line)
+	if !strings.HasPrefix(trimmed, "|") || !strings.HasSuffix(trimmed, "|") {
+		return nil
+	}
+	raw := strings.Split(strings.Trim(trimmed, "|"), "|")
+	cells := make([]string, 0, len(raw))
+	for _, cell := range raw {
+		cells = append(cells, strings.TrimSpace(cell))
+	}
+	return cells
+}
+
+func isMarkdownSeparator(cells []string) bool {
+	if len(cells) == 0 {
+		return false
+	}
+	for _, cell := range cells {
+		if strings.Trim(cell, " :-") != "" || !strings.Contains(cell, "-") {
+			return false
+		}
+	}
+	return true
+}
+
+func mapRowsByColumn(t *testing.T, table markdownTable, column string) map[string]map[string]string {
+	t.Helper()
+	rowsByTopic := make(map[string]map[string]string, len(table.rows))
+	for _, row := range table.rows {
+		key := strings.TrimSpace(row[column])
+		if key == "" {
+			t.Fatalf("markdown table has empty %s cell: %+v", column, row)
+		}
+		if _, exists := rowsByTopic[key]; exists {
+			t.Fatalf("markdown table has duplicate %s %q", column, key)
+		}
+		rowsByTopic[key] = row
+	}
+	return rowsByTopic
+}
+
+func requireNonEmptyMarkdownCell(t *testing.T, topic string, row map[string]string, column string) {
+	t.Helper()
+	if strings.TrimSpace(row[column]) == "" {
+		t.Fatalf("topic %q has empty %s cell", topic, column)
+	}
+}
+
+func coverageEvidenceStatus(value string) string {
+	trimmed := strings.TrimSpace(value)
+	for _, status := range allowedCoverageEvidenceStatuses() {
+		if trimmed == status || strings.HasPrefix(trimmed, status+":") || strings.HasPrefix(trimmed, status+" ") {
+			return status
+		}
+	}
+	return ""
+}
+
+func allowedCoverageEvidenceStatuses() []string {
+	return []string{
+		"live-covered",
+		"partially live-covered",
+		"dry-run-covered",
+		"skipped-prerequisite",
+		"no-match only",
+		"not yet started",
+	}
+}
+
+func sameStringSlice(left []string, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+	return true
 }

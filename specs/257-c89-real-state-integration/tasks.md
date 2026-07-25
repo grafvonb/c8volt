@@ -151,19 +151,19 @@
 
 ### Tests For User Story 4
 
-- [ ] T059 [P] [US4] Add failing `TestRealStateGapFamily` skeleton for spec-owned gap validation in `integration/cli/real_state_gap_validation_test.go`
-- [ ] T060 [P] [US4] Add failing coverage-matrix status validation for every priority topic in `integration/cli/real_state_gap_validation_test.go`
+- [x] T059 [P] [US4] Add failing `TestRealStateGapFamily` skeleton for spec-owned gap validation in `integration/cli/real_state_gap_validation_test.go`
+- [x] T060 [P] [US4] Add failing coverage-matrix status validation for every priority topic in `integration/cli/real_state_gap_validation_test.go`
 
 ### Implementation For User Story 4
 
-- [ ] T061 [US4] Wire `integration-cli-real-state-gaps` target to `TestRealStateGapFamily` in `Makefile`
-- [ ] T062 [US4] Implement static validation that `gaps.md` includes blocked proof, affected commands, affected versions, and runtime behavior for every open prerequisite gap
-- [ ] T063 [US4] Implement coverage-matrix status checks for live-covered, partially live-covered, dry-run-covered, skipped-prerequisite, no-match only, and not-yet-started rows
-- [ ] T064 [US4] Update affected-version handling for Camunda 8.9 focus and future minor extension in `gaps.md`
-- [ ] T065 [US4] Update real-state gap and matrix validation instructions in `specs/257-c89-real-state-integration/quickstart.md`
-- [ ] T066 [US4] Validate User Story 4 with `make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v` documented in `specs/257-c89-real-state-integration/quickstart.md`
+- [x] T061 [US4] Wire `integration-cli-real-state-gaps` target to `TestRealStateGapFamily` in `Makefile`
+- [x] T062 [US4] Implement static validation that `gaps.md` includes blocked proof, affected commands, affected versions, and runtime behavior for every open prerequisite gap
+- [x] T063 [US4] Implement coverage-matrix status checks for live-covered, partially live-covered, dry-run-covered, skipped-prerequisite, no-match only, and not-yet-started rows
+- [x] T064 [US4] Update affected-version handling for Camunda 8.9 focus and future minor extension in `gaps.md`
+- [x] T065 [US4] Update real-state gap and matrix validation instructions in `specs/257-c89-real-state-integration/quickstart.md`
+- [x] T066 [US4] Validate User Story 4 with `make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v` documented in `specs/257-c89-real-state-integration/quickstart.md`
 
-**Checkpoint**: User Story 4 makes every remaining real-state gap visible without giving integration tests backlog ownership.
+**Checkpoint**: User Story 4 makes every remaining real-state gap visible without giving integration tests backlog ownership, and `integration-cli-real-state-gaps` validates the spec-owned gap and matrix contracts without touching Camunda.
 
 ---
 

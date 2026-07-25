@@ -28,24 +28,19 @@ Expected outcome:
 
 ## Gap Boundary Gate
 
-The initial scaffolding adds reserved Make targets and non-live helper checks.
-Before a real-state family target is implemented, reserved Make targets fail
-with a clear not-implemented message instead of producing a false pass. The
-jobs, incidents, listeners, BPMN error, retention, and destructive targets are
-implemented; gap validation remains reserved until its family test is added.
-Retention and destructive targets are incremental User Story 3 slices and
-remain partial until purge, resolve, repair, and mixed-failure scenarios are
-added.
+The gap target is non-destructive and validates the spec-owned boundary for
+missing setup capabilities and embedded BPMN assets. It keeps `gaps.md` and the
+coverage matrix structurally complete without generating runtime backlog
+proposal files.
 
 Validate the initial scaffolding:
 
 ```sh
 GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
-GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestRealStateTargetCatalog|TestRealStateC89ProfileClassification|TestRealStateEvidenceWritersEmitArrays|TestRealStateMachineOutputAssertions|TestRealStateGapArtifactDocumentsCurrentPrerequisites' -count=1 -timeout=5m
+GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestRealStateTargetCatalog|TestRealStateC89ProfileClassification|TestRealStateEvidenceWritersEmitArrays|TestRealStateMachineOutputAssertions|TestRealStateGapFamily|TestRealStateGapArtifactDocumentsCurrentPrerequisites' -count=1 -timeout=5m
 ```
 
-After the gap-validation target is implemented, run it before destructive
-real-state slices:
+Run gap validation before destructive real-state slices:
 
 ```sh
 make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v
@@ -54,7 +49,8 @@ make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v
 Expected outcome:
 
 - `gaps.md` includes all known command setup and embedded BPMN fixture gaps that block deeper live coverage
-- ops repair, BPMN error, timeout, retention, and destructive setup gaps are represented when still open
+- every open gap includes blocked proof, affected commands, affected versions, and runtime behavior until closed
+- the coverage matrix uses explicit evidence statuses for every priority topic
 - runtime tests do not generate backlog proposal JSON files
 - gap artifacts stay outside `docs/`
 

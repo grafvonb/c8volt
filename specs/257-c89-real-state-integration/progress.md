@@ -299,3 +299,36 @@
 - `resolve incident --no-wait` gives real partial accounting for one submitted incident and one valid-shaped missing incident.
 - The real partial path exposed duplicate JSON envelopes on failure; `resolve incident` now exits with the mapped failure code after rendering the partial result envelope once.
 ---
+## Iteration 10 - 2026-07-26
+**Work Unit**: Spec-owned gap and matrix validation
+**Tasks Completed**:
+- [x] T059: Add `TestRealStateGapFamily` for spec-owned gap validation
+- [x] T060: Add coverage-matrix status validation for every priority topic
+- [x] T061: Wire `integration-cli-real-state-gaps` to `TestRealStateGapFamily`
+- [x] T062: Validate `gaps.md` blocked proof, affected commands, affected versions, and runtime behavior columns
+- [x] T063: Validate coverage-matrix evidence statuses against the accepted vocabulary
+- [x] T064: Update affected-version handling for the Camunda 8.9 foundation and future minor extension
+- [x] T065: Update real-state gap and matrix validation quickstart instructions
+- [x] T066: Validate the implemented gap target
+**Tasks Remaining in Work Unit**: 0
+**Commit**: Pending
+**Files Changed**:
+- Makefile
+- integration/README.md
+- integration/cli/real_state_gap_validation_test.go
+- specs/257-c89-real-state-integration/coverage-matrix.md
+- specs/257-c89-real-state-integration/gaps.md
+- specs/257-c89-real-state-integration/quickstart.md
+- specs/257-c89-real-state-integration/ralph-memory.md
+- specs/257-c89-real-state-integration/tasks.md
+- specs/257-c89-real-state-integration/progress.md
+**Validation**:
+- `make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v`
+- `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
+- `GOCACHE=/tmp/c8volt-gocache go test ./... -count=1`
+**Learnings**:
+- Gap validation is best treated as a non-destructive spec contract: it does not need a Camunda profile, but it still benefits from the integration target naming and verbose output path.
+- The matrix needs machine-checkable status prefixes; free-form evidence notes can follow after a colon or space.
+- `gaps.md` now carries the durable planning fields tests previously tried to express through runtime proposal evidence.
+---
