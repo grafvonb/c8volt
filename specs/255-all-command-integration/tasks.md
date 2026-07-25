@@ -81,17 +81,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T026 [P] [US2] Add failing test that rejects explicit generated config usage in `integration/cli/config_test.go`
-- [ ] T027 [P] [US2] Add failing profile connectivity/version evidence test in `integration/cli/config_test.go`
-- [ ] T028 [P] [US2] Add failing read-only smoke test for `version`, `capabilities`, `config validate`, and `config test-connection` in `integration/cli/config_test.go`
+- [x] T026 [P] [US2] Add failing test that rejects explicit generated config usage in `integration/cli/config_test.go`
+- [x] T027 [P] [US2] Add failing profile connectivity/version evidence test in `integration/cli/config_test.go`
+- [x] T028 [P] [US2] Add failing read-only smoke test for `version`, `capabilities`, `config validate`, and `config test-connection` in `integration/cli/config_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T029 [US2] Implement profile discovery/selection from default local config behavior in `integration/cli/harness_test.go`
-- [ ] T030 [US2] Implement version gate execution for selected profiles in `integration/cli/config_test.go`
-- [ ] T031 [US2] Implement read-only smoke scenarios and evidence capture in `integration/cli/config_test.go`
-- [ ] T032 [US2] Write `profiles.json` evidence with reachable, expected, and actual version fields in `integration/cli/config_test.go`
-- [ ] T033 [US2] Verify with `go test -tags=integration ./integration/cli -run 'TestProfiles|TestReadOnlySmoke' -count=1 -timeout=10m`
+- [x] T029 [US2] Implement profile discovery/selection from default local config behavior in `integration/cli/harness_test.go`
+- [x] T030 [US2] Implement version gate execution for selected profiles in `integration/cli/config_test.go`
+- [x] T031 [US2] Implement read-only smoke scenarios and evidence capture in `integration/cli/config_test.go`
+- [x] T032 [US2] Write `profiles.json` evidence with reachable, expected, and actual version fields in `integration/cli/config_test.go`
+- [x] T033 [US2] Verify with `go test -tags=integration ./integration/cli -run 'TestProfiles|TestReadOnlySmoke' -count=1 -timeout=10m`
 
 **Checkpoint**: User Story 2 is complete when destructive family tests are gated behind proven disposable profile readiness.
 

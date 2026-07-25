@@ -18,6 +18,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/grafvonb/c8volt/toolx"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -90,6 +93,22 @@ type proposalRecord struct {
 	AffectedCommands []string `json:"affectedCommands"`
 	AffectedVersions []string `json:"affectedVersions"`
 	OperatorValue    string   `json:"operatorValue"`
+}
+
+type defaultLocalConfig struct {
+	ActiveProfile string                         `yaml:"active_profile"`
+	App           defaultLocalConfigApp          `yaml:"app"`
+	Profiles      map[string]defaultLocalProfile `yaml:"profiles"`
+	sourcePath    string
+}
+
+type defaultLocalProfile struct {
+	App defaultLocalConfigApp `yaml:"app"`
+}
+
+type defaultLocalConfigApp struct {
+	CamundaVersion string `yaml:"camunda_version"`
+	Tenant         string `yaml:"tenant"`
 }
 
 func TestMain(m *testing.M) {
@@ -203,12 +222,16 @@ func appendDefaultEnv(env []string, key string, value string) []string {
 func runC8Volt(t *testing.T, scenarioName string, args ...string) commandResult {
 	t.Helper()
 
+	if err := rejectExplicitConfigArgs(args); err != nil {
+		t.Fatalf("%v", err)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCommandTimeout)
 	defer cancel()
 
 	started := time.Now().UTC()
 	cmd := exec.CommandContext(ctx, suite.binPath, args...)
-	cmd.Dir = suite.repoRoot
+	cmd.Dir = suite.workDir
 	cmd.Env = append(os.Environ(), "NO_COLOR=1")
 
 	var stdout bytes.Buffer
@@ -315,10 +338,32 @@ func sanitizeEvidenceName(value string) string {
 }
 
 func selectedProfileNames() []string {
-	raw := strings.TrimSpace(os.Getenv(envITProfiles))
-	if raw == "" {
+	names, err := selectedProfileNamesFromDefaultConfig()
+	if err != nil {
 		return nil
 	}
+	return names
+}
+
+// selectedProfileNamesFromDefaultConfig chooses explicit suite profiles or the active default-local profile.
+func selectedProfileNamesFromDefaultConfig() ([]string, error) {
+	raw := strings.TrimSpace(os.Getenv(envITProfiles))
+	if raw != "" {
+		return splitProfileNames(raw), nil
+	}
+
+	cfg, err := readDefaultLocalConfig()
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(cfg.ActiveProfile) == "" {
+		return nil, nil
+	}
+	return []string{strings.TrimSpace(cfg.ActiveProfile)}, nil
+}
+
+// splitProfileNames parses the comma-separated profile selection environment value.
+func splitProfileNames(raw string) []string {
 	parts := strings.Split(raw, ",")
 	profiles := make([]string, 0, len(parts))
 	for _, part := range parts {
@@ -328,6 +373,101 @@ func selectedProfileNames() []string {
 		}
 	}
 	return profiles
+}
+
+// selectedProfilesFromDefaultConfig resolves selected profile metadata from the operator's default local config.
+func selectedProfilesFromDefaultConfig() ([]integrationProfile, error) {
+	cfg, err := readDefaultLocalConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	names := splitProfileNames(os.Getenv(envITProfiles))
+	return profilesFromDefaultConfig(cfg, names)
+}
+
+// profilesFromDefaultConfig converts selected default-config entries into readiness evidence records.
+func profilesFromDefaultConfig(cfg defaultLocalConfig, names []string) ([]integrationProfile, error) {
+	if len(names) == 0 && strings.TrimSpace(cfg.ActiveProfile) != "" {
+		names = []string{strings.TrimSpace(cfg.ActiveProfile)}
+	}
+	if len(names) == 0 {
+		return nil, nil
+	}
+
+	baseVersion := normalizeExpectedCamundaVersion(cfg.App.CamundaVersion)
+	profiles := make([]integrationProfile, 0, len(names))
+	for _, name := range names {
+		rawProfile, ok := cfg.Profiles[name]
+		if !ok {
+			return nil, fmt.Errorf("selected profile %q was not found in default local config %s", name, cfg.sourcePath)
+		}
+
+		expectedVersion := normalizeExpectedCamundaVersion(rawProfile.App.CamundaVersion)
+		if expectedVersion == "" {
+			expectedVersion = baseVersion
+		}
+		if expectedVersion == "" {
+			expectedVersion = toolx.CurrentCamundaVersion.String()
+		}
+
+		profiles = append(profiles, integrationProfile{
+			Name:            name,
+			ExpectedVersion: expectedVersion,
+			Tenant:          rawProfile.App.Tenant,
+		})
+	}
+	return profiles, nil
+}
+
+// readDefaultLocalConfig loads profile metadata from local config homes, not generated cwd configs.
+func readDefaultLocalConfig() (defaultLocalConfig, error) {
+	paths := defaultLocalConfigPaths()
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return defaultLocalConfig{}, fmt.Errorf("read default local config %s: %w", path, err)
+		}
+
+		var cfg defaultLocalConfig
+		if err := yaml.Unmarshal(data, &cfg); err != nil {
+			return defaultLocalConfig{}, fmt.Errorf("parse default local config %s: %w", path, err)
+		}
+		cfg.sourcePath = path
+		return cfg, nil
+	}
+	return defaultLocalConfig{}, fmt.Errorf("default local c8volt config not found in %s", strings.Join(paths, ", "))
+}
+
+// defaultLocalConfigPaths returns operator-local config paths used by the suite for profile metadata.
+func defaultLocalConfigPaths() []string {
+	var paths []string
+	if xdg := strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME")); xdg != "" {
+		paths = append(paths, filepath.Join(xdg, "c8volt", "config.yaml"))
+	}
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		paths = append(paths,
+			filepath.Join(home, ".config", "c8volt", "config.yaml"),
+			filepath.Join(home, ".c8volt", "config.yaml"),
+		)
+	}
+	return paths
+}
+
+// normalizeExpectedCamundaVersion records canonical minor versions when profile config uses shorthand.
+func normalizeExpectedCamundaVersion(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	version, err := toolx.NormalizeCamundaVersion(value)
+	if err != nil {
+		return value
+	}
+	return version.String()
 }
 
 func argsForProfile(profile string, args ...string) []string {

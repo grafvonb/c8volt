@@ -40,3 +40,25 @@
 **Learnings**:
 - The current capabilities inventory still contains 55 command nodes, and the explicit manifest must include the `capabilities` persistent-flag list.
 ---
+## Iteration 2 - 2026-07-25 08:36
+**Work Unit**: US2 Validate Real Local Profiles
+**Tasks Completed**:
+- [x] T026: Add failing test that rejects explicit generated config usage
+- [x] T027: Add failing profile connectivity/version evidence test
+- [x] T028: Add failing read-only smoke test for `version`, `capabilities`, `config validate`, and `config test-connection`
+- [x] T029: Implement profile discovery/selection from default local config behavior
+- [x] T030: Implement version gate execution for selected profiles
+- [x] T031: Implement read-only smoke scenarios and evidence capture
+- [x] T032: Write `profiles.json` evidence with reachable, expected, and actual version fields
+- [x] T033: Verify with `go test -tags=integration ./integration/cli -run 'TestProfiles|TestReadOnlySmoke' -count=1 -timeout=10m`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- integration/cli/config_test.go
+- integration/cli/harness_test.go
+- specs/255-all-command-integration/tasks.md
+- specs/255-all-command-integration/ralph-memory.md
+- specs/255-all-command-integration/progress.md
+**Learnings**:
+- Run integration subprocesses from the evidence workdir to avoid repo-local config files shadowing the operator's default local config.
+---
