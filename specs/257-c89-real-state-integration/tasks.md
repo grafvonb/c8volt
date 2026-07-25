@@ -75,20 +75,20 @@
 
 ### Tests For User Story 2
 
-- [ ] T026 [P] [US2] Add failing `TestRealStateListenersFamily` skeleton for listener state and proposal fallback in `integration/cli/real_state_listeners_test.go`
-- [ ] T027 [P] [US2] Add failing `TestRealStateBPMNErrorFamily` skeleton for BPMN error job state and proposal fallback in `integration/cli/real_state_bpmn_error_test.go`
+- [x] T026 [P] [US2] Add failing `TestRealStateListenersFamily` skeleton for listener state and proposal fallback in `integration/cli/real_state_listeners_test.go`
+- [x] T027 [P] [US2] Add failing `TestRealStateBPMNErrorFamily` skeleton for BPMN error job state and proposal fallback in `integration/cli/real_state_bpmn_error_test.go`
 
 ### Implementation For User Story 2
 
-- [ ] T028 [US2] Wire `integration-cli-real-state-listeners` and `integration-cli-real-state-bpmn-error` targets in `Makefile`
-- [ ] T029 [US2] Implement listener-capable embedded fixture discovery or missing-fixture classification in `integration/cli/real_state_listeners_test.go`
-- [ ] T030 [US2] Add non-empty listener evidence plus JSON/keys-only stdout cleanliness where supported for `walk process-instance --with-listeners`, `get element --with-listeners`, and `ops analyse slow-process-instances --with-listeners` in `integration/cli/real_state_listeners_test.go`
-- [ ] T031 [US2] Implement BPMN error-capable job fixture discovery or missing-fixture classification in `integration/cli/real_state_bpmn_error_test.go`
-- [ ] T032 [US2] Add `update job --throw-bpmn-error` execution, JSON stdout cleanliness, and process-state verification in `integration/cli/real_state_bpmn_error_test.go`
-- [ ] T033 [US2] Record listener and BPMN error command setup proposals when c8volt commands cannot create the required state in `integration/cli/real_state_proposals_test.go`
-- [ ] T034 [US2] Record listener and BPMN error embedded BPMN proposals without modifying existing embedded models in `integration/cli/real_state_proposals_test.go`
-- [ ] T035 [US2] Update listener and BPMN error rows to current statuses in `specs/257-c89-real-state-integration/coverage-matrix.md`
-- [ ] T036 [US2] Validate User Story 2 with `make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v` and `make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v` documented in `specs/257-c89-real-state-integration/quickstart.md`
+- [x] T028 [US2] Wire `integration-cli-real-state-listeners` and `integration-cli-real-state-bpmn-error` targets in `Makefile`
+- [x] T029 [US2] Implement listener-capable embedded fixture discovery or missing-fixture classification in `integration/cli/real_state_listeners_test.go`
+- [x] T030 [US2] Add non-empty listener evidence plus JSON/keys-only stdout cleanliness where supported for `walk process-instance --with-listeners`, `get element --with-listeners`, and `ops analyse slow-process-instances --with-listeners` in `integration/cli/real_state_listeners_test.go`
+- [x] T031 [US2] Implement BPMN error-capable job fixture discovery or missing-fixture classification in `integration/cli/real_state_bpmn_error_test.go`
+- [x] T032 [US2] Add `update job --throw-bpmn-error` execution, JSON stdout cleanliness, and process-state verification in `integration/cli/real_state_bpmn_error_test.go`
+- [x] T033 [US2] Record listener and BPMN error command setup proposals when c8volt commands cannot create the required state in `integration/cli/real_state_proposals_test.go`
+- [x] T034 [US2] Record listener and BPMN error embedded BPMN proposals without modifying existing embedded models in `integration/cli/real_state_proposals_test.go`
+- [x] T035 [US2] Update listener and BPMN error rows to current statuses in `specs/257-c89-real-state-integration/coverage-matrix.md`
+- [x] T036 [US2] Validate User Story 2 with `make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v` and `make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v` documented in `specs/257-c89-real-state-integration/quickstart.md`
 
 **Checkpoint**: User Story 2 either proves listener and BPMN error behavior with real state or produces actionable proposal evidence.
 

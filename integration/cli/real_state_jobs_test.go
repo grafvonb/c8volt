@@ -24,6 +24,7 @@ type realStateJob struct {
 	Retries            int32  `json:"retries"`
 	Type               string `json:"type,omitempty"`
 	Kind               string `json:"kind,omitempty"`
+	ListenerEventType  string `json:"listenerEventType,omitempty"`
 	ProcessInstanceKey string `json:"processInstanceKey,omitempty"`
 	ElementInstanceKey string `json:"elementInstanceKey,omitempty"`
 	ElementId          string `json:"elementId,omitempty"`

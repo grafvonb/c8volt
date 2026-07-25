@@ -18,8 +18,11 @@
 
 ## Current Handoff
 
-- Phase 1, Phase 2, and User Story 1 are complete and committed through this iteration.
+- Phase 1, Phase 2, User Story 1, and User Story 2 are complete and committed through this iteration.
 - `integration-cli-real-state-jobs` and `integration-cli-real-state-incidents` are implemented and passed against `kind-camunda-platform-local-c89` on Camunda 8.9.9.
 - Jobs use `C89_SimpleServiceTask.bpmn`, which currently yields `CREATED` execution-listener jobs. Retries can be confirmed, fail/no-wait can be submitted, and timeout can be planned in dry-run. Confirmed `update job --timeout` still needs an activated-job setup command or direct Camunda activation fallback and is recorded as a command proposal.
 - Incidents are created by failing a suite-owned job with retries `0`; `get incident` observes the related `jobKey`, `get job --key` observes the failed job, and `ops repair incident --dry-run` reports related job counts.
-- Next iteration should start User Story 2 at T026/T027 and keep the remaining real-state targets reserved until their matching family tests exist.
+- Listener coverage uses `C89_SimpleServiceTask.bpmn` to create real `EXECUTION_LISTENER` jobs. `get element --with-listeners`, `walk process-instance --with-elements --with-listeners`, and `ops analyse slow-process-instances --with-listeners` all passed against Camunda 8.9.9 with suite-owned listener job keys.
+- `walk process-instance` rejects `--automation`; listener JSON traversal scenarios must use `--json` without `--automation`.
+- BPMN error coverage is proposal-backed: `update job --throw-bpmn-error ErrorTimerCode --dry-run` produces a clean plan and follow-up `get job --key` proves the job remains unchanged. Confirmed BPMN error mutation still needs an embedded catchable BPMN error fixture and c8volt setup path.
+- Next iteration should start User Story 3 at T037/T038 and keep proposals, retention, and destructive real-state targets reserved until their matching family tests exist.

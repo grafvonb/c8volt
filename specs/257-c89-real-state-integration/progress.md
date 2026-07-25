@@ -68,3 +68,39 @@
 - Camunda rejects confirmed timeout updates for `CREATED` jobs because timeout update requires an active/activated job; the suite records this as a command proposal and covers timeout as a dry-run plan until c8volt can create activated jobs.
 - Failing a suite-owned job with retries `0` creates a real active incident with a related `jobKey`, giving stronger repair evidence than the older incident-only fixture path.
 ---
+## Iteration 3 - 2026-07-25 21:50
+**Work Unit**: User Story 2 listener and BPMN error real-state coverage
+**Tasks Completed**:
+- [x] T026: Add `TestRealStateListenersFamily` in `integration/cli/real_state_listeners_test.go`
+- [x] T027: Add `TestRealStateBPMNErrorFamily` in `integration/cli/real_state_bpmn_error_test.go`
+- [x] T028: Wire listener and BPMN-error real-state Make targets
+- [x] T029: Reuse `C89_SimpleServiceTask.bpmn` for live listener fixture setup
+- [x] T030: Add non-empty listener evidence for `get element`, `walk process-instance`, and `ops analyse slow-process-instances`
+- [x] T031: Classify BPMN-error coverage as proposal-backed because no embedded catchable BPMN-error fixture exists
+- [x] T032: Add `update job --throw-bpmn-error --dry-run` JSON cleanliness and unchanged job-state verification
+- [x] T033: Record BPMN-error command setup proposal
+- [x] T034: Record BPMN-error embedded BPMN proposal without modifying existing embedded models
+- [x] T035: Update listener and BPMN-error matrix rows
+- [x] T036: Validate listener and BPMN-error real-state targets and document behavior in quickstart
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- Makefile
+- integration/cli/real_state_jobs_test.go
+- integration/cli/real_state_listeners_test.go
+- integration/cli/real_state_bpmn_error_test.go
+- specs/257-c89-real-state-integration/coverage-matrix.md
+- specs/257-c89-real-state-integration/quickstart.md
+- specs/257-c89-real-state-integration/tasks.md
+- specs/257-c89-real-state-integration/ralph-memory.md
+- specs/257-c89-real-state-integration/progress.md
+**Validation**:
+- `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
+- `make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v`
+- `make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v`
+**Learnings**:
+- The existing service-task fixture is enough for live execution-listener enrichment; no listener proposal is needed for execution listeners.
+- Traversal commands intentionally reject `--automation`, so JSON listener traversal must be run with `--json` alone.
+- Existing embedded BPMN files declare error codes but do not provide a catchable BPMN error path for confirmed `update job --throw-bpmn-error`; proposal-backed dry-run is the honest current coverage.
+---

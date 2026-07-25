@@ -200,13 +200,11 @@ integration-cli-real-state-jobs: ## Run destructive C89 real-state integration t
 integration-cli-real-state-incidents: ## Run destructive C89 real-state integration tests for incidents.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateIncidentsFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-listeners: ## Reserved for C89 real-state listener integration tests.
-	@echo "integration-cli-real-state-listeners is reserved for feature 257 and is not implemented yet."
-	@false
+integration-cli-real-state-listeners: ## Run destructive C89 real-state integration tests for listener state.
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateListenersFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-bpmn-error: ## Reserved for C89 real-state BPMN error integration tests.
-	@echo "integration-cli-real-state-bpmn-error is reserved for feature 257 and is not implemented yet."
-	@false
+integration-cli-real-state-bpmn-error: ## Run destructive C89 real-state integration tests for BPMN error job state.
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateBPMNErrorFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)
 
 integration-cli-real-state-retention: ## Reserved for C89 real-state retention integration tests.
 	@echo "integration-cli-real-state-retention is reserved for feature 257 and is not implemented yet."

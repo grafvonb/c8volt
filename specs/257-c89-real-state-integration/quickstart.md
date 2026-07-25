@@ -31,7 +31,7 @@ Expected outcome:
 The initial scaffolding adds reserved Make targets and non-live helper checks.
 Before a real-state family target is implemented, reserved Make targets fail
 with a clear not-implemented message instead of producing a false pass. The
-jobs and incidents targets are implemented; proposals, listeners, BPMN error,
+jobs, incidents, listeners, and BPMN error targets are implemented; proposals,
 retention, and destructive targets remain reserved until their family tests are
 added.
 
@@ -98,9 +98,11 @@ make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v
 
 Expected outcome:
 
-- existing embedded models are used when they can create the required state
-- missing listener or BPMN error process behavior is recorded as embedded BPMN proposal evidence
-- command setup gaps are recorded as command proposal evidence
+- the listener target uses `C89_SimpleServiceTask.bpmn` to create real execution-listener jobs
+- `get element --with-listeners`, `walk process-instance --with-listeners`, and `ops analyse slow-process-instances --with-listeners` include the suite-owned listener job key
+- JSON listener scenarios keep stdout machine-safe; traversal JSON is run without `--automation` because traversal commands do not support automation mode
+- the BPMN error target records clean `update job --throw-bpmn-error --dry-run` evidence and verifies the job is unchanged afterward
+- missing confirmed BPMN error behavior is recorded as command and embedded BPMN proposal evidence
 - no test passes solely because the command accepted the flag
 
 ## Retention And Destructive Semantics
