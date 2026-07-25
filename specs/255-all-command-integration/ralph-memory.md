@@ -17,6 +17,8 @@ Started: 2026-07-25T06:27:38Z
 - US4 family slices use `runFamilyCoverageScenarios` to execute canonical and alias `--help` subprocesses for every command path in the family, assert manifest-declared flags appear in help, and write `coverage-<family>.json` evidence with manifest entries, subprocess records, destructive paths, and output modes.
 - US5 proposal reports are aggregate harness evidence: `TestProposalReports` writes `proposals-command.json` and `proposals-embedded-bpmn.json` from per-family append functions in `walk_test.go`, `update_test.go`, `ops_analyse_test.go`, and `ops_execute_test.go`.
 - US6 example validation lives in `integration/cli/examples_test.go`: it extracts live `--help` examples and generated `docs/cli/c8volt*.md` examples, substitutes suite-owned seeded placeholders, executes safe/read-only and dry-run disposable examples, and writes `examples.json`.
+- `TestMain` now writes `summary.md` after `m.Run()` so stable `C8VOLT_IT_WORKDIR` runs include a human-readable evidence index alongside `run.json`.
+- `integration/cli/package_test.go` is intentionally untagged and empty so `go test ./integration/cli -count=1` is harmless without the `integration` tag.
 
 ## Decisions
 
@@ -27,6 +29,7 @@ Started: 2026-07-25T06:27:38Z
 - Read only default local config metadata from `$XDG_CONFIG_HOME/c8volt/config.yaml`, `$HOME/.config/c8volt/config.yaml`, or `$HOME/.c8volt/config.yaml`; never pass that path as `--config`.
 - Seeded data uses version-matched embedded `SimpleUserTask` BPMN fixtures because they leave process instances observable after start.
 - Retain seeded process instances after US3 and record cleanup tracking as `retained`; later command-family slices may mutate or clean up their own targets.
+- The final all-command matrix and Go suite README describe `integration/cli/` as the all-command suite source of truth while keeping existing shell suites separate.
 
 ## Gotchas
 
@@ -36,7 +39,7 @@ Started: 2026-07-25T06:27:38Z
 - `version` and `config validate` can report successful human output through stderr logging rather than stdout in subprocess evidence; JSON smoke checks should still require valid stdout JSON.
 - `embed list --json` returns a shared envelope, while `embed deploy --json` can return a direct JSON array; use `decodeCommandPayload` for both shapes.
 - Deployment evidence may not include stable Camunda resource IDs on every version; `data/seeded-data.json` records returned resource names and falls back to the embedded fixture path.
-- `go test ./integration/cli -count=1` without `-tags=integration` currently fails with "build constraints exclude all Go files"; T091 is the planned polish task for making the no-tag package excluded or harmless.
+- `go test ./integration/cli -count=1` without `-tags=integration` should report `[no tests to run]`; if it regresses to "build constraints exclude all Go files", restore the untagged package shim.
 - US4 family coverage currently proves CLI path, alias, help flag, destructive-classification, and output-mode manifest satisfaction without needing selected profiles; later proposal/example stories can add deeper real-state scenario evidence without changing this baseline.
 - Proposal writers normalize nil slices to empty JSON arrays so no-gap reports persist as `[]`, not `null`.
 - Example validation records documentation `--profile prod`, `--config`, unresolved placeholders, pipelines, hard-coded demo selectors, and unsupported resource IDs as blocked/actionable evidence rather than executing them.
@@ -47,7 +50,9 @@ Started: 2026-07-25T06:27:38Z
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run TestCommandInventory -count=1 -timeout=10m`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestProfiles|TestReadOnlySmoke' -count=1 -timeout=10m`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run TestSeededData -count=1 -timeout=20m`
-- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -count=1 -timeout=10m`
+- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -count=1 -timeout=60m`
+- `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
+- `make test`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run TestProposalReports -count=1 -timeout=10m`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'Test(CommandProposal|EmbeddedBPMNProposal|Proposal)' -count=1 -timeout=10m`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'Test(HelpExampleExtraction|GeneratedDocsExampleExtraction|PlaceholderSubstitution|DestructiveWarningDetection|Examples)$' -count=1 -timeout=20m`
@@ -60,4 +65,4 @@ Started: 2026-07-25T06:27:38Z
 
 ## Current Handoff
 
-- Next iteration should start with Phase 9 polish tasks T085-T094. Leave generated `docs/cli/*` read-only unless command source metadata changes and docs are regenerated through `make docs-content`; T091 still owns the no-tag `go test ./integration/cli -count=1` issue.
+- Feature complete; no handoff required.

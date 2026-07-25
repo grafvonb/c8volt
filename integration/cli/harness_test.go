@@ -249,15 +249,18 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	_ = writeJSONFile(filepath.Join(workDir, "run.json"), runMetadata{
+	metadata := runMetadata{
 		Marker:    suite.marker,
 		StartedAt: time.Now().UTC(),
 		WorkDir:   workDir,
 		BinPath:   suite.binPath,
 		Profiles:  selectedProfileNames(),
-	})
+	}
+	_ = writeJSONFile(filepath.Join(workDir, "run.json"), metadata)
 
-	os.Exit(m.Run())
+	code := m.Run()
+	_ = writeSummaryFile(filepath.Join(workDir, "summary.md"), metadata, code)
+	os.Exit(code)
 }
 
 func findRepoRoot() (string, error) {
@@ -419,6 +422,38 @@ func writeJSONFile(path string, value any) error {
 	}
 	data = append(data, '\n')
 	return os.WriteFile(path, data, 0o644)
+}
+
+func writeSummaryFile(path string, metadata runMetadata, exitCode int) error {
+	var b strings.Builder
+	b.WriteString("# c8volt All-Command Integration Summary\n\n")
+	b.WriteString(fmt.Sprintf("- Marker: `%s`\n", metadata.Marker))
+	b.WriteString(fmt.Sprintf("- Started At: `%s`\n", metadata.StartedAt.Format(time.RFC3339)))
+	b.WriteString(fmt.Sprintf("- Work Directory: `%s`\n", metadata.WorkDir))
+	b.WriteString(fmt.Sprintf("- Binary: `%s`\n", metadata.BinPath))
+	if len(metadata.Profiles) > 0 {
+		b.WriteString(fmt.Sprintf("- Profiles: `%s`\n", strings.Join(metadata.Profiles, ", ")))
+	} else {
+		b.WriteString("- Profiles: none selected from default local config\n")
+	}
+	b.WriteString(fmt.Sprintf("- Go Test Exit Code: `%d`\n\n", exitCode))
+	b.WriteString("## Evidence Files\n\n")
+	for _, name := range []string{
+		"run.json",
+		"inventory.json",
+		"coverage.json",
+		"profiles.json",
+		"readonly-smoke.json",
+		"examples.json",
+		"proposals-command.json",
+		"proposals-embedded-bpmn.json",
+	} {
+		b.WriteString(fmt.Sprintf("- `%s`\n", name))
+	}
+	b.WriteString("- `coverage-<family>.json`\n")
+	b.WriteString("- `logs/`\n")
+	b.WriteString("- `data/`\n")
+	return os.WriteFile(path, []byte(b.String()), 0o644)
 }
 
 func writeLogFile(t *testing.T, scenarioName string, stream string, value string) string {

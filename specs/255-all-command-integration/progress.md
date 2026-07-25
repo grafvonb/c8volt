@@ -182,3 +182,30 @@
 **Learnings**:
 - Example validation needs blocked/actionable evidence for documentation profiles, explicit config, pipelines, unresolved placeholders, and non-suite-owned demo selectors instead of attempting unsafe execution.
 ---
+## Iteration 6 - 2026-07-25 09:17
+**Work Unit**: Phase 9 Polish & Cross-Cutting Validation
+**Tasks Completed**:
+- [x] T085: Review `integration/assets/all-command-go-integration-rules.md` against implemented suite behavior
+- [x] T086: Update `integration/assets/command-matrix.md` with the final all-command coverage map
+- [x] T087: Update `integration/README.md` with final run commands, environment variables, and evidence layout
+- [x] T088: Run `gofmt` on all Go files under `integration/cli/`
+- [x] T089: Run `TestCommandInventory`
+- [x] T090: Run full build-tagged integration suite
+- [x] T091: Run no-tag `go test ./integration/cli -count=1`
+- [x] T092: Run `make test`
+- [x] T093: Review generated evidence location
+- [x] T094: Review final diff isolation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- integration/README.md
+- integration/assets/all-command-go-integration-rules.md
+- integration/assets/command-matrix.md
+- integration/cli/harness_test.go
+- integration/cli/package_test.go
+- specs/255-all-command-integration/tasks.md
+- specs/255-all-command-integration/ralph-memory.md
+- specs/255-all-command-integration/progress.md
+**Learnings**:
+- Stable evidence run at `/tmp/c8volt-ralph-iteration-6-evidence.IzJNCR` wrote all suite artifacts outside `docs/`, and the no-tag package now reports `[no tests to run]`.
+---

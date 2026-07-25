@@ -16,7 +16,7 @@ The suite must cover every command reported by:
 c8volt capabilities --json
 ```
 
-At the time this rule set was written, that inventory contains 55 command nodes, including grouping commands and leaf commands.
+At the time this rule set was written, that inventory contains 55 command nodes, including grouping commands and leaf commands. The implemented Go suite validates that live count against the explicit manifest in `integration/cli/all_commands_test.go`.
 
 ## Configuration Contract
 
@@ -26,7 +26,7 @@ At the time this rule set was written, that inventory contains 55 command nodes,
 - Do not override auth mode in test helpers.
 - It is acceptable to select a profile that already exists in the default local config, for example through a suite variable such as `C8VOLT_IT_PROFILES=dev87,dev88,dev89`.
 - Profile selection must only name profiles from the default local config. It must not point to an alternate config file.
-- The suite should fail early with a clear message when the required version profiles are not available or do not connect.
+- The suite should fail early with a clear message when selected version profiles are not available or do not connect.
 
 ## Cluster State Contract
 
@@ -76,7 +76,7 @@ Every command node must have an explicit integration coverage entry. For each le
 - local validation failures
 - remote failure or not-found behavior where practical
 - destructive confirmation or automation behavior where applicable
-- version support for Camunda 8.7, 8.8, and 8.9 where the command claims version-sensitive behavior
+- version support for Camunda 8.7, 8.8, and 8.9 where selected local profiles and command behavior make that practical
 
 Parent and grouping commands must at least cover help/discovery behavior and no-argument behavior.
 
@@ -99,6 +99,11 @@ The suite should be organized by command family:
 - `config`
 - `capabilities`
 - `version`
+
+The current Go suite stores one manifest entry per command path with the owner
+file, aliases, command-local flags, supported output modes, and destructive
+classification. Family coverage tests execute canonical and alias help paths,
+verify manifest satisfaction, and write `coverage-<family>.json` evidence.
 
 High-level ops commands must each have explicit scenarios, especially:
 
@@ -217,6 +222,10 @@ integration/cli/
 
 `TestMain` should build one binary and run all cases as subprocesses. Tests should exercise the same CLI path an operator uses, including config resolution, stdout, stderr, prompts, exit codes, and output modes.
 
+The package should also remain harmless without the integration tag, so
+`go test ./integration/cli -count=1` can run during normal validation without
+building or executing the destructive suite.
+
 Recommended execution:
 
 ```sh
@@ -227,9 +236,12 @@ go test -tags=integration ./integration/cli -count=1 -timeout=60m
 
 Each run should write a reusable evidence directory outside generated docs:
 
+- `run.json` with the run marker and suite metadata
+- `summary.md` with the high-level run summary
 - command inventory snapshot
 - profile and version summary
 - run marker
+- family coverage files named `coverage-<family>.json`
 - per-command stdout/stderr
 - per-command exit code
 - created keys and resource IDs

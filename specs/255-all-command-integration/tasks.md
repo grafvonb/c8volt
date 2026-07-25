@@ -216,16 +216,16 @@
 
 **Purpose**: Final validation, evidence review, and integration documentation alignment.
 
-- [ ] T085 [P] Review `integration/assets/all-command-go-integration-rules.md` against implemented suite behavior and update only if suite scope changed
-- [ ] T086 [P] Update `integration/assets/command-matrix.md` with the final all-command coverage map
-- [ ] T087 [P] Update `integration/README.md` with final run commands, environment variables, and evidence layout
-- [ ] T088 Run `gofmt` on all Go files under `integration/cli/`
-- [ ] T089 Run `go test -tags=integration ./integration/cli -run TestCommandInventory -count=1 -timeout=10m`
-- [ ] T090 Run `go test -tags=integration ./integration/cli -count=1 -timeout=60m` against disposable local profiles
-- [ ] T091 Run `go test ./integration/cli -count=1` without the integration tag and verify the package is excluded or harmless
-- [ ] T092 Run `make test` to confirm normal unit validation is unaffected
-- [ ] T093 Review generated evidence to ensure nothing is written under `docs/`
-- [ ] T094 Review `git diff` to ensure changes are isolated to `integration/`, `specs/255-all-command-integration/`, and accepted harness-only files
+- [x] T085 [P] Review `integration/assets/all-command-go-integration-rules.md` against implemented suite behavior and update only if suite scope changed
+- [x] T086 [P] Update `integration/assets/command-matrix.md` with the final all-command coverage map
+- [x] T087 [P] Update `integration/README.md` with final run commands, environment variables, and evidence layout
+- [x] T088 Run `gofmt` on all Go files under `integration/cli/`
+- [x] T089 Run `go test -tags=integration ./integration/cli -run TestCommandInventory -count=1 -timeout=10m`
+- [x] T090 Run `go test -tags=integration ./integration/cli -count=1 -timeout=60m` against disposable local profiles
+- [x] T091 Run `go test ./integration/cli -count=1` without the integration tag and verify the package is excluded or harmless
+- [x] T092 Run `make test` to confirm normal unit validation is unaffected
+- [x] T093 Review generated evidence to ensure nothing is written under `docs/`
+- [x] T094 Review `git diff` to ensure changes are isolated to `integration/`, `specs/255-all-command-integration/`, and accepted harness-only files
 
 ---
 
