@@ -163,8 +163,8 @@ integration-cli-cancel-volume: ## Run destructive volume CLI integration tests f
 integration-cli-delete-volume: ## Run destructive volume CLI integration tests for delete commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeDeleteFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-expect-resolve-volume: ## Reserved for destructive volume CLI integration tests for expect and resolve commands.
-	@echo "integration-cli-expect-resolve-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2
+integration-cli-expect-resolve-volume: ## Run destructive volume CLI integration tests for expect and resolve commands.
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeExpectResolveFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
 integration-cli-deploy-embed-run-volume: ## Run destructive volume CLI integration tests for deploy, embed, and run commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeDeployEmbedRunFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)

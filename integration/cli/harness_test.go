@@ -848,6 +848,7 @@ func allCommandSetupGapProposals() []proposalRecord {
 	var proposals []proposalRecord
 	proposals = appendWalkCommandGapProposals(proposals)
 	proposals = appendUpdateCommandGapProposals(proposals)
+	proposals = appendExpectResolveCommandGapProposals(proposals)
 	proposals = appendOpsAnalyseCommandGapProposals(proposals)
 	proposals = appendOpsExecuteCommandGapProposals(proposals)
 	return proposals

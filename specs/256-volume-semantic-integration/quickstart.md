@@ -252,3 +252,23 @@ Observed result:
 - `integration-cli-delete-volume` passed against `kind-camunda-platform-local-c89`
 - evidence includes `volume-delete.json`, `volume-data-delete.json`, `volume-progress-delete.json`, `volume-pipelines-delete.json`, and `volume-ops-reports-delete.json`
 - evidence path from the passing run: `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-4106919776`
+
+Validation recorded for the `integration-cli-expect-resolve-volume` slice:
+
+```sh
+GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
+GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m
+GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestVolumeTargetCatalog|TestVolumeOwnershipClassification|TestCommandProposalRegistrationRecordsDirectCamundaSetup' -count=1 -timeout=5m
+make integration-cli-expect-resolve-volume IT_GO_TEST_FLAGS=-v
+git diff --check -- Makefile integration/README.md integration/cli specs/256-volume-semantic-integration
+```
+
+Observed result:
+
+- non-integration package guard passed
+- integration compile-only check passed
+- local volume helper and proposal tests passed
+- `integration-cli-expect-resolve-volume` passed against `kind-camunda-platform-local-c89`
+- evidence includes `volume-expect-resolve.json`, `volume-data-expect-resolve.json`, `volume-progress-expect-resolve.json`, `volume-pipelines-expect-resolve.json`, `volume-ops-reports-expect-resolve.json`, and `proposals-command.json`
+- proposal evidence records that state-only `expect process-instance` JSON rows should carry stable key/ok identity fields like incident expectation rows
+- evidence path from the passing run: `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-3582324578`
