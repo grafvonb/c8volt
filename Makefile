@@ -175,8 +175,8 @@ integration-cli-ops-analyse-volume: ## Run destructive volume CLI integration te
 integration-cli-ops-execute-volume: ## Run destructive volume CLI integration tests for ops execute commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeOpsExecuteFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-ops-purge-volume: ## Reserved for destructive volume CLI integration tests for ops purge commands.
-	@echo "integration-cli-ops-purge-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2
+integration-cli-ops-purge-volume: ## Run destructive volume CLI integration tests for ops purge commands.
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeOpsPurgeFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
 integration-cli-ops-repair-volume: ## Reserved for destructive volume CLI integration tests for ops repair commands.
 	@echo "integration-cli-ops-repair-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2

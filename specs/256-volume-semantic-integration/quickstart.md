@@ -110,6 +110,16 @@ Evidence path:
 
 - `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-722503529`
 
+Validated ops purge slice:
+
+```sh
+make integration-cli-ops-purge-volume IT_GO_TEST_FLAGS=-v
+```
+
+Evidence path:
+
+- `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-1149546997`
+
 ## Evidence Review
 
 Use a stable workdir when comparing repeated runs:
