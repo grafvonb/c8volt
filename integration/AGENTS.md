@@ -16,6 +16,10 @@
   not as repository requirements.
 - Treat `integration/scripts/**` as executable validation tooling, not as a
   supported public API.
+- Treat `integration/assets/all-command-go-integration-rules.md` as context-only
+  guidance for the destructive all-command Go integration suite. Do not apply it
+  during normal Speckit or Ralph implementation runs unless the user explicitly
+  asks to work on that suite or its scripts.
 
 ## Safety
 - The suites run against real local Camunda clusters and intentionally exercise

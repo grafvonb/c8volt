@@ -40,6 +40,9 @@ before using this folder in an agent run.
 - `scripts/run-c89-suite.sh`: wrapper for the C89 suite.
 - `scripts/run-suite.sh`: shared executable suite driver.
 - `scripts/lib/suite-lib.sh`: reporting, progress, and command helpers.
+- `assets/all-command-go-integration-rules.md`: context-only rules for a
+  destructive Go suite that covers the complete command tree; not normal
+  Speckit or Ralph implementation context.
 - `assets/command-matrix.md`: intended command-family coverage map.
 - `assets/ux-review-checklist.md`: reusable UX review checklist applied while
   reading suite output.
