@@ -69,7 +69,7 @@ func allVolumeTargets() []volumeTarget {
 		{Name: "integration-cli-cancel-volume", Family: "cancel", TestPattern: "TestVolumeCancelFamily", DefaultDatasetCount: defaultITVolumeCount, Destructive: true, ReservedNotImplemented: true},
 		{Name: "integration-cli-delete-volume", Family: "delete", TestPattern: "TestVolumeDeleteFamily", DefaultDatasetCount: defaultITVolumeCount, Destructive: true, ReservedNotImplemented: true},
 		{Name: "integration-cli-expect-resolve-volume", Family: "expect-resolve", TestPattern: "TestVolumeExpectResolveFamily", DefaultDatasetCount: defaultITVolumeCount, Destructive: true, ReservedNotImplemented: true},
-		{Name: "integration-cli-deploy-embed-run-volume", Family: "deploy-embed-run", TestPattern: "TestVolumeDeployEmbedRunFamily", DefaultDatasetCount: defaultITVolumeCount, Destructive: true, ReservedNotImplemented: true},
+		{Name: "integration-cli-deploy-embed-run-volume", Family: "deploy-embed-run", TestPattern: "TestVolumeDeployEmbedRunFamily", DefaultDatasetCount: defaultITVolumeCount, Destructive: true},
 		{Name: "integration-cli-ops-analyse-volume", Family: "ops-analyse", TestPattern: "TestVolumeOpsAnalyseFamily", DefaultDatasetCount: defaultITVolumeCount, Destructive: true, ReservedNotImplemented: true},
 		{Name: "integration-cli-ops-execute-volume", Family: "ops-execute", TestPattern: "TestVolumeOpsExecuteFamily", DefaultDatasetCount: defaultITVolumeCount, Destructive: true, ReservedNotImplemented: true},
 		{Name: "integration-cli-ops-purge-volume", Family: "ops-purge", TestPattern: "TestVolumeOpsPurgeFamily", DefaultDatasetCount: defaultITVolumeCount, Destructive: true, ReservedNotImplemented: true},

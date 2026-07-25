@@ -174,3 +174,23 @@ Observed result:
 - `integration-cli-walk-volume` passed against `kind-camunda-platform-local-c89`
 - evidence includes `volume-walk.json`, `volume-data-walk.json`, `volume-progress-walk.json`, `volume-pipelines-walk.json`, and `volume-ops-reports-walk.json`
 - evidence path from the passing run: `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-3597956928`
+
+Validation recorded for the `integration-cli-deploy-embed-run-volume` slice:
+
+```sh
+GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
+GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m
+GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestVolumeTargetCatalog|TestVolumeOwnershipClassification' -count=1 -timeout=5m
+make integration-cli-deploy-embed-run-volume IT_GO_TEST_FLAGS=-v
+git diff --check -- Makefile integration/README.md integration/cli specs/256-volume-semantic-integration
+```
+
+Observed result:
+
+- non-integration package guard passed
+- integration compile-only check passed
+- local volume helper tests passed
+- `integration-cli-deploy-embed-run-volume` passed against `kind-camunda-platform-local-c89`
+- evidence includes `volume-deploy-embed-run.json`, `volume-data-deploy-embed-run.json`, `volume-progress-deploy-embed-run.json`, `volume-pipelines-deploy-embed-run.json`, and `volume-ops-reports-deploy-embed-run.json`
+- proposal evidence files were written as empty arrays because this slice did not require direct Camunda setup or new embedded BPMN fixtures
+- evidence path from the passing run: `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-3323686246`

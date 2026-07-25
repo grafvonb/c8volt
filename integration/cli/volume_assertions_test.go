@@ -45,7 +45,7 @@ func requireMachineStdoutClean(output string) error {
 
 func requireFinalOutcomeText(output string) error {
 	normalized := strings.ToLower(output)
-	for _, token := range []string{"succeeded", "completed", "created", "updated", "cancelled", "deleted", "resolved", "repaired", "purged", "found"} {
+	for _, token := range []string{"succeeded", "completed", "created", "updated", "cancelled", "deleted", "resolved", "repaired", "purged", "exported", "found"} {
 		if strings.Contains(normalized, token) {
 			return nil
 		}
