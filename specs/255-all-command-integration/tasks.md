@@ -105,18 +105,18 @@
 
 ### Tests for User Story 3
 
-- [ ] T034 [P] [US3] Add failing embedded fixture discovery test in `integration/cli/deploy_embed_run_test.go`
-- [ ] T035 [P] [US3] Add failing deploy-and-run seeded process data test in `integration/cli/deploy_embed_run_test.go`
-- [ ] T036 [P] [US3] Add failing dirty-cluster assertion test using unrelated search results in `integration/cli/get_test.go`
+- [x] T034 [P] [US3] Add failing embedded fixture discovery test in `integration/cli/deploy_embed_run_test.go`
+- [x] T035 [P] [US3] Add failing deploy-and-run seeded process data test in `integration/cli/deploy_embed_run_test.go`
+- [x] T036 [P] [US3] Add failing dirty-cluster assertion test using unrelated search results in `integration/cli/get_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T037 [US3] Implement `embed list` and version-matched embedded fixture selection in `integration/cli/deploy_embed_run_test.go`
-- [ ] T038 [US3] Implement `embed deploy` or `deploy process-definition` seeded definition setup in `integration/cli/deploy_embed_run_test.go`
-- [ ] T039 [US3] Implement `run process-instance` seeded instance creation with run marker variables in `integration/cli/deploy_embed_run_test.go`
-- [ ] T040 [US3] Persist seeded process definition keys, process instance keys, and resource IDs under evidence `data/` in `integration/cli/harness_test.go`
-- [ ] T041 [US3] Implement best-effort cleanup tracking without requiring cleanup success in `integration/cli/harness_test.go`
-- [ ] T042 [US3] Verify with `go test -tags=integration ./integration/cli -run TestSeededData -count=1 -timeout=20m`
+- [x] T037 [US3] Implement `embed list` and version-matched embedded fixture selection in `integration/cli/deploy_embed_run_test.go`
+- [x] T038 [US3] Implement `embed deploy` or `deploy process-definition` seeded definition setup in `integration/cli/deploy_embed_run_test.go`
+- [x] T039 [US3] Implement `run process-instance` seeded instance creation with run marker variables in `integration/cli/deploy_embed_run_test.go`
+- [x] T040 [US3] Persist seeded process definition keys, process instance keys, and resource IDs under evidence `data/` in `integration/cli/harness_test.go`
+- [x] T041 [US3] Implement best-effort cleanup tracking without requiring cleanup success in `integration/cli/harness_test.go`
+- [x] T042 [US3] Verify with `go test -tags=integration ./integration/cli -run TestSeededData -count=1 -timeout=20m`
 
 **Checkpoint**: User Story 3 is complete when clean and dirty clusters can both provide usable command targets.
 

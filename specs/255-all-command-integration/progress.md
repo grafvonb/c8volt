@@ -62,3 +62,28 @@
 **Learnings**:
 - Run integration subprocesses from the evidence workdir to avoid repo-local config files shadowing the operator's default local config.
 ---
+## Iteration 2 - 2026-07-25 08:44
+**Work Unit**: US3 Seed And Reuse Disposable Cluster Data
+**Tasks Completed**:
+- [x] T034: Add embedded fixture discovery test
+- [x] T035: Add deploy-and-run seeded process data test
+- [x] T036: Add dirty-cluster assertion test using unrelated search results
+- [x] T037: Implement `embed list` and version-matched embedded fixture selection
+- [x] T038: Implement `embed deploy` seeded definition setup
+- [x] T039: Implement `run process-instance` seeded instance creation with run marker variables
+- [x] T040: Persist seeded process definition keys, process instance keys, and resource IDs under evidence `data/`
+- [x] T041: Implement cleanup tracking without requiring cleanup success
+- [x] T042: Verify with `go test -tags=integration ./integration/cli -run TestSeededData -count=1 -timeout=20m`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- integration/cli/deploy_embed_run_test.go
+- integration/cli/get_test.go
+- integration/cli/harness_test.go
+- specs/255-all-command-integration/tasks.md
+- specs/255-all-command-integration/ralph-memory.md
+- specs/255-all-command-integration/progress.md
+**Learnings**:
+- Seeded data can use version-matched SimpleUserTask embedded fixtures and parse both shared-envelope and direct JSON command payloads.
+- No-tag `go test ./integration/cli -count=1` still fails because all files are integration-tagged; T091 owns that later polish check.
+---

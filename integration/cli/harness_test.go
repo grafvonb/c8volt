@@ -38,6 +38,7 @@ type integrationSuite struct {
 	repoRoot string
 	workDir  string
 	binPath  string
+	marker   string
 }
 
 type commandResult struct {
@@ -129,6 +130,7 @@ func TestMain(m *testing.M) {
 		repoRoot: repoRoot,
 		workDir:  workDir,
 		binPath:  filepath.Join(workDir, "c8volt"),
+		marker:   newRunMarker(),
 	}
 
 	if existing := strings.TrimSpace(os.Getenv(envITBin)); existing != "" && os.Getenv(envITBuild) == "0" {
@@ -139,7 +141,7 @@ func TestMain(m *testing.M) {
 	}
 
 	_ = writeJSONFile(filepath.Join(workDir, "run.json"), runMetadata{
-		Marker:    newRunMarker(),
+		Marker:    suite.marker,
 		StartedAt: time.Now().UTC(),
 		WorkDir:   workDir,
 		BinPath:   suite.binPath,
@@ -515,6 +517,23 @@ func commandEvidence(commandPath string, scenarioName string, result commandResu
 func writeEvidenceRecords(t *testing.T, name string, records []evidenceRecord) string {
 	t.Helper()
 	return writeJSON(t, name, records)
+}
+
+// writeDataEvidence stores reusable seeded-data identifiers under the suite data directory.
+func writeDataEvidence(t *testing.T, name string, value any) string {
+	t.Helper()
+	return writeJSON(t, filepath.Join("data", name), value)
+}
+
+// decodeCommandPayload accepts either a shared command envelope or a direct JSON payload.
+func decodeCommandPayload(output string, value any) error {
+	var envelope struct {
+		Payload json.RawMessage `json:"payload"`
+	}
+	if err := json.Unmarshal([]byte(output), &envelope); err == nil && len(envelope.Payload) > 0 {
+		return json.Unmarshal(envelope.Payload, value)
+	}
+	return json.Unmarshal([]byte(output), value)
 }
 
 func writeCommandProposals(t *testing.T, proposals []proposalRecord) string {
