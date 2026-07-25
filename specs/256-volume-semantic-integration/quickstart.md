@@ -100,6 +100,16 @@ Expected outcome:
 - user-limited discovery is visible in compact output and reports
 - final outcome and elapsed time are captured
 
+Validated ops execute slice:
+
+```sh
+make integration-cli-ops-execute-volume IT_GO_TEST_FLAGS=-v
+```
+
+Evidence path:
+
+- `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-722503529`
+
 ## Evidence Review
 
 Use a stable workdir when comparing repeated runs:
