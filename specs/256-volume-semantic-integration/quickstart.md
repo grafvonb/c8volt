@@ -136,3 +136,22 @@ Expected outcome:
 
 - normal unit validation is unaffected
 - the integration package remains harmless without the integration build tag
+
+## Current Implementation Validation
+
+Validation recorded for the initial `integration-cli-get-volume` slice:
+
+```sh
+GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
+GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m
+GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestVolumeTargetCatalog|TestVolumeOwnershipClassification' -count=1 -timeout=5m
+make integration-cli-get-volume IT_GO_TEST_FLAGS=-v
+```
+
+Observed result:
+
+- non-integration package guard passed
+- integration compile-only check passed
+- local volume helper tests passed
+- `integration-cli-get-volume` passed against `kind-camunda-platform-local-c89`
+- evidence path from the passing run: `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-4290819661`

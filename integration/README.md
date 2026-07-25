@@ -95,6 +95,19 @@ make integration-cli-ops-purge
 make integration-cli-ops-repair
 ```
 
+Volume targets are slower and intentionally destructive. They seed or discover
+their own data in clean or dirty disposable clusters, write separate
+`volume-*.json` evidence files, and keep the baseline family targets quick.
+The first implemented volume target is:
+
+```sh
+make integration-cli-get-volume IT_GO_TEST_FLAGS=-v
+```
+
+Planned volume target names are reserved for the remaining families. Until their
+matching `TestVolume*Family` scenarios are implemented, those Make targets exit
+with a clear not-implemented message instead of reporting a false pass.
+
 Pass extra `go test` flags with `IT_GO_TEST_FLAGS`. For example, use `-v`
 when you want scenario-level command logs in addition to the evidence files.
 The Make targets automatically set `C8VOLT_IT_VERBOSE=1` when `-v` is present:
@@ -102,6 +115,7 @@ The Make targets automatically set `C8VOLT_IT_VERBOSE=1` when `-v` is present:
 ```sh
 make integration-cli-get IT_GO_TEST_FLAGS=-v
 make integration-cli-ops-repair IT_GO_TEST_FLAGS='-v -failfast'
+make integration-cli-get-volume IT_GO_TEST_FLAGS=-v IT_VOLUME_TIMEOUT=90m
 ```
 
 Verbose integration output includes each c8volt subprocess scenario, arguments,
@@ -157,6 +171,8 @@ Go suite variables:
 | `C8VOLT_IT_BIN` | built into the workdir | Existing c8volt binary to test when `C8VOLT_IT_BUILD=0`. |
 | `C8VOLT_IT_BUILD` | build enabled | Set `0` with `C8VOLT_IT_BIN` to skip building the binary. |
 | `C8VOLT_IT_WORKDIR` | temp directory | Evidence directory for reruns and artifact review. |
+| `C8VOLT_IT_VOLUME_COUNT` | `12` | Number of suite-owned process instances created by Go volume targets for paging, limit, and filtering coverage. |
+| `IT_VOLUME_TIMEOUT` | `90m` | Make-level timeout used by `integration-cli-*-volume` targets. |
 
 ## Outputs
 
@@ -179,6 +195,9 @@ directory:
 - `profiles.json` and `readonly-smoke.json`: readiness and smoke evidence.
 - `examples.json`: help/generated-doc example validation results.
 - `proposals-command.json` and `proposals-embedded-bpmn.json`: setup gap proposals.
+- `volume-<family>.json`, `volume-data-<family>.json`,
+  `volume-progress-<family>.json`, `volume-pipelines-<family>.json`, and
+  `volume-ops-reports-<family>.json`: opt-in volume-suite evidence.
 - `logs/`: per-command stdout and stderr evidence.
 - `data/`: seeded data, selected keys, resource IDs, and substitution evidence.
 

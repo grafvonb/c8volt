@@ -20,9 +20,9 @@
 
 **Purpose**: Add the target surface and documentation entry points for the opt-in volume suite.
 
-- [ ] T001 Add `integration-cli-*-volume` Make targets and shared `IT_VOLUME_TIMEOUT`/volume env plumbing in `Makefile`
-- [ ] T002 Document destructive volume targets, `C8VOLT_IT_VOLUME_COUNT`, `IT_GO_TEST_FLAGS=-v`, `IT_VOLUME_TIMEOUT`, baseline `IT_TIMEOUT`, and evidence locations in `integration/README.md`
-- [ ] T003 [P] Add volume-suite package guard and no-integration-tag harmlessness notes in `integration/cli/package_test.go`
+- [x] T001 Add `integration-cli-*-volume` Make targets and shared `IT_VOLUME_TIMEOUT`/volume env plumbing in `Makefile`
+- [x] T002 Document destructive volume targets, `C8VOLT_IT_VOLUME_COUNT`, `IT_GO_TEST_FLAGS=-v`, `IT_VOLUME_TIMEOUT`, baseline `IT_TIMEOUT`, and evidence locations in `integration/README.md`
+- [x] T003 [P] Add volume-suite package guard and no-integration-tag harmlessness notes in `integration/cli/package_test.go`
 
 ---
 
@@ -32,14 +32,14 @@
 
 **Critical**: No user story work should start until the volume harness, dataset model, evidence writers, and cleanliness assertions exist.
 
-- [ ] T004 Add volume target definitions, environment parsing for `C8VOLT_IT_VOLUME_COUNT`, and per-family evidence path helpers in `integration/cli/volume_harness_test.go`
-- [ ] T005 Add suite-owned dataset structs, marker/selector helpers, cleanup records, and dirty-cluster classification in `integration/cli/volume_data_test.go`
-- [ ] T006 Add volume evidence record writers for `volume-<family>.json`, `volume-data-<family>.json`, `volume-progress-<family>.json`, `volume-pipelines-<family>.json`, and `volume-ops-reports-<family>.json` in `integration/cli/volume_evidence_test.go`
-- [ ] T007 Add stdout cleanliness, JSON parsing, keys-only parsing, final outcome, and no-wait/submitted assertion helpers in `integration/cli/volume_assertions_test.go`
-- [ ] T008 Add stdin file creation, duplicate/malformed/missing key builders, and command stdin execution helpers in `integration/cli/volume_pipeline_test.go`
+- [x] T004 Add volume target definitions, environment parsing for `C8VOLT_IT_VOLUME_COUNT`, and per-family evidence path helpers in `integration/cli/volume_harness_test.go`
+- [x] T005 Add suite-owned dataset structs, marker/selector helpers, cleanup records, and dirty-cluster classification in `integration/cli/volume_data_test.go`
+- [x] T006 Add volume evidence record writers for `volume-<family>.json`, `volume-data-<family>.json`, `volume-progress-<family>.json`, `volume-pipelines-<family>.json`, and `volume-ops-reports-<family>.json` in `integration/cli/volume_evidence_test.go`
+- [x] T007 Add stdout cleanliness, JSON parsing, keys-only parsing, final outcome, and no-wait/submitted assertion helpers in `integration/cli/volume_assertions_test.go`
+- [x] T008 Add stdin file creation, duplicate/malformed/missing key builders, and command stdin execution helpers in `integration/cli/volume_pipeline_test.go`
 - [ ] T009 Add best-effort c8volt-first data seeding helpers for embedded deployment, process-instance start, variable mutation, cancellation, deletion, incident/job discovery, and proposal fallback recording in `integration/cli/volume_seed_test.go`
-- [ ] T010 Add ops report parsers and stable Markdown/JSON report assertion helpers in `integration/cli/volume_ops_report_test.go`
-- [ ] T011 Add focused compile-only validation for the new volume harness with `go test -tags=integration ./integration/cli -run '^$' -count=1` documented in `specs/256-volume-semantic-integration/quickstart.md`
+- [x] T010 Add ops report parsers and stable Markdown/JSON report assertion helpers in `integration/cli/volume_ops_report_test.go`
+- [x] T011 Add focused compile-only validation for the new volume harness with `go test -tags=integration ./integration/cli -run '^$' -count=1` documented in `specs/256-volume-semantic-integration/quickstart.md`
 
 **Checkpoint**: The volume harness compiles, writes empty summary/proposal evidence, and can run without invoking destructive story scenarios.
 
@@ -53,12 +53,12 @@
 
 ### Tests and Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Implement `TestVolumeGetFamily` for paging, positive/negative filtering, totals/limits visibility, clean JSON/keys-only output, and `volume-get.json` evidence in `integration/cli/volume_get_test.go`
+- [x] T012 [P] [US1] Implement `TestVolumeGetFamily` for paging, positive/negative filtering, totals/limits visibility, clean JSON/keys-only output, and `volume-get.json` evidence in `integration/cli/volume_get_test.go`
 - [ ] T013 [P] [US1] Implement `TestVolumeWalkFamily` for multi-root walk progress, completed-root accounting, hidden-key hints, machine stdout cleanliness, and `volume-walk.json` evidence in `integration/cli/volume_walk_test.go`
 - [ ] T014 [P] [US1] Implement `TestVolumeDeployEmbedRunFamily` for embedded model deploy/run volume setup, long-running finality wording, no-wait/submitted wording, and fixture proposal gaps in `integration/cli/volume_deploy_embed_run_test.go`
 - [ ] T015 [US1] Extend progress assertions to record visible or durable progress facts for human and verbose modes in `integration/cli/volume_assertions_test.go`
 - [ ] T016 [US1] Wire `integration-cli-get-volume`, `integration-cli-walk-volume`, and `integration-cli-deploy-embed-run-volume` to `TestVolumeGetFamily`, `TestVolumeWalkFamily`, and `TestVolumeDeployEmbedRunFamily` in `Makefile`
-- [ ] T017 [US1] Validate the MVP target with `make integration-cli-get-volume IT_GO_TEST_FLAGS=-v` and record the command in `specs/256-volume-semantic-integration/quickstart.md`
+- [x] T017 [US1] Validate the MVP target with `make integration-cli-get-volume IT_GO_TEST_FLAGS=-v` and record the command in `specs/256-volume-semantic-integration/quickstart.md`
 
 **Checkpoint**: User Story 1 is complete when one volume family target independently proves paging/filtering or long-running progress plus explicit final outcome evidence.
 
@@ -129,8 +129,8 @@
 **Purpose**: Keep the suite maintainable, documented, and safe for repeated destructive reruns.
 
 - [ ] T039 [P] Normalize all new Go files with `gofmt -w integration/cli/volume_harness_test.go integration/cli/volume_data_test.go integration/cli/volume_evidence_test.go integration/cli/volume_assertions_test.go integration/cli/volume_pipeline_test.go integration/cli/volume_seed_test.go integration/cli/volume_ops_report_test.go integration/cli/volume_get_test.go integration/cli/volume_walk_test.go integration/cli/volume_update_test.go integration/cli/volume_cancel_test.go integration/cli/volume_delete_test.go integration/cli/volume_expect_resolve_test.go integration/cli/volume_deploy_embed_run_test.go integration/cli/volume_ops_analyse_test.go integration/cli/volume_ops_execute_test.go integration/cli/volume_ops_purge_test.go integration/cli/volume_ops_repair_test.go`
-- [ ] T040 Run non-integration validation with `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1` and record the result in `specs/256-volume-semantic-integration/quickstart.md`
-- [ ] T041 Run focused integration harness compile validation with `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m` and record the result in `specs/256-volume-semantic-integration/quickstart.md`
+- [x] T040 Run non-integration validation with `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1` and record the result in `specs/256-volume-semantic-integration/quickstart.md`
+- [x] T041 Run focused integration harness compile validation with `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m` and record the result in `specs/256-volume-semantic-integration/quickstart.md`
 - [ ] T042 Run at least one non-ops volume target and one ops volume target against disposable default-local profiles, then record evidence paths and outcomes in `specs/256-volume-semantic-integration/quickstart.md`
 - [ ] T043 Review `proposals-command.json` and `proposals-embedded-bpmn.json` from a volume run and add any newly discovered command or embedded BPMN fixture gaps to `specs/256-volume-semantic-integration/issue-draft.md`
 - [ ] T044 Confirm `integration/README.md` warns that volume targets are destructive, dirty-cluster tolerant, independent, opt-in, and separate from baseline family targets

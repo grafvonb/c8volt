@@ -462,6 +462,11 @@ func writeSummaryFile(path string, metadata runMetadata, exitCode int) error {
 		b.WriteString(fmt.Sprintf("- `%s`\n", name))
 	}
 	b.WriteString("- `coverage-<family>.json`\n")
+	b.WriteString("- `volume-<family>.json`\n")
+	b.WriteString("- `volume-data-<family>.json`\n")
+	b.WriteString("- `volume-progress-<family>.json`\n")
+	b.WriteString("- `volume-pipelines-<family>.json`\n")
+	b.WriteString("- `volume-ops-reports-<family>.json`\n")
 	b.WriteString("- `logs/`\n")
 	b.WriteString("- `data/`\n")
 	return os.WriteFile(path, []byte(b.String()), 0o644)

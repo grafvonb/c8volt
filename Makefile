@@ -15,6 +15,7 @@ IT_VERBOSE ?= $(if $(findstring -v,$(IT_GO_TEST_FLAGS)),1,0)
 IT_GO_TEST ?= GOCACHE=/tmp/c8volt-gocache C8VOLT_IT_VERBOSE=$(IT_VERBOSE) go test -tags=integration ./integration/cli
 IT_GO_TEST_FLAGS ?=
 IT_TIMEOUT ?= 60m
+IT_VOLUME_TIMEOUT ?= 90m
 DEMO_VHS_TARGETS := \
 	demo-vhs-fast-start \
 	demo-vhs-ops-execute-retention-policy \
@@ -44,8 +45,20 @@ INTEGRATION_CLI_TARGETS := \
 	integration-cli-ops-execute \
 	integration-cli-ops-purge \
 	integration-cli-ops-repair
+INTEGRATION_CLI_VOLUME_TARGETS := \
+	integration-cli-get-volume \
+	integration-cli-walk-volume \
+	integration-cli-update-volume \
+	integration-cli-cancel-volume \
+	integration-cli-delete-volume \
+	integration-cli-expect-resolve-volume \
+	integration-cli-deploy-embed-run-volume \
+	integration-cli-ops-analyse-volume \
+	integration-cli-ops-execute-volume \
+	integration-cli-ops-purge-volume \
+	integration-cli-ops-repair-volume
 
-.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-build docs-site-serve demo-vhs-check $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES) $(INTEGRATION_CLI_TARGETS)
+.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-build docs-site-serve demo-vhs-check $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES) $(INTEGRATION_CLI_TARGETS) $(INTEGRATION_CLI_VOLUME_TARGETS)
 
 help: ## Show all available Make targets with a short description.
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "%-55s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -134,6 +147,39 @@ test: ## Run the full Go test suite with the race detector enabled.
 
 integration-cli-get: ## Run destructive CLI integration tests for get commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestGetFamily -count=1 -timeout=$(IT_TIMEOUT)
+
+integration-cli-get-volume: ## Run destructive volume CLI integration tests for get commands.
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeGetFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
+
+integration-cli-walk-volume: ## Reserved for destructive volume CLI integration tests for walk commands.
+	@echo "integration-cli-walk-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2
+
+integration-cli-update-volume: ## Reserved for destructive volume CLI integration tests for update commands.
+	@echo "integration-cli-update-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2
+
+integration-cli-cancel-volume: ## Reserved for destructive volume CLI integration tests for cancel commands.
+	@echo "integration-cli-cancel-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2
+
+integration-cli-delete-volume: ## Reserved for destructive volume CLI integration tests for delete commands.
+	@echo "integration-cli-delete-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2
+
+integration-cli-expect-resolve-volume: ## Reserved for destructive volume CLI integration tests for expect and resolve commands.
+	@echo "integration-cli-expect-resolve-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2
+
+integration-cli-deploy-embed-run-volume: ## Reserved for destructive volume CLI integration tests for deploy, embed, and run commands.
+	@echo "integration-cli-deploy-embed-run-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2
+
+integration-cli-ops-analyse-volume: ## Reserved for destructive volume CLI integration tests for ops analyse commands.
+	@echo "integration-cli-ops-analyse-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2
+
+integration-cli-ops-execute-volume: ## Reserved for destructive volume CLI integration tests for ops execute commands.
+	@echo "integration-cli-ops-execute-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2
+
+integration-cli-ops-purge-volume: ## Reserved for destructive volume CLI integration tests for ops purge commands.
+	@echo "integration-cli-ops-purge-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2
+
+integration-cli-ops-repair-volume: ## Reserved for destructive volume CLI integration tests for ops repair commands.
+	@echo "integration-cli-ops-repair-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2
 
 integration-cli-walk: ## Run destructive CLI integration tests for walk commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestWalkFamily -count=1 -timeout=$(IT_TIMEOUT)
