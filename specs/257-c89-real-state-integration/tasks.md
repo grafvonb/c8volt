@@ -102,13 +102,13 @@
 
 - [x] T037 [P0] Add repository-level integration test responsibility rules in `specs/integration-test-responsibility.md`
 - [x] T038 [P0] Add feature-local real-state gap tracking in `specs/257-c89-real-state-integration/gaps.md`
-- [ ] T039 [P0] Remove proposal files from 257 runtime evidence contracts and update real-state evidence structs to use skipped-prerequisite and dry-run-covered outcomes in `integration/cli/real_state_data_test.go`
-- [ ] T040 [P0] Replace real-state proposal helpers with spec-gap validation helpers in `integration/cli/real_state_gap_validation_test.go`
-- [ ] T041 [P0] Rename the reserved `integration-cli-real-state-proposals` target to `integration-cli-real-state-gaps` in `Makefile`
-- [ ] T042 [P0] Convert `TestRealStateBPMNErrorFamily` from proposal-backed evidence to dry-run-covered plus skipped-prerequisite confirmed mutation evidence in `integration/cli/real_state_bpmn_error_test.go`
-- [ ] T043 [P0] Remove proposal writing from real-state jobs, incidents, and listener family tests while preserving runtime setup evidence in `integration/cli/real_state_jobs_test.go`, `integration/cli/real_state_incidents_test.go`, and `integration/cli/real_state_listeners_test.go`
+- [x] T039 [P0] Remove proposal files from 257 runtime evidence contracts and update real-state evidence structs to use skipped-prerequisite and dry-run-covered outcomes in `integration/cli/real_state_data_test.go`
+- [x] T040 [P0] Replace real-state proposal helpers with spec-gap validation helpers in `integration/cli/real_state_gap_validation_test.go`
+- [x] T041 [P0] Rename the reserved `integration-cli-real-state-proposals` target to `integration-cli-real-state-gaps` in `Makefile`
+- [x] T042 [P0] Convert `TestRealStateBPMNErrorFamily` from proposal-backed evidence to dry-run-covered plus skipped-prerequisite confirmed mutation evidence in `integration/cli/real_state_bpmn_error_test.go`
+- [x] T043 [P0] Remove proposal writing from real-state jobs, incidents, and listener family tests while preserving runtime setup evidence in `integration/cli/real_state_jobs_test.go`, `integration/cli/real_state_incidents_test.go`, and `integration/cli/real_state_listeners_test.go`
 - [x] T044 [P0] Update inherited 255 and 256 spec artifacts to mark runtime proposal JSON as deprecated and point future work to spec-owned gap artifacts
-- [ ] T045 [P0] Validate correction with `go test ./integration/cli -count=1`, integration compile checks, `make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v`, `make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v`, `make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v`, and `make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v`
+- [x] T045 [P0] Validate correction with `go test ./integration/cli -count=1`, integration compile checks, `make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v`, `make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v`, `make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v`, and `make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v`
 
 **Checkpoint**: Integration tests report runtime truth only; missing setup and fixture work lives in specs, not generated test evidence.
 

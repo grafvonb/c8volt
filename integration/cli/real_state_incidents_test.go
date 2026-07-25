@@ -32,8 +32,6 @@ func TestRealStateIncidentsFamily(t *testing.T) {
 		Marker:   suite.marker,
 		Profiles: profiles,
 	}
-	var commandProposals []proposalRecord
-	var embeddedProposals []proposalRecord
 	var failures []string
 	for _, profile := range profiles {
 		dataset, records, err := seedRealStateJobDataset(t, profile, 2)
@@ -41,8 +39,6 @@ func TestRealStateIncidentsFamily(t *testing.T) {
 		report.Records = append(report.Records, records...)
 		if err != nil {
 			failures = append(failures, err.Error())
-			commandProposals = appendRealStateIncidentCommandGapProposals(commandProposals)
-			embeddedProposals = appendRealStateIncidentEmbeddedBPMNGapProposals(embeddedProposals)
 			continue
 		}
 
@@ -56,8 +52,6 @@ func TestRealStateIncidentsFamily(t *testing.T) {
 	writeRealStateDataReport(t, "incidents", report.Fixtures)
 	writeRealStateProgressReport(t, "incidents", report.Records)
 	writeRealStateOpsReportEvidence(t, "incidents", nil)
-	writeCommandProposals(t, commandProposals)
-	writeEmbeddedBPMNProposals(t, embeddedProposals)
 	writeRealStateFamilyReport(t, report)
 	if len(failures) > 0 {
 		t.Fatalf("real-state incident scenarios failed:\n%s", strings.Join(failures, "\n"))
@@ -219,22 +213,4 @@ func realStateIncidentKeys(incidents []realStateIncident) []string {
 		}
 	}
 	return uniqueSortedStrings(keys)
-}
-
-func appendRealStateIncidentCommandGapProposals(proposals []proposalRecord) []proposalRecord {
-	return appendRealStateCommandGapProposal(proposals,
-		"job-backed incidents discoverable without direct Camunda setup",
-		"real-state incident and related-job repair coverage",
-		[]string{"get incident", "get job", "ops repair incident"},
-		"Operators can create repairable job incidents through c8volt commands before running destructive repair checks.",
-	)
-}
-
-func appendRealStateIncidentEmbeddedBPMNGapProposals(proposals []proposalRecord) []proposalRecord {
-	return appendRealStateEmbeddedBPMNGapProposal(proposals,
-		"embedded C89 service-task process that creates job-backed incidents after failure",
-		"real-state incident related-job coverage",
-		[]string{"get incident", "ops repair incident"},
-		"Maintainers can verify incident job keys and repair plans from repository-owned embedded BPMN.",
-	)
 }

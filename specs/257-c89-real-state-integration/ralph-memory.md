@@ -14,16 +14,18 @@
 - `integration/cli/volume_evidence_test.go` is the closest family report and evidence writer pattern.
 - `integration/cli/volume_assertions_test.go` already owns reusable JSON, keys-only, and machine stdout cleanliness checks; real-state helpers should wrap these rather than duplicate logic.
 - `integration/cli/deploy_embed_run_test.go` and `integration/cli/volume_seed_test.go` already provide embedded fixture deployment and process-instance start helpers.
-- `integration/cli/harness_test.go` owns default-local config selection, explicit `--config` rejection, JSON evidence writing, and run summary content. Its legacy proposal registration is deprecated for corrected real-state work.
+- `integration/cli/harness_test.go` owns default-local config selection, explicit `--config` rejection, JSON evidence writing, and run summary content. Its legacy proposal registration remains for older 255/256 tests but must not be used by corrected real-state work.
+- `integration/cli/real_state_gap_validation_test.go` owns real-state spec-gap checks that do not touch Camunda and do not generate backlog output.
 
 ## Current Handoff
 
-- Phase 1, Phase 2, User Story 1, and User Story 2 are complete and committed through this iteration.
+- Phase 1, Phase 2, User Story 1, User Story 2, and the Phase 5 responsibility correction gate are complete through this iteration.
 - `integration-cli-real-state-jobs` and `integration-cli-real-state-incidents` are implemented and passed against `kind-camunda-platform-local-c89` on Camunda 8.9.9.
 - Jobs use `C89_SimpleServiceTask.bpmn`, which currently yields `CREATED` execution-listener jobs. Retries can be confirmed, fail/no-wait can be submitted, and timeout can be planned in dry-run. Confirmed `update job --timeout` still needs an activated-job setup command or direct Camunda activation fallback and is tracked in `gaps.md`.
+- Real-state jobs, incidents, listeners, and BPMN-error family tests no longer write `proposals-command.json` or `proposals-embedded-bpmn.json`.
 - Incidents are created by failing a suite-owned job with retries `0`; `get incident` observes the related `jobKey`, `get job --key` observes the failed job, and `ops repair incident --dry-run` reports related job counts.
 - Listener coverage uses `C89_SimpleServiceTask.bpmn` to create real `EXECUTION_LISTENER` jobs. `get element --with-listeners`, `walk process-instance --with-elements --with-listeners`, and `ops analyse slow-process-instances --with-listeners` all passed against Camunda 8.9.9 with suite-owned listener job keys.
 - `walk process-instance` rejects `--automation`; listener JSON traversal scenarios must use `--json` without `--automation`.
-- BPMN error coverage is dry-run-covered: `update job --throw-bpmn-error ErrorTimerCode --dry-run` produces a clean plan and follow-up `get job --key` proves the job remains unchanged. Confirmed BPMN error mutation still needs an embedded catchable BPMN error fixture and c8volt setup path, tracked in `gaps.md`.
-- A corrective responsibility pass has started: `specs/integration-test-responsibility.md` and `gaps.md` define that tests report runtime truth while specs carry missing-command and missing-BPMN intent.
-- Next iteration should continue the Phase 5 correction gate at T039 before starting destructive User Story 3.
+- BPMN error coverage is dry-run-covered: `update job --throw-bpmn-error ErrorTimerCode --dry-run` produces a clean plan and follow-up `get job --key` proves the job remains unchanged. Confirmed BPMN error mutation is recorded as skipped-prerequisite runtime evidence and the missing embedded catchable BPMN error fixture plus c8volt setup path are tracked in `gaps.md`.
+- `integration-cli-real-state-proposals` has been renamed to reserved `integration-cli-real-state-gaps`; User Story 4 later wires that target to `TestRealStateGapFamily`.
+- Next iteration can start destructive User Story 3 at T046/T047.

@@ -21,8 +21,6 @@ func TestRealStateListenersFamily(t *testing.T) {
 		Marker:   suite.marker,
 		Profiles: profiles,
 	}
-	var commandProposals []proposalRecord
-	var embeddedProposals []proposalRecord
 	var failures []string
 	for _, profile := range profiles {
 		dataset, records, err := seedRealStateJobDataset(t, profile, 3)
@@ -30,8 +28,6 @@ func TestRealStateListenersFamily(t *testing.T) {
 		report.Records = append(report.Records, records...)
 		if err != nil {
 			failures = append(failures, err.Error())
-			commandProposals = appendRealStateListenerCommandGapProposals(commandProposals)
-			embeddedProposals = appendRealStateListenerEmbeddedBPMNGapProposals(embeddedProposals)
 			continue
 		}
 
@@ -45,8 +41,6 @@ func TestRealStateListenersFamily(t *testing.T) {
 	writeRealStateDataReport(t, "listeners", report.Fixtures)
 	writeRealStateProgressReport(t, "listeners", report.Records)
 	writeRealStateOpsReportEvidence(t, "listeners", nil)
-	writeCommandProposals(t, commandProposals)
-	writeEmbeddedBPMNProposals(t, embeddedProposals)
 	writeRealStateFamilyReport(t, report)
 	if len(failures) > 0 {
 		t.Fatalf("real-state listener scenarios failed:\n%s", strings.Join(failures, "\n"))
@@ -182,22 +176,4 @@ func jsonTreeContainsStringValue(value any, want string) bool {
 		return fmt.Sprintf("%.0f", typed) == want
 	}
 	return false
-}
-
-func appendRealStateListenerCommandGapProposals(proposals []proposalRecord) []proposalRecord {
-	return appendRealStateCommandGapProposal(proposals,
-		"runtime listener jobs visible through c8volt setup commands",
-		"real-state listener enrichment coverage",
-		[]string{"get element", "walk process-instance", "ops analyse slow-process-instances"},
-		"Operators can create listener-enriched examples without direct Camunda setup.",
-	)
-}
-
-func appendRealStateListenerEmbeddedBPMNGapProposals(proposals []proposalRecord) []proposalRecord {
-	return appendRealStateEmbeddedBPMNGapProposal(proposals,
-		"embedded C89 process with execution or task listener jobs",
-		"real-state listener enrichment coverage",
-		[]string{"get element", "walk process-instance", "ops analyse slow-process-instances"},
-		"Maintainers can prove listener output from repository-owned BPMN fixtures.",
-	)
 }

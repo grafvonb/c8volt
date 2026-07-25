@@ -143,3 +143,42 @@
 - Runtime tests should report observed execution truth, including skipped prerequisites and dry-run coverage.
 - Missing c8volt setup commands and embedded BPMN assets now belong in spec-owned gap artifacts, starting with `gaps.md`.
 ---
+## Iteration 5 - 2026-07-25 23:45
+**Work Unit**: Remove real-state runtime proposal evidence
+**Tasks Completed**:
+- [x] T039: Remove proposal fields from real-state fixture evidence and add skipped-prerequisite/dry-run-covered runtime fields
+- [x] T040: Replace real-state proposal helper tests with spec-owned gap artifact validation
+- [x] T041: Rename reserved real-state proposal target to `integration-cli-real-state-gaps`
+- [x] T042: Convert BPMN-error evidence to dry-run-covered plus skipped-prerequisite confirmed mutation
+- [x] T043: Remove proposal writing from real-state jobs, incidents, and listeners
+- [x] T045: Validate the correction against local and live C89 targets
+**Tasks Remaining in Work Unit**: 0
+**Commit**: Pending
+**Files Changed**:
+- Makefile
+- integration/cli/harness_test.go
+- integration/cli/real_state_harness_test.go
+- integration/cli/real_state_data_test.go
+- integration/cli/real_state_jobs_test.go
+- integration/cli/real_state_incidents_test.go
+- integration/cli/real_state_listeners_test.go
+- integration/cli/real_state_bpmn_error_test.go
+- integration/cli/real_state_gap_validation_test.go
+- integration/cli/real_state_proposals_test.go
+- specs/257-c89-real-state-integration/quickstart.md
+- specs/257-c89-real-state-integration/tasks.md
+- specs/257-c89-real-state-integration/ralph-memory.md
+- specs/257-c89-real-state-integration/progress.md
+**Validation**:
+- `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
+- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestRealStateTargetCatalog|TestRealStateC89ProfileClassification|TestRealStateEvidenceWritersEmitArrays|TestRealStateMachineOutputAssertions|TestRealStateGapArtifactDocumentsCurrentPrerequisites' -count=1 -timeout=5m`
+- `make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v`
+- `make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v`
+- `make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v`
+- `make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v`
+**Learnings**:
+- Real-state runtime reports now list only real-state family, data, progress, and ops evidence files for the corrected families.
+- BPMN-error dry-run remains useful real integration evidence because it uses a real suite-owned job and verifies unchanged job state afterward.
+- Confirmed BPMN-error mutation should not be attempted until the missing catchable BPMN fixture and setup path from `gaps.md` exist.
+---

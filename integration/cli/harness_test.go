@@ -101,6 +101,9 @@ type evidenceRecord struct {
 	VersionBehavior   string    `json:"versionBehavior,omitempty"`
 	Preview           bool      `json:"preview,omitempty"`
 	ConfirmedMutation bool      `json:"confirmedMutation,omitempty"`
+	RequiredState     string    `json:"requiredState,omitempty"`
+	ObservedState     string    `json:"observedState,omitempty"`
+	SkipReason        string    `json:"skipReason,omitempty"`
 	Outcome           string    `json:"outcome"`
 	FailureClass      string    `json:"failureClass,omitempty"`
 }

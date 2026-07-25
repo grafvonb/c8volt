@@ -11,12 +11,13 @@ import (
 )
 
 const (
-	realStateOutcomeLiveCovered    = "live-covered"
-	realStateOutcomePartialLive    = "partially-live-covered"
-	realStateOutcomeProposalBacked = "proposal-backed"
-	realStateOutcomeUnsupported    = "unsupported"
-	realStateOutcomeFailed         = "failed"
-	realStateTargetVersion         = "8.9"
+	realStateOutcomeLiveCovered   = "live-covered"
+	realStateOutcomePartialLive   = "partially-live-covered"
+	realStateOutcomeDryRunCovered = "dry-run-covered"
+	realStateOutcomeSkippedPrereq = "skipped-prerequisite"
+	realStateOutcomeUnsupported   = "unsupported"
+	realStateOutcomeFailed        = "failed"
+	realStateTargetVersion        = "8.9"
 )
 
 // realStateTarget describes one independently runnable C89 real-state Make target.
@@ -31,7 +32,7 @@ type realStateTarget struct {
 // allRealStateTargets lists the stable operator entry points reserved by feature 257.
 func allRealStateTargets() []realStateTarget {
 	return []realStateTarget{
-		{Name: "integration-cli-real-state-proposals", Topic: "proposals", TestPattern: "TestRealStateProposalFamily", Destructive: false, RequiredState: "aggregate proposal evidence"},
+		{Name: "integration-cli-real-state-gaps", Topic: "gap validation", TestPattern: "TestRealStateGapFamily", Destructive: false, RequiredState: "spec-owned gap artifact consistency"},
 		{Name: "integration-cli-real-state-jobs", Topic: "jobs", TestPattern: "TestRealStateJobsFamily", Destructive: true, RequiredState: "suite-owned active jobs"},
 		{Name: "integration-cli-real-state-incidents", Topic: "incidents", TestPattern: "TestRealStateIncidentsFamily", Destructive: true, RequiredState: "suite-owned incidents with related jobs"},
 		{Name: "integration-cli-real-state-listeners", Topic: "listeners", TestPattern: "TestRealStateListenersFamily", Destructive: true, RequiredState: "listener jobs or listener element evidence"},

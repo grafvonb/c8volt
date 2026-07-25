@@ -38,8 +38,6 @@ func TestRealStateJobsFamily(t *testing.T) {
 		Marker:   suite.marker,
 		Profiles: profiles,
 	}
-	var commandProposals []proposalRecord
-	var embeddedProposals []proposalRecord
 	var failures []string
 	for _, profile := range profiles {
 		dataset, records, err := seedRealStateJobDataset(t, profile, 6)
@@ -47,8 +45,6 @@ func TestRealStateJobsFamily(t *testing.T) {
 		report.Records = append(report.Records, records...)
 		if err != nil {
 			failures = append(failures, err.Error())
-			commandProposals = appendRealStateJobFixtureCommandGapProposals(commandProposals)
-			embeddedProposals = appendRealStateJobEmbeddedBPMNGapProposals(embeddedProposals)
 			continue
 		}
 
@@ -58,13 +54,9 @@ func TestRealStateJobsFamily(t *testing.T) {
 			failures = append(failures, err.Error())
 		}
 	}
-	commandProposals = appendRealStateJobTimeoutCommandGapProposals(commandProposals)
-
 	writeRealStateDataReport(t, "jobs", report.Fixtures)
 	writeRealStateProgressReport(t, "jobs", report.Records)
 	writeRealStateOpsReportEvidence(t, "jobs", nil)
-	writeCommandProposals(t, commandProposals)
-	writeEmbeddedBPMNProposals(t, embeddedProposals)
 	writeRealStateFamilyReport(t, report)
 	if len(failures) > 0 {
 		t.Fatalf("real-state job scenarios failed:\n%s", strings.Join(failures, "\n"))
@@ -91,7 +83,8 @@ func seedRealStateJobDataset(t *testing.T, profile integrationProfile, count int
 
 	selection, err := selectEmbeddedFixtureBySuffix(profile.ExpectedVersion, files, "SimpleServiceTask.bpmn")
 	if err != nil {
-		fixture.EmbeddedBPMNProposal = true
+		fixture.CurrentEvidenceLevel = realStateOutcomeSkippedPrereq
+		fixture.SkipReason = "missing embedded SimpleServiceTask BPMN fixture for Camunda 8.9 real-state job setup"
 		return realStateJobDataset{Fixture: fixture}, records, err
 	}
 	selection.BpmnProcessID = embeddedFixtureBpmnProcessID(t, selection.Path)
@@ -386,6 +379,9 @@ func validateRealStateJobWorkerOutcome(result commandResult) error {
 
 func realStateJobRecord(profile integrationProfile, result commandResult, commandPath string, scenarioName string, outputMode string, flags []string, keys []string, preview bool, confirmed bool) evidenceRecord {
 	record := commandEvidence(commandPath, scenarioName, result, realStateOutcomeLiveCovered)
+	if preview && !confirmed {
+		record.Outcome = realStateOutcomeDryRunCovered
+	}
 	record.Profile = profile.Name
 	record.CamundaVersion = profile.ExpectedVersion
 	record.CoveredFlags = append([]string(nil), flags...)
@@ -428,31 +424,4 @@ func firstNRealStateJobs(values []realStateJob, count int) []realStateJob {
 		count = len(values)
 	}
 	return append([]realStateJob(nil), values[:count]...)
-}
-
-func appendRealStateJobFixtureCommandGapProposals(proposals []proposalRecord) []proposalRecord {
-	return appendRealStateCommandGapProposal(proposals,
-		"active service-task jobs discoverable without direct Camunda setup",
-		"real-state get job and update job coverage",
-		[]string{"get job", "update job"},
-		"Operators can create and mutate job-backed scenarios through c8volt commands alone.",
-	)
-}
-
-func appendRealStateJobTimeoutCommandGapProposals(proposals []proposalRecord) []proposalRecord {
-	return appendRealStateCommandGapProposal(proposals,
-		"activated job accepted by Camunda timeout update",
-		"confirmed update job --timeout post-state coverage",
-		[]string{"update job"},
-		"Operators can prove timeout mutation end-to-end without a direct Camunda job activation call.",
-	)
-}
-
-func appendRealStateJobEmbeddedBPMNGapProposals(proposals []proposalRecord) []proposalRecord {
-	return appendRealStateEmbeddedBPMNGapProposal(proposals,
-		"embedded C89 service-task process that reliably leaves active jobs",
-		"real-state job search and mutation coverage",
-		[]string{"get job", "update job"},
-		"Maintainers can rerun job integration slices against clean or dirty clusters without one-off BPMN setup.",
-	)
 }

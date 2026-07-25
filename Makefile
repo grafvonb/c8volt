@@ -59,7 +59,7 @@ INTEGRATION_CLI_VOLUME_TARGETS := \
 	integration-cli-ops-purge-volume \
 	integration-cli-ops-repair-volume
 INTEGRATION_CLI_REAL_STATE_TARGETS := \
-	integration-cli-real-state-proposals \
+	integration-cli-real-state-gaps \
 	integration-cli-real-state-jobs \
 	integration-cli-real-state-incidents \
 	integration-cli-real-state-listeners \
@@ -190,8 +190,8 @@ integration-cli-ops-purge-volume: ## Run destructive volume CLI integration test
 integration-cli-ops-repair-volume: ## Run destructive volume CLI integration tests for ops repair commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeOpsRepairFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-real-state-proposals: ## Reserved for C89 real-state proposal integration tests.
-	@echo "integration-cli-real-state-proposals is reserved for feature 257 and is not implemented yet."
+integration-cli-real-state-gaps: ## Reserved for C89 real-state gap validation.
+	@echo "integration-cli-real-state-gaps is reserved for feature 257 and is not implemented yet."
 	@false
 
 integration-cli-real-state-jobs: ## Run destructive C89 real-state integration tests for jobs.

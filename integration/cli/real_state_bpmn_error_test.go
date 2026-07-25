@@ -20,18 +20,15 @@ func TestRealStateBPMNErrorFamily(t *testing.T) {
 		Marker:   suite.marker,
 		Profiles: profiles,
 	}
-	commandProposals := appendRealStateBPMNErrorCommandGapProposals(nil)
-	embeddedProposals := appendRealStateBPMNErrorEmbeddedBPMNGapProposals(nil)
 	var failures []string
 	for _, profile := range profiles {
 		dataset, records, err := seedRealStateJobDataset(t, profile, 1)
 		if dataset.Fixture.FixtureKind != "" {
-			dataset.Fixture.CommandSetupProposal = true
-			dataset.Fixture.EmbeddedBPMNProposal = true
 			dataset.Fixture.RequiredState = "BPMN error-capable job with catchable error path"
-			dataset.Fixture.CurrentEvidenceLevel = realStateOutcomeProposalBacked
+			dataset.Fixture.CurrentEvidenceLevel = realStateOutcomeDryRunCovered
 			dataset.Fixture.TargetRealStateProof = "update job --throw-bpmn-error drives observable BPMN error process state"
-			dataset.Fixture.RemainingProposalBackedBy = "missing embedded BPMN error fixture and c8volt activated/catchable job setup"
+			dataset.Fixture.ObservedState = "dry-run plan uses a real suite-owned job; confirmed mutation prerequisite is missing"
+			dataset.Fixture.SkipReason = "missing embedded BPMN error fixture and c8volt activated/catchable job setup"
 		}
 		report.Fixtures = append(report.Fixtures, dataset.Fixture)
 		report.Records = append(report.Records, records...)
@@ -50,8 +47,6 @@ func TestRealStateBPMNErrorFamily(t *testing.T) {
 	writeRealStateDataReport(t, "bpmn-error", report.Fixtures)
 	writeRealStateProgressReport(t, "bpmn-error", report.Records)
 	writeRealStateOpsReportEvidence(t, "bpmn-error", nil)
-	writeCommandProposals(t, commandProposals)
-	writeEmbeddedBPMNProposals(t, embeddedProposals)
 	writeRealStateFamilyReport(t, report)
 	if len(failures) > 0 {
 		t.Fatalf("real-state BPMN error scenarios failed:\n%s", strings.Join(failures, "\n"))
@@ -84,6 +79,7 @@ func runRealStateBPMNErrorScenarios(t *testing.T, profile integrationProfile, da
 		failures = append(failures, fmt.Sprintf("real-state-bpmn-error-get-job-after-dry-run: %v", err))
 	}
 	records = append(records, afterRecord)
+	records = append(records, realStateBPMNErrorConfirmedSkippedRecord(profile, jobs[0]))
 
 	if len(failures) > 0 {
 		return records, errors.New(strings.Join(failures, "\n"))
@@ -127,7 +123,10 @@ func validateRealStateBPMNErrorDryRun(result commandResult) error {
 }
 
 func realStateBPMNErrorRecord(profile integrationProfile, result commandResult, commandPath string, scenarioName string, outputMode string, flags []string, keys []string, preview bool, confirmed bool) evidenceRecord {
-	record := commandEvidence(commandPath, scenarioName, result, realStateOutcomeProposalBacked)
+	record := commandEvidence(commandPath, scenarioName, result, realStateOutcomeLiveCovered)
+	if preview && !confirmed {
+		record.Outcome = realStateOutcomeDryRunCovered
+	}
 	record.Profile = profile.Name
 	record.CamundaVersion = profile.ExpectedVersion
 	record.CoveredFlags = append([]string(nil), flags...)
@@ -139,20 +138,22 @@ func realStateBPMNErrorRecord(profile integrationProfile, result commandResult, 
 	return record
 }
 
-func appendRealStateBPMNErrorCommandGapProposals(proposals []proposalRecord) []proposalRecord {
-	return appendRealStateCommandGapProposal(proposals,
-		"BPMN error-capable job setup through c8volt commands",
-		"confirmed update job --throw-bpmn-error process-state coverage",
-		[]string{"update job", "get job", "get process-instance"},
-		"Operators can prove BPMN error mutation end-to-end without direct Camunda setup or one-off models.",
-	)
-}
-
-func appendRealStateBPMNErrorEmbeddedBPMNGapProposals(proposals []proposalRecord) []proposalRecord {
-	return appendRealStateEmbeddedBPMNGapProposal(proposals,
-		"embedded C89 process with a catchable BPMN error path for ErrorTimerCode",
-		"confirmed update job --throw-bpmn-error process-state coverage",
-		[]string{"update job", "walk process-instance", "get process-instance"},
-		"Maintainers can validate BPMN error behavior from repository-owned embedded process definitions.",
-	)
+func realStateBPMNErrorConfirmedSkippedRecord(profile integrationProfile, job realStateJob) evidenceRecord {
+	return evidenceRecord{
+		CommandPath:       "update job",
+		ScenarioName:      "real-state-bpmn-error-confirmed-skipped",
+		Profile:           profile.Name,
+		CamundaVersion:    profile.ExpectedVersion,
+		ResourceKeys:      []string{job.Key, job.ProcessInstanceKey},
+		CoveredFlags:      []string{"key", "throw-bpmn-error", "message", "vars", "auto-confirm"},
+		OutputMode:        "skipped",
+		DataOwnership:     []string{volumeDataSeeded, volumeDataPreexisting, "retained"},
+		RequiredState:     "BPMN error-capable job with catchable ErrorTimerCode path",
+		ObservedState:     "current embedded C89 fixture provides a real job for dry-run planning but no catchable BPMN error path",
+		SkipReason:        "missing embedded C89 catchable BPMN error fixture and c8volt setup path for confirmed mutation",
+		Outcome:           realStateOutcomeSkippedPrereq,
+		FailureClass:      "",
+		Preview:           false,
+		ConfirmedMutation: false,
+	}
 }

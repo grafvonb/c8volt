@@ -15,23 +15,22 @@ import (
 
 // realStateFixture records the live Camunda state a real-state scenario created or discovered.
 type realStateFixture struct {
-	FixtureKind               string   `json:"fixtureKind"`
-	BpmnProcessID             string   `json:"bpmnProcessId,omitempty"`
-	ProcessDefinitionKeys     []string `json:"processDefinitionKeys,omitempty"`
-	ProcessInstanceKeys       []string `json:"processInstanceKeys,omitempty"`
-	ElementInstanceKeys       []string `json:"elementInstanceKeys,omitempty"`
-	JobKeys                   []string `json:"jobKeys,omitempty"`
-	IncidentKeys              []string `json:"incidentKeys,omitempty"`
-	ListenerJobKeys           []string `json:"listenerJobKeys,omitempty"`
-	Marker                    string   `json:"marker"`
-	Profile                   string   `json:"profile"`
-	CamundaVersion            string   `json:"camundaVersion,omitempty"`
-	CommandSetupProposal      bool     `json:"commandSetupProposal,omitempty"`
-	EmbeddedBPMNProposal      bool     `json:"embeddedBpmnProposal,omitempty"`
-	RequiredState             string   `json:"requiredState,omitempty"`
-	CurrentEvidenceLevel      string   `json:"currentEvidenceLevel,omitempty"`
-	TargetRealStateProof      string   `json:"targetRealStateProof,omitempty"`
-	RemainingProposalBackedBy string   `json:"remainingProposalBackedBy,omitempty"`
+	FixtureKind           string   `json:"fixtureKind"`
+	BpmnProcessID         string   `json:"bpmnProcessId,omitempty"`
+	ProcessDefinitionKeys []string `json:"processDefinitionKeys,omitempty"`
+	ProcessInstanceKeys   []string `json:"processInstanceKeys,omitempty"`
+	ElementInstanceKeys   []string `json:"elementInstanceKeys,omitempty"`
+	JobKeys               []string `json:"jobKeys,omitempty"`
+	IncidentKeys          []string `json:"incidentKeys,omitempty"`
+	ListenerJobKeys       []string `json:"listenerJobKeys,omitempty"`
+	Marker                string   `json:"marker"`
+	Profile               string   `json:"profile"`
+	CamundaVersion        string   `json:"camundaVersion,omitempty"`
+	RequiredState         string   `json:"requiredState,omitempty"`
+	CurrentEvidenceLevel  string   `json:"currentEvidenceLevel,omitempty"`
+	TargetRealStateProof  string   `json:"targetRealStateProof,omitempty"`
+	ObservedState         string   `json:"observedState,omitempty"`
+	SkipReason            string   `json:"skipReason,omitempty"`
 }
 
 // realStateFamilyReport is the top-level evidence document for one real-state target.

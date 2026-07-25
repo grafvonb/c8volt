@@ -39,7 +39,7 @@ Validate the initial scaffolding:
 
 ```sh
 GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
-GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestRealStateTargetCatalog|TestRealStateC89ProfileClassification|TestRealStateEvidenceWritersEmitArrays|TestRealStateMachineOutputAssertions' -count=1 -timeout=5m
+GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestRealStateTargetCatalog|TestRealStateC89ProfileClassification|TestRealStateEvidenceWritersEmitArrays|TestRealStateMachineOutputAssertions|TestRealStateGapArtifactDocumentsCurrentPrerequisites' -count=1 -timeout=5m
 ```
 
 After the gap-validation target is implemented, run it before destructive
