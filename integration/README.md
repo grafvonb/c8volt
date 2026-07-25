@@ -140,8 +140,9 @@ destructive post-state, incident-selected purge, repair, and mixed-failure
 branches. Remaining process-definition purge, orphan purge, durable standalone
 resolve, and repair-specific mixed-failure branches stay visible in
 `specs/257-c89-real-state-integration/`.
-Real-state targets are destructive and must only be run against disposable
-Camunda 8.9 clusters selected from the default local c8volt configuration.
+Except for `integration-cli-real-state-gaps`, real-state targets are
+destructive and must only be run against disposable Camunda 8.9 clusters
+selected from the default local c8volt configuration.
 
 Pass extra `go test` flags with `IT_GO_TEST_FLAGS`. For example, use `-v`
 when you want scenario-level command logs in addition to the evidence files.
@@ -156,6 +157,12 @@ make integration-cli-get-volume IT_GO_TEST_FLAGS=-v IT_VOLUME_TIMEOUT=90m
 Verbose integration output includes each c8volt subprocess scenario, arguments,
 exit code, duration, stdout/stderr evidence paths, and compact output snippets.
 Set `C8VOLT_IT_VERBOSE=1` directly when running raw `go test -v` commands.
+
+When a slice validates help or generated-documentation examples, destructive
+examples must stay executable against disposable test clusters and must be
+marked with a warning in the source help text or generated docs. Integration
+tests may prove those examples, but missing setup commands or embedded BPMN
+assets belong in spec-owned gap artifacts rather than runtime proposal files.
 
 Run C88 against the C88 profile in `config.yaml`:
 

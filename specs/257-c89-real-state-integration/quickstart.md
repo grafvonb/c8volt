@@ -138,3 +138,29 @@ Expected outcome:
 - the non-integration package remains harmless
 - integration tests compile with the build tag
 - normal unit and race validation are unaffected by real-state targets
+
+## Final Feature Validation
+
+Before closing the feature, run every real-state target independently so order
+dependencies and dirty-cluster assumptions stay visible:
+
+```sh
+make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
+make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
+```
+
+Generated CLI docs are required only when command help metadata, aliases, flags,
+or examples change. The current 257 real-state suite changes integration tests,
+runtime JSON failure handling, and spec-owned validation artifacts; it does not
+change command help/example metadata, so `make docs-content` is not required.
+
+Finish with:
+
+```sh
+git diff --check -- Makefile integration/README.md integration/cli specs/257-c89-real-state-integration specs/integration-test-responsibility.md
+```

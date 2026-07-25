@@ -171,16 +171,16 @@
 
 **Purpose**: Final consistency, documentation, and validation across the feature.
 
-- [ ] T067 [P] Update real-state target descriptions, destructive warnings, and command help/example danger-audit notes in `integration/README.md`
-- [ ] T068 [P] Update implementation validation notes in `specs/257-c89-real-state-integration/quickstart.md`
-- [ ] T069 [P] Update final statuses and first follow-up notes in `specs/257-c89-real-state-integration/coverage-matrix.md`
-- [ ] T070 Run `gofmt -w integration/cli/real_state_harness_test.go integration/cli/real_state_data_test.go integration/cli/real_state_jobs_test.go integration/cli/real_state_incidents_test.go integration/cli/real_state_listeners_test.go integration/cli/real_state_bpmn_error_test.go integration/cli/real_state_retention_test.go integration/cli/real_state_destructive_test.go integration/cli/real_state_gap_validation_test.go`
-- [ ] T071 Run `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1` for `integration/cli`
-- [ ] T072 Run `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m` for `integration/cli`
-- [ ] T073 Run all real-state Make targets from `Makefile` against the selected Camunda 8.9 profile
-- [ ] T074 Run `make test` for repository-wide validation from `Makefile`
-- [ ] T075 Verify whether command help/example metadata changed; if it changed, run `make docs-content` and include generated docs, otherwise record that generated CLI docs were not required in `specs/257-c89-real-state-integration/quickstart.md`
-- [ ] T076 Run `git diff --check -- Makefile integration/README.md integration/cli specs/257-c89-real-state-integration specs/integration-test-responsibility.md` before final review
+- [x] T067 [P] Update real-state target descriptions, destructive warnings, and command help/example danger-audit notes in `integration/README.md`
+- [x] T068 [P] Update implementation validation notes in `specs/257-c89-real-state-integration/quickstart.md`
+- [x] T069 [P] Update final statuses and first follow-up notes in `specs/257-c89-real-state-integration/coverage-matrix.md`
+- [x] T070 Run `gofmt -w integration/cli/real_state_harness_test.go integration/cli/real_state_data_test.go integration/cli/real_state_jobs_test.go integration/cli/real_state_incidents_test.go integration/cli/real_state_listeners_test.go integration/cli/real_state_bpmn_error_test.go integration/cli/real_state_retention_test.go integration/cli/real_state_destructive_test.go integration/cli/real_state_gap_validation_test.go`
+- [x] T071 Run `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1` for `integration/cli`
+- [x] T072 Run `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m` for `integration/cli`
+- [x] T073 Run all real-state Make targets from `Makefile` against the selected Camunda 8.9 profile
+- [x] T074 Run `make test` for repository-wide validation from `Makefile`
+- [x] T075 Verify whether command help/example metadata changed; if it changed, run `make docs-content` and include generated docs, otherwise record that generated CLI docs were not required in `specs/257-c89-real-state-integration/quickstart.md`
+- [x] T076 Run `git diff --check -- Makefile integration/README.md integration/cli specs/257-c89-real-state-integration specs/integration-test-responsibility.md` before final review
 
 ---
 

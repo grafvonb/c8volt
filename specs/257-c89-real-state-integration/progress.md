@@ -332,3 +332,41 @@
 - The matrix needs machine-checkable status prefixes; free-form evidence notes can follow after a colon or space.
 - `gaps.md` now carries the durable planning fields tests previously tried to express through runtime proposal evidence.
 ---
+## Iteration 11 - 2026-07-26
+**Work Unit**: Final polish and feature validation
+**Tasks Completed**:
+- [x] T067: Update real-state target descriptions, destructive warnings, and example danger-audit notes
+- [x] T068: Update implementation validation notes in quickstart
+- [x] T069: Update final matrix statuses and first follow-up notes
+- [x] T070: Run requested `gofmt` pass across real-state integration files
+- [x] T071: Run non-integration `integration/cli` package validation
+- [x] T072: Run integration-tag compile validation
+- [x] T073: Run every real-state Make target against the selected Camunda 8.9 profile
+- [x] T074: Run repository-wide `make test`
+- [x] T075: Verify generated CLI docs are not required because no command help/example metadata changed in the final polish diff
+**Tasks Remaining in Work Unit**: 0
+**Commit**: Pending
+**Files Changed**:
+- integration/README.md
+- specs/257-c89-real-state-integration/coverage-matrix.md
+- specs/257-c89-real-state-integration/quickstart.md
+- specs/257-c89-real-state-integration/tasks.md
+- specs/257-c89-real-state-integration/progress.md
+**Validation**:
+- `gofmt -w integration/cli/real_state_harness_test.go integration/cli/real_state_data_test.go integration/cli/real_state_jobs_test.go integration/cli/real_state_incidents_test.go integration/cli/real_state_listeners_test.go integration/cli/real_state_bpmn_error_test.go integration/cli/real_state_retention_test.go integration/cli/real_state_destructive_test.go integration/cli/real_state_gap_validation_test.go`
+- `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
+- `make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v` (captured in `/tmp/c8volt-257-final-gaps.log`)
+- `make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v` (captured in `/tmp/c8volt-257-final-jobs.log`)
+- `make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v` (captured in `/tmp/c8volt-257-final-incidents.log`)
+- `make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v` (captured in `/tmp/c8volt-257-final-listeners.log`)
+- `make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v` (captured in `/tmp/c8volt-257-final-bpmn-error.log`)
+- `make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m` (captured in `/tmp/c8volt-257-final-retention.log`)
+- `make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m` (captured in `/tmp/c8volt-257-final-destructive.log`)
+- `make test`
+- `git diff --check -- Makefile integration/README.md integration/cli specs/257-c89-real-state-integration specs/integration-test-responsibility.md`
+**Learnings**:
+- The gap target gives a quick non-destructive first signal before the real cluster is mutated.
+- All real-state targets can run independently in the documented order against the dirty local C89 profile.
+- Generated CLI docs were not needed for this polish slice because no command help metadata, aliases, flags, or examples changed.
+---
