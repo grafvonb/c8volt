@@ -199,6 +199,7 @@ func TestProposalReports(t *testing.T) {
 		"ops analyse slow-process-instances duration filters",
 		"ops execute retention-policy aged data",
 		"ops execute smoke-test incident and job-state coverage",
+		"ops repair partial-failure and notice coverage",
 	})
 	requireProposalNeeds(t, embeddedProposals, []string{
 		"listener-oriented walk and element coverage",
@@ -207,6 +208,7 @@ func TestProposalReports(t *testing.T) {
 		"slow duration analysis coverage",
 		"retention-policy aged process-instance coverage",
 		"incident and job-state workflow coverage",
+		"ops repair job and partial-failure coverage",
 	})
 
 	requireProposalFile(t, writeCommandProposals(t, commandProposals), proposalKindCommand, len(commandProposals))
@@ -851,6 +853,7 @@ func allCommandSetupGapProposals() []proposalRecord {
 	proposals = appendExpectResolveCommandGapProposals(proposals)
 	proposals = appendOpsAnalyseCommandGapProposals(proposals)
 	proposals = appendOpsExecuteCommandGapProposals(proposals)
+	proposals = appendOpsRepairCommandGapProposals(proposals)
 	return proposals
 }
 
@@ -861,6 +864,7 @@ func allEmbeddedBPMNGapProposals() []proposalRecord {
 	proposals = appendUpdateEmbeddedBPMNGapProposals(proposals)
 	proposals = appendOpsAnalyseEmbeddedBPMNGapProposals(proposals)
 	proposals = appendOpsExecuteEmbeddedBPMNGapProposals(proposals)
+	proposals = appendOpsRepairEmbeddedBPMNGapProposals(proposals)
 	return proposals
 }
 
