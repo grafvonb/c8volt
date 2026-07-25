@@ -157,8 +157,8 @@ integration-cli-walk-volume: ## Run destructive volume CLI integration tests for
 integration-cli-update-volume: ## Run destructive volume CLI integration tests for update commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeUpdateFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-cancel-volume: ## Reserved for destructive volume CLI integration tests for cancel commands.
-	@echo "integration-cli-cancel-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2
+integration-cli-cancel-volume: ## Run destructive volume CLI integration tests for cancel commands.
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeCancelFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
 integration-cli-delete-volume: ## Reserved for destructive volume CLI integration tests for delete commands.
 	@echo "integration-cli-delete-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2

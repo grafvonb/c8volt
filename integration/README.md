@@ -104,6 +104,7 @@ The currently implemented volume targets are:
 make integration-cli-get-volume IT_GO_TEST_FLAGS=-v
 make integration-cli-walk-volume IT_GO_TEST_FLAGS=-v
 make integration-cli-update-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-cancel-volume IT_GO_TEST_FLAGS=-v
 make integration-cli-deploy-embed-run-volume IT_GO_TEST_FLAGS=-v
 ```
 

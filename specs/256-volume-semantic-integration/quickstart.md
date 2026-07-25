@@ -214,3 +214,22 @@ Observed result:
 - evidence includes `volume-update.json`, `volume-data-update.json`, `volume-progress-update.json`, `volume-pipelines-update.json`, and `volume-ops-reports-update.json`
 - proposal evidence records update-job and richer variable-shape setup gaps
 - evidence path from the passing run: `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-1158420946`
+
+Validation recorded for the `integration-cli-cancel-volume` slice:
+
+```sh
+GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
+GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m
+GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestVolumeTargetCatalog|TestVolumeOwnershipClassification' -count=1 -timeout=5m
+make integration-cli-cancel-volume IT_GO_TEST_FLAGS=-v
+git diff --check -- Makefile integration/README.md integration/cli specs/256-volume-semantic-integration
+```
+
+Observed result:
+
+- non-integration package guard passed
+- integration compile-only check passed
+- local volume helper tests passed
+- `integration-cli-cancel-volume` passed against `kind-camunda-platform-local-c89`
+- evidence includes `volume-cancel.json`, `volume-data-cancel.json`, `volume-progress-cancel.json`, `volume-pipelines-cancel.json`, and `volume-ops-reports-cancel.json`
+- evidence path from the passing run: `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-4165489772`
