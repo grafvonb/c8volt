@@ -32,6 +32,17 @@ const (
 	defaultCommandTimeout = 2 * time.Minute
 )
 
+const (
+	// proposalKindCommand identifies missing c8volt command capability proposals.
+	proposalKindCommand = "command"
+	// proposalKindEmbeddedBPMN identifies missing embedded process model proposals.
+	proposalKindEmbeddedBPMN = "embedded_bpmn"
+	// proposalFallbackDirectCamundaSetup names the direct API setup fallback required by the evidence contract.
+	proposalFallbackDirectCamundaSetup = "direct Camunda setup"
+	// proposalFallbackExternalBPMN names setup that needs a non-embedded BPMN model until a fixture exists.
+	proposalFallbackExternalBPMN = "external BPMN fixture"
+)
+
 var suite integrationSuite
 
 type integrationSuite struct {
@@ -94,6 +105,104 @@ type proposalRecord struct {
 	AffectedCommands []string `json:"affectedCommands"`
 	AffectedVersions []string `json:"affectedVersions"`
 	OperatorValue    string   `json:"operatorValue"`
+}
+
+// TestCommandProposalRegistrationRecordsDirectCamundaSetup verifies direct API fallbacks become command proposals.
+func TestCommandProposalRegistrationRecordsDirectCamundaSetup(t *testing.T) {
+	proposals := registerDirectCamundaSetupFallback(nil,
+		"listener job attached to runtime element",
+		"walk process-instance --with-listeners",
+		[]string{"walk process-instance", "get element"},
+		[]string{"8.8", "8.9"},
+		"Operators can inspect listener-oriented fixtures without direct API setup.",
+	)
+
+	if len(proposals) != 1 {
+		t.Fatalf("command proposals = %d, want 1", len(proposals))
+	}
+	requireProposalRecord(t, proposals[0], proposalKindCommand)
+	if proposals[0].FallbackUsed != proposalFallbackDirectCamundaSetup {
+		t.Fatalf("fallback = %q, want %q", proposals[0].FallbackUsed, proposalFallbackDirectCamundaSetup)
+	}
+	assertStringSlicesEqual(t, proposals[0].AffectedCommands, []string{"walk process-instance", "get element"})
+	path := writeCommandProposals(t, proposals)
+	requireProposalFile(t, path, proposalKindCommand, 1)
+}
+
+// TestEmbeddedBPMNProposalRegistrationRecordsMissingFixtureNeed verifies fixture gaps become embedded BPMN proposals.
+func TestEmbeddedBPMNProposalRegistrationRecordsMissingFixtureNeed(t *testing.T) {
+	proposals := registerMissingEmbeddedBPMNProposal(nil,
+		"workflow that raises a catchable BPMN error",
+		"update job --throw-bpmn-error",
+		[]string{"update job"},
+		[]string{"8.7", "8.8", "8.9"},
+		"Maintainers can cover BPMN error scenarios without importing one-off models.",
+	)
+
+	if len(proposals) != 1 {
+		t.Fatalf("embedded BPMN proposals = %d, want 1", len(proposals))
+	}
+	requireProposalRecord(t, proposals[0], proposalKindEmbeddedBPMN)
+	if proposals[0].FallbackUsed != proposalFallbackExternalBPMN {
+		t.Fatalf("fallback = %q, want %q", proposals[0].FallbackUsed, proposalFallbackExternalBPMN)
+	}
+	assertStringSlicesEqual(t, proposals[0].AffectedCommands, []string{"update job"})
+	path := writeEmbeddedBPMNProposals(t, proposals)
+	requireProposalFile(t, path, proposalKindEmbeddedBPMN, 1)
+}
+
+// TestProposalWritersEmitEmptyJSONArrays keeps no-gap proposal evidence machine-friendly.
+func TestProposalWritersEmitEmptyJSONArrays(t *testing.T) {
+	for _, path := range []string{
+		writeCommandProposals(t, nil),
+		writeEmbeddedBPMNProposals(t, nil),
+	} {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read proposal evidence %s: %v", path, err)
+		}
+		if strings.TrimSpace(string(data)) != "[]" {
+			t.Fatalf("empty proposal evidence = %q, want []", strings.TrimSpace(string(data)))
+		}
+	}
+}
+
+// TestProposalReports writes the aggregate command and embedded BPMN setup-gap reports.
+func TestProposalReports(t *testing.T) {
+	commandProposals := allCommandSetupGapProposals()
+	embeddedProposals := allEmbeddedBPMNGapProposals()
+	if len(commandProposals) == 0 {
+		t.Fatal("expected command setup-gap proposals")
+	}
+	if len(embeddedProposals) == 0 {
+		t.Fatal("expected embedded BPMN setup-gap proposals")
+	}
+
+	for _, proposal := range commandProposals {
+		requireProposalRecord(t, proposal, proposalKindCommand)
+	}
+	for _, proposal := range embeddedProposals {
+		requireProposalRecord(t, proposal, proposalKindEmbeddedBPMN)
+	}
+	requireProposalNeeds(t, commandProposals, []string{
+		"walk process-instance --with-listeners",
+		"update job --throw-bpmn-error",
+		"update process-instance variable-shape coverage",
+		"ops analyse slow-process-instances duration filters",
+		"ops execute retention-policy aged data",
+		"ops execute smoke-test incident and job-state coverage",
+	})
+	requireProposalNeeds(t, embeddedProposals, []string{
+		"listener-oriented walk and element coverage",
+		"BPMN error job coverage",
+		"variable-shape process-instance coverage",
+		"slow duration analysis coverage",
+		"retention-policy aged process-instance coverage",
+		"incident and job-state workflow coverage",
+	})
+
+	requireProposalFile(t, writeCommandProposals(t, commandProposals), proposalKindCommand, len(commandProposals))
+	requireProposalFile(t, writeEmbeddedBPMNProposals(t, embeddedProposals), proposalKindEmbeddedBPMN, len(embeddedProposals))
 }
 
 type defaultLocalConfig struct {
@@ -538,12 +647,153 @@ func decodeCommandPayload(output string, value any) error {
 
 func writeCommandProposals(t *testing.T, proposals []proposalRecord) string {
 	t.Helper()
-	return writeJSON(t, "proposals-command.json", proposals)
+	return writeJSON(t, "proposals-command.json", proposalRecordsOrEmpty(proposals))
 }
 
 func writeEmbeddedBPMNProposals(t *testing.T, proposals []proposalRecord) string {
 	t.Helper()
-	return writeJSON(t, "proposals-embedded-bpmn.json", proposals)
+	return writeJSON(t, "proposals-embedded-bpmn.json", proposalRecordsOrEmpty(proposals))
+}
+
+// registerDirectCamundaSetupFallback appends a command proposal for state that only direct API setup can create today.
+func registerDirectCamundaSetupFallback(proposals []proposalRecord, requiredState string, coverageNeed string, affectedCommands []string, affectedVersions []string, operatorValue string) []proposalRecord {
+	return appendProposalRecord(proposals, proposalRecord{
+		Kind:             proposalKindCommand,
+		RequiredState:    requiredState,
+		CoverageNeed:     coverageNeed,
+		FallbackUsed:     proposalFallbackDirectCamundaSetup,
+		AffectedCommands: affectedCommands,
+		AffectedVersions: affectedVersions,
+		OperatorValue:    operatorValue,
+	})
+}
+
+// registerMissingEmbeddedBPMNProposal appends a fixture proposal for state missing from embedded process definitions.
+func registerMissingEmbeddedBPMNProposal(proposals []proposalRecord, requiredState string, coverageNeed string, affectedCommands []string, affectedVersions []string, operatorValue string) []proposalRecord {
+	return appendProposalRecord(proposals, proposalRecord{
+		Kind:             proposalKindEmbeddedBPMN,
+		RequiredState:    requiredState,
+		CoverageNeed:     coverageNeed,
+		FallbackUsed:     proposalFallbackExternalBPMN,
+		AffectedCommands: affectedCommands,
+		AffectedVersions: affectedVersions,
+		OperatorValue:    operatorValue,
+	})
+}
+
+// appendProposalRecord normalizes slice fields so persisted evidence cannot be mutated by callers after registration.
+func appendProposalRecord(proposals []proposalRecord, proposal proposalRecord) []proposalRecord {
+	proposal.Kind = strings.TrimSpace(proposal.Kind)
+	proposal.RequiredState = strings.TrimSpace(proposal.RequiredState)
+	proposal.CoverageNeed = strings.TrimSpace(proposal.CoverageNeed)
+	proposal.FallbackUsed = strings.TrimSpace(proposal.FallbackUsed)
+	proposal.OperatorValue = strings.TrimSpace(proposal.OperatorValue)
+	proposal.AffectedCommands = copyNonEmptyStrings(proposal.AffectedCommands)
+	proposal.AffectedVersions = copyNonEmptyStrings(proposal.AffectedVersions)
+	return append(proposals, proposal)
+}
+
+// copyNonEmptyStrings returns trimmed non-empty values without aliasing the caller's slice.
+func copyNonEmptyStrings(values []string) []string {
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
+// proposalRecordsOrEmpty preserves the evidence contract that no-gap reports are JSON arrays.
+func proposalRecordsOrEmpty(proposals []proposalRecord) []proposalRecord {
+	if proposals == nil {
+		return []proposalRecord{}
+	}
+	return proposals
+}
+
+// supportedProposalVersions returns the Camunda minor versions covered by the proposal records.
+func supportedProposalVersions() []string {
+	return []string{"8.7", "8.8", "8.9"}
+}
+
+// allCommandSetupGapProposals collects direct setup fallback proposals from command-family slices.
+func allCommandSetupGapProposals() []proposalRecord {
+	var proposals []proposalRecord
+	proposals = appendWalkCommandGapProposals(proposals)
+	proposals = appendUpdateCommandGapProposals(proposals)
+	proposals = appendOpsAnalyseCommandGapProposals(proposals)
+	proposals = appendOpsExecuteCommandGapProposals(proposals)
+	return proposals
+}
+
+// allEmbeddedBPMNGapProposals collects missing embedded process model proposals from command-family slices.
+func allEmbeddedBPMNGapProposals() []proposalRecord {
+	var proposals []proposalRecord
+	proposals = appendWalkEmbeddedBPMNGapProposals(proposals)
+	proposals = appendUpdateEmbeddedBPMNGapProposals(proposals)
+	proposals = appendOpsAnalyseEmbeddedBPMNGapProposals(proposals)
+	proposals = appendOpsExecuteEmbeddedBPMNGapProposals(proposals)
+	return proposals
+}
+
+// requireProposalRecord validates the durable proposal evidence contract for one record.
+func requireProposalRecord(t *testing.T, proposal proposalRecord, wantKind string) {
+	t.Helper()
+	if proposal.Kind != wantKind {
+		t.Fatalf("proposal kind = %q, want %q", proposal.Kind, wantKind)
+	}
+	if strings.TrimSpace(proposal.RequiredState) == "" {
+		t.Fatal("proposal requiredState is empty")
+	}
+	if strings.TrimSpace(proposal.CoverageNeed) == "" {
+		t.Fatal("proposal coverageNeed is empty")
+	}
+	if strings.TrimSpace(proposal.FallbackUsed) == "" {
+		t.Fatal("proposal fallbackUsed is empty")
+	}
+	if len(proposal.AffectedCommands) == 0 {
+		t.Fatal("proposal affectedCommands is empty")
+	}
+	if len(proposal.AffectedVersions) == 0 {
+		t.Fatal("proposal affectedVersions is empty")
+	}
+	if strings.TrimSpace(proposal.OperatorValue) == "" {
+		t.Fatal("proposal operatorValue is empty")
+	}
+}
+
+// requireProposalFile verifies a written proposal report can be decoded and only contains the expected kind.
+func requireProposalFile(t *testing.T, path string, wantKind string, wantCount int) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read proposal evidence %s: %v", path, err)
+	}
+	var proposals []proposalRecord
+	if err := json.Unmarshal(data, &proposals); err != nil {
+		t.Fatalf("decode proposal evidence %s: %v", path, err)
+	}
+	if len(proposals) != wantCount {
+		t.Fatalf("proposal evidence count = %d, want %d", len(proposals), wantCount)
+	}
+	for _, proposal := range proposals {
+		requireProposalRecord(t, proposal, wantKind)
+	}
+}
+
+// requireProposalNeeds checks that the aggregate report covers every named setup gap.
+func requireProposalNeeds(t *testing.T, proposals []proposalRecord, needs []string) {
+	t.Helper()
+	seen := make(map[string]struct{}, len(proposals))
+	for _, proposal := range proposals {
+		seen[proposal.CoverageNeed] = struct{}{}
+	}
+	for _, need := range needs {
+		if _, ok := seen[need]; !ok {
+			t.Fatalf("proposal need %q not found in %#v", need, proposals)
+		}
+	}
 }
 
 func requireTrimmedOutput(t *testing.T, output string) {

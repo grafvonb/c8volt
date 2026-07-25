@@ -15,6 +15,7 @@ Started: 2026-07-25T06:27:38Z
 - `get_test.go` owns dirty-cluster-safe assertion helpers; seeded checks assert required keys are present among unrelated results, never exact global counts.
 - `suite.marker` is the in-memory run marker used by tests and persisted to `run.json`, so later seeded-data commands use the same value recorded in evidence.
 - US4 family slices use `runFamilyCoverageScenarios` to execute canonical and alias `--help` subprocesses for every command path in the family, assert manifest-declared flags appear in help, and write `coverage-<family>.json` evidence with manifest entries, subprocess records, destructive paths, and output modes.
+- US5 proposal reports are aggregate harness evidence: `TestProposalReports` writes `proposals-command.json` and `proposals-embedded-bpmn.json` from per-family append functions in `walk_test.go`, `update_test.go`, `ops_analyse_test.go`, and `ops_execute_test.go`.
 
 ## Decisions
 
@@ -36,6 +37,7 @@ Started: 2026-07-25T06:27:38Z
 - Deployment evidence may not include stable Camunda resource IDs on every version; `data/seeded-data.json` records returned resource names and falls back to the embedded fixture path.
 - `go test ./integration/cli -count=1` without `-tags=integration` currently fails with "build constraints exclude all Go files"; T091 is the planned polish task for making the no-tag package excluded or harmless.
 - US4 family coverage currently proves CLI path, alias, help flag, destructive-classification, and output-mode manifest satisfaction without needing selected profiles; later proposal/example stories can add deeper real-state scenario evidence without changing this baseline.
+- Proposal writers normalize nil slices to empty JSON arrays so no-gap reports persist as `[]`, not `null`.
 
 ## Reusable Commands
 
@@ -44,6 +46,8 @@ Started: 2026-07-25T06:27:38Z
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestProfiles|TestReadOnlySmoke' -count=1 -timeout=10m`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run TestSeededData -count=1 -timeout=20m`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -count=1 -timeout=10m`
+- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run TestProposalReports -count=1 -timeout=10m`
+- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'Test(CommandProposal|EmbeddedBPMNProposal|Proposal)' -count=1 -timeout=10m`
 
 ## Do Not Repeat
 
@@ -53,4 +57,4 @@ Started: 2026-07-25T06:27:38Z
 
 ## Current Handoff
 
-- Next iteration should start with User Story 5 tasks T067-T073. Reuse `writeCommandProposals`, `writeEmbeddedBPMNProposals`, and `proposalRecord`; wire proposal outputs into the existing family files without passing `--config`. Leave the no-tag `go test ./integration/cli` issue for T091 unless it blocks the selected story.
+- Next iteration should start with User Story 6 tasks T074-T084 in `integration/cli/examples_test.go`; use seeded-data evidence for placeholder substitution and keep generated `docs/cli/*` read-only. Leave the no-tag `go test ./integration/cli` issue for T091 unless it blocks the selected story.

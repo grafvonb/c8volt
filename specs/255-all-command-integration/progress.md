@@ -38,7 +38,6 @@
 - specs/255-all-command-integration/progress.md
 **Learnings**:
 - The current capabilities inventory still contains 55 command nodes, and the explicit manifest must include the `capabilities` persistent-flag list.
----
 ## Iteration 2 - 2026-07-25 08:36
 **Work Unit**: US2 Validate Real Local Profiles
 **Tasks Completed**:
@@ -134,4 +133,28 @@
 - specs/255-all-command-integration/progress.md
 **Learnings**:
 - Family coverage can run without selected profiles by proving canonical and alias help paths plus manifest-declared flag exposure.
+---
+## Iteration 4 - 2026-07-25 08:58
+**Work Unit**: US5 Report Setup Gaps As Product Proposals
+**Tasks Completed**:
+- [x] T067: Add command proposal report test
+- [x] T068: Add embedded BPMN proposal report test
+- [x] T069: Add empty-proposal JSON array test
+- [x] T070: Implement direct Camunda setup fallback registration
+- [x] T071: Implement missing embedded BPMN proposal registration
+- [x] T072: Wire proposal recording into listener, BPMN error, variable-shape, duration, retention, and incident/job-state gap scenarios
+- [x] T073: Verify proposal outputs with `TestProposalReports`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- integration/cli/harness_test.go
+- integration/cli/ops_analyse_test.go
+- integration/cli/ops_execute_test.go
+- integration/cli/update_test.go
+- integration/cli/walk_test.go
+- specs/255-all-command-integration/tasks.md
+- specs/255-all-command-integration/ralph-memory.md
+- specs/255-all-command-integration/progress.md
+**Learnings**:
+- Proposal reports are harness evidence generated from per-family setup-gap declarations and nil proposal slices must persist as empty JSON arrays.
 ---

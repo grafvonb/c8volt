@@ -170,16 +170,16 @@
 
 ### Tests for User Story 5
 
-- [ ] T067 [P] [US5] Add failing command proposal report test in `integration/cli/harness_test.go`
-- [ ] T068 [P] [US5] Add failing embedded BPMN proposal report test in `integration/cli/harness_test.go`
-- [ ] T069 [P] [US5] Add failing empty-proposal JSON array test for no-gap runs in `integration/cli/harness_test.go`
+- [x] T067 [P] [US5] Add failing command proposal report test in `integration/cli/harness_test.go`
+- [x] T068 [P] [US5] Add failing embedded BPMN proposal report test in `integration/cli/harness_test.go`
+- [x] T069 [P] [US5] Add failing empty-proposal JSON array test for no-gap runs in `integration/cli/harness_test.go`
 
 ### Implementation for User Story 5
 
-- [ ] T070 [US5] Implement direct Camunda setup fallback registration in `integration/cli/harness_test.go`
-- [ ] T071 [US5] Implement missing embedded BPMN proposal registration in `integration/cli/harness_test.go`
-- [ ] T072 [US5] Wire proposal recording into listener, BPMN error, variable-shape, duration, retention, and incident/job-state gap scenarios in `integration/cli/walk_test.go`, `integration/cli/update_test.go`, `integration/cli/ops_analyse_test.go`, and `integration/cli/ops_execute_test.go`
-- [ ] T073 [US5] Verify proposal outputs with `go test -tags=integration ./integration/cli -run TestProposalReports -count=1 -timeout=10m`
+- [x] T070 [US5] Implement direct Camunda setup fallback registration in `integration/cli/harness_test.go`
+- [x] T071 [US5] Implement missing embedded BPMN proposal registration in `integration/cli/harness_test.go`
+- [x] T072 [US5] Wire proposal recording into listener, BPMN error, variable-shape, duration, retention, and incident/job-state gap scenarios in `integration/cli/walk_test.go`, `integration/cli/update_test.go`, `integration/cli/ops_analyse_test.go`, and `integration/cli/ops_execute_test.go`
+- [x] T073 [US5] Verify proposal outputs with `go test -tags=integration ./integration/cli -run TestProposalReports -count=1 -timeout=10m`
 
 **Checkpoint**: User Story 5 is complete when setup gaps are visible, actionable, and separated from product behavior changes.
 
