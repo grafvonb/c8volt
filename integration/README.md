@@ -108,6 +108,7 @@ make integration-cli-cancel-volume IT_GO_TEST_FLAGS=-v
 make integration-cli-delete-volume IT_GO_TEST_FLAGS=-v
 make integration-cli-expect-resolve-volume IT_GO_TEST_FLAGS=-v
 make integration-cli-deploy-embed-run-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-ops-analyse-volume IT_GO_TEST_FLAGS=-v
 ```
 
 Planned volume target names remain reserved for the other families. Until their

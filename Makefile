@@ -169,8 +169,8 @@ integration-cli-expect-resolve-volume: ## Run destructive volume CLI integration
 integration-cli-deploy-embed-run-volume: ## Run destructive volume CLI integration tests for deploy, embed, and run commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeDeployEmbedRunFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-ops-analyse-volume: ## Reserved for destructive volume CLI integration tests for ops analyse commands.
-	@echo "integration-cli-ops-analyse-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2
+integration-cli-ops-analyse-volume: ## Run destructive volume CLI integration tests for ops analyse commands.
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeOpsAnalyseFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
 integration-cli-ops-execute-volume: ## Reserved for destructive volume CLI integration tests for ops execute commands.
 	@echo "integration-cli-ops-execute-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2

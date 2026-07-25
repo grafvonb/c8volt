@@ -111,7 +111,7 @@
 
 ### Tests and Implementation for User Story 4
 
-- [ ] T031 [P] [US4] Implement `TestVolumeOpsAnalyseFamily` for user-limited discovery, page/batch reporting, dry-run report content, JSON stdout cleanliness, and `volume-ops-reports-analyse.json` evidence in `integration/cli/volume_ops_analyse_test.go`
+- [ ] T031 [P] [US4] Implement `TestVolumeOpsAnalyseFamily` for user-limited discovery, page/batch reporting, dry-run report content, JSON stdout cleanliness, and `volume-ops-reports-analyse.json` evidence in `integration/cli/volume_ops_analyse_test.go` (partial: explicit/search/stdin/timeline/listener/start-date volume target is live; deterministic end-date and truly slow-duration fixture coverage remain)
 - [ ] T032 [P] [US4] Implement `TestVolumeOpsExecuteFamily` for preview/confirmed execution reporting, step status vocabulary, mutation accounting, no-wait/submitted distinctions, and `volume-ops-reports-execute.json` evidence in `integration/cli/volume_ops_execute_test.go`
 - [ ] T033 [P] [US4] Implement `TestVolumeOpsPurgeFamily` for destructive purge preview/confirmed reporting, preserve/overwrite report path behavior, retained resources, cleanup-failed records, and `volume-ops-reports-purge.json` evidence in `integration/cli/volume_ops_purge_test.go`
 - [ ] T034 [P] [US4] Implement `TestVolumeOpsRepairFamily` for repair preview/confirmed reporting, worker/limit accounting, partial failures, notices/errors, and `volume-ops-reports-repair.json` evidence in `integration/cli/volume_ops_repair_test.go`

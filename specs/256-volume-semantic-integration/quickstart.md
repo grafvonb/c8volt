@@ -272,3 +272,23 @@ Observed result:
 - evidence includes `volume-expect-resolve.json`, `volume-data-expect-resolve.json`, `volume-progress-expect-resolve.json`, `volume-pipelines-expect-resolve.json`, `volume-ops-reports-expect-resolve.json`, and `proposals-command.json`
 - proposal evidence records that state-only `expect process-instance` JSON rows should carry stable key/ok identity fields like incident expectation rows
 - evidence path from the passing run: `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-3582324578`
+
+Validation recorded for the `integration-cli-ops-analyse-volume` slice:
+
+```sh
+GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
+GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m
+GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestVolumeTargetCatalog|TestVolumeOwnershipClassification|TestCommandProposalRegistrationRecordsDirectCamundaSetup' -count=1 -timeout=5m
+make integration-cli-ops-analyse-volume IT_GO_TEST_FLAGS=-v
+git diff --check -- Makefile integration/README.md integration/cli specs/256-volume-semantic-integration
+```
+
+Observed result:
+
+- non-integration package guard passed
+- integration compile-only check passed
+- local volume helper and proposal tests passed
+- `integration-cli-ops-analyse-volume` passed against `kind-camunda-platform-local-c89`
+- evidence includes `volume-ops-analyse.json`, `volume-data-ops-analyse.json`, `volume-progress-ops-analyse.json`, `volume-pipelines-ops-analyse.json`, `volume-ops-reports-ops-analyse.json`, `proposals-command.json`, and `proposals-embedded-bpmn.json`
+- proposal evidence records deterministic slow-duration and listener fixture gaps
+- evidence path from the passing run: `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-1000040702`
