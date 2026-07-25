@@ -54,7 +54,7 @@
 ### Tests and Implementation for User Story 1
 
 - [x] T012 [P] [US1] Implement `TestVolumeGetFamily` for paging, positive/negative filtering, totals/limits visibility, clean JSON/keys-only output, and `volume-get.json` evidence in `integration/cli/volume_get_test.go`
-- [ ] T013 [P] [US1] Implement `TestVolumeWalkFamily` for multi-root walk progress, completed-root accounting, hidden-key hints, machine stdout cleanliness, and `volume-walk.json` evidence in `integration/cli/volume_walk_test.go`
+- [ ] T013 [P] [US1] Implement `TestVolumeWalkFamily` for multi-root walk progress, completed-root accounting, hidden-key hints, machine stdout cleanliness, and `volume-walk.json` evidence in `integration/cli/volume_walk_test.go` (partial: `integration-cli-walk-volume` is live and covers seeded multi-root walks, parent/children/flat, JSON cleanliness, enrichment flags, and listener dependency validation; true hidden-key/listener-row fixture semantics remain)
 - [ ] T014 [P] [US1] Implement `TestVolumeDeployEmbedRunFamily` for embedded model deploy/run volume setup, long-running finality wording, no-wait/submitted wording, and fixture proposal gaps in `integration/cli/volume_deploy_embed_run_test.go`
 - [ ] T015 [US1] Extend progress assertions to record visible or durable progress facts for human and verbose modes in `integration/cli/volume_assertions_test.go`
 - [ ] T016 [US1] Wire `integration-cli-get-volume`, `integration-cli-walk-volume`, and `integration-cli-deploy-embed-run-volume` to `TestVolumeGetFamily`, `TestVolumeWalkFamily`, and `TestVolumeDeployEmbedRunFamily` in `Makefile`

@@ -98,13 +98,14 @@ make integration-cli-ops-repair
 Volume targets are slower and intentionally destructive. They seed or discover
 their own data in clean or dirty disposable clusters, write separate
 `volume-*.json` evidence files, and keep the baseline family targets quick.
-The first implemented volume target is:
+The currently implemented volume targets are:
 
 ```sh
 make integration-cli-get-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-walk-volume IT_GO_TEST_FLAGS=-v
 ```
 
-Planned volume target names are reserved for the remaining families. Until their
+Planned volume target names remain reserved for the other families. Until their
 matching `TestVolume*Family` scenarios are implemented, those Make targets exit
 with a clear not-implemented message instead of reporting a false pass.
 

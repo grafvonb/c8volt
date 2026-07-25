@@ -151,8 +151,8 @@ integration-cli-get: ## Run destructive CLI integration tests for get commands.
 integration-cli-get-volume: ## Run destructive volume CLI integration tests for get commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeGetFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-walk-volume: ## Reserved for destructive volume CLI integration tests for walk commands.
-	@echo "integration-cli-walk-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2
+integration-cli-walk-volume: ## Run destructive volume CLI integration tests for walk commands.
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeWalkFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
 integration-cli-update-volume: ## Reserved for destructive volume CLI integration tests for update commands.
 	@echo "integration-cli-update-volume is planned by specs/256-volume-semantic-integration/tasks.md and is not implemented yet."; exit 2
