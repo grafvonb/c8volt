@@ -47,21 +47,21 @@
 
 ### Tests For User Story 1
 
-- [ ] T014 [P] [US1] Add failing `TestRealStateJobsFamily` skeleton covering target contract and evidence names in `integration/cli/real_state_jobs_test.go`
-- [ ] T015 [P] [US1] Add failing `TestRealStateIncidentsFamily` skeleton covering related-job evidence expectations in `integration/cli/real_state_incidents_test.go`
+- [x] T014 [P] [US1] Add failing `TestRealStateJobsFamily` skeleton covering target contract and evidence names in `integration/cli/real_state_jobs_test.go`
+- [x] T015 [P] [US1] Add failing `TestRealStateIncidentsFamily` skeleton covering related-job evidence expectations in `integration/cli/real_state_incidents_test.go`
 
 ### Implementation For User Story 1
 
-- [ ] T016 [US1] Wire `integration-cli-real-state-jobs` and `integration-cli-real-state-incidents` to `TestRealStateJobsFamily` and `TestRealStateIncidentsFamily` in `Makefile`
-- [ ] T017 [US1] Implement active job fixture setup through c8volt embedded deploy/run commands first in `integration/cli/real_state_jobs_test.go`
-- [ ] T018 [US1] Add non-empty `get job` JSON, JSON stdout cleanliness, and human-output assertions scoped to suite-owned keys in `integration/cli/real_state_jobs_test.go`
-- [ ] T019 [US1] Add `update job` dry-run, retries, timeout, fail, no-wait, and JSON stdout cleanliness scenarios with before-state and after-state evidence in `integration/cli/real_state_jobs_test.go`
-- [ ] T020 [US1] Implement incident fixture setup and active incident discovery scoped to suite-owned process instances in `integration/cli/real_state_incidents_test.go`
-- [ ] T021 [US1] Add related-job evidence checks for incident-driven repair and retry paths in `integration/cli/real_state_incidents_test.go`
-- [ ] T022 [US1] Record command proposals for job or incident states that require direct Camunda setup in `integration/cli/real_state_proposals_test.go`
-- [ ] T023 [US1] Record embedded BPMN proposals for missing job or incident fixture behavior in `integration/cli/real_state_proposals_test.go`
-- [ ] T024 [US1] Update job and incident rows to current statuses in `specs/257-c89-real-state-integration/coverage-matrix.md`
-- [ ] T025 [US1] Validate User Story 1 with `make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v` and `make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v` documented in `specs/257-c89-real-state-integration/quickstart.md`
+- [x] T016 [US1] Wire `integration-cli-real-state-jobs` and `integration-cli-real-state-incidents` to `TestRealStateJobsFamily` and `TestRealStateIncidentsFamily` in `Makefile`
+- [x] T017 [US1] Implement active job fixture setup through c8volt embedded deploy/run commands first in `integration/cli/real_state_jobs_test.go`
+- [x] T018 [US1] Add non-empty `get job` JSON, JSON stdout cleanliness, and human-output assertions scoped to suite-owned keys in `integration/cli/real_state_jobs_test.go`
+- [x] T019 [US1] Add `update job` dry-run, retries, timeout, fail, no-wait, and JSON stdout cleanliness scenarios with before-state and after-state evidence in `integration/cli/real_state_jobs_test.go`
+- [x] T020 [US1] Implement incident fixture setup and active incident discovery scoped to suite-owned process instances in `integration/cli/real_state_incidents_test.go`
+- [x] T021 [US1] Add related-job evidence checks for incident-driven repair and retry paths in `integration/cli/real_state_incidents_test.go`
+- [x] T022 [US1] Record command proposals for job or incident states that require direct Camunda setup in `integration/cli/real_state_proposals_test.go`
+- [x] T023 [US1] Record embedded BPMN proposals for missing job or incident fixture behavior in `integration/cli/real_state_proposals_test.go`
+- [x] T024 [US1] Update job and incident rows to current statuses in `specs/257-c89-real-state-integration/coverage-matrix.md`
+- [x] T025 [US1] Validate User Story 1 with `make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v` and `make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v` documented in `specs/257-c89-real-state-integration/quickstart.md`
 
 **Checkpoint**: User Story 1 proves live Camunda 8.9 job and incident state, or records explicit proposal-backed blockers.
 

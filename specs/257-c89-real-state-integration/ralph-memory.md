@@ -18,6 +18,8 @@
 
 ## Current Handoff
 
-- Phase 1 and Phase 2 scaffolding are complete and committed in this iteration.
-- Next iteration should start at T014/T015 under User Story 1 and replace the reserved `integration-cli-real-state-jobs` and `integration-cli-real-state-incidents` Make targets only when their matching family tests exist.
-- Do not run reserved real-state Make targets as validation until their family tests are implemented; use the helper validation command in `quickstart.md` instead.
+- Phase 1, Phase 2, and User Story 1 are complete and committed through this iteration.
+- `integration-cli-real-state-jobs` and `integration-cli-real-state-incidents` are implemented and passed against `kind-camunda-platform-local-c89` on Camunda 8.9.9.
+- Jobs use `C89_SimpleServiceTask.bpmn`, which currently yields `CREATED` execution-listener jobs. Retries can be confirmed, fail/no-wait can be submitted, and timeout can be planned in dry-run. Confirmed `update job --timeout` still needs an activated-job setup command or direct Camunda activation fallback and is recorded as a command proposal.
+- Incidents are created by failing a suite-owned job with retries `0`; `get incident` observes the related `jobKey`, `get job --key` observes the failed job, and `ops repair incident --dry-run` reports related job counts.
+- Next iteration should start User Story 2 at T026/T027 and keep the remaining real-state targets reserved until their matching family tests exist.

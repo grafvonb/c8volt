@@ -32,3 +32,39 @@
 - Reserved real-state Make targets must fail clearly until their family tests exist, preventing false green runs from unmatched `go test -run` patterns.
 - Existing volume and seeded-data helpers provide the right scaffolding pattern; no separate integration framework is needed.
 ---
+## Iteration 2 - 2026-07-25 20:35
+**Work Unit**: User Story 1 real job and incident state
+**Tasks Completed**:
+- [x] T014: Add `TestRealStateJobsFamily` in `integration/cli/real_state_jobs_test.go`
+- [x] T015: Add `TestRealStateIncidentsFamily` in `integration/cli/real_state_incidents_test.go`
+- [x] T016: Wire `integration-cli-real-state-jobs` and `integration-cli-real-state-incidents` in `Makefile`
+- [x] T017: Implement service-task job fixture setup through c8volt embed deploy/run commands
+- [x] T018: Add non-empty `get job` JSON, stdout cleanliness, and human output assertions
+- [x] T019: Add `update job` dry-run, retries, timeout dry-run, fail, no-wait, and JSON cleanliness scenarios
+- [x] T020: Implement job-backed incident setup and active incident discovery
+- [x] T021: Add related-job checks for incident discovery and ops repair dry-run
+- [x] T022: Record a C89 command proposal for the remaining activated-job timeout setup gap
+- [x] T023: Keep embedded BPMN proposal helpers wired for missing job or incident fixture behavior
+- [x] T024: Update coverage matrix job and incident rows
+- [x] T025: Validate jobs and incidents targets and document expected behavior in quickstart
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- Makefile
+- integration/cli/real_state_jobs_test.go
+- integration/cli/real_state_incidents_test.go
+- specs/257-c89-real-state-integration/coverage-matrix.md
+- specs/257-c89-real-state-integration/quickstart.md
+- specs/257-c89-real-state-integration/tasks.md
+- specs/257-c89-real-state-integration/ralph-memory.md
+- specs/257-c89-real-state-integration/progress.md
+**Validation**:
+- `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
+- `make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v`
+- `make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v`
+**Learnings**:
+- `C89_SimpleServiceTask.bpmn` creates suite-owned `CREATED` execution-listener jobs that are enough for real `get job`, retry mutation, no-wait mutation, and failure/incident setup.
+- Camunda rejects confirmed timeout updates for `CREATED` jobs because timeout update requires an active/activated job; the suite records this as a command proposal and covers timeout as a dry-run plan until c8volt can create activated jobs.
+- Failing a suite-owned job with retries `0` creates a real active incident with a related `jobKey`, giving stronger repair evidence than the older incident-only fixture path.
+---

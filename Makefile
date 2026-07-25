@@ -194,13 +194,11 @@ integration-cli-real-state-proposals: ## Reserved for C89 real-state proposal in
 	@echo "integration-cli-real-state-proposals is reserved for feature 257 and is not implemented yet."
 	@false
 
-integration-cli-real-state-jobs: ## Reserved for C89 real-state job integration tests.
-	@echo "integration-cli-real-state-jobs is reserved for feature 257 and is not implemented yet."
-	@false
+integration-cli-real-state-jobs: ## Run destructive C89 real-state integration tests for jobs.
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateJobsFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-incidents: ## Reserved for C89 real-state incident integration tests.
-	@echo "integration-cli-real-state-incidents is reserved for feature 257 and is not implemented yet."
-	@false
+integration-cli-real-state-incidents: ## Run destructive C89 real-state integration tests for incidents.
+	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateIncidentsFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)
 
 integration-cli-real-state-listeners: ## Reserved for C89 real-state listener integration tests.
 	@echo "integration-cli-real-state-listeners is reserved for feature 257 and is not implemented yet."

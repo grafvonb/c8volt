@@ -30,7 +30,10 @@ Expected outcome:
 
 The initial scaffolding adds reserved Make targets and non-live helper checks.
 Before a real-state family target is implemented, reserved Make targets fail
-with a clear not-implemented message instead of producing a false pass.
+with a clear not-implemented message instead of producing a false pass. The
+jobs and incidents targets are implemented; proposals, listeners, BPMN error,
+retention, and destructive targets remain reserved until their family tests are
+added.
 
 Validate the initial scaffolding:
 
@@ -62,10 +65,12 @@ make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v
 
 Expected outcome:
 
-- the target creates or discovers suite-owned active jobs
+- the target creates or discovers suite-owned Camunda 8.9 service-task jobs
 - `get job` returns non-empty job rows scoped to suite-owned data
-- at least one supported job mutation records before-state and after-state evidence
-- no-wait or accepted paths state that confirmation was intentionally skipped
+- `update job --retries` is confirmed against real state
+- `update job --fail` and `--no-wait` return accepted/submitted evidence
+- `update job --timeout` produces clean dry-run plan evidence for created jobs
+- proposal evidence records the remaining activated-job setup gap for confirmed timeout mutation
 
 ## Incidents With Related Jobs
 
@@ -77,10 +82,10 @@ make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIME
 
 Expected outcome:
 
-- the target creates or discovers active incidents
-- related job evidence is present when repair or retry behavior depends on it
-- repair and retry paths record candidate counts, attempted work, and final outcome
-- missing setup capability is recorded as proposal evidence
+- the target creates a suite-owned job-backed active incident by failing a real job
+- `get incident` returns a related `jobKey` scoped to the suite-owned process instance
+- `get job --key` verifies the related failed job state
+- `ops repair incident --dry-run` reports candidate and related-job counts
 
 ## Listener And BPMN Error Paths
 
