@@ -72,16 +72,19 @@ func TestDeployEmbedRunFamily(t *testing.T) {
 		"deploy",
 		"deploy process-definition",
 	})
+	runBehavioralCoverageScenarios(t, "deploy")
 	runFamilyCoverageScenarios(t, "embed", []string{
 		"embed",
 		"embed deploy",
 		"embed export",
 		"embed list",
 	})
+	runBehavioralCoverageScenarios(t, "embed")
 	runFamilyCoverageScenarios(t, "run", []string{
 		"run",
 		"run process-instance",
 	})
+	runBehavioralCoverageScenarios(t, "run")
 }
 
 // TestSeededData proves selected profiles can discover, deploy, run, and re-read suite-owned data.

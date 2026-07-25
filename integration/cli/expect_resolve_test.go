@@ -12,9 +12,11 @@ func TestExpectResolveFamily(t *testing.T) {
 		"expect",
 		"expect process-instance",
 	})
+	runBehavioralCoverageScenarios(t, "expect")
 	runFamilyCoverageScenarios(t, "resolve", []string{
 		"resolve",
 		"resolve incident",
 		"resolve process-instance",
 	})
+	runBehavioralCoverageScenarios(t, "resolve")
 }

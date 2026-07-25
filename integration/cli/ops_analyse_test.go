@@ -12,6 +12,7 @@ func TestOpsAnalyseFamily(t *testing.T) {
 		"ops analyse",
 		"ops analyse slow-process-instances",
 	})
+	runBehavioralCoverageScenarios(t, "ops analyse")
 }
 
 // appendOpsAnalyseCommandGapProposals records setup gaps for slow-duration and listener timeline analysis.

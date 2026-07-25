@@ -13,4 +13,5 @@ func TestOpsRepairFamily(t *testing.T) {
 		"ops repair incident",
 		"ops repair process-instance",
 	})
+	runBehavioralCoverageScenarios(t, "ops repair")
 }

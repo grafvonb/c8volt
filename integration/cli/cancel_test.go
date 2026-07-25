@@ -12,4 +12,5 @@ func TestCancelFamily(t *testing.T) {
 		"cancel",
 		"cancel process-instance",
 	})
+	runBehavioralCoverageScenarios(t, "cancel")
 }

@@ -153,6 +153,13 @@ func TestCommandInventory(t *testing.T) {
 	}
 }
 
+// TestCoreBehavioralCoverage records real executable coverage for root-level read-only command families.
+func TestCoreBehavioralCoverage(t *testing.T) {
+	runBehavioralCoverageScenarios(t, "capabilities")
+	runBehavioralCoverageScenarios(t, "version")
+	runBehavioralCoverageScenarios(t, "config")
+}
+
 func TestCoverageManifestValidationReportsMissingAndStalePaths(t *testing.T) {
 	capabilities := []commandCapability{{Path: "get"}, {Path: "get process-instance"}}
 	manifest := map[string]coverageEntry{

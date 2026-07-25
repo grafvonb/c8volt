@@ -19,6 +19,8 @@ Started: 2026-07-25T06:27:38Z
 - US6 example validation lives in `integration/cli/examples_test.go`: it extracts live `--help` examples and generated `docs/cli/c8volt*.md` examples, substitutes suite-owned seeded placeholders, executes safe/read-only and dry-run disposable examples, and writes `examples.json`.
 - `TestMain` now writes `summary.md` after `m.Run()` so stable `C8VOLT_IT_WORKDIR` runs include a human-readable evidence index alongside `run.json`.
 - `integration/cli/package_test.go` is intentionally untagged and empty so `go test ./integration/cli -count=1` is harmless without the `integration` tag.
+- Convergence behavioral coverage lives in `integration/cli/behavioral_scenarios_test.go`; each family test runs help coverage first, then `runBehavioralCoverageScenarios`, which writes `behavior-<family>.json`.
+- Behavioral evidence records covered flags, output mode, behavior class, version behavior, preview or confirmed mutation, and data ownership classifications alongside command output paths.
 
 ## Decisions
 
@@ -30,6 +32,7 @@ Started: 2026-07-25T06:27:38Z
 - Seeded data uses version-matched embedded `SimpleUserTask` BPMN fixtures because they leave process instances observable after start.
 - Retain seeded process instances after US3 and record cleanup tracking as `retained`; later command-family slices may mutate or clean up their own targets.
 - The final all-command matrix and Go suite README describe `integration/cli/` as the all-command suite source of truth while keeping existing shell suites separate.
+- Destructive example warnings must come from the actual help or generated CLI documentation source. The examples harness no longer fabricates warning context for destructive commands.
 
 ## Gotchas
 
@@ -43,6 +46,9 @@ Started: 2026-07-25T06:27:38Z
 - US4 family coverage currently proves CLI path, alias, help flag, destructive-classification, and output-mode manifest satisfaction without needing selected profiles; later proposal/example stories can add deeper real-state scenario evidence without changing this baseline.
 - Proposal writers normalize nil slices to empty JSON arrays so no-gap reports persist as `[]`, not `null`.
 - Example validation records documentation `--profile prod`, `--config`, unresolved placeholders, pipelines, hard-coded demo selectors, and unsupported resource IDs as blocked/actionable evidence rather than executing them.
+- Ops behavioral scenarios need scenario-specific report paths because c8volt refuses to overwrite report files by default.
+- `get resource` remains a validation/setup-gap behavioral scenario because deployment output does not expose a portable numeric resource ID across supported versions.
+- Unresolved job, incident, resource, element, user-task, and tenant placeholders are explicitly allowed as blocked example evidence until suite-owned fixtures or command extensions can create those targets.
 
 ## Reusable Commands
 
@@ -56,6 +62,7 @@ Started: 2026-07-25T06:27:38Z
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run TestProposalReports -count=1 -timeout=10m`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'Test(CommandProposal|EmbeddedBPMNProposal|Proposal)' -count=1 -timeout=10m`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'Test(HelpExampleExtraction|GeneratedDocsExampleExtraction|PlaceholderSubstitution|DestructiveWarningDetection|Examples)$' -count=1 -timeout=20m`
+- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run TestBehavioralScenarioCatalogCoversConvergenceContract -count=1 -timeout=10m`
 
 ## Do Not Repeat
 

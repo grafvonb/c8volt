@@ -81,20 +81,27 @@ type runMetadata struct {
 }
 
 type evidenceRecord struct {
-	CommandPath    string    `json:"commandPath"`
-	ScenarioName   string    `json:"scenarioName"`
-	Profile        string    `json:"profile,omitempty"`
-	CamundaVersion string    `json:"camundaVersion,omitempty"`
-	Arguments      []string  `json:"arguments"`
-	StdoutPath     string    `json:"stdoutPath"`
-	StderrPath     string    `json:"stderrPath"`
-	ExitCode       int       `json:"exitCode"`
-	StartedAt      time.Time `json:"startedAt"`
-	FinishedAt     time.Time `json:"finishedAt"`
-	DataOwnership  []string  `json:"dataOwnership,omitempty"`
-	ResourceKeys   []string  `json:"resourceKeys,omitempty"`
-	Outcome        string    `json:"outcome"`
-	FailureClass   string    `json:"failureClass,omitempty"`
+	CommandPath       string    `json:"commandPath"`
+	ScenarioName      string    `json:"scenarioName"`
+	Profile           string    `json:"profile,omitempty"`
+	CamundaVersion    string    `json:"camundaVersion,omitempty"`
+	Arguments         []string  `json:"arguments"`
+	StdinPath         string    `json:"stdinPath,omitempty"`
+	StdoutPath        string    `json:"stdoutPath"`
+	StderrPath        string    `json:"stderrPath"`
+	ExitCode          int       `json:"exitCode"`
+	StartedAt         time.Time `json:"startedAt"`
+	FinishedAt        time.Time `json:"finishedAt"`
+	DataOwnership     []string  `json:"dataOwnership,omitempty"`
+	ResourceKeys      []string  `json:"resourceKeys,omitempty"`
+	CoveredFlags      []string  `json:"coveredFlags,omitempty"`
+	OutputMode        string    `json:"outputMode,omitempty"`
+	Behavior          string    `json:"behavior,omitempty"`
+	VersionBehavior   string    `json:"versionBehavior,omitempty"`
+	Preview           bool      `json:"preview,omitempty"`
+	ConfirmedMutation bool      `json:"confirmedMutation,omitempty"`
+	Outcome           string    `json:"outcome"`
+	FailureClass      string    `json:"failureClass,omitempty"`
 }
 
 type proposalRecord struct {
@@ -898,6 +905,10 @@ func runCommandHelpScenario(t *testing.T, family string, entry coverageEntry, ar
 	scenario := "family-" + family + "-" + entry.Path + "-" + scenarioSuffix + "-help"
 	result := runC8Volt(t, scenario, args...)
 	record := commandEvidence(entry.Path, scenario, result, "pass")
+	record.CoveredFlags = append([]string(nil), entry.Flags...)
+	record.OutputMode = "one-line"
+	record.Behavior = "help-discovery"
+	record.VersionBehavior = "version-neutral"
 	if result.Err != nil {
 		record.Outcome = "fail"
 		record.FailureClass = "product"

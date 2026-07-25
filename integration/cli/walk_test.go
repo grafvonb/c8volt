@@ -12,6 +12,7 @@ func TestWalkFamily(t *testing.T) {
 		"walk",
 		"walk process-instance",
 	})
+	runBehavioralCoverageScenarios(t, "walk")
 }
 
 // appendWalkCommandGapProposals records listener-state setup that currently needs direct API preparation.

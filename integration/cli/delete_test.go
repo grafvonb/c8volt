@@ -13,4 +13,5 @@ func TestDeleteFamily(t *testing.T) {
 		"delete process-definition",
 		"delete process-instance",
 	})
+	runBehavioralCoverageScenarios(t, "delete")
 }

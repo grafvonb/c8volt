@@ -209,3 +209,40 @@
 **Learnings**:
 - Stable evidence run at `/tmp/c8volt-ralph-iteration-6-evidence.IzJNCR` wrote all suite artifacts outside `docs/`, and the no-tag package now reports `[no tests to run]`.
 ---
+## Iteration 7 - 2026-07-25 10:47
+**Work Unit**: Phase 10 Convergence Behavioral Coverage
+**Tasks Completed**:
+- [x] T095: Extend the coverage manifest and evidence reports to record executed scenario coverage
+- [x] T096: Add real read/search/state command scenarios for `get`, `walk`, and `expect`
+- [x] T097: Add executable `deploy`, `embed`, and `run` scenarios
+- [x] T098: Add destructive `update`, `cancel`, `delete`, and `resolve` scenarios
+- [x] T099: Add dedicated real `ops analyse`, `ops execute`, `ops purge`, and `ops repair` scenarios
+- [x] T100: Add selected-profile version behavior evidence
+- [x] T101: Make example validation fail unless blocked or skipped examples are policy-allowed
+- [x] T102: Require destructive example warnings from actual help or generated CLI documentation source
+- [x] T103: Extend command-family evidence with seeded, pre-existing, mutated, retained, and cleanup-failed data classifications
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- integration/cli/all_commands_test.go
+- integration/cli/behavioral_scenarios_test.go
+- integration/cli/cancel_test.go
+- integration/cli/delete_test.go
+- integration/cli/deploy_embed_run_test.go
+- integration/cli/examples_test.go
+- integration/cli/expect_resolve_test.go
+- integration/cli/get_test.go
+- integration/cli/harness_test.go
+- integration/cli/ops_analyse_test.go
+- integration/cli/ops_execute_test.go
+- integration/cli/ops_purge_test.go
+- integration/cli/ops_repair_test.go
+- integration/cli/update_test.go
+- integration/cli/walk_test.go
+- specs/255-all-command-integration/tasks.md
+- specs/255-all-command-integration/ralph-memory.md
+- specs/255-all-command-integration/progress.md
+**Learnings**:
+- Behavioral coverage now records executed scenario flags, output modes, version behavior, preview/confirmed mutation, and data ownership separately from help-only coverage.
+- Example validation now treats blocked and skipped examples as failures unless they match a documented policy allowlist.
+---

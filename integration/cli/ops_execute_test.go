@@ -13,6 +13,7 @@ func TestOpsExecuteFamily(t *testing.T) {
 		"ops execute retention-policy",
 		"ops execute smoke-test",
 	})
+	runBehavioralCoverageScenarios(t, "ops execute")
 }
 
 // appendOpsExecuteCommandGapProposals records setup gaps for retention and incident/job-state workflows.

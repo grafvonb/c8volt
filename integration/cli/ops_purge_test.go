@@ -14,4 +14,5 @@ func TestOpsPurgeFamily(t *testing.T) {
 		"ops purge orphan-process-instances",
 		"ops purge process-instances-with-incidents",
 	})
+	runBehavioralCoverageScenarios(t, "ops purge")
 }

@@ -13,6 +13,7 @@ func TestUpdateFamily(t *testing.T) {
 		"update job",
 		"update process-instance",
 	})
+	runBehavioralCoverageScenarios(t, "update")
 }
 
 // appendUpdateCommandGapProposals records setup gaps for job BPMN errors and richer variable shapes.

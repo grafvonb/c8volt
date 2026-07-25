@@ -28,6 +28,7 @@ type cliExample struct {
 	SourceLine  int               `json:"sourceLine"`
 	CommandPath string            `json:"commandPath"`
 	Raw         string            `json:"raw"`
+	SourceText  string            `json:"-"`
 }
 
 type exampleSeedData struct {
@@ -165,6 +166,9 @@ func TestExamples(t *testing.T) {
 		if record.Outcome == "fail" {
 			failures = append(failures, fmt.Sprintf("%s:%d %s: %s", record.SourcePath, record.SourceLine, record.Raw, record.FailureReason))
 		}
+		if (record.Outcome == "blocked" || record.Outcome == "skipped") && !exampleNonExecutionAllowed(record) {
+			failures = append(failures, fmt.Sprintf("%s:%d %s: example was %s without an allowlisted reason: %s", record.SourcePath, record.SourceLine, record.Raw, record.Outcome, record.FailureReason))
+		}
 	}
 
 	report := examplesReport{
@@ -205,6 +209,7 @@ func extractLiveHelpExamples(t *testing.T) []cliExample {
 		sourcePath := "help:" + path
 		for _, example := range extractHelpExamples(sourcePath, result.Stdout) {
 			example.CommandPath = path
+			example.SourceText = result.Stdout
 			examples = append(examples, example)
 		}
 	}
@@ -285,6 +290,7 @@ func extractGeneratedDocExamples(docsDir string) ([]cliExample, error) {
 					SourceLine:  i + 1,
 					CommandPath: commandPathFromDocPath(path),
 					Raw:         trimmed,
+					SourceText:  source,
 				})
 			}
 		}
@@ -301,7 +307,7 @@ func validateExample(t *testing.T, example cliExample, seed exampleSeedData, hav
 		commandPath = resolved
 	}
 	destructive := exampleIsDestructive(commandPath, normalized)
-	warningPresent := !destructive || hasDestructiveWarning(exampleSourceText(t, example)) || generatedDestructiveWarning(commandPath) != ""
+	warningPresent := !destructive || hasDestructiveWarning(exampleSourceText(t, example))
 
 	record := exampleValidationRecord{
 		SourceKind:         example.SourceKind,
@@ -313,7 +319,7 @@ func validateExample(t *testing.T, example cliExample, seed exampleSeedData, hav
 		Substitutions:      substitutions,
 		Destructive:        destructive,
 		WarningPresent:     warningPresent,
-		DestructiveWarning: generatedDestructiveWarning(commandPath),
+		DestructiveWarning: destructiveWarningSource(exampleSourceText(t, example)),
 		Outcome:            "skipped",
 		ExecutionMode:      "not-executed",
 	}
@@ -430,9 +436,9 @@ func substituteExamplePlaceholders(raw string, seed exampleSeedData) (string, []
 		"<bpmn-process-id>":              seed.BpmnProcessID,
 		"<long-running-bpmn-process-id>": seed.BpmnProcessID,
 		"<process-instance-key>":         firstString(seed.ProcessInstanceKeys),
-		"<another-process-instance-key>": stringAt(seed.ProcessInstanceKeys, 1),
+		"<another-process-instance-key>": stringAtOrFirst(seed.ProcessInstanceKeys, 1),
 		"<process-instance-key-a>":       firstString(seed.ProcessInstanceKeys),
-		"<process-instance-key-b>":       stringAt(seed.ProcessInstanceKeys, 1),
+		"<process-instance-key-b>":       stringAtOrFirst(seed.ProcessInstanceKeys, 1),
 		"<process-definition-key>":       seed.ProcessDefinitionKey,
 		"<resource-id>":                  seed.ResourceID,
 	}
@@ -647,14 +653,21 @@ func generatedDestructiveWarning(commandPath string) string {
 
 func exampleSourceText(t *testing.T, example cliExample) string {
 	t.Helper()
-	if strings.HasPrefix(example.SourcePath, "help:") {
-		return example.Raw + "\n" + generatedDestructiveWarning(example.CommandPath)
+	if example.SourceText != "" {
+		return example.SourceText
 	}
 	data, err := os.ReadFile(example.SourcePath)
 	if err != nil {
 		t.Fatalf("read example source %s: %v", example.SourcePath, err)
 	}
 	return string(data)
+}
+
+func destructiveWarningSource(source string) string {
+	if hasDestructiveWarning(source) {
+		return "source"
+	}
+	return ""
 }
 
 func commandPathFromDocPath(path string) string {
@@ -796,6 +809,14 @@ func stringAt(values []string, index int) string {
 	return values[index]
 }
 
+// stringAtOrFirst keeps multi-key examples runnable even when the suite seed produced one process instance.
+func stringAtOrFirst(values []string, index int) string {
+	if value := stringAt(values, index); value != "" {
+		return value
+	}
+	return firstString(values)
+}
+
 func displayExampleSourcePath(sourcePath string) string {
 	if strings.HasPrefix(sourcePath, "help:") {
 		return sourcePath
@@ -813,6 +834,51 @@ func hasDisposableTargetExecution(records []exampleValidationRecord) bool {
 		}
 	}
 	return false
+}
+
+// exampleNonExecutionAllowed documents the narrow cases that remain actionable evidence instead of hard failures.
+func exampleNonExecutionAllowed(record exampleValidationRecord) bool {
+	reason := strings.ToLower(record.FailureReason)
+	switch {
+	case strings.Contains(reason, "pipeline examples are recorded"):
+		return true
+	case strings.Contains(reason, "stdin-producing shell examples are recorded"):
+		return true
+	case strings.Contains(reason, "example passes --config"):
+		return true
+	case strings.Contains(reason, "documentation profile"):
+		return true
+	case strings.Contains(reason, "hard-coded documentation selectors"):
+		return true
+	case strings.Contains(reason, "unresolved placeholders"):
+		return unresolvedPlaceholdersAllowed(record.UnresolvedPlaceholders)
+	case strings.Contains(reason, "requires selected disposable profile"):
+		return true
+	case strings.Contains(reason, "mutating example requires a dedicated disposable scenario"):
+		return true
+	default:
+		return false
+	}
+}
+
+// unresolvedPlaceholdersAllowed documents setup states this suite records as blocked until fixture proposals exist.
+func unresolvedPlaceholdersAllowed(placeholders []string) bool {
+	allowed := map[string]struct{}{
+		"<job-key>":              {},
+		"<incident-key>":         {},
+		"<another-incident-key>": {},
+		"<resource-id>":          {},
+		"<element-instance-key>": {},
+		"<element-id>":           {},
+		"<user-task-key>":        {},
+		"<tenant-id>":            {},
+	}
+	for _, placeholder := range placeholders {
+		if _, ok := allowed[placeholder]; !ok {
+			return false
+		}
+	}
+	return len(placeholders) > 0
 }
 
 func assertHasExampleFromSource(t *testing.T, examples []cliExample, sourceName string) {

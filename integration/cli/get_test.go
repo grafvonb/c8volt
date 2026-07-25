@@ -22,6 +22,7 @@ func TestGetFamily(t *testing.T) {
 		"get resource",
 		"get tenant",
 	})
+	runBehavioralCoverageScenarios(t, "get")
 }
 
 // TestDirtyClusterProcessInstanceAssertionIgnoresUnrelatedResults verifies seeded checks do not assume exact global counts.
