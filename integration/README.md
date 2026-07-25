@@ -49,6 +49,17 @@ before using this folder in an agent run.
 
 ## Quick Start
 
+Run the Go all-command integration suite inventory slice:
+
+```sh
+go test -tags=integration ./integration/cli -run TestCommandInventory -count=1 -timeout=10m
+```
+
+The Go suite uses the default local c8volt configuration under
+`$HOME/.config/c8volt`. It must not be pointed at a generated private config.
+Later command-family slices are destructive and should only target disposable
+clusters.
+
 Run C88 against the C88 profile in `config.yaml`:
 
 ```sh

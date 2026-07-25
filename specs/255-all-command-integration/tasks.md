@@ -18,13 +18,13 @@
 
 **Purpose**: Establish the isolated suite package and shared harness boundaries.
 
-- [ ] T001 Create `integration/cli/` package with build-tagged `integration/cli/harness_test.go`
-- [ ] T002 Add package-level suite configuration types and default environment names in `integration/cli/harness_test.go`
-- [ ] T003 Add binary build-once support in `integration/cli/harness_test.go` using the repository root as build input and a temporary output path
-- [ ] T004 Add subprocess command runner with stdout/stderr capture in `integration/cli/harness_test.go`
-- [ ] T005 Add evidence workdir initialization and path helpers in `integration/cli/harness_test.go`
-- [ ] T006 [P] Add `integration/cli/testdata/.gitkeep` if a stable empty testdata directory is needed for future fixtures
-- [ ] T007 [P] Update `integration/README.md` with the future `go test -tags=integration ./integration/cli` entry point
+- [x] T001 Create `integration/cli/` package with build-tagged `integration/cli/harness_test.go`
+- [x] T002 Add package-level suite configuration types and default environment names in `integration/cli/harness_test.go`
+- [x] T003 Add binary build-once support in `integration/cli/harness_test.go` using the repository root as build input and a temporary output path
+- [x] T004 Add subprocess command runner with stdout/stderr capture in `integration/cli/harness_test.go`
+- [x] T005 Add evidence workdir initialization and path helpers in `integration/cli/harness_test.go`
+- [x] T006 [P] Add `integration/cli/testdata/.gitkeep` if a stable empty testdata directory is needed for future fixtures
+- [x] T007 [P] Update `integration/README.md` with the future `go test -tags=integration ./integration/cli` entry point
 
 ---
 
@@ -34,17 +34,17 @@
 
 **Critical**: No command-family user story should begin until this phase is complete.
 
-- [ ] T008 Add command inventory structs matching `capabilities --json` in `integration/cli/all_commands_test.go`
-- [ ] T009 Add coverage manifest structs for command paths, aliases, flags, output modes, version expectations, and destructive classification in `integration/cli/all_commands_test.go`
-- [ ] T010 Add initial manifest entries for all 55 command nodes in `integration/cli/all_commands_test.go`
-- [ ] T011 Add profile selection and default-config guardrails in `integration/cli/harness_test.go`
-- [ ] T012 Add profile connectivity/version gate helpers in `integration/cli/harness_test.go`
-- [ ] T013 Add run marker generation and JSON variable payload helpers in `integration/cli/harness_test.go`
-- [ ] T014 Add evidence record writer for command outputs and exit codes in `integration/cli/harness_test.go`
-- [ ] T015 Add proposal record writers for command and embedded BPMN gaps in `integration/cli/harness_test.go`
-- [ ] T016 Add dirty-cluster-safe assertion helpers in `integration/cli/harness_test.go`
-- [ ] T017 Add common JSON, keys-only, and human-output assertion helpers in `integration/cli/harness_test.go`
-- [ ] T018 Run `go test -tags=integration ./integration/cli -run '^$' -count=1` to validate package compilation before user-story work
+- [x] T008 Add command inventory structs matching `capabilities --json` in `integration/cli/all_commands_test.go`
+- [x] T009 Add coverage manifest structs for command paths, aliases, flags, output modes, version expectations, and destructive classification in `integration/cli/all_commands_test.go`
+- [x] T010 Add initial manifest entries for all 55 command nodes in `integration/cli/all_commands_test.go`
+- [x] T011 Add profile selection and default-config guardrails in `integration/cli/harness_test.go`
+- [x] T012 Add profile connectivity/version gate helpers in `integration/cli/harness_test.go`
+- [x] T013 Add run marker generation and JSON variable payload helpers in `integration/cli/harness_test.go`
+- [x] T014 Add evidence record writer for command outputs and exit codes in `integration/cli/harness_test.go`
+- [x] T015 Add proposal record writers for command and embedded BPMN gaps in `integration/cli/harness_test.go`
+- [x] T016 Add dirty-cluster-safe assertion helpers in `integration/cli/harness_test.go`
+- [x] T017 Add common JSON, keys-only, and human-output assertion helpers in `integration/cli/harness_test.go`
+- [x] T018 Run `go test -tags=integration ./integration/cli -run '^$' -count=1` to validate package compilation before user-story work
 
 **Checkpoint**: The suite package compiles, can build the CLI, can run subprocesses, can write evidence, and has a complete manifest skeleton.
 
@@ -58,16 +58,16 @@
 
 ### Tests for User Story 1
 
-- [ ] T019 [P] [US1] Add failing inventory-count test for the 55 current command nodes in `integration/cli/all_commands_test.go`
-- [ ] T020 [P] [US1] Add failing missing-path and stale-path manifest tests in `integration/cli/all_commands_test.go`
-- [ ] T021 [P] [US1] Add failing missing-flag coverage test for leaf commands in `integration/cli/all_commands_test.go`
+- [x] T019 [P] [US1] Add failing inventory-count test for the 55 current command nodes in `integration/cli/all_commands_test.go`
+- [x] T020 [P] [US1] Add failing missing-path and stale-path manifest tests in `integration/cli/all_commands_test.go`
+- [x] T021 [P] [US1] Add failing missing-flag coverage test for leaf commands in `integration/cli/all_commands_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T022 [US1] Implement live `capabilities --json` discovery and flattening in `integration/cli/all_commands_test.go`
-- [ ] T023 [US1] Implement manifest comparison for missing paths, stale paths, missing flags, aliases, and output modes in `integration/cli/all_commands_test.go`
-- [ ] T024 [US1] Write `inventory.json` and `coverage.json` evidence for inventory checks in `integration/cli/all_commands_test.go`
-- [ ] T025 [US1] Verify MVP with `go test -tags=integration ./integration/cli -run TestCommandInventory -count=1 -timeout=10m`
+- [x] T022 [US1] Implement live `capabilities --json` discovery and flattening in `integration/cli/all_commands_test.go`
+- [x] T023 [US1] Implement manifest comparison for missing paths, stale paths, missing flags, aliases, and output modes in `integration/cli/all_commands_test.go`
+- [x] T024 [US1] Write `inventory.json` and `coverage.json` evidence for inventory checks in `integration/cli/all_commands_test.go`
+- [x] T025 [US1] Verify MVP with `go test -tags=integration ./integration/cli -run TestCommandInventory -count=1 -timeout=10m`
 
 **Checkpoint**: User Story 1 is complete when command inventory drift fails loudly before any cluster mutation.
 
