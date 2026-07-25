@@ -11,6 +11,8 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo unknown)
 LDFLAGS ?= -X github.com/grafvonb/c8volt/cmd.version=$(VERSION) -X github.com/grafvonb/c8volt/cmd.commit=$(COMMIT) -X github.com/grafvonb/c8volt/cmd.date=$(DATE)
+IT_GO_TEST ?= GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli
+IT_TIMEOUT ?= 60m
 DEMO_VHS_TARGETS := \
 	demo-vhs-fast-start \
 	demo-vhs-ops-execute-retention-policy \
@@ -28,8 +30,20 @@ DEMO_VHS_ALIASES := \
 	demo-vhs-piwi \
 	demo-vhs-inc \
 	demo-vhs-pi
+INTEGRATION_CLI_TARGETS := \
+	integration-cli-get \
+	integration-cli-walk \
+	integration-cli-update \
+	integration-cli-cancel \
+	integration-cli-delete \
+	integration-cli-expect-resolve \
+	integration-cli-deploy-embed-run \
+	integration-cli-ops-analyse \
+	integration-cli-ops-execute \
+	integration-cli-ops-purge \
+	integration-cli-ops-repair
 
-.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-build docs-site-build-root docs-site-serve demo-vhs-check $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES)
+.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-build docs-site-serve demo-vhs-check $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES) $(INTEGRATION_CLI_TARGETS)
 
 help: ## Show all available Make targets with a short description.
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "%-55s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -115,6 +129,39 @@ run: build ## Build the binary and print the CLI help output.
 
 test: ## Run the full Go test suite with the race detector enabled.
 	go test $(PKG) -race -count=1
+
+integration-cli-get: ## Run destructive CLI integration tests for get commands.
+	$(IT_GO_TEST) -run TestGetFamily -count=1 -timeout=$(IT_TIMEOUT)
+
+integration-cli-walk: ## Run destructive CLI integration tests for walk commands.
+	$(IT_GO_TEST) -run TestWalkFamily -count=1 -timeout=$(IT_TIMEOUT)
+
+integration-cli-update: ## Run destructive CLI integration tests for update commands.
+	$(IT_GO_TEST) -run TestUpdateFamily -count=1 -timeout=$(IT_TIMEOUT)
+
+integration-cli-cancel: ## Run destructive CLI integration tests for cancel commands.
+	$(IT_GO_TEST) -run TestCancelFamily -count=1 -timeout=$(IT_TIMEOUT)
+
+integration-cli-delete: ## Run destructive CLI integration tests for delete commands.
+	$(IT_GO_TEST) -run TestDeleteFamily -count=1 -timeout=$(IT_TIMEOUT)
+
+integration-cli-expect-resolve: ## Run destructive CLI integration tests for expect and resolve commands.
+	$(IT_GO_TEST) -run TestExpectResolveFamily -count=1 -timeout=$(IT_TIMEOUT)
+
+integration-cli-deploy-embed-run: ## Run destructive CLI integration tests for deploy, embed, and run commands.
+	$(IT_GO_TEST) -run TestDeployEmbedRunFamily -count=1 -timeout=$(IT_TIMEOUT)
+
+integration-cli-ops-analyse: ## Run destructive CLI integration tests for ops analyse commands.
+	$(IT_GO_TEST) -run TestOpsAnalyseFamily -count=1 -timeout=$(IT_TIMEOUT)
+
+integration-cli-ops-execute: ## Run destructive CLI integration tests for ops execute commands.
+	$(IT_GO_TEST) -run TestOpsExecuteFamily -count=1 -timeout=$(IT_TIMEOUT)
+
+integration-cli-ops-purge: ## Run destructive CLI integration tests for ops purge commands.
+	$(IT_GO_TEST) -run TestOpsPurgeFamily -count=1 -timeout=$(IT_TIMEOUT)
+
+integration-cli-ops-repair: ## Run destructive CLI integration tests for ops repair commands.
+	$(IT_GO_TEST) -run TestOpsRepairFamily -count=1 -timeout=$(IT_TIMEOUT)
 
 licenses: ## Check Go dependency licenses.
 	go tool go-licenses check $(PKG)
