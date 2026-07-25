@@ -129,7 +129,7 @@
 
 - [x] T048 [US3] Wire `integration-cli-real-state-retention` and `integration-cli-real-state-destructive` targets in `Makefile`
 - [x] T049 [US3] Implement deterministic completed process-instance candidate setup for retention scenarios in `integration/cli/real_state_retention_test.go`
-- [ ] T050 [US3] Add `ops execute retention-policy` dry-run and confirmed execution assertions with retained, deleted, or cleanup-failed evidence in `integration/cli/real_state_retention_test.go`
+- [x] T050 [US3] Add `ops execute retention-policy` dry-run and confirmed execution assertions with retained, deleted, or cleanup-failed evidence in `integration/cli/real_state_retention_test.go`
 - [ ] T051 [US3] Implement real purge candidate setup for incidents, process instances, and process definitions in `integration/cli/real_state_destructive_test.go`
 - [ ] T052 [US3] Add dry-run non-mutation and confirmed post-state assertions for purge, delete, cancel, expect-resolve, and ops repair commands in `integration/cli/real_state_destructive_test.go`
 - [ ] T053 [US3] Implement mixed valid, missing, malformed, stale, and already-mutated target sets in `integration/cli/real_state_destructive_test.go`

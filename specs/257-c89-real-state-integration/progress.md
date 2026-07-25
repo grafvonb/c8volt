@@ -210,3 +210,24 @@
 - `C89_NoOpCompletion.bpmn` is enough to create completed suite-owned instances, and `--retention-days 0` produces a real non-empty retention candidate set without waiting for aged data.
 - Cancel/delete can already be proven on real active suite-owned process instances with explicit-key dry-runs and confirmed post-state checks.
 ---
+## Iteration 7 - 2026-07-26
+**Work Unit**: Confirmed real-state retention deletion
+**Tasks Completed**:
+- [x] T050: Add `ops execute retention-policy` confirmed execution assertions with deleted and absent post-state evidence
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- integration/cli/real_state_retention_test.go
+- specs/257-c89-real-state-integration/coverage-matrix.md
+- specs/257-c89-real-state-integration/gaps.md
+- specs/257-c89-real-state-integration/quickstart.md
+- specs/257-c89-real-state-integration/ralph-memory.md
+- specs/257-c89-real-state-integration/tasks.md
+- specs/257-c89-real-state-integration/progress.md
+**Validation**:
+- `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
+- `make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m`
+**Learnings**:
+- Confirmed retention can be tested without explicit-key selection by validating the JSON report's frozen seed, root, and affected keys, then verifying the reported affected key is absent.
+---
