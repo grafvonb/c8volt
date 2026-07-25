@@ -73,7 +73,7 @@ func allVolumeTargets() []volumeTarget {
 		{Name: "integration-cli-ops-analyse-volume", Family: "ops-analyse", TestPattern: "TestVolumeOpsAnalyseFamily", DefaultDatasetCount: defaultITVolumeCount, Destructive: true},
 		{Name: "integration-cli-ops-execute-volume", Family: "ops-execute", TestPattern: "TestVolumeOpsExecuteFamily", DefaultDatasetCount: defaultITVolumeCount, Destructive: true},
 		{Name: "integration-cli-ops-purge-volume", Family: "ops-purge", TestPattern: "TestVolumeOpsPurgeFamily", DefaultDatasetCount: defaultITVolumeCount, Destructive: true},
-		{Name: "integration-cli-ops-repair-volume", Family: "ops-repair", TestPattern: "TestVolumeOpsRepairFamily", DefaultDatasetCount: defaultITVolumeCount, Destructive: true, ReservedNotImplemented: true},
+		{Name: "integration-cli-ops-repair-volume", Family: "ops-repair", TestPattern: "TestVolumeOpsRepairFamily", DefaultDatasetCount: defaultITVolumeCount, Destructive: true},
 	}
 }
 

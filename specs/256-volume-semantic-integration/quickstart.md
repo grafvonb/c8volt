@@ -120,6 +120,16 @@ Evidence path:
 
 - `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-1149546997`
 
+Validated ops repair slice:
+
+```sh
+make integration-cli-ops-repair-volume IT_GO_TEST_FLAGS=-v
+```
+
+Evidence path:
+
+- `/var/folders/jc/60f5tdds44d2v3b4fc0xs5700000gp/T/c8volt-all-command-it-4176285669`
+
 ## Evidence Review
 
 Use a stable workdir when comparing repeated runs:
