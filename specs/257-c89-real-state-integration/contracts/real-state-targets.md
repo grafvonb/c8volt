@@ -14,6 +14,7 @@ integration-cli-real-state-listeners
 integration-cli-real-state-bpmn-error
 integration-cli-real-state-retention
 integration-cli-real-state-destructive
+integration-cli-real-state-cascade
 ```
 
 The target set may be split further by command family if a slice becomes too large, but the default target names above remain the stable operator entry points for this feature.
@@ -36,6 +37,7 @@ Target commands should follow this shape:
 ```sh
 make integration-cli-real-state-jobs C8VOLT_IT_GO_TEST_FLAGS=-v
 make integration-cli-real-state-incidents C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+make integration-cli-real-state-cascade C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
 ## Independence Contract

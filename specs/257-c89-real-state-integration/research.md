@@ -24,6 +24,16 @@
 
 **Alternatives considered**: Direct API setup for all fixtures was rejected because it avoids testing c8volt setup commands. Blocking all API setup was rejected because some job, listener, retention, or partial-failure states may not yet be reachable through c8volt.
 
+## Decision: Allow Test-Only Corruption For States C8volt Must Prevent
+
+**Decision**: Real-state tests may use direct Camunda APIs to create deliberately inconsistent state when that state is the thing c8volt is supposed to detect, avoid, or clean. This includes deleting a parent process instance directly through Camunda after c8volt created a normal call-activity family, leaving children with missing parent references for orphan cleanup proof.
+
+**Rationale**: Some acceptance-critical ops behavior cannot be reached through c8volt commands because c8volt's value is preventing unsafe partial mutations. Direct Camunda API corruption keeps the product command surface safe while still proving c8volt can handle dirty clusters produced by other tools, scripts, bugs, or manual API use.
+
+**Current status**: Orphan purge should move from no-match coverage to live coverage by creating `C89_MultipleSubProcessesParent` through c8volt, verifying the full family, deleting a parent or root directly with Camunda's process-instance deletion endpoint, then proving `get pi --orphan-children-only`, `walk pi --parent`, and `ops purge orphan-process-instances` behavior.
+
+**Alternatives considered**: Adding a c8volt command to create orphan process instances was rejected because it contradicts c8volt's safety purpose. Keeping orphan purge as a fixture-only or mocked test was rejected because it would not prove real dirty-cluster recovery.
+
 ## Decision: Prefer Embedded BPMN Fixtures, Then Track Missing Fixtures In Specs
 
 **Decision**: Use existing embedded BPMN models first. Do not mutate existing embedded fixtures to force new behavior; record missing listener, BPMN error, repair, retention, or partial-failure models in `gaps.md`.

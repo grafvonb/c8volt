@@ -24,7 +24,7 @@ Add a third integration coverage layer for c8volt that proves the highest-risk c
 
 **Performance Goals**: Keep 255 baseline targets and 256 volume targets separate; keep real-state slices focused enough to run independently; avoid timing-sensitive assertions; prefer deterministic state checks over sleep-heavy polling
 
-**Constraints**: Do not pass `--config`; do not generate private config files; tolerate clean and dirty clusters; destructive mutation against the selected disposable cluster is allowed; prefer c8volt commands for setup; prefer embedded BPMN models; keep runtime evidence separate from spec-owned setup and fixture gaps; keep reusable context outside `docs/`; focus current implementation on Camunda 8.9 while preserving version fields for future minor releases
+**Constraints**: Do not pass `--config`; do not generate private config files; tolerate clean and dirty clusters; destructive mutation against the selected disposable cluster is allowed; prefer c8volt commands for setup; prefer embedded BPMN models; direct Camunda API setup is allowed for controlled dirty-state or worker-state simulation when c8volt intentionally prevents that state; keep runtime evidence separate from spec-owned setup and fixture gaps; keep reusable context outside `docs/`; focus current implementation on Camunda 8.9 while preserving version fields for future minor releases
 
 **Scale/Scope**: Real-state coverage for active jobs, job mutations, incidents with related jobs, listener state, BPMN error jobs, deterministic retention candidates, confirmed purge/delete/cancel/resolve/repair outcomes, fail-fast and partial-failure behavior, and spec-owned gap tracking
 
@@ -87,7 +87,8 @@ integration/
 - Feature 256 supplies volume datasets, progress/report/pipeline evidence, critical-flag semantics, and destructive target conventions.
 - This feature adds real-state fixtures and assertions where the current suite is too shallow: non-empty jobs, observable job mutations, incidents with related jobs, listener jobs, BPMN error job paths, retention/purge/delete candidates, and fail-fast/partial-failure reporting.
 - The harness must assert suite-owned identifiers and stable containment rather than global exact counts, because the selected cluster may already be dirty.
-- Direct Camunda API setup is allowed only when c8volt commands cannot create the required state; each usage must be visible in runtime setup evidence, and missing c8volt command capability must be maintained in `gaps.md`.
+- Direct Camunda API setup is allowed only when c8volt commands cannot create the required state; each usage must be visible in runtime setup evidence, and missing c8volt command capability must be maintained in `gaps.md` when it is a safe product capability.
+- Some direct Camunda API setup is intentionally test-only, such as deleting a call-activity parent below c8volt's cascade-safe deletion path to create orphan children. These cases must be marked as controlled corruption setup, not as product command proposals.
 - Missing embedded BPMN behavior must remain visible in `gaps.md`; runtime tests should record skipped-prerequisite evidence instead of silently passing.
 
 ## Phase 0: Research

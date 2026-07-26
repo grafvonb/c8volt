@@ -25,6 +25,18 @@ When a scenario cannot create or discover the required state through current c8v
 
 The missing command capability, embedded BPMN fixture, or setup path belongs in a spec-owned gap artifact such as `specs/<feature>/gaps.md`.
 
+## Controlled Dirty-State Setup
+
+Some high-value c8volt behavior exists specifically because c8volt avoids or repairs unsafe Camunda states. Integration tests may therefore create deliberately inconsistent state through direct Camunda APIs when all of the following are true:
+
+- c8volt commands intentionally prevent creating that state in normal use
+- the inconsistent state is required to prove cleanup, cascade, warning, repair, or reporting behavior
+- setup remains scoped to disposable integration targets and recorded suite-owned keys
+- the test records the setup path as runtime evidence without generating backlog proposal files
+- the matching spec gap explains whether the missing setup is a test-only corruption helper, a reusable embedded BPMN fixture need, or a product command/setup capability
+
+For example, orphan-child cleanup should be proven by creating a normal call-activity family through c8volt, then using Camunda APIs directly to delete a parent process instance without c8volt's cascade-safe deletion. That setup is not a proposal for a c8volt command that creates orphans; it is a controlled test-only corruption path used to prove c8volt can discover and repair the mess.
+
 ## Spec-Owned Gap Tracking
 
 Gap artifacts may describe:

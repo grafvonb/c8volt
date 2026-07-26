@@ -66,7 +66,8 @@ INTEGRATION_CLI_REAL_STATE_TARGETS := \
 	integration-cli-real-state-listeners \
 	integration-cli-real-state-bpmn-error \
 	integration-cli-real-state-retention \
-	integration-cli-real-state-destructive
+	integration-cli-real-state-destructive \
+	integration-cli-real-state-cascade
 INTEGRATION_TEST_TARGETS := \
 	integration-test \
 	integration-test-volume \
@@ -233,6 +234,9 @@ integration-cli-real-state-retention: integration-test-confirm ## Run destructiv
 
 integration-cli-real-state-destructive: integration-test-confirm ## Run destructive C89 real-state integration tests for destructive post-state semantics.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateDestructiveFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
+
+integration-cli-real-state-cascade: integration-test-confirm ## Run destructive C89 real-state integration tests for parent/child cascade semantics.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateCascadeFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
 integration-cli-walk: integration-test-confirm ## Run destructive CLI integration tests for walk commands.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestWalkFamily -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)

@@ -128,3 +128,4 @@ As a maintainer, I want direct single-resource lookups and absent-state waiting 
 - Warning-based success is only appropriate when at least one actionable process-instance result was resolved; fully unresolved traversals should still fail normally.
 - Direct single-resource retrieval and waiter flows are intentionally out of scope for this behavior change and should keep their existing strict semantics.
 - The same user-facing contract should apply anywhere the shared process-instance family traversal is used for walk, delete, cancel, or indirect process-definition cleanup preparation.
+- Real integration validation should create orphan-parent state through controlled direct Camunda API corruption after c8volt creates a healthy call-activity family. c8volt commands should not expose a normal user flow whose purpose is to create orphan process instances.

@@ -13,7 +13,7 @@
 - [x] T009: Implement suite-owned marker, resource-key, and dirty-cluster containment helpers in `integration/cli/real_state_data_test.go`
 - [x] T010: Implement reusable before-state and after-state command query helpers in `integration/cli/real_state_data_test.go`
 - [x] T011: Implement embedded fixture deployment and process-instance start wrappers that reuse existing helpers in `integration/cli/real_state_data_test.go`
-- [x] T012: Implement proposal fallback helpers for real-state command and embedded BPMN gaps in `integration/cli/real_state_proposals_test.go`
+- [x] T012: Implement pre-correction gap fallback helpers for real-state command and embedded BPMN gaps; later correction moved durable gap ownership to `gaps.md`
 - [x] T013: Add compile-only and helper validation checks for the real-state scaffolding in `integration/cli/real_state_harness_test.go`
 **Tasks Remaining in Work Unit**: 0
 **Commit**: This work-unit commit
@@ -23,7 +23,7 @@
 - integration/cli/harness_test.go
 - integration/cli/real_state_harness_test.go
 - integration/cli/real_state_data_test.go
-- integration/cli/real_state_proposals_test.go
+- specs/257-c89-real-state-integration/gaps.md
 - specs/257-c89-real-state-integration/quickstart.md
 - specs/257-c89-real-state-integration/tasks.md
 - specs/257-c89-real-state-integration/ralph-memory.md
@@ -43,7 +43,7 @@
 - [x] T019: Add `update job` dry-run, retries, timeout dry-run, fail, no-wait, and JSON cleanliness scenarios
 - [x] T020: Implement job-backed incident setup and active incident discovery
 - [x] T021: Add related-job checks for incident discovery and ops repair dry-run
-- [x] T022: Record a C89 command proposal for the remaining activated-job timeout setup gap
+- [x] T022: Record a C89 spec-owned setup gap for the remaining activated-job timeout setup gap
 - [x] T023: Keep embedded BPMN proposal helpers wired for missing job or incident fixture behavior
 - [x] T024: Update coverage matrix job and incident rows
 - [x] T025: Validate jobs and incidents targets and document expected behavior in quickstart
@@ -65,7 +65,7 @@
 - `make integration-cli-real-state-incidents C8VOLT_IT_GO_TEST_FLAGS=-v`
 **Learnings**:
 - `C89_SimpleServiceTask.bpmn` creates suite-owned `CREATED` execution-listener jobs that are enough for real `get job`, retry mutation, no-wait mutation, and failure/incident setup.
-- Camunda rejects confirmed timeout updates for `CREATED` jobs because timeout update requires an active/activated job; the suite records this as a command proposal and covers timeout as a dry-run plan until c8volt can create activated jobs.
+- Camunda rejects confirmed timeout updates for `CREATED` jobs because timeout update requires an active/activated job; the suite records this as a spec-owned setup gap and covers timeout as a dry-run plan until a direct worker API setup or safe c8volt setup path can create activated jobs.
 - Failing a suite-owned job with retries `0` creates a real active incident with a related `jobKey`, giving stronger repair evidence than the older incident-only fixture path.
 ---
 ## Iteration 3 - 2026-07-25 21:50
@@ -164,7 +164,7 @@
 - integration/cli/real_state_listeners_test.go
 - integration/cli/real_state_bpmn_error_test.go
 - integration/cli/real_state_gap_validation_test.go
-- integration/cli/real_state_proposals_test.go
+- specs/257-c89-real-state-integration/gaps.md
 - specs/257-c89-real-state-integration/quickstart.md
 - specs/257-c89-real-state-integration/tasks.md
 - specs/257-c89-real-state-integration/ralph-memory.md
@@ -425,4 +425,71 @@
 **Learnings**:
 - A shared phony prerequisite gives one prompt for aggregate and multi-goal invocations without changing individual slice recipes.
 - Automation can stay non-interactive while manual local runs make the real-state mutation risk explicit.
+---
+## Iteration 14 - 2026-07-26
+**Work Unit**: C89 parent/child cascade proof
+**Tasks Completed**:
+- [x] Fix `ops execute smoke-test` deployment to deploy the embedded dependency closure for `MultipleSubProcessesParent`
+- [x] Add `integration-cli-real-state-cascade` and `TestRealStateCascadeFamily`
+- [x] Prove real parent/child traversal, selected-child dry-run expansion, confirmed cancel/delete, `delete pd --force`, and `ops purge all-process-definitions --force`
+- [x] Update 257 gap, coverage, quickstart, target contract, and handoff artifacts to mark process-definition cascade semantics live-covered
+**Tasks Remaining in Work Unit**: 0
+**Commit**: Pending
+**Files Changed**:
+- Makefile
+- integration/README.md
+- integration/cli/real_state_cascade_test.go
+- integration/cli/real_state_gap_validation_test.go
+- integration/cli/real_state_harness_test.go
+- integration/cli/volume_ops_purge_test.go
+- internal/services/ops/smoke_test_service.go
+- internal/services/ops/smoke_test_test.go
+- specs/257-c89-real-state-integration/contracts/real-state-targets.md
+- specs/257-c89-real-state-integration/coverage-matrix.md
+- specs/257-c89-real-state-integration/data-model.md
+- specs/257-c89-real-state-integration/gaps.md
+- specs/257-c89-real-state-integration/quickstart.md
+- specs/257-c89-real-state-integration/ralph-memory.md
+- specs/257-c89-real-state-integration/tasks.md
+- specs/257-c89-real-state-integration/progress.md
+**Validation**:
+- `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/ops -run 'TestExecuteSmokeTest|TestSmoke' -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
+- `make integration-cli-real-state-cascade C8VOLT_IT_AUTOMATION=1 C8VOLT_IT_GO_TEST_FLAGS=-v`
+**Learnings**:
+- `C89_MultipleSubProcessesParent` produces a real four-key family: root, `C89_SimpleParent`, and two `C89_SimpleUserTask` children.
+- The Camunda 8.9 process-instance read surface reports canceled runtime instances as `TERMINATED`; cascade assertions must accept that terminal state.
+- Process-definition delete against a dirty cluster found and cleaned pre-existing parent roots from an interrupted run, proving the command handles more than the just-seeded family.
+---
+## Iteration 15 - 2026-07-26
+**Work Unit**: Specs-only real-state gap refinement for controlled dirty-state setup
+**Tasks Completed**:
+- [x] Clarify that direct Camunda API setup can be test-only controlled corruption when c8volt intentionally prevents the unsafe state
+- [x] Update orphan purge gaps to use c8volt-created call-activity families plus direct Camunda parent deletion instead of a product command for creating orphans
+- [x] Add service-task handler job setup as a distinct gap from listener-job coverage
+- [x] Extend repair, cleanup-edge, and stale-after-discovery gaps to allow direct API mutation of frozen candidates
+- [x] Update older orphan-cleanup and job-ops specs with forward real-state validation notes
+**Tasks Remaining in Work Unit**: 0
+**Commit**: Pending
+**Files Changed**:
+- specs/integration-test-responsibility.md
+- specs/186-ops-orphan-cleanup/spec.md
+- specs/231-job-ops-workflows/spec.md
+- specs/257-c89-real-state-integration/contracts/real-state-evidence.md
+- specs/257-c89-real-state-integration/coverage-matrix.md
+- specs/257-c89-real-state-integration/data-model.md
+- specs/257-c89-real-state-integration/follow-ups.md
+- specs/257-c89-real-state-integration/gaps.md
+- specs/257-c89-real-state-integration/plan.md
+- specs/257-c89-real-state-integration/progress.md
+- specs/257-c89-real-state-integration/quickstart.md
+- specs/257-c89-real-state-integration/ralph-memory.md
+- specs/257-c89-real-state-integration/research.md
+**Validation**:
+- Specs-only update; no implementation or integration targets run.
+- `git diff --check -- specs/integration-test-responsibility.md specs/186-ops-orphan-cleanup/spec.md specs/231-job-ops-workflows/spec.md specs/257-c89-real-state-integration`
+**Learnings**:
+- Orphan creation is not a missing c8volt command; it is a controlled test-only corruption setup because c8volt's normal delete path should prevent orphaning.
+- Handler-owned service-task jobs need separate evidence from listener jobs before timeout, completion, BPMN error, and repair assertions can be called live-covered.
 ---

@@ -112,6 +112,7 @@ Run retention and destructive targets:
 ```sh
 make integration-cli-real-state-retention C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 make integration-cli-real-state-destructive C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+make integration-cli-real-state-cascade C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
 Expected outcome:
@@ -119,9 +120,11 @@ Expected outcome:
 - the retention target creates fresh completed suite-owned process instances, finds non-empty `ops execute retention-policy --retention-days 0` candidate sets, proves dry-run leaves candidates completed, and proves confirmed deletion makes report-frozen keys absent
 - the destructive target creates active suite-owned process instances and incident-bearing process instances, then proves cancel/delete dry-run safety and confirmed post-state
 - incident-selected purge proves exact `--inc-key` frozen selection, dry-run safety, confirmed report parity, and absent post-state for the suite-owned target
+- the cascade target deploys the C89 parent/call-activity dependency closure, starts `C89_MultipleSubProcessesParent`, proves `walk`, cancel dry-run, and delete dry-run resolve selected child instances to the root and complete family, then verifies confirmed cancel/delete, `delete pd --force`, and `ops purge all-process-definitions --force` remove the whole parent/child family
+- the cascade target is dirty-state tolerant: process-definition delete and purge may clean existing matching parent definitions and active parent roots before deleting the selected process definition
 - resolve scenarios prove dry-run and confirmed submission on real self-recreating incidents; durable incident clearing is asserted through `ops repair` because the current embedded model recreates a resolution-only incident
 - mixed-target scenarios prove malformed and missing process-instance inputs fail before mutation, stale deleted targets report not found, already-terminated targets stay dry-run safe, and `resolve incident` keeps JSON machine output clean for partial and fail-fast no-wait failures
-- remaining process-definition purge, orphan purge, durable standalone resolve, and ops repair-specific mixed failure behavior stays tracked in `gaps.md` and `coverage-matrix.md`
+- remaining orphan purge, durable standalone resolve, and ops repair-specific mixed failure behavior stays tracked in `gaps.md` and `coverage-matrix.md`
 - ops report evidence agrees with stdout outcomes for the implemented retention, repair, and incident-selected purge slices
 
 ## Normal Validation
@@ -159,6 +162,7 @@ make integration-cli-real-state-listeners C8VOLT_IT_GO_TEST_FLAGS=-v
 make integration-cli-real-state-bpmn-error C8VOLT_IT_GO_TEST_FLAGS=-v
 make integration-cli-real-state-retention C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 make integration-cli-real-state-destructive C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+make integration-cli-real-state-cascade C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
 To run the baseline, volume, and real-state suites in sequence:
@@ -180,6 +184,21 @@ Use `specs/257-c89-real-state-integration/follow-ups.md` as the source for
 future issue/spec creation. The 255 and 256 artifacts remain historical context,
 but remaining setup, embedded BPMN, ops-report, output, and pipeline gaps should
 be carried forward from the 257 roadmap.
+
+Future real-state depth should include two setup styles that are deliberately
+not normal c8volt user flows:
+
+- controlled corruption setup: create a healthy call-activity family through
+  c8volt, delete a parent directly through Camunda API, verify orphan children
+  through c8volt, then prove `ops purge orphan-process-instances` cleans them
+- direct worker API setup: create service-task jobs through embedded BPMN and
+  c8volt deploy/run, then use Camunda worker APIs to activate, complete, fail,
+  time out, or throw BPMN errors so c8volt can prove handler-job behavior
+
+These setup paths must be recorded as runtime setup evidence and maintained in
+`gaps.md` or `follow-ups.md`. They are not test-generated product proposals,
+and orphan creation must remain test-only because c8volt's product behavior is
+to prevent that unsafe state.
 
 Finish with:
 

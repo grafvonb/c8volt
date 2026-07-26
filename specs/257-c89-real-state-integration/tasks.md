@@ -28,11 +28,11 @@
 **Critical**: No user-story implementation should start before this phase is complete.
 
 - [x] T007 Implement Camunda 8.9 profile selection and skip/classification helpers in `integration/cli/real_state_harness_test.go`
-- [x] T008 Implement real-state family, data, progress, ops, legacy proposal report writers, and reusable JSON/keys-only stdout cleanliness assertions in `integration/cli/real_state_data_test.go`
+- [x] T008 Implement real-state family, data, progress, ops evidence writers, and reusable JSON/keys-only stdout cleanliness assertions in `integration/cli/real_state_data_test.go`
 - [x] T009 Implement suite-owned marker, resource-key, and dirty-cluster containment helpers in `integration/cli/real_state_data_test.go`
 - [x] T010 Implement reusable before-state and after-state command query helpers in `integration/cli/real_state_data_test.go`
 - [x] T011 Implement embedded fixture deployment and process-instance start wrappers that reuse existing helpers in `integration/cli/real_state_data_test.go`
-- [x] T012 Implement legacy proposal fallback helpers for real-state command and embedded BPMN gaps in `integration/cli/real_state_proposals_test.go`
+- [x] T012 Implement pre-correction gap fallback helpers for real-state command and embedded BPMN gaps; later correction moved durable gap ownership to `gaps.md`
 - [x] T013 Add compile-only and helper validation checks for the real-state scaffolding in `integration/cli/real_state_harness_test.go`
 
 **Checkpoint**: Real-state harness is available, targets are listed, evidence files can be written, and all later stories can create scoped evidence.
@@ -58,12 +58,12 @@
 - [x] T019 [US1] Add `update job` dry-run, retries, timeout, fail, no-wait, and JSON stdout cleanliness scenarios with before-state and after-state evidence in `integration/cli/real_state_jobs_test.go`
 - [x] T020 [US1] Implement incident fixture setup and active incident discovery scoped to suite-owned process instances in `integration/cli/real_state_incidents_test.go`
 - [x] T021 [US1] Add related-job evidence checks for incident-driven repair and retry paths in `integration/cli/real_state_incidents_test.go`
-- [x] T022 [US1] Record legacy command proposal gaps for job or incident states that require direct Camunda setup in `integration/cli/real_state_proposals_test.go`
-- [x] T023 [US1] Record legacy embedded BPMN proposal gaps for missing job or incident fixture behavior in `integration/cli/real_state_proposals_test.go`
+- [x] T022 [US1] Record spec-owned setup gaps for job or incident states that require direct Camunda setup in `specs/257-c89-real-state-integration/gaps.md`
+- [x] T023 [US1] Record spec-owned embedded BPMN gaps for missing job or incident fixture behavior in `specs/257-c89-real-state-integration/gaps.md`
 - [x] T024 [US1] Update job and incident rows to current statuses in `specs/257-c89-real-state-integration/coverage-matrix.md`
 - [x] T025 [US1] Validate User Story 1 with `make integration-cli-real-state-jobs C8VOLT_IT_GO_TEST_FLAGS=-v` and `make integration-cli-real-state-incidents C8VOLT_IT_GO_TEST_FLAGS=-v` documented in `specs/257-c89-real-state-integration/quickstart.md`
 
-**Checkpoint**: User Story 1 proves live Camunda 8.9 job and incident state, with remaining blockers to be migrated from legacy proposal evidence into spec-owned gap tracking.
+**Checkpoint**: User Story 1 proves live Camunda 8.9 job and incident state, with remaining blockers tracked in spec-owned gap artifacts.
 
 ---
 
@@ -85,8 +85,8 @@
 - [x] T030 [US2] Add non-empty listener evidence plus JSON/keys-only stdout cleanliness where supported for `walk process-instance --with-listeners`, `get element --with-listeners`, and `ops analyse slow-process-instances --with-listeners` in `integration/cli/real_state_listeners_test.go`
 - [x] T031 [US2] Implement BPMN error-capable job fixture discovery or missing-fixture classification in `integration/cli/real_state_bpmn_error_test.go`
 - [x] T032 [US2] Add `update job --throw-bpmn-error` execution, JSON stdout cleanliness, and process-state verification in `integration/cli/real_state_bpmn_error_test.go`
-- [x] T033 [US2] Record legacy listener and BPMN error command setup gaps when c8volt commands cannot create the required state in `integration/cli/real_state_proposals_test.go`
-- [x] T034 [US2] Record legacy listener and BPMN error embedded BPMN gaps without modifying existing embedded models in `integration/cli/real_state_proposals_test.go`
+- [x] T033 [US2] Record listener and BPMN error command setup gaps when c8volt commands cannot create the required state in `specs/257-c89-real-state-integration/gaps.md`
+- [x] T034 [US2] Record listener and BPMN error embedded BPMN gaps without modifying existing embedded models in `specs/257-c89-real-state-integration/gaps.md`
 - [x] T035 [US2] Update listener and BPMN error rows to current statuses in `specs/257-c89-real-state-integration/coverage-matrix.md`
 - [x] T036 [US2] Validate User Story 2 with `make integration-cli-real-state-listeners C8VOLT_IT_GO_TEST_FLAGS=-v` and `make integration-cli-real-state-bpmn-error C8VOLT_IT_GO_TEST_FLAGS=-v` documented in `specs/257-c89-real-state-integration/quickstart.md`
 
@@ -130,7 +130,7 @@
 - [x] T048 [US3] Wire `integration-cli-real-state-retention` and `integration-cli-real-state-destructive` targets in `Makefile`
 - [x] T049 [US3] Implement deterministic completed process-instance candidate setup for retention scenarios in `integration/cli/real_state_retention_test.go`
 - [x] T050 [US3] Add `ops execute retention-policy` dry-run and confirmed execution assertions with retained, deleted, or cleanup-failed evidence in `integration/cli/real_state_retention_test.go`
-- [x] T051 [US3] Implement real purge candidate setup for incident-selected process instances in `integration/cli/real_state_destructive_test.go`; process-definition and orphan purge candidates remain tracked in `gaps.md`
+- [x] T051 [US3] Implement real purge candidate setup for incident-selected process instances in `integration/cli/real_state_destructive_test.go`; orphan purge candidates remain tracked in `gaps.md`
 - [x] T052 [US3] Add dry-run non-mutation and confirmed post-state assertions for incident purge, delete, cancel, resolve command submission, and ops repair commands in `integration/cli/real_state_destructive_test.go`
 - [x] T053 [US3] Implement mixed valid, missing, malformed, stale, and already-mutated target sets in `integration/cli/real_state_destructive_test.go`
 - [x] T054 [US3] Add fail-fast, partial-failure accounting, and machine-output cleanliness assertions for command stdout and ops reports in `integration/cli/real_state_destructive_test.go`
@@ -181,6 +181,11 @@
 - [x] T074 Run `make test` for repository-wide validation from `Makefile`
 - [x] T075 Verify whether command help/example metadata changed; if it changed, run `make docs-content` and include generated docs, otherwise record that generated CLI docs were not required in `specs/257-c89-real-state-integration/quickstart.md`
 - [x] T076 Run `git diff --check -- Makefile integration/README.md integration/cli specs/257-c89-real-state-integration specs/integration-test-responsibility.md` before final review
+- [x] T077 Add C89 parent/child cascade integration coverage for walk, cancel, delete, process-definition delete, and all-process-definitions purge in `integration/cli/real_state_cascade_test.go`
+- [x] T078 Fix `ops execute smoke-test` deployment to include the embedded dependency closure for `MultipleSubProcessesParent`
+- [x] T079 Wire and document `integration-cli-real-state-cascade` as an independently runnable destructive real-state target
+- [x] T080 Validate cascade behavior with `make integration-cli-real-state-cascade C8VOLT_IT_AUTOMATION=1 C8VOLT_IT_GO_TEST_FLAGS=-v`
+- [x] T081 Refine specs-only follow-up gaps for controlled Camunda API corruption setup, service-task handler job setup, stale-after-discovery states, and orphan purge real-state proof
 
 ---
 

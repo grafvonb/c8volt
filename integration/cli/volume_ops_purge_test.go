@@ -317,7 +317,9 @@ type volumeOpsPurgeAllPDReport struct {
 		CandidateProcessDefinitionCount int `json:"candidateProcessDefinitionCount"`
 	} `json:"discovery"`
 	Deletion struct {
-		Submitted bool `json:"submitted"`
+		Submitted bool                         `json:"submitted"`
+		Confirmed bool                         `json:"confirmed"`
+		Items     []realStateCascadeDeleteItem `json:"items"`
 	} `json:"deletion"`
 }
 

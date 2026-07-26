@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 )
 
 type volumeIncidentDataset struct {
@@ -233,8 +234,32 @@ func volumeExpectResolveRecord(profile integrationProfile, commandPath string, r
 func discoverVolumeIncidentKeys(t *testing.T, profile integrationProfile, dataset volumeIncidentDataset, piKeys []string) ([]string, evidenceRecord, error) {
 	t.Helper()
 	scenario := "volume-get-incident-for-resolve"
-	result := runC8VoltForProfile(t, profile.Name, scenario, "--automation", "--json", "get", "incident", "--bpmn-process-id", dataset.BpmnProcessID, "--state", "active", "--limit", "5", "--batch-size", "1")
-	record := volumeExpectResolveRecord(profile, "get incident", result, scenario, "json", []string{"bpmn-process-id", "state", "limit", "batch-size"}, piKeys)
+	result := commandResult{}
+	var keys []string
+	for i, piKey := range piKeys {
+		keyScenario := fmt.Sprintf("%s-%d", scenario, i+1)
+		var found []string
+		for attempt := 1; attempt <= 10; attempt++ {
+			attemptScenario := keyScenario
+			if attempt > 1 {
+				attemptScenario = fmt.Sprintf("%s-attempt-%d", keyScenario, attempt)
+			}
+			result = runC8VoltForProfile(t, profile.Name, attemptScenario, "--automation", "--json", "get", "incident", "--pi-key", piKey, "--state", "active", "--limit", "5", "--batch-size", "1")
+			if err := requireVolumeCommandSuccess(result, "get incident for resolve volume"); err != nil {
+				break
+			}
+			found = volumeIncidentKeysFromResult(t, result, piKey)
+			if len(found) > 0 {
+				break
+			}
+			time.Sleep(2 * time.Second)
+		}
+		keys = append(keys, found...)
+		if len(keys) > 0 {
+			break
+		}
+	}
+	record := volumeExpectResolveRecord(profile, "get incident", result, scenario, "json", []string{"pi-key", "state", "limit", "batch-size"}, piKeys)
 	if err := requireVolumeCommandSuccess(result, "get incident for resolve volume"); err != nil {
 		record.Outcome = volumeOutcomeFail
 		record.FailureClass = volumeFailureProduct
@@ -245,6 +270,12 @@ func discoverVolumeIncidentKeys(t *testing.T, profile integrationProfile, datase
 		record.FailureClass = volumeFailureProduct
 		return nil, record, err
 	}
+	record.ResourceKeys = append(record.ResourceKeys, keys...)
+	return uniqueSortedStrings(keys), record, nil
+}
+
+func volumeIncidentKeysFromResult(t *testing.T, result commandResult, piKey string) []string {
+	t.Helper()
 	var incidents struct {
 		Items []struct {
 			IncidentKey        string `json:"incidentKey"`
@@ -252,22 +283,15 @@ func discoverVolumeIncidentKeys(t *testing.T, profile integrationProfile, datase
 		} `json:"items"`
 	}
 	if err := decodeCommandPayload(result.Stdout, &incidents); err != nil {
-		record.Outcome = volumeOutcomeFail
-		record.FailureClass = volumeFailureProduct
-		return nil, record, fmt.Errorf("decode incident discovery payload: %w", err)
-	}
-	piSet := map[string]struct{}{}
-	for _, key := range piKeys {
-		piSet[key] = struct{}{}
+		return nil
 	}
 	var keys []string
 	for _, item := range incidents.Items {
-		if _, ok := piSet[item.ProcessInstanceKey]; ok && item.IncidentKey != "" {
+		if item.ProcessInstanceKey == piKey && item.IncidentKey != "" {
 			keys = append(keys, item.IncidentKey)
 		}
 	}
-	record.ResourceKeys = append(record.ResourceKeys, keys...)
-	return uniqueSortedStrings(keys), record, nil
+	return keys
 }
 
 func validateVolumeExpectState(result commandResult, keys []string, wantState string) error {

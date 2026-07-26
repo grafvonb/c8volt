@@ -24,10 +24,17 @@ Each scenario record must identify:
 - covered flags
 - output mode
 - resource keys used for assertions
+- setup path, including c8volt command setup, direct Camunda API setup, controlled corruption setup, or direct worker API setup
 - before-state and after-state evidence when a mutation claims completion
 - outcome classification
 - failure class when validation fails
 - skip reason and required state when a prerequisite is missing
+
+Controlled corruption setup records must identify the healthy suite-owned state,
+the direct Camunda API operation, the corrupted parent or target key, and the
+expected inconsistent state before c8volt cleanup runs. Direct worker API setup
+records must identify the service-task job key, worker identity, activation or
+handler action, and expected job state.
 
 ## Outcome Classifications
 

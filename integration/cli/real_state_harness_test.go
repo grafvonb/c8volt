@@ -39,6 +39,7 @@ func allRealStateTargets() []realStateTarget {
 		{Name: "integration-cli-real-state-bpmn-error", Topic: "bpmn-error", TestPattern: "TestRealStateBPMNErrorFamily", Destructive: true, RequiredState: "BPMN error-capable job"},
 		{Name: "integration-cli-real-state-retention", Topic: "retention", TestPattern: "TestRealStateRetentionFamily", Destructive: true, RequiredState: "deterministic completed retention candidates"},
 		{Name: "integration-cli-real-state-destructive", Topic: "destructive", TestPattern: "TestRealStateDestructiveFamily", Destructive: true, RequiredState: "real purge, delete, cancel, resolve, repair, and mixed-failure candidates"},
+		{Name: "integration-cli-real-state-cascade", Topic: "cascade", TestPattern: "TestRealStateCascadeFamily", Destructive: true, RequiredState: "real parent and child process-instance families"},
 	}
 }
 
@@ -71,8 +72,8 @@ func realStateProfileTargetsC89(profile integrationProfile) bool {
 // TestRealStateTargetCatalog verifies the reserved real-state targets stay explicit and family-addressable.
 func TestRealStateTargetCatalog(t *testing.T) {
 	targets := allRealStateTargets()
-	if len(targets) != 7 {
-		t.Fatalf("real-state target count = %d, want 7", len(targets))
+	if len(targets) != 8 {
+		t.Fatalf("real-state target count = %d, want 8", len(targets))
 	}
 	seen := map[string]struct{}{}
 	for _, target := range targets {

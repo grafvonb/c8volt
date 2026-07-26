@@ -45,7 +45,7 @@ func validateRealStateGapArtifact(t *testing.T) {
 		"BPMN error mutation",
 		"BPMN error setup",
 		"Listener variants",
-		"Process-definition and orphan purge candidates",
+		"Orphan purge candidates",
 		"Durable standalone resolve candidate",
 		"Repair partial failures",
 		"Expect state-only identity",

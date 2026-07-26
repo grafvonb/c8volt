@@ -133,6 +133,7 @@ make integration-cli-real-state-listeners C8VOLT_IT_GO_TEST_FLAGS=-v
 make integration-cli-real-state-bpmn-error C8VOLT_IT_GO_TEST_FLAGS=-v
 make integration-cli-real-state-retention C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 make integration-cli-real-state-destructive C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+make integration-cli-real-state-cascade C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
 To run every baseline, volume, and real-state integration slice in sequence:
@@ -154,9 +155,10 @@ The gaps target is non-destructive and validates that `gaps.md` plus the
 coverage matrix keep missing setup and fixture prerequisites in spec-owned
 artifacts. Other real-state targets create or discover suite-owned data and now
 cover jobs, incidents, listener state, BPMN error dry-runs, retention,
-destructive post-state, incident-selected purge, repair, and mixed-failure
-branches. Remaining process-definition purge, orphan purge, durable standalone
-resolve, and repair-specific mixed-failure branches stay visible in
+destructive post-state, parent/child cascade delete and process-definition
+purge, incident-selected purge, repair, and mixed-failure branches. Remaining
+orphan purge, durable standalone resolve, and repair-specific mixed-failure
+branches stay visible in
 `specs/257-c89-real-state-integration/`.
 Except for `integration-cli-real-state-gaps`, real-state targets are
 destructive and must only be run against disposable Camunda 8.9 clusters
