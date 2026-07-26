@@ -28,7 +28,7 @@ Retention cleanup is simple to describe but risky to perform by hand. `c8volt op
 c8volt ops execute retention-policy --retention-days 90 --dry-run
 ```
 
-Generated reference: [ops execute retention-policy](/cli/c8volt_ops_execute_retention-policy/).
+Generated reference: [ops execute retention-policy](/cli/c8volt_ops_execute_retention-policy).
 
 ## Best Variants
 
@@ -44,7 +44,7 @@ c8volt get process-instance --end-date-older-days <days> --keys-only
 c8volt delete process-instance -
 ```
 
-Generated references: [get process-instance](/cli/c8volt_get_process-instance/), [delete process-instance](/cli/c8volt_delete_process-instance/).
+Generated references: [get process-instance](/cli/c8volt_get_process-instance), [delete process-instance](/cli/c8volt_delete_process-instance).
 
 ## Output And Safety
 

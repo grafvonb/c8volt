@@ -53,6 +53,6 @@ c8volt deploy [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
-* [c8volt deploy process-definition](c8volt_deploy_process-definition)	 - Deploy BPMN process definition files
+* [c8volt]({{ "/cli/c8volt/" | relative_url }})	 - Operate Camunda 8 workflows from the command line
+* [c8volt deploy process-definition]({{ "/cli/c8volt_deploy_process-definition" | relative_url }})	 - Deploy BPMN process definition files
 

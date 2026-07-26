@@ -59,9 +59,9 @@ c8volt config [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
-* [c8volt config show](c8volt_config_show)	 - Show effective configuration
-* [c8volt config template](c8volt_config_template)	 - Print a blank configuration template
-* [c8volt config test-connection](c8volt_config_test-connection)	 - Test configured Camunda connection
-* [c8volt config validate](c8volt_config_validate)	 - Validate effective configuration
+* [c8volt]({{ "/cli/c8volt/" | relative_url }})	 - Operate Camunda 8 workflows from the command line
+* [c8volt config show]({{ "/cli/c8volt_config_show" | relative_url }})	 - Show effective configuration
+* [c8volt config template]({{ "/cli/c8volt_config_template" | relative_url }})	 - Print a blank configuration template
+* [c8volt config test-connection]({{ "/cli/c8volt_config_test-connection" | relative_url }})	 - Test configured Camunda connection
+* [c8volt config validate]({{ "/cli/c8volt_config_validate" | relative_url }})	 - Validate effective configuration
 

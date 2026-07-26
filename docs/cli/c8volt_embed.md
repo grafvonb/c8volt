@@ -53,8 +53,8 @@ c8volt embed [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
-* [c8volt embed deploy](c8volt_embed_deploy)	 - Deploy bundled BPMN fixtures
-* [c8volt embed export](c8volt_embed_export)	 - Export bundled BPMN fixtures to local files
-* [c8volt embed list](c8volt_embed_list)	 - List bundled BPMN fixture files
+* [c8volt]({{ "/cli/c8volt/" | relative_url }})	 - Operate Camunda 8 workflows from the command line
+* [c8volt embed deploy]({{ "/cli/c8volt_embed_deploy" | relative_url }})	 - Deploy bundled BPMN fixtures
+* [c8volt embed export]({{ "/cli/c8volt_embed_export" | relative_url }})	 - Export bundled BPMN fixtures to local files
+* [c8volt embed list]({{ "/cli/c8volt_embed_list" | relative_url }})	 - List bundled BPMN fixture files
 

@@ -57,18 +57,18 @@ c8volt [flags]
 
 ### SEE ALSO
 
-* [c8volt cancel](c8volt_cancel)	 - Cancel running process instances
-* [c8volt capabilities](c8volt_capabilities)	 - Describe commands for scripts and agents
-* [c8volt config](c8volt_config)	 - Inspect and validate c8volt configuration
-* [c8volt delete](c8volt_delete)	 - Delete process instances or definitions
-* [c8volt deploy](c8volt_deploy)	 - Deploy BPMN resources to Camunda
-* [c8volt embed](c8volt_embed)	 - Use bundled BPMN fixtures
-* [c8volt expect](c8volt_expect)	 - Wait for process instances to satisfy expectations
-* [c8volt get](c8volt_get)	 - Inspect cluster, process, job, element, incident, tenant, and resource state
-* [c8volt ops](c8volt_ops)	 - Discover high-level operational workflows
-* [c8volt resolve](c8volt_resolve)	 - Resolve operational incidents
-* [c8volt run](c8volt_run)	 - Start process instances
-* [c8volt update](c8volt_update)	 - Update existing resources
-* [c8volt version](c8volt_version)	 - Print version information
-* [c8volt walk](c8volt_walk)	 - Inspect process-instance relationships
+* [c8volt cancel]({{ "/cli/c8volt_cancel" | relative_url }})	 - Cancel running process instances
+* [c8volt capabilities]({{ "/cli/c8volt_capabilities" | relative_url }})	 - Describe commands for scripts and agents
+* [c8volt config]({{ "/cli/c8volt_config" | relative_url }})	 - Inspect and validate c8volt configuration
+* [c8volt delete]({{ "/cli/c8volt_delete" | relative_url }})	 - Delete process instances or definitions
+* [c8volt deploy]({{ "/cli/c8volt_deploy" | relative_url }})	 - Deploy BPMN resources to Camunda
+* [c8volt embed]({{ "/cli/c8volt_embed" | relative_url }})	 - Use bundled BPMN fixtures
+* [c8volt expect]({{ "/cli/c8volt_expect" | relative_url }})	 - Wait for process instances to satisfy expectations
+* [c8volt get]({{ "/cli/c8volt_get" | relative_url }})	 - Inspect cluster, process, job, element, incident, tenant, and resource state
+* [c8volt ops]({{ "/cli/c8volt_ops" | relative_url }})	 - Discover high-level operational workflows
+* [c8volt resolve]({{ "/cli/c8volt_resolve" | relative_url }})	 - Resolve operational incidents
+* [c8volt run]({{ "/cli/c8volt_run" | relative_url }})	 - Start process instances
+* [c8volt update]({{ "/cli/c8volt_update" | relative_url }})	 - Update existing resources
+* [c8volt version]({{ "/cli/c8volt_version" | relative_url }})	 - Print version information
+* [c8volt walk]({{ "/cli/c8volt_walk" | relative_url }})	 - Inspect process-instance relationships
 

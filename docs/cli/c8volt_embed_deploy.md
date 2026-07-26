@@ -57,5 +57,5 @@ c8volt embed deploy [flags]
 
 ### SEE ALSO
 
-* [c8volt embed](c8volt_embed)	 - Use bundled BPMN fixtures
+* [c8volt embed]({{ "/cli/c8volt_embed" | relative_url }})	 - Use bundled BPMN fixtures
 

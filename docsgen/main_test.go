@@ -154,12 +154,12 @@ func TestCLICommandTreeDocumentsGeneratedCommandSurface(t *testing.T) {
 	tree := commandTreeMarkdown(root, 0)
 
 	for _, want := range []string{
-		"- [`c8volt`](./c8volt)",
-		"  - [`c8volt get`](./c8volt_get)",
-		"    - [`c8volt get process-instance`](./c8volt_get_process-instance)",
-		"    - [`c8volt get element`](./c8volt_get_element)",
-		"    - [`c8volt ops analyse`](./c8volt_ops_analyse)",
-		"      - [`c8volt ops analyse slow-process-instances`](./c8volt_ops_analyse_slow-process-instances)",
+		"- [`c8volt`]({{ \"/cli/c8volt/\" | relative_url }})",
+		"  - [`c8volt get`]({{ \"/cli/c8volt_get\" | relative_url }})",
+		"    - [`c8volt get process-instance`]({{ \"/cli/c8volt_get_process-instance\" | relative_url }})",
+		"    - [`c8volt get element`]({{ \"/cli/c8volt_get_element\" | relative_url }})",
+		"    - [`c8volt ops analyse`]({{ \"/cli/c8volt_ops_analyse\" | relative_url }})",
+		"      - [`c8volt ops analyse slow-process-instances`]({{ \"/cli/c8volt_ops_analyse_slow-process-instances\" | relative_url }})",
 	} {
 		if !strings.Contains(tree, want) {
 			t.Fatalf("expected command tree to contain %q, got:\n%s", want, tree)
@@ -168,6 +168,20 @@ func TestCLICommandTreeDocumentsGeneratedCommandSurface(t *testing.T) {
 
 	if got := strings.Count(tree, "- [`") - 1; got != 55 {
 		t.Fatalf("expected command tree to contain 55 non-root commands, got %d", got)
+	}
+}
+
+func TestDocsReferenceLinkNameUsesStableSitePaths(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		want string
+	}{
+		{name: "c8volt.md", want: `{{ "/cli/c8volt/" | relative_url }}`},
+		{name: "c8volt_get_process-instance.md", want: `{{ "/cli/c8volt_get_process-instance" | relative_url }}`},
+	} {
+		if got := docsReferenceLinkName(tt.name); got != tt.want {
+			t.Fatalf("expected link for %s to be %q, got %q", tt.name, tt.want, got)
+		}
 	}
 }
 
@@ -262,7 +276,7 @@ func TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup(t *testing.T) {
 		title := strings.ReplaceAll(name, "_", " ")
 		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
 	}
-	link := func(name string) string { return docsLinkName(name) }
+	link := func(name string) string { return docsReferenceLinkName(name) }
 	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
 		t.Fatalf("generate docs: %v", err)
 	}
@@ -308,7 +322,7 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 		title := strings.ReplaceAll(name, "_", " ")
 		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
 	}
-	link := func(name string) string { return docsLinkName(name) }
+	link := func(name string) string { return docsReferenceLinkName(name) }
 	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
 		t.Fatalf("generate docs: %v", err)
 	}
@@ -318,7 +332,7 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 		"Inspect cluster, process, job, element, incident, tenant, and resource state without changing it.",
 		"./c8volt get incident --key <incident-key>",
 		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only",
-		"[c8volt get incident](c8volt_get_incident)",
+		`[c8volt get incident]({{ "/cli/c8volt_get_incident" | relative_url }})`,
 	} {
 		if !strings.Contains(getDoc, want) {
 			t.Fatalf("expected generated get docs to contain %q, got %q", want, getDoc)
@@ -371,7 +385,7 @@ func TestGeneratedGetElementDocsDocumentLookupSearchAndOutput(t *testing.T) {
 		title := strings.ReplaceAll(name, "_", " ")
 		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
 	}
-	link := func(name string) string { return docsLinkName(name) }
+	link := func(name string) string { return docsReferenceLinkName(name) }
 	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
 		t.Fatalf("generate docs: %v", err)
 	}
@@ -380,7 +394,7 @@ func TestGeneratedGetElementDocsDocumentLookupSearchAndOutput(t *testing.T) {
 	for _, want := range []string{
 		"Inspect cluster, process, job, element, incident, tenant, and resource state without changing it.",
 		"./c8volt get element --pi-key <process-instance-key> --limit 10",
-		"[c8volt get element](c8volt_get_element)",
+		`[c8volt get element]({{ "/cli/c8volt_get_element" | relative_url }})`,
 	} {
 		if !strings.Contains(getDoc, want) {
 			t.Fatalf("expected generated get docs to contain %q, got %q", want, getDoc)
@@ -432,7 +446,7 @@ func TestGeneratedPagedWorkflowDocsDocumentContracts(t *testing.T) {
 		title := strings.ReplaceAll(name, "_", " ")
 		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
 	}
-	link := func(name string) string { return docsLinkName(name) }
+	link := func(name string) string { return docsReferenceLinkName(name) }
 	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
 		t.Fatalf("generate docs: %v", err)
 	}
@@ -547,7 +561,7 @@ func TestGeneratedRunProcessInstanceDocsDocumentPipeline(t *testing.T) {
 		title := strings.ReplaceAll(name, "_", " ")
 		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
 	}
-	link := func(name string) string { return docsLinkName(name) }
+	link := func(name string) string { return docsReferenceLinkName(name) }
 	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
 		t.Fatalf("generate docs: %v", err)
 	}
@@ -556,7 +570,7 @@ func TestGeneratedRunProcessInstanceDocsDocumentPipeline(t *testing.T) {
 	for _, want := range []string{
 		"waits until created instances are observable",
 		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -",
-		"[c8volt run process-instance](c8volt_run_process-instance)",
+		`[c8volt run process-instance]({{ "/cli/c8volt_run_process-instance" | relative_url }})`,
 	} {
 		if !strings.Contains(runDoc, want) {
 			t.Fatalf("expected generated run docs to contain %q, got %q", want, runDoc)
@@ -588,7 +602,7 @@ func TestGeneratedResolveDocsDocumentResolveWorkflows(t *testing.T) {
 		title := strings.ReplaceAll(name, "_", " ")
 		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
 	}
-	link := func(name string) string { return docsLinkName(name) }
+	link := func(name string) string { return docsReferenceLinkName(name) }
 	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
 		t.Fatalf("generate docs: %v", err)
 	}
@@ -597,8 +611,8 @@ func TestGeneratedResolveDocsDocumentResolveWorkflows(t *testing.T) {
 	for _, want := range []string{
 		"Resolve operational incidents.",
 		"./c8volt resolve incident --key <incident-key>",
-		"[c8volt resolve incident](c8volt_resolve_incident)",
-		"[c8volt resolve process-instance](c8volt_resolve_process-instance)",
+		`[c8volt resolve incident]({{ "/cli/c8volt_resolve_incident" | relative_url }})`,
+		`[c8volt resolve process-instance]({{ "/cli/c8volt_resolve_process-instance" | relative_url }})`,
 	} {
 		if !strings.Contains(resolveDoc, want) {
 			t.Fatalf("expected generated resolve docs to contain %q, got %q", want, resolveDoc)
@@ -648,7 +662,7 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		title := strings.ReplaceAll(name, "_", " ")
 		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
 	}
-	link := func(name string) string { return docsLinkName(name) }
+	link := func(name string) string { return docsReferenceLinkName(name) }
 	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
 		t.Fatalf("generate docs: %v", err)
 	}
@@ -657,8 +671,8 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 	for _, want := range []string{
 		"Discover high-level operational workflows",
 		"./c8volt ops --help",
-		"[c8volt ops execute](c8volt_ops_execute)",
-		"[c8volt ops repair](c8volt_ops_repair)",
+		`[c8volt ops execute]({{ "/cli/c8volt_ops_execute" | relative_url }})`,
+		`[c8volt ops repair]({{ "/cli/c8volt_ops_repair" | relative_url }})`,
 	} {
 		if !strings.Contains(opsDoc, want) {
 			t.Fatalf("expected generated ops docs to contain %q, got %q", want, opsDoc)
@@ -672,7 +686,7 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"existing c8volt resource actions",
 		"./c8volt ops execute --help",
 		"./c8volt ops execute retention-policy --retention-days 90 --dry-run",
-		"[c8volt ops execute retention-policy](c8volt_ops_execute_retention-policy)",
+		`[c8volt ops execute retention-policy]({{ "/cli/c8volt_ops_execute_retention-policy" | relative_url }})`,
 	} {
 		if !strings.Contains(executeDoc, want) {
 			t.Fatalf("expected generated ops execute docs to contain %q, got %q", want, executeDoc)
@@ -685,7 +699,7 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"--retention-days int",
 		"--report-file string",
 		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --dry-run",
-		"[c8volt ops execute](c8volt_ops_execute)",
+		`[c8volt ops execute]({{ "/cli/c8volt_ops_execute" | relative_url }})`,
 	} {
 		if !strings.Contains(retentionDoc, want) {
 			t.Fatalf("expected generated ops execute retention-policy docs to contain %q, got %q", want, retentionDoc)
@@ -712,7 +726,7 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"--element-instance-key string",
 		"--retries int32",
 		"--job-timeout string",
-		"[c8volt ops repair](c8volt_ops_repair)",
+		`[c8volt ops repair]({{ "/cli/c8volt_ops_repair" | relative_url }})`,
 	} {
 		if !strings.Contains(repairIncidentDoc, want) {
 			t.Fatalf("expected generated ops repair incident docs to contain %q, got %q", want, repairIncidentDoc)
@@ -728,7 +742,7 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"Repair incidents selected by process instances",
 		"--key strings",
 		"--direct-incidents-only",
-		"[c8volt ops repair](c8volt_ops_repair)",
+		`[c8volt ops repair]({{ "/cli/c8volt_ops_repair" | relative_url }})`,
 	} {
 		if !strings.Contains(repairProcessInstanceDoc, want) {
 			t.Fatalf("expected generated ops repair process-instance docs to contain %q, got %q", want, repairProcessInstanceDoc)
@@ -810,7 +824,7 @@ func TestGeneratedOpsPagedDiscoveryDocsDocumentHelp(t *testing.T) {
 		title := strings.ReplaceAll(name, "_", " ")
 		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
 	}
-	link := func(name string) string { return docsLinkName(name) }
+	link := func(name string) string { return docsReferenceLinkName(name) }
 	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
 		t.Fatalf("generate docs: %v", err)
 	}
@@ -899,7 +913,7 @@ func TestGeneratedConfigDocsDocumentSplitDiagnostics(t *testing.T) {
 		title := strings.ReplaceAll(name, "_", " ")
 		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
 	}
-	link := func(name string) string { return docsLinkName(name) }
+	link := func(name string) string { return docsReferenceLinkName(name) }
 	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
 		t.Fatalf("generate docs: %v", err)
 	}
@@ -912,10 +926,10 @@ func TestGeneratedConfigDocsDocumentSplitDiagnostics(t *testing.T) {
 		"./c8volt --config ./config.yaml config validate",
 		"./c8volt config template",
 		"./c8volt --config ./config.yaml config test-connection",
-		"[c8volt config show](c8volt_config_show)",
-		"[c8volt config validate](c8volt_config_validate)",
-		"[c8volt config template](c8volt_config_template)",
-		"[c8volt config test-connection](c8volt_config_test-connection)",
+		`[c8volt config show]({{ "/cli/c8volt_config_show" | relative_url }})`,
+		`[c8volt config validate]({{ "/cli/c8volt_config_validate" | relative_url }})`,
+		`[c8volt config template]({{ "/cli/c8volt_config_template" | relative_url }})`,
+		`[c8volt config test-connection]({{ "/cli/c8volt_config_test-connection" | relative_url }})`,
 	} {
 		if !strings.Contains(configDoc, want) {
 			t.Fatalf("expected generated config docs to contain %q, got %q", want, configDoc)
@@ -949,7 +963,7 @@ func TestGeneratedGetProcessInstanceDocsDocumentVariableSearch(t *testing.T) {
 		title := strings.ReplaceAll(name, "_", " ")
 		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
 	}
-	link := func(name string) string { return docsLinkName(name) }
+	link := func(name string) string { return docsReferenceLinkName(name) }
 	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
 		t.Fatalf("generate docs: %v", err)
 	}
@@ -991,7 +1005,7 @@ func TestGeneratedWalkProcessInstanceDocsDocumentListeners(t *testing.T) {
 		title := strings.ReplaceAll(name, "_", " ")
 		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
 	}
-	link := func(name string) string { return docsLinkName(name) }
+	link := func(name string) string { return docsReferenceLinkName(name) }
 	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
 		t.Fatalf("generate docs: %v", err)
 	}

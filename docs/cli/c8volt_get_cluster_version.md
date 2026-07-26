@@ -52,5 +52,5 @@ c8volt get cluster version [flags]
 
 ### SEE ALSO
 
-* [c8volt get cluster](c8volt_get_cluster)	 - Inspect cluster-wide topology, version, and license information
+* [c8volt get cluster]({{ "/cli/c8volt_get_cluster" | relative_url }})	 - Inspect cluster-wide topology, version, and license information
 

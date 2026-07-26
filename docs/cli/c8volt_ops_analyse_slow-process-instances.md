@@ -85,5 +85,5 @@ c8volt ops analyse slow-process-instances [-] [flags]
 
 ### SEE ALSO
 
-* [c8volt ops analyse](c8volt_ops_analyse)	 - Discover read-only operational analyses
+* [c8volt ops analyse]({{ "/cli/c8volt_ops_analyse" | relative_url }})	 - Discover read-only operational analyses
 

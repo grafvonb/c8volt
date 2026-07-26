@@ -70,5 +70,5 @@ c8volt run process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt run](c8volt_run)	 - Start process instances
+* [c8volt run]({{ "/cli/c8volt_run" | relative_url }})	 - Start process instances
 

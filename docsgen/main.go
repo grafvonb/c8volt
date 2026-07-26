@@ -41,7 +41,7 @@ func main() {
 				title := strings.ReplaceAll(name, "_", " ")
 				return fmt.Sprintf("---\ntitle: %q\nslug: %q\ndescription: \"CLI reference for %s\"\n---\n\n", title, name, title)
 			}
-			link := func(name string) string { return docsLinkName(name) }
+			link := func(name string) string { return docsReferenceLinkName(name) }
 			if err := doc.GenMarkdownTreeCustom(root, *out, prep, link); err != nil {
 				log.Fatal(err)
 			}
@@ -51,7 +51,7 @@ func main() {
 				name := strings.TrimSuffix(base, filepath.Ext(base))
 				return cliMarkdownPrelude(name)
 			}
-			link := func(name string) string { return docsLinkName(name) }
+			link := func(name string) string { return docsReferenceLinkName(name) }
 			if err := doc.GenMarkdownTreeCustom(root, *out, prep, link); err != nil {
 				log.Fatal(err)
 			}
@@ -127,7 +127,7 @@ func commandTreeMarkdown(command *cobra.Command, depth int) string {
 	}
 
 	indent := strings.Repeat("  ", depth)
-	line := fmt.Sprintf("%s- [`%s`](./%s)", indent, command.CommandPath(), commandReferenceName(command))
+	line := fmt.Sprintf("%s- [`%s`](%s)", indent, command.CommandPath(), commandReferenceLink(command))
 	if command.Short != "" {
 		line += " - " + command.Short
 	}
@@ -143,6 +143,21 @@ func commandTreeMarkdown(command *cobra.Command, depth int) string {
 
 func commandReferenceName(command *cobra.Command) string {
 	return docsLinkName(strings.ReplaceAll(command.CommandPath(), " ", "_") + ".md")
+}
+
+func commandReferenceLink(command *cobra.Command) string {
+	return docsReferenceLink(commandReferenceName(command))
+}
+
+func docsReferenceLinkName(name string) string {
+	return docsReferenceLink(docsLinkName(name))
+}
+
+func docsReferenceLink(name string) string {
+	if name == "c8volt" {
+		return `{{ "/cli/c8volt/" | relative_url }}`
+	}
+	return fmt.Sprintf(`{{ "/cli/%s" | relative_url }}`, name)
 }
 
 func syncDocsIndexFromReadme(src, dst string) error {

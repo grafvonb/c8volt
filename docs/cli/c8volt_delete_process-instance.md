@@ -87,5 +87,5 @@ c8volt delete process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt delete](c8volt_delete)	 - Delete process instances or definitions
+* [c8volt delete]({{ "/cli/c8volt_delete" | relative_url }})	 - Delete process instances or definitions
 

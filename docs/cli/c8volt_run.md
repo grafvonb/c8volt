@@ -53,6 +53,6 @@ c8volt run [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
-* [c8volt run process-instance](c8volt_run_process-instance)	 - Start process instances and confirm creation
+* [c8volt]({{ "/cli/c8volt/" | relative_url }})	 - Operate Camunda 8 workflows from the command line
+* [c8volt run process-instance]({{ "/cli/c8volt_run_process-instance" | relative_url }})	 - Start process instances and confirm creation
 

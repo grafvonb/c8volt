@@ -28,7 +28,7 @@ Orphan child process instances are hard to delete safely by hand. `c8volt ops pu
 c8volt ops purge orphan-process-instances --dry-run
 ```
 
-Generated reference: [ops purge orphan-process-instances](/cli/c8volt_ops_purge_orphan-process-instances/).
+Generated reference: [ops purge orphan-process-instances](/cli/c8volt_ops_purge_orphan-process-instances).
 
 ## Best Variants
 
@@ -44,7 +44,7 @@ c8volt get process-instance --orphan-children-only --keys-only
 c8volt delete process-instance -
 ```
 
-Generated references: [get process-instance](/cli/c8volt_get_process-instance/), [delete process-instance](/cli/c8volt_delete_process-instance/).
+Generated references: [get process-instance](/cli/c8volt_get_process-instance), [delete process-instance](/cli/c8volt_delete_process-instance).
 
 ## Output And Safety
 

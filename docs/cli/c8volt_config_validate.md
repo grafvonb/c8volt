@@ -52,5 +52,5 @@ c8volt config validate [flags]
 
 ### SEE ALSO
 
-* [c8volt config](c8volt_config)	 - Inspect and validate c8volt configuration
+* [c8volt config]({{ "/cli/c8volt_config" | relative_url }})	 - Inspect and validate c8volt configuration
 

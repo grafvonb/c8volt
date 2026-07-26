@@ -53,7 +53,7 @@ c8volt delete [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
-* [c8volt delete process-definition](c8volt_delete_process-definition)	 - Delete process definition resources
-* [c8volt delete process-instance](c8volt_delete_process-instance)	 - Delete process instances by key or filters
+* [c8volt]({{ "/cli/c8volt/" | relative_url }})	 - Operate Camunda 8 workflows from the command line
+* [c8volt delete process-definition]({{ "/cli/c8volt_delete_process-definition" | relative_url }})	 - Delete process definition resources
+* [c8volt delete process-instance]({{ "/cli/c8volt_delete_process-instance" | relative_url }})	 - Delete process instances by key or filters
 

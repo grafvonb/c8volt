@@ -28,7 +28,7 @@ Incident cleanup often begins with incident filters, not process-instance keys. 
 c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
 ```
 
-Generated reference: [ops purge process-instances-with-incidents](/cli/c8volt_ops_purge_process-instances-with-incidents/).
+Generated reference: [ops purge process-instances-with-incidents](/cli/c8volt_ops_purge_process-instances-with-incidents).
 
 ## Best Variants
 
@@ -44,7 +44,7 @@ c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
 c8volt delete process-instance -
 ```
 
-Generated references: [get incident](/cli/c8volt_get_incident/), [delete process-instance](/cli/c8volt_delete_process-instance/).
+Generated references: [get incident](/cli/c8volt_get_incident), [delete process-instance](/cli/c8volt_delete_process-instance).
 
 ## Output And Safety
 
