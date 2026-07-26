@@ -38,8 +38,8 @@ Target commands should follow this shape:
 
 ```sh
 make integration-cli-get-volume
-make integration-cli-get-volume IT_GO_TEST_FLAGS=-v
-make integration-cli-get-volume IT_VOLUME_TIMEOUT=90m
+make integration-cli-get-volume C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-get-volume C8VOLT_IT_VOLUME_TIMEOUT=90m
 ```
 
 ## Dataset Size Contract

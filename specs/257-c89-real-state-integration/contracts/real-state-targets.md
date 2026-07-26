@@ -34,8 +34,8 @@ Every target must:
 Target commands should follow this shape:
 
 ```sh
-make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v
-make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
+make integration-cli-real-state-jobs C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-incidents C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
 ## Independence Contract

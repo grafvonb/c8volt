@@ -16,7 +16,7 @@ Do not run volume targets against shared, production, customer, or protected clu
 Before running volume targets, run a quick baseline check:
 
 ```sh
-make integration-cli-get IT_GO_TEST_FLAGS=-v
+make integration-cli-get C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
 Expected outcome:
@@ -31,22 +31,22 @@ Expected outcome:
 Run one family volume target:
 
 ```sh
-make integration-cli-get-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-get-volume C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
 Run an ops volume target:
 
 ```sh
-make integration-cli-ops-repair-volume IT_GO_TEST_FLAGS=-v IT_VOLUME_TIMEOUT=90m
+make integration-cli-ops-repair-volume C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_VOLUME_TIMEOUT=90m
 ```
 
-Volume targets use `IT_VOLUME_TIMEOUT`. Baseline family targets continue to use
-`IT_TIMEOUT`.
+Volume targets use `C8VOLT_IT_VOLUME_TIMEOUT`. Baseline family targets continue to use
+`C8VOLT_IT_TIMEOUT`.
 
 Run with a larger dataset:
 
 ```sh
-C8VOLT_IT_VOLUME_COUNT=50 make integration-cli-delete-volume IT_GO_TEST_FLAGS=-v IT_VOLUME_TIMEOUT=90m
+C8VOLT_IT_VOLUME_COUNT=50 make integration-cli-delete-volume C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_VOLUME_TIMEOUT=90m
 ```
 
 Expected outcome:
@@ -61,7 +61,7 @@ Expected outcome:
 Run a target that covers destructive critical flags:
 
 ```sh
-make integration-cli-update-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-update-volume C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
 Expected outcome:
@@ -75,7 +75,7 @@ Expected outcome:
 Run a family that includes stdin workflows:
 
 ```sh
-make integration-cli-expect-resolve-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-expect-resolve-volume C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
 Expected outcome:
@@ -89,7 +89,7 @@ Expected outcome:
 Run an ops target:
 
 ```sh
-make integration-cli-ops-purge-volume IT_GO_TEST_FLAGS=-v IT_VOLUME_TIMEOUT=90m
+make integration-cli-ops-purge-volume C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_VOLUME_TIMEOUT=90m
 ```
 
 Expected outcome:
@@ -103,7 +103,7 @@ Expected outcome:
 Validated ops execute slice:
 
 ```sh
-make integration-cli-ops-execute-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-ops-execute-volume C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
 Evidence path:
@@ -113,7 +113,7 @@ Evidence path:
 Validated ops purge slice:
 
 ```sh
-make integration-cli-ops-purge-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-ops-purge-volume C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
 Evidence path:
@@ -123,7 +123,7 @@ Evidence path:
 Validated ops repair slice:
 
 ```sh
-make integration-cli-ops-repair-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-ops-repair-volume C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
 Evidence path:
@@ -136,7 +136,7 @@ Use a stable workdir when comparing repeated runs:
 
 ```sh
 export C8VOLT_IT_WORKDIR=/tmp/c8volt-volume-it
-make integration-cli-get-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-get-volume C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
 Review:
@@ -177,7 +177,7 @@ Validation recorded for the initial `integration-cli-get-volume` slice:
 GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
 GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m
 GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestVolumeTargetCatalog|TestVolumeOwnershipClassification' -count=1 -timeout=5m
-make integration-cli-get-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-get-volume C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
 Observed result:
@@ -194,7 +194,7 @@ Validation recorded for the `integration-cli-walk-volume` slice:
 GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
 GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m
 GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestVolumeTargetCatalog|TestVolumeOwnershipClassification' -count=1 -timeout=5m
-make integration-cli-walk-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-walk-volume C8VOLT_IT_GO_TEST_FLAGS=-v
 git diff --check -- Makefile integration/README.md integration/cli specs/256-volume-semantic-integration
 ```
 
@@ -213,7 +213,7 @@ Validation recorded for the `integration-cli-deploy-embed-run-volume` slice:
 GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
 GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m
 GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestVolumeTargetCatalog|TestVolumeOwnershipClassification' -count=1 -timeout=5m
-make integration-cli-deploy-embed-run-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-deploy-embed-run-volume C8VOLT_IT_GO_TEST_FLAGS=-v
 git diff --check -- Makefile integration/README.md integration/cli specs/256-volume-semantic-integration
 ```
 
@@ -233,7 +233,7 @@ Validation recorded for the `integration-cli-update-volume` slice:
 GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
 GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m
 GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestVolumeTargetCatalog|TestVolumeOwnershipClassification' -count=1 -timeout=5m
-make integration-cli-update-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-update-volume C8VOLT_IT_GO_TEST_FLAGS=-v
 git diff --check -- Makefile integration/README.md integration/cli specs/256-volume-semantic-integration
 ```
 
@@ -253,7 +253,7 @@ Validation recorded for the `integration-cli-cancel-volume` slice:
 GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
 GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m
 GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestVolumeTargetCatalog|TestVolumeOwnershipClassification' -count=1 -timeout=5m
-make integration-cli-cancel-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-cancel-volume C8VOLT_IT_GO_TEST_FLAGS=-v
 git diff --check -- Makefile integration/README.md integration/cli specs/256-volume-semantic-integration
 ```
 
@@ -272,7 +272,7 @@ Validation recorded for the `integration-cli-delete-volume` slice:
 GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
 GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m
 GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestVolumeTargetCatalog|TestVolumeOwnershipClassification' -count=1 -timeout=5m
-make integration-cli-delete-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-delete-volume C8VOLT_IT_GO_TEST_FLAGS=-v
 git diff --check -- Makefile integration/README.md integration/cli specs/256-volume-semantic-integration
 ```
 
@@ -291,7 +291,7 @@ Validation recorded for the `integration-cli-expect-resolve-volume` slice:
 GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
 GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m
 GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestVolumeTargetCatalog|TestVolumeOwnershipClassification|TestCommandProposalRegistrationRecordsDirectCamundaSetup' -count=1 -timeout=5m
-make integration-cli-expect-resolve-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-expect-resolve-volume C8VOLT_IT_GO_TEST_FLAGS=-v
 git diff --check -- Makefile integration/README.md integration/cli specs/256-volume-semantic-integration
 ```
 
@@ -311,7 +311,7 @@ Validation recorded for the `integration-cli-ops-analyse-volume` slice:
 GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1
 GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m
 GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestVolumeTargetCatalog|TestVolumeOwnershipClassification|TestCommandProposalRegistrationRecordsDirectCamundaSetup' -count=1 -timeout=5m
-make integration-cli-ops-analyse-volume IT_GO_TEST_FLAGS=-v
+make integration-cli-ops-analyse-volume C8VOLT_IT_GO_TEST_FLAGS=-v
 git diff --check -- Makefile integration/README.md integration/cli specs/256-volume-semantic-integration
 ```
 

@@ -16,7 +16,7 @@ Do not run real-state targets against shared, production, customer, or protected
 Run a quick baseline target before starting real-state validation:
 
 ```sh
-make integration-cli-get IT_GO_TEST_FLAGS=-v
+make integration-cli-get C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
 Expected outcome:
@@ -43,7 +43,7 @@ GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'Te
 Run gap validation before destructive real-state slices:
 
 ```sh
-make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-gaps C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
 Expected outcome:
@@ -60,7 +60,7 @@ Expected outcome:
 Run the jobs target:
 
 ```sh
-make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-jobs C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
 Expected outcome:
@@ -77,7 +77,7 @@ Expected outcome:
 Run the incidents target:
 
 ```sh
-make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
+make integration-cli-real-state-incidents C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
 Expected outcome:
@@ -92,8 +92,8 @@ Expected outcome:
 Run listener and BPMN error targets:
 
 ```sh
-make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v
-make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-listeners C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-bpmn-error C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
 Expected outcome:
@@ -110,8 +110,8 @@ Expected outcome:
 Run retention and destructive targets:
 
 ```sh
-make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
-make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
+make integration-cli-real-state-retention C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+make integration-cli-real-state-destructive C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
 Expected outcome:
@@ -146,30 +146,30 @@ Before closing the feature, run every real-state target independently so order
 dependencies and dirty-cluster assumptions stay visible:
 
 ```sh
-make integration-test-real-state IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
+make integration-test-real-state C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
 The aggregate target expands to the independent slices below:
 
 ```sh
-make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v
-make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v
-make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v
-make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v
-make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v
-make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
-make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
+make integration-cli-real-state-gaps C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-jobs C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-incidents C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-listeners C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-bpmn-error C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-retention C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+make integration-cli-real-state-destructive C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
 To run the baseline, volume, and real-state suites in sequence:
 
 ```sh
-make integration-test-all IT_GO_TEST_FLAGS=-v IT_VOLUME_TIMEOUT=90m IT_REAL_STATE_TIMEOUT=90m
+make integration-test-all C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_VOLUME_TIMEOUT=90m C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
 Make asks for confirmation before integration slices run because the suites may
 mutate real Camunda cluster state. Aggregates ask once per `make` invocation.
-Automation can skip the prompt with `IT_CONFIRM=0`.
+Automation can skip the prompt with `C8VOLT_IT_AUTOMATION=1`.
 
 Generated CLI docs are required only when command help metadata, aliases, flags,
 or examples change. The current 257 real-state suite changes integration tests,

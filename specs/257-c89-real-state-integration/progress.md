@@ -2,7 +2,7 @@
 ## Iteration 1 - 2026-07-25 16:44
 **Work Unit**: Setup and foundational real-state scaffolding
 **Tasks Completed**:
-- [x] T001: Add `IT_REAL_STATE_TIMEOUT` and real-state Make target placeholders in `Makefile`
+- [x] T001: Add `C8VOLT_IT_REAL_STATE_TIMEOUT` and real-state Make target placeholders in `Makefile`
 - [x] T002: Add real-state suite overview, destructive warning, and target list in `integration/README.md`
 - [x] T003: Add real-state target catalog scaffolding in `integration/cli/real_state_harness_test.go`
 - [x] T004: Add real-state evidence structs and report writer scaffolding in `integration/cli/real_state_data_test.go`
@@ -61,8 +61,8 @@
 **Validation**:
 - `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
-- `make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v`
-- `make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v`
+- `make integration-cli-real-state-jobs C8VOLT_IT_GO_TEST_FLAGS=-v`
+- `make integration-cli-real-state-incidents C8VOLT_IT_GO_TEST_FLAGS=-v`
 **Learnings**:
 - `C89_SimpleServiceTask.bpmn` creates suite-owned `CREATED` execution-listener jobs that are enough for real `get job`, retry mutation, no-wait mutation, and failure/incident setup.
 - Camunda rejects confirmed timeout updates for `CREATED` jobs because timeout update requires an active/activated job; the suite records this as a command proposal and covers timeout as a dry-run plan until c8volt can create activated jobs.
@@ -97,8 +97,8 @@
 **Validation**:
 - `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
-- `make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v`
-- `make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v`
+- `make integration-cli-real-state-listeners C8VOLT_IT_GO_TEST_FLAGS=-v`
+- `make integration-cli-real-state-bpmn-error C8VOLT_IT_GO_TEST_FLAGS=-v`
 **Learnings**:
 - The existing service-task fixture is enough for live execution-listener enrichment; no listener proposal is needed for execution listeners.
 - Traversal commands intentionally reject `--automation`, so JSON listener traversal must be run with `--json` alone.
@@ -173,10 +173,10 @@
 - `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run 'TestRealStateTargetCatalog|TestRealStateC89ProfileClassification|TestRealStateEvidenceWritersEmitArrays|TestRealStateMachineOutputAssertions|TestRealStateGapArtifactDocumentsCurrentPrerequisites' -count=1 -timeout=5m`
-- `make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v`
-- `make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v`
-- `make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v`
-- `make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v`
+- `make integration-cli-real-state-jobs C8VOLT_IT_GO_TEST_FLAGS=-v`
+- `make integration-cli-real-state-incidents C8VOLT_IT_GO_TEST_FLAGS=-v`
+- `make integration-cli-real-state-listeners C8VOLT_IT_GO_TEST_FLAGS=-v`
+- `make integration-cli-real-state-bpmn-error C8VOLT_IT_GO_TEST_FLAGS=-v`
 **Learnings**:
 - Real-state runtime reports now list only real-state family, data, progress, and ops evidence files for the corrected families.
 - BPMN-error dry-run remains useful real integration evidence because it uses a real suite-owned job and verifies unchanged job state afterward.
@@ -205,8 +205,8 @@
 - `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
 - `GOCACHE=/tmp/c8volt-gocache go test ./... -count=1`
-- `make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m`
-- `make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m`
+- `make integration-cli-real-state-retention C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m`
+- `make integration-cli-real-state-destructive C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m`
 **Learnings**:
 - `C89_NoOpCompletion.bpmn` is enough to create completed suite-owned instances, and `--retention-days 0` produces a real non-empty retention candidate set without waiting for aged data.
 - Cancel/delete can already be proven on real active suite-owned process instances with explicit-key dry-runs and confirmed post-state checks.
@@ -228,7 +228,7 @@
 **Validation**:
 - `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
-- `make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m`
+- `make integration-cli-real-state-retention C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m`
 **Learnings**:
 - Confirmed retention can be tested without explicit-key selection by validating the JSON report's frozen seed, root, and affected keys, then verifying the reported affected key is absent.
 ---
@@ -262,8 +262,8 @@
 - `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/incident ./internal/services/incident/v88 ./internal/services/incident/v89 -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
-- `make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m`
-- `make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m`
+- `make integration-cli-real-state-retention C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m`
+- `make integration-cli-real-state-destructive C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m`
 **Learnings**:
 - Dirty-cluster coverage exposed an incident-key selection bug: public `incident.Filter.Keys` was not mapped into the domain filter, and adapter local filtering did not guard explicit incident keys.
 - `ops purge process-instances-with-incidents --inc-key` now freezes the suite-owned incident and process instance before deletion, preventing unrelated dirty data from satisfying the test.
@@ -290,10 +290,10 @@
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestResolveIncidentCommand' -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
-- `make integration-cli-real-state-destructive IT_REAL_STATE_TIMEOUT=90m`
+- `make integration-cli-real-state-destructive C8VOLT_IT_REAL_STATE_TIMEOUT=90m`
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./integration/cli -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./... -count=1`
-- `make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m` (captured in `/tmp/c8volt-257-destructive-verbose.log`)
+- `make integration-cli-real-state-destructive C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m` (captured in `/tmp/c8volt-257-destructive-verbose.log`)
 **Learnings**:
 - Mixed process-instance cancel/delete paths correctly fail missing or malformed targets before mutation, so the suite asserts retained valid-key state rather than expecting partial mutation.
 - `resolve incident --no-wait` gives real partial accounting for one submitted incident and one valid-shaped missing incident.
@@ -323,7 +323,7 @@
 - specs/257-c89-real-state-integration/tasks.md
 - specs/257-c89-real-state-integration/progress.md
 **Validation**:
-- `make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v`
+- `make integration-cli-real-state-gaps C8VOLT_IT_GO_TEST_FLAGS=-v`
 - `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
 - `GOCACHE=/tmp/c8volt-gocache go test ./... -count=1`
@@ -356,13 +356,13 @@
 - `gofmt -w integration/cli/real_state_harness_test.go integration/cli/real_state_data_test.go integration/cli/real_state_jobs_test.go integration/cli/real_state_incidents_test.go integration/cli/real_state_listeners_test.go integration/cli/real_state_bpmn_error_test.go integration/cli/real_state_retention_test.go integration/cli/real_state_destructive_test.go integration/cli/real_state_gap_validation_test.go`
 - `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
-- `make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v` (captured in `/tmp/c8volt-257-final-gaps.log`)
-- `make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v` (captured in `/tmp/c8volt-257-final-jobs.log`)
-- `make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v` (captured in `/tmp/c8volt-257-final-incidents.log`)
-- `make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v` (captured in `/tmp/c8volt-257-final-listeners.log`)
-- `make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v` (captured in `/tmp/c8volt-257-final-bpmn-error.log`)
-- `make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m` (captured in `/tmp/c8volt-257-final-retention.log`)
-- `make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m` (captured in `/tmp/c8volt-257-final-destructive.log`)
+- `make integration-cli-real-state-gaps C8VOLT_IT_GO_TEST_FLAGS=-v` (captured in `/tmp/c8volt-257-final-gaps.log`)
+- `make integration-cli-real-state-jobs C8VOLT_IT_GO_TEST_FLAGS=-v` (captured in `/tmp/c8volt-257-final-jobs.log`)
+- `make integration-cli-real-state-incidents C8VOLT_IT_GO_TEST_FLAGS=-v` (captured in `/tmp/c8volt-257-final-incidents.log`)
+- `make integration-cli-real-state-listeners C8VOLT_IT_GO_TEST_FLAGS=-v` (captured in `/tmp/c8volt-257-final-listeners.log`)
+- `make integration-cli-real-state-bpmn-error C8VOLT_IT_GO_TEST_FLAGS=-v` (captured in `/tmp/c8volt-257-final-bpmn-error.log`)
+- `make integration-cli-real-state-retention C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m` (captured in `/tmp/c8volt-257-final-retention.log`)
+- `make integration-cli-real-state-destructive C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m` (captured in `/tmp/c8volt-257-final-destructive.log`)
 - `make test`
 - `git diff --check -- Makefile integration/README.md integration/cli specs/257-c89-real-state-integration specs/integration-test-responsibility.md`
 **Learnings**:
@@ -388,7 +388,7 @@
 - specs/257-c89-real-state-integration/quickstart.md
 - specs/257-c89-real-state-integration/ralph-memory.md
 **Validation**:
-- `make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v`
+- `make integration-cli-real-state-gaps C8VOLT_IT_GO_TEST_FLAGS=-v`
 - `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
 - `git diff --check -- integration/cli specs/257-c89-real-state-integration`
@@ -402,7 +402,7 @@
 **Tasks Completed**:
 - [x] Add shared confirmation prompt before Make integration slice targets
 - [x] Keep aggregate integration targets to one prompt per `make` invocation
-- [x] Add automation skip through `IT_CONFIRM=0`
+- [x] Add automation skip through `C8VOLT_IT_AUTOMATION=1`
 - [x] Document confirmation behavior in `integration/README.md` and quickstart
 **Tasks Remaining in Work Unit**: 0
 **Commit**: Pending
@@ -416,9 +416,9 @@
 - `make -n integration-test-all | rg -c "Integration tests may mutate real Camunda cluster state"` returned `1`
 - `printf 'n\n' | make integration-cli-real-state-gaps` aborted before running tests
 - `make help | rg "integration-test|integration-cli-get"`
-- `make integration-cli-real-state-gaps IT_CONFIRM=0 IT_GO_TEST_FLAGS=-v`
+- `make integration-cli-real-state-gaps C8VOLT_IT_AUTOMATION=1 C8VOLT_IT_GO_TEST_FLAGS=-v`
 - `make -n integration-test-real-state | rg -c "Integration tests may mutate real Camunda cluster state"` returned `1`
-- `make -n integration-test-all IT_CONFIRM=0 | rg -c "Skipping integration test confirmation"` returned `1`
+- `make -n integration-test-all C8VOLT_IT_AUTOMATION=1 | rg -c "Skipping integration test confirmation"` returned `1`
 - `git diff --check -- Makefile integration/README.md specs/257-c89-real-state-integration/quickstart.md`
 - `make -n integration-cli-get integration-cli-walk | rg -c "Integration tests may mutate real Camunda cluster state"` returned `1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`

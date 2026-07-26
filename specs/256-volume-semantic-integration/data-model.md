@@ -9,7 +9,7 @@ Fields:
 - `name`: stable target name, such as `integration-cli-get-volume`
 - `family`: command family or ops family under test
 - `testPattern`: Go test name or pattern invoked by the target
-- `defaultTimeout`: target timeout for normal local validation, controlled by `IT_VOLUME_TIMEOUT`
+- `defaultTimeout`: target timeout for normal local validation, controlled by `C8VOLT_IT_VOLUME_TIMEOUT`
 - `defaultDatasetCount`: conservative default count of suite-owned records, controlled by `C8VOLT_IT_VOLUME_COUNT`
 - `destructive`: whether the target may mutate cluster state
 - `profiles`: selected default-local profiles used for the run

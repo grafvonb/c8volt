@@ -13,7 +13,7 @@ Add a second, deliberately slower integration coverage layer for c8volt that pro
 **Language/Version**: Go, repository current module toolchain
 **Primary Dependencies**: Go `testing`, subprocess execution against the built `c8volt` binary, the existing `integration/cli` harness, default local c8volt configuration, embedded BPMN fixtures, current command contract metadata, and filesystem evidence reports
 **Storage**: Filesystem evidence directories outside generated docs; default temporary workdir with optional stable workdir for reruns
-**Testing**: Volume targets will use `go test -tags=integration ./integration/cli -run '<VolumeTestName>' -count=1 -timeout=<duration>` through Make targets; `IT_VOLUME_TIMEOUT` controls the slower volume target default while `IT_TIMEOUT` remains available for baseline family targets; normal repository validation remains `make test`
+**Testing**: Volume targets will use `go test -tags=integration ./integration/cli -run '<VolumeTestName>' -count=1 -timeout=<duration>` through Make targets; `C8VOLT_IT_VOLUME_TIMEOUT` controls the slower volume target default while `C8VOLT_IT_TIMEOUT` remains available for baseline family targets; normal repository validation remains `make test`
 **Target Platform**: Developer/release-validator machines that can reach disposable Camunda 8.7/8.8/8.9 profiles configured in the default local c8volt config
 **Project Type**: Go CLI integration harness extension
 **Performance Goals**: Keep baseline family targets unchanged; keep each default volume family target bounded by configurable dataset count and a practical volume timeout; avoid timing-sensitive concurrency assertions

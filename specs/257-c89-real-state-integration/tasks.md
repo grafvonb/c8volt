@@ -12,7 +12,7 @@
 
 **Purpose**: Add the real-state lane without changing baseline or volume target behavior.
 
-- [x] T001 Add `IT_REAL_STATE_TIMEOUT` and real-state Make target placeholders in `Makefile`
+- [x] T001 Add `C8VOLT_IT_REAL_STATE_TIMEOUT` and real-state Make target placeholders in `Makefile`
 - [x] T002 [P] Add real-state suite overview, destructive warning, and target list in `integration/README.md`
 - [x] T003 [P] Add real-state target catalog scaffolding in `integration/cli/real_state_harness_test.go`
 - [x] T004 [P] Add real-state evidence structs and report writer scaffolding in `integration/cli/real_state_data_test.go`
@@ -43,7 +43,7 @@
 
 **Goal**: Prove non-empty real job rows, supported job mutations, and incidents with related job evidence against Camunda 8.9.
 
-**Independent Test**: Run `make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v` and `make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v` against a clean or dirty disposable Camunda 8.9 profile.
+**Independent Test**: Run `make integration-cli-real-state-jobs C8VOLT_IT_GO_TEST_FLAGS=-v` and `make integration-cli-real-state-incidents C8VOLT_IT_GO_TEST_FLAGS=-v` against a clean or dirty disposable Camunda 8.9 profile.
 
 ### Tests For User Story 1
 
@@ -61,7 +61,7 @@
 - [x] T022 [US1] Record legacy command proposal gaps for job or incident states that require direct Camunda setup in `integration/cli/real_state_proposals_test.go`
 - [x] T023 [US1] Record legacy embedded BPMN proposal gaps for missing job or incident fixture behavior in `integration/cli/real_state_proposals_test.go`
 - [x] T024 [US1] Update job and incident rows to current statuses in `specs/257-c89-real-state-integration/coverage-matrix.md`
-- [x] T025 [US1] Validate User Story 1 with `make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v` and `make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v` documented in `specs/257-c89-real-state-integration/quickstart.md`
+- [x] T025 [US1] Validate User Story 1 with `make integration-cli-real-state-jobs C8VOLT_IT_GO_TEST_FLAGS=-v` and `make integration-cli-real-state-incidents C8VOLT_IT_GO_TEST_FLAGS=-v` documented in `specs/257-c89-real-state-integration/quickstart.md`
 
 **Checkpoint**: User Story 1 proves live Camunda 8.9 job and incident state, with remaining blockers to be migrated from legacy proposal evidence into spec-owned gap tracking.
 
@@ -71,7 +71,7 @@
 
 **Goal**: Prove listener-related flags and BPMN error job behavior with real state, or record precise skipped-prerequisite runtime evidence while maintaining fixture/product gaps in specs.
 
-**Independent Test**: Run `make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v` and `make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v` against a Camunda 8.9 profile.
+**Independent Test**: Run `make integration-cli-real-state-listeners C8VOLT_IT_GO_TEST_FLAGS=-v` and `make integration-cli-real-state-bpmn-error C8VOLT_IT_GO_TEST_FLAGS=-v` against a Camunda 8.9 profile.
 
 ### Tests For User Story 2
 
@@ -88,7 +88,7 @@
 - [x] T033 [US2] Record legacy listener and BPMN error command setup gaps when c8volt commands cannot create the required state in `integration/cli/real_state_proposals_test.go`
 - [x] T034 [US2] Record legacy listener and BPMN error embedded BPMN gaps without modifying existing embedded models in `integration/cli/real_state_proposals_test.go`
 - [x] T035 [US2] Update listener and BPMN error rows to current statuses in `specs/257-c89-real-state-integration/coverage-matrix.md`
-- [x] T036 [US2] Validate User Story 2 with `make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v` and `make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v` documented in `specs/257-c89-real-state-integration/quickstart.md`
+- [x] T036 [US2] Validate User Story 2 with `make integration-cli-real-state-listeners C8VOLT_IT_GO_TEST_FLAGS=-v` and `make integration-cli-real-state-bpmn-error C8VOLT_IT_GO_TEST_FLAGS=-v` documented in `specs/257-c89-real-state-integration/quickstart.md`
 
 **Checkpoint**: User Story 2 either proves listener and BPMN error behavior with real state or records skipped-prerequisite/dry-run runtime evidence with spec-owned gap tracking.
 
@@ -108,7 +108,7 @@
 - [x] T042 [P0] Convert `TestRealStateBPMNErrorFamily` from proposal-backed evidence to dry-run-covered plus skipped-prerequisite confirmed mutation evidence in `integration/cli/real_state_bpmn_error_test.go`
 - [x] T043 [P0] Remove proposal writing from real-state jobs, incidents, and listener family tests while preserving runtime setup evidence in `integration/cli/real_state_jobs_test.go`, `integration/cli/real_state_incidents_test.go`, and `integration/cli/real_state_listeners_test.go`
 - [x] T044 [P0] Update inherited 255 and 256 spec artifacts to mark runtime proposal JSON as deprecated and point future work to spec-owned gap artifacts
-- [x] T045 [P0] Validate correction with `go test ./integration/cli -count=1`, integration compile checks, `make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v`, `make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v`, `make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v`, and `make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v`
+- [x] T045 [P0] Validate correction with `go test ./integration/cli -count=1`, integration compile checks, `make integration-cli-real-state-jobs C8VOLT_IT_GO_TEST_FLAGS=-v`, `make integration-cli-real-state-incidents C8VOLT_IT_GO_TEST_FLAGS=-v`, `make integration-cli-real-state-listeners C8VOLT_IT_GO_TEST_FLAGS=-v`, and `make integration-cli-real-state-bpmn-error C8VOLT_IT_GO_TEST_FLAGS=-v`
 
 **Checkpoint**: Integration tests report runtime truth only; missing setup and fixture work lives in specs, not generated test evidence.
 
@@ -118,7 +118,7 @@
 
 **Goal**: Prove real dry-run safety, confirmed destructive post-state, ops report parity, retention candidates, and mixed-target fail-fast or partial-failure behavior.
 
-**Independent Test**: Run `make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m` and `make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m` against a disposable Camunda 8.9 profile.
+**Independent Test**: Run `make integration-cli-real-state-retention C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m` and `make integration-cli-real-state-destructive C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m` against a disposable Camunda 8.9 profile.
 
 ### Tests For User Story 3
 
@@ -137,7 +137,7 @@
 - [x] T055 [US3] Reuse or extend ops report parity checks for real-state reports in `integration/cli/real_state_destructive_test.go`
 - [x] T056 [US3] Update `gaps.md` for retention, purge, orphan, repair, or partial-failure prerequisites that still cannot be created through c8volt
 - [x] T057 [US3] Update retention and destructive rows to current statuses in `specs/257-c89-real-state-integration/coverage-matrix.md`
-- [x] T058 [US3] Validate User Story 3 with `make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m` and `make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m` documented in `specs/257-c89-real-state-integration/quickstart.md`
+- [x] T058 [US3] Validate User Story 3 with `make integration-cli-real-state-retention C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m` and `make integration-cli-real-state-destructive C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m` documented in `specs/257-c89-real-state-integration/quickstart.md`
 
 **Checkpoint**: User Story 3 now proves destructive real-candidate semantics, dry-run safety, confirmed outcomes, mixed-target failure handling, fail-fast behavior, machine-output cleanliness, and ops report parity for the covered retention, repair, and incident-purge slices.
 
@@ -147,7 +147,7 @@
 
 **Goal**: Keep `gaps.md` and the coverage matrix accurate as the real-state suite grows.
 
-**Independent Test**: Run `make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v` and inspect `gaps.md` plus `coverage-matrix.md`.
+**Independent Test**: Run `make integration-cli-real-state-gaps C8VOLT_IT_GO_TEST_FLAGS=-v` and inspect `gaps.md` plus `coverage-matrix.md`.
 
 ### Tests For User Story 4
 
@@ -161,7 +161,7 @@
 - [x] T063 [US4] Implement coverage-matrix status checks for live-covered, partially live-covered, dry-run-covered, skipped-prerequisite, no-match only, and not-yet-started rows
 - [x] T064 [US4] Update affected-version handling for Camunda 8.9 focus and future minor extension in `gaps.md`
 - [x] T065 [US4] Update real-state gap and matrix validation instructions in `specs/257-c89-real-state-integration/quickstart.md`
-- [x] T066 [US4] Validate User Story 4 with `make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v` documented in `specs/257-c89-real-state-integration/quickstart.md`
+- [x] T066 [US4] Validate User Story 4 with `make integration-cli-real-state-gaps C8VOLT_IT_GO_TEST_FLAGS=-v` documented in `specs/257-c89-real-state-integration/quickstart.md`
 
 **Checkpoint**: User Story 4 makes every remaining real-state gap visible without giving integration tests backlog ownership, and `integration-cli-real-state-gaps` validates the spec-owned gap and matrix contracts without touching Camunda.
 

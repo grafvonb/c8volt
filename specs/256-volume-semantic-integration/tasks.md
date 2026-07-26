@@ -20,8 +20,8 @@
 
 **Purpose**: Add the target surface and documentation entry points for the opt-in volume suite.
 
-- [x] T001 Add `integration-cli-*-volume` Make targets and shared `IT_VOLUME_TIMEOUT`/volume env plumbing in `Makefile`
-- [x] T002 Document destructive volume targets, `C8VOLT_IT_VOLUME_COUNT`, `IT_GO_TEST_FLAGS=-v`, `IT_VOLUME_TIMEOUT`, baseline `IT_TIMEOUT`, and evidence locations in `integration/README.md`
+- [x] T001 Add `integration-cli-*-volume` Make targets and shared `C8VOLT_IT_VOLUME_TIMEOUT`/volume env plumbing in `Makefile`
+- [x] T002 Document destructive volume targets, `C8VOLT_IT_VOLUME_COUNT`, `C8VOLT_IT_GO_TEST_FLAGS=-v`, `C8VOLT_IT_VOLUME_TIMEOUT`, baseline `C8VOLT_IT_TIMEOUT`, and evidence locations in `integration/README.md`
 - [x] T003 [P] Add volume-suite package guard and no-integration-tag harmlessness notes in `integration/cli/package_test.go`
 
 ---
@@ -49,7 +49,7 @@
 
 **Goal**: Operators see progress, explicit final outcomes, and observable post-condition evidence for long-running volume workflows on clean or dirty disposable clusters.
 
-**Independent Test**: Run `make integration-cli-get-volume IT_GO_TEST_FLAGS=-v` or another single implemented volume target and confirm it creates/discovers its own data, captures progress/finality evidence, and does not rely on empty global state.
+**Independent Test**: Run `make integration-cli-get-volume C8VOLT_IT_GO_TEST_FLAGS=-v` or another single implemented volume target and confirm it creates/discovers its own data, captures progress/finality evidence, and does not rely on empty global state.
 
 ### Tests and Implementation for User Story 1
 
@@ -58,7 +58,7 @@
 - [x] T014 [P] [US1] Implement `TestVolumeDeployEmbedRunFamily` for embedded model deploy/run volume setup, long-running finality wording, no-wait/submitted wording, and fixture proposal gaps in `integration/cli/volume_deploy_embed_run_test.go`
 - [ ] T015 [US1] Extend progress assertions to record visible or durable progress facts for human and verbose modes in `integration/cli/volume_assertions_test.go`
 - [x] T016 [US1] Wire `integration-cli-get-volume`, `integration-cli-walk-volume`, and `integration-cli-deploy-embed-run-volume` to `TestVolumeGetFamily`, `TestVolumeWalkFamily`, and `TestVolumeDeployEmbedRunFamily` in `Makefile`
-- [x] T017 [US1] Validate the MVP target with `make integration-cli-get-volume IT_GO_TEST_FLAGS=-v` and record the command in `specs/256-volume-semantic-integration/quickstart.md`
+- [x] T017 [US1] Validate the MVP target with `make integration-cli-get-volume C8VOLT_IT_GO_TEST_FLAGS=-v` and record the command in `specs/256-volume-semantic-integration/quickstart.md`
 
 **Checkpoint**: User Story 1 is complete when one volume family target independently proves paging/filtering or long-running progress plus explicit final outcome evidence.
 
@@ -68,7 +68,7 @@
 
 **Goal**: Release validators can prove critical flags behave semantically under multi-record conditions instead of only proving flag acceptance.
 
-**Independent Test**: Run a destructive family target such as `make integration-cli-update-volume IT_GO_TEST_FLAGS=-v` and verify dry-run no-mutation, confirmed post-conditions or no-wait wording, limit capping, worker accounting, fail-fast behavior, and clean machine output.
+**Independent Test**: Run a destructive family target such as `make integration-cli-update-volume C8VOLT_IT_GO_TEST_FLAGS=-v` and verify dry-run no-mutation, confirmed post-conditions or no-wait wording, limit capping, worker accounting, fail-fast behavior, and clean machine output.
 
 ### Tests and Implementation for User Story 2
 
@@ -78,7 +78,7 @@
 - [ ] T021 [P] [US2] Implement `TestVolumeExpectResolveFamily` for expect limit/timeout semantics, resolve dry-run and confirmed incident handling, worker accounting, and `volume-expect-resolve.json` evidence in `integration/cli/volume_expect_resolve_test.go` (partial: expect state/incident and resolve incident/process-instance dry-run/no-wait/stdin target is live; richer timeout and confirmed incident-clearing semantics remain)
 - [ ] T022 [US2] Add semantic flag coverage matrix helpers that record supported, unsupported, skipped-prerequisite, and dry-run-covered flag cases in `integration/cli/volume_evidence_test.go`
 - [ ] T023 [US2] Wire `integration-cli-update-volume`, `integration-cli-cancel-volume`, `integration-cli-delete-volume`, and `integration-cli-expect-resolve-volume` to their `TestVolume*Family` patterns in `Makefile`
-- [ ] T024 [US2] Validate one destructive critical-flag target with `make integration-cli-update-volume IT_GO_TEST_FLAGS=-v` and record the command in `specs/256-volume-semantic-integration/quickstart.md`
+- [ ] T024 [US2] Validate one destructive critical-flag target with `make integration-cli-update-volume C8VOLT_IT_GO_TEST_FLAGS=-v` and record the command in `specs/256-volume-semantic-integration/quickstart.md`
 
 **Checkpoint**: User Story 2 is complete when at least one destructive volume target proves dry-run safety and confirmed multi-resource semantics, and every implemented critical flag case writes explicit evidence.
 
@@ -88,7 +88,7 @@
 
 **Goal**: Operators and scripts can pipe clean keys-only producer output into stdin-consuming commands safely in preview and confirmed workflows.
 
-**Independent Test**: Run `make integration-cli-expect-resolve-volume IT_GO_TEST_FLAGS=-v` and inspect pipeline evidence for empty, duplicate, malformed, missing, valid, mixed, and whitespace-padded stdin cases.
+**Independent Test**: Run `make integration-cli-expect-resolve-volume C8VOLT_IT_GO_TEST_FLAGS=-v` and inspect pipeline evidence for empty, duplicate, malformed, missing, valid, mixed, and whitespace-padded stdin cases.
 
 ### Tests and Implementation for User Story 3
 
@@ -97,7 +97,7 @@
 - [ ] T027 [US3] Extend `TestVolumeCancelFamily` with keys-only producer to stdin consumer dry-run and confirmed cancel scenarios where command support exists in `integration/cli/volume_cancel_test.go`
 - [ ] T028 [US3] Add empty stdin, duplicate key, whitespace-padded key, malformed key, missing key, valid key, and mixed-input assertions in `integration/cli/volume_pipeline_test.go`
 - [ ] T029 [US3] Add pipeline proposal records for stdin-consuming command gaps and keys-only producer gaps in `integration/cli/volume_seed_test.go`
-- [ ] T030 [US3] Validate pipeline behavior with `make integration-cli-expect-resolve-volume IT_GO_TEST_FLAGS=-v` and record the command in `specs/256-volume-semantic-integration/quickstart.md`
+- [ ] T030 [US3] Validate pipeline behavior with `make integration-cli-expect-resolve-volume C8VOLT_IT_GO_TEST_FLAGS=-v` and record the command in `specs/256-volume-semantic-integration/quickstart.md`
 
 **Checkpoint**: User Story 3 is complete when at least one producer-to-consumer stdin pipeline proves keys-only cleanliness, no-hang empty input, malformed handling, dry-run safety, and confirmed mutation behavior.
 
@@ -107,7 +107,7 @@
 
 **Goal**: Maintainers can trust ops commands as audited workflows with compact output and report files that agree on discovery, planning, execution, and final outcomes.
 
-**Independent Test**: Run one ops volume target such as `make integration-cli-ops-purge-volume IT_GO_TEST_FLAGS=-v IT_VOLUME_TIMEOUT=90m` and verify human output, JSON stdout, JSON report, Markdown report, discovery scope, statuses, accounting, notices, errors, and outcome parity.
+**Independent Test**: Run one ops volume target such as `make integration-cli-ops-purge-volume C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_VOLUME_TIMEOUT=90m` and verify human output, JSON stdout, JSON report, Markdown report, discovery scope, statuses, accounting, notices, errors, and outcome parity.
 
 ### Tests and Implementation for User Story 4
 
@@ -118,7 +118,7 @@
 - [ ] T035 [US4] Add JSON stdout and JSON report parity checks for frozen scope, discovery completeness, final outcome, and mutation accounting in `integration/cli/volume_ops_report_test.go`
 - [ ] T036 [US4] Add Markdown report section checks for command identity, workflow identity, profile context, timing, dry-run state, discovery, plan, execution, notices, errors, and final outcome in `integration/cli/volume_ops_report_test.go`
 - [ ] T037 [US4] Wire `integration-cli-ops-analyse-volume`, `integration-cli-ops-execute-volume`, `integration-cli-ops-purge-volume`, and `integration-cli-ops-repair-volume` to their `TestVolumeOps*Family` patterns in `Makefile`
-- [ ] T038 [US4] Validate one ops report target with `make integration-cli-ops-purge-volume IT_GO_TEST_FLAGS=-v IT_VOLUME_TIMEOUT=90m` and record the command in `specs/256-volume-semantic-integration/quickstart.md`
+- [ ] T038 [US4] Validate one ops report target with `make integration-cli-ops-purge-volume C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_VOLUME_TIMEOUT=90m` and record the command in `specs/256-volume-semantic-integration/quickstart.md`
 
 **Checkpoint**: User Story 4 is complete when one ops preview and one ops confirmed execution produce parseable reports with stable content and outcome parity.
 
@@ -203,7 +203,7 @@ Task: "T034 [P] [US4] Implement TestVolumeOpsRepairFamily in integration/cli/vol
 
 1. Complete Phase 1 and Phase 2.
 2. Complete Phase 3 for `integration-cli-get-volume`.
-3. Stop and validate with `make integration-cli-get-volume IT_GO_TEST_FLAGS=-v`.
+3. Stop and validate with `make integration-cli-get-volume C8VOLT_IT_GO_TEST_FLAGS=-v`.
 4. Review `volume-get.json`, progress evidence, and any skipped-prerequisite evidence before extending to other families.
 
 ### Incremental Delivery

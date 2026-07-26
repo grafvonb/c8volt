@@ -82,7 +82,7 @@ go test ./integration/cli -count=1
 Family targets are available through `make`:
 
 ```sh
-make integration-test IT_GO_TEST_FLAGS=-v
+make integration-test C8VOLT_IT_GO_TEST_FLAGS=-v
 make integration-cli-get
 make integration-cli-walk
 make integration-cli-update
@@ -102,15 +102,15 @@ their own data in clean or dirty disposable clusters, write separate
 The currently implemented volume targets are:
 
 ```sh
-make integration-test-volume IT_GO_TEST_FLAGS=-v IT_VOLUME_TIMEOUT=90m
-make integration-cli-get-volume IT_GO_TEST_FLAGS=-v
-make integration-cli-walk-volume IT_GO_TEST_FLAGS=-v
-make integration-cli-update-volume IT_GO_TEST_FLAGS=-v
-make integration-cli-cancel-volume IT_GO_TEST_FLAGS=-v
-make integration-cli-delete-volume IT_GO_TEST_FLAGS=-v
-make integration-cli-expect-resolve-volume IT_GO_TEST_FLAGS=-v
-make integration-cli-deploy-embed-run-volume IT_GO_TEST_FLAGS=-v
-make integration-cli-ops-analyse-volume IT_GO_TEST_FLAGS=-v
+make integration-test-volume C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_VOLUME_TIMEOUT=90m
+make integration-cli-get-volume C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-walk-volume C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-update-volume C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-cancel-volume C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-delete-volume C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-expect-resolve-volume C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-deploy-embed-run-volume C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-ops-analyse-volume C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
 Planned volume target names remain reserved for the other families. Until their
@@ -125,29 +125,29 @@ The target names are reserved first so scripts can depend on the stable entry
 points while each slice is implemented:
 
 ```sh
-make integration-test-real-state IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
-make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v
-make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v
-make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v
-make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v
-make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v
-make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
-make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
+make integration-test-real-state C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+make integration-cli-real-state-gaps C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-jobs C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-incidents C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-listeners C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-bpmn-error C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-real-state-retention C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+make integration-cli-real-state-destructive C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
 To run every baseline, volume, and real-state integration slice in sequence:
 
 ```sh
-make integration-test-all IT_GO_TEST_FLAGS=-v IT_VOLUME_TIMEOUT=90m IT_REAL_STATE_TIMEOUT=90m
+make integration-test-all C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_VOLUME_TIMEOUT=90m C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
 Make asks for confirmation before running integration slices because they may
 mutate real Camunda cluster state. A single `make` invocation asks once, even
 when an aggregate target expands to many slices. Automation can skip the prompt
-with `IT_CONFIRM=0`:
+with `C8VOLT_IT_AUTOMATION=1`:
 
 ```sh
-make integration-test-real-state IT_CONFIRM=0 IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
+make integration-test-real-state C8VOLT_IT_AUTOMATION=1 C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
 The gaps target is non-destructive and validates that `gaps.md` plus the
@@ -162,14 +162,14 @@ Except for `integration-cli-real-state-gaps`, real-state targets are
 destructive and must only be run against disposable Camunda 8.9 clusters
 selected from the default local c8volt configuration.
 
-Pass extra `go test` flags with `IT_GO_TEST_FLAGS`. For example, use `-v`
+Pass extra `go test` flags with `C8VOLT_IT_GO_TEST_FLAGS`. For example, use `-v`
 when you want scenario-level command logs in addition to the evidence files.
 The Make targets automatically set `C8VOLT_IT_VERBOSE=1` when `-v` is present:
 
 ```sh
-make integration-cli-get IT_GO_TEST_FLAGS=-v
-make integration-cli-ops-repair IT_GO_TEST_FLAGS='-v -failfast'
-make integration-cli-get-volume IT_GO_TEST_FLAGS=-v IT_VOLUME_TIMEOUT=90m
+make integration-cli-get C8VOLT_IT_GO_TEST_FLAGS=-v
+make integration-cli-ops-repair C8VOLT_IT_GO_TEST_FLAGS='-v -failfast'
+make integration-cli-get-volume C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_VOLUME_TIMEOUT=90m
 ```
 
 Verbose integration output includes each c8volt subprocess scenario, arguments,
@@ -232,9 +232,13 @@ Go suite variables:
 | `C8VOLT_IT_BUILD` | build enabled | Set `0` with `C8VOLT_IT_BIN` to skip building the binary. |
 | `C8VOLT_IT_WORKDIR` | temp directory | Evidence directory for reruns and artifact review. |
 | `C8VOLT_IT_VOLUME_COUNT` | `12` | Number of suite-owned process instances created by Go volume targets for paging, limit, and filtering coverage. |
-| `IT_VOLUME_TIMEOUT` | `90m` | Make-level timeout used by `integration-cli-*-volume` targets. |
-| `IT_REAL_STATE_TIMEOUT` | `90m` | Make-level timeout used by `integration-cli-real-state-*` targets. |
-| `IT_CONFIRM` | `1` | Set `0` to skip the Make-level mutation confirmation prompt. |
+| `C8VOLT_IT_GO_TEST_FLAGS` | empty | Extra flags passed to `go test`, such as `-v` or `-failfast`. |
+| `C8VOLT_IT_GO_TEST` | local integration `go test` command | Make-level command template used by integration targets. |
+| `C8VOLT_IT_VERBOSE` | derived from `C8VOLT_IT_GO_TEST_FLAGS` | Set to `1` when verbose harness logging is required without Make flag derivation. |
+| `C8VOLT_IT_TIMEOUT` | `60m` | Make-level timeout used by baseline `integration-cli-*` targets. |
+| `C8VOLT_IT_VOLUME_TIMEOUT` | `90m` | Make-level timeout used by `integration-cli-*-volume` targets. |
+| `C8VOLT_IT_REAL_STATE_TIMEOUT` | `90m` | Make-level timeout used by `integration-cli-real-state-*` targets. |
+| `C8VOLT_IT_AUTOMATION` | `0` | Set `1` to skip the Make-level mutation confirmation prompt. |
 
 ## Outputs
 
