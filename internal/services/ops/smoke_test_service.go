@@ -116,7 +116,7 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 		return finishSmokeTestResult(result, d.SmokeTestOutcomeFailed, err)
 	}
 
-	unit, err := smokeTestDeploymentUnit(fixture)
+	units, err := smokeTestDeploymentUnits(fixture)
 	if err != nil {
 		result.Plan.Status = d.OpsWorkflowStepStatusFailed
 		result.Plan.Errors = []string{err.Error()}
@@ -131,7 +131,7 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 
 	proofOpts := smokeTestProofOptions(opts...)
 	smokeTestProgressf(s.log, result.Request, "deploy: fixture %s", fixture.File)
-	deployment, err := s.resourceAPI.Deploy(ctx, []d.DeploymentUnitData{unit}, proofOpts...)
+	deployment, err := s.resourceAPI.Deploy(ctx, units, proofOpts...)
 	if err != nil {
 		result.Deployment = d.SmokeTestDeploymentResult{
 			Status:        d.OpsWorkflowStepStatusFailed,
@@ -628,6 +628,36 @@ func smokeTestDeploymentUnit(fixture d.EmbeddedSmokeTestFixture) (d.DeploymentUn
 	}, nil
 }
 
+func smokeTestDeploymentUnits(fixture d.EmbeddedSmokeTestFixture) ([]d.DeploymentUnitData, error) {
+	prefix, ok := strings.CutSuffix(fixture.BpmnProcessID, "MultipleSubProcessesParent")
+	if !ok {
+		unit, err := smokeTestDeploymentUnit(fixture)
+		if err != nil {
+			return nil, err
+		}
+		return []d.DeploymentUnitData{unit}, nil
+	}
+	names := []string{
+		prefix + "SimpleUserTask",
+		prefix + "SimpleParent",
+		prefix + "MultipleSubProcessesParent",
+	}
+	units := make([]d.DeploymentUnitData, 0, len(names))
+	for _, name := range names {
+		unit, err := smokeTestDeploymentUnit(d.EmbeddedSmokeTestFixture{
+			CamundaVersion: fixture.CamundaVersion,
+			File:           filepath.ToSlash(filepath.Join("embedded", "processdefinitions", name+".bpmn")),
+			BpmnProcessID:  name,
+			Available:      fixture.Available,
+		})
+		if err != nil {
+			return nil, err
+		}
+		units = append(units, unit)
+	}
+	return units, nil
+}
+
 func smokeTestDeploymentResult(fixture d.EmbeddedSmokeTestFixture, deployment d.Deployment, status d.OpsWorkflowStepStatus) d.SmokeTestDeploymentResult {
 	out := d.SmokeTestDeploymentResult{
 		Status:        status,
@@ -635,8 +665,11 @@ func smokeTestDeploymentResult(fixture d.EmbeddedSmokeTestFixture, deployment d.
 		BpmnProcessID: fixture.BpmnProcessID,
 		TenantID:      deployment.TenantId,
 	}
-	if len(deployment.Units) > 0 {
-		pd := deployment.Units[0].ProcessDefinition
+	for _, unit := range deployment.Units {
+		pd := unit.ProcessDefinition
+		if pd.ProcessDefinitionId != "" && pd.ProcessDefinitionId != fixture.BpmnProcessID {
+			continue
+		}
 		if pd.ProcessDefinitionId != "" {
 			out.BpmnProcessID = pd.ProcessDefinitionId
 		}
@@ -645,6 +678,7 @@ func smokeTestDeploymentResult(fixture d.EmbeddedSmokeTestFixture, deployment d.
 		if pd.TenantId != "" {
 			out.TenantID = pd.TenantId
 		}
+		break
 	}
 	return out
 }

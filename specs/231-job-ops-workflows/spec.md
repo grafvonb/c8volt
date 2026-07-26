@@ -129,6 +129,18 @@ As a maintainer and automation user, I want new job behavior to follow existing 
 - Human and JSON outputs distinguish validation failure, mutation failure, submitted, confirmed, and unsupported-version outcomes where those states apply.
 - Camunda 8.7 fails before unsupported mutation paths are used.
 
+### Forward Real-State Validation Note
+
+The command feature can prove request construction with command/service tests, but final integration acceptance needs real service-task handler jobs, not only listener jobs. Future real-state suites should:
+
+1. Use c8volt commands and embedded service-task BPMN to deploy and start suite-owned process instances.
+2. Use Camunda worker APIs directly, when needed, to activate jobs under a deterministic worker name because c8volt is not a general-purpose job worker.
+3. Use direct worker API actions to create handler-owned job states for timeout, technical failure, completion, BPMN error, and stale/already-mutated repair scenarios.
+4. Verify c8volt commands observe the resulting job state through `get job`, `update job`, and `ops repair` flows.
+5. Record direct worker setup as integration evidence and as a spec-owned gap where a safe reusable setup helper or embedded BPMN fixture would reduce future test complexity.
+
+This setup should remain distinct from listener-job coverage. Listener jobs prove listener visibility; handler-owned service-task jobs prove worker outcome behavior and repair semantics.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements

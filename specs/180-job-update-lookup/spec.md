@@ -235,6 +235,7 @@ As a maintainer, I want job functionality isolated from existing process-instanc
 - Operators obtain the relevant job key from existing diagnostic output such as `c8volt get pi --with-incidents`.
 - Camunda 8.8 and 8.9 generated clients expose job search and job update capabilities needed for lookup and supported updates.
 - A job update timeout is interpreted as a duration from the current moment, while searched job details expose a deadline timestamp that is not used for confirmation.
+- Real integration proof for `--timeout` requires a job state Camunda accepts for timeout mutation. Future integration suites may need to create a service-task job through c8volt deploy/run and then use direct Camunda worker APIs to activate that job under a deterministic worker identity before running timeout mutation assertions.
 - Existing command registration, validation, error mapping, output rendering, metadata, waiter/backoff, and docs generation patterns remain the source of truth for consistent behavior.
 - Confirmation may need to tolerate normal read-model delay between accepted mutation and observed job details.
 - Documentation and generated CLI docs should be updated through existing command metadata and regeneration paths when available.

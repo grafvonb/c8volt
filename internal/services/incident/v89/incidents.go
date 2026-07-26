@@ -215,6 +215,10 @@ func (s *Service) newIncidentFilter(filter d.IncidentFilter) (*camundav89.Incide
 	if err != nil {
 		return nil, fmt.Errorf("building tenant incident filter: %w", err)
 	}
+	incidentKeyFilter, err := newBasicStringInFilterPtr(filter.Keys)
+	if err != nil {
+		return nil, fmt.Errorf("building incident key filter: %w", err)
+	}
 	stateFilter, err := newIncidentSearchStateFilter(filter.State)
 	if err != nil {
 		return nil, fmt.Errorf("building incident state filter: %w", err)
@@ -257,6 +261,7 @@ func (s *Service) newIncidentFilter(filter d.IncidentFilter) (*camundav89.Incide
 	}
 	bodyFilter := &camundav89.IncidentFilter{
 		TenantId:             tenantFilter,
+		IncidentKey:          incidentKeyFilter,
 		State:                stateFilter,
 		ErrorType:            errorTypeFilter,
 		ProcessInstanceKey:   processInstanceKeyFilter,
@@ -267,6 +272,7 @@ func (s *Service) newIncidentFilter(filter d.IncidentFilter) (*camundav89.Incide
 		CreationTime:         creationTimeFilter,
 	}
 	if bodyFilter.TenantId == nil &&
+		bodyFilter.IncidentKey == nil &&
 		bodyFilter.State == nil &&
 		bodyFilter.ErrorType == nil &&
 		bodyFilter.ProcessInstanceKey == nil &&
@@ -306,6 +312,9 @@ func newIncidentSearchStateFilter(state string) (*camundav89.IncidentStateFilter
 func filterIncidentDetailsLocally(filter d.IncidentFilter, items []d.ProcessInstanceIncidentDetail) []d.ProcessInstanceIncidentDetail {
 	out := make([]d.ProcessInstanceIncidentDetail, 0, len(items))
 	for _, item := range items {
+		if !incidentKeyMatches(filter.Keys, item.IncidentKey) {
+			continue
+		}
 		if filter.RootProcessInstanceKey != "" && item.RootProcessInstanceKey != filter.RootProcessInstanceKey {
 			continue
 		}
@@ -318,7 +327,19 @@ func filterIncidentDetailsLocally(filter d.IncidentFilter, items []d.ProcessInst
 }
 
 func incidentLocalFilteringRequired(filter d.IncidentFilter) bool {
-	return filter.RootProcessInstanceKey != "" || filter.ErrorMessage != ""
+	return len(filter.Keys) > 0 || filter.RootProcessInstanceKey != "" || filter.ErrorMessage != ""
+}
+
+func incidentKeyMatches(keys []string, got string) bool {
+	if len(keys) == 0 {
+		return true
+	}
+	for _, key := range keys {
+		if key == got {
+			return true
+		}
+	}
+	return false
 }
 
 func parseIncidentTimeLowerBound(raw string) (*time.Time, error) {

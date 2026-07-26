@@ -11,6 +11,13 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo unknown)
 LDFLAGS ?= -X github.com/grafvonb/c8volt/cmd.version=$(VERSION) -X github.com/grafvonb/c8volt/cmd.commit=$(COMMIT) -X github.com/grafvonb/c8volt/cmd.date=$(DATE)
+C8VOLT_IT_GO_TEST_FLAGS ?=
+C8VOLT_IT_VERBOSE ?= $(if $(findstring -v,$(C8VOLT_IT_GO_TEST_FLAGS)),1,0)
+C8VOLT_IT_GO_TEST ?= GOCACHE=/tmp/c8volt-gocache C8VOLT_IT_VERBOSE=$(C8VOLT_IT_VERBOSE) go test -tags=integration ./integration/cli
+C8VOLT_IT_TIMEOUT ?= 60m
+C8VOLT_IT_VOLUME_TIMEOUT ?= 90m
+C8VOLT_IT_REAL_STATE_TIMEOUT ?= 90m
+C8VOLT_IT_AUTOMATION ?= 0
 DEMO_VHS_TARGETS := \
 	demo-vhs-fast-start \
 	demo-vhs-ops-execute-retention-policy \
@@ -28,8 +35,46 @@ DEMO_VHS_ALIASES := \
 	demo-vhs-piwi \
 	demo-vhs-inc \
 	demo-vhs-pi
+INTEGRATION_CLI_TARGETS := \
+	integration-cli-get \
+	integration-cli-walk \
+	integration-cli-update \
+	integration-cli-cancel \
+	integration-cli-delete \
+	integration-cli-expect-resolve \
+	integration-cli-deploy-embed-run \
+	integration-cli-ops-analyse \
+	integration-cli-ops-execute \
+	integration-cli-ops-purge \
+	integration-cli-ops-repair
+INTEGRATION_CLI_VOLUME_TARGETS := \
+	integration-cli-get-volume \
+	integration-cli-walk-volume \
+	integration-cli-update-volume \
+	integration-cli-cancel-volume \
+	integration-cli-delete-volume \
+	integration-cli-expect-resolve-volume \
+	integration-cli-deploy-embed-run-volume \
+	integration-cli-ops-analyse-volume \
+	integration-cli-ops-execute-volume \
+	integration-cli-ops-purge-volume \
+	integration-cli-ops-repair-volume
+INTEGRATION_CLI_REAL_STATE_TARGETS := \
+	integration-cli-real-state-gaps \
+	integration-cli-real-state-jobs \
+	integration-cli-real-state-incidents \
+	integration-cli-real-state-listeners \
+	integration-cli-real-state-bpmn-error \
+	integration-cli-real-state-retention \
+	integration-cli-real-state-destructive \
+	integration-cli-real-state-cascade
+INTEGRATION_TEST_TARGETS := \
+	integration-test \
+	integration-test-volume \
+	integration-test-real-state \
+	integration-test-all
 
-.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-build docs-site-build-root docs-site-serve demo-vhs-check $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES)
+.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-serve demo-vhs-check integration-test-confirm $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES) $(INTEGRATION_CLI_TARGETS) $(INTEGRATION_CLI_VOLUME_TARGETS) $(INTEGRATION_CLI_REAL_STATE_TARGETS) $(INTEGRATION_TEST_TARGETS)
 
 help: ## Show all available Make targets with a short description.
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "%-55s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -115,6 +160,113 @@ run: build ## Build the binary and print the CLI help output.
 
 test: ## Run the full Go test suite with the race detector enabled.
 	go test $(PKG) -race -count=1
+
+integration-test-confirm:
+	@if [ "$(C8VOLT_IT_AUTOMATION)" = "1" ]; then \
+		echo "Skipping integration test confirmation."; \
+	else \
+		printf "Integration tests may mutate real Camunda cluster state. Continue? [y/N] "; \
+		read answer; \
+		case "$$answer" in y|Y|yes|YES) ;; *) echo "Aborted."; exit 1 ;; esac; \
+	fi
+
+integration-test: $(INTEGRATION_CLI_TARGETS) ## Run all baseline CLI integration test slices.
+
+integration-test-volume: $(INTEGRATION_CLI_VOLUME_TARGETS) ## Run all volume CLI integration test slices.
+
+integration-test-real-state: $(INTEGRATION_CLI_REAL_STATE_TARGETS) ## Run all C89 real-state integration test slices.
+
+integration-test-all: integration-test integration-test-volume integration-test-real-state ## Run baseline, volume, and real-state integration slices.
+
+integration-cli-get: integration-test-confirm ## Run destructive CLI integration tests for get commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestGetFamily -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
+
+integration-cli-get-volume: integration-test-confirm ## Run destructive volume CLI integration tests for get commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestVolumeGetFamily -count=1 -timeout=$(C8VOLT_IT_VOLUME_TIMEOUT)
+
+integration-cli-walk-volume: integration-test-confirm ## Run destructive volume CLI integration tests for walk commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestVolumeWalkFamily -count=1 -timeout=$(C8VOLT_IT_VOLUME_TIMEOUT)
+
+integration-cli-update-volume: integration-test-confirm ## Run destructive volume CLI integration tests for update commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestVolumeUpdateFamily -count=1 -timeout=$(C8VOLT_IT_VOLUME_TIMEOUT)
+
+integration-cli-cancel-volume: integration-test-confirm ## Run destructive volume CLI integration tests for cancel commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestVolumeCancelFamily -count=1 -timeout=$(C8VOLT_IT_VOLUME_TIMEOUT)
+
+integration-cli-delete-volume: integration-test-confirm ## Run destructive volume CLI integration tests for delete commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestVolumeDeleteFamily -count=1 -timeout=$(C8VOLT_IT_VOLUME_TIMEOUT)
+
+integration-cli-expect-resolve-volume: integration-test-confirm ## Run destructive volume CLI integration tests for expect and resolve commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestVolumeExpectResolveFamily -count=1 -timeout=$(C8VOLT_IT_VOLUME_TIMEOUT)
+
+integration-cli-deploy-embed-run-volume: integration-test-confirm ## Run destructive volume CLI integration tests for deploy, embed, and run commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestVolumeDeployEmbedRunFamily -count=1 -timeout=$(C8VOLT_IT_VOLUME_TIMEOUT)
+
+integration-cli-ops-analyse-volume: integration-test-confirm ## Run destructive volume CLI integration tests for ops analyse commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestVolumeOpsAnalyseFamily -count=1 -timeout=$(C8VOLT_IT_VOLUME_TIMEOUT)
+
+integration-cli-ops-execute-volume: integration-test-confirm ## Run destructive volume CLI integration tests for ops execute commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestVolumeOpsExecuteFamily -count=1 -timeout=$(C8VOLT_IT_VOLUME_TIMEOUT)
+
+integration-cli-ops-purge-volume: integration-test-confirm ## Run destructive volume CLI integration tests for ops purge commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestVolumeOpsPurgeFamily -count=1 -timeout=$(C8VOLT_IT_VOLUME_TIMEOUT)
+
+integration-cli-ops-repair-volume: integration-test-confirm ## Run destructive volume CLI integration tests for ops repair commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestVolumeOpsRepairFamily -count=1 -timeout=$(C8VOLT_IT_VOLUME_TIMEOUT)
+
+integration-cli-real-state-gaps: integration-test-confirm ## Run non-destructive C89 real-state gap and matrix validation.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateGapFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
+
+integration-cli-real-state-jobs: integration-test-confirm ## Run destructive C89 real-state integration tests for jobs.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateJobsFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
+
+integration-cli-real-state-incidents: integration-test-confirm ## Run destructive C89 real-state integration tests for incidents.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateIncidentsFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
+
+integration-cli-real-state-listeners: integration-test-confirm ## Run destructive C89 real-state integration tests for listener state.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateListenersFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
+
+integration-cli-real-state-bpmn-error: integration-test-confirm ## Run destructive C89 real-state integration tests for BPMN error job state.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateBPMNErrorFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
+
+integration-cli-real-state-retention: integration-test-confirm ## Run destructive C89 real-state integration tests for retention semantics.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateRetentionFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
+
+integration-cli-real-state-destructive: integration-test-confirm ## Run destructive C89 real-state integration tests for destructive post-state semantics.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateDestructiveFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
+
+integration-cli-real-state-cascade: integration-test-confirm ## Run destructive C89 real-state integration tests for parent/child cascade semantics.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateCascadeFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
+
+integration-cli-walk: integration-test-confirm ## Run destructive CLI integration tests for walk commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestWalkFamily -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
+
+integration-cli-update: integration-test-confirm ## Run destructive CLI integration tests for update commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestUpdateFamily -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
+
+integration-cli-cancel: integration-test-confirm ## Run destructive CLI integration tests for cancel commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestCancelFamily -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
+
+integration-cli-delete: integration-test-confirm ## Run destructive CLI integration tests for delete commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestDeleteFamily -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
+
+integration-cli-expect-resolve: integration-test-confirm ## Run destructive CLI integration tests for expect and resolve commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestExpectResolveFamily -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
+
+integration-cli-deploy-embed-run: integration-test-confirm ## Run destructive CLI integration tests for deploy, embed, and run commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestDeployEmbedRunFamily -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
+
+integration-cli-ops-analyse: integration-test-confirm ## Run destructive CLI integration tests for ops analyse commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestOpsAnalyseFamily -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
+
+integration-cli-ops-execute: integration-test-confirm ## Run destructive CLI integration tests for ops execute commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestOpsExecuteFamily -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
+
+integration-cli-ops-purge: integration-test-confirm ## Run destructive CLI integration tests for ops purge commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestOpsPurgeFamily -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
+
+integration-cli-ops-repair: integration-test-confirm ## Run destructive CLI integration tests for ops repair commands.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestOpsRepairFamily -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
 
 licenses: ## Check Go dependency licenses.
 	go tool go-licenses check $(PKG)

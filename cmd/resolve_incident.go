@@ -55,11 +55,11 @@ var resolveIncidentCmd = &cobra.Command{
 
 		results, err := cli.ResolveIncidents(cmd.Context(), keys, flagWorkers, collectOptions()...)
 		renderErr := renderIncidentResolutionResults(cmd, results)
-		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("resolve incidents: %w", err))
-		}
 		if renderErr != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render resolve incident result: %w", renderErr))
+		}
+		if err != nil {
+			exitAfterRenderedResult(cfg.App.NoErrCodes, fmt.Errorf("resolve incidents: %w", err))
 		}
 	},
 }

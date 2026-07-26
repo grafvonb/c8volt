@@ -90,6 +90,19 @@ As an operator or audit reviewer, I want `--report-file` and `--report-format` t
 - A requested audit report MUST be written even when cleanup fails after discovery, as long as enough report context is available.
 - Existing `get pi --orphan-children-only --keys-only` and `delete pi --key` behavior MUST remain unchanged.
 
+### Forward Real-State Validation Note
+
+The unit and command-contract feature work can use fake orphan process-instance responses, but final acceptance of this workflow needs real dirty-cluster proof. Because c8volt intentionally prevents orphan creation through its normal delete behavior, integration tests should create the orphan state below c8volt's safety layer:
+
+1. Use c8volt commands and embedded call-activity BPMN, such as `C89_MultipleSubProcessesParent`, to deploy and start a healthy parent/child process-instance family.
+2. Verify the healthy family through c8volt traversal.
+3. Use the Camunda API directly to delete a parent or root process instance without c8volt's cascade-safe expansion.
+4. Verify c8volt detects the surviving children as orphan candidates through `get pi --orphan-children-only` and reports missing ancestors through traversal where applicable.
+5. Prove `ops purge orphan-process-instances --dry-run` reports non-empty orphan candidates without mutation.
+6. Prove confirmed `ops purge orphan-process-instances` deletes the orphan children and writes truthful report evidence.
+
+This direct Camunda API setup is a test-only corruption mechanism, not a product command proposal. c8volt should continue to avoid creating orphan process instances in normal user workflows.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
