@@ -88,7 +88,7 @@ func searchElementsTotal(cmd *cobra.Command, cli element.API, request element.Se
 	return cli.SearchElementsTotal(cmd.Context(), request, collectOptions()...)
 }
 
-// shouldRenderElementSearchPageIncrementally keeps human and key-only output streaming by page.
+// shouldRenderElementSearchPageIncrementally keeps human and keys-only output streaming by page.
 func shouldRenderElementSearchPageIncrementally(cmd *cobra.Command) bool {
 	if flagCmdAutoConfirm {
 		return false

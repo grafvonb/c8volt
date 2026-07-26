@@ -1,7 +1,7 @@
 ---
 title: "C8 Ops Discussions"
 permalink: /use-cases/
-nav_order: 3
+nav_order: 5
 has_toc: false
 ---
 
@@ -13,7 +13,7 @@ The c8volt use-case board is the GitHub discussion space where C8 Ops CLI workfl
 
 Implemented operational workflows now live in the [C8 Ops CLI playbooks](/ops/). This page remains the idea board for accepted, upcoming, and superseded workflow concepts.
 
-Implemented ops workflows page discovery through the full matching scope by default. `--batch-size` controls discovery page size, `--limit` freezes a smaller scope, and `--automation` or `--auto-confirm` makes unattended execution explicit.
+Implemented ops workflows page through the full matching scope by default. `--batch-size` controls discovery page size, `--limit` freezes a smaller scope, and `--automation` or `--auto-confirm` makes unattended execution explicit.
 
 ## Discussion Links
 
@@ -39,7 +39,7 @@ Operational smoke test for proving a c8volt-to-Camunda environment is usable end
 
 ### [Purge all selected process definitions](https://github.com/grafvonb/c8volt/discussions/213) <span class="status-badge status-implemented">status: implemented</span>
 
-Process-definition cleanup for selected versions. The implemented `c8volt ops purge all-process-definitions` flow discovers candidate process definitions with `get pd`-style filters, previews process-instance impact, blocks active-instance impact unless `--force` is supplied, and deletes selected definitions through the existing process-definition deletion service.
+Process-definition cleanup for selected versions. The implemented `c8volt ops purge all-process-definitions` flow discovers candidate process definitions with the same selectors as `get process-definition`, previews process-instance impact, blocks active-instance impact unless `--force` is supplied, and deletes selected definitions through the existing process-definition deletion service.
 
 ### [Purge process instances selected by incidents](https://github.com/grafvonb/c8volt/discussions/212) <span class="status-badge status-implemented">status: implemented</span>
 

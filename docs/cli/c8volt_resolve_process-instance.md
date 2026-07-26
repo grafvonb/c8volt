@@ -26,8 +26,8 @@ c8volt resolve process-instance [flags]
 
 ```
   ./c8volt resolve process-instance --key <process-instance-key> --dry-run
-  ./c8volt resolve pi --key <process-instance-key>
-  ./c8volt resolve pi --key <process-instance-key> --key <another-process-instance-key>
+  ./c8volt resolve process-instance --key <process-instance-key>
+  ./c8volt resolve process-instance --key <process-instance-key> --key <another-process-instance-key>
   printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt resolve process-instance -
 ```
 

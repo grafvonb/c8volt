@@ -30,13 +30,13 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		"When --bpmn-process-id is set, c8volt validates visible process-definition matches before delete impact planning, confirmation, cancellation, or deletion. A missing selector fails with the shared local diagnostic.\n\n" +
 		"Use --dry-run to preview process-definition delete impact without submitting deletion or cancellation requests.\n\n" +
 		"Use --auto-confirm for unattended destructive runs.",
-	Example: `  ./c8volt delete pd --key <process-definition-key> --auto-confirm
-  ./c8volt delete pd --key <process-definition-key> --dry-run
-  ./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --force
-  ./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --dry-run
-  ./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
-  ./c8volt get pd --bpmn-process-id <bpmn-process-id> --latest --json
-  ./c8volt get pd --bpmn-process-id <bpmn-process-id> --latest --keys-only | ./c8volt delete pd --auto-confirm -`,
+	Example: `  ./c8volt delete process-definition --key <process-definition-key> --auto-confirm
+  ./c8volt delete process-definition --key <process-definition-key> --dry-run
+  ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --force
+  ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run
+  ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
+  ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --json
+  ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --keys-only | ./c8volt delete process-definition --auto-confirm -`,
 	Aliases: []string{"pd"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)

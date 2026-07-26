@@ -54,12 +54,12 @@ func parseUpdateProcessInstanceVariables(raw string, source string) (map[string]
 // validateUpdateProcessInstanceJSONConfirmation keeps machine-readable mutation output free of prompts and human plans.
 func validateUpdateProcessInstanceJSONConfirmation(cmd *cobra.Command) error {
 	if pickMode() == RenderModeJSON && flagVerbose {
-		return mutuallyExclusiveFlagsf("--json cannot be combined with --verbose for update pi")
+		return mutuallyExclusiveFlagsf("--json cannot be combined with --verbose for update process-instance")
 	}
 	if flagDryRun || pickMode() != RenderModeJSON || shouldImplicitlyConfirm(cmd) {
 		return nil
 	}
-	return missingDependentFlagsf("--json update pi requires --dry-run, --auto-confirm, or --automation")
+	return missingDependentFlagsf("--json update process-instance requires --dry-run, --auto-confirm, or --automation")
 }
 
 // planUpdateProcessInstanceVariables loads current process-scope variables and computes the requested update preview.

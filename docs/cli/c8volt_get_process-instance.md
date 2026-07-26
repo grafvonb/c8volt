@@ -32,7 +32,7 @@ Use variable-search flags to narrow list/search results natively on Camunda 8.8 
 
 Use --has-user-tasks to fetch process instances by their owning user-task keys.
 
-Run `c8volt get pi --help` for the complete flag reference.
+Run `c8volt get process-instance --help` for the complete flag reference.
 
 ```
 c8volt get process-instance [flags]
@@ -41,24 +41,24 @@ c8volt get process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 5
-  ./c8volt get pi --key <process-instance-key>
-  ./c8volt get pi --state active --total
-  ./c8volt get pi --has-user-tasks <user-task-key>
-  ./c8volt get pi --incidents-only --with-incidents --limit 5
-  ./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5
-  ./c8volt get pi --var-exists payload,email --limit 5
-  ./c8volt get pi --var 'status="approved"' --limit 5
-  ./c8volt get pi --var 'status.$in=["approved","pending"]' --limit 5
-  ./c8volt get pi --var-like 'email=*@example.com,customerId=CUST-????' --limit 5
-  ./c8volt get pi --state active --with-vars --var-value-limit 120 --limit 5
-  ./c8volt get pi --key <process-instance-key> --with-incidents
-  ./c8volt get pi --key <process-instance-key> --with-vars
-  ./c8volt get pi --key <process-instance-key> --with-vars --var-value-limit 120
-  ./c8volt get pi --key <process-instance-key> --with-elements
-  ./c8volt get pi --key <process-instance-key> --with-elements --with-listeners
-  ./c8volt get pi --start-date-after 2026-05-01 --start-date-before 2026-05-31 --limit 5
-  ./c8volt get pi --key <process-instance-key> --key <another-process-instance-key>
+  ./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5
+  ./c8volt get process-instance --key <process-instance-key>
+  ./c8volt get process-instance --state active --total
+  ./c8volt get process-instance --has-user-tasks <user-task-key>
+  ./c8volt get process-instance --incidents-only --with-incidents --limit 5
+  ./c8volt get process-instance --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5
+  ./c8volt get process-instance --var-exists payload,email --limit 5
+  ./c8volt get process-instance --var 'status="approved"' --limit 5
+  ./c8volt get process-instance --var 'status.$in=["approved","pending"]' --limit 5
+  ./c8volt get process-instance --var-like 'email=*@example.com,customerId=CUST-????' --limit 5
+  ./c8volt get process-instance --state active --with-vars --var-value-limit 120 --limit 5
+  ./c8volt get process-instance --key <process-instance-key> --with-incidents
+  ./c8volt get process-instance --key <process-instance-key> --with-vars
+  ./c8volt get process-instance --key <process-instance-key> --with-vars --var-value-limit 120
+  ./c8volt get process-instance --key <process-instance-key> --with-elements
+  ./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners
+  ./c8volt get process-instance --start-date-after 2026-05-01 --start-date-before 2026-05-31 --limit 5
+  ./c8volt get process-instance --key <process-instance-key> --key <another-process-instance-key>
 ```
 
 ### Options

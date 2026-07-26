@@ -276,15 +276,15 @@ func TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode(t *testing.T)
 	require.Contains(t, cancelOutput, "--dry-run")
 	require.Contains(t, cancelOutput, "preview selected, in-scope, final-state")
 	require.Contains(t, cancelOutput, "preview cancel scope without submitting cancellation")
-	require.Contains(t, cancelOutput, "./c8volt cancel pi --key <process-instance-key> --dry-run")
-	require.Contains(t, cancelOutput, "./c8volt cancel pi --state active --batch-size 250 --limit 5 --dry-run")
+	require.Contains(t, cancelOutput, "./c8volt cancel process-instance --key <process-instance-key> --dry-run")
+	require.Contains(t, cancelOutput, "./c8volt cancel process-instance --state active --batch-size 250 --limit 5 --dry-run")
 
 	deleteOutput := executeRootForProcessInstanceTest(t, "delete", "process-instance", "--help")
 	require.Contains(t, deleteOutput, "--dry-run")
 	require.Contains(t, deleteOutput, "final-state, non-final, and partial-scope")
 	require.Contains(t, deleteOutput, "preview delete scope without submitting deletion or cancel-before-delete requests")
-	require.Contains(t, deleteOutput, "./c8volt delete pi --key <process-instance-key> --dry-run")
-	require.Contains(t, deleteOutput, "./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run")
+	require.Contains(t, deleteOutput, "./c8volt delete process-instance --key <process-instance-key> --dry-run")
+	require.Contains(t, deleteOutput, "./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run")
 }
 
 // TestProcessInstanceHelp_DocumentsTenantContract verifies command help names

@@ -31,12 +31,12 @@ c8volt delete process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt delete pi --key <process-instance-key> --force
-  ./c8volt delete pi --key <process-instance-key> --dry-run
-  ./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run
-  ./c8volt delete pi --state terminated --end-date-after 2026-05-01 --end-date-before 2026-05-31 --limit 5 --dry-run
-  ./c8volt delete pi --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run
-  ./c8volt expect pi --key <process-instance-key> --state absent
+  ./c8volt delete process-instance --key <process-instance-key> --force
+  ./c8volt delete process-instance --key <process-instance-key> --dry-run
+  ./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run
+  ./c8volt delete process-instance --state terminated --end-date-after 2026-05-01 --end-date-before 2026-05-31 --limit 5 --dry-run
+  ./c8volt delete process-instance --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run
+  ./c8volt expect process-instance --key <process-instance-key> --state absent
 ```
 
 ### Options

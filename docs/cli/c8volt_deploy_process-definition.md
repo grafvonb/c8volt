@@ -22,9 +22,9 @@ c8volt deploy process-definition [flags]
 
 ```
   ./c8volt embed export --file processdefinitions/<embedded-process>.bpmn --out ./fixtures
-  ./c8volt deploy pd --file ./fixtures/processdefinitions/<embedded-process>.bpmn
-  ./c8volt deploy pd --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run
-  ./c8volt get pd --bpmn-process-id <bpmn-process-id> --latest --json
+  ./c8volt deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn
+  ./c8volt deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run
+  ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --json
 ```
 
 ### Options

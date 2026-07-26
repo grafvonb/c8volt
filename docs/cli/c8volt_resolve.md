@@ -24,8 +24,8 @@ c8volt resolve [flags]
 
 ```
   ./c8volt resolve incident --key <incident-key>
-  ./c8volt resolve inc --key <incident-key> --key <another-incident-key>
-  printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt resolve inc -
+  ./c8volt resolve incident --key <incident-key> --key <another-incident-key>
+  printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt resolve incident -
 ```
 
 ### Options

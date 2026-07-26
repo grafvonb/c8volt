@@ -2,150 +2,50 @@
 title: "Purge Process Instances With Incidents"
 permalink: /ops/purge-process-instances-with-incidents/
 parent: "C8 Ops CLI"
-nav_order: 4
+nav_order: 3
 has_toc: true
 ---
 
 # c8volt ops purge process-instances-with-incidents
 
-## The Problem
+## Purpose
 
-Incident cleanup often begins with incident filters, not process-instance keys. A manual pipeline can find matching incidents and pass their process-instance keys into deletion, but that leaves the operator responsible for dedupe, family-scope planning, non-final blockers, confirmation, and audit output.
-
-## The Promise
-
-`c8volt ops purge process-instances-with-incidents` discovers candidate incidents, extracts candidate process-instance keys, freezes that set, then runs the same deterministic family-scope delete planning used by `delete pi`.
-
-Discovery pages through all matching incidents by default. `--batch-size` controls how many incidents are inspected per discovery page, and `--limit` is the explicit cap for the frozen incident-derived scope. Human output, JSON output, and Markdown reports show whether discovery completed or was user-limited.
+Incident cleanup often begins with incident filters, not process-instance keys. `c8volt ops purge process-instances-with-incidents` discovers matching incidents, freezes the affected process-instance keys, then runs deterministic family-scope delete planning.
 
 ## In Action
 
-The recording previews an incident-based process-instance purge for `io_mapping_error`, then runs the purge with `--force`, confirms the prompt, writes an audit report, and opens the first report section. It shows that incident matching is only discovery: c8volt still builds and reports the process-instance family delete plan before mutation.
-
 <img src="../../assets/screencasts/ops-purge-process-instances-with-incidents.gif" alt="c8volt ops purge process-instances-with-incidents demo" />
-
-Generic command shape:
-
-```bash
-# read-only: preview incident-derived process-instance deletion
-c8volt ops purge process-instances-with-incidents --error-type io_mapping_error --dry-run
-
-# read-only: preview one incident-derived process-instance deletion
-c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
-
-# destructive: deletes the previewed process-instance family scope after confirmation
-c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md
-```
 
 ## Use When
 
-- deleting process-instance families selected by incident type or message
-- cleaning failed test data by BPMN process ID and incident state
-- previewing the delete impact of incident-based selection before mutation
-- producing an audit report that separates incident candidates from delete scope
+- incident filters should define the purge candidate set
+- deletion must still use normal process-instance family safety
+- an operator or agent needs a stable report of selected incidents and deleted instances
 
-## Command At A Glance
+## Basic Usage
 
 ```bash
-# read-only: preview incident-derived process-instance deletion
 c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
+```
 
-# read-only: preview one incident-derived process-instance deletion
+Generated reference: [ops purge process-instances-with-incidents](/cli/c8volt_ops_purge_process-instances-with-incidents/).
+
+## Best Variants
+
+```bash
 c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
-
-# destructive: deletes only the bounded incident-derived process-instance scope
 c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md
 ```
 
 ## Built From Lower-Level Commands
 
-This is the conceptual flow. The ops command should use c8volt services and facades rather than shelling out to these commands.
-
 ```bash
-c8volt get incident <incident-filters> --pi-keys-only
-c8volt delete pi -
+c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
+c8volt delete process-instance -
 ```
 
-The command defaults to `--state active`; `--inc-key` selects incident keys. `--batch-size` changes request size only and does not stop discovery. Use `--limit N` when the frozen scope should intentionally contain at most `N` matching incidents before process-instance dedupe. The full command and aliases are equivalent:
+Generated references: [get incident](/cli/c8volt_get_incident/), [delete process-instance](/cli/c8volt_delete_process-instance/).
 
-```bash
-c8volt ops purge process-instances-with-incidents
-c8volt ops purge pi-with-incidents
-c8volt ops purge piwi
-```
+## Output And Safety
 
-## Workflow
-
-```text
-search or fetch candidate incidents
-        |
-        v
-extract candidate process-instance keys
-        |
-        v
-dedupe and freeze candidate process instances
-        |
-        v
-build normal c8volt delete plan
-        |
-        v
-resolve roots, descendants, duplicates, and non-final blockers
-        |
-        +--> --dry-run: report plan, mutate nothing
-        |
-        v
-confirm or run under automation
-        |
-        v
-delete according to existing delete behavior
-        |
-        v
-write outcome and optional audit report
-```
-
-## Dry Run
-
-`--dry-run` searches incidents, extracts candidate process-instance keys, runs delete preflight, and reports the planned purge without mutation.
-
-Normal output should emphasize counts:
-
-```text
-dry run: purge process-instances with incidents
-candidate incidents: N
-candidate process instances: M
-delete preview: N candidate incident(s), M candidate process instance(s), A affected process instance(s) across R root(s) would be deleted
-dependency expansion: D additional process instance(s) due to dependencies
-non-final affected process instances: X (use --force to cancel before delete)
-outcome: planned; no changes applied; use --verbose to list process-instance keys
-```
-
-The dependency expansion line is shown only when delete planning adds process instances beyond the candidate process-instance set.
-
-When `--limit` stops discovery, the status line changes to `discovery user-limited` and includes the limit value.
-
-Verbose output can list normal completed discovery paging, incident keys, candidate process-instance keys, resolved root keys, affected keys, and blocked keys.
-
-## Real Execution
-
-Real execution deletes the process-instance family scope produced by existing delete planning. Matching an incident is only the discovery step. The delete phase must still honor root resolution, descendant traversal, duplicate removal, non-final checks, `--force` cancel-before-delete behavior, `--no-wait`, workers, fail-fast, and confirmation.
-
-If no incidents match, no delete request should be submitted.
-
-## Reports
-
-Reports should preserve the full chain: incident selection filters, incident discovery result, candidate process-instance set, delete plan, deletion result, notices, errors, automation flags, timestamps, duration, and final outcome.
-
-Human-facing Markdown should use candidate terminology: candidate incidents, candidate process instances, resolved roots, and affected process instances.
-
-## Failure And Safety Notes
-
-- `--inc-key` selects incident keys; this command does not accept `--key`.
-- Duplicate incidents for the same process instance must not create duplicate delete submissions.
-- Non-final affected process instances should block deletion unless `--force` is supplied.
-- Help examples should teach safe automation first and avoid bare destructive automation examples.
-- JSON and reports should retain complete notice data even when human output stays compact.
-
-## Related Commands
-
-- [get incident](/cli/c8volt_get_incident/)
-- [delete process-instance](/cli/c8volt_delete_process-instance/)
+`--dry-run` reports the discovered incidents, frozen process-instance keys, and delete plan without mutation. Real execution requires confirmation unless automation controls are used. Incident matching is discovery only; deletion still follows the same process-instance family rules as `delete process-instance`.

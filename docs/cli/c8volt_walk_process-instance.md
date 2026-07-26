@@ -29,13 +29,13 @@ c8volt walk process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt walk pi --key <process-instance-key>
-  ./c8volt walk pi --key <process-instance-key> --with-incidents
-  ./c8volt walk pi --key <process-instance-key> --with-vars
-  ./c8volt walk pi --key <process-instance-key> --with-elements
-  ./c8volt walk pi --key <process-instance-key> --with-elements --with-listeners
-  ./c8volt walk pi --key <process-instance-key> --flat
-  ./c8volt walk pi --key <process-instance-key> --parent
+  ./c8volt walk process-instance --key <process-instance-key>
+  ./c8volt walk process-instance --key <process-instance-key> --with-incidents
+  ./c8volt walk process-instance --key <process-instance-key> --with-vars
+  ./c8volt walk process-instance --key <process-instance-key> --with-elements
+  ./c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners
+  ./c8volt walk process-instance --key <process-instance-key> --flat
+  ./c8volt walk process-instance --key <process-instance-key> --parent
 ```
 
 ### Options

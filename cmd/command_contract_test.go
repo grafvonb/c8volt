@@ -47,7 +47,7 @@ func TestCommandCapabilityForCommand_IncludesInheritedAndRequiredFlags(t *testin
 		Type:        "string",
 		Required:    true,
 		Repeated:    false,
-		Description: "resource id to fetch",
+		Description: "resource ID to fetch",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "automation",
@@ -389,12 +389,12 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 	require.Empty(t, remaining)
 	require.Same(t, opsAnalyseSlowProcessInstancesCmd, aliasCmd)
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyse slow-process-instances --key")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyze slow-process-instances --bpmn-process-id")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyse spi --bpmn-process-id")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--dur-longer 1h30m --dur-element-longer 30s")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyse slow-process-instances --bpmn-process-id")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--pd-key <process-definition-key> --dur-element-longer 30s")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--element-id <element-id> --dur-element-longer 30s")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--with-full-timeline")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--with-listeners")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "get pi --state active --keys-only")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "get process-instance --state active --keys-only")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Default output shows compact slowest element contributors")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --with-full-timeline to inspect complete chronological element and transition detail")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --with-listeners to include runtime listener jobs under matching element timeline rows")
@@ -414,7 +414,7 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 		Type:        "stringSlice",
 		Required:    false,
 		Repeated:    true,
-		Description: "process-instance key(s) to analyze; repeat or combine with stdin '-'",
+		Description: "process-instance key(s) to analyse; repeat or combine with stdin '-'",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "bpmn-process-id",
@@ -684,8 +684,8 @@ func TestCommandCapabilityForCommand_WalkProcessInstanceElementFlagAndContract(t
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 	require.Contains(t, walkProcessInstanceCmd.Long, "Add --with-incidents, --with-vars, and/or --with-elements")
 	require.Contains(t, walkProcessInstanceCmd.Long, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
-	require.Contains(t, walkProcessInstanceCmd.Example, "./c8volt walk pi --key <process-instance-key> --with-elements")
-	require.Contains(t, walkProcessInstanceCmd.Example, "./c8volt walk pi --key <process-instance-key> --with-elements --with-listeners")
+	require.Contains(t, walkProcessInstanceCmd.Example, "./c8volt walk process-instance --key <process-instance-key> --with-elements")
+	require.Contains(t, walkProcessInstanceCmd.Example, "./c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners")
 }
 
 // TestCommandContractWalkProcessInstanceWithListeners verifies listener
@@ -704,7 +704,7 @@ func TestCommandContractWalkProcessInstanceWithListeners(t *testing.T) {
 		Description: "show runtime listener jobs under matching element rows; requires --with-elements",
 	})
 	require.Contains(t, walkProcessInstanceCmd.Long, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
-	require.Contains(t, walkProcessInstanceCmd.Example, "./c8volt walk pi --key <process-instance-key> --with-elements --with-listeners")
+	require.Contains(t, walkProcessInstanceCmd.Example, "./c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners")
 }
 
 func TestCommandCapabilityForCommand_IncludesExplicitAutomationMetadata(t *testing.T) {
@@ -972,8 +972,8 @@ func TestCommandCapabilityForCommand_ProcessInstanceElementFlagAndContract(t *te
 	require.Contains(t, getProcessInstanceCmd.Long, "Use --with-elements to include runtime element instances under matching process-instance rows.")
 	require.Contains(t, getProcessInstanceCmd.Long, "Nested human element rows include dur:<duration>")
 	require.Contains(t, getProcessInstanceCmd.Long, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
-	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get pi --key <process-instance-key> --with-elements")
-	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get pi --key <process-instance-key> --with-elements --with-listeners")
+	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get process-instance --key <process-instance-key> --with-elements")
+	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners")
 }
 
 // TestCommandContractGetProcessInstanceWithListeners verifies listener
@@ -992,7 +992,7 @@ func TestCommandContractGetProcessInstanceWithListeners(t *testing.T) {
 		Description: "include runtime listener jobs under matching element rows; requires --with-elements",
 	})
 	require.Contains(t, getProcessInstanceCmd.Long, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
-	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get pi --key <process-instance-key> --with-elements --with-listeners")
+	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners")
 }
 
 func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T) {
@@ -1280,11 +1280,11 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 	require.Contains(t, getElementCmd.Long, "Compact human rows include dur:<duration>")
 	require.Contains(t, getElementCmd.Long, "Use --with-listeners to include runtime listener jobs under matching element rows.")
 	require.Contains(t, getElementCmd.Long, "Use --json for the stable element payload and --keys-only when piping element instance keys.")
-	require.Contains(t, getElementCmd.Example, "./c8volt get ei -k <element-instance-key> --with-listeners")
-	require.Contains(t, getElementCmd.Example, "./c8volt get ei --pi-key <process-instance-key> --limit 10")
-	require.Contains(t, getElementCmd.Example, "./c8volt get ei --pi-key <process-instance-key> --with-listeners")
+	require.Contains(t, getElementCmd.Example, "./c8volt get element --key <element-instance-key> --with-listeners")
+	require.Contains(t, getElementCmd.Example, "./c8volt get element --pi-key <process-instance-key> --limit 10")
+	require.Contains(t, getElementCmd.Example, "./c8volt get element --pi-key <process-instance-key> --with-listeners")
 	require.Contains(t, getElementCmd.Example, "./c8volt get element --pi-key <process-instance-key> --total")
-	require.Contains(t, getElementCmd.Example, "./c8volt --json get ei --pi-key <process-instance-key> --limit 5")
+	require.Contains(t, getElementCmd.Example, "./c8volt --json get element --pi-key <process-instance-key> --limit 5")
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "key",
 		Shorthand:   "k",
@@ -1466,7 +1466,7 @@ func TestCommandCapabilityForCommand_BpmnSelectorAlignedCommandContracts(t *test
 		wantProcessKeysIn bool
 	}{
 		{
-			name:              "get pi",
+			name:              "get process-instance",
 			cmd:               getProcessInstanceCmd,
 			path:              "get process-instance",
 			mutation:          CommandMutationReadOnly,
@@ -1476,7 +1476,7 @@ func TestCommandCapabilityForCommand_BpmnSelectorAlignedCommandContracts(t *test
 			wantProcessKeysIn: true,
 		},
 		{
-			name:            "cancel pi",
+			name:            "cancel process-instance",
 			cmd:             cancelProcessInstanceCmd,
 			path:            "cancel process-instance",
 			mutation:        CommandMutationStateChanging,
@@ -1488,7 +1488,7 @@ func TestCommandCapabilityForCommand_BpmnSelectorAlignedCommandContracts(t *test
 			wantAutoConfirm: true,
 		},
 		{
-			name:            "delete pi",
+			name:            "delete process-instance",
 			cmd:             deleteProcessInstanceCmd,
 			path:            "delete process-instance",
 			mutation:        CommandMutationStateChanging,
@@ -1509,7 +1509,7 @@ func TestCommandCapabilityForCommand_BpmnSelectorAlignedCommandContracts(t *test
 			wantBpmnFlag:   "BPMN process ID to validate and filter incidents",
 		},
 		{
-			name:           "get pd",
+			name:           "get process-definition",
 			cmd:            getProcessDefinitionCmd,
 			path:           "get process-definition",
 			mutation:       CommandMutationReadOnly,
@@ -1518,7 +1518,7 @@ func TestCommandCapabilityForCommand_BpmnSelectorAlignedCommandContracts(t *test
 			wantBpmnFlag:   "BPMN process ID to filter process instances",
 		},
 		{
-			name:            "delete pd",
+			name:            "delete process-definition",
 			cmd:             deleteProcessDefinitionCmd,
 			path:            "delete process-definition",
 			mutation:        CommandMutationStateChanging,
@@ -2374,12 +2374,12 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 		"Element lookup and search require Camunda 8.8 or 8.9",
 		"Aliases:",
 		"ei",
-		"./c8volt get ei -k <element-instance-key>",
-		"./c8volt get ei -k <element-instance-key> --with-listeners",
-		"./c8volt get ei --pi-key <process-instance-key> --limit 10",
-		"./c8volt get ei --pi-key <process-instance-key> --with-listeners",
+		"./c8volt get element --key <element-instance-key>",
+		"./c8volt get element --key <element-instance-key> --with-listeners",
+		"./c8volt get element --pi-key <process-instance-key> --limit 10",
+		"./c8volt get element --pi-key <process-instance-key> --with-listeners",
 		"./c8volt get element --pi-key <process-instance-key> --total",
-		"./c8volt --json get ei --pi-key <process-instance-key> --limit 5",
+		"./c8volt --json get element --pi-key <process-instance-key> --limit 5",
 		"-k, --key string",
 		"--pi-key string",
 		"--element-id string",
@@ -2402,13 +2402,13 @@ func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *tes
 		"Get Camunda incidents by key or by search criteria",
 		"repeated --key values or newline-separated keys from stdin with '-'",
 		"Search mode defaults to active incidents",
-		"When --bpmn-process-id is supplied in search mode, the BPMN process definition selector is validated before incident totals, key-only output, process-instance-key output, or paging.",
+		"When --bpmn-process-id is supplied in search mode, the BPMN process definition selector is validated before incident totals, keys-only output, process-instance-key output, or paging.",
 		"./c8volt get incident --key <incident-key>",
-		"./c8volt get inc --key <incident-key> --key <another-incident-key>",
+		"./c8volt get incident --key <incident-key> --key <another-incident-key>",
 		"./c8volt get incident --state resolved --error-type io_mapping_error --limit 5",
-		"./c8volt get incident --state active --keys-only | ./c8volt get inc -",
+		"./c8volt get incident --state active --keys-only | ./c8volt get incident -",
 		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only",
-		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel pi --dry-run -",
+		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel process-instance --dry-run -",
 		"./c8volt --json get incident --key <incident-key>",
 		"./c8volt --keys-only get incident --key <incident-key>",
 		"--key strings",
@@ -2462,8 +2462,8 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 		"Camunda 8.8 and 8.9",
 		"unsupported-version error before these mutations",
 		"./c8volt update process-instance --key <process-instance-key> --vars",
-		"./c8volt update pi --key <process-instance-key> --vars-file",
-		"./c8volt --automation --json update pi --key <process-instance-key> --vars",
+		"./c8volt update process-instance --key <process-instance-key> --vars-file",
+		"./c8volt --automation --json update process-instance --key <process-instance-key> --vars",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
@@ -2476,9 +2476,9 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 		"Use --dry-run to preview without mutating",
 		"--auto-confirm for unattended mutation",
 		"Camunda 8.7 returns an unsupported-version error before mutation",
-		"./c8volt update pi --key <process-instance-key> --vars '{\"customerTier\":\"gold\"}' --dry-run",
-		"./c8volt update pi --key <process-instance-key-a> --key <process-instance-key-b> --vars",
-		"printf '%s\\n' \"$PROCESS_INSTANCE_KEY_A\" \"$PROCESS_INSTANCE_KEY_B\" | ./c8volt update pi - --vars",
+		"./c8volt update process-instance --key <process-instance-key> --vars '{\"customerTier\":\"gold\"}' --dry-run",
+		"./c8volt update process-instance --key <process-instance-key-a> --key <process-instance-key-b> --vars",
+		"printf '%s\\n' \"$PROCESS_INSTANCE_KEY_A\" \"$PROCESS_INSTANCE_KEY_B\" | ./c8volt update process-instance - --vars",
 		"-k, --key strings",
 		"--workers",
 		"--dry-run",
@@ -2505,7 +2505,7 @@ func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
 		wants []string
 	}{
 		{
-			name: "get pi",
+			name: "get process-instance",
 			args: []string{"get", "pi", "--help"},
 			wants: []string{
 				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances.",
@@ -2514,7 +2514,7 @@ func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
 			},
 		},
 		{
-			name: "cancel pi",
+			name: "cancel process-instance",
 			args: []string{"cancel", "pi", "--help"},
 			wants: []string{
 				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances.",
@@ -2523,7 +2523,7 @@ func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
 			},
 		},
 		{
-			name: "delete pi",
+			name: "delete process-instance",
 			args: []string{"delete", "pi", "--help"},
 			wants: []string{
 				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances.",
@@ -2532,7 +2532,7 @@ func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
 			},
 		},
 		{
-			name: "run pi",
+			name: "run process-instance",
 			args: []string{"run", "pi", "--help"},
 			wants: []string{
 				"When running by BPMN process ID, c8volt validates all requested process definitions before creating anything.",
@@ -2559,7 +2559,7 @@ func TestProcessDefinitionSelectorValidationHelpContract(t *testing.T) {
 		wants []string
 	}{
 		{
-			name: "get pd",
+			name: "get process-definition",
 			args: []string{"get", "pd", "--help"},
 			wants: []string{
 				"When `--bpmn-process-id` is set, c8volt validates that at least one visible",
@@ -2569,7 +2569,7 @@ func TestProcessDefinitionSelectorValidationHelpContract(t *testing.T) {
 			},
 		},
 		{
-			name: "delete pd",
+			name: "delete process-definition",
 			args: []string{"delete", "pd", "--help"},
 			wants: []string{
 				"When --bpmn-process-id is set, c8volt validates visible process-definition matches before delete impact planning, confirmation, cancellation, or deletion.",

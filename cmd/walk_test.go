@@ -80,18 +80,18 @@ func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"walk"}, []string{
 		"Inspect process-instance relationships",
 		"Inspect ancestry, descendants",
-		"./c8volt walk pi --key <process-instance-key>",
+		"./c8volt walk process-instance --key <process-instance-key>",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
 	output = assertCommandHelpOutput(t, []string{"walk", "process-instance"}, []string{
 		"By default, walk shows the full process-instance family as an ASCII tree",
 		"returns the partial tree plus a warning",
-		"./c8volt walk pi --key <process-instance-key> --with-incidents",
-		"./c8volt walk pi --key <process-instance-key> --with-vars",
-		"./c8volt walk pi --key <process-instance-key> --with-elements",
-		"./c8volt walk pi --key <process-instance-key> --with-elements --with-listeners",
-		"./c8volt walk pi --key <process-instance-key> --flat",
+		"./c8volt walk process-instance --key <process-instance-key> --with-incidents",
+		"./c8volt walk process-instance --key <process-instance-key> --with-vars",
+		"./c8volt walk process-instance --key <process-instance-key> --with-elements",
+		"./c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners",
+		"./c8volt walk process-instance --key <process-instance-key> --flat",
 	}, nil)
 	require.Contains(t, output, "--flat")
 	require.Contains(t, output, "--with-elements")
@@ -376,7 +376,7 @@ func TestWalkProcessInstanceCommand_WithElementsKeepsEmptyOwnersVisible(t *testi
 	require.NotContains(t, output, "element-")
 }
 
-// TestWalkProcessInstanceCommand_WithElementsRendersIncidentMarkers keeps element incident markers aligned with get pi output.
+// TestWalkProcessInstanceCommand_WithElementsRendersIncidentMarkers keeps element incident markers aligned with get process-instance output.
 func TestWalkProcessInstanceCommand_WithElementsRendersIncidentMarkers(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

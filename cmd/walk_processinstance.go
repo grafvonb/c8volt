@@ -38,13 +38,13 @@ var walkProcessInstanceCmd = &cobra.Command{
 		"Add --with-incidents, --with-vars, and/or --with-elements to keyed walks to show incident details, process-instance-scope variables, and runtime element instances below matching rows.\n\n" +
 		"Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.\n\n" +
 		"When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.",
-	Example: `  ./c8volt walk pi --key <process-instance-key>
-  ./c8volt walk pi --key <process-instance-key> --with-incidents
-  ./c8volt walk pi --key <process-instance-key> --with-vars
-  ./c8volt walk pi --key <process-instance-key> --with-elements
-  ./c8volt walk pi --key <process-instance-key> --with-elements --with-listeners
-  ./c8volt walk pi --key <process-instance-key> --flat
-  ./c8volt walk pi --key <process-instance-key> --parent`,
+	Example: `  ./c8volt walk process-instance --key <process-instance-key>
+  ./c8volt walk process-instance --key <process-instance-key> --with-incidents
+  ./c8volt walk process-instance --key <process-instance-key> --with-vars
+  ./c8volt walk process-instance --key <process-instance-key> --with-elements
+  ./c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners
+  ./c8volt walk process-instance --key <process-instance-key> --flat
+  ./c8volt walk process-instance --key <process-instance-key> --parent`,
 	Aliases: []string{"pi", "pis"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)

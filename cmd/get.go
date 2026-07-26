@@ -15,10 +15,10 @@ var getCmd = &cobra.Command{
 Check cluster health, list deployed process definitions, inspect process
 instances, inspect jobs, elements, and incidents by key or search, list visible tenants, or fetch a known resource.`,
 	Example: `  ./c8volt get cluster topology
-  ./c8volt get pd --latest
-  ./c8volt get pi --state active --limit 5
+  ./c8volt get process-definition --latest
+  ./c8volt get process-instance --state active --limit 5
   ./c8volt get job --key <job-key>
-  ./c8volt get ei --pi-key <process-instance-key> --limit 10
+  ./c8volt get element --pi-key <process-instance-key> --limit 10
   ./c8volt get incident --key <incident-key>
   ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
   ./c8volt get tenant

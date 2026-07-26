@@ -44,10 +44,10 @@ fails with the shared local diagnostic instead of rendering an ambiguous empty l
 
 ` + "`--stat`" + ` requires Camunda ` + "`8.8`" + ` or ` + "`8.9`" + ` and prints exact-version
 counts. Camunda ` + "`8.7`" + ` does not support native statistics.`,
-	Example: `  ./c8volt get pd --latest
-  ./c8volt get pd --bpmn-process-id <bpmn-process-id> --latest
-  ./c8volt get pd --key <process-definition-key> --json
-  ./c8volt get pd --key <process-definition-key> --xml`,
+	Example: `  ./c8volt get process-definition --latest
+  ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest
+  ./c8volt get process-definition --key <process-definition-key> --json
+  ./c8volt get process-definition --key <process-definition-key> --xml`,
 	Aliases: []string{"pd", "pds"},
 	Run:     runGetProcessDefinition,
 }

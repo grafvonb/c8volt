@@ -8,116 +8,44 @@ has_toc: true
 
 # c8volt ops execute retention-policy
 
-## The Problem
+## Purpose
 
-Retention cleanup is simple to describe but risky to perform by hand. The operator has to translate an age policy into a process-instance search, freeze the eligible set, expand it through normal delete planning, handle duplicates and hierarchy behavior, refuse unsafe mutations, and produce an audit trail.
-
-## The Promise
-
-`c8volt ops execute retention-policy` applies a c8volt-owned retention workflow. It discovers finished process instances older than the requested age, freezes the retention seed set, builds the normal delete plan, executes only after validation and confirmation, and records what happened.
+Retention cleanup is simple to describe but risky to perform by hand. `c8volt ops execute retention-policy` discovers finished process instances older than the requested age, freezes the set, builds the normal delete plan, and records the result.
 
 ## In Action
 
-The recording previews retention cleanup before deleting anything, then runs the workflow with confirmation already handled, writes an audit report, and opens the first report section. It uses `--retention-days 0`, which means today and is mainly useful for demo data; in normal operations, set a real retention window such as `--retention-days 90` to remove instances older than roughly three months.
-
 <img src="../../assets/screencasts/ops-execute-retention-policy.gif" alt="c8volt ops execute retention-policy demo" />
-
-Generic command shape:
-
-```bash
-# read-only: preview the frozen retention scope
-c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id <bpmn-process-id> --state completed --limit 25 --dry-run
-
-# destructive: deletes the previewed completed process-instance scope after confirmation
-c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id <bpmn-process-id> --state completed --limit 25 --report-file retention-report.md
-```
 
 ## Use When
 
-- deleting old completed or terminated process instances from a supported Camunda cluster
-- running scheduled cleanup where the audit trail matters
-- narrowing retention by BPMN process ID, process-definition key, version, version tag, state, parent, roots, children, or incident filters
-- previewing old-instance cleanup before a destructive run
+- finished process instances should be removed by age
+- cleanup must be previewed before mutation
+- the run needs a Markdown or JSON audit report
 
-## Command At A Glance
+## Basic Usage
 
 ```bash
-# read-only: preview old completed process instances without mutation
 c8volt ops execute retention-policy --retention-days 90 --dry-run
+```
 
-# destructive: deletes only the bounded completed scope selected at command start
+Generated reference: [ops execute retention-policy](/cli/c8volt_ops_execute_retention-policy/).
+
+## Best Variants
+
+```bash
+c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id <bpmn-process-id> --state completed --limit 25 --dry-run
 c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id <bpmn-process-id> --state completed --limit 25 --report-file retention-report.md
 ```
 
 ## Built From Lower-Level Commands
 
-This is the conceptual flow. The ops command should use c8volt services and facades rather than shelling out to these commands.
-
 ```bash
-c8volt get pi --end-date-older-days <days> --keys-only [filters...]
-c8volt delete pi -
+c8volt get process-instance --end-date-older-days <days> --keys-only
+c8volt delete process-instance -
 ```
 
-The command derives an `endDate <= <boundary>` filter from `--retention-days` and the command start time. It intentionally does not use Camunda native retention policies or Camunda batch deletion APIs. c8volt owns discovery, delete planning, confirmation, waiting, concurrency, and reporting.
+Generated references: [get process-instance](/cli/c8volt_get_process-instance/), [delete process-instance](/cli/c8volt_delete_process-instance/).
 
-When retention discovery includes `--bpmn-process-id`, c8volt validates the visible process-definition selector before freezing process-instance keys. The downstream delete phase operates on the frozen keys only.
+## Output And Safety
 
-## Workflow
-
-```text
-validate retention age and selection filters
-        |
-        v
-discover retention seed process instances
-        |
-        v
-freeze discovered seed keys
-        |
-        v
-build c8volt delete plan
-        |
-        v
-resolve roots, descendants, duplicates, and non-final blockers
-        |
-        +--> --dry-run: report plan, mutate nothing
-        |
-        v
-confirm or run under automation
-        |
-        v
-delete according to existing delete behavior
-        |
-        v
-write outcome and optional audit report
-```
-
-## Dry Run
-
-`--dry-run` performs discovery, delete planning, and validation without deleting or canceling process instances. It should show retention days, the derived end-date boundary when available, selection filters, discovered retention seed count, affected process-instance count across roots, any additional process instances due to dependencies, duplicate root handling, non-final blockers, missing ancestor warnings, and report path or format when supplied.
-
-Verbose output can list the actual seed keys, root keys, affected keys, and blocked keys.
-
-## Real Execution
-
-Real execution operates on the retention seed set discovered at command start. It does not chase newly eligible process instances after discovery.
-
-Deletion reuses existing process-instance delete execution. Before deletion, the command resolves each retention seed to its ancestry root. Seeds whose roots are not final are skipped. Final roots are expanded to descendants; if that final-root scope still contains non-final descendants, the command refuses mutation unless `--force` is supplied.
-
-## Reports
-
-Reports should distinguish retention seeds, resolved roots, and affected process-instance family keys. They should include retention days, derived boundary, filters, discovery status, delete plan, duplicate summary, final-state and non-final counts, missing ancestors, automation flags, per-key or per-batch delete status, errors, timestamps, duration, and final outcome.
-
-Suggested outcomes are `planned`, `deleted`, `partially_failed`, and `failed`.
-
-## Failure And Safety Notes
-
-- `--retention-days` is required and must be a non-negative integer.
-- Explicit process-instance keys should not be used as retention selectors.
-- Process instances without an end date are excluded by the end-date filter behavior.
-- Non-final affected process instances should block deletion unless existing delete controls explicitly allow cancellation before deletion.
-- Existing report files should be preserved for dry-run, aborted, unconfirmed, or locally blocked runs.
-
-## Related Commands
-
-- [get process-instance](/cli/c8volt_get_process-instance/)
-- [delete process-instance](/cli/c8volt_delete_process-instance/)
+`--dry-run` reports the frozen retention set and delete plan without mutation. Real execution confirms or runs under automation, deletes through normal process-instance delete planning, waits unless disabled, and can write Markdown or JSON reports. Discovery page size and frozen scope are separate: use `--batch-size` for request size and `--limit` only when the retention scope should intentionally stop early.

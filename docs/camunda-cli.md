@@ -1,12 +1,12 @@
 ---
 title: "Camunda CLI Options"
 permalink: /camunda-cli/
-nav_order: 3
+nav_order: 4
 has_toc: true
 description: "Compare Camunda CLI options including c8volt, c8ctl, zbctl, REST APIs, and SDKs for development, operations, automation, and legacy Zeebe workflows."
 ---
 
-# Camunda CLI options: c8volt, c8ctl, zbctl, REST APIs, and SDKs
+# Camunda CLI Options: c8volt, c8ctl, zbctl, REST APIs, and SDKs
 
 If you are searching for a Camunda CLI, Camunda 8 CLI, Camunda command line, `c8ctl` alternative, `zbctl` alternative, or Camunda operations CLI, the main command-line and automation options are:
 
@@ -38,7 +38,7 @@ Use `c8volt` when the command-line workflow needs operational guardrails and obs
 - dry-run previews before mutation
 - explicit confirmation for destructive operations
 - automation-safe flags
-- JSON or key-only output for scripts and agents
+- JSON or keys-only output for scripts and agents
 - wait modes and post-action state checks
 - paged discovery where `--batch-size` controls page size and `--limit` caps returned or frozen scope
 - incident inspection, repair, and resolution workflows

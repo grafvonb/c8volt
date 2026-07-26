@@ -37,12 +37,12 @@ var getElementCmd = &cobra.Command{
 		"Use --with-listeners to include runtime listener jobs under matching element rows.\n\n" +
 		"Use --json for the stable element payload and --keys-only when piping element instance keys.\n\n" +
 		"Element lookup and search require Camunda 8.8 or 8.9. Camunda 8.7 returns an unsupported-version error.",
-	Example: `  ./c8volt get ei -k <element-instance-key>
-  ./c8volt get ei -k <element-instance-key> --with-listeners
-  ./c8volt get ei --pi-key <process-instance-key> --limit 10
-  ./c8volt get ei --pi-key <process-instance-key> --with-listeners
+	Example: `  ./c8volt get element --key <element-instance-key>
+  ./c8volt get element --key <element-instance-key> --with-listeners
+  ./c8volt get element --pi-key <process-instance-key> --limit 10
+  ./c8volt get element --pi-key <process-instance-key> --with-listeners
   ./c8volt get element --pi-key <process-instance-key> --total
-  ./c8volt --json get ei --pi-key <process-instance-key> --limit 5
+  ./c8volt --json get element --pi-key <process-instance-key> --limit 5
   ./c8volt --json get element --key <element-instance-key> --with-listeners`,
 	Aliases: []string{"ei"},
 	Args:    cobra.NoArgs,

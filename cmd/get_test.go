@@ -44,7 +44,7 @@ func TestGetHelp(t *testing.T) {
 	require.Contains(t, output, "resource")
 	require.Contains(t, output, "Check cluster health")
 	require.Contains(t, output, "./c8volt get cluster topology")
-	require.Contains(t, output, "./c8volt get pi --state active")
+	require.Contains(t, output, "./c8volt get process-instance --state active")
 	require.Contains(t, output, "./c8volt get tenant")
 	require.NotContains(t, output, "canonical non-interactive contract")
 }
@@ -54,7 +54,7 @@ func TestGetCommand_PreservesExistingProcessInstanceHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "process-instance", "--help")
 
 	require.Contains(t, output, "Get process instances by key or by search criteria.")
-	require.Contains(t, output, "./c8volt get pi --state active")
+	require.Contains(t, output, "./c8volt get process-instance --state active")
 	require.Contains(t, output, "--key")
 	require.Contains(t, output, "--state")
 	require.Contains(t, output, "--json")
@@ -134,18 +134,18 @@ func TestCapabilitiesCommand_AutomationJSONKeepsStdoutMachineReadable(t *testing
 	require.Empty(t, stderr)
 }
 
-// Verifies `get resource --help` documents required id-based lookup usage.
+// Verifies `get resource --help` documents required ID-based lookup usage.
 func TestGetResourceHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "resource", "--help")
 
-	require.Contains(t, output, "Get a single resource by id")
+	require.Contains(t, output, "Get a single resource by ID")
 	require.Contains(t, output, "Requires --id")
 	require.Contains(t, output, "Tenant contract:")
 	require.Contains(t, output, "explicit --id resource targets are backend-authorized admin input")
 	require.Contains(t, output, "returned tenant metadata may differ from the selected tenant")
 	require.Contains(t, output, "c8volt get resource")
 	require.Contains(t, output, "--id")
-	require.Contains(t, output, "resource id to fetch")
+	require.Contains(t, output, "resource ID to fetch")
 	require.Contains(t, output, "--keys-only")
 }
 
@@ -213,7 +213,7 @@ func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 	require.Contains(t, output, "Tenant contract:")
 	require.Contains(t, output, "`--tenant` scopes list/latest and BPMN selector discovery")
 	require.Contains(t, output, "Explicit `--key` and XML key lookups are backend-authorized admin")
-	require.Contains(t, output, "./c8volt get pd --key <process-definition-key> --json")
+	require.Contains(t, output, "./c8volt get process-definition --key <process-definition-key> --json")
 }
 
 // Verifies get commands consume env-overridden oauth2 scopes when authenticating against the configured API.

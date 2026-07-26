@@ -71,25 +71,25 @@ var getProcessInstanceCmd = &cobra.Command{
 		"Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.\n\n" +
 		"Use variable-search flags to narrow list/search results natively on Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error for those flags. --var-exists requires every listed variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable scopeKey means the scope where the variable is directly defined.\n\n" +
 		"Use --has-user-tasks to fetch process instances by their owning user-task keys.\n\n" +
-		"Run `c8volt get pi --help` for the complete flag reference.",
-	Example: `  ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 5
-  ./c8volt get pi --key <process-instance-key>
-  ./c8volt get pi --state active --total
-  ./c8volt get pi --has-user-tasks <user-task-key>
-  ./c8volt get pi --incidents-only --with-incidents --limit 5
-  ./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5
-  ./c8volt get pi --var-exists payload,email --limit 5
-  ./c8volt get pi --var 'status="approved"' --limit 5
-  ./c8volt get pi --var 'status.$in=["approved","pending"]' --limit 5
-  ./c8volt get pi --var-like 'email=*@example.com,customerId=CUST-????' --limit 5
-  ./c8volt get pi --state active --with-vars --var-value-limit 120 --limit 5
-  ./c8volt get pi --key <process-instance-key> --with-incidents
-  ./c8volt get pi --key <process-instance-key> --with-vars
-  ./c8volt get pi --key <process-instance-key> --with-vars --var-value-limit 120
-  ./c8volt get pi --key <process-instance-key> --with-elements
-  ./c8volt get pi --key <process-instance-key> --with-elements --with-listeners
-  ./c8volt get pi --start-date-after 2026-05-01 --start-date-before 2026-05-31 --limit 5
-  ./c8volt get pi --key <process-instance-key> --key <another-process-instance-key>`,
+		"Run `c8volt get process-instance --help` for the complete flag reference.",
+	Example: `  ./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5
+  ./c8volt get process-instance --key <process-instance-key>
+  ./c8volt get process-instance --state active --total
+  ./c8volt get process-instance --has-user-tasks <user-task-key>
+  ./c8volt get process-instance --incidents-only --with-incidents --limit 5
+  ./c8volt get process-instance --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5
+  ./c8volt get process-instance --var-exists payload,email --limit 5
+  ./c8volt get process-instance --var 'status="approved"' --limit 5
+  ./c8volt get process-instance --var 'status.$in=["approved","pending"]' --limit 5
+  ./c8volt get process-instance --var-like 'email=*@example.com,customerId=CUST-????' --limit 5
+  ./c8volt get process-instance --state active --with-vars --var-value-limit 120 --limit 5
+  ./c8volt get process-instance --key <process-instance-key> --with-incidents
+  ./c8volt get process-instance --key <process-instance-key> --with-vars
+  ./c8volt get process-instance --key <process-instance-key> --with-vars --var-value-limit 120
+  ./c8volt get process-instance --key <process-instance-key> --with-elements
+  ./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners
+  ./c8volt get process-instance --start-date-after 2026-05-01 --start-date-before 2026-05-31 --limit 5
+  ./c8volt get process-instance --key <process-instance-key> --key <another-process-instance-key>`,
 	Aliases: []string{"process-instances", "pi", "pis"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)

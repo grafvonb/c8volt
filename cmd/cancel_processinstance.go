@@ -28,15 +28,15 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		"Search mode pages through matching process instances by default. --batch-size controls each discovery page request, --limit caps the selected process-instance scope across all pages, and --workers, --fail-fast, and --no-worker-limit bound independent planning or cancellation work. Verbose paging progress is written away from stdout; JSON, quiet, and automation output remain free of prompts unless confirmation is explicitly supplied.\n\n" +
 		"Use --dry-run to preview selected, in-scope, final-state, and partial-scope instances without cancelling.\n\n" +
 		"Use --auto-confirm for unattended destructive runs.",
-	Example: `  ./c8volt cancel pi --key <process-instance-key>
-  ./c8volt cancel pi --key <process-instance-key> --dry-run
-  ./c8volt cancel pi --key <process-instance-key> --force
-  ./c8volt cancel pi --state active --batch-size 250 --limit 5 --dry-run
-  ./c8volt cancel pi --state active --start-date-before 2026-05-31 --limit 5 --dry-run
-  ./c8volt cancel pi --state active --start-date-newer-days 30 --limit 5 --dry-run
-  ./c8volt cancel pi --bpmn-process-id <bpmn-process-id> --state active --limit 5 --auto-confirm
-  ./c8volt expect pi --key <process-instance-key> --state canceled
-  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm -`,
+	Example: `  ./c8volt cancel process-instance --key <process-instance-key>
+  ./c8volt cancel process-instance --key <process-instance-key> --dry-run
+  ./c8volt cancel process-instance --key <process-instance-key> --force
+  ./c8volt cancel process-instance --state active --batch-size 250 --limit 5 --dry-run
+  ./c8volt cancel process-instance --state active --start-date-before 2026-05-31 --limit 5 --dry-run
+  ./c8volt cancel process-instance --state active --start-date-newer-days 30 --limit 5 --dry-run
+  ./c8volt cancel process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5 --auto-confirm
+  ./c8volt expect process-instance --key <process-instance-key> --state canceled
+  ./c8volt get process-instance --key <process-instance-key> --keys-only | ./c8volt cancel process-instance --auto-confirm -`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)

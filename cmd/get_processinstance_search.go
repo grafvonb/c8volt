@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// searchProcessInstancesWithPaging runs the list/search path for `get pi`,
+// searchProcessInstancesWithPaging runs the list/search path for `get process-instance`,
 // applying local filters and --limit after each backend page. In interactive
 // one-line/key modes it can render pages as they arrive, while JSON and other
 // aggregate modes collect the full bounded result before rendering.

@@ -22,9 +22,9 @@ c8volt delete [flags]
 ### Examples
 
 ```
-  ./c8volt delete pi --key <process-instance-key> --force
-  ./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run
-  ./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
+  ./c8volt delete process-instance --key <process-instance-key> --force
+  ./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run
+  ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
 ```
 
 ### Options

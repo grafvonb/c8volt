@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// searchProcessInstancesTotal implements `get pi --total`. It uses exact
+// searchProcessInstancesTotal implements `get process-instance --total`. It uses exact
 // backend totals when they still describe the command's final output, and falls
 // back to page-by-page counting when client-side filters or lower-bound totals
 // make the reported metadata insufficient.

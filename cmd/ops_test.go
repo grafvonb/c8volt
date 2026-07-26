@@ -66,7 +66,7 @@ func TestOpsAnalyseHelpDocumentsGroupingCommand(t *testing.T) {
 		"Discover read-only operational analyses",
 		"inspection workflows that combine existing runtime resources",
 		"./c8volt ops analyse --help",
-		"./c8volt ops analyze slow-process-instances --help",
+		"./c8volt ops analyse slow-process-instances --help",
 	)
 
 	aliasOutput := executeRootForTest(t, "ops", "analyze", "--help")
@@ -78,7 +78,7 @@ func TestOpsAnalyseSlowProcessInstancesHelpDocumentsScaffold(t *testing.T) {
 	output := executeRootForTest(t, "ops", "analyse", "slow-process-instances", "--help")
 
 	assertHelpOutputContainsAll(t, output,
-		"Analyze slow process-instance timings",
+		"Analyse slow process-instance timings",
 		"The command is read-only.",
 		"--key strings",
 		"--bpmn-process-id string",
@@ -92,7 +92,7 @@ func TestOpsAnalyseSlowProcessInstancesHelpDocumentsScaffold(t *testing.T) {
 		"--dur-element-longer string",
 		"Duration thresholds use Go duration syntax",
 		"Calendar units such as 1d are not accepted",
-		"./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -",
+		"./c8volt get process-instance --state active --keys-only | ./c8volt ops analyse slow-process-instances -",
 	)
 	assertHelpOutputOmitsAll(t, output, "--duration-after", "--incidents-only")
 }

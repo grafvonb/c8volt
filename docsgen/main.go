@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/cmd"
+	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 )
 
@@ -54,6 +55,9 @@ func main() {
 			if err := doc.GenMarkdownTreeCustom(root, *out, prep, link); err != nil {
 				log.Fatal(err)
 			}
+			if err := syncCLICommandTree(root, filepath.Join(*out, "command-tree.md")); err != nil {
+				log.Fatal(err)
+			}
 			if err := syncDocsIndexFromReadme("README.md", "./docs/index.md"); err != nil {
 				log.Fatal(err)
 			}
@@ -74,11 +78,71 @@ func main() {
 
 func cliMarkdownPrelude(name string) string {
 	title := strings.ReplaceAll(name, "_", " ")
+	if name == "c8volt" {
+		return fmt.Sprintf(`---
+title: %q
+permalink: /cli/c8volt/
+parent: "CLI Reference"
+nav_order: 1
+nav_exclude: false
+---
+
+`, title)
+	}
+
 	prelude := fmt.Sprintf("---\ntitle: %q\nnav_exclude: true\n---\n\n", title)
 	if strings.HasPrefix(name, "c8volt_ops") {
 		return prelude
 	}
 	return prelude + "[CLI Reference]({{ \"/cli/\" | relative_url }})\n"
+}
+
+func syncCLICommandTree(root *cobra.Command, dst string) error {
+	body := strings.Builder{}
+	body.WriteString(`---
+title: "Command Tree"
+permalink: /cli/command-tree/
+parent: "CLI Reference"
+nav_order: 3
+nav_exclude: false
+has_toc: true
+---
+
+# CLI Command Tree
+
+This generated tree lists the root reference plus the 55 available c8volt commands. Each entry links to the generated reference page for the same command metadata used by the binary.
+
+`)
+	body.WriteString(commandTreeMarkdown(root, 0))
+
+	if err := os.WriteFile(dst, []byte(body.String()), 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", dst, err)
+	}
+	return nil
+}
+
+func commandTreeMarkdown(command *cobra.Command, depth int) string {
+	if depth > 0 && !command.IsAvailableCommand() {
+		return ""
+	}
+
+	indent := strings.Repeat("  ", depth)
+	line := fmt.Sprintf("%s- [`%s`](./%s)", indent, command.CommandPath(), commandReferenceName(command))
+	if command.Short != "" {
+		line += " - " + command.Short
+	}
+	line += "\n"
+
+	children := strings.Builder{}
+	for _, child := range command.Commands() {
+		children.WriteString(commandTreeMarkdown(child, depth+1))
+	}
+
+	return line + children.String()
+}
+
+func commandReferenceName(command *cobra.Command) string {
+	return docsLinkName(strings.ReplaceAll(command.CommandPath(), " ", "_") + ".md")
 }
 
 func syncDocsIndexFromReadme(src, dst string) error {
@@ -122,6 +186,7 @@ func rewriteDocsIndexLinks(body string) string {
 	body = strings.ReplaceAll(body, "](./docs/cli/index.md)", "](./cli/)")
 	body = strings.ReplaceAll(body, "](docs/ops/index.md)", "](./ops/)")
 	body = strings.ReplaceAll(body, "](./docs/ops/index.md)", "](./ops/)")
+	body = cliReferenceLinkTargetPattern.ReplaceAllString(body, "](./cli/$2)")
 	body = opsPlaybookLinkTargetPattern.ReplaceAllString(body, "](./ops/$2/)")
 
 	body = rewriteGovernanceLinks(body)
@@ -131,9 +196,10 @@ func rewriteDocsIndexLinks(body string) string {
 
 var (
 	docsIndexExcludePattern       = regexp.MustCompile(`(?s)<!--\s*docs-index-exclude-start\s*-->.*?<!--\s*docs-index-exclude-end\s*-->\s*`)
-	opsPlaybookLinkTargetPattern = regexp.MustCompile(`\]\((\./)?docs/ops/([A-Za-z0-9_.-]+)\.md\)`)
-	governanceLinkTargetPattern = regexp.MustCompile(`\]\((\./)?([A-Za-z0-9_.-]+)\)`)
-	governanceDocs              = map[string]string{
+	cliReferenceLinkTargetPattern = regexp.MustCompile(`\]\((\./)?docs/cli/([A-Za-z0-9_.-]+)\.md\)`)
+	opsPlaybookLinkTargetPattern  = regexp.MustCompile(`\]\((\./)?docs/ops/([A-Za-z0-9_.-]+)\.md\)`)
+	governanceLinkTargetPattern   = regexp.MustCompile(`\]\((\./)?([A-Za-z0-9_.-]+)\)`)
+	governanceDocs                = map[string]string{
 		"code_of_conduct.md": "CODE_OF_CONDUCT.md",
 		"contributing.md":    "CONTRIBUTING.md",
 		"copyright":          "COPYRIGHT",

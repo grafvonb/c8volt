@@ -261,6 +261,28 @@ figure.highlight :not(pre) > code {
   color: #9f5a2d;
 }
 
+.highlight .c8v-bin {
+  color: #9aacbd;
+}
+
+.highlight .c8v-command {
+  color: #c07842;
+  font-weight: 700;
+}
+
+.highlight .c8v-flag {
+  color: #8fb5d9;
+}
+
+.highlight .c8v-placeholder {
+  color: #d2dae5;
+  font-style: italic;
+}
+
+.highlight .c8v-muted {
+  color: #7f8c9d;
+}
+
 .highlight .l,
 .highlight .m,
 .highlight .s,
@@ -310,6 +332,28 @@ figure.highlight :not(pre) > code {
   color: #a8b5c4;
 }
 
+.main-content a {
+  color: #a9bdd1;
+  text-decoration-color: #596b7d;
+  text-underline-offset: 0.14em;
+}
+
+.main-content a:hover {
+  color: #c8d8e7;
+  text-decoration-color: #c8d8e7;
+}
+
+.main-content table a {
+  color: #98aabc;
+  font-weight: 500;
+  text-decoration-color: #465666;
+}
+
+.main-content table a:hover {
+  color: #b8c9da;
+  text-decoration-color: #7f93a7;
+}
+
 .site-nav .nav-list-link:hover,
 .site-nav .nav-list-link.active {
   background: #18212b;
@@ -348,6 +392,12 @@ figure.highlight :not(pre) > code {
 .main-content th,
 .main-content td {
   border-color: #26313d;
+}
+
+.main-content td > code,
+.main-content td :not(pre) > code {
+  font-size: 0.95em;
+  line-height: 1.35;
 }
 
 .main-content th {

@@ -31,12 +31,12 @@ c8volt get element [flags]
 ### Examples
 
 ```
-  ./c8volt get ei -k <element-instance-key>
-  ./c8volt get ei -k <element-instance-key> --with-listeners
-  ./c8volt get ei --pi-key <process-instance-key> --limit 10
-  ./c8volt get ei --pi-key <process-instance-key> --with-listeners
+  ./c8volt get element --key <element-instance-key>
+  ./c8volt get element --key <element-instance-key> --with-listeners
+  ./c8volt get element --pi-key <process-instance-key> --limit 10
+  ./c8volt get element --pi-key <process-instance-key> --with-listeners
   ./c8volt get element --pi-key <process-instance-key> --total
-  ./c8volt --json get ei --pi-key <process-instance-key> --limit 5
+  ./c8volt --json get element --pi-key <process-instance-key> --limit 5
   ./c8volt --json get element --key <element-instance-key> --with-listeners
 ```
 

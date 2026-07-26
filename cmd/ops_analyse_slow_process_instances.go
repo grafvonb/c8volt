@@ -50,7 +50,7 @@ var opsAnalyseCmd = &cobra.Command{
 	Long: "Discover read-only operational analyses.\n\n" +
 		"The analyse command family groups inspection workflows that combine existing runtime resources without mutating cluster state.",
 	Example: `  ./c8volt ops analyse --help
-  ./c8volt ops analyze slow-process-instances --help`,
+  ./c8volt ops analyse slow-process-instances --help`,
 	Aliases: []string{"analyze"},
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -60,8 +60,8 @@ var opsAnalyseCmd = &cobra.Command{
 
 var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 	Use:   "slow-process-instances [-]",
-	Short: "Analyze slow process-instance timings",
-	Long: "Analyze slow process-instance timings.\n\n" +
+	Short: "Analyse slow process-instance timings",
+	Long: "Analyse slow process-instance timings.\n\n" +
 		"The command is read-only. Select process instances by explicit --key values or by exactly one process-definition selector, then inspect process and runtime element timing without changing cluster state.\n\n" +
 		"Search mode pages through discovered process instances by default. --batch-size controls each discovery page request, --limit caps the frozen analysis scope, and explicit keys bypass discovery paging. JSON and keys-only output stay free of progress text.\n\n" +
 		"Use --dur-longer to keep only process-instance roots whose whole duration is above a threshold. Detail filters such as --element-id, --type, --element-state, and --dur-element-longer keep only process instances with matching element or transition detail rows, then show those matching rows under the root.\n\n" +
@@ -69,14 +69,13 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 		"Use --with-listeners to include runtime listener jobs under matching element timeline rows.\n\n" +
 		"Duration thresholds use Go duration syntax such as 500ms, 30s, 5m, 1h, 1h30m, or 24h. Calendar units such as 1d are not accepted.\n\n" +
 		"JSON output exposes stable duration, comparison, and timeline fields. Keys-only output prints selected process-instance keys in result order, one per line.",
-	Example: `  ./c8volt ops analyse slow-process-instances --key 2251799813685249
-  ./c8volt ops analyze slow-process-instances --bpmn-process-id OrderProcess --state all --limit 20
-  ./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 5m
-  ./c8volt ops analyse slow-process-instances --pd-key 2251799813687001 --dur-element-longer 30s
-  ./c8volt ops analyse slow-process-instances --key 2251799813685249 --with-full-timeline
-  ./c8volt ops analyse slow-process-instances --key 2251799813685249 --with-listeners
-  ./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 1h30m --dur-element-longer 30s
-  ./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -`,
+	Example: `  ./c8volt ops analyse slow-process-instances --key <process-instance-key>
+  ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --state active --dur-longer 5m
+  ./c8volt ops analyse slow-process-instances --pd-key <process-definition-key> --dur-element-longer 30s
+  ./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-full-timeline
+  ./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-listeners
+  ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --element-id <element-id> --dur-element-longer 30s
+  ./c8volt get process-instance --state active --keys-only | ./c8volt ops analyse slow-process-instances -`,
 	Aliases: []string{"slow-pi", "spi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		if err := validateOpsSlowProcessAnalysisCommandArgs(cmd, args); err != nil {
@@ -127,7 +126,7 @@ func init() {
 	useInvalidInputFlagErrors(opsAnalyseSlowProcessInstancesCmd)
 
 	fs := opsAnalyseSlowProcessInstancesCmd.Flags()
-	fs.StringSliceVarP(&flagOpsAnalyseSlowProcessInstanceKeys, "key", "k", nil, "process-instance key(s) to analyze; repeat or combine with stdin '-'")
+	fs.StringSliceVarP(&flagOpsAnalyseSlowProcessInstanceKeys, "key", "k", nil, "process-instance key(s) to analyse; repeat or combine with stdin '-'")
 	fs.StringVarP(&flagOpsAnalyseSlowProcessInstanceBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to discover process instances")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstancePDKey, "pd-key", "", "process definition key to discover process instances")
 	fs.StringVarP(&flagOpsAnalyseSlowProcessInstanceState, "state", "s", "all", "state to filter discovered process instances: all, active, completed, canceled, terminated")

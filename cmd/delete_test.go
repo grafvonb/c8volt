@@ -889,7 +889,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"Delete process instances or process definitions",
 		"--auto-confirm",
 		"show verification examples",
-		"./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
+		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 	require.Contains(t, output, "process-definition")
@@ -902,8 +902,8 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"process instance key(s) to delete; repeat or combine with stdin '-'",
 		"number of process instances to inspect per discovery page; does not cap total frozen scope",
 		"maximum number of matching process instances to freeze for deletion across all pages; omit to continue through all matches",
-		"./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run",
-		"./c8volt delete pi --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run",
+		"./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run",
+		"./c8volt delete process-instance --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run",
 	}, []string{"--count"})
 	require.Contains(t, output, "--force")
 	require.Contains(t, output, "--batch-size int32")
@@ -916,10 +916,10 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"associated history",
 		"c8volt delete process-instance --bpmn-process-id <bpmn-process-id>",
 		"Use --dry-run to preview process-definition delete impact without submitting deletion or cancellation requests",
-		"./c8volt delete pd --key <process-definition-key> --dry-run",
-		"./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --dry-run",
+		"./c8volt delete process-definition --key <process-definition-key> --dry-run",
+		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run",
 		"Use --auto-confirm for unattended destructive runs",
-		"./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
+		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
 	}, nil)
 	require.NotContains(t, output, "--allow-inconsistent")
 }
@@ -1454,7 +1454,7 @@ func TestDeleteProcessInstancesWithPlan_SubmitsResolvedRootsOnlyForKeyedHierarch
 }
 
 // TestDeleteProcessInstancesWithPlan_RegressionForceNoWaitAndWorkerControls
-// protects delete pi hierarchy planning and execution controls while incident
+// protects delete process-instance hierarchy planning and execution controls while incident
 // purge delegates to this path.
 func TestDeleteProcessInstancesWithPlan_RegressionForceNoWaitAndWorkerControls(t *testing.T) {
 	resetProcessInstanceCommandGlobals()

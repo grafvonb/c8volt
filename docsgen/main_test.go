@@ -64,6 +64,8 @@ func TestRewriteDocsIndexLinks(t *testing.T) {
 		`Screencast: ![demo](docs/assets/screencasts/fast-start.gif)`,
 		`Asset: <img src="./docs/assets/example.png" />`,
 		`CLI: [reference](./docs/cli/index.md)`,
+		`CLI page: [get process-instance](docs/cli/c8volt_get_process-instance.md)`,
+		`CLI page with dot: [get element](./docs/cli/c8volt_get_element.md)`,
 		`Ops index: [playbooks](docs/ops/index.md)`,
 		`Ops page: [Execute Smoke Test](docs/ops/execute-smoke-test.md)`,
 		`Ops page with dot: [Execute Retention Policy](./docs/ops/execute-retention-policy.md)`,
@@ -79,6 +81,8 @@ func TestRewriteDocsIndexLinks(t *testing.T) {
 		`Screencast: ![demo](./assets/screencasts/fast-start.gif)`,
 		`Asset: <img src="./assets/example.png" />`,
 		`CLI: [reference](./cli/)`,
+		`CLI page: [get process-instance](./cli/c8volt_get_process-instance)`,
+		`CLI page with dot: [get element](./cli/c8volt_get_element)`,
 		`Ops index: [playbooks](./ops/)`,
 		`Ops page: [Execute Smoke Test](./ops/execute-smoke-test/)`,
 		`Ops page with dot: [Execute Retention Policy](./ops/execute-retention-policy/)`,
@@ -116,6 +120,19 @@ func TestStripDocsIndexExcludedBlocks(t *testing.T) {
 }
 
 func TestCLIMarkdownPreludeOmitsOpsBreadcrumb(t *testing.T) {
+	rootPrelude := cliMarkdownPrelude("c8volt")
+	for _, want := range []string{
+		`title: "c8volt"`,
+		"permalink: /cli/c8volt/",
+		`parent: "CLI Reference"`,
+		"nav_order: 1",
+		"nav_exclude: false",
+	} {
+		if !strings.Contains(rootPrelude, want) {
+			t.Fatalf("expected root CLI page prelude to contain %q, got %q", want, rootPrelude)
+		}
+	}
+
 	opsPrelude := cliMarkdownPrelude("c8volt_ops_repair_incident")
 	if strings.Contains(opsPrelude, "CLI Reference") {
 		t.Fatalf("expected ops CLI page prelude to omit CLI reference breadcrumb, got %q", opsPrelude)
@@ -127,6 +144,30 @@ func TestCLIMarkdownPreludeOmitsOpsBreadcrumb(t *testing.T) {
 	regularPrelude := cliMarkdownPrelude("c8volt_get_process-instance")
 	if !strings.Contains(regularPrelude, "CLI Reference") {
 		t.Fatalf("expected non-ops CLI page prelude to keep CLI reference breadcrumb, got %q", regularPrelude)
+	}
+}
+
+func TestCLICommandTreeDocumentsGeneratedCommandSurface(t *testing.T) {
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	tree := commandTreeMarkdown(root, 0)
+
+	for _, want := range []string{
+		"- [`c8volt`](./c8volt)",
+		"  - [`c8volt get`](./c8volt_get)",
+		"    - [`c8volt get process-instance`](./c8volt_get_process-instance)",
+		"    - [`c8volt get element`](./c8volt_get_element)",
+		"    - [`c8volt ops analyse`](./c8volt_ops_analyse)",
+		"      - [`c8volt ops analyse slow-process-instances`](./c8volt_ops_analyse_slow-process-instances)",
+	} {
+		if !strings.Contains(tree, want) {
+			t.Fatalf("expected command tree to contain %q, got:\n%s", want, tree)
+		}
+	}
+
+	if got := strings.Count(tree, "- [`") - 1; got != 55 {
+		t.Fatalf("expected command tree to contain 55 non-root commands, got %d", got)
 	}
 }
 
@@ -170,9 +211,8 @@ func TestCLIDebtRefactorUserFacingDocsDocumentPagingContracts(t *testing.T) {
 			name: "README",
 			path: filepath.Join("..", "README.md"),
 			fragments: []string{
-				"Discovery pages through the full matching scope by default; `--batch-size` only tunes page size, while `--limit` is the explicit way to cap the frozen scope.",
-				"Use `--batch-size` or `-n` to control how many process instances each backend page may fetch.",
-				"Use `--limit` or `-l` to cap the total number of matched process instances returned or processed across all pages.",
+				"Each section keeps one basic command and up to two high-value variants.",
+				"Generated reference: [get process-instance](docs/cli/c8volt_get_process-instance.md).",
 				"machine-readable command contract is available from `c8volt capabilities --json`",
 			},
 		},
@@ -180,7 +220,7 @@ func TestCLIDebtRefactorUserFacingDocsDocumentPagingContracts(t *testing.T) {
 			name: "use cases",
 			path: filepath.Join("..", "docs", "use-cases.md"),
 			fragments: []string{
-				"Implemented ops workflows page discovery through the full matching scope by default.",
+				"Implemented ops workflows page through the full matching scope by default.",
 				"`--batch-size` controls discovery page size, `--limit` freezes a smaller scope, and `--automation` or `--auto-confirm` makes unattended execution explicit.",
 			},
 		},
@@ -236,7 +276,7 @@ func TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup(t *testing.T) {
 	for _, want := range []string{
 		"--has-user-tasks strings",
 		"user task key(s) whose owning process instances should be fetched",
-		"./c8volt get pi --has-user-tasks \u003cuser-task-key\u003e",
+		"./c8volt get process-instance --has-user-tasks \u003cuser-task-key\u003e",
 		"Use --has-user-tasks to fetch process instances by their owning user-task keys.",
 	} {
 		if !strings.Contains(got, want) {
@@ -289,10 +329,10 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 	for _, want := range []string{
 		"List or fetch incidents",
 		"Get Camunda incidents by key or by search criteria.",
-		"./c8volt get inc --key <incident-key> --key <another-incident-key>",
+		"./c8volt get incident --key <incident-key> --key <another-incident-key>",
 		"./c8volt get incident --state resolved --error-type io_mapping_error",
 		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only",
-		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel pi --dry-run -",
+		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel process-instance --dry-run -",
 		"--error-message string",
 		"case-insensitive incident error message substring filter for search",
 		"--pi-keys-only",
@@ -339,7 +379,7 @@ func TestGeneratedGetElementDocsDocumentLookupSearchAndOutput(t *testing.T) {
 	getDoc := readGeneratedDocForTest(t, out, "c8volt_get.md")
 	for _, want := range []string{
 		"Inspect cluster, process, job, element, incident, tenant, and resource state without changing it.",
-		"./c8volt get ei --pi-key <process-instance-key> --limit 10",
+		"./c8volt get element --pi-key <process-instance-key> --limit 10",
 		"[c8volt get element](c8volt_get_element)",
 	} {
 		if !strings.Contains(getDoc, want) {
@@ -356,10 +396,10 @@ func TestGeneratedGetElementDocsDocumentLookupSearchAndOutput(t *testing.T) {
 		"Compact human rows include dur:<duration>",
 		"Use --with-listeners to include runtime listener jobs under matching element rows.",
 		"Use --json for the stable element payload and --keys-only when piping element instance keys.",
-		"./c8volt get ei -k <element-instance-key>",
-		"./c8volt get ei -k <element-instance-key> --with-listeners",
-		"./c8volt get ei --pi-key <process-instance-key> --limit 10",
-		"./c8volt get ei --pi-key <process-instance-key> --with-listeners",
+		"./c8volt get element --key <element-instance-key>",
+		"./c8volt get element --key <element-instance-key> --with-listeners",
+		"./c8volt get element --pi-key <process-instance-key> --limit 10",
+		"./c8volt get element --pi-key <process-instance-key> --with-listeners",
 		"./c8volt get element --pi-key <process-instance-key> --total",
 		"./c8volt --json get element --key <element-instance-key> --with-listeners",
 		"--element-id string",
@@ -515,7 +555,7 @@ func TestGeneratedRunProcessInstanceDocsDocumentPipeline(t *testing.T) {
 	runDoc := readGeneratedDocForTest(t, out, "c8volt_run.md")
 	for _, want := range []string{
 		"waits until created instances are observable",
-		"./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -",
+		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -",
 		"[c8volt run process-instance](c8volt_run_process-instance)",
 	} {
 		if !strings.Contains(runDoc, want) {
@@ -527,8 +567,8 @@ func TestGeneratedRunProcessInstanceDocsDocumentPipeline(t *testing.T) {
 	for _, want := range []string{
 		"Start process instances and confirm creation",
 		"Created instances are confirmed after Camunda observes ACTIVE, COMPLETED, CANCELED, or TERMINATED.",
-		"./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -",
-		"./c8volt run pi -b <long-running-bpmn-process-id> --keys-only | ./c8volt expect pi --state active -",
+		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -",
+		"./c8volt run process-instance --bpmn-process-id <long-running-bpmn-process-id> --keys-only | ./c8volt expect process-instance --state active -",
 	} {
 		if !strings.Contains(processInstanceDoc, want) {
 			t.Fatalf("expected generated run process-instance docs to contain %q, got %q", want, processInstanceDoc)
@@ -569,7 +609,7 @@ func TestGeneratedResolveDocsDocumentResolveWorkflows(t *testing.T) {
 	for _, want := range []string{
 		"Resolve incidents by key.",
 		"Each unique incident key is submitted for resolution and reported independently.",
-		"./c8volt resolve inc --key <incident-key> --key <another-incident-key>",
+		"./c8volt resolve incident --key <incident-key> --key <another-incident-key>",
 		"--dry-run",
 		"preview incident resolutions without submitting mutation",
 		"--no-wait",
@@ -584,7 +624,7 @@ func TestGeneratedResolveDocsDocumentResolveWorkflows(t *testing.T) {
 	for _, want := range []string{
 		"Resolve process-instance incidents by key.",
 		"discovers active incidents at command start",
-		"./c8volt resolve pi --key <process-instance-key> --key <another-process-instance-key>",
+		"./c8volt resolve process-instance --key <process-instance-key> --key <another-process-instance-key>",
 		"--dry-run",
 		"preview process-instance incident resolutions without submitting mutation",
 		"--no-wait",
@@ -700,13 +740,14 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 
 	analyseDoc := readGeneratedDocForTest(t, out, "c8volt_ops_analyse_slow-process-instances.md")
 	for _, want := range []string{
-		"Analyze slow process-instance timings",
-		"./c8volt ops analyse slow-process-instances --key 2251799813685249",
-		"./c8volt ops analyze slow-process-instances --bpmn-process-id OrderProcess --state all --limit 20",
-		"./c8volt ops analyse slow-process-instances --key 2251799813685249 --with-full-timeline",
-		"./c8volt ops analyse slow-process-instances --key 2251799813685249 --with-listeners",
-		"./c8volt ops analyse spi --bpmn-process-id OrderProcess --dur-longer 1h30m --dur-element-longer 30s",
-		"./c8volt get pi --state active --keys-only | ./c8volt ops analyse slow-process-instances -",
+		"Analyse slow process-instance timings",
+		"./c8volt ops analyse slow-process-instances --key <process-instance-key>",
+		"./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --state active --dur-longer 5m",
+		"./c8volt ops analyse slow-process-instances --pd-key <process-definition-key> --dur-element-longer 30s",
+		"./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-full-timeline",
+		"./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-listeners",
+		"./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --element-id <element-id> --dur-element-longer 30s",
+		"./c8volt get process-instance --state active --keys-only | ./c8volt ops analyse slow-process-instances -",
 		"Default output shows compact slowest element contributors",
 		"Detail filters such as --element-id, --type, --element-state, and --dur-element-longer keep only process instances with matching element or transition detail rows",
 		"Use --with-full-timeline to inspect complete chronological element and transition detail",
@@ -919,15 +960,15 @@ func TestGeneratedGetProcessInstanceDocsDocumentVariableSearch(t *testing.T) {
 		"--var accepts name=value equality shorthand plus advanced name.$operator=value clauses",
 		"--var-like uses native wildcard patterns",
 		"Variable scopeKey means the scope where the variable is directly defined.",
-		"./c8volt get pi --var-exists payload,email --limit 5",
-		"./c8volt get pi --var 'status.$in=[\"approved\",\"pending\"]' --limit 5",
+		"./c8volt get process-instance --var-exists payload,email --limit 5",
+		"./c8volt get process-instance --var 'status.$in=[\"approved\",\"pending\"]' --limit 5",
 		"--var-exists stringArray",
 		"--var-like stringArray",
 		"Use --with-elements to include runtime element instances under matching process-instance rows.",
 		"Nested human element rows include dur:<duration>",
 		"Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.",
-		"./c8volt get pi --key <process-instance-key> --with-elements",
-		"./c8volt get pi --key <process-instance-key> --with-elements --with-listeners",
+		"./c8volt get process-instance --key <process-instance-key> --with-elements",
+		"./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners",
 		"--with-elements",
 		"include runtime element instances for keyed or list/search process-instance output",
 		"--with-listeners",
@@ -960,8 +1001,8 @@ func TestGeneratedWalkProcessInstanceDocsDocumentListeners(t *testing.T) {
 		"Inspect the parent/child tree of process instances.",
 		"Add --with-incidents, --with-vars, and/or --with-elements",
 		"Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.",
-		"./c8volt walk pi --key <process-instance-key> --with-elements",
-		"./c8volt walk pi --key <process-instance-key> --with-elements --with-listeners",
+		"./c8volt walk process-instance --key <process-instance-key> --with-elements",
+		"./c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners",
 		"--with-elements",
 		"show runtime element instances for keyed process-instance walks",
 		"--with-listeners",

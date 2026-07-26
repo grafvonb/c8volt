@@ -23,10 +23,10 @@ c8volt get [flags]
 
 ```
   ./c8volt get cluster topology
-  ./c8volt get pd --latest
-  ./c8volt get pi --state active --limit 5
+  ./c8volt get process-definition --latest
+  ./c8volt get process-instance --state active --limit 5
   ./c8volt get job --key <job-key>
-  ./c8volt get ei --pi-key <process-instance-key> --limit 10
+  ./c8volt get element --pi-key <process-instance-key> --limit 10
   ./c8volt get incident --key <incident-key>
   ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
   ./c8volt get tenant
@@ -66,6 +66,6 @@ c8volt get [flags]
 * [c8volt get job](c8volt_get_job)	 - Inspect or search jobs
 * [c8volt get process-definition](c8volt_get_process-definition)	 - List or fetch deployed process definitions
 * [c8volt get process-instance](c8volt_get_process-instance)	 - List or fetch process instances
-* [c8volt get resource](c8volt_get_resource)	 - Get a resource by id
+* [c8volt get resource](c8volt_get_resource)	 - Get a resource by ID
 * [c8volt get tenant](c8volt_get_tenant)	 - List tenants
 

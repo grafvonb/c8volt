@@ -18,7 +18,7 @@ When running by BPMN process ID, c8volt validates all requested process definiti
 
 By default c8volt waits until created instances are observable. Created instances are confirmed after Camunda observes ACTIVE, COMPLETED, CANCELED, or TERMINATED.
 
-Use --keys-only to pipe created process instance keys into strict lifecycle checks with expect pi.
+Use --keys-only to pipe created process instance keys into strict lifecycle checks with expect process-instance.
 
 ```
 c8volt run process-instance [flags]
@@ -27,12 +27,12 @@ c8volt run process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt run pi -b <bpmn-process-id>
-  ./c8volt run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
-  ./c8volt run pi -b <bpmn-process-id> -n 3 --workers 2
-  ./c8volt --json run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
-  ./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -
-  ./c8volt run pi -b <long-running-bpmn-process-id> --keys-only | ./c8volt expect pi --state active -
+  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
+  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'
+  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2
+  ./c8volt --json run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'
+  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -
+  ./c8volt run process-instance --bpmn-process-id <long-running-bpmn-process-id> --keys-only | ./c8volt expect process-instance --state active -
 ```
 
 ### Options

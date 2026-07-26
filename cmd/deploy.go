@@ -19,10 +19,10 @@ var deployCmd = &cobra.Command{
 	Short: "Deploy BPMN resources to Camunda",
 	Long: `Deploy BPMN resources to Camunda.
 
-Use ` + "`deploy pd`" + ` for local BPMN files or stdin. Use ` + "`embed deploy`" + ` for bundled
+Use ` + "`deploy process-definition`" + ` for local BPMN files or stdin. Use ` + "`embed deploy`" + ` for bundled
 fixtures.`,
 	Example: `  ./c8volt embed export --file processdefinitions/<embedded-process>.bpmn --out ./fixtures
-  ./c8volt deploy pd --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run
+  ./c8volt deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run
   ./c8volt embed deploy --all --run`,
 	Aliases: []string{"dep"},
 	RunE: func(cmd *cobra.Command, args []string) error {

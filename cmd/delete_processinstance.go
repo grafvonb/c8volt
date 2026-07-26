@@ -29,12 +29,12 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		"Search mode pages through matching process instances by default and freezes every selected page-level delete plan before one confirmation and mutation. --batch-size controls each discovery page request, --limit caps the frozen delete scope across all pages, and --workers, --fail-fast, and --no-worker-limit bound independent planning, cancellation, or deletion work. Verbose paging progress is written away from stdout; JSON, quiet, and automation output remain free of prompts unless confirmation is explicitly supplied.\n\n" +
 		"Use --dry-run to preview selected, in-scope, final-state, non-final, and partial-scope instances without deleting or cancelling.\n\n" +
 		"Use --auto-confirm for unattended destructive runs.",
-	Example: `  ./c8volt delete pi --key <process-instance-key> --force
-  ./c8volt delete pi --key <process-instance-key> --dry-run
-  ./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run
-  ./c8volt delete pi --state terminated --end-date-after 2026-05-01 --end-date-before 2026-05-31 --limit 5 --dry-run
-  ./c8volt delete pi --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run
-  ./c8volt expect pi --key <process-instance-key> --state absent`,
+	Example: `  ./c8volt delete process-instance --key <process-instance-key> --force
+  ./c8volt delete process-instance --key <process-instance-key> --dry-run
+  ./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run
+  ./c8volt delete process-instance --state terminated --end-date-after 2026-05-01 --end-date-before 2026-05-31 --limit 5 --dry-run
+  ./c8volt delete process-instance --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run
+  ./c8volt expect process-instance --key <process-instance-key> --state absent`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)

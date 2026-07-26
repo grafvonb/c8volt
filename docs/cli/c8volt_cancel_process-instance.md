@@ -31,15 +31,15 @@ c8volt cancel process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt cancel pi --key <process-instance-key>
-  ./c8volt cancel pi --key <process-instance-key> --dry-run
-  ./c8volt cancel pi --key <process-instance-key> --force
-  ./c8volt cancel pi --state active --batch-size 250 --limit 5 --dry-run
-  ./c8volt cancel pi --state active --start-date-before 2026-05-31 --limit 5 --dry-run
-  ./c8volt cancel pi --state active --start-date-newer-days 30 --limit 5 --dry-run
-  ./c8volt cancel pi --bpmn-process-id <bpmn-process-id> --state active --limit 5 --auto-confirm
-  ./c8volt expect pi --key <process-instance-key> --state canceled
-  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm -
+  ./c8volt cancel process-instance --key <process-instance-key>
+  ./c8volt cancel process-instance --key <process-instance-key> --dry-run
+  ./c8volt cancel process-instance --key <process-instance-key> --force
+  ./c8volt cancel process-instance --state active --batch-size 250 --limit 5 --dry-run
+  ./c8volt cancel process-instance --state active --start-date-before 2026-05-31 --limit 5 --dry-run
+  ./c8volt cancel process-instance --state active --start-date-newer-days 30 --limit 5 --dry-run
+  ./c8volt cancel process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5 --auto-confirm
+  ./c8volt expect process-instance --key <process-instance-key> --state canceled
+  ./c8volt get process-instance --key <process-instance-key> --keys-only | ./c8volt cancel process-instance --auto-confirm -
 ```
 
 ### Options

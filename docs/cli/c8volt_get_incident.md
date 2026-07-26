@@ -16,7 +16,7 @@ The command accepts repeated --key values or newline-separated keys from stdin w
 
 When no keys are supplied, incidents are searched by state, error type, error message, process context, element context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions. --batch-size controls each backend page request, --limit caps total returned incidents across all pages, and --total returns only the exact matching count. Verbose paging progress is written away from stdout; JSON, keys-only, pi-keys-only, quiet, and automation output remain free of prompts and progress text.
 
-When --bpmn-process-id is supplied in search mode, the BPMN process definition selector is validated before incident totals, key-only output, process-instance-key output, or paging. Missing or invisible definitions fail explicitly; --json, --automation, --keys-only, --pi-keys-only, and non-TTY runs never prompt for recovery output.
+When --bpmn-process-id is supplied in search mode, the BPMN process definition selector is validated before incident totals, keys-only output, process-instance-key output, or paging. Missing or invisible definitions fail explicitly; --json, --automation, --keys-only, --pi-keys-only, and non-TTY runs never prompt for recovery output.
 
 Use --json for the stable incident payload, --keys-only for incident keys, --pi-keys-only for process instance keys, --error-message-limit to shorten long error messages, or --with-no-error-message to omit them.
 
@@ -28,13 +28,13 @@ c8volt get incident [flags]
 
 ```
   ./c8volt get incident --key <incident-key>
-  ./c8volt get inc --key <incident-key> --key <another-incident-key>
+  ./c8volt get incident --key <incident-key> --key <another-incident-key>
   printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt get incident -
-  ./c8volt get incident --state active --keys-only | ./c8volt get inc -
+  ./c8volt get incident --state active --keys-only | ./c8volt get incident -
   ./c8volt get incident --state active --limit 5
   ./c8volt get incident --state resolved --error-type io_mapping_error --limit 5
   ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
-  ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel pi --dry-run -
+  ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel process-instance --dry-run -
   ./c8volt get incident --error-message "intentional" --limit 5
   ./c8volt get incident --creation-time-after 2026-05-01T00:00:00Z --creation-time-before 2026-05-31T00:00:00Z --limit 5
   ./c8volt get incident --pi-key <process-instance-key> --element-id <element-id>

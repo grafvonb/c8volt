@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// searchOrphanProcessInstancesWithSharedDiscovery keeps `get pi
+// searchOrphanProcessInstancesWithSharedDiscovery keeps `get process-instance
 // --orphan-children-only` on the same orphan discovery primitive used by ops
 // purge workflows. This avoids two subtly different meanings for --limit.
 func searchOrphanProcessInstancesWithSharedDiscovery(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (process.ProcessInstances, bool, error) {

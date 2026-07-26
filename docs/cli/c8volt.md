@@ -1,9 +1,11 @@
 ---
 title: "c8volt"
-nav_exclude: true
+permalink: /cli/c8volt/
+parent: "CLI Reference"
+nav_order: 1
+nav_exclude: false
 ---
 
-[CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt
 
 Operate Camunda 8 workflows from the command line
@@ -29,7 +31,7 @@ c8volt [flags]
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt get cluster topology
   ./c8volt embed deploy --all --run
-  ./c8volt run pi -b <bpmn-process-id>
+  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
   ./c8volt capabilities --json
   ./c8volt get --help
 ```
