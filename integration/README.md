@@ -82,6 +82,7 @@ go test ./integration/cli -count=1
 Family targets are available through `make`:
 
 ```sh
+make integration-test IT_GO_TEST_FLAGS=-v
 make integration-cli-get
 make integration-cli-walk
 make integration-cli-update
@@ -101,6 +102,7 @@ their own data in clean or dirty disposable clusters, write separate
 The currently implemented volume targets are:
 
 ```sh
+make integration-test-volume IT_GO_TEST_FLAGS=-v IT_VOLUME_TIMEOUT=90m
 make integration-cli-get-volume IT_GO_TEST_FLAGS=-v
 make integration-cli-walk-volume IT_GO_TEST_FLAGS=-v
 make integration-cli-update-volume IT_GO_TEST_FLAGS=-v
@@ -123,6 +125,7 @@ The target names are reserved first so scripts can depend on the stable entry
 points while each slice is implemented:
 
 ```sh
+make integration-test-real-state IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
 make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v
 make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v
 make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v
@@ -130,6 +133,12 @@ make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v
 make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v
 make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
 make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
+```
+
+To run every baseline, volume, and real-state integration slice in sequence:
+
+```sh
+make integration-test-all IT_GO_TEST_FLAGS=-v IT_VOLUME_TIMEOUT=90m IT_REAL_STATE_TIMEOUT=90m
 ```
 
 The gaps target is non-destructive and validates that `gaps.md` plus the

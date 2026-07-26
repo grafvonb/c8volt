@@ -66,8 +66,13 @@ INTEGRATION_CLI_REAL_STATE_TARGETS := \
 	integration-cli-real-state-bpmn-error \
 	integration-cli-real-state-retention \
 	integration-cli-real-state-destructive
+INTEGRATION_TEST_TARGETS := \
+	integration-test \
+	integration-test-volume \
+	integration-test-real-state \
+	integration-test-all
 
-.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-build docs-site-serve demo-vhs-check $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES) $(INTEGRATION_CLI_TARGETS) $(INTEGRATION_CLI_VOLUME_TARGETS) $(INTEGRATION_CLI_REAL_STATE_TARGETS)
+.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-serve demo-vhs-check $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES) $(INTEGRATION_CLI_TARGETS) $(INTEGRATION_CLI_VOLUME_TARGETS) $(INTEGRATION_CLI_REAL_STATE_TARGETS) $(INTEGRATION_TEST_TARGETS)
 
 help: ## Show all available Make targets with a short description.
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "%-55s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -153,6 +158,14 @@ run: build ## Build the binary and print the CLI help output.
 
 test: ## Run the full Go test suite with the race detector enabled.
 	go test $(PKG) -race -count=1
+
+integration-test: $(INTEGRATION_CLI_TARGETS) ## Run all baseline CLI integration test slices.
+
+integration-test-volume: $(INTEGRATION_CLI_VOLUME_TARGETS) ## Run all volume CLI integration test slices.
+
+integration-test-real-state: $(INTEGRATION_CLI_REAL_STATE_TARGETS) ## Run all C89 real-state integration test slices.
+
+integration-test-all: integration-test integration-test-volume integration-test-real-state ## Run baseline, volume, and real-state integration slices.
 
 integration-cli-get: ## Run destructive CLI integration tests for get commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestGetFamily -count=1 -timeout=$(IT_TIMEOUT)

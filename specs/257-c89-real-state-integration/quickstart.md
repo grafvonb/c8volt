@@ -146,6 +146,12 @@ Before closing the feature, run every real-state target independently so order
 dependencies and dirty-cluster assumptions stay visible:
 
 ```sh
+make integration-test-real-state IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
+```
+
+The aggregate target expands to the independent slices below:
+
+```sh
 make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v
 make integration-cli-real-state-jobs IT_GO_TEST_FLAGS=-v
 make integration-cli-real-state-incidents IT_GO_TEST_FLAGS=-v
@@ -153,6 +159,12 @@ make integration-cli-real-state-listeners IT_GO_TEST_FLAGS=-v
 make integration-cli-real-state-bpmn-error IT_GO_TEST_FLAGS=-v
 make integration-cli-real-state-retention IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
 make integration-cli-real-state-destructive IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
+```
+
+To run the baseline, volume, and real-state suites in sequence:
+
+```sh
+make integration-test-all IT_GO_TEST_FLAGS=-v IT_VOLUME_TIMEOUT=90m IT_REAL_STATE_TIMEOUT=90m
 ```
 
 Generated CLI docs are required only when command help metadata, aliases, flags,
