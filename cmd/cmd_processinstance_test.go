@@ -74,6 +74,41 @@ func newProcessInstanceSearchCaptureServerWithResponses(t *testing.T, requests *
 	return srv
 }
 
+// newProcessInstanceWithElementsAndListenersServer serves a keyed process
+// instance plus ordered element and listener job search responses for activity
+// enrichment command tests.
+func newProcessInstanceWithElementsAndListenersServer(t *testing.T, requests *[]string, elementResponses []string, jobResponses []string) *httptest.Server {
+	t.Helper()
+
+	elementCount := 0
+	jobCount := 0
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			*requests = append(*requests, r.Method+" "+r.URL.Path)
+			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-07-15T10:12:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/element-instances/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			*requests = append(*requests, r.Method+" "+r.URL.Path)
+			require.NotEmpty(t, elementResponses, "element enrichment requires at least one response")
+			response := elementResponses[min(elementCount, len(elementResponses)-1)]
+			elementCount++
+			_, _ = w.Write([]byte(response))
+		case "/v2/jobs/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			*requests = append(*requests, r.Method+" "+r.URL.Path)
+			require.NotEmpty(t, jobResponses, "listener lookup should not run without listener responses")
+			response := jobResponses[min(jobCount, len(jobResponses)-1)]
+			jobCount++
+			_, _ = w.Write([]byte(response))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+}
+
 func writeVisibleProcessDefinitionSearchResponse(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant-a","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
@@ -241,15 +276,15 @@ func TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode(t *testing.T)
 	require.Contains(t, cancelOutput, "--dry-run")
 	require.Contains(t, cancelOutput, "preview selected, in-scope, final-state")
 	require.Contains(t, cancelOutput, "preview cancel scope without submitting cancellation")
-	require.Contains(t, cancelOutput, "./c8volt cancel pi --key <process-instance-key> --dry-run")
-	require.Contains(t, cancelOutput, "./c8volt cancel pi --state active --batch-size 250 --limit 5 --dry-run")
+	require.Contains(t, cancelOutput, "./c8volt cancel process-instance --key <process-instance-key> --dry-run")
+	require.Contains(t, cancelOutput, "./c8volt cancel process-instance --state active --batch-size 250 --limit 5 --dry-run")
 
 	deleteOutput := executeRootForProcessInstanceTest(t, "delete", "process-instance", "--help")
 	require.Contains(t, deleteOutput, "--dry-run")
 	require.Contains(t, deleteOutput, "final-state, non-final, and partial-scope")
 	require.Contains(t, deleteOutput, "preview delete scope without submitting deletion or cancel-before-delete requests")
-	require.Contains(t, deleteOutput, "./c8volt delete pi --key <process-instance-key> --dry-run")
-	require.Contains(t, deleteOutput, "./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run")
+	require.Contains(t, deleteOutput, "./c8volt delete process-instance --key <process-instance-key> --dry-run")
+	require.Contains(t, deleteOutput, "./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run")
 }
 
 // TestProcessInstanceHelp_DocumentsTenantContract verifies command help names

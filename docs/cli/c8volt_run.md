@@ -21,10 +21,10 @@ c8volt run [flags]
 ### Examples
 
 ```
-  ./c8volt run pi -b <bpmn-process-id>
-  ./c8volt run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
-  ./c8volt run pi -b <bpmn-process-id> -n 3 --workers 2
-  ./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -
+  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
+  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'
+  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2
+  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -
 ```
 
 ### Options

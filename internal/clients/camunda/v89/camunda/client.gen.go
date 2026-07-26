@@ -3064,15 +3064,19 @@ type DecisionEvaluationByKey struct {
 	Variables *map[string]interface{} `json:"variables,omitempty"`
 }
 
-// DecisionEvaluationInstanceKey Zeebe Engine resource key (Java long serialized as string)
-type DecisionEvaluationInstanceKey = LongKey
+// DecisionEvaluationInstanceKey System-generated identifier for a decision evaluation instance. It is composed of the
+// parent decision evaluation key and the 1-based index of the evaluated decision within
+// that evaluation, joined by a hyphen (format: `<decisionEvaluationKey>-<index>`).
+type DecisionEvaluationInstanceKey = string
 
 // DecisionEvaluationInstanceKeyFilterProperty DecisionEvaluationInstanceKey property with full advanced search capabilities.
 type DecisionEvaluationInstanceKeyFilterProperty struct {
 	union json.RawMessage
 }
 
-// DecisionEvaluationInstanceKeyFilterProperty0 System-generated key for a decision evaluation instance.
+// DecisionEvaluationInstanceKeyFilterProperty0 System-generated identifier for a decision evaluation instance. It is composed of the
+// parent decision evaluation key and the 1-based index of the evaluated decision within
+// that evaluation, joined by a hyphen (format: `<decisionEvaluationKey>-<index>`).
 type DecisionEvaluationInstanceKeyFilterProperty0 = DecisionEvaluationInstanceKey
 
 // DecisionEvaluationInstruction defines model for DecisionEvaluationInstruction.
@@ -3169,7 +3173,9 @@ type DecisionInstanceGetQueryResult struct {
 	// DecisionDefinitionVersion The version of the decision.
 	DecisionDefinitionVersion int32 `json:"decisionDefinitionVersion"`
 
-	// DecisionEvaluationInstanceKey System-generated key for a decision evaluation instance.
+	// DecisionEvaluationInstanceKey System-generated identifier for a decision evaluation instance. It is composed of the
+	// parent decision evaluation key and the 1-based index of the evaluated decision within
+	// that evaluation, joined by a hyphen (format: `<decisionEvaluationKey>-<index>`).
 	DecisionEvaluationInstanceKey DecisionEvaluationInstanceKey `json:"decisionEvaluationInstanceKey"`
 
 	// DecisionEvaluationKey The key of the decision evaluation where this instance was created.
@@ -3234,7 +3240,9 @@ type DecisionInstanceResult struct {
 	// DecisionDefinitionVersion The version of the decision.
 	DecisionDefinitionVersion int32 `json:"decisionDefinitionVersion"`
 
-	// DecisionEvaluationInstanceKey System-generated key for a decision evaluation instance.
+	// DecisionEvaluationInstanceKey System-generated identifier for a decision evaluation instance. It is composed of the
+	// parent decision evaluation key and the 1-based index of the evaluated decision within
+	// that evaluation, joined by a hyphen (format: `<decisionEvaluationKey>-<index>`).
 	DecisionEvaluationInstanceKey DecisionEvaluationInstanceKey `json:"decisionEvaluationInstanceKey"`
 
 	// DecisionEvaluationKey The key of the decision evaluation where this instance was created.
@@ -25062,6 +25070,7 @@ type CreateGlobalClusterVariableResponse struct {
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
 	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON409 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 }
 
@@ -25195,6 +25204,7 @@ type CreateTenantClusterVariableResponse struct {
 	ApplicationproblemJSON401 *Unauthorized
 	ApplicationproblemJSON403 *Forbidden
 	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON409 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 }
 
@@ -32699,6 +32709,13 @@ func ParseCreateGlobalClusterVariableResponse(rsp *http.Response) (*CreateGlobal
 		}
 		response.ApplicationproblemJSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -32989,6 +33006,13 @@ func ParseCreateTenantClusterVariableResponse(rsp *http.Response) (*CreateTenant
 			return nil, err
 		}
 		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerError

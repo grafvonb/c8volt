@@ -232,14 +232,34 @@ func TestExecuteSmokeTestDeploysSelectedFixtureThroughResourceAPI(t *testing.T) 
 	}
 	resource := &stubSmokeTestResourceAPI{
 		deploy: func(_ context.Context, units []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
-			require.Len(t, units, 1)
-			require.Equal(t, "processdefinitions/C88_MultipleSubProcessesParent.bpmn", units[0].Name)
-			require.Equal(t, "application/xml", units[0].ContentType)
-			require.Contains(t, string(units[0].Data), "C88_MultipleSubProcessesParent")
+			require.Len(t, units, 3)
+			require.Equal(t, "processdefinitions/C88_SimpleUserTask.bpmn", units[0].Name)
+			require.Equal(t, "processdefinitions/C88_SimpleParent.bpmn", units[1].Name)
+			require.Equal(t, "processdefinitions/C88_MultipleSubProcessesParent.bpmn", units[2].Name)
+			for _, unit := range units {
+				require.Equal(t, "application/xml", unit.ContentType)
+			}
+			require.Contains(t, string(units[2].Data), "C88_MultipleSubProcessesParent")
 			return d.Deployment{
 				Key:      "deployment-1",
 				TenantId: "tenant-a",
 				Units: []d.DeploymentUnit{{
+					ProcessDefinition: d.ProcessDefinitionDeployment{
+						ProcessDefinitionId:      "C88_SimpleUserTask",
+						ProcessDefinitionKey:     "pd-88-child",
+						ProcessDefinitionVersion: 4,
+						ResourceName:             "processdefinitions/C88_SimpleUserTask.bpmn",
+						TenantId:                 "tenant-a",
+					},
+				}, {
+					ProcessDefinition: d.ProcessDefinitionDeployment{
+						ProcessDefinitionId:      "C88_SimpleParent",
+						ProcessDefinitionKey:     "pd-88-middle",
+						ProcessDefinitionVersion: 4,
+						ResourceName:             "processdefinitions/C88_SimpleParent.bpmn",
+						TenantId:                 "tenant-a",
+					},
+				}, {
 					ProcessDefinition: d.ProcessDefinitionDeployment{
 						ProcessDefinitionId:      "C88_MultipleSubProcessesParent",
 						ProcessDefinitionKey:     "pd-88",

@@ -34,10 +34,10 @@ c8volt get process-definition [flags]
 ### Examples
 
 ```
-  ./c8volt get pd --latest
-  ./c8volt get pd --bpmn-process-id <bpmn-process-id> --latest
-  ./c8volt get pd --key <process-definition-key> --json
-  ./c8volt get pd --key <process-definition-key> --xml
+  ./c8volt get process-definition --latest
+  ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest
+  ./c8volt get process-definition --key <process-definition-key> --json
+  ./c8volt get process-definition --key <process-definition-key> --xml
 ```
 
 ### Options
@@ -73,5 +73,5 @@ c8volt get process-definition [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Inspect cluster, process, incident, tenant, and resource state
+* [c8volt get](c8volt_get)	 - Inspect cluster, process, job, element, incident, tenant, and resource state
 

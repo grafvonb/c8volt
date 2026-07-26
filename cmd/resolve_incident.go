@@ -20,9 +20,9 @@ var resolveIncidentCmd = &cobra.Command{
 		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is submitted for resolution and reported independently.\n\n" +
 		"By default c8volt waits until each incident is no longer active by polling incident lookup through the incident service.",
 	Example: `  ./c8volt resolve incident --key <incident-key>
-  ./c8volt resolve inc --key <incident-key> --key <another-incident-key>
+  ./c8volt resolve incident --key <incident-key> --key <another-incident-key>
   printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt resolve incident -
-  printf '%s\n' "$INCIDENT_KEY_A" | ./c8volt resolve inc --key "$INCIDENT_KEY_B" -`,
+  printf '%s\n' "$INCIDENT_KEY_A" | ./c8volt resolve incident --key "$INCIDENT_KEY_B" -`,
 	Aliases: []string{"inc"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -55,11 +55,11 @@ var resolveIncidentCmd = &cobra.Command{
 
 		results, err := cli.ResolveIncidents(cmd.Context(), keys, flagWorkers, collectOptions()...)
 		renderErr := renderIncidentResolutionResults(cmd, results)
-		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("resolve incidents: %w", err))
-		}
 		if renderErr != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render resolve incident result: %w", renderErr))
+		}
+		if err != nil {
+			exitAfterRenderedResult(cfg.App.NoErrCodes, fmt.Errorf("resolve incidents: %w", err))
 		}
 	},
 }

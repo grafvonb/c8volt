@@ -62,13 +62,7 @@ func renderOpsPurgeProcessInstancesWithIncidentsDiscovery(cmd *cobra.Command, re
 }
 
 func renderOpsPurgeProcessInstancesWithIncidentsDiscoveryStatus(cmd *cobra.Command, status ops.DiscoveryScopeStatus) {
-	if status.Limited {
-		renderHumanLine(cmd, "discovery user-limited: limit %d; pages %d; batch size %d", status.Limit, status.Pages, status.BatchSize)
-		return
-	}
-	if status.Complete && flagVerbose {
-		renderHumanLine(cmd, "discovery complete: pages %d; batch size %d", status.Pages, status.BatchSize)
-	}
+	renderOpsDiscoveryStatus(cmd, status)
 }
 
 func renderOpsPurgeProcessInstancesWithIncidentsNotices(cmd *cobra.Command, notices []ops.IncidentPurgeWorkflowNotice) {

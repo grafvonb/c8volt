@@ -150,6 +150,75 @@ func fromDomainVariableEnrichedProcessInstances(x d.VariableEnrichedProcessInsta
 	}
 }
 
+// fromDomainProcessInstanceElement maps one attached runtime element into the public process facade model.
+func fromDomainProcessInstanceElement(x d.Element) ProcessInstanceElement {
+	return ProcessInstanceElement{
+		ElementInstanceKey:     x.ElementInstanceKey,
+		ElementId:              x.ElementId,
+		ElementName:            x.ElementName,
+		Type:                   x.Type,
+		State:                  x.State,
+		StartDate:              x.StartDate,
+		EndDate:                x.EndDate,
+		ProcessInstanceKey:     x.ProcessInstanceKey,
+		RootProcessInstanceKey: x.RootProcessInstanceKey,
+		ProcessDefinitionId:    x.ProcessDefinitionId,
+		ProcessDefinitionKey:   x.ProcessDefinitionKey,
+		TenantId:               x.TenantId,
+		HasIncident:            x.HasIncident,
+		IncidentKey:            x.IncidentKey,
+		Listeners:              fromDomainRuntimeListenerJobsPtr(x.Listeners),
+	}
+}
+
+func fromDomainRuntimeListenerJob(x d.RuntimeListenerJob) RuntimeListenerJob {
+	return RuntimeListenerJob{
+		JobKey:             x.JobKey,
+		Kind:               x.Kind,
+		ListenerEventType:  x.ListenerEventType,
+		Type:               x.Type,
+		State:              x.State,
+		Retries:            x.Retries,
+		Worker:             x.Worker,
+		Deadline:           x.Deadline,
+		ProcessInstanceKey: x.ProcessInstanceKey,
+		ElementInstanceKey: x.ElementInstanceKey,
+		ElementId:          x.ElementId,
+		TenantId:           x.TenantId,
+		ErrorCode:          x.ErrorCode,
+		ErrorMessage:       x.ErrorMessage,
+	}
+}
+
+func fromDomainRuntimeListenerJobsPtr(xs *[]d.RuntimeListenerJob) *[]RuntimeListenerJob {
+	if xs == nil {
+		return nil
+	}
+	out := toolx.MapSlice(*xs, fromDomainRuntimeListenerJob)
+	return &out
+}
+
+// fromDomainProcessInstanceElements copies attached runtime element rows across the facade boundary.
+func fromDomainProcessInstanceElements(xs []d.Element) []ProcessInstanceElement {
+	return toolx.MapSlice(xs, fromDomainProcessInstanceElement)
+}
+
+// fromDomainElementEnrichedProcessInstance maps one element-enriched process instance into the public facade model.
+func fromDomainElementEnrichedProcessInstance(x d.ElementEnrichedProcessInstance) ElementEnrichedProcessInstance {
+	return ElementEnrichedProcessInstance{
+		Item:     fromDomainProcessInstance(x.Item),
+		Elements: fromDomainProcessInstanceElements(x.Elements),
+	}
+}
+
+// fromDomainElementEnrichedProcessInstances maps service-enriched elements into the public facade model.
+func fromDomainElementEnrichedProcessInstances(x d.ElementEnrichedProcessInstances) ElementEnrichedProcessInstances {
+	return ElementEnrichedProcessInstances{
+		Total: x.Total,
+		Items: toolx.MapSlice(x.Items, fromDomainElementEnrichedProcessInstance),
+	}
+}
+
 // fromDomainIncidentEnrichedTraversalItem maps one service-enriched traversal item into the public facade model.
 func fromDomainIncidentEnrichedTraversalItem(x d.IncidentEnrichedTraversalItem) IncidentEnrichedTraversalItem {
 	return IncidentEnrichedTraversalItem{
@@ -261,6 +330,62 @@ func fromDomainProcessInstancePage(x d.ProcessInstancePage) ProcessInstancePage 
 		ReportedTotal: toolx.MapPtr(x.ReportedTotal, fromDomainProcessInstanceReportedTotal),
 		EndCursor:     x.EndCursor,
 		Items:         toolx.MapSlice(x.Items, fromDomainProcessInstance),
+	}
+}
+
+// fromDomainProcessInstanceSearchPagesResult maps service-owned traversal results into the public facade model.
+func fromDomainProcessInstanceSearchPagesResult(x d.ProcessInstanceSearchPagesResult) ProcessInstanceSearchPagesResult {
+	return ProcessInstanceSearchPagesResult{
+		Items: toolx.MapSlice(x.Items, fromDomainProcessInstance),
+		Limit: x.Limit,
+		Pages: x.Pages,
+	}
+}
+
+// fromDomainProcessInstanceSearchPageStep maps one service page callback into the public facade model.
+func fromDomainProcessInstanceSearchPageStep(x d.ProcessInstanceSearchPageStep) ProcessInstanceSearchPageStep {
+	return ProcessInstanceSearchPageStep{
+		Page:            fromDomainProcessInstancePage(x.Page),
+		CumulativeCount: x.CumulativeCount,
+		LimitReached:    x.LimitReached,
+	}
+}
+
+// fromDomainProcessInstanceMutationPlanPagesResult maps service-owned mutation
+// planning traversal results into the public facade model.
+func fromDomainProcessInstanceMutationPlanPagesResult(x d.ProcessInstanceMutationPlanPagesResult) ProcessInstanceMutationPlanPagesResult {
+	return ProcessInstanceMutationPlanPagesResult{
+		Plans:            toolx.MapSlice(x.Plans, fromDomainProcessInstanceMutationPlanStep),
+		Limit:            x.Limit,
+		Pages:            x.Pages,
+		RequestedCount:   x.RequestedCount,
+		CumulativeImpact: x.CumulativeImpact,
+		Stopped:          x.Stopped,
+	}
+}
+
+// fromDomainProcessInstanceMutationPlanStep maps one service page-level
+// mutation plan into the public facade model.
+func fromDomainProcessInstanceMutationPlanStep(x d.ProcessInstanceMutationPlanStep) ProcessInstanceMutationPlanStep {
+	return ProcessInstanceMutationPlanStep{
+		Page:             fromDomainProcessInstancePage(x.Page),
+		RequestedKeys:    append([]string(nil), x.RequestedKeys...),
+		Plan:             fromDomainDryRunPIKeyExpansion(x.Plan),
+		CumulativeCount:  x.CumulativeCount,
+		CumulativeImpact: x.CumulativeImpact,
+		LimitReached:     x.LimitReached,
+	}
+}
+
+// fromDomainProcessInstanceSearchTotalStep maps service total diagnostics into the public facade model.
+func fromDomainProcessInstanceSearchTotalStep(x d.ProcessInstanceSearchTotalStep) ProcessInstanceSearchTotalStep {
+	return ProcessInstanceSearchTotalStep{
+		Page:             fromDomainProcessInstancePage(x.Page),
+		FilteredCount:    x.FilteredCount,
+		TotalBefore:      x.TotalBefore,
+		TotalAfter:       x.TotalAfter,
+		CountingByPaging: x.CountingByPaging,
+		ExactTotalUsed:   x.ExactTotalUsed,
 	}
 }
 
@@ -495,6 +620,87 @@ func toDomainProcessInstancePageRequest(x ProcessInstancePageRequest) d.ProcessI
 		From:  x.From,
 		Size:  x.Size,
 		After: x.After,
+	}
+}
+
+// toDomainProcessInstanceSearchRequest copies process search mechanics into the service-facing contract.
+func toDomainProcessInstanceSearchRequest(x ProcessInstanceSearchRequest) d.ProcessInstanceSearchRequest {
+	return d.ProcessInstanceSearchRequest{
+		Filter:               toDomainProcessInstanceFilter(x.Filter),
+		Page:                 toDomainProcessInstancePageRequest(x.Page),
+		Limit:                x.Limit,
+		LocalFilters:         toDomainProcessInstanceSearchLocalFilters(x.LocalFilters),
+		DirectIncidentIndex:  x.DirectIncidentIndex,
+		DirectIncidentFilter: toDomainProcessInstanceIncidentSearchFilter(x.DirectIncidentFilter),
+		ReportedTotalAllowed: x.ReportedTotalAllowed,
+	}
+}
+
+// toDomainProcessInstanceMutationPlanRequest maps facade search-selected
+// mutation planning controls into the service contract.
+func toDomainProcessInstanceMutationPlanRequest(x ProcessInstanceMutationPlanRequest) d.ProcessInstanceMutationPlanRequest {
+	return d.ProcessInstanceMutationPlanRequest{
+		SearchRequest: toDomainProcessInstanceSearchRequest(x.SearchRequest),
+		Workers:       x.Workers,
+	}
+}
+
+// toDomainProcessInstanceSearchLocalFilters maps compatibility-filter toggles without applying CLI policy.
+func toDomainProcessInstanceSearchLocalFilters(x ProcessInstanceSearchLocalFilters) d.ProcessInstanceSearchLocalFilters {
+	return d.ProcessInstanceSearchLocalFilters{
+		ChildrenOnly:         x.ChildrenOnly,
+		RootsOnly:            x.RootsOnly,
+		OrphanChildrenOnly:   x.OrphanChildrenOnly,
+		IncidentsOnly:        x.IncidentsOnly,
+		DirectIncidentsOnly:  x.DirectIncidentsOnly,
+		NoIncidentsOnly:      x.NoIncidentsOnly,
+		IncidentState:        x.IncidentState,
+		IncidentErrorType:    x.IncidentErrorType,
+		IncidentErrorMessage: x.IncidentErrorMessage,
+	}
+}
+
+// toDomainProcessInstanceIncidentSearchFilter maps the direct incident-index filter.
+func toDomainProcessInstanceIncidentSearchFilter(x ProcessInstanceIncidentSearchFilter) d.IncidentFilter {
+	return d.IncidentFilter{
+		State:                x.State,
+		ErrorType:            x.ErrorType,
+		ErrorMessage:         x.ErrorMessage,
+		ProcessDefinitionKey: x.ProcessDefinitionKey,
+		ProcessDefinitionId:  x.ProcessDefinitionId,
+	}
+}
+
+// toDomainProcessInstanceMutationPlanVisitor maps page-level planning visitor
+// decisions across the facade boundary.
+func toDomainProcessInstanceMutationPlanVisitor(visitor ProcessInstanceMutationPlanVisitor) d.ProcessInstanceMutationPlanVisitor {
+	if visitor == nil {
+		return nil
+	}
+	return func(step d.ProcessInstanceMutationPlanStep) (d.ProcessInstanceSearchPageAction, error) {
+		action, err := visitor(fromDomainProcessInstanceMutationPlanStep(step))
+		return d.ProcessInstanceSearchPageAction(action), err
+	}
+}
+
+// toDomainProcessInstanceSearchPageVisitor maps page visitor decisions across the facade boundary.
+func toDomainProcessInstanceSearchPageVisitor(visitor ProcessInstanceSearchPageVisitor) d.ProcessInstanceSearchPageVisitor {
+	if visitor == nil {
+		return nil
+	}
+	return func(step d.ProcessInstanceSearchPageStep) (d.ProcessInstanceSearchPageAction, error) {
+		action, err := visitor(fromDomainProcessInstanceSearchPageStep(step))
+		return d.ProcessInstanceSearchPageAction(action), err
+	}
+}
+
+// toDomainProcessInstanceSearchTotalVisitor maps total fallback diagnostics across the facade boundary.
+func toDomainProcessInstanceSearchTotalVisitor(visitor ProcessInstanceSearchTotalVisitor) d.ProcessInstanceSearchTotalVisitor {
+	if visitor == nil {
+		return nil
+	}
+	return func(step d.ProcessInstanceSearchTotalStep) error {
+		return visitor(fromDomainProcessInstanceSearchTotalStep(step))
 	}
 }
 

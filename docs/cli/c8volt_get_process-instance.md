@@ -14,7 +14,7 @@ Get process instances by key or by search criteria.
 
 Use direct lookup when you know a process-instance key, or combine search filters to inspect matching process instances by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges.
 
-Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. Direct key lookup stays strict: missing keys return not-found.
+Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. --batch-size controls each backend page request, --limit caps total returned process instances across all pages, and --total prints only the matching count. Verbose paging progress is written away from stdout; JSON, keys-only, quiet, and automation output remain free of prompts and progress text. Direct key lookup stays strict: missing keys return not-found.
 
 Tenant contract: --tenant scopes search/list discovery and selector validation where supported. Explicit --key and stdin keys are backend-authorized admin input; c8volt displays returned tenant metadata without rejecting solely because it differs from the selected tenant.
 
@@ -24,11 +24,15 @@ Use --with-incidents to include direct incident details under matching process-i
 
 Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.
 
+Use --with-elements to include runtime element instances under matching process-instance rows. Nested human element rows include dur:<duration> when start/end timestamps or active state support a runtime duration.
+
+Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.
+
 Use variable-search flags to narrow list/search results natively on Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error for those flags. --var-exists requires every listed variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable scopeKey means the scope where the variable is directly defined.
 
 Use --has-user-tasks to fetch process instances by their owning user-task keys.
 
-Run `c8volt get pi --help` for the complete flag reference.
+Run `c8volt get process-instance --help` for the complete flag reference.
 
 ```
 c8volt get process-instance [flags]
@@ -37,28 +41,30 @@ c8volt get process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 5
-  ./c8volt get pi --key <process-instance-key>
-  ./c8volt get pi --state active --total
-  ./c8volt get pi --has-user-tasks <user-task-key>
-  ./c8volt get pi --incidents-only --with-incidents --limit 5
-  ./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5
-  ./c8volt get pi --var-exists payload,email --limit 5
-  ./c8volt get pi --var 'status="approved"' --limit 5
-  ./c8volt get pi --var 'status.$in=["approved","pending"]' --limit 5
-  ./c8volt get pi --var-like 'email=*@example.com,customerId=CUST-????' --limit 5
-  ./c8volt get pi --state active --with-vars --var-value-limit 120 --limit 5
-  ./c8volt get pi --key <process-instance-key> --with-incidents
-  ./c8volt get pi --key <process-instance-key> --with-vars
-  ./c8volt get pi --key <process-instance-key> --with-vars --var-value-limit 120
-  ./c8volt get pi --start-date-after 2026-05-01 --start-date-before 2026-05-31 --limit 5
-  ./c8volt get pi --key <process-instance-key> --key <another-process-instance-key>
+  ./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5
+  ./c8volt get process-instance --key <process-instance-key>
+  ./c8volt get process-instance --state active --total
+  ./c8volt get process-instance --has-user-tasks <user-task-key>
+  ./c8volt get process-instance --incidents-only --with-incidents --limit 5
+  ./c8volt get process-instance --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5
+  ./c8volt get process-instance --var-exists payload,email --limit 5
+  ./c8volt get process-instance --var 'status="approved"' --limit 5
+  ./c8volt get process-instance --var 'status.$in=["approved","pending"]' --limit 5
+  ./c8volt get process-instance --var-like 'email=*@example.com,customerId=CUST-????' --limit 5
+  ./c8volt get process-instance --state active --with-vars --var-value-limit 120 --limit 5
+  ./c8volt get process-instance --key <process-instance-key> --with-incidents
+  ./c8volt get process-instance --key <process-instance-key> --with-vars
+  ./c8volt get process-instance --key <process-instance-key> --with-vars --var-value-limit 120
+  ./c8volt get process-instance --key <process-instance-key> --with-elements
+  ./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners
+  ./c8volt get process-instance --start-date-after 2026-05-01 --start-date-before 2026-05-31 --limit 5
+  ./c8volt get process-instance --key <process-instance-key> --key <another-process-instance-key>
 ```
 
 ### Options
 
 ```
-  -n, --batch-size int32                number of process instances to fetch per page (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32                number of process instances to request per page; does not cap total returned rows (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string          BPMN process ID to filter process instances
       --children-only                   show only child process instances
       --direct-incidents-only           show only process instances with direct incident details
@@ -75,7 +81,7 @@ c8volt get process-instance [flags]
       --incident-state string           incident state scope for keyed --with-incidents: active, pending, resolved, migrated, unknown, all (default "active")
       --incidents-only                  show only process instances that have incidents
   -k, --key strings                     process instance key(s) to fetch
-  -l, --limit int32                     maximum number of matching process instances to return or process across all pages
+  -l, --limit int32                     maximum number of matching process instances to return across all pages; omit to continue through all matches
       --no-incidents-only               show only process instances that have no incidents
       --no-worker-limit                 use all queued jobs as workers when --workers is unset
       --orphan-children-only            show only child instances with missing parents
@@ -94,7 +100,9 @@ c8volt get process-instance [flags]
       --var-exists stringArray          require variable name(s) to exist; repeat or separate names with commas
       --var-like stringArray            require variable value pattern clause(s); repeat or separate clauses with commas
       --var-value-limit int             maximum characters to show for variable values when --with-vars is set; 0 disables truncation
+      --with-elements                   include runtime element instances for keyed or list/search process-instance output
       --with-incidents                  include direct incident keys, states, and messages for keyed or list/search process-instance output
+      --with-listeners                  include runtime listener jobs under matching element rows; requires --with-elements
       --with-vars                       include process-instance-scope variables for keyed or list/search process-instance output
   -w, --workers int                     maximum concurrent workers when --batch-size > 1 (default: min(batch-size, 2*GOMAXPROCS, 32))
 ```
@@ -119,5 +127,5 @@ c8volt get process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Inspect cluster, process, incident, tenant, and resource state
+* [c8volt get](c8volt_get)	 - Inspect cluster, process, job, element, incident, tenant, and resource state
 

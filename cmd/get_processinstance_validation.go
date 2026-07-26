@@ -63,7 +63,20 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-incidents")
 		case flagGetPIWithVars:
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-vars")
+		case flagGetPIWithElements:
+			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-elements")
 		}
+	}
+	if flagGetPIWithListeners {
+		if !flagGetPIWithElements {
+			return missingDependentFlagsf("--with-listeners requires --with-elements")
+		}
+		if flagViewKeysOnly {
+			return mutuallyExclusiveFlagsf("--with-listeners cannot be combined with --keys-only")
+		}
+	}
+	if flagGetPIWithElements && flagViewKeysOnly {
+		return mutuallyExclusiveFlagsf("--keys-only cannot be combined with --with-elements")
 	}
 	if flagGetPIIncidentMessageLimit < 0 {
 		return invalidFlagValuef("invalid value for --incident-message-limit: %d, expected non-negative integer", flagGetPIIncidentMessageLimit)
@@ -250,6 +263,17 @@ func validatePIWithVarsUsage(keyCount int, filterFlagsSet bool) error {
 	}
 	if keyCount > 0 && (filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPIDirectIncidentsOnly || flagGetPINoIncidentsOnly || flagGetPITotal) {
 		return mutuallyExclusiveFlagsf("--with-vars cannot be combined with search-mode filters")
+	}
+	return nil
+}
+
+// validatePIWithElementsUsage keeps element enrichment out of keyed/filter combinations that cannot attach details unambiguously.
+func validatePIWithElementsUsage(keyCount int, filterFlagsSet bool) error {
+	if !flagGetPIWithElements {
+		return nil
+	}
+	if keyCount > 0 && (filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPIDirectIncidentsOnly || flagGetPINoIncidentsOnly || flagGetPITotal) {
+		return mutuallyExclusiveFlagsf("--with-elements cannot be combined with search-mode filters")
 	}
 	return nil
 }

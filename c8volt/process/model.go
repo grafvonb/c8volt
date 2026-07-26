@@ -6,6 +6,7 @@ package process
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/incident"
@@ -147,6 +148,57 @@ type VariableEnrichedProcessInstances struct {
 	Items []VariableEnrichedProcessInstance `json:"items"`
 }
 
+type RuntimeListenerJob struct {
+	JobKey             string     `json:"jobKey,omitempty"`
+	Kind               string     `json:"kind,omitempty"`
+	ListenerEventType  string     `json:"listenerEventType,omitempty"`
+	Type               string     `json:"type,omitempty"`
+	State              string     `json:"state,omitempty"`
+	Retries            int32      `json:"retries"`
+	Worker             string     `json:"worker,omitempty"`
+	Deadline           *time.Time `json:"deadline,omitempty"`
+	ProcessInstanceKey string     `json:"processInstanceKey,omitempty"`
+	ElementInstanceKey string     `json:"elementInstanceKey,omitempty"`
+	ElementId          string     `json:"elementId,omitempty"`
+	TenantId           string     `json:"tenantId,omitempty"`
+	ErrorCode          string     `json:"errorCode,omitempty"`
+	ErrorMessage       string     `json:"errorMessage,omitempty"`
+}
+
+// ProcessInstanceElement represents one runtime BPMN element execution
+// attached to an owning process instance in enriched process output.
+type ProcessInstanceElement struct {
+	ElementInstanceKey     string                `json:"elementInstanceKey,omitempty"`
+	ElementId              string                `json:"elementId,omitempty"`
+	ElementName            string                `json:"elementName,omitempty"`
+	Type                   string                `json:"type,omitempty"`
+	State                  string                `json:"state,omitempty"`
+	StartDate              string                `json:"startDate,omitempty"`
+	EndDate                string                `json:"endDate,omitempty"`
+	ProcessInstanceKey     string                `json:"processInstanceKey,omitempty"`
+	RootProcessInstanceKey string                `json:"rootProcessInstanceKey,omitempty"`
+	ProcessDefinitionId    string                `json:"processDefinitionId,omitempty"`
+	ProcessDefinitionKey   string                `json:"processDefinitionKey,omitempty"`
+	TenantId               string                `json:"tenantId,omitempty"`
+	HasIncident            bool                  `json:"hasIncident"`
+	IncidentKey            string                `json:"incidentKey,omitempty"`
+	Listeners              *[]RuntimeListenerJob `json:"listeners,omitempty"`
+}
+
+// ElementEnrichedProcessInstance is the public JSON shape for one selected
+// process instance plus attached runtime element instances.
+type ElementEnrichedProcessInstance struct {
+	Item     ProcessInstance          `json:"item"`
+	Elements []ProcessInstanceElement `json:"elements"`
+}
+
+// ElementEnrichedProcessInstances contains process-instance results with
+// attached runtime elements while preserving process-instance result counts.
+type ElementEnrichedProcessInstances struct {
+	Total int32                            `json:"total"`
+	Items []ElementEnrichedProcessInstance `json:"items"`
+}
+
 type IncidentEnrichedTraversalItem struct {
 	Item      ProcessInstance                 `json:"item"`
 	Incidents []ProcessInstanceIncidentDetail `json:"incidents"`
@@ -202,6 +254,118 @@ type ProcessInstancePage struct {
 	EndCursor     string                        `json:"endCursor,omitempty"`
 	Items         []ProcessInstance             `json:"items,omitempty"`
 }
+
+// ProcessInstanceSearchPageAction tells service-owned page traversal whether
+// the caller needs more pages after observing the current selected page.
+type ProcessInstanceSearchPageAction string
+
+const (
+	// ProcessInstanceSearchPageActionContinue keeps collecting the next available page.
+	ProcessInstanceSearchPageActionContinue ProcessInstanceSearchPageAction = "continue"
+	// ProcessInstanceSearchPageActionStop stops traversal after the current selected page.
+	ProcessInstanceSearchPageActionStop ProcessInstanceSearchPageAction = "stop"
+)
+
+// ProcessInstanceSearchLocalFilters names compatibility filters that are
+// applied below command ownership after backend pages are fetched.
+type ProcessInstanceSearchLocalFilters struct {
+	ChildrenOnly         bool   `json:"childrenOnly,omitempty"`
+	RootsOnly            bool   `json:"rootsOnly,omitempty"`
+	OrphanChildrenOnly   bool   `json:"orphanChildrenOnly,omitempty"`
+	IncidentsOnly        bool   `json:"incidentsOnly,omitempty"`
+	DirectIncidentsOnly  bool   `json:"directIncidentsOnly,omitempty"`
+	NoIncidentsOnly      bool   `json:"noIncidentsOnly,omitempty"`
+	IncidentState        string `json:"incidentState,omitempty"`
+	IncidentErrorType    string `json:"incidentErrorType,omitempty"`
+	IncidentErrorMessage string `json:"incidentErrorMessage,omitempty"`
+}
+
+// ProcessInstanceIncidentSearchFilter is the process facade shape for the
+// incident-index strategy used by process-instance search.
+type ProcessInstanceIncidentSearchFilter struct {
+	State                string `json:"state,omitempty"`
+	ErrorType            string `json:"errorType,omitempty"`
+	ErrorMessage         string `json:"errorMessage,omitempty"`
+	ProcessDefinitionKey string `json:"processDefinitionKey,omitempty"`
+	ProcessDefinitionId  string `json:"processDefinitionId,omitempty"`
+}
+
+// ProcessInstanceSearchRequest contains service-owned search mechanics while
+// callers retain CLI validation, rendering, prompts, and mode selection.
+type ProcessInstanceSearchRequest struct {
+	Filter               ProcessInstanceFilter               `json:"filter,omitempty"`
+	Page                 ProcessInstancePageRequest          `json:"page,omitempty"`
+	Limit                int32                               `json:"limit,omitempty"`
+	LocalFilters         ProcessInstanceSearchLocalFilters   `json:"localFilters,omitempty"`
+	DirectIncidentIndex  bool                                `json:"directIncidentIndex,omitempty"`
+	DirectIncidentFilter ProcessInstanceIncidentSearchFilter `json:"directIncidentFilter,omitempty"`
+	ReportedTotalAllowed bool                                `json:"reportedTotalAllowed,omitempty"`
+}
+
+// ProcessInstanceSearchPageStep carries one selected page plus traversal state
+// while keeping page advancement and limit trimming below command ownership.
+type ProcessInstanceSearchPageStep struct {
+	Page            ProcessInstancePage `json:"page"`
+	CumulativeCount int32               `json:"cumulativeCount"`
+	LimitReached    bool                `json:"limitReached"`
+}
+
+// ProcessInstanceSearchPageVisitor observes selected pages during service-owned traversal.
+type ProcessInstanceSearchPageVisitor func(ProcessInstanceSearchPageStep) (ProcessInstanceSearchPageAction, error)
+
+// ProcessInstanceSearchPagesResult captures a full or caller-stopped process-instance discovery.
+type ProcessInstanceSearchPagesResult struct {
+	Items []ProcessInstance `json:"items,omitempty"`
+	Limit int32             `json:"limit,omitempty"`
+	Pages int32             `json:"pages,omitempty"`
+}
+
+// ProcessInstanceMutationPlanRequest combines search selection with dry-run
+// dependency expansion controls for cancel/delete style commands.
+type ProcessInstanceMutationPlanRequest struct {
+	SearchRequest ProcessInstanceSearchRequest `json:"searchRequest,omitempty"`
+	Workers       int                          `json:"workers,omitempty"`
+}
+
+// ProcessInstanceMutationPlanStep carries one selected search page and its
+// expanded cancellation/deletion plan.
+type ProcessInstanceMutationPlanStep struct {
+	Page             ProcessInstancePage  `json:"page"`
+	RequestedKeys    []string             `json:"requestedKeys,omitempty"`
+	Plan             DryRunPIKeyExpansion `json:"plan"`
+	CumulativeCount  int32                `json:"cumulativeCount"`
+	CumulativeImpact int32                `json:"cumulativeImpact"`
+	LimitReached     bool                 `json:"limitReached"`
+}
+
+// ProcessInstanceMutationPlanVisitor observes page-level plans while service
+// code owns search paging, limit trimming, and dependency-expansion traversal.
+type ProcessInstanceMutationPlanVisitor func(ProcessInstanceMutationPlanStep) (ProcessInstanceSearchPageAction, error)
+
+// ProcessInstanceMutationPlanPagesResult captures planned search-selected
+// cancel/delete pages without taking over CLI rendering or confirmation.
+type ProcessInstanceMutationPlanPagesResult struct {
+	Plans            []ProcessInstanceMutationPlanStep `json:"plans,omitempty"`
+	Limit            int32                             `json:"limit,omitempty"`
+	Pages            int32                             `json:"pages,omitempty"`
+	RequestedCount   int32                             `json:"requestedCount,omitempty"`
+	CumulativeImpact int32                             `json:"cumulativeImpact,omitempty"`
+	Stopped          bool                              `json:"stopped,omitempty"`
+}
+
+// ProcessInstanceSearchTotalStep exposes page-counting state while total
+// fallback traversal stays below command ownership.
+type ProcessInstanceSearchTotalStep struct {
+	Page             ProcessInstancePage `json:"page"`
+	FilteredCount    int32               `json:"filteredCount,omitempty"`
+	TotalBefore      int64               `json:"totalBefore,omitempty"`
+	TotalAfter       int64               `json:"totalAfter,omitempty"`
+	CountingByPaging bool                `json:"countingByPaging,omitempty"`
+	ExactTotalUsed   bool                `json:"exactTotalUsed,omitempty"`
+}
+
+// ProcessInstanceSearchTotalVisitor observes total fallback pages for diagnostics.
+type ProcessInstanceSearchTotalVisitor func(ProcessInstanceSearchTotalStep) error
 
 type OrphanDiscoveryRequest struct {
 	Filter    ProcessInstanceFilter         `json:"filter,omitempty"`

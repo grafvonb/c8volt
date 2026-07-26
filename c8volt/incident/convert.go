@@ -37,6 +37,7 @@ func fromDomainIncidentDetails(xs []d.ProcessInstanceIncidentDetail) []ProcessIn
 
 func toDomainFilter(x Filter) d.IncidentFilter {
 	return d.IncidentFilter{
+		Keys:                   append([]string(nil), x.Keys...),
 		State:                  x.State,
 		ErrorType:              x.ErrorType,
 		ErrorMessage:           x.ErrorMessage,
@@ -68,6 +69,28 @@ func fromDomainPage(x d.IncidentPage) Page {
 		}),
 		EndCursor: x.EndCursor,
 		Items:     fromDomainIncidentDetails(x.Items),
+	}
+}
+
+func fromDomainSearchPagesResult(x d.IncidentSearchPagesResult) SearchPagesResult {
+	return SearchPagesResult{
+		Items: fromDomainIncidentDetails(x.Items),
+		Limit: x.Limit,
+		Pages: x.Pages,
+	}
+}
+
+func toDomainSearchPageVisitor(visitor SearchPageVisitor) d.IncidentSearchPageVisitor {
+	if visitor == nil {
+		return nil
+	}
+	return func(step d.IncidentSearchPageStep) (d.IncidentSearchPageAction, error) {
+		action, err := visitor(SearchPageStep{
+			Page:            fromDomainPage(step.Page),
+			CumulativeCount: step.CumulativeCount,
+			LimitReached:    step.LimitReached,
+		})
+		return d.IncidentSearchPageAction(action), err
 	}
 }
 

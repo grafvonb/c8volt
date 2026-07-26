@@ -99,6 +99,27 @@ type Page struct {
 	Items         []ProcessInstanceIncidentDetail `json:"items,omitempty"`
 }
 
+type SearchPageAction string
+
+const (
+	SearchPageActionContinue SearchPageAction = "continue"
+	SearchPageActionStop     SearchPageAction = "stop"
+)
+
+type SearchPageStep struct {
+	Page            Page  `json:"page"`
+	CumulativeCount int32 `json:"cumulativeCount"`
+	LimitReached    bool  `json:"limitReached"`
+}
+
+type SearchPageVisitor func(SearchPageStep) (SearchPageAction, error)
+
+type SearchPagesResult struct {
+	Items []ProcessInstanceIncidentDetail `json:"items,omitempty"`
+	Limit int32                           `json:"limit,omitempty"`
+	Pages int32                           `json:"pages,omitempty"`
+}
+
 type ResolutionOperation string
 
 const (

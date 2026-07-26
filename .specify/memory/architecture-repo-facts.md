@@ -47,7 +47,7 @@
 | Camunda external API boundary | `config/templates/config.example.yaml`; `internal/clients/camunda/v87`, `v88`, `v89`; `internal/services/*/factory.go`; `README.md` | Configured base URLs, tenant, auth mode, version | Camunda v2 and Operate/Tasklist-style HTTP calls | Complete upstream deployment topology is not represented in this repo. |
 | Authentication boundary | `config/templates/config.example.yaml`; `internal/services/auth/factory.go`; `internal/services/httpc/service.go` | Auth mode and credentials from config/env/profile | Request editor transport for none, OAuth2, or cookie-backed auth | Identity provider behavior and token policies are external. |
 | Public facade boundary | `c8volt/contract.go`; `c8volt/client.go`; `c8volt/*/api.go` | Command layer requests operations through public APIs | Internal services and generated clients | The facade is not documented as a public SDK compatibility guarantee. |
-| Generated API-client boundary | `internal/clients/camunda/v87`; `internal/clients/camunda/v88`; `internal/clients/camunda/v89`; `api/refresh-clients.sh`; `go.mod` tool declarations | Service factories choose clients based on config/version | HTTP request/response translation to upstream APIs | The exact upstream OpenAPI provenance is only partially visible from generated output and scripts. |
+| Generated API-client boundary | `internal/clients/camunda/v86`; `internal/clients/camunda/v87`; `internal/clients/camunda/v88`; `internal/clients/camunda/v89`; `api/refresh-clients.sh`; `go.mod` tool declarations | Service factories choose clients based on config/version | HTTP request/response translation to upstream APIs | The exact upstream OpenAPI provenance is only partially visible from generated output and scripts; v86 client presence alone does not prove supported CLI behavior. |
 | Documentation and release boundary | `docs/`; `docsgen/`; `Makefile`; `.github/workflows/docs.yml`; `.github/workflows/release.yaml`; `.goreleaser.yaml` | Generated command docs and release tags | Static site build, GitHub release archives, SFTP docs publication | Hosting runtime details beyond SFTP target secrets are not described. |
 
 ## Data and State Clues
@@ -82,7 +82,7 @@
 | Public operation facade | `c8volt/contract.go`; `c8volt/client.go`; `c8volt/*/api.go` | Presents grouped operations for commands while hiding internal service wiring. | Wraps internal services and domain conversions. | Risk of command layer bypassing facade and coupling directly to internals. |
 | Internal domain models | `internal/domain/`; domain tests | Holds architecture-level operation concepts such as process state, incidents, reports, and ops plans. | Used by internal services and facade conversions. | Risk of generated-client shapes leaking into stable command/domain contracts. |
 | Internal services | `internal/services/`; service tests | Coordinate versioned clients, filters, lookup, waits, discovery, repair, purge, and other remote operations. | Depend on config, HTTP, generated clients, and domain models. | Risk of service packages crossing capability boundaries without facade mediation. |
-| Generated client adapters | `internal/clients/`; `api/refresh-clients.sh`; `go.mod` tool declarations | Provide version-specific Camunda and OAuth API clients. | Consumed by internal services. | Risk of version-specific generated types leaking upward. |
+| Generated client adapters | `internal/clients/`; `internal/clients/camunda/v86`; `internal/clients/camunda/v87`; `internal/clients/camunda/v88`; `internal/clients/camunda/v89`; `api/refresh-clients.sh`; `go.mod` tool declarations | Provide version-specific Camunda and OAuth API clients. | Consumed by internal services; supported-version conclusions still require command/config/docs evidence. | Risk of version-specific generated types leaking upward or generated-client presence being mistaken for user-facing support. |
 | Configuration | `config/`; config tests; `config/templates/config.example.yaml` | Owns config schema, defaults, validation, and precedence. | Used by root command and services. | Risk of command-local flags diverging from config-backed precedence. |
 | Documentation generation | `docsgen/`; `Makefile` `docs-content`; `docs/cli/` | Regenerates CLI reference from command metadata. | Depends on command tree and build metadata. | Risk of user-facing docs drifting from command behavior. |
 | Test support | `testx/`; `cmd/*_test.go`; `internal/services/*_test.go` | Provides fake servers, subprocess runners, integration env guards, and command fixtures. | Supports command, facade, and service tests. | Test-only helpers should not become runtime dependency points. |
@@ -97,7 +97,7 @@ Record repository-first evidence only when `.specify/memory/repository-first/` e
 |-----------|-------------------|------------------|-----------------------|
 | Go | `go.mod`; `go.sum`; `Makefile`; `.goreleaser.yaml` | Detected | Single CLI binary built from module root, with release archives for multiple OS/architecture targets. |
 | Ruby/Jekyll docs | `docs/Gemfile`; `docs/_config.yml`; `.github/workflows/docs.yml` | Detected | Static documentation site build surface, not core CLI runtime. |
-| Node auxiliary dependency | `node_modules/yq` directory present | Low-confidence local artifact | No package manifest was observed at repo root; not used as an architecture conclusion. |
+| Node auxiliary dependency | `package.json`; `package-lock.json`; `node_modules/yq` directory present | Detected auxiliary manifest | Root Node manifest declares `yq`; no source evidence shows it as a core CLI runtime dependency. |
 | Repository-first artifacts | `.specify/memory/repository-first/` absent | Gap | No generated dependency matrix or module invocation spec was available for this pass. |
 
 ### First-Party Module Edges
@@ -105,6 +105,7 @@ Record repository-first evidence only when `.specify/memory/repository-first/` e
 | From Module | To Module | Evidence Source | Observed Direction | Architecture Boundary Meaning |
 |-------------|-----------|-----------------|--------------------|-------------------------------|
 | Command layer | Public operation facade | `cmd/cmd_cli.go`; `c8volt/client.go` | CLI commands create/use facade operations. | User interaction stays separate from remote operation implementation. |
+| Command bootstrap | Configuration and transport/auth services | `cmd/root.go`; `cmd/bootstrap_errors.go`; `config/`; `internal/services/auth/factory.go`; `internal/services/httpc/service.go` | Root command setup installs effective config, auth, and HTTP transport before remote operations. | Bootstrap wiring is an allowed command-layer exception distinct from operation implementation. |
 | Public operation facade | Internal services | `c8volt/client.go`; `internal/services/*/factory.go` | Facade wires capability services and presents grouped APIs. | Internal services remain hidden behind operation families. |
 | Internal services | Generated clients | `internal/services/*/factory.go`; `internal/clients/camunda/v87`; `v88`; `v89` | Services select versioned generated clients. | Version-specific upstream API differences are isolated below services. |
 | Internal services | Domain models | `internal/domain/`; `internal/services/*` | Services translate remote observations into domain outcomes. | Command-visible behavior should depend on domain concepts, not generated shapes. |
@@ -114,7 +115,7 @@ Record repository-first evidence only when `.specify/memory/repository-first/` e
 
 | Rule Source | Allowed Direction | Forbidden Direction | Architecture Constraint | Risk If Violated |
 |-------------|-------------------|---------------------|-------------------------|------------------|
-| Observed layering from `cmd/cmd_cli.go` and `c8volt/client.go` | Command layer to facade; facade to internal services | Internal generated clients to command layer | CLI interaction must remain decoupled from upstream generated API shapes. | User-facing contracts would become version-fragile. |
+| Observed layering from `cmd/cmd_cli.go`, `cmd/root.go`, and `c8volt/client.go` | Command layer to facade for operations; command bootstrap to config/auth/HTTP setup; facade to internal services | Command operation handlers to generated clients | CLI interaction must remain decoupled from upstream generated API shapes while root bootstrap may assemble execution context. | User-facing contracts would become version-fragile or bootstrap behavior would be mixed with operation implementation. |
 | Observed factory layout in `internal/services/*/factory.go` | Services to versioned generated clients | Version-specific clients above service boundary | Version compatibility must be handled below command/facade level. | Camunda version support would scatter across commands. |
 | Observed docs generation in `Makefile` and `docsgen/` | Command metadata to generated docs | Hand-edited generated docs as source of truth | Command behavior is the authority for generated CLI reference. | Docs drift and automation contract mismatches. |
 | Repository-first artifacts absent | No repository-first governance rules available | No additional forbidden edge proven | Architecture rules in this pass are inferred from observable module direction only. | A future dependency matrix may reveal stricter constraints. |
@@ -125,6 +126,7 @@ Record repository-first evidence only when `.specify/memory/repository-first/` e
 |---------------|----------------------|-------------|-------------------|-----------------------------|
 | `go.mod` | Cobra, Viper, pflag, terminal handling, YAML, OpenAPI codegen/runtime, test assertions | CLI/config/build dependency surface | Command, config, generated-client boundaries | Dependency major upgrades affecting command parsing, config precedence, or generated clients. |
 | `go.mod` and `internal/clients/` | Multiple Camunda client versions | Version divergence by design | Internal service and generated-client boundary | Adding/removing supported Camunda versions or changing version selection behavior. |
+| `package.json`; `package-lock.json` | Auxiliary `yq` Node dependency | Repository tooling dependency signal | Development tooling boundary, not core CLI runtime | Review before treating Node dependencies as required runtime or release dependencies. |
 | `docs/Gemfile`; `.github/workflows/docs.yml`; `docs/_config.yml` | Jekyll docs toolchain | Documentation dependency surface | Documentation/release boundary | Docs build, site generation, or hosting workflow changes. |
 | `.specify/memory/repository-first/` absent | No dependency matrix projection | Evidence gap | Development view | Run repository-first analysis before making stricter dependency-governance claims. |
 
@@ -156,6 +158,7 @@ Record repository-first evidence only when `.specify/memory/repository-first/` e
 | Long-term audit/report storage policy is not represented. | Process View, Physical View | Ops reports are produced, but retention, archival, and governance of reports cannot be concluded. |
 | Complete failure compensation semantics for partial remote mutation failures are distributed across individual command/playbook implementations. | Process View | This pass can state preview/confirm/verify architecture, but not a universal rollback model. |
 | Business actors beyond operator, developer, support engineer, CI pipeline, and agent are not evidenced. | Scenario View | README names the actor set; no end-customer or business approver role can be invented. |
+| The current logical and process view artifacts are present but did not pass the readiness validator because required headings or source-traceability sections are missing. | Development View, Architecture Synthesis | Development conclusions in this refresh must rely on repository facts rather than treating those supporting views as ready architecture evidence. |
 
 ## Evidence Rules
 

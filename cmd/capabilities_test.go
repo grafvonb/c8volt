@@ -208,6 +208,106 @@ func TestCapabilitiesCommand_JSONIncludesOpsRootMetadata(t *testing.T) {
 	require.Contains(t, ops.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 }
 
+// TestCapabilitiesCommand_JSONIncludesPagedWorkflowContracts verifies the
+// serialized capability document carries the updated paging and automation text.
+func TestCapabilitiesCommand_JSONIncludesPagedWorkflowContracts(t *testing.T) {
+	output := executeRootForTest(t, "capabilities", "--json")
+
+	var doc CapabilityDocument
+	require.NoError(t, json.Unmarshal([]byte(output), &doc))
+
+	tests := []struct {
+		path       string
+		batchDesc  string
+		limitDesc  string
+		aliases    []string
+		mutation   CommandMutation
+		outputMode OutputModeContract
+	}{
+		{
+			path:       "get job",
+			batchDesc:  "number of jobs to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+			limitDesc:  "maximum number of matching jobs to return across all pages; omit to continue through all matches",
+			mutation:   CommandMutationReadOnly,
+			outputMode: OutputModeContract{Name: "keys-only", Supported: true},
+		},
+		{
+			path:       "get element",
+			batchDesc:  "number of elements to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+			limitDesc:  "maximum number of matching elements to return across all pages; omit to continue through all matches",
+			aliases:    []string{"ei"},
+			mutation:   CommandMutationReadOnly,
+			outputMode: OutputModeContract{Name: "keys-only", Supported: true},
+		},
+		{
+			path:       "get incident",
+			batchDesc:  "number of incidents to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+			limitDesc:  "maximum number of matching incidents to return across all pages; omit to continue through all matches",
+			aliases:    []string{"incidents", "inc"},
+			mutation:   CommandMutationReadOnly,
+			outputMode: OutputModeContract{Name: "keys-only", Supported: true},
+		},
+		{
+			path:       "get process-instance",
+			batchDesc:  "number of process instances to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+			limitDesc:  "maximum number of matching process instances to return across all pages; omit to continue through all matches",
+			aliases:    []string{"process-instances", "pi", "pis"},
+			mutation:   CommandMutationReadOnly,
+			outputMode: OutputModeContract{Name: "keys-only", Supported: true},
+		},
+		{
+			path:       "cancel process-instance",
+			batchDesc:  "number of process instances to inspect per discovery page; does not cap total selected scope (max limit 1000 enforced by server)",
+			limitDesc:  "maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches",
+			aliases:    []string{"pi"},
+			mutation:   CommandMutationStateChanging,
+			outputMode: OutputModeContract{Name: "json", Supported: true, MachinePreferred: true},
+		},
+		{
+			path:       "delete process-instance",
+			batchDesc:  "number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server)",
+			limitDesc:  "maximum number of matching process instances to freeze for deletion across all pages; omit to continue through all matches",
+			aliases:    []string{"pi"},
+			mutation:   CommandMutationStateChanging,
+			outputMode: OutputModeContract{Name: "json", Supported: true, MachinePreferred: true},
+		},
+		{
+			path:       "ops execute retention-policy",
+			batchDesc:  "number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server)",
+			limitDesc:  "maximum number of matching process instances to freeze for retention cleanup; omit to discover all matches",
+			aliases:    []string{"ret-pol", "rp"},
+			mutation:   CommandMutationStateChanging,
+			outputMode: OutputModeContract{Name: "json", Supported: true, MachinePreferred: true},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			capability, ok := findCommandCapability(doc.Commands, tt.path)
+			require.True(t, ok, "expected %q to appear in capability discovery", tt.path)
+			require.Equal(t, tt.mutation, capability.Mutation)
+			require.Equal(t, ContractSupportFull, capability.ContractSupport)
+			require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+			require.Contains(t, capability.OutputModes, tt.outputMode)
+			for _, alias := range tt.aliases {
+				require.Contains(t, capability.Aliases, alias)
+			}
+			require.Contains(t, capability.Flags, FlagContract{
+				Name:        "batch-size",
+				Shorthand:   "n",
+				Type:        "int32",
+				Description: tt.batchDesc,
+			})
+			require.Contains(t, capability.Flags, FlagContract{
+				Name:        "limit",
+				Shorthand:   "l",
+				Type:        "int32",
+				Description: tt.limitDesc,
+			})
+		})
+	}
+}
+
 // TestCapabilitiesCommand_OpsGroupingCommandsDoNotClaimFullAutomation keeps grouping-only ops commands out of full automation contracts.
 func TestCapabilitiesCommand_OpsGroupingCommandsDoNotClaimFullAutomation(t *testing.T) {
 	output := executeRootForTest(t, "capabilities", "--json")

@@ -15,7 +15,7 @@ import (
 
 const (
 	indirectProcessTreeIncidentNote    = "process instance is marked as having incidents, but no direct incidents were found; inspect the process tree for child incident details"
-	indirectProcessTreeIncidentWarning = "one or more incident markers may refer to incidents in the process-instance tree; inspect with walk pi --key <key> --with-incidents"
+	indirectProcessTreeIncidentWarning = "one or more incident markers may refer to incidents in the process-instance tree; inspect with walk process-instance --key <key> --with-incidents"
 )
 
 // incidentEnrichedProcessInstancesView renders direct process-instance incident enrichment.

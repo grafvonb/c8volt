@@ -1,64 +1,69 @@
 # AGENTS.md
 
 ## Purpose
-- This file defines shared agent guidance for repositories that install tooling from this project.
-- It is intentionally generic and should be safe to reuse across multiple repositories.
-- Consumer repositories may replace or extend this file with stricter local rules when needed.
+- This file defines repository-specific guidance for agents working in `c8volt`.
+- Keep instructions focused on durable project conventions, architecture boundaries, validation, and documentation.
+- Do not add temporary issue details here. Put feature-specific requirements in the matching `specs/<feature>/` artifacts.
 
-## Ralph PRD generation
-- When generating or updating `scripts/ralph/prd.json`, split work into multiple small user stories.
-- Each story must be feasible in one Ralph iteration.
-- Prioritize stories by dependency and execution order.
-- Keep each story narrowly scoped and independently verifiable.
-- Write precise, minimal, testable acceptance criteria.
-- Reuse existing project patterns and avoid introducing parallel structures.
-- If `scripts/ralph/prd.json` already exists and the task is an update, prefer adding follow-up stories instead of rewriting completed stories, unless they are no longer valid.
+## Required Project Context
+- Before implementation work, read the active feature artifacts under `specs/<feature>/` when they exist: `spec.md`, `plan.md`, `tasks.md`, and supporting files such as `research.md`, `data-model.md`, `quickstart.md`, and `contracts/`.
+- Ralph-driven implementation work must also read and follow `specs/ralph-implementation-rules.md`.
+- The Ralph rules are mandatory for Ralph iterations and contain the detailed project map, layering rules, CLI UX rules, validation guidance, and iteration discipline.
+- If feature artifacts conflict with `specs/ralph-implementation-rules.md`, stop and surface the conflict before implementing.
 
-## Branch and repository handling
-- For issue-based work, first check whether a matching local or remote branch already exists and reuse it when appropriate.
-- If the issue already has a linked or existing branch, use that exact branch name.
-- Do not invent a different branch name when an issue branch already exists.
-- Preserve the repository's existing branch and feature numbering format, including zero padding when the repository uses it.
-- When a generator or repository script returns the branch or feature name, treat that returned name as the source of truth instead of reformatting the numeric prefix by hand.
-- Do not add extra prefixes unless the user explicitly asks or the repository explicitly requires them.
-- Do not create or switch to a different feature branch unless the user explicitly asks.
+## Project Architecture
+- CLI commands, flags, validation, command metadata, and rendering live under `cmd/`.
+- Public facade APIs live under `c8volt/` and `c8volt/<area>/`.
+- Public facade options live in `c8volt/foptions`; public facade error conversion lives in `c8volt/ferrors`.
+- Version-neutral domain types live in `internal/domain`.
+- Version-neutral service contracts and factories live in `internal/services/<area>`.
+- Camunda version-specific adapters live in `internal/services/<area>/v87`, `v88`, and `v89`.
+- Generated Camunda clients live in `internal/clients/camunda`; avoid hand-editing generated code unless explicitly required.
+- Shared production helpers live in `toolx`; shared test helpers live in `testx`.
+- Feature planning artifacts live under `specs/<feature>/`.
 
-## Commit rules
-- Commit messages must follow Conventional Commits format.
-- Add a scope in parentheses after the type when a clear scope exists.
-- Reference the issue in the subject when applicable.
-- Use lowercase by default, except where capitalization is required for correct names.
-- Prefer small commits grouped by purpose.
-- Do not use vague commit messages such as `update`, `fix stuff`, or `changes`.
+## Layering Rules
+- Prefer existing package ownership and local patterns before introducing new structures.
+- `cmd` may call public facades and command support helpers, but must not call generated Camunda clients or versioned service implementations directly.
+- Public facades should be thin: map public inputs to internal service inputs, delegate to internal services, map outputs back, and convert errors through `c8volt/ferrors`.
+- Backend mechanics such as pagination loops, worker pools, polling, retries, wait loops, dependency expansion, and mutation workflows belong in internal services, not in CLI commands or public facades.
+- Keep version-specific API differences explicit in the matching `v87`, `v88`, or `v89` service package.
+- Reuse `toolx`, `toolx/pool`, `internal/services/common`, and `testx` helpers before adding new helper code.
 
-## Validation
-- Run the closest relevant automated checks before committing when the repository provides them.
-- Prefer targeted validation near the changed area first, then broader repository validation when appropriate.
+## CLI And Operator UX
+- Preserve established command output patterns and wording from nearby command renderers and tests.
+- Human output should be compact, stable, and scan-friendly.
+- JSON and other machine-readable output must use stable structs and the shared command envelope when the command supports the shared contract.
+- Keys-only output must print one key per line and nothing else.
+- Do not add noisy endpoint, request, cursor, or per-key lifecycle detail to default human output; keep diagnostics behind `--verbose`.
+- When command output changes, update tests for the affected human, JSON, keys-only, error, prompt, and activity behavior where relevant.
+
+## Testing And Validation
+- Add or update tests close to the changed package.
+- Prefer targeted validation first, then broader validation when the change has wider blast radius.
+- For command changes, start with targeted `go test ./cmd -run '<TestNameOrPattern>' -count=1`.
+- For facade changes, start with targeted `go test ./c8volt/<area> -run '<TestNameOrPattern>' -count=1`.
+- For internal service changes, start with targeted `go test ./internal/services/<area>/... -run '<TestNameOrPattern>' -count=1`.
+- The repository full test target is `make test`, which runs `go test ./... -race -count=1`.
+- Run `gofmt` on touched Go files.
 - If validation cannot be run, call that out explicitly.
 
-## Project conventions
-- Prefer existing repository patterns over introducing new structural styles.
-- Preserve externally observable behavior unless the task explicitly asks for behavior changes.
-- Favor incremental refactors with verification over broad rewrites.
-- When changing generated or generated-adjacent artifacts, update the source and regenerate rather than editing derived output by hand when the repository provides a generation path.
+## Documentation And Generated Artifacts
+- Keep user-facing documentation and examples aligned with behavior changes.
+- When command behavior, flags, aliases, examples, or output contracts change, update command source metadata and regenerate CLI docs with `make docs-content`.
+- Do not hand-edit generated CLI docs under `docs/cli/*` when the command source can regenerate them.
+- For generated Camunda clients, prefer updating the OpenAPI mutation or refresh workflow under `api/` and regenerating clients.
+- Speckit memory under `.speckit/memory` and feature artifacts under `specs/` are project context and should be preserved.
 
-## Testing conventions
-- Add or update tests alongside refactoring and bug fixes.
-- Prefer tests close to the changed package, module, or feature area.
-- For refactors, ensure tests verify preserved behavior, not just new internal structure.
-
-## Documentation conventions
-- User-facing documentation and examples should stay in sync with behavior changes.
-- When changing user-facing commands, APIs, or workflows, update the relevant documentation in the same change.
-- If documentation is generated from source metadata, update the source and regenerate rather than hand-editing derived output.
-
-## Technology baseline
-- Follow the repository's current toolchain, dependency, and framework conventions.
-- Prefer the libraries and frameworks already established in the repository unless the user explicitly asks for a change.
-
-## Issue-specific guidance
-- Issue-specific requirements belong in the issue, feature artifacts, and PRD.
-- Do not add changing issue-specific details to this file unless they become stable reusable repository rules.
+## Git And Commit Rules
+- Reuse existing issue or feature branches when they already exist.
+- Do not create or switch branches unless the user explicitly asks.
+- For GitHub issue-backed Spec Kit work, the GitHub issue number is authoritative for the `specs/<number>-<slug>/` prefix and feature branch label. This overrides `.specify/extensions/git/git-config.yml` `branch_numbering: sequential`; pass the issue number explicitly with `--number <issue>` or correct the generated folder and references before planning or implementation continues.
+- Commit messages must follow Conventional Commits format.
+- Add a scope in parentheses when a clear scope exists.
+- Reference the issue in the subject when applicable.
+- Prefer small commits grouped by purpose.
+- Run the closest relevant checks before committing when the repository provides them.
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->

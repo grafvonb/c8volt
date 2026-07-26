@@ -5,6 +5,11 @@ package domain
 
 import "time"
 
+const (
+	JobKindExecutionListener = "EXECUTION_LISTENER"
+	JobKindTaskListener      = "TASK_LISTENER"
+)
+
 type Job struct {
 	Key                string     `json:"key,omitempty"`
 	State              string     `json:"state,omitempty"`
@@ -20,6 +25,46 @@ type Job struct {
 	ErrorCode          string     `json:"errorCode,omitempty"`
 	ErrorMessage       string     `json:"errorMessage,omitempty"`
 	TenantId           string     `json:"tenantId,omitempty"`
+}
+
+type RuntimeListenerJob struct {
+	JobKey             string     `json:"jobKey,omitempty"`
+	Kind               string     `json:"kind,omitempty"`
+	ListenerEventType  string     `json:"listenerEventType,omitempty"`
+	Type               string     `json:"type,omitempty"`
+	State              string     `json:"state,omitempty"`
+	Retries            int32      `json:"retries"`
+	Worker             string     `json:"worker,omitempty"`
+	Deadline           *time.Time `json:"deadline,omitempty"`
+	ProcessInstanceKey string     `json:"processInstanceKey,omitempty"`
+	ElementInstanceKey string     `json:"elementInstanceKey,omitempty"`
+	ElementId          string     `json:"elementId,omitempty"`
+	TenantId           string     `json:"tenantId,omitempty"`
+	ErrorCode          string     `json:"errorCode,omitempty"`
+	ErrorMessage       string     `json:"errorMessage,omitempty"`
+}
+
+func RuntimeListenerJobFromJob(job Job) RuntimeListenerJob {
+	return RuntimeListenerJob{
+		JobKey:             job.Key,
+		Kind:               job.Kind,
+		ListenerEventType:  job.ListenerEventType,
+		Type:               job.Type,
+		State:              job.State,
+		Retries:            job.Retries,
+		Worker:             job.Worker,
+		Deadline:           job.Deadline,
+		ProcessInstanceKey: job.ProcessInstanceKey,
+		ElementInstanceKey: job.ElementInstanceKey,
+		ElementId:          job.ElementId,
+		TenantId:           job.TenantId,
+		ErrorCode:          job.ErrorCode,
+		ErrorMessage:       job.ErrorMessage,
+	}
+}
+
+func IsRuntimeListenerJobKind(kind string) bool {
+	return kind == JobKindExecutionListener || kind == JobKindTaskListener
 }
 
 type JobSearchQuery struct {
@@ -58,6 +103,17 @@ type JobSearchResult struct {
 	Limit int32 `json:"limit"`
 }
 
+// JobSearchPageAction tells service-owned page traversal whether the caller
+// needs more pages after observing the current page.
+type JobSearchPageAction string
+
+const (
+	// JobSearchPageActionContinue keeps collecting the next available page.
+	JobSearchPageActionContinue JobSearchPageAction = "continue"
+	// JobSearchPageActionStop stops traversal after the current page.
+	JobSearchPageActionStop JobSearchPageAction = "stop"
+)
+
 type JobReportedTotalKind string
 
 const (
@@ -80,6 +136,25 @@ type JobSearchPage struct {
 	Request       JobPageRequest
 	OverflowState ProcessInstanceOverflowState
 	ReportedTotal *JobReportedTotal
+}
+
+// JobSearchPageStep carries one selected page plus service-owned traversal
+// state to callers that still own rendering or prompt policy.
+type JobSearchPageStep struct {
+	Page            JobSearchPage
+	CumulativeCount int32
+	LimitReached    bool
+}
+
+// JobSearchPageVisitor observes each selected page during service-owned
+// traversal and may stop collection without owning offset math.
+type JobSearchPageVisitor func(JobSearchPageStep) (JobSearchPageAction, error)
+
+// JobSearchPagesResult captures a full or caller-stopped paged discovery.
+type JobSearchPagesResult struct {
+	Items []Job
+	Limit int32
+	Pages int32
 }
 
 type JobUpdateRequest struct {

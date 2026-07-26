@@ -30,8 +30,8 @@ func TestExpectHelp_DocumentsWaitVerificationUsage(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"expect"}, []string{
 		"Wait for process instances to satisfy expectations",
 		"success depends on an",
-		"./c8volt expect pi --key <process-instance-key> --state absent",
-		"./c8volt expect pi --key <process-instance-key> --incident true",
+		"./c8volt expect process-instance --key <process-instance-key> --state absent",
+		"./c8volt expect process-instance --key <process-instance-key> --incident true",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
@@ -40,7 +40,7 @@ func TestExpectHelp_DocumentsWaitVerificationUsage(t *testing.T) {
 		"final state or incident marker is visible",
 		"state expectation; valid values are: [active, completed, canceled, terminated, absent]",
 		"incident expectation; valid values are: [true, false]",
-		"./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --incident true -",
+		"./c8volt get process-instance --key <process-instance-key> --keys-only | ./c8volt expect process-instance --incident true -",
 	}, nil)
 	require.Contains(t, output, "--state")
 	require.Contains(t, output, "--incident")

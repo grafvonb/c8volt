@@ -200,6 +200,13 @@ func TestDeleteCommands_RegressionPreservesCleanupContracts(t *testing.T) {
 		Description: "BPMN process ID of the process definition (all versions) to delete",
 	})
 	require.Contains(t, pdCapability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview process-definition delete impact without submitting deletion or cancellation requests",
+	})
+	require.Contains(t, pdCapability.Flags, FlagContract{
 		Name:        "force",
 		Type:        "bool",
 		Required:    false,
@@ -625,13 +632,7 @@ func TestDeleteProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *tes
 		deleteProcessInstances: dryRunDeleteMutationGuard(t),
 	}
 
-	results, err := processPISearchPagesWithAction(cmd, cli, nil, process.ProcessInstanceFilter{}, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
-		keys := make(typex.Keys, 0, len(page.Items))
-		for _, pi := range page.Items {
-			keys = append(keys, pi.Key)
-		}
-		return deleteProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, false)
-	})
+	results, err := planDeleteProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{})
 	require.NoError(t, err)
 	require.Empty(t, results.Reports)
 	require.Len(t, results.DryRunPreviews, 2)
@@ -861,13 +862,7 @@ func TestDeleteProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage(t *test
 		deleteProcessInstances: dryRunDeleteMutationGuard(t),
 	}
 
-	results, err := processPISearchPagesWithAction(cmd, cli, nil, process.ProcessInstanceFilter{}, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
-		keys := make(typex.Keys, 0, len(page.Items))
-		for _, pi := range page.Items {
-			keys = append(keys, pi.Key)
-		}
-		return deleteProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, false)
-	})
+	results, err := planDeleteProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{})
 	require.NoError(t, err)
 	require.Len(t, searchRequests, 1)
 	require.EqualValues(t, 0, searchRequests[0].From)
@@ -894,7 +889,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"Delete process instances or process definitions",
 		"--auto-confirm",
 		"show verification examples",
-		"./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
+		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 	require.Contains(t, output, "process-definition")
@@ -905,10 +900,10 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"Use --force to cancel the affected scope first",
 		"Use --auto-confirm for unattended destructive runs",
 		"process instance key(s) to delete; repeat or combine with stdin '-'",
-		"number of process instances to process per page",
-		"maximum number of matching process instances to process across all pages",
-		"./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run",
-		"./c8volt delete pi --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run",
+		"number of process instances to inspect per discovery page; does not cap total frozen scope",
+		"maximum number of matching process instances to freeze for deletion across all pages; omit to continue through all matches",
+		"./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run",
+		"./c8volt delete process-instance --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run",
 	}, []string{"--count"})
 	require.Contains(t, output, "--force")
 	require.Contains(t, output, "--batch-size int32")
@@ -920,8 +915,11 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"requires Camunda 8.9 or newer",
 		"associated history",
 		"c8volt delete process-instance --bpmn-process-id <bpmn-process-id>",
+		"Use --dry-run to preview process-definition delete impact without submitting deletion or cancellation requests",
+		"./c8volt delete process-definition --key <process-definition-key> --dry-run",
+		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run",
 		"Use --auto-confirm for unattended destructive runs",
-		"./c8volt delete pd --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
+		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
 	}, nil)
 	require.NotContains(t, output, "--allow-inconsistent")
 }
@@ -952,7 +950,7 @@ func TestDeleteProcessDefinitionImpact_RenderForceImpact(t *testing.T) {
 	})
 
 	output := buf.String()
-	require.Contains(t, output, "Deletion is irreversible")
+	require.Contains(t, output, "deletion is irreversible")
 	require.Contains(t, output, "delete impact check: 1 process definition(s); 2 active process instance(s) found; no changes made yet")
 	require.Contains(t, output, "--force will cancel 1 root process instance(s), then delete 2 affected process instance(s), before deleting process definitions")
 	require.NotContains(t, output, "WARNING:")
@@ -1456,7 +1454,7 @@ func TestDeleteProcessInstancesWithPlan_SubmitsResolvedRootsOnlyForKeyedHierarch
 }
 
 // TestDeleteProcessInstancesWithPlan_RegressionForceNoWaitAndWorkerControls
-// protects delete pi hierarchy planning and execution controls while incident
+// protects delete process-instance hierarchy planning and execution controls while incident
 // purge delegates to this path.
 func TestDeleteProcessInstancesWithPlan_RegressionForceNoWaitAndWorkerControls(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
@@ -1628,6 +1626,176 @@ func TestDeleteProcessInstanceSearchPages_RequiresForceBeforeAnyMutation(t *test
 	require.Empty(t, got.Reports)
 	require.Len(t, got.DryRunPreviews, 0)
 	require.Contains(t, buf.String(), "next step: auto-continue")
+}
+
+// TestDeleteProcessInstanceSearchPages_FreezesAllPlansBeforeMutation verifies
+// search-derived delete collects every page-level plan before one confirmation
+// and one aggregate delete call.
+func TestDeleteProcessInstanceSearchPages_FreezesAllPlansBeforeMutation(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagCmdAutoConfirm = true
+	flagVerbose = true
+	flagGetPISize = 1
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Int32("batch-size", 1000, "")
+	require.NoError(t, cmd.Flags().Set("batch-size", "1"))
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	var events []string
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(implicit bool, prompt string) error {
+		events = append(events, "confirm")
+		require.True(t, implicit)
+		require.Contains(t, prompt, "total of 4 instance(s) with 2 root instance(s) will be deleted")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		searchProcessInstancesPage: func(_ context.Context, _ process.ProcessInstanceFilter, req process.ProcessInstancePageRequest, _ ...options.FacadeOption) (process.ProcessInstancePage, error) {
+			events = append(events, fmt.Sprintf("search:%d", req.From))
+			require.EqualValues(t, 1, req.Size)
+			switch req.From {
+			case 0:
+				return process.ProcessInstancePage{
+					Items:         []process.ProcessInstance{{Key: "401", State: process.StateCompleted}},
+					Request:       req,
+					OverflowState: process.ProcessInstanceOverflowStateHasMore,
+				}, nil
+			case 1:
+				return process.ProcessInstancePage{
+					Items:         []process.ProcessInstance{{Key: "402", State: process.StateCompleted}},
+					Request:       req,
+					OverflowState: process.ProcessInstanceOverflowStateNoMore,
+				}, nil
+			default:
+				t.Fatalf("unexpected search page offset %d", req.From)
+				return process.ProcessInstancePage{}, nil
+			}
+		},
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			events = append(events, "plan:"+keys.String())
+			switch keys.String() {
+			case "401":
+				return process.DryRunPIKeyExpansion{
+					Roots:     typex.Keys{"root-a"},
+					Collected: typex.Keys{"root-a", "401"},
+					Outcome:   process.TraversalOutcomeComplete,
+				}, nil
+			case "402":
+				return process.DryRunPIKeyExpansion{
+					Roots:     typex.Keys{"root-b"},
+					Collected: typex.Keys{"root-b", "402"},
+					Outcome:   process.TraversalOutcomeComplete,
+				}, nil
+			default:
+				t.Fatalf("unexpected dry-run plan keys %v", keys)
+				return process.DryRunPIKeyExpansion{}, nil
+			}
+		},
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.DeleteReports, error) {
+			events = append(events, "delete")
+			require.Equal(t, typex.Keys{"root-a", "root-b"}, keys)
+			require.Zero(t, wantedWorkers)
+			require.Equal(t, 4, options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount)
+			return process.DeleteReports{Items: []process.DeleteReport{
+				{Key: "root-a", Ok: true},
+				{Key: "root-b", Ok: true},
+			}}, nil
+		},
+	}
+
+	got, err := deleteProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{State: process.StateCompleted})
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"search:0", "plan:401", "search:1", "plan:402", "confirm", "delete"}, events)
+	require.Len(t, got.DryRunPreviews, 2)
+	require.Len(t, got.Reports, 2)
+	require.Contains(t, buf.String(), "next step: auto-continue")
+}
+
+// TestDeleteProcessInstanceDryRun_SearchContinuesAfterEmptySelectedPage protects
+// sparse search-derived delete planning: an empty selected page with more
+// backend matches must not hide later selectable candidates.
+func TestDeleteProcessInstanceDryRun_SearchContinuesAfterEmptySelectedPage(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+	flagGetPISize = 1
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Int32("batch-size", 1000, "")
+	require.NoError(t, cmd.Flags().Set("batch-size", "1"))
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	var actions []process.ProcessInstanceSearchPageAction
+	cli := stubProcessAPI{
+		planProcessInstanceMutationPages: func(_ context.Context, request process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, _ ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+			require.Equal(t, int32(1), request.SearchRequest.Page.Size)
+			emptyPage := process.ProcessInstancePage{
+				Request:       process.ProcessInstancePageRequest{From: 0, Size: 1},
+				OverflowState: process.ProcessInstanceOverflowStateHasMore,
+			}
+			action, err := visitor(process.ProcessInstanceMutationPlanStep{
+				Page:            emptyPage,
+				CumulativeCount: 0,
+			})
+			if err != nil {
+				return process.ProcessInstanceMutationPlanPagesResult{}, err
+			}
+			actions = append(actions, action)
+			if action == process.ProcessInstanceSearchPageActionStop {
+				return process.ProcessInstanceMutationPlanPagesResult{Pages: 1, Stopped: true}, nil
+			}
+
+			selectedPage := process.ProcessInstancePage{
+				Items:         []process.ProcessInstance{{Key: "401", State: process.StateCompleted}},
+				Request:       process.ProcessInstancePageRequest{From: 1, Size: 1},
+				OverflowState: process.ProcessInstanceOverflowStateNoMore,
+			}
+			plan := process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"401"},
+				Collected: typex.Keys{"401"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}
+			action, err = visitor(process.ProcessInstanceMutationPlanStep{
+				Page:             selectedPage,
+				RequestedKeys:    []string{"401"},
+				Plan:             plan,
+				CumulativeCount:  1,
+				CumulativeImpact: 1,
+			})
+			if err != nil {
+				return process.ProcessInstanceMutationPlanPagesResult{}, err
+			}
+			actions = append(actions, action)
+			return process.ProcessInstanceMutationPlanPagesResult{
+				Plans:            []process.ProcessInstanceMutationPlanStep{{Page: selectedPage, RequestedKeys: []string{"401"}, Plan: plan, CumulativeCount: 1, CumulativeImpact: 1}},
+				Pages:            2,
+				RequestedCount:   1,
+				CumulativeImpact: 1,
+			}, nil
+		},
+		deleteProcessInstances: dryRunDeleteMutationGuard(t),
+	}
+
+	got, err := deleteProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{State: process.StateCompleted})
+
+	require.NoError(t, err)
+	require.Equal(t, []process.ProcessInstanceSearchPageAction{
+		process.ProcessInstanceSearchPageActionContinue,
+		process.ProcessInstanceSearchPageActionStop,
+	}, actions)
+	require.Empty(t, got.Reports)
+	require.Len(t, got.DryRunPreviews, 1)
+	require.Equal(t, []string{"401"}, got.DryRunPreviews[0].RequestedKeys)
+	require.NotContains(t, buf.String(), "found: 0")
 }
 
 // TestDeleteProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck verifies paged impact-check warnings are printed.
@@ -2723,6 +2891,37 @@ func TestDeleteProcessDefinitionBpmnSelectorVisiblePreservesPreviewAndDeletion(t
 	require.Contains(t, string(output), "pd 2251799813685255; delete accepted; batch batch-2251799813685255")
 }
 
+func TestDeleteProcessDefinitionDryRunStopsAfterImpactPreview(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			requests.Append(r.Method + " " + r.URL.Path)
+			_, _ = w.Write([]byte(`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"order-process","name":"Order Process","version":3,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/batch-operations/search":
+			t.Fatal("dry-run must not check batch-operation read access")
+		case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v2/resources/"):
+			t.Fatal("dry-run must not submit process-definition deletion")
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+	output, err := testx.RunCmdSubprocess(t, "TestDeleteProcessDefinitionDryRunStopsAfterImpactPreviewHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+
+	require.NoError(t, err, string(output))
+	require.Equal(t, []string{"POST /v2/process-definitions/search"}, requests.Snapshot())
+	require.Contains(t, string(output), "dry run: delete process-definition")
+	require.Contains(t, string(output), "delete impact check: 1 process definition(s); process-instance state check skipped; no changes made yet")
+	require.NotContains(t, string(output), "Proceed with this deletion")
+	require.NotContains(t, string(output), "delete accepted")
+}
+
 func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWait(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -3208,6 +3407,28 @@ func TestDeleteProcessDefinitionBpmnSelectorVisiblePreservesPreviewAndDeletionHe
 		"--auto-confirm",
 		"--no-state-check",
 		"--no-wait",
+	})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestDeleteProcessDefinitionDryRunStopsAfterImpactPreviewHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"delete", "process-definition",
+		"--bpmn-process-id", "order-process",
+		"--pd-version", "3",
+		"--pd-version-tag", "stable",
+		"--dry-run",
+		"--no-state-check",
 	})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)

@@ -37,7 +37,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsHelpDocumentsCommandShape(t *testi
 		"Purge process instances selected by incidents",
 		"Aliases:",
 		"pi-with-incidents",
-		"--key strings",
+		"--inc-key strings",
 		"--state string",
 		"--error-type string",
 		"--error-message string",
@@ -90,6 +90,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsRejectsIncidentDisplayOnlyFlags(t 
 		{name: "omit message", args: []string{"--with-no-error-message"}, want: "unknown flag: --with-no-error-message"},
 		{name: "legacy element id", args: []string{"--flow-node-id", "task-a"}, want: "unknown flag: --flow-node-id"},
 		{name: "legacy element instance key", args: []string{"--fni-key", "2251799813685252"}, want: "unknown flag: --fni-key"},
+		{name: "ambiguous incident key selector", args: []string{"--key", "2251799813685252"}, want: "unknown flag: --key"},
 	}
 
 	for _, tt := range tests {
@@ -131,7 +132,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsInvalidFlagsUseInvalidInput(t *tes
 		},
 		{
 			name: "invalid incident key",
-			args: []string{"ops", "purge", "process-instances-with-incidents", "--key", "not-a-key"},
+			args: []string{"ops", "purge", "process-instances-with-incidents", "--inc-key", "not-a-key"},
 			want: `incident key "not-a-key" is not a valid key`,
 		},
 		{
@@ -179,6 +180,34 @@ func TestOpsPurgeProcessInstancesWithIncidentsDryRunDiscoveryOutput(t *testing.T
 	require.Contains(t, output, "skipped incidents: 1")
 	require.Contains(t, output, "delete preview: 3 candidate incident(s), 1 candidate process instance(s), 1 affected process instance(s) across 1 root(s) would be deleted")
 	require.Contains(t, output, "outcome: planned; no changes applied; use --verbose to list process-instance keys")
+}
+
+// TestOpsPurgeProcessInstancesWithIncidentsDiscoveryStatusOutput verifies compact limited and verbose complete discovery summaries.
+func TestOpsPurgeProcessInstancesWithIncidentsDiscoveryStatusOutput(t *testing.T) {
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
+
+	limited := sampleIncidentPurgeDryRunPlanResult()
+	limited.Discovery.DiscoveryScopeStatus = ops.DiscoveryScopeStatus{
+		Limited:          true,
+		Limit:            1,
+		BatchSize:        2,
+		Pages:            1,
+		CandidatesSeen:   2,
+		CandidatesFrozen: 1,
+	}
+	var limitedOutput bytes.Buffer
+	cmd := &cobra.Command{}
+	cmd.SetOut(&limitedOutput)
+	require.NoError(t, renderOpsPurgeProcessInstancesWithIncidentsResult(cmd, limited))
+	require.Contains(t, limitedOutput.String(), "discovery user-limited: limit 1; pages 1; batch size 2")
+
+	flagVerbose = true
+	var completeOutput bytes.Buffer
+	cmd = &cobra.Command{}
+	cmd.SetOut(&completeOutput)
+	require.NoError(t, renderOpsPurgeProcessInstancesWithIncidentsResult(cmd, sampleIncidentPurgeDryRunPlanResult()))
+	require.Contains(t, completeOutput.String(), "discovery complete: pages 2; batch size 2")
 }
 
 // TestOpsPurgeProcessInstancesWithIncidentsDryRunJSONDiscoveryData verifies machine output carries complete discovery fields.

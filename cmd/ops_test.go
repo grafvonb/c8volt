@@ -58,6 +58,45 @@ func TestOpsCommandReturnsHelpForGroupingInvocation(t *testing.T) {
 	require.Contains(t, output, "c8volt ops")
 }
 
+// TestOpsAnalyseHelpDocumentsGroupingCommand verifies the analysis family is discoverable under both spellings.
+func TestOpsAnalyseHelpDocumentsGroupingCommand(t *testing.T) {
+	output := executeRootForTest(t, "ops", "analyse", "--help")
+
+	assertHelpOutputContainsAll(t, output,
+		"Discover read-only operational analyses",
+		"inspection workflows that combine existing runtime resources",
+		"./c8volt ops analyse --help",
+		"./c8volt ops analyse slow-process-instances --help",
+	)
+
+	aliasOutput := executeRootForTest(t, "ops", "analyze", "--help")
+	require.Contains(t, aliasOutput, "Discover read-only operational analyses")
+}
+
+// TestOpsAnalyseSlowProcessInstancesHelpDocumentsScaffold protects the initial slow-analysis command surface.
+func TestOpsAnalyseSlowProcessInstancesHelpDocumentsScaffold(t *testing.T) {
+	output := executeRootForTest(t, "ops", "analyse", "slow-process-instances", "--help")
+
+	assertHelpOutputContainsAll(t, output,
+		"Analyse slow process-instance timings",
+		"The command is read-only.",
+		"--key strings",
+		"--bpmn-process-id string",
+		"--pd-key string",
+		"--state string",
+		"--no-incidents-only",
+		"--batch-size int32",
+		"--limit int32",
+		"--element-id string",
+		"--dur-longer string",
+		"--dur-element-longer string",
+		"Duration thresholds use Go duration syntax",
+		"Calendar units such as 1d are not accepted",
+		"./c8volt get process-instance --state active --keys-only | ./c8volt ops analyse slow-process-instances -",
+	)
+	assertHelpOutputOmitsAll(t, output, "--duration-after", "--incidents-only")
+}
+
 // TestOpsExecuteHelpDocumentsGroupingCommand verifies execute is only a discoverable parent for future playbooks.
 func TestOpsExecuteHelpDocumentsGroupingCommand(t *testing.T) {
 	output := executeRootForTest(t, "ops", "execute", "--help")

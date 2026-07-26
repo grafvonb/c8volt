@@ -110,7 +110,7 @@ func init() {
 	updateCmd.AddCommand(updateJobCmd)
 
 	fs := updateJobCmd.Flags()
-	fs.StringVar(&flagUpdateJobKey, "key", "", "job key to update")
+	fs.StringVarP(&flagUpdateJobKey, "key", "k", "", "job key to update")
 	fs.Int32Var(&flagUpdateJobRetries, "retries", 0, "retry count to set, or remaining retries for --fail")
 	fs.StringVar(&flagUpdateJobTimeoutRaw, "timeout", "", "timeout duration to submit for the job, for example 60s, 5m, or 1h")
 	fs.BoolVar(&flagUpdateJobFail, "fail", false, "report a technical job failure")

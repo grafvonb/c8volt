@@ -31,9 +31,9 @@ func TestDeployCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfi
 func TestDeployHelp_DocumentsWaitContractsAndFollowUp(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"deploy"}, []string{
 		"Deploy BPMN resources to Camunda",
-		"`deploy pd`",
+		"`deploy process-definition`",
 		"`embed deploy`",
-		"./c8volt deploy pd --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run",
+		"./c8volt deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run",
 		"./c8volt embed deploy --all --run",
 	}, nil)
 	require.Contains(t, output, "process-definition")
@@ -41,7 +41,7 @@ func TestDeployHelp_DocumentsWaitContractsAndFollowUp(t *testing.T) {
 	output = assertCommandHelpOutput(t, []string{"deploy", "process-definition"}, []string{
 		"By default c8volt waits for deployment confirmation",
 		"Use --run to start one process instance",
-		"./c8volt deploy pd --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run",
+		"./c8volt deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run",
 	}, nil)
 	require.Contains(t, output, "--run")
 	require.NotContains(t, output, "--expected-status")

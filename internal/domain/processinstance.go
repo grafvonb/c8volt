@@ -217,6 +217,123 @@ type ProcessInstancePage struct {
 	EndCursor     string
 }
 
+// ProcessInstanceSearchPageAction tells service-owned page traversal whether
+// the caller needs more pages after observing the current selected page.
+type ProcessInstanceSearchPageAction string
+
+const (
+	// ProcessInstanceSearchPageActionContinue keeps collecting the next available page.
+	ProcessInstanceSearchPageActionContinue ProcessInstanceSearchPageAction = "continue"
+	// ProcessInstanceSearchPageActionStop stops traversal after the current selected page.
+	ProcessInstanceSearchPageActionStop ProcessInstanceSearchPageAction = "stop"
+)
+
+// ProcessInstanceSearchLocalFilters names compatibility filters applied after
+// a backend page is fetched when request-side support is not sufficient.
+type ProcessInstanceSearchLocalFilters struct {
+	ChildrenOnly         bool
+	RootsOnly            bool
+	OrphanChildrenOnly   bool
+	IncidentsOnly        bool
+	DirectIncidentsOnly  bool
+	NoIncidentsOnly      bool
+	IncidentState        string
+	IncidentErrorType    string
+	IncidentErrorMessage string
+}
+
+// Active reports whether the selected process-instance search requires local
+// filtering before results can be rendered or counted.
+func (f ProcessInstanceSearchLocalFilters) Active() bool {
+	return f.ChildrenOnly ||
+		f.RootsOnly ||
+		f.OrphanChildrenOnly ||
+		f.IncidentsOnly ||
+		f.DirectIncidentsOnly ||
+		f.NoIncidentsOnly ||
+		f.IncidentErrorType != "" ||
+		f.IncidentErrorMessage != ""
+}
+
+// ProcessInstanceSearchRequest contains the backend-owned mechanics for a
+// process-instance search while leaving CLI rendering and prompts to callers.
+type ProcessInstanceSearchRequest struct {
+	Filter               ProcessInstanceFilter
+	Page                 ProcessInstancePageRequest
+	Limit                int32
+	LocalFilters         ProcessInstanceSearchLocalFilters
+	DirectIncidentIndex  bool
+	DirectIncidentFilter IncidentFilter
+	ReportedTotalAllowed bool
+}
+
+// ProcessInstanceSearchPageStep carries one selected page plus service-owned
+// traversal state to callers that still own rendering or prompt policy.
+type ProcessInstanceSearchPageStep struct {
+	Page            ProcessInstancePage
+	CumulativeCount int32
+	LimitReached    bool
+}
+
+// ProcessInstanceSearchPageVisitor observes each selected page during
+// service-owned traversal and may stop collection without owning page math.
+type ProcessInstanceSearchPageVisitor func(ProcessInstanceSearchPageStep) (ProcessInstanceSearchPageAction, error)
+
+// ProcessInstanceSearchPagesResult captures a full or caller-stopped process-instance discovery.
+type ProcessInstanceSearchPagesResult struct {
+	Items []ProcessInstance
+	Limit int32
+	Pages int32
+}
+
+// ProcessInstanceMutationPlanRequest combines search selection with dry-run
+// dependency expansion controls for cancel/delete style commands.
+type ProcessInstanceMutationPlanRequest struct {
+	SearchRequest ProcessInstanceSearchRequest
+	Workers       int
+}
+
+// ProcessInstanceMutationPlanStep carries one selected search page and its
+// expanded cancellation/deletion plan.
+type ProcessInstanceMutationPlanStep struct {
+	Page             ProcessInstancePage
+	RequestedKeys    []string
+	Plan             DryRunPIKeyExpansion
+	CumulativeCount  int32
+	CumulativeImpact int32
+	LimitReached     bool
+}
+
+// ProcessInstanceMutationPlanVisitor observes page-level plans while service
+// code owns search paging, limit trimming, and dependency-expansion traversal.
+type ProcessInstanceMutationPlanVisitor func(ProcessInstanceMutationPlanStep) (ProcessInstanceSearchPageAction, error)
+
+// ProcessInstanceMutationPlanPagesResult captures planned search-selected
+// cancel/delete pages without taking over CLI rendering or confirmation.
+type ProcessInstanceMutationPlanPagesResult struct {
+	Plans            []ProcessInstanceMutationPlanStep
+	Limit            int32
+	Pages            int32
+	RequestedCount   int32
+	CumulativeImpact int32
+	Stopped          bool
+}
+
+// ProcessInstanceSearchTotalStep exposes page-counting state for callers that
+// need diagnostics while total fallback remains service-owned.
+type ProcessInstanceSearchTotalStep struct {
+	Page             ProcessInstancePage
+	FilteredCount    int32
+	TotalBefore      int64
+	TotalAfter       int64
+	CountingByPaging bool
+	ExactTotalUsed   bool
+}
+
+// ProcessInstanceSearchTotalVisitor observes total fallback pages without
+// owning traversal, local filtering, or exact-total decisions.
+type ProcessInstanceSearchTotalVisitor func(ProcessInstanceSearchTotalStep) error
+
 type CancelResponse struct {
 	Ok         bool
 	StatusCode int

@@ -95,9 +95,23 @@ func (s *Service) GetJob(ctx context.Context, key string, opts ...services.CallO
 	return requireSingleJob(payload.Items, key)
 }
 
+// SearchJobs collects all selected job pages using service-owned offset
+// traversal and returns the mapped rows.
 func (s *Service) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error) {
-	_ = services.ApplyCallOptions(opts)
+	result, err := s.SearchJobsPages(ctx, query, nil, opts...)
+	if err != nil {
+		return d.JobSearchResult{}, err
+	}
+	return d.JobSearchResult{
+		Items: result.Items,
+		Limit: result.Limit,
+	}, nil
+}
 
+// SearchJobsPages owns offset advancement, per-page size capping, and user
+// limit trimming while allowing callers to render or prompt after each page.
+func (s *Service) SearchJobsPages(ctx context.Context, query d.JobSearchQuery, visitor d.JobSearchPageVisitor, opts ...services.CallOption) (d.JobSearchPagesResult, error) {
+	_ = services.ApplyCallOptions(opts)
 	batchSize := query.BatchSize
 	if batchSize <= 0 {
 		batchSize = consts.MaxPISearchSize
@@ -105,6 +119,7 @@ func (s *Service) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts .
 	limit := query.Limit
 	items := make([]d.Job, 0, minPositiveJobSearchSize(batchSize, limit))
 	from := int32(0)
+	pages := int32(0)
 	for {
 		pageLimit := nextJobSearchPageLimit(batchSize, limit, int32(len(items)))
 		if pageLimit <= 0 {
@@ -112,23 +127,40 @@ func (s *Service) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts .
 		}
 		page, err := s.SearchJobsPage(ctx, query, d.JobPageRequest{From: from, Size: pageLimit}, opts...)
 		if err != nil {
-			return d.JobSearchResult{}, err
+			return d.JobSearchPagesResult{}, err
 		}
 		items = append(items, page.Items...)
-		if limit > 0 && int32(len(items)) >= limit {
+		pages++
+		limitReached := limit > 0 && int32(len(items)) >= limit
+		if visitor != nil {
+			action, err := visitor(d.JobSearchPageStep{
+				Page:            page,
+				CumulativeCount: int32(len(items)),
+				LimitReached:    limitReached,
+			})
+			if err != nil {
+				return d.JobSearchPagesResult{}, err
+			}
+			if action == d.JobSearchPageActionStop {
+				break
+			}
+		}
+		if limitReached {
 			break
 		}
 		if page.OverflowState != d.ProcessInstanceOverflowStateHasMore {
 			break
 		}
-		from += int32(len(page.Items))
+		from = nextJobSearchPageOffset(from, page)
 	}
-	return d.JobSearchResult{
+	return d.JobSearchPagesResult{
 		Items: items,
 		Limit: limit,
+		Pages: pages,
 	}, nil
 }
 
+// SearchJobsPage fetches and maps one Camunda job search page.
 func (s *Service) SearchJobsPage(ctx context.Context, query d.JobSearchQuery, pageReq d.JobPageRequest, opts ...services.CallOption) (d.JobSearchPage, error) {
 	_ = services.ApplyCallOptions(opts)
 
@@ -161,6 +193,34 @@ func (s *Service) SearchJobsPage(ctx context.Context, query d.JobSearchQuery, pa
 	}, nil
 }
 
+// SearchJobsTotal returns the exact backend total when available and otherwise
+// falls back to service-owned page counting.
+func (s *Service) SearchJobsTotal(ctx context.Context, query d.JobSearchQuery, opts ...services.CallOption) (int64, error) {
+	var total int64
+	_, err := s.SearchJobsPages(ctx, query, func(step d.JobSearchPageStep) (d.JobSearchPageAction, error) {
+		if step.Page.ReportedTotal != nil && step.Page.ReportedTotal.Kind == d.JobReportedTotalKindExact {
+			total = step.Page.ReportedTotal.Count
+			return d.JobSearchPageActionStop, nil
+		}
+		total += int64(len(step.Page.Items))
+		return d.JobSearchPageActionContinue, nil
+	}, opts...)
+	if err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+// nextJobSearchPageOffset advances offset searches without looping forever on
+// empty pages that still advertise more data.
+func nextJobSearchPageOffset(from int32, page d.JobSearchPage) int32 {
+	if len(page.Items) == 0 {
+		return from + page.Request.Size
+	}
+	return from + int32(len(page.Items))
+}
+
+// minPositiveJobSearchSize sizes the initial result slice for bounded searches.
 func minPositiveJobSearchSize(batchSize int32, limit int32) int {
 	if limit > 0 && limit < batchSize {
 		return int(limit)
@@ -168,6 +228,7 @@ func minPositiveJobSearchSize(batchSize int32, limit int32) int {
 	return int(batchSize)
 }
 
+// nextJobSearchPageLimit caps the next page request at the remaining caller limit.
 func nextJobSearchPageLimit(batchSize int32, limit int32, loaded int32) int32 {
 	if limit <= 0 {
 		return batchSize
@@ -179,6 +240,8 @@ func nextJobSearchPageLimit(batchSize int32, limit int32, loaded int32) int32 {
 	return batchSize
 }
 
+// trimJobSearchPageResults protects callers from backend responses that include
+// more rows than the requested page size.
 func trimJobSearchPageResults(items []camundav88.JobSearchResult, page camundav88.SearchQueryPageResponse, from int32, pageSize int32) []camundav88.JobSearchResult {
 	if pageSize <= 0 || len(items) <= int(pageSize) {
 		return items
@@ -196,6 +259,8 @@ func trimJobSearchPageResults(items []camundav88.JobSearchResult, page camundav8
 	return items
 }
 
+// pickJobSearchOverflowState normalizes Camunda total metadata into the
+// version-neutral continuation state used by higher layers.
 func pickJobSearchOverflowState(page camundav88.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) d.ProcessInstanceOverflowState {
 	if itemCount == 0 {
 		return d.ProcessInstanceOverflowStateNoMore
@@ -210,6 +275,7 @@ func pickJobSearchOverflowState(page camundav88.SearchQueryPageResponse, from in
 	return d.ProcessInstanceOverflowStateNoMore
 }
 
+// newJobReportedTotal preserves exact vs lower-bound total metadata.
 func newJobReportedTotal(count int64, lowerBound bool) *d.JobReportedTotal {
 	kind := d.JobReportedTotalKindExact
 	if lowerBound {

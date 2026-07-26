@@ -26,14 +26,15 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		"By default c8volt validates the complete affected tree before submitting any delete request, prompts before deletion, and waits until deletion is observed. If any affected process instance is not in a final state, the whole delete batch is refused before mutation. Use --force to cancel the affected scope first, then delete it.\n\n" +
 		"Tenant contract: --tenant scopes search-derived candidate discovery where supported. Explicit --key and stdin keys are backend-authorized admin input; existing dry-run, confirmation, force, and wait safety checks still apply.\n\n" +
 		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, cancellation, or deletion; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no deletion request is submitted.\n\n" +
+		"Search mode pages through matching process instances by default and freezes every selected page-level delete plan before one confirmation and mutation. --batch-size controls each discovery page request, --limit caps the frozen delete scope across all pages, and --workers, --fail-fast, and --no-worker-limit bound independent planning, cancellation, or deletion work. Verbose paging progress is written away from stdout; JSON, quiet, and automation output remain free of prompts unless confirmation is explicitly supplied.\n\n" +
 		"Use --dry-run to preview selected, in-scope, final-state, non-final, and partial-scope instances without deleting or cancelling.\n\n" +
 		"Use --auto-confirm for unattended destructive runs.",
-	Example: `  ./c8volt delete pi --key <process-instance-key> --force
-  ./c8volt delete pi --key <process-instance-key> --dry-run
-  ./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run
-  ./c8volt delete pi --state terminated --end-date-after 2026-05-01 --end-date-before 2026-05-31 --limit 5 --dry-run
-  ./c8volt delete pi --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run
-  ./c8volt expect pi --key <process-instance-key> --state absent`,
+	Example: `  ./c8volt delete process-instance --key <process-instance-key> --force
+  ./c8volt delete process-instance --key <process-instance-key> --dry-run
+  ./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run
+  ./c8volt delete process-instance --state terminated --end-date-after 2026-05-01 --end-date-before 2026-05-31 --limit 5 --dry-run
+  ./c8volt delete process-instance --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run
+  ./c8volt expect process-instance --key <process-instance-key> --state absent`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -201,16 +202,10 @@ func deleteProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli 
 // deleteProcessInstanceSearchPages checks search-selected delete scope before submitting mutations.
 func deleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (processInstancePageActionResults, error) {
 	if flagDryRun {
-		return processPISearchPagesWithAction(cmd, cli, cfg, filter, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
-			keys := make(types.Keys, 0, len(page.Items))
-			for _, pi := range page.Items {
-				keys = append(keys, pi.Key)
-			}
-			return deleteProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, false)
-		})
+		return planDeleteProcessInstanceSearchPages(cmd, cli, cfg, filter)
 	}
 
-	results, aborted, err := planDeleteProcessInstanceSearchPages(cmd, cli, cfg, filter)
+	results, aborted, err := planDeleteProcessInstanceSearchPagesForMutation(cmd, cli, cfg, filter)
 	if err != nil {
 		return processInstancePageActionResults{}, err
 	}
@@ -247,53 +242,30 @@ func deleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	return results, nil
 }
 
-// planDeleteProcessInstanceSearchPages walks search pages and records delete previews without mutating.
-func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (processInstancePageActionResults, bool, error) {
-	pageReq := newPISearchPageRequest(cmd, cfg, 0)
-	cumulative := 0
-	cumulativeAffected := 0
+// planDeleteProcessInstanceSearchPages records delete previews without mutating.
+func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (processInstancePageActionResults, error) {
 	var results processInstancePageActionResults
 
-	for {
-		page, err := cli.SearchProcessInstancesPage(cmd.Context(), filter, pageReq, collectOptions()...)
-		if err != nil {
-			return processInstancePageActionResults{}, false, err
-		}
-		if len(page.Items) == 0 {
-			if cumulative == 0 {
-				renderOutputLine(cmd, "found: %d", 0)
+	planned, err := cli.PlanProcessInstanceMutationPages(cmd.Context(), process.ProcessInstanceMutationPlanRequest{
+		SearchRequest: newProcessInstanceSearchRequest(cmd, cfg, filter),
+		Workers:       flagWorkers,
+	}, func(step process.ProcessInstanceMutationPlanStep) (process.ProcessInstanceSearchPageAction, error) {
+		if len(step.RequestedKeys) > 0 {
+			result := processInstancePageActionResultFromPlan("delete", step)
+			if result.DryRunPreview != nil {
+				results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
 			}
-			return results, false, nil
 		}
-
-		limitedPage := limitPIPageItems(page, cumulative)
-		keys := make(types.Keys, 0, len(limitedPage.Items))
-		for _, pi := range limitedPage.Items {
-			keys = append(keys, pi.Key)
-		}
-		planned, err := planProcessInstanceDryRunPreview(cmd, cli, "delete", keys)
-		if err != nil {
-			return processInstancePageActionResults{}, false, err
-		}
-		results.DryRunPreviews = append(results.DryRunPreviews, planned.Preview)
-
-		cumulative += len(limitedPage.Items)
-		if planned.Impact.Affected > 0 {
-			cumulativeAffected += planned.Impact.Affected
-		} else {
-			cumulativeAffected += len(limitedPage.Items)
-		}
-		summary := newPIProgressSummary(limitedPage, cumulative, shouldAutoContinuePISearchPages(cmd))
+		summary := newPIProgressSummary(step.Page, int(step.CumulativeCount), flagDryRun || shouldAutoContinuePISearchPages(cmd))
 		printPISearchProgress(cmd, summary)
 
 		switch summary.ContinuationState {
 		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop, processInstanceContinuationLimitReached:
-			return results, false, nil
+			return process.ProcessInstanceSearchPageActionStop, nil
 		case processInstanceContinuationAutoContinue:
-			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
-			continue
+			return process.ProcessInstanceSearchPageActionContinue, nil
 		case processInstanceContinuationPrompt:
-			prompt := fmt.Sprintf("Checked delete impact for %d process instance(s) on this page (%s, %d including dependencies); no changes made yet. More matching process instances remain. Continue checking?", summary.CurrentPageCount, formatProcessInstancePagingProgress(limitedPage, summary.CumulativeCount, "requested"), cumulativeAffected)
+			prompt := fmt.Sprintf("Checked delete impact for %d process instance(s) on this page (%s, %d including dependencies); no changes made yet. More matching process instances remain. Continue checking?", summary.CurrentPageCount, formatProcessInstancePagingProgress(step.Page, summary.CumulativeCount, "requested"), step.CumulativeImpact)
 			if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 				if isCmdAborted(err) {
 					printPISearchProgress(cmd, processInstanceProgressSummary{
@@ -303,13 +275,81 @@ func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, c
 						OverflowState:     summary.OverflowState,
 						ContinuationState: processInstanceContinuationPartialComplete,
 					})
-					return results, true, nil
+					return process.ProcessInstanceSearchPageActionStop, nil
 				}
-				return processInstancePageActionResults{}, false, err
+				return process.ProcessInstanceSearchPageActionStop, err
 			}
-			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
+			return process.ProcessInstanceSearchPageActionContinue, nil
 		}
+		return process.ProcessInstanceSearchPageActionStop, nil
+	}, collectOptions()...)
+	if err != nil {
+		return processInstancePageActionResults{}, err
 	}
+	if planned.RequestedCount == 0 {
+		renderOutputLine(cmd, "found: %d", 0)
+	}
+	return results, nil
+}
+
+// planDeleteProcessInstanceSearchPagesForMutation records every selected
+// delete preview before the command performs confirmation and mutation.
+func planDeleteProcessInstanceSearchPagesForMutation(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (processInstancePageActionResults, bool, error) {
+	aborted := false
+	results, err := planDeleteProcessInstanceSearchPagesWithPrompt(cmd, cli, cfg, filter, &aborted)
+	return results, aborted, err
+}
+
+func planDeleteProcessInstanceSearchPagesWithPrompt(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter, aborted *bool) (processInstancePageActionResults, error) {
+	var results processInstancePageActionResults
+
+	planned, err := cli.PlanProcessInstanceMutationPages(cmd.Context(), process.ProcessInstanceMutationPlanRequest{
+		SearchRequest: newProcessInstanceSearchRequest(cmd, cfg, filter),
+		Workers:       flagWorkers,
+	}, func(step process.ProcessInstanceMutationPlanStep) (process.ProcessInstanceSearchPageAction, error) {
+		if len(step.RequestedKeys) > 0 {
+			result := processInstancePageActionResultFromPlan("delete", step)
+			if result.DryRunPreview != nil {
+				results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
+			}
+		}
+		summary := newPIProgressSummary(step.Page, int(step.CumulativeCount), shouldAutoContinuePISearchPages(cmd))
+		printPISearchProgress(cmd, summary)
+
+		switch summary.ContinuationState {
+		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop, processInstanceContinuationLimitReached:
+			return process.ProcessInstanceSearchPageActionStop, nil
+		case processInstanceContinuationAutoContinue:
+			return process.ProcessInstanceSearchPageActionContinue, nil
+		case processInstanceContinuationPrompt:
+			prompt := fmt.Sprintf("Checked delete impact for %d process instance(s) on this page (%s, %d including dependencies); no changes made yet. More matching process instances remain. Continue checking?", summary.CurrentPageCount, formatProcessInstancePagingProgress(step.Page, summary.CumulativeCount, "requested"), step.CumulativeImpact)
+			if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+				if isCmdAborted(err) {
+					printPISearchProgress(cmd, processInstanceProgressSummary{
+						PageSize:          summary.PageSize,
+						CurrentPageCount:  summary.CurrentPageCount,
+						CumulativeCount:   summary.CumulativeCount,
+						OverflowState:     summary.OverflowState,
+						ContinuationState: processInstanceContinuationPartialComplete,
+					})
+					if aborted != nil {
+						*aborted = true
+					}
+					return process.ProcessInstanceSearchPageActionStop, nil
+				}
+				return process.ProcessInstanceSearchPageActionStop, err
+			}
+			return process.ProcessInstanceSearchPageActionContinue, nil
+		}
+		return process.ProcessInstanceSearchPageActionStop, nil
+	}, collectOptions()...)
+	if err != nil {
+		return processInstancePageActionResults{}, err
+	}
+	if planned.RequestedCount == 0 {
+		renderOutputLine(cmd, "found: %d", 0)
+	}
+	return results, nil
 }
 
 // rejectDeletePlanRequiringForce rejects non-final delete scope unless force mode can cancel first.
@@ -427,8 +467,8 @@ func init() {
 	// flags from get process instance for filtering
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	registerPISharedDateRangeFlags(fs)
-	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to process per page (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to process across all pages")
+	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to freeze for deletion across all pages; omit to continue through all matches")
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled, terminated")
 
 	setCommandMutation(deleteProcessInstanceCmd, CommandMutationStateChanging)

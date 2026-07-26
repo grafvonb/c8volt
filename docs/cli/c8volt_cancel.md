@@ -22,9 +22,9 @@ c8volt cancel [flags]
 ### Examples
 
 ```
-  ./c8volt cancel pi --key <process-instance-key>
-  ./c8volt cancel pi --key <process-instance-key> --force
-  ./c8volt cancel pi --state active --limit 5 --auto-confirm
+  ./c8volt cancel process-instance --key <process-instance-key>
+  ./c8volt cancel process-instance --key <process-instance-key> --force
+  ./c8volt cancel process-instance --state active --limit 5 --auto-confirm
 ```
 
 ### Options

@@ -58,3 +58,70 @@ func enrichProcessInstancesWithVariableActivityOptions(cmd *cobra.Command, cli p
 	defer stopActivity()
 	return cli.EnrichProcessInstancesWithVariables(cmd.Context(), pis, opts...)
 }
+
+// enrichProcessInstancesWithElementActivity wraps runtime element enrichment with the shared command activity behavior.
+func enrichProcessInstancesWithElementActivity(cmd *cobra.Command, cli process.API, pis process.ProcessInstances) (process.ElementEnrichedProcessInstances, error) {
+	return enrichProcessInstancesWithElementActivityOptions(cmd, cli, pis, collectOptions())
+}
+
+// enrichProcessInstancesWithElementActivityOptions lets explicit-key callers keep admin-input options.
+func enrichProcessInstancesWithElementActivityOptions(cmd *cobra.Command, cli process.API, pis process.ProcessInstances, opts []options.FacadeOption) (process.ElementEnrichedProcessInstances, error) {
+	if len(pis.Items) == 0 {
+		return cli.EnrichProcessInstancesWithElements(cmd.Context(), pis, opts...)
+	}
+	stopActivity := startCommandActivity(cmd, fmt.Sprintf("loading element details for %d process instance(s)", len(pis.Items)))
+	defer stopActivity()
+	return cli.EnrichProcessInstancesWithElements(cmd.Context(), pis, opts...)
+}
+
+// enrichProcessInstancesWithElementListenerActivityOptions routes element
+// enrichment through the listener-aware facade path while preserving explicit
+// key options and requested-empty behavior.
+func enrichProcessInstancesWithElementListenerActivityOptions(cmd *cobra.Command, cli process.API, pis process.ProcessInstances, opts []options.FacadeOption) (process.ElementEnrichedProcessInstances, error) {
+	if len(pis.Items) == 0 {
+		return cli.EnrichProcessInstancesWithElementListeners(cmd.Context(), pis, opts...)
+	}
+	stopActivity := startCommandActivity(cmd, fmt.Sprintf("loading listener jobs for %d process instance(s)", len(pis.Items)))
+	defer stopActivity()
+	return cli.EnrichProcessInstancesWithElementListeners(cmd.Context(), pis, opts...)
+}
+
+// collectRequestedProcessInstanceActivity builds the shared activity view model
+// by invoking each requested enrichment facade exactly once.
+func collectRequestedProcessInstanceActivity(cmd *cobra.Command, cli process.API, pis process.ProcessInstances) (processInstanceActivityInstances, error) {
+	return collectRequestedProcessInstanceActivityOptions(cmd, cli, pis, collectOptions(), collectIncidentEnrichmentOptions())
+}
+
+// collectRequestedProcessInstanceActivityOptions lets explicit-key callers
+// preserve admin-input options while sharing combined enrichment orchestration.
+func collectRequestedProcessInstanceActivityOptions(cmd *cobra.Command, cli process.API, pis process.ProcessInstances, generalOpts []options.FacadeOption, incidentOpts []options.FacadeOption) (processInstanceActivityInstances, error) {
+	enrichments := processInstanceActivityEnrichments{}
+	if flagGetPIWithIncidents {
+		incidentEnriched, err := enrichProcessInstancesWithIncidentActivityOptions(cmd, cli, pis, incidentOpts)
+		if err != nil {
+			return processInstanceActivityInstances{}, fmt.Errorf("get process instance incidents: %w", err)
+		}
+		enrichments.Incidents = &incidentEnriched
+	}
+	if flagGetPIWithVars {
+		variableEnriched, err := enrichProcessInstancesWithVariableActivityOptions(cmd, cli, pis, generalOpts)
+		if err != nil {
+			return processInstanceActivityInstances{}, fmt.Errorf("get process instance variables: %w", err)
+		}
+		enrichments.Variables = &variableEnriched
+	}
+	if flagGetPIWithElements {
+		var elementEnriched process.ElementEnrichedProcessInstances
+		var err error
+		if flagGetPIWithListeners {
+			elementEnriched, err = enrichProcessInstancesWithElementListenerActivityOptions(cmd, cli, pis, generalOpts)
+		} else {
+			elementEnriched, err = enrichProcessInstancesWithElementActivityOptions(cmd, cli, pis, generalOpts)
+		}
+		if err != nil {
+			return processInstanceActivityInstances{}, fmt.Errorf("get process instance elements: %w", err)
+		}
+		enrichments.Elements = &elementEnriched
+	}
+	return mergeProcessInstanceActivity(pis, enrichments), nil
+}

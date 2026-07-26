@@ -5,12 +5,15 @@ package process
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
+	esvc "github.com/grafvonb/c8volt/internal/services/element"
 	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
+	jsvc "github.com/grafvonb/c8volt/internal/services/job"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	"github.com/grafvonb/c8volt/toolx"
@@ -20,15 +23,31 @@ type client struct {
 	pdApi  pdsvc.API
 	piApi  pisvc.API
 	incApi incsvc.API
+	elApi  esvc.API
+	jobApi jsvc.API
 	log    *slog.Logger
 }
 
 // New creates a process facade with incident lookup routed through the incident service layer.
 func New(pdApi pdsvc.API, piApi pisvc.API, incApi incsvc.API, log *slog.Logger) API {
+	return NewWithElements(pdApi, piApi, incApi, nil, log)
+}
+
+// NewWithElements creates a process facade with incident and runtime-element
+// lookup dependencies routed through their service layers.
+func NewWithElements(pdApi pdsvc.API, piApi pisvc.API, incApi incsvc.API, elApi esvc.API, log *slog.Logger) API {
+	return NewWithElementListeners(pdApi, piApi, incApi, elApi, nil, log)
+}
+
+// NewWithElementListeners creates a process facade with runtime-element and
+// listener-job lookup dependencies routed through their service layers.
+func NewWithElementListeners(pdApi pdsvc.API, piApi pisvc.API, incApi incsvc.API, elApi esvc.API, jobApi jsvc.API, log *slog.Logger) API {
 	return &client{
 		pdApi:  pdApi,
 		piApi:  piApi,
 		incApi: incApi,
+		elApi:  elApi,
+		jobApi: jobApi,
 		log:    log,
 	}
 }
@@ -115,6 +134,33 @@ func (c *client) EnrichProcessInstancesWithVariables(ctx context.Context, pis Pr
 	return fromDomainVariableEnrichedProcessInstances(got), nil
 }
 
+// EnrichProcessInstancesWithElements attaches runtime element instances to selected process-instance results without reordering them.
+func (c *client) EnrichProcessInstancesWithElements(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (ElementEnrichedProcessInstances, error) {
+	if c.elApi == nil {
+		return ElementEnrichedProcessInstances{}, ferr.FromDomain(fmt.Errorf("%w: process-instance element enrichment requires an element service", d.ErrUnsupported))
+	}
+	got, err := pisvc.EnrichProcessInstancesWithElements(ctx, c.elApi, toolx.MapSlice(pis.Items, toDomainProcessInstance), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return ElementEnrichedProcessInstances{}, ferr.FromDomain(err)
+	}
+	return fromDomainElementEnrichedProcessInstances(got), nil
+}
+
+// EnrichProcessInstancesWithElementListeners attaches runtime elements with requested listener job arrays.
+func (c *client) EnrichProcessInstancesWithElementListeners(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (ElementEnrichedProcessInstances, error) {
+	if c.elApi == nil {
+		return ElementEnrichedProcessInstances{}, ferr.FromDomain(fmt.Errorf("%w: process-instance listener enrichment requires an element service", d.ErrUnsupported))
+	}
+	if c.jobApi == nil {
+		return ElementEnrichedProcessInstances{}, ferr.FromDomain(fmt.Errorf("%w: process-instance listener enrichment requires a job service", d.ErrUnsupported))
+	}
+	got, err := pisvc.EnrichProcessInstancesWithElementListeners(ctx, c.elApi, c.jobApi, toolx.MapSlice(pis.Items, toDomainProcessInstance), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return ElementEnrichedProcessInstances{}, ferr.FromDomain(err)
+	}
+	return fromDomainElementEnrichedProcessInstances(got), nil
+}
+
 // EnrichTraversalWithIncidents overlays incident details onto walked items while preserving traversal metadata and warnings.
 func (c *client) EnrichTraversalWithIncidents(ctx context.Context, result TraversalResult, opts ...options.FacadeOption) (IncidentEnrichedTraversalResult, error) {
 	got, err := pisvc.EnrichTraversalWithIncidents(ctx, c.incApi, toServiceTraversalResult(result), options.MapFacadeOptionsToCallOptions(opts)...)
@@ -167,6 +213,37 @@ func (c *client) SearchProcessInstancesPage(ctx context.Context, filter ProcessI
 		return ProcessInstancePage{}, ferr.FromDomain(err)
 	}
 	return fromDomainProcessInstancePage(pis), nil
+}
+
+// SearchProcessInstancesPages delegates process-instance traversal, local
+// filtering, direct incident-index lookup, and limit trimming below the facade.
+func (c *client) SearchProcessInstancesPages(ctx context.Context, request ProcessInstanceSearchRequest, visitor ProcessInstanceSearchPageVisitor, opts ...options.FacadeOption) (ProcessInstanceSearchPagesResult, error) {
+	result, err := pisvc.SearchProcessInstancesPages(ctx, c.piApi, c.incApi, toDomainProcessInstanceSearchRequest(request), toDomainProcessInstanceSearchPageVisitor(visitor), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainProcessInstanceSearchPagesResult(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
+}
+
+// SearchProcessInstancesTotal delegates exact-total selection and page-count fallback below the facade.
+func (c *client) SearchProcessInstancesTotal(ctx context.Context, request ProcessInstanceSearchRequest, visitor ProcessInstanceSearchTotalVisitor, opts ...options.FacadeOption) (int64, error) {
+	total, err := pisvc.SearchProcessInstancesTotal(ctx, c.piApi, c.incApi, toDomainProcessInstanceSearchRequest(request), toDomainProcessInstanceSearchTotalVisitor(visitor), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return 0, ferr.FromDomain(err)
+	}
+	return total, nil
+}
+
+// PlanProcessInstanceMutationPages delegates search-selected cancel/delete
+// paging and dependency expansion below the facade.
+func (c *client) PlanProcessInstanceMutationPages(ctx context.Context, request ProcessInstanceMutationPlanRequest, visitor ProcessInstanceMutationPlanVisitor, opts ...options.FacadeOption) (ProcessInstanceMutationPlanPagesResult, error) {
+	result, err := pisvc.PlanProcessInstanceMutationPages(ctx, c.piApi, c.incApi, toDomainProcessInstanceMutationPlanRequest(request), toDomainProcessInstanceMutationPlanVisitor(visitor), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainProcessInstanceMutationPlanPagesResult(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
 }
 
 func (c *client) CancelProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (CancelReport, ProcessInstances, error) {

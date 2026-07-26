@@ -32,6 +32,7 @@ func TestClient_GetIncidentAndSearchIncidentsMapServiceBoundary(t *testing.T) {
 		},
 		searchIncidents: func(_ context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 			assert.Equal(t, d.IncidentFilter{
+				Keys:                   []string{"incident-b"},
 				State:                  "active",
 				ErrorType:              "IO_MAPPING_ERROR",
 				ProcessInstanceKey:     "pi-a",
@@ -51,6 +52,7 @@ func TestClient_GetIncidentAndSearchIncidentsMapServiceBoundary(t *testing.T) {
 	gotIncident, err := cli.GetIncident(ctx, "incident-a", options.WithVerbose())
 	require.NoError(t, err)
 	gotSearch, err := cli.SearchIncidents(ctx, Filter{
+		Keys:                   []string{"incident-b"},
 		State:                  "active",
 		ErrorType:              "IO_MAPPING_ERROR",
 		ProcessInstanceKey:     "pi-a",
@@ -85,31 +87,134 @@ func TestProcessInstanceIncidentDetailJSONUsesCanonicalElementFields(t *testing.
 	require.NotContains(t, string(raw), "flowNode")
 }
 
-func TestClient_SearchIncidentsWithMessageFilterPagesUntilEnoughLocalMatches(t *testing.T) {
+func TestClient_SearchIncidentsPagesMapsVisitorStepAndAction(t *testing.T) {
 	t.Parallel()
 
-	var pages []d.IncidentPageRequest
+	api := stubAPI{
+		searchIncidentsPages: func(_ context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, limit int32, visitor d.IncidentSearchPageVisitor, opts ...services.CallOption) (d.IncidentSearchPagesResult, error) {
+			assert.Equal(t, d.IncidentFilter{State: "active", ErrorMessage: "intentional"}, filter)
+			assert.Equal(t, d.IncidentPageRequest{Size: 2}, page)
+			assert.Equal(t, int32(3), limit)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			action, err := visitor(d.IncidentSearchPageStep{
+				Page: d.IncidentPage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					EndCursor:     "cursor-a",
+					Items:         []d.ProcessInstanceIncidentDetail{{IncidentKey: "match-a"}},
+				},
+				CumulativeCount: 1,
+			})
+			require.NoError(t, err)
+			require.Equal(t, d.IncidentSearchPageActionStop, action)
+			return d.IncidentSearchPagesResult{
+				Items: []d.ProcessInstanceIncidentDetail{{IncidentKey: "match-a"}},
+				Limit: limit,
+				Pages: 1,
+			}, nil
+		},
+	}
+
+	got, err := New(api, slog.Default()).SearchIncidentsPages(context.Background(), Filter{State: "active", ErrorMessage: "intentional"}, PageRequest{Size: 2}, 3, func(step SearchPageStep) (SearchPageAction, error) {
+		require.Equal(t, int32(1), step.CumulativeCount)
+		require.Equal(t, PageRequest{Size: 2}, step.Page.Request)
+		require.Equal(t, OverflowStateHasMore, step.Page.OverflowState)
+		require.Equal(t, "cursor-a", step.Page.EndCursor)
+		require.Equal(t, "match-a", step.Page.Items[0].IncidentKey)
+		return SearchPageActionStop, nil
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, int32(3), got.Limit)
+	require.Equal(t, int32(1), got.Pages)
+	require.Equal(t, "match-a", got.Items[0].IncidentKey)
+}
+
+func TestClient_SearchIncidentsTotalMapsServiceBoundary(t *testing.T) {
+	t.Parallel()
+
+	api := stubAPI{
+		searchIncidentsTotal: func(_ context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (int64, error) {
+			assert.Equal(t, d.IncidentFilter{ErrorMessage: "intentional"}, filter)
+			assert.Equal(t, d.IncidentPageRequest{Size: 5}, page)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return 42, nil
+		},
+	}
+
+	got, err := New(api, slog.Default()).SearchIncidentsTotal(context.Background(), Filter{ErrorMessage: "intentional"}, PageRequest{Size: 5}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, int64(42), got)
+}
+
+// TestClient_SearchIncidentsDelegatesServiceOwnedCollection verifies the facade
+// no longer owns local-filter page traversal for SearchIncidents.
+func TestClient_SearchIncidentsDelegatesServiceOwnedCollection(t *testing.T) {
+	t.Parallel()
+
+	api := stubAPI{
+		searchIncidents: func(_ context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			assert.Equal(t, d.IncidentFilter{ErrorMessage: "intentional"}, filter)
+			assert.Equal(t, int32(1), size)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return []d.ProcessInstanceIncidentDetail{{IncidentKey: "match"}}, nil
+		},
+	}
+
+	got, err := New(api, slog.Default()).SearchIncidents(context.Background(), Filter{ErrorMessage: "intentional"}, 1, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, int32(1), got.Total)
+	require.Equal(t, "match", got.Items[0].IncidentKey)
+}
+
+func TestClient_SearchIncidentsPagesMapsErrorsWithPartialResult(t *testing.T) {
+	t.Parallel()
+
+	api := stubAPI{
+		searchIncidentsPages: func(context.Context, d.IncidentFilter, d.IncidentPageRequest, int32, d.IncidentSearchPageVisitor, ...services.CallOption) (d.IncidentSearchPagesResult, error) {
+			return d.IncidentSearchPagesResult{
+				Items: []d.ProcessInstanceIncidentDetail{{IncidentKey: "partial"}},
+				Limit: 2,
+				Pages: 1,
+			}, errors.New("boom")
+		},
+	}
+
+	got, err := New(api, slog.Default()).SearchIncidentsPages(context.Background(), Filter{}, PageRequest{Size: 2}, 2, nil)
+
+	require.Error(t, err)
+	require.Equal(t, int32(2), got.Limit)
+	require.Equal(t, int32(1), got.Pages)
+	require.Equal(t, "partial", got.Items[0].IncidentKey)
+}
+
+func TestClient_SearchIncidentsPageMapsBoundary(t *testing.T) {
+	t.Parallel()
+
 	api := stubAPI{
 		searchIncidentsPage: func(_ context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error) {
-			assert.Equal(t, d.IncidentFilter{State: "active", ErrorMessage: "intentional"}, filter)
+			assert.Equal(t, d.IncidentFilter{ErrorMessage: "intentional"}, filter)
+			assert.Equal(t, d.IncidentPageRequest{Size: 1}, page)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
-			pages = append(pages, page)
-			if len(pages) == 1 {
-				return d.IncidentPage{Request: page, OverflowState: d.ProcessInstanceOverflowStateHasMore}, nil
-			}
+			total := &d.IncidentReportedTotal{Count: 10, Kind: d.IncidentReportedTotalKindLowerBound}
 			return d.IncidentPage{
 				Request:       page,
-				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				OverflowState: d.ProcessInstanceOverflowStateIndeterminate,
+				ReportedTotal: total,
+				EndCursor:     "cursor-a",
 				Items:         []d.ProcessInstanceIncidentDetail{{IncidentKey: "match"}},
 			}, nil
 		},
 	}
 
-	got, err := New(api, slog.Default()).SearchIncidents(context.Background(), Filter{State: "active", ErrorMessage: "intentional"}, 1, options.WithVerbose())
+	got, err := New(api, slog.Default()).SearchIncidentsPage(context.Background(), Filter{ErrorMessage: "intentional"}, PageRequest{Size: 1}, options.WithVerbose())
 
 	require.NoError(t, err)
-	require.Equal(t, []d.IncidentPageRequest{{Size: 1}, {From: 1, Size: 1}}, pages)
-	require.Equal(t, int32(1), got.Total)
+	require.Equal(t, OverflowStateIndeterminate, got.OverflowState)
+	require.Equal(t, ReportedTotalKindLowerBound, got.ReportedTotal.Kind)
+	require.Equal(t, "cursor-a", got.EndCursor)
 	require.Equal(t, "match", got.Items[0].IncidentKey)
 }
 
@@ -170,7 +275,9 @@ type stubAPI struct {
 	getIncident                    func(context.Context, string, ...services.CallOption) (d.ProcessInstanceIncidentDetail, error)
 	resolveIncident                func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
 	searchIncidents                func(context.Context, d.IncidentFilter, int32, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+	searchIncidentsPages           func(context.Context, d.IncidentFilter, d.IncidentPageRequest, int32, d.IncidentSearchPageVisitor, ...services.CallOption) (d.IncidentSearchPagesResult, error)
 	searchIncidentsPage            func(context.Context, d.IncidentFilter, d.IncidentPageRequest, ...services.CallOption) (d.IncidentPage, error)
+	searchIncidentsTotal           func(context.Context, d.IncidentFilter, d.IncidentPageRequest, ...services.CallOption) (int64, error)
 	searchProcessInstanceIncidents func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
 	waitForIncidentResolved        func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
 	waitForPIIncidentsResolved     func(context.Context, string, []string, ...services.CallOption) (d.IncidentResolutionResponse, error)
@@ -197,11 +304,25 @@ func (s stubAPI) SearchIncidents(ctx context.Context, filter d.IncidentFilter, s
 	return s.searchIncidents(ctx, filter, size, opts...)
 }
 
+func (s stubAPI) SearchIncidentsPages(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, limit int32, visitor d.IncidentSearchPageVisitor, opts ...services.CallOption) (d.IncidentSearchPagesResult, error) {
+	if s.searchIncidentsPages == nil {
+		panic("unexpected call")
+	}
+	return s.searchIncidentsPages(ctx, filter, page, limit, visitor, opts...)
+}
+
 func (s stubAPI) SearchIncidentsPage(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error) {
 	if s.searchIncidentsPage == nil {
 		panic("unexpected call")
 	}
 	return s.searchIncidentsPage(ctx, filter, page, opts...)
+}
+
+func (s stubAPI) SearchIncidentsTotal(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (int64, error) {
+	if s.searchIncidentsTotal == nil {
+		panic("unexpected call")
+	}
+	return s.searchIncidentsTotal(ctx, filter, page, opts...)
 }
 
 func (s stubAPI) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {

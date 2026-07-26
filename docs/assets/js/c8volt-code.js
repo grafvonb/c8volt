@@ -1,112 +1,143 @@
 (() => {
-  const commandTokens = new Set([
-    "cancel",
-    "capabilities",
-    "cluster",
-    "config",
-    "delete",
-    "deploy",
-    "embed",
-    "expect",
-    "export",
-    "get",
-    "license",
-    "list",
-    "pd",
-    "pi",
-    "process-definition",
-    "process-instance",
-    "resource",
-    "run",
-    "show",
-    "template",
-    "tenant",
-    "test-connection",
-    "topology",
-    "validate",
-    "version",
-    "walk",
-  ]);
+  const tokenPattern = /(\s+|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|<[^>\s]+>|[|&;()]+|[^\s]+)/g;
+  const operatorPattern = /^[|&;()]+$/;
+  const globalValueFlags = new Set(["--config", "--profile", "--tenant", "--timeout"]);
 
-  const commandPattern = /\b[a-z][a-z-]*\b/g;
-  const boundaryPattern = /[./\w-]/;
-  const skippedClassPattern = /\b(c|ch|cm|cp|cpf|c1|cs|s|s1|s2|sb|sc|sd|sh|sx|nt|na|nb|nv)\b/;
-
-  function shouldSkip(node) {
-    for (let el = node.parentElement; el; el = el.parentElement) {
-      if (el.tagName === "CODE") {
-        return false;
-      }
-
-      if (skippedClassPattern.test(el.className || "")) {
-        return true;
-      }
-    }
-
-    return false;
+  function span(className, text) {
+    const el = document.createElement("span");
+    el.className = className;
+    el.textContent = text;
+    return el;
   }
 
-  function decorateTextNode(node) {
-    const text = node.nodeValue;
-    let cursor = 0;
-    let changed = false;
-    const fragment = document.createDocumentFragment();
-
-    for (const match of text.matchAll(commandPattern)) {
-      const token = match[0];
-      const start = match.index;
-      const end = start + token.length;
-      const before = start > 0 ? text[start - 1] : "";
-      const after = end < text.length ? text[end] : "";
-
-      if (!commandTokens.has(token) || boundaryPattern.test(before) || boundaryPattern.test(after)) {
-        continue;
-      }
-
-      fragment.append(document.createTextNode(text.slice(cursor, start)));
-
-      const span = document.createElement("span");
-      span.className = "c8volt-command-token";
-      span.textContent = token;
-      fragment.append(span);
-
-      cursor = end;
-      changed = true;
-    }
-
-    if (!changed) {
+  function appendToken(fragment, className, text) {
+    if (!className) {
+      fragment.append(document.createTextNode(text));
       return;
     }
 
-    fragment.append(document.createTextNode(text.slice(cursor)));
-    node.replaceWith(fragment);
+    fragment.append(span(className, text));
+  }
+
+  function isC8voltBinary(token) {
+    return token === "c8volt" || token === "./c8volt";
+  }
+
+  function isWhitespace(token) {
+    return /^\s+$/.test(token);
+  }
+
+  function isFlag(token) {
+    return /^--[a-z0-9][a-z0-9-]*(=.*)?$/.test(token);
+  }
+
+  function flagName(token) {
+    return token.split("=", 1)[0];
+  }
+
+  function isPlaceholder(token) {
+    return /^<[^>\s]+>$/.test(token);
+  }
+
+  function decorateLine(line, fragment) {
+    if (!line.trim()) {
+      fragment.append(document.createTextNode(line));
+      return;
+    }
+
+    if (line.trimStart().startsWith("#")) {
+      fragment.append(span("c8v-muted", line));
+      return;
+    }
+
+    let commandMode = false;
+    let commandSeen = false;
+    let expectingGlobalFlagValue = false;
+
+    for (const match of line.matchAll(tokenPattern)) {
+      const token = match[0];
+
+      if (isWhitespace(token)) {
+        fragment.append(document.createTextNode(token));
+        continue;
+      }
+
+      if (isC8voltBinary(token)) {
+        appendToken(fragment, "c8v-bin", token);
+        commandMode = true;
+        commandSeen = false;
+        continue;
+      }
+
+      if (operatorPattern.test(token)) {
+        appendToken(fragment, "c8v-muted", token);
+        commandMode = false;
+        commandSeen = false;
+        continue;
+      }
+
+      if (isFlag(token)) {
+        appendToken(fragment, "c8v-flag", token);
+        if (commandSeen) {
+          commandMode = false;
+        } else {
+          expectingGlobalFlagValue = !token.includes("=") && globalValueFlags.has(flagName(token));
+        }
+        continue;
+      }
+
+      if (isPlaceholder(token)) {
+        appendToken(fragment, "c8v-placeholder", token);
+        if (expectingGlobalFlagValue && !commandSeen) {
+          expectingGlobalFlagValue = false;
+        } else {
+          commandMode = false;
+        }
+        continue;
+      }
+
+      if (expectingGlobalFlagValue && !commandSeen) {
+        fragment.append(document.createTextNode(token));
+        expectingGlobalFlagValue = false;
+        continue;
+      }
+
+      if (commandMode) {
+        appendToken(fragment, "c8v-command", token);
+        commandSeen = true;
+        continue;
+      }
+
+      fragment.append(document.createTextNode(token));
+    }
   }
 
   function decorateCodeBlock(code) {
+    if (code.classList.contains("c8v-highlighted")) {
+      return;
+    }
+
     if (!code.textContent.includes("c8volt")) {
       return;
     }
 
-    const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT, {
-      acceptNode(node) {
-        if (!node.nodeValue.trim() || shouldSkip(node)) {
-          return NodeFilter.FILTER_REJECT;
-        }
+    const fragment = document.createDocumentFragment();
+    const lines = code.textContent.split("\n");
 
-        return NodeFilter.FILTER_ACCEPT;
-      },
+    lines.forEach((line, index) => {
+      if (index > 0) {
+        fragment.append(document.createTextNode("\n"));
+      }
+
+      decorateLine(line, fragment);
     });
 
-    const nodes = [];
-    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-      nodes.push(node);
-    }
-
-    nodes.forEach(decorateTextNode);
+    code.replaceChildren(fragment);
+    code.classList.add("c8v-highlighted");
   }
 
   function decorateCodeBlocks() {
-    document.querySelectorAll(".language-bash.highlighter-rouge code").forEach(decorateCodeBlock);
+    document.querySelectorAll(".highlighter-rouge code").forEach(decorateCodeBlock);
   }
 
   if (document.readyState === "loading") {

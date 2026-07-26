@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/grafvonb/c8volt/consts"
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
@@ -75,52 +76,70 @@ func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string
 
 // SearchIncidents returns up to size top-level incidents after version-compatible filtering.
 func (s *Service) SearchIncidents(ctx context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-	if incidentSearchNeedsPagedLocalFiltering(filter) {
-		return s.searchIncidentPagesUntilLimit(ctx, filter, size, opts...)
-	}
-	page, err := s.SearchIncidentsPage(ctx, filter, d.IncidentPageRequest{Size: size}, opts...)
+	result, err := s.SearchIncidentsPages(ctx, filter, d.IncidentPageRequest{Size: size}, size, nil, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return page.Items, nil
+	return result.Items, nil
 }
 
-func (s *Service) searchIncidentPagesUntilLimit(ctx context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-	if size <= 0 {
-		return nil, nil
+// SearchIncidentsPages owns page advancement, per-page size capping, local
+// compatibility filtering, and caller-limit trimming for top-level incident search.
+func (s *Service) SearchIncidentsPages(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, limit int32, visitor d.IncidentSearchPageVisitor, opts ...services.CallOption) (d.IncidentSearchPagesResult, error) {
+	_ = services.ApplyCallOptions(opts)
+	if page.Size <= 0 {
+		page.Size = consts.MaxPISearchSize
 	}
-	req := d.IncidentPageRequest{Size: size}
-	out := make([]d.ProcessInstanceIncidentDetail, 0, size)
+	batchSize := page.Size
+	items := make([]d.ProcessInstanceIncidentDetail, 0, minPositiveIncidentSearchSize(batchSize, limit))
+	pages := int32(0)
 	for {
-		page, err := s.SearchIncidentsPage(ctx, filter, req, opts...)
+		if limit > 0 && int32(len(items)) >= limit {
+			break
+		}
+		page.Size = batchSize
+		resultPage, err := s.SearchIncidentsPage(ctx, filter, page, opts...)
 		if err != nil {
-			return nil, err
+			return d.IncidentSearchPagesResult{}, err
 		}
-		for _, item := range page.Items {
-			if int32(len(out)) >= size {
-				return out, nil
+		if limit > 0 {
+			remaining := int(limit) - len(items)
+			if remaining <= 0 {
+				break
 			}
-			out = append(out, item)
+			if len(resultPage.Items) > remaining {
+				resultPage.Items = resultPage.Items[:remaining]
+			}
 		}
-		if page.OverflowState == d.ProcessInstanceOverflowStateNoMore {
-			return out, nil
+		items = append(items, resultPage.Items...)
+		pages++
+		limitReached := limit > 0 && int32(len(items)) >= limit
+		if visitor != nil {
+			action, err := visitor(d.IncidentSearchPageStep{
+				Page:            resultPage,
+				CumulativeCount: int32(len(items)),
+				LimitReached:    limitReached,
+			})
+			if err != nil {
+				return d.IncidentSearchPagesResult{}, err
+			}
+			if action == d.IncidentSearchPageActionStop {
+				break
+			}
 		}
-		req = nextIncidentSearchPageRequest(req, page)
+		if limitReached {
+			break
+		}
+		if resultPage.OverflowState != d.ProcessInstanceOverflowStateHasMore {
+			break
+		}
+		page = nextIncidentSearchPageRequest(page, resultPage)
 	}
-}
-
-func incidentSearchNeedsPagedLocalFiltering(filter d.IncidentFilter) bool {
-	return filter.State != "" ||
-		filter.ErrorType != "" ||
-		filter.ErrorMessage != "" ||
-		filter.ProcessInstanceKey != "" ||
-		filter.RootProcessInstanceKey != "" ||
-		filter.ProcessDefinitionKey != "" ||
-		filter.ProcessDefinitionId != "" ||
-		filter.ElementId != "" ||
-		filter.ElementInstanceKey != "" ||
-		filter.CreationTimeAfter != "" ||
-		filter.CreationTimeBefore != ""
+	return d.IncidentSearchPagesResult{
+		Items: items,
+		Limit: limit,
+		Pages: pages,
+	}, nil
 }
 
 func nextIncidentSearchPageRequest(current d.IncidentPageRequest, page d.IncidentPage) d.IncidentPageRequest {
@@ -162,7 +181,33 @@ func (s *Service) SearchIncidentsPage(ctx context.Context, filter d.IncidentFilt
 		Request:       pageReq,
 		OverflowState: incidentSearchOverflowState(payload.Page, pageReq, len(payload.Items)),
 		ReportedTotal: incidentReportedTotal(payload.Page, len(payload.Items), incidentLocalFilteringRequired(filter)),
+		EndCursor:     toolx.Deref(payload.Page.EndCursor, ""),
 	}, nil
+}
+
+// SearchIncidentsTotal returns exact backend totals when compatible and
+// otherwise falls back to service-owned page counting.
+func (s *Service) SearchIncidentsTotal(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (int64, error) {
+	var total int64
+	_, err := s.SearchIncidentsPages(ctx, filter, page, 0, func(step d.IncidentSearchPageStep) (d.IncidentSearchPageAction, error) {
+		if step.Page.ReportedTotal != nil && step.Page.ReportedTotal.Kind == d.IncidentReportedTotalKindExact {
+			total = step.Page.ReportedTotal.Count
+			return d.IncidentSearchPageActionStop, nil
+		}
+		total += int64(len(step.Page.Items))
+		return d.IncidentSearchPageActionContinue, nil
+	}, opts...)
+	if err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+func minPositiveIncidentSearchSize(batchSize int32, limit int32) int {
+	if limit > 0 && limit < batchSize {
+		return int(limit)
+	}
+	return int(batchSize)
 }
 
 func filterIncidentResults(key string, tenant string, state string, errorType string, errorMessage string, items []camundav88.IncidentResult) []d.ProcessInstanceIncidentDetail {
@@ -191,6 +236,9 @@ func filterIncidentResults(key string, tenant string, state string, errorType st
 func filterIncidentSearchResults(filter d.IncidentFilter, tenant string, items []camundav88.IncidentResult) []d.ProcessInstanceIncidentDetail {
 	out := make([]d.ProcessInstanceIncidentDetail, 0, len(items))
 	for _, item := range items {
+		if !incidentKeyMatches(filter.Keys, item.IncidentKey) {
+			continue
+		}
 		if tenant != "" && item.TenantId != tenant {
 			continue
 		}
@@ -312,7 +360,8 @@ func parseIncidentTimestamp(raw string) (time.Time, bool) {
 
 func incidentLocalFilteringRequired(filter d.IncidentFilter) bool {
 	state, _ := incidentfilter.NormalizeState(filter.State)
-	return state != "all" ||
+	return len(filter.Keys) > 0 ||
+		state != "all" ||
 		filter.ErrorType != "" ||
 		filter.ErrorMessage != "" ||
 		filter.ProcessInstanceKey != "" ||
@@ -323,6 +372,18 @@ func incidentLocalFilteringRequired(filter d.IncidentFilter) bool {
 		filter.ElementInstanceKey != "" ||
 		filter.CreationTimeAfter != "" ||
 		filter.CreationTimeBefore != ""
+}
+
+func incidentKeyMatches(keys []string, got string) bool {
+	if len(keys) == 0 {
+		return true
+	}
+	for _, key := range keys {
+		if key == got {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) searchProcessInstanceIncidentsPages(ctx context.Context, key string, tenant string, callCfg *services.CallCfg) ([]d.ProcessInstanceIncidentDetail, error) {
@@ -439,6 +500,13 @@ func newSearchQueryPageRequest(pageReq d.ProcessInstancePageRequest) camundav88.
 
 func newIncidentSearchQueryPageRequest(pageReq d.IncidentPageRequest) camundav88.SearchQueryPageRequest {
 	page := camundav88.SearchQueryPageRequest{}
+	if pageReq.After != "" {
+		_ = page.FromCursorForwardPagination(camundav88.CursorForwardPagination{
+			After: pageReq.After,
+			Limit: &pageReq.Size,
+		})
+		return page
+	}
 	_ = page.FromOffsetPagination(camundav88.OffsetPagination{
 		From:  &pageReq.From,
 		Limit: &pageReq.Size,

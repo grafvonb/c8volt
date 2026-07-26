@@ -21,6 +21,7 @@ c8volt ops purge process-instances-with-incidents [flags]
 
 ```
   ./c8volt ops purge process-instances-with-incidents --dry-run
+  ./c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md
@@ -43,7 +44,7 @@ c8volt ops purge process-instances-with-incidents [flags]
       --fail-fast                      stop scheduling validation or deletion work after the first error
       --force                          force cancellation of the process instance(s), prior to deletion
   -h, --help                           help for process-instances-with-incidents
-  -k, --key strings                    incident key(s) to select for candidate discovery
+      --inc-key strings                incident key(s) to select for candidate discovery
   -l, --limit int32                    maximum number of matching incidents to freeze before candidate process-instance dedupe; omit to discover all matches
       --no-wait                        return after deletion requests are accepted without deletion confirmation
       --no-worker-limit                use all queued jobs as workers when --workers is unset

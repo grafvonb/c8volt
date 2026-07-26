@@ -918,13 +918,15 @@ func (s stubBatchOperationAPI) WaitBatchOperation(ctx context.Context, key strin
 var _ batchoperation.API = (*stubBatchOperationAPI)(nil)
 
 type stubProcessAPI struct {
-	getProcessDefinition       func(context.Context, string, ...options.FacadeOption) (process.ProcessDefinition, error)
-	getProcessInstance         func(context.Context, string, ...options.FacadeOption) (process.ProcessInstance, error)
-	searchProcessInstancesPage func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
-	searchProcessInstances     func(context.Context, process.ProcessInstanceFilter, int32, ...options.FacadeOption) (process.ProcessInstances, error)
-	dryRunCancelOrDeletePlan   func(context.Context, typex.Keys, ...options.FacadeOption) (process.DryRunPIKeyExpansion, error)
-	cancelProcessInstances     func(context.Context, typex.Keys, int, ...options.FacadeOption) (process.CancelReports, error)
-	deleteProcessInstances     func(context.Context, typex.Keys, int, ...options.FacadeOption) (process.DeleteReports, error)
+	getProcessDefinition        func(context.Context, string, ...options.FacadeOption) (process.ProcessDefinition, error)
+	getProcessInstance          func(context.Context, string, ...options.FacadeOption) (process.ProcessInstance, error)
+	searchProcessInstancesPage  func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
+	searchProcessInstancesPages func(context.Context, process.ProcessInstanceSearchRequest, process.ProcessInstanceSearchPageVisitor, ...options.FacadeOption) (process.ProcessInstanceSearchPagesResult, error)
+	searchProcessInstancesTotal func(context.Context, process.ProcessInstanceSearchRequest, process.ProcessInstanceSearchTotalVisitor, ...options.FacadeOption) (int64, error)
+	searchProcessInstances      func(context.Context, process.ProcessInstanceFilter, int32, ...options.FacadeOption) (process.ProcessInstances, error)
+	dryRunCancelOrDeletePlan    func(context.Context, typex.Keys, ...options.FacadeOption) (process.DryRunPIKeyExpansion, error)
+	cancelProcessInstances      func(context.Context, typex.Keys, int, ...options.FacadeOption) (process.CancelReports, error)
+	deleteProcessInstances      func(context.Context, typex.Keys, int, ...options.FacadeOption) (process.DeleteReports, error)
 }
 
 func (stubProcessAPI) SearchProcessDefinitions(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error) {
@@ -996,6 +998,20 @@ func (s stubProcessAPI) SearchProcessInstancesPage(ctx context.Context, filter p
 	return s.searchProcessInstancesPage(ctx, filter, page, opts...)
 }
 
+func (s stubProcessAPI) SearchProcessInstancesPages(ctx context.Context, request process.ProcessInstanceSearchRequest, visitor process.ProcessInstanceSearchPageVisitor, opts ...options.FacadeOption) (process.ProcessInstanceSearchPagesResult, error) {
+	if s.searchProcessInstancesPages == nil {
+		panic("unexpected call")
+	}
+	return s.searchProcessInstancesPages(ctx, request, visitor, opts...)
+}
+
+func (s stubProcessAPI) SearchProcessInstancesTotal(ctx context.Context, request process.ProcessInstanceSearchRequest, visitor process.ProcessInstanceSearchTotalVisitor, opts ...options.FacadeOption) (int64, error) {
+	if s.searchProcessInstancesTotal == nil {
+		panic("unexpected call")
+	}
+	return s.searchProcessInstancesTotal(ctx, request, visitor, opts...)
+}
+
 // SearchProcessInstances delegates to the per-test callback used by process
 // definition deletion to discover active process instances.
 func (s stubProcessAPI) SearchProcessInstances(ctx context.Context, filter process.ProcessInstanceFilter, size int32, opts ...options.FacadeOption) (process.ProcessInstances, error) {
@@ -1061,6 +1077,14 @@ func (stubProcessAPI) GetProcessInstances(context.Context, typex.Keys, int, ...o
 	panic("unexpected call")
 }
 
+func (stubProcessAPI) EnrichProcessInstancesWithElements(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error) {
+	panic("unexpected call")
+}
+
+func (stubProcessAPI) EnrichProcessInstancesWithElementListeners(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error) {
+	panic("unexpected call")
+}
+
 func (stubProcessAPI) CreateNProcessInstances(context.Context, process.ProcessInstanceData, int, int, ...options.FacadeOption) ([]process.ProcessInstance, error) {
 	panic("unexpected call")
 }
@@ -1102,6 +1126,11 @@ func (s stubProcessAPI) DryRunCancelOrDeletePlan(ctx context.Context, keys typex
 		panic("unexpected call")
 	}
 	return s.dryRunCancelOrDeletePlan(ctx, keys, opts...)
+}
+
+// PlanProcessInstanceMutationPages is not expected in resource facade tests.
+func (stubProcessAPI) PlanProcessInstanceMutationPages(context.Context, process.ProcessInstanceMutationPlanRequest, process.ProcessInstanceMutationPlanVisitor, ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+	panic("unexpected call")
 }
 
 var _ process.API = stubProcessAPI{}

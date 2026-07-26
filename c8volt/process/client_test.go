@@ -16,10 +16,13 @@ import (
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	esvc "github.com/grafvonb/c8volt/internal/services/element"
 	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
+	jsvc "github.com/grafvonb/c8volt/internal/services/job"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
@@ -415,10 +418,10 @@ func TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssoc
 	t.Parallel()
 
 	ctx := context.Background()
-	var calls []string
+	var calls testx.SafeSlice[string]
 	incAPI := stubIncidentAPI{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-			calls = append(calls, key)
+			calls.Append(key)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
 			switch key {
 			case "123":
@@ -445,7 +448,7 @@ func TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssoc
 	}, options.WithVerbose())
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"123", "124"}, calls)
+	require.ElementsMatch(t, []string{"123", "124"}, calls.Snapshot())
 	require.Equal(t, int32(2), got.Total)
 	require.Len(t, got.Items, 2)
 	require.Equal(t, "123", got.Items[0].Item.Key)
@@ -455,6 +458,59 @@ func TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssoc
 	require.Equal(t, "124", got.Items[1].Item.Key)
 	require.Empty(t, got.Items[1].Incidents)
 	require.NotNil(t, got.Items[1].Incidents)
+}
+
+// TestClient_EnrichProcessInstancesWithIncidents_FakeLatencyUsesConcurrentIncidentLookups
+// verifies high-volume search incident enrichment can overlap independent
+// incident-detail lookups while preserving result order.
+func TestClient_EnrichProcessInstancesWithIncidents_FakeLatencyUsesConcurrentIncidentLookups(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	secondLookupStarted := make(chan struct{})
+	releaseLookups := make(chan struct{})
+	var started atomic.Int32
+	incAPI := stubIncidentAPI{
+		searchProcessInstanceIncidents: func(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			assert.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			if started.Add(1) == 2 {
+				close(secondLookupStarted)
+			}
+			select {
+			case <-releaseLookups:
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+			return []d.ProcessInstanceIncidentDetail{{IncidentKey: "incident-" + key, ProcessInstanceKey: key}}, nil
+		},
+	}
+
+	type enrichResult struct {
+		items IncidentEnrichedProcessInstances
+		err   error
+	}
+	done := make(chan enrichResult, 1)
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	go func() {
+		got, err := cli.EnrichProcessInstancesWithIncidents(ctx, ProcessInstances{
+			Items: []ProcessInstance{{Key: "pi-1"}, {Key: "pi-2"}, {Key: "pi-3"}},
+		}, options.WithIgnoreTenant())
+		done <- enrichResult{items: got, err: err}
+	}()
+
+	waitForSecondConcurrentLookup(t, secondLookupStarted, releaseLookups)
+	select {
+	case result := <-done:
+		require.NoError(t, result.err)
+		require.Equal(t, []string{"pi-1", "pi-2", "pi-3"}, []string{
+			result.items.Items[0].Item.Key,
+			result.items.Items[1].Item.Key,
+			result.items.Items[2].Item.Key,
+		})
+		require.Equal(t, "incident-pi-1", result.items.Items[0].Incidents[0].IncidentKey)
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for concurrent incident enrichment")
+	}
 }
 
 func TestClient_EnrichProcessInstancesWithVariables_PreservesOrderAndPerKeyAssociation(t *testing.T) {
@@ -531,6 +587,194 @@ func TestClient_EnrichProcessInstancesWithVariables_SortsVariablesAndPreservesJS
 		{Name: "alpha", Value: `"C-123"`, VariableKey: "v-1", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: true},
 		{Name: "zeta", Value: "2", VariableKey: "v-2", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: false},
 	}, got.Items[0].Variables)
+}
+
+func TestClient_EnrichProcessInstancesWithElements_PreservesOrderAndMapsElements(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var calls []d.ElementSearchQuery
+	elAPI := stubElementAPI{
+		searchElements: func(_ context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (d.ElementSearchResult, error) {
+			calls = append(calls, query)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			switch query.ProcessInstanceKey {
+			case "123":
+				return d.ElementSearchResult{Items: []d.Element{
+					{
+						ElementInstanceKey:     "element-2",
+						ElementId:              "ship-order",
+						ElementName:            "Ship order",
+						Type:                   "SERVICE_TASK",
+						State:                  "ACTIVE",
+						StartDate:              "2026-07-15T10:12:03Z",
+						ProcessInstanceKey:     "123",
+						RootProcessInstanceKey: "123",
+						ProcessDefinitionId:    "order-process",
+						ProcessDefinitionKey:   "9001",
+						TenantId:               "tenant-a",
+						HasIncident:            true,
+						IncidentKey:            "incident-1",
+					},
+					{
+						ElementInstanceKey:   "ignored",
+						ElementId:            "wrong-owner",
+						ProcessInstanceKey:   "999",
+						ProcessDefinitionKey: "9001",
+					},
+					{
+						ElementInstanceKey:     "element-1",
+						ElementId:              "start",
+						ElementName:            "Start",
+						Type:                   "START_EVENT",
+						State:                  "COMPLETED",
+						StartDate:              "2026-07-15T10:12:01Z",
+						EndDate:                "2026-07-15T10:12:02Z",
+						ProcessInstanceKey:     "123",
+						RootProcessInstanceKey: "123",
+						ProcessDefinitionId:    "order-process",
+						ProcessDefinitionKey:   "9001",
+						TenantId:               "tenant-a",
+					},
+				}}, nil
+			case "124":
+				return d.ElementSearchResult{Items: nil}, nil
+			default:
+				t.Fatalf("unexpected element search for key %s", query.ProcessInstanceKey)
+				return d.ElementSearchResult{}, nil
+			}
+		},
+	}
+
+	cli := NewWithElements(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, elAPI, slog.Default())
+	got, err := cli.EnrichProcessInstancesWithElements(ctx, ProcessInstances{
+		Total: 2,
+		Items: []ProcessInstance{
+			{Key: "123", BpmnProcessId: "order-process"},
+			{Key: "124", BpmnProcessId: "invoice-process"},
+		},
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, []d.ElementSearchQuery{{ProcessInstanceKey: "123"}, {ProcessInstanceKey: "124"}}, calls)
+	require.Equal(t, int32(2), got.Total)
+	require.Equal(t, "123", got.Items[0].Item.Key)
+	require.Equal(t, []ProcessInstanceElement{
+		{
+			ElementInstanceKey:     "element-1",
+			ElementId:              "start",
+			ElementName:            "Start",
+			Type:                   "START_EVENT",
+			State:                  "COMPLETED",
+			StartDate:              "2026-07-15T10:12:01Z",
+			EndDate:                "2026-07-15T10:12:02Z",
+			ProcessInstanceKey:     "123",
+			RootProcessInstanceKey: "123",
+			ProcessDefinitionId:    "order-process",
+			ProcessDefinitionKey:   "9001",
+			TenantId:               "tenant-a",
+		},
+		{
+			ElementInstanceKey:     "element-2",
+			ElementId:              "ship-order",
+			ElementName:            "Ship order",
+			Type:                   "SERVICE_TASK",
+			State:                  "ACTIVE",
+			StartDate:              "2026-07-15T10:12:03Z",
+			ProcessInstanceKey:     "123",
+			RootProcessInstanceKey: "123",
+			ProcessDefinitionId:    "order-process",
+			ProcessDefinitionKey:   "9001",
+			TenantId:               "tenant-a",
+			HasIncident:            true,
+			IncidentKey:            "incident-1",
+		},
+	}, got.Items[0].Elements)
+	require.Equal(t, "124", got.Items[1].Item.Key)
+	require.Empty(t, got.Items[1].Elements)
+	require.NotNil(t, got.Items[1].Elements)
+}
+
+func TestClient_EnrichProcessInstancesWithElements_MapsErrors(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	cli := NewWithElements(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, stubElementAPI{
+		searchElements: func(context.Context, d.ElementSearchQuery, ...services.CallOption) (d.ElementSearchResult, error) {
+			return d.ElementSearchResult{}, d.ErrUnsupported
+		},
+	}, slog.Default())
+
+	got, err := cli.EnrichProcessInstancesWithElements(ctx, ProcessInstances{Items: []ProcessInstance{{Key: "123"}}})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unsupported capability")
+	require.Empty(t, got)
+}
+
+func TestClient_EnrichProcessInstancesWithElementListeners_MapsListenerFields(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	elAPI := stubElementAPI{
+		searchElements: func(_ context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (d.ElementSearchResult, error) {
+			require.Equal(t, "pi-1", query.ProcessInstanceKey)
+			require.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			return d.ElementSearchResult{Items: []d.Element{
+				{ElementInstanceKey: "el-1", ElementId: "ReviewOrder", Type: "USER_TASK", State: "ACTIVE", ProcessInstanceKey: "pi-1", TenantId: "tenant-a"},
+				{ElementInstanceKey: "el-2", ElementId: "ShipOrder", Type: "SERVICE_TASK", State: "ACTIVE", ProcessInstanceKey: "pi-1", TenantId: "tenant-a"},
+			}}, nil
+		},
+	}
+	jobAPI := stubJobAPI{
+		searchJobs: func(_ context.Context, query d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error) {
+			require.Equal(t, "pi-1", query.ProcessInstanceKey)
+			require.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			if query.Kind != d.JobKindTaskListener {
+				return d.JobSearchResult{}, nil
+			}
+			return d.JobSearchResult{Items: []d.Job{{
+				Key:                "job-1",
+				Kind:               d.JobKindTaskListener,
+				ListenerEventType:  "COMPLETING",
+				Type:               "audit-user-task",
+				State:              "CREATED",
+				Retries:            3,
+				Worker:             "audit-worker",
+				ProcessInstanceKey: "pi-1",
+				ElementInstanceKey: "el-1",
+				ElementId:          "ReviewOrder",
+				TenantId:           "tenant-a",
+				ErrorCode:          "E_LISTENER",
+				ErrorMessage:       "listener failed",
+			}}}, nil
+		},
+	}
+
+	cli := NewWithElementListeners(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, elAPI, jobAPI, slog.Default())
+	got, err := cli.EnrichProcessInstancesWithElementListeners(ctx, ProcessInstances{Items: []ProcessInstance{{Key: "pi-1"}}}, options.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 1)
+	require.Len(t, got.Items[0].Elements, 2)
+	require.NotNil(t, got.Items[0].Elements[0].Listeners)
+	require.Equal(t, []RuntimeListenerJob{{
+		JobKey:             "job-1",
+		Kind:               d.JobKindTaskListener,
+		ListenerEventType:  "COMPLETING",
+		Type:               "audit-user-task",
+		State:              "CREATED",
+		Retries:            3,
+		Worker:             "audit-worker",
+		ProcessInstanceKey: "pi-1",
+		ElementInstanceKey: "el-1",
+		ElementId:          "ReviewOrder",
+		TenantId:           "tenant-a",
+		ErrorCode:          "E_LISTENER",
+		ErrorMessage:       "listener failed",
+	}}, *got.Items[0].Elements[0].Listeners)
+	require.NotNil(t, got.Items[0].Elements[1].Listeners)
+	require.Empty(t, *got.Items[0].Elements[1].Listeners)
 }
 
 func TestUpdateProcessInstanceVariablesMapsConfirmedServiceResponse(t *testing.T) {
@@ -767,10 +1011,10 @@ func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKey
 	t.Parallel()
 
 	ctx := context.Background()
-	var calls []string
+	var calls testx.SafeSlice[string]
 	incAPI := stubIncidentAPI{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-			calls = append(calls, key)
+			calls.Append(key)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
 			switch key {
 			case "root":
@@ -804,7 +1048,7 @@ func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKey
 	}, options.WithVerbose())
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"root", "child"}, calls)
+	require.ElementsMatch(t, []string{"root", "child"}, calls.Snapshot())
 	require.Equal(t, TraversalModeDescendants, got.Mode)
 	require.Equal(t, TraversalOutcomePartial, got.Outcome)
 	require.Equal(t, "root", got.StartKey)
@@ -823,15 +1067,75 @@ func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKey
 	}, got.Items[1].Incidents)
 }
 
+// TestClient_EnrichTraversalWithIncidents_FakeLatencyUsesConcurrentIncidentLookups
+// verifies traversal incident-detail lookup overlaps independent keys while
+// keeping the traversal result order stable.
+func TestClient_EnrichTraversalWithIncidents_FakeLatencyUsesConcurrentIncidentLookups(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	secondLookupStarted := make(chan struct{})
+	releaseLookups := make(chan struct{})
+	var started atomic.Int32
+	incAPI := stubIncidentAPI{
+		searchProcessInstanceIncidents: func(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			if started.Add(1) == 2 {
+				close(secondLookupStarted)
+			}
+			select {
+			case <-releaseLookups:
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+			return []d.ProcessInstanceIncidentDetail{{IncidentKey: "incident-" + key, ProcessInstanceKey: key}}, nil
+		},
+	}
+
+	type enrichResult struct {
+		items IncidentEnrichedTraversalResult
+		err   error
+	}
+	done := make(chan enrichResult, 1)
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	go func() {
+		got, err := cli.EnrichTraversalWithIncidents(ctx, TraversalResult{
+			Mode:    TraversalModeFamily,
+			Outcome: TraversalOutcomeComplete,
+			Keys:    []string{"root", "child", "grandchild"},
+			Chain: map[string]ProcessInstance{
+				"root":       {Key: "root"},
+				"child":      {Key: "child"},
+				"grandchild": {Key: "grandchild"},
+			},
+		}, options.WithVerbose())
+		done <- enrichResult{items: got, err: err}
+	}()
+
+	waitForSecondConcurrentLookup(t, secondLookupStarted, releaseLookups)
+	select {
+	case result := <-done:
+		require.NoError(t, result.err)
+		require.Equal(t, []string{"root", "child", "grandchild"}, []string{
+			result.items.Items[0].Item.Key,
+			result.items.Items[1].Item.Key,
+			result.items.Items[2].Item.Key,
+		})
+		require.Equal(t, "incident-root", result.items.Items[0].Incidents[0].IncidentKey)
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for concurrent traversal incident enrichment")
+	}
+}
+
 // TestClient_EnrichTraversalWithIncidents_PassesConfiguredOptionsToIncidentLookup verifies tenant and verbosity options flow into every enrichment lookup.
 func TestClient_EnrichTraversalWithIncidents_PassesConfiguredOptionsToIncidentLookup(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	var calls []string
+	var calls testx.SafeSlice[string]
 	incAPI := stubIncidentAPI{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-			calls = append(calls, key)
+			calls.Append(key)
 			cfg := services.ApplyCallOptions(opts)
 			assert.True(t, cfg.Verbose)
 			assert.True(t, cfg.WithStat)
@@ -851,7 +1155,7 @@ func TestClient_EnrichTraversalWithIncidents_PassesConfiguredOptionsToIncidentLo
 	}, options.WithVerbose(), options.WithStat())
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"root", "child"}, calls)
+	require.ElementsMatch(t, []string{"root", "child"}, calls.Snapshot())
 	require.Len(t, got.Items, 2)
 }
 
@@ -860,10 +1164,10 @@ func TestClient_EnrichTraversalWithIncidents_LooksUpOnlyTraversalResultKeys(t *t
 	t.Parallel()
 
 	ctx := context.Background()
-	var calls []string
+	var calls testx.SafeSlice[string]
 	incAPI := stubIncidentAPI{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-			calls = append(calls, key)
+			calls.Append(key)
 			switch key {
 			case "root", "walked":
 				return nil, nil
@@ -887,7 +1191,7 @@ func TestClient_EnrichTraversalWithIncidents_LooksUpOnlyTraversalResultKeys(t *t
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"root", "walked"}, calls)
+	require.ElementsMatch(t, []string{"root", "walked"}, calls.Snapshot())
 	require.Len(t, got.Items, 2)
 	require.Equal(t, "root", got.Items[0].Item.Key)
 	require.Equal(t, "walked", got.Items[1].Item.Key)
@@ -899,10 +1203,10 @@ func TestClient_EnrichTraversalWithIncidents_PropagatesIncidentLookupFailure(t *
 
 	ctx := context.Background()
 	lookupErr := errors.New("incident lookup failed")
-	var calls []string
+	var calls testx.SafeSlice[string]
 	incAPI := stubIncidentAPI{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-			calls = append(calls, key)
+			calls.Append(key)
 			if key == "child" {
 				return nil, lookupErr
 			}
@@ -922,8 +1226,21 @@ func TestClient_EnrichTraversalWithIncidents_PropagatesIncidentLookupFailure(t *
 	})
 
 	require.ErrorIs(t, err, lookupErr)
-	require.Equal(t, []string{"root", "child"}, calls)
+	require.ElementsMatch(t, []string{"root", "child"}, calls.Snapshot())
 	require.Empty(t, got.Items)
+}
+
+// waitForSecondConcurrentLookup keeps fake-latency callbacks blocked until a
+// second lookup enters the service path, proving the work is not serialized.
+func waitForSecondConcurrentLookup(t *testing.T, secondLookupStarted <-chan struct{}, releaseLookups chan struct{}) {
+	t.Helper()
+	select {
+	case <-secondLookupStarted:
+		close(releaseLookups)
+	case <-time.After(500 * time.Millisecond):
+		close(releaseLookups)
+		t.Fatal("expected a second lookup to start before the first fake-latency lookup was released")
+	}
 }
 
 func TestClient_WaitForProcessInstancesExpectation_MapsIncidentTrueRequestAndReports(t *testing.T) {
@@ -1210,6 +1527,64 @@ func TestClient_SearchProcessInstancesPage_PreservesCrossVersionOverflowStates(t
 	require.Len(t, page.Items, 1)
 }
 
+// TestClient_SearchProcessInstancesPage_ForwardsPagingAndCompatibilityFilters
+// pins the facade boundary for process-instance search. Page traversal and
+// filter compatibility stay in the service layer; the facade only maps public
+// filters, page controls, and service metadata.
+func TestClient_SearchProcessInstancesPage_ForwardsPagingAndCompatibilityFilters(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	hasParent := new(false)
+	hasIncident := new(true)
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{
+				BpmnProcessId:        "order-process",
+				ProcessDefinitionKey: "9001",
+				State:                d.StateActive,
+				HasParent:            hasParent,
+				HasIncident:          hasIncident,
+			}, filter)
+			assert.Equal(t, d.ProcessInstancePageRequest{Size: 25, After: "cursor-1"}, page)
+			assert.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				ReportedTotal: &d.ProcessInstanceReportedTotal{
+					Count: 10000,
+					Kind:  d.ProcessInstanceReportedTotalKindLowerBound,
+				},
+				EndCursor: "cursor-2",
+				Items: []d.ProcessInstance{
+					{Key: "pi-1", BpmnProcessId: "order-process", ProcessDefinitionKey: "9001", State: d.StateActive},
+					{Key: "pi-2", BpmnProcessId: "order-process", ProcessDefinitionKey: "9001", State: d.StateActive},
+				},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	page, err := cli.SearchProcessInstancesPage(ctx, ProcessInstanceFilter{
+		BpmnProcessId:        "order-process",
+		ProcessDefinitionKey: "9001",
+		State:                StateActive,
+		HasParent:            hasParent,
+		HasIncident:          hasIncident,
+	}, ProcessInstancePageRequest{Size: 25, After: "cursor-1"}, options.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	assert.Equal(t, ProcessInstancePageRequest{Size: 25, After: "cursor-1"}, page.Request)
+	assert.Equal(t, ProcessInstanceOverflowStateHasMore, page.OverflowState)
+	require.NotNil(t, page.ReportedTotal)
+	assert.Equal(t, int64(10000), page.ReportedTotal.Count)
+	assert.Equal(t, ProcessInstanceReportedTotalKindLowerBound, page.ReportedTotal.Kind)
+	assert.Equal(t, "cursor-2", page.EndCursor)
+	require.Len(t, page.Items, 2)
+	assert.Equal(t, "pi-1", page.Items[0].Key)
+	assert.Equal(t, "pi-2", page.Items[1].Key)
+}
+
 // TestClient_SearchProcessInstances_UsesPagedSearchWrapper documents the legacy
 // list facade over the newer paged service call. Total is derived from returned
 // items here, while page metadata remains available through the page API.
@@ -1243,6 +1618,228 @@ func TestClient_SearchProcessInstances_UsesPagedSearchWrapper(t *testing.T) {
 	require.Len(t, items.Items, 2)
 	assert.Equal(t, "2251799813711967", items.Items[0].Key)
 	assert.Equal(t, "2251799813711968", items.Items[1].Key)
+}
+
+// TestClient_SearchProcessInstancesPages_DelegatesTraversalAndLocalFiltering
+// verifies the facade reaches the service-owned paging helper while preserving
+// visitor steps, limit trimming, and local compatibility filtering.
+func TestClient_SearchProcessInstancesPages_DelegatesTraversalAndLocalFiltering(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	requests := []d.ProcessInstancePageRequest{}
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{BpmnProcessId: "order-process"}, filter)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			requests = append(requests, page)
+			switch len(requests) {
+			case 1:
+				return d.ProcessInstancePage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					Items: []d.ProcessInstance{
+						{Key: "root", BpmnProcessId: "order-process", Incident: true},
+						{Key: "child-a", BpmnProcessId: "order-process", ParentKey: "root", Incident: true},
+					},
+				}, nil
+			case 2:
+				return d.ProcessInstancePage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+					Items: []d.ProcessInstance{
+						{Key: "child-b", BpmnProcessId: "order-process", ParentKey: "root", Incident: true},
+						{Key: "child-c", BpmnProcessId: "order-process", ParentKey: "root", Incident: true},
+					},
+				}, nil
+			default:
+				t.Fatalf("unexpected page request %d", len(requests))
+				return d.ProcessInstancePage{}, nil
+			}
+		},
+	}
+
+	var steps []ProcessInstanceSearchPageStep
+	got, err := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default()).SearchProcessInstancesPages(ctx, ProcessInstanceSearchRequest{
+		Filter: ProcessInstanceFilter{BpmnProcessId: "order-process"},
+		Page:   ProcessInstancePageRequest{Size: 2},
+		Limit:  2,
+		LocalFilters: ProcessInstanceSearchLocalFilters{
+			ChildrenOnly:  true,
+			IncidentsOnly: true,
+		},
+	}, func(step ProcessInstanceSearchPageStep) (ProcessInstanceSearchPageAction, error) {
+		steps = append(steps, step)
+		return ProcessInstanceSearchPageActionContinue, nil
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, []d.ProcessInstancePageRequest{
+		{Size: 2},
+		{From: 2, Size: 2},
+	}, requests)
+	require.Len(t, steps, 2)
+	require.Equal(t, int32(1), steps[0].CumulativeCount)
+	require.Equal(t, int32(2), steps[1].CumulativeCount)
+	require.True(t, steps[1].LimitReached)
+	require.Equal(t, []ProcessInstance{
+		{Key: "child-a", BpmnProcessId: "order-process", ParentKey: "root", Incident: true},
+		{Key: "child-b", BpmnProcessId: "order-process", ParentKey: "root", Incident: true},
+	}, got.Items)
+	require.Equal(t, int32(2), got.Limit)
+	require.Equal(t, int32(2), got.Pages)
+}
+
+// TestClient_PlanProcessInstanceMutationPages_DelegatesSearchAndExpansion keeps
+// search-selected cancel/delete traversal below command ownership while the
+// facade only maps public request, visitor, and option types.
+func TestClient_PlanProcessInstanceMutationPages_DelegatesSearchAndExpansion(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	requests := []d.ProcessInstancePageRequest{}
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{State: d.StateCompleted}, filter)
+			assert.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			requests = append(requests, page)
+			switch len(requests) {
+			case 1:
+				return d.ProcessInstancePage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					Items:         []d.ProcessInstance{{Key: "401", State: d.StateCompleted}},
+				}, nil
+			case 2:
+				return d.ProcessInstancePage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+					Items:         []d.ProcessInstance{{Key: "402", State: d.StateCompleted}},
+				}, nil
+			default:
+				t.Fatalf("unexpected page request %d", len(requests))
+				return d.ProcessInstancePage{}, nil
+			}
+		},
+		ancestryResult: func(_ context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+			assert.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			switch startKey {
+			case "401":
+				return pitraversal.Result{
+					Mode:     pitraversal.ModeAncestry,
+					StartKey: "401",
+					RootKey:  "root-a",
+					Keys:     []string{"401", "root-a"},
+					Chain:    map[string]d.ProcessInstance{"401": {Key: "401", State: d.StateCompleted}, "root-a": {Key: "root-a", State: d.StateCompleted}},
+					Outcome:  pitraversal.OutcomeComplete,
+				}, nil
+			case "402":
+				return pitraversal.Result{
+					Mode:     pitraversal.ModeAncestry,
+					StartKey: "402",
+					RootKey:  "root-b",
+					Keys:     []string{"402", "root-b"},
+					Chain:    map[string]d.ProcessInstance{"402": {Key: "402", State: d.StateCompleted}, "root-b": {Key: "root-b", State: d.StateCompleted}},
+					Outcome:  pitraversal.OutcomeComplete,
+				}, nil
+			default:
+				t.Fatalf("unexpected ancestry key %q", startKey)
+				return pitraversal.Result{}, nil
+			}
+		},
+		descendantsResult: func(_ context.Context, rootKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+			assert.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			switch rootKey {
+			case "root-a":
+				return pitraversal.Result{
+					Mode:    pitraversal.ModeDescendants,
+					RootKey: "root-a",
+					Keys:    []string{"root-a", "401"},
+					Chain:   map[string]d.ProcessInstance{"root-a": {Key: "root-a", State: d.StateCompleted}, "401": {Key: "401", State: d.StateCompleted}},
+					Outcome: pitraversal.OutcomeComplete,
+				}, nil
+			case "root-b":
+				return pitraversal.Result{
+					Mode:    pitraversal.ModeDescendants,
+					RootKey: "root-b",
+					Keys:    []string{"root-b", "402"},
+					Chain:   map[string]d.ProcessInstance{"root-b": {Key: "root-b", State: d.StateCompleted}, "402": {Key: "402", State: d.StateCompleted}},
+					Outcome: pitraversal.OutcomeComplete,
+				}, nil
+			default:
+				t.Fatalf("unexpected descendants root %q", rootKey)
+				return pitraversal.Result{}, nil
+			}
+		},
+	}
+
+	var steps []ProcessInstanceMutationPlanStep
+	got, err := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default()).PlanProcessInstanceMutationPages(ctx, ProcessInstanceMutationPlanRequest{
+		SearchRequest: ProcessInstanceSearchRequest{
+			Filter: ProcessInstanceFilter{State: StateCompleted},
+			Page:   ProcessInstancePageRequest{Size: 1},
+			Limit:  2,
+		},
+		Workers: 1,
+	}, func(step ProcessInstanceMutationPlanStep) (ProcessInstanceSearchPageAction, error) {
+		steps = append(steps, step)
+		return ProcessInstanceSearchPageActionContinue, nil
+	}, options.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	require.Equal(t, []d.ProcessInstancePageRequest{
+		{Size: 1},
+		{From: 1, Size: 1},
+	}, requests)
+	require.Len(t, steps, 2)
+	require.Equal(t, []string{"401"}, steps[0].RequestedKeys)
+	require.Equal(t, typex.Keys{"root-a"}, steps[0].Plan.Roots)
+	require.Equal(t, int32(2), steps[0].CumulativeImpact)
+	require.Equal(t, []string{"402"}, steps[1].RequestedKeys)
+	require.Equal(t, typex.Keys{"root-b"}, steps[1].Plan.Roots)
+	require.True(t, steps[1].LimitReached)
+	require.Len(t, got.Plans, 2)
+	require.Equal(t, int32(2), got.RequestedCount)
+	require.Equal(t, int32(4), got.CumulativeImpact)
+	require.Equal(t, int32(2), got.Pages)
+}
+
+// TestClient_SearchProcessInstancesTotal_UsesExactTotalWhenAllowed verifies the
+// process facade delegates total fallback decisions below command ownership.
+func TestClient_SearchProcessInstancesTotal_UsesExactTotalWhenAllowed(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{State: d.StateActive}, filter)
+			assert.Equal(t, d.ProcessInstancePageRequest{Size: 10}, page)
+			return d.ProcessInstancePage{
+				Request: page,
+				Items:   []d.ProcessInstance{{Key: "pi-a", State: d.StateActive}},
+				ReportedTotal: &d.ProcessInstanceReportedTotal{
+					Count: 42,
+					Kind:  d.ProcessInstanceReportedTotalKindExact,
+				},
+			}, nil
+		},
+	}
+
+	var steps []ProcessInstanceSearchTotalStep
+	got, err := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default()).SearchProcessInstancesTotal(ctx, ProcessInstanceSearchRequest{
+		Filter:               ProcessInstanceFilter{State: StateActive},
+		Page:                 ProcessInstancePageRequest{Size: 10},
+		ReportedTotalAllowed: true,
+	}, func(step ProcessInstanceSearchTotalStep) error {
+		steps = append(steps, step)
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int64(42), got)
+	require.Len(t, steps, 1)
+	require.True(t, steps[0].ExactTotalUsed)
+	require.Equal(t, int64(42), steps[0].TotalAfter)
 }
 
 // TestClient_LookupProcessInstance_TenantMismatchUsesDirectAdminInput protects
@@ -1573,6 +2170,54 @@ func TestClient_DryRunCancelOrDeletePlan_UsesWorkersForStructuredTraversal(t *te
 	assert.Equal(t, typex.Keys{"r1", "c1", "r2", "c2"}, got.Collected)
 }
 
+// TestClient_DryRunCancelOrDeletePlan_ForwardsDiscoveryOptions verifies cancel
+// and delete impact planning remains a shared service workflow while the facade
+// forwards caller options unchanged.
+func TestClient_DryRunCancelOrDeletePlan_ForwardsDiscoveryOptions(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "child-1", startKey)
+			cfg := services.ApplyCallOptions(opts)
+			require.True(t, cfg.IgnoreTenant)
+			require.True(t, cfg.FailFast)
+			require.True(t, cfg.NoWorkerLimit)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: "child-1",
+				RootKey:  "root-1",
+				Keys:     []string{"child-1", "root-1"},
+				Chain:    map[string]d.ProcessInstance{"child-1": {Key: "child-1", State: d.StateCompleted}, "root-1": {Key: "root-1", State: d.StateCompleted}},
+				Outcome:  pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "root-1", rootKey)
+			cfg := services.ApplyCallOptions(opts)
+			require.True(t, cfg.IgnoreTenant)
+			require.True(t, cfg.FailFast)
+			require.True(t, cfg.NoWorkerLimit)
+			return pitraversal.Result{
+				Mode:    pitraversal.ModeDescendants,
+				RootKey: "root-1",
+				Keys:    []string{"root-1", "child-1"},
+				Chain:   map[string]d.ProcessInstance{"root-1": {Key: "root-1", State: d.StateCompleted}, "child-1": {Key: "child-1", State: d.StateCompleted}},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	got, err := cli.DryRunCancelOrDeletePlan(ctx, typex.Keys{"child-1"}, 1, options.WithIgnoreTenant(), options.WithFailFast(), options.WithNoWorkerLimit())
+
+	require.NoError(t, err)
+	assert.Equal(t, typex.Keys{"root-1"}, got.Roots)
+	assert.Equal(t, typex.Keys{"root-1", "child-1"}, got.Collected)
+	assert.Equal(t, TraversalOutcomeComplete, got.Outcome)
+}
+
 // TestClient_DryRunCancelOrDeletePlan_FailsWhenNoActionableResultsResolve keeps
 // unresolved ancestry from silently producing an empty successful plan. That
 // protects destructive commands from proceeding when nothing can be targeted.
@@ -1772,6 +2417,93 @@ func (s *stubProcessDefinitionAPI) GetProcessDefinitionXML(ctx context.Context, 
 
 var _ pdsvc.API = (*stubProcessDefinitionAPI)(nil)
 
+type stubElementAPI struct {
+	getElement          func(context.Context, string, ...services.CallOption) (d.Element, error)
+	searchElements      func(context.Context, d.ElementSearchQuery, ...services.CallOption) (d.ElementSearchResult, error)
+	searchElementsPages func(context.Context, d.ElementSearchQuery, d.ElementSearchPageVisitor, ...services.CallOption) (d.ElementSearchPagesResult, error)
+	searchElementsPage  func(context.Context, d.ElementSearchQuery, d.ElementPageRequest, ...services.CallOption) (d.ElementSearchPage, error)
+	searchElementsTotal func(context.Context, d.ElementSearchQuery, ...services.CallOption) (int64, error)
+}
+
+func (s stubElementAPI) GetElement(ctx context.Context, key string, opts ...services.CallOption) (d.Element, error) {
+	if s.getElement == nil {
+		panic("unexpected call")
+	}
+	return s.getElement(ctx, key, opts...)
+}
+
+func (s stubElementAPI) SearchElements(ctx context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (d.ElementSearchResult, error) {
+	if s.searchElements == nil {
+		panic("unexpected call")
+	}
+	return s.searchElements(ctx, query, opts...)
+}
+
+// SearchElementsPages delegates to test callbacks for process enrichment paging.
+func (s stubElementAPI) SearchElementsPages(ctx context.Context, query d.ElementSearchQuery, visitor d.ElementSearchPageVisitor, opts ...services.CallOption) (d.ElementSearchPagesResult, error) {
+	if s.searchElementsPages == nil {
+		panic("unexpected call")
+	}
+	return s.searchElementsPages(ctx, query, visitor, opts...)
+}
+
+func (s stubElementAPI) SearchElementsPage(ctx context.Context, query d.ElementSearchQuery, page d.ElementPageRequest, opts ...services.CallOption) (d.ElementSearchPage, error) {
+	if s.searchElementsPage == nil {
+		panic("unexpected call")
+	}
+	return s.searchElementsPage(ctx, query, page, opts...)
+}
+
+// SearchElementsTotal delegates to test callbacks for process enrichment totals.
+func (s stubElementAPI) SearchElementsTotal(ctx context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (int64, error) {
+	if s.searchElementsTotal == nil {
+		panic("unexpected call")
+	}
+	return s.searchElementsTotal(ctx, query, opts...)
+}
+
+var _ esvc.API = stubElementAPI{}
+
+type stubJobAPI struct {
+	searchJobs func(context.Context, d.JobSearchQuery, ...services.CallOption) (d.JobSearchResult, error)
+}
+
+func (s stubJobAPI) GetJob(context.Context, string, ...services.CallOption) (d.Job, error) {
+	panic("unexpected call")
+}
+
+func (s stubJobAPI) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error) {
+	if s.searchJobs == nil {
+		panic("unexpected call")
+	}
+	return s.searchJobs(ctx, query, opts...)
+}
+
+// SearchJobsPages panics because process facade tests wire explicit callbacks
+// only for paths expected by the scenario under test.
+func (s stubJobAPI) SearchJobsPages(context.Context, d.JobSearchQuery, d.JobSearchPageVisitor, ...services.CallOption) (d.JobSearchPagesResult, error) {
+	panic("unexpected call")
+}
+
+func (s stubJobAPI) SearchJobsPage(context.Context, d.JobSearchQuery, d.JobPageRequest, ...services.CallOption) (d.JobSearchPage, error) {
+	panic("unexpected call")
+}
+
+// SearchJobsTotal panics because process facade tests do not request job totals.
+func (s stubJobAPI) SearchJobsTotal(context.Context, d.JobSearchQuery, ...services.CallOption) (int64, error) {
+	panic("unexpected call")
+}
+
+func (s stubJobAPI) UpdateJob(context.Context, d.JobUpdateRequest, ...services.CallOption) (d.JobUpdateResult, error) {
+	panic("unexpected call")
+}
+
+func (s stubJobAPI) SubmitJobWorkerOutcome(context.Context, d.JobWorkerOutcomeRequest, ...services.CallOption) (d.JobWorkerOutcomeResult, error) {
+	panic("unexpected call")
+}
+
+var _ jsvc.API = stubJobAPI{}
+
 type stubProcessInstanceAPI struct {
 	createProcessInstance              func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)
 	getProcessInstance                 func(context.Context, string, ...services.CallOption) (d.ProcessInstance, error)
@@ -1820,7 +2552,9 @@ type stubIncidentAPI struct {
 	getIncident                    func(context.Context, string, ...services.CallOption) (d.ProcessInstanceIncidentDetail, error)
 	resolveIncident                func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
 	searchIncidents                func(context.Context, d.IncidentFilter, int32, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+	searchIncidentsPages           func(context.Context, d.IncidentFilter, d.IncidentPageRequest, int32, d.IncidentSearchPageVisitor, ...services.CallOption) (d.IncidentSearchPagesResult, error)
 	searchIncidentsPage            func(context.Context, d.IncidentFilter, d.IncidentPageRequest, ...services.CallOption) (d.IncidentPage, error)
+	searchIncidentsTotal           func(context.Context, d.IncidentFilter, d.IncidentPageRequest, ...services.CallOption) (int64, error)
 	searchProcessInstanceIncidents func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
 	waitForIncidentResolved        func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
 	waitForPIIncidentsResolved     func(context.Context, string, []string, ...services.CallOption) (d.IncidentResolutionResponse, error)
@@ -1850,12 +2584,28 @@ func (s stubIncidentAPI) SearchIncidents(ctx context.Context, filter d.IncidentF
 	return s.searchIncidents(ctx, filter, size, opts...)
 }
 
+// SearchIncidentsPages delegates to the per-test callback used by incident search facade tests.
+func (s stubIncidentAPI) SearchIncidentsPages(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, limit int32, visitor d.IncidentSearchPageVisitor, opts ...services.CallOption) (d.IncidentSearchPagesResult, error) {
+	if s.searchIncidentsPages == nil {
+		panic("unexpected call")
+	}
+	return s.searchIncidentsPages(ctx, filter, page, limit, visitor, opts...)
+}
+
 // SearchIncidentsPage delegates to the per-test callback used by incident search facade tests.
 func (s stubIncidentAPI) SearchIncidentsPage(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error) {
 	if s.searchIncidentsPage == nil {
 		panic("unexpected call")
 	}
 	return s.searchIncidentsPage(ctx, filter, page, opts...)
+}
+
+// SearchIncidentsTotal delegates to the per-test callback used by incident search facade tests.
+func (s stubIncidentAPI) SearchIncidentsTotal(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (int64, error) {
+	if s.searchIncidentsTotal == nil {
+		panic("unexpected call")
+	}
+	return s.searchIncidentsTotal(ctx, filter, page, opts...)
 }
 
 // SearchProcessInstanceIncidents delegates to the per-test callback used by incident enrichment facade tests.

@@ -2,134 +2,47 @@
 title: "Repair Process Instance"
 permalink: /ops/repair-process-instance/
 parent: "C8 Ops CLI"
-nav_order: 7
+nav_order: 5
 has_toc: true
 ---
 
 # c8volt ops repair process-instance
 
-## The Problem
+## Purpose
 
-Support work often starts from process-instance keys or process-instance filters, not incident keys. The operator needs c8volt to discover the active incidents for those instances, skip instances that have nothing repairable, dedupe shared scopes, and then run the same careful variable, job, incident-resolution, and confirmation steps.
-
-## The Promise
-
-`c8volt ops repair process-instance` selects process instances by key, stdin, or process-instance search filters, freezes the repairable process-instance and incident set, then reuses the incident repair workflow for variables, related jobs, incident resolution, confirmation, and audit reporting.
-
-Search mode pages through all matching incident-bearing process instances by default. `--batch-size` controls the per-page request size only; `--limit` is the explicit cap for the frozen repair scope. Human output, JSON output, and Markdown reports show whether discovery completed or was user-limited.
+Support work often starts from process-instance keys or filters, not incident keys. `c8volt ops repair process-instance` discovers active incidents for selected process instances, freezes the repairable set, then reuses the incident repair workflow.
 
 ## Use When
 
-- repairing all active incidents associated with one known process instance
-- previewing a bounded search of incident-bearing process instances
-- narrowing repair to direct active incidents with `--direct-incidents-only`
-- applying the same variable payload to every matched repair scope
-- producing an audit trail that distinguishes repaired, skipped, and duplicate process-instance targets
+- process-instance selectors are easier than incident keys
+- only active incidents for selected instances should be repaired
+- process-instance discovery, incident repair, and reporting should be one workflow
 
-## Command At A Glance
+## Basic Usage
 
 ```bash
-# read-only: preview repair for one known process instance
 c8volt ops repair process-instance --key <process-instance-key> --dry-run
+```
 
-# read-only: preview a bounded direct-incident repair search
+Generated reference: [ops repair process-instance](/cli/c8volt_ops_repair_process-instance/).
+
+## Best Variants
+
+```bash
 c8volt ops repair process-instance --direct-incidents-only --state active --limit 5 --dry-run
-
-# destructive: updates requested repair data and resolves active incidents after confirmation
 c8volt ops repair process-instance --key <process-instance-key> --vars '{"hasIncident":false}' --report-file repair-process-instance.md
 ```
 
 ## Built From Lower-Level Commands
 
-This is the conceptual flow. The implemented command calls c8volt services directly and freezes the target set before mutation.
-
 ```bash
-c8volt get pi --key <process-instance-key> --with-incidents
-c8volt get pi <process-instance-filters> --incidents-only --keys-only
-c8volt update pi --key <process-instance-key> --vars <json>
-c8volt update job --key <job-key> --retries <count>
-c8volt update job --key <job-key> --timeout <duration>
+c8volt get process-instance --key <process-instance-key> --with-incidents
+c8volt update process-instance --key <process-instance-key> --vars '{"hasIncident":false}'
 c8volt resolve incident --key <incident-key>
 ```
 
-Keyed mode and search mode are mutually exclusive. With no keys and no stdin, the command uses process-instance search mode and automatically limits discovery to incident-bearing process instances. `--batch-size` changes page size only and does not cap how many matching process instances are frozen. Use `--limit N` when the repair scope should intentionally stop after `N` matching process instances. `--direct-incidents-only` adds a stricter direct active incident match and can be combined with incident-state, incident-error-type, and incident-error-message filters.
+Generated references: [get process-instance](/cli/c8volt_get_process-instance/), [update process-instance](/cli/c8volt_update_process-instance/), [update job](/cli/c8volt_update_job/), [resolve incident](/cli/c8volt_resolve_incident/).
 
-## Workflow
+## Output And Safety
 
-```text
-read process-instance keys or search filters
-        |
-        v
-discover incident-bearing process instances
-        |
-        v
-discover active incidents for the frozen set
-        |
-        v
-skip process instances without active repair targets
-        |
-        v
-dedupe variable scopes and related jobs
-        |
-        v
-plan variable, job, resolution, and confirmation steps
-        |
-        +--> --dry-run: report plan, mutate nothing
-        |
-        v
-confirm, auto-confirm, or automation-confirm
-        |
-        v
-run the shared incident repair steps
-        |
-        v
-write optional audit report
-```
-
-## Dry Run
-
-`--dry-run` searches or reads process-instance targets, discovers their active incidents, and builds the repair plan without updating variables, changing jobs, or resolving incidents. Human output shows selected process-instance count, repairable process-instance count, active incident count, the repair preview, skipped process instances, and the planned final outcome.
-
-Search-mode dry-run output includes `discovery user-limited` when `--limit` stops discovery. Normal completed paging is shown only with `--verbose`.
-
-Verbose output can list normal completed discovery paging, frozen process-instance keys, skipped keys, incident keys, job keys, and planned variable scopes.
-
-## Real Execution
-
-Without `--dry-run`, interactive runs first execute the same plan as a preflight. If no active repair targets are found, the command reports the plan and submits no mutation. Otherwise it asks for confirmation, freezes the planned process-instance set, and runs repair against the discovered incident keys.
-
-Variable updates are applied once per unique process-instance scope before dependent incident resolution. Related job retry and timeout updates run only where the incident has a related job. `--no-wait` returns after repair mutations are accepted without waiting for incident or retry confirmation.
-
-## Reports
-
-Reports use schema version `ops.repair.v1`. They include command metadata, discovery mode, process-instance filters, direct-incident filter settings, frozen process-instance and incident keys, skipped process-instance keys, variable scopes, job applicability, per-incident plan statuses, remaining active incidents when checked, notices, errors, automation flags, timestamps, duration, and final outcome.
-
-Report format is inferred from `--report-file` unless `--report-format markdown|json` is supplied.
-
-## Demo
-
-The VHS source is `demos/vhs/ops-repair-process-instance.tape`.
-
-```bash
-c8volt ops repair process-instance --direct-incidents-only --state active --limit 1 --dry-run
-c8volt ops repair process-instance --direct-incidents-only --state active --limit 1 --report-file repair-process-instance.md
-```
-
-## Failure And Safety Notes
-
-- `--key` means process-instance key; it cannot be combined with process-instance search filters.
-- Stdin `-` can be combined with repeated `--key`, but not with search filters.
-- Search mode automatically selects incident-bearing process instances.
-- `--direct-incidents-only` filters process instances by direct incident fields before repair.
-- Process instances with no active incidents are skipped and reported.
-- `--vars` and `--vars-file` are mutually exclusive and must contain a JSON object.
-- `--json` cannot be combined with `--verbose` for this command.
-
-## Related Commands
-
-- [ops repair process-instance](/cli/c8volt_ops_repair_process-instance/)
-- [get process-instance](/cli/c8volt_get_process-instance/)
-- [get incident](/cli/c8volt_get_incident/)
-- [update process-instance](/cli/c8volt_update_process-instance/)
-- [update job](/cli/c8volt_update_job/)
-- [resolve incident](/cli/c8volt_resolve_incident/)
+`--dry-run` shows selected process instances, discovered active incidents, and planned repair steps without mutation. Real execution skips instances with no repairable incident, deduplicates shared targets, and reports the same repair outcomes as `ops repair incident`.

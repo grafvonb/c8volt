@@ -14,7 +14,7 @@ Update process-instance variables by key.
 
 The command accepts repeated --key values or newline-separated keys from stdin with '-'. Provide exactly one variable payload source: --vars with a JSON object or --vars-file with a path to a JSON object file. The same variable map is applied to every unique target key.
 
-By default c8volt loads current process-instance-scope variables, previews planned additions and changes, asks for confirmation, then waits until requested variables are visible through the same lookup path as `get pi --with-vars`. Use --dry-run to preview without mutating, or --auto-confirm for unattended mutation.
+By default c8volt loads current process-instance-scope variables, previews planned additions and changes, asks for confirmation, then waits until requested variables are visible through the same lookup path as `get process-instance --with-vars`. Use --dry-run to preview without mutating, or --auto-confirm for unattended mutation.
 
 Variable updates are supported for Camunda 8.8 and 8.9. Camunda 8.7 returns an unsupported-version error before mutation.
 
@@ -25,12 +25,12 @@ c8volt update process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
-  ./c8volt update pi --key <process-instance-key> --vars-file ./vars.json --dry-run
   ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
-  ./c8volt update pi --key <process-instance-key-a> --key <process-instance-key-b> --vars '{"customerTier":"gold"}' --dry-run
-  printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt update pi - --vars '{"customerTier":"gold"}' --dry-run
-  ./c8volt --json update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
+  ./c8volt update process-instance --key <process-instance-key> --vars-file ./vars.json --dry-run
+  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
+  ./c8volt update process-instance --key <process-instance-key-a> --key <process-instance-key-b> --vars '{"customerTier":"gold"}' --dry-run
+  printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt update process-instance - --vars '{"customerTier":"gold"}' --dry-run
+  ./c8volt --json update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
 ```
 
 ### Options
@@ -39,7 +39,7 @@ c8volt update process-instance [flags]
       --dry-run            preview variable updates without submitting mutation
       --fail-fast          stop scheduling new updates after the first error
   -h, --help               help for process-instance
-      --key strings        process instance key(s) to update; repeat or combine with stdin '-'
+  -k, --key strings        process instance key(s) to update; repeat or combine with stdin '-'
       --no-wait            return after the update request is accepted without variable confirmation
       --no-worker-limit    use all queued jobs as workers when --workers is unset
       --vars string        JSON object with variables to set on each process instance

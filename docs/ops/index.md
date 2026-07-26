@@ -1,7 +1,7 @@
 ---
 title: "C8 Ops CLI"
 permalink: /ops/
-nav_order: 2
+nav_order: 3
 has_children: true
 has_toc: true
 ---
@@ -10,38 +10,28 @@ has_toc: true
 
 Low-level commands do work. `c8volt ops` finishes workflows.
 
-The ops command group is the operator-facing layer for predefined Camunda playbooks. Each command composes lower-level c8volt behavior such as discovery, tree traversal, delete planning, incident lookup, confirmation, waiting, JSON output, and report writing. The goal is not to hide the primitives. The goal is to make the whole operational outcome repeatable. Discovery-oriented ops workflows page through all matches by default; `--batch-size` tunes page size only, and `--limit` intentionally caps the frozen scope. Human, JSON, and Markdown output identify whether discovery completed or was user-limited.
+The ops command group is the operator-facing layer for predefined Camunda playbooks. Each command composes lower-level c8volt behavior such as discovery, runtime element inspection, tree traversal, delete planning, incident lookup, confirmation, waiting, JSON output, and report writing.
 
 ## Playbook Index
 
 | Workflow | Command | Use when |
 | --- | --- | --- |
-| [Execute Smoke Test](./execute-smoke-test/) | `c8volt ops execute smoke-test` | You need to prove a profile can connect, deploy, run, walk, and clean up. |
+| [Analyse Slow Process Instances](./analyse-slow-process-instances/) | `c8volt ops analyse slow-process-instances` | You need to find slow runtime work and explain it with element timing and listener context. |
 | [Execute Retention Policy](./execute-retention-policy/) | `c8volt ops execute retention-policy` | You need an auditable cleanup of old finished process instances. |
-| [Purge Orphan Process Instances](./purge-orphan-process-instances/) | `c8volt ops purge orphan-process-instances` | You need to find and delete orphan child process instances. |
 | [Purge Process Instances With Incidents](./purge-process-instances-with-incidents/) | `c8volt ops purge process-instances-with-incidents` | You need to delete process-instance families selected from incident filters. |
-| [Purge All Process Definitions](./purge-all-process-definitions/) | `c8volt ops purge all-process-definitions` | You need to delete selected process-definition versions after impact planning. |
 | [Repair Incident](./repair-incident/) | `c8volt ops repair incident` | You need to repair incidents selected by key, stdin, or incident filters. |
 | [Repair Process Instance](./repair-process-instance/) | `c8volt ops repair process-instance` | You need to repair active incidents discovered from selected process instances. |
+| [Purge Orphan Process Instances](./purge-orphan-process-instances/) | `c8volt ops purge orphan-process-instances` | You need to find and delete orphan child process instances. |
+| [Purge All Process Definitions](./purge-all-process-definitions/) | `c8volt ops purge all-process-definitions` | You need to delete selected process-definition versions after impact planning. |
+| [Execute Smoke Test](./execute-smoke-test/) | `c8volt ops execute smoke-test` | You need to prove a profile can connect, deploy, run, walk, and clean up. |
 
 ## Shared Shape
 
-Every ops playbook page follows the same structure:
-
-- the problem the command solves
-- when to use it
-- the command at a glance
-- the lower-level c8volt commands it composes
-- an ASCII workflow diagram
-- what `--dry-run` does
-- what real execution does
-- report behavior
-- a VHS demo script
-- failure and safety notes
+Every ops playbook page keeps the same compact structure: purpose, use when, basic usage, best variants, lower-level commands, output/report behavior, and safety notes. Generated reference pages remain the exact flag contract.
 
 ## Safety Model
 
-Ops commands should feel boring in the best way: they discover, freeze, plan, validate, execute, verify, and report.
+Ops commands discover, freeze, plan, validate, execute, verify, and report.
 
 ```text
 discover candidates
@@ -72,6 +62,4 @@ write audit report
 
 ## Reports And Demos
 
-Ops reports should be stable structured data first, then rendered to Markdown or JSON. Markdown is for operator review. JSON is for agents, CI, and audit pipelines.
-
-Demo recordings live as VHS scripts under `demos/vhs/`. The scripts intentionally show preview-first usage before deletion, cleanup, or repair execution.
+Ops reports are stable structured data first, then rendered to Markdown or JSON. Demo recordings live as VHS scripts under `demos/vhs/` and show preview-first usage before deletion, cleanup, or repair execution.

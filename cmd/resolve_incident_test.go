@@ -297,6 +297,73 @@ func TestResolveIncidentCommand_NoWaitPartialFailureRendersSuccessfulTargets(t *
 	require.Contains(t, string(output), "resolved: 2 (confirmed/submitted/skipped: 1, failed: 1)")
 }
 
+func TestResolveIncidentCommand_JSONPartialFailurePrintsSingleEnvelope(t *testing.T) {
+	resolveCounts := map[string]int{}
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/incidents/2251799813685249",
+			"/v2/incidents/2251799813685250":
+			require.Equal(t, http.MethodGet, r.Method)
+			key := incidentKeyFromPath(t, r.URL.Path, "/v2/incidents/", "")
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(incidentResultJSON(key, "2251799813685260", "ACTIVE")))
+		case "/v2/incidents/2251799813685249/resolution",
+			"/v2/incidents/2251799813685250/resolution":
+			require.Equal(t, http.MethodPost, r.Method)
+			key := incidentKeyFromPath(t, r.URL.Path, "/v2/incidents/", "/resolution")
+			resolveCounts[key]++
+			if key == "2251799813685250" {
+				http.Error(w, `{"message":"mutation rejected"}`, http.StatusNotFound)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, err := testx.RunCmdSubprocess(t, "TestResolveIncidentCommand_JSONPartialFailureHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+		"C8VOLT_TEST_RESOLVE_ARGS": marshalResolveArgsForEnv(t, []string{
+			"--json",
+			"resolve", "incident",
+			"--no-wait",
+			"--workers", "1",
+			"--key", "2251799813685249",
+			"--key", "2251799813685250",
+		}),
+	})
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.NotFound, exitErr.ExitCode())
+	require.Equal(t, map[string]int{"2251799813685249": 1, "2251799813685250": 1}, resolveCounts)
+	require.True(t, json.Valid(output), "stdout must be one JSON envelope: %s", string(output))
+
+	var envelope struct {
+		Outcome string `json:"outcome"`
+		Payload struct {
+			Submitted int `json:"submitted"`
+			Failed    int `json:"failed"`
+			Items     []struct {
+				IncidentKey string `json:"incidentKey"`
+				Status      string `json:"status"`
+			} `json:"items"`
+		} `json:"payload"`
+	}
+	require.NoError(t, json.Unmarshal(output, &envelope))
+	require.Equal(t, "accepted", envelope.Outcome)
+	require.Equal(t, 1, envelope.Payload.Submitted)
+	require.Equal(t, 1, envelope.Payload.Failed)
+	require.Len(t, envelope.Payload.Items, 2)
+	require.Equal(t, "2251799813685249", envelope.Payload.Items[0].IncidentKey)
+	require.Equal(t, "submitted", envelope.Payload.Items[0].Status)
+	require.Equal(t, "2251799813685250", envelope.Payload.Items[1].IncidentKey)
+	require.Equal(t, "mutation_failed", envelope.Payload.Items[1].Status)
+}
+
 func TestResolveIncidentCommand_FailFastStopsAfterFirstMutationFailure(t *testing.T) {
 	var resolveCount int
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -379,6 +446,10 @@ func TestResolveIncidentCommand_JSONRejectsVerboseHelper(t *testing.T) {
 }
 
 func TestResolveIncidentCommand_PartialFailureHelper(t *testing.T) {
+	runResolveIncidentHelperFromEnv(t)
+}
+
+func TestResolveIncidentCommand_JSONPartialFailureHelper(t *testing.T) {
 	runResolveIncidentHelperFromEnv(t)
 }
 

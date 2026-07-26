@@ -1,7 +1,7 @@
 ---
 title: "C8 Ops Discussions"
 permalink: /use-cases/
-nav_order: 3
+nav_order: 5
 has_toc: false
 ---
 
@@ -13,7 +13,13 @@ The c8volt use-case board is the GitHub discussion space where C8 Ops CLI workfl
 
 Implemented operational workflows now live in the [C8 Ops CLI playbooks](/ops/). This page remains the idea board for accepted, upcoming, and superseded workflow concepts.
 
+Implemented ops workflows page through the full matching scope by default. `--batch-size` controls discovery page size, `--limit` freezes a smaller scope, and `--automation` or `--auto-confirm` makes unattended execution explicit.
+
 ## Discussion Links
+
+### [Mitigate stuck jobs](https://github.com/grafvonb/c8volt/discussions/238) <span class="status-badge status-accepted">status: accepted</span>
+
+Accepted workflow for mitigating silent, unclaimed Camunda jobs by discovering a frozen candidate set, previewing the plan, and failing confirmed jobs with retries set to `0` and an operator diagnostic message. The workflow is intended for misconfiguration cases such as a service task using a job type that no worker will claim; implementation is tracked in [#232](https://github.com/grafvonb/c8volt/issues/232).
 
 ### [Repair commands](https://github.com/grafvonb/c8volt/discussions/189) <span class="status-badge status-implemented">status: implemented</span>
 
@@ -33,7 +39,7 @@ Operational smoke test for proving a c8volt-to-Camunda environment is usable end
 
 ### [Purge all selected process definitions](https://github.com/grafvonb/c8volt/discussions/213) <span class="status-badge status-implemented">status: implemented</span>
 
-Process-definition cleanup for selected versions. The implemented `c8volt ops purge all-process-definitions` flow discovers candidate process definitions with `get pd`-style filters, previews process-instance impact, blocks active-instance impact unless `--force` is supplied, and deletes selected definitions through the existing process-definition deletion service.
+Process-definition cleanup for selected versions. The implemented `c8volt ops purge all-process-definitions` flow discovers candidate process definitions with the same selectors as `get process-definition`, previews process-instance impact, blocks active-instance impact unless `--force` is supplied, and deletes selected definitions through the existing process-definition deletion service.
 
 ### [Purge process instances selected by incidents](https://github.com/grafvonb/c8volt/discussions/212) <span class="status-badge status-implemented">status: implemented</span>
 

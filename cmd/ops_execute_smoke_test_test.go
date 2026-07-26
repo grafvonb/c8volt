@@ -402,7 +402,7 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 
 	require.Contains(t, output, "execute smoke test")
 	require.Contains(t, output, "deploy: fixture embedded/processdefinitions/C89_MultipleSubProcessesParent.bpmn")
-	require.Contains(t, output, "deploy: confirmed process definition pd-88")
+	require.Contains(t, output, "deploy: confirmed process definition pd-89")
 	require.Contains(t, output, "start: 1 process instance")
 	require.Contains(t, output, "start: created 1/1")
 	require.Contains(t, output, "walk: 1 process-instance family")
@@ -423,7 +423,9 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 	require.Equal(t, []string{
 		"GET /v2/topology",
 		"POST /v2/deployments",
-		"GET /v2/process-definitions/pd-88",
+		"GET /v2/process-definitions/pd-89-child",
+		"GET /v2/process-definitions/pd-89-middle",
+		"GET /v2/process-definitions/pd-89",
 		"POST /v2/process-instances",
 		"GET /v2/process-instances/101",
 		"GET /v2/process-instances/101",
@@ -436,12 +438,12 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 		"POST /v2/process-instances/search",
 		"POST /v2/process-instances/101/deletion",
 		"POST /v2/process-instances/search",
-		"GET /v2/process-definitions/pd-88",
+		"GET /v2/process-definitions/pd-89",
 		"POST /v2/process-instances/search",
 		"POST /v2/process-instances/search",
 		"POST /v2/process-instances/search",
 		"POST /v2/process-instances/search",
-		"POST /v2/resources/pd-88/deletion",
+		"POST /v2/resources/pd-89/deletion",
 	}, requests.Snapshot())
 }
 
@@ -672,29 +674,66 @@ func newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t *testing.T, request
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			requests.Append(r.Method + " " + r.URL.Path)
 			require.Contains(t, r.Header.Get("Content-Type"), "multipart/form-data")
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			prefix := "C88"
+			keyPrefix := "pd-88"
+			if strings.Contains(string(body), "C89_MultipleSubProcessesParent") {
+				prefix = "C89"
+				keyPrefix = "pd-89"
+			}
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{
+			_, _ = fmt.Fprintf(w, `{
 				"deploymentKey": "deployment-1",
 				"tenantId": "<default>",
 				"deployments": [
 					{
 						"processDefinition": {
-							"processDefinitionId": "C88_MultipleSubProcessesParent",
-							"processDefinitionKey": "pd-88",
+							"processDefinitionId": "%[1]s_SimpleUserTask",
+							"processDefinitionKey": "%[2]s-child",
 							"processDefinitionVersion": 4,
-							"resourceName": "processdefinitions/C88_MultipleSubProcessesParent.bpmn",
+							"resourceName": "processdefinitions/%[1]s_SimpleUserTask.bpmn",
+							"tenantId": "<default>"
+						}
+					},
+					{
+						"processDefinition": {
+							"processDefinitionId": "%[1]s_SimpleParent",
+							"processDefinitionKey": "%[2]s-middle",
+							"processDefinitionVersion": 4,
+							"resourceName": "processdefinitions/%[1]s_SimpleParent.bpmn",
+							"tenantId": "<default>"
+						}
+					},
+					{
+						"processDefinition": {
+							"processDefinitionId": "%[1]s_MultipleSubProcessesParent",
+							"processDefinitionKey": "%[2]s",
+							"processDefinitionVersion": 4,
+							"resourceName": "processdefinitions/%[1]s_MultipleSubProcessesParent.bpmn",
 							"tenantId": "<default>"
 						}
 					}
 				]
-			}`))
-		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-definitions/pd-88":
+			}`, prefix, keyPrefix)
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-definitions/pd-"):
 			requests.Append(r.Method + " " + r.URL.Path)
+			definitions := map[string]string{
+				"pd-88":        "C88_MultipleSubProcessesParent",
+				"pd-88-child":  "C88_SimpleUserTask",
+				"pd-88-middle": "C88_SimpleParent",
+				"pd-89":        "C89_MultipleSubProcessesParent",
+				"pd-89-child":  "C89_SimpleUserTask",
+				"pd-89-middle": "C89_SimpleParent",
+			}
+			processDefinitionKey := strings.TrimPrefix(r.URL.Path, "/v2/process-definitions/")
+			processDefinitionID, ok := definitions[processDefinitionKey]
+			require.Truef(t, ok, "unexpected process definition lookup: %s", r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{
-				"processDefinitionId": "C88_MultipleSubProcessesParent",
-				"processDefinitionKey": "pd-88"
-			}`))
+			_, _ = fmt.Fprintf(w, `{
+				"processDefinitionId": %q,
+				"processDefinitionKey": %q
+			}`, processDefinitionID, processDefinitionKey)
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances":
 			requests.Append(r.Method + " " + r.URL.Path)
 			body, err := io.ReadAll(r.Body)

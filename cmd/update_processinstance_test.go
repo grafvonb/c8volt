@@ -75,7 +75,7 @@ func TestUpdatePICommand_SubmitsV88UpdateAndConfirmsVariables(t *testing.T) {
 	require.Equal(t, "confirmed", item["confirmationStatus"])
 }
 
-// Protects the existing `update pi --vars` request path after adding resolve commands.
+// Protects the existing `update process-instance --vars` request path after adding resolve commands.
 func TestUpdatePICommand_RegressionVarsUsesVariableMutationAndConfirmation(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -609,7 +609,7 @@ func TestUpdateProcessInstanceCommand_JSONMutationRequiresExplicitConfirmation(t
 	require.Equal(t, string(OutcomeInvalid), envelope["outcome"])
 	require.Equal(t, "invalid_input", envelope["class"])
 	detail := requireJSONObject(t, envelope["detail"])
-	require.Contains(t, detail["message"], "--json update pi requires --dry-run, --auto-confirm, or --automation")
+	require.Contains(t, detail["message"], "--json update process-instance requires --dry-run, --auto-confirm, or --automation")
 }
 
 func TestUpdateProcessInstanceCommand_JSONRejectsVerbose(t *testing.T) {
@@ -639,7 +639,7 @@ func TestUpdateProcessInstanceCommand_JSONRejectsVerbose(t *testing.T) {
 	require.Equal(t, string(OutcomeInvalid), envelope["outcome"])
 	require.Equal(t, "invalid_input", envelope["class"])
 	detail := requireJSONObject(t, envelope["detail"])
-	require.Contains(t, detail["message"], "--json cannot be combined with --verbose for update pi")
+	require.Contains(t, detail["message"], "--json cannot be combined with --verbose for update process-instance")
 }
 
 func TestUpdateProcessInstanceCommand_InvalidVarsFailBeforeMutation(t *testing.T) {

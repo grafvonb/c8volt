@@ -23,12 +23,12 @@ c8volt expect process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt expect pi --key <process-instance-key> --state active
-  ./c8volt expect pi --key <process-instance-key> --incident true
-  ./c8volt expect pi --key <process-instance-key> --state active --incident false
-  ./c8volt expect pi --key <process-instance-key> --state completed --state absent
-  ./c8volt expect pi --key <process-instance-key> --state canceled
-  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --incident true -
+  ./c8volt expect process-instance --key <process-instance-key> --state active
+  ./c8volt expect process-instance --key <process-instance-key> --incident true
+  ./c8volt expect process-instance --key <process-instance-key> --state active --incident false
+  ./c8volt expect process-instance --key <process-instance-key> --state completed --state absent
+  ./c8volt expect process-instance --key <process-instance-key> --state canceled
+  ./c8volt get process-instance --key <process-instance-key> --keys-only | ./c8volt expect process-instance --incident true -
 ```
 
 ### Options

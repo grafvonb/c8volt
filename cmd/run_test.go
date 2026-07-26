@@ -35,7 +35,7 @@ func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"run"}, []string{
 		"Start process instances",
 		"waits until created instances are observable",
-		"./c8volt run pi -b <bpmn-process-id>",
+		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id>",
 	}, nil)
 
 	require.Contains(t, output, "process-instance")
@@ -43,8 +43,8 @@ func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 	output = assertCommandHelpOutput(t, []string{"run", "process-instance"}, []string{
 		"Run by BPMN process ID",
 		"waits until created instances are observable",
-		"./c8volt run pi -b <bpmn-process-id> -n 3 --workers 2",
-		"./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -",
+		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2",
+		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -",
 	}, nil)
 	require.Contains(t, output, "--no-wait")
 }

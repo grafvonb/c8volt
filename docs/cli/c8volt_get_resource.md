@@ -6,13 +6,13 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt get resource
 
-Get a resource by id
+Get a resource by ID
 
 ### Synopsis
 
-Get a single resource by id.
+Get a single resource by ID.
 
-Requires --id. The id must be a Camunda resource id; process-definition keys and deployment response keys are not resource ids.
+Requires --id. The ID must be a Camunda resource ID; process-definition keys and deployment response keys are not resource IDs.
 
 Tenant contract: explicit --id resource targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.
 
@@ -32,7 +32,7 @@ c8volt get resource [flags]
 
 ```
   -h, --help        help for resource
-  -i, --id string   resource id to fetch
+  -i, --id string   resource ID to fetch
 ```
 
 ### Options inherited from parent commands
@@ -55,5 +55,5 @@ c8volt get resource [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Inspect cluster, process, incident, tenant, and resource state
+* [c8volt get](c8volt_get)	 - Inspect cluster, process, job, element, incident, tenant, and resource state
 

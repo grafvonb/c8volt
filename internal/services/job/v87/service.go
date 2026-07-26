@@ -62,12 +62,31 @@ func (s *Service) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts .
 	return d.JobSearchResult{}, unsupportedJobOperation("search jobs")
 }
 
+// SearchJobsPages reports job search as unsupported for Camunda versions before
+// the v2 job search endpoint.
+func (s *Service) SearchJobsPages(ctx context.Context, query d.JobSearchQuery, visitor d.JobSearchPageVisitor, opts ...services.CallOption) (d.JobSearchPagesResult, error) {
+	_ = ctx
+	_ = query
+	_ = visitor
+	_ = services.ApplyCallOptions(opts)
+	return d.JobSearchPagesResult{}, unsupportedJobOperation("search jobs")
+}
+
 func (s *Service) SearchJobsPage(ctx context.Context, query d.JobSearchQuery, page d.JobPageRequest, opts ...services.CallOption) (d.JobSearchPage, error) {
 	_ = ctx
 	_ = query
 	_ = page
 	_ = services.ApplyCallOptions(opts)
 	return d.JobSearchPage{}, unsupportedJobOperation("search jobs")
+}
+
+// SearchJobsTotal reports job totals as unsupported for Camunda versions before
+// the v2 job search endpoint.
+func (s *Service) SearchJobsTotal(ctx context.Context, query d.JobSearchQuery, opts ...services.CallOption) (int64, error) {
+	_ = ctx
+	_ = query
+	_ = services.ApplyCallOptions(opts)
+	return 0, unsupportedJobOperation("search jobs")
 }
 
 func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error) {

@@ -87,6 +87,186 @@ func fromDomainDiscoveryScopeStatus(x d.DiscoveryScopeStatus) DiscoveryScopeStat
 	}
 }
 
+func toDomainSlowProcessAnalysisRequest(x SlowProcessAnalysisRequest) d.SlowProcessAnalysisRequest {
+	return d.SlowProcessAnalysisRequest{
+		CommandName:               x.CommandName,
+		SelectionMode:             d.SlowProcessAnalysisSelectionMode(x.SelectionMode),
+		InputKeys:                 append(typex.Keys(nil), x.InputKeys...),
+		ProcessDefinitionSelector: toDomainSlowProcessAnalysisProcessDefinitionSelector(x.ProcessDefinitionSelector),
+		ProcessInstanceFilters:    toDomainSlowProcessAnalysisProcessInstanceSearchFilters(x.ProcessInstanceFilters),
+		DetailFilters:             toDomainSlowProcessAnalysisDetailFilters(x.DetailFilters),
+		RootDurationLonger:        x.RootDurationLonger,
+		BatchSize:                 x.BatchSize,
+		Limit:                     x.Limit,
+		CapturedNow:               x.CapturedNow,
+		OutputMode:                x.OutputMode,
+		WithListeners:             x.WithListeners,
+	}
+}
+
+func fromDomainSlowProcessAnalysisRequest(x d.SlowProcessAnalysisRequest) SlowProcessAnalysisRequest {
+	return SlowProcessAnalysisRequest{
+		CommandName:               x.CommandName,
+		SelectionMode:             SlowProcessAnalysisSelectionMode(x.SelectionMode),
+		InputKeys:                 append(typex.Keys(nil), x.InputKeys...),
+		ProcessDefinitionSelector: fromDomainSlowProcessAnalysisProcessDefinitionSelector(x.ProcessDefinitionSelector),
+		ProcessInstanceFilters:    fromDomainSlowProcessAnalysisProcessInstanceSearchFilters(x.ProcessInstanceFilters),
+		DetailFilters:             fromDomainSlowProcessAnalysisDetailFilters(x.DetailFilters),
+		RootDurationLonger:        x.RootDurationLonger,
+		BatchSize:                 x.BatchSize,
+		Limit:                     x.Limit,
+		CapturedNow:               x.CapturedNow,
+		OutputMode:                x.OutputMode,
+		WithListeners:             x.WithListeners,
+	}
+}
+
+func toDomainSlowProcessAnalysisProcessDefinitionSelector(x SlowProcessAnalysisProcessDefinitionSelector) d.SlowProcessAnalysisProcessDefinitionSelector {
+	return d.SlowProcessAnalysisProcessDefinitionSelector{
+		BpmnProcessID:        x.BpmnProcessID,
+		ProcessDefinitionKey: x.ProcessDefinitionKey,
+	}
+}
+
+func fromDomainSlowProcessAnalysisProcessDefinitionSelector(x d.SlowProcessAnalysisProcessDefinitionSelector) SlowProcessAnalysisProcessDefinitionSelector {
+	return SlowProcessAnalysisProcessDefinitionSelector{
+		BpmnProcessID:        x.BpmnProcessID,
+		ProcessDefinitionKey: x.ProcessDefinitionKey,
+	}
+}
+
+func toDomainSlowProcessAnalysisProcessInstanceSearchFilters(x SlowProcessAnalysisProcessInstanceSearchFilters) d.SlowProcessAnalysisProcessInstanceSearchFilters {
+	return d.SlowProcessAnalysisProcessInstanceSearchFilters{
+		State:           d.State(x.State),
+		StartDateAfter:  x.StartDateAfter,
+		StartDateBefore: x.StartDateBefore,
+		EndDateAfter:    x.EndDateAfter,
+		EndDateBefore:   x.EndDateBefore,
+		NoIncidentsOnly: x.NoIncidentsOnly,
+	}
+}
+
+func fromDomainSlowProcessAnalysisProcessInstanceSearchFilters(x d.SlowProcessAnalysisProcessInstanceSearchFilters) SlowProcessAnalysisProcessInstanceSearchFilters {
+	return SlowProcessAnalysisProcessInstanceSearchFilters{
+		State:           process.State(x.State),
+		StartDateAfter:  x.StartDateAfter,
+		StartDateBefore: x.StartDateBefore,
+		EndDateAfter:    x.EndDateAfter,
+		EndDateBefore:   x.EndDateBefore,
+		NoIncidentsOnly: x.NoIncidentsOnly,
+	}
+}
+
+func toDomainSlowProcessAnalysisDetailFilters(x SlowProcessAnalysisDetailFilters) d.SlowProcessAnalysisDetailFilters {
+	return d.SlowProcessAnalysisDetailFilters{
+		ElementID:     x.ElementID,
+		Type:          x.Type,
+		ElementState:  x.ElementState,
+		DurationAfter: x.DurationAfter,
+	}
+}
+
+func fromDomainSlowProcessAnalysisDetailFilters(x d.SlowProcessAnalysisDetailFilters) SlowProcessAnalysisDetailFilters {
+	return SlowProcessAnalysisDetailFilters{
+		ElementID:     x.ElementID,
+		Type:          x.Type,
+		ElementState:  x.ElementState,
+		DurationAfter: x.DurationAfter,
+	}
+}
+
+func fromDomainSlowProcessAnalysisResult(x d.SlowProcessAnalysisResult) SlowProcessAnalysisResult {
+	return SlowProcessAnalysisResult{
+		Request:               fromDomainSlowProcessAnalysisRequest(x.Request),
+		DiscoveredScopeStatus: fromDomainDiscoveryScopeStatus(x.DiscoveredScopeStatus),
+		CapturedAt:            x.CapturedAt,
+		Items:                 toolx.MapSlice(x.Items, fromDomainSlowProcessAnalysisProcessInstance),
+		Count:                 x.Count,
+		Empty:                 x.Empty,
+		Warnings:              append([]string(nil), x.Warnings...),
+	}
+}
+
+func fromDomainSlowProcessAnalysisProcessInstance(x d.SlowProcessAnalysisProcessInstance) SlowProcessAnalysisProcessInstance {
+	return SlowProcessAnalysisProcessInstance{
+		Key:                    x.Key,
+		TenantID:               x.TenantID,
+		BpmnProcessID:          x.BpmnProcessID,
+		ProcessDefinitionKey:   x.ProcessDefinitionKey,
+		ProcessVersion:         x.ProcessVersion,
+		State:                  process.State(x.State),
+		StartDate:              x.StartDate,
+		EndDate:                x.EndDate,
+		ParentKey:              x.ParentKey,
+		RootProcessInstanceKey: x.RootProcessInstanceKey,
+		Incident:               x.Incident,
+		Duration:               x.Duration,
+		DurationMillis:         x.DurationMillis,
+		DurationAvailable:      x.DurationAvailable,
+		RelativePercentile:     x.RelativePercentile,
+		ComparisonSampleCount:  x.ComparisonSampleCount,
+		RelativeBar:            x.RelativeBar,
+		Timeline:               toolx.MapSlice(x.Timeline, fromDomainSlowProcessAnalysisTimelineEntry),
+	}
+}
+
+func fromDomainSlowProcessAnalysisTimelineEntry(x d.SlowProcessAnalysisTimelineEntry) SlowProcessAnalysisTimelineEntry {
+	return SlowProcessAnalysisTimelineEntry{
+		Kind:                   SlowProcessAnalysisTimelineEntryKind(x.Kind),
+		ElementInstanceKey:     x.ElementInstanceKey,
+		ElementID:              x.ElementID,
+		Type:                   x.Type,
+		State:                  x.State,
+		StartDate:              x.StartDate,
+		EndDate:                x.EndDate,
+		HasIncident:            x.HasIncident,
+		IncidentKey:            x.IncidentKey,
+		FromElementInstanceKey: x.FromElementInstanceKey,
+		FromElementID:          x.FromElementID,
+		FromElementType:        x.FromElementType,
+		FromEndDate:            x.FromEndDate,
+		ToElementInstanceKey:   x.ToElementInstanceKey,
+		ToElementID:            x.ToElementID,
+		ToElementType:          x.ToElementType,
+		ToStartDate:            x.ToStartDate,
+		Duration:               x.Duration,
+		DurationMillis:         x.DurationMillis,
+		DurationAvailable:      x.DurationAvailable,
+		RelativePercentile:     x.RelativePercentile,
+		ComparisonSampleCount:  x.ComparisonSampleCount,
+		RelativeBar:            x.RelativeBar,
+		ProcessDurationShare:   x.ProcessDurationShare,
+		Listeners:              fromDomainRuntimeListenerJobsPtr(x.Listeners),
+	}
+}
+
+func fromDomainRuntimeListenerJob(x d.RuntimeListenerJob) RuntimeListenerJob {
+	return RuntimeListenerJob{
+		JobKey:             x.JobKey,
+		Kind:               x.Kind,
+		ListenerEventType:  x.ListenerEventType,
+		Type:               x.Type,
+		State:              x.State,
+		Retries:            x.Retries,
+		Worker:             x.Worker,
+		Deadline:           x.Deadline,
+		ProcessInstanceKey: x.ProcessInstanceKey,
+		ElementInstanceKey: x.ElementInstanceKey,
+		ElementId:          x.ElementId,
+		TenantId:           x.TenantId,
+		ErrorCode:          x.ErrorCode,
+		ErrorMessage:       x.ErrorMessage,
+	}
+}
+
+func fromDomainRuntimeListenerJobsPtr(xs *[]d.RuntimeListenerJob) *[]RuntimeListenerJob {
+	if xs == nil {
+		return nil
+	}
+	out := toolx.MapSlice(*xs, fromDomainRuntimeListenerJob)
+	return &out
+}
+
 func fromDomainEmbeddedSmokeTestFixture(x d.EmbeddedSmokeTestFixture) EmbeddedSmokeTestFixture {
 	return EmbeddedSmokeTestFixture{
 		CamundaVersion: x.CamundaVersion,

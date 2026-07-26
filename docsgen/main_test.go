@@ -64,6 +64,8 @@ func TestRewriteDocsIndexLinks(t *testing.T) {
 		`Screencast: ![demo](docs/assets/screencasts/fast-start.gif)`,
 		`Asset: <img src="./docs/assets/example.png" />`,
 		`CLI: [reference](./docs/cli/index.md)`,
+		`CLI page: [get process-instance](docs/cli/c8volt_get_process-instance.md)`,
+		`CLI page with dot: [get element](./docs/cli/c8volt_get_element.md)`,
 		`Ops index: [playbooks](docs/ops/index.md)`,
 		`Ops page: [Execute Smoke Test](docs/ops/execute-smoke-test.md)`,
 		`Ops page with dot: [Execute Retention Policy](./docs/ops/execute-retention-policy.md)`,
@@ -79,6 +81,8 @@ func TestRewriteDocsIndexLinks(t *testing.T) {
 		`Screencast: ![demo](./assets/screencasts/fast-start.gif)`,
 		`Asset: <img src="./assets/example.png" />`,
 		`CLI: [reference](./cli/)`,
+		`CLI page: [get process-instance](./cli/c8volt_get_process-instance)`,
+		`CLI page with dot: [get element](./cli/c8volt_get_element)`,
 		`Ops index: [playbooks](./ops/)`,
 		`Ops page: [Execute Smoke Test](./ops/execute-smoke-test/)`,
 		`Ops page with dot: [Execute Retention Policy](./ops/execute-retention-policy/)`,
@@ -96,7 +100,39 @@ func TestRewriteDocsIndexLinks(t *testing.T) {
 	}
 }
 
+func TestStripDocsIndexExcludedBlocks(t *testing.T) {
+	body := strings.Join([]string{
+		"# c8volt Camunda 8 CLI",
+		"<!-- docs-index-exclude-start -->",
+		"**Full documentation:** [c8volt.info](https://c8volt.info)",
+		"<!-- docs-index-exclude-end -->",
+		"> **done is done**",
+	}, "\n")
+
+	got := stripDocsIndexExcludedBlocks(body)
+
+	if strings.Contains(got, "Full documentation") || strings.Contains(got, "docs-index-exclude") {
+		t.Fatalf("expected README-only docs block to be stripped, got %q", got)
+	}
+	if !strings.Contains(got, "# c8volt Camunda 8 CLI") || !strings.Contains(got, "> **done is done**") {
+		t.Fatalf("expected surrounding README content to remain, got %q", got)
+	}
+}
+
 func TestCLIMarkdownPreludeOmitsOpsBreadcrumb(t *testing.T) {
+	rootPrelude := cliMarkdownPrelude("c8volt")
+	for _, want := range []string{
+		`title: "c8volt"`,
+		"permalink: /cli/c8volt/",
+		`parent: "CLI Reference"`,
+		"nav_order: 1",
+		"nav_exclude: false",
+	} {
+		if !strings.Contains(rootPrelude, want) {
+			t.Fatalf("expected root CLI page prelude to contain %q, got %q", want, rootPrelude)
+		}
+	}
+
 	opsPrelude := cliMarkdownPrelude("c8volt_ops_repair_incident")
 	if strings.Contains(opsPrelude, "CLI Reference") {
 		t.Fatalf("expected ops CLI page prelude to omit CLI reference breadcrumb, got %q", opsPrelude)
@@ -108,6 +144,109 @@ func TestCLIMarkdownPreludeOmitsOpsBreadcrumb(t *testing.T) {
 	regularPrelude := cliMarkdownPrelude("c8volt_get_process-instance")
 	if !strings.Contains(regularPrelude, "CLI Reference") {
 		t.Fatalf("expected non-ops CLI page prelude to keep CLI reference breadcrumb, got %q", regularPrelude)
+	}
+}
+
+func TestCLICommandTreeDocumentsGeneratedCommandSurface(t *testing.T) {
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	tree := commandTreeMarkdown(root, 0)
+
+	for _, want := range []string{
+		"- [`c8volt`](./c8volt)",
+		"  - [`c8volt get`](./c8volt_get)",
+		"    - [`c8volt get process-instance`](./c8volt_get_process-instance)",
+		"    - [`c8volt get element`](./c8volt_get_element)",
+		"    - [`c8volt ops analyse`](./c8volt_ops_analyse)",
+		"      - [`c8volt ops analyse slow-process-instances`](./c8volt_ops_analyse_slow-process-instances)",
+	} {
+		if !strings.Contains(tree, want) {
+			t.Fatalf("expected command tree to contain %q, got:\n%s", want, tree)
+		}
+	}
+
+	if got := strings.Count(tree, "- [`") - 1; got != 55 {
+		t.Fatalf("expected command tree to contain 55 non-root commands, got %d", got)
+	}
+}
+
+func TestCLIDebtRefactorAssessmentArtifactDocumentsBaseline(t *testing.T) {
+	bodyBytes, err := os.ReadFile(filepath.Join("..", "specs", "254-cli-debt-refactor", "assessment.md"))
+	if err != nil {
+		t.Fatalf("read assessment artifact: %v", err)
+	}
+	body := string(bodyBytes)
+
+	for _, want := range []string{
+		"## Command Node Assessment",
+		"| Path | Aliases | Family | Mutation | Contract | Automation | Output Modes | Paging | Mutates | Activity | Durable Progress | Machine Constraints | Ownership | Execution Style | Risk |",
+		"## High-Risk Workflows And Duplicated Mechanics",
+		"## Intentional Differences And Non-Goals",
+		"## Performance Characterization Plan",
+		"`get process-instance`",
+		"`delete process-instance`",
+		"`ops purge process-instances-with-incidents`",
+		"`walk process-instance`",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected assessment artifact to contain %q", want)
+		}
+	}
+
+	if got := strings.Count(body, "\n| `"); got != 55 {
+		t.Fatalf("expected assessment artifact to contain 55 command-node rows, got %d", got)
+	}
+}
+
+// TestCLIDebtRefactorUserFacingDocsDocumentPagingContracts keeps README and
+// docs examples aligned with generated command help for paging and automation.
+func TestCLIDebtRefactorUserFacingDocsDocumentPagingContracts(t *testing.T) {
+	tests := []struct {
+		name      string
+		path      string
+		fragments []string
+	}{
+		{
+			name: "README",
+			path: filepath.Join("..", "README.md"),
+			fragments: []string{
+				"Each section keeps one basic command and up to two high-value variants.",
+				"Generated reference: [get process-instance](docs/cli/c8volt_get_process-instance.md).",
+				"machine-readable command contract is available from `c8volt capabilities --json`",
+			},
+		},
+		{
+			name: "use cases",
+			path: filepath.Join("..", "docs", "use-cases.md"),
+			fragments: []string{
+				"Implemented ops workflows page through the full matching scope by default.",
+				"`--batch-size` controls discovery page size, `--limit` freezes a smaller scope, and `--automation` or `--auto-confirm` makes unattended execution explicit.",
+			},
+		},
+		{
+			name: "Camunda CLI options",
+			path: filepath.Join("..", "docs", "camunda-cli.md"),
+			fragments: []string{
+				"paged discovery where `--batch-size` controls page size and `--limit` caps returned or frozen scope",
+				"machine-readable capability discovery with `c8volt capabilities --json`",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bodyBytes, err := os.ReadFile(tt.path)
+			if err != nil {
+				t.Fatalf("read %s: %v", tt.path, err)
+			}
+			body := string(bodyBytes)
+			for _, want := range tt.fragments {
+				if !strings.Contains(body, want) {
+					t.Fatalf("expected %s to contain %q", tt.path, want)
+				}
+			}
+		})
 	}
 }
 
@@ -137,7 +276,7 @@ func TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup(t *testing.T) {
 	for _, want := range []string{
 		"--has-user-tasks strings",
 		"user task key(s) whose owning process instances should be fetched",
-		"./c8volt get pi --has-user-tasks \u003cuser-task-key\u003e",
+		"./c8volt get process-instance --has-user-tasks \u003cuser-task-key\u003e",
 		"Use --has-user-tasks to fetch process instances by their owning user-task keys.",
 	} {
 		if !strings.Contains(got, want) {
@@ -176,7 +315,7 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 
 	getDoc := readGeneratedDocForTest(t, out, "c8volt_get.md")
 	for _, want := range []string{
-		"Inspect cluster, process, job, incident, tenant, and resource state without changing it.",
+		"Inspect cluster, process, job, element, incident, tenant, and resource state without changing it.",
 		"./c8volt get incident --key <incident-key>",
 		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only",
 		"[c8volt get incident](c8volt_get_incident)",
@@ -190,10 +329,10 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 	for _, want := range []string{
 		"List or fetch incidents",
 		"Get Camunda incidents by key or by search criteria.",
-		"./c8volt get inc --key <incident-key> --key <another-incident-key>",
+		"./c8volt get incident --key <incident-key> --key <another-incident-key>",
 		"./c8volt get incident --state resolved --error-type io_mapping_error",
 		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only",
-		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel pi --dry-run -",
+		"./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel process-instance --dry-run -",
 		"--error-message string",
 		"case-insensitive incident error message substring filter for search",
 		"--pi-keys-only",
@@ -220,6 +359,182 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 	}
 }
 
+// TestGeneratedGetElementDocsDocumentLookupSearchAndOutput protects generated docs for runtime element lookup and search.
+func TestGeneratedGetElementDocsDocumentLookupSearchAndOutput(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	getDoc := readGeneratedDocForTest(t, out, "c8volt_get.md")
+	for _, want := range []string{
+		"Inspect cluster, process, job, element, incident, tenant, and resource state without changing it.",
+		"./c8volt get element --pi-key <process-instance-key> --limit 10",
+		"[c8volt get element](c8volt_get_element)",
+	} {
+		if !strings.Contains(getDoc, want) {
+			t.Fatalf("expected generated get docs to contain %q, got %q", want, getDoc)
+		}
+	}
+
+	elementDoc := readGeneratedDocForTest(t, out, "c8volt_get_element.md")
+	for _, want := range []string{
+		"List or fetch runtime element instances",
+		"List or fetch Camunda runtime element instances.",
+		"Use --key when you know an element instance key.",
+		"Search mode follows the shared get paging and limit conventions.",
+		"Compact human rows include dur:<duration>",
+		"Use --with-listeners to include runtime listener jobs under matching element rows.",
+		"Use --json for the stable element payload and --keys-only when piping element instance keys.",
+		"./c8volt get element --key <element-instance-key>",
+		"./c8volt get element --key <element-instance-key> --with-listeners",
+		"./c8volt get element --pi-key <process-instance-key> --limit 10",
+		"./c8volt get element --pi-key <process-instance-key> --with-listeners",
+		"./c8volt get element --pi-key <process-instance-key> --total",
+		"./c8volt --json get element --key <element-instance-key> --with-listeners",
+		"--element-id string",
+		"BPMN element ID to filter in search mode",
+		"--pi-key string",
+		"process instance key to filter in search mode",
+		"--batch-size int32",
+		"number of elements to request per page; does not cap total returned rows",
+		"--total",
+		"return only the numeric total of matching elements",
+		"--with-listeners",
+		"include runtime listener jobs under matching element rows",
+	} {
+		if !strings.Contains(elementDoc, want) {
+			t.Fatalf("expected generated get element docs to contain %q, got %q", want, elementDoc)
+		}
+	}
+}
+
+// TestGeneratedPagedWorkflowDocsDocumentContracts protects generated CLI docs
+// for page-size, total-limit, frozen-scope, automation, and progress wording.
+func TestGeneratedPagedWorkflowDocsDocumentContracts(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		file      string
+		fragments []string
+	}{
+		{
+			name: "get job",
+			file: "c8volt_get_job.md",
+			fragments: []string{
+				"--batch-size controls each backend page request",
+				"--limit caps total returned jobs across all pages",
+				"JSON, keys-only, quiet, and automation output remain free of prompts and progress text",
+				"number of jobs to request per page; does not cap total returned rows",
+				"maximum number of matching jobs to return across all pages; omit to continue through all matches",
+			},
+		},
+		{
+			name: "get element",
+			file: "c8volt_get_element.md",
+			fragments: []string{
+				"--batch-size controls each backend page request",
+				"--limit caps returned element rows across all pages",
+				"JSON, keys-only, quiet, and automation output remain free of prompts and progress text",
+				"number of elements to request per page; does not cap total returned rows",
+				"maximum number of matching elements to return across all pages; omit to continue through all matches",
+			},
+		},
+		{
+			name: "get incident",
+			file: "c8volt_get_incident.md",
+			fragments: []string{
+				"--batch-size controls each backend page request",
+				"--limit caps total returned incidents across all pages",
+				"JSON, keys-only, pi-keys-only, quiet, and automation output remain free of prompts and progress text",
+				"number of incidents to request per page; does not cap total returned rows",
+				"maximum number of matching incidents to return across all pages; omit to continue through all matches",
+			},
+		},
+		{
+			name: "get process instance",
+			file: "c8volt_get_process-instance.md",
+			fragments: []string{
+				"--batch-size controls each backend page request",
+				"--limit caps total returned process instances across all pages",
+				"JSON, keys-only, quiet, and automation output remain free of prompts and progress text",
+				"number of process instances to request per page; does not cap total returned rows",
+				"maximum number of matching process instances to return across all pages; omit to continue through all matches",
+			},
+		},
+		{
+			name: "cancel process instance",
+			file: "c8volt_cancel_process-instance.md",
+			fragments: []string{
+				"--batch-size controls each discovery page request",
+				"--limit caps the selected process-instance scope across all pages",
+				"--workers, --fail-fast, and --no-worker-limit bound independent planning or cancellation work",
+				"number of process instances to inspect per discovery page; does not cap total selected scope",
+				"maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches",
+			},
+		},
+		{
+			name: "delete process instance",
+			file: "c8volt_delete_process-instance.md",
+			fragments: []string{
+				"freezes every selected page-level delete plan before one confirmation and mutation",
+				"--batch-size controls each discovery page request",
+				"--limit caps the frozen delete scope across all pages",
+				"--workers, --fail-fast, and --no-worker-limit bound independent planning, cancellation, or deletion work",
+				"number of process instances to inspect per discovery page; does not cap total frozen scope",
+				"maximum number of matching process instances to freeze for deletion across all pages; omit to continue through all matches",
+			},
+		},
+		{
+			name: "retention policy",
+			file: "c8volt_ops_execute_retention-policy.md",
+			fragments: []string{
+				"Discovery pages through all matching retention candidates by default.",
+				"--batch-size controls each discovery page request",
+				"--limit caps the frozen retention scope",
+				"--workers, --fail-fast, and --no-worker-limit bound independent delete planning or deletion work",
+				"number of process instances to inspect per discovery page; does not cap total frozen scope",
+				"maximum number of matching process instances to freeze for retention cleanup; omit to discover all matches",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := readGeneratedDocForTest(t, out, tt.file)
+			for _, want := range tt.fragments {
+				if !strings.Contains(got, want) {
+					t.Fatalf("expected generated docs to contain %q, got %q", want, got)
+				}
+			}
+		})
+	}
+}
+
 // TestGeneratedRunProcessInstanceDocsDocumentPipeline protects generated docs for keys-only run composition.
 func TestGeneratedRunProcessInstanceDocsDocumentPipeline(t *testing.T) {
 	out := t.TempDir()
@@ -240,7 +555,7 @@ func TestGeneratedRunProcessInstanceDocsDocumentPipeline(t *testing.T) {
 	runDoc := readGeneratedDocForTest(t, out, "c8volt_run.md")
 	for _, want := range []string{
 		"waits until created instances are observable",
-		"./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -",
+		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -",
 		"[c8volt run process-instance](c8volt_run_process-instance)",
 	} {
 		if !strings.Contains(runDoc, want) {
@@ -252,8 +567,8 @@ func TestGeneratedRunProcessInstanceDocsDocumentPipeline(t *testing.T) {
 	for _, want := range []string{
 		"Start process instances and confirm creation",
 		"Created instances are confirmed after Camunda observes ACTIVE, COMPLETED, CANCELED, or TERMINATED.",
-		"./c8volt run pi -b <bpmn-process-id> --keys-only | ./c8volt expect pi --state completed -",
-		"./c8volt run pi -b <long-running-bpmn-process-id> --keys-only | ./c8volt expect pi --state active -",
+		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -",
+		"./c8volt run process-instance --bpmn-process-id <long-running-bpmn-process-id> --keys-only | ./c8volt expect process-instance --state active -",
 	} {
 		if !strings.Contains(processInstanceDoc, want) {
 			t.Fatalf("expected generated run process-instance docs to contain %q, got %q", want, processInstanceDoc)
@@ -294,7 +609,7 @@ func TestGeneratedResolveDocsDocumentResolveWorkflows(t *testing.T) {
 	for _, want := range []string{
 		"Resolve incidents by key.",
 		"Each unique incident key is submitted for resolution and reported independently.",
-		"./c8volt resolve inc --key <incident-key> --key <another-incident-key>",
+		"./c8volt resolve incident --key <incident-key> --key <another-incident-key>",
 		"--dry-run",
 		"preview incident resolutions without submitting mutation",
 		"--no-wait",
@@ -309,7 +624,7 @@ func TestGeneratedResolveDocsDocumentResolveWorkflows(t *testing.T) {
 	for _, want := range []string{
 		"Resolve process-instance incidents by key.",
 		"discovers active incidents at command start",
-		"./c8volt resolve pi --key <process-instance-key> --key <another-process-instance-key>",
+		"./c8volt resolve process-instance --key <process-instance-key> --key <another-process-instance-key>",
 		"--dry-run",
 		"preview process-instance incident resolutions without submitting mutation",
 		"--no-wait",
@@ -421,6 +736,50 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 	}
 	if strings.Contains(repairProcessInstanceDoc, "--incidents-only") {
 		t.Fatalf("expected generated ops repair process-instance docs not to contain --incidents-only, got %q", repairProcessInstanceDoc)
+	}
+
+	analyseDoc := readGeneratedDocForTest(t, out, "c8volt_ops_analyse_slow-process-instances.md")
+	for _, want := range []string{
+		"Analyse slow process-instance timings",
+		"./c8volt ops analyse slow-process-instances --key <process-instance-key>",
+		"./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --state active --dur-longer 5m",
+		"./c8volt ops analyse slow-process-instances --pd-key <process-definition-key> --dur-element-longer 30s",
+		"./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-full-timeline",
+		"./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-listeners",
+		"./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --element-id <element-id> --dur-element-longer 30s",
+		"./c8volt get process-instance --state active --keys-only | ./c8volt ops analyse slow-process-instances -",
+		"Default output shows compact slowest element contributors",
+		"Detail filters such as --element-id, --type, --element-state, and --dur-element-longer keep only process instances with matching element or transition detail rows",
+		"Use --with-full-timeline to inspect complete chronological element and transition detail",
+		"Use --with-listeners to include runtime listener jobs under matching element timeline rows",
+		"Duration thresholds use Go duration syntax",
+		"Calendar units such as 1d are not accepted",
+		"--key strings",
+		"--bpmn-process-id string",
+		"--pd-key string",
+		"--state string",
+		"--no-incidents-only",
+		"--batch-size int32",
+		"--limit int32",
+		"--element-id string",
+		"--type string",
+		"--element-state string",
+		"--dur-longer string",
+		"--dur-element-longer string",
+		"--with-full-timeline",
+		"--with-listeners",
+		"show complete chronological element and transition detail",
+		"include runtime listener jobs under matching element timeline rows",
+	} {
+		if !strings.Contains(analyseDoc, want) {
+			t.Fatalf("expected generated ops analyse slow-process-instances docs to contain %q, got %q", want, analyseDoc)
+		}
+	}
+	if strings.Contains(strings.ReplaceAll(analyseDoc, "--no-incidents-only", ""), "--incidents-only") {
+		t.Fatalf("expected generated ops analyse slow-process-instances docs not to contain --incidents-only, got %q", analyseDoc)
+	}
+	if strings.Contains(analyseDoc, "--duration-after") {
+		t.Fatalf("expected generated ops analyse slow-process-instances docs not to contain --duration-after, got %q", analyseDoc)
 	}
 
 	for _, unwanted := range []string{
@@ -601,13 +960,56 @@ func TestGeneratedGetProcessInstanceDocsDocumentVariableSearch(t *testing.T) {
 		"--var accepts name=value equality shorthand plus advanced name.$operator=value clauses",
 		"--var-like uses native wildcard patterns",
 		"Variable scopeKey means the scope where the variable is directly defined.",
-		"./c8volt get pi --var-exists payload,email --limit 5",
-		"./c8volt get pi --var 'status.$in=[\"approved\",\"pending\"]' --limit 5",
+		"./c8volt get process-instance --var-exists payload,email --limit 5",
+		"./c8volt get process-instance --var 'status.$in=[\"approved\",\"pending\"]' --limit 5",
 		"--var-exists stringArray",
 		"--var-like stringArray",
+		"Use --with-elements to include runtime element instances under matching process-instance rows.",
+		"Nested human element rows include dur:<duration>",
+		"Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.",
+		"./c8volt get process-instance --key <process-instance-key> --with-elements",
+		"./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners",
+		"--with-elements",
+		"include runtime element instances for keyed or list/search process-instance output",
+		"--with-listeners",
+		"include runtime listener jobs under matching element rows; requires --with-elements",
 	} {
 		if !strings.Contains(piDoc, want) {
 			t.Fatalf("expected generated get process-instance docs to contain %q, got %q", want, piDoc)
+		}
+	}
+}
+
+func TestGeneratedWalkProcessInstanceDocsDocumentListeners(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	walkDoc := readGeneratedDocForTest(t, out, "c8volt_walk_process-instance.md")
+	for _, want := range []string{
+		"Inspect the parent/child tree of process instances.",
+		"Add --with-incidents, --with-vars, and/or --with-elements",
+		"Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.",
+		"./c8volt walk process-instance --key <process-instance-key> --with-elements",
+		"./c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners",
+		"--with-elements",
+		"show runtime element instances for keyed process-instance walks",
+		"--with-listeners",
+		"show runtime listener jobs under matching element rows; requires --with-elements",
+	} {
+		if !strings.Contains(walkDoc, want) {
+			t.Fatalf("expected generated walk process-instance docs to contain %q, got %q", want, walkDoc)
 		}
 	}
 }

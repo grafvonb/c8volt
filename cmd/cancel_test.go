@@ -536,13 +536,7 @@ func TestCancelProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *tes
 		cancelProcessInstances: dryRunCancelMutationGuard(t),
 	}
 
-	results, err := processPISearchPagesWithAction(cmd, cli, nil, process.ProcessInstanceFilter{}, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
-		keys := make(typex.Keys, 0, len(page.Items))
-		for _, pi := range page.Items {
-			keys = append(keys, pi.Key)
-		}
-		return cancelProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, false)
-	})
+	results, err := cancelProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{})
 	require.NoError(t, err)
 	require.Empty(t, results.Reports)
 	require.Len(t, results.DryRunPreviews, 2)
@@ -780,13 +774,7 @@ func TestCancelProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage(t *test
 		cancelProcessInstances: dryRunCancelMutationGuard(t),
 	}
 
-	results, err := processPISearchPagesWithAction(cmd, cli, nil, process.ProcessInstanceFilter{}, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
-		keys := make(typex.Keys, 0, len(page.Items))
-		for _, pi := range page.Items {
-			keys = append(keys, pi.Key)
-		}
-		return cancelProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, false)
-	})
+	results, err := cancelProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{})
 	require.NoError(t, err)
 	require.Len(t, searchRequests, 1)
 	require.EqualValues(t, 0, searchRequests[0].From)
@@ -794,6 +782,86 @@ func TestCancelProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage(t *test
 	require.Empty(t, results.Reports)
 	require.Len(t, results.DryRunPreviews, 1)
 	require.Equal(t, 2, results.DryRunPreviews[0].RequestedCount)
+}
+
+// TestCancelProcessInstanceDryRun_SearchContinuesAfterEmptySelectedPage protects
+// sparse search-derived cancel planning: an empty selected page with more
+// backend matches must not hide later selectable candidates.
+func TestCancelProcessInstanceDryRun_SearchContinuesAfterEmptySelectedPage(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+	flagGetPISize = 1
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Int32("batch-size", 1000, "")
+	require.NoError(t, cmd.Flags().Set("batch-size", "1"))
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	var actions []process.ProcessInstanceSearchPageAction
+	cli := stubProcessAPI{
+		planProcessInstanceMutationPages: func(_ context.Context, request process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, _ ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+			require.Equal(t, int32(1), request.SearchRequest.Page.Size)
+			emptyPage := process.ProcessInstancePage{
+				Request:       process.ProcessInstancePageRequest{From: 0, Size: 1},
+				OverflowState: process.ProcessInstanceOverflowStateHasMore,
+			}
+			action, err := visitor(process.ProcessInstanceMutationPlanStep{
+				Page:            emptyPage,
+				CumulativeCount: 0,
+			})
+			if err != nil {
+				return process.ProcessInstanceMutationPlanPagesResult{}, err
+			}
+			actions = append(actions, action)
+			if action == process.ProcessInstanceSearchPageActionStop {
+				return process.ProcessInstanceMutationPlanPagesResult{Pages: 1, Stopped: true}, nil
+			}
+
+			selectedPage := process.ProcessInstancePage{
+				Items:         []process.ProcessInstance{{Key: "201", State: process.StateActive}},
+				Request:       process.ProcessInstancePageRequest{From: 1, Size: 1},
+				OverflowState: process.ProcessInstanceOverflowStateNoMore,
+			}
+			plan := process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-201"},
+				Collected: typex.Keys{"root-201", "201"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}
+			action, err = visitor(process.ProcessInstanceMutationPlanStep{
+				Page:             selectedPage,
+				RequestedKeys:    []string{"201"},
+				Plan:             plan,
+				CumulativeCount:  1,
+				CumulativeImpact: 2,
+			})
+			if err != nil {
+				return process.ProcessInstanceMutationPlanPagesResult{}, err
+			}
+			actions = append(actions, action)
+			return process.ProcessInstanceMutationPlanPagesResult{
+				Plans:            []process.ProcessInstanceMutationPlanStep{{Page: selectedPage, RequestedKeys: []string{"201"}, Plan: plan, CumulativeCount: 1, CumulativeImpact: 2}},
+				Pages:            2,
+				RequestedCount:   1,
+				CumulativeImpact: 2,
+			}, nil
+		},
+		cancelProcessInstances: dryRunCancelMutationGuard(t),
+	}
+
+	results, err := cancelProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{})
+
+	require.NoError(t, err)
+	require.Equal(t, []process.ProcessInstanceSearchPageAction{
+		process.ProcessInstanceSearchPageActionContinue,
+		process.ProcessInstanceSearchPageActionStop,
+	}, actions)
+	require.Empty(t, results.Reports)
+	require.Len(t, results.DryRunPreviews, 1)
+	require.Equal(t, []string{"201"}, results.DryRunPreviews[0].RequestedKeys)
+	require.NotContains(t, buf.String(), "found: 0")
 }
 
 // TestCancelCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig verifies command-local timeout precedence.
@@ -811,7 +879,7 @@ func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
 		"Cancel running process instances",
 		"--auto-confirm",
 		"waits for\nobserved cancellation",
-		"./c8volt cancel pi --state active --limit 5 --auto-confirm",
+		"./c8volt cancel process-instance --state active --limit 5 --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
@@ -819,10 +887,10 @@ func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
 		"validates the affected root and descendant instances",
 		"Use --force when a selected child must be escalated",
 		"Use --auto-confirm for unattended destructive runs",
-		"number of process instances to process per page",
-		"maximum number of matching process instances to process across all pages",
-		"./c8volt expect pi --key <process-instance-key> --state canceled",
-		"./c8volt cancel pi --state active --batch-size 250 --limit 5 --dry-run",
+		"number of process instances to inspect per discovery page; does not cap total selected scope",
+		"maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches",
+		"./c8volt expect process-instance --key <process-instance-key> --state canceled",
+		"./c8volt cancel process-instance --state active --batch-size 250 --limit 5 --dry-run",
 	}, []string{"--count"})
 	require.Contains(t, output, "--force")
 	require.Contains(t, output, "--batch-size int32")
@@ -1342,6 +1410,60 @@ func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck(t *tes
 	require.Len(t, got.Reports, 1)
 	require.Contains(t, buf.String(), "one or more parent process instances were not found")
 	require.Contains(t, buf.String(), "missing ancestor keys: 2251799813711999")
+}
+
+// TestCancelProcessInstancesWithPlan_RegressionWorkerControls protects cancel hierarchy planning and execution worker controls.
+func TestCancelProcessInstancesWithPlan_RegressionWorkerControls(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagCmdAutoConfirm = true
+	flagFailFast = true
+	flagNoWorkerLimit = true
+	flagWorkers = 3
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		require.True(t, autoConfirm)
+		require.Contains(t, prompt, "requested to cancel 2 process instance(s)")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"child-a", "child-b"}, keys)
+			applied := options.ApplyFacadeOptions(opts)
+			require.True(t, applied.FailFast)
+			require.True(t, applied.NoWorkerLimit)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-a"},
+				Collected: typex.Keys{"root-a", "child-a", "child-b"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}, nil
+		},
+		cancelProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.CancelReports, error) {
+			require.Equal(t, typex.Keys{"root-a"}, keys)
+			require.Equal(t, 3, wantedWorkers)
+			applied := options.ApplyFacadeOptions(opts)
+			require.True(t, applied.FailFast)
+			require.True(t, applied.NoWorkerLimit)
+			require.Equal(t, 3, applied.AffectedProcessInstanceCount)
+			return process.CancelReports{Items: []process.CancelReport{{Key: "root-a", Ok: true}}}, nil
+		},
+	}
+
+	got, err := cancelProcessInstancesWithPlan(cmd, cli, typex.Keys{"child-a", "child-b"}, true)
+
+	require.NoError(t, err)
+	require.Equal(t, processInstancePageImpact{Requested: 2, Affected: 3, Roots: 1}, got.Impact)
+	require.Len(t, got.Reports, 1)
+	require.NotNil(t, got.DryRunPreview)
+	require.Equal(t, typex.Keys{"root-a"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
 }
 
 // TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow verifies --auto-confirm continues paged cancel searches.
