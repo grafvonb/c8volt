@@ -397,3 +397,32 @@
 - The consistent integration-test design is clearer if 255/256 remain historical and 257 becomes the single forward roadmap for setup, fixture, ops, output, and pipeline gaps.
 - Follow-up issues should be created from grouped 257 rows, not from runtime-generated test output.
 ---
+## Iteration 13 - 2026-07-26
+**Work Unit**: Make-level integration confirmation guard
+**Tasks Completed**:
+- [x] Add shared confirmation prompt before Make integration slice targets
+- [x] Keep aggregate integration targets to one prompt per `make` invocation
+- [x] Add automation skip through `IT_CONFIRM=0`
+- [x] Document confirmation behavior in `integration/README.md` and quickstart
+**Tasks Remaining in Work Unit**: 0
+**Commit**: Pending
+**Files Changed**:
+- Makefile
+- integration/README.md
+- specs/257-c89-real-state-integration/quickstart.md
+- specs/257-c89-real-state-integration/ralph-memory.md
+- specs/257-c89-real-state-integration/progress.md
+**Validation**:
+- `make -n integration-test-all | rg -c "Integration tests may mutate real Camunda cluster state"` returned `1`
+- `printf 'n\n' | make integration-cli-real-state-gaps` aborted before running tests
+- `make help | rg "integration-test|integration-cli-get"`
+- `make integration-cli-real-state-gaps IT_CONFIRM=0 IT_GO_TEST_FLAGS=-v`
+- `make -n integration-test-real-state | rg -c "Integration tests may mutate real Camunda cluster state"` returned `1`
+- `make -n integration-test-all IT_CONFIRM=0 | rg -c "Skipping integration test confirmation"` returned `1`
+- `git diff --check -- Makefile integration/README.md specs/257-c89-real-state-integration/quickstart.md`
+- `make -n integration-cli-get integration-cli-walk | rg -c "Integration tests may mutate real Camunda cluster state"` returned `1`
+- `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
+**Learnings**:
+- A shared phony prerequisite gives one prompt for aggregate and multi-goal invocations without changing individual slice recipes.
+- Automation can stay non-interactive while manual local runs make the real-state mutation risk explicit.
+---

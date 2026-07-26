@@ -17,6 +17,7 @@ IT_GO_TEST_FLAGS ?=
 IT_TIMEOUT ?= 60m
 IT_VOLUME_TIMEOUT ?= 90m
 IT_REAL_STATE_TIMEOUT ?= 90m
+IT_CONFIRM ?= 1
 DEMO_VHS_TARGETS := \
 	demo-vhs-fast-start \
 	demo-vhs-ops-execute-retention-policy \
@@ -72,7 +73,7 @@ INTEGRATION_TEST_TARGETS := \
 	integration-test-real-state \
 	integration-test-all
 
-.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-serve demo-vhs-check $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES) $(INTEGRATION_CLI_TARGETS) $(INTEGRATION_CLI_VOLUME_TARGETS) $(INTEGRATION_CLI_REAL_STATE_TARGETS) $(INTEGRATION_TEST_TARGETS)
+.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-serve demo-vhs-check integration-test-confirm $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES) $(INTEGRATION_CLI_TARGETS) $(INTEGRATION_CLI_VOLUME_TARGETS) $(INTEGRATION_CLI_REAL_STATE_TARGETS) $(INTEGRATION_TEST_TARGETS)
 
 help: ## Show all available Make targets with a short description.
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "%-55s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -159,6 +160,15 @@ run: build ## Build the binary and print the CLI help output.
 test: ## Run the full Go test suite with the race detector enabled.
 	go test $(PKG) -race -count=1
 
+integration-test-confirm:
+	@if [ "$(IT_CONFIRM)" = "0" ]; then \
+		echo "Skipping integration test confirmation."; \
+	else \
+		printf "Integration tests may mutate real Camunda cluster state. Continue? [y/N] "; \
+		read answer; \
+		case "$$answer" in y|Y|yes|YES) ;; *) echo "Aborted."; exit 1 ;; esac; \
+	fi
+
 integration-test: $(INTEGRATION_CLI_TARGETS) ## Run all baseline CLI integration test slices.
 
 integration-test-volume: $(INTEGRATION_CLI_VOLUME_TARGETS) ## Run all volume CLI integration test slices.
@@ -167,91 +177,91 @@ integration-test-real-state: $(INTEGRATION_CLI_REAL_STATE_TARGETS) ## Run all C8
 
 integration-test-all: integration-test integration-test-volume integration-test-real-state ## Run baseline, volume, and real-state integration slices.
 
-integration-cli-get: ## Run destructive CLI integration tests for get commands.
+integration-cli-get: integration-test-confirm ## Run destructive CLI integration tests for get commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestGetFamily -count=1 -timeout=$(IT_TIMEOUT)
 
-integration-cli-get-volume: ## Run destructive volume CLI integration tests for get commands.
+integration-cli-get-volume: integration-test-confirm ## Run destructive volume CLI integration tests for get commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeGetFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-walk-volume: ## Run destructive volume CLI integration tests for walk commands.
+integration-cli-walk-volume: integration-test-confirm ## Run destructive volume CLI integration tests for walk commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeWalkFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-update-volume: ## Run destructive volume CLI integration tests for update commands.
+integration-cli-update-volume: integration-test-confirm ## Run destructive volume CLI integration tests for update commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeUpdateFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-cancel-volume: ## Run destructive volume CLI integration tests for cancel commands.
+integration-cli-cancel-volume: integration-test-confirm ## Run destructive volume CLI integration tests for cancel commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeCancelFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-delete-volume: ## Run destructive volume CLI integration tests for delete commands.
+integration-cli-delete-volume: integration-test-confirm ## Run destructive volume CLI integration tests for delete commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeDeleteFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-expect-resolve-volume: ## Run destructive volume CLI integration tests for expect and resolve commands.
+integration-cli-expect-resolve-volume: integration-test-confirm ## Run destructive volume CLI integration tests for expect and resolve commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeExpectResolveFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-deploy-embed-run-volume: ## Run destructive volume CLI integration tests for deploy, embed, and run commands.
+integration-cli-deploy-embed-run-volume: integration-test-confirm ## Run destructive volume CLI integration tests for deploy, embed, and run commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeDeployEmbedRunFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-ops-analyse-volume: ## Run destructive volume CLI integration tests for ops analyse commands.
+integration-cli-ops-analyse-volume: integration-test-confirm ## Run destructive volume CLI integration tests for ops analyse commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeOpsAnalyseFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-ops-execute-volume: ## Run destructive volume CLI integration tests for ops execute commands.
+integration-cli-ops-execute-volume: integration-test-confirm ## Run destructive volume CLI integration tests for ops execute commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeOpsExecuteFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-ops-purge-volume: ## Run destructive volume CLI integration tests for ops purge commands.
+integration-cli-ops-purge-volume: integration-test-confirm ## Run destructive volume CLI integration tests for ops purge commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeOpsPurgeFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-ops-repair-volume: ## Run destructive volume CLI integration tests for ops repair commands.
+integration-cli-ops-repair-volume: integration-test-confirm ## Run destructive volume CLI integration tests for ops repair commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestVolumeOpsRepairFamily -count=1 -timeout=$(IT_VOLUME_TIMEOUT)
 
-integration-cli-real-state-gaps: ## Run non-destructive C89 real-state gap and matrix validation.
+integration-cli-real-state-gaps: integration-test-confirm ## Run non-destructive C89 real-state gap and matrix validation.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateGapFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-jobs: ## Run destructive C89 real-state integration tests for jobs.
+integration-cli-real-state-jobs: integration-test-confirm ## Run destructive C89 real-state integration tests for jobs.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateJobsFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-incidents: ## Run destructive C89 real-state integration tests for incidents.
+integration-cli-real-state-incidents: integration-test-confirm ## Run destructive C89 real-state integration tests for incidents.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateIncidentsFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-listeners: ## Run destructive C89 real-state integration tests for listener state.
+integration-cli-real-state-listeners: integration-test-confirm ## Run destructive C89 real-state integration tests for listener state.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateListenersFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-bpmn-error: ## Run destructive C89 real-state integration tests for BPMN error job state.
+integration-cli-real-state-bpmn-error: integration-test-confirm ## Run destructive C89 real-state integration tests for BPMN error job state.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateBPMNErrorFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-retention: ## Run destructive C89 real-state integration tests for retention semantics.
+integration-cli-real-state-retention: integration-test-confirm ## Run destructive C89 real-state integration tests for retention semantics.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateRetentionFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-destructive: ## Run destructive C89 real-state integration tests for destructive post-state semantics.
+integration-cli-real-state-destructive: integration-test-confirm ## Run destructive C89 real-state integration tests for destructive post-state semantics.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestRealStateDestructiveFamily -count=1 -timeout=$(IT_REAL_STATE_TIMEOUT)
 
-integration-cli-walk: ## Run destructive CLI integration tests for walk commands.
+integration-cli-walk: integration-test-confirm ## Run destructive CLI integration tests for walk commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestWalkFamily -count=1 -timeout=$(IT_TIMEOUT)
 
-integration-cli-update: ## Run destructive CLI integration tests for update commands.
+integration-cli-update: integration-test-confirm ## Run destructive CLI integration tests for update commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestUpdateFamily -count=1 -timeout=$(IT_TIMEOUT)
 
-integration-cli-cancel: ## Run destructive CLI integration tests for cancel commands.
+integration-cli-cancel: integration-test-confirm ## Run destructive CLI integration tests for cancel commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestCancelFamily -count=1 -timeout=$(IT_TIMEOUT)
 
-integration-cli-delete: ## Run destructive CLI integration tests for delete commands.
+integration-cli-delete: integration-test-confirm ## Run destructive CLI integration tests for delete commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestDeleteFamily -count=1 -timeout=$(IT_TIMEOUT)
 
-integration-cli-expect-resolve: ## Run destructive CLI integration tests for expect and resolve commands.
+integration-cli-expect-resolve: integration-test-confirm ## Run destructive CLI integration tests for expect and resolve commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestExpectResolveFamily -count=1 -timeout=$(IT_TIMEOUT)
 
-integration-cli-deploy-embed-run: ## Run destructive CLI integration tests for deploy, embed, and run commands.
+integration-cli-deploy-embed-run: integration-test-confirm ## Run destructive CLI integration tests for deploy, embed, and run commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestDeployEmbedRunFamily -count=1 -timeout=$(IT_TIMEOUT)
 
-integration-cli-ops-analyse: ## Run destructive CLI integration tests for ops analyse commands.
+integration-cli-ops-analyse: integration-test-confirm ## Run destructive CLI integration tests for ops analyse commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestOpsAnalyseFamily -count=1 -timeout=$(IT_TIMEOUT)
 
-integration-cli-ops-execute: ## Run destructive CLI integration tests for ops execute commands.
+integration-cli-ops-execute: integration-test-confirm ## Run destructive CLI integration tests for ops execute commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestOpsExecuteFamily -count=1 -timeout=$(IT_TIMEOUT)
 
-integration-cli-ops-purge: ## Run destructive CLI integration tests for ops purge commands.
+integration-cli-ops-purge: integration-test-confirm ## Run destructive CLI integration tests for ops purge commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestOpsPurgeFamily -count=1 -timeout=$(IT_TIMEOUT)
 
-integration-cli-ops-repair: ## Run destructive CLI integration tests for ops repair commands.
+integration-cli-ops-repair: integration-test-confirm ## Run destructive CLI integration tests for ops repair commands.
 	$(IT_GO_TEST) $(IT_GO_TEST_FLAGS) -run TestOpsRepairFamily -count=1 -timeout=$(IT_TIMEOUT)
 
 licenses: ## Check Go dependency licenses.

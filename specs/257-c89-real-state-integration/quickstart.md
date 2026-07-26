@@ -167,6 +167,10 @@ To run the baseline, volume, and real-state suites in sequence:
 make integration-test-all IT_GO_TEST_FLAGS=-v IT_VOLUME_TIMEOUT=90m IT_REAL_STATE_TIMEOUT=90m
 ```
 
+Make asks for confirmation before integration slices run because the suites may
+mutate real Camunda cluster state. Aggregates ask once per `make` invocation.
+Automation can skip the prompt with `IT_CONFIRM=0`.
+
 Generated CLI docs are required only when command help metadata, aliases, flags,
 or examples change. The current 257 real-state suite changes integration tests,
 runtime JSON failure handling, and spec-owned validation artifacts; it does not

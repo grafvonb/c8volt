@@ -141,6 +141,15 @@ To run every baseline, volume, and real-state integration slice in sequence:
 make integration-test-all IT_GO_TEST_FLAGS=-v IT_VOLUME_TIMEOUT=90m IT_REAL_STATE_TIMEOUT=90m
 ```
 
+Make asks for confirmation before running integration slices because they may
+mutate real Camunda cluster state. A single `make` invocation asks once, even
+when an aggregate target expands to many slices. Automation can skip the prompt
+with `IT_CONFIRM=0`:
+
+```sh
+make integration-test-real-state IT_CONFIRM=0 IT_GO_TEST_FLAGS=-v IT_REAL_STATE_TIMEOUT=90m
+```
+
 The gaps target is non-destructive and validates that `gaps.md` plus the
 coverage matrix keep missing setup and fixture prerequisites in spec-owned
 artifacts. Other real-state targets create or discover suite-owned data and now
@@ -225,6 +234,7 @@ Go suite variables:
 | `C8VOLT_IT_VOLUME_COUNT` | `12` | Number of suite-owned process instances created by Go volume targets for paging, limit, and filtering coverage. |
 | `IT_VOLUME_TIMEOUT` | `90m` | Make-level timeout used by `integration-cli-*-volume` targets. |
 | `IT_REAL_STATE_TIMEOUT` | `90m` | Make-level timeout used by `integration-cli-real-state-*` targets. |
+| `IT_CONFIRM` | `1` | Set `0` to skip the Make-level mutation confirmation prompt. |
 
 ## Outputs
 
