@@ -17,6 +17,7 @@ import (
 func TestRealStateGapFamily(t *testing.T) {
 	t.Run("gap artifact", validateRealStateGapArtifact)
 	t.Run("coverage matrix", validateRealStateCoverageMatrix)
+	t.Run("follow-up roadmap", validateRealStateFollowUpRoadmap)
 }
 
 // TestRealStateGapArtifactDocumentsCurrentPrerequisites keeps the older focused
@@ -50,11 +51,7 @@ func validateRealStateGapArtifact(t *testing.T) {
 		"Expect state-only identity",
 	}
 	rowsByTopic := mapRowsByColumn(t, table, "Topic")
-	for _, topic := range requiredTopics {
-		row, ok := rowsByTopic[topic]
-		if !ok {
-			t.Fatalf("gaps.md missing topic %q", topic)
-		}
+	for topic, row := range rowsByTopic {
 		requireNonEmptyMarkdownCell(t, topic, row, "Gap Type")
 		requireNonEmptyMarkdownCell(t, topic, row, "Required State Or Capability")
 		requireNonEmptyMarkdownCell(t, topic, row, "Blocked Proof")
@@ -62,6 +59,11 @@ func validateRealStateGapArtifact(t *testing.T) {
 		requireNonEmptyMarkdownCell(t, topic, row, "Runtime Behavior Until Closed")
 		if !strings.Contains(row["Affected Versions"], realStateTargetVersion) {
 			t.Fatalf("gaps.md topic %q affected versions = %q, want %q", topic, row["Affected Versions"], realStateTargetVersion)
+		}
+	}
+	for _, topic := range requiredTopics {
+		if _, ok := rowsByTopic[topic]; !ok {
+			t.Fatalf("gaps.md missing topic %q", topic)
 		}
 	}
 	if !strings.Contains(content, "future Camunda minor releases") {
@@ -82,6 +84,7 @@ func validateRealStateCoverageMatrix(t *testing.T) {
 	})
 	requiredTopics := []string{
 		"Gap artifact validation",
+		"Consolidated follow-up roadmap",
 		"Real `get job` rows",
 		"Job retries, timeout, fail, no-wait",
 		"`update job --throw-bpmn-error`",
@@ -93,23 +96,69 @@ func validateRealStateCoverageMatrix(t *testing.T) {
 		"Cancel/delete/resolve post-state",
 		"Partial failure and fail-fast",
 		"Ops report parity",
+		"Pipeline semantics",
 		"Version extensibility",
 	}
 	rowsByTopic := mapRowsByColumn(t, table, "Topic")
-	for _, topic := range requiredTopics {
-		row, ok := rowsByTopic[topic]
-		if !ok {
-			t.Fatalf("coverage-matrix.md missing topic %q", topic)
-		}
+	for topic, row := range rowsByTopic {
 		requireNonEmptyMarkdownCell(t, topic, row, "Target Real-State Proof")
 		requireNonEmptyMarkdownCell(t, topic, row, "First Follow-Up")
 		if status := coverageEvidenceStatus(row["Current Evidence Level"]); status == "" {
 			t.Fatalf("coverage-matrix.md topic %q has invalid evidence level %q", topic, row["Current Evidence Level"])
 		}
 	}
+	for _, topic := range requiredTopics {
+		if _, ok := rowsByTopic[topic]; !ok {
+			t.Fatalf("coverage-matrix.md missing topic %q", topic)
+		}
+	}
 	for _, status := range allowedCoverageEvidenceStatuses() {
 		if !strings.Contains(content, status) {
 			t.Fatalf("coverage-matrix.md evidence rules missing status %q", status)
+		}
+	}
+}
+
+func validateRealStateFollowUpRoadmap(t *testing.T) {
+	t.Helper()
+	content := readRealStateSpecArtifact(t, "follow-ups.md")
+	rejectRuntimeProposalArtifactReferences(t, "follow-ups.md", content)
+
+	table := requireMarkdownTable(t, content, []string{
+		"Group",
+		"Follow-Up Candidate",
+		"Source Context",
+		"Blocks",
+		"Suggested First Spec",
+	})
+	requiredGroups := []string{
+		"Embedded BPMN assets",
+		"c8volt setup commands",
+		"Product output contract",
+		"Ops report semantics",
+		"Pipeline semantics",
+	}
+	seenGroups := map[string]struct{}{}
+	for _, row := range table.rows {
+		group := row["Group"]
+		seenGroups[group] = struct{}{}
+		requireNonEmptyMarkdownCell(t, group, row, "Follow-Up Candidate")
+		requireNonEmptyMarkdownCell(t, group, row, "Source Context")
+		requireNonEmptyMarkdownCell(t, group, row, "Blocks")
+		requireNonEmptyMarkdownCell(t, group, row, "Suggested First Spec")
+	}
+	for _, group := range requiredGroups {
+		if _, ok := seenGroups[group]; !ok {
+			t.Fatalf("follow-ups.md missing group %q", group)
+		}
+	}
+	for _, phrase := range []string{
+		"255 and 256 artifacts remain historical context",
+		"not the legacy runtime-output pattern",
+		"update `coverage-matrix.md`, `gaps.md`, and this file",
+	} {
+		if !strings.Contains(content, phrase) {
+			t.Fatalf("follow-ups.md missing maintenance phrase %q", phrase)
 		}
 	}
 }

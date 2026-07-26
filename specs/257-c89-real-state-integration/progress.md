@@ -370,3 +370,30 @@
 - All real-state targets can run independently in the documented order against the dirty local C89 profile.
 - Generated CLI docs were not needed for this polish slice because no command help metadata, aliases, flags, or examples changed.
 ---
+## Iteration 12 - 2026-07-26
+**Work Unit**: Consolidate 255/256 legacy follow-ups into 257
+**Tasks Completed**:
+- [x] Import remaining legacy command setup, embedded BPMN, ops-report, output, and pipeline follow-up candidates into 257 `gaps.md`
+- [x] Add `follow-ups.md` as the authoritative future issue/spec roadmap for 257-derived integration work
+- [x] Extend coverage matrix and quickstart references so 257 owns future follow-up creation
+- [x] Extend `TestRealStateGapFamily` to validate the follow-up roadmap and every gap/matrix row
+**Tasks Remaining in Work Unit**: 0
+**Commit**: Pending
+**Files Changed**:
+- integration/cli/real_state_gap_validation_test.go
+- specs/257-c89-real-state-integration/coverage-matrix.md
+- specs/257-c89-real-state-integration/follow-ups.md
+- specs/257-c89-real-state-integration/gaps.md
+- specs/257-c89-real-state-integration/progress.md
+- specs/257-c89-real-state-integration/quickstart.md
+- specs/257-c89-real-state-integration/ralph-memory.md
+**Validation**:
+- `make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v`
+- `GOCACHE=/tmp/c8volt-gocache go test ./integration/cli -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test -tags=integration ./integration/cli -run '^$' -count=1 -timeout=5m`
+- `git diff --check -- integration/cli specs/257-c89-real-state-integration`
+- `GOCACHE=/tmp/c8volt-gocache go test ./... -count=1`
+**Learnings**:
+- The consistent integration-test design is clearer if 255/256 remain historical and 257 becomes the single forward roadmap for setup, fixture, ops, output, and pipeline gaps.
+- Follow-up issues should be created from grouped 257 rows, not from runtime-generated test output.
+---

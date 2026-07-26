@@ -49,6 +49,7 @@ make integration-cli-real-state-gaps IT_GO_TEST_FLAGS=-v
 Expected outcome:
 
 - `gaps.md` includes all known command setup and embedded BPMN fixture gaps that block deeper live coverage
+- `follow-ups.md` consolidates the remaining 255/256/257 command, embedded BPMN, ops, output, and pipeline follow-ups into issue-sized groups
 - every open gap includes blocked proof, affected commands, affected versions, and runtime behavior until closed
 - the coverage matrix uses explicit evidence statuses for every priority topic
 - runtime tests do not generate backlog proposal JSON files
@@ -158,6 +159,11 @@ Generated CLI docs are required only when command help metadata, aliases, flags,
 or examples change. The current 257 real-state suite changes integration tests,
 runtime JSON failure handling, and spec-owned validation artifacts; it does not
 change command help/example metadata, so `make docs-content` is not required.
+
+Use `specs/257-c89-real-state-integration/follow-ups.md` as the source for
+future issue/spec creation. The 255 and 256 artifacts remain historical context,
+but remaining setup, embedded BPMN, ops-report, output, and pipeline gaps should
+be carried forward from the 257 roadmap.
 
 Finish with:
 
