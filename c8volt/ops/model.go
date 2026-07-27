@@ -383,20 +383,21 @@ const (
 
 // SmokeTestRequest captures one requested ops execute smoke-test run.
 type SmokeTestRequest struct {
-	CommandName   string    `json:"commandName,omitempty"`
-	DryRun        bool      `json:"dryRun,omitempty"`
-	Count         int       `json:"count,omitempty"`
-	Workers       int       `json:"workers,omitempty"`
-	FailFast      bool      `json:"failFast,omitempty"`
-	NoWorkerLimit bool      `json:"noWorkerLimit,omitempty"`
-	NoCleanup     bool      `json:"noCleanup,omitempty"`
-	AutoConfirm   bool      `json:"autoConfirm,omitempty"`
-	Automation    bool      `json:"automation,omitempty"`
-	NoWait        bool      `json:"noWait,omitempty"`
-	OutputMode    string    `json:"outputMode,omitempty"`
-	ReportFile    string    `json:"reportFile,omitempty"`
-	ReportFormat  string    `json:"reportFormat,omitempty"`
-	StartedAt     time.Time `json:"startedAt,omitempty"`
+	CommandName   string              `json:"commandName,omitempty"`
+	DryRun        bool                `json:"dryRun,omitempty"`
+	Count         int                 `json:"count,omitempty"`
+	Workers       int                 `json:"workers,omitempty"`
+	FailFast      bool                `json:"failFast,omitempty"`
+	NoWorkerLimit bool                `json:"noWorkerLimit,omitempty"`
+	NoCleanup     bool                `json:"noCleanup,omitempty"`
+	AutoConfirm   bool                `json:"autoConfirm,omitempty"`
+	Automation    bool                `json:"automation,omitempty"`
+	NoWait        bool                `json:"noWait,omitempty"`
+	OutputMode    string              `json:"outputMode,omitempty"`
+	ReportFile    string              `json:"reportFile,omitempty"`
+	ReportFormat  string              `json:"reportFormat,omitempty"`
+	StartedAt     time.Time           `json:"startedAt,omitempty"`
+	Progress      func(ProgressEvent) `json:"-"`
 }
 
 // WorkflowStepResult captures compact status for one smoke-test workflow step.

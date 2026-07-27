@@ -393,6 +393,41 @@ func TestRunProcessInstanceCommand_KeysOnlyOutputsOnlyCreatedKeys(t *testing.T) 
 	require.Contains(t, stderr, "waiting for pi 2251799813711967")
 }
 
+// TestRunProcessInstanceCommand_VerboseBulkProgressRendersCounters verifies explicit --count progress is routed to stderr.
+func TestRunProcessInstanceCommand_VerboseBulkProgressRendersCounters(t *testing.T) {
+	var created testx.SafeSlice[string]
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/process-instances":
+			require.Equal(t, http.MethodPost, r.Method)
+			created.Append(r.URL.Path)
+			key := "2251799813685248"
+			if len(created.Snapshot()) == 2 {
+				key = "2251799813685249"
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(processInstanceCreationJSON(key)))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"--verbose",
+		"run", "process-instance",
+		"--pd-key", "pd-88",
+		"--count", "2",
+		"--workers", "1",
+		"--no-wait",
+	)
+
+	require.Contains(t, stdout, "found: 2")
+	require.Contains(t, stderr, "starting process instances 2/2 process instance(s)")
+	require.Len(t, created.Snapshot(), 2)
+}
+
 func TestRunProcessInstanceResultSortsCountOutputByStartDateAndKey(t *testing.T) {
 	items := []process.ProcessInstance{
 		{Key: "30", StartDate: "2026-05-23T18:16:52.711Z"},

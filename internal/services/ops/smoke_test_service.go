@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/grafvonb/c8volt/embedded"
@@ -129,8 +130,9 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 		return finishSmokeTestResult(result, d.SmokeTestOutcomeFailed, err)
 	}
 
-	proofOpts := smokeTestProofOptions(opts...)
+	proofOpts := smokeTestProofOptions(smokeTestOptionsWithRequestProgress(result.Request, opts...)...)
 	smokeTestProgressf(s.log, result.Request, "deploy: fixture %s", fixture.File)
+	reportSmokeTestFrozenProgress(result.Request.Progress, "deploying smoke-test fixture", "deployment(s)", 0, 1)
 	deployment, err := s.resourceAPI.Deploy(ctx, units, proofOpts...)
 	if err != nil {
 		result.Deployment = d.SmokeTestDeploymentResult{
@@ -149,6 +151,7 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 	}
 
 	result.Deployment = smokeTestDeploymentResult(fixture, deployment, d.OpsWorkflowStepStatusConfirmed)
+	reportSmokeTestFrozenProgress(result.Request.Progress, "deploying smoke-test fixture", "deployment(s)", 1, 1)
 	smokeTestProgressf(s.log, result.Request, "deploy: confirmed process definition %s", smokeTestDeploymentIdentity(result.Deployment))
 	if s.piAPI == nil {
 		err := fmt.Errorf("%w: smoke-test run requires process-instance service", d.ErrValidation)
@@ -186,7 +189,7 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 	}
 
 	smokeTestProgressf(s.log, result.Request, "walk: confirmed %s", smokeTestFamilyCountLabel(len(result.Walk.Items)))
-	cleanupOpts := smokeTestCleanupOptions(opts...)
+	cleanupOpts := smokeTestCleanupOptions(smokeTestOptionsWithRequestProgress(result.Request, opts...)...)
 	if result.Request.NoCleanup {
 		smokeTestProgressf(s.log, result.Request, "cleanup: skipped (--no-cleanup)")
 	} else {
@@ -282,8 +285,15 @@ func smokeTestWalkCreatedFamilies(ctx context.Context, api pisvc.API, keys []str
 	out := d.SmokeTestWalkResult{Status: d.OpsWorkflowStepStatusSubmitted}
 	cfg := services.ApplyCallOptions(opts)
 	workers := toolx.DetermineNoOfWorkers(len(keys), wantedWorkers, cfg.NoWorkerLimit)
+	reportSmokeTestFrozenProgress(cfg.Progress, "walking process-instance families", "process instance(s)", 0, len(keys))
+	var completed int64
+	walkOpts := smokeTestNestedOptions(opts...)
 	items, err := pool.ExecuteSlice[string, d.SmokeTestWalkItem](ctx, keys, workers, cfg.FailFast, func(ctx context.Context, key string, _ int) (d.SmokeTestWalkItem, error) {
-		result, walkErr := api.FamilyResult(ctx, key, opts...)
+		defer func() {
+			done := int(atomic.AddInt64(&completed, 1))
+			reportSmokeTestFrozenProgress(cfg.Progress, "walking process-instance families", "process instance(s)", done, len(keys))
+		}()
+		result, walkErr := api.FamilyResult(ctx, key, walkOpts...)
 		item := smokeTestWalkItemFromTraversal(key, result)
 		if walkErr != nil {
 			item.Status = d.OpsWorkflowStepStatusFailed
@@ -343,7 +353,19 @@ func smokeTestProofOptions(opts ...services.CallOption) []services.CallOption {
 	if !cfg.Verbose {
 		out = append(out, services.WithSuppressWorkflowDetailLogs(), services.WithSuppressProcessInstanceDetailLogs())
 	}
+	if cfg.Progress != nil {
+		out = append(out, services.WithProgress(cfg.Progress))
+	}
 	return out
+}
+
+// smokeTestOptionsWithRequestProgress lets request-owned progress callbacks flow into nested workflow calls.
+func smokeTestOptionsWithRequestProgress(request d.SmokeTestRequest, opts ...services.CallOption) []services.CallOption {
+	if request.Progress == nil {
+		return opts
+	}
+	out := append([]services.CallOption{}, opts...)
+	return append(out, services.WithProgress(request.Progress))
 }
 
 func smokeTestCleanupOptions(opts ...services.CallOption) []services.CallOption {
@@ -364,7 +386,32 @@ func smokeTestCleanupOptions(opts ...services.CallOption) []services.CallOption 
 	if !cfg.Verbose {
 		out = append(out, services.WithSuppressWorkflowDetailLogs(), services.WithSuppressProcessInstanceDetailLogs())
 	}
+	if cfg.Progress != nil {
+		out = append(out, services.WithProgress(cfg.Progress))
+	}
 	return append(out, services.WithForce())
+}
+
+// smokeTestNestedOptions keeps nested workflow calls from emitting lower-level progress that would obscure smoke-test stage counters.
+func smokeTestNestedOptions(opts ...services.CallOption) []services.CallOption {
+	cfg := services.ApplyCallOptions(opts)
+	out := make([]services.CallOption, 0, 5)
+	if cfg.FailFast {
+		out = append(out, services.WithFailFast())
+	}
+	if cfg.NoWorkerLimit {
+		out = append(out, services.WithNoWorkerLimit())
+	}
+	if cfg.Verbose {
+		out = append(out, services.WithVerbose())
+	}
+	if cfg.NoWait {
+		out = append(out, services.WithNoWait())
+	}
+	if !cfg.Verbose {
+		out = append(out, services.WithSuppressWorkflowDetailLogs(), services.WithSuppressProcessInstanceDetailLogs())
+	}
+	return out
 }
 
 func (s *Service) cleanupSmokeTestResources(ctx context.Context, result d.SmokeTestResult, opts ...services.CallOption) (d.SmokeTestCleanupResult, error) {
@@ -750,7 +797,29 @@ func withSmokeTestOptionControls(request d.SmokeTestRequest, opts ...services.Ca
 	request.NoWait = request.NoWait || cfg.NoWait
 	request.FailFast = request.FailFast || cfg.FailFast
 	request.NoWorkerLimit = request.NoWorkerLimit || cfg.NoWorkerLimit
+	if request.Progress == nil {
+		request.Progress = cfg.Progress
+	}
 	return request
+}
+
+// reportSmokeTestFrozenProgress emits stage-level counters for explicit smoke-test work.
+func reportSmokeTestFrozenProgress(progress func(d.OpsProgressEvent), phase string, coreResource string, done int, total int) {
+	if progress == nil || total <= 0 {
+		return
+	}
+	if done > total {
+		done = total
+	}
+	progress(d.OpsProgressEvent{
+		Kind: d.OpsProgressEventKindFrozenScope,
+		FrozenScope: &d.OpsFrozenScopeProgress{
+			Phase:        phase,
+			CoreResource: coreResource,
+			Done:         done,
+			Total:        total,
+		},
+	})
 }
 
 // newSmokeTestResult initializes the common report envelope before validation or workflow execution.

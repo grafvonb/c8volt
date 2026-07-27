@@ -28,6 +28,7 @@ func toDomainSmokeTestRequest(x SmokeTestRequest) d.SmokeTestRequest {
 		ReportFile:    x.ReportFile,
 		ReportFormat:  x.ReportFormat,
 		StartedAt:     x.StartedAt,
+		Progress:      toDomainProgressFunc(x.Progress),
 	}
 }
 
@@ -62,6 +63,7 @@ func fromDomainSmokeTestRequest(x d.SmokeTestRequest) SmokeTestRequest {
 		ReportFile:    x.ReportFile,
 		ReportFormat:  x.ReportFormat,
 		StartedAt:     x.StartedAt,
+		Progress:      fromDomainProgressFunc(x.Progress),
 	}
 }
 

@@ -154,6 +154,27 @@ func TestCreateNProcessInstancesLogsActualSuccessAndFailureCounts(t *testing.T) 
 	require.NotContains(t, logBuf.String(), "creating pi done; created 3")
 }
 
+// TestCreateNProcessInstancesEmitsFrozenProgress verifies explicit-count starts expose exact create counters.
+func TestCreateNProcessInstancesEmitsFrozenProgress(t *testing.T) {
+	var events []d.OpsProgressEvent
+	api := stubBulkProcessInstanceAPI{
+		create: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			return d.ProcessInstanceCreation{Key: "created-" + data.BpmnProcessId, BpmnProcessId: data.BpmnProcessId}, nil
+		},
+	}
+
+	got, err := CreateNProcessInstances(context.Background(), api, slog.Default(), d.ProcessInstanceData{BpmnProcessId: "demo"}, 2, 1, services.WithProgress(func(event d.OpsProgressEvent) {
+		events = append(events, event)
+	}))
+
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	require.Len(t, events, 3)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 0, Total: 2}, *events[0].FrozenScope)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 1, Total: 2}, *events[1].FrozenScope)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 2, Total: 2}, *events[2].FrozenScope)
+}
+
 // TestDeleteProcessInstancesLogsProgressWhileRootDeleteRuns verifies long root-tree deletes produce durable progress lines before the final summary.
 func TestDeleteProcessInstancesLogsProgressWhileRootDeleteRuns(t *testing.T) {
 	oldInterval := processInstanceBulkProgressInterval

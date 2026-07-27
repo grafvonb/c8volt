@@ -282,6 +282,37 @@ func TestClientExecuteSmokeTestMapsServiceBoundary(t *testing.T) {
 	require.True(t, got.Report.NoCleanup)
 }
 
+// TestClientExecuteSmokeTestMapsProgressOption verifies smoke-test callers can install structured progress through facade options.
+func TestClientExecuteSmokeTestMapsProgressOption(t *testing.T) {
+	t.Parallel()
+
+	var gotEvent foptions.ProgressEvent
+	api := stubOpsService{
+		smokeTest: func(_ context.Context, _ d.SmokeTestRequest, opts ...services.CallOption) (d.SmokeTestResult, error) {
+			progress := services.ApplyCallOptions(opts).Progress
+			require.NotNil(t, progress)
+			progress(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindFrozenScope,
+				FrozenScope: &d.OpsFrozenScopeProgress{
+					Phase:        "starting process instances",
+					CoreResource: "process instance(s)",
+					Done:         1,
+					Total:        2,
+				},
+			})
+			return d.SmokeTestResult{Request: d.SmokeTestRequest{CommandName: "ops execute smoke-test", Count: 2}}, nil
+		},
+	}
+
+	_, err := New(api, slog.Default()).ExecuteSmokeTest(context.Background(), SmokeTestRequest{CommandName: "ops execute smoke-test", Count: 2}, foptions.WithProgress(func(event foptions.ProgressEvent) {
+		gotEvent = event
+	}))
+
+	require.NoError(t, err)
+	require.Equal(t, foptions.ProgressEventKindFrozenScope, gotEvent.Kind)
+	require.Equal(t, &foptions.FrozenScopeProgress{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 1, Total: 2}, gotEvent.FrozenScope)
+}
+
 // TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary verifies the slow-analysis facade stays thin.
 func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing.T) {
 	t.Parallel()

@@ -42,9 +42,13 @@ func CreateNProcessInstances(ctx context.Context, api API, log *slog.Logger, dat
 		stopProgress = startProcessInstanceBulkProgress(ctx, log, "create", n, 0, &completed, progress)
 	}
 	defer stopProgress()
+	reportProcessInstanceBulkFrozenProgress(cfg.Progress, "starting process instances", 0, n)
 	pics, err := pool.ExecuteNTimes[d.ProcessInstanceCreation](ctx, n, nw, cfg.FailFast, func(ctx context.Context, _ int) (d.ProcessInstanceCreation, error) {
 		work := progress.Start(data.BpmnProcessId)
-		defer completed.Add(1)
+		defer func() {
+			done := int(completed.Add(1))
+			reportProcessInstanceBulkFrozenProgress(cfg.Progress, "starting process instances", done, n)
+		}()
 		defer progress.Done(work)
 		pi, err := api.CreateProcessInstance(ctx, data, opts...)
 		if err == nil {

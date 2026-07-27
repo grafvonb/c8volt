@@ -93,6 +93,30 @@ func TestClient_CreateProcessInstances_DelegatesOrderedCreation(t *testing.T) {
 	}, got)
 }
 
+// TestClient_CreateNProcessInstances_MapsProgress verifies bulk create progress crosses the public process facade.
+func TestClient_CreateNProcessInstances_MapsProgress(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var events []options.ProgressEvent
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			return d.ProcessInstanceCreation{Key: "created-" + data.BpmnProcessId, BpmnProcessId: data.BpmnProcessId}, nil
+		},
+	}
+
+	got, err := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default()).CreateNProcessInstances(ctx, ProcessInstanceData{BpmnProcessId: "demo"}, 2, 1, options.WithProgress(func(event options.ProgressEvent) {
+		events = append(events, event)
+	}))
+
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	require.Len(t, events, 3)
+	require.Equal(t, options.ProgressEventKindFrozenScope, events[0].Kind)
+	require.Equal(t, &options.FrozenScopeProgress{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 0, Total: 2}, events[0].FrozenScope)
+	require.Equal(t, &options.FrozenScopeProgress{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 2, Total: 2}, events[2].FrozenScope)
+}
+
 // TestClient_GetProcessDefinition_MapsIncidentCountSupportState protects the
 // distinction between an incident count of zero and a version where incident
 // counts are actually supported.
@@ -2054,6 +2078,47 @@ func TestClient_AncestryResult_MapsStructuredTraversalContract(t *testing.T) {
 	assert.Equal(t, "missing", got.MissingAncestors[0].Key)
 	assert.Equal(t, "child", got.Chain["child"].Key)
 	assert.Equal(t, TraversalOutcomePartial, got.Outcome)
+}
+
+// TestClient_FamilyResult_MapsProgressOption verifies keyed walk progress callbacks cross the process facade boundary.
+func TestClient_FamilyResult_MapsProgressOption(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var gotEvent options.ProgressEvent
+	piAPI := stubProcessInstanceAPI{
+		familyResult: func(_ context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+			assert.Equal(t, "child", startKey)
+			progress := services.ApplyCallOptions(opts).Progress
+			require.NotNil(t, progress)
+			progress(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindFrozenScope,
+				FrozenScope: &d.OpsFrozenScopeProgress{
+					Phase:        "walking process-instance family",
+					CoreResource: "process instance(s)",
+					Done:         2,
+					Total:        2,
+				},
+			})
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeFamily,
+				StartKey: "child",
+				RootKey:  "root",
+				Keys:     []string{"root", "child"},
+				Chain:    map[string]d.ProcessInstance{"root": {Key: "root"}, "child": {Key: "child"}},
+				Outcome:  pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	got, err := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default()).FamilyResult(ctx, "child", options.WithProgress(func(event options.ProgressEvent) {
+		gotEvent = event
+	}))
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"root", "child"}, got.Keys)
+	require.Equal(t, options.ProgressEventKindFrozenScope, gotEvent.Kind)
+	require.Equal(t, &options.FrozenScopeProgress{Phase: "walking process-instance family", CoreResource: "process instance(s)", Done: 2, Total: 2}, gotEvent.FrozenScope)
 }
 
 // TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion exercises the

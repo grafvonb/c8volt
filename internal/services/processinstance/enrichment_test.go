@@ -341,3 +341,22 @@ func TestEnrichTraversalWithIncidentsPreservesMetadataAndSelectedKeys(t *testing
 		{Item: d.ProcessInstance{Key: "child"}, Incidents: []d.ProcessInstanceIncidentDetail{{IncidentKey: "incident-child", ProcessInstanceKey: "child"}}},
 	}, got.Items)
 }
+
+// TestEnrichProcessInstancesWithVariablesEmitsFrozenProgress verifies variable enrichment reports exact progress over the walked process-instance set.
+func TestEnrichProcessInstancesWithVariablesEmitsFrozenProgress(t *testing.T) {
+	var events []d.OpsProgressEvent
+	got, err := EnrichProcessInstancesWithVariables(context.Background(), stubVariableSearcher{
+		search: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			return []d.ProcessInstanceVariable{{Name: "status", ProcessInstanceKey: key, ScopeKey: key}}, nil
+		},
+	}, []d.ProcessInstance{{Key: "pi-1"}, {Key: "pi-2"}}, services.WithProgress(func(event d.OpsProgressEvent) {
+		events = append(events, event)
+	}))
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 2)
+	require.Len(t, events, 3)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "loading variable details", CoreResource: "process instance(s)", Done: 0, Total: 2}, *events[0].FrozenScope)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "loading variable details", CoreResource: "process instance(s)", Done: 1, Total: 2}, *events[1].FrozenScope)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "loading variable details", CoreResource: "process instance(s)", Done: 2, Total: 2}, *events[2].FrozenScope)
+}

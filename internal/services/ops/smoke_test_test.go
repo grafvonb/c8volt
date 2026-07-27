@@ -638,6 +638,65 @@ func TestExecuteSmokeTestNoCleanupRetainsCreatedResources(t *testing.T) {
 	require.Zero(t, resource.deleteCalls)
 }
 
+// TestExecuteSmokeTestEmitsExplicitWorkProgress verifies smoke-test stages preserve progress callbacks through nested service options.
+func TestExecuteSmokeTestEmitsExplicitWorkProgress(t *testing.T) {
+	var events []d.OpsProgressEvent
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
+			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
+				ProcessDefinitionId:      "C88_MultipleSubProcessesParent",
+				ProcessDefinitionKey:     "pd-88",
+				ProcessDefinitionVersion: 4,
+			}}}}, nil
+		},
+	}
+	created := 0
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, _ d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			require.NotNil(t, services.ApplyCallOptions(opts).Progress)
+			created++
+			return d.ProcessInstanceCreation{Key: string(rune('0' + created))}, nil
+		},
+		familyResult: func(_ context.Context, key string, opts ...services.CallOption) (pitraversal.Result, error) {
+			require.Nil(t, services.ApplyCallOptions(opts).Progress)
+			return pitraversal.Result{Mode: pitraversal.ModeFamily, StartKey: key, RootKey: key, Keys: []string{key}, Chain: map[string]d.ProcessInstance{key: {Key: key}}, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+	}
+
+	got, err := NewWithWorkflowDependencies(nil, piAPI, nil, nil, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
+		CommandName: "ops execute smoke-test",
+		Count:       2,
+		Workers:     1,
+		NoCleanup:   true,
+		Progress: func(event d.OpsProgressEvent) {
+			events = append(events, event)
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.SmokeTestOutcomePassedCleanupSkipped, got.Outcome)
+	requireSmokeTestProgressContains(t, events, "deploying smoke-test fixture", 0, 1)
+	requireSmokeTestProgressContains(t, events, "deploying smoke-test fixture", 1, 1)
+	requireSmokeTestProgressContains(t, events, "starting process instances", 0, 2)
+	requireSmokeTestProgressContains(t, events, "starting process instances", 2, 2)
+	requireSmokeTestProgressContains(t, events, "walking process-instance families", 0, 2)
+	requireSmokeTestProgressContains(t, events, "walking process-instance families", 2, 2)
+}
+
+// requireSmokeTestProgressContains asserts a stage counter appeared without depending on concurrent event ordering.
+func requireSmokeTestProgressContains(t *testing.T, events []d.OpsProgressEvent, phase string, done int, total int) {
+	t.Helper()
+	for _, event := range events {
+		if event.Kind != d.OpsProgressEventKindFrozenScope || event.FrozenScope == nil {
+			continue
+		}
+		if event.FrozenScope.Phase == phase && event.FrozenScope.Done == done && event.FrozenScope.Total == total {
+			return
+		}
+	}
+	require.Failf(t, "missing smoke-test progress", "phase=%s done=%d total=%d events=%v", phase, done, total, events)
+}
+
 func TestExecuteSmokeTestDryRunConnectivityFailureDoesNotPlanMutation(t *testing.T) {
 	t.Parallel()
 

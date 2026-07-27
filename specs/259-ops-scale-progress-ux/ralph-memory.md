@@ -61,6 +61,10 @@ Started: 2026-07-27T10:17:40Z
 - T068 progress routing uses `cmd/ops_repair_progress.go`: preflight/page events reuse shared ops formatters, frozen planning/loading/repair counters use the no-comma mutation counter style, and JSON/quiet/automation modes stay silent.
 - `internal/services/ops/repair_progress.go` emits repair search preflight/page facts from first-page metadata, planning counters during dry-run planning, process-instance active-incident lookup counters, and exact `repairing incidents` counters during keyed mutation.
 - Repair human result renderers now write final result/report lines directly to command stdout even when `--verbose` installs a logger; progress remains on stderr/activity.
+- T069 explicit large-work progress uses `cmd/ops_explicit_large_work_progress.go`: default human updates transient activity, verbose/debug write exact frozen counters to stderr, and JSON/keys-only/quiet/automation remain progress-free.
+- Bulk `run process-instance --count` now emits exact `starting process instances` counters from `internal/services/processinstance.CreateNProcessInstances`, mapped through `c8volt/process` facade progress options.
+- `walk process-instance` now passes progress options through ancestry/descendants/family traversal and incident/variable enrichment. Traversal result builders emit exact completed walk-scope counters once the immutable result set is known; element/listener enrichment still uses the existing enrichment progress wrappers.
+- `ops execute smoke-test` requests now carry optional progress callbacks through `c8volt/ops`; the service emits stage-level deployment and family-walk counters, preserves progress through nested create/delete cleanup options, and suppresses lower-level family traversal progress inside smoke-test walk loops so smoke output stays stage-oriented.
 
 ## Decisions
 - For this feature, transient progress should reuse the existing activity context path rather than stdout or a new global writer.
@@ -92,4 +96,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should implement T069 explicit-large-work progress for `walk process-instance`, bulk `run process-instance`, and `ops execute smoke-test`; do not start Phase 8 polish yet.
+- Next iteration should start Phase 8 polish with T049/T050 help and command contract wording for the completed ops-scale progress behavior.

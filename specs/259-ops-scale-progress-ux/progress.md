@@ -19,7 +19,6 @@ Started: 2026-07-27 12:17:40
 - specs/259-ops-scale-progress-ux/progress.md
 **Learnings**:
 - Progress should reuse the existing activity context path; service-owned traversal must preserve exact/lower-bound page metadata for preflight.
----
 ## Iteration 2 - 2026-07-27 12:28
 **Work Unit**: Phase 2 Foundational
 **Tasks Completed**:
@@ -429,4 +428,38 @@ Started: 2026-07-27 12:17:40
 - specs/259-ops-scale-progress-ux/progress.md
 **Learnings**:
 - Repair workflows now share stdout-safe preflight, discovery, planning, lookup, and mutation progress while final verbose repair output stays on stdout.
+---
+---
+## Iteration 12 - 2026-07-27 15:49
+**Work Unit**: T069 Explicit large-work progress for walk, run, and smoke-test
+**Tasks Completed**:
+- [x] T069: Add explicit-large-work progress for `walk process-instance`, bulk `run process-instance`, and `ops execute smoke-test`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/ops/client_test.go
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- c8volt/process/client_test.go
+- cmd/ops_execute_smoke_test_test.go
+- cmd/ops_execute_smoketest.go
+- cmd/ops_explicit_large_work_progress.go
+- cmd/ops_explicit_large_work_progress_test.go
+- cmd/run_processinstance.go
+- cmd/run_test.go
+- cmd/walk_processinstance.go
+- internal/domain/ops_smoke_test_model.go
+- internal/services/ops/smoke_test_service.go
+- internal/services/ops/smoke_test_test.go
+- internal/services/processinstance/bulk.go
+- internal/services/processinstance/bulk_test.go
+- internal/services/processinstance/enrichment.go
+- internal/services/processinstance/enrichment_test.go
+- internal/services/processinstance/traversal/result.go
+- internal/services/processinstance/traversal/result_test.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Explicit-count/keyed progress can reuse frozen-scope events without broad preflight prompts; smoke-test needs request progress copied into nested service options to keep stage counters visible.
 ---
