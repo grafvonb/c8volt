@@ -1025,8 +1025,9 @@ func TestGetIncidentCommand_SearchVerboseProgress(t *testing.T) {
 	require.Contains(t, requests[0], `"limit":2`)
 	require.Contains(t, requests[0], `"from":0`)
 	require.Contains(t, requests[1], `"from":2`)
-	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
-	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+	require.Contains(t, output, "preflight: incident search matches 3+ incident(s); page size 2; discovery will require at least 2 page(s)")
+	require.Contains(t, output, "discovering incidents, page 1/~2, 2 seen")
+	require.Contains(t, output, "discovering incidents, page 2/2, 3 seen")
 	require.Contains(t, output, "found: 3")
 }
 

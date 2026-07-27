@@ -464,8 +464,9 @@ func TestGetElementCommand_SearchVerboseProgress(t *testing.T) {
 	secondPage := requireJSONObject(t, bodies[1]["page"])
 	require.Equal(t, float64(2), secondPage["limit"])
 	require.Equal(t, float64(2), secondPage["from"])
-	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
-	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+	require.Contains(t, output, "preflight: element search matches 3+ element(s); page size 2; discovery will require at least 2 page(s)")
+	require.Contains(t, output, "discovering elements, page 1/~2, 2 seen")
+	require.Contains(t, output, "discovering elements, page 2/2, 3 seen")
 	require.Contains(t, output, "found: 3")
 }
 

@@ -4579,12 +4579,12 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.EqualValues(t, 0, pages[0]["from"])
 		require.EqualValues(t, 2, pages[1]["from"])
 		require.Zero(t, promptCalls)
-		require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: yes, next step: limit-reached")
-		require.Contains(t, output, "detail: stopped after reaching limit of 3 process instance(s)")
+		require.Contains(t, output, "preflight: process instance search matches 5+ process instance(s); page size 2; discovery will require at least 3 page(s)")
+		require.Contains(t, output, "discovering process instances, page 2/~3, 3 seen, user-limited")
 		require.Contains(t, output, "123")
 		require.Contains(t, output, "124")
 		require.Contains(t, output, "125")
-		require.NotContains(t, output, "126")
+		require.NotContains(t, output, "126 tenant demo")
 	})
 
 	t.Run("uses shared config default and prompts before the next page", func(t *testing.T) {
@@ -4619,8 +4619,9 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.Len(t, prompts, 1)
 		require.Contains(t, prompts[0], "More matching process instances remain")
 		require.Contains(t, prompts[0], "Fetched 2 process instance(s) on this page (2/3+ loaded)")
-		require.Contains(t, output, "page size: 1000, current page: 2, total so far: 2, more matches: yes, next step: prompt")
-		require.Contains(t, output, "page size: 1000, current page: 1, total so far: 3, more matches: no, next step: complete")
+		require.Contains(t, output, "preflight: process instance search matches 3+ process instance(s); page size 1000; discovery will require at least 1 page(s)")
+		require.Contains(t, output, "discovering process instances, page 1/~1, 2 seen")
+		require.Contains(t, output, "discovering process instances, page 2/2, 3 seen")
 		require.Contains(t, output, "123")
 		require.Contains(t, output, "124")
 		require.Contains(t, output, "125")
@@ -4658,8 +4659,9 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.EqualValues(t, 0, pages[0]["from"])
 		require.EqualValues(t, 2, pages[1]["from"])
 		require.Zero(t, promptCalls)
-		require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
-		require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+		require.Contains(t, output, "preflight: process instance search matches 3+ process instance(s); page size 2; discovery will require at least 2 page(s)")
+		require.Contains(t, output, "discovering process instances, page 1/~2, 2 seen")
+		require.Contains(t, output, "discovering process instances, page 2/2, 3 seen")
 	})
 
 	t.Run("short n controls per-page batch size", func(t *testing.T) {
@@ -4683,7 +4685,8 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		pages := decodeCapturedPISearchPages(t, requests)
 		require.Len(t, pages, 1)
 		require.EqualValues(t, 4, pages[0]["limit"])
-		require.Contains(t, output, "page size: 4, current page: 1, total so far: 1, more matches: no, next step: complete")
+		require.Contains(t, output, "preflight: process instance search matches 1 process instance(s); page size 4; discovery will require 1 page(s)")
+		require.Contains(t, output, "discovering process instances, page 1/1, 1 seen")
 		require.Contains(t, output, "123")
 	})
 
@@ -4718,7 +4721,8 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.Len(t, pages, 1)
 		require.EqualValues(t, 4, pages[0]["limit"])
 		require.Zero(t, promptCalls)
-		require.Contains(t, output, "page size: 4, current page: 2, total so far: 2, more matches: yes, next step: limit-reached")
+		require.Contains(t, output, "preflight: process instance search matches 6+ process instance(s); page size 4; discovery will require at least 2 page(s)")
+		require.Contains(t, output, "discovering process instances, page 1/~2, 2 seen, user-limited")
 		require.Contains(t, output, "123")
 		require.Contains(t, output, "124")
 		require.NotContains(t, output, "125 tenant demo")
@@ -4795,8 +4799,8 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.EqualValues(t, 0, pages[0]["from"])
 		require.EqualValues(t, 2, pages[1]["from"])
 		require.Zero(t, promptCalls)
-		require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
-		require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+		require.NotContains(t, output, "preflight:")
+		require.NotContains(t, output, "discovering process instances")
 		require.Contains(t, output, "123")
 		require.Contains(t, output, "124")
 		require.Contains(t, output, "125")
@@ -4900,7 +4904,8 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 
 		pages := decodeCapturedPISearchPages(t, requests)
 		require.Len(t, pages, 1)
-		require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: prompt")
+		require.Contains(t, output, "preflight: process instance search matches 3+ process instance(s); page size 2; discovery will require at least 2 page(s)")
+		require.Contains(t, output, "discovering process instances, page 1/~2, 2 seen")
 		require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: partial-complete")
 		require.Contains(t, output, "detail: stopped after 2 processed process instance(s); remaining matches were left untouched")
 		require.Contains(t, output, "123")
@@ -4926,8 +4931,8 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 
 		pages := decodeCapturedPISearchPages(t, requests)
 		require.Len(t, pages, 1)
-		require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: unknown, next step: warning-stop")
-		require.Contains(t, output, "warning: stopped after 2 processed process instance(s) because more matching process instances may remain")
+		require.Contains(t, output, "preflight: process instance search matches unknown process instance(s); page size 2")
+		require.Contains(t, output, "discovering process instances, page 1, 2 seen")
 	})
 
 	t.Run("v87 fallback keeps final filtered results even when the request stays broad", func(t *testing.T) {
@@ -5061,8 +5066,9 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 
 				require.Len(t, prompts, 1)
 				require.Contains(t, prompts[0], "Fetched 2 process instance(s) on this page (2 loaded)")
-				require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: prompt")
-				require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+				require.Contains(t, output, "preflight: process instance search matches unknown process instance(s); page size 2")
+				require.Contains(t, output, "discovering process instances, page 1, 2 seen")
+				require.Contains(t, output, "discovering process instances, page 2, 3 seen")
 			})
 		}
 	})

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/element"
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/spf13/cobra"
 )
 
@@ -26,6 +27,7 @@ func searchElementsWithPaging(cmd *cobra.Command, cli element.API, request eleme
 	incremental := shouldRenderElementSearchPageIncrementally(cmd)
 	autoContinue := shouldAutoContinueElementSearchPages(cmd)
 	processedTotal := 0
+	pageNumber := 0
 	capturedNow := time.Now().UTC()
 	printFoundAndReturn := func() (element.SearchResult, bool, error) {
 		if incremental {
@@ -39,21 +41,31 @@ func searchElementsWithPaging(cmd *cobra.Command, cli element.API, request eleme
 
 	result, err := cli.SearchElementsPages(cmd.Context(), request, func(step element.SearchPageStep) (element.SearchPageAction, error) {
 		page := step.Page
+		pageNumber++
+		processedTotal = int(step.CumulativeCount)
+		total, totalKind := elementOpsReportedTotal(page)
+		printBasicSearchOpsProgress(cmd, basicSearchProgressMetadata{
+			Command:            "get element",
+			CoreResource:       "element",
+			ResourceLabel:      "elements",
+			SelectorSummary:    "element search",
+			ConsequenceSummary: "element search will discover and render matching elements",
+			ReportedTotal:      total,
+			TotalKind:          totalKind,
+			OverflowState:      elementOpsOverflowState(page.OverflowState),
+			PageSize:           page.Request.Size,
+			CurrentPage:        pageNumber,
+			CurrentPageCount:   len(page.Items),
+			CumulativeCount:    processedTotal,
+			LimitReached:       step.LimitReached,
+		}, pageNumber == 1)
 		if incremental {
 			if err := renderElementSearchPage(cmd, page.Items, capturedNow); err != nil {
 				return element.SearchPageActionStop, err
 			}
 		}
-		processedTotal = int(step.CumulativeCount)
 
 		continuation := elementSearchContinuationState(page, step.LimitReached, autoContinue)
-		printSearchPageProgress(cmd, searchPageProgressSummary{
-			PageSize:          page.Request.Size,
-			CurrentPageCount:  len(page.Items),
-			CumulativeCount:   processedTotal,
-			MoreMatches:       describeElementOverflowState(page.OverflowState),
-			ContinuationState: continuation,
-		})
 
 		if continuation == processInstanceContinuationLimitReached || continuation == processInstanceContinuationCompleted {
 			return element.SearchPageActionStop, nil
@@ -145,4 +157,30 @@ func renderElementSearchPage(cmd *cobra.Command, items []element.Element, captur
 		}
 	}
 	return nil
+}
+
+func elementOpsReportedTotal(page element.Page) (*int64, ops.TotalCertainty) {
+	if page.ReportedTotal == nil {
+		return nil, ops.TotalCertaintyUnknown
+	}
+	total := page.ReportedTotal.Count
+	switch page.ReportedTotal.Kind {
+	case element.ReportedTotalKindExact:
+		return &total, ops.TotalCertaintyExact
+	case element.ReportedTotalKindLowerBound:
+		return &total, ops.TotalCertaintyLowerBound
+	default:
+		return &total, ops.TotalCertaintyUnknown
+	}
+}
+
+func elementOpsOverflowState(state element.OverflowState) ops.OverflowState {
+	switch state {
+	case element.OverflowStateHasMore:
+		return ops.OverflowStateHasMore
+	case element.OverflowStateNoMore:
+		return ops.OverflowStateNoMore
+	default:
+		return ops.OverflowStateUnknown
+	}
 }

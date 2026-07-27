@@ -199,3 +199,26 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Basic inspection tests now pin shared preflight resource labels and stdout-safe JSON/keys-only behavior before routing progress in T059.
 ---
+---
+## Iteration 2 - 2026-07-27 14:14
+**Work Unit**: T059 Basic inspection shared preflight/page progress routing
+**Tasks Completed**:
+- [x] T059: Implement shared preflight/page progress routing for `get process-instance`, `get incident`, `get job`, and `get element`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processinstance_paging.go
+- cmd/get_processinstance_search.go
+- cmd/get_incident_search.go
+- cmd/get_job_search.go
+- cmd/get_element_search.go
+- cmd/get_processinstance_test.go
+- cmd/get_incident_test.go
+- cmd/get_job_test.go
+- cmd/get_element_test.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Basic get search progress can use shared ops preflight/page formatters from the command layer while keeping traversal in services and suppressing progress in machine modes.
+---

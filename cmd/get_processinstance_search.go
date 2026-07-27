@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/services/incidentfilter"
@@ -22,6 +23,7 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 	incremental := shouldRenderPISearchPageIncrementally(cmd)
 	autoContinue := shouldAutoContinuePISearchPages(cmd)
 	processedTotal := 0
+	pageNumber := 0
 	needsIndirectIncidentWarning := false
 	printFoundAndReturn := func() (process.ProcessInstances, bool, error) {
 		if incremental {
@@ -38,6 +40,24 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 
 	result, err := cli.SearchProcessInstancesPages(cmd.Context(), request, func(step process.ProcessInstanceSearchPageStep) (process.ProcessInstanceSearchPageAction, error) {
 		page := step.Page
+		pageNumber++
+		processedTotal = int(step.CumulativeCount)
+		total, totalKind := processInstanceOpsReportedTotal(page)
+		printBasicSearchOpsProgress(cmd, basicSearchProgressMetadata{
+			Command:            "get process-instance",
+			CoreResource:       "process_instance",
+			ResourceLabel:      "process instances",
+			SelectorSummary:    "process instance search",
+			ConsequenceSummary: "process instance search will discover and render matching process instances",
+			ReportedTotal:      total,
+			TotalKind:          totalKind,
+			OverflowState:      processInstanceOpsOverflowState(page.OverflowState),
+			PageSize:           page.Request.Size,
+			CurrentPage:        pageNumber,
+			CurrentPageCount:   len(page.Items),
+			CumulativeCount:    processedTotal,
+			LimitReached:       step.LimitReached,
+		}, pageNumber == 1)
 		filtered := process.ProcessInstances{
 			Total: int32(len(page.Items)),
 			Items: page.Items,
@@ -65,11 +85,9 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 			collected.Items = append(collected.Items, filtered.Items...)
 			collected.Total = int32(len(collected.Items))
 		}
-		processedTotal = int(step.CumulativeCount)
 
 		summaryPage := page
 		summary := newPIProgressSummary(summaryPage, processedTotal, autoContinue)
-		printPISearchProgress(cmd, summary)
 
 		switch summary.ContinuationState {
 		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop, processInstanceContinuationLimitReached:
@@ -158,5 +176,33 @@ func newProcessInstanceSearchRequest(cmd *cobra.Command, cfg *config.Config, fil
 		DirectIncidentIndex:  canSearchProcessInstancesViaDirectIncidentIndex(cmd, filter),
 		DirectIncidentFilter: directIncidentSearchFilter(filter),
 		ReportedTotalAllowed: canUsePIReportedTotal(),
+	}
+}
+
+func processInstanceOpsReportedTotal(page process.ProcessInstancePage) (*int64, ops.TotalCertainty) {
+	if !canUsePIReportedTotal() || page.ReportedTotal == nil {
+		return nil, ops.TotalCertaintyUnknown
+	}
+	total := page.ReportedTotal.Count
+	switch page.ReportedTotal.Kind {
+	case process.ProcessInstanceReportedTotalKindExact:
+		return &total, ops.TotalCertaintyExact
+	case process.ProcessInstanceReportedTotalKindLowerBound:
+		return &total, ops.TotalCertaintyLowerBound
+	default:
+		return &total, ops.TotalCertaintyUnknown
+	}
+}
+
+func processInstanceOpsOverflowState(state process.ProcessInstanceOverflowState) ops.OverflowState {
+	switch state {
+	case process.ProcessInstanceOverflowStateHasMore:
+		return ops.OverflowStateHasMore
+	case process.ProcessInstanceOverflowStateIndeterminate:
+		return ops.OverflowStateIndeterminate
+	case process.ProcessInstanceOverflowStateNoMore:
+		return ops.OverflowStateNoMore
+	default:
+		return ops.OverflowStateUnknown
 	}
 }

@@ -26,12 +26,15 @@ Started: 2026-07-27T10:17:40Z
 - Slow-process enrichment updates frozen-scope progress with elapsed/rate/ETA after each root once timing is useful. Completion events keep elapsed/rate but omit stale ETA when done equals total.
 - `cmd/ops_progress.go` renders frozen progress with percent complete only when elapsed timing is present and total is exact/nonzero; approximate throughput/remaining use `~` wording. Standalone ETA events are ignored unless `opsETAAllowed` passes.
 - Phase 7 inventory lives in `specs/259-ops-scale-progress-ux/coverage.md`. It records current coverage and gaps for basic get commands, process-definition inspection/purge, process-instance cancel/delete/walk/run, smoke, retention, purge, and repair workflows.
-- Basic get commands (`get process-instance`, `get incident`, `get job`, `get element`) already have service-owned page traversal and stdout-safe incremental/JSON behavior, but still use older command progress summaries instead of shared ops preflight/page/frozen progress.
+- Basic get commands (`get process-instance`, `get incident`, `get job`, `get element`) have service-owned page traversal, stdout-safe incremental/JSON behavior, and shared ops preflight/page progress routing for plain search paths; frozen enrichment progress remains for T060.
 - Ops purge/retention/repair workflows already own discovery, freeze, planning, mutation, and audit-report semantics in services and command wrappers; follow-up progress should add shared callbacks/events without moving those backend mechanics into `cmd`.
 - `ops purge orphan-process-instances` has an existing service-level orphan discovery progress callback shape in `internal/services/processinstance/orphan_discovery.go`; it is not yet mapped to `OpsProgressEvent` or command progress-channel gating.
 - `run process-instance` has an operator-provided `--count`, and `internal/services/processinstance/bulk.go` has older periodic bulk progress logging. Treat large-count run progress as exact frozen work and preserve keys-only/JSON stdout contracts.
 - Basic inspection command tests now include separated stdout/stderr helpers for incident, job, and element search, plus process-instance coverage through the existing helper. These tests assert that future shared progress/preflight text stays out of JSON and keys-only stdout.
 - `cmd/ops_progress_test.go` now locks shared preflight resource labels for process instances, incidents, jobs, and elements; reuse `formatOpsPreflightScope`/`formatOpsPageProgress` wording when implementing basic get progress routing.
+- Basic inspection searches now route first-page preflight and page discovery through `printBasicSearchOpsProgress` in `cmd/get_processinstance_paging.go`. Default human mode updates activity only; verbose/debug write durable stderr; JSON, keys-only, quiet, and automation suppress progress text through `opsProgressChannelForMode`.
+- `get process-instance` progress only trusts backend `ReportedTotal` when `canUsePIReportedTotal()` allows it. Relationship/incident local-filter modes intentionally show unknown totals while still reporting page/seen progress.
+- `get incident`, `get job`, and `get element` convert their facade `ReportedTotal` and overflow metadata into `ops.TotalCertainty`/`ops.OverflowState` in their search command files before using the shared command progress renderer.
 
 ## Decisions
 - For this feature, transient progress should reuse the existing activity context path rather than stdout or a new global writer.
@@ -43,7 +46,7 @@ Started: 2026-07-27T10:17:40Z
 - Broad preflight is required for process-definition search mode, but explicit-key slow-process mode should stay concise and skip broad preflight.
 - `cmd/get_processinstance_paging.go` still has command-local process-instance paging helpers from earlier behavior; new ops-scale traversal should follow the stricter Ralph rule and keep page math in services.
 - Lower-bound reported totals are useful for preflight/progress wording but cannot be treated as exact completion or mutation confirmation totals.
-- `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1` currently trips an unrelated date-sensitive `TestGetProcessInstancePagingFlow` assertion that rejects the current "126 days ago" fixture text; use focused affected command patterns unless that broader test is updated.
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1` passed during T059 after narrowing a process-instance paging assertion that accidentally matched relative age text.
 - Output-mode contract notes participate in exact `OutputModeContract` comparisons; update both command metadata tests and ops-specific contract tests when adding notes.
 - Fast service tests may see zero elapsed/rate by design because timing facts are suppressed below one second; use the `slowProcessAnalysisNow` test clock in `internal/services/ops` for deterministic ETA samples instead of sleeping.
 
@@ -61,4 +64,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should implement T059 for shared preflight/page progress routing in `get process-instance`, `get incident`, `get job`, and `get element`. Keep traversal in services/facades, route human progress through stderr/activity only, and keep the T058 JSON/keys-only stdout tests passing.
+- Next iteration should implement T060 frozen enrichment progress for basic process-instance and element listener enrichment. Keep enrichment mechanics in `internal/services/processinstance` and `internal/services/element`, map only thin facade progress shapes through `c8volt/process` and `c8volt/element`, and preserve the T058/T059 JSON, keys-only, quiet, and automation output guarantees.
