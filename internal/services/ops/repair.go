@@ -89,13 +89,17 @@ func (s *Service) repairExplicitIncidents(ctx context.Context, request d.OpsRepa
 	variableUpdates := variableUpdatesByScope(result.VariableUpdates)
 	cfg := services.ApplyCallOptions(opts)
 	workers := toolx.DetermineNoOfWorkers(len(incidents), request.Workers, cfg.NoWorkerLimit)
+	emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", 0, len(incidents))
 	items, runErr := pool.ExecuteSlice(ctx, incidents, workers, cfg.FailFast, func(ctx context.Context, incident d.ProcessInstanceIncidentDetail, _ int) (repairIncidentExecution, error) {
 		return s.executeIncidentRepair(ctx, request, incident, variableUpdates, opts...)
 	})
+	completedRepairs := 0
 	for _, item := range items {
 		if item.Plan.IncidentKey == "" {
 			continue
 		}
+		completedRepairs++
+		emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", completedRepairs, len(incidents))
 		result.Plan = append(result.Plan, item.Plan)
 		result.JobApplicability = append(result.JobApplicability, item.JobApplicability)
 	}
@@ -134,13 +138,17 @@ func (s *Service) repairFilteredIncidents(ctx context.Context, request d.OpsRepa
 	variableUpdates := variableUpdatesByScope(result.VariableUpdates)
 	cfg := services.ApplyCallOptions(opts)
 	workers := toolx.DetermineNoOfWorkers(len(incidents), request.Workers, cfg.NoWorkerLimit)
+	emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", 0, len(incidents))
 	items, runErr := pool.ExecuteSlice(ctx, incidents, workers, cfg.FailFast, func(ctx context.Context, incident d.ProcessInstanceIncidentDetail, _ int) (repairIncidentExecution, error) {
 		return s.executeIncidentRepair(ctx, request, incident, variableUpdates, opts...)
 	})
+	completedRepairs := 0
 	for _, item := range items {
 		if item.Plan.IncidentKey == "" {
 			continue
 		}
+		completedRepairs++
+		emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", completedRepairs, len(incidents))
 		result.Plan = append(result.Plan, item.Plan)
 		result.JobApplicability = append(result.JobApplicability, item.JobApplicability)
 	}
@@ -228,13 +236,17 @@ func (s *Service) finishProcessInstanceIncidentRepair(ctx context.Context, reque
 	variableUpdates := variableUpdatesByScope(result.VariableUpdates)
 	cfg := services.ApplyCallOptions(opts)
 	workers := toolx.DetermineNoOfWorkers(len(incidents), request.Workers, cfg.NoWorkerLimit)
+	emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", 0, len(incidents))
 	items, runErr := pool.ExecuteSlice(ctx, incidents, workers, cfg.FailFast, func(ctx context.Context, incident d.ProcessInstanceIncidentDetail, _ int) (repairIncidentExecution, error) {
 		return s.executeIncidentRepair(ctx, request, incident, variableUpdates, opts...)
 	})
+	completedRepairs := 0
 	for _, item := range items {
 		if item.Plan.IncidentKey == "" {
 			continue
 		}
+		completedRepairs++
+		emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", completedRepairs, len(incidents))
 		result.Plan = append(result.Plan, item.Plan)
 		result.JobApplicability = append(result.JobApplicability, item.JobApplicability)
 	}
@@ -246,8 +258,11 @@ func (s *Service) finishProcessInstanceIncidentRepair(ctx context.Context, reque
 
 // finishDryRunIncidentRepair returns the same planned repair shape for every incident discovery mode without submitting mutations.
 func (s *Service) finishDryRunIncidentRepair(request d.OpsRepairRequest, result d.OpsRepairResult, incidents []d.ProcessInstanceIncidentDetail) (d.OpsRepairResult, error) {
+	phase, resource, total := repairPlanningProgressScope(request, result)
+	emitRepairFrozenScopeProgress(request, phase, resource, 0, total)
 	result.VariableUpdates = buildRepairVariableScopeUpdates(request, incidents, d.OpsWorkflowStepStatusPlanned)
 	result.Plan, result.JobApplicability = buildRepairPlans(request, incidents, variableUpdatesByScope(result.VariableUpdates))
+	emitRepairFrozenScopeProgress(request, phase, resource, total, total)
 	result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
 	return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
 }
@@ -260,9 +275,11 @@ func (s *Service) discoverProcessInstanceRepairIncidents(ctx context.Context, re
 	}
 	cfg := services.ApplyCallOptions(opts)
 	workers := toolx.DetermineNoOfWorkers(len(keys), request.Workers, cfg.NoWorkerLimit)
+	emitRepairFrozenScopeProgress(request, "loading process-instance repair incidents", "process instance(s)", 0, len(keys))
 	items, err := pool.ExecuteSlice(ctx, keys, workers, cfg.FailFast, func(ctx context.Context, key string, _ int) ([]d.ProcessInstanceIncidentDetail, error) {
 		return s.incAPI.SearchProcessInstanceIncidents(ctx, key, opts...)
 	})
+	emitRepairFrozenScopeProgress(request, "loading process-instance repair incidents", "process instance(s)", len(items), len(keys))
 	seen := make(map[string]struct{})
 	out := make([]d.ProcessInstanceIncidentDetail, 0)
 	for _, item := range items {
@@ -342,12 +359,16 @@ func (s *Service) discoverRepairIncidentSearchSet(ctx context.Context, request d
 			return d.OpsRepairFrozenSet{}, err
 		}
 		status.Pages++
+		if status.Pages == 1 {
+			emitRepairIncidentPreflight(request, page)
+		}
 		status.CandidatesSeen += len(page.Items)
 		items := limitRepairIncidentPageItems(page.Items, request.Limit, len(incidents))
 		incidents = append(incidents, items...)
 		if request.Limit > 0 && len(incidents) >= int(request.Limit) {
 			limited = true
 		}
+		emitRepairIncidentPageProgress(request, page, status, len(incidents), limited)
 		if limited || repairIncidentDiscoveryPageComplete(page) {
 			status.Complete = !limited
 			status.Limited = limited
@@ -376,12 +397,16 @@ func (s *Service) discoverRepairProcessInstanceSearchCandidates(ctx context.Cont
 			return nil, d.DiscoveryScopeStatus{}, err
 		}
 		status.Pages++
+		if status.Pages == 1 {
+			emitRepairProcessInstancePreflight(request, page)
+		}
 		status.CandidatesSeen += len(page.Items)
 		items := limitRepairProcessInstancePageItems(page.Items, request.Limit, len(out))
 		out = append(out, items...)
 		if request.Limit > 0 && len(out) >= int(request.Limit) {
 			limited = true
 		}
+		emitRepairProcessInstancePageProgress(request, page, status, len(out), limited)
 		if limited || repairProcessInstanceDiscoveryPageComplete(page) {
 			status.Complete = !limited
 			status.Limited = limited
@@ -908,6 +933,9 @@ func withRepairOptionControls(request d.OpsRepairRequest, opts ...services.CallO
 	request.FailFast = request.FailFast || cfg.FailFast
 	request.NoWorkerLimit = request.NoWorkerLimit || cfg.NoWorkerLimit
 	request.DryRun = request.DryRun || cfg.DryRun
+	if request.Progress == nil {
+		request.Progress = cfg.Progress
+	}
 	return request
 }
 

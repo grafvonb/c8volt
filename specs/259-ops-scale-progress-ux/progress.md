@@ -404,3 +404,29 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Repair progress contracts are captured as pending T068 tests while the current focused command and service suites remain green.
 ---
+---
+## Iteration 11 - 2026-07-27 15:33
+**Work Unit**: T068 Ops repair shared preflight and frozen progress
+**Tasks Completed**:
+- [x] T068: Implement shared preflight and frozen repair progress for `ops repair incident` and `ops repair process-instance`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- cmd/cmd_views_ops_repair.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_incident_test.go
+- cmd/ops_repair_processinstance.go
+- cmd/ops_repair_processinstance_test.go
+- cmd/ops_repair_progress.go
+- internal/domain/ops_repair.go
+- internal/services/ops/repair.go
+- internal/services/ops/repair_progress.go
+- internal/services/ops/repair_test.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Repair workflows now share stdout-safe preflight, discovery, planning, lookup, and mutation progress while final verbose repair output stays on stdout.
+---

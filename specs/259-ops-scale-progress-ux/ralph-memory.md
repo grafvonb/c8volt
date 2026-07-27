@@ -57,6 +57,10 @@ Started: 2026-07-27T10:17:40Z
 - T067 added pending T068 repair progress tests in `cmd/ops_repair_incident_test.go`, `cmd/ops_repair_processinstance_test.go`, and `internal/services/ops/repair_test.go`. They currently skip through `pendingOpsRepairProgressT068` and `pendingRepairProgressT068`; T068 should remove those skips after implementing shared progress routing.
 - Repair progress tests define incident-search and process-instance-search preflight/page events, process-instance active-incident lookup counters, frozen planning counters, keyed bulk repair counters, confirmation prompt assertions, and JSON/quiet/automation progress silence.
 - `ops repair incident` and `ops repair process-instance` already use the public facade with `collectOptions()`, so T068 can pass `foptions.WithProgress` from command wrappers while keeping service-owned discovery and mutation mechanics in `internal/services/ops/repair.go`.
+- Repair requests now carry optional `Progress func(ProgressEvent)` callbacks through `c8volt/ops` into `internal/services/ops`; nil callbacks and `services.WithProgress` fallback remain safe.
+- T068 progress routing uses `cmd/ops_repair_progress.go`: preflight/page events reuse shared ops formatters, frozen planning/loading/repair counters use the no-comma mutation counter style, and JSON/quiet/automation modes stay silent.
+- `internal/services/ops/repair_progress.go` emits repair search preflight/page facts from first-page metadata, planning counters during dry-run planning, process-instance active-incident lookup counters, and exact `repairing incidents` counters during keyed mutation.
+- Repair human result renderers now write final result/report lines directly to command stdout even when `--verbose` installs a logger; progress remains on stderr/activity.
 
 ## Decisions
 - For this feature, transient progress should reuse the existing activity context path rather than stdout or a new global writer.
@@ -88,4 +92,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should implement T068 by activating the pending repair progress tests, emitting shared preflight/page/frozen progress from `internal/services/ops/repair.go`, routing repair command progress through stdout-safe command helpers, and preserving JSON/quiet/automation silence without starting T069.
+- Next iteration should implement T069 explicit-large-work progress for `walk process-instance`, bulk `run process-instance`, and `ops execute smoke-test`; do not start Phase 8 polish yet.

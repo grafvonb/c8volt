@@ -310,7 +310,6 @@ func TestOpsRepairProcessInstanceRejectsInvalidSelection(t *testing.T) {
 // process-instance search preflight, confirmation, incident lookup, repair
 // counters, and stdout-safe progress.
 func TestOpsRepairProcessInstanceProgressContractPendingT068(t *testing.T) {
-	pendingOpsRepairProgressT068(t)
 	resetOpsRepairProcessInstanceFlagState()
 	t.Cleanup(resetOpsRepairProcessInstanceFlagState)
 
@@ -358,8 +357,6 @@ func TestOpsRepairProcessInstanceProgressContractPendingT068(t *testing.T) {
 // process-instance repair progress silence for JSON, quiet, and automation
 // modes.
 func TestOpsRepairProcessInstanceMachineProgressSafetyPendingT068(t *testing.T) {
-	pendingOpsRepairProgressT068(t)
-
 	for _, mode := range []struct {
 		name string
 		args []string

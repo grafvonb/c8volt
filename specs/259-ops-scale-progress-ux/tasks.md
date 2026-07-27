@@ -161,7 +161,7 @@
 - [x] T065 [P] Add ops purge and retention progress tests for candidate discovery, frozen delete planning, deletion counters, reports, and output-mode safety in `cmd/ops_execute_retention_policy_test.go`, `cmd/ops_purge_orphan_processinstances_test.go`, and `cmd/ops_purge_processinstances_with_incidents_test.go`
 - [x] T066 Implement shared preflight/page/frozen progress for retention, orphan purge, and incident-based purge workflows in `cmd/ops_execute_retention_policy.go`, `cmd/ops_purge_orphan_processinstances.go`, `cmd/ops_purge_processinstances_with_incidents.go`, and `internal/services/ops`
 - [x] T067 [P] Add ops repair progress tests for incident search, process-instance search, keyed bulk repair counters, confirmation prompts, and output-mode safety in `cmd/ops_repair_incident_test.go`, `cmd/ops_repair_processinstance_test.go`, and `internal/services/ops/repair_test.go`
-- [ ] T068 Implement shared preflight and frozen repair progress for `ops repair incident` and `ops repair process-instance` in `cmd/ops_repair_incident.go`, `cmd/ops_repair_processinstance.go`, `c8volt/ops`, and `internal/services/ops/repair.go`
+- [x] T068 Implement shared preflight and frozen repair progress for `ops repair incident` and `ops repair process-instance` in `cmd/ops_repair_incident.go`, `cmd/ops_repair_processinstance.go`, `c8volt/ops`, and `internal/services/ops/repair.go`
 - [ ] T069 Add explicit-large-work progress for `walk process-instance`, bulk `run process-instance`, and `ops execute smoke-test` in `cmd/walk_processinstance.go`, `cmd/run_processinstance.go`, `cmd/ops_execute_smoketest.go`, `c8volt/process`, `c8volt/ops`, and matching service tests
 
 ---

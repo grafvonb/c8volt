@@ -949,17 +949,11 @@ func TestRepairIncidentsBlocksResolutionWhenVariableScopeFails(t *testing.T) {
 	require.Equal(t, d.OpsWorkflowStepStatusBlocked, got.Plan[0].ResolutionStatus)
 }
 
-func pendingRepairProgressT068(t *testing.T) {
-	t.Helper()
-	t.Skip("pending T068 repair progress implementation")
-}
-
 // TestRepairIncidentsSearchProgressContractPendingT068 defines the structured
 // incident repair progress emitted from service-owned paged discovery and
 // frozen planning.
 func TestRepairIncidentsSearchProgressContractPendingT068(t *testing.T) {
 	t.Parallel()
-	pendingRepairProgressT068(t)
 
 	var pageRequests []d.IncidentPageRequest
 	var events []d.OpsProgressEvent
@@ -1036,7 +1030,6 @@ func TestRepairIncidentsSearchProgressContractPendingT068(t *testing.T) {
 // lookup before repair planning.
 func TestRepairProcessInstancesSearchProgressContractPendingT068(t *testing.T) {
 	t.Parallel()
-	pendingRepairProgressT068(t)
 
 	hasIncident := true
 	var pageRequests []d.ProcessInstancePageRequest
@@ -1111,7 +1104,6 @@ func TestRepairProcessInstancesSearchProgressContractPendingT068(t *testing.T) {
 // frozen repair counters for explicit keyed bulk mutation.
 func TestRepairIncidentsKeyedBulkProgressCountersPendingT068(t *testing.T) {
 	t.Parallel()
-	pendingRepairProgressT068(t)
 
 	incidents := map[string]d.ProcessInstanceIncidentDetail{
 		"2251799813685249": {IncidentKey: "2251799813685249", ProcessInstanceKey: "2251799813685251", JobKey: "2251799813685252", State: "ACTIVE"},

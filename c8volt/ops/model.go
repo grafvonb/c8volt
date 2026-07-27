@@ -243,6 +243,7 @@ type RepairRequest struct {
 	ReportFile               string                        `json:"reportFile,omitempty"`
 	ReportFormat             string                        `json:"reportFormat,omitempty"`
 	StartedAt                time.Time                     `json:"startedAt,omitempty"`
+	Progress                 func(ProgressEvent)           `json:"-"`
 }
 
 // RepairFrozenSet captures the immutable target data discovered before mutation.

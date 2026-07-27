@@ -71,6 +71,7 @@ type OpsRepairRequest struct {
 	ReportFile               string
 	ReportFormat             string
 	StartedAt                time.Time
+	Progress                 func(OpsProgressEvent)
 }
 
 // OpsRepairFrozenSet captures the immutable target data discovered before mutation.

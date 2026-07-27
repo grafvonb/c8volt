@@ -1208,6 +1208,7 @@ func toDomainRepairRequest(x RepairRequest) d.OpsRepairRequest {
 		ReportFile:               x.ReportFile,
 		ReportFormat:             x.ReportFormat,
 		StartedAt:                x.StartedAt,
+		Progress:                 toDomainProgressFunc(x.Progress),
 	}
 }
 
@@ -1254,6 +1255,7 @@ func fromDomainRepairRequest(x d.OpsRepairRequest) RepairRequest {
 		ReportFile:               x.ReportFile,
 		ReportFormat:             x.ReportFormat,
 		StartedAt:                x.StartedAt,
+		Progress:                 fromDomainProgressFunc(x.Progress),
 	}
 }
 

@@ -381,15 +381,9 @@ func TestOpsRepairIncidentInvalidKeyFailsBeforeMutation(t *testing.T) {
 	require.NotContains(t, string(output), "Usage:")
 }
 
-func pendingOpsRepairProgressT068(t *testing.T) {
-	t.Helper()
-	t.Skip("pending T068 repair progress implementation")
-}
-
 // TestOpsRepairIncidentProgressContractPendingT068 defines incident-search
 // preflight, frozen confirmation, repair counters, and stdout-safe progress.
 func TestOpsRepairIncidentProgressContractPendingT068(t *testing.T) {
-	pendingOpsRepairProgressT068(t)
 	resetOpsRepairIncidentFlagState()
 	t.Cleanup(resetOpsRepairIncidentFlagState)
 
@@ -440,8 +434,6 @@ func TestOpsRepairIncidentProgressContractPendingT068(t *testing.T) {
 // TestOpsRepairIncidentMachineProgressSafetyPendingT068 pins repair progress
 // silence for JSON, quiet, and automation modes.
 func TestOpsRepairIncidentMachineProgressSafetyPendingT068(t *testing.T) {
-	pendingOpsRepairProgressT068(t)
-
 	for _, mode := range []struct {
 		name string
 		args []string
