@@ -63,6 +63,14 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 		return result, fmt.Errorf("%w: select process instances with explicit keys or one process-definition selector", d.ErrValidation)
 	}
 
+	frozenProgress := d.OpsFrozenScopeProgress{
+		Phase:        slowProcessAnalysisEnrichmentProgressPhase(request),
+		CoreResource: "process instance(s)",
+		Total:        len(instances),
+	}
+	result.FrozenScopeProgress = &frozenProgress
+	slowProcessAnalysisEmitProgress(request, slowProcessAnalysisFrozenScopeEvent(frozenProgress))
+
 	enriched := d.ElementEnrichedProcessInstances{Items: make([]d.ElementEnrichedProcessInstance, 0, len(instances))}
 	if len(instances) > 0 {
 		if s.elementAPI == nil {
@@ -83,6 +91,9 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 			return result, fmt.Errorf("%s: %w", lookupContext, err)
 		}
 	}
+	frozenProgress.Done = len(instances)
+	result.FrozenScopeProgress = &frozenProgress
+	slowProcessAnalysisEmitProgress(request, slowProcessAnalysisFrozenScopeEvent(frozenProgress))
 
 	items := make([]d.SlowProcessAnalysisProcessInstance, 0, len(enriched.Items))
 	for _, enrichedItem := range enriched.Items {
@@ -109,6 +120,30 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 	result.Empty = len(items) == 0
 	result.Request = request
 	return result, nil
+}
+
+// slowProcessAnalysisEmitProgress keeps service progress callbacks optional and nil-safe.
+func slowProcessAnalysisEmitProgress(request d.SlowProcessAnalysisRequest, event d.OpsProgressEvent) {
+	if request.Progress == nil {
+		return
+	}
+	request.Progress(event)
+}
+
+// slowProcessAnalysisFrozenScopeEvent builds a snapshot event so callbacks cannot observe later local mutations.
+func slowProcessAnalysisFrozenScopeEvent(progress d.OpsFrozenScopeProgress) d.OpsProgressEvent {
+	return d.OpsProgressEvent{
+		Kind:        d.OpsProgressEventKindFrozenScope,
+		FrozenScope: &progress,
+	}
+}
+
+// slowProcessAnalysisEnrichmentProgressPhase picks the operator-facing frozen-scope phase for the requested enrichment path.
+func slowProcessAnalysisEnrichmentProgressPhase(request d.SlowProcessAnalysisRequest) string {
+	if request.WithListeners {
+		return "loading listener jobs"
+	}
+	return "loading runtime elements"
 }
 
 // slowProcessAnalysisApplyRootDurationFilter hides roots whose measured whole-process duration is not above the threshold.

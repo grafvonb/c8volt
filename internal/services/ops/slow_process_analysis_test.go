@@ -118,6 +118,68 @@ func TestSlowProcessAnalysisExplicitKeysDeduplicatesLooksUpAndSortsRoots(t *test
 	require.Equal(t, captured, got.CapturedAt)
 }
 
+// TestSlowProcessAnalysisProgressCallbackReceivesFrozenScopeSnapshots verifies service progress callbacks receive exact frozen counters.
+func TestSlowProcessAnalysisProgressCallbackReceivesFrozenScopeSnapshots(t *testing.T) {
+	captured := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:30:00Z")
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	root := slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(2*time.Minute))
+	piAPI := stubProcessInstanceAPI{
+		search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+			return []d.ProcessInstance{root}, nil
+		},
+	}
+	elementAPI := stubSlowProcessAnalysisElementAPI{
+		search: func(context.Context, d.ElementSearchQuery, ...services.CallOption) (d.ElementSearchResult, error) {
+			return d.ElementSearchResult{Items: []d.Element{
+				slowProcessAnalysisFixtureElement(root.Key, "2251799813685250", "ReserveStock", start, start.Add(time.Minute)),
+			}}, nil
+		},
+	}
+	var events []d.OpsProgressEvent
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, elementAPI, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
+		InputKeys:     typex.Keys{root.Key},
+		CapturedNow:   captured,
+		Progress: func(event d.OpsProgressEvent) {
+			if event.FrozenScope != nil {
+				frozen := *event.FrozenScope
+				event.FrozenScope = &frozen
+			}
+			events = append(events, event)
+		},
+	})
+
+	require.NoError(t, err)
+	require.Len(t, events, 2)
+	require.Equal(t, d.OpsProgressEventKindFrozenScope, events[0].Kind)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "loading runtime elements", CoreResource: "process instance(s)", Done: 0, Total: 1}, *events[0].FrozenScope)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "loading runtime elements", CoreResource: "process instance(s)", Done: 1, Total: 1}, *events[1].FrozenScope)
+	require.Equal(t, *events[1].FrozenScope, *got.FrozenScopeProgress)
+}
+
+// TestSlowProcessAnalysisNilProgressCallbackIsSafe verifies progress plumbing stays optional for callers.
+func TestSlowProcessAnalysisNilProgressCallbackIsSafe(t *testing.T) {
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	root := slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(2*time.Minute))
+	piAPI := stubProcessInstanceAPI{
+		search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+			return []d.ProcessInstance{root}, nil
+		},
+	}
+	elementAPI := stubSlowProcessAnalysisElementAPI{}
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, elementAPI, toolx.V89).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
+		InputKeys:     typex.Keys{root.Key},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, got.FrozenScopeProgress)
+	require.Equal(t, 1, got.FrozenScopeProgress.Done)
+	require.Equal(t, 1, got.FrozenScopeProgress.Total)
+}
+
 // TestSlowProcessAnalysisExplicitKeysUsesBoundedWorkersForLookup verifies high-volume explicit key analysis overlaps tenant-safe lookups without unbounded fan-out.
 func TestSlowProcessAnalysisExplicitKeysUsesBoundedWorkersForLookup(t *testing.T) {
 	previousProcs := runtime.GOMAXPROCS(1)

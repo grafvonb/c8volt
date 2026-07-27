@@ -32,12 +32,12 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T006 [P] Add shared progress domain types for total certainty, preflight scope, page progress, frozen-scope progress, consequence summary, and ETA samples in `internal/domain/ops_progress.go`
-- [ ] T007 [P] Add public facade progress types and domain mapping helpers in `c8volt/ops/progress_model.go`
-- [ ] T008 [P] Add activity/progress formatter unit tests for total certainty, page count wording, frozen counters, quiet gating, and ETA gating in `cmd/ops_progress_test.go`
-- [ ] T009 Implement shared command progress formatting and output-mode gating helpers in `cmd/ops_progress.go`
-- [ ] T010 Add slow-process request/result progress fields and facade mapping tests in `c8volt/ops/model.go` and `c8volt/ops/client_test.go`
-- [ ] T011 Add service-level progress callback plumbing and no-op safety tests in `internal/services/ops/slow_process_analysis_test.go`
+- [x] T006 [P] Add shared progress domain types for total certainty, preflight scope, page progress, frozen-scope progress, consequence summary, and ETA samples in `internal/domain/ops_progress.go`
+- [x] T007 [P] Add public facade progress types and domain mapping helpers in `c8volt/ops/progress_model.go`
+- [x] T008 [P] Add activity/progress formatter unit tests for total certainty, page count wording, frozen counters, quiet gating, and ETA gating in `cmd/ops_progress_test.go`
+- [x] T009 Implement shared command progress formatting and output-mode gating helpers in `cmd/ops_progress.go`
+- [x] T010 Add slow-process request/result progress fields and facade mapping tests in `c8volt/ops/model.go` and `c8volt/ops/client_test.go`
+- [x] T011 Add service-level progress callback plumbing and no-op safety tests in `internal/services/ops/slow_process_analysis_test.go`
 
 **Checkpoint**: Shared progress/preflight types and command formatting helpers are available for story work.
 

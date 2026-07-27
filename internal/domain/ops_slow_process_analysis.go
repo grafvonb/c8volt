@@ -43,6 +43,7 @@ type SlowProcessAnalysisRequest struct {
 	CapturedNow               time.Time                                       `json:"capturedNow,omitempty"`
 	OutputMode                string                                          `json:"outputMode,omitempty"`
 	WithListeners             bool                                            `json:"withListeners,omitempty"`
+	Progress                  func(OpsProgressEvent)                          `json:"-"`
 }
 
 // SlowProcessAnalysisProcessDefinitionSelector identifies the process-definition cohort for search mode.
@@ -124,6 +125,8 @@ type SlowProcessAnalysisTimelineEntry struct {
 type SlowProcessAnalysisResult struct {
 	Request               SlowProcessAnalysisRequest           `json:"request,omitempty"`
 	DiscoveredScopeStatus DiscoveryScopeStatus                 `json:"discoveredScopeStatus,omitempty"`
+	PreflightScope        *OpsPreflightScope                   `json:"preflightScope,omitempty"`
+	FrozenScopeProgress   *OpsFrozenScopeProgress              `json:"frozenScopeProgress,omitempty"`
 	CapturedAt            time.Time                            `json:"capturedAt,omitempty"`
 	Items                 []SlowProcessAnalysisProcessInstance `json:"items"`
 	Count                 int                                  `json:"count"`

@@ -289,8 +289,15 @@ func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing
 	captured := time.Date(2026, 7, 18, 10, 30, 0, 0, time.UTC)
 	rootDurationLonger := 10 * time.Minute
 	durationAfter := 5 * time.Second
+	progressTotal := int64(800)
+	progressPages := int64(8)
+	remaining := 3 * time.Minute
+	var progressEvents []ProgressEvent
 	api := stubOpsService{
 		slowProcessAnalysis: func(_ context.Context, request d.SlowProcessAnalysisRequest, opts ...services.CallOption) (d.SlowProcessAnalysisResult, error) {
+			require.NotNil(t, request.Progress)
+			requestForCompare := request
+			requestForCompare.Progress = nil
 			require.Equal(t, d.SlowProcessAnalysisRequest{
 				CommandName:   "ops analyse slow-process-instances",
 				SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
@@ -319,8 +326,27 @@ func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing
 				CapturedNow:        captured,
 				OutputMode:         "json",
 				WithListeners:      true,
-			}, request)
+			}, requestForCompare)
 			require.True(t, services.ApplyCallOptions(opts).Verbose)
+			request.Progress(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindPreflight,
+				Preflight: &d.OpsPreflightScope{
+					Phase:           "preflight",
+					Command:         request.CommandName,
+					CoreResource:    "process_instance",
+					SelectorSummary: "OrderProcess",
+					Total:           &progressTotal,
+					TotalKind:       d.OpsTotalCertaintyLowerBound,
+					PageSize:        250,
+					PageCount:       &progressPages,
+					PageCountKind:   d.OpsPageCountKindEstimated,
+					ConsequenceSummary: d.OpsConsequenceSummary{
+						ResourceSummary: "800+ process instance(s)",
+						WorkSummary:     "load runtime element timelines",
+						RiskSummary:     "read-only expensive analysis",
+					},
+				},
+			})
 			return d.SlowProcessAnalysisResult{
 				Request: request,
 				DiscoveredScopeStatus: d.DiscoveryScopeStatus{
@@ -331,6 +357,25 @@ func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing
 					Pages:            2,
 					CandidatesSeen:   12,
 					CandidatesFrozen: 10,
+				},
+				PreflightScope: &d.OpsPreflightScope{
+					Phase:           "preflight",
+					Command:         request.CommandName,
+					CoreResource:    "process_instance",
+					SelectorSummary: "OrderProcess",
+					Total:           &progressTotal,
+					TotalKind:       d.OpsTotalCertaintyLowerBound,
+					PageSize:        250,
+					PageCount:       &progressPages,
+					PageCountKind:   d.OpsPageCountKindEstimated,
+				},
+				FrozenScopeProgress: &d.OpsFrozenScopeProgress{
+					Phase:        "loading runtime elements",
+					CoreResource: "process instance(s)",
+					Done:         48,
+					Total:        800,
+					Elapsed:      2 * time.Minute,
+					ETA:          &remaining,
 				},
 				CapturedAt: captured,
 				Items: []d.SlowProcessAnalysisProcessInstance{{
@@ -405,9 +450,15 @@ func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing
 		CapturedNow:        captured,
 		OutputMode:         "json",
 		WithListeners:      true,
+		Progress: func(event ProgressEvent) {
+			progressEvents = append(progressEvents, event)
+		},
 	}, foptions.WithVerbose())
 
 	require.NoError(t, err)
+	require.Len(t, progressEvents, 1)
+	require.Equal(t, ProgressEventKindPreflight, progressEvents[0].Kind)
+	require.Equal(t, TotalCertaintyLowerBound, progressEvents[0].Preflight.TotalKind)
 	require.Equal(t, captured, got.CapturedAt)
 	require.Equal(t, 1, got.Count)
 	require.Equal(t, []string{"sample warning"}, got.Warnings)
@@ -420,6 +471,10 @@ func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing
 		CandidatesSeen:   12,
 		CandidatesFrozen: 10,
 	}, got.DiscoveredScopeStatus)
+	require.Equal(t, TotalCertaintyLowerBound, got.PreflightScope.TotalKind)
+	require.Equal(t, PageCountKindEstimated, got.PreflightScope.PageCountKind)
+	require.Equal(t, "loading runtime elements", got.FrozenScopeProgress.Phase)
+	require.Equal(t, &remaining, got.FrozenScopeProgress.ETA)
 	require.Equal(t, process.StateCompleted, got.Items[0].State)
 	require.Equal(t, SlowProcessAnalysisTimelineEntryKindElement, got.Items[0].Timeline[0].Kind)
 	require.Equal(t, 1, got.Items[0].Timeline[0].ProcessDurationShare)
