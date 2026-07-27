@@ -336,3 +336,20 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Process-instance mutation progress now flows through shared facade options; command-level fallback rendering keeps existing stub contracts active while real services own progress facts.
 ---
+---
+## Iteration 8 - 2026-07-27 15:04
+**Work Unit**: T065 Ops purge and retention progress tests
+**Tasks Completed**:
+- [x] T065: Add ops purge and retention progress tests for candidate discovery, frozen delete planning, deletion counters, reports, and output-mode safety
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_execute_retention_policy_test.go
+- cmd/ops_purge_orphan_processinstances_test.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Pending T066 command contracts now define expected verbose progress and machine-mode silence for retention, orphan purge, and incident-based purge workflows.
+---

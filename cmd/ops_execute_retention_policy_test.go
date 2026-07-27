@@ -661,6 +661,89 @@ func TestOpsExecuteRetentionPolicyNonFinalBlockerMessageHonorsVerbose(t *testing
 	require.NotContains(t, got, "use --verbose to list keys")
 }
 
+func pendingOpsPurgeRetentionProgressT066(t *testing.T) {
+	t.Helper()
+	t.Skip("pending T066 implementation of ops purge and retention progress routing")
+}
+
+// TestOpsExecuteRetentionPolicyProgressContractPendingT066 defines retention
+// candidate discovery, delete planning, deletion counter, and report progress.
+func TestOpsExecuteRetentionPolicyProgressContractPendingT066(t *testing.T) {
+	pendingOpsPurgeRetentionProgressT066(t)
+
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsRetentionPolicyServerWithSeed(t, &requests, &deleted)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "retention-progress.json")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"--verbose",
+		"ops", "execute", "retention-policy",
+		"--retention-days", "90",
+		"--auto-confirm",
+		"--no-wait",
+		"--batch-size", "1",
+		"--report-file", reportPath,
+		"--report-format", "json",
+	)
+
+	require.Contains(t, stderr, "preflight: retention-policy matches 1 process instance(s); page size 1; discovery will require 1 page(s)")
+	require.Contains(t, stderr, "discovering retention process instances, page 1/1, 1 seen")
+	require.Contains(t, stderr, "planning retention delete scope 1/1 process instance(s)")
+	require.Contains(t, stderr, "deleting process instances 1/1 process instance(s)")
+	require.NotContains(t, stderr, "/v2/")
+	require.NotContains(t, stderr, "cursor")
+	require.NotContains(t, stdout, "preflight:")
+	require.NotContains(t, stdout, "discovering retention process instances")
+	require.Contains(t, stdout, "report: written "+reportPath)
+	require.Contains(t, stdout, "outcome: deleted")
+	require.Equal(t, []string{"/v2/process-instances/" + opsRetentionPolicySeedKey + "/deletion"}, deleted.Snapshot())
+
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, "deleted", report["outcome"])
+	require.Equal(t, true, report["deleteRequested"])
+}
+
+// TestOpsExecuteRetentionPolicyMachineProgressSafetyPendingT066 pins retention
+// progress silence for JSON, quiet, and automation modes.
+func TestOpsExecuteRetentionPolicyMachineProgressSafetyPendingT066(t *testing.T) {
+	pendingOpsPurgeRetentionProgressT066(t)
+
+	for _, mode := range []struct {
+		name string
+		args []string
+	}{
+		{name: "json", args: []string{"--json", "ops", "execute", "retention-policy", "--retention-days", "90", "--auto-confirm", "--no-wait", "--batch-size", "1"}},
+		{name: "quiet", args: []string{"--quiet", "ops", "execute", "retention-policy", "--retention-days", "90", "--auto-confirm", "--no-wait", "--batch-size", "1"}},
+		{name: "automation", args: []string{"--automation", "ops", "execute", "retention-policy", "--retention-days", "90", "--no-wait", "--batch-size", "1"}},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			var deleted testx.SafeSlice[string]
+			srv := newOpsRetentionPolicyServerWithSeed(t, &requests, &deleted)
+			t.Cleanup(srv.Close)
+
+			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.9")}, mode.args...)
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+			require.NotContains(t, stdout, "preflight:")
+			require.NotContains(t, stdout, "discovering retention process instances")
+			require.NotContains(t, stdout, "planning retention delete scope")
+			require.NotContains(t, stdout, "deleting process instances")
+			require.NotContains(t, stderr, "preflight:")
+			require.NotContains(t, stderr, "discovering retention process instances")
+			require.NotContains(t, stderr, "planning retention delete scope")
+			require.NotContains(t, stderr, "deleting process instances")
+			if mode.name == "json" {
+				var envelope map[string]any
+				require.NoError(t, json.Unmarshal([]byte(stdout), &envelope), stdout)
+			}
+		})
+	}
+}
+
 func marshalRetentionArgsForEnv(t *testing.T, args []string) string {
 	t.Helper()
 

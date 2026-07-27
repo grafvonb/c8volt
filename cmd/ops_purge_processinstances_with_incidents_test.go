@@ -714,6 +714,99 @@ func TestOpsPurgeProcessInstancesWithIncidentsInvalidFlagsHelper(t *testing.T) {
 	os.Exit(0)
 }
 
+// TestOpsPurgeProcessInstancesWithIncidentsProgressContractPendingT066 defines
+// incident discovery, delete planning, deletion counter, and report progress.
+func TestOpsPurgeProcessInstancesWithIncidentsProgressContractPendingT066(t *testing.T) {
+	pendingOpsPurgeRetentionProgressT066(t)
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
+
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsIncidentPurgeMultiPageServer(t, &requests, &deleted)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "incident-purge-progress.json")
+
+	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeProcessInstancesWithIncidentsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_INCIDENT_PURGE_ARGS": marshalOpsPurgeProcessInstancesWithIncidentsArgsForEnv(t, []string{
+			"--verbose",
+			"ops", "purge", "process-instances-with-incidents",
+			"--auto-confirm",
+			"--no-wait",
+			"--batch-size", "1",
+			"--report-file", reportPath,
+			"--report-format", "json",
+		}),
+	})
+	require.NoError(t, err, stderr)
+
+	require.Contains(t, stderr, "preflight: process-instances-with-incidents purge matches 2 incident(s); page size 1; discovery will require 2 page(s)")
+	require.Contains(t, stderr, "discovering incidents, page 1/2, 1 seen")
+	require.Contains(t, stderr, "discovering incidents, page 2/2, 2 seen")
+	require.Contains(t, stderr, "planning incident process-instance delete scope 2/2 process instance(s)")
+	require.Contains(t, stderr, "deleting process instances 2/2 process instance(s)")
+	require.NotContains(t, stderr, "/v2/")
+	require.NotContains(t, stderr, "cursor")
+	require.NotContains(t, stdout, "preflight:")
+	require.NotContains(t, stdout, "discovering incidents")
+	require.Contains(t, stdout, "report: written "+reportPath)
+	require.Contains(t, stdout, "outcome: deleted")
+	require.ElementsMatch(t, []string{
+		"/v2/process-instances/" + opsIncidentPurgeRootKey + "/deletion",
+		"/v2/process-instances/" + opsIncidentPurgeChildKey + "/deletion",
+	}, deleted.Snapshot())
+
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, "deleted", report["outcome"])
+	require.Equal(t, true, report["deleteRequested"])
+}
+
+// TestOpsPurgeProcessInstancesWithIncidentsMachineProgressSafetyPendingT066 pins
+// incident purge progress silence for JSON, quiet, and automation modes.
+func TestOpsPurgeProcessInstancesWithIncidentsMachineProgressSafetyPendingT066(t *testing.T) {
+	pendingOpsPurgeRetentionProgressT066(t)
+
+	for _, mode := range []struct {
+		name string
+		args []string
+	}{
+		{name: "json", args: []string{"--json", "ops", "purge", "process-instances-with-incidents", "--auto-confirm", "--no-wait", "--batch-size", "1"}},
+		{name: "quiet", args: []string{"--quiet", "ops", "purge", "process-instances-with-incidents", "--auto-confirm", "--no-wait", "--batch-size", "1"}},
+		{name: "automation", args: []string{"--automation", "ops", "purge", "process-instances-with-incidents", "--no-wait", "--batch-size", "1"}},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+			t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
+
+			var requests testx.SafeSlice[string]
+			var deleted testx.SafeSlice[string]
+			srv := newOpsIncidentPurgeMultiPageServer(t, &requests, &deleted)
+			t.Cleanup(srv.Close)
+
+			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeProcessInstancesWithIncidentsCommandHelper", map[string]string{
+				"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+				"C8VOLT_TEST_INCIDENT_PURGE_ARGS": marshalOpsPurgeProcessInstancesWithIncidentsArgsForEnv(t,
+					append(mode.args, "--report-file", filepath.Join(t.TempDir(), mode.name+".json"), "--report-format", "json")),
+			})
+			require.NoError(t, err, stderr)
+			require.NotContains(t, stdout, "preflight:")
+			require.NotContains(t, stdout, "discovering incidents")
+			require.NotContains(t, stdout, "planning incident process-instance delete scope")
+			require.NotContains(t, stdout, "deleting process instances")
+			require.NotContains(t, stderr, "preflight:")
+			require.NotContains(t, stderr, "discovering incidents")
+			require.NotContains(t, stderr, "planning incident process-instance delete scope")
+			require.NotContains(t, stderr, "deleting process instances")
+			if mode.name == "json" {
+				var envelope map[string]any
+				require.NoError(t, json.Unmarshal([]byte(stdout), &envelope), stdout)
+			}
+		})
+	}
+}
+
 // TestOpsPurgeProcessInstancesWithIncidentsCommandHelper runs incident purge command subprocess cases.
 func TestOpsPurgeProcessInstancesWithIncidentsCommandHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
