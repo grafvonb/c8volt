@@ -495,3 +495,20 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - README now states operator-facing preflight/progress scope, channel safety, total certainty, ETA gating, and `--batch-size` versus `--limit` behavior in the ops overview.
 ---
+---
+## Iteration 15 - 2026-07-27 15:58
+**Work Unit**: T052 Generated CLI documentation refresh
+**Tasks Completed**:
+- [x] T052: Regenerate generated CLI documentation with `make docs-content` and verify updated files under `docs/cli/`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- docs/cli/c8volt_get_process-definition.md
+- docs/cli/c8volt_ops_analyse_slow-process-instances.md
+- docs/index.md
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Generated docs now reflect the ops-scale help and README updates; docs generation also refreshes homepage build metadata.
+---

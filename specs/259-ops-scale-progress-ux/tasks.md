@@ -173,7 +173,7 @@
 - [x] T049 [P] Update slow-process help text and command examples for preflight, progress, total certainty, and `--batch-size` versus `--limit` in `cmd/ops_analyse_slow_process_instances.go`
 - [x] T050 [P] Update command contract tests for help/documentation wording in `cmd/command_contract_test.go`
 - [x] T051 Update README operational notes for ops-scale preflight and progress behavior in `README.md`
-- [ ] T052 Regenerate generated CLI documentation with `make docs-content` and verify updated files under `docs/cli/`
+- [x] T052 Regenerate generated CLI documentation with `make docs-content` and verify updated files under `docs/cli/`
 - [ ] T053 Run focused activity tests with `GOCACHE=/tmp/c8volt-gocache go test ./toolx/logging ./testx/activitysink -count=1` for `toolx/logging/activity.go` and `testx/activitysink/activity_sink.go`
 - [ ] T054 Run focused service tests with `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/processinstance ./internal/services/ops -run 'Progress|Preflight|SlowProcess|SearchProcessInstances' -count=1` for `internal/services/processinstance/search.go` and `internal/services/ops/slow_process_analysis.go`
 - [ ] T055 Run focused facade tests with `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process ./c8volt/ops -run 'Progress|Preflight|SlowProcess|SearchProcessInstances' -count=1` for `c8volt/process/model.go` and `c8volt/ops/model.go`
