@@ -540,3 +540,17 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Focused service validation passed for process-instance search/progress and ops preflight/slow-process progress coverage.
 ---
+---
+## Iteration 18 - 2026-07-27 16:07
+**Work Unit**: T055 Focused facade tests
+**Tasks Completed**:
+- [x] T055: Run focused facade tests with `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process ./c8volt/ops -run 'Progress|Preflight|SlowProcess|SearchProcessInstances' -count=1`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Focused facade validation passed for process and ops progress/preflight coverage.
+---
