@@ -54,6 +54,9 @@ Started: 2026-07-27T10:17:40Z
 - `DeleteProcessInstances` already emits exact `deleting process instances` frozen counters through `services.WithProgress`; T066 passes each workflow request callback into delete opts so deletion counters appear for confirmed purge/retention runs.
 - Human result renderers for retention, orphan purge, and incident purge now write final result lines directly to command stdout even when `--verbose` installs a logger; progress remains on stderr/activity.
 - Retention and incident-purge audit reports now include `deleteRequested` to match orphan purge report semantics and T066 report contracts.
+- T067 added pending T068 repair progress tests in `cmd/ops_repair_incident_test.go`, `cmd/ops_repair_processinstance_test.go`, and `internal/services/ops/repair_test.go`. They currently skip through `pendingOpsRepairProgressT068` and `pendingRepairProgressT068`; T068 should remove those skips after implementing shared progress routing.
+- Repair progress tests define incident-search and process-instance-search preflight/page events, process-instance active-incident lookup counters, frozen planning counters, keyed bulk repair counters, confirmation prompt assertions, and JSON/quiet/automation progress silence.
+- `ops repair incident` and `ops repair process-instance` already use the public facade with `collectOptions()`, so T068 can pass `foptions.WithProgress` from command wrappers while keeping service-owned discovery and mutation mechanics in `internal/services/ops/repair.go`.
 
 ## Decisions
 - For this feature, transient progress should reuse the existing activity context path rather than stdout or a new global writer.
@@ -85,4 +88,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should implement T067 by adding ops repair progress tests for incident search, process-instance search, keyed bulk repair counters, confirmation prompts, and output-mode safety without starting T068.
+- Next iteration should implement T068 by activating the pending repair progress tests, emitting shared preflight/page/frozen progress from `internal/services/ops/repair.go`, routing repair command progress through stdout-safe command helpers, and preserving JSON/quiet/automation silence without starting T069.

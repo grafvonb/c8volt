@@ -381,6 +381,102 @@ func TestOpsRepairIncidentInvalidKeyFailsBeforeMutation(t *testing.T) {
 	require.NotContains(t, string(output), "Usage:")
 }
 
+func pendingOpsRepairProgressT068(t *testing.T) {
+	t.Helper()
+	t.Skip("pending T068 repair progress implementation")
+}
+
+// TestOpsRepairIncidentProgressContractPendingT068 defines incident-search
+// preflight, frozen confirmation, repair counters, and stdout-safe progress.
+func TestOpsRepairIncidentProgressContractPendingT068(t *testing.T) {
+	pendingOpsRepairProgressT068(t)
+	resetOpsRepairIncidentFlagState()
+	t.Cleanup(resetOpsRepairIncidentFlagState)
+
+	var requests testx.SafeSlice[string]
+	srv := newOpsRepairIncidentServer(t, &requests)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "incident-repair-progress.json")
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		require.False(t, autoConfirm)
+		require.Contains(t, prompt, "incident repair: 2 active incident(s)")
+		require.Contains(t, prompt, "1 related job(s)")
+		return nil
+	}
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"--verbose",
+		"ops", "repair", "incident",
+		"--state", "active",
+		"--limit", "2",
+		"--batch-size", "2",
+		"--no-wait",
+		"--report-file", reportPath,
+		"--report-format", "json",
+	)
+
+	require.Contains(t, stderr, "preflight: incident repair matches 2 incident(s); page size 2; discovery will require 1 page(s)")
+	require.Contains(t, stderr, "discovering repair incidents, page 1/1, 2 seen")
+	require.Contains(t, stderr, "planning incident repair scope 2/2 incident(s)")
+	require.Contains(t, stderr, "repairing incidents 2/2 incident(s)")
+	require.NotContains(t, stderr, "/v2/")
+	require.NotContains(t, stderr, "cursor")
+	require.NotContains(t, stdout, "preflight:")
+	require.NotContains(t, stdout, "discovering repair incidents")
+	require.NotContains(t, stdout, "planning incident repair scope")
+	require.Contains(t, stdout, "report: written "+reportPath)
+	require.Contains(t, stdout, "outcome: repaired")
+
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, "repaired", report["outcome"])
+	require.Len(t, requireJSONObject(t, report["frozenSet"])["incidentKeys"], 2)
+}
+
+// TestOpsRepairIncidentMachineProgressSafetyPendingT068 pins repair progress
+// silence for JSON, quiet, and automation modes.
+func TestOpsRepairIncidentMachineProgressSafetyPendingT068(t *testing.T) {
+	pendingOpsRepairProgressT068(t)
+
+	for _, mode := range []struct {
+		name string
+		args []string
+	}{
+		{name: "json", args: []string{"--json", "ops", "repair", "incident", "--state", "active", "--limit", "2", "--batch-size", "1", "--dry-run"}},
+		{name: "quiet", args: []string{"--quiet", "ops", "repair", "incident", "--state", "active", "--limit", "2", "--batch-size", "1", "--dry-run"}},
+		{name: "automation", args: []string{"--automation", "ops", "repair", "incident", "--state", "active", "--limit", "2", "--batch-size", "1", "--no-wait"}},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			resetOpsRepairIncidentFlagState()
+			t.Cleanup(resetOpsRepairIncidentFlagState)
+
+			var requests testx.SafeSlice[string]
+			srv := newOpsRepairIncidentServer(t, &requests)
+			t.Cleanup(srv.Close)
+
+			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.9")}, mode.args...)
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+			for _, disallowed := range []string{
+				"preflight:",
+				"discovering repair incidents",
+				"planning incident repair scope",
+				"repairing incidents",
+			} {
+				require.NotContains(t, stdout, disallowed)
+				require.NotContains(t, stderr, disallowed)
+			}
+			if mode.name == "json" {
+				var envelope map[string]any
+				require.NoError(t, json.Unmarshal([]byte(stdout), &envelope), stdout)
+			}
+		})
+	}
+}
+
 func TestOpsRepairIncidentCommandHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

@@ -387,3 +387,20 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Ops retention/purge workflows now share preflight, discovery-page, planning, and deletion counter progress while keeping machine output clean.
 ---
+---
+## Iteration 10 - 2026-07-27 15:26
+**Work Unit**: T067 Ops repair progress tests
+**Tasks Completed**:
+- [x] T067: Add ops repair progress tests for incident search, process-instance search, keyed bulk repair counters, confirmation prompts, and output-mode safety
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_repair_incident_test.go
+- cmd/ops_repair_processinstance_test.go
+- internal/services/ops/repair_test.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Repair progress contracts are captured as pending T068 tests while the current focused command and service suites remain green.
+---
