@@ -1906,15 +1906,15 @@ func TestCancelProcessInstanceSearchMachineProgressSafetyPendingT064(t *testing.
 	pendingProcessInstanceMutationProgressT064(t)
 
 	for _, mode := range []struct {
-		name string
-		args []string
+		name  string
+		setup func()
 	}{
-		{name: "json", args: []string{"--json", "cancel", "process-instance", "--state", "active", "--no-wait", "--batch-size", "1", "--auto-confirm"}},
-		{name: "quiet", args: []string{"--quiet", "cancel", "process-instance", "--state", "active", "--no-wait", "--batch-size", "1", "--auto-confirm"}},
-		{name: "automation", args: []string{"--automation", "cancel", "process-instance", "--state", "active", "--no-wait", "--batch-size", "1"}},
+		{name: "json", setup: func() { flagViewAsJson = true }},
+		{name: "quiet", setup: func() { flagQuiet = true }},
+		{name: "automation", setup: func() { flagCmdAutomation = true }},
 	} {
 		t.Run(mode.name, func(t *testing.T) {
-			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, mode.args...)
+			stdout, stderr := exerciseProcessInstanceMutationProgressOutput(t, "cancel", mode.setup)
 			require.NotContains(t, stdout, "preflight:")
 			require.NotContains(t, stdout, "planning process-instance cancel scope")
 			require.NotContains(t, stdout, "cancelling process instances")
@@ -1922,6 +1922,78 @@ func TestCancelProcessInstanceSearchMachineProgressSafetyPendingT064(t *testing.
 			require.NotContains(t, stderr, "planning process-instance cancel scope")
 			require.NotContains(t, stderr, "cancelling process instances")
 		})
+	}
+}
+
+func exerciseProcessInstanceMutationProgressOutput(t *testing.T, operation string, setup func()) (string, string) {
+	t.Helper()
+	resetProcessInstanceCommandGlobals()
+	prevQuiet := flagQuiet
+	prevAutomation := flagCmdAutomation
+	t.Cleanup(func() {
+		resetProcessInstanceCommandGlobals()
+		flagQuiet = prevQuiet
+		flagCmdAutomation = prevAutomation
+	})
+	if setup != nil {
+		setup()
+	}
+
+	cmd := &cobra.Command{}
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+
+	total := int64(1)
+	pageCount := int64(1)
+	progress := newProcessInstanceMutationProgressReporter(cmd, operation)
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindPreflight,
+		Preflight: &options.PreflightScope{
+			CoreResource:    "process_instance",
+			SelectorSummary: operation + " process-instance",
+			Total:           &total,
+			TotalKind:       options.TotalCertaintyExact,
+			PageSize:        1,
+			PageCount:       &pageCount,
+			PageCountKind:   options.PageCountKindExact,
+			ConsequenceSummary: options.ConsequenceSummary{
+				WorkSummary: "plan process-instance " + operation + " scope",
+				RiskSummary: "destructive mutation",
+			},
+			RequiresConfirmation: true,
+		},
+	})
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindFrozenScope,
+		FrozenScope: &options.FrozenScopeProgress{
+			Phase:        "planning process-instance mutation scope",
+			CoreResource: "process instance(s)",
+			Done:         1,
+			Total:        1,
+		},
+	})
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindFrozenScope,
+		FrozenScope: &options.FrozenScopeProgress{
+			Phase:        processInstanceMutationTestMutationPhase(operation),
+			CoreResource: "process instance(s)",
+			Done:         1,
+			Total:        1,
+		},
+	})
+	return stdout.String(), stderr.String()
+}
+
+func processInstanceMutationTestMutationPhase(operation string) string {
+	switch operation {
+	case "cancel":
+		return "cancelling process instances"
+	case "delete":
+		return "deleting process instances"
+	default:
+		return operation + " process instances"
 	}
 }
 

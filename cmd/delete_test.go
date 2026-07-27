@@ -1811,15 +1811,15 @@ func TestDeleteProcessInstanceSearchMachineProgressSafetyPendingT064(t *testing.
 	pendingProcessInstanceMutationProgressT064(t)
 
 	for _, mode := range []struct {
-		name string
-		args []string
+		name  string
+		setup func()
 	}{
-		{name: "json", args: []string{"--json", "delete", "process-instance", "--state", "completed", "--no-wait", "--batch-size", "1", "--auto-confirm"}},
-		{name: "quiet", args: []string{"--quiet", "delete", "process-instance", "--state", "completed", "--no-wait", "--batch-size", "1", "--auto-confirm"}},
-		{name: "automation", args: []string{"--automation", "delete", "process-instance", "--state", "completed", "--no-wait", "--batch-size", "1"}},
+		{name: "json", setup: func() { flagViewAsJson = true }},
+		{name: "quiet", setup: func() { flagQuiet = true }},
+		{name: "automation", setup: func() { flagCmdAutomation = true }},
 	} {
 		t.Run(mode.name, func(t *testing.T) {
-			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, mode.args...)
+			stdout, stderr := exerciseProcessInstanceMutationProgressOutput(t, "delete", mode.setup)
 			require.NotContains(t, stdout, "preflight:")
 			require.NotContains(t, stdout, "planning process-instance delete scope")
 			require.NotContains(t, stdout, "deleting process instances")

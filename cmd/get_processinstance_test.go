@@ -925,17 +925,17 @@ func TestGetProcessInstanceWithListenersValidation(t *testing.T) {
 }
 
 func TestGetProcessInstanceDirectIncidentsOnly_FiltersByLoadedDirectIncidents(t *testing.T) {
-	var requests []string
-	var searchBodies []string
+	var requests testx.SafeSlice[string]
+	var searchBodies testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r.Method+" "+r.URL.Path)
+		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/search":
 			require.Equal(t, http.MethodPost, r.Method)
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			searchBodies = append(searchBodies, string(body))
+			searchBodies.Append(string(body))
 			_, _ = w.Write([]byte(`{"items":[
 				{"hasIncident":true,"processDefinitionId":"demo-a","processDefinitionKey":"9001","processDefinitionName":"demo-a","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},
 				{"hasIncident":false,"processDefinitionId":"demo-b","processDefinitionKey":"9002","processDefinitionName":"demo-b","processDefinitionVersion":4,"processInstanceKey":"124","startDate":"2026-03-23T18:05:00Z","state":"ACTIVE","tenantId":"tenant"}
@@ -965,9 +965,10 @@ func TestGetProcessInstanceDirectIncidentsOnly_FiltersByLoadedDirectIncidents(t 
 		"POST /v2/process-instances/search",
 		"POST /v2/process-instances/123/incidents/search",
 		"POST /v2/process-instances/124/incidents/search",
-	}, requests)
-	require.Len(t, searchBodies, 1)
-	require.NotContains(t, searchBodies[0], "hasIncident")
+	}, requests.Snapshot())
+	gotSearchBodies := searchBodies.Snapshot()
+	require.Len(t, gotSearchBodies, 1)
+	require.NotContains(t, gotSearchBodies[0], "hasIncident")
 	require.NotContains(t, output, "123 tenant demo-a")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
 	require.Contains(t, output, "found: 1")
@@ -1096,17 +1097,17 @@ func TestGetProcessInstanceIncidentFlags_PreserveSearchAndEnrichmentContracts(t 
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var requests []string
-			var searchBodies []string
+			var requests testx.SafeSlice[string]
+			var searchBodies testx.SafeSlice[string]
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				requests = append(requests, r.Method+" "+r.URL.Path)
+				requests.Append(r.Method + " " + r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
 				case "/v2/process-instances/search":
 					require.Equal(t, http.MethodPost, r.Method)
 					body, err := io.ReadAll(r.Body)
 					require.NoError(t, err)
-					searchBodies = append(searchBodies, string(body))
+					searchBodies.Append(string(body))
 					_, _ = w.Write([]byte(tt.processResponse))
 				default:
 					response, ok := tt.incidentResponses[r.URL.Path]
@@ -1124,13 +1125,14 @@ func TestGetProcessInstanceIncidentFlags_PreserveSearchAndEnrichmentContracts(t 
 
 			output := executeRootForProcessInstanceTest(t, args...)
 
-			require.ElementsMatch(t, tt.wantRequests, requests)
-			require.Len(t, searchBodies, 1)
+			require.ElementsMatch(t, tt.wantRequests, requests.Snapshot())
+			gotSearchBodies := searchBodies.Snapshot()
+			require.Len(t, gotSearchBodies, 1)
 			if tt.wantSearchFilter != "" {
-				require.Contains(t, searchBodies[0], tt.wantSearchFilter)
+				require.Contains(t, gotSearchBodies[0], tt.wantSearchFilter)
 			}
 			if tt.wantNoSearchFilter != "" {
-				require.NotContains(t, searchBodies[0], tt.wantNoSearchFilter)
+				require.NotContains(t, gotSearchBodies[0], tt.wantNoSearchFilter)
 			}
 			for _, want := range tt.wantOutput {
 				require.Contains(t, output, want)
@@ -1170,10 +1172,10 @@ func TestGetProcessInstanceWithIncidents_ListSearchWithoutKeyIsAccepted(t *testi
 
 // TestGetProcessInstanceListWithVars_HumanOutputShowsProcessScopeVariables verifies list/search variable enrichment matches keyed rendering.
 func TestGetProcessInstanceListWithVars_HumanOutputShowsProcessScopeVariables(t *testing.T) {
-	var requests []string
-	var variableFilters []map[string]any
+	var requests testx.SafeSlice[string]
+	var variableFilters testx.SafeSlice[map[string]any]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r.Method+" "+r.URL.Path)
+		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/search":
@@ -1194,7 +1196,7 @@ func TestGetProcessInstanceListWithVars_HumanOutputShowsProcessScopeVariables(t 
 			var body map[string]any
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			filter := requireJSONObject(t, body["filter"])
-			variableFilters = append(variableFilters, filter)
+			variableFilters.Append(filter)
 			switch filter["processInstanceKey"] {
 			case "123":
 				_, _ = w.Write([]byte(`{"items":[{"name":"zeta","value":"2","variableKey":"902","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"},{"name":"localTask","value":"ignored","variableKey":"903","processInstanceKey":"123","scopeKey":"element-123","tenantId":"tenant"},{"name":"alpha","value":"1","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`))
@@ -1219,18 +1221,25 @@ func TestGetProcessInstanceListWithVars_HumanOutputShowsProcessScopeVariables(t 
 		"--with-vars",
 	)
 
-	require.Equal(t, []string{
+	require.ElementsMatch(t, []string{
 		"POST /v2/process-instances/search",
 		"POST /v2/variables/search",
 		"POST /v2/variables/search",
-	}, requests)
-	require.Len(t, variableFilters, 2)
-	require.Equal(t, "123", variableFilters[0]["processInstanceKey"])
-	require.Equal(t, "123", variableFilters[0]["scopeKey"])
-	require.Equal(t, "tenant", variableFilters[0]["tenantId"])
-	require.Equal(t, "124", variableFilters[1]["processInstanceKey"])
-	require.Equal(t, "124", variableFilters[1]["scopeKey"])
-	require.Equal(t, "tenant", variableFilters[1]["tenantId"])
+	}, requests.Snapshot())
+	gotVariableFilters := variableFilters.Snapshot()
+	require.Len(t, gotVariableFilters, 2)
+	variableFiltersByPI := map[string]map[string]any{}
+	for _, filter := range gotVariableFilters {
+		if key, ok := filter["processInstanceKey"].(string); ok {
+			variableFiltersByPI[key] = filter
+		}
+	}
+	require.Equal(t, "123", variableFiltersByPI["123"]["processInstanceKey"])
+	require.Equal(t, "123", variableFiltersByPI["123"]["scopeKey"])
+	require.Equal(t, "tenant", variableFiltersByPI["123"]["tenantId"])
+	require.Equal(t, "124", variableFiltersByPI["124"]["processInstanceKey"])
+	require.Equal(t, "124", variableFiltersByPI["124"]["scopeKey"])
+	require.Equal(t, "tenant", variableFiltersByPI["124"]["tenantId"])
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
 	require.Contains(t, output, "└─ vars:\n   ├─ alpha=1\n   └─ zeta=2")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
@@ -1244,9 +1253,9 @@ func TestGetProcessInstanceListWithVars_HumanOutputShowsProcessScopeVariables(t 
 
 // Combined enrichment keeps variables before incidents so runtime context leads the failure detail.
 func TestGetProcessInstanceListWithVarsAndIncidents_HumanOutputShowsGroupedSections(t *testing.T) {
-	var requests []string
+	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r.Method+" "+r.URL.Path)
+		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/search":
@@ -1275,11 +1284,11 @@ func TestGetProcessInstanceListWithVarsAndIncidents_HumanOutputShowsGroupedSecti
 		"--with-incidents",
 	)
 
-	require.Equal(t, []string{
+	require.ElementsMatch(t, []string{
 		"POST /v2/process-instances/search",
 		"POST /v2/process-instances/123/incidents/search",
 		"POST /v2/variables/search",
-	}, requests)
+	}, requests.Snapshot())
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "├─ vars:\n│  └─ hasIncident=true")
 	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a m:No retries left")
@@ -1289,9 +1298,9 @@ func TestGetProcessInstanceListWithVarsAndIncidents_HumanOutputShowsGroupedSecti
 
 // TestGetProcessInstanceListWithVarsIncidentsAndElements_HumanOutputShowsGroupedSections verifies bounded search combines each requested enrichment once.
 func TestGetProcessInstanceListWithVarsIncidentsAndElements_HumanOutputShowsGroupedSections(t *testing.T) {
-	var requests []string
+	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r.Method+" "+r.URL.Path)
+		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/search":
@@ -1325,12 +1334,12 @@ func TestGetProcessInstanceListWithVarsIncidentsAndElements_HumanOutputShowsGrou
 		"--with-elements",
 	)
 
-	require.Equal(t, []string{
+	require.ElementsMatch(t, []string{
 		"POST /v2/process-instances/search",
 		"POST /v2/process-instances/123/incidents/search",
 		"POST /v2/variables/search",
 		"POST /v2/element-instances/search",
-	}, requests)
+	}, requests.Snapshot())
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "├─ vars:\n│  └─ hasIncident=true")
 	require.Contains(t, output, "├─ incidents:\n│  └─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a e:task-a ei:element-123 m:No retries left")
@@ -1344,9 +1353,9 @@ func TestGetProcessInstanceListWithVarsIncidentsAndElements_HumanOutputShowsGrou
 
 // TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines verifies list/search incident enrichment keeps incidents under their owning rows.
 func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines(t *testing.T) {
-	var requests []string
+	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r.Method+" "+r.URL.Path)
+		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/search":
@@ -1387,7 +1396,7 @@ func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines
 		"POST /v2/process-instances/search",
 		"POST /v2/process-instances/123/incidents/search",
 		"POST /v2/process-instances/124/incidents/search",
-	}, requests)
+	}, requests.Snapshot())
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
 	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 ACTIVE j:n/a m:First key failed")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
@@ -1400,9 +1409,9 @@ func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines
 
 // TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows guards paging and --limit compatibility for incident lookups.
 func TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows(t *testing.T) {
-	var requests []string
+	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r.Method+" "+r.URL.Path)
+		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/search":
@@ -1433,10 +1442,10 @@ func TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows(t *testing.T
 		"--with-incidents",
 	)
 
-	require.Equal(t, []string{
+	require.ElementsMatch(t, []string{
 		"POST /v2/process-instances/search",
 		"POST /v2/process-instances/123/incidents/search",
-	}, requests)
+	}, requests.Snapshot())
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 ACTIVE j:n/a m:First key failed")
 	require.NotContains(t, output, "124 tenant")
@@ -1445,9 +1454,9 @@ func TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows(t *testing.T
 
 // TestGetProcessInstanceListWithIncidents_HumanIndirectMarkerExplainsEmptyDirectIncidents verifies list rows marked inc! stay explainable when direct lookup is empty.
 func TestGetProcessInstanceListWithIncidents_HumanIndirectMarkerExplainsEmptyDirectIncidents(t *testing.T) {
-	var requests []string
+	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r.Method+" "+r.URL.Path)
+		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/search":
@@ -1479,7 +1488,7 @@ func TestGetProcessInstanceListWithIncidents_HumanIndirectMarkerExplainsEmptyDir
 		"POST /v2/process-instances/search",
 		"POST /v2/process-instances/123/incidents/search",
 		"POST /v2/process-instances/124/incidents/search",
-	}, requests)
+	}, requests.Snapshot())
 	require.Contains(t, stdout, "123 tenant demo-a v3 ACTIVE")
 	require.Contains(t, stdout, "124 tenant demo-b v4 ACTIVE")
 	require.Equal(t, 2, strings.Count(stdout, "└─ "+indirectProcessTreeIncidentNote))
@@ -2389,10 +2398,10 @@ func TestGetProcessInstanceWithElements_HumanOutputShowsRuntimeElements(t *testi
 
 // TestGetProcessInstanceListWithElements_HumanOutputShowsRuntimeElements verifies list/search enrichment runs after process-instance limiting.
 func TestGetProcessInstanceListWithElements_HumanOutputShowsRuntimeElements(t *testing.T) {
-	var requests []string
-	var elementFilters []map[string]any
+	var requests testx.SafeSlice[string]
+	var elementFilters testx.SafeSlice[map[string]any]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r.Method+" "+r.URL.Path)
+		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/search":
@@ -2411,7 +2420,7 @@ func TestGetProcessInstanceListWithElements_HumanOutputShowsRuntimeElements(t *t
 			var body map[string]any
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			filter := requireJSONObject(t, body["filter"])
-			elementFilters = append(elementFilters, filter)
+			elementFilters.Append(filter)
 			switch filter["processInstanceKey"] {
 			case "123":
 				_, _ = w.Write([]byte(`{"items":[{"elementInstanceKey":"element-123","elementId":"start","type":"START_EVENT","state":"COMPLETED","startDate":"2026-07-15T10:12:01Z","endDate":"2026-07-15T10:12:02Z","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
@@ -2437,10 +2446,17 @@ func TestGetProcessInstanceListWithElements_HumanOutputShowsRuntimeElements(t *t
 		"--with-elements",
 	)
 
-	require.Equal(t, []string{"POST /v2/process-instances/search", "POST /v2/element-instances/search", "POST /v2/element-instances/search"}, requests)
-	require.Len(t, elementFilters, 2)
-	require.Equal(t, "123", elementFilters[0]["processInstanceKey"])
-	require.Equal(t, "124", elementFilters[1]["processInstanceKey"])
+	require.ElementsMatch(t, []string{"POST /v2/process-instances/search", "POST /v2/element-instances/search", "POST /v2/element-instances/search"}, requests.Snapshot())
+	gotElementFilters := elementFilters.Snapshot()
+	require.Len(t, gotElementFilters, 2)
+	elementFiltersByPI := map[string]map[string]any{}
+	for _, filter := range gotElementFilters {
+		if key, ok := filter["processInstanceKey"].(string); ok {
+			elementFiltersByPI[key] = filter
+		}
+	}
+	require.Equal(t, "123", elementFiltersByPI["123"]["processInstanceKey"])
+	require.Equal(t, "124", elementFiltersByPI["124"]["processInstanceKey"])
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
 	require.NotContains(t, output, "125 tenant demo-c v5 ACTIVE")
@@ -2550,7 +2566,7 @@ func TestGetProcessInstanceListWithElements_IncrementalPagingKeepsProcessInstanc
 
 // TestGetProcessInstanceListWithElements_JSONOutputPreservesProcessInstanceLimit verifies JSON aggregation keeps element data under selected process instances.
 func TestGetProcessInstanceListWithElements_JSONOutputPreservesProcessInstanceLimit(t *testing.T) {
-	var elementFilters []map[string]any
+	var elementFilters testx.SafeSlice[map[string]any]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -2566,7 +2582,7 @@ func TestGetProcessInstanceListWithElements_JSONOutputPreservesProcessInstanceLi
 			var body map[string]any
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			filter := requireJSONObject(t, body["filter"])
-			elementFilters = append(elementFilters, filter)
+			elementFilters.Append(filter)
 			switch filter["processInstanceKey"] {
 			case "123":
 				_, _ = w.Write([]byte(`{"items":[{"elementInstanceKey":"element-123","elementId":"start","elementName":"Start","type":"START_EVENT","state":"COMPLETED","startDate":"2026-07-15T10:12:01Z","endDate":"2026-07-15T10:12:02Z","processInstanceKey":"123","rootProcessInstanceKey":"123","processDefinitionId":"demo-a","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
@@ -2593,9 +2609,16 @@ func TestGetProcessInstanceListWithElements_JSONOutputPreservesProcessInstanceLi
 		"--with-elements",
 	)
 
-	require.Len(t, elementFilters, 2)
-	require.Equal(t, "123", elementFilters[0]["processInstanceKey"])
-	require.Equal(t, "124", elementFilters[1]["processInstanceKey"])
+	gotElementFilters := elementFilters.Snapshot()
+	require.Len(t, gotElementFilters, 2)
+	elementFiltersByPI := map[string]map[string]any{}
+	for _, filter := range gotElementFilters {
+		if key, ok := filter["processInstanceKey"].(string); ok {
+			elementFiltersByPI[key] = filter
+		}
+	}
+	require.Equal(t, "123", elementFiltersByPI["123"]["processInstanceKey"])
+	require.Equal(t, "124", elementFiltersByPI["124"]["processInstanceKey"])
 	payload := requireProcessInstanceElementJSONPayload(t, output)
 	require.Equal(t, float64(2), payload["total"])
 	items := requireJSONItems(t, payload["items"], 2)
@@ -2632,9 +2655,9 @@ func TestGetProcessInstanceListWithElements_V87ReportsUnsupported(t *testing.T) 
 }
 
 func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(t *testing.T) {
-	var requests []string
+	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r.Method+" "+r.URL.Path)
+		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -2663,7 +2686,7 @@ func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(
 		"--with-incidents",
 	)
 
-	require.Equal(t, []string{"GET /v2/process-instances/123", "POST /v2/process-instances/123/incidents/search", "POST /v2/variables/search"}, requests)
+	require.ElementsMatch(t, []string{"GET /v2/process-instances/123", "POST /v2/process-instances/123/incidents/search", "POST /v2/variables/search"}, requests.Snapshot())
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "├─ vars:")
 	require.Contains(t, output, "│  ├─ businessKey=2234809392328")
@@ -2676,9 +2699,9 @@ func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(
 
 // TestGetProcessInstanceWithVarsIncidentsAndElements_HumanOutputShowsGroupedSections verifies keyed lookup combines each requested enrichment once.
 func TestGetProcessInstanceWithVarsIncidentsAndElements_HumanOutputShowsGroupedSections(t *testing.T) {
-	var requests []string
+	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r.Method+" "+r.URL.Path)
+		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -2711,12 +2734,12 @@ func TestGetProcessInstanceWithVarsIncidentsAndElements_HumanOutputShowsGroupedS
 		"--with-elements",
 	)
 
-	require.Equal(t, []string{
+	require.ElementsMatch(t, []string{
 		"GET /v2/process-instances/123",
 		"POST /v2/process-instances/123/incidents/search",
 		"POST /v2/variables/search",
 		"POST /v2/element-instances/search",
-	}, requests)
+	}, requests.Snapshot())
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "├─ vars:\n│  └─ businessKey=2234809392328")
 	require.Contains(t, output, "├─ incidents:\n│  └─ incident-123 IO_MAPPING_ERROR ACTIVE j:n/a e:task-a ei:element-123 m:No retries left")
@@ -2730,7 +2753,7 @@ func TestGetProcessInstanceWithVarsIncidentsAndElements_HumanOutputShowsGroupedS
 
 // TestGetProcessInstanceWithElementsAndListeners_HumanOutputNestsListenerRows verifies keyed process-instance enrichment keeps listener rows inside the elements section.
 func TestGetProcessInstanceWithElementsAndListeners_HumanOutputNestsListenerRows(t *testing.T) {
-	var requests []string
+	var requests testx.SafeSlice[string]
 	srv := newProcessInstanceWithElementsAndListenersServer(t, &requests, []string{`{"items":[
 		{"elementInstanceKey":"element-1","elementId":"task-a","type":"SERVICE_TASK","state":"ACTIVE","startDate":"2026-07-15T10:12:01Z","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false},
 		{"elementInstanceKey":"element-2","elementId":"user-task","type":"USER_TASK","state":"ACTIVE","startDate":"2026-07-15T10:12:02Z","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}
@@ -2751,12 +2774,12 @@ func TestGetProcessInstanceWithElementsAndListeners_HumanOutputNestsListenerRows
 		"--with-listeners",
 	)
 
-	require.Equal(t, []string{
+	require.ElementsMatch(t, []string{
 		"GET /v2/process-instances/123",
 		"POST /v2/element-instances/search",
 		"POST /v2/jobs/search",
 		"POST /v2/jobs/search",
-	}, requests)
+	}, requests.Snapshot())
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "└─ elements:")
 	require.Contains(t, output, "element-1 SERVICE_TASK task-a")
@@ -2772,7 +2795,7 @@ func TestGetProcessInstanceWithElementsAndListeners_HumanOutputNestsListenerRows
 
 // TestGetProcessInstanceWithElementsAndListeners_JSONOutputPreservesEmptyArraysAndOmitsUnmatchedJobs verifies requested listener arrays survive JSON rendering.
 func TestGetProcessInstanceWithElementsAndListeners_JSONOutputPreservesEmptyArraysAndOmitsUnmatchedJobs(t *testing.T) {
-	var requests []string
+	var requests testx.SafeSlice[string]
 	srv := newProcessInstanceWithElementsAndListenersServer(t, &requests, []string{`{"items":[
 		{"elementInstanceKey":"element-1","elementId":"task-a","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false},
 		{"elementInstanceKey":"element-empty","elementId":"empty-task","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}
@@ -2794,12 +2817,12 @@ func TestGetProcessInstanceWithElementsAndListeners_JSONOutputPreservesEmptyArra
 		"--with-listeners",
 	)
 
-	require.Equal(t, []string{
+	require.ElementsMatch(t, []string{
 		"GET /v2/process-instances/123",
 		"POST /v2/element-instances/search",
 		"POST /v2/jobs/search",
 		"POST /v2/jobs/search",
-	}, requests)
+	}, requests.Snapshot())
 	payload := requireProcessInstanceElementJSONPayload(t, output)
 	items := requireJSONItems(t, payload["items"], 1)
 	first := requireJSONObject(t, items[0])
@@ -2814,7 +2837,7 @@ func TestGetProcessInstanceWithElementsAndListeners_JSONOutputPreservesEmptyArra
 
 // TestGetProcessInstanceWithElementsWithoutListeners_SkipsListenerLookup keeps the existing element-only path free of job search calls and listener fields.
 func TestGetProcessInstanceWithElementsWithoutListeners_SkipsListenerLookup(t *testing.T) {
-	var requests []string
+	var requests testx.SafeSlice[string]
 	srv := newProcessInstanceWithElementsAndListenersServer(t, &requests, []string{`{"items":[{"elementInstanceKey":"element-1","elementId":"task-a","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`}, nil)
 	t.Cleanup(srv.Close)
 
@@ -2832,7 +2855,7 @@ func TestGetProcessInstanceWithElementsWithoutListeners_SkipsListenerLookup(t *t
 	require.Equal(t, []string{
 		"GET /v2/process-instances/123",
 		"POST /v2/element-instances/search",
-	}, requests)
+	}, requests.Snapshot())
 	require.NotContains(t, output, `"listeners"`)
 }
 
