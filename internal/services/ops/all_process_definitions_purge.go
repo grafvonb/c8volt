@@ -333,11 +333,25 @@ func newAllProcessDefinitionsPurgePreflight(request d.AllProcessDefinitionsPurge
 		PageCount:       pageCount,
 		PageCountKind:   pageKind,
 		ConsequenceSummary: d.OpsConsequenceSummary{
-			WorkSummary: "all-process-definitions purge will discover matching process definitions and validate delete impact before deletion",
-			RiskSummary: "potentially destructive purge",
+			WorkSummary: allProcessDefinitionsPurgeWorkSummary(request.DryRun),
+			RiskSummary: allProcessDefinitionsPurgeRiskSummary(request.DryRun),
 		},
 		RequiresConfirmation: !request.DryRun && !request.AutoConfirm && !request.Automation,
 	}
+}
+
+func allProcessDefinitionsPurgeWorkSummary(dryRun bool) string {
+	if dryRun {
+		return "process-definition purge dry run will discover matching process definitions and validate delete impact only; no changes will be applied"
+	}
+	return "process-definition purge will discover matching process definitions, validate delete impact, and delete confirmed definitions"
+}
+
+func allProcessDefinitionsPurgeRiskSummary(dryRun bool) string {
+	if dryRun {
+		return ""
+	}
+	return "potentially destructive purge"
 }
 
 func allProcessDefinitionsPurgeTotal(total *d.ProcessDefinitionReportedTotal) (*int64, d.OpsTotalCertainty) {

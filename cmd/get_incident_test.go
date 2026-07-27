@@ -1025,7 +1025,7 @@ func TestGetIncidentCommand_SearchVerboseProgress(t *testing.T) {
 	require.Contains(t, requests[0], `"limit":2`)
 	require.Contains(t, requests[0], `"from":0`)
 	require.Contains(t, requests[1], `"from":2`)
-	require.Contains(t, output, "preflight: incident search matches 3+ incident(s); page size 2; discovery will require at least 2 page(s)")
+	require.Contains(t, output, "incident search scope: matched at least 3 incidents; page size: 2; discovery pages: at least 2")
 	require.Contains(t, output, "discovering incidents, page 1/~2, 2 seen")
 	require.Contains(t, output, "discovering incidents, page 2/2, 3 seen")
 	require.Contains(t, output, "found: 3")
@@ -1051,7 +1051,7 @@ func TestGetIncidentCommand_SearchMachineOutputStaysProgressFree(t *testing.T) {
 
 		require.Len(t, requests, 2)
 		require.Empty(t, stderr)
-		require.NotContains(t, stdout, "preflight:")
+		require.NotContains(t, stdout, "scope:")
 		require.NotContains(t, stdout, "page size:")
 		require.NotContains(t, stdout, "discovering incidents")
 		var envelope map[string]any
@@ -1079,7 +1079,7 @@ func TestGetIncidentCommand_SearchMachineOutputStaysProgressFree(t *testing.T) {
 		require.Len(t, requests, 1)
 		require.Empty(t, stderr)
 		require.Equal(t, "2251799813685253\n2251799813685254\n", stdout)
-		require.NotContains(t, stdout, "preflight:")
+		require.NotContains(t, stdout, "scope:")
 		require.NotContains(t, stdout, "page size:")
 	})
 }

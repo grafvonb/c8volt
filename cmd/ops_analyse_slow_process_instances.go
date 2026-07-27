@@ -346,7 +346,7 @@ func printOpsSlowProcessAnalysisProgress(cmd *cobra.Command, line string, channe
 	if !opsSlowProcessAnalysisDurableProgressAllowed(channel) {
 		return
 	}
-	fmt.Fprintln(cmd.ErrOrStderr(), line)
+	printOpsDurableLine(cmd, line, false)
 }
 
 // printOpsPreflightScope writes durable preflight lines only to the command's stderr/activity channel.
@@ -354,9 +354,7 @@ func printOpsPreflightScope(cmd *cobra.Command, scope ops.PreflightScope, channe
 	if cmd == nil || !channel.DurableAllowed || !channel.StderrAllowed {
 		return
 	}
-	for _, line := range formatOpsPreflightScope(scope) {
-		fmt.Fprintln(cmd.ErrOrStderr(), line)
-	}
+	printOpsPreflightLines(cmd, scope)
 }
 
 // opsSlowProcessAnalysisDurableProgressAllowed keeps page/counter detail behind verbose or debug while activity remains compact.

@@ -740,17 +740,17 @@ func TestOpsPurgeProcessInstancesWithIncidentsProgressContractPendingT066(t *tes
 	})
 	require.NoError(t, err, stderr)
 
-	require.Contains(t, stderr, "preflight: process-instances-with-incidents purge matches 2 incident(s); page size 1; discovery will require 2 page(s)")
+	require.Contains(t, stderr, "incident purge scope: process-instances-with-incidents purge matched 2 incidents; page size: 1; discovery pages: 2")
 	require.Contains(t, stderr, "discovering incidents, page 1/2, 1 seen")
 	require.Contains(t, stderr, "discovering incidents, page 2/2, 2 seen")
 	require.Contains(t, stderr, "planning incident process-instance delete scope 2/2 process instance(s)")
 	require.Contains(t, stderr, "deleting process instances 2/2 process instance(s)")
 	require.NotContains(t, stderr, "/v2/")
 	require.NotContains(t, stderr, "cursor")
-	require.NotContains(t, stdout, "preflight:")
+	require.NotContains(t, stdout, "scope:")
 	require.NotContains(t, stdout, "discovering incidents")
-	require.Contains(t, stdout, "report: written "+reportPath)
-	require.Contains(t, stdout, "outcome: deleted")
+	require.Contains(t, stderr, "report: written "+reportPath)
+	require.Contains(t, stderr, "outcome: deleted")
 	require.ElementsMatch(t, []string{
 		"/v2/process-instances/" + opsIncidentPurgeRootKey + "/deletion",
 		"/v2/process-instances/" + opsIncidentPurgeChildKey + "/deletion",
@@ -788,11 +788,11 @@ func TestOpsPurgeProcessInstancesWithIncidentsMachineProgressSafetyPendingT066(t
 					append(mode.args, "--report-file", filepath.Join(t.TempDir(), mode.name+".json"), "--report-format", "json")),
 			})
 			require.NoError(t, err, stderr)
-			require.NotContains(t, stdout, "preflight:")
+			require.NotContains(t, stdout, "scope:")
 			require.NotContains(t, stdout, "discovering incidents")
 			require.NotContains(t, stdout, "planning incident process-instance delete scope")
 			require.NotContains(t, stdout, "deleting process instances")
-			require.NotContains(t, stderr, "preflight:")
+			require.NotContains(t, stderr, "scope:")
 			require.NotContains(t, stderr, "discovering incidents")
 			require.NotContains(t, stderr, "planning incident process-instance delete scope")
 			require.NotContains(t, stderr, "deleting process instances")

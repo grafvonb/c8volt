@@ -407,6 +407,14 @@ func TestRunProcessInstanceCommand_VerboseBulkProgressRendersCounters(t *testing
 			}
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(processInstanceCreationJSON(key)))
+		case "/v2/process-instances/2251799813685248":
+			require.Equal(t, http.MethodGet, r.Method)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(processInstanceJSON("2251799813685248")))
+		case "/v2/process-instances/2251799813685249":
+			require.Equal(t, http.MethodGet, r.Method)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(processInstanceJSON("2251799813685249")))
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}
@@ -420,11 +428,14 @@ func TestRunProcessInstanceCommand_VerboseBulkProgressRendersCounters(t *testing
 		"--pd-key", "pd-88",
 		"--count", "2",
 		"--workers", "1",
-		"--no-wait",
 	)
 
 	require.Contains(t, stdout, "found: 2")
 	require.Contains(t, stderr, "starting process instances 2/2 process instance(s)")
+	require.NotContains(t, stderr, "waiting for pi 2251799813685248")
+	require.NotContains(t, stderr, "waiting for pi 2251799813685249")
+	require.NotContains(t, stderr, "created; pd")
+	require.NotContains(t, stderr, "create requested")
 	require.Len(t, created.Snapshot(), 2)
 }
 

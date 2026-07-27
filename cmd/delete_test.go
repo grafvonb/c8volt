@@ -1348,7 +1348,9 @@ func TestDeleteProcessInstanceCommand_V89DeletesViaCamundaProcessInstanceAPI(t *
 	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
 	require.Equal(t, string(OutcomeAccepted), got["outcome"])
 	require.Equal(t, "delete process-instance", got["command"])
-	require.Contains(t, stderr, "INFO")
+	require.NotContains(t, stderr, "INFO")
+	require.NotContains(t, stderr, "delete requested")
+	require.NotContains(t, stderr, "deleting process instances")
 }
 
 // TestDeleteProcessInstancesWithPlan_PrintsOrphanWarningForKeyedImpactCheck verifies keyed impact-check warnings are printed.
@@ -1385,7 +1387,10 @@ func TestDeleteProcessInstancesWithPlan_PrintsOrphanWarningForKeyedImpactCheck(t
 		deleteProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.DeleteReports, error) {
 			require.Equal(t, typex.Keys{"2251799813711900"}, keys)
 			require.Zero(t, wantedWorkers)
-			require.Equal(t, 2, options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount)
+			cfg := options.ApplyFacadeOptions(opts)
+			require.Equal(t, 2, cfg.AffectedProcessInstanceCount)
+			require.True(t, cfg.SuppressWorkflowDetailLogs)
+			require.True(t, cfg.SuppressProcessInstanceDetailLogs)
 			return process.DeleteReports{Items: []process.DeleteReport{{Key: "2251799813711900", Ok: true}}}, nil
 		},
 	}
@@ -1399,6 +1404,7 @@ func TestDeleteProcessInstancesWithPlan_PrintsOrphanWarningForKeyedImpactCheck(t
 	require.Contains(t, prompt, "a total of 2 instance(s) with 1 root instance(s) will be deleted")
 	require.Contains(t, buf.String(), "one or more parent process instances were not found")
 	require.Contains(t, buf.String(), "missing ancestor keys: 1 (use --verbose to list keys)")
+	require.Contains(t, buf.String(), "deletion: deleted 1/1 process-instance tree(s); affected process instances: 2")
 	require.NotContains(t, buf.String(), "missing ancestor keys: 2251799813711999")
 }
 
@@ -1436,7 +1442,10 @@ func TestDeleteProcessInstancesWithPlan_SubmitsResolvedRootsOnlyForKeyedHierarch
 		deleteProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.DeleteReports, error) {
 			require.Equal(t, typex.Keys{"root-a"}, keys)
 			require.Zero(t, wantedWorkers)
-			require.Equal(t, 3, options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount)
+			cfg := options.ApplyFacadeOptions(opts)
+			require.Equal(t, 3, cfg.AffectedProcessInstanceCount)
+			require.True(t, cfg.SuppressWorkflowDetailLogs)
+			require.True(t, cfg.SuppressProcessInstanceDetailLogs)
 			return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-a", Ok: true}}}, nil
 		},
 	}
@@ -1451,6 +1460,7 @@ func TestDeleteProcessInstancesWithPlan_SubmitsResolvedRootsOnlyForKeyedHierarch
 	require.Equal(t, typex.Keys{"root-a", "child-a", "child-b"}, typex.Keys(got.DryRunPreview.AffectedFamilyKeys))
 	require.Contains(t, prompt, "requested to delete 2 process instance(s)")
 	require.Contains(t, prompt, "a total of 3 instance(s) with 1 root instance(s) will be deleted")
+	require.Contains(t, buf.String(), "deletion: deleted 1/1 process-instance tree(s); affected process instances: 3")
 }
 
 // TestDeleteProcessInstancesWithPlan_RegressionForceNoWaitAndWorkerControls
@@ -1500,6 +1510,8 @@ func TestDeleteProcessInstancesWithPlan_RegressionForceNoWaitAndWorkerControls(t
 			require.True(t, applied.FailFast)
 			require.True(t, applied.NoWorkerLimit)
 			require.Equal(t, 3, applied.AffectedProcessInstanceCount)
+			require.True(t, applied.SuppressWorkflowDetailLogs)
+			require.True(t, applied.SuppressProcessInstanceDetailLogs)
 			return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-a", Ok: true}}}, nil
 		},
 	}
@@ -1701,7 +1713,10 @@ func TestDeleteProcessInstanceSearchPages_FreezesAllPlansBeforeMutation(t *testi
 			events = append(events, "delete")
 			require.Equal(t, typex.Keys{"root-a", "root-b"}, keys)
 			require.Zero(t, wantedWorkers)
-			require.Equal(t, 4, options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount)
+			cfg := options.ApplyFacadeOptions(opts)
+			require.Equal(t, 4, cfg.AffectedProcessInstanceCount)
+			require.True(t, cfg.SuppressWorkflowDetailLogs)
+			require.True(t, cfg.SuppressProcessInstanceDetailLogs)
 			return process.DeleteReports{Items: []process.DeleteReport{
 				{Key: "root-a", Ok: true},
 				{Key: "root-b", Ok: true},
@@ -1780,6 +1795,8 @@ func TestDeleteProcessInstanceSearchProgressContractPendingT064(t *testing.T) {
 			cfg := options.ApplyFacadeOptions(opts)
 			require.Equal(t, 2, cfg.AffectedProcessInstanceCount)
 			require.NotNil(t, cfg.Progress)
+			require.True(t, cfg.SuppressWorkflowDetailLogs)
+			require.True(t, cfg.SuppressProcessInstanceDetailLogs)
 			cfg.Progress(options.ProgressEvent{
 				Kind: options.ProgressEventKindFrozenScope,
 				FrozenScope: &options.FrozenScopeProgress{
@@ -1798,9 +1815,10 @@ func TestDeleteProcessInstanceSearchProgressContractPendingT064(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got.Reports, 1)
 	require.Empty(t, stdout.String())
-	require.Contains(t, stderr.String(), "preflight: delete process-instance matches 1 process instance(s); page size 1; discovery will require 1 page(s)")
+	require.Contains(t, stderr.String(), "process-instance delete scope: delete process-instance matched 1 process instance; page size: 1; discovery pages: 1")
 	require.Contains(t, stderr.String(), "planning process-instance delete scope 1/1 process instance(s)")
 	require.Contains(t, stderr.String(), "deleting process instances 1/1 process instance(s)")
+	require.Contains(t, stderr.String(), "deletion: deleted 1/1 process-instance tree(s); affected process instances: 2")
 	require.NotContains(t, stderr.String(), "/v2/")
 	require.NotContains(t, stderr.String(), "cursor")
 }
@@ -1820,10 +1838,10 @@ func TestDeleteProcessInstanceSearchMachineProgressSafetyPendingT064(t *testing.
 	} {
 		t.Run(mode.name, func(t *testing.T) {
 			stdout, stderr := exerciseProcessInstanceMutationProgressOutput(t, "delete", mode.setup)
-			require.NotContains(t, stdout, "preflight:")
+			require.NotContains(t, stdout, "scope:")
 			require.NotContains(t, stdout, "planning process-instance delete scope")
 			require.NotContains(t, stdout, "deleting process instances")
-			require.NotContains(t, stderr, "preflight:")
+			require.NotContains(t, stderr, "scope:")
 			require.NotContains(t, stderr, "planning process-instance delete scope")
 			require.NotContains(t, stderr, "deleting process instances")
 		})
@@ -1936,7 +1954,10 @@ func TestDeleteProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck(t *tes
 		deleteProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.DeleteReports, error) {
 			require.Equal(t, typex.Keys{"2251799813711900"}, keys)
 			require.Zero(t, wantedWorkers)
-			require.Equal(t, 2, options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount)
+			cfg := options.ApplyFacadeOptions(opts)
+			require.Equal(t, 2, cfg.AffectedProcessInstanceCount)
+			require.True(t, cfg.SuppressWorkflowDetailLogs)
+			require.True(t, cfg.SuppressProcessInstanceDetailLogs)
 			return process.DeleteReports{Items: []process.DeleteReport{{Key: "2251799813711900", Ok: true}}}, nil
 		},
 	}
@@ -1948,6 +1969,7 @@ func TestDeleteProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck(t *tes
 	require.Len(t, got.Reports, 1)
 	require.Contains(t, buf.String(), "one or more parent process instances were not found")
 	require.Contains(t, buf.String(), "missing ancestor keys: 2251799813711999")
+	require.Contains(t, buf.String(), "deletion: deleted 1/1 process-instance tree(s); affected process instances: 2")
 }
 
 // Verifies delete no-ops successfully when a date-filtered search returns no process instances.
@@ -2684,7 +2706,9 @@ func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 	var got map[string]any
 	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
 	require.Equal(t, string(OutcomeAccepted), got["outcome"])
-	require.Contains(t, stderr, "INFO")
+	require.NotContains(t, stderr, "INFO")
+	require.NotContains(t, stderr, "delete requested")
+	require.NotContains(t, stderr, "deleting process instances")
 }
 
 // TestDeleteProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetail verifies direct-key failures keep root detail.

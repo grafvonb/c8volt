@@ -339,18 +339,18 @@ func TestOpsRepairProcessInstanceProgressContractPendingT068(t *testing.T) {
 		"--report-format", "json",
 	)
 
-	require.Contains(t, stderr, "preflight: process-instance repair matches 1 process instance(s); page size 1; discovery will require 1 page(s)")
+	require.Contains(t, stderr, "process-instance repair scope: matched 1 process instance; page size: 1; discovery pages: 1")
 	require.Contains(t, stderr, "discovering repair process instances, page 1/1, 1 seen")
 	require.Contains(t, stderr, "loading process-instance repair incidents 1/1 process instance(s)")
 	require.Contains(t, stderr, "planning process-instance repair scope 1/1 process instance(s)")
 	require.Contains(t, stderr, "repairing incidents 1/1 incident(s)")
 	require.NotContains(t, stderr, "/v2/")
 	require.NotContains(t, stderr, "cursor")
-	require.NotContains(t, stdout, "preflight:")
+	require.NotContains(t, stdout, "scope:")
 	require.NotContains(t, stdout, "discovering repair process instances")
 	require.NotContains(t, stdout, "planning process-instance repair scope")
-	require.Contains(t, stdout, "report: written "+reportPath)
-	require.Contains(t, stdout, "outcome: repaired")
+	require.Contains(t, stderr, "report: written "+reportPath)
+	require.Contains(t, stderr, "outcome: repaired")
 }
 
 // TestOpsRepairProcessInstanceMachineProgressSafetyPendingT068 pins
@@ -376,7 +376,7 @@ func TestOpsRepairProcessInstanceMachineProgressSafetyPendingT068(t *testing.T) 
 			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.9")}, mode.args...)
 			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
 			for _, disallowed := range []string{
-				"preflight:",
+				"scope:",
 				"discovering repair process instances",
 				"loading process-instance repair incidents",
 				"planning process-instance repair scope",

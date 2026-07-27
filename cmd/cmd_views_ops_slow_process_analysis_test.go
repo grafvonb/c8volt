@@ -444,8 +444,8 @@ func TestRenderOpsSlowProcessAnalysisResultJSONIncludesStableAnalysisFields(t *t
 			PageCount:       ptrInt64(1),
 			PageCountKind:   ops.PageCountKindExact,
 			ConsequenceSummary: ops.ConsequenceSummary{
-				WorkSummary: "load runtime element timelines",
-				RiskSummary: "read-only analysis",
+				WorkSummary: "discover all matches and load runtime element timelines",
+				RiskSummary: "read-only, expensive",
 			},
 		},
 		FrozenScopeProgress: &ops.FrozenScopeProgress{

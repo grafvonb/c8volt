@@ -98,9 +98,7 @@ func printProcessInstanceMutationPreflight(cmd *cobra.Command, scope ops.Preflig
 	if !processInstanceMutationDurableProgressAllowed(channel) {
 		return
 	}
-	for _, line := range lines {
-		fmt.Fprintln(cmd.ErrOrStderr(), line)
-	}
+	printOpsPreflightLines(cmd, scope)
 }
 
 func printProcessInstanceMutationProgressLine(cmd *cobra.Command, line string, channel ops.ProgressChannel) {
@@ -113,11 +111,58 @@ func printProcessInstanceMutationProgressLine(cmd *cobra.Command, line string, c
 	if !processInstanceMutationDurableProgressAllowed(channel) {
 		return
 	}
-	fmt.Fprintln(cmd.ErrOrStderr(), line)
+	printOpsDurableLine(cmd, line, false)
 }
 
 func processInstanceMutationDurableProgressAllowed(channel ops.ProgressChannel) bool {
 	return channel.DurableAllowed && channel.StderrAllowed && (channel.Mode == ops.ProgressModeVerbose || channel.Mode == ops.ProgressModeDebug)
+}
+
+func renderProcessInstanceMutationResultSummary(cmd *cobra.Command, operation string, reports []process.Reporter, impact processInstancePageImpact) {
+	if !processInstanceMutationHumanResultAllowed(cmd) || len(reports) == 0 {
+		return
+	}
+	total, ok, failed := process.TotalsOf(reports)
+	if total == 0 {
+		return
+	}
+	label, verb := processInstanceMutationResultWords(operation, flagNoWait)
+	line := fmt.Sprintf("%s: %s %d/%d process-instance tree(s)", label, verb, ok, total)
+	if failed > 0 {
+		line += fmt.Sprintf(", failed %d", failed)
+	}
+	if impact.Affected > total {
+		line += fmt.Sprintf("; affected process instances: %d", impact.Affected)
+	}
+	printOpsDurableLine(cmd, line, false)
+}
+
+func processInstanceMutationHumanResultAllowed(cmd *cobra.Command) bool {
+	input := processInstanceMutationProgressModeForCommand(cmd)
+	return !input.Quiet && !input.Automation && input.RenderMode == RenderModeOneLine
+}
+
+func processInstanceMutationResultWords(operation string, noWait bool) (label string, verb string) {
+	switch strings.TrimSpace(operation) {
+	case "cancel":
+		if noWait {
+			return "cancellation", "submitted"
+		}
+		return "cancellation", "canceled"
+	default:
+		if noWait {
+			return "deletion", "submitted"
+		}
+		return "deletion", "deleted"
+	}
+}
+
+func compactProcessInstanceMutationOptions(opts []processOptions.FacadeOption) []processOptions.FacadeOption {
+	out := append([]processOptions.FacadeOption{}, opts...)
+	return append(out,
+		processOptions.WithSuppressWorkflowDetailLogs(),
+		processOptions.WithSuppressProcessInstanceDetailLogs(),
+	)
 }
 
 func formatProcessInstanceMutationFrozenProgress(progress ops.FrozenScopeProgress) string {

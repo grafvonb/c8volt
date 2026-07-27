@@ -218,6 +218,49 @@ func TestDeleteProcessInstancesLogsProgressWhileRootDeleteRuns(t *testing.T) {
 	require.Contains(t, logBuf.String(), "pi delete done; roots 1, affected 4, ok 1, failed 0")
 }
 
+// TestDeleteProcessInstancesSuppressesLegacyBulkLogs verifies CLI callers can
+// rely on structured progress without duplicate durable INFO progress lines.
+func TestDeleteProcessInstancesSuppressesLegacyBulkLogs(t *testing.T) {
+	oldInterval := processInstanceBulkProgressInterval
+	processInstanceBulkProgressInterval = 10 * time.Millisecond
+	t.Cleanup(func() { processInstanceBulkProgressInterval = oldInterval })
+
+	var logBuf lockedLogBuffer
+	log := slog.New(logging.NewPlainHandler(&logBuf, slog.LevelInfo))
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var startedOnce sync.Once
+	api := stubBulkProcessInstanceAPI{
+		delete: func(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+			require.Equal(t, "root-1", key)
+			require.True(t, services.ApplyCallOptions(opts).SuppressProcessInstanceDetailLogs)
+			startedOnce.Do(func() { close(started) })
+			select {
+			case <-ctx.Done():
+				return d.DeleteResponse{}, ctx.Err()
+			case <-release:
+				return d.DeleteResponse{Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+			}
+		},
+	}
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := DeleteProcessInstances(context.Background(), api, log, typex.Keys{"root-1"}, 1, 4,
+			services.WithSuppressWorkflowDetailLogs(),
+			services.WithSuppressProcessInstanceDetailLogs(),
+		)
+		errCh <- err
+	}()
+
+	<-started
+	time.Sleep(35 * time.Millisecond)
+	require.NotContains(t, logBuf.String(), "pi delete progress")
+	close(release)
+
+	require.NoError(t, <-errCh)
+	require.NotContains(t, logBuf.String(), "pi delete done")
+}
+
 // TestCancelProcessInstancesLogsSlowRootWhenProgressStalls verifies progress output names the in-flight root when completion stops advancing.
 func TestCancelProcessInstancesLogsSlowRootWhenProgressStalls(t *testing.T) {
 	oldInterval := processInstanceBulkProgressInterval

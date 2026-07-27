@@ -403,9 +403,7 @@ func printBasicSearchPreflight(cmd *cobra.Command, scope ops.PreflightScope, cha
 	if !basicSearchDurableProgressAllowed(channel) {
 		return
 	}
-	for _, line := range lines {
-		fmt.Fprintln(cmd.ErrOrStderr(), line)
-	}
+	printOpsPreflightLines(cmd, scope)
 }
 
 func printBasicSearchProgressLine(cmd *cobra.Command, line string, channel ops.ProgressChannel) {
@@ -418,7 +416,7 @@ func printBasicSearchProgressLine(cmd *cobra.Command, line string, channel ops.P
 	if !basicSearchDurableProgressAllowed(channel) {
 		return
 	}
-	fmt.Fprintln(cmd.ErrOrStderr(), line)
+	printOpsDurableLine(cmd, line, false)
 }
 
 func basicSearchDurableProgressAllowed(channel ops.ProgressChannel) bool {

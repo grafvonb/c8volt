@@ -20,9 +20,9 @@ func renderOpsPurgeProcessInstancesWithIncidentsResult(cmd *cobra.Command, resul
 		return renderSucceededResult(cmd, result)
 	}
 	if result.Request.DryRun {
-		renderOutputLine(cmd, "dry run: purge process-instances with incidents")
+		renderHumanLine(cmd, "dry run: purge process-instances with incidents")
 	} else {
-		renderOutputLine(cmd, "purge process-instances with incidents")
+		renderHumanLine(cmd, "purge process-instances with incidents")
 	}
 	renderOpsPurgeProcessInstancesWithIncidentsDiscovery(cmd, result)
 	renderOpsPurgeProcessInstancesWithIncidentsPlan(cmd, result)
@@ -38,19 +38,19 @@ func renderOpsPurgeProcessInstancesWithIncidentsResult(cmd *cobra.Command, resul
 // renderOpsPurgeProcessInstancesWithIncidentsDiscovery prints candidate discovery counts and verbose key details.
 func renderOpsPurgeProcessInstancesWithIncidentsDiscovery(cmd *cobra.Command, result ops.IncidentPurgeResult) {
 	if filters := result.Discovery.Filters.String(); filters != "" {
-		renderOutputLine(cmd, "selection filters: %s", filters)
+		renderHumanLine(cmd, "selection filters: %s", filters)
 	}
 	if result.Discovery.Status == "" {
 		return
 	}
-	renderOutputLine(cmd, "candidate incidents: %d", result.Discovery.IncidentCount)
-	renderOutputLine(cmd, "candidate process instances: %d", result.Discovery.CandidateProcessInstanceCount)
+	renderHumanLine(cmd, "candidate incidents: %d", result.Discovery.IncidentCount)
+	renderHumanLine(cmd, "candidate process instances: %d", result.Discovery.CandidateProcessInstanceCount)
 	renderOpsPurgeProcessInstancesWithIncidentsDiscoveryStatus(cmd, result.Discovery.DiscoveryScopeStatus)
 	if len(result.Discovery.DuplicateCandidateProcessInstanceKeys) > 0 {
-		renderOutputLine(cmd, "duplicate candidate process instances: %d", len(result.Discovery.DuplicateCandidateProcessInstanceKeys))
+		renderHumanLine(cmd, "duplicate candidate process instances: %d", len(result.Discovery.DuplicateCandidateProcessInstanceKeys))
 	}
 	if len(result.Discovery.SkippedIncidents) > 0 {
-		renderOutputLine(cmd, "skipped incidents: %d", len(result.Discovery.SkippedIncidents))
+		renderHumanLine(cmd, "skipped incidents: %d", len(result.Discovery.SkippedIncidents))
 	}
 	renderOpsPurgeProcessInstancesWithIncidentsNotices(cmd, result.Discovery.Notices)
 	if flagVerbose {
@@ -70,7 +70,7 @@ func renderOpsPurgeProcessInstancesWithIncidentsNotices(cmd *cobra.Command, noti
 		if notice.Code != "bounded_search_scope" || notice.Message == "" {
 			continue
 		}
-		renderOutputLine(cmd, "%s", notice.Message)
+		renderHumanLine(cmd, "%s", notice.Message)
 	}
 }
 
@@ -84,10 +84,10 @@ func renderOpsPurgeProcessInstancesWithIncidentsPlan(cmd *cobra.Command, result 
 		return
 	}
 	if result.DeletePlan.Status == ops.WorkflowStepStatusSkipped {
-		renderOutputLine(cmd, "delete plan: skipped")
+		renderHumanLine(cmd, "delete plan: skipped")
 		return
 	}
-	renderOutputLine(cmd, "delete plan: %s; %d candidate incident(s), %d candidate process instance(s), %d affected process instance(s) across %d root(s) will be deleted",
+	renderHumanLine(cmd, "delete plan: %s; %d candidate incident(s), %d candidate process instance(s), %d affected process instance(s) across %d root(s) will be deleted",
 		result.DeletePlan.Status,
 		result.Discovery.IncidentCount,
 		len(result.DeletePlan.CandidateProcessInstanceKeys),
@@ -95,7 +95,7 @@ func renderOpsPurgeProcessInstancesWithIncidentsPlan(cmd *cobra.Command, result 
 		len(result.DeletePlan.ResolvedRootKeys),
 	)
 	if len(result.DeletePlan.NonFinalAffectedItems) > 0 {
-		renderOutputLine(cmd, "non-final affected process instances: %d", len(result.DeletePlan.NonFinalAffectedItems))
+		renderHumanLine(cmd, "non-final affected process instances: %d", len(result.DeletePlan.NonFinalAffectedItems))
 	}
 	if flagVerbose {
 		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)
@@ -106,10 +106,10 @@ func renderOpsPurgeProcessInstancesWithIncidentsPlan(cmd *cobra.Command, result 
 
 func renderOpsPurgeProcessInstancesWithIncidentsDryRunDeletePreview(cmd *cobra.Command, result ops.IncidentPurgeResult) {
 	if result.DeletePlan.Status == ops.WorkflowStepStatusSkipped {
-		renderOutputLine(cmd, "delete preview: skipped (no incident process-instance targets)")
+		renderHumanLine(cmd, "delete preview: skipped (no incident process-instance targets)")
 		return
 	}
-	renderOutputLine(cmd, "delete preview: %d candidate incident(s), %d candidate process instance(s), %d affected process instance(s) across %d root(s) would be deleted",
+	renderHumanLine(cmd, "delete preview: %d candidate incident(s), %d candidate process instance(s), %d affected process instance(s) across %d root(s) would be deleted",
 		result.Discovery.IncidentCount,
 		len(result.DeletePlan.CandidateProcessInstanceKeys),
 		len(result.DeletePlan.AffectedKeys),
@@ -117,7 +117,7 @@ func renderOpsPurgeProcessInstancesWithIncidentsDryRunDeletePreview(cmd *cobra.C
 	)
 	renderOpsProcessInstanceDependencyExpansion(cmd, len(result.DeletePlan.CandidateProcessInstanceKeys), len(result.DeletePlan.AffectedKeys))
 	if len(result.DeletePlan.NonFinalAffectedItems) > 0 {
-		renderOutputLine(cmd, "non-final affected process instances: %d (use --force to cancel before delete)", len(result.DeletePlan.NonFinalAffectedItems))
+		renderHumanLine(cmd, "non-final affected process instances: %d (use --force to cancel before delete)", len(result.DeletePlan.NonFinalAffectedItems))
 	}
 	if flagVerbose {
 		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)
@@ -132,10 +132,10 @@ func renderOpsPurgeProcessInstancesWithIncidentsDeletion(cmd *cobra.Command, res
 		return
 	}
 	if !result.Deletion.Submitted {
-		renderOutputLine(cmd, "deletion: %s; no deletion request submitted", result.Deletion.Status)
+		renderHumanLine(cmd, "deletion: %s; no deletion request submitted", result.Deletion.Status)
 		return
 	}
-	renderOutputLine(cmd, "deletion: %s", opsWorkflowDeletionSummary(string(result.Deletion.Status), len(result.Deletion.Items), "process-instance tree", "process-instance trees", result.Deletion.NoWait))
+	renderHumanLine(cmd, "deletion: %s", opsWorkflowDeletionSummary(string(result.Deletion.Status), len(result.Deletion.Items), "process-instance tree", "process-instance trees", result.Deletion.NoWait))
 }
 
 // renderOpsPurgeProcessInstancesWithIncidentsOutcome prints the final workflow outcome with hidden-key guidance.
@@ -150,10 +150,10 @@ func renderOpsPurgeProcessInstancesWithIncidentsOutcome(cmd *cobra.Command, resu
 			line += "; use --verbose to list process-instance keys"
 		}
 		line += elapsed
-		renderOutputLine(cmd, "%s", line)
+		renderHumanLine(cmd, "%s", line)
 		return
 	}
-	renderOutputLine(cmd, "outcome: %s%s", result.Outcome, elapsed)
+	renderHumanLine(cmd, "outcome: %s%s", result.Outcome, elapsed)
 }
 
 // incidentPurgeHasHiddenKeys reports whether compact output suppressed verbose key details.
@@ -168,16 +168,16 @@ func incidentPurgeHasHiddenKeys(result ops.IncidentPurgeResult) bool {
 // renderOpsPurgeProcessInstancesWithIncidentsKeys prints a comma-separated key list for verbose output.
 func renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd *cobra.Command, label string, keys []string) {
 	if len(keys) == 0 {
-		renderOutputLine(cmd, "%s: none", label)
+		renderHumanLine(cmd, "%s: none", label)
 		return
 	}
-	renderOutputLine(cmd, "%s: %s", label, strings.Join(keys, ", "))
+	renderHumanLine(cmd, "%s: %s", label, strings.Join(keys, ", "))
 }
 
 // renderOpsPurgeProcessInstancesWithIncidentsSkipped prints skipped incident details for verbose output.
 func renderOpsPurgeProcessInstancesWithIncidentsSkipped(cmd *cobra.Command, skipped []ops.IncidentPurgeSkippedIncident) {
 	if len(skipped) == 0 {
-		renderOutputLine(cmd, "skipped incident keys: none")
+		renderHumanLine(cmd, "skipped incident keys: none")
 		return
 	}
 	items := make([]string, 0, len(skipped))
@@ -191,7 +191,7 @@ func renderOpsPurgeProcessInstancesWithIncidentsSkipped(cmd *cobra.Command, skip
 		}
 		items = append(items, key)
 	}
-	renderOutputLine(cmd, "skipped incident keys: %s", strings.Join(items, ", "))
+	renderHumanLine(cmd, "skipped incident keys: %s", strings.Join(items, ", "))
 }
 
 // renderOpsPurgeProcessInstancesWithIncidentsReportFile prints the compact audit report location.
@@ -199,7 +199,7 @@ func renderOpsPurgeProcessInstancesWithIncidentsReportFile(cmd *cobra.Command, r
 	if result.Request.ReportFile == "" {
 		return
 	}
-	renderOutputLine(cmd, "report: written %s", result.Request.ReportFile)
+	renderHumanLine(cmd, "report: written %s", result.Request.ReportFile)
 }
 
 // renderOpsPurgeProcessInstancesWithIncidentsJSONReport encodes the complete audit report deterministically.

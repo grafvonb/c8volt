@@ -183,7 +183,7 @@ func deleteProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli 
 		}
 	}
 
-	mutationOpts := append(opts, processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+	mutationOpts := append(compactProcessInstanceMutationOptions(opts), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
 	reports, err := cli.DeleteProcessInstances(cmd.Context(), plan.Roots, flagWorkers, mutationOpts...)
 	if err != nil {
 		return processInstancePageActionResult{}, fmt.Errorf("delete process instances: %w", err)
@@ -196,6 +196,7 @@ func deleteProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli 
 	for i, report := range reports.Items {
 		result.Reports[i] = process.Reporter(report)
 	}
+	renderProcessInstanceMutationResultSummary(cmd, "delete", result.Reports, impact)
 	return result, nil
 }
 
@@ -230,7 +231,7 @@ func deleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 		return processInstancePageActionResults{}, err
 	}
 
-	opts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+	opts := append(compactProcessInstanceMutationOptions(collectOptions()), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
 	opts = append(opts, processOptions.WithProgress(newProcessInstanceMutationProgressReporter(cmd, "delete")))
 	reports, err := cli.DeleteProcessInstances(cmd.Context(), plan.Roots, flagWorkers, opts...)
 	if err != nil {
@@ -240,6 +241,7 @@ func deleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	for i, report := range reports.Items {
 		results.Reports[i] = process.Reporter(report)
 	}
+	renderProcessInstanceMutationResultSummary(cmd, "delete", results.Reports, impact)
 	return results, nil
 }
 

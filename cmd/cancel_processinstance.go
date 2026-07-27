@@ -172,7 +172,7 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 					}
 				}
 
-				mutationOpts := append(collectOptions(),
+				mutationOpts := append(compactProcessInstanceMutationOptions(collectOptions()),
 					processOptions.WithAffectedProcessInstanceCount(len(step.Plan.Collected)),
 					processOptions.WithProgress(progress),
 				)
@@ -225,6 +225,13 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	if err != nil {
 		return processInstancePageActionResults{}, err
 	}
+	if len(results.Reports) > 0 {
+		renderProcessInstanceMutationResultSummary(cmd, "cancel", results.Reports, processInstancePageImpact{
+			Requested: int(planned.RequestedCount),
+			Affected:  int(planned.CumulativeImpact),
+			Roots:     len(results.Reports),
+		})
+	}
 	if planned.RequestedCount == 0 {
 		renderOutputLine(cmd, "found: %d", 0)
 	}
@@ -276,7 +283,7 @@ func cancelProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli 
 		}
 	}
 
-	mutationOpts := append(opts, processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+	mutationOpts := append(compactProcessInstanceMutationOptions(opts), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
 	reports, err := cli.CancelProcessInstances(cmd.Context(), plan.Roots, flagWorkers, mutationOpts...)
 	if err != nil {
 		return processInstancePageActionResult{}, fmt.Errorf("cancel process instances: %w", err)
@@ -289,6 +296,7 @@ func cancelProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli 
 	for i, report := range reports.Items {
 		result.Reports[i] = process.Reporter(report)
 	}
+	renderProcessInstanceMutationResultSummary(cmd, "cancel", result.Reports, impact)
 	return result, nil
 }
 

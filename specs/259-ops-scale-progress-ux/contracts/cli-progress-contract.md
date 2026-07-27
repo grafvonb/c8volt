@@ -8,8 +8,8 @@ This contract defines the user-visible behavior for c8volt preflight and progres
 
 | Mode | stdout | stderr/activity | Prompting | Required behavior |
 |------|--------|-----------------|-----------|-------------------|
-| Default human | Final human result only | Transient activity allowed; compact durable scope/progress allowed when useful | Interactive prompts allowed | Show preflight for broad high-volume work and exact progress after frozen scope |
-| Verbose human | Final human result only | Durable progress lines and activity allowed | Interactive prompts allowed | Include page progress, certainty wording, and next-step detail |
+| Default human | Command result data only | Transient activity allowed; compact durable scope/progress allowed when useful | Interactive prompts allowed | Show command-specific scope checks for broad high-volume work and exact progress after frozen scope |
+| Verbose human | Command result data only | Durable progress lines and activity allowed | Interactive prompts allowed | Include page progress, certainty wording, and next-step detail |
 | Debug | Final selected output plus debug logging according to existing rules | Debug logs may include endpoint/request detail | Existing prompting rules | Keep low-level HTTP traces in debug, not default human progress |
 | JSON | One valid JSON document | Activity/progress may occur only outside stdout and only when allowed by existing terminal rules | No extra human prompts unless command contract already allows confirmation | Never write progress to stdout |
 | Keys-only | One key per line and nothing else | Activity/progress may occur only outside stdout and only when allowed by existing terminal rules | No extra human prompts that corrupt key streams | Never write progress to stdout |
@@ -18,7 +18,7 @@ This contract defines the user-visible behavior for c8volt preflight and progres
 
 ## Preflight Contract
 
-Preflight appears before expensive batch processing begins for broad high-volume selectors.
+Preflight appears before expensive batch processing begins for broad high-volume selectors. Human wording must be command-specific; do not print the generic prefix `preflight:`.
 
 Required human content:
 
@@ -31,20 +31,25 @@ Required human content:
 Example shapes:
 
 ```text
-preflight: MainOrderProcess matches 10,000+ process instance(s); page size 1000; discovery will require at least 10 page(s)
-preflight: slow analysis will discover all matches and load runtime element timelines for each selected process instance. Continue?
+slow analysis scope: MainOrderProcess matched at least 10000 process instances; page size: 1000; discovery pages: at least 10
+slow analysis is expensive: discover all matches and load runtime element timelines
+Continue slow analysis for at least 10000 process instances?
 ```
 
 ```text
-preflight: exact count unavailable because orphan detection requires parent checks; first page has 1000 child candidate(s)
+orphan purge scope: an unknown number of process instances matched; page size: 1000
+orphan purge dry run: will check parent existence and validate delete impact only; no changes will be applied
 ```
 
 Rules:
 
 - A reused first discovery page must not be fetched again only for preflight.
-- Lower-bound totals must use `+` or explicit lower-bound wording.
+- Lower-bound totals must use explicit lower-bound wording such as `at least 10000 process instances`.
 - Unknown totals must explain why better scope is unavailable or expensive.
 - Explicit small key sets should skip broad preflight unless the command can expand into a large affected set.
+- A zero exact scope must say `matched no <resources>` and must not invent one discovery page.
+- Dry-run preflight must not say `will delete`, `will repair`, or `destructive`; it must say what will be planned or validated and that no changes will be applied.
+- Actual destructive or state-changing paths may use warning-level wording before confirmation, but only when mutation can really happen in that run.
 
 ## Page Progress Contract
 
@@ -88,6 +93,30 @@ Rules:
 - `done/total` totals must be exact.
 - Phase names must be operator-facing, not endpoint-facing.
 - Final command output must not contradict frozen progress counts.
+
+## Human Report Contract
+
+Ops workflow human reports are operator metadata, not data streams. They must use the same activity-aware human renderer as scope checks and warnings, matching commands such as `delete process-definition`.
+
+Examples:
+
+```text
+incident purge dry run: planning only; no changes will be applied
+selection filters: {state=active}
+candidate incidents: 4
+candidate process instances: 4
+delete preview: 4 candidate incidents, 4 candidate process instances, 6 affected process instances across 4 roots would be deleted
+dependency expansion: 2 additional process instances due to dependencies
+non-final affected process instances: 6; use --force to allow deletion
+outcome: planned; no changes applied; elapsed: <1s
+```
+
+Rules:
+
+- Do not mix logger-prefixed operational lines with plain operational lines in one ops workflow.
+- `WARN` is reserved for destructive mutation, irreversible deletion, state-changing repair, expensive read-only analysis requiring confirmation, safety blockers, and unexpected partial outcomes.
+- Dry-run reports normally use `INFO`; only real safety blockers or surprising partial results should be warnings.
+- Query/list command rows remain stdout result data; ops workflow reports use the human renderer.
 
 ## ETA Contract
 

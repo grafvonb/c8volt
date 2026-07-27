@@ -419,7 +419,11 @@ func cancelProcessDefinitionActiveInstances(ctx context.Context, piApi pisvc.API
 		log.Info(fmt.Sprintf("%s; force cancel active pi; roots %d, affected %d", processDefinitionDeleteLogSubject(plan), len(roots), affected))
 	}
 	cancelOpts := append([]services.CallOption{}, opts...)
-	cancelOpts = append(cancelOpts, services.WithAffectedProcessInstanceCount(affected))
+	cancelOpts = append(cancelOpts,
+		services.WithAffectedProcessInstanceCount(affected),
+		services.WithSuppressWorkflowDetailLogs(),
+		services.WithSuppressProcessInstanceDetailLogs(),
+	)
 	reports, err := pisvc.CancelProcessInstances(ctx, piApi, log, roots, wantedWorkers, affected, cancelOpts...)
 	if err != nil {
 		return err
@@ -447,7 +451,11 @@ func deleteProcessDefinitionProcessInstances(ctx context.Context, piApi pisvc.AP
 		log.Info(fmt.Sprintf("%s; delete pi history; affected %d, roots %d", processDefinitionDeleteLogSubject(plan), affected, len(roots)))
 	}
 	deleteOpts := append([]services.CallOption{}, opts...)
-	deleteOpts = append(deleteOpts, services.WithAffectedProcessInstanceCount(affected))
+	deleteOpts = append(deleteOpts,
+		services.WithAffectedProcessInstanceCount(affected),
+		services.WithSuppressWorkflowDetailLogs(),
+		services.WithSuppressProcessInstanceDetailLogs(),
+	)
 	reports, err := pisvc.DeleteProcessInstances(ctx, piApi, log, roots, wantedWorkers, affected, deleteOpts...)
 	if err != nil {
 		return err
@@ -482,7 +490,11 @@ func cleanupProcessDefinitionDeletePlanForceScope(ctx context.Context, pdApi API
 		log.Info(fmt.Sprintf("pd delete; force cancel active pi; roots %d, affected %d", len(scope.Roots), affected))
 	}
 	cancelOpts := append([]services.CallOption{}, opts...)
-	cancelOpts = append(cancelOpts, services.WithAffectedProcessInstanceCount(affected))
+	cancelOpts = append(cancelOpts,
+		services.WithAffectedProcessInstanceCount(affected),
+		services.WithSuppressWorkflowDetailLogs(),
+		services.WithSuppressProcessInstanceDetailLogs(),
+	)
 	reports, err := pisvc.CancelProcessInstances(ctx, piApi, log, scope.Roots, wantedWorkers, affected, cancelOpts...)
 	if err != nil {
 		return err
@@ -498,7 +510,11 @@ func cleanupProcessDefinitionDeletePlanForceScope(ctx context.Context, pdApi API
 		log.Info(fmt.Sprintf("pd delete; delete pi history; affected %d, roots %d", affected, len(scope.Roots)))
 	}
 	deleteOpts := append([]services.CallOption{}, opts...)
-	deleteOpts = append(deleteOpts, services.WithAffectedProcessInstanceCount(affected))
+	deleteOpts = append(deleteOpts,
+		services.WithAffectedProcessInstanceCount(affected),
+		services.WithSuppressWorkflowDetailLogs(),
+		services.WithSuppressProcessInstanceDetailLogs(),
+	)
 	reports, err = pisvc.DeleteProcessInstances(ctx, piApi, log, scope.Roots, wantedWorkers, affected, deleteOpts...)
 	if err != nil {
 		return err

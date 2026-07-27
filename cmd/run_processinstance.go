@@ -126,6 +126,7 @@ var runProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes,
 				forbiddenFlagCombinationf("--count requires exactly one process definition; got %d", len(datas)))
 		}
+		fopts = append(fopts, foptions.WithSuppressWorkflowDetailLogs())
 		fopts = appendExplicitLargeWorkProgressOption(cmd, fopts)
 		created, err := cli.CreateNProcessInstances(cmd.Context(), datas[0], flagRunPICount, flagWorkers, fopts...)
 		if err != nil {

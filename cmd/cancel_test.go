@@ -1355,7 +1355,10 @@ func TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedImpactCheck(t
 		cancelProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.CancelReports, error) {
 			require.Equal(t, typex.Keys{"2251799813711900"}, keys)
 			require.Zero(t, wantedWorkers)
-			require.Equal(t, 2, options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount)
+			cfg := options.ApplyFacadeOptions(opts)
+			require.Equal(t, 2, cfg.AffectedProcessInstanceCount)
+			require.True(t, cfg.SuppressWorkflowDetailLogs)
+			require.True(t, cfg.SuppressProcessInstanceDetailLogs)
 			return process.CancelReports{Items: []process.CancelReport{{Key: "2251799813711900", Ok: true}}}, nil
 		},
 	}
@@ -1369,6 +1372,7 @@ func TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedImpactCheck(t
 	require.Contains(t, prompt, "a total of 2 instance(s) with 1 root instance(s) will be canceled")
 	require.Contains(t, buf.String(), "one or more parent process instances were not found")
 	require.Contains(t, buf.String(), "missing ancestor keys: 1 (use --verbose to list keys)")
+	require.Contains(t, buf.String(), "cancellation: canceled 1/1 process-instance tree(s); affected process instances: 2")
 	require.NotContains(t, buf.String(), "missing ancestor keys: 2251799813711999")
 }
 
@@ -1398,7 +1402,10 @@ func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck(t *tes
 		cancelProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.CancelReports, error) {
 			require.Equal(t, typex.Keys{"2251799813711967"}, keys)
 			require.Zero(t, wantedWorkers)
-			require.Equal(t, 1, options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount)
+			cfg := options.ApplyFacadeOptions(opts)
+			require.Equal(t, 1, cfg.AffectedProcessInstanceCount)
+			require.True(t, cfg.SuppressWorkflowDetailLogs)
+			require.True(t, cfg.SuppressProcessInstanceDetailLogs)
 			return process.CancelReports{Items: []process.CancelReport{{Key: "2251799813711967", Ok: true}}}, nil
 		},
 	}
@@ -1410,6 +1417,7 @@ func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck(t *tes
 	require.Len(t, got.Reports, 1)
 	require.Contains(t, buf.String(), "one or more parent process instances were not found")
 	require.Contains(t, buf.String(), "missing ancestor keys: 2251799813711999")
+	require.Contains(t, buf.String(), "cancellation: canceled 1/1 process-instance tree(s)")
 }
 
 // TestCancelProcessInstancesWithPlan_RegressionWorkerControls protects cancel hierarchy planning and execution worker controls.
@@ -1453,6 +1461,8 @@ func TestCancelProcessInstancesWithPlan_RegressionWorkerControls(t *testing.T) {
 			require.True(t, applied.FailFast)
 			require.True(t, applied.NoWorkerLimit)
 			require.Equal(t, 3, applied.AffectedProcessInstanceCount)
+			require.True(t, applied.SuppressWorkflowDetailLogs)
+			require.True(t, applied.SuppressProcessInstanceDetailLogs)
 			return process.CancelReports{Items: []process.CancelReport{{Key: "root-a", Ok: true}}}, nil
 		},
 	}
@@ -1875,6 +1885,8 @@ func TestCancelProcessInstanceSearchProgressContractPendingT064(t *testing.T) {
 			cfg := options.ApplyFacadeOptions(opts)
 			require.Equal(t, 2, cfg.AffectedProcessInstanceCount)
 			require.NotNil(t, cfg.Progress)
+			require.True(t, cfg.SuppressWorkflowDetailLogs)
+			require.True(t, cfg.SuppressProcessInstanceDetailLogs)
 			cfg.Progress(options.ProgressEvent{
 				Kind: options.ProgressEventKindFrozenScope,
 				FrozenScope: &options.FrozenScopeProgress{
@@ -1893,9 +1905,10 @@ func TestCancelProcessInstanceSearchProgressContractPendingT064(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got.Reports, 1)
 	require.Empty(t, stdout.String())
-	require.Contains(t, stderr.String(), "preflight: cancel process-instance matches 2+ process instance(s); page size 1; discovery will require at least 2 page(s)")
+	require.Contains(t, stderr.String(), "process-instance cancel scope: cancel process-instance matched at least 2 process instances; page size: 1; discovery pages: at least 2")
 	require.Contains(t, stderr.String(), "planning process-instance cancel scope 1/1 process instance(s)")
 	require.Contains(t, stderr.String(), "cancelling process instances 1/1 process instance(s)")
+	require.Contains(t, stderr.String(), "cancellation: canceled 1/1 process-instance tree(s); affected process instances: 2")
 	require.NotContains(t, stderr.String(), "/v2/")
 	require.NotContains(t, stderr.String(), "cursor")
 }
@@ -1915,10 +1928,10 @@ func TestCancelProcessInstanceSearchMachineProgressSafetyPendingT064(t *testing.
 	} {
 		t.Run(mode.name, func(t *testing.T) {
 			stdout, stderr := exerciseProcessInstanceMutationProgressOutput(t, "cancel", mode.setup)
-			require.NotContains(t, stdout, "preflight:")
+			require.NotContains(t, stdout, "scope:")
 			require.NotContains(t, stdout, "planning process-instance cancel scope")
 			require.NotContains(t, stdout, "cancelling process instances")
-			require.NotContains(t, stderr, "preflight:")
+			require.NotContains(t, stderr, "scope:")
 			require.NotContains(t, stderr, "planning process-instance cancel scope")
 			require.NotContains(t, stderr, "cancelling process instances")
 		})
@@ -2200,7 +2213,9 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
 	require.Equal(t, string(OutcomeAccepted), got["outcome"])
 	require.Equal(t, "cancel process-instance", got["command"])
-	require.Contains(t, stderr, "INFO")
+	require.NotContains(t, stderr, "INFO")
+	require.NotContains(t, stderr, "cancel requested")
+	require.NotContains(t, stderr, "cancelling process instances")
 }
 
 // TestCancelProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetail verifies direct-key failures keep root detail.

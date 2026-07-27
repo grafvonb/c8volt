@@ -372,9 +372,9 @@ func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing
 					PageCount:       &progressPages,
 					PageCountKind:   d.OpsPageCountKindEstimated,
 					ConsequenceSummary: d.OpsConsequenceSummary{
-						ResourceSummary: "800+ process instance(s)",
-						WorkSummary:     "load runtime element timelines",
-						RiskSummary:     "read-only expensive analysis",
+						ResourceSummary: "at least 800 process instances",
+						WorkSummary:     "discover all matches and load runtime element timelines",
+						RiskSummary:     "read-only, expensive",
 					},
 				},
 			})

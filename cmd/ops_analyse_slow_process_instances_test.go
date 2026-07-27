@@ -417,9 +417,9 @@ func TestOpsAnalyseSlowProcessInstancesPrintsPreflightCertaintyToStderr(t *testi
 		pageKind  ops.PageCountKind
 		want      []string
 	}{
-		{name: "exact", total: ptrInt64(2000), kind: ops.TotalCertaintyExact, pageCount: ptrInt64(2), pageKind: ops.PageCountKindExact, want: []string{"preflight: OrderProcess matches 2000 process instance(s)", "discovery will require 2 page(s)"}},
-		{name: "lower bound", total: ptrInt64(2000), kind: ops.TotalCertaintyLowerBound, pageCount: ptrInt64(2), pageKind: ops.PageCountKindEstimated, want: []string{"preflight: OrderProcess matches 2000+ process instance(s)", "discovery will require at least 2 page(s)"}},
-		{name: "unknown", kind: ops.TotalCertaintyUnknown, pageKind: ops.PageCountKindUnknown, want: []string{"preflight: OrderProcess matches unknown process instance(s)", "page size 1000"}},
+		{name: "exact", total: ptrInt64(2000), kind: ops.TotalCertaintyExact, pageCount: ptrInt64(2), pageKind: ops.PageCountKindExact, want: []string{"slow analysis scope: OrderProcess matched 2000 process instances", "discovery pages: 2"}},
+		{name: "lower bound", total: ptrInt64(2000), kind: ops.TotalCertaintyLowerBound, pageCount: ptrInt64(2), pageKind: ops.PageCountKindEstimated, want: []string{"slow analysis scope: OrderProcess matched at least 2000 process instances", "discovery pages: at least 2"}},
+		{name: "unknown", kind: ops.TotalCertaintyUnknown, pageKind: ops.PageCountKindUnknown, want: []string{"slow analysis scope: OrderProcess matched an unknown number of process instances", "page size: 1000"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -430,6 +430,7 @@ func TestOpsAnalyseSlowProcessInstancesPrintsPreflightCertaintyToStderr(t *testi
 			cmd.SetErr(&stderr)
 
 			printOpsPreflightScope(cmd, ops.PreflightScope{
+				Command:         "ops analyse slow-process-instances",
 				SelectorSummary: "OrderProcess",
 				CoreResource:    "process_instance",
 				Total:           tc.total,
@@ -445,6 +446,37 @@ func TestOpsAnalyseSlowProcessInstancesPrintsPreflightCertaintyToStderr(t *testi
 			}
 		})
 	}
+}
+
+// TestOpsAnalyseSlowProcessInstancesPreflightUsesCommandLogger keeps scope output aligned with other prompt preambles.
+func TestOpsAnalyseSlowProcessInstancesPreflightUsesCommandLogger(t *testing.T) {
+	total := int64(10000)
+	pages := int64(10)
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var logBuf bytes.Buffer
+	cmd.SetContext(logging.ToContext(cmd.Context(), logging.New(logging.LoggerConfig{
+		Format: "plain-time",
+		Writer: &logBuf,
+	})))
+
+	printOpsPreflightScope(cmd, ops.PreflightScope{
+		Command:         "ops analyse slow-process-instances",
+		SelectorSummary: "OrderProcess",
+		CoreResource:    "process_instance",
+		Total:           &total,
+		TotalKind:       ops.TotalCertaintyLowerBound,
+		PageSize:        1000,
+		PageCount:       &pages,
+		PageCountKind:   ops.PageCountKindEstimated,
+		ConsequenceSummary: ops.ConsequenceSummary{
+			WorkSummary: "discover all matches and load runtime element timelines",
+			RiskSummary: "read-only, expensive",
+		},
+	}, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
+
+	got := logBuf.String()
+	require.Contains(t, got, "INFO slow analysis scope: OrderProcess matched at least 10000 process instances; page size: 1000; discovery pages: at least 10")
+	require.Contains(t, got, "WARN slow analysis is expensive: discover all matches and load runtime element timelines")
 }
 
 // TestOpsAnalyseSlowProcessInstancesConfiguresBroadPreflightOnlyForSearch verifies explicit-key mode stays concise.

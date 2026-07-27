@@ -59,8 +59,8 @@ func emitRepairIncidentPreflight(request d.OpsRepairRequest, page d.IncidentPage
 		PageCount:       pageCount,
 		PageCountKind:   pageKind,
 		ConsequenceSummary: d.OpsConsequenceSummary{
-			WorkSummary: "incident repair will discover matching incidents, plan repair scope, and repair confirmed incidents",
-			RiskSummary: "state-changing repair",
+			WorkSummary: repairIncidentWorkSummary(request.DryRun),
+			RiskSummary: repairRiskSummary(request.DryRun),
 		},
 		RequiresConfirmation: !request.DryRun && !request.AutoConfirm && !request.Automation,
 	}
@@ -100,12 +100,33 @@ func emitRepairProcessInstancePreflight(request d.OpsRepairRequest, page d.Proce
 		PageCount:       pageCount,
 		PageCountKind:   pageKind,
 		ConsequenceSummary: d.OpsConsequenceSummary{
-			WorkSummary: "process-instance repair will discover incident-bearing process instances, load active incidents, plan repair scope, and repair confirmed incidents",
-			RiskSummary: "state-changing repair",
+			WorkSummary: repairProcessInstanceWorkSummary(request.DryRun),
+			RiskSummary: repairRiskSummary(request.DryRun),
 		},
 		RequiresConfirmation: !request.DryRun && !request.AutoConfirm && !request.Automation,
 	}
 	emitRepairProgress(request, d.OpsProgressEvent{Kind: d.OpsProgressEventKindPreflight, Preflight: &preflight})
+}
+
+func repairIncidentWorkSummary(dryRun bool) string {
+	if dryRun {
+		return "incident repair dry run will discover matching incidents and plan repair scope only; no changes will be applied"
+	}
+	return "incident repair will discover matching incidents, plan repair scope, and repair confirmed incidents"
+}
+
+func repairProcessInstanceWorkSummary(dryRun bool) string {
+	if dryRun {
+		return "process-instance repair dry run will discover incident-bearing process instances, load active incidents, and plan repair scope only; no changes will be applied"
+	}
+	return "process-instance repair will discover incident-bearing process instances, load active incidents, plan repair scope, and repair confirmed incidents"
+}
+
+func repairRiskSummary(dryRun bool) string {
+	if dryRun {
+		return ""
+	}
+	return "state-changing repair"
 }
 
 // emitRepairProcessInstancePageProgress reports process-instance search discovery after each page has been consumed.

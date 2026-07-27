@@ -18,9 +18,10 @@ func retentionPolicyDiscoveryProgress(request d.RetentionPolicyRequest) func(pis
 			preflight := newProcessInstancePurgePreflight(
 				request.CommandName,
 				"retention-policy",
-				"retention-policy will discover eligible process instances, validate delete impact, and delete confirmed roots",
+				processInstancePurgeWorkSummary(request.DryRun, "retention cleanup", "discover eligible process instances"),
 				event.Page,
 				normalizeRetentionDiscoveryBatchSizeForProgress(request.BatchSize),
+				request.DryRun,
 				!request.DryRun && !request.AutoConfirm && !request.Automation,
 			)
 			request.Progress(d.OpsProgressEvent{Kind: d.OpsProgressEventKindPreflight, Preflight: &preflight})
@@ -87,8 +88,8 @@ func newOrphanPurgePreflight(request d.OrphanPurgeRequest, event pisvc.OrphanDis
 		PageCount:       pageCount,
 		PageCountKind:   pageKind,
 		ConsequenceSummary: d.OpsConsequenceSummary{
-			WorkSummary: "orphan-process-instances purge will discover child candidates, check parent existence, validate delete impact, and delete confirmed roots",
-			RiskSummary: "potentially destructive purge",
+			WorkSummary: orphanPurgeWorkSummary(request.DryRun),
+			RiskSummary: orphanPurgeRiskSummary(request.DryRun),
 		},
 		RequiresConfirmation: !request.DryRun && !request.AutoConfirm && !request.Automation,
 	}
@@ -110,7 +111,7 @@ func orphanPurgePageCount(event pisvc.OrphanDiscoveryProgress) (*int64, d.OpsPag
 	return nil, d.OpsPageCountKindUnknown
 }
 
-func newProcessInstancePurgePreflight(command string, selector string, workSummary string, page d.ProcessInstancePage, pageSize int32, requiresConfirmation bool) d.OpsPreflightScope {
+func newProcessInstancePurgePreflight(command string, selector string, workSummary string, page d.ProcessInstancePage, pageSize int32, dryRun bool, requiresConfirmation bool) d.OpsPreflightScope {
 	total, totalKind := processInstancePurgeTotal(page.ReportedTotal)
 	pageCount, pageKind := processInstancePurgePageCount(page.ReportedTotal, pageSize)
 	return d.OpsPreflightScope{
@@ -125,10 +126,38 @@ func newProcessInstancePurgePreflight(command string, selector string, workSumma
 		PageCountKind:   pageKind,
 		ConsequenceSummary: d.OpsConsequenceSummary{
 			WorkSummary: workSummary,
-			RiskSummary: "potentially destructive purge",
+			RiskSummary: processInstancePurgeRiskSummary(dryRun),
 		},
 		RequiresConfirmation: requiresConfirmation,
 	}
+}
+
+func processInstancePurgeWorkSummary(dryRun bool, workflow string, discovery string) string {
+	if dryRun {
+		return workflow + " dry run will " + discovery + " and validate delete impact only; no changes will be applied"
+	}
+	return workflow + " will " + discovery + ", validate delete impact, and delete confirmed roots"
+}
+
+func processInstancePurgeRiskSummary(dryRun bool) string {
+	if dryRun {
+		return ""
+	}
+	return "potentially destructive purge"
+}
+
+func orphanPurgeWorkSummary(dryRun bool) string {
+	if dryRun {
+		return "orphan purge dry run will discover child candidates, check parent existence, and validate delete impact only; no changes will be applied"
+	}
+	return "orphan purge will discover child candidates, check parent existence, validate delete impact, and delete confirmed roots"
+}
+
+func orphanPurgeRiskSummary(dryRun bool) string {
+	if dryRun {
+		return ""
+	}
+	return "potentially destructive purge"
 }
 
 func processInstancePurgeTotal(total *d.ProcessInstanceReportedTotal) (*int64, d.OpsTotalCertainty) {
@@ -200,11 +229,18 @@ func newIncidentPurgePreflight(request d.IncidentPurgeRequest, page d.IncidentPa
 		PageCount:       pageCount,
 		PageCountKind:   pageKind,
 		ConsequenceSummary: d.OpsConsequenceSummary{
-			WorkSummary: "process-instances-with-incidents purge will discover matching incidents, validate delete impact, and delete confirmed roots",
-			RiskSummary: "potentially destructive purge",
+			WorkSummary: incidentPurgeWorkSummary(request.DryRun),
+			RiskSummary: processInstancePurgeRiskSummary(request.DryRun),
 		},
 		RequiresConfirmation: !request.DryRun && !request.AutoConfirm && !request.Automation,
 	}
+}
+
+func incidentPurgeWorkSummary(dryRun bool) string {
+	if dryRun {
+		return "incident purge dry run will discover matching incidents and validate delete impact only; no changes will be applied"
+	}
+	return "incident purge will discover matching incidents, validate delete impact, and delete confirmed roots"
 }
 
 func incidentPurgePageCount(total *d.IncidentReportedTotal, pageSize int32) (*int64, d.OpsPageCountKind) {

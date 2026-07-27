@@ -243,7 +243,7 @@ func slowProcessAnalysisDiscoverProcessDefinitionInstances(ctx context.Context, 
 	preflight := slowProcessAnalysisPreflightScope(request, page, batchSize)
 	discovery.preflight = &preflight
 	slowProcessAnalysisEmitProgress(request, d.OpsProgressEvent{Kind: d.OpsProgressEventKindPreflight, Preflight: &preflight})
-	if request.ConfirmPreflight != nil {
+	if request.ConfirmPreflight != nil && preflight.RequiresConfirmation {
 		if err := request.ConfirmPreflight(preflight); err != nil {
 			return slowProcessAnalysisSearchDiscovery{}, err
 		}
@@ -325,24 +325,24 @@ func slowProcessAnalysisPreflightScope(request d.SlowProcessAnalysisRequest, pag
 	total, totalKind := slowProcessAnalysisPreflightTotal(page)
 	pageCount, pageCountKind := slowProcessAnalysisPreflightPageCount(total, totalKind, batchSize)
 	selectorSummary := slowProcessAnalysisSelectorSummary(request.ProcessDefinitionSelector)
+	emptyExactScope := slowProcessAnalysisPreflightExactEmpty(total, totalKind)
+	consequence := slowProcessAnalysisPreflightConsequenceSummary(total, totalKind)
 	scope := d.OpsPreflightScope{
-		Phase:           "preflight",
-		Command:         request.CommandName,
-		CoreResource:    "process_instance",
-		SelectorSummary: selectorSummary,
-		Total:           total,
-		TotalKind:       totalKind,
-		PageSize:        batchSize,
-		PageCount:       pageCount,
-		PageCountKind:   pageCountKind,
-		ConsequenceSummary: d.OpsConsequenceSummary{
-			ResourceSummary: slowProcessAnalysisPreflightResourceSummary(total, totalKind),
-			WorkSummary:     "slow analysis will discover all matches and load runtime element timelines for each selected process instance",
-			RiskSummary:     "read-only expensive analysis",
-		},
-		RequiresConfirmation: true,
+		Phase:                "preflight",
+		Command:              request.CommandName,
+		CoreResource:         "process_instance",
+		SelectorSummary:      selectorSummary,
+		Total:                total,
+		TotalKind:            totalKind,
+		PageSize:             batchSize,
+		PageCount:            pageCount,
+		PageCountKind:        pageCountKind,
+		ConsequenceSummary:   consequence,
+		RequiresConfirmation: !emptyExactScope,
 	}
-	scope.ConsequenceSummary.ConfirmationText = slowProcessAnalysisPreflightConfirmationText(scope)
+	if scope.RequiresConfirmation {
+		scope.ConsequenceSummary.ConfirmationText = slowProcessAnalysisPreflightConfirmationText(scope)
+	}
 	return scope
 }
 
@@ -367,6 +367,9 @@ func slowProcessAnalysisPreflightPageCount(total *int64, totalKind d.OpsTotalCer
 	if total == nil || batchSize <= 0 {
 		return nil, d.OpsPageCountKindUnknown
 	}
+	if slowProcessAnalysisPreflightExactEmpty(total, totalKind) {
+		return nil, d.OpsPageCountKindUnknown
+	}
 	pages := (*total + int64(batchSize) - 1) / int64(batchSize)
 	if pages < 1 {
 		pages = 1
@@ -378,6 +381,25 @@ func slowProcessAnalysisPreflightPageCount(total *int64, totalKind d.OpsTotalCer
 		return &pages, d.OpsPageCountKindExact
 	}
 	return nil, d.OpsPageCountKindUnknown
+}
+
+// slowProcessAnalysisPreflightExactEmpty identifies a proven empty scope where no expensive follow-on work exists.
+func slowProcessAnalysisPreflightExactEmpty(total *int64, kind d.OpsTotalCertainty) bool {
+	return total != nil && kind == d.OpsTotalCertaintyExact && *total == 0
+}
+
+// slowProcessAnalysisPreflightConsequenceSummary describes the next phase without warning about work that will not happen.
+func slowProcessAnalysisPreflightConsequenceSummary(total *int64, kind d.OpsTotalCertainty) d.OpsConsequenceSummary {
+	summary := d.OpsConsequenceSummary{
+		ResourceSummary: slowProcessAnalysisPreflightResourceSummary(total, kind),
+	}
+	if slowProcessAnalysisPreflightExactEmpty(total, kind) {
+		summary.WorkSummary = "none; no runtime element timelines will be loaded"
+		return summary
+	}
+	summary.WorkSummary = "discover all matches and load runtime element timelines"
+	summary.RiskSummary = "read-only, expensive"
+	return summary
 }
 
 // slowProcessAnalysisSelectorSummary keeps broad selector wording compact and free of debug filters.
@@ -394,15 +416,25 @@ func slowProcessAnalysisSelectorSummary(selector d.SlowProcessAnalysisProcessDef
 // slowProcessAnalysisPreflightResourceSummary formats the count fact for structured consequence metadata.
 func slowProcessAnalysisPreflightResourceSummary(total *int64, kind d.OpsTotalCertainty) string {
 	if total == nil || kind == d.OpsTotalCertaintyUnknown {
-		return "unknown process instance(s)"
+		return "an unknown number of process instances"
 	}
-	if kind == d.OpsTotalCertaintyLowerBound {
-		return fmt.Sprintf("%d+ process instance(s)", *total)
+	switch kind {
+	case d.OpsTotalCertaintyExact:
+		switch *total {
+		case 0:
+			return "no process instances"
+		case 1:
+			return "1 process instance"
+		default:
+			return fmt.Sprintf("%d process instances", *total)
+		}
+	case d.OpsTotalCertaintyLowerBound:
+		return fmt.Sprintf("at least %d process instances", *total)
+	case d.OpsTotalCertaintyEstimated:
+		return fmt.Sprintf("about %d process instances", *total)
+	default:
+		return "an unknown number of process instances"
 	}
-	if kind == d.OpsTotalCertaintyEstimated {
-		return fmt.Sprintf("about %d process instance(s)", *total)
-	}
-	return fmt.Sprintf("%d process instance(s)", *total)
 }
 
 // slowProcessAnalysisPreflightConfirmationText freezes the prompt body used before full discovery begins.

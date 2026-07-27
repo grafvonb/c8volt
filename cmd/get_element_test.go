@@ -329,7 +329,7 @@ func TestGetElementCommand_SearchMachineOutputStaysProgressFree(t *testing.T) {
 
 		require.Len(t, bodies, 2)
 		require.Empty(t, stderr)
-		require.NotContains(t, stdout, "preflight:")
+		require.NotContains(t, stdout, "scope:")
 		require.NotContains(t, stdout, "page size:")
 		require.NotContains(t, stdout, "discovering elements")
 		var envelope map[string]any
@@ -362,7 +362,7 @@ func TestGetElementCommand_SearchMachineOutputStaysProgressFree(t *testing.T) {
 		require.Len(t, bodies, 1)
 		require.Empty(t, stderr)
 		require.Equal(t, "2251799813689002\n2251799813689003\n", stdout)
-		require.NotContains(t, stdout, "preflight:")
+		require.NotContains(t, stdout, "scope:")
 		require.NotContains(t, stdout, "page size:")
 	})
 }
@@ -466,7 +466,7 @@ func TestGetElementCommand_SearchVerboseProgress(t *testing.T) {
 	secondPage := requireJSONObject(t, bodies[1]["page"])
 	require.Equal(t, float64(2), secondPage["limit"])
 	require.Equal(t, float64(2), secondPage["from"])
-	require.Contains(t, output, "preflight: element search matches 3+ element(s); page size 2; discovery will require at least 2 page(s)")
+	require.Contains(t, output, "element search scope: matched at least 3 elements; page size: 2; discovery pages: at least 2")
 	require.Contains(t, output, "discovering elements, page 1/~2, 2 seen")
 	require.Contains(t, output, "discovering elements, page 2/2, 3 seen")
 	require.Contains(t, output, "found: 3")

@@ -776,6 +776,65 @@ func TestSlowProcessAnalysisProcessDefinitionSearchBuildsLowerBoundAndUnknownPre
 	}
 }
 
+// TestSlowProcessAnalysisProcessDefinitionSearchSkipsConfirmationForEmptyExactPreflight keeps zero-match selectors non-interactive.
+func TestSlowProcessAnalysisProcessDefinitionSearchSkipsConfirmationForEmptyExactPreflight(t *testing.T) {
+	total := d.ProcessInstanceReportedTotal{Count: 0, Kind: d.ProcessInstanceReportedTotalKindExact}
+	pageCalls := 0
+	var preflightEvents []d.OpsPreflightScope
+	var frozenEvents []d.OpsFrozenScopeProgress
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			pageCalls++
+			require.Equal(t, "EmptyProcess", filter.BpmnProcessId)
+			require.EqualValues(t, 1000, page.Size)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				ReportedTotal: &total,
+				Items:         []d.ProcessInstance{},
+			}, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, stubSlowProcessAnalysisElementAPI{}, toolx.V89).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeProcessDefinitionSearch,
+		ProcessDefinitionSelector: d.SlowProcessAnalysisProcessDefinitionSelector{
+			BpmnProcessID: "EmptyProcess",
+		},
+		Progress: func(event d.OpsProgressEvent) {
+			if event.Kind == d.OpsProgressEventKindPreflight && event.Preflight != nil {
+				preflightEvents = append(preflightEvents, *event.Preflight)
+			}
+			if event.Kind == d.OpsProgressEventKindFrozenScope && event.FrozenScope != nil {
+				frozenEvents = append(frozenEvents, *event.FrozenScope)
+			}
+		},
+		ConfirmPreflight: func(scope d.OpsPreflightScope) error {
+			t.Fatalf("empty exact preflight should not request confirmation: %#v", scope)
+			return nil
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 1, pageCalls)
+	require.Empty(t, got.Items)
+	require.True(t, got.Empty)
+	require.Equal(t, 0, got.Count)
+	require.NotNil(t, got.PreflightScope)
+	require.Equal(t, d.OpsTotalCertaintyExact, got.PreflightScope.TotalKind)
+	require.Equal(t, int64(0), *got.PreflightScope.Total)
+	require.Nil(t, got.PreflightScope.PageCount)
+	require.Equal(t, d.OpsPageCountKindUnknown, got.PreflightScope.PageCountKind)
+	require.False(t, got.PreflightScope.RequiresConfirmation)
+	require.Empty(t, got.PreflightScope.ConsequenceSummary.ConfirmationText)
+	require.Equal(t, "none; no runtime element timelines will be loaded", got.PreflightScope.ConsequenceSummary.WorkSummary)
+	require.Empty(t, got.PreflightScope.ConsequenceSummary.RiskSummary)
+	require.Len(t, preflightEvents, 1)
+	require.Equal(t, *got.PreflightScope, preflightEvents[0])
+	require.NotEmpty(t, frozenEvents)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "loading runtime elements", CoreResource: "process instance(s)", Done: 0, Total: 0}, *got.FrozenScopeProgress)
+}
+
 // TestSlowProcessAnalysisProcessDefinitionSearchSupportsSelectorsAndStates verifies accepted state values and selector modes.
 func TestSlowProcessAnalysisProcessDefinitionSearchSupportsSelectorsAndStates(t *testing.T) {
 	tests := []struct {

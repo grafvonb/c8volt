@@ -37,6 +37,16 @@ func WithDryRun() FacadeOption { return func(c *FacadeCfg) { c.DryRun = true } }
 // WithNoWorkerLimit disables the default cap that keeps requested workers within the runtime worker policy.
 func WithNoWorkerLimit() FacadeOption { return func(c *FacadeCfg) { c.NoWorkerLimit = true } }
 
+// WithSuppressWorkflowDetailLogs keeps bulk workflow detail out of default human logs.
+func WithSuppressWorkflowDetailLogs() FacadeOption {
+	return func(c *FacadeCfg) { c.SuppressWorkflowDetailLogs = true }
+}
+
+// WithSuppressProcessInstanceDetailLogs keeps per-process-instance mutation detail out of default human logs.
+func WithSuppressProcessInstanceDetailLogs() FacadeOption {
+	return func(c *FacadeCfg) { c.SuppressProcessInstanceDetailLogs = true }
+}
+
 func WithIgnoreTenant() FacadeOption { return func(c *FacadeCfg) { c.IgnoreTenant = true } }
 
 // WithIncidentState selects the incident state scope for process-instance incident enrichment.
@@ -68,21 +78,23 @@ func WithProgress(progress func(ProgressEvent)) FacadeOption {
 type FacadeOption func(*FacadeCfg)
 
 type FacadeCfg struct {
-	NoStateCheck                 bool
-	Force                        bool
-	NoWait                       bool
-	Run                          bool
-	FailFast                     bool
-	Verbose                      bool
-	Stat                         bool
-	DryRun                       bool
-	NoWorkerLimit                bool
-	IgnoreTenant                 bool
-	IncidentState                string
-	IncidentErrorType            string
-	IncidentErrorMessage         string
-	AffectedProcessInstanceCount int
-	Progress                     func(ProgressEvent)
+	NoStateCheck                      bool
+	Force                             bool
+	NoWait                            bool
+	Run                               bool
+	FailFast                          bool
+	Verbose                           bool
+	Stat                              bool
+	DryRun                            bool
+	NoWorkerLimit                     bool
+	SuppressWorkflowDetailLogs        bool
+	SuppressProcessInstanceDetailLogs bool
+	IgnoreTenant                      bool
+	IncidentState                     string
+	IncidentErrorType                 string
+	IncidentErrorMessage              string
+	AffectedProcessInstanceCount      int
+	Progress                          func(ProgressEvent)
 }
 
 // ProgressEventKind identifies the kind of structured progress fact emitted by a facade call.
@@ -225,6 +237,12 @@ func MapFacadeOptionsToCallOptions(opts []FacadeOption) []services.CallOption {
 	}
 	if c.NoWorkerLimit {
 		out = append(out, services.WithNoWorkerLimit())
+	}
+	if c.SuppressWorkflowDetailLogs {
+		out = append(out, services.WithSuppressWorkflowDetailLogs())
+	}
+	if c.SuppressProcessInstanceDetailLogs {
+		out = append(out, services.WithSuppressProcessInstanceDetailLogs())
 	}
 	if c.IgnoreTenant {
 		out = append(out, services.WithIgnoreTenant())

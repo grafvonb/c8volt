@@ -413,17 +413,17 @@ func TestOpsRepairIncidentProgressContractPendingT068(t *testing.T) {
 		"--report-format", "json",
 	)
 
-	require.Contains(t, stderr, "preflight: incident repair matches 2 incident(s); page size 2; discovery will require 1 page(s)")
+	require.Contains(t, stderr, "incident repair scope: matched 2 incidents; page size: 2; discovery pages: 1")
 	require.Contains(t, stderr, "discovering repair incidents, page 1/1, 2 seen")
 	require.Contains(t, stderr, "planning incident repair scope 2/2 incident(s)")
 	require.Contains(t, stderr, "repairing incidents 2/2 incident(s)")
 	require.NotContains(t, stderr, "/v2/")
 	require.NotContains(t, stderr, "cursor")
-	require.NotContains(t, stdout, "preflight:")
+	require.NotContains(t, stdout, "scope:")
 	require.NotContains(t, stdout, "discovering repair incidents")
 	require.NotContains(t, stdout, "planning incident repair scope")
-	require.Contains(t, stdout, "report: written "+reportPath)
-	require.Contains(t, stdout, "outcome: repaired")
+	require.Contains(t, stderr, "report: written "+reportPath)
+	require.Contains(t, stderr, "outcome: repaired")
 
 	var report map[string]any
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
@@ -453,7 +453,7 @@ func TestOpsRepairIncidentMachineProgressSafetyPendingT068(t *testing.T) {
 			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.9")}, mode.args...)
 			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
 			for _, disallowed := range []string{
-				"preflight:",
+				"scope:",
 				"discovering repair incidents",
 				"planning incident repair scope",
 				"repairing incidents",

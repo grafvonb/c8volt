@@ -72,6 +72,7 @@ func TestFormatOpsPreflightScopeRendersConsequencesAndConfirmationContext(t *tes
 	pages := int64(10)
 
 	got := formatOpsPreflightScope(ops.PreflightScope{
+		Command:         "ops analyse slow-process-instances",
 		SelectorSummary: "OrderProcess",
 		CoreResource:    "process_instance",
 		Total:           &total,
@@ -80,15 +81,15 @@ func TestFormatOpsPreflightScopeRendersConsequencesAndConfirmationContext(t *tes
 		PageCount:       &pages,
 		PageCountKind:   ops.PageCountKindEstimated,
 		ConsequenceSummary: ops.ConsequenceSummary{
-			WorkSummary: "slow analysis will discover all matches and load runtime element timelines for each selected process instance",
-			RiskSummary: "read-only expensive analysis",
+			WorkSummary: "discover all matches and load runtime element timelines",
+			RiskSummary: "read-only, expensive",
 		},
 		RequiresConfirmation: true,
 	})
 
 	require.Equal(t, []string{
-		"preflight: OrderProcess matches 10000+ process instance(s); page size 1000; discovery will require at least 10 page(s)",
-		"preflight: slow analysis will discover all matches and load runtime element timelines for each selected process instance; read-only expensive analysis",
+		"slow analysis scope: OrderProcess matched at least 10000 process instances; page size: 1000; discovery pages: at least 10",
+		"slow analysis is expensive: discover all matches and load runtime element timelines",
 	}, got)
 }
 
@@ -102,13 +103,15 @@ func TestFormatOpsPreflightScopeLabelsExactLowerBoundAndUnknownTotals(t *testing
 		pageKind  ops.PageCountKind
 		want      string
 	}{
-		{name: "exact", total: ptrInt64(2000), kind: ops.TotalCertaintyExact, pageCount: ptrInt64(2), pageKind: ops.PageCountKindExact, want: "preflight: OrderProcess matches 2000 process instance(s); page size 1000; discovery will require 2 page(s)"},
-		{name: "lower bound", total: ptrInt64(2000), kind: ops.TotalCertaintyLowerBound, pageCount: ptrInt64(2), pageKind: ops.PageCountKindEstimated, want: "preflight: OrderProcess matches 2000+ process instance(s); page size 1000; discovery will require at least 2 page(s)"},
-		{name: "unknown", kind: ops.TotalCertaintyUnknown, pageKind: ops.PageCountKindUnknown, want: "preflight: OrderProcess matches unknown process instance(s); page size 1000"},
+		{name: "exact", total: ptrInt64(2000), kind: ops.TotalCertaintyExact, pageCount: ptrInt64(2), pageKind: ops.PageCountKindExact, want: "slow analysis scope: OrderProcess matched 2000 process instances; page size: 1000; discovery pages: 2"},
+		{name: "zero exact", total: ptrInt64(0), kind: ops.TotalCertaintyExact, pageKind: ops.PageCountKindUnknown, want: "slow analysis scope: OrderProcess matched no process instances; page size: 1000"},
+		{name: "lower bound", total: ptrInt64(2000), kind: ops.TotalCertaintyLowerBound, pageCount: ptrInt64(2), pageKind: ops.PageCountKindEstimated, want: "slow analysis scope: OrderProcess matched at least 2000 process instances; page size: 1000; discovery pages: at least 2"},
+		{name: "unknown", kind: ops.TotalCertaintyUnknown, pageKind: ops.PageCountKindUnknown, want: "slow analysis scope: OrderProcess matched an unknown number of process instances; page size: 1000"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := formatOpsPreflightScope(ops.PreflightScope{
+				Command:         "ops analyse slow-process-instances",
 				SelectorSummary: "OrderProcess",
 				CoreResource:    "process_instance",
 				Total:           tc.total,
@@ -123,6 +126,29 @@ func TestFormatOpsPreflightScopeLabelsExactLowerBoundAndUnknownTotals(t *testing
 	}
 }
 
+// TestFormatOpsPreflightScopeRendersEmptyScopeWithoutBlankLines verifies zero-match output stays calm and grammatical.
+func TestFormatOpsPreflightScopeRendersEmptyScopeWithoutBlankLines(t *testing.T) {
+	total := int64(0)
+
+	got := formatOpsPreflightScope(ops.PreflightScope{
+		Command:         "ops analyse slow-process-instances",
+		SelectorSummary: "EmptyProcess",
+		CoreResource:    "process_instance",
+		Total:           &total,
+		TotalKind:       ops.TotalCertaintyExact,
+		PageSize:        1000,
+		PageCountKind:   ops.PageCountKindUnknown,
+		ConsequenceSummary: ops.ConsequenceSummary{
+			WorkSummary: "none; no runtime element timelines will be loaded",
+		},
+	})
+
+	require.Equal(t, []string{
+		"slow analysis scope: EmptyProcess matched no process instances; page size: 1000",
+		"slow analysis: none; no runtime element timelines will be loaded",
+	}, got)
+}
+
 // TestFormatOpsPreflightScopeNamesBasicInspectionResources verifies the shared preflight formatter has stable resource labels for the basic get rollout.
 func TestFormatOpsPreflightScopeNamesBasicInspectionResources(t *testing.T) {
 	total := int64(3000)
@@ -130,17 +156,19 @@ func TestFormatOpsPreflightScopeNamesBasicInspectionResources(t *testing.T) {
 	tests := []struct {
 		name         string
 		coreResource string
+		command      string
 		selector     string
 		want         string
 	}{
-		{name: "process instances", coreResource: "process_instance", selector: "active instances", want: "preflight: active instances matches 3000 process instance(s); page size 1000; discovery will require 3 page(s)"},
-		{name: "incidents", coreResource: "incident", selector: "active incidents", want: "preflight: active incidents matches 3000 incident(s); page size 1000; discovery will require 3 page(s)"},
-		{name: "jobs", coreResource: "job", selector: "failed jobs", want: "preflight: failed jobs matches 3000 job(s); page size 1000; discovery will require 3 page(s)"},
-		{name: "elements", coreResource: "element", selector: "active elements", want: "preflight: active elements matches 3000 element(s); page size 1000; discovery will require 3 page(s)"},
+		{name: "process instances", coreResource: "process_instance", command: "get process-instance", selector: "active instances", want: "process-instance search scope: active instances matched 3000 process instances; page size: 1000; discovery pages: 3"},
+		{name: "incidents", coreResource: "incident", command: "get incident", selector: "active incidents", want: "incident search scope: active incidents matched 3000 incidents; page size: 1000; discovery pages: 3"},
+		{name: "jobs", coreResource: "job", command: "get job", selector: "failed jobs", want: "job search scope: failed jobs matched 3000 jobs; page size: 1000; discovery pages: 3"},
+		{name: "elements", coreResource: "element", command: "get element", selector: "active elements", want: "element search scope: active elements matched 3000 elements; page size: 1000; discovery pages: 3"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := formatOpsPreflightScope(ops.PreflightScope{
+				Command:         tc.command,
 				SelectorSummary: tc.selector,
 				CoreResource:    tc.coreResource,
 				Total:           &total,

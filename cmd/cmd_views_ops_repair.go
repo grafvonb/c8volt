@@ -21,14 +21,14 @@ func renderOpsRepairIncidentResult(cmd *cobra.Command, result ops.RepairResult) 
 		return renderSucceededResult(cmd, result)
 	}
 	if result.Request.DryRun {
-		renderOutputLine(cmd, "dry run: repair incidents")
+		renderHumanLine(cmd, "dry run: repair incidents")
 	} else {
-		renderOutputLine(cmd, "repair incidents")
+		renderHumanLine(cmd, "repair incidents")
 	}
 	if result.Request.DiscoveryMode == ops.RepairDiscoveryModeSearch {
-		renderOutputLine(cmd, "selection filters: %s", result.FrozenSet.IncidentFilters.String())
+		renderHumanLine(cmd, "selection filters: %s", result.FrozenSet.IncidentFilters.String())
 	}
-	renderOutputLine(cmd, "candidate incidents: %d", len(result.FrozenSet.IncidentKeys))
+	renderHumanLine(cmd, "candidate incidents: %d", len(result.FrozenSet.IncidentKeys))
 	renderOpsRepairDiscoveryStatus(cmd, result.FrozenSet.DiscoveryScopeStatus)
 	renderOpsRepairNotices(cmd, result.Notices)
 	renderOpsRepairPlanSummary(cmd, result)
@@ -39,7 +39,7 @@ func renderOpsRepairIncidentResult(cmd *cobra.Command, result ops.RepairResult) 
 		renderOpsRepairKeys(cmd, "job keys", result.FrozenSet.JobKeys)
 		renderOpsRepairVariableUpdates(cmd, result.VariableUpdates)
 		for _, item := range result.Plan {
-			renderOutputLine(cmd, "incident %s: vars=%s retry=%s timeout=%s resolution=%s confirmation=%s",
+			renderHumanLine(cmd, "incident %s: vars=%s retry=%s timeout=%s resolution=%s confirmation=%s",
 				item.IncidentKey,
 				item.VariableUpdateStatus,
 				item.RetryUpdateStatus,
@@ -58,7 +58,7 @@ func renderOpsRepairIncidentResult(cmd *cobra.Command, result ops.RepairResult) 
 			line += "; use --verbose to list keys"
 		}
 		line += opsWorkflowElapsedSuffix(result.Report.Duration)
-		renderOutputLine(cmd, "%s", line)
+		renderHumanLine(cmd, "%s", line)
 	}
 	if len(result.Errors) > 0 {
 		return fmt.Errorf("%s", result.Errors[0])
@@ -72,21 +72,21 @@ func renderOpsRepairProcessInstanceResult(cmd *cobra.Command, result ops.RepairR
 		return renderSucceededResult(cmd, result)
 	}
 	if result.Request.DryRun {
-		renderOutputLine(cmd, "dry run: repair process-instance incidents")
+		renderHumanLine(cmd, "dry run: repair process-instance incidents")
 	} else {
-		renderOutputLine(cmd, "repair process-instance incidents")
+		renderHumanLine(cmd, "repair process-instance incidents")
 	}
 	if result.Request.DiscoveryMode == ops.RepairDiscoveryModeSearch {
-		renderOutputLine(cmd, "selection filters: %s", result.FrozenSet.ProcessFilters.String())
+		renderHumanLine(cmd, "selection filters: %s", result.FrozenSet.ProcessFilters.String())
 	}
-	renderOutputLine(cmd, "selected process instances: %d", len(result.FrozenSet.ProcessInstanceKeys)+len(result.FrozenSet.SkippedProcessInstanceKeys))
-	renderOutputLine(cmd, "repairable process instances: %d", len(result.FrozenSet.ProcessInstanceKeys))
-	renderOutputLine(cmd, "active incidents: %d", len(result.FrozenSet.IncidentKeys))
+	renderHumanLine(cmd, "selected process instances: %d", len(result.FrozenSet.ProcessInstanceKeys)+len(result.FrozenSet.SkippedProcessInstanceKeys))
+	renderHumanLine(cmd, "repairable process instances: %d", len(result.FrozenSet.ProcessInstanceKeys))
+	renderHumanLine(cmd, "active incidents: %d", len(result.FrozenSet.IncidentKeys))
 	renderOpsRepairDiscoveryStatus(cmd, result.FrozenSet.DiscoveryScopeStatus)
 	renderOpsRepairNotices(cmd, result.Notices)
 	renderOpsRepairPlanSummary(cmd, result)
 	if len(result.FrozenSet.SkippedProcessInstanceKeys) > 0 {
-		renderOutputLine(cmd, "skipped process instances: %d without active incidents", len(result.FrozenSet.SkippedProcessInstanceKeys))
+		renderHumanLine(cmd, "skipped process instances: %d without active incidents", len(result.FrozenSet.SkippedProcessInstanceKeys))
 	}
 	renderOpsRepairReportFile(cmd, result.Request.ReportFile)
 	if flagVerbose {
@@ -96,7 +96,7 @@ func renderOpsRepairProcessInstanceResult(cmd *cobra.Command, result ops.RepairR
 		renderOpsRepairKeys(cmd, "job keys", result.FrozenSet.JobKeys)
 		renderOpsRepairVariableUpdates(cmd, result.VariableUpdates)
 		for _, item := range result.Plan {
-			renderOutputLine(cmd, "process-instance %s incident %s: vars=%s retry=%s timeout=%s resolution=%s confirmation=%s",
+			renderHumanLine(cmd, "process-instance %s incident %s: vars=%s retry=%s timeout=%s resolution=%s confirmation=%s",
 				item.ProcessInstanceKey,
 				item.IncidentKey,
 				item.VariableUpdateStatus,
@@ -116,7 +116,7 @@ func renderOpsRepairProcessInstanceResult(cmd *cobra.Command, result ops.RepairR
 			line += "; use --verbose to list keys"
 		}
 		line += opsWorkflowElapsedSuffix(result.Report.Duration)
-		renderOutputLine(cmd, "%s", line)
+		renderHumanLine(cmd, "%s", line)
 	}
 	if len(result.Errors) > 0 {
 		return fmt.Errorf("%s", result.Errors[0])
@@ -142,20 +142,20 @@ func countOpsRepairIncidentJobNotApplicable(items []ops.RepairPlanItem) int {
 func renderOpsRepairPlanSummary(cmd *cobra.Command, result ops.RepairResult) {
 	if len(result.FrozenSet.IncidentKeys) == 0 && len(result.Plan) == 0 {
 		if result.Request.DryRun {
-			renderOutputLine(cmd, "repair preview: skipped (no active incident targets)")
+			renderHumanLine(cmd, "repair preview: skipped (no active incident targets)")
 		} else {
-			renderOutputLine(cmd, "repair plan: skipped")
+			renderHumanLine(cmd, "repair plan: skipped")
 		}
 		return
 	}
 	if result.Request.DryRun {
-		renderOutputLine(cmd, "repair preview: %d active incident(s) would be resolved; %d related job(s), %d variable scope(s) would be updated",
+		renderHumanLine(cmd, "repair preview: %d active incident(s) would be resolved; %d related job(s), %d variable scope(s) would be updated",
 			len(result.FrozenSet.IncidentKeys),
 			countOpsRepairRelatedJobs(result),
 			countOpsRepairVariableScopes(result),
 		)
 	} else {
-		renderOutputLine(cmd, "repair plan: %d active incident(s) will be resolved; %d related job(s), %d variable scope(s) will be updated",
+		renderHumanLine(cmd, "repair plan: %d active incident(s) will be resolved; %d related job(s), %d variable scope(s) will be updated",
 			len(result.FrozenSet.IncidentKeys),
 			countOpsRepairRelatedJobs(result),
 			countOpsRepairVariableScopes(result),
@@ -163,7 +163,7 @@ func renderOpsRepairPlanSummary(cmd *cobra.Command, result ops.RepairResult) {
 	}
 	relatedJobs := countOpsRepairRelatedJobs(result)
 	if withoutJobs := countOpsRepairIncidentJobNotApplicable(result.Plan); withoutJobs > 0 && relatedJobs > 0 {
-		renderOutputLine(cmd, "job repair coverage: %d related job(s), %d incident(s) without related jobs", relatedJobs, withoutJobs)
+		renderHumanLine(cmd, "job repair coverage: %d related job(s), %d incident(s) without related jobs", relatedJobs, withoutJobs)
 	}
 }
 
@@ -186,7 +186,7 @@ func renderOpsRepairNotices(cmd *cobra.Command, notices []ops.RepairNotice) {
 		if notice.Code != "bounded_search_scope" || notice.Message == "" {
 			continue
 		}
-		renderOutputLine(cmd, "%s", notice.Message)
+		renderHumanLine(cmd, "%s", notice.Message)
 	}
 }
 
@@ -217,10 +217,10 @@ func opsRepairIncidentHasHiddenKeys(result ops.RepairResult) bool {
 
 func renderOpsRepairKeys(cmd *cobra.Command, label string, keys []string) {
 	if len(keys) == 0 {
-		renderOutputLine(cmd, "%s: none", label)
+		renderHumanLine(cmd, "%s: none", label)
 		return
 	}
-	renderOutputLine(cmd, "%s: %s", label, strings.Join(keys, ", "))
+	renderHumanLine(cmd, "%s: %s", label, strings.Join(keys, ", "))
 }
 
 // renderOpsRepairVariableUpdates prints unique variable scope status rows in verbose human output.
@@ -230,7 +230,7 @@ func renderOpsRepairVariableUpdates(cmd *cobra.Command, updates []ops.RepairVari
 		if len(update.VariableNames) > 0 {
 			names = strings.Join(update.VariableNames, ", ")
 		}
-		renderOutputLine(cmd, "variable scope %s: names=%s status=%s dependents=%s",
+		renderHumanLine(cmd, "variable scope %s: names=%s status=%s dependents=%s",
 			update.ScopeKey,
 			names,
 			update.Status,
@@ -244,7 +244,7 @@ func renderOpsRepairReportFile(cmd *cobra.Command, path string) {
 	if path == "" {
 		return
 	}
-	renderOutputLine(cmd, "report: written %s", path)
+	renderHumanLine(cmd, "report: written %s", path)
 }
 
 // writeOpsRepairReport renders and writes the requested repair audit report.
