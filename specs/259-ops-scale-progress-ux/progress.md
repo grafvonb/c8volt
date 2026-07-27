@@ -353,3 +353,37 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Pending T066 command contracts now define expected verbose progress and machine-mode silence for retention, orphan purge, and incident-based purge workflows.
 ---
+---
+## Iteration 9 - 2026-07-27 15:18
+**Work Unit**: T066 Ops purge and retention shared progress routing
+**Tasks Completed**:
+- [x] T066: Implement shared preflight/page/frozen progress for retention, orphan purge, and incident-based purge workflows
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- cmd/cmd_views_ops_execute_retention_policy.go
+- cmd/cmd_views_ops_purge_orphan_processinstances.go
+- cmd/cmd_views_ops_purge_processinstances_with_incidents.go
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_execute_retention_policy_test.go
+- cmd/ops_processinstance_purge_progress.go
+- cmd/ops_purge_orphan_processinstances.go
+- cmd/ops_purge_orphan_processinstances_test.go
+- cmd/ops_purge_processinstances_with_incidents.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- internal/domain/ops_incident_purge.go
+- internal/domain/ops_orphan_purge.go
+- internal/domain/ops_retention_policy.go
+- internal/services/ops/incident_purge.go
+- internal/services/ops/orphan_purge.go
+- internal/services/ops/process_instance_purge_progress.go
+- internal/services/ops/retention_policy.go
+- internal/services/processinstance/retention_discovery.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Ops retention/purge workflows now share preflight, discovery-page, planning, and deletion counter progress while keeping machine output clean.
+---

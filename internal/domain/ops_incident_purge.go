@@ -56,6 +56,7 @@ type IncidentPurgeRequest struct {
 	DiscoveredIncidentCount                int
 	DiscoveredScopeStatus                  DiscoveryScopeStatus
 	StartedAt                              time.Time
+	Progress                               func(OpsProgressEvent) `json:"-"`
 }
 
 // IncidentPurgeSkippedIncident records a matching incident that could not produce a delete candidate.
@@ -123,6 +124,7 @@ type IncidentPurgeReport struct {
 	Discovery        IncidentDiscoveryResult
 	DeletePlan       IncidentPurgeDeletePlan
 	Deletion         IncidentPurgeDeletionResult
+	DeleteRequested  bool
 	AutoConfirm      bool
 	Automation       bool
 	NoWait           bool

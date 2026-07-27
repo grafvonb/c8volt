@@ -661,16 +661,9 @@ func TestOpsExecuteRetentionPolicyNonFinalBlockerMessageHonorsVerbose(t *testing
 	require.NotContains(t, got, "use --verbose to list keys")
 }
 
-func pendingOpsPurgeRetentionProgressT066(t *testing.T) {
-	t.Helper()
-	t.Skip("pending T066 implementation of ops purge and retention progress routing")
-}
-
 // TestOpsExecuteRetentionPolicyProgressContractPendingT066 defines retention
 // candidate discovery, delete planning, deletion counter, and report progress.
 func TestOpsExecuteRetentionPolicyProgressContractPendingT066(t *testing.T) {
-	pendingOpsPurgeRetentionProgressT066(t)
-
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
 	srv := newOpsRetentionPolicyServerWithSeed(t, &requests, &deleted)
@@ -710,8 +703,6 @@ func TestOpsExecuteRetentionPolicyProgressContractPendingT066(t *testing.T) {
 // TestOpsExecuteRetentionPolicyMachineProgressSafetyPendingT066 pins retention
 // progress silence for JSON, quiet, and automation modes.
 func TestOpsExecuteRetentionPolicyMachineProgressSafetyPendingT066(t *testing.T) {
-	pendingOpsPurgeRetentionProgressT066(t)
-
 	for _, mode := range []struct {
 		name string
 		args []string

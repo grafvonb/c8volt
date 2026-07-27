@@ -53,7 +53,9 @@ func (s *Service) PurgeProcessInstancesWithIncidents(ctx context.Context, reques
 		return finishIncidentPurgeResult(result, d.IncidentPurgeOutcomePlanned, nil)
 	}
 
+	reportOpsFrozenScopeProgress(request.Progress, "planning incident process-instance delete scope", 0, len(discovery.CandidateProcessInstanceKeys))
 	plan, err := buildIncidentPurgeDeletePlan(ctx, s.piAPI, discovery, request.Workers, !request.DryRun, opts...)
+	reportOpsFrozenScopeProgress(request.Progress, "planning incident process-instance delete scope", len(discovery.CandidateProcessInstanceKeys), len(discovery.CandidateProcessInstanceKeys))
 	result.DeletePlan = plan
 	if err != nil {
 		result.DeletePlan.Status = d.OpsWorkflowStepStatusFailed
@@ -75,6 +77,9 @@ func (s *Service) PurgeProcessInstancesWithIncidents(ctx context.Context, reques
 	}
 
 	deleteOpts := compactOpsExecutionOptions(opts...)
+	if request.Progress != nil {
+		deleteOpts = append(deleteOpts, services.WithProgress(request.Progress))
+	}
 	if request.Force {
 		deleteOpts = append(deleteOpts, services.WithForce())
 	}
@@ -209,11 +214,16 @@ func discoverIncidentPurgeCandidates(ctx context.Context, api incsvc.API, reques
 		}
 		discovery.Pages++
 		discovery.CandidatesSeen += len(page.Items)
+		if request.Progress != nil && discovery.Pages == 1 {
+			preflight := newIncidentPurgePreflight(request, page)
+			request.Progress(d.OpsProgressEvent{Kind: d.OpsProgressEventKindPreflight, Preflight: &preflight})
+		}
 		items := limitIncidentPurgeCandidateIncidents(page.Items, request.Limit, len(discovery.CandidateIncidents))
 		discovery.CandidateIncidents = append(discovery.CandidateIncidents, items...)
 		if request.Limit > 0 && len(discovery.CandidateIncidents) >= int(request.Limit) {
 			limited = true
 		}
+		reportIncidentPurgePageProgress(request, page, discovery, len(items), limited)
 		if limited || incidentPurgeDiscoveryPageComplete(page) {
 			discovery.Complete = !limited
 			discovery.Limited = limited
@@ -325,6 +335,9 @@ func withIncidentPurgeOptionControls(request d.IncidentPurgeRequest, opts ...ser
 	request.Force = request.Force || cfg.Force
 	request.FailFast = request.FailFast || cfg.FailFast
 	request.NoWorkerLimit = request.NoWorkerLimit || cfg.NoWorkerLimit
+	if request.Progress == nil {
+		request.Progress = cfg.Progress
+	}
 	return request
 }
 
@@ -373,6 +386,7 @@ func finishIncidentPurgeResult(result d.IncidentPurgeResult, outcome d.IncidentP
 	result.Report.Discovery = result.Discovery
 	result.Report.DeletePlan = result.DeletePlan
 	result.Report.Deletion = result.Deletion
+	result.Report.DeleteRequested = result.Deletion.Submitted
 	result.Report.Errors = append([]string(nil), result.Errors...)
 	result.Report.Notices = append([]d.IncidentPurgeWorkflowNotice(nil), result.Notices...)
 	if err != nil {

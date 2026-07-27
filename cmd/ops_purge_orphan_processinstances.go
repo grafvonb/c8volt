@@ -66,6 +66,7 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 			ReportFormat: flagOpsPurgeOrphanReportFormat,
 			StartedAt:    time.Now().UTC(),
 		}
+		configureOpsPurgeOrphanProcessInstancesProgress(cmd, &request)
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true

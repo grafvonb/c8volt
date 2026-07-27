@@ -80,6 +80,7 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 			ReportFormat:           flagOpsExecuteRetentionPolicyReportFormat,
 			StartedAt:              time.Now().UTC(),
 		}
+		configureOpsExecuteRetentionPolicyProgress(cmd, &request)
 		if err := validateOpsWorkflowReportPathForPlanning(flagOpsExecuteRetentionPolicyReportFile, opsWorkflowReportWriteModeForConfirmedMutation(effectiveAutoConfirm)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}

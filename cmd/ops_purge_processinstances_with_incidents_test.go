@@ -717,7 +717,6 @@ func TestOpsPurgeProcessInstancesWithIncidentsInvalidFlagsHelper(t *testing.T) {
 // TestOpsPurgeProcessInstancesWithIncidentsProgressContractPendingT066 defines
 // incident discovery, delete planning, deletion counter, and report progress.
 func TestOpsPurgeProcessInstancesWithIncidentsProgressContractPendingT066(t *testing.T) {
-	pendingOpsPurgeRetentionProgressT066(t)
 	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
 	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
 
@@ -766,8 +765,6 @@ func TestOpsPurgeProcessInstancesWithIncidentsProgressContractPendingT066(t *tes
 // TestOpsPurgeProcessInstancesWithIncidentsMachineProgressSafetyPendingT066 pins
 // incident purge progress silence for JSON, quiet, and automation modes.
 func TestOpsPurgeProcessInstancesWithIncidentsMachineProgressSafetyPendingT066(t *testing.T) {
-	pendingOpsPurgeRetentionProgressT066(t)
-
 	for _, mode := range []struct {
 		name string
 		args []string

@@ -360,8 +360,6 @@ func TestOpsPurgeOrphanProcessInstancesWritesReportAfterPostDiscoveryFailure(t *
 // TestOpsPurgeOrphanProcessInstancesProgressContractPendingT066 defines orphan
 // candidate discovery, parent checking, delete planning, deletion, and report progress.
 func TestOpsPurgeOrphanProcessInstancesProgressContractPendingT066(t *testing.T) {
-	pendingOpsPurgeRetentionProgressT066(t)
-
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
 	srv := newOpsOrphanPurgeServerWithState(t, &requests, &deleted, true, "TERMINATED")
@@ -401,8 +399,6 @@ func TestOpsPurgeOrphanProcessInstancesProgressContractPendingT066(t *testing.T)
 // TestOpsPurgeOrphanProcessInstancesMachineProgressSafetyPendingT066 pins orphan
 // purge progress silence for JSON, quiet, and automation modes.
 func TestOpsPurgeOrphanProcessInstancesMachineProgressSafetyPendingT066(t *testing.T) {
-	pendingOpsPurgeRetentionProgressT066(t)
-
 	for _, mode := range []struct {
 		name string
 		args []string

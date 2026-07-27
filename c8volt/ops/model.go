@@ -585,6 +585,7 @@ type OrphanPurgeRequest struct {
 	ReportFormat   string                        `json:"reportFormat,omitempty"`
 	DiscoveredKeys typex.Keys                    `json:"discoveredKeys,omitempty"`
 	StartedAt      time.Time                     `json:"startedAt,omitempty"`
+	Progress       func(ProgressEvent)           `json:"-"`
 }
 
 type OrphanDiscoveryResult struct {
@@ -677,6 +678,7 @@ type RetentionPolicyRequest struct {
 	ReportFormat           string                        `json:"reportFormat,omitempty"`
 	DiscoveredKeys         typex.Keys                    `json:"discoveredKeys,omitempty"`
 	StartedAt              time.Time                     `json:"startedAt,omitempty"`
+	Progress               func(ProgressEvent)           `json:"-"`
 }
 
 type RetentionDiscoveryResult struct {
@@ -733,6 +735,7 @@ type RetentionAuditReport struct {
 	Discovery              RetentionDiscoveryResult      `json:"discovery,omitempty"`
 	DeletePlan             RetentionDeletePlan           `json:"deletePlan,omitempty"`
 	Deletion               RetentionDeletionResult       `json:"deletion,omitempty"`
+	DeleteRequested        bool                          `json:"deleteRequested,omitempty"`
 	AutoConfirm            bool                          `json:"autoConfirm,omitempty"`
 	Automation             bool                          `json:"automation,omitempty"`
 	NoWait                 bool                          `json:"noWait,omitempty"`
@@ -797,6 +800,7 @@ type IncidentPurgeRequest struct {
 	DiscoveredIncidentCount                int                  `json:"discoveredIncidentCount,omitempty"`
 	DiscoveredScopeStatus                  DiscoveryScopeStatus `json:"discoveredScopeStatus,omitempty"`
 	StartedAt                              time.Time            `json:"startedAt,omitempty"`
+	Progress                               func(ProgressEvent)  `json:"-"`
 }
 
 // IncidentPurgeSkippedIncident records a matching incident that could not produce a delete candidate.
@@ -864,6 +868,7 @@ type IncidentPurgeReport struct {
 	Discovery        IncidentDiscoveryResult       `json:"discovery,omitempty"`
 	DeletePlan       IncidentPurgeDeletePlan       `json:"deletePlan,omitempty"`
 	Deletion         IncidentPurgeDeletionResult   `json:"deletion,omitempty"`
+	DeleteRequested  bool                          `json:"deleteRequested,omitempty"`
 	AutoConfirm      bool                          `json:"autoConfirm,omitempty"`
 	Automation       bool                          `json:"automation,omitempty"`
 	NoWait           bool                          `json:"noWait,omitempty"`

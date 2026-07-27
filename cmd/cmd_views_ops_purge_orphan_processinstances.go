@@ -31,38 +31,38 @@ func renderOpsPurgeOrphanProcessInstancesResult(cmd *cobra.Command, result ops.O
 
 func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.OrphanPurgeResult) error {
 	if result.Request.DryRun {
-		renderHumanLine(cmd, "dry run: purge orphan process-instances")
+		renderOutputLine(cmd, "dry run: purge orphan process-instances")
 	} else {
-		renderHumanLine(cmd, "purge orphan process-instances")
+		renderOutputLine(cmd, "purge orphan process-instances")
 	}
 	if result.Discovery.Count == 0 {
-		renderHumanLine(cmd, "candidate orphan process instances: 0")
+		renderOutputLine(cmd, "candidate orphan process instances: 0")
 		elapsed := opsWorkflowElapsedSuffix(result.Report.Duration)
 		if result.Request.DryRun {
-			renderHumanLine(cmd, "delete preview: skipped (no orphan process-instance targets)")
+			renderOutputLine(cmd, "delete preview: skipped (no orphan process-instance targets)")
 			renderOpsPurgeOrphanProcessInstancesReportFile(cmd, result)
-			renderHumanLine(cmd, "outcome: planned; no changes applied%s", elapsed)
+			renderOutputLine(cmd, "outcome: planned; no changes applied%s", elapsed)
 		} else {
-			renderHumanLine(cmd, "delete plan: skipped")
+			renderOutputLine(cmd, "delete plan: skipped")
 			renderOpsPurgeOrphanProcessInstancesReportFile(cmd, result)
-			renderHumanLine(cmd, "outcome: planned; no targets deleted%s", elapsed)
+			renderOutputLine(cmd, "outcome: planned; no targets deleted%s", elapsed)
 		}
 		return nil
 	}
-	renderHumanLine(cmd, "selection filters: %s", result.Discovery.Filters.String())
-	renderHumanLine(cmd, "candidate orphan process instances: %d", result.Discovery.Count)
+	renderOutputLine(cmd, "selection filters: %s", result.Discovery.Filters.String())
+	renderOutputLine(cmd, "candidate orphan process instances: %d", result.Discovery.Count)
 	if flagVerbose {
-		renderHumanLine(cmd, "candidate keys: %s", strings.Join(result.Discovery.Keys, ", "))
+		renderOutputLine(cmd, "candidate keys: %s", strings.Join(result.Discovery.Keys, ", "))
 	}
 	if result.Request.DryRun {
-		renderHumanLine(cmd, "delete preview: %d orphan candidate(s), %d affected process instance(s) across %d root(s) would be deleted",
+		renderOutputLine(cmd, "delete preview: %d orphan candidate(s), %d affected process instance(s) across %d root(s) would be deleted",
 			len(result.DeletionPlan.RequestedKeys),
 			len(result.DeletionPlan.AffectedKeys),
 			len(result.DeletionPlan.RootKeys),
 		)
 		renderOpsProcessInstanceDependencyExpansion(cmd, len(result.DeletionPlan.RequestedKeys), len(result.DeletionPlan.AffectedKeys))
 	} else {
-		renderHumanLine(cmd, "delete plan: %s; %d orphan candidate(s), %d affected process instance(s) across %d root(s) will be deleted",
+		renderOutputLine(cmd, "delete plan: %s; %d orphan candidate(s), %d affected process instance(s) across %d root(s) will be deleted",
 			result.DeletionPlan.Status,
 			len(result.DeletionPlan.RequestedKeys),
 			len(result.DeletionPlan.AffectedKeys),
@@ -71,13 +71,13 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 	}
 	renderOpsHumanNotices(cmd, opsPurgeOrphanProcessInstancesHumanNotices(result), opsPurgeOrphanProcessInstancesNoticeFilter(result))
 	if result.DeleteRequested {
-		renderHumanLine(cmd, "deletion: %s", opsWorkflowDeletionSummary(string(result.Deletion.Status), len(result.Deletion.Items), "process-instance tree", "process-instance trees", result.Deletion.NoWait))
+		renderOutputLine(cmd, "deletion: %s", opsWorkflowDeletionSummary(string(result.Deletion.Status), len(result.Deletion.Items), "process-instance tree", "process-instance trees", result.Deletion.NoWait))
 		renderOpsPurgeOrphanProcessInstancesReportFile(cmd, result)
-		renderHumanLine(cmd, "outcome: %s%s", result.Outcome, opsWorkflowElapsedSuffix(result.Report.Duration))
+		renderOutputLine(cmd, "outcome: %s%s", result.Outcome, opsWorkflowElapsedSuffix(result.Report.Duration))
 		return nil
 	}
 	if flagVerbose {
-		renderHumanLine(cmd, "deletion: %s; no deletion request submitted", result.Deletion.Status)
+		renderOutputLine(cmd, "deletion: %s; no deletion request submitted", result.Deletion.Status)
 	}
 	line := fmt.Sprintf("outcome: %s; no changes applied", result.Outcome)
 	if !flagVerbose && len(result.DeletionPlan.AffectedKeys) > 0 {
@@ -85,7 +85,7 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 	}
 	line += opsWorkflowElapsedSuffix(result.Report.Duration)
 	renderOpsPurgeOrphanProcessInstancesReportFile(cmd, result)
-	renderHumanLine(cmd, "%s", line)
+	renderOutputLine(cmd, "%s", line)
 	return nil
 }
 
@@ -93,7 +93,7 @@ func renderOpsPurgeOrphanProcessInstancesReportFile(cmd *cobra.Command, result o
 	if result.Request.ReportFile == "" {
 		return
 	}
-	renderHumanLine(cmd, "report: written %s", result.Request.ReportFile)
+	renderOutputLine(cmd, "report: written %s", result.Request.ReportFile)
 }
 
 func opsPurgeOrphanProcessInstancesHumanNotices(result ops.OrphanPurgeResult) []opsHumanNotice {

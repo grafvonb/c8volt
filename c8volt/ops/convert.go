@@ -744,6 +744,7 @@ func toDomainOrphanPurgeRequest(x OrphanPurgeRequest) d.OrphanPurgeRequest {
 		ReportFile:   x.ReportFile,
 		ReportFormat: x.ReportFormat,
 		StartedAt:    x.StartedAt,
+		Progress:     toDomainProgressFunc(x.Progress),
 	}
 	if x.DiscoveredKeys != nil {
 		out.DiscoveredKeys = append(typex.Keys{}, x.DiscoveredKeys...)
@@ -779,6 +780,7 @@ func fromDomainOrphanPurgeRequest(x d.OrphanPurgeRequest) OrphanPurgeRequest {
 		ReportFile:   x.ReportFile,
 		ReportFormat: x.ReportFormat,
 		StartedAt:    x.StartedAt,
+		Progress:     fromDomainProgressFunc(x.Progress),
 	}
 	if x.DiscoveredKeys != nil {
 		out.DiscoveredKeys = append(typex.Keys{}, x.DiscoveredKeys...)
@@ -864,6 +866,7 @@ func toDomainRetentionPolicyRequest(x RetentionPolicyRequest) d.RetentionPolicyR
 		ReportFile:             x.ReportFile,
 		ReportFormat:           x.ReportFormat,
 		StartedAt:              x.StartedAt,
+		Progress:               toDomainProgressFunc(x.Progress),
 	}
 	if x.DiscoveredKeys != nil {
 		out.DiscoveredKeys = append(typex.Keys{}, x.DiscoveredKeys...)
@@ -904,6 +907,7 @@ func fromDomainRetentionPolicyRequest(x d.RetentionPolicyRequest) RetentionPolic
 		ReportFile:             x.ReportFile,
 		ReportFormat:           x.ReportFormat,
 		StartedAt:              x.StartedAt,
+		Progress:               fromDomainProgressFunc(x.Progress),
 	}
 	if x.DiscoveredKeys != nil {
 		out.DiscoveredKeys = append(typex.Keys{}, x.DiscoveredKeys...)
@@ -972,6 +976,7 @@ func fromDomainRetentionAuditReport(x d.RetentionAuditReport) RetentionAuditRepo
 		Discovery:              fromDomainRetentionDiscoveryResult(x.Discovery),
 		DeletePlan:             fromDomainRetentionDeletePlan(x.DeletePlan),
 		Deletion:               fromDomainRetentionDeletionResult(x.Deletion),
+		DeleteRequested:        x.DeleteRequested,
 		AutoConfirm:            x.AutoConfirm,
 		Automation:             x.Automation,
 		NoWait:                 x.NoWait,
@@ -1021,6 +1026,7 @@ func toDomainIncidentPurgeRequest(x IncidentPurgeRequest) d.IncidentPurgeRequest
 			CandidatesFrozen: x.DiscoveredScopeStatus.CandidatesFrozen,
 		},
 		StartedAt: x.StartedAt,
+		Progress:  toDomainProgressFunc(x.Progress),
 	}
 	if x.DiscoveredCandidateProcessInstanceKeys != nil {
 		out.DiscoveredCandidateProcessInstanceKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessInstanceKeys...)
@@ -1066,6 +1072,7 @@ func fromDomainIncidentPurgeRequest(x d.IncidentPurgeRequest) IncidentPurgeReque
 		ReportFormat:          x.ReportFormat,
 		DiscoveredScopeStatus: fromDomainDiscoveryScopeStatus(x.DiscoveredScopeStatus),
 		StartedAt:             x.StartedAt,
+		Progress:              fromDomainProgressFunc(x.Progress),
 	}
 	if x.DiscoveredCandidateProcessInstanceKeys != nil {
 		out.DiscoveredCandidateProcessInstanceKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessInstanceKeys...)
@@ -1151,6 +1158,7 @@ func fromDomainIncidentPurgeReport(x d.IncidentPurgeReport) IncidentPurgeReport 
 		Discovery:        fromDomainIncidentDiscoveryResult(x.Discovery),
 		DeletePlan:       fromDomainIncidentPurgeDeletePlan(x.DeletePlan),
 		Deletion:         fromDomainIncidentPurgeDeletionResult(x.Deletion),
+		DeleteRequested:  x.DeleteRequested,
 		AutoConfirm:      x.AutoConfirm,
 		Automation:       x.Automation,
 		NoWait:           x.NoWait,

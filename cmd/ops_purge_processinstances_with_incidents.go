@@ -86,6 +86,7 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 			ReportFormat:  flagOpsPurgeIncidentReportFormat,
 			StartedAt:     time.Now().UTC(),
 		}
+		configureOpsPurgeProcessInstancesWithIncidentsProgress(cmd, &request)
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
