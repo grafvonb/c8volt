@@ -554,3 +554,17 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Focused facade validation passed for process and ops progress/preflight coverage.
 ---
+---
+## Iteration 19 - 2026-07-27 16:09
+**Work Unit**: T056 Focused command tests
+**Tasks Completed**:
+- [x] T056: Run focused command tests with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'SlowProcess|Progress|Activity|OutputMode|KeysOnly|JSON|Automation' -count=1`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Focused command validation passed for slow-process, progress, activity, output-mode, keys-only, JSON, and automation coverage.
+---

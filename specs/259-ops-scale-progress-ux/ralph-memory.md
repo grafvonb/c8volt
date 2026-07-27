@@ -69,6 +69,7 @@ Started: 2026-07-27T10:17:40Z
 - README operational notes now summarize ops-scale preflight and progress behavior in the top ops overview: broad-scope preflight, certainty labels, page/frozen counters, ETA gating, stdout safety, progress channels, and `--batch-size` versus `--limit`.
 - `make docs-content` regenerates `docs/cli/*` and also syncs `docs/index.md` from README content/build metadata; after the Phase 8 help/README changes it updated slow-process generated docs, process-definition `--batch-size` docs, and the generated homepage.
 - Focused facade validation now passes for progress/preflight/slow-process/process-instance search coverage in `c8volt/process` and `c8volt/ops` with `GOCACHE=/tmp/c8volt-gocache`.
+- Focused command validation now passes for slow-process/progress/activity/output-mode/keys-only/JSON/automation coverage in `cmd` with `GOCACHE=/tmp/c8volt-gocache`.
 
 ## Decisions
 - For this feature, transient progress should reuse the existing activity context path rather than stdout or a new global writer.
@@ -100,4 +101,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should continue Phase 8 with T056: run focused command tests using `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'SlowProcess|Progress|Activity|OutputMode|KeysOnly|JSON|Automation' -count=1`.
+- Next iteration should continue Phase 8 with T057: run full repository validation using `make test`.
