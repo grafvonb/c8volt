@@ -59,6 +59,7 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 		}
 		instances = discovery.items
 		result.DiscoveredScopeStatus = discovery.scope
+		result.PreflightScope = discovery.preflight
 	default:
 		return result, fmt.Errorf("%w: select process instances with explicit keys or one process-definition selector", d.ErrValidation)
 	}
@@ -174,8 +175,9 @@ func slowProcessAnalysisLookupExplicitKeys(ctx context.Context, api pisvc.API, k
 }
 
 type slowProcessAnalysisSearchDiscovery struct {
-	items []d.ProcessInstance
-	scope d.DiscoveryScopeStatus
+	items     []d.ProcessInstance
+	scope     d.DiscoveryScopeStatus
+	preflight *d.OpsPreflightScope
 }
 
 // slowProcessAnalysisDiscoverProcessDefinitionInstances freezes a paged process-definition selection before analysis.
@@ -196,27 +198,23 @@ func slowProcessAnalysisDiscoverProcessDefinitionInstances(ctx context.Context, 
 	}
 	seen := map[string]struct{}{}
 
+	page, err := api.SearchForProcessInstancesPage(ctx, filter, pageReq, opts...)
+	if err != nil {
+		return slowProcessAnalysisSearchDiscovery{}, fmt.Errorf("discover process instances for slow analysis: %w", err)
+	}
+	preflight := slowProcessAnalysisPreflightScope(request, page, batchSize)
+	discovery.preflight = &preflight
+	slowProcessAnalysisEmitProgress(request, d.OpsProgressEvent{Kind: d.OpsProgressEventKindPreflight, Preflight: &preflight})
+	if request.ConfirmPreflight != nil {
+		if err := request.ConfirmPreflight(preflight); err != nil {
+			return slowProcessAnalysisSearchDiscovery{}, err
+		}
+	}
+
 	for {
-		page, err := api.SearchForProcessInstancesPage(ctx, filter, pageReq, opts...)
-		if err != nil {
-			return slowProcessAnalysisSearchDiscovery{}, fmt.Errorf("discover process instances for slow analysis: %w", err)
-		}
-		discovery.scope.Pages++
-		discovery.scope.CandidatesSeen += len(page.Items)
-		for _, item := range page.Items {
-			if request.Limit > 0 && len(discovery.items) >= int(request.Limit) {
-				discovery.scope.Complete = false
-				discovery.scope.Limited = true
-				discovery.scope.CandidatesFrozen = len(discovery.items)
-				return discovery, nil
-			}
-			if _, ok := seen[item.Key]; ok {
-				continue
-			}
-			seen[item.Key] = struct{}{}
-			discovery.items = append(discovery.items, item)
-		}
-		if request.Limit > 0 && len(discovery.items) >= int(request.Limit) && page.OverflowState == d.ProcessInstanceOverflowStateHasMore {
+		var limited bool
+		discovery, limited = slowProcessAnalysisCollectDiscoveryPage(discovery, request, page, seen)
+		if limited || (request.Limit > 0 && len(discovery.items) >= int(request.Limit) && page.OverflowState == d.ProcessInstanceOverflowStateHasMore) {
 			discovery.scope.Complete = false
 			discovery.scope.Limited = true
 			discovery.scope.CandidatesFrozen = len(discovery.items)
@@ -227,7 +225,118 @@ func slowProcessAnalysisDiscoverProcessDefinitionInstances(ctx context.Context, 
 			return discovery, nil
 		}
 		pageReq = slowProcessAnalysisNextDiscoveryPage(pageReq, page)
+		page, err = api.SearchForProcessInstancesPage(ctx, filter, pageReq, opts...)
+		if err != nil {
+			return slowProcessAnalysisSearchDiscovery{}, fmt.Errorf("discover process instances for slow analysis: %w", err)
+		}
 	}
+}
+
+// slowProcessAnalysisCollectDiscoveryPage freezes unique candidates from one backend page and updates shared scope counters.
+func slowProcessAnalysisCollectDiscoveryPage(discovery slowProcessAnalysisSearchDiscovery, request d.SlowProcessAnalysisRequest, page d.ProcessInstancePage, seen map[string]struct{}) (slowProcessAnalysisSearchDiscovery, bool) {
+	discovery.scope.Pages++
+	discovery.scope.CandidatesSeen += len(page.Items)
+	for _, item := range page.Items {
+		if request.Limit > 0 && len(discovery.items) >= int(request.Limit) {
+			return discovery, true
+		}
+		if _, ok := seen[item.Key]; ok {
+			continue
+		}
+		seen[item.Key] = struct{}{}
+		discovery.items = append(discovery.items, item)
+	}
+	return discovery, false
+}
+
+// slowProcessAnalysisPreflightScope builds the cheap operator scope from the first reusable discovery page.
+func slowProcessAnalysisPreflightScope(request d.SlowProcessAnalysisRequest, page d.ProcessInstancePage, batchSize int32) d.OpsPreflightScope {
+	total, totalKind := slowProcessAnalysisPreflightTotal(page)
+	pageCount, pageCountKind := slowProcessAnalysisPreflightPageCount(total, totalKind, batchSize)
+	selectorSummary := slowProcessAnalysisSelectorSummary(request.ProcessDefinitionSelector)
+	scope := d.OpsPreflightScope{
+		Phase:           "preflight",
+		Command:         request.CommandName,
+		CoreResource:    "process_instance",
+		SelectorSummary: selectorSummary,
+		Total:           total,
+		TotalKind:       totalKind,
+		PageSize:        batchSize,
+		PageCount:       pageCount,
+		PageCountKind:   pageCountKind,
+		ConsequenceSummary: d.OpsConsequenceSummary{
+			ResourceSummary: slowProcessAnalysisPreflightResourceSummary(total, totalKind),
+			WorkSummary:     "slow analysis will discover all matches and load runtime element timelines for each selected process instance",
+			RiskSummary:     "read-only expensive analysis",
+		},
+		RequiresConfirmation: true,
+	}
+	scope.ConsequenceSummary.ConfirmationText = slowProcessAnalysisPreflightConfirmationText(scope)
+	return scope
+}
+
+// slowProcessAnalysisPreflightTotal maps backend total metadata without treating lower bounds as exact.
+func slowProcessAnalysisPreflightTotal(page d.ProcessInstancePage) (*int64, d.OpsTotalCertainty) {
+	if page.ReportedTotal == nil {
+		return nil, d.OpsTotalCertaintyUnknown
+	}
+	count := page.ReportedTotal.Count
+	switch page.ReportedTotal.Kind {
+	case d.ProcessInstanceReportedTotalKindExact:
+		return &count, d.OpsTotalCertaintyExact
+	case d.ProcessInstanceReportedTotalKindLowerBound:
+		return &count, d.OpsTotalCertaintyLowerBound
+	default:
+		return nil, d.OpsTotalCertaintyUnknown
+	}
+}
+
+// slowProcessAnalysisPreflightPageCount derives exact or estimated page counts only from compatible total metadata.
+func slowProcessAnalysisPreflightPageCount(total *int64, totalKind d.OpsTotalCertainty, batchSize int32) (*int64, d.OpsPageCountKind) {
+	if total == nil || batchSize <= 0 {
+		return nil, d.OpsPageCountKindUnknown
+	}
+	pages := (*total + int64(batchSize) - 1) / int64(batchSize)
+	if pages < 1 {
+		pages = 1
+	}
+	if totalKind == d.OpsTotalCertaintyLowerBound {
+		return &pages, d.OpsPageCountKindEstimated
+	}
+	if totalKind == d.OpsTotalCertaintyExact {
+		return &pages, d.OpsPageCountKindExact
+	}
+	return nil, d.OpsPageCountKindUnknown
+}
+
+// slowProcessAnalysisSelectorSummary keeps broad selector wording compact and free of debug filters.
+func slowProcessAnalysisSelectorSummary(selector d.SlowProcessAnalysisProcessDefinitionSelector) string {
+	if selector.BpmnProcessID != "" {
+		return selector.BpmnProcessID
+	}
+	if selector.ProcessDefinitionKey != "" {
+		return "process definition " + selector.ProcessDefinitionKey
+	}
+	return "process-definition selector"
+}
+
+// slowProcessAnalysisPreflightResourceSummary formats the count fact for structured consequence metadata.
+func slowProcessAnalysisPreflightResourceSummary(total *int64, kind d.OpsTotalCertainty) string {
+	if total == nil || kind == d.OpsTotalCertaintyUnknown {
+		return "unknown process instance(s)"
+	}
+	if kind == d.OpsTotalCertaintyLowerBound {
+		return fmt.Sprintf("%d+ process instance(s)", *total)
+	}
+	if kind == d.OpsTotalCertaintyEstimated {
+		return fmt.Sprintf("about %d process instance(s)", *total)
+	}
+	return fmt.Sprintf("%d process instance(s)", *total)
+}
+
+// slowProcessAnalysisPreflightConfirmationText freezes the prompt body used before full discovery begins.
+func slowProcessAnalysisPreflightConfirmationText(scope d.OpsPreflightScope) string {
+	return fmt.Sprintf("Continue slow analysis for %s?", slowProcessAnalysisPreflightResourceSummary(scope.Total, scope.TotalKind))
 }
 
 // slowProcessAnalysisProcessInstanceFilter maps the normalized analysis selector to process-instance search.

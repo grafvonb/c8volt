@@ -51,18 +51,18 @@
 
 ### Tests for User Story 1
 
-- [ ] T012 [P] [US1] Add command tests for slow-process preflight wording with exact, lower-bound, and unknown totals in `cmd/ops_analyse_slow_process_instances_test.go`
-- [ ] T013 [P] [US1] Add service tests proving slow-process process-definition search reuses the first preflight page and does not repeat the initial search in `internal/services/ops/slow_process_analysis_test.go`
-- [ ] T014 [P] [US1] Add formatter contract tests for consequence summaries and broad-selector confirmation text in `cmd/ops_progress_test.go`
+- [x] T012 [P] [US1] Add command tests for slow-process preflight wording with exact, lower-bound, and unknown totals in `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T013 [P] [US1] Add service tests proving slow-process process-definition search reuses the first preflight page and does not repeat the initial search in `internal/services/ops/slow_process_analysis_test.go`
+- [x] T014 [P] [US1] Add formatter contract tests for consequence summaries and broad-selector confirmation text in `cmd/ops_progress_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Implement preflight-scope construction from process-instance page metadata in `internal/services/ops/slow_process_analysis.go`
-- [ ] T016 [US1] Refactor slow-process discovery to peek and reuse the first page during process-definition search in `internal/services/ops/slow_process_analysis.go`
-- [ ] T017 [US1] Map slow-process preflight and discovery metadata through the public facade in `c8volt/ops/model.go`
-- [ ] T018 [US1] Render slow-process preflight and consequence text through shared command helpers in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T019 [US1] Add interactive preflight confirmation for broad slow-process search while preserving auto-confirm and automation behavior in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T020 [US1] Verify explicit-key slow-process mode skips broad preflight and stays concise in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T015 [US1] Implement preflight-scope construction from process-instance page metadata in `internal/services/ops/slow_process_analysis.go`
+- [x] T016 [US1] Refactor slow-process discovery to peek and reuse the first page during process-definition search in `internal/services/ops/slow_process_analysis.go`
+- [x] T017 [US1] Map slow-process preflight and discovery metadata through the public facade in `c8volt/ops/model.go`
+- [x] T018 [US1] Render slow-process preflight and consequence text through shared command helpers in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T019 [US1] Add interactive preflight confirmation for broad slow-process search while preserving auto-confirm and automation behavior in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T020 [US1] Verify explicit-key slow-process mode skips broad preflight and stays concise in `cmd/ops_analyse_slow_process_instances.go`
 
 **Checkpoint**: User Story 1 is independently functional for slow-process process-definition search.
 

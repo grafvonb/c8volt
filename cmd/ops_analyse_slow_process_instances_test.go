@@ -4,6 +4,8 @@
 package cmd
 
 import (
+	"bytes"
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -403,6 +405,69 @@ func TestOpsAnalyseSlowProcessInstancesRejectsEmptyStdin(t *testing.T) {
 	require.Nil(t, got)
 }
 
+// TestOpsAnalyseSlowProcessInstancesPrintsPreflightCertaintyToStderr verifies human preflight wording covers exact, lower-bound, and unknown totals without stdout leakage.
+func TestOpsAnalyseSlowProcessInstancesPrintsPreflightCertaintyToStderr(t *testing.T) {
+	tests := []struct {
+		name      string
+		total     *int64
+		kind      ops.TotalCertainty
+		pageCount *int64
+		pageKind  ops.PageCountKind
+		want      []string
+	}{
+		{name: "exact", total: ptrInt64(2000), kind: ops.TotalCertaintyExact, pageCount: ptrInt64(2), pageKind: ops.PageCountKindExact, want: []string{"preflight: OrderProcess matches 2000 process instance(s)", "discovery will require 2 page(s)"}},
+		{name: "lower bound", total: ptrInt64(2000), kind: ops.TotalCertaintyLowerBound, pageCount: ptrInt64(2), pageKind: ops.PageCountKindEstimated, want: []string{"preflight: OrderProcess matches 2000+ process instance(s)", "discovery will require at least 2 page(s)"}},
+		{name: "unknown", kind: ops.TotalCertaintyUnknown, pageKind: ops.PageCountKindUnknown, want: []string{"preflight: OrderProcess matches unknown process instance(s)", "page size 1000"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+			cmd.SetOut(&stdout)
+			cmd.SetErr(&stderr)
+
+			printOpsPreflightScope(cmd, ops.PreflightScope{
+				SelectorSummary: "OrderProcess",
+				CoreResource:    "process_instance",
+				Total:           tc.total,
+				TotalKind:       tc.kind,
+				PageSize:        1000,
+				PageCount:       tc.pageCount,
+				PageCountKind:   tc.pageKind,
+			}, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
+
+			require.Empty(t, stdout.String())
+			for _, want := range tc.want {
+				require.Contains(t, stderr.String(), want)
+			}
+		})
+	}
+}
+
+// TestOpsAnalyseSlowProcessInstancesConfiguresBroadPreflightOnlyForSearch verifies explicit-key mode stays concise.
+func TestOpsAnalyseSlowProcessInstancesConfiguresBroadPreflightOnlyForSearch(t *testing.T) {
+	keyRequest := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeExplicitKeys}
+	configureOpsSlowProcessAnalysisPreflight(resetOpsSlowProcessAnalysisTestFlags(t), &keyRequest)
+	require.Nil(t, keyRequest.Progress)
+	require.Nil(t, keyRequest.ConfirmPreflight)
+
+	searchRequest := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+	configureOpsSlowProcessAnalysisPreflight(resetOpsSlowProcessAnalysisTestFlags(t), &searchRequest)
+	require.NotNil(t, searchRequest.Progress)
+	require.NotNil(t, searchRequest.ConfirmPreflight)
+}
+
+// TestOpsAnalyseSlowProcessInstancesPreflightConfirmationRespectsModeGating verifies automation-safe modes skip prompts.
+func TestOpsAnalyseSlowProcessInstancesPreflightConfirmationRespectsModeGating(t *testing.T) {
+	require.True(t, opsSlowProcessAnalysisPreflightConfirmationAllowed(ops.ProgressChannel{Mode: ops.ProgressModeHuman}))
+	require.True(t, opsSlowProcessAnalysisPreflightConfirmationAllowed(ops.ProgressChannel{Mode: ops.ProgressModeVerbose}))
+	require.False(t, opsSlowProcessAnalysisPreflightConfirmationAllowed(ops.ProgressChannel{Mode: ops.ProgressModeJSON}))
+	require.False(t, opsSlowProcessAnalysisPreflightConfirmationAllowed(ops.ProgressChannel{Mode: ops.ProgressModeKeysOnly}))
+	require.False(t, opsSlowProcessAnalysisPreflightConfirmationAllowed(ops.ProgressChannel{Mode: ops.ProgressModeQuiet}))
+	require.False(t, opsSlowProcessAnalysisPreflightConfirmationAllowed(ops.ProgressChannel{Mode: ops.ProgressModeAutomation}))
+}
+
 // resetOpsSlowProcessAnalysisTestFlags restores command globals and returns a flag-aware test command.
 func resetOpsSlowProcessAnalysisTestFlags(t *testing.T) *cobra.Command {
 	t.Helper()
@@ -426,6 +491,7 @@ func resetOpsSlowProcessAnalysisTestFlags(t *testing.T) *cobra.Command {
 	flagOpsAnalyseSlowProcessInstanceWithListeners = false
 
 	cmd := &cobra.Command{Use: "slow-process-instances"}
+	cmd.SetContext(context.Background())
 	flags := cmd.Flags()
 	flags.StringVar(&flagOpsAnalyseSlowProcessInstanceState, "state", "all", "")
 	flags.Int32Var(&flagOpsAnalyseSlowProcessInstanceBatchSize, "batch-size", consts.MaxPISearchSize, "")

@@ -31,6 +31,63 @@ func TestFormatOpsPageCountUsesExactEstimatedAndUnknownWording(t *testing.T) {
 	require.Empty(t, formatOpsPageCount(0, &pages, ops.PageCountKindExact))
 }
 
+// TestFormatOpsPreflightScopeRendersConsequencesAndConfirmationContext verifies broad selector summaries stay compact and certainty-aware.
+func TestFormatOpsPreflightScopeRendersConsequencesAndConfirmationContext(t *testing.T) {
+	total := int64(10000)
+	pages := int64(10)
+
+	got := formatOpsPreflightScope(ops.PreflightScope{
+		SelectorSummary: "OrderProcess",
+		CoreResource:    "process_instance",
+		Total:           &total,
+		TotalKind:       ops.TotalCertaintyLowerBound,
+		PageSize:        1000,
+		PageCount:       &pages,
+		PageCountKind:   ops.PageCountKindEstimated,
+		ConsequenceSummary: ops.ConsequenceSummary{
+			WorkSummary: "slow analysis will discover all matches and load runtime element timelines for each selected process instance",
+			RiskSummary: "read-only expensive analysis",
+		},
+		RequiresConfirmation: true,
+	})
+
+	require.Equal(t, []string{
+		"preflight: OrderProcess matches 10000+ process instance(s); page size 1000; discovery will require at least 10 page(s)",
+		"preflight: slow analysis will discover all matches and load runtime element timelines for each selected process instance; read-only expensive analysis",
+	}, got)
+}
+
+// TestFormatOpsPreflightScopeLabelsExactLowerBoundAndUnknownTotals verifies count wording covers all US1 certainty cases.
+func TestFormatOpsPreflightScopeLabelsExactLowerBoundAndUnknownTotals(t *testing.T) {
+	tests := []struct {
+		name      string
+		total     *int64
+		kind      ops.TotalCertainty
+		pageCount *int64
+		pageKind  ops.PageCountKind
+		want      string
+	}{
+		{name: "exact", total: ptrInt64(2000), kind: ops.TotalCertaintyExact, pageCount: ptrInt64(2), pageKind: ops.PageCountKindExact, want: "preflight: OrderProcess matches 2000 process instance(s); page size 1000; discovery will require 2 page(s)"},
+		{name: "lower bound", total: ptrInt64(2000), kind: ops.TotalCertaintyLowerBound, pageCount: ptrInt64(2), pageKind: ops.PageCountKindEstimated, want: "preflight: OrderProcess matches 2000+ process instance(s); page size 1000; discovery will require at least 2 page(s)"},
+		{name: "unknown", kind: ops.TotalCertaintyUnknown, pageKind: ops.PageCountKindUnknown, want: "preflight: OrderProcess matches unknown process instance(s); page size 1000"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := formatOpsPreflightScope(ops.PreflightScope{
+				SelectorSummary: "OrderProcess",
+				CoreResource:    "process_instance",
+				Total:           tc.total,
+				TotalKind:       tc.kind,
+				PageSize:        1000,
+				PageCount:       tc.pageCount,
+				PageCountKind:   tc.pageKind,
+			})
+
+			require.Equal(t, tc.want, got[0])
+		})
+	}
+}
+
 // TestFormatOpsFrozenScopeProgressGatesETA verifies exact counters can show elapsed/rate while ETA waits for a remaining estimate.
 func TestFormatOpsFrozenScopeProgressGatesETA(t *testing.T) {
 	rate := 4.25
@@ -53,6 +110,11 @@ func TestFormatOpsFrozenScopeProgressGatesETA(t *testing.T) {
 		Rate:         &rate,
 		ETA:          &remaining,
 	}))
+}
+
+// ptrInt64 returns a stable pointer for compact progress formatter fixtures.
+func ptrInt64(value int64) *int64 {
+	return &value
 }
 
 // TestOpsProgressChannelForModeProtectsMachineOutput verifies progress is never routed to stdout for script-safe modes.

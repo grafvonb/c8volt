@@ -103,6 +103,7 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
+		configureOpsSlowProcessAnalysisPreflight(cmd, &parsed.Request)
 		result, err := cli.AnalyseSlowProcessInstances(cmd.Context(), parsed.Request, collectOptions()...)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops analyse slow-process-instances: %w", err))
@@ -290,6 +291,45 @@ func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string
 			WithListeners:      flagOpsAnalyseSlowProcessInstanceWithListeners,
 		},
 	}, nil
+}
+
+// configureOpsSlowProcessAnalysisPreflight wires command-owned rendering and prompting into service-owned discovery.
+func configureOpsSlowProcessAnalysisPreflight(cmd *cobra.Command, request *ops.SlowProcessAnalysisRequest) {
+	if request == nil || request.SelectionMode != ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch {
+		return
+	}
+	channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
+	request.Progress = func(event ops.ProgressEvent) {
+		if event.Kind != ops.ProgressEventKindPreflight || event.Preflight == nil {
+			return
+		}
+		printOpsPreflightScope(cmd, *event.Preflight, channel)
+	}
+	request.ConfirmPreflight = func(scope ops.PreflightScope) error {
+		if !opsSlowProcessAnalysisPreflightConfirmationAllowed(channel) || !scope.RequiresConfirmation {
+			return nil
+		}
+		prompt := strings.TrimSpace(scope.ConsequenceSummary.ConfirmationText)
+		if prompt == "" {
+			prompt = "Continue slow analysis?"
+		}
+		return confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt)
+	}
+}
+
+// printOpsPreflightScope writes durable preflight lines only to the command's stderr/activity channel.
+func printOpsPreflightScope(cmd *cobra.Command, scope ops.PreflightScope, channel ops.ProgressChannel) {
+	if cmd == nil || !channel.DurableAllowed || !channel.StderrAllowed {
+		return
+	}
+	for _, line := range formatOpsPreflightScope(scope) {
+		fmt.Fprintln(cmd.ErrOrStderr(), line)
+	}
+}
+
+// opsSlowProcessAnalysisPreflightConfirmationAllowed limits prompts to human progress modes.
+func opsSlowProcessAnalysisPreflightConfirmationAllowed(channel ops.ProgressChannel) bool {
+	return channel.Mode == ops.ProgressModeHuman || channel.Mode == ops.ProgressModeVerbose || channel.Mode == ops.ProgressModeDebug
 }
 
 // parseOpsSlowProcessAnalysisElementType keeps detail type filters aligned with runtime element search values.

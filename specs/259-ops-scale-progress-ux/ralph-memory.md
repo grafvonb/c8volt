@@ -13,7 +13,9 @@ Started: 2026-07-27T10:17:40Z
 - Slow-process discovery currently happens in `internal/services/ops/slow_process_analysis.go` through direct repeated `SearchForProcessInstancesPage` calls, then enrichment uses `pisvc.EnrichProcessInstancesWithElements` or `EnrichProcessInstancesWithElementListeners`.
 - Shared ops-scale progress facts now live in `internal/domain/ops_progress.go`; public mirrors and converter helpers live in `c8volt/ops/progress_model.go` and `c8volt/ops/convert.go`.
 - `cmd/ops_progress.go` owns reusable wording/gating helpers for total certainty, page count wording, frozen-scope counters, ETA gating, and stdout-safe progress channels.
-- Slow-process requests now carry an optional `Progress func(ProgressEvent)` callback through the facade boundary; nil callbacks are safe. Slow-process results can carry `PreflightScope` and `FrozenScopeProgress`.
+- Slow-process requests now carry optional `Progress func(ProgressEvent)` and `ConfirmPreflight func(PreflightScope) error` callbacks through the facade boundary; nil callbacks are safe. Slow-process results can carry `PreflightScope` and `FrozenScopeProgress`.
+- Slow-process process-definition search now peeks the first `SearchForProcessInstancesPage`, emits/stores preflight metadata from its reported-total/page metadata, confirms through the command callback when configured, and then consumes that same first page before following `EndCursor`/offset continuation.
+- `cmd/ops_analyse_slow_process_instances.go` configures preflight rendering only for process-definition search mode. Human/verbose/debug modes can print compact preflight lines to stderr and prompt; JSON, keys-only, quiet, and automation modes skip the prompt and keep stdout clean. Explicit-key mode leaves progress and confirmation callbacks nil.
 - The ops service emits snapshot frozen-scope progress events at the start and end of current slow-analysis enrichment, with later US2 tasks expected to replace or expand this with finer per-resource progress.
 
 ## Decisions
@@ -26,12 +28,14 @@ Started: 2026-07-27T10:17:40Z
 - Broad preflight is required for process-definition search mode, but explicit-key slow-process mode should stay concise and skip broad preflight.
 - `cmd/get_processinstance_paging.go` still has command-local process-instance paging helpers from earlier behavior; new ops-scale traversal should follow the stricter Ralph rule and keep page math in services.
 - Lower-bound reported totals are useful for preflight/progress wording but cannot be treated as exact completion or mutation confirmation totals.
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1` currently trips an unrelated date-sensitive `TestGetProcessInstancePagingFlow` assertion that rejects the current "126 days ago" fixture text; use focused affected command patterns unless that broader test is updated.
 
 ## Reusable Commands
 - `GOCACHE=/tmp/c8volt-gocache go test ./toolx/logging ./testx/activitysink -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Progress|SlowProcess' -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'OpsAnalyseSlowProcessInstances|OpsProgress|CommandContractOpsAnalyseSlowProcessInstances' -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/ops -run 'ClientAnalyseSlowProcessInstances' -count=1`
-- `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/ops -run 'Progress|SlowProcess' -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/ops -run 'Preflight|Progress|SlowProcess' -count=1`
 
 ## Do Not Repeat
 - Do not add endpoint names, cursors, request URLs, or per-resource lifecycle chatter to default human progress.
@@ -39,4 +43,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should start US1 tasks T012-T020; build preflight-scope construction and first-page reuse on top of the existing progress models and keep broad-search mechanics in `internal/services/ops/slow_process_analysis.go`.
+- Next iteration should start US2 tasks T021-T029. Build discovery page-progress and frozen-scope enrichment progress on top of the existing slow-process `Progress` callback; preserve US1 behavior that the first discovery page is reused, preflight remains stderr/prompt-gated in `cmd`, and explicit-key mode skips broad preflight.

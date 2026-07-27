@@ -102,6 +102,7 @@ func toDomainSlowProcessAnalysisRequest(x SlowProcessAnalysisRequest) d.SlowProc
 		OutputMode:                x.OutputMode,
 		WithListeners:             x.WithListeners,
 		Progress:                  toDomainProgressFunc(x.Progress),
+		ConfirmPreflight:          toDomainPreflightConfirmationFunc(x.ConfirmPreflight),
 	}
 }
 
@@ -120,6 +121,7 @@ func fromDomainSlowProcessAnalysisRequest(x d.SlowProcessAnalysisRequest) SlowPr
 		OutputMode:                x.OutputMode,
 		WithListeners:             x.WithListeners,
 		Progress:                  fromDomainProgressFunc(x.Progress),
+		ConfirmPreflight:          fromDomainPreflightConfirmationFunc(x.ConfirmPreflight),
 	}
 }
 
@@ -201,6 +203,16 @@ func toDomainProgressFunc(fn func(ProgressEvent)) func(d.OpsProgressEvent) {
 	}
 }
 
+// toDomainPreflightConfirmationFunc adapts command-owned confirmation without moving prompt policy into the facade.
+func toDomainPreflightConfirmationFunc(fn func(PreflightScope) error) func(d.OpsPreflightScope) error {
+	if fn == nil {
+		return nil
+	}
+	return func(scope d.OpsPreflightScope) error {
+		return fn(fromDomainPreflightScope(scope))
+	}
+}
+
 // fromDomainProgressFunc preserves callbacks when a partial request returns through error mapping.
 func fromDomainProgressFunc(fn func(d.OpsProgressEvent)) func(ProgressEvent) {
 	if fn == nil {
@@ -208,6 +220,16 @@ func fromDomainProgressFunc(fn func(d.OpsProgressEvent)) func(ProgressEvent) {
 	}
 	return func(event ProgressEvent) {
 		fn(toDomainProgressEvent(event))
+	}
+}
+
+// fromDomainPreflightConfirmationFunc preserves confirmation callbacks when a request returns through result mapping.
+func fromDomainPreflightConfirmationFunc(fn func(d.OpsPreflightScope) error) func(PreflightScope) error {
+	if fn == nil {
+		return nil
+	}
+	return func(scope PreflightScope) error {
+		return fn(toDomainPreflightScope(scope))
 	}
 }
 

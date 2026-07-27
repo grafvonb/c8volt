@@ -51,3 +51,34 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Foundational progress is now a structured callback surface; detailed preflight/page reuse and per-resource enrichment emissions remain in later US1/US2 tasks.
 ---
+---
+## Iteration 3 - 2026-07-27 12:37
+**Work Unit**: US1 See Scope Before Expensive Work Starts
+**Tasks Completed**:
+- [x] T012: Add command tests for slow-process preflight wording with exact, lower-bound, and unknown totals
+- [x] T013: Add service tests proving slow-process process-definition search reuses the first preflight page
+- [x] T014: Add formatter contract tests for consequence summaries and broad-selector confirmation text
+- [x] T015: Implement preflight-scope construction from process-instance page metadata
+- [x] T016: Refactor slow-process discovery to peek and reuse the first page during process-definition search
+- [x] T017: Map slow-process preflight and discovery metadata through the public facade
+- [x] T018: Render slow-process preflight and consequence text through shared command helpers
+- [x] T019: Add interactive preflight confirmation for broad slow-process search
+- [x] T020: Verify explicit-key slow-process mode skips broad preflight and stays concise
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/domain/ops_slow_process_analysis.go
+- internal/services/ops/slow_process_analysis.go
+- internal/services/ops/slow_process_analysis_test.go
+- c8volt/ops/model.go
+- c8volt/ops/convert.go
+- cmd/ops_progress.go
+- cmd/ops_progress_test.go
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/ops_analyse_slow_process_instances_test.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Slow-process preflight now uses the first reusable process-instance page; focused US1 validation passes, while full `go test ./cmd` still has an unrelated date-sensitive get-process-instance assertion.
+---

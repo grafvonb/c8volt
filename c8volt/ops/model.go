@@ -73,6 +73,7 @@ type SlowProcessAnalysisRequest struct {
 	OutputMode                string                                          `json:"outputMode,omitempty"`
 	WithListeners             bool                                            `json:"withListeners,omitempty"`
 	Progress                  func(ProgressEvent)                             `json:"-"`
+	ConfirmPreflight          func(PreflightScope) error                      `json:"-"`
 }
 
 // SlowProcessAnalysisProcessDefinitionSelector identifies the process-definition cohort for search mode.

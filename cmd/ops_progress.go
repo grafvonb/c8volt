@@ -111,6 +111,50 @@ func formatOpsPageProgress(progress ops.PageProgress, resource string) string {
 	return strings.Join(nonEmptyOpsProgressParts(parts), ", ")
 }
 
+// formatOpsPreflightScope renders compact preflight lines before expensive ops-scale work begins.
+func formatOpsPreflightScope(scope ops.PreflightScope) []string {
+	resource := "process instance(s)"
+	if strings.TrimSpace(scope.CoreResource) != "" && scope.CoreResource != "process_instance" {
+		resource = strings.ReplaceAll(scope.CoreResource, "_", " ") + "(s)"
+	}
+	count := formatOpsTotalCertainty(scope.Total, scope.TotalKind, resource)
+	selector := strings.TrimSpace(scope.SelectorSummary)
+	if selector == "" {
+		selector = "selected scope"
+	}
+	parts := []string{fmt.Sprintf("preflight: %s matches %s", selector, count)}
+	if scope.PageSize > 0 {
+		parts = append(parts, fmt.Sprintf("page size %d", scope.PageSize))
+	}
+	if pageText := formatOpsPreflightPageContext(scope.PageCount, scope.PageCountKind); pageText != "" {
+		parts = append(parts, pageText)
+	}
+	lines := []string{strings.Join(nonEmptyOpsProgressParts(parts), "; ")}
+	consequence := formatOpsConsequenceSummary(scope.ConsequenceSummary)
+	if consequence != "" {
+		lines = append(lines, "preflight: "+consequence)
+	}
+	return lines
+}
+
+// formatOpsPreflightPageContext labels page count certainty without promoting lower-bound totals to exact.
+func formatOpsPreflightPageContext(pageCount *int64, kind ops.PageCountKind) string {
+	if pageCount == nil || kind == ops.PageCountKindUnknown {
+		return ""
+	}
+	switch kind {
+	case ops.PageCountKindEstimated:
+		return fmt.Sprintf("discovery will require at least %d page(s)", *pageCount)
+	default:
+		return fmt.Sprintf("discovery will require %d page(s)", *pageCount)
+	}
+}
+
+// formatOpsConsequenceSummary joins structured consequence parts into one operator-facing sentence.
+func formatOpsConsequenceSummary(summary ops.ConsequenceSummary) string {
+	return strings.Join(nonEmptyOpsProgressParts([]string{summary.WorkSummary, summary.RiskSummary}), "; ")
+}
+
 // formatOpsFrozenScopeProgress renders exact done/total counters and gates ETA until a remaining duration exists.
 func formatOpsFrozenScopeProgress(progress ops.FrozenScopeProgress) string {
 	resource := strings.TrimSpace(progress.CoreResource)

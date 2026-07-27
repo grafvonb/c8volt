@@ -434,6 +434,125 @@ func TestSlowProcessAnalysisProcessDefinitionSearchDiscoversFrozenSelection(t *t
 	require.Equal(t, captured, got.CapturedAt)
 }
 
+// TestSlowProcessAnalysisProcessDefinitionSearchReusesPreflightPage verifies preflight does not refetch the initial page.
+func TestSlowProcessAnalysisProcessDefinitionSearchReusesPreflightPage(t *testing.T) {
+	captured := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:30:00Z")
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	var preflightEvents []d.OpsPreflightScope
+	var confirmed []d.OpsPreflightScope
+	pageCalls := 0
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			pageCalls++
+			require.Equal(t, "OrderProcess", filter.BpmnProcessId)
+			require.EqualValues(t, 2, page.Size)
+			switch pageCalls {
+			case 1:
+				require.Zero(t, page.From)
+				require.Empty(t, page.After)
+				total := d.ProcessInstanceReportedTotal{Count: 3, Kind: d.ProcessInstanceReportedTotalKindExact}
+				return d.ProcessInstancePage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					ReportedTotal: &total,
+					EndCursor:     "cursor-1",
+					Items: []d.ProcessInstance{
+						slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(2*time.Minute)),
+						slowProcessAnalysisFixtureProcessInstance("2251799813685250", start, start.Add(5*time.Minute)),
+					},
+				}, nil
+			case 2:
+				require.Equal(t, "cursor-1", page.After)
+				return d.ProcessInstancePage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+					Items: []d.ProcessInstance{
+						slowProcessAnalysisFixtureProcessInstance("2251799813685251", start, start.Add(time.Minute)),
+					},
+				}, nil
+			default:
+				t.Fatalf("unexpected repeated discovery page %d", pageCalls)
+				return d.ProcessInstancePage{}, nil
+			}
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, stubSlowProcessAnalysisElementAPI{}, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		CommandName:   "ops analyse slow-process-instances",
+		SelectionMode: d.SlowProcessAnalysisSelectionModeProcessDefinitionSearch,
+		ProcessDefinitionSelector: d.SlowProcessAnalysisProcessDefinitionSelector{
+			BpmnProcessID: "OrderProcess",
+		},
+		BatchSize:   2,
+		CapturedNow: captured,
+		Progress: func(event d.OpsProgressEvent) {
+			if event.Kind == d.OpsProgressEventKindPreflight && event.Preflight != nil {
+				preflightEvents = append(preflightEvents, *event.Preflight)
+			}
+		},
+		ConfirmPreflight: func(scope d.OpsPreflightScope) error {
+			confirmed = append(confirmed, scope)
+			return nil
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 2, pageCalls)
+	require.Len(t, preflightEvents, 1)
+	require.Len(t, confirmed, 1)
+	require.Equal(t, preflightEvents[0], confirmed[0])
+	require.NotNil(t, got.PreflightScope)
+	require.Equal(t, d.OpsTotalCertaintyExact, got.PreflightScope.TotalKind)
+	require.Equal(t, int64(3), *got.PreflightScope.Total)
+	require.Equal(t, d.OpsPageCountKindExact, got.PreflightScope.PageCountKind)
+	require.Equal(t, int64(2), *got.PreflightScope.PageCount)
+	require.Equal(t, "OrderProcess", got.PreflightScope.SelectorSummary)
+	require.True(t, got.PreflightScope.RequiresConfirmation)
+	require.Contains(t, got.PreflightScope.ConsequenceSummary.ConfirmationText, "Continue slow analysis")
+	require.Equal(t, []string{"2251799813685250", "2251799813685249", "2251799813685251"}, []string{got.Items[0].Key, got.Items[1].Key, got.Items[2].Key})
+}
+
+// TestSlowProcessAnalysisProcessDefinitionSearchBuildsLowerBoundAndUnknownPreflight verifies non-exact totals remain labeled.
+func TestSlowProcessAnalysisProcessDefinitionSearchBuildsLowerBoundAndUnknownPreflight(t *testing.T) {
+	tests := []struct {
+		name          string
+		reportedTotal *d.ProcessInstanceReportedTotal
+		wantKind      d.OpsTotalCertainty
+		wantPages     *int64
+		wantPageKind  d.OpsPageCountKind
+	}{
+		{name: "lower bound", reportedTotal: &d.ProcessInstanceReportedTotal{Count: 2000, Kind: d.ProcessInstanceReportedTotalKindLowerBound}, wantKind: d.OpsTotalCertaintyLowerBound, wantPages: ptrDomainInt64(2), wantPageKind: d.OpsPageCountKindEstimated},
+		{name: "unknown", wantKind: d.OpsTotalCertaintyUnknown, wantPageKind: d.OpsPageCountKindUnknown},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			piAPI := stubProcessInstanceAPI{
+				searchPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+					return d.ProcessInstancePage{Request: page, OverflowState: d.ProcessInstanceOverflowStateNoMore, ReportedTotal: tc.reportedTotal}, nil
+				},
+			}
+
+			got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, stubSlowProcessAnalysisElementAPI{}, toolx.V89).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+				SelectionMode: d.SlowProcessAnalysisSelectionModeProcessDefinitionSearch,
+				ProcessDefinitionSelector: d.SlowProcessAnalysisProcessDefinitionSelector{
+					ProcessDefinitionKey: "2251799813687001",
+				},
+			})
+
+			require.NoError(t, err)
+			require.NotNil(t, got.PreflightScope)
+			require.Equal(t, tc.wantKind, got.PreflightScope.TotalKind)
+			require.Equal(t, tc.wantPageKind, got.PreflightScope.PageCountKind)
+			if tc.wantPages == nil {
+				require.Nil(t, got.PreflightScope.PageCount)
+				require.Nil(t, got.PreflightScope.Total)
+			} else {
+				require.Equal(t, *tc.wantPages, *got.PreflightScope.PageCount)
+			}
+		})
+	}
+}
+
 // TestSlowProcessAnalysisProcessDefinitionSearchSupportsSelectorsAndStates verifies accepted state values and selector modes.
 func TestSlowProcessAnalysisProcessDefinitionSearchSupportsSelectorsAndStates(t *testing.T) {
 	tests := []struct {
@@ -962,6 +1081,11 @@ func receiveSlowProcessAnalysisResult(t *testing.T, done <-chan struct {
 			err    error
 		}{}
 	}
+}
+
+// ptrDomainInt64 returns a pointer for compact domain progress expectations.
+func ptrDomainInt64(value int64) *int64 {
+	return &value
 }
 
 // stubSlowProcessAnalysisElementAPI provides runtime elements to slow-analysis service tests.
