@@ -1809,6 +1809,123 @@ func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
 }
 
+func pendingProcessInstanceMutationProgressT064(t *testing.T) {
+	t.Helper()
+	t.Skip("pending T064 implementation: enable shared destructive process-instance preflight and frozen mutation progress")
+}
+
+// TestCancelProcessInstanceSearchProgressContractPendingT064 defines the shared
+// destructive progress contract for search-selected cancel.
+func TestCancelProcessInstanceSearchProgressContractPendingT064(t *testing.T) {
+	pendingProcessInstanceMutationProgressT064(t)
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagCmdAutoConfirm = true
+	flagVerbose = true
+	flagGetPISize = 1
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Int32("batch-size", 1000, "")
+	require.NoError(t, cmd.Flags().Set("batch-size", "1"))
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		require.True(t, autoConfirm)
+		require.Contains(t, prompt, "cancel")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		planProcessInstanceMutationPages: func(_ context.Context, request process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, opts ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+			require.Equal(t, int32(1), request.SearchRequest.Page.Size)
+			require.NotNil(t, options.ApplyFacadeOptions(opts).Progress)
+			page := process.ProcessInstancePage{
+				Items:         []process.ProcessInstance{{Key: "401", State: process.StateActive}},
+				Request:       process.ProcessInstancePageRequest{From: 0, Size: 1},
+				OverflowState: process.ProcessInstanceOverflowStateHasMore,
+				ReportedTotal: &process.ProcessInstanceReportedTotal{Count: 2, Kind: process.ProcessInstanceReportedTotalKindLowerBound},
+			}
+			plan := process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-401"},
+				Collected: typex.Keys{"root-401", "401"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}
+			action, err := visitor(process.ProcessInstanceMutationPlanStep{
+				Page:             page,
+				RequestedKeys:    []string{"401"},
+				Plan:             plan,
+				CumulativeCount:  1,
+				CumulativeImpact: 2,
+			})
+			require.NoError(t, err)
+			require.Equal(t, process.ProcessInstanceSearchPageActionContinue, action)
+			return process.ProcessInstanceMutationPlanPagesResult{
+				Plans:            []process.ProcessInstanceMutationPlanStep{{Page: page, RequestedKeys: []string{"401"}, Plan: plan, CumulativeCount: 1, CumulativeImpact: 2}},
+				Pages:            1,
+				RequestedCount:   1,
+				CumulativeImpact: 2,
+			}, nil
+		},
+		cancelProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.CancelReports, error) {
+			require.Equal(t, typex.Keys{"root-401"}, keys)
+			cfg := options.ApplyFacadeOptions(opts)
+			require.Equal(t, 2, cfg.AffectedProcessInstanceCount)
+			require.NotNil(t, cfg.Progress)
+			cfg.Progress(options.ProgressEvent{
+				Kind: options.ProgressEventKindFrozenScope,
+				FrozenScope: &options.FrozenScopeProgress{
+					Phase:        "cancelling process instances",
+					CoreResource: "process instance(s)",
+					Done:         1,
+					Total:        1,
+				},
+			})
+			return process.CancelReports{Items: []process.CancelReport{{Key: "root-401", Ok: true}}}, nil
+		},
+	}
+
+	got, err := cancelProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{State: process.StateActive})
+
+	require.NoError(t, err)
+	require.Len(t, got.Reports, 1)
+	require.Empty(t, stdout.String())
+	require.Contains(t, stderr.String(), "preflight: cancel process-instance matches 2+ process instance(s); page size 1; discovery will require at least 2 page(s)")
+	require.Contains(t, stderr.String(), "planning process-instance cancel scope 1/1 process instance(s)")
+	require.Contains(t, stderr.String(), "cancelling process instances 1/1 process instance(s)")
+	require.NotContains(t, stderr.String(), "/v2/")
+	require.NotContains(t, stderr.String(), "cursor")
+}
+
+// TestCancelProcessInstanceSearchMachineProgressSafetyPendingT064 pins the
+// machine-mode contract for future cancel progress routing.
+func TestCancelProcessInstanceSearchMachineProgressSafetyPendingT064(t *testing.T) {
+	pendingProcessInstanceMutationProgressT064(t)
+
+	for _, mode := range []struct {
+		name string
+		args []string
+	}{
+		{name: "json", args: []string{"--json", "cancel", "process-instance", "--state", "active", "--no-wait", "--batch-size", "1", "--auto-confirm"}},
+		{name: "quiet", args: []string{"--quiet", "cancel", "process-instance", "--state", "active", "--no-wait", "--batch-size", "1", "--auto-confirm"}},
+		{name: "automation", args: []string{"--automation", "cancel", "process-instance", "--state", "active", "--no-wait", "--batch-size", "1"}},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, mode.args...)
+			require.NotContains(t, stdout, "preflight:")
+			require.NotContains(t, stdout, "planning process-instance cancel scope")
+			require.NotContains(t, stdout, "cancelling process instances")
+			require.NotContains(t, stderr, "preflight:")
+			require.NotContains(t, stderr, "planning process-instance cancel scope")
+			require.NotContains(t, stderr, "cancelling process instances")
+		})
+	}
+}
+
 // TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary verifies aborted paging reports partial completion.
 func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *testing.T) {
 	var requests testx.SafeSlice[string]

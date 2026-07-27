@@ -298,3 +298,20 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Process-definition broad listing and all-process-definition purge now share process-definition preflight/page progress while traversal remains service-owned and machine stdout remains progress-free.
 ---
+---
+## Iteration 6 - 2026-07-27 14:49
+**Work Unit**: T063 Process-instance mutation progress tests
+**Tasks Completed**:
+- [x] T063: Add process-instance mutation progress tests for destructive preflight, planning counters, mutation counters, and JSON/quiet/automation safety
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_test.go
+- cmd/delete_test.go
+- internal/services/processinstance/dryrun_test.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Process-instance mutation progress contracts are captured as T064-pending tests in the grouped cancel/delete test files while current focused suites remain green.
+---

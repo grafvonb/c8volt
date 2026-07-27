@@ -256,6 +256,92 @@ func TestPlanProcessInstanceMutationPages_ContinuesAfterFilteredEmptyPage(t *tes
 	require.Equal(t, typex.Keys{"root-1", "child-1"}, got.Plans[0].Plan.Collected)
 }
 
+// TestPlanProcessInstanceMutationPages_ProgressContractPendingT064 defines the
+// destructive search planning progress contract for T064.
+func TestPlanProcessInstanceMutationPages_ProgressContractPendingT064(t *testing.T) {
+	t.Skip("pending T064 implementation: emit process-instance mutation preflight, discovery page, and frozen planning progress")
+
+	ctx := context.Background()
+	var events []d.OpsProgressEvent
+
+	api := stubDryRunProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			require.Equal(t, int32(2), page.Size)
+			return d.ProcessInstancePage{
+				Items: []d.ProcessInstance{
+					{Key: "child-1", State: d.StateActive},
+					{Key: "child-2", State: d.StateActive},
+				},
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				ReportedTotal: &d.ProcessInstanceReportedTotal{Count: 2, Kind: d.ProcessInstanceReportedTotalKindExact},
+			}, nil
+		},
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: key,
+				RootKey:  "root-" + key,
+				Keys:     []string{key, "root-" + key},
+				Chain: map[string]d.ProcessInstance{
+					key:           {Key: key, State: d.StateActive},
+					"root-" + key: {Key: "root-" + key, State: d.StateActive},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, root string, _ ...services.CallOption) (pitraversal.Result, error) {
+			child := root[len("root-"):]
+			return pitraversal.Result{
+				Mode:    pitraversal.ModeDescendants,
+				RootKey: root,
+				Keys:    []string{root, child},
+				Chain: map[string]d.ProcessInstance{
+					root:  {Key: root, State: d.StateActive},
+					child: {Key: child, State: d.StateActive},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	got, err := PlanProcessInstanceMutationPages(ctx, api, stubDryRunIncidentAPI{}, d.ProcessInstanceMutationPlanRequest{
+		SearchRequest: d.ProcessInstanceSearchRequest{
+			Filter:               d.ProcessInstanceFilter{State: d.StateActive},
+			Page:                 d.ProcessInstancePageRequest{Size: 2},
+			ReportedTotalAllowed: true,
+		},
+		Workers: 2,
+	}, nil, services.WithProgress(func(event d.OpsProgressEvent) {
+		events = append(events, event)
+	}))
+
+	require.NoError(t, err)
+	require.Equal(t, int32(2), got.RequestedCount)
+	require.Equal(t, int32(4), got.CumulativeImpact)
+	require.Len(t, events, 4)
+	require.Equal(t, d.OpsProgressEventKindPreflight, events[0].Kind)
+	require.Equal(t, "preflight", events[0].Preflight.Phase)
+	require.Equal(t, "process_instance", events[0].Preflight.CoreResource)
+	require.Equal(t, d.OpsTotalCertaintyExact, events[0].Preflight.TotalKind)
+	require.EqualValues(t, 2, *events[0].Preflight.Total)
+	require.True(t, events[0].Preflight.RequiresConfirmation)
+	require.Contains(t, events[0].Preflight.ConsequenceSummary.WorkSummary, "plan")
+	require.Contains(t, events[0].Preflight.ConsequenceSummary.RiskSummary, "destructive")
+	require.Equal(t, d.OpsProgressEventKindPage, events[1].Kind)
+	require.Equal(t, "discovering process instances", events[1].Page.Phase)
+	require.Equal(t, 1, events[1].Page.CurrentPage)
+	require.Equal(t, 2, events[1].Page.Seen)
+	require.Equal(t, 2, events[1].Page.Selected)
+	require.Equal(t, d.OpsProgressEventKindFrozenScope, events[2].Kind)
+	require.Equal(t, "planning process-instance mutation scope", events[2].FrozenScope.Phase)
+	require.Equal(t, 0, events[2].FrozenScope.Done)
+	require.Equal(t, 2, events[2].FrozenScope.Total)
+	require.Equal(t, d.OpsProgressEventKindFrozenScope, events[3].Kind)
+	require.Equal(t, 2, events[3].FrozenScope.Done)
+	require.Equal(t, 2, events[3].FrozenScope.Total)
+}
+
 func waitForDryRunOverlap(t *testing.T, active, max *atomic.Int32, released *atomic.Bool, release chan struct{}, phase string) func() {
 	t.Helper()
 	current := active.Add(1)

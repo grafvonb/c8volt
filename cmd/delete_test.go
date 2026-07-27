@@ -1718,6 +1718,118 @@ func TestDeleteProcessInstanceSearchPages_FreezesAllPlansBeforeMutation(t *testi
 	require.Contains(t, buf.String(), "next step: auto-continue")
 }
 
+// TestDeleteProcessInstanceSearchProgressContractPendingT064 defines the shared
+// destructive progress contract for search-selected delete.
+func TestDeleteProcessInstanceSearchProgressContractPendingT064(t *testing.T) {
+	pendingProcessInstanceMutationProgressT064(t)
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagCmdAutoConfirm = true
+	flagVerbose = true
+	flagGetPISize = 1
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Int32("batch-size", 1000, "")
+	require.NoError(t, cmd.Flags().Set("batch-size", "1"))
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		require.True(t, autoConfirm)
+		require.Contains(t, prompt, "delete")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		planProcessInstanceMutationPages: func(_ context.Context, request process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, opts ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+			require.Equal(t, int32(1), request.SearchRequest.Page.Size)
+			require.NotNil(t, options.ApplyFacadeOptions(opts).Progress)
+			page := process.ProcessInstancePage{
+				Items:         []process.ProcessInstance{{Key: "401", State: process.StateCompleted}},
+				Request:       process.ProcessInstancePageRequest{From: 0, Size: 1},
+				OverflowState: process.ProcessInstanceOverflowStateNoMore,
+				ReportedTotal: &process.ProcessInstanceReportedTotal{Count: 1, Kind: process.ProcessInstanceReportedTotalKindExact},
+			}
+			plan := process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-401"},
+				Collected: typex.Keys{"root-401", "401"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}
+			action, err := visitor(process.ProcessInstanceMutationPlanStep{
+				Page:             page,
+				RequestedKeys:    []string{"401"},
+				Plan:             plan,
+				CumulativeCount:  1,
+				CumulativeImpact: 2,
+			})
+			require.NoError(t, err)
+			require.Equal(t, process.ProcessInstanceSearchPageActionStop, action)
+			return process.ProcessInstanceMutationPlanPagesResult{
+				Plans:            []process.ProcessInstanceMutationPlanStep{{Page: page, RequestedKeys: []string{"401"}, Plan: plan, CumulativeCount: 1, CumulativeImpact: 2}},
+				Pages:            1,
+				RequestedCount:   1,
+				CumulativeImpact: 2,
+			}, nil
+		},
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.DeleteReports, error) {
+			require.Equal(t, typex.Keys{"root-401"}, keys)
+			cfg := options.ApplyFacadeOptions(opts)
+			require.Equal(t, 2, cfg.AffectedProcessInstanceCount)
+			require.NotNil(t, cfg.Progress)
+			cfg.Progress(options.ProgressEvent{
+				Kind: options.ProgressEventKindFrozenScope,
+				FrozenScope: &options.FrozenScopeProgress{
+					Phase:        "deleting process instances",
+					CoreResource: "process instance(s)",
+					Done:         1,
+					Total:        1,
+				},
+			})
+			return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-401", Ok: true}}}, nil
+		},
+	}
+
+	got, err := deleteProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{State: process.StateCompleted})
+
+	require.NoError(t, err)
+	require.Len(t, got.Reports, 1)
+	require.Empty(t, stdout.String())
+	require.Contains(t, stderr.String(), "preflight: delete process-instance matches 1 process instance(s); page size 1; discovery will require 1 page(s)")
+	require.Contains(t, stderr.String(), "planning process-instance delete scope 1/1 process instance(s)")
+	require.Contains(t, stderr.String(), "deleting process instances 1/1 process instance(s)")
+	require.NotContains(t, stderr.String(), "/v2/")
+	require.NotContains(t, stderr.String(), "cursor")
+}
+
+// TestDeleteProcessInstanceSearchMachineProgressSafetyPendingT064 pins the
+// machine-mode contract for future delete progress routing.
+func TestDeleteProcessInstanceSearchMachineProgressSafetyPendingT064(t *testing.T) {
+	pendingProcessInstanceMutationProgressT064(t)
+
+	for _, mode := range []struct {
+		name string
+		args []string
+	}{
+		{name: "json", args: []string{"--json", "delete", "process-instance", "--state", "completed", "--no-wait", "--batch-size", "1", "--auto-confirm"}},
+		{name: "quiet", args: []string{"--quiet", "delete", "process-instance", "--state", "completed", "--no-wait", "--batch-size", "1", "--auto-confirm"}},
+		{name: "automation", args: []string{"--automation", "delete", "process-instance", "--state", "completed", "--no-wait", "--batch-size", "1"}},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, mode.args...)
+			require.NotContains(t, stdout, "preflight:")
+			require.NotContains(t, stdout, "planning process-instance delete scope")
+			require.NotContains(t, stdout, "deleting process instances")
+			require.NotContains(t, stderr, "preflight:")
+			require.NotContains(t, stderr, "planning process-instance delete scope")
+			require.NotContains(t, stderr, "deleting process instances")
+		})
+	}
+}
+
 // TestDeleteProcessInstanceDryRun_SearchContinuesAfterEmptySelectedPage protects
 // sparse search-derived delete planning: an empty selected page with more
 // backend matches must not hide later selectable candidates.

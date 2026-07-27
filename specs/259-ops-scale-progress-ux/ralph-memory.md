@@ -43,6 +43,7 @@ Started: 2026-07-27T10:17:40Z
 - `get process-definition` broad non-latest listing accepts `--batch-size`, traverses all pages below the facade, emits shared preflight/page progress through `printBasicSearchOpsProgress`, and keeps JSON/keys-only stdout progress-free.
 - `ops purge all-process-definitions` requests now carry optional progress callbacks; internal discovery emits process-definition preflight and page events from page metadata, and the command renders them through the shared ops progress channel while machine modes stay suppressed.
 - `get process-definition` machine-output safety is already active: JSON and keys-only broad listings must keep stdout progress-free and stderr empty while returning the expected process-definition payload/keys.
+- T063 process-instance mutation progress tests are pending-contract tests in the repo's actual grouped files (`cmd/cancel_test.go`, `cmd/delete_test.go`, and `internal/services/processinstance/dryrun_test.go`). They are skipped with explicit T064 messages and define expected destructive preflight, discovery page, frozen planning, frozen mutation, and JSON/quiet/automation safety assertions.
 
 ## Decisions
 - For this feature, transient progress should reuse the existing activity context path rather than stdout or a new global writer.
@@ -74,4 +75,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should implement T063 process-instance mutation progress tests for destructive preflight, planning counters, mutation counters, and JSON/quiet/automation safety without starting T064 implementation.
+- Next iteration should implement T064 process-instance mutation progress, including enabling the pending T063 tests by removing their T064 skips after wiring destructive preflight/page/frozen planning events through services/facades and command progress gating for cancel/delete.
