@@ -65,6 +65,7 @@ Started: 2026-07-27T10:17:40Z
 - Bulk `run process-instance --count` now emits exact `starting process instances` counters from `internal/services/processinstance.CreateNProcessInstances`, mapped through `c8volt/process` facade progress options.
 - `walk process-instance` now passes progress options through ancestry/descendants/family traversal and incident/variable enrichment. Traversal result builders emit exact completed walk-scope counters once the immutable result set is known; element/listener enrichment still uses the existing enrichment progress wrappers.
 - `ops execute smoke-test` requests now carry optional progress callbacks through `c8volt/ops`; the service emits stage-level deployment and family-walk counters, preserves progress through nested create/delete cleanup options, and suppresses lower-level family traversal progress inside smoke-test walk loops so smoke output stays stage-oriented.
+- `ops analyse slow-process-instances` help and command-contract tests now explicitly document broad-search preflight from the first page, exact/lower-bound/unknown total certainty, progress routing to activity/stderr, machine-mode silence, and `--batch-size` page size versus `--limit` frozen analysis scope.
 
 ## Decisions
 - For this feature, transient progress should reuse the existing activity context path rather than stdout or a new global writer.
@@ -96,4 +97,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should start Phase 8 polish with T049/T050 help and command contract wording for the completed ops-scale progress behavior.
+- Next iteration should continue Phase 8 with T051 README operational notes for ops-scale preflight and progress behavior.

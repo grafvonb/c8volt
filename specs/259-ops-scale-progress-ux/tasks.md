@@ -170,8 +170,8 @@
 
 **Purpose**: Documentation, validation, and final repository hygiene.
 
-- [ ] T049 [P] Update slow-process help text and command examples for preflight, progress, total certainty, and `--batch-size` versus `--limit` in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T050 [P] Update command contract tests for help/documentation wording in `cmd/command_contract_test.go`
+- [x] T049 [P] Update slow-process help text and command examples for preflight, progress, total certainty, and `--batch-size` versus `--limit` in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T050 [P] Update command contract tests for help/documentation wording in `cmd/command_contract_test.go`
 - [ ] T051 Update README operational notes for ops-scale preflight and progress behavior in `README.md`
 - [ ] T052 Regenerate generated CLI documentation with `make docs-content` and verify updated files under `docs/cli/`
 - [ ] T053 Run focused activity tests with `GOCACHE=/tmp/c8volt-gocache go test ./toolx/logging ./testx/activitysink -count=1` for `toolx/logging/activity.go` and `testx/activitysink/activity_sink.go`

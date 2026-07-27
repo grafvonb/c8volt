@@ -463,3 +463,20 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Explicit-count/keyed progress can reuse frozen-scope events without broad preflight prompts; smoke-test needs request progress copied into nested service options to keep stage counters visible.
 ---
+---
+## Iteration 13 - 2026-07-27 15:53
+**Work Unit**: T049/T050 Slow-process help and contract wording
+**Tasks Completed**:
+- [x] T049: Update slow-process help text and command examples for preflight, progress, total certainty, and `--batch-size` versus `--limit`
+- [x] T050: Update command contract tests for help/documentation wording
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/command_contract_test.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Slow-process help now states first-page preflight, total certainty labels, progress routing, and batch-size versus frozen-scope limit semantics directly in command metadata.
+---

@@ -390,6 +390,7 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 	require.Same(t, opsAnalyseSlowProcessInstancesCmd, aliasCmd)
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyse slow-process-instances --key")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "ops analyse slow-process-instances --bpmn-process-id")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--batch-size 500 --limit 2000")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--pd-key <process-definition-key> --dur-element-longer 30s")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--element-id <element-id> --dur-element-longer 30s")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--with-full-timeline")
@@ -398,6 +399,12 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Default output shows compact slowest element contributors")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --with-full-timeline to inspect complete chronological element and transition detail")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --with-listeners to include runtime listener jobs under matching element timeline rows")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Broad search selectors show preflight scope from the first discovery page")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "including exact, lower-bound, or unknown total wording")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--batch-size controls each discovery page request")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--limit caps the number of matching process instances frozen for analysis across all discovery pages")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Verbose and debug modes keep durable progress lines on stderr")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "JSON, keys-only, quiet, and automation output stay free of progress text")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --dur-longer to keep only process-instance roots")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Detail filters such as --element-id, --type, --element-state, and --dur-element-longer keep only process instances with matching element or transition detail rows")
 	require.NotContains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--duration-after")
@@ -452,7 +459,7 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 		Type:        "int32",
 		Required:    false,
 		Repeated:    false,
-		Description: "number of process instances to inspect per discovery page; does not cap explicit keys or timeline details (max limit 1000 enforced by server)",
+		Description: "number of process instances to inspect per discovery page; does not cap frozen analysis scope, explicit keys, or timeline details (max limit 1000 enforced by server)",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "limit",
@@ -460,7 +467,7 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 		Type:        "int32",
 		Required:    false,
 		Repeated:    false,
-		Description: "maximum number of matching process instances to freeze during discovery; omit to discover all matches",
+		Description: "maximum number of matching process instances to freeze for analysis across all discovery pages; omit to discover all matches",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "dur-longer",
@@ -573,13 +580,15 @@ func TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts(t *testing.T
 		{
 			name:      "slow process analysis",
 			cmd:       opsAnalyseSlowProcessInstancesCmd,
-			batchDesc: "number of process instances to inspect per discovery page; does not cap explicit keys or timeline details (max limit 1000 enforced by server)",
-			limitDesc: "maximum number of matching process instances to freeze during discovery; omit to discover all matches",
+			batchDesc: "number of process instances to inspect per discovery page; does not cap frozen analysis scope, explicit keys, or timeline details (max limit 1000 enforced by server)",
+			limitDesc: "maximum number of matching process instances to freeze for analysis across all discovery pages; omit to discover all matches",
 			longFragments: []string{
 				"Search mode pages through discovered process instances by default.",
 				"--batch-size controls each discovery page request",
-				"--limit caps the frozen analysis scope",
-				"JSON and keys-only output stay free of progress text",
+				"--limit caps the number of matching process instances frozen for analysis across all discovery pages",
+				"Broad search selectors show preflight scope from the first discovery page",
+				"including exact, lower-bound, or unknown total wording",
+				"JSON, keys-only, quiet, and automation output stay free of progress text",
 			},
 		},
 	}
