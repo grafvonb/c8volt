@@ -526,3 +526,17 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Focused activity validation passed for `toolx/logging`; `testx/activitysink` remains helper-only with no package tests.
 ---
+---
+## Iteration 17 - 2026-07-27 16:04
+**Work Unit**: T054 Focused service tests
+**Tasks Completed**:
+- [x] T054: Run focused service tests with `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/processinstance ./internal/services/ops -run 'Progress|Preflight|SlowProcess|SearchProcessInstances' -count=1`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Focused service validation passed for process-instance search/progress and ops preflight/slow-process progress coverage.
+---
