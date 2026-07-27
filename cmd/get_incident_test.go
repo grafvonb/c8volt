@@ -1030,6 +1030,59 @@ func TestGetIncidentCommand_SearchVerboseProgress(t *testing.T) {
 	require.Contains(t, output, "found: 3")
 }
 
+// TestGetIncidentCommand_SearchMachineOutputStaysProgressFree verifies shared progress rollout cannot leak into incident JSON or key streams.
+func TestGetIncidentCommand_SearchMachineOutputStaysProgressFree(t *testing.T) {
+	t.Run("json", func(t *testing.T) {
+		var requests []string
+		srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":true}}`,
+			`{"items":[{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+		)
+		t.Cleanup(srv.Close)
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+		stdout, stderr := executeRootForIncidentTestWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--json",
+			"get", "incident",
+			"--batch-size", "1",
+		)
+
+		require.Len(t, requests, 2)
+		require.Empty(t, stderr)
+		require.NotContains(t, stdout, "preflight:")
+		require.NotContains(t, stdout, "page size:")
+		require.NotContains(t, stdout, "discovering incidents")
+		var envelope map[string]any
+		require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+		payload := requireJSONObject(t, envelope["payload"])
+		items := payload["items"].([]any)
+		require.Len(t, items, 2)
+	})
+
+	t.Run("keys only", func(t *testing.T) {
+		var requests []string
+		srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+		)
+		t.Cleanup(srv.Close)
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+		stdout, stderr := executeRootForIncidentTestWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--keys-only",
+			"get", "incident",
+			"--state", "active",
+		)
+
+		require.Len(t, requests, 1)
+		require.Empty(t, stderr)
+		require.Equal(t, "2251799813685253\n2251799813685254\n", stdout)
+		require.NotContains(t, stdout, "preflight:")
+		require.NotContains(t, stdout, "page size:")
+	})
+}
+
 func TestGetIncidentCommand_SearchErrorMessageMatchesCaseInsensitiveAcrossPages(t *testing.T) {
 	var requests []string
 	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
@@ -1139,6 +1192,27 @@ func executeRootForIncidentTest(t *testing.T, args ...string) string {
 	_, err := root.ExecuteC()
 	require.NoError(t, err)
 	return buf.String()
+}
+
+// executeRootForIncidentTestWithSeparateOutputs lets machine-output tests prove progress stays off stdout.
+func executeRootForIncidentTestWithSeparateOutputs(t *testing.T, args ...string) (string, string) {
+	t.Helper()
+
+	resetGetIncidentFlagState()
+	t.Cleanup(resetGetIncidentFlagState)
+
+	root := Root()
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	root.SetOut(stdout)
+	root.SetErr(stderr)
+	root.SetArgs(args)
+	resetCommandTreeFlags(root)
+	resetGetIncidentFlagState()
+
+	_, err := root.ExecuteC()
+	require.NoError(t, err)
+	return stdout.String(), stderr.String()
 }
 
 func executeRootForIncidentTestWithStdin(t *testing.T, stdin string, args ...string) string {

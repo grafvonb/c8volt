@@ -30,6 +30,8 @@ Started: 2026-07-27T10:17:40Z
 - Ops purge/retention/repair workflows already own discovery, freeze, planning, mutation, and audit-report semantics in services and command wrappers; follow-up progress should add shared callbacks/events without moving those backend mechanics into `cmd`.
 - `ops purge orphan-process-instances` has an existing service-level orphan discovery progress callback shape in `internal/services/processinstance/orphan_discovery.go`; it is not yet mapped to `OpsProgressEvent` or command progress-channel gating.
 - `run process-instance` has an operator-provided `--count`, and `internal/services/processinstance/bulk.go` has older periodic bulk progress logging. Treat large-count run progress as exact frozen work and preserve keys-only/JSON stdout contracts.
+- Basic inspection command tests now include separated stdout/stderr helpers for incident, job, and element search, plus process-instance coverage through the existing helper. These tests assert that future shared progress/preflight text stays out of JSON and keys-only stdout.
+- `cmd/ops_progress_test.go` now locks shared preflight resource labels for process instances, incidents, jobs, and elements; reuse `formatOpsPreflightScope`/`formatOpsPageProgress` wording when implementing basic get progress routing.
 
 ## Decisions
 - For this feature, transient progress should reuse the existing activity context path rather than stdout or a new global writer.
@@ -59,4 +61,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should start the generated follow-up implementation slices at T058, beginning with basic inspection command tests. Preserve coverage.md as the rollout source, keep backend traversal in services/facades, and preserve US3/US4 guarantees: machine stdout stays clean and ETA only appears after exact-scope timing is useful.
+- Next iteration should implement T059 for shared preflight/page progress routing in `get process-instance`, `get incident`, `get job`, and `get element`. Keep traversal in services/facades, route human progress through stderr/activity only, and keep the T058 JSON/keys-only stdout tests passing.

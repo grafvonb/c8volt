@@ -180,3 +180,22 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Coverage rollout gaps are now documented by command family; follow-up implementation should start with basic inspection tests and keep service-owned traversal intact.
 ---
+---
+## Iteration 8 - 2026-07-27 14:04
+**Work Unit**: T058 Basic inspection command tests
+**Tasks Completed**:
+- [x] T058: Add basic inspection command tests for shared preflight/page progress and machine-output safety
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processinstance_test.go
+- cmd/get_incident_test.go
+- cmd/get_job_test.go
+- cmd/get_element_test.go
+- cmd/ops_progress_test.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Basic inspection tests now pin shared preflight resource labels and stdout-safe JSON/keys-only behavior before routing progress in T059.
+---

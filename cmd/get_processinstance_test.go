@@ -735,6 +735,58 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 	})
 }
 
+// TestGetProcessInstanceSearchMachineOutputStaysProgressFree verifies paged search can later gain shared progress without corrupting JSON or key streams.
+func TestGetProcessInstanceSearchMachineOutputStaysProgressFree(t *testing.T) {
+	t.Run("json", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":true,"endCursor":"cursor-1"}}`,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:01:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":false,"startCursor":"cursor-1"}}`,
+		)
+		t.Cleanup(srv.Close)
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+		stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--json",
+			"get", "process-instance",
+			"--batch-size", "1",
+		)
+
+		require.Len(t, requests, 2)
+		require.Empty(t, stderr)
+		require.NotContains(t, stdout, "preflight:")
+		require.NotContains(t, stdout, "page size:")
+		require.NotContains(t, stdout, "discovering process instances")
+		var envelope map[string]any
+		require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+		payload := requireJSONObject(t, envelope["payload"])
+		items := payload["items"].([]any)
+		require.Len(t, items, 2)
+	})
+
+	t.Run("keys only", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:01:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+		)
+		t.Cleanup(srv.Close)
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+		stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--keys-only",
+			"get", "process-instance",
+		)
+
+		require.Len(t, requests, 1)
+		require.Empty(t, stderr)
+		require.Equal(t, "123\n124\n", stdout)
+		require.NotContains(t, stdout, "preflight:")
+		require.NotContains(t, stdout, "page size:")
+	})
+}
+
 // TestGetProcessInstanceTotalValidation verifies --total rejects incompatible output and lookup modes.
 func TestGetProcessInstanceTotalValidation(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")

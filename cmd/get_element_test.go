@@ -307,6 +307,64 @@ func TestGetElementCommand_SearchKeysOnlyOutput(t *testing.T) {
 	require.Len(t, bodies, 1)
 }
 
+// TestGetElementCommand_SearchMachineOutputStaysProgressFree verifies element search progress cannot leak into JSON or keys-only stdout.
+func TestGetElementCommand_SearchMachineOutputStaysProgressFree(t *testing.T) {
+	t.Run("json", func(t *testing.T) {
+		var bodies []map[string]any
+		srv := newElementSearchServerResponses(t, &bodies,
+			`{"items":[{"elementInstanceKey":"2251799813689002","elementId":"ship-order","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"2251799813688001","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":true}}`,
+			`{"items":[{"elementInstanceKey":"2251799813689003","elementId":"finish-order","type":"END_EVENT","state":"COMPLETED","processInstanceKey":"2251799813688001","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+		)
+		t.Cleanup(srv.Close)
+		cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.9")
+
+		stdout, stderr := executeRootForElementTestWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--json",
+			"get", "element",
+			"--batch-size", "1",
+		)
+
+		require.Len(t, bodies, 2)
+		require.Empty(t, stderr)
+		require.NotContains(t, stdout, "preflight:")
+		require.NotContains(t, stdout, "page size:")
+		require.NotContains(t, stdout, "discovering elements")
+		var envelope map[string]any
+		require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+		payload := requireJSONObject(t, envelope["payload"])
+		items := payload["items"].([]any)
+		require.Len(t, items, 2)
+	})
+
+	t.Run("keys only", func(t *testing.T) {
+		var bodies []map[string]any
+		srv := newElementSearchServerResponses(t, &bodies, `{
+  "items": [
+    {"elementInstanceKey": "2251799813689002", "state": "ACTIVE"},
+    {"elementInstanceKey": "2251799813689003", "state": "COMPLETED"}
+  ],
+  "page": {"totalItems": 2, "hasMoreTotalItems": false}
+}`)
+		t.Cleanup(srv.Close)
+		cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.9")
+
+		stdout, stderr := executeRootForElementTestWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--keys-only",
+			"get", "element",
+			"--pi-key", "2251799813688001",
+			"--limit", "2",
+		)
+
+		require.Len(t, bodies, 1)
+		require.Empty(t, stderr)
+		require.Equal(t, "2251799813689002\n2251799813689003\n", stdout)
+		require.NotContains(t, stdout, "preflight:")
+		require.NotContains(t, stdout, "page size:")
+	})
+}
+
 // TestSearchElementsWithPagingRendersServiceSelectedPage verifies command
 // rendering trusts the service-owned selected page instead of reapplying the
 // caller limit locally.
@@ -682,6 +740,27 @@ func executeRootForElementTest(t *testing.T, args ...string) string {
 	_, err := root.ExecuteC()
 	require.NoError(t, err)
 	return buf.String()
+}
+
+// executeRootForElementTestWithSeparateOutputs lets progress-contract tests verify machine stdout without stderr noise.
+func executeRootForElementTestWithSeparateOutputs(t *testing.T, args ...string) (string, string) {
+	t.Helper()
+
+	resetGetElementFlagState()
+	t.Cleanup(resetGetElementFlagState)
+
+	root := Root()
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	root.SetOut(stdout)
+	root.SetErr(stderr)
+	root.SetArgs(args)
+	resetCommandTreeFlags(root)
+	resetGetElementFlagState()
+
+	_, err := root.ExecuteC()
+	require.NoError(t, err)
+	return stdout.String(), stderr.String()
 }
 
 func resetGetElementFlagState() {

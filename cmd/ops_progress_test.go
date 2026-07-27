@@ -123,6 +123,38 @@ func TestFormatOpsPreflightScopeLabelsExactLowerBoundAndUnknownTotals(t *testing
 	}
 }
 
+// TestFormatOpsPreflightScopeNamesBasicInspectionResources verifies the shared preflight formatter has stable resource labels for the basic get rollout.
+func TestFormatOpsPreflightScopeNamesBasicInspectionResources(t *testing.T) {
+	total := int64(3000)
+	pages := int64(3)
+	tests := []struct {
+		name         string
+		coreResource string
+		selector     string
+		want         string
+	}{
+		{name: "process instances", coreResource: "process_instance", selector: "active instances", want: "preflight: active instances matches 3000 process instance(s); page size 1000; discovery will require 3 page(s)"},
+		{name: "incidents", coreResource: "incident", selector: "active incidents", want: "preflight: active incidents matches 3000 incident(s); page size 1000; discovery will require 3 page(s)"},
+		{name: "jobs", coreResource: "job", selector: "failed jobs", want: "preflight: failed jobs matches 3000 job(s); page size 1000; discovery will require 3 page(s)"},
+		{name: "elements", coreResource: "element", selector: "active elements", want: "preflight: active elements matches 3000 element(s); page size 1000; discovery will require 3 page(s)"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := formatOpsPreflightScope(ops.PreflightScope{
+				SelectorSummary: tc.selector,
+				CoreResource:    tc.coreResource,
+				Total:           &total,
+				TotalKind:       ops.TotalCertaintyExact,
+				PageSize:        1000,
+				PageCount:       &pages,
+				PageCountKind:   ops.PageCountKindExact,
+			})
+
+			require.Equal(t, tc.want, got[0])
+		})
+	}
+}
+
 // TestFormatOpsFrozenScopeProgressGatesETA verifies exact counters can show elapsed, percent, and rate while ETA waits for a remaining estimate.
 func TestFormatOpsFrozenScopeProgressGatesETA(t *testing.T) {
 	rate := 4.25
