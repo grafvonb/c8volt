@@ -178,7 +178,7 @@
 - [x] T054 Run focused service tests with `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/processinstance ./internal/services/ops -run 'Progress|Preflight|SlowProcess|SearchProcessInstances' -count=1` for `internal/services/processinstance/search.go` and `internal/services/ops/slow_process_analysis.go`
 - [x] T055 Run focused facade tests with `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process ./c8volt/ops -run 'Progress|Preflight|SlowProcess|SearchProcessInstances' -count=1` for `c8volt/process/model.go` and `c8volt/ops/model.go`
 - [x] T056 Run focused command tests with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'SlowProcess|Progress|Activity|OutputMode|KeysOnly|JSON|Automation' -count=1` for `cmd/ops_analyse_slow_process_instances.go` and `cmd/ops_progress.go`
-- [ ] T057 Run full repository validation with `make test` using `Makefile`
+- [x] T057 Run full repository validation with `make test` using `Makefile`
 
 ---
 

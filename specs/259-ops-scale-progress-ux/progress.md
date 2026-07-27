@@ -568,3 +568,20 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Focused command validation passed for slow-process, progress, activity, output-mode, keys-only, JSON, and automation coverage.
 ---
+---
+## Iteration 20 - 2026-07-27 16:18
+**Work Unit**: T057 Full repository validation
+**Tasks Completed**:
+- [x] T057: Run full repository validation with `make test` using `Makefile`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/resource/client_test.go
+- cmd/processinstance_mutation_progress.go
+- cmd/root.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Full race-enabled validation passed after adding the missing process-definition page stub and serializing shared stderr/activity progress paths.
+---

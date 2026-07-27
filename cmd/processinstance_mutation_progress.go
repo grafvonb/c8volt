@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/ops"
@@ -15,20 +16,33 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// processInstanceMutationProgressState serializes progress rendering shared by
+// service worker callbacks and command fallback output.
+type processInstanceMutationProgressState struct {
+	mu   sync.Mutex
+	seen bool
+}
+
+// newProcessInstanceMutationProgressReporter creates a serialized command
+// progress callback for mutation workflows that may report from workers.
 func newProcessInstanceMutationProgressReporter(cmd *cobra.Command, operation string) func(processOptions.ProgressEvent) {
 	progress, _ := newProcessInstanceMutationProgressReporterWithState(cmd, operation)
 	return progress
 }
 
-func newProcessInstanceMutationProgressReporterWithState(cmd *cobra.Command, operation string) (func(processOptions.ProgressEvent), *bool) {
+// newProcessInstanceMutationProgressReporterWithState returns the progress
+// callback plus state used by fallback rendering when services emit no progress.
+func newProcessInstanceMutationProgressReporterWithState(cmd *cobra.Command, operation string) (func(processOptions.ProgressEvent), *processInstanceMutationProgressState) {
 	channel := opsProgressChannelForMode(processInstanceMutationProgressModeForCommand(cmd))
 	operation = strings.TrimSpace(operation)
-	seen := false
+	state := &processInstanceMutationProgressState{}
 	return func(event processOptions.ProgressEvent) {
+		state.mu.Lock()
+		defer state.mu.Unlock()
 		if cmd == nil {
 			return
 		}
-		seen = true
+		state.seen = true
 		switch event.Kind {
 		case processOptions.ProgressEventKindPreflight:
 			if event.Preflight == nil {
@@ -53,7 +67,7 @@ func newProcessInstanceMutationProgressReporterWithState(cmd *cobra.Command, ope
 			}
 			printProcessInstanceMutationProgressLine(cmd, formatProcessInstanceMutationFrozenProgress(progress), channel)
 		}
-	}, &seen
+	}, state
 }
 
 func processInstanceMutationProgressModeForCommand(cmd *cobra.Command) opsProgressModeInput {
@@ -118,8 +132,15 @@ func formatProcessInstanceMutationFrozenProgress(progress ops.FrozenScopeProgres
 	return fmt.Sprintf("%s %d/%d %s", phase, progress.Done, progress.Total, resource)
 }
 
-func printProcessInstanceMutationPlanStepFallbackProgress(cmd *cobra.Command, operation string, step process.ProcessInstanceMutationPlanStep, progressSeen *bool) {
-	if progressSeen == nil || *progressSeen {
+// printProcessInstanceMutationPlanStepFallbackProgress preserves legacy
+// progress lines when an older service path does not emit shared progress.
+func printProcessInstanceMutationPlanStepFallbackProgress(cmd *cobra.Command, operation string, step process.ProcessInstanceMutationPlanStep, progressState *processInstanceMutationProgressState) {
+	if progressState == nil {
+		return
+	}
+	progressState.mu.Lock()
+	defer progressState.mu.Unlock()
+	if progressState.seen {
 		return
 	}
 	channel := opsProgressChannelForMode(processInstanceMutationProgressModeForCommand(cmd))

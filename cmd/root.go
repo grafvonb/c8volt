@@ -112,7 +112,10 @@ command contract.`,
 			}
 			return silenceUsageForError(cmd, bootstrapLocalPrecondition(err))
 		}
-		activityWriter := logging.NewActivityWriterEnabled(cmd.ErrOrStderr(), indicatorEnabled(cmd, cfg))
+		root := cmd.Root()
+		activityWriter := logging.NewActivityWriterEnabled(root.ErrOrStderr(), indicatorEnabled(cmd, cfg))
+		root.SetErr(activityWriter)
+		cmd.SetErr(activityWriter)
 		ctx := cfg.ToContextWithLogWriter(cmd.Context(), activityWriter)
 		ctx = logging.ToActivityContext(ctx, activityWriter)
 		log, err := logging.FromContext(ctx)
