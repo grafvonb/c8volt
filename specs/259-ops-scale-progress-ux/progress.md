@@ -222,3 +222,30 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Basic get search progress can use shared ops preflight/page formatters from the command layer while keeping traversal in services and suppressing progress in machine modes.
 ---
+---
+## Iteration 3 - 2026-07-27 14:24
+**Work Unit**: T060 Basic inspection frozen enrichment progress
+**Tasks Completed**:
+- [x] T060: Add frozen enrichment progress for basic process-instance and element listener enrichment
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/foptions/options.go
+- c8volt/process/client_test.go
+- c8volt/element/client_test.go
+- cmd/get_processinstance_enrichment.go
+- cmd/get_processinstance_test.go
+- cmd/get_element.go
+- cmd/get_element_search.go
+- cmd/get_element_test.go
+- internal/services/calloption.go
+- internal/services/processinstance/enrichment.go
+- internal/services/processinstance/enrichment_test.go
+- internal/services/element/enrichment.go
+- internal/services/element/enrichment_test.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Frozen enrichment progress now flows through a facade option to avoid facade import cycles, with exact counters emitted by the owning enrichment services and rendered through existing stdout-safe command progress gates.
+---

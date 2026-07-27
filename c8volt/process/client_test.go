@@ -712,6 +712,32 @@ func TestClient_EnrichProcessInstancesWithElements_MapsErrors(t *testing.T) {
 	require.Empty(t, got)
 }
 
+func TestClient_EnrichProcessInstancesWithElements_MapsProgress(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	cli := NewWithElements(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, stubElementAPI{
+		searchElements: func(_ context.Context, query d.ElementSearchQuery, _ ...services.CallOption) (d.ElementSearchResult, error) {
+			return d.ElementSearchResult{Items: []d.Element{{ElementInstanceKey: "el-" + query.ProcessInstanceKey, ProcessInstanceKey: query.ProcessInstanceKey}}}, nil
+		},
+	}, slog.Default())
+
+	var progress []options.FrozenScopeProgress
+	got, err := cli.EnrichProcessInstancesWithElements(ctx, ProcessInstances{Items: []ProcessInstance{{Key: "pi-1"}, {Key: "pi-2"}}}, options.WithProgress(func(event options.ProgressEvent) {
+		if event.Kind == options.ProgressEventKindFrozenScope && event.FrozenScope != nil {
+			progress = append(progress, *event.FrozenScope)
+		}
+	}))
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 2)
+	require.Equal(t, []options.FrozenScopeProgress{
+		{Phase: "loading runtime elements", CoreResource: "process instance(s)", Done: 0, Total: 2},
+		{Phase: "loading runtime elements", CoreResource: "process instance(s)", Done: 1, Total: 2},
+		{Phase: "loading runtime elements", CoreResource: "process instance(s)", Done: 2, Total: 2},
+	}, progress)
+}
+
 func TestClient_EnrichProcessInstancesWithElementListeners_MapsListenerFields(t *testing.T) {
 	t.Parallel()
 

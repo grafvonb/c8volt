@@ -26,7 +26,11 @@ Started: 2026-07-27T10:17:40Z
 - Slow-process enrichment updates frozen-scope progress with elapsed/rate/ETA after each root once timing is useful. Completion events keep elapsed/rate but omit stale ETA when done equals total.
 - `cmd/ops_progress.go` renders frozen progress with percent complete only when elapsed timing is present and total is exact/nonzero; approximate throughput/remaining use `~` wording. Standalone ETA events are ignored unless `opsETAAllowed` passes.
 - Phase 7 inventory lives in `specs/259-ops-scale-progress-ux/coverage.md`. It records current coverage and gaps for basic get commands, process-definition inspection/purge, process-instance cancel/delete/walk/run, smoke, retention, purge, and repair workflows.
-- Basic get commands (`get process-instance`, `get incident`, `get job`, `get element`) have service-owned page traversal, stdout-safe incremental/JSON behavior, and shared ops preflight/page progress routing for plain search paths; frozen enrichment progress remains for T060.
+- Basic get commands (`get process-instance`, `get incident`, `get job`, `get element`) have service-owned page traversal, stdout-safe incremental/JSON behavior, shared ops preflight/page progress routing for plain search paths, and frozen enrichment progress for process-instance runtime-element/listener enrichment and element listener enrichment.
+- Public facade options now include `foptions.WithProgress(func(foptions.ProgressEvent))`, mapped to `services.WithProgress(func(domain.OpsProgressEvent))`; this avoids a `c8volt/process` -> `c8volt/ops` import cycle while still using the shared internal ops progress model.
+- `internal/services/processinstance.EnrichProcessInstancesWithElements` emits exact `loading runtime elements` frozen-scope events at 0 and after each process instance; `EnrichProcessInstancesWithElementListeners` emits `loading listener jobs` over the same process-instance total.
+- `internal/services/element.EnrichElementWithListeners` and `EnrichSearchElementsWithListeners` emit `loading listener jobs` frozen-scope events over the process-instance keys that require listener job lookup, not the element row count.
+- `cmd/get_processinstance_enrichment.go`, `cmd/get_element.go`, and `cmd/get_element_search.go` append the progress option only through command-owned wrappers. They reuse `formatOpsFrozenScopeProgress` and `opsProgressChannelForMode`: default human uses transient activity updates, verbose/debug can write durable stderr, and JSON/keys-only/quiet/automation stay stdout-safe.
 - Ops purge/retention/repair workflows already own discovery, freeze, planning, mutation, and audit-report semantics in services and command wrappers; follow-up progress should add shared callbacks/events without moving those backend mechanics into `cmd`.
 - `ops purge orphan-process-instances` has an existing service-level orphan discovery progress callback shape in `internal/services/processinstance/orphan_discovery.go`; it is not yet mapped to `OpsProgressEvent` or command progress-channel gating.
 - `run process-instance` has an operator-provided `--count`, and `internal/services/processinstance/bulk.go` has older periodic bulk progress logging. Treat large-count run progress as exact frozen work and preserve keys-only/JSON stdout contracts.
@@ -54,6 +58,8 @@ Started: 2026-07-27T10:17:40Z
 - `GOCACHE=/tmp/c8volt-gocache go test ./toolx/logging ./testx/activitysink -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Progress|SlowProcess' -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'OpsAnalyseSlowProcessInstances|OpsProgress|CommandContractOpsAnalyseSlowProcessInstances' -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/processinstance ./internal/services/element -run 'Enrich.*Progress|EnrichProcessInstancesWithElements|EnrichProcessInstancesWithElementListeners|EnrichSearchElementsWithListeners|EnrichElementWithListeners' -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process ./c8volt/element -run 'Progress|EnrichProcessInstancesWithElements|SearchElementsWithListeners' -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/ops -run 'ClientAnalyseSlowProcessInstances' -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/ops -run 'Preflight|Progress|SlowProcess' -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./internal/domain -run 'OpsETA|OpsProgress|ETASample' -count=1`
@@ -64,4 +70,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should implement T060 frozen enrichment progress for basic process-instance and element listener enrichment. Keep enrichment mechanics in `internal/services/processinstance` and `internal/services/element`, map only thin facade progress shapes through `c8volt/process` and `c8volt/element`, and preserve the T058/T059 JSON, keys-only, quiet, and automation output guarantees.
+- Next iteration should implement T061 process-definition progress tests for broad listing and all-process-definition purge discovery. Start in `cmd/get_processdefinition_test.go`, `cmd/ops_purge_all_processdefinitions_test.go`, and `internal/services/ops/all_process_definitions_purge_test.go`; do not implement T062 behavior until those tests are in place.

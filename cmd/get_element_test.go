@@ -16,6 +16,8 @@ import (
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -470,6 +472,38 @@ func TestGetElementCommand_SearchVerboseProgress(t *testing.T) {
 	require.Contains(t, output, "found: 3")
 }
 
+func TestSearchElementsWithListenersUpdatesFrozenProgressActivity(t *testing.T) {
+	resetGetElementFlagState()
+	flagGetElementWithListeners = true
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+
+	cli := stubElementAPI{searchElementsWithListeners: func(_ context.Context, request elementapi.SearchRequest, opts ...options.FacadeOption) (elementapi.SearchResult, error) {
+		require.Equal(t, elementapi.SearchRequest{ProcessInstanceKey: "2251799813688001"}, request)
+		cfg := options.ApplyFacadeOptions(opts)
+		require.NotNil(t, cfg.Progress)
+		cfg.Progress(options.ProgressEvent{Kind: options.ProgressEventKindFrozenScope, FrozenScope: &options.FrozenScopeProgress{
+			Phase:        "loading listener jobs",
+			CoreResource: "process instance(s)",
+			Done:         1,
+			Total:        2,
+		}})
+		return elementapi.SearchResult{Total: 2, Items: []elementapi.Element{{ElementInstanceKey: "el-1"}, {ElementInstanceKey: "el-2"}}}, nil
+	}}
+
+	got, rendered, err := searchElementsForCommand(cmd, cli, elementapi.SearchRequest{ProcessInstanceKey: "2251799813688001"})
+
+	require.NoError(t, err)
+	require.False(t, rendered)
+	require.Len(t, got.Items, 2)
+	require.Equal(t, []string{"loading listener jobs, 1/2 process instance(s)"}, sink.Updates())
+	started, stopped, msgs := sink.Snapshot()
+	require.Equal(t, 1, started)
+	require.Equal(t, 1, stopped)
+	require.Equal(t, []string{"loading listener jobs for matching element process instance(s)"}, msgs)
+}
+
 func TestGetElementCommand_KeyedLookupHumanOutput(t *testing.T) {
 	var requests []string
 	srv := newElementLookupServer(t, &requests, http.StatusOK, `{
@@ -783,7 +817,8 @@ func resetGetElementFlagState() {
 // exercised by the unit under test.
 type stubElementAPI struct {
 	elementapi.API
-	searchElementsPages func(context.Context, elementapi.SearchRequest, elementapi.SearchPageVisitor, ...options.FacadeOption) (elementapi.SearchPagesResult, error)
+	searchElementsPages         func(context.Context, elementapi.SearchRequest, elementapi.SearchPageVisitor, ...options.FacadeOption) (elementapi.SearchPagesResult, error)
+	searchElementsWithListeners func(context.Context, elementapi.SearchRequest, ...options.FacadeOption) (elementapi.SearchResult, error)
 }
 
 // SearchElementsPages delegates to the configured test callback.
@@ -792,4 +827,11 @@ func (s stubElementAPI) SearchElementsPages(ctx context.Context, request element
 		panic("unexpected call")
 	}
 	return s.searchElementsPages(ctx, request, visitor, opts...)
+}
+
+func (s stubElementAPI) SearchElementsWithListeners(ctx context.Context, request elementapi.SearchRequest, opts ...options.FacadeOption) (elementapi.SearchResult, error) {
+	if s.searchElementsWithListeners == nil {
+		panic("unexpected call")
+	}
+	return s.searchElementsWithListeners(ctx, request, opts...)
 }

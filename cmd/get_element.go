@@ -175,7 +175,9 @@ func validateGetElementFlagValues(cmd *cobra.Command) error {
 // getElementItem selects plain or listener-enriched keyed element lookup.
 func getElementItem(cmd *cobra.Command, cli element.API, key string) (element.Element, error) {
 	if flagGetElementWithListeners {
-		return cli.GetElementWithListeners(cmd.Context(), key, collectOptions()...)
+		stopActivity := startCommandActivity(cmd, "loading listener jobs for 1 process instance(s)")
+		defer stopActivity()
+		return cli.GetElementWithListeners(cmd.Context(), key, appendFrozenScopeProgressOption(cmd, collectOptions())...)
 	}
 	return cli.GetElement(cmd.Context(), key, collectOptions()...)
 }

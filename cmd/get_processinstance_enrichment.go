@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/services/incidentfilter"
 	"github.com/spf13/cobra"
@@ -71,7 +72,7 @@ func enrichProcessInstancesWithElementActivityOptions(cmd *cobra.Command, cli pr
 	}
 	stopActivity := startCommandActivity(cmd, fmt.Sprintf("loading element details for %d process instance(s)", len(pis.Items)))
 	defer stopActivity()
-	return cli.EnrichProcessInstancesWithElements(cmd.Context(), pis, opts...)
+	return cli.EnrichProcessInstancesWithElements(cmd.Context(), pis, appendFrozenScopeProgressOption(cmd, opts)...)
 }
 
 // enrichProcessInstancesWithElementListenerActivityOptions routes element
@@ -83,7 +84,28 @@ func enrichProcessInstancesWithElementListenerActivityOptions(cmd *cobra.Command
 	}
 	stopActivity := startCommandActivity(cmd, fmt.Sprintf("loading listener jobs for %d process instance(s)", len(pis.Items)))
 	defer stopActivity()
-	return cli.EnrichProcessInstancesWithElementListeners(cmd.Context(), pis, opts...)
+	return cli.EnrichProcessInstancesWithElementListeners(cmd.Context(), pis, appendFrozenScopeProgressOption(cmd, opts)...)
+}
+
+func appendFrozenScopeProgressOption(cmd *cobra.Command, opts []options.FacadeOption) []options.FacadeOption {
+	out := append([]options.FacadeOption{}, opts...)
+	return append(out, options.WithProgress(func(event options.ProgressEvent) {
+		if event.Kind != options.ProgressEventKindFrozenScope || event.FrozenScope == nil {
+			return
+		}
+		progress := ops.FrozenScopeProgress{
+			Phase:        event.FrozenScope.Phase,
+			CoreResource: event.FrozenScope.CoreResource,
+			Done:         event.FrozenScope.Done,
+			Total:        event.FrozenScope.Total,
+			Elapsed:      event.FrozenScope.Elapsed,
+			Rate:         event.FrozenScope.Rate,
+			ETA:          event.FrozenScope.ETA,
+			Errors:       event.FrozenScope.Errors,
+		}
+		channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
+		printOpsSlowProcessAnalysisProgress(cmd, formatOpsFrozenScopeProgress(progress), channel)
+	}))
 }
 
 // collectRequestedProcessInstanceActivity builds the shared activity view model

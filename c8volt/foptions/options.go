@@ -3,7 +3,12 @@
 
 package foptions
 
-import "github.com/grafvonb/c8volt/internal/services"
+import (
+	"time"
+
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
+)
 
 // WithNoStateCheck disables facade-level state validation before a state-changing operation.
 func WithNoStateCheck() FacadeOption { return func(c *FacadeCfg) { c.NoStateCheck = true } }
@@ -54,6 +59,12 @@ func WithAffectedProcessInstanceCount(count int) FacadeOption {
 	return func(c *FacadeCfg) { c.AffectedProcessInstanceCount = count }
 }
 
+// WithProgress installs an optional structured progress callback for facade
+// calls that support long-running discovery or frozen-scope enrichment.
+func WithProgress(progress func(ProgressEvent)) FacadeOption {
+	return func(c *FacadeCfg) { c.Progress = progress }
+}
+
 type FacadeOption func(*FacadeCfg)
 
 type FacadeCfg struct {
@@ -71,6 +82,33 @@ type FacadeCfg struct {
 	IncidentErrorType            string
 	IncidentErrorMessage         string
 	AffectedProcessInstanceCount int
+	Progress                     func(ProgressEvent)
+}
+
+// ProgressEventKind identifies the kind of structured progress fact emitted by a facade call.
+type ProgressEventKind string
+
+const (
+	// ProgressEventKindFrozenScope carries exact counters for a frozen work set.
+	ProgressEventKindFrozenScope ProgressEventKind = "frozen_scope"
+)
+
+// FrozenScopeProgress reports exact progress across an immutable work set.
+type FrozenScopeProgress struct {
+	Phase        string         `json:"phase,omitempty"`
+	CoreResource string         `json:"coreResource,omitempty"`
+	Done         int            `json:"done,omitempty"`
+	Total        int            `json:"total,omitempty"`
+	Elapsed      time.Duration  `json:"elapsed,omitempty"`
+	Rate         *float64       `json:"rate,omitempty"`
+	ETA          *time.Duration `json:"eta,omitempty"`
+	Errors       int            `json:"errors,omitempty"`
+}
+
+// ProgressEvent is a typed envelope for facade progress callbacks.
+type ProgressEvent struct {
+	Kind        ProgressEventKind    `json:"kind,omitempty"`
+	FrozenScope *FrozenScopeProgress `json:"frozenScope,omitempty"`
 }
 
 // ApplyFacadeOptions folds facade options into a new configuration value.
@@ -130,5 +168,41 @@ func MapFacadeOptionsToCallOptions(opts []FacadeOption) []services.CallOption {
 	if c.AffectedProcessInstanceCount > 0 {
 		out = append(out, services.WithAffectedProcessInstanceCount(c.AffectedProcessInstanceCount))
 	}
+	if c.Progress != nil {
+		out = append(out, services.WithProgress(toDomainProgressFunc(c.Progress)))
+	}
 	return out
+}
+
+func toDomainProgressFunc(fn func(ProgressEvent)) func(d.OpsProgressEvent) {
+	if fn == nil {
+		return nil
+	}
+	return func(event d.OpsProgressEvent) {
+		fn(fromDomainProgressEvent(event))
+	}
+}
+
+func fromDomainProgressEvent(event d.OpsProgressEvent) ProgressEvent {
+	return ProgressEvent{
+		Kind:        ProgressEventKind(event.Kind),
+		FrozenScope: fromDomainFrozenScopeProgressPtr(event.FrozenScope),
+	}
+}
+
+func fromDomainFrozenScopeProgressPtr(progress *d.OpsFrozenScopeProgress) *FrozenScopeProgress {
+	if progress == nil {
+		return nil
+	}
+	out := FrozenScopeProgress{
+		Phase:        progress.Phase,
+		CoreResource: progress.CoreResource,
+		Done:         progress.Done,
+		Total:        progress.Total,
+		Elapsed:      progress.Elapsed,
+		Rate:         progress.Rate,
+		ETA:          progress.ETA,
+		Errors:       progress.Errors,
+	}
+	return &out
 }

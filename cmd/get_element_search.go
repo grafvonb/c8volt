@@ -15,7 +15,9 @@ import (
 // searchElementsForCommand selects collected listener search or the existing paging renderer.
 func searchElementsForCommand(cmd *cobra.Command, cli element.API, request element.SearchRequest) (element.SearchResult, bool, error) {
 	if flagGetElementWithListeners {
-		result, err := cli.SearchElementsWithListeners(cmd.Context(), request, collectOptions()...)
+		stopActivity := startCommandActivity(cmd, "loading listener jobs for matching element process instance(s)")
+		defer stopActivity()
+		result, err := cli.SearchElementsWithListeners(cmd.Context(), request, appendFrozenScopeProgressOption(cmd, collectOptions())...)
 		return result, false, err
 	}
 	return searchElementsWithPaging(cmd, cli, request)

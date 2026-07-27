@@ -1849,6 +1849,74 @@ func TestEnrichProcessInstancesWithIncidentActivity_UsesCommandActivity(t *testi
 	require.Equal(t, []string{"loading incident details for 2 process instance(s)"}, msgs)
 }
 
+func TestEnrichProcessInstancesWithElementActivity_UpdatesFrozenProgress(t *testing.T) {
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+
+	cli := stubProcessAPI{enrichProcessInstanceElements: func(_ context.Context, pis process.ProcessInstances, opts ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error) {
+		cfg := options.ApplyFacadeOptions(opts)
+		require.NotNil(t, cfg.Progress)
+		cfg.Progress(options.ProgressEvent{Kind: options.ProgressEventKindFrozenScope, FrozenScope: &options.FrozenScopeProgress{
+			Phase:        "loading runtime elements",
+			CoreResource: "process instance(s)",
+			Done:         1,
+			Total:        2,
+		}})
+		return process.ElementEnrichedProcessInstances{
+			Total: pis.Total,
+			Items: []process.ElementEnrichedProcessInstance{{Item: pis.Items[0]}, {Item: pis.Items[1]}},
+		}, nil
+	}}
+
+	got, err := enrichProcessInstancesWithElementActivity(cmd, cli, process.ProcessInstances{
+		Total: 2,
+		Items: []process.ProcessInstance{{Key: "123"}, {Key: "124"}},
+	})
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 2)
+	require.Equal(t, []string{"loading runtime elements, 1/2 process instance(s)"}, sink.Updates())
+	started, stopped, msgs := sink.Snapshot()
+	require.Equal(t, 1, started)
+	require.Equal(t, 1, stopped)
+	require.Equal(t, []string{"loading element details for 2 process instance(s)"}, msgs)
+}
+
+func TestEnrichProcessInstancesWithElementListenerActivity_UpdatesFrozenProgress(t *testing.T) {
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+
+	cli := stubProcessAPI{enrichProcessInstanceListeners: func(_ context.Context, pis process.ProcessInstances, opts ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error) {
+		cfg := options.ApplyFacadeOptions(opts)
+		require.NotNil(t, cfg.Progress)
+		cfg.Progress(options.ProgressEvent{Kind: options.ProgressEventKindFrozenScope, FrozenScope: &options.FrozenScopeProgress{
+			Phase:        "loading listener jobs",
+			CoreResource: "process instance(s)",
+			Done:         2,
+			Total:        2,
+		}})
+		return process.ElementEnrichedProcessInstances{
+			Total: pis.Total,
+			Items: []process.ElementEnrichedProcessInstance{{Item: pis.Items[0]}, {Item: pis.Items[1]}},
+		}, nil
+	}}
+
+	got, err := enrichProcessInstancesWithElementListenerActivityOptions(cmd, cli, process.ProcessInstances{
+		Total: 2,
+		Items: []process.ProcessInstance{{Key: "123"}, {Key: "124"}},
+	}, nil)
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 2)
+	require.Equal(t, []string{"loading listener jobs, 2/2 process instance(s)"}, sink.Updates())
+	started, stopped, msgs := sink.Snapshot()
+	require.Equal(t, 1, started)
+	require.Equal(t, 1, stopped)
+	require.Equal(t, []string{"loading listener jobs for 2 process instance(s)"}, msgs)
+}
+
 // TestGetProcessInstanceKeyLookup_UsesGeneratedLookupEndpoint verifies direct key lookup uses the versioned generated endpoint.
 func TestGetProcessInstanceKeyLookup_UsesGeneratedLookupEndpoint(t *testing.T) {
 	response := `{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"}`
