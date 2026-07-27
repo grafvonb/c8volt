@@ -405,8 +405,8 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Calendar units such as 1d are not accepted")
 	require.Equal(t, []OutputModeContract{
 		{Name: "one-line", Supported: true},
-		{Name: "json", Supported: true, MachinePreferred: true},
-		{Name: "keys-only", Supported: true},
+		{Name: "json", Supported: true, MachinePreferred: true, Notes: "stdout remains one JSON document; preflight and frozen-scope metadata are exposed as result fields"},
+		{Name: "keys-only", Supported: true, Notes: "stdout remains one process-instance key per line with no progress or preflight text"},
 	}, capability.OutputModes)
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "key",

@@ -3,8 +3,6 @@
 Feature: 259-ops-scale-progress-ux
 Started: 2026-07-27 12:17:40
 
----
-
 ## Iteration 1 - 2026-07-27 12:19
 **Work Unit**: Phase 1 Setup
 **Tasks Completed**:
@@ -108,4 +106,31 @@ Started: 2026-07-27 12:17:40
 - specs/259-ops-scale-progress-ux/progress.md
 **Learnings**:
 - Slow-process progress now uses structured page/frozen events: default human sees activity updates, while durable page/counter lines stay behind verbose/debug.
+---
+---
+## Iteration 5 - 2026-07-27 12:50
+**Work Unit**: US3 Preserve Script-Safe Output Contracts
+**Tasks Completed**:
+- [x] T030: Add JSON stdout safety tests for slow-process preflight and progress
+- [x] T031: Add keys-only stdout safety tests for slow-process preflight and progress
+- [x] T032: Add quiet and automation mode progress-suppression tests
+- [x] T033: Add command contract assertions for progress/output mode guarantees
+- [x] T034: Enforce shared progress channel gating for JSON, keys-only, quiet, automation, and default human modes
+- [x] T035: Apply shared progress channel gating to slow-process command execution
+- [x] T036: Expose auditable preflight/frozen-scope metadata in slow-process JSON result fields without transient progress records
+- [x] T037: Ensure keys-only slow-process output remains one key per line after progress integration
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_progress.go
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/ops_analyse_slow_process_instances_test.go
+- cmd/cmd_views_ops_slow_process_analysis_test.go
+- cmd/command_contract_test.go
+- cmd/ops_contract_test.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Output-mode safety is now pinned at callback, renderer, and command-capability levels; durable detail remains stderr-only and machine stdout stays clean.
 ---

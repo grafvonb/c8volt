@@ -19,6 +19,9 @@ Started: 2026-07-27T10:17:40Z
 - The ops service emits slow-process discovery page progress after each collected page, using the first preflight page's page-count certainty as the best available traversal count metadata.
 - Slow-process enrichment now emits exact frozen-scope progress at start and after each process-instance enrichment. `--with-listeners` uses the `loading listener jobs` phase; default enrichment uses `loading runtime elements`.
 - `cmd/ops_analyse_slow_process_instances.go` routes slow-process page/frozen progress to `logging.UpdateActivity` for default human mode and writes durable page/counter lines only for verbose/debug progress channels. Preflight remains durable in allowed human modes from US1.
+- Slow-process machine-mode safety is covered through callback-level tests: JSON, keys-only, quiet, and automation channels suppress preflight/progress stdout, stderr, prompts, and transient activity. Debug mode now reaches the shared progress channel through `flagDebug`.
+- Slow-process JSON result rendering carries auditable `preflightScope` and `frozenScopeProgress` metadata, while transient callback events remain excluded from JSON and keys-only output.
+- Slow-process output-mode capability metadata now documents that JSON stdout remains a single document and keys-only stdout remains one process-instance key per line without progress/preflight text.
 
 ## Decisions
 - For this feature, transient progress should reuse the existing activity context path rather than stdout or a new global writer.
@@ -31,6 +34,7 @@ Started: 2026-07-27T10:17:40Z
 - `cmd/get_processinstance_paging.go` still has command-local process-instance paging helpers from earlier behavior; new ops-scale traversal should follow the stricter Ralph rule and keep page math in services.
 - Lower-bound reported totals are useful for preflight/progress wording but cannot be treated as exact completion or mutation confirmation totals.
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1` currently trips an unrelated date-sensitive `TestGetProcessInstancePagingFlow` assertion that rejects the current "126 days ago" fixture text; use focused affected command patterns unless that broader test is updated.
+- Output-mode contract notes participate in exact `OutputModeContract` comparisons; update both command metadata tests and ops-specific contract tests when adding notes.
 
 ## Reusable Commands
 - `GOCACHE=/tmp/c8volt-gocache go test ./toolx/logging ./testx/activitysink -count=1`
@@ -45,4 +49,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should start US3 tasks T030-T037. Preserve the US1/US2 behavior that process-definition search wires progress callbacks, JSON/keys-only/quiet/automation modes suppress prompts and durable progress through `opsProgressChannelForMode`, and explicit-key mode leaves broad preflight/progress callbacks nil.
+- Next iteration should start US4 tasks T038-T043. Preserve US3 guarantees: JSON/keys-only/quiet/automation modes suppress transient and durable progress callbacks, JSON exposes only stable `preflightScope`/`frozenScopeProgress` result metadata, and keys-only output remains exactly one unique process-instance key per line.

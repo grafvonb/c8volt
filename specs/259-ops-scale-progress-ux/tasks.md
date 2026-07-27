@@ -101,17 +101,17 @@
 
 ### Tests for User Story 3
 
-- [ ] T030 [P] [US3] Add JSON stdout safety tests for slow-process preflight and progress in `cmd/ops_analyse_slow_process_instances_test.go`
-- [ ] T031 [P] [US3] Add keys-only stdout safety tests for slow-process preflight and progress in `cmd/ops_analyse_slow_process_instances_test.go`
-- [ ] T032 [P] [US3] Add quiet and automation mode progress-suppression tests in `cmd/ops_analyse_slow_process_instances_test.go`
-- [ ] T033 [P] [US3] Add command contract assertions for progress/output mode guarantees in `cmd/command_contract_test.go`
+- [x] T030 [P] [US3] Add JSON stdout safety tests for slow-process preflight and progress in `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T031 [P] [US3] Add keys-only stdout safety tests for slow-process preflight and progress in `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T032 [P] [US3] Add quiet and automation mode progress-suppression tests in `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T033 [P] [US3] Add command contract assertions for progress/output mode guarantees in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T034 [US3] Enforce shared progress channel gating for JSON, keys-only, quiet, automation, and default human modes in `cmd/ops_progress.go`
-- [ ] T035 [US3] Apply shared progress channel gating to slow-process command execution in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T036 [US3] Expose auditable preflight/frozen-scope metadata in slow-process JSON result fields without adding transient progress records in `c8volt/ops/model.go`
-- [ ] T037 [US3] Ensure keys-only slow-process output remains one key per line after progress integration in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T034 [US3] Enforce shared progress channel gating for JSON, keys-only, quiet, automation, and default human modes in `cmd/ops_progress.go`
+- [x] T035 [US3] Apply shared progress channel gating to slow-process command execution in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T036 [US3] Expose auditable preflight/frozen-scope metadata in slow-process JSON result fields without adding transient progress records in `c8volt/ops/model.go`
+- [x] T037 [US3] Ensure keys-only slow-process output remains one key per line after progress integration in `cmd/cmd_views_ops_slow_process_analysis.go`
 
 **Checkpoint**: Script-safe output contracts are preserved for the proof command.
 

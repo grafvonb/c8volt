@@ -28,6 +28,7 @@ func opsProgressModeForCommand(cmd *cobra.Command, mode RenderMode) opsProgressM
 		Verbose:    flagVerbose,
 		Quiet:      flagQuiet,
 		Automation: automationModeEnabled(cmd),
+		Debug:      flagDebug,
 	}
 }
 

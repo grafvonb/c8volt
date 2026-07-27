@@ -153,8 +153,8 @@ func init() {
 	setAutomationSupport(opsAnalyseSlowProcessInstancesCmd, AutomationSupportFull, "supports read-only analysis with shared machine output and key pipelines")
 	setOutputModes(opsAnalyseSlowProcessInstancesCmd,
 		OutputModeContract{Name: RenderModeOneLine.String(), Supported: true},
-		OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
-		OutputModeContract{Name: RenderModeKeysOnly.String(), Supported: true},
+		OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true, Notes: "stdout remains one JSON document; preflight and frozen-scope metadata are exposed as result fields"},
+		OutputModeContract{Name: RenderModeKeysOnly.String(), Supported: true, Notes: "stdout remains one process-instance key per line with no progress or preflight text"},
 	)
 }
 

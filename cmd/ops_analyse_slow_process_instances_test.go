@@ -528,6 +528,151 @@ func TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr(t *tes
 	require.Contains(t, stderr.String(), "loading listener jobs, 3/3 process instance(s)")
 }
 
+// TestOpsAnalyseSlowProcessInstancesJSONProgressKeepsStdoutClean verifies JSON mode suppresses transient and durable progress text.
+func TestOpsAnalyseSlowProcessInstancesJSONProgressKeepsStdoutClean(t *testing.T) {
+	previousJSON := flagViewAsJson
+	flagViewAsJson = true
+	t.Cleanup(func() { flagViewAsJson = previousJSON })
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	sink := &activitysink.Sink{}
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPreflight, Preflight: &ops.PreflightScope{
+		SelectorSummary: "OrderProcess",
+		CoreResource:    "process_instance",
+		Total:           ptrInt64(2000),
+		TotalKind:       ops.TotalCertaintyExact,
+		PageSize:        1000,
+		PageCount:       ptrInt64(2),
+		PageCountKind:   ops.PageCountKindExact,
+	}})
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+		Phase:         "discovering process instances",
+		CurrentPage:   1,
+		PageCount:     ptrInt64(2),
+		PageCountKind: ops.PageCountKindExact,
+		Seen:          1000,
+	}})
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+		Phase:        "loading runtime elements",
+		CoreResource: "process instance(s)",
+		Done:         1,
+		Total:        2,
+	}})
+
+	require.Empty(t, stdout.String())
+	require.Empty(t, stderr.String())
+	require.Empty(t, sink.Updates())
+	require.NotNil(t, request.ConfirmPreflight)
+	require.NoError(t, request.ConfirmPreflight(ops.PreflightScope{RequiresConfirmation: true}))
+}
+
+// TestOpsAnalyseSlowProcessInstancesKeysOnlyProgressKeepsStdoutClean verifies key pipelines never receive progress or preflight lines.
+func TestOpsAnalyseSlowProcessInstancesKeysOnlyProgressKeepsStdoutClean(t *testing.T) {
+	previousKeysOnly := flagViewKeysOnly
+	flagViewKeysOnly = true
+	t.Cleanup(func() { flagViewKeysOnly = previousKeysOnly })
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	sink := &activitysink.Sink{}
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPreflight, Preflight: &ops.PreflightScope{
+		SelectorSummary: "OrderProcess",
+		CoreResource:    "process_instance",
+		TotalKind:       ops.TotalCertaintyUnknown,
+		PageSize:        1000,
+	}})
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+		Phase:        "loading runtime elements",
+		CoreResource: "process instance(s)",
+		Done:         2,
+		Total:        2,
+	}})
+
+	require.Empty(t, stdout.String())
+	require.Empty(t, stderr.String())
+	require.Empty(t, sink.Updates())
+	require.NotNil(t, request.ConfirmPreflight)
+	require.NoError(t, request.ConfirmPreflight(ops.PreflightScope{RequiresConfirmation: true}))
+}
+
+// TestOpsAnalyseSlowProcessInstancesQuietAndAutomationSuppressProgress verifies non-interactive contracts stay silent.
+func TestOpsAnalyseSlowProcessInstancesQuietAndAutomationSuppressProgress(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(*cobra.Command)
+		want  ops.ProgressMode
+	}{
+		{
+			name: "quiet",
+			setup: func(*cobra.Command) {
+				flagQuiet = true
+			},
+			want: ops.ProgressModeQuiet,
+		},
+		{
+			name: "automation",
+			setup: func(cmd *cobra.Command) {
+				flagCmdAutomation = true
+				cmd.Flags().Bool("automation", true, "")
+			},
+			want: ops.ProgressModeAutomation,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			previousQuiet := flagQuiet
+			previousAutomation := flagCmdAutomation
+			t.Cleanup(func() {
+				flagQuiet = previousQuiet
+				flagCmdAutomation = previousAutomation
+			})
+			cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+			sink := &activitysink.Sink{}
+			cmd.SetOut(&stdout)
+			cmd.SetErr(&stderr)
+			cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
+			tc.setup(cmd)
+			channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
+			require.Equal(t, tc.want, channel.Mode)
+			request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+			configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+			request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPreflight, Preflight: &ops.PreflightScope{
+				SelectorSummary: "OrderProcess",
+				CoreResource:    "process_instance",
+				Total:           ptrInt64(10),
+				TotalKind:       ops.TotalCertaintyExact,
+			}})
+			request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+				Phase:       "discovering process instances",
+				CurrentPage: 1,
+				Seen:        10,
+			}})
+
+			require.Empty(t, stdout.String())
+			require.Empty(t, stderr.String())
+			require.Empty(t, sink.Updates())
+			require.NotNil(t, request.ConfirmPreflight)
+			require.NoError(t, request.ConfirmPreflight(ops.PreflightScope{RequiresConfirmation: true}))
+		})
+	}
+}
+
 // TestOpsAnalyseSlowProcessInstancesPreflightConfirmationRespectsModeGating verifies automation-safe modes skip prompts.
 func TestOpsAnalyseSlowProcessInstancesPreflightConfirmationRespectsModeGating(t *testing.T) {
 	require.True(t, opsSlowProcessAnalysisPreflightConfirmationAllowed(ops.ProgressChannel{Mode: ops.ProgressModeHuman}))
