@@ -43,7 +43,10 @@ Started: 2026-07-27T10:17:40Z
 - `get process-definition` broad non-latest listing accepts `--batch-size`, traverses all pages below the facade, emits shared preflight/page progress through `printBasicSearchOpsProgress`, and keeps JSON/keys-only stdout progress-free.
 - `ops purge all-process-definitions` requests now carry optional progress callbacks; internal discovery emits process-definition preflight and page events from page metadata, and the command renders them through the shared ops progress channel while machine modes stay suppressed.
 - `get process-definition` machine-output safety is already active: JSON and keys-only broad listings must keep stdout progress-free and stderr empty while returning the expected process-definition payload/keys.
-- T063 process-instance mutation progress tests are pending-contract tests in the repo's actual grouped files (`cmd/cancel_test.go`, `cmd/delete_test.go`, and `internal/services/processinstance/dryrun_test.go`). They are skipped with explicit T064 messages and define expected destructive preflight, discovery page, frozen planning, frozen mutation, and JSON/quiet/automation safety assertions.
+- The former T063 process-instance mutation progress contract tests are now active in the repo's actual grouped files (`cmd/cancel_test.go`, `cmd/delete_test.go`, and `internal/services/processinstance/dryrun_test.go`). They define expected destructive preflight, discovery page, frozen planning, frozen mutation, and JSON/quiet/automation safety assertions.
+- Process-instance mutation planning now emits shared `OpsProgressEvent` facts from `internal/services/processinstance.PlanProcessInstanceMutationPages`: destructive preflight from first page metadata, page discovery progress, and exact frozen planning counters. The facade option bridge in `c8volt/foptions` now preserves preflight/page/frozen fields without importing `c8volt/ops`.
+- Bulk `CancelProcessInstances` and `DeleteProcessInstances` now emit exact frozen mutation counters through `services.WithProgress`; the older interval-based activity/logging remains in place for long-running root operations.
+- `cmd/processinstance_mutation_progress.go` owns cancel/delete progress rendering. It rewrites the generic planning phase into operation-specific `planning process-instance cancel/delete scope`, routes durable lines only for verbose/debug, updates transient activity when allowed, and suppresses JSON, quiet, and automation progress output.
 
 ## Decisions
 - For this feature, transient progress should reuse the existing activity context path rather than stdout or a new global writer.
@@ -75,4 +78,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should implement T064 process-instance mutation progress, including enabling the pending T063 tests by removing their T064 skips after wiring destructive preflight/page/frozen planning events through services/facades and command progress gating for cancel/delete.
+- Next iteration should start T065 by adding ops purge and retention progress tests for candidate discovery, frozen delete planning, deletion counters, reports, and output-mode safety in the files named by `tasks.md`.

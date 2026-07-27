@@ -91,9 +91,13 @@ func CancelProcessInstances(ctx context.Context, api API, log *slog.Logger, keys
 		stopProgress = startProcessInstanceBulkProgress(ctx, log, "cancel", lk, affectedCount, &completed, progress)
 	}
 	defer stopProgress()
+	reportProcessInstanceBulkFrozenProgress(cfg.Progress, "cancelling process instances", 0, lk)
 	rs, err := pool.ExecuteSlice[string, d.Reporter](ctx, ukeys, nw, cfg.FailFast, func(ctx context.Context, key string, _ int) (d.Reporter, error) {
 		work := progress.Start(key)
-		defer completed.Add(1)
+		defer func() {
+			done := int(completed.Add(1))
+			reportProcessInstanceBulkFrozenProgress(cfg.Progress, "cancelling process instances", done, lk)
+		}()
 		defer progress.Done(work)
 		resp, _, err := api.CancelProcessInstance(ctx, key, opts...)
 		return d.Reporter{Key: key, Ok: resp.Ok, StatusCode: resp.StatusCode, Status: resp.Status}, err
@@ -128,9 +132,13 @@ func DeleteProcessInstances(ctx context.Context, api API, log *slog.Logger, keys
 		stopProgress = startProcessInstanceBulkProgress(ctx, log, "delete", lk, affectedCount, &completed, progress)
 	}
 	defer stopProgress()
+	reportProcessInstanceBulkFrozenProgress(cfg.Progress, "deleting process instances", 0, lk)
 	rs, err := pool.ExecuteSlice[string, d.Reporter](ctx, ukeys, nw, cfg.FailFast, func(ctx context.Context, key string, _ int) (d.Reporter, error) {
 		work := progress.Start(key)
-		defer completed.Add(1)
+		defer func() {
+			done := int(completed.Add(1))
+			reportProcessInstanceBulkFrozenProgress(cfg.Progress, "deleting process instances", done, lk)
+		}()
 		defer progress.Done(work)
 		resp, err := api.DeleteProcessInstance(ctx, key, opts...)
 		return d.Reporter{Key: key, Ok: resp.Ok, StatusCode: resp.StatusCode, Status: resp.Status}, err
@@ -151,6 +159,24 @@ func DeleteProcessInstances(ctx context.Context, api API, log *slog.Logger, keys
 		}
 	}
 	return rs, err
+}
+
+func reportProcessInstanceBulkFrozenProgress(progress func(d.OpsProgressEvent), phase string, done int, total int) {
+	if progress == nil || total <= 0 {
+		return
+	}
+	if done > total {
+		done = total
+	}
+	progress(d.OpsProgressEvent{
+		Kind: d.OpsProgressEventKindFrozenScope,
+		FrozenScope: &d.OpsFrozenScopeProgress{
+			Phase:        phase,
+			CoreResource: "process instance(s)",
+			Done:         done,
+			Total:        total,
+		},
+	})
 }
 
 func GetProcessInstances(ctx context.Context, api API, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) ([]d.ProcessInstance, error) {

@@ -144,6 +144,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (processInstancePageActionResults, error) {
 	firstPage := true
 	var results processInstancePageActionResults
+	progress, progressSeen := newProcessInstanceMutationProgressReporterWithState(cmd, "cancel")
 
 	planned, err := cli.PlanProcessInstanceMutationPages(cmd.Context(), process.ProcessInstanceMutationPlanRequest{
 		SearchRequest: newProcessInstanceSearchRequest(cmd, cfg, filter),
@@ -152,6 +153,7 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 		hasSelection := len(step.RequestedKeys) > 0
 		if hasSelection {
 			result := processInstancePageActionResultFromPlan("cancel", step)
+			printProcessInstanceMutationPlanStepFallbackProgress(cmd, "cancel", step, progressSeen)
 			if flagDryRun {
 				if result.DryRunPreview != nil {
 					results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
@@ -170,7 +172,10 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 					}
 				}
 
-				mutationOpts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(step.Plan.Collected)))
+				mutationOpts := append(collectOptions(),
+					processOptions.WithAffectedProcessInstanceCount(len(step.Plan.Collected)),
+					processOptions.WithProgress(progress),
+				)
 				reports, err := cli.CancelProcessInstances(cmd.Context(), step.Plan.Roots, flagWorkers, mutationOpts...)
 				if err != nil {
 					return process.ProcessInstanceSearchPageActionStop, fmt.Errorf("cancel process instances: %w", err)
@@ -216,7 +221,7 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 			return process.ProcessInstanceSearchPageActionContinue, nil
 		}
 		return process.ProcessInstanceSearchPageActionStop, nil
-	}, collectOptions()...)
+	}, append(collectOptions(), processOptions.WithProgress(progress))...)
 	if err != nil {
 		return processInstancePageActionResults{}, err
 	}

@@ -1811,7 +1811,6 @@ func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 
 func pendingProcessInstanceMutationProgressT064(t *testing.T) {
 	t.Helper()
-	t.Skip("pending T064 implementation: enable shared destructive process-instance preflight and frozen mutation progress")
 }
 
 // TestCancelProcessInstanceSearchProgressContractPendingT064 defines the shared

@@ -259,8 +259,6 @@ func TestPlanProcessInstanceMutationPages_ContinuesAfterFilteredEmptyPage(t *tes
 // TestPlanProcessInstanceMutationPages_ProgressContractPendingT064 defines the
 // destructive search planning progress contract for T064.
 func TestPlanProcessInstanceMutationPages_ProgressContractPendingT064(t *testing.T) {
-	t.Skip("pending T064 implementation: emit process-instance mutation preflight, discovery page, and frozen planning progress")
-
 	ctx := context.Background()
 	var events []d.OpsProgressEvent
 

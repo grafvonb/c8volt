@@ -20,7 +20,6 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Progress should reuse the existing activity context path; service-owned traversal must preserve exact/lower-bound page metadata for preflight.
 ---
----
 ## Iteration 2 - 2026-07-27 12:28
 **Work Unit**: Phase 2 Foundational
 **Tasks Completed**:
@@ -314,4 +313,26 @@ Started: 2026-07-27 12:17:40
 - specs/259-ops-scale-progress-ux/progress.md
 **Learnings**:
 - Process-instance mutation progress contracts are captured as T064-pending tests in the grouped cancel/delete test files while current focused suites remain green.
+---
+---
+## Iteration 7 - 2026-07-27 14:58
+**Work Unit**: T064 Process-instance mutation shared destructive progress
+**Tasks Completed**:
+- [x] T064: Implement shared destructive preflight and frozen planning/mutation progress for `cancel process-instance` and `delete process-instance`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/foptions/options.go
+- cmd/processinstance_mutation_progress.go
+- cmd/cancel_processinstance.go
+- cmd/delete_processinstance.go
+- cmd/cancel_test.go
+- internal/services/processinstance/dryrun.go
+- internal/services/processinstance/bulk.go
+- internal/services/processinstance/dryrun_test.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Process-instance mutation progress now flows through shared facade options; command-level fallback rendering keeps existing stub contracts active while real services own progress facts.
 ---

@@ -89,9 +89,80 @@ type FacadeCfg struct {
 type ProgressEventKind string
 
 const (
+	// ProgressEventKindPreflight carries the best available scope summary before expensive work.
+	ProgressEventKindPreflight ProgressEventKind = "preflight"
+	// ProgressEventKindPage carries paged discovery progress.
+	ProgressEventKindPage ProgressEventKind = "page"
 	// ProgressEventKindFrozenScope carries exact counters for a frozen work set.
 	ProgressEventKindFrozenScope ProgressEventKind = "frozen_scope"
 )
+
+// TotalCertainty classifies whether a progress count is exact, approximate, or unavailable.
+type TotalCertainty string
+
+const (
+	TotalCertaintyExact      TotalCertainty = "exact"
+	TotalCertaintyLowerBound TotalCertainty = "lower_bound"
+	TotalCertaintyEstimated  TotalCertainty = "estimated"
+	TotalCertaintyUnknown    TotalCertainty = "unknown"
+)
+
+// PageCountKind classifies whether a page count is exact, estimated, or unavailable.
+type PageCountKind string
+
+const (
+	PageCountKindExact     PageCountKind = "exact"
+	PageCountKindEstimated PageCountKind = "estimated"
+	PageCountKindUnknown   PageCountKind = "unknown"
+)
+
+// OverflowState normalizes backend continuation state for progress renderers.
+type OverflowState string
+
+const (
+	OverflowStateNoMore        OverflowState = "no_more"
+	OverflowStateHasMore       OverflowState = "has_more"
+	OverflowStateIndeterminate OverflowState = "indeterminate"
+	OverflowStateUnknown       OverflowState = "unknown"
+)
+
+// ConsequenceSummary describes follow-on work in operator-facing structured parts.
+type ConsequenceSummary struct {
+	ResourceSummary  string `json:"resourceSummary,omitempty"`
+	WorkSummary      string `json:"workSummary,omitempty"`
+	RiskSummary      string `json:"riskSummary,omitempty"`
+	ConfirmationText string `json:"confirmationText,omitempty"`
+}
+
+// PreflightScope summarizes apparent command scope before deeper work starts.
+type PreflightScope struct {
+	Phase                string             `json:"phase,omitempty"`
+	Command              string             `json:"command,omitempty"`
+	CoreResource         string             `json:"coreResource,omitempty"`
+	SelectorSummary      string             `json:"selectorSummary,omitempty"`
+	Total                *int64             `json:"total,omitempty"`
+	TotalKind            TotalCertainty     `json:"totalKind,omitempty"`
+	PageSize             int32              `json:"pageSize,omitempty"`
+	PageCount            *int64             `json:"pageCount,omitempty"`
+	PageCountKind        PageCountKind      `json:"pageCountKind,omitempty"`
+	ConsequenceSummary   ConsequenceSummary `json:"consequenceSummary,omitempty"`
+	RequiresConfirmation bool               `json:"requiresConfirmation,omitempty"`
+	ExpensivePreflight   bool               `json:"expensivePreflight,omitempty"`
+}
+
+// PageProgress reports one discovery page without owning rendering language.
+type PageProgress struct {
+	Phase            string        `json:"phase,omitempty"`
+	CurrentPage      int           `json:"currentPage,omitempty"`
+	PageCount        *int64        `json:"pageCount,omitempty"`
+	PageCountKind    PageCountKind `json:"pageCountKind,omitempty"`
+	PageSize         int32         `json:"pageSize,omitempty"`
+	CurrentPageCount int           `json:"currentPageCount,omitempty"`
+	Seen             int           `json:"seen,omitempty"`
+	Selected         int           `json:"selected,omitempty"`
+	OverflowState    OverflowState `json:"overflowState,omitempty"`
+	LimitReached     bool          `json:"limitReached,omitempty"`
+}
 
 // FrozenScopeProgress reports exact progress across an immutable work set.
 type FrozenScopeProgress struct {
@@ -108,6 +179,8 @@ type FrozenScopeProgress struct {
 // ProgressEvent is a typed envelope for facade progress callbacks.
 type ProgressEvent struct {
 	Kind        ProgressEventKind    `json:"kind,omitempty"`
+	Preflight   *PreflightScope      `json:"preflight,omitempty"`
+	Page        *PageProgress        `json:"page,omitempty"`
 	FrozenScope *FrozenScopeProgress `json:"frozenScope,omitempty"`
 }
 
@@ -186,8 +259,55 @@ func toDomainProgressFunc(fn func(ProgressEvent)) func(d.OpsProgressEvent) {
 func fromDomainProgressEvent(event d.OpsProgressEvent) ProgressEvent {
 	return ProgressEvent{
 		Kind:        ProgressEventKind(event.Kind),
+		Preflight:   fromDomainPreflightScopePtr(event.Preflight),
+		Page:        fromDomainPageProgressPtr(event.Page),
 		FrozenScope: fromDomainFrozenScopeProgressPtr(event.FrozenScope),
 	}
+}
+
+func fromDomainPreflightScopePtr(scope *d.OpsPreflightScope) *PreflightScope {
+	if scope == nil {
+		return nil
+	}
+	out := PreflightScope{
+		Phase:           scope.Phase,
+		Command:         scope.Command,
+		CoreResource:    scope.CoreResource,
+		SelectorSummary: scope.SelectorSummary,
+		Total:           scope.Total,
+		TotalKind:       TotalCertainty(scope.TotalKind),
+		PageSize:        scope.PageSize,
+		PageCount:       scope.PageCount,
+		PageCountKind:   PageCountKind(scope.PageCountKind),
+		ConsequenceSummary: ConsequenceSummary{
+			ResourceSummary:  scope.ConsequenceSummary.ResourceSummary,
+			WorkSummary:      scope.ConsequenceSummary.WorkSummary,
+			RiskSummary:      scope.ConsequenceSummary.RiskSummary,
+			ConfirmationText: scope.ConsequenceSummary.ConfirmationText,
+		},
+		RequiresConfirmation: scope.RequiresConfirmation,
+		ExpensivePreflight:   scope.ExpensivePreflight,
+	}
+	return &out
+}
+
+func fromDomainPageProgressPtr(progress *d.OpsPageProgress) *PageProgress {
+	if progress == nil {
+		return nil
+	}
+	out := PageProgress{
+		Phase:            progress.Phase,
+		CurrentPage:      progress.CurrentPage,
+		PageCount:        progress.PageCount,
+		PageCountKind:    PageCountKind(progress.PageCountKind),
+		PageSize:         progress.PageSize,
+		CurrentPageCount: progress.CurrentPageCount,
+		Seen:             progress.Seen,
+		Selected:         progress.Selected,
+		OverflowState:    OverflowState(progress.OverflowState),
+		LimitReached:     progress.LimitReached,
+	}
+	return &out
 }
 
 func fromDomainFrozenScopeProgressPtr(progress *d.OpsFrozenScopeProgress) *FrozenScopeProgress {
