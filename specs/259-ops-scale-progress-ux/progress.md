@@ -249,3 +249,20 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Frozen enrichment progress now flows through a facade option to avoid facade import cycles, with exact counters emitted by the owning enrichment services and rendered through existing stdout-safe command progress gates.
 ---
+---
+## Iteration 4 - 2026-07-27 14:32
+**Work Unit**: T061 Process-definition progress tests
+**Tasks Completed**:
+- [x] T061: Add process-definition progress tests for broad listing and all-process-definition purge discovery
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processdefinition_test.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- internal/services/ops/all_process_definitions_purge_test.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Process-definition progress contracts are now captured as pending tests for T062, with active JSON/keys-only safety coverage kept green in the current codebase.
+---

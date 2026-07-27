@@ -39,6 +39,8 @@ Started: 2026-07-27T10:17:40Z
 - Basic inspection searches now route first-page preflight and page discovery through `printBasicSearchOpsProgress` in `cmd/get_processinstance_paging.go`. Default human mode updates activity only; verbose/debug write durable stderr; JSON, keys-only, quiet, and automation suppress progress text through `opsProgressChannelForMode`.
 - `get process-instance` progress only trusts backend `ReportedTotal` when `canUsePIReportedTotal()` allows it. Relationship/incident local-filter modes intentionally show unknown totals while still reporting page/seen progress.
 - `get incident`, `get job`, and `get element` convert their facade `ReportedTotal` and overflow metadata into `ops.TotalCertainty`/`ops.OverflowState` in their search command files before using the shared command progress renderer.
+- Process-definition rollout tests now live in `cmd/get_processdefinition_test.go`, `cmd/ops_purge_all_processdefinitions_test.go`, and `internal/services/ops/all_process_definitions_purge_test.go`. The future progress contracts are intentionally skipped pending T062 so this test-only work unit keeps the repository green; T062 must remove those skips as it implements the behavior.
+- `get process-definition` machine-output safety is already active: JSON and keys-only broad listings must keep stdout progress-free and stderr empty while returning the expected process-definition payload/keys.
 
 ## Decisions
 - For this feature, transient progress should reuse the existing activity context path rather than stdout or a new global writer.
@@ -70,4 +72,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should implement T061 process-definition progress tests for broad listing and all-process-definition purge discovery. Start in `cmd/get_processdefinition_test.go`, `cmd/ops_purge_all_processdefinitions_test.go`, and `internal/services/ops/all_process_definitions_purge_test.go`; do not implement T062 behavior until those tests are in place.
+- Next iteration should implement T062 process-definition preflight/page progress for `get process-definition` and `ops purge all-process-definitions`; remove the pending `t.Skip` calls in the new T061 progress contract tests only when the matching service/facade/command behavior is wired and passing.

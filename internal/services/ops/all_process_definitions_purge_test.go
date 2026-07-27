@@ -360,6 +360,98 @@ func TestPurgeAllProcessDefinitionsDiscoversCandidatesAcrossPages(t *testing.T) 
 	require.Equal(t, got.Discovery, got.Report.Discovery)
 }
 
+// TestPurgeAllProcessDefinitionsDiscoveryEmitsProgress defines service-owned APD discovery progress facts.
+func TestPurgeAllProcessDefinitionsDiscoveryEmitsProgress(t *testing.T) {
+	t.Parallel()
+	t.Skip("pending T062 all-process-definitions purge progress emission")
+
+	var events []d.OpsProgressEvent
+	var requests []d.ProcessDefinitionPageRequest
+	got, err := NewWithProcessDefinitionPurge(
+		stubProcessInstanceAPI{},
+		nil,
+		stubProcessDefinitionAPI{
+			searchProcessDefinitionsPage: func(_ context.Context, filter d.ProcessDefinitionFilter, page d.ProcessDefinitionPageRequest, _ ...services.CallOption) (d.ProcessDefinitionPage, error) {
+				require.Equal(t, d.ProcessDefinitionFilter{BpmnProcessId: "invoice"}, filter)
+				require.EqualValues(t, 1, page.Size)
+				requests = append(requests, page)
+				switch len(requests) {
+				case 1:
+					return d.ProcessDefinitionPage{
+						Items: []d.ProcessDefinition{
+							{Key: "pd-a", BpmnProcessId: "invoice", ProcessVersion: 3},
+						},
+						OverflowState: d.ProcessInstanceOverflowStateHasMore,
+						ReportedTotal: &d.ProcessDefinitionReportedTotal{Count: 2, Kind: d.ProcessDefinitionReportedTotalKindLowerBound},
+						EndCursor:     "cursor-2",
+					}, nil
+				case 2:
+					require.Equal(t, "cursor-2", page.After)
+					return d.ProcessDefinitionPage{
+						Items: []d.ProcessDefinition{
+							{Key: "pd-b", BpmnProcessId: "invoice", ProcessVersion: 2},
+						},
+						OverflowState: d.ProcessInstanceOverflowStateNoMore,
+						ReportedTotal: &d.ProcessDefinitionReportedTotal{Count: 2, Kind: d.ProcessDefinitionReportedTotalKindExact},
+					}, nil
+				default:
+					t.Fatalf("unexpected process-definition page request %d", len(requests))
+					return d.ProcessDefinitionPage{}, nil
+				}
+			},
+			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+				require.True(t, services.ApplyCallOptions(opts).WithStat)
+				return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+			},
+		},
+		stubResourceAPI{},
+	).PurgeAllProcessDefinitions(
+		context.Background(),
+		d.AllProcessDefinitionsPurgeRequest{
+			CommandName: "ops purge all-process-definitions",
+			DryRun:      true,
+			BatchSize:   1,
+			Selection:   d.ProcessDefinitionFilter{BpmnProcessId: "invoice"},
+		},
+		services.WithProgress(func(event d.OpsProgressEvent) {
+			events = append(events, event)
+		}),
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomePlanned, got.Outcome)
+	require.Len(t, requests, 2)
+	require.Len(t, events, 3)
+	require.Equal(t, d.OpsProgressEventKindPreflight, events[0].Kind)
+	require.NotNil(t, events[0].Preflight)
+	require.Equal(t, "preflight", events[0].Preflight.Phase)
+	require.Equal(t, "ops purge all-process-definitions", events[0].Preflight.Command)
+	require.Equal(t, "process_definition", events[0].Preflight.CoreResource)
+	require.Equal(t, int64(2), events[0].Preflight.Total)
+	require.Equal(t, d.OpsTotalCertaintyLowerBound, events[0].Preflight.TotalKind)
+	require.Equal(t, int32(1), events[0].Preflight.PageSize)
+	require.Equal(t, int64(2), events[0].Preflight.PageCount)
+	require.Equal(t, d.OpsPageCountKindEstimated, events[0].Preflight.PageCountKind)
+	require.Contains(t, events[0].Preflight.ConsequenceSummary, "discover")
+
+	require.Equal(t, d.OpsProgressEventKindPage, events[1].Kind)
+	require.NotNil(t, events[1].Page)
+	require.Equal(t, "discovering process definitions", events[1].Page.Phase)
+	require.Equal(t, int64(1), events[1].Page.CurrentPage)
+	require.Equal(t, int64(2), events[1].Page.PageCount)
+	require.Equal(t, d.OpsPageCountKindEstimated, events[1].Page.PageCountKind)
+	require.Equal(t, int64(1), events[1].Page.Seen)
+	require.Equal(t, int64(1), events[1].Page.Selected)
+
+	require.Equal(t, d.OpsProgressEventKindPage, events[2].Kind)
+	require.NotNil(t, events[2].Page)
+	require.Equal(t, int64(2), events[2].Page.CurrentPage)
+	require.Equal(t, int64(2), events[2].Page.PageCount)
+	require.Equal(t, d.OpsPageCountKindExact, events[2].Page.PageCountKind)
+	require.Equal(t, int64(2), events[2].Page.Seen)
+	require.Equal(t, int64(2), events[2].Page.Selected)
+}
+
 // TestPurgeAllProcessDefinitionsLimitStopsAfterFrozenScopeCap keeps --batch-size distinct from the total cap.
 func TestPurgeAllProcessDefinitionsLimitStopsAfterFrozenScopeCap(t *testing.T) {
 	t.Parallel()

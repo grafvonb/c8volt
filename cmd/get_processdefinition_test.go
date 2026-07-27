@@ -4,10 +4,14 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -125,6 +129,92 @@ func TestGetProcessDefinitionBpmnSelectorVisiblePreservesListing(t *testing.T) {
 	require.Equal(t, "stable", filter["versionTag"])
 	require.Contains(t, output, "2251799813685255")
 	require.Contains(t, output, "tenant order-process v3/stable")
+}
+
+// TestGetProcessDefinitionSearchVerboseProgress defines the process-definition progress contract for broad listing.
+func TestGetProcessDefinitionSearchVerboseProgress(t *testing.T) {
+	t.Skip("pending T062 process-definition progress routing")
+
+	var requests []map[string]any
+	srv := newProcessDefinitionSearchServerResponses(t, &requests,
+		`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"},{"processDefinitionKey":"2251799813685256","processDefinitionId":"payment","name":"payment","version":2,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":3,"hasMoreTotalItems":true,"endCursor":"pd-page-2"}}`,
+		`{"items":[{"processDefinitionKey":"2251799813685257","processDefinitionId":"shipping","name":"shipping","version":1,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	stdout, stderr := executeRootForProcessDefinitionTestWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--verbose",
+		"--auto-confirm",
+		"get", "process-definition",
+		"--batch-size", "2",
+	)
+
+	require.Len(t, requests, 2)
+	firstPage := requireJSONObject(t, requests[0]["page"])
+	require.Equal(t, float64(2), firstPage["limit"])
+	require.Equal(t, float64(0), firstPage["from"])
+	secondPage := requireJSONObject(t, requests[1]["page"])
+	require.Equal(t, "pd-page-2", secondPage["after"])
+	require.Contains(t, stderr, "preflight: process-definition search matches 3+ process definition(s); page size 2; discovery will require at least 2 page(s)")
+	require.Contains(t, stderr, "discovering process definitions, page 1/~2, 2 seen")
+	require.Contains(t, stderr, "discovering process definitions, page 2/2, 3 seen")
+	require.Contains(t, stdout, "2251799813685255")
+	require.Contains(t, stdout, "2251799813685256")
+	require.Contains(t, stdout, "2251799813685257")
+	require.Contains(t, stdout, "found: 3")
+}
+
+// TestGetProcessDefinitionSearchMachineOutputStaysProgressFree protects process-definition JSON/key streams during progress rollout.
+func TestGetProcessDefinitionSearchMachineOutputStaysProgressFree(t *testing.T) {
+	t.Run("json", func(t *testing.T) {
+		var requests []map[string]any
+		srv := newProcessDefinitionSearchServerResponses(t, &requests,
+			`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+		)
+		t.Cleanup(srv.Close)
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+		stdout, stderr := executeRootForProcessDefinitionTestWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--json",
+			"get", "process-definition",
+		)
+
+		require.Len(t, requests, 1)
+		require.Empty(t, stderr)
+		require.NotContains(t, stdout, "preflight:")
+		require.NotContains(t, stdout, "page size:")
+		require.NotContains(t, stdout, "discovering process definitions")
+		var envelope map[string]any
+		require.NoError(t, json.Unmarshal([]byte(stdout), &envelope), stdout)
+		payload := requireJSONObject(t, envelope["payload"])
+		items := payload["items"].([]any)
+		require.Len(t, items, 1)
+	})
+
+	t.Run("keys only", func(t *testing.T) {
+		var requests []map[string]any
+		srv := newProcessDefinitionSearchServerResponses(t, &requests,
+			`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"},{"processDefinitionKey":"2251799813685256","processDefinitionId":"payment","name":"payment","version":2,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+		)
+		t.Cleanup(srv.Close)
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+		stdout, stderr := executeRootForProcessDefinitionTestWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--keys-only",
+			"get", "process-definition",
+		)
+
+		require.Len(t, requests, 1)
+		require.Empty(t, stderr)
+		require.Equal(t, "2251799813685255\n2251799813685256\n", stdout)
+		require.NotContains(t, stdout, "preflight:")
+		require.NotContains(t, stdout, "page size:")
+		require.NotContains(t, stdout, "discovering process definitions")
+	})
 }
 
 func TestGetProcessDefinitionXMLOutputRemainsKeyOnlyDisplayMode(t *testing.T) {
@@ -279,4 +369,54 @@ func TestGetProcessDefinitionBpmnSelectorMissingFailsWithExplicitDiagnosticHelpe
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
+}
+
+func executeRootForProcessDefinitionTestWithSeparateOutputs(t *testing.T, args ...string) (string, string) {
+	t.Helper()
+
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+
+	root := Root()
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	root.SetOut(stdout)
+	root.SetErr(stderr)
+	root.SetArgs(args)
+	resetCommandTreeFlags(root)
+	resetGetProcessDefinitionCommandGlobals()
+
+	_, err := root.ExecuteC()
+	require.NoError(t, err)
+	return stdout.String(), stderr.String()
+}
+
+func newProcessDefinitionSearchServerResponses(t *testing.T, requests *[]map[string]any, responses ...string) *httptest.Server {
+	t.Helper()
+
+	served := 0
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		var request map[string]any
+		require.NoError(t, json.Unmarshal(body, &request))
+		*requests = append(*requests, request)
+		require.Less(t, served, len(responses), "unexpected extra process-definition search request")
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(responses[served]))
+		served++
+	}))
+}
+
+func countProcessDefinitionSearchRequests(items []string) int {
+	count := 0
+	for _, item := range items {
+		if strings.HasPrefix(item, "POST /v2/process-definitions/search ") {
+			count++
+		}
+	}
+	return count
 }
