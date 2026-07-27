@@ -158,6 +158,147 @@ func TestSlowProcessAnalysisProgressCallbackReceivesFrozenScopeSnapshots(t *test
 	require.Equal(t, *events[1].FrozenScope, *got.FrozenScopeProgress)
 }
 
+// TestSlowProcessAnalysisProcessDefinitionSearchEmitsDiscoveryPageProgress verifies paged discovery reports candidate traversal facts without waiting for enrichment.
+func TestSlowProcessAnalysisProcessDefinitionSearchEmitsDiscoveryPageProgress(t *testing.T) {
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	pageCalls := 0
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			pageCalls++
+			switch pageCalls {
+			case 1:
+				total := d.ProcessInstanceReportedTotal{Count: 3, Kind: d.ProcessInstanceReportedTotalKindLowerBound}
+				return d.ProcessInstancePage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					ReportedTotal: &total,
+					EndCursor:     "cursor-1",
+					Items: []d.ProcessInstance{
+						slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(2*time.Minute)),
+						slowProcessAnalysisFixtureProcessInstance("2251799813685250", start, start.Add(5*time.Minute)),
+					},
+				}, nil
+			case 2:
+				return d.ProcessInstancePage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+					Items: []d.ProcessInstance{
+						slowProcessAnalysisFixtureProcessInstance("2251799813685251", start, start.Add(time.Minute)),
+					},
+				}, nil
+			default:
+				t.Fatalf("unexpected discovery page %d", pageCalls)
+				return d.ProcessInstancePage{}, nil
+			}
+		},
+	}
+	var pages []d.OpsPageProgress
+
+	_, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, stubSlowProcessAnalysisElementAPI{}, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeProcessDefinitionSearch,
+		ProcessDefinitionSelector: d.SlowProcessAnalysisProcessDefinitionSelector{
+			BpmnProcessID: "OrderProcess",
+		},
+		BatchSize: 2,
+		Progress: func(event d.OpsProgressEvent) {
+			if event.Kind == d.OpsProgressEventKindPage && event.Page != nil {
+				pages = append(pages, *event.Page)
+			}
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, []d.OpsPageProgress{
+		{Phase: "discovering process instances", CurrentPage: 1, PageCount: ptrDomainInt64(2), PageCountKind: d.OpsPageCountKindEstimated, PageSize: 2, CurrentPageCount: 2, Seen: 2, Selected: 2, OverflowState: d.OpsOverflowStateHasMore},
+		{Phase: "discovering process instances", CurrentPage: 2, PageCount: ptrDomainInt64(2), PageCountKind: d.OpsPageCountKindEstimated, PageSize: 2, CurrentPageCount: 1, Seen: 3, Selected: 3, OverflowState: d.OpsOverflowStateNoMore},
+	}, pages)
+}
+
+// TestSlowProcessAnalysisElementEnrichmentProgressTracksEachFrozenRoot verifies runtime element lookup emits exact done/total counters.
+func TestSlowProcessAnalysisElementEnrichmentProgressTracksEachFrozenRoot(t *testing.T) {
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	roots := []d.ProcessInstance{
+		slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(2*time.Minute)),
+		slowProcessAnalysisFixtureProcessInstance("2251799813685250", start, start.Add(5*time.Minute)),
+	}
+	piAPI := stubProcessInstanceAPI{
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			for _, root := range roots {
+				if root.Key == filter.Key {
+					return []d.ProcessInstance{root}, nil
+				}
+			}
+			return nil, fmt.Errorf("%w: missing", d.ErrNotFound)
+		},
+	}
+	elementAPI := stubSlowProcessAnalysisElementAPI{
+		search: func(_ context.Context, query d.ElementSearchQuery, _ ...services.CallOption) (d.ElementSearchResult, error) {
+			return d.ElementSearchResult{Items: []d.Element{
+				slowProcessAnalysisFixtureElement(query.ProcessInstanceKey, query.ProcessInstanceKey+"-el", "ReserveStock", start, start.Add(time.Minute)),
+			}}, nil
+		},
+	}
+	var frozen []d.OpsFrozenScopeProgress
+
+	_, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, elementAPI, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
+		InputKeys:     typex.Keys{roots[0].Key, roots[1].Key},
+		Progress: func(event d.OpsProgressEvent) {
+			if event.Kind == d.OpsProgressEventKindFrozenScope && event.FrozenScope != nil {
+				frozen = append(frozen, *event.FrozenScope)
+			}
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, []d.OpsFrozenScopeProgress{
+		{Phase: "loading runtime elements", CoreResource: "process instance(s)", Done: 0, Total: 2},
+		{Phase: "loading runtime elements", CoreResource: "process instance(s)", Done: 1, Total: 2},
+		{Phase: "loading runtime elements", CoreResource: "process instance(s)", Done: 2, Total: 2},
+	}, frozen)
+}
+
+// TestSlowProcessAnalysisListenerProgressUsesListenerPhase verifies listener enrichment reports the listener job phase with exact counters.
+func TestSlowProcessAnalysisListenerProgressUsesListenerPhase(t *testing.T) {
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	root := slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(2*time.Minute))
+	piAPI := stubProcessInstanceAPI{
+		search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+			return []d.ProcessInstance{root}, nil
+		},
+	}
+	elementAPI := stubSlowProcessAnalysisElementAPI{
+		search: func(context.Context, d.ElementSearchQuery, ...services.CallOption) (d.ElementSearchResult, error) {
+			return d.ElementSearchResult{Items: []d.Element{
+				slowProcessAnalysisFixtureElement(root.Key, "2251799813685250", "ReserveStock", start, start.Add(time.Minute)),
+			}}, nil
+		},
+	}
+	jobAPI := stubSlowProcessAnalysisJobAPI{
+		search: func(context.Context, d.JobSearchQuery, ...services.CallOption) (d.JobSearchResult, error) {
+			return d.JobSearchResult{}, nil
+		},
+	}
+	var frozen []d.OpsFrozenScopeProgress
+
+	_, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, jobAPI, elementAPI, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
+		InputKeys:     typex.Keys{root.Key},
+		WithListeners: true,
+		Progress: func(event d.OpsProgressEvent) {
+			if event.Kind == d.OpsProgressEventKindFrozenScope && event.FrozenScope != nil {
+				frozen = append(frozen, *event.FrozenScope)
+			}
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, []d.OpsFrozenScopeProgress{
+		{Phase: "loading listener jobs", CoreResource: "process instance(s)", Done: 0, Total: 1},
+		{Phase: "loading listener jobs", CoreResource: "process instance(s)", Done: 1, Total: 1},
+	}, frozen)
+}
+
 // TestSlowProcessAnalysisNilProgressCallbackIsSafe verifies progress plumbing stays optional for callers.
 func TestSlowProcessAnalysisNilProgressCallbackIsSafe(t *testing.T) {
 	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")

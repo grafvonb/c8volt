@@ -82,3 +82,30 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Slow-process preflight now uses the first reusable process-instance page; focused US1 validation passes, while full `go test ./cmd` still has an unrelated date-sensitive get-process-instance assertion.
 ---
+---
+## Iteration 4 - 2026-07-27 12:44
+**Work Unit**: US2 Track Long Work By Phase And Exact Counters
+**Tasks Completed**:
+- [x] T021: Add activity-sink tests for slow-process discovery phase updates and frozen-scope enrichment counters
+- [x] T022: Add command tests proving default human slow-process search emits meaningful activity/progress without `--debug`
+- [x] T023: Add page-progress formatting tests for known, lower-bound, and unknown page counts
+- [x] T024: Emit page progress events during slow-process process-definition discovery
+- [x] T025: Emit frozen-scope progress events while loading runtime elements for slow-process analysis
+- [x] T026: Emit listener-job progress events when `--with-listeners` is used
+- [x] T027: Route slow-process progress events to `logging.UpdateActivity` with operator-facing phase names
+- [x] T028: Add durable verbose progress lines for slow-process discovery and enrichment without leaking endpoint details
+- [x] T029: Preserve final slow-process result ordering, counts, and warnings after progress integration
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/ops_analyse_slow_process_instances_test.go
+- cmd/ops_progress_test.go
+- internal/services/ops/slow_process_analysis.go
+- internal/services/ops/slow_process_analysis_test.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Slow-process progress now uses structured page/frozen events: default human sees activity updates, while durable page/counter lines stay behind verbose/debug.
+---

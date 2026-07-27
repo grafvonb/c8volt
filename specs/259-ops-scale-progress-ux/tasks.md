@@ -76,18 +76,18 @@
 
 ### Tests for User Story 2
 
-- [ ] T021 [P] [US2] Add activity-sink tests for slow-process discovery phase updates and frozen-scope enrichment counters in `internal/services/ops/slow_process_analysis_test.go`
-- [ ] T022 [P] [US2] Add command tests proving default human slow-process search emits meaningful activity/progress without `--debug` in `cmd/ops_analyse_slow_process_instances_test.go`
-- [ ] T023 [P] [US2] Add page-progress formatting tests for known, lower-bound, and unknown page counts in `cmd/ops_progress_test.go`
+- [x] T021 [P] [US2] Add activity-sink tests for slow-process discovery phase updates and frozen-scope enrichment counters in `internal/services/ops/slow_process_analysis_test.go`
+- [x] T022 [P] [US2] Add command tests proving default human slow-process search emits meaningful activity/progress without `--debug` in `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T023 [P] [US2] Add page-progress formatting tests for known, lower-bound, and unknown page counts in `cmd/ops_progress_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T024 [US2] Emit page progress events during slow-process process-definition discovery in `internal/services/ops/slow_process_analysis.go`
-- [ ] T025 [US2] Emit frozen-scope progress events while loading runtime elements for slow-process analysis in `internal/services/ops/slow_process_analysis.go`
-- [ ] T026 [US2] Emit listener-job progress events when `--with-listeners` is used in `internal/services/ops/slow_process_analysis.go`
-- [ ] T027 [US2] Route slow-process progress events to `logging.UpdateActivity` with operator-facing phase names in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T028 [US2] Add durable verbose progress lines for slow-process discovery and enrichment without leaking endpoint details in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T029 [US2] Preserve final slow-process result ordering, counts, and warnings after progress integration in `cmd/cmd_views_ops_slow_process_analysis.go`
+- [x] T024 [US2] Emit page progress events during slow-process process-definition discovery in `internal/services/ops/slow_process_analysis.go`
+- [x] T025 [US2] Emit frozen-scope progress events while loading runtime elements for slow-process analysis in `internal/services/ops/slow_process_analysis.go`
+- [x] T026 [US2] Emit listener-job progress events when `--with-listeners` is used in `internal/services/ops/slow_process_analysis.go`
+- [x] T027 [US2] Route slow-process progress events to `logging.UpdateActivity` with operator-facing phase names in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T028 [US2] Add durable verbose progress lines for slow-process discovery and enrichment without leaking endpoint details in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T029 [US2] Preserve final slow-process result ordering, counts, and warnings after progress integration in `cmd/cmd_views_ops_slow_process_analysis.go`
 
 **Checkpoint**: User Stories 1 and 2 both work independently for the proof command.
 

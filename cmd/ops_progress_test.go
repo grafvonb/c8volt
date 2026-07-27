@@ -31,6 +31,41 @@ func TestFormatOpsPageCountUsesExactEstimatedAndUnknownWording(t *testing.T) {
 	require.Empty(t, formatOpsPageCount(0, &pages, ops.PageCountKindExact))
 }
 
+// TestFormatOpsPageProgressLabelsPageCountCertainty verifies discovery activity text keeps exact, lower-bound, and unknown page counts distinct.
+func TestFormatOpsPageProgressLabelsPageCountCertainty(t *testing.T) {
+	tests := []struct {
+		name string
+		in   ops.PageProgress
+		want string
+	}{
+		{
+			name: "known",
+			in:   ops.PageProgress{Phase: "discovering process instances", CurrentPage: 4, PageCount: ptrInt64(10), PageCountKind: ops.PageCountKindExact, Seen: 3812, Selected: 3800},
+			want: "discovering process instances, page 4/10, 3812 seen, 3800 selected",
+		},
+		{
+			name: "lower bound",
+			in:   ops.PageProgress{Phase: "discovering process instances", CurrentPage: 4, PageCount: ptrInt64(10), PageCountKind: ops.PageCountKindEstimated, Seen: 3812},
+			want: "discovering process instances, page 4/~10, 3812 seen",
+		},
+		{
+			name: "unknown",
+			in:   ops.PageProgress{Phase: "discovering process instances", CurrentPage: 4, PageCountKind: ops.PageCountKindUnknown, Seen: 3812},
+			want: "discovering process instances, page 4, 3812 seen",
+		},
+		{
+			name: "user limited",
+			in:   ops.PageProgress{Phase: "discovering process instances", CurrentPage: 2, Seen: 1500, Selected: 1000, LimitReached: true},
+			want: "discovering process instances, page 2, 1500 seen, 1000 selected, user-limited",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, formatOpsPageProgress(tc.in, "process instance(s)"))
+		})
+	}
+}
+
 // TestFormatOpsPreflightScopeRendersConsequencesAndConfirmationContext verifies broad selector summaries stay compact and certainty-aware.
 func TestFormatOpsPreflightScopeRendersConsequencesAndConfirmationContext(t *testing.T) {
 	total := int64(10000)

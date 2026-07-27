@@ -16,7 +16,9 @@ Started: 2026-07-27T10:17:40Z
 - Slow-process requests now carry optional `Progress func(ProgressEvent)` and `ConfirmPreflight func(PreflightScope) error` callbacks through the facade boundary; nil callbacks are safe. Slow-process results can carry `PreflightScope` and `FrozenScopeProgress`.
 - Slow-process process-definition search now peeks the first `SearchForProcessInstancesPage`, emits/stores preflight metadata from its reported-total/page metadata, confirms through the command callback when configured, and then consumes that same first page before following `EndCursor`/offset continuation.
 - `cmd/ops_analyse_slow_process_instances.go` configures preflight rendering only for process-definition search mode. Human/verbose/debug modes can print compact preflight lines to stderr and prompt; JSON, keys-only, quiet, and automation modes skip the prompt and keep stdout clean. Explicit-key mode leaves progress and confirmation callbacks nil.
-- The ops service emits snapshot frozen-scope progress events at the start and end of current slow-analysis enrichment, with later US2 tasks expected to replace or expand this with finer per-resource progress.
+- The ops service emits slow-process discovery page progress after each collected page, using the first preflight page's page-count certainty as the best available traversal count metadata.
+- Slow-process enrichment now emits exact frozen-scope progress at start and after each process-instance enrichment. `--with-listeners` uses the `loading listener jobs` phase; default enrichment uses `loading runtime elements`.
+- `cmd/ops_analyse_slow_process_instances.go` routes slow-process page/frozen progress to `logging.UpdateActivity` for default human mode and writes durable page/counter lines only for verbose/debug progress channels. Preflight remains durable in allowed human modes from US1.
 
 ## Decisions
 - For this feature, transient progress should reuse the existing activity context path rather than stdout or a new global writer.
@@ -43,4 +45,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should start US2 tasks T021-T029. Build discovery page-progress and frozen-scope enrichment progress on top of the existing slow-process `Progress` callback; preserve US1 behavior that the first discovery page is reused, preflight remains stderr/prompt-gated in `cmd`, and explicit-key mode skips broad preflight.
+- Next iteration should start US3 tasks T030-T037. Preserve the US1/US2 behavior that process-definition search wires progress callbacks, JSON/keys-only/quiet/automation modes suppress prompts and durable progress through `opsProgressChannelForMode`, and explicit-key mode leaves broad preflight/progress callbacks nil.

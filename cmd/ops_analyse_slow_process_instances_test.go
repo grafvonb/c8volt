@@ -14,6 +14,8 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -456,6 +458,74 @@ func TestOpsAnalyseSlowProcessInstancesConfiguresBroadPreflightOnlyForSearch(t *
 	configureOpsSlowProcessAnalysisPreflight(resetOpsSlowProcessAnalysisTestFlags(t), &searchRequest)
 	require.NotNil(t, searchRequest.Progress)
 	require.NotNil(t, searchRequest.ConfirmPreflight)
+}
+
+// TestOpsAnalyseSlowProcessInstancesRoutesDefaultProgressToActivity verifies human search progress is visible without debug and never touches stdout.
+func TestOpsAnalyseSlowProcessInstancesRoutesDefaultProgressToActivity(t *testing.T) {
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	sink := &activitysink.Sink{}
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+		Phase:         "discovering process instances",
+		CurrentPage:   2,
+		PageCount:     ptrInt64(4),
+		PageCountKind: ops.PageCountKindExact,
+		Seen:          1500,
+		Selected:      1498,
+	}})
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+		Phase:        "loading runtime elements",
+		CoreResource: "process instance(s)",
+		Done:         48,
+		Total:        800,
+	}})
+
+	require.Empty(t, stdout.String())
+	require.Empty(t, stderr.String())
+	require.Equal(t, []string{
+		"discovering process instances, page 2/4, 1500 seen, 1498 selected",
+		"loading runtime elements, 48/800 process instance(s)",
+	}, sink.Updates())
+}
+
+// TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr verifies verbose mode keeps an auditable progress trail off stdout.
+func TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr(t *testing.T) {
+	previousVerbose := flagVerbose
+	flagVerbose = true
+	t.Cleanup(func() { flagVerbose = previousVerbose })
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+		Phase:         "discovering process instances",
+		CurrentPage:   2,
+		PageCount:     ptrInt64(4),
+		PageCountKind: ops.PageCountKindExact,
+		Seen:          1500,
+		Selected:      1498,
+	}})
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+		Phase:        "loading listener jobs",
+		CoreResource: "process instance(s)",
+		Done:         3,
+		Total:        3,
+	}})
+
+	require.Empty(t, stdout.String())
+	require.Contains(t, stderr.String(), "discovering process instances, page 2/4, 1500 seen, 1498 selected")
+	require.Contains(t, stderr.String(), "loading listener jobs, 3/3 process instance(s)")
 }
 
 // TestOpsAnalyseSlowProcessInstancesPreflightConfirmationRespectsModeGating verifies automation-safe modes skip prompts.

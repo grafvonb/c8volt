@@ -11,6 +11,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
@@ -300,10 +301,20 @@ func configureOpsSlowProcessAnalysisPreflight(cmd *cobra.Command, request *ops.S
 	}
 	channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
 	request.Progress = func(event ops.ProgressEvent) {
-		if event.Kind != ops.ProgressEventKindPreflight || event.Preflight == nil {
-			return
+		switch event.Kind {
+		case ops.ProgressEventKindPreflight:
+			if event.Preflight != nil {
+				printOpsPreflightScope(cmd, *event.Preflight, channel)
+			}
+		case ops.ProgressEventKindPage:
+			if event.Page != nil {
+				printOpsSlowProcessAnalysisProgress(cmd, formatOpsPageProgress(*event.Page, "process instance(s)"), channel)
+			}
+		case ops.ProgressEventKindFrozenScope:
+			if event.FrozenScope != nil {
+				printOpsSlowProcessAnalysisProgress(cmd, formatOpsFrozenScopeProgress(*event.FrozenScope), channel)
+			}
 		}
-		printOpsPreflightScope(cmd, *event.Preflight, channel)
 	}
 	request.ConfirmPreflight = func(scope ops.PreflightScope) error {
 		if !opsSlowProcessAnalysisPreflightConfirmationAllowed(channel) || !scope.RequiresConfirmation {
@@ -317,6 +328,20 @@ func configureOpsSlowProcessAnalysisPreflight(cmd *cobra.Command, request *ops.S
 	}
 }
 
+// printOpsSlowProcessAnalysisProgress routes transient and verbose progress without touching command stdout.
+func printOpsSlowProcessAnalysisProgress(cmd *cobra.Command, line string, channel ops.ProgressChannel) {
+	if cmd == nil || strings.TrimSpace(line) == "" {
+		return
+	}
+	if channel.TransientAllowed {
+		logging.UpdateActivity(cmd.Context(), line)
+	}
+	if !opsSlowProcessAnalysisDurableProgressAllowed(channel) {
+		return
+	}
+	fmt.Fprintln(cmd.ErrOrStderr(), line)
+}
+
 // printOpsPreflightScope writes durable preflight lines only to the command's stderr/activity channel.
 func printOpsPreflightScope(cmd *cobra.Command, scope ops.PreflightScope, channel ops.ProgressChannel) {
 	if cmd == nil || !channel.DurableAllowed || !channel.StderrAllowed {
@@ -325,6 +350,11 @@ func printOpsPreflightScope(cmd *cobra.Command, scope ops.PreflightScope, channe
 	for _, line := range formatOpsPreflightScope(scope) {
 		fmt.Fprintln(cmd.ErrOrStderr(), line)
 	}
+}
+
+// opsSlowProcessAnalysisDurableProgressAllowed keeps page/counter detail behind verbose or debug while activity remains compact.
+func opsSlowProcessAnalysisDurableProgressAllowed(channel ops.ProgressChannel) bool {
+	return channel.DurableAllowed && channel.StderrAllowed && (channel.Mode == ops.ProgressModeVerbose || channel.Mode == ops.ProgressModeDebug)
 }
 
 // opsSlowProcessAnalysisPreflightConfirmationAllowed limits prompts to human progress modes.
