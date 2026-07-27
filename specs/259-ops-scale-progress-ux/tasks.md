@@ -143,11 +143,26 @@
 
 **Purpose**: Assess all high-volume command families and create bounded follow-up implementation tasks or slices from the shared contract.
 
-- [ ] T044 [P] Add high-volume command coverage matrix for process instances, incidents, jobs, elements, process definitions, ops purge, ops repair, retention, and smoke flows in `specs/259-ops-scale-progress-ux/coverage.md`
-- [ ] T045 [P] Audit basic `get process-instance`, `get incident`, `get job`, and `get element` paging behavior against `specs/259-ops-scale-progress-ux/contracts/cli-progress-contract.md` and record gaps in `specs/259-ops-scale-progress-ux/coverage.md`
-- [ ] T046 [P] Audit `cancel process-instance`, `delete process-instance`, `walk process-instance`, and bulk `run process-instance` flows against `specs/259-ops-scale-progress-ux/contracts/cli-progress-contract.md` and record gaps in `specs/259-ops-scale-progress-ux/coverage.md`
-- [ ] T047 [P] Audit `ops execute retention-policy`, `ops purge orphan-process-instances`, `ops purge process-instances-with-incidents`, `ops purge all-process-definitions`, `ops repair incident`, and `ops repair process-instance` against `specs/259-ops-scale-progress-ux/contracts/cli-progress-contract.md` and record gaps in `specs/259-ops-scale-progress-ux/coverage.md`
-- [ ] T048 Create follow-up tasks or implementation slices for command families not completed by the proof workflow in `specs/259-ops-scale-progress-ux/tasks.md`
+- [x] T044 [P] Add high-volume command coverage matrix for process instances, incidents, jobs, elements, process definitions, ops purge, ops repair, retention, and smoke flows in `specs/259-ops-scale-progress-ux/coverage.md`
+- [x] T045 [P] Audit basic `get process-instance`, `get incident`, `get job`, and `get element` paging behavior against `specs/259-ops-scale-progress-ux/contracts/cli-progress-contract.md` and record gaps in `specs/259-ops-scale-progress-ux/coverage.md`
+- [x] T046 [P] Audit `cancel process-instance`, `delete process-instance`, `walk process-instance`, and bulk `run process-instance` flows against `specs/259-ops-scale-progress-ux/contracts/cli-progress-contract.md` and record gaps in `specs/259-ops-scale-progress-ux/coverage.md`
+- [x] T047 [P] Audit `ops execute retention-policy`, `ops purge orphan-process-instances`, `ops purge process-instances-with-incidents`, `ops purge all-process-definitions`, `ops repair incident`, and `ops repair process-instance` against `specs/259-ops-scale-progress-ux/contracts/cli-progress-contract.md` and record gaps in `specs/259-ops-scale-progress-ux/coverage.md`
+- [x] T048 Create follow-up tasks or implementation slices for command families not completed by the proof workflow in `specs/259-ops-scale-progress-ux/tasks.md`
+
+### Follow-up Implementation Slices From Coverage Inventory
+
+- [ ] T058 [P] Add basic inspection command tests for shared preflight/page progress and machine-output safety in `cmd/get_processinstance_test.go`, `cmd/get_incident_test.go`, `cmd/get_job_test.go`, `cmd/get_element_test.go`, and `cmd/ops_progress_test.go`
+- [ ] T059 Implement shared preflight/page progress routing for `get process-instance`, `get incident`, `get job`, and `get element` in `cmd/get_processinstance_search.go`, `cmd/get_incident_search.go`, `cmd/get_job_search.go`, and `cmd/get_element_search.go`
+- [ ] T060 Add frozen enrichment progress for basic process-instance and element listener enrichment in `internal/services/processinstance`, `internal/services/element`, `c8volt/process`, `c8volt/element`, and the matching command render paths
+- [ ] T061 [P] Add process-definition progress tests for broad listing and all-process-definition purge discovery in `cmd/get_processdefinition_test.go`, `cmd/ops_purge_all_processdefinitions_test.go`, and `internal/services/ops/all_process_definitions_purge_test.go`
+- [ ] T062 Implement shared process-definition preflight/page progress for `get process-definition` and `ops purge all-process-definitions` in `cmd/get_processdefinition.go`, `cmd/ops_purge_all_processdefinitions.go`, `c8volt/process`, and `internal/services/ops/all_process_definitions_purge.go`
+- [ ] T063 [P] Add process-instance mutation progress tests for destructive preflight, planning counters, mutation counters, and JSON/quiet/automation safety in `cmd/cancel_processinstance_test.go`, `cmd/delete_processinstance_test.go`, and `internal/services/processinstance`
+- [ ] T064 Implement shared destructive preflight and frozen planning/mutation progress for `cancel process-instance` and `delete process-instance` in `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, `c8volt/process`, and `internal/services/processinstance`
+- [ ] T065 [P] Add ops purge and retention progress tests for candidate discovery, frozen delete planning, deletion counters, reports, and output-mode safety in `cmd/ops_execute_retention_policy_test.go`, `cmd/ops_purge_orphan_processinstances_test.go`, and `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [ ] T066 Implement shared preflight/page/frozen progress for retention, orphan purge, and incident-based purge workflows in `cmd/ops_execute_retention_policy.go`, `cmd/ops_purge_orphan_processinstances.go`, `cmd/ops_purge_processinstances_with_incidents.go`, and `internal/services/ops`
+- [ ] T067 [P] Add ops repair progress tests for incident search, process-instance search, keyed bulk repair counters, confirmation prompts, and output-mode safety in `cmd/ops_repair_incident_test.go`, `cmd/ops_repair_processinstance_test.go`, and `internal/services/ops/repair_test.go`
+- [ ] T068 Implement shared preflight and frozen repair progress for `ops repair incident` and `ops repair process-instance` in `cmd/ops_repair_incident.go`, `cmd/ops_repair_processinstance.go`, `c8volt/ops`, and `internal/services/ops/repair.go`
+- [ ] T069 Add explicit-large-work progress for `walk process-instance`, bulk `run process-instance`, and `ops execute smoke-test` in `cmd/walk_processinstance.go`, `cmd/run_processinstance.go`, `cmd/ops_execute_smoketest.go`, `c8volt/process`, `c8volt/ops`, and matching service tests
 
 ---
 

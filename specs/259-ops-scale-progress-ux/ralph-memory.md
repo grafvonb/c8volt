@@ -25,6 +25,11 @@ Started: 2026-07-27T10:17:40Z
 - ETA timing now uses `internal/domain.NewOpsETASampleWindow` with `OpsDefaultETAMinimumSamples=3` and `OpsMinimumTimingElapsed=1s`; elapsed/rate/remaining stay absent for sub-threshold fast phases and ETA requires exact frozen totals plus remaining work.
 - Slow-process enrichment updates frozen-scope progress with elapsed/rate/ETA after each root once timing is useful. Completion events keep elapsed/rate but omit stale ETA when done equals total.
 - `cmd/ops_progress.go` renders frozen progress with percent complete only when elapsed timing is present and total is exact/nonzero; approximate throughput/remaining use `~` wording. Standalone ETA events are ignored unless `opsETAAllowed` passes.
+- Phase 7 inventory lives in `specs/259-ops-scale-progress-ux/coverage.md`. It records current coverage and gaps for basic get commands, process-definition inspection/purge, process-instance cancel/delete/walk/run, smoke, retention, purge, and repair workflows.
+- Basic get commands (`get process-instance`, `get incident`, `get job`, `get element`) already have service-owned page traversal and stdout-safe incremental/JSON behavior, but still use older command progress summaries instead of shared ops preflight/page/frozen progress.
+- Ops purge/retention/repair workflows already own discovery, freeze, planning, mutation, and audit-report semantics in services and command wrappers; follow-up progress should add shared callbacks/events without moving those backend mechanics into `cmd`.
+- `ops purge orphan-process-instances` has an existing service-level orphan discovery progress callback shape in `internal/services/processinstance/orphan_discovery.go`; it is not yet mapped to `OpsProgressEvent` or command progress-channel gating.
+- `run process-instance` has an operator-provided `--count`, and `internal/services/processinstance/bulk.go` has older periodic bulk progress logging. Treat large-count run progress as exact frozen work and preserve keys-only/JSON stdout contracts.
 
 ## Decisions
 - For this feature, transient progress should reuse the existing activity context path rather than stdout or a new global writer.
@@ -54,4 +59,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should start Phase 7 coverage rollout inventory tasks T044-T048 only. Preserve US4 guarantees: ETA/rate/elapsed are omitted for sub-threshold fast phases, ETA requires at least three completed samples and an exact frozen total with remaining work, and JSON/keys-only/quiet/automation stdout safety from US3 remains unchanged.
+- Next iteration should start the generated follow-up implementation slices at T058, beginning with basic inspection command tests. Preserve coverage.md as the rollout source, keep backend traversal in services/facades, and preserve US3/US4 guarantees: machine stdout stays clean and ETA only appears after exact-scope timing is useful.

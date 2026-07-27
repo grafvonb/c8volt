@@ -161,3 +161,22 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - ETA now stays absent until elapsed timing is meaningful, the sample threshold is met, and exact frozen remaining work exists.
 ---
+---
+## Iteration 7 - 2026-07-27 13:05
+**Work Unit**: Phase 7 Coverage Rollout Inventory
+**Tasks Completed**:
+- [x] T044: Add high-volume command coverage matrix
+- [x] T045: Audit basic get command paging behavior
+- [x] T046: Audit process-instance action, traversal, and run flows
+- [x] T047: Audit ops retention, purge, and repair workflows
+- [x] T048: Create follow-up implementation slices
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/259-ops-scale-progress-ux/coverage.md
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Coverage rollout gaps are now documented by command family; follow-up implementation should start with basic inspection tests and keep service-owned traversal intact.
+---
