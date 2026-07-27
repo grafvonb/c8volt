@@ -22,6 +22,14 @@ The v4 line introduced the C8 Ops CLI at [CamundaCon 2026](https://www.camundaco
 
 The `ops` command group turns multi-command Camunda operations into audited, previewable playbooks. An ops command discovers the target set, freezes it, builds the lower-level c8volt plan, then runs it with dry-run previews, confirmation controls, JSON output, and audit reports.
 
+### Ops-Scale Preflight And Progress
+
+High-volume search, analysis, repair, purge, cancel, delete, walk, run, and smoke-test workflows report scope before expensive work and progress while the frozen work set is processed. Broad selectors show a preflight summary with the core resource, best available count certainty, page-size context, and the consequence of continuing. Counts are labeled as exact, lower bound, estimated, or unknown so operators can tell whether the number is a frozen scope or only the best current signal from Camunda.
+
+During discovery, progress uses page and seen-count wording. After c8volt freezes the work set, progress switches to exact `done/total` counters for phases such as loading runtime elements, planning delete scope, repairing incidents, deleting process instances, or starting process instances. Long phases may show elapsed time, approximate throughput, and approximate remaining time only after enough samples exist.
+
+Progress never writes to result stdout. Default human mode uses terminal activity; verbose and debug modes may keep durable progress lines on stderr. JSON output remains one document, keys-only output remains one key per line, and quiet or automation-oriented runs suppress progress chatter or keep scope in structured reports. For paged commands, `--batch-size` controls each backend discovery request, while `--limit` caps the total returned, selected, frozen, or analyzed scope as documented by the command.
+
 ### v4.2 Highlight: Slow Process Analysis
 
 `ops analyse slow-process-instances` is read-only analysis for slow runtime work. It combines process-instance search, runtime element timing, and optional listener-job context into an operator view: slowest roots first, slowest elements underneath.

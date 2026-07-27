@@ -480,3 +480,18 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Slow-process help now states first-page preflight, total certainty labels, progress routing, and batch-size versus frozen-scope limit semantics directly in command metadata.
 ---
+---
+## Iteration 14 - 2026-07-27 15:55
+**Work Unit**: T051 README operational notes
+**Tasks Completed**:
+- [x] T051: Update README operational notes for ops-scale preflight and progress behavior
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- README now states operator-facing preflight/progress scope, channel safety, total certainty, ETA gating, and `--batch-size` versus `--limit` behavior in the ops overview.
+---
