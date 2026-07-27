@@ -123,12 +123,12 @@ func TestFormatOpsPreflightScopeLabelsExactLowerBoundAndUnknownTotals(t *testing
 	}
 }
 
-// TestFormatOpsFrozenScopeProgressGatesETA verifies exact counters can show elapsed/rate while ETA waits for a remaining estimate.
+// TestFormatOpsFrozenScopeProgressGatesETA verifies exact counters can show elapsed, percent, and rate while ETA waits for a remaining estimate.
 func TestFormatOpsFrozenScopeProgressGatesETA(t *testing.T) {
 	rate := 4.25
 	remaining := 95 * time.Second
 
-	require.Equal(t, "loading runtime elements, 48/800 process instance(s), 2m0s elapsed, ~4.2/s", formatOpsFrozenScopeProgress(ops.FrozenScopeProgress{
+	require.Equal(t, "loading runtime elements, 48/800 process instance(s), 6.0%, 2m0s elapsed, ~4.2/s", formatOpsFrozenScopeProgress(ops.FrozenScopeProgress{
 		Phase:        "loading runtime elements",
 		CoreResource: "process instance(s)",
 		Done:         48,
@@ -136,7 +136,7 @@ func TestFormatOpsFrozenScopeProgressGatesETA(t *testing.T) {
 		Elapsed:      2 * time.Minute,
 		Rate:         &rate,
 	}))
-	require.Equal(t, "loading runtime elements, 48/800 process instance(s), 2m0s elapsed, ~4.2/s, ~1m35s remaining", formatOpsFrozenScopeProgress(ops.FrozenScopeProgress{
+	require.Equal(t, "loading runtime elements, 48/800 process instance(s), 6.0%, 2m0s elapsed, ~4.2/s, ~1m35s remaining", formatOpsFrozenScopeProgress(ops.FrozenScopeProgress{
 		Phase:        "loading runtime elements",
 		CoreResource: "process instance(s)",
 		Done:         48,
@@ -144,6 +144,16 @@ func TestFormatOpsFrozenScopeProgressGatesETA(t *testing.T) {
 		Elapsed:      2 * time.Minute,
 		Rate:         &rate,
 		ETA:          &remaining,
+	}))
+}
+
+// TestFormatOpsFrozenScopeProgressOmitsPercentForUnknownTotal verifies percent complete is never rendered without an exact total.
+func TestFormatOpsFrozenScopeProgressOmitsPercentForUnknownTotal(t *testing.T) {
+	require.Equal(t, "loading runtime elements, 3/0 process instance(s), 5s elapsed", formatOpsFrozenScopeProgress(ops.FrozenScopeProgress{
+		Phase:        "loading runtime elements",
+		CoreResource: "process instance(s)",
+		Done:         3,
+		Elapsed:      5 * time.Second,
 	}))
 }
 
@@ -172,4 +182,21 @@ func TestOpsETAAllowedRequiresSamplesExactTotalAndRemaining(t *testing.T) {
 	require.False(t, opsETAAllowed(ops.ETASampleWindow{MinimumSamplesMet: true, Total: 800, CompletedSamples: 2, Remaining: &remaining}))
 	require.False(t, opsETAAllowed(ops.ETASampleWindow{MinimumSamplesMet: true, Total: 800, CompletedSamples: 2, Elapsed: time.Minute}))
 	require.True(t, opsETAAllowed(ops.ETASampleWindow{MinimumSamplesMet: true, Total: 800, CompletedSamples: 2, Elapsed: time.Minute, Remaining: &remaining}))
+}
+
+// TestFormatOpsETASampleWindowUsesApproximateWording verifies standalone ETA messages label throughput and remaining time as approximate.
+func TestFormatOpsETASampleWindowUsesApproximateWording(t *testing.T) {
+	rate := 2.5
+	remaining := 2*time.Minute + 4*time.Second
+
+	require.Empty(t, formatOpsETASampleWindow(ops.ETASampleWindow{Phase: "loading runtime elements", CompletedSamples: 2, Total: 10, Elapsed: time.Second, Rate: &rate, Remaining: &remaining}))
+	require.Equal(t, "loading runtime elements, 3/10 sample(s), 2s elapsed, ~2.5/s, ~2m4s remaining", formatOpsETASampleWindow(ops.ETASampleWindow{
+		Phase:             "loading runtime elements",
+		CompletedSamples:  3,
+		Total:             10,
+		Elapsed:           2 * time.Second,
+		MinimumSamplesMet: true,
+		Rate:              &rate,
+		Remaining:         &remaining,
+	}))
 }

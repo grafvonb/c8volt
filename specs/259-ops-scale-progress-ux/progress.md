@@ -134,3 +134,30 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Output-mode safety is now pinned at callback, renderer, and command-capability levels; durable detail remains stderr-only and machine stdout stays clean.
 ---
+---
+## Iteration 6 - 2026-07-27 12:58
+**Work Unit**: US4 Estimate Time Remaining Responsibly
+**Tasks Completed**:
+- [x] T038: Add ETA sample-window unit tests for minimum samples, unknown totals, exact totals, and approximate wording
+- [x] T039: Add controlled slow-process enrichment timing tests for ETA appearance and omission
+- [x] T040: Implement ETA sample-window calculation
+- [x] T041: Add command formatter support for elapsed time, throughput, percent complete, and approximate remaining time
+- [x] T042: Attach ETA sample updates to slow-process frozen-scope enrichment progress
+- [x] T043: Render slow-process ETA only when shared gating rules allow it
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/domain/ops_progress.go
+- internal/domain/ops_progress_test.go
+- internal/services/ops/slow_process_analysis.go
+- internal/services/ops/slow_process_analysis_test.go
+- cmd/ops_progress.go
+- cmd/ops_progress_test.go
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/ops_analyse_slow_process_instances_test.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- ETA now stays absent until elapsed timing is meaningful, the sample threshold is met, and exact frozen remaining work exists.
+---

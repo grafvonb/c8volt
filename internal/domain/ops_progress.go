@@ -5,6 +5,13 @@ package domain
 
 import "time"
 
+const (
+	// OpsDefaultETAMinimumSamples is the shared threshold before remaining-time estimates are considered stable enough to show.
+	OpsDefaultETAMinimumSamples = 3
+	// OpsMinimumTimingElapsed suppresses elapsed/rate/ETA facts for phases too short to be useful to operators.
+	OpsMinimumTimingElapsed = time.Second
+)
+
 // OpsTotalCertainty classifies whether a progress count is exact, approximate, or unavailable.
 type OpsTotalCertainty string
 
@@ -158,4 +165,42 @@ type OpsProgressEvent struct {
 	Page        *OpsPageProgress        `json:"page,omitempty"`
 	FrozenScope *OpsFrozenScopeProgress `json:"frozenScope,omitempty"`
 	ETA         *OpsETASampleWindow     `json:"eta,omitempty"`
+}
+
+// NewOpsETASampleWindow calculates approximate timing facts only from an exact frozen scope and completed samples.
+func NewOpsETASampleWindow(phase string, startedAt time.Time, now time.Time, completedSamples int, total int, minimumSamples int) OpsETASampleWindow {
+	if minimumSamples <= 0 {
+		minimumSamples = OpsDefaultETAMinimumSamples
+	}
+	window := OpsETASampleWindow{
+		Phase:             phase,
+		StartedAt:         startedAt,
+		CompletedSamples:  completedSamples,
+		Total:             total,
+		MinimumSamplesMet: completedSamples >= minimumSamples,
+	}
+	if startedAt.IsZero() || now.IsZero() || !now.After(startedAt) {
+		return window
+	}
+	elapsed := now.Sub(startedAt)
+	if elapsed < OpsMinimumTimingElapsed {
+		return window
+	}
+	window.Elapsed = elapsed
+	if completedSamples <= 0 || window.Elapsed <= 0 {
+		return window
+	}
+	rate := float64(completedSamples) / window.Elapsed.Seconds()
+	if rate <= 0 {
+		return window
+	}
+	window.Rate = &rate
+	if !window.MinimumSamplesMet || total <= 0 || completedSamples >= total {
+		return window
+	}
+	remaining := time.Duration(float64(total-completedSamples) / rate * float64(time.Second))
+	if remaining > 0 {
+		window.Remaining = &remaining
+	}
+	return window
 }

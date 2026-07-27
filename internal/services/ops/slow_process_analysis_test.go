@@ -256,6 +256,88 @@ func TestSlowProcessAnalysisElementEnrichmentProgressTracksEachFrozenRoot(t *tes
 		{Phase: "loading runtime elements", CoreResource: "process instance(s)", Done: 1, Total: 2},
 		{Phase: "loading runtime elements", CoreResource: "process instance(s)", Done: 2, Total: 2},
 	}, frozen)
+	require.Zero(t, frozen[1].Elapsed)
+	require.Nil(t, frozen[1].Rate)
+	require.Nil(t, frozen[1].ETA)
+	require.Zero(t, frozen[2].Elapsed)
+	require.Nil(t, frozen[2].Rate)
+	require.Nil(t, frozen[2].ETA)
+}
+
+// TestSlowProcessAnalysisElementEnrichmentProgressShowsETAAfterSampleThreshold verifies ETA appears only after enough timed roots complete.
+func TestSlowProcessAnalysisElementEnrichmentProgressShowsETAAfterSampleThreshold(t *testing.T) {
+	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	roots := []d.ProcessInstance{
+		slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(2*time.Minute)),
+		slowProcessAnalysisFixtureProcessInstance("2251799813685250", start, start.Add(3*time.Minute)),
+		slowProcessAnalysisFixtureProcessInstance("2251799813685251", start, start.Add(4*time.Minute)),
+		slowProcessAnalysisFixtureProcessInstance("2251799813685252", start, start.Add(5*time.Minute)),
+		slowProcessAnalysisFixtureProcessInstance("2251799813685253", start, start.Add(6*time.Minute)),
+	}
+	piAPI := stubProcessInstanceAPI{
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			for _, root := range roots {
+				if root.Key == filter.Key {
+					return []d.ProcessInstance{root}, nil
+				}
+			}
+			return nil, fmt.Errorf("%w: missing", d.ErrNotFound)
+		},
+	}
+	elementAPI := stubSlowProcessAnalysisElementAPI{
+		search: func(_ context.Context, query d.ElementSearchQuery, _ ...services.CallOption) (d.ElementSearchResult, error) {
+			return d.ElementSearchResult{Items: []d.Element{
+				slowProcessAnalysisFixtureElement(query.ProcessInstanceKey, query.ProcessInstanceKey+"-el", "ReserveStock", start, start.Add(time.Minute)),
+			}}, nil
+		},
+	}
+	fakeNowValues := []time.Time{
+		start,
+		start.Add(time.Second),
+		start.Add(2 * time.Second),
+		start.Add(3 * time.Second),
+		start.Add(4 * time.Second),
+		start.Add(5 * time.Second),
+	}
+	fakeNowIndex := 0
+	previousNow := slowProcessAnalysisNow
+	slowProcessAnalysisNow = func() time.Time {
+		if fakeNowIndex >= len(fakeNowValues) {
+			return fakeNowValues[len(fakeNowValues)-1]
+		}
+		out := fakeNowValues[fakeNowIndex]
+		fakeNowIndex++
+		return out
+	}
+	t.Cleanup(func() { slowProcessAnalysisNow = previousNow })
+	var frozen []d.OpsFrozenScopeProgress
+
+	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, elementAPI, toolx.V88).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
+		SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
+		InputKeys:     typex.Keys{roots[0].Key, roots[1].Key, roots[2].Key, roots[3].Key, roots[4].Key},
+		Progress: func(event d.OpsProgressEvent) {
+			if event.Kind == d.OpsProgressEventKindFrozenScope && event.FrozenScope != nil {
+				frozen = append(frozen, *event.FrozenScope)
+			}
+		},
+	})
+
+	require.NoError(t, err)
+	require.Len(t, frozen, 6)
+	require.Nil(t, frozen[1].ETA)
+	require.Nil(t, frozen[2].ETA)
+	require.NotNil(t, frozen[3].ETA)
+	require.NotNil(t, frozen[3].Rate)
+	require.Positive(t, frozen[3].Elapsed)
+	require.Positive(t, *frozen[3].ETA)
+	require.NotNil(t, frozen[4].ETA)
+	require.Nil(t, frozen[5].ETA)
+	require.NotNil(t, got.FrozenScopeProgress)
+	require.Equal(t, 5, got.FrozenScopeProgress.Done)
+	require.Equal(t, 5, got.FrozenScopeProgress.Total)
+	require.Positive(t, got.FrozenScopeProgress.Elapsed)
+	require.NotNil(t, got.FrozenScopeProgress.Rate)
+	require.Nil(t, got.FrozenScopeProgress.ETA)
 }
 
 // TestSlowProcessAnalysisListenerProgressUsesListenerPhase verifies listener enrichment reports the listener job phase with exact counters.

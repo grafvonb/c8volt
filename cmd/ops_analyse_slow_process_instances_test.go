@@ -486,12 +486,22 @@ func TestOpsAnalyseSlowProcessInstancesRoutesDefaultProgressToActivity(t *testin
 		Done:         48,
 		Total:        800,
 	}})
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindETA, ETA: &ops.ETASampleWindow{
+		Phase:             "loading runtime elements",
+		CompletedSamples:  48,
+		Total:             800,
+		Elapsed:           2 * time.Minute,
+		MinimumSamplesMet: true,
+		Rate:              ptrFloat64(4.25),
+		Remaining:         ptrDuration(95 * time.Second),
+	}})
 
 	require.Empty(t, stdout.String())
 	require.Empty(t, stderr.String())
 	require.Equal(t, []string{
 		"discovering process instances, page 2/4, 1500 seen, 1498 selected",
 		"loading runtime elements, 48/800 process instance(s)",
+		"loading runtime elements, 48/800 sample(s), 2m0s elapsed, ~4.2/s, ~1m35s remaining",
 	}, sink.Updates())
 }
 
@@ -714,4 +724,14 @@ func resetOpsSlowProcessAnalysisTestFlags(t *testing.T) *cobra.Command {
 	flags.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithFullTimeline, "with-full-timeline", false, "")
 	flags.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithListeners, "with-listeners", false, "")
 	return cmd
+}
+
+// ptrFloat64 returns a stable pointer for compact progress callback fixtures.
+func ptrFloat64(value float64) *float64 {
+	return &value
+}
+
+// ptrDuration returns a stable pointer for compact progress callback fixtures.
+func ptrDuration(value time.Duration) *time.Duration {
+	return &value
 }

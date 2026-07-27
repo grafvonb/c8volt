@@ -22,6 +22,9 @@ Started: 2026-07-27T10:17:40Z
 - Slow-process machine-mode safety is covered through callback-level tests: JSON, keys-only, quiet, and automation channels suppress preflight/progress stdout, stderr, prompts, and transient activity. Debug mode now reaches the shared progress channel through `flagDebug`.
 - Slow-process JSON result rendering carries auditable `preflightScope` and `frozenScopeProgress` metadata, while transient callback events remain excluded from JSON and keys-only output.
 - Slow-process output-mode capability metadata now documents that JSON stdout remains a single document and keys-only stdout remains one process-instance key per line without progress/preflight text.
+- ETA timing now uses `internal/domain.NewOpsETASampleWindow` with `OpsDefaultETAMinimumSamples=3` and `OpsMinimumTimingElapsed=1s`; elapsed/rate/remaining stay absent for sub-threshold fast phases and ETA requires exact frozen totals plus remaining work.
+- Slow-process enrichment updates frozen-scope progress with elapsed/rate/ETA after each root once timing is useful. Completion events keep elapsed/rate but omit stale ETA when done equals total.
+- `cmd/ops_progress.go` renders frozen progress with percent complete only when elapsed timing is present and total is exact/nonzero; approximate throughput/remaining use `~` wording. Standalone ETA events are ignored unless `opsETAAllowed` passes.
 
 ## Decisions
 - For this feature, transient progress should reuse the existing activity context path rather than stdout or a new global writer.
@@ -35,6 +38,7 @@ Started: 2026-07-27T10:17:40Z
 - Lower-bound reported totals are useful for preflight/progress wording but cannot be treated as exact completion or mutation confirmation totals.
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1` currently trips an unrelated date-sensitive `TestGetProcessInstancePagingFlow` assertion that rejects the current "126 days ago" fixture text; use focused affected command patterns unless that broader test is updated.
 - Output-mode contract notes participate in exact `OutputModeContract` comparisons; update both command metadata tests and ops-specific contract tests when adding notes.
+- Fast service tests may see zero elapsed/rate by design because timing facts are suppressed below one second; use the `slowProcessAnalysisNow` test clock in `internal/services/ops` for deterministic ETA samples instead of sleeping.
 
 ## Reusable Commands
 - `GOCACHE=/tmp/c8volt-gocache go test ./toolx/logging ./testx/activitysink -count=1`
@@ -42,6 +46,7 @@ Started: 2026-07-27T10:17:40Z
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'OpsAnalyseSlowProcessInstances|OpsProgress|CommandContractOpsAnalyseSlowProcessInstances' -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/ops -run 'ClientAnalyseSlowProcessInstances' -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/ops -run 'Preflight|Progress|SlowProcess' -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test ./internal/domain -run 'OpsETA|OpsProgress|ETASample' -count=1`
 
 ## Do Not Repeat
 - Do not add endpoint names, cursors, request URLs, or per-resource lifecycle chatter to default human progress.
@@ -49,4 +54,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should start US4 tasks T038-T043. Preserve US3 guarantees: JSON/keys-only/quiet/automation modes suppress transient and durable progress callbacks, JSON exposes only stable `preflightScope`/`frozenScopeProgress` result metadata, and keys-only output remains exactly one unique process-instance key per line.
+- Next iteration should start Phase 7 coverage rollout inventory tasks T044-T048 only. Preserve US4 guarantees: ETA/rate/elapsed are omitted for sub-threshold fast phases, ETA requires at least three completed samples and an exact frozen total with remaining work, and JSON/keys-only/quiet/automation stdout safety from US3 remains unchanged.

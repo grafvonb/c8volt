@@ -167,6 +167,9 @@ func formatOpsFrozenScopeProgress(progress ops.FrozenScopeProgress) string {
 		fmt.Sprintf("%d/%d %s", progress.Done, progress.Total, resource),
 	}
 	if progress.Elapsed > 0 {
+		if progress.Total > 0 {
+			parts = append(parts, fmt.Sprintf("%.1f%%", float64(progress.Done)*100/float64(progress.Total)))
+		}
 		parts = append(parts, fmt.Sprintf("%s elapsed", progress.Elapsed.Round(time.Second)))
 	}
 	if progress.Rate != nil && *progress.Rate > 0 {
@@ -184,6 +187,27 @@ func formatOpsFrozenScopeProgress(progress ops.FrozenScopeProgress) string {
 // opsETAAllowed returns true only when ETA has enough exact-scope timing data to be useful.
 func opsETAAllowed(window ops.ETASampleWindow) bool {
 	return window.MinimumSamplesMet && window.Total > 0 && window.CompletedSamples > 0 && window.Elapsed > 0 && window.Remaining != nil && *window.Remaining > 0
+}
+
+// formatOpsETASampleWindow renders standalone ETA samples for workflows that emit timing facts separately from counters.
+func formatOpsETASampleWindow(window ops.ETASampleWindow) string {
+	if !opsETAAllowed(window) {
+		return ""
+	}
+	parts := []string{
+		strings.TrimSpace(window.Phase),
+		fmt.Sprintf("%d/%d sample(s)", window.CompletedSamples, window.Total),
+	}
+	if window.Elapsed > 0 {
+		parts = append(parts, fmt.Sprintf("%s elapsed", window.Elapsed.Round(time.Second)))
+	}
+	if window.Rate != nil && *window.Rate > 0 {
+		parts = append(parts, fmt.Sprintf("~%.1f/s", *window.Rate))
+	}
+	if window.Remaining != nil && *window.Remaining > 0 {
+		parts = append(parts, fmt.Sprintf("~%s remaining", window.Remaining.Round(time.Second)))
+	}
+	return strings.Join(nonEmptyOpsProgressParts(parts), ", ")
 }
 
 // nonEmptyOpsProgressParts trims empty formatter fragments before joining human progress text.

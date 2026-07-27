@@ -314,6 +314,10 @@ func configureOpsSlowProcessAnalysisPreflight(cmd *cobra.Command, request *ops.S
 			if event.FrozenScope != nil {
 				printOpsSlowProcessAnalysisProgress(cmd, formatOpsFrozenScopeProgress(*event.FrozenScope), channel)
 			}
+		case ops.ProgressEventKindETA:
+			if event.ETA != nil && opsETAAllowed(*event.ETA) {
+				printOpsSlowProcessAnalysisProgress(cmd, formatOpsETASampleWindow(*event.ETA), channel)
+			}
 		}
 	}
 	request.ConfirmPreflight = func(scope ops.PreflightScope) error {

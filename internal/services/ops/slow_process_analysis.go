@@ -19,11 +19,14 @@ import (
 	"github.com/grafvonb/c8volt/toolx/pool"
 )
 
+// slowProcessAnalysisNow is isolated so timing tests can use deterministic enrichment samples without sleeping.
+var slowProcessAnalysisNow = time.Now
+
 // AnalyseSlowProcessInstances coordinates read-only slow process analysis below the command layer.
 func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.SlowProcessAnalysisRequest, opts ...services.CallOption) (d.SlowProcessAnalysisResult, error) {
 	capturedAt := request.CapturedNow
 	if capturedAt.IsZero() {
-		capturedAt = time.Now().UTC()
+		capturedAt = slowProcessAnalysisNow().UTC()
 		request.CapturedNow = capturedAt
 	}
 	result := d.SlowProcessAnalysisResult{
@@ -83,11 +86,10 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 			}
 		}
 		var err error
-		enriched, err = slowProcessAnalysisEnrichProcessInstances(ctx, s, request, instances, frozenProgress, opts...)
+		enriched, frozenProgress, err = slowProcessAnalysisEnrichProcessInstances(ctx, s, request, instances, frozenProgress, opts...)
 		if err != nil {
 			return result, err
 		}
-		frozenProgress.Done = len(instances)
 	}
 	if len(instances) == 0 {
 		frozenProgress.Done = len(instances)
@@ -148,9 +150,10 @@ func slowProcessAnalysisEnrichmentProgressPhase(request d.SlowProcessAnalysisReq
 	return "loading runtime elements"
 }
 
-// slowProcessAnalysisEnrichProcessInstances emits exact frozen-scope progress after each root enrichment succeeds.
-func slowProcessAnalysisEnrichProcessInstances(ctx context.Context, s *Service, request d.SlowProcessAnalysisRequest, instances []d.ProcessInstance, progress d.OpsFrozenScopeProgress, opts ...services.CallOption) (d.ElementEnrichedProcessInstances, error) {
+// slowProcessAnalysisEnrichProcessInstances emits exact frozen-scope progress and timing samples after each root enrichment succeeds.
+func slowProcessAnalysisEnrichProcessInstances(ctx context.Context, s *Service, request d.SlowProcessAnalysisRequest, instances []d.ProcessInstance, progress d.OpsFrozenScopeProgress, opts ...services.CallOption) (d.ElementEnrichedProcessInstances, d.OpsFrozenScopeProgress, error) {
 	out := d.ElementEnrichedProcessInstances{Items: make([]d.ElementEnrichedProcessInstance, 0, len(instances))}
+	startedAt := slowProcessAnalysisNow()
 	for i, pi := range instances {
 		var (
 			enriched d.ElementEnrichedProcessInstances
@@ -159,20 +162,27 @@ func slowProcessAnalysisEnrichProcessInstances(ctx context.Context, s *Service, 
 		if request.WithListeners {
 			enriched, err = pisvc.EnrichProcessInstancesWithElementListeners(ctx, s.elementAPI, s.jobAPI, []d.ProcessInstance{pi}, opts...)
 			if err != nil {
-				return d.ElementEnrichedProcessInstances{}, fmt.Errorf("lookup runtime elements and listener jobs for slow analysis: %w", err)
+				return d.ElementEnrichedProcessInstances{}, progress, fmt.Errorf("lookup runtime elements and listener jobs for slow analysis: %w", err)
 			}
 		} else {
 			enriched, err = pisvc.EnrichProcessInstancesWithElements(ctx, s.elementAPI, []d.ProcessInstance{pi}, opts...)
 			if err != nil {
-				return d.ElementEnrichedProcessInstances{}, fmt.Errorf("lookup runtime elements for slow analysis: %w", err)
+				return d.ElementEnrichedProcessInstances{}, progress, fmt.Errorf("lookup runtime elements for slow analysis: %w", err)
 			}
 		}
 		out.Items = append(out.Items, enriched.Items...)
 		progress.Done = i + 1
+		progress.Elapsed, progress.Rate, progress.ETA = slowProcessAnalysisFrozenScopeTiming(progress, startedAt, slowProcessAnalysisNow())
 		slowProcessAnalysisEmitProgress(request, slowProcessAnalysisFrozenScopeEvent(progress))
 	}
 	out.Total = int32(len(out.Items))
-	return out, nil
+	return out, progress, nil
+}
+
+// slowProcessAnalysisFrozenScopeTiming derives visible elapsed, rate, and ETA facts from the shared domain sample window.
+func slowProcessAnalysisFrozenScopeTiming(progress d.OpsFrozenScopeProgress, startedAt time.Time, now time.Time) (time.Duration, *float64, *time.Duration) {
+	window := d.NewOpsETASampleWindow(progress.Phase, startedAt, now, progress.Done, progress.Total, d.OpsDefaultETAMinimumSamples)
+	return window.Elapsed, window.Rate, window.Remaining
 }
 
 // slowProcessAnalysisApplyRootDurationFilter hides roots whose measured whole-process duration is not above the threshold.

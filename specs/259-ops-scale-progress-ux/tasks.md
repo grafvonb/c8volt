@@ -125,15 +125,15 @@
 
 ### Tests for User Story 4
 
-- [ ] T038 [P] [US4] Add ETA sample-window unit tests for minimum samples, unknown totals, exact totals, and approximate wording in `cmd/ops_progress_test.go`
-- [ ] T039 [P] [US4] Add controlled slow-process enrichment timing tests for ETA appearance and omission in `internal/services/ops/slow_process_analysis_test.go`
+- [x] T038 [P] [US4] Add ETA sample-window unit tests for minimum samples, unknown totals, exact totals, and approximate wording in `cmd/ops_progress_test.go`
+- [x] T039 [P] [US4] Add controlled slow-process enrichment timing tests for ETA appearance and omission in `internal/services/ops/slow_process_analysis_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T040 [US4] Implement ETA sample-window calculation in `internal/domain/ops_progress.go`
-- [ ] T041 [US4] Add command formatter support for elapsed time, throughput, percent complete, and approximate remaining time in `cmd/ops_progress.go`
-- [ ] T042 [US4] Attach ETA sample updates to slow-process frozen-scope enrichment progress in `internal/services/ops/slow_process_analysis.go`
-- [ ] T043 [US4] Render slow-process ETA only when the shared gating rules allow it in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T040 [US4] Implement ETA sample-window calculation in `internal/domain/ops_progress.go`
+- [x] T041 [US4] Add command formatter support for elapsed time, throughput, percent complete, and approximate remaining time in `cmd/ops_progress.go`
+- [x] T042 [US4] Attach ETA sample updates to slow-process frozen-scope enrichment progress in `internal/services/ops/slow_process_analysis.go`
+- [x] T043 [US4] Render slow-process ETA only when the shared gating rules allow it in `cmd/ops_analyse_slow_process_instances.go`
 
 **Checkpoint**: ETA behavior is available and responsibly gated for the proof command.
 
