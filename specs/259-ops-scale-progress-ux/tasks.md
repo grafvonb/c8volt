@@ -18,11 +18,11 @@
 
 **Purpose**: Confirm implementation context and existing local contracts before code changes begin.
 
-- [ ] T001 Read and apply Ralph implementation rules in `specs/ralph-implementation-rules.md` before any Ralph-driven implementation work
-- [ ] T002 Review feature artifacts `specs/259-ops-scale-progress-ux/spec.md`, `specs/259-ops-scale-progress-ux/plan.md`, `specs/259-ops-scale-progress-ux/data-model.md`, and `specs/259-ops-scale-progress-ux/contracts/cli-progress-contract.md`
-- [ ] T003 [P] Review existing activity writer and activity sink behavior in `toolx/logging/activity.go`, `toolx/logging/activity_test.go`, and `testx/activitysink/activity_sink.go`
-- [ ] T004 [P] Review existing process-instance paging and reported-total contracts in `cmd/get_processinstance_paging.go`, `internal/domain/processinstance.go`, and `internal/services/processinstance/search.go`
-- [ ] T005 [P] Review the current slow-process analysis discovery and enrichment flow in `cmd/ops_analyse_slow_process_instances.go`, `internal/services/ops/slow_process_analysis.go`, and `c8volt/ops/model.go`
+- [x] T001 Read and apply Ralph implementation rules in `specs/ralph-implementation-rules.md` before any Ralph-driven implementation work
+- [x] T002 Review feature artifacts `specs/259-ops-scale-progress-ux/spec.md`, `specs/259-ops-scale-progress-ux/plan.md`, `specs/259-ops-scale-progress-ux/data-model.md`, and `specs/259-ops-scale-progress-ux/contracts/cli-progress-contract.md`
+- [x] T003 [P] Review existing activity writer and activity sink behavior in `toolx/logging/activity.go`, `toolx/logging/activity_test.go`, and `testx/activitysink/activity_sink.go`
+- [x] T004 [P] Review existing process-instance paging and reported-total contracts in `cmd/get_processinstance_paging.go`, `internal/domain/processinstance.go`, and `internal/services/processinstance/search.go`
+- [x] T005 [P] Review the current slow-process analysis discovery and enrichment flow in `cmd/ops_analyse_slow_process_instances.go`, `internal/services/ops/slow_process_analysis.go`, and `c8volt/ops/model.go`
 
 ---
 
