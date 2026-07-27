@@ -257,6 +257,46 @@ func TestClient_SearchProcessDefinitionsLatest_MapsProcessDefinitionSelectorFilt
 	assert.Equal(t, "order-process", items.Items[0].BpmnProcessId)
 }
 
+func TestClient_SearchProcessDefinitionsPages_MapsTraversalRequestAndVisitor(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	pdAPI := &stubProcessDefinitionAPI{
+		searchProcessDefinitionsPage: func(_ context.Context, filter d.ProcessDefinitionFilter, page d.ProcessDefinitionPageRequest, opts ...services.CallOption) (d.ProcessDefinitionPage, error) {
+			assert.Equal(t, d.ProcessDefinitionFilter{BpmnProcessId: "order-process"}, filter)
+			assert.Equal(t, d.ProcessDefinitionPageRequest{Size: 2}, page)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.ProcessDefinitionPage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				ReportedTotal: &d.ProcessDefinitionReportedTotal{
+					Count: 1,
+					Kind:  d.ProcessDefinitionReportedTotalKindExact,
+				},
+				Items: []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process"}},
+			}, nil
+		},
+	}
+
+	cli := New(pdAPI, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
+	var steps []ProcessDefinitionSearchPageStep
+	result, err := cli.SearchProcessDefinitionsPages(ctx, ProcessDefinitionSearchRequest{
+		Filter: ProcessDefinitionFilter{BpmnProcessId: "order-process"},
+		Page:   ProcessDefinitionPageRequest{Size: 2},
+	}, func(step ProcessDefinitionSearchPageStep) (ProcessDefinitionSearchPageAction, error) {
+		steps = append(steps, step)
+		return ProcessDefinitionSearchPageActionContinue, nil
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Len(t, result.Items, 1)
+	require.Len(t, steps, 1)
+	require.NotNil(t, steps[0].Page.ReportedTotal)
+	assert.Equal(t, int64(1), steps[0].Page.ReportedTotal.Count)
+	assert.Equal(t, ProcessDefinitionReportedTotalKindExact, steps[0].Page.ReportedTotal.Kind)
+	assert.EqualValues(t, 1, steps[0].CumulativeCount)
+}
+
 // TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter verifies that
 // facade filters, presence booleans, and verbose options reach the domain layer
 // without losing exact date-bound strings.

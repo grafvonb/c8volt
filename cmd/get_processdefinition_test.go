@@ -133,8 +133,6 @@ func TestGetProcessDefinitionBpmnSelectorVisiblePreservesListing(t *testing.T) {
 
 // TestGetProcessDefinitionSearchVerboseProgress defines the process-definition progress contract for broad listing.
 func TestGetProcessDefinitionSearchVerboseProgress(t *testing.T) {
-	t.Skip("pending T062 process-definition progress routing")
-
 	var requests []map[string]any
 	srv := newProcessDefinitionSearchServerResponses(t, &requests,
 		`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"},{"processDefinitionKey":"2251799813685256","processDefinitionId":"payment","name":"payment","version":2,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":3,"hasMoreTotalItems":true,"endCursor":"pd-page-2"}}`,

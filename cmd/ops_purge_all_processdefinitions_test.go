@@ -385,8 +385,6 @@ func TestOpsPurgeAllProcessDefinitionsPagedConfirmationReusesFrozenCandidates(t 
 
 // TestOpsPurgeAllProcessDefinitionsVerboseDiscoveryProgress defines APD discovery progress routing.
 func TestOpsPurgeAllProcessDefinitionsVerboseDiscoveryProgress(t *testing.T) {
-	t.Skip("pending T062 all-process-definitions purge progress routing")
-
 	resetOpsPurgeAllProcessDefinitionsFlagState()
 	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
 
@@ -414,8 +412,8 @@ func TestOpsPurgeAllProcessDefinitionsVerboseDiscoveryProgress(t *testing.T) {
 	require.Contains(t, stderr, "discovering process definitions, page 2/2, 2 seen")
 	require.NotContains(t, stdout, "preflight:")
 	require.NotContains(t, stdout, "discovering process definitions")
-	require.Contains(t, stdout, "dry run: purge all process definitions")
-	require.Contains(t, stdout, "candidate process definitions: 2")
+	require.Contains(t, stderr, "dry run: purge all process definitions")
+	require.Contains(t, stderr, "candidate process definitions: 2")
 }
 
 // TestOpsPurgeAllProcessDefinitionsLimitJSONOutput verifies APD flags reach discovery and machine output.

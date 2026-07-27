@@ -39,7 +39,9 @@ Started: 2026-07-27T10:17:40Z
 - Basic inspection searches now route first-page preflight and page discovery through `printBasicSearchOpsProgress` in `cmd/get_processinstance_paging.go`. Default human mode updates activity only; verbose/debug write durable stderr; JSON, keys-only, quiet, and automation suppress progress text through `opsProgressChannelForMode`.
 - `get process-instance` progress only trusts backend `ReportedTotal` when `canUsePIReportedTotal()` allows it. Relationship/incident local-filter modes intentionally show unknown totals while still reporting page/seen progress.
 - `get incident`, `get job`, and `get element` convert their facade `ReportedTotal` and overflow metadata into `ops.TotalCertainty`/`ops.OverflowState` in their search command files before using the shared command progress renderer.
-- Process-definition rollout tests now live in `cmd/get_processdefinition_test.go`, `cmd/ops_purge_all_processdefinitions_test.go`, and `internal/services/ops/all_process_definitions_purge_test.go`. The future progress contracts are intentionally skipped pending T062 so this test-only work unit keeps the repository green; T062 must remove those skips as it implements the behavior.
+- Process-definition rollout now has service-owned traversal in `internal/services/processdefinition.SearchProcessDefinitionsPages`, facade mapping through `c8volt/process.SearchProcessDefinitionsPages`, and command-side progress routing for broad `get process-definition`.
+- `get process-definition` broad non-latest listing accepts `--batch-size`, traverses all pages below the facade, emits shared preflight/page progress through `printBasicSearchOpsProgress`, and keeps JSON/keys-only stdout progress-free.
+- `ops purge all-process-definitions` requests now carry optional progress callbacks; internal discovery emits process-definition preflight and page events from page metadata, and the command renders them through the shared ops progress channel while machine modes stay suppressed.
 - `get process-definition` machine-output safety is already active: JSON and keys-only broad listings must keep stdout progress-free and stderr empty while returning the expected process-definition payload/keys.
 
 ## Decisions
@@ -72,4 +74,4 @@ Started: 2026-07-27T10:17:40Z
 - Do not hand-edit generated CLI docs; update command source and run `make docs-content` when help text changes.
 
 ## Current Handoff
-- Next iteration should implement T062 process-definition preflight/page progress for `get process-definition` and `ops purge all-process-definitions`; remove the pending `t.Skip` calls in the new T061 progress contract tests only when the matching service/facade/command behavior is wired and passing.
+- Next iteration should implement T063 process-instance mutation progress tests for destructive preflight, planning counters, mutation counters, and JSON/quiet/automation safety without starting T064 implementation.

@@ -70,6 +70,7 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			ReportFormat:  flagOpsPurgeAllPDReportFormat,
 			StartedAt:     time.Now().UTC(),
 		}
+		configureOpsPurgeAllProcessDefinitionsProgress(cmd, &request)
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
@@ -192,6 +193,25 @@ func formatOpsPurgeAllProcessDefinitionsActivity(request ops.AllProcessDefinitio
 		return "checking process-definition delete impact"
 	}
 	return "running process-definition purge workflow"
+}
+
+func configureOpsPurgeAllProcessDefinitionsProgress(cmd *cobra.Command, request *ops.AllProcessDefinitionsPurgeRequest) {
+	if request == nil {
+		return
+	}
+	channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
+	request.Progress = func(event ops.ProgressEvent) {
+		switch event.Kind {
+		case ops.ProgressEventKindPreflight:
+			if event.Preflight != nil {
+				printOpsPreflightScope(cmd, *event.Preflight, channel)
+			}
+		case ops.ProgressEventKindPage:
+			if event.Page != nil {
+				printOpsSlowProcessAnalysisProgress(cmd, formatOpsPageProgress(*event.Page, "process definition(s)"), channel)
+			}
+		}
+	}
 }
 
 // rejectOpsPurgeAllProcessDefinitionsPlanRequiringForce blocks mutation before prompting when active process instances are affected.

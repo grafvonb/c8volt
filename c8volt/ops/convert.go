@@ -1396,6 +1396,7 @@ func toDomainAllProcessDefinitionsPurgeRequest(x AllProcessDefinitionsPurgeReque
 			CandidatesFrozen: x.DiscoveredScopeStatus.CandidatesFrozen,
 		},
 		StartedAt: x.StartedAt,
+		Progress:  toDomainProgressFunc(x.Progress),
 	}
 	if x.DiscoveredCandidateProcessDefinitionKeys != nil {
 		out.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessDefinitionKeys...)
@@ -1437,6 +1438,7 @@ func fromDomainAllProcessDefinitionsPurgeRequest(x d.AllProcessDefinitionsPurgeR
 		ReportFormat:          x.ReportFormat,
 		DiscoveredScopeStatus: fromDomainDiscoveryScopeStatus(x.DiscoveredScopeStatus),
 		StartedAt:             x.StartedAt,
+		Progress:              fromDomainProgressFunc(x.Progress),
 	}
 	if x.DiscoveredCandidateProcessDefinitionKeys != nil {
 		out.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessDefinitionKeys...)

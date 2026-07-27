@@ -945,6 +945,7 @@ type AllProcessDefinitionsPurgeRequest struct {
 	DiscoveredCandidateProcessDefinitionKeys typex.Keys                 `json:"discoveredCandidateProcessDefinitionKeys,omitempty"`
 	DiscoveredScopeStatus                    DiscoveryScopeStatus       `json:"discoveredScopeStatus,omitempty"`
 	StartedAt                                time.Time                  `json:"startedAt,omitempty"`
+	Progress                                 func(ProgressEvent)        `json:"-"`
 }
 
 // ProcessDefinitionDiscoveryResult captures immutable process-definition discovery output.

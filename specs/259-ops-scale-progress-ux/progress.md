@@ -266,3 +266,35 @@ Started: 2026-07-27 12:17:40
 **Learnings**:
 - Process-definition progress contracts are now captured as pending tests for T062, with active JSON/keys-only safety coverage kept green in the current codebase.
 ---
+---
+## Iteration 5 - 2026-07-27 14:42
+**Work Unit**: T062 Process-definition shared preflight/page progress
+**Tasks Completed**:
+- [x] T062: Implement shared process-definition preflight/page progress for `get process-definition` and `ops purge all-process-definitions`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- c8volt/process/api.go
+- c8volt/process/client.go
+- c8volt/process/client_test.go
+- c8volt/process/convert.go
+- c8volt/process/model.go
+- cmd/get_processdefinition.go
+- cmd/get_processdefinition_test.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- cmd/process_api_stub_test.go
+- internal/domain/ops_all_process_definitions_purge.go
+- internal/domain/processdefinition.go
+- internal/services/ops/all_process_definitions_purge.go
+- internal/services/ops/all_process_definitions_purge_test.go
+- internal/services/processdefinition/search.go
+- internal/services/processdefinition/search_test.go
+- specs/259-ops-scale-progress-ux/tasks.md
+- specs/259-ops-scale-progress-ux/ralph-memory.md
+- specs/259-ops-scale-progress-ux/progress.md
+**Learnings**:
+- Process-definition broad listing and all-process-definition purge now share process-definition preflight/page progress while traversal remains service-owned and machine stdout remains progress-free.
+---

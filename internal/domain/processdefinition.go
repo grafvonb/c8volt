@@ -89,6 +89,44 @@ type ProcessDefinitionPage struct {
 	EndCursor     string
 }
 
+// ProcessDefinitionSearchPageAction tells service-owned page traversal whether
+// the caller needs more process-definition pages after observing the current page.
+type ProcessDefinitionSearchPageAction string
+
+const (
+	// ProcessDefinitionSearchPageActionContinue keeps collecting the next available page.
+	ProcessDefinitionSearchPageActionContinue ProcessDefinitionSearchPageAction = "continue"
+	// ProcessDefinitionSearchPageActionStop stops traversal after the current page.
+	ProcessDefinitionSearchPageActionStop ProcessDefinitionSearchPageAction = "stop"
+)
+
+// ProcessDefinitionSearchRequest contains process-definition search mechanics
+// while callers retain CLI rendering, prompts, and mode selection.
+type ProcessDefinitionSearchRequest struct {
+	Filter ProcessDefinitionFilter
+	Page   ProcessDefinitionPageRequest
+	Limit  int32
+}
+
+// ProcessDefinitionSearchPageStep carries one selected process-definition page
+// plus traversal state while keeping page advancement and limit trimming below
+// command ownership.
+type ProcessDefinitionSearchPageStep struct {
+	Page            ProcessDefinitionPage
+	CumulativeCount int32
+	LimitReached    bool
+}
+
+// ProcessDefinitionSearchPageVisitor observes selected pages during service-owned traversal.
+type ProcessDefinitionSearchPageVisitor func(ProcessDefinitionSearchPageStep) (ProcessDefinitionSearchPageAction, error)
+
+// ProcessDefinitionSearchPagesResult captures a full or caller-stopped process-definition discovery.
+type ProcessDefinitionSearchPagesResult struct {
+	Items []ProcessDefinition
+	Limit int32
+	Pages int32
+}
+
 func SortByVersionDesc(pds []ProcessDefinition) {
 	slices.SortFunc(pds, func(a, b ProcessDefinition) int {
 		switch {
