@@ -328,11 +328,21 @@ func validateVolumeRunHumanResult(result commandResult, wantCount int) error {
 	if !strings.Contains(result.Stdout, fmt.Sprintf("found: %d", wantCount)) {
 		return fmt.Errorf("run pi human output missing found count %d: %q", wantCount, compactLogSnippet(result.Stdout, 300))
 	}
-	if !strings.Contains(strings.ToLower(result.Stderr), "waiting for pi") {
-		return fmt.Errorf("run pi human stderr missing visible wait progress: %q", compactLogSnippet(result.Stderr, 300))
+	if err := requireRunPIHumanBulkStderrClean(result.Stderr); err != nil {
+		return err
 	}
 	if got := len(extractNumericTokensFromOutput(result.Stdout)); got < wantCount {
 		return fmt.Errorf("run pi human output exposed %d numeric keys, want at least %d", got, wantCount)
+	}
+	return nil
+}
+
+func requireRunPIHumanBulkStderrClean(stderr string) error {
+	normalized := strings.ToLower(stderr)
+	for _, legacyProgress := range []string{"waiting for pi", "created; pd", "create requested"} {
+		if strings.Contains(normalized, legacyProgress) {
+			return fmt.Errorf("run pi human stderr leaked legacy progress %q: %q", legacyProgress, compactLogSnippet(stderr, 300))
+		}
 	}
 	return nil
 }
