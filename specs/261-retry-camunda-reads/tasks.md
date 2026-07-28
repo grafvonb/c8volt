@@ -24,10 +24,10 @@
 
 **Purpose**: Confirm feature scope and nearby repository patterns before changing code.
 
-- [ ] T001 Read feature and repository guidance in `specs/261-retry-camunda-reads/spec.md`, `specs/261-retry-camunda-reads/plan.md`, `specs/261-retry-camunda-reads/contracts/http-read-retry-contract.md`, `AGENTS.md`, and `specs/ralph-implementation-rules.md`
-- [ ] T002 [P] Review current shared HTTP service and transport chain in `internal/services/httpc/service.go` and `internal/services/httpc/round_trippers.go`
-- [ ] T003 [P] Review existing retry timing and logging style in `internal/services/retry.go` and `internal/services/retry_test.go`
-- [ ] T004 [P] Review final HTTP response/error-body mapping in `internal/services/httpc/httpmap.go` and `internal/services/common/response.go`
+- [x] T001 Read feature and repository guidance in `specs/261-retry-camunda-reads/spec.md`, `specs/261-retry-camunda-reads/plan.md`, `specs/261-retry-camunda-reads/contracts/http-read-retry-contract.md`, `AGENTS.md`, and `specs/ralph-implementation-rules.md`
+- [x] T002 [P] Review current shared HTTP service and transport chain in `internal/services/httpc/service.go` and `internal/services/httpc/round_trippers.go`
+- [x] T003 [P] Review existing retry timing and logging style in `internal/services/retry.go` and `internal/services/retry_test.go`
+- [x] T004 [P] Review final HTTP response/error-body mapping in `internal/services/httpc/httpmap.go` and `internal/services/common/response.go`
 
 ---
 
@@ -37,9 +37,9 @@
 
 **CRITICAL**: No user story implementation should begin until this phase is complete.
 
-- [ ] T005 Create `internal/services/httpc/read_retry.go` with a package-local `ReadRetryTransport`, retry policy defaults, delay helper, context-aware sleep helper, and base transport delegation shape
-- [ ] T006 Create `internal/services/httpc/http_read_retry_test.go` with package-local round trip test doubles and a fast retry policy helper for deterministic tests
-- [ ] T007 Update transport unwrapping support in `internal/services/httpc/service.go` so activity sink wiring still reaches `LogTransport` after the retry transport is installed
+- [x] T005 Create `internal/services/httpc/read_retry.go` with a package-local `ReadRetryTransport`, retry policy defaults, delay helper, context-aware sleep helper, and base transport delegation shape
+- [x] T006 Create `internal/services/httpc/http_read_retry_test.go` with package-local round trip test doubles and a fast retry policy helper for deterministic tests
+- [x] T007 Update transport unwrapping support in `internal/services/httpc/service.go` so activity sink wiring still reaches `LogTransport` after the retry transport is installed
 
 **Checkpoint**: HTTP retry transport surface exists, compiles, and is ready for story-specific behavior.
 

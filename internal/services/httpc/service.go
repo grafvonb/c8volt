@@ -107,6 +107,8 @@ func unwrapLogTransport(rt http.RoundTripper) *LogTransport {
 		return t
 	case *AuthTransport:
 		return unwrapLogTransport(t.base)
+	case *ReadRetryTransport:
+		return unwrapLogTransport(t.base)
 	default:
 		return nil
 	}
