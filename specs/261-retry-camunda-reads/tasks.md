@@ -107,15 +107,15 @@
 
 > Write these tests first and verify they fail before implementation.
 
-- [ ] T024 [US3] Add POST search non-retry test in `internal/services/httpc/http_read_retry_test.go`
-- [ ] T025 [US3] Add DELETE/PATCH/PUT/non-search POST non-retry tests in `internal/services/httpc/http_read_retry_test.go`
-- [ ] T026 [P] [US3] Add or confirm mutation retry regression coverage in `internal/services/retry_test.go`
+- [x] T024 [US3] Add POST search non-retry test in `internal/services/httpc/http_read_retry_test.go`
+- [x] T025 [US3] Add DELETE/PATCH/PUT/non-search POST non-retry tests in `internal/services/httpc/http_read_retry_test.go`
+- [x] T026 [P] [US3] Add or confirm mutation retry regression coverage in `internal/services/retry_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T027 [US3] Enforce the GET/HEAD-only method gate in `internal/services/httpc/read_retry.go`
-- [ ] T028 [US3] Verify existing mutation retry behavior remains owned by `internal/services/retry.go` without adding generic mutation replay in `internal/services/httpc/read_retry.go`
-- [ ] T029 [US3] Run focused US3 validation for `internal/services/httpc/read_retry.go`, `internal/services/httpc/http_read_retry_test.go`, `internal/services/retry.go`, and `internal/services/retry_test.go` with `go test ./internal/services/httpc ./internal/services -run 'ReadRetry|RetryCamundaMutation' -count=1`
+- [x] T027 [US3] Enforce the GET/HEAD-only method gate in `internal/services/httpc/read_retry.go`
+- [x] T028 [US3] Verify existing mutation retry behavior remains owned by `internal/services/retry.go` without adding generic mutation replay in `internal/services/httpc/read_retry.go`
+- [x] T029 [US3] Run focused US3 validation for `internal/services/httpc/read_retry.go`, `internal/services/httpc/http_read_retry_test.go`, `internal/services/retry.go`, and `internal/services/retry_test.go` with `go test ./internal/services/httpc ./internal/services -run 'ReadRetry|RetryCamundaMutation' -count=1`
 
 **Checkpoint**: All user stories are independently functional.
 

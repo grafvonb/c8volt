@@ -72,3 +72,23 @@ Started: 2026-07-28 07:17:54
 **Learnings**:
 - US2 behavior was already present in the shared retry loop; the iteration added focused contract coverage for semantic responses, final exhausted responses, and cancellation.
 ---
+---
+## Iteration 4 - 2026-07-28 07:32
+**Work Unit**: User Story 3 - Keep Mutations Safe
+**Tasks Completed**:
+- [x] T024: Add POST search non-retry test
+- [x] T025: Add DELETE/PATCH/PUT/non-search POST non-retry tests
+- [x] T026: Confirm mutation retry regression coverage
+- [x] T027: Enforce the GET/HEAD-only method gate
+- [x] T028: Verify existing mutation retry behavior remains separately owned
+- [x] T029: Run focused US3 validation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/httpc/http_read_retry_test.go
+- specs/261-retry-camunda-reads/tasks.md
+- specs/261-retry-camunda-reads/ralph-memory.md
+- specs/261-retry-camunda-reads/progress.md
+**Learnings**:
+- The existing GET/HEAD-only gate already prevents generic retries for POST search and mutation-style methods; US3 hardened that contract with focused tests.
+---
