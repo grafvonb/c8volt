@@ -5,6 +5,7 @@ package httpc
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -162,6 +163,99 @@ func TestReadRetryTransportLogsCompactRetryLine(t *testing.T) {
 	require.Contains(t, gotLog, "Camunda read failed loading process instance")
 	require.Contains(t, gotLog, "500 Internal Server Error")
 	require.Contains(t, gotLog, "retrying in")
+}
+
+// TestReadRetryTransportDoesNotRetrySemanticReadResponses preserves business outcomes that callers interpret directly.
+func TestReadRetryTransportDoesNotRetrySemanticReadResponses(t *testing.T) {
+	t.Parallel()
+	statuses := []int{
+		http.StatusBadRequest,
+		http.StatusUnauthorized,
+		http.StatusForbidden,
+		http.StatusNotFound,
+		http.StatusConflict,
+	}
+	for _, status := range statuses {
+		status := status
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			t.Parallel()
+			seq := &readRetrySequenceTransport{
+				t: t,
+				results: []readRetryRoundTripResult{
+					{resp: newReadRetryResponse(status, "semantic failure")},
+				},
+			}
+			transport := &ReadRetryTransport{base: seq, policy: fastReadRetryPolicy()}
+
+			resp, err := transport.RoundTrip(newReadRetryRequest(t, http.MethodGet))
+
+			require.NoError(t, err)
+			require.Equal(t, status, resp.StatusCode)
+			require.Equal(t, 1, seq.Calls())
+		})
+	}
+}
+
+// TestReadRetryTransportPreservesFinalExhaustedResponse keeps diagnostics readable after retry budget exhaustion.
+func TestReadRetryTransportPreservesFinalExhaustedResponse(t *testing.T) {
+	t.Parallel()
+	finalResp := newReadRetryResponse(http.StatusInternalServerError, "final diagnostic")
+	finalResp.Header.Set("X-Camunda-Diagnostic", "preserved")
+	seq := &readRetrySequenceTransport{
+		t: t,
+		results: []readRetryRoundTripResult{
+			{resp: newReadRetryResponse(http.StatusInternalServerError, "first transient")},
+			{resp: newReadRetryResponse(http.StatusBadGateway, "second transient")},
+			{resp: finalResp},
+		},
+	}
+	transport := &ReadRetryTransport{base: seq, policy: fastReadRetryPolicy()}
+	req := newReadRetryRequest(t, http.MethodGet)
+
+	resp, err := transport.RoundTrip(req)
+
+	require.NoError(t, err)
+	require.Same(t, finalResp, resp)
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	require.Same(t, req, resp.Request)
+	require.Equal(t, "preserved", resp.Header.Get("X-Camunda-Diagnostic"))
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, "final diagnostic", string(body))
+	require.Equal(t, 3, seq.Calls())
+}
+
+// TestReadRetryTransportStopsRetrySleepOnContextCancel verifies cancellation interrupts backoff before another request is sent.
+func TestReadRetryTransportStopsRetrySleepOnContextCancel(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	seq := &readRetrySequenceTransport{
+		t: t,
+		results: []readRetryRoundTripResult{
+			{resp: newReadRetryResponse(http.StatusServiceUnavailable, "retry later")},
+			{resp: newReadRetryResponse(http.StatusOK, "unexpected")},
+		},
+	}
+	transport := &ReadRetryTransport{
+		base: seq,
+		policy: readRetryPolicy{
+			attempts:  3,
+			baseDelay: 200 * time.Millisecond,
+			maxDelay:  200 * time.Millisecond,
+			jitter:    false,
+		},
+	}
+	req := newReadRetryRequest(t, http.MethodGet).WithContext(ctx)
+
+	time.AfterFunc(10*time.Millisecond, cancel)
+	start := time.Now()
+	resp, err := transport.RoundTrip(req)
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.Nil(t, resp)
+	require.Equal(t, 1, seq.Calls())
+	require.Less(t, time.Since(start), 100*time.Millisecond)
 }
 
 type temporaryReadRetryError struct{}

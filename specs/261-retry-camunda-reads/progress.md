@@ -51,3 +51,24 @@ Started: 2026-07-28 07:17:54
 **Learnings**:
 - GET/HEAD retry recovery can be proven entirely at the shared `httpc` transport layer while preserving command output contracts.
 ---
+---
+## Iteration 3 - 2026-07-28 07:28
+**Work Unit**: User Story 2 - Preserve Business Errors
+**Tasks Completed**:
+- [x] T017: Add 400/401/403/404/409 non-retry tests
+- [x] T018: Add final response body preservation test for exhausted retry responses
+- [x] T019: Add context cancellation during retry sleep test
+- [x] T020: Ensure non-transient GET/HEAD responses return without retry
+- [x] T021: Preserve the final response status, request, headers, and body after exhausted retries
+- [x] T022: Ensure canceled contexts stop retry sleep promptly
+- [x] T023: Run focused US2 validation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/httpc/http_read_retry_test.go
+- specs/261-retry-camunda-reads/tasks.md
+- specs/261-retry-camunda-reads/ralph-memory.md
+- specs/261-retry-camunda-reads/progress.md
+**Learnings**:
+- US2 behavior was already present in the shared retry loop; the iteration added focused contract coverage for semantic responses, final exhausted responses, and cancellation.
+---

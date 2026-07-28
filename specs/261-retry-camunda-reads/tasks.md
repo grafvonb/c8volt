@@ -82,16 +82,16 @@
 
 > Write these tests first and verify they fail before implementation.
 
-- [ ] T017 [US2] Add 400/401/403/404/409 non-retry tests in `internal/services/httpc/http_read_retry_test.go`
-- [ ] T018 [US2] Add final response body preservation test for exhausted retry responses in `internal/services/httpc/http_read_retry_test.go`
-- [ ] T019 [US2] Add context cancellation during retry sleep test in `internal/services/httpc/http_read_retry_test.go`
+- [x] T017 [US2] Add 400/401/403/404/409 non-retry tests in `internal/services/httpc/http_read_retry_test.go`
+- [x] T018 [US2] Add final response body preservation test for exhausted retry responses in `internal/services/httpc/http_read_retry_test.go`
+- [x] T019 [US2] Add context cancellation during retry sleep test in `internal/services/httpc/http_read_retry_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Ensure non-transient GET/HEAD responses return without retry in `internal/services/httpc/read_retry.go`
-- [ ] T021 [US2] Preserve the final response status, request, headers, and body after exhausted retries in `internal/services/httpc/read_retry.go`
-- [ ] T022 [US2] Ensure canceled contexts stop retry sleep promptly in `internal/services/httpc/read_retry.go`
-- [ ] T023 [US2] Run focused US2 validation for `internal/services/httpc/read_retry.go` and `internal/services/httpc/http_read_retry_test.go` with `go test ./internal/services/httpc -run 'ReadRetry' -count=1`
+- [x] T020 [US2] Ensure non-transient GET/HEAD responses return without retry in `internal/services/httpc/read_retry.go`
+- [x] T021 [US2] Preserve the final response status, request, headers, and body after exhausted retries in `internal/services/httpc/read_retry.go`
+- [x] T022 [US2] Ensure canceled contexts stop retry sleep promptly in `internal/services/httpc/read_retry.go`
+- [x] T023 [US2] Run focused US2 validation for `internal/services/httpc/read_retry.go` and `internal/services/httpc/http_read_retry_test.go` with `go test ./internal/services/httpc -run 'ReadRetry' -count=1`
 
 **Checkpoint**: User Stories 1 and 2 both work independently.
 

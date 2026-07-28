@@ -9,11 +9,13 @@ Started: 2026-07-28T05:17:54Z
 - Existing mutation retry timing in `internal/services/retry.go` uses bounded attempts, exponential backoff, jitter, `Retry-After`, and context-aware sleep; `httpc` owns a separate read retry helper to avoid importing `internal/services` from `internal/services/httpc`.
 - Final response/error mapping happens after generated-client transport calls through `internal/services/httpc/httpmap.go` and `internal/services/common/response.go`; exhausted read retries must return the final response with body still readable.
 - Focused shared-client install coverage is `TestNewInstallsReadRetryTransport`.
+- US2 coverage in `http_read_retry_test.go` confirms semantic 400/401/403/404/409 responses are single-call outcomes, exhausted retries return the final response object with headers/request/body readable, and canceled contexts interrupt retry sleep before another attempt.
 
 ## Decisions
 - Foundational iteration introduced `ReadRetryTransport` with policy/timing primitives; US1 completed retry decisions and shared service installation.
 - US1 retries only GET/HEAD temporary or timeout transport errors and HTTP 429/500/502/503/504; intermediate retry responses are closed, while the final response is returned untouched for later error mapping.
 - Read retry logs use `httpActivityMessage` wording and `slog.Info` messages shaped as `Camunda read failed <operation>; <reason>; retrying in <delay>`, rate-limited per operation label by the transport.
+- US2 required no production changes beyond the US1 implementation; the existing retry loop already treats non-transient responses as final, returns the last exhausted retry response without closing it, and propagates context cancellation from `sleepReadRetry`.
 
 ## Gotchas
 - Do not retry POST search or mutations in the generic read layer; feature scope is GET/HEAD only.
@@ -23,9 +25,10 @@ Started: 2026-07-28T05:17:54Z
 ## Reusable Commands
 - `go test ./internal/services/httpc -run 'ReadRetry|LogTransport' -count=1`
 - `go test ./internal/services/httpc -count=1`
+- `go test ./internal/services/httpc -run 'ReadRetry' -count=1`
 
 ## Do Not Repeat
 - Do not add process-instance-specific retry branches for this feature; retry behavior belongs in `internal/services/httpc`.
 
 ## Current Handoff
-- Next iteration should start US2 only: add non-retry tests for 400/401/403/404/409, exhausted final-response body preservation, and context cancellation during retry sleep in `internal/services/httpc/http_read_retry_test.go`; then tighten `read_retry.go` only as needed without starting US3.
+- Next iteration should start US3 only: add POST search and DELETE/PATCH/PUT/non-search POST non-retry coverage in `internal/services/httpc/http_read_retry_test.go`, confirm mutation retry regression coverage in `internal/services/retry_test.go`, then tighten the GET/HEAD-only gate in `internal/services/httpc/read_retry.go` only if tests expose a gap.
