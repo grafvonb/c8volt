@@ -11,7 +11,9 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt"
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/consts"
 	"github.com/spf13/cobra"
 )
 
@@ -23,6 +25,7 @@ var (
 	flagGetPDLatest            bool
 	flagGetPDWithStat          bool
 	flagGetPDAsXML             bool
+	flagGetPDBatchSize         int32
 )
 
 var getProcessDefinitionCmd = &cobra.Command{
@@ -56,6 +59,9 @@ func runGetProcessDefinition(cmd *cobra.Command, args []string) {
 	cli, log, cfg, err := NewCli(cmd)
 	if err != nil {
 		handleNewCliError(cmd, log, cfg, err)
+	}
+	if err := validateGetProcessDefinitionFlags(cmd); err != nil {
+		handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 	}
 
 	log.Debug("getting pd")
@@ -116,7 +122,7 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 			pds = result.MatchesByBpmnProcessID[result.Request.BpmnProcessIds[0]]
 		}
 	} else if !flagGetPDLatest {
-		pds, err = cli.SearchProcessDefinitions(cmd.Context(), filter, collectOptions()...)
+		pds, err = searchProcessDefinitionsWithPaging(cmd, cli, filter)
 	} else {
 		pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter, collectOptions()...)
 	}
@@ -140,6 +146,7 @@ func init() {
 	fs.StringVar(&flagGetPDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics; 8.8/8.9 include incident counts, 8.7 unsupported")
 	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML (requires --key and no other filters)")
+	fs.Int32VarP(&flagGetPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process definitions to request per discovery page; does not cap total returned rows (max limit %d enforced by server)", consts.MaxPISearchSize))
 
 	setCommandMutation(getProcessDefinitionCmd, CommandMutationReadOnly)
 	setContractSupport(getProcessDefinitionCmd, ContractSupportFull)
@@ -151,6 +158,13 @@ func init() {
 			Notes:            "preferred for automation when not using --xml",
 		},
 	)
+}
+
+func validateGetProcessDefinitionFlags(cmd *cobra.Command) error {
+	if cmd != nil && cmd.Flags().Changed("batch-size") && (flagGetPDBatchSize <= 0 || flagGetPDBatchSize > consts.MaxPISearchSize) {
+		return invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagGetPDBatchSize, consts.MaxPISearchSize)
+	}
+	return nil
 }
 
 func populatePDSearchFilterOpts() process.ProcessDefinitionFilter {
@@ -168,6 +182,80 @@ func populatePDSearchFilterOpts() process.ProcessDefinitionFilter {
 		filter.ProcessVersionTag = flagGetPDProcessVersionTag
 	}
 	return filter
+}
+
+func searchProcessDefinitionsWithPaging(cmd *cobra.Command, cli c8volt.API, filter process.ProcessDefinitionFilter) (process.ProcessDefinitions, error) {
+	if flagGetPDWithStat {
+		stopActivity := startCommandActivity(cmd, "loading process-definition statistics")
+		defer stopActivity()
+	}
+
+	pageNumber := 0
+	result, err := cli.SearchProcessDefinitionsPages(cmd.Context(), process.ProcessDefinitionSearchRequest{
+		Filter: filter,
+		Page: process.ProcessDefinitionPageRequest{
+			Size: resolveGetProcessDefinitionSearchSize(),
+		},
+	}, func(step process.ProcessDefinitionSearchPageStep) (process.ProcessDefinitionSearchPageAction, error) {
+		page := step.Page
+		pageNumber++
+		total, totalKind := processDefinitionOpsReportedTotal(page)
+		printBasicSearchOpsProgress(cmd, basicSearchProgressMetadata{
+			Command:            "get process-definition",
+			CoreResource:       "process_definition",
+			ResourceLabel:      "process definitions",
+			SelectorSummary:    "process-definition search",
+			ConsequenceSummary: "process-definition search will discover and render matching process definitions",
+			ReportedTotal:      total,
+			TotalKind:          totalKind,
+			OverflowState:      processDefinitionOpsOverflowState(page.OverflowState),
+			PageSize:           page.Request.Size,
+			CurrentPage:        pageNumber,
+			CurrentPageCount:   len(page.Items),
+			CumulativeCount:    int(step.CumulativeCount),
+			LimitReached:       step.LimitReached,
+		}, pageNumber == 1)
+		return process.ProcessDefinitionSearchPageActionContinue, nil
+	}, collectOptions()...)
+	if err != nil {
+		return process.ProcessDefinitions{}, err
+	}
+	return process.ProcessDefinitions{Total: int32(len(result.Items)), Items: result.Items}, nil
+}
+
+func resolveGetProcessDefinitionSearchSize() int32 {
+	if flagGetPDBatchSize <= 0 || flagGetPDBatchSize > consts.MaxPISearchSize {
+		return consts.MaxPISearchSize
+	}
+	return flagGetPDBatchSize
+}
+
+func processDefinitionOpsReportedTotal(page process.ProcessDefinitionPage) (*int64, ops.TotalCertainty) {
+	if page.ReportedTotal == nil {
+		return nil, ops.TotalCertaintyUnknown
+	}
+	total := page.ReportedTotal.Count
+	switch page.ReportedTotal.Kind {
+	case process.ProcessDefinitionReportedTotalKindExact:
+		return &total, ops.TotalCertaintyExact
+	case process.ProcessDefinitionReportedTotalKindLowerBound:
+		return &total, ops.TotalCertaintyLowerBound
+	default:
+		return &total, ops.TotalCertaintyUnknown
+	}
+}
+
+func processDefinitionOpsOverflowState(state process.ProcessInstanceOverflowState) ops.OverflowState {
+	switch state {
+	case process.ProcessInstanceOverflowStateHasMore:
+		return ops.OverflowStateHasMore
+	case process.ProcessInstanceOverflowStateIndeterminate:
+		return ops.OverflowStateIndeterminate
+	case process.ProcessInstanceOverflowStateNoMore:
+		return ops.OverflowStateNoMore
+	default:
+		return ops.OverflowStateUnknown
+	}
 }
 
 func validateProcessDefinitionXMLFlags(filter process.ProcessDefinitionFilter) error {

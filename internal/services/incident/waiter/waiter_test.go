@@ -47,6 +47,14 @@ func TestWaitForIncidentResolvedUpdatesActivity(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, got.Ok)
 	require.Equal(t, []string{"incident incident-1 waiting; state ACTIVE, attempt 1"}, sink.Updates())
+	require.Equal(t, []activitysink.Start{{
+		Message:    "waiting for incident incident-1 resolve",
+		Importance: logging.ActivityImportanceWait,
+	}}, sink.Starts())
+	require.Equal(t, []activitysink.Update{{
+		Message:    "incident incident-1 waiting; state ACTIVE, attempt 1",
+		Importance: logging.ActivityImportanceWait,
+	}}, sink.PriorityUpdates())
 }
 
 func incidentWaiterTestConfig() *config.Config {

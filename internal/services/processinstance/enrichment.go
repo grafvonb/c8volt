@@ -6,6 +6,7 @@ package processinstance
 import (
 	"context"
 	"sort"
+	"sync/atomic"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
@@ -33,7 +34,11 @@ type jobSearcher interface {
 // EnrichProcessInstancesWithIncidents attaches direct incident details to selected process-instance results without reordering them.
 func EnrichProcessInstancesWithIncidents(ctx context.Context, api incidentSearcher, pis []d.ProcessInstance, opts ...services.CallOption) (d.IncidentEnrichedProcessInstances, error) {
 	workers, failFast := enrichmentPoolConfig(len(pis), opts)
+	progress := newEnrichmentProgress("loading incident details", "process instance(s)", len(pis), opts)
+	progress.emit(0)
+	var completed atomic.Int64
 	items, err := pool.ExecuteSlice[d.ProcessInstance, d.IncidentEnrichedProcessInstance](ctx, pis, workers, failFast, func(ctx context.Context, pi d.ProcessInstance, _ int) (d.IncidentEnrichedProcessInstance, error) {
+		defer func() { progress.emit(int(completed.Add(1))) }()
 		incidents, err := api.SearchProcessInstanceIncidents(ctx, pi.Key, opts...)
 		if err != nil {
 			return d.IncidentEnrichedProcessInstance{}, err
@@ -55,6 +60,8 @@ func EnrichProcessInstancesWithIncidents(ctx context.Context, api incidentSearch
 // EnrichProcessInstancesWithVariables attaches process-scope variables to selected process-instance results without reordering them.
 func EnrichProcessInstancesWithVariables(ctx context.Context, api variableSearcher, pis []d.ProcessInstance, opts ...services.CallOption) (d.VariableEnrichedProcessInstances, error) {
 	items := make([]d.VariableEnrichedProcessInstance, 0, len(pis))
+	progress := newEnrichmentProgress("loading variable details", "process instance(s)", len(pis), opts)
+	progress.emit(0)
 	for _, pi := range pis {
 		variables, err := api.SearchProcessInstanceVariables(ctx, pi.Key, opts...)
 		if err != nil {
@@ -64,6 +71,7 @@ func EnrichProcessInstancesWithVariables(ctx context.Context, api variableSearch
 			Item:      pi,
 			Variables: variablesForProcessInstance(pi.Key, variables),
 		})
+		progress.emit(len(items))
 	}
 	return d.VariableEnrichedProcessInstances{
 		Total: int32(len(items)),
@@ -74,7 +82,9 @@ func EnrichProcessInstancesWithVariables(ctx context.Context, api variableSearch
 // EnrichProcessInstancesWithElements attaches runtime element instances to selected process-instance results without reordering them.
 func EnrichProcessInstancesWithElements(ctx context.Context, api elementSearcher, pis []d.ProcessInstance, opts ...services.CallOption) (d.ElementEnrichedProcessInstances, error) {
 	items := make([]d.ElementEnrichedProcessInstance, 0, len(pis))
-	for _, pi := range pis {
+	progress := newEnrichmentProgress("loading runtime elements", "process instance(s)", len(pis), opts)
+	progress.emit(0)
+	for i, pi := range pis {
 		result, err := api.SearchElements(ctx, d.ElementSearchQuery{ProcessInstanceKey: pi.Key}, opts...)
 		if err != nil {
 			return d.ElementEnrichedProcessInstances{}, err
@@ -83,6 +93,7 @@ func EnrichProcessInstancesWithElements(ctx context.Context, api elementSearcher
 			Item:     pi,
 			Elements: elementsForProcessInstance(pi.Key, result.Items),
 		})
+		progress.emit(i + 1)
 	}
 	return d.ElementEnrichedProcessInstances{
 		Total: int32(len(items)),
@@ -94,7 +105,9 @@ func EnrichProcessInstancesWithElements(ctx context.Context, api elementSearcher
 // requested listener job arrays to selected process-instance results.
 func EnrichProcessInstancesWithElementListeners(ctx context.Context, elementAPI elementSearcher, jobAPI jobSearcher, pis []d.ProcessInstance, opts ...services.CallOption) (d.ElementEnrichedProcessInstances, error) {
 	items := make([]d.ElementEnrichedProcessInstance, 0, len(pis))
-	for _, pi := range pis {
+	progress := newEnrichmentProgress("loading listener jobs", "process instance(s)", len(pis), opts)
+	progress.emit(0)
+	for i, pi := range pis {
 		elementResult, err := elementAPI.SearchElements(ctx, d.ElementSearchQuery{ProcessInstanceKey: pi.Key}, opts...)
 		if err != nil {
 			return d.ElementEnrichedProcessInstances{}, err
@@ -108,6 +121,7 @@ func EnrichProcessInstancesWithElementListeners(ctx context.Context, elementAPI 
 			Item:     pi,
 			Elements: attachListenersToElements(elements, listeners),
 		})
+		progress.emit(i + 1)
 	}
 	return d.ElementEnrichedProcessInstances{
 		Total: int32(len(items)),
@@ -127,7 +141,11 @@ func EnrichTraversalWithIncidents(ctx context.Context, api incidentSearcher, res
 	}
 
 	workers, failFast := enrichmentPoolConfig(len(selected), opts)
+	progress := newEnrichmentProgress("loading incident details", "process instance(s)", len(selected), opts)
+	progress.emit(0)
+	var completed atomic.Int64
 	items, err := pool.ExecuteSlice[d.ProcessInstance, d.IncidentEnrichedTraversalItem](ctx, selected, workers, failFast, func(ctx context.Context, pi d.ProcessInstance, _ int) (d.IncidentEnrichedTraversalItem, error) {
+		defer func() { progress.emit(int(completed.Add(1))) }()
 		key := pi.Key
 		incidents, err := api.SearchProcessInstanceIncidents(ctx, key, opts...)
 		if err != nil {
@@ -159,6 +177,39 @@ func EnrichTraversalWithIncidents(ctx context.Context, api incidentSearcher, res
 func enrichmentPoolConfig(count int, opts []services.CallOption) (int, bool) {
 	cfg := services.ApplyCallOptions(opts)
 	return toolx.DetermineNoOfWorkers(count, 0, cfg.NoWorkerLimit), cfg.FailFast
+}
+
+type enrichmentProgress struct {
+	phase        string
+	coreResource string
+	total        int
+	progress     func(d.OpsProgressEvent)
+}
+
+func newEnrichmentProgress(phase string, coreResource string, total int, opts []services.CallOption) enrichmentProgress {
+	cfg := services.ApplyCallOptions(opts)
+	return enrichmentProgress{
+		phase:        phase,
+		coreResource: coreResource,
+		total:        total,
+		progress:     cfg.Progress,
+	}
+}
+
+func (p enrichmentProgress) emit(done int) {
+	if p.progress == nil || p.total == 0 {
+		return
+	}
+	frozen := d.OpsFrozenScopeProgress{
+		Phase:        p.phase,
+		CoreResource: p.coreResource,
+		Done:         done,
+		Total:        p.total,
+	}
+	p.progress(d.OpsProgressEvent{
+		Kind:        d.OpsProgressEventKindFrozenScope,
+		FrozenScope: &frozen,
+	})
 }
 
 // incidentsForProcessInstance keeps only details owned by the requested key, guarding against broad backend incident responses.

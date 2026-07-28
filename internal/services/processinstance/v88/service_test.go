@@ -941,6 +941,42 @@ func TestService_SearchForProcessInstancesPage_UsesNativePageMetadata(t *testing
 		assert.Equal(t, d.ProcessInstanceReportedTotalKindLowerBound, page.ReportedTotal.Kind)
 		require.Empty(t, page.Items)
 	})
+
+	t.Run("treats exact cursor final page as no-more even when end cursor is present", func(t *testing.T) {
+		endCursor := camundav88.EndCursor("cursor-final")
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+			searchProcessInstancesWithResp: func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
+				payload := marshalJSON(t, body)
+				require.Contains(t, payload, `"after":"cursor-prev"`)
+				require.Contains(t, payload, `"limit":2`)
+				return &camundav88.SearchProcessInstancesResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/search", http.StatusOK, "200 OK"),
+					JSON200: &camundav88.ProcessInstanceSearchQueryResult{
+						Items: []camundav88.ProcessInstanceResult{
+							*makeProcessInstanceResult("125", "ACTIVE", ""),
+						},
+						Page: camundav88.SearchQueryPageResponse{
+							TotalItems: 3,
+							EndCursor:  &endCursor,
+						},
+					},
+				}, nil
+			},
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+		}, newStrictOperateClient(t))
+
+		page, err := svc.SearchForProcessInstancesPage(ctx, d.ProcessInstanceFilter{}, d.ProcessInstancePageRequest{From: 2, Size: 2, After: "cursor-prev"})
+
+		require.NoError(t, err)
+		assert.Equal(t, d.ProcessInstanceOverflowStateNoMore, page.OverflowState)
+		require.NotNil(t, page.ReportedTotal)
+		assert.EqualValues(t, 3, page.ReportedTotal.Count)
+		assert.Equal(t, d.ProcessInstanceReportedTotalKindExact, page.ReportedTotal.Kind)
+		require.Len(t, page.Items, 1)
+		require.Equal(t, "cursor-final", page.EndCursor)
+	})
 }
 
 // TestService_SearchForProcessInstancesPage_UsesCursorAndCompatibilityFilters

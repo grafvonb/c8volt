@@ -16,6 +16,8 @@ import (
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -27,6 +29,21 @@ func TestGetElementCommand_ValidateDirectLookupKey(t *testing.T) {
 	flagGetElementKey = "2251799813689002"
 
 	require.NoError(t, validateGetElementFlags(getElementCmd))
+}
+
+// TestGetElementCommand_HTTPFallbackActivityUsesCommandContext verifies element search preserves fallback activity.
+func TestGetElementCommand_HTTPFallbackActivityUsesCommandContext(t *testing.T) {
+	resetGetElementFlagState()
+	t.Cleanup(resetGetElementFlagState)
+	resetHTTPFallbackActivityRenderMode(t)
+	sink := &activitysink.Sink{}
+	cmd := newHTTPFallbackActivityCommand(sink)
+	api := elementActivityAPI{}
+
+	_, _, err := searchElementsForCommand(cmd, api, elementapi.SearchRequest{ProcessInstanceKey: "2251799813688001", BatchSize: 1, Limit: 1})
+	require.NoError(t, err)
+
+	requireHTTPFallbackActivityStarts(t, sink, "searching element instances")
 }
 
 func TestGetElementCommand_RejectsInvalidKeys(t *testing.T) {
@@ -307,6 +324,64 @@ func TestGetElementCommand_SearchKeysOnlyOutput(t *testing.T) {
 	require.Len(t, bodies, 1)
 }
 
+// TestGetElementCommand_SearchMachineOutputStaysProgressFree verifies element search progress cannot leak into JSON or keys-only stdout.
+func TestGetElementCommand_SearchMachineOutputStaysProgressFree(t *testing.T) {
+	t.Run("json", func(t *testing.T) {
+		var bodies []map[string]any
+		srv := newElementSearchServerResponses(t, &bodies,
+			`{"items":[{"elementInstanceKey":"2251799813689002","elementId":"ship-order","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"2251799813688001","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":true}}`,
+			`{"items":[{"elementInstanceKey":"2251799813689003","elementId":"finish-order","type":"END_EVENT","state":"COMPLETED","processInstanceKey":"2251799813688001","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+		)
+		t.Cleanup(srv.Close)
+		cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.9")
+
+		stdout, stderr := executeRootForElementTestWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--json",
+			"get", "element",
+			"--batch-size", "1",
+		)
+
+		require.Len(t, bodies, 2)
+		require.Empty(t, stderr)
+		require.NotContains(t, stdout, "scope:")
+		require.NotContains(t, stdout, "page size:")
+		require.NotContains(t, stdout, "discovering elements")
+		var envelope map[string]any
+		require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+		payload := requireJSONObject(t, envelope["payload"])
+		items := payload["items"].([]any)
+		require.Len(t, items, 2)
+	})
+
+	t.Run("keys only", func(t *testing.T) {
+		var bodies []map[string]any
+		srv := newElementSearchServerResponses(t, &bodies, `{
+  "items": [
+    {"elementInstanceKey": "2251799813689002", "state": "ACTIVE"},
+    {"elementInstanceKey": "2251799813689003", "state": "COMPLETED"}
+  ],
+  "page": {"totalItems": 2, "hasMoreTotalItems": false}
+}`)
+		t.Cleanup(srv.Close)
+		cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.9")
+
+		stdout, stderr := executeRootForElementTestWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--keys-only",
+			"get", "element",
+			"--pi-key", "2251799813688001",
+			"--limit", "2",
+		)
+
+		require.Len(t, bodies, 1)
+		require.Empty(t, stderr)
+		require.Equal(t, "2251799813689002\n2251799813689003\n", stdout)
+		require.NotContains(t, stdout, "scope:")
+		require.NotContains(t, stdout, "page size:")
+	})
+}
+
 // TestSearchElementsWithPagingRendersServiceSelectedPage verifies command
 // rendering trusts the service-owned selected page instead of reapplying the
 // caller limit locally.
@@ -406,9 +481,42 @@ func TestGetElementCommand_SearchVerboseProgress(t *testing.T) {
 	secondPage := requireJSONObject(t, bodies[1]["page"])
 	require.Equal(t, float64(2), secondPage["limit"])
 	require.Equal(t, float64(2), secondPage["from"])
-	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
-	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+	require.Contains(t, output, "element search scope: matched at least 3 elements; page size: 2; discovery pages: at least 2")
+	require.Contains(t, output, "discovering elements, page 1/~2, 2 seen")
+	require.Contains(t, output, "discovering elements, page 2/2, 3 seen")
 	require.Contains(t, output, "found: 3")
+}
+
+func TestSearchElementsWithListenersUpdatesFrozenProgressActivity(t *testing.T) {
+	resetGetElementFlagState()
+	flagGetElementWithListeners = true
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+
+	cli := stubElementAPI{searchElementsWithListeners: func(_ context.Context, request elementapi.SearchRequest, opts ...options.FacadeOption) (elementapi.SearchResult, error) {
+		require.Equal(t, elementapi.SearchRequest{ProcessInstanceKey: "2251799813688001"}, request)
+		cfg := options.ApplyFacadeOptions(opts)
+		require.NotNil(t, cfg.Progress)
+		cfg.Progress(options.ProgressEvent{Kind: options.ProgressEventKindFrozenScope, FrozenScope: &options.FrozenScopeProgress{
+			Phase:        "loading listener jobs",
+			CoreResource: "process instance(s)",
+			Done:         1,
+			Total:        2,
+		}})
+		return elementapi.SearchResult{Total: 2, Items: []elementapi.Element{{ElementInstanceKey: "el-1"}, {ElementInstanceKey: "el-2"}}}, nil
+	}}
+
+	got, rendered, err := searchElementsForCommand(cmd, cli, elementapi.SearchRequest{ProcessInstanceKey: "2251799813688001"})
+
+	require.NoError(t, err)
+	require.False(t, rendered)
+	require.Len(t, got.Items, 2)
+	require.Equal(t, []string{"loading listener jobs, 1/2 process instance(s)"}, sink.Updates())
+	started, stopped, msgs := sink.Snapshot()
+	require.Equal(t, 1, started)
+	require.Equal(t, 1, stopped)
+	require.Equal(t, []string{"loading listener jobs for matching element process instance(s)"}, msgs)
 }
 
 func TestGetElementCommand_KeyedLookupHumanOutput(t *testing.T) {
@@ -665,6 +773,30 @@ func newElementWithListenersServer(t *testing.T, requests *[]string, elementResp
 	}))
 }
 
+// elementActivityAPI records the fallback activity that the HTTP-backed element facade would emit.
+type elementActivityAPI struct {
+	elementapi.API
+}
+
+// SearchElementsPages records element-search fallback activity before returning one completed page.
+func (elementActivityAPI) SearchElementsPages(ctx context.Context, request elementapi.SearchRequest, visitor elementapi.SearchPageVisitor, opts ...options.FacadeOption) (elementapi.SearchPagesResult, error) {
+	recordHTTPFallbackActivity(ctx, "searching element instances")
+	page := elementapi.Page{
+		Items: []elementapi.Element{{
+			ElementInstanceKey: "2251799813689002",
+			ElementId:          "ship-order",
+			State:              "ACTIVE",
+			ProcessInstanceKey: "2251799813688001",
+		}},
+		Request:       elementapi.PageRequest{Size: request.BatchSize},
+		OverflowState: elementapi.OverflowStateNoMore,
+	}
+	if _, err := visitor(elementapi.SearchPageStep{Page: page, CumulativeCount: 1, LimitReached: true}); err != nil {
+		return elementapi.SearchPagesResult{}, err
+	}
+	return elementapi.SearchPagesResult{Items: page.Items, Total: 1, Pages: 1}, nil
+}
+
 func executeRootForElementTest(t *testing.T, args ...string) string {
 	t.Helper()
 
@@ -682,6 +814,27 @@ func executeRootForElementTest(t *testing.T, args ...string) string {
 	_, err := root.ExecuteC()
 	require.NoError(t, err)
 	return buf.String()
+}
+
+// executeRootForElementTestWithSeparateOutputs lets progress-contract tests verify machine stdout without stderr noise.
+func executeRootForElementTestWithSeparateOutputs(t *testing.T, args ...string) (string, string) {
+	t.Helper()
+
+	resetGetElementFlagState()
+	t.Cleanup(resetGetElementFlagState)
+
+	root := Root()
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	root.SetOut(stdout)
+	root.SetErr(stderr)
+	root.SetArgs(args)
+	resetCommandTreeFlags(root)
+	resetGetElementFlagState()
+
+	_, err := root.ExecuteC()
+	require.NoError(t, err)
+	return stdout.String(), stderr.String()
 }
 
 func resetGetElementFlagState() {
@@ -703,7 +856,8 @@ func resetGetElementFlagState() {
 // exercised by the unit under test.
 type stubElementAPI struct {
 	elementapi.API
-	searchElementsPages func(context.Context, elementapi.SearchRequest, elementapi.SearchPageVisitor, ...options.FacadeOption) (elementapi.SearchPagesResult, error)
+	searchElementsPages         func(context.Context, elementapi.SearchRequest, elementapi.SearchPageVisitor, ...options.FacadeOption) (elementapi.SearchPagesResult, error)
+	searchElementsWithListeners func(context.Context, elementapi.SearchRequest, ...options.FacadeOption) (elementapi.SearchResult, error)
 }
 
 // SearchElementsPages delegates to the configured test callback.
@@ -712,4 +866,11 @@ func (s stubElementAPI) SearchElementsPages(ctx context.Context, request element
 		panic("unexpected call")
 	}
 	return s.searchElementsPages(ctx, request, visitor, opts...)
+}
+
+func (s stubElementAPI) SearchElementsWithListeners(ctx context.Context, request elementapi.SearchRequest, opts ...options.FacadeOption) (elementapi.SearchResult, error) {
+	if s.searchElementsWithListeners == nil {
+		panic("unexpected call")
+	}
+	return s.searchElementsWithListeners(ctx, request, opts...)
 }

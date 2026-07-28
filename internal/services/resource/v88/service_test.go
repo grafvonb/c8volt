@@ -18,6 +18,8 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/toolx/poller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -236,10 +238,11 @@ func TestService_Deploy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			sink := &activitysink.Sink{}
 			svc, err := New(testConfigWithTenant(t, tenantID), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithClient(tt.client, tt.processClient))
 			require.NoError(t, err)
 
-			deployment, err := svc.Deploy(ctx, []d.DeploymentUnitData{{Name: resourceName, Data: resourceData}}, tt.opts...)
+			deployment, err := svc.Deploy(logging.ToActivityContext(ctx, sink), []d.DeploymentUnitData{{Name: resourceName, Data: resourceData}}, tt.opts...)
 
 			if tt.expectedError != nil {
 				require.Error(t, err)
@@ -250,6 +253,12 @@ func TestService_Deploy(t *testing.T) {
 			require.NoError(t, err)
 			if tt.assertResult != nil {
 				tt.assertResult(t, deployment)
+			}
+			if tt.name == "SuccessWithConfirmation" {
+				require.Equal(t, []activitysink.Start{{
+					Message:    "waiting for 1 deployments",
+					Importance: logging.ActivityImportanceBatch,
+				}}, sink.Starts())
 			}
 		})
 	}

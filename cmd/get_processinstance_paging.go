@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
@@ -118,6 +119,22 @@ type searchPageProgressSummary struct {
 	CumulativeCount   int
 	MoreMatches       string
 	ContinuationState processInstanceContinuationState
+}
+
+type basicSearchProgressMetadata struct {
+	Command            string
+	CoreResource       string
+	ResourceLabel      string
+	SelectorSummary    string
+	ConsequenceSummary string
+	ReportedTotal      *int64
+	TotalKind          ops.TotalCertainty
+	OverflowState      ops.OverflowState
+	PageSize           int32
+	CurrentPage        int
+	CurrentPageCount   int
+	CumulativeCount    int
+	LimitReached       bool
 }
 
 // pickPISearchSize normalizes the legacy global batch-size flag to the maximum
@@ -283,12 +300,13 @@ func canUsePIExactReportedTotal(page process.ProcessInstancePage) bool {
 // The next request is rebuilt instead of mutating the current one so any changed
 // command/config page-size rules are applied consistently.
 func nextPISearchPageRequest(cmd *cobra.Command, cfg *config.Config, current process.ProcessInstancePageRequest, page process.ProcessInstancePage) process.ProcessInstancePageRequest {
+	nextFrom := current.From + int32(len(page.Items))
 	if page.EndCursor != "" {
-		req := newPISearchPageRequest(cmd, cfg, 0)
+		req := newPISearchPageRequest(cmd, cfg, nextFrom)
 		req.After = page.EndCursor
 		return req
 	}
-	return newPISearchPageRequest(cmd, cfg, current.From+int32(len(page.Items)))
+	return newPISearchPageRequest(cmd, cfg, nextFrom)
 }
 
 // startCommandActivity wraps long page fetches with the shared activity
@@ -297,7 +315,7 @@ func startCommandActivity(cmd *cobra.Command, msg string) func() {
 	if cmd == nil {
 		return func() {}
 	}
-	return logging.StartActivity(cmd.Context(), msg)
+	return logging.StartActivityWithImportance(cmd.Context(), msg, logging.ActivityImportanceWorkflow)
 }
 
 // printPISearchProgress writes verbose one-line progress to stderr for normal
@@ -318,6 +336,110 @@ func printSearchPageProgress(cmd *cobra.Command, summary searchPageProgressSumma
 		return
 	}
 	fmt.Fprintln(cmd.ErrOrStderr(), formatSearchPageProgress(summary))
+}
+
+func printBasicSearchOpsProgress(cmd *cobra.Command, metadata basicSearchProgressMetadata, firstPage bool) {
+	if cmd == nil {
+		return
+	}
+	channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
+	if firstPage {
+		printBasicSearchPreflight(cmd, newBasicSearchPreflightScope(metadata), channel)
+	}
+	progress := ops.PageProgress{
+		Phase:            "discovering " + strings.TrimSpace(metadata.ResourceLabel),
+		CurrentPage:      metadata.CurrentPage,
+		PageCount:        nil,
+		PageCountKind:    ops.PageCountKindUnknown,
+		PageSize:         metadata.PageSize,
+		CurrentPageCount: metadata.CurrentPageCount,
+		Seen:             metadata.CumulativeCount,
+		Selected:         metadata.CumulativeCount,
+		OverflowState:    metadata.OverflowState,
+		LimitReached:     metadata.LimitReached,
+	}
+	progress.PageCount, progress.PageCountKind = pageCountFromBasicSearchTotal(metadata.ReportedTotal, metadata.TotalKind, metadata.PageSize)
+	if progress.PageCount != nil && int64(metadata.CurrentPage) > *progress.PageCount {
+		pageCount := int64(metadata.CurrentPage)
+		progress.PageCount = &pageCount
+	}
+	printBasicSearchProgressLine(cmd, formatOpsPageProgress(progress, metadata.ResourceLabel+"(s)"), channel)
+}
+
+func newBasicSearchPreflightScope(metadata basicSearchProgressMetadata) ops.PreflightScope {
+	pageCount, pageKind := pageCountFromBasicSearchTotal(metadata.ReportedTotal, metadata.TotalKind, metadata.PageSize)
+	totalKind := metadata.TotalKind
+	if metadata.ReportedTotal == nil {
+		totalKind = ops.TotalCertaintyUnknown
+	}
+	selector := strings.TrimSpace(metadata.SelectorSummary)
+	if selector == "" {
+		selector = strings.TrimSpace(metadata.Command) + " search"
+	}
+	return ops.PreflightScope{
+		Phase:           "preflight",
+		Command:         metadata.Command,
+		CoreResource:    metadata.CoreResource,
+		SelectorSummary: selector,
+		Total:           metadata.ReportedTotal,
+		TotalKind:       totalKind,
+		PageSize:        metadata.PageSize,
+		PageCount:       pageCount,
+		PageCountKind:   pageKind,
+		ConsequenceSummary: ops.ConsequenceSummary{
+			WorkSummary: metadata.ConsequenceSummary,
+			RiskSummary: "read-only inspection",
+		},
+	}
+}
+
+func printBasicSearchPreflight(cmd *cobra.Command, scope ops.PreflightScope, channel ops.ProgressChannel) {
+	if cmd == nil {
+		return
+	}
+	lines := formatOpsPreflightScope(scope)
+	if channel.TransientAllowed && len(lines) > 0 {
+		logging.UpdateActivityWithImportance(cmd.Context(), lines[0], logging.ActivityImportanceWorkflow)
+	}
+	if !basicSearchDurableProgressAllowed(channel) {
+		return
+	}
+	printOpsPreflightLines(cmd, scope)
+}
+
+func printBasicSearchProgressLine(cmd *cobra.Command, line string, channel ops.ProgressChannel) {
+	if cmd == nil || strings.TrimSpace(line) == "" {
+		return
+	}
+	if channel.TransientAllowed {
+		logging.UpdateActivityWithImportance(cmd.Context(), line, logging.ActivityImportanceWorkflow)
+	}
+	if !basicSearchDurableProgressAllowed(channel) {
+		return
+	}
+	printOpsDurableLine(cmd, line, false)
+}
+
+func basicSearchDurableProgressAllowed(channel ops.ProgressChannel) bool {
+	return channel.DurableAllowed && channel.StderrAllowed && (channel.Mode == ops.ProgressModeVerbose || channel.Mode == ops.ProgressModeDebug)
+}
+
+func pageCountFromBasicSearchTotal(total *int64, kind ops.TotalCertainty, pageSize int32) (*int64, ops.PageCountKind) {
+	if total == nil || pageSize <= 0 {
+		return nil, ops.PageCountKindUnknown
+	}
+	pages := (*total + int64(pageSize) - 1) / int64(pageSize)
+	if pages < 0 {
+		pages = 0
+	}
+	switch kind {
+	case ops.TotalCertaintyExact:
+		return &pages, ops.PageCountKindExact
+	case ops.TotalCertaintyLowerBound, ops.TotalCertaintyEstimated:
+		return &pages, ops.PageCountKindEstimated
+	default:
+		return nil, ops.PageCountKindUnknown
+	}
 }
 
 // logPISearchProgress sends the same verbose progress text to the command

@@ -949,6 +949,203 @@ func TestRepairIncidentsBlocksResolutionWhenVariableScopeFails(t *testing.T) {
 	require.Equal(t, d.OpsWorkflowStepStatusBlocked, got.Plan[0].ResolutionStatus)
 }
 
+// TestRepairIncidentsSearchProgressContractPendingT068 defines the structured
+// incident repair progress emitted from service-owned paged discovery and
+// frozen planning.
+func TestRepairIncidentsSearchProgressContractPendingT068(t *testing.T) {
+	t.Parallel()
+
+	var pageRequests []d.IncidentPageRequest
+	var events []d.OpsProgressEvent
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
+		searchIncidentsPage: func(_ context.Context, _ d.IncidentFilter, page d.IncidentPageRequest, _ ...services.CallOption) (d.IncidentPage, error) {
+			require.EqualValues(t, 2, page.Size)
+			pageRequests = append(pageRequests, page)
+			switch len(pageRequests) {
+			case 1:
+				return d.IncidentPage{
+					Items: []d.ProcessInstanceIncidentDetail{
+						{IncidentKey: "2251799813685249", ProcessInstanceKey: "2251799813685251", State: "ACTIVE"},
+						{IncidentKey: "2251799813685250", ProcessInstanceKey: "2251799813685253", State: "ACTIVE"},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					ReportedTotal: &d.IncidentReportedTotal{Count: 3, Kind: d.IncidentReportedTotalKindExact},
+					EndCursor:     "cursor-1",
+				}, nil
+			case 2:
+				require.Equal(t, "cursor-1", page.After)
+				return d.IncidentPage{
+					Items: []d.ProcessInstanceIncidentDetail{
+						{IncidentKey: "2251799813685254", ProcessInstanceKey: "2251799813685255", State: "ACTIVE"},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+					ReportedTotal: &d.IncidentReportedTotal{Count: 3, Kind: d.IncidentReportedTotalKindExact},
+				}, nil
+			default:
+				t.Fatalf("unexpected incident page request %d", len(pageRequests))
+				return d.IncidentPage{}, nil
+			}
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{
+		CommandName:       "ops repair incident",
+		DiscoveryMode:     d.OpsRepairDiscoveryModeSearch,
+		IncidentSelection: d.IncidentFilter{State: "active"},
+		BatchSize:         2,
+		DryRun:            true,
+	}, services.WithProgress(func(event d.OpsProgressEvent) {
+		events = append(events, event)
+	}))
+
+	require.NoError(t, err)
+	require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
+	require.Len(t, pageRequests, 2)
+	require.Len(t, events, 5)
+	require.Equal(t, d.OpsProgressEventKindPreflight, events[0].Kind)
+	require.NotNil(t, events[0].Preflight)
+	require.Equal(t, "preflight", events[0].Preflight.Phase)
+	require.Equal(t, "ops repair incident", events[0].Preflight.Command)
+	require.Equal(t, "incident", events[0].Preflight.CoreResource)
+	require.Equal(t, "incident repair", events[0].Preflight.SelectorSummary)
+	require.NotNil(t, events[0].Preflight.Total)
+	require.Equal(t, int64(3), *events[0].Preflight.Total)
+	require.Equal(t, d.OpsTotalCertaintyExact, events[0].Preflight.TotalKind)
+	require.Equal(t, int32(2), events[0].Preflight.PageSize)
+	require.NotNil(t, events[0].Preflight.PageCount)
+	require.Equal(t, int64(2), *events[0].Preflight.PageCount)
+	require.Equal(t, d.OpsPageCountKindExact, events[0].Preflight.PageCountKind)
+	require.Contains(t, events[0].Preflight.ConsequenceSummary.WorkSummary, "repair")
+
+	require.Equal(t, d.OpsPageProgress{Phase: "discovering repair incidents", CurrentPage: 1, PageCount: ptrDomainInt64(2), PageCountKind: d.OpsPageCountKindExact, PageSize: 2, CurrentPageCount: 2, Seen: 2, Selected: 2, OverflowState: d.OpsOverflowStateHasMore}, *events[1].Page)
+	require.Equal(t, d.OpsPageProgress{Phase: "discovering repair incidents", CurrentPage: 2, PageCount: ptrDomainInt64(2), PageCountKind: d.OpsPageCountKindExact, PageSize: 2, CurrentPageCount: 1, Seen: 3, Selected: 3, OverflowState: d.OpsOverflowStateNoMore}, *events[2].Page)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "planning incident repair scope", CoreResource: "incident(s)", Done: 0, Total: 3}, *events[3].FrozenScope)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "planning incident repair scope", CoreResource: "incident(s)", Done: 3, Total: 3}, *events[4].FrozenScope)
+}
+
+// TestRepairProcessInstancesSearchProgressContractPendingT068 defines the
+// process-instance repair progress emitted for PI discovery and active-incident
+// lookup before repair planning.
+func TestRepairProcessInstancesSearchProgressContractPendingT068(t *testing.T) {
+	t.Parallel()
+
+	hasIncident := true
+	var pageRequests []d.ProcessInstancePageRequest
+	var events []d.OpsProgressEvent
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			require.Equal(t, d.ProcessInstanceFilter{State: d.StateActive, HasIncident: &hasIncident}, filter)
+			require.EqualValues(t, 2, page.Size)
+			pageRequests = append(pageRequests, page)
+			switch len(pageRequests) {
+			case 1:
+				return d.ProcessInstancePage{
+					Items: []d.ProcessInstance{
+						{Key: "2251799813685251", State: d.StateActive},
+						{Key: "2251799813685253", State: d.StateActive},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					ReportedTotal: &d.ProcessInstanceReportedTotal{Count: 3, Kind: d.ProcessInstanceReportedTotalKindExact},
+					EndCursor:     "cursor-1",
+				}, nil
+			case 2:
+				require.Equal(t, "cursor-1", page.After)
+				return d.ProcessInstancePage{
+					Items: []d.ProcessInstance{
+						{Key: "2251799813685255", State: d.StateActive},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+					ReportedTotal: &d.ProcessInstanceReportedTotal{Count: 3, Kind: d.ProcessInstanceReportedTotalKindExact},
+				}, nil
+			default:
+				t.Fatalf("unexpected process-instance page request %d", len(pageRequests))
+				return d.ProcessInstancePage{}, nil
+			}
+		},
+	}, repairIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			return []d.ProcessInstanceIncidentDetail{{IncidentKey: "inc-" + key, ProcessInstanceKey: key, State: "ACTIVE"}}, nil
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	got, err := api.RepairProcessInstances(context.Background(), d.OpsRepairRequest{
+		CommandName:              "ops repair process-instance",
+		DiscoveryMode:            d.OpsRepairDiscoveryModeSearch,
+		ProcessInstanceSelection: d.ProcessInstanceFilter{State: d.StateActive, HasIncident: &hasIncident},
+		BatchSize:                2,
+		DryRun:                   true,
+	}, services.WithProgress(func(event d.OpsProgressEvent) {
+		events = append(events, event)
+	}))
+
+	require.NoError(t, err)
+	require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
+	require.Len(t, pageRequests, 2)
+	require.Len(t, events, 7)
+	require.Equal(t, d.OpsProgressEventKindPreflight, events[0].Kind)
+	require.Equal(t, "process_instance", events[0].Preflight.CoreResource)
+	require.Equal(t, "process-instance repair", events[0].Preflight.SelectorSummary)
+	require.NotNil(t, events[0].Preflight.Total)
+	require.Equal(t, int64(3), *events[0].Preflight.Total)
+	require.Equal(t, d.OpsTotalCertaintyExact, events[0].Preflight.TotalKind)
+	require.Equal(t, d.OpsPageProgress{Phase: "discovering repair process instances", CurrentPage: 1, PageCount: ptrDomainInt64(2), PageCountKind: d.OpsPageCountKindExact, PageSize: 2, CurrentPageCount: 2, Seen: 2, Selected: 2, OverflowState: d.OpsOverflowStateHasMore}, *events[1].Page)
+	require.Equal(t, d.OpsPageProgress{Phase: "discovering repair process instances", CurrentPage: 2, PageCount: ptrDomainInt64(2), PageCountKind: d.OpsPageCountKindExact, PageSize: 2, CurrentPageCount: 1, Seen: 3, Selected: 3, OverflowState: d.OpsOverflowStateNoMore}, *events[2].Page)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "loading process-instance repair incidents", CoreResource: "process instance(s)", Done: 0, Total: 3}, *events[3].FrozenScope)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "loading process-instance repair incidents", CoreResource: "process instance(s)", Done: 3, Total: 3}, *events[4].FrozenScope)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "planning process-instance repair scope", CoreResource: "process instance(s)", Done: 0, Total: 3}, *events[5].FrozenScope)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "planning process-instance repair scope", CoreResource: "process instance(s)", Done: 3, Total: 3}, *events[6].FrozenScope)
+}
+
+// TestRepairIncidentsKeyedBulkProgressCountersPendingT068 defines exact
+// frozen repair counters for explicit keyed bulk mutation.
+func TestRepairIncidentsKeyedBulkProgressCountersPendingT068(t *testing.T) {
+	t.Parallel()
+
+	incidents := map[string]d.ProcessInstanceIncidentDetail{
+		"2251799813685249": {IncidentKey: "2251799813685249", ProcessInstanceKey: "2251799813685251", JobKey: "2251799813685252", State: "ACTIVE"},
+		"2251799813685250": {IncidentKey: "2251799813685250", ProcessInstanceKey: "2251799813685253", State: "ACTIVE"},
+	}
+	var events []d.OpsProgressEvent
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
+		getIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			return incidents[key], nil
+		},
+		resolveIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: http.StatusNoContent, Status: "accepted"}, nil
+		},
+		waitForIncidentResolved: func(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: http.StatusOK, Status: "resolved"}, nil
+		},
+	}, nil, nil, repairJobAPI{
+		updateJob: func(_ context.Context, request d.JobUpdateRequest, _ ...services.CallOption) (d.JobUpdateResult, error) {
+			return d.JobUpdateResult{Key: request.Key, MutationAccepted: true}, nil
+		},
+	}, "")
+
+	got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{
+		CommandName:   "ops repair incident",
+		DiscoveryMode: d.OpsRepairDiscoveryModeKeyed,
+		InputKeys:     typex.Keys{"2251799813685249", "2251799813685250"},
+		NoWait:        true,
+		Workers:       1,
+	}, services.WithProgress(func(event d.OpsProgressEvent) {
+		if event.Kind == d.OpsProgressEventKindFrozenScope {
+			events = append(events, event)
+		}
+	}))
+
+	require.NoError(t, err)
+	require.Equal(t, d.OpsRepairOutcomeRepaired, got.Outcome)
+	require.Len(t, events, 3)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "repairing incidents", CoreResource: "incident(s)", Done: 0, Total: 2}, *events[0].FrozenScope)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "repairing incidents", CoreResource: "incident(s)", Done: 1, Total: 2}, *events[1].FrozenScope)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "repairing incidents", CoreResource: "incident(s)", Done: 2, Total: 2}, *events[2].FrozenScope)
+}
+
 type stubJobAPI struct {
 	jsvc.API
 }

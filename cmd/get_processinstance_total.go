@@ -36,7 +36,7 @@ func searchProcessInstancesTotal(cmd *cobra.Command, log *slog.Logger, cli proce
 		}
 		summary := newPIProgressSummary(step.Page, int(step.TotalAfter), true)
 		if cmd != nil {
-			logging.UpdateActivity(cmd.Context(), formatPITotalActivityProgress(summary))
+			logging.UpdateActivityWithImportance(cmd.Context(), formatPITotalActivityProgress(summary), logging.ActivityImportanceWorkflow)
 		}
 		logPISearchProgress(cmd, log, summary)
 		return nil

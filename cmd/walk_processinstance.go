@@ -76,7 +76,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 		walkers := map[string]walker{
 			walkPIModeParent: {
 				fetch: func() (process.TraversalResult, error) {
-					return cli.AncestryResult(cmd.Context(), flagWalkPIKey, collectExplicitPIAdminInputOptions()...)
+					return cli.AncestryResult(cmd.Context(), flagWalkPIKey, appendExplicitLargeWorkProgressOption(cmd, collectExplicitPIAdminInputOptions())...)
 				},
 				view: func(cmd *cobra.Command, result process.TraversalResult) error {
 					if pickMode() == RenderModeJSON {
@@ -98,7 +98,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 			},
 			walkPIModeChildren: {
 				fetch: func() (process.TraversalResult, error) {
-					return cli.DescendantsResult(cmd.Context(), flagWalkPIKey, collectExplicitPIAdminInputOptions()...)
+					return cli.DescendantsResult(cmd.Context(), flagWalkPIKey, appendExplicitLargeWorkProgressOption(cmd, collectExplicitPIAdminInputOptions())...)
 				},
 				view: func(cmd *cobra.Command, result process.TraversalResult) error {
 					if pickMode() == RenderModeJSON {
@@ -112,7 +112,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 			},
 			walkPIModeFamily: {
 				fetch: func() (process.TraversalResult, error) {
-					return cli.FamilyResult(cmd.Context(), flagWalkPIKey, collectExplicitPIAdminInputOptions()...)
+					return cli.FamilyResult(cmd.Context(), flagWalkPIKey, appendExplicitLargeWorkProgressOption(cmd, collectExplicitPIAdminInputOptions())...)
 				},
 				view: func(cmd *cobra.Command, result process.TraversalResult) error {
 					if pickMode() == RenderModeJSON {
@@ -156,8 +156,8 @@ var walkProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if flagWalkPIWithIncidents || flagWalkPIWithVars || flagWalkPIWithElements {
-			adminInputOpts := collectExplicitPIAdminInputOptions()
-			adminInputIncidentOpts := append(collectIncidentEnrichmentOptions(), options.WithIgnoreTenant())
+			adminInputOpts := appendExplicitLargeWorkProgressOption(cmd, collectExplicitPIAdminInputOptions())
+			adminInputIncidentOpts := appendExplicitLargeWorkProgressOption(cmd, append(collectIncidentEnrichmentOptions(), options.WithIgnoreTenant()))
 			walkedInstances := processInstancesFromTraversal(result)
 			var incidentEnriched process.IncidentEnrichedTraversalResult
 			if flagWalkPIWithIncidents {

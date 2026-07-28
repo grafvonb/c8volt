@@ -132,6 +132,7 @@ var opsRepairIncidentCmd = &cobra.Command{
 			ReportFormat:        reportFormat,
 			StartedAt:           time.Now().UTC(),
 		}
+		configureOpsRepairProgress(cmd, &request)
 		if opsRepairNeedsPreflight(cmd) {
 			planRequest := request
 			planRequest.DryRun = true

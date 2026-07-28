@@ -68,6 +68,17 @@ func (c *client) SearchProcessDefinitionsLatest(ctx context.Context, filter Proc
 	return fromDomainProcessDefinitions(pds), nil
 }
 
+// SearchProcessDefinitionsPages delegates process-definition traversal and
+// limit trimming below the facade.
+func (c *client) SearchProcessDefinitionsPages(ctx context.Context, request ProcessDefinitionSearchRequest, visitor ProcessDefinitionSearchPageVisitor, opts ...options.FacadeOption) (ProcessDefinitionSearchPagesResult, error) {
+	result, err := pdsvc.SearchProcessDefinitionsPages(ctx, c.pdApi, toDomainProcessDefinitionSearchRequest(request), toDomainProcessDefinitionSearchPageVisitor(visitor), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainProcessDefinitionSearchPagesResult(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
+}
+
 func (c *client) GetProcessDefinition(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessDefinition, error) {
 	pd, err := c.pdApi.GetProcessDefinition(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {

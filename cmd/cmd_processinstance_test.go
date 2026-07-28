@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -77,9 +79,10 @@ func newProcessInstanceSearchCaptureServerWithResponses(t *testing.T, requests *
 // newProcessInstanceWithElementsAndListenersServer serves a keyed process
 // instance plus ordered element and listener job search responses for activity
 // enrichment command tests.
-func newProcessInstanceWithElementsAndListenersServer(t *testing.T, requests *[]string, elementResponses []string, jobResponses []string) *httptest.Server {
+func newProcessInstanceWithElementsAndListenersServer(t *testing.T, requests *testx.SafeSlice[string], elementResponses []string, jobResponses []string) *httptest.Server {
 	t.Helper()
 
+	var mu sync.Mutex
 	elementCount := 0
 	jobCount := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -87,21 +90,25 @@ func newProcessInstanceWithElementsAndListenersServer(t *testing.T, requests *[]
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
 			require.Equal(t, http.MethodGet, r.Method)
-			*requests = append(*requests, r.Method+" "+r.URL.Path)
+			requests.Append(r.Method + " " + r.URL.Path)
 			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-07-15T10:12:00Z","state":"ACTIVE","tenantId":"tenant"}`))
 		case "/v2/element-instances/search":
 			require.Equal(t, http.MethodPost, r.Method)
-			*requests = append(*requests, r.Method+" "+r.URL.Path)
+			requests.Append(r.Method + " " + r.URL.Path)
 			require.NotEmpty(t, elementResponses, "element enrichment requires at least one response")
+			mu.Lock()
 			response := elementResponses[min(elementCount, len(elementResponses)-1)]
 			elementCount++
+			mu.Unlock()
 			_, _ = w.Write([]byte(response))
 		case "/v2/jobs/search":
 			require.Equal(t, http.MethodPost, r.Method)
-			*requests = append(*requests, r.Method+" "+r.URL.Path)
+			requests.Append(r.Method + " " + r.URL.Path)
 			require.NotEmpty(t, jobResponses, "listener lookup should not run without listener responses")
+			mu.Lock()
 			response := jobResponses[min(jobCount, len(jobResponses)-1)]
 			jobCount++
+			mu.Unlock()
 			_, _ = w.Write([]byte(response))
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)

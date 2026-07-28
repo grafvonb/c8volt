@@ -60,6 +60,7 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
 			ReportFormat:  flagOpsExecuteSmokeTestReportFormat,
 			StartedAt:     time.Now().UTC(),
 		}
+		configureOpsExecuteSmokeTestProgress(cmd, &request)
 		if err := validateOpsWorkflowReportPathForPlanning(flagOpsExecuteSmokeTestReportFile, opsWorkflowReportWriteModeForConfirmedMutation(effectiveAutoConfirm && !flagDryRun)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}

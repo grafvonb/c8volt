@@ -41,6 +41,7 @@ type SmokeTestRequest struct {
 	ReportFile    string
 	ReportFormat  string
 	StartedAt     time.Time
+	Progress      func(OpsProgressEvent)
 }
 
 // WorkflowStepResult captures compact status for one smoke-test workflow step.

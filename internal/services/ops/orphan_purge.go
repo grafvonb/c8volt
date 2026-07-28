@@ -23,6 +23,9 @@ func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.Orp
 	}
 	cfg := services.ApplyCallOptions(opts)
 	request.NoWait = request.NoWait || cfg.NoWait
+	if request.Progress == nil {
+		request.Progress = cfg.Progress
+	}
 	result := newOrphanPurgeResult(request)
 
 	discovery := pisvc.OrphanDiscovery{
@@ -36,6 +39,7 @@ func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.Orp
 			Filter:    request.Selection,
 			BatchSize: request.BatchSize,
 			Limit:     request.Limit,
+			Progress:  orphanPurgeDiscoveryProgress(request),
 		}, opts...)
 		if err != nil {
 			result.Discovery.Status = d.OpsWorkflowStepStatusFailed
@@ -56,7 +60,9 @@ func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.Orp
 		return finishOrphanPurgeResult(result, d.OrphanPurgeOutcomePlanned, nil)
 	}
 
+	reportOpsFrozenScopeProgress(request.Progress, "planning orphan process-instance delete scope", 0, len(discovery.Keys))
 	plan, err := pisvc.DryRunCancelOrDeletePlan(ctx, s.piAPI, discovery.Keys, request.Workers, opts...)
+	reportOpsFrozenScopeProgress(request.Progress, "planning orphan process-instance delete scope", len(discovery.Keys), len(discovery.Keys))
 	result.DeletionPlan = d.DeletionPlan{
 		Status:               d.OpsWorkflowStepStatusPlanned,
 		RequestedKeys:        discovery.Keys,
@@ -85,6 +91,9 @@ func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.Orp
 
 	result.DeleteRequested = true
 	deleteOpts := compactOpsExecutionOptions(opts...)
+	if request.Progress != nil {
+		deleteOpts = append(deleteOpts, services.WithProgress(request.Progress))
+	}
 	if request.NoWait {
 		deleteOpts = append(deleteOpts, services.WithNoWait())
 	}

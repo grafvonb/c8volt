@@ -82,16 +82,6 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 	out := page.Items
 	d.SortByBpmnProcessIdAscThenByVersionDesc(out)
 
-	if cCfg.WithStat {
-		for i := range out {
-			if out[i].Key == "" {
-				continue
-			}
-			if err = s.retrieveProcessDefinitionStats(ctx, &out[i], opts...); err != nil {
-				return nil, err
-			}
-		}
-	}
 	common.VerboseLog(ctx, cCfg, s.log, "found process definitions", "count", len(out))
 	return out, nil
 }
@@ -117,6 +107,16 @@ func (s *Service) SearchProcessDefinitionsPage(ctx context.Context, filter d.Pro
 		return d.ProcessDefinitionPage{}, err
 	}
 	items := toolx.MapSlice(payload.Items, fromProcessDefinitionResult)
+	if cCfg.WithStat {
+		for i := range items {
+			if items[i].Key == "" {
+				continue
+			}
+			if err = s.retrieveProcessDefinitionStats(ctx, &items[i], opts...); err != nil {
+				return d.ProcessDefinitionPage{}, err
+			}
+		}
+	}
 	return d.ProcessDefinitionPage{
 		Items:         items,
 		Request:       pageReq,
@@ -379,12 +379,6 @@ func newProcessDefinitionReportedTotal(page camundav88.SearchQueryPageResponse) 
 // pickProcessDefinitionOverflowState classifies whether a process-definition page can continue.
 func pickProcessDefinitionOverflowState(page camundav88.SearchQueryPageResponse, req d.ProcessDefinitionPageRequest, itemCount int) d.ProcessInstanceOverflowState {
 	if itemCount == 0 {
-		return d.ProcessInstanceOverflowStateNoMore
-	}
-	if req.After != "" {
-		if page.EndCursor != nil {
-			return d.ProcessInstanceOverflowStateHasMore
-		}
 		return d.ProcessInstanceOverflowStateNoMore
 	}
 	visibleCount := int64(req.From) + int64(itemCount)

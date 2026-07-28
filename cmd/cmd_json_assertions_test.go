@@ -110,6 +110,62 @@ func TestPagedSearchMachineOutputCleanliness(t *testing.T) {
 	}
 }
 
+// TestPagedProcessInstanceJSONAndKeysOnlyOutputCleanliness verifies process-instance paging keeps machine streams clean.
+func TestPagedProcessInstanceJSONAndKeysOnlyOutputCleanliness(t *testing.T) {
+	tests := []struct {
+		name       string
+		args       []string
+		responses  []string
+		wantStdout func(t *testing.T, stdout string)
+	}{
+		{
+			name: "json",
+			args: []string{"--json", "get", "process-instance", "--batch-size", "1"},
+			responses: []string{
+				`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":true,"endCursor":"cursor-1"}}`,
+				`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:01:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":false,"startCursor":"cursor-1"}}`,
+			},
+			wantStdout: func(t *testing.T, stdout string) {
+				t.Helper()
+				var envelope map[string]any
+				require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+				payload := requireJSONObject(t, envelope["payload"])
+				requireJSONItems(t, payload["items"], 2)
+			},
+		},
+		{
+			name: "keys-only",
+			args: []string{"--keys-only", "get", "process-instance"},
+			responses: []string{
+				`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:01:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+			},
+			wantStdout: func(t *testing.T, stdout string) {
+				t.Helper()
+				require.Equal(t, "123\n124\n", stdout)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests, tt.responses...)
+			t.Cleanup(srv.Close)
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+			args := append([]string{"--config", cfgPath}, tt.args...)
+
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+
+			require.NotEmpty(t, requests)
+			require.Empty(t, stderr)
+			require.NotContains(t, stdout, "process-instance search scope")
+			require.NotContains(t, stdout, "discovering process instances")
+			require.NotContains(t, stdout, "searching process instances")
+			tt.wantStdout(t, stdout)
+		})
+	}
+}
+
 // executeRootForJobWithSeparateOutputs runs the root command and captures stdout and stderr independently.
 func executeRootForJobWithSeparateOutputs(t *testing.T, args ...string) (string, string) {
 	t.Helper()

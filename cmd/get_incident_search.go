@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/incident"
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/spf13/cobra"
@@ -114,6 +115,7 @@ func searchIncidentsWithPaging(cmd *cobra.Command, cli incident.API, cfg *config
 	incremental := shouldRenderIncidentSearchPageIncrementally(cmd)
 	autoContinue := shouldAutoContinueIncidentSearchPages(cmd)
 	processedTotal := 0
+	pageNumber := 0
 	printFoundAndReturn := func() (incident.Incidents, bool, error) {
 		if incremental {
 			if pickMode() == RenderModeOneLine && !flagGetIncidentPIKeysOnly {
@@ -127,21 +129,31 @@ func searchIncidentsWithPaging(cmd *cobra.Command, cli incident.API, cfg *config
 	result, err := cli.SearchIncidentsPages(cmd.Context(), filter, pageReq, flagGetIncidentLimit, func(step incident.SearchPageStep) (incident.SearchPageAction, error) {
 		page := step.Page
 		items := page.Items
+		pageNumber++
+		processedTotal = int(step.CumulativeCount)
+		total, totalKind := incidentOpsReportedTotal(page)
+		printBasicSearchOpsProgress(cmd, basicSearchProgressMetadata{
+			Command:            "get incident",
+			CoreResource:       "incident",
+			ResourceLabel:      "incidents",
+			SelectorSummary:    "incident search",
+			ConsequenceSummary: "incident search will discover and render matching incidents",
+			ReportedTotal:      total,
+			TotalKind:          totalKind,
+			OverflowState:      incidentOpsOverflowState(page.OverflowState),
+			PageSize:           page.Request.Size,
+			CurrentPage:        pageNumber,
+			CurrentPageCount:   len(items),
+			CumulativeCount:    processedTotal,
+			LimitReached:       step.LimitReached,
+		}, pageNumber == 1)
 		if incremental {
 			if err := renderIncidentSearchPage(cmd, items); err != nil {
 				return incident.SearchPageActionStop, err
 			}
 		}
-		processedTotal = int(step.CumulativeCount)
 
 		continuation := incidentSearchContinuationState(page, step.LimitReached, autoContinue)
-		printSearchPageProgress(cmd, searchPageProgressSummary{
-			PageSize:          page.Request.Size,
-			CurrentPageCount:  len(items),
-			CumulativeCount:   processedTotal,
-			MoreMatches:       describeIncidentOverflowState(page.OverflowState),
-			ContinuationState: continuation,
-		})
 		switch continuation {
 		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop, processInstanceContinuationLimitReached:
 			return incident.SearchPageActionStop, nil
@@ -169,4 +181,32 @@ func searchIncidentsWithPaging(cmd *cobra.Command, cli incident.API, cfg *config
 		return printFoundAndReturn()
 	}
 	return incident.Incidents{Items: result.Items, Total: int32(len(result.Items))}, false, nil
+}
+
+func incidentOpsReportedTotal(page incident.Page) (*int64, ops.TotalCertainty) {
+	if page.ReportedTotal == nil {
+		return nil, ops.TotalCertaintyUnknown
+	}
+	total := page.ReportedTotal.Count
+	switch page.ReportedTotal.Kind {
+	case incident.ReportedTotalKindExact:
+		return &total, ops.TotalCertaintyExact
+	case incident.ReportedTotalKindLowerBound:
+		return &total, ops.TotalCertaintyLowerBound
+	default:
+		return &total, ops.TotalCertaintyUnknown
+	}
+}
+
+func incidentOpsOverflowState(state incident.OverflowState) ops.OverflowState {
+	switch state {
+	case incident.OverflowStateHasMore:
+		return ops.OverflowStateHasMore
+	case incident.OverflowStateIndeterminate:
+		return ops.OverflowStateIndeterminate
+	case incident.OverflowStateNoMore:
+		return ops.OverflowStateNoMore
+	default:
+		return ops.OverflowStateUnknown
+	}
 }

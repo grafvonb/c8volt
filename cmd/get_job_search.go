@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/job"
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/spf13/cobra"
 )
 
@@ -14,6 +15,7 @@ func searchJobsWithPaging(cmd *cobra.Command, cli job.API, request job.SearchReq
 	incremental := shouldRenderJobSearchPageIncrementally(cmd)
 	autoContinue := shouldAutoContinueJobSearchPages(cmd)
 	processedTotal := 0
+	pageNumber := 0
 	printFoundAndReturn := func() (job.SearchResult, bool, error) {
 		if incremental {
 			if pickMode() == RenderModeOneLine {
@@ -27,21 +29,31 @@ func searchJobsWithPaging(cmd *cobra.Command, cli job.API, request job.SearchReq
 	result, err := cli.SearchJobsPages(cmd.Context(), request, func(step job.SearchPageStep) (job.SearchPageAction, error) {
 		page := step.Page
 		items := page.Items
+		pageNumber++
+		processedTotal = int(step.CumulativeCount)
+		total, totalKind := jobOpsReportedTotal(page)
+		printBasicSearchOpsProgress(cmd, basicSearchProgressMetadata{
+			Command:            "get job",
+			CoreResource:       "job",
+			ResourceLabel:      "jobs",
+			SelectorSummary:    "job search",
+			ConsequenceSummary: "job search will discover and render matching jobs",
+			ReportedTotal:      total,
+			TotalKind:          totalKind,
+			OverflowState:      jobOpsOverflowState(page.OverflowState),
+			PageSize:           page.Request.Size,
+			CurrentPage:        pageNumber,
+			CurrentPageCount:   len(items),
+			CumulativeCount:    processedTotal,
+			LimitReached:       step.LimitReached,
+		}, pageNumber == 1)
 		if incremental {
 			if err := renderJobSearchPage(cmd, items); err != nil {
 				return job.SearchPageActionStop, err
 			}
 		}
-		processedTotal = int(step.CumulativeCount)
 
 		continuation := jobSearchContinuationState(page, step.LimitReached, autoContinue)
-		printSearchPageProgress(cmd, searchPageProgressSummary{
-			PageSize:          page.Request.Size,
-			CurrentPageCount:  len(items),
-			CumulativeCount:   processedTotal,
-			MoreMatches:       describeJobOverflowState(page.OverflowState),
-			ContinuationState: continuation,
-		})
 
 		if continuation == processInstanceContinuationLimitReached || continuation == processInstanceContinuationCompleted {
 			return job.SearchPageActionStop, nil
@@ -127,4 +139,30 @@ func renderJobSearchPage(cmd *cobra.Command, items []job.Job) error {
 		}
 	}
 	return nil
+}
+
+func jobOpsReportedTotal(page job.Page) (*int64, ops.TotalCertainty) {
+	if page.ReportedTotal == nil {
+		return nil, ops.TotalCertaintyUnknown
+	}
+	total := page.ReportedTotal.Count
+	switch page.ReportedTotal.Kind {
+	case job.ReportedTotalKindExact:
+		return &total, ops.TotalCertaintyExact
+	case job.ReportedTotalKindLowerBound:
+		return &total, ops.TotalCertaintyLowerBound
+	default:
+		return &total, ops.TotalCertaintyUnknown
+	}
+}
+
+func jobOpsOverflowState(state job.OverflowState) ops.OverflowState {
+	switch state {
+	case job.OverflowStateHasMore:
+		return ops.OverflowStateHasMore
+	case job.OverflowStateNoMore:
+		return ops.OverflowStateNoMore
+	default:
+		return ops.OverflowStateUnknown
+	}
 }

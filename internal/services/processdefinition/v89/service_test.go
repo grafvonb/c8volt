@@ -400,6 +400,39 @@ func TestService_SearchProcessDefinitionsPage_UsesNativePageMetadata(t *testing.
 	m.AssertExpectations(t)
 }
 
+func TestService_SearchProcessDefinitionsPage_TreatsExactCursorFinalPageAsNoMore(t *testing.T) {
+	ctx := context.Background()
+	m := &mockProcessDefinitionClient{}
+	resp := &camundav89.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
+		Body:         []byte(`{"items":[{"hasStartForm":false,"name":"name-proc","processDefinitionId":"proc","processDefinitionKey":"125","resourceName":"proc.bpmn","tenantId":"tenant","version":2,"versionTag":"tag"}],"page":{"endCursor":"cursor-final","hasMoreTotalItems":false,"totalItems":3}}`),
+		JSON200:      &camundav89.ProcessDefinitionSearchQueryResult{},
+	}
+	m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).
+		Run(func(args mock.Arguments) {
+			body := decodeProcessDefinitionSearchRequest(t, args.String(2))
+			require.NotNil(t, body.Page.After)
+			assert.Equal(t, "cursor-prev", *body.Page.After)
+			require.NotNil(t, body.Page.Limit)
+			assert.Equal(t, int32(2), *body.Page.Limit)
+			assert.Nil(t, body.Page.From)
+		}).
+		Return(resp, nil)
+
+	svc, err := v89.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v89.WithClientCamunda(m))
+	require.NoError(t, err)
+	page, err := svc.SearchProcessDefinitionsPage(ctx, domain.ProcessDefinitionFilter{}, domain.ProcessDefinitionPageRequest{From: 2, After: "cursor-prev", Size: 2})
+
+	require.NoError(t, err)
+	require.Len(t, page.Items, 1)
+	assert.Equal(t, domain.ProcessInstanceOverflowStateNoMore, page.OverflowState)
+	assert.Equal(t, "cursor-final", page.EndCursor)
+	require.NotNil(t, page.ReportedTotal)
+	assert.Equal(t, int64(3), page.ReportedTotal.Count)
+	assert.Equal(t, domain.ProcessDefinitionReportedTotalKindExact, page.ReportedTotal.Kind)
+	m.AssertExpectations(t)
+}
+
 func TestService_GetProcessDefinition(t *testing.T) {
 	ctx := context.Background()
 	mockErr := errors.New("get failed")

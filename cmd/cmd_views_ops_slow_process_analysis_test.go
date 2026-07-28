@@ -365,6 +365,36 @@ func TestRenderOpsSlowProcessAnalysisResultKeysOnlyRendersUniqueRootKeys(t *test
 	require.Equal(t, "2251799813685249\n2251799813685250\n", buf.String())
 }
 
+// TestRenderOpsSlowProcessAnalysisResultKeysOnlyIgnoresMetadata verifies progress metadata cannot leak into key pipelines.
+func TestRenderOpsSlowProcessAnalysisResultKeysOnlyIgnoresMetadata(t *testing.T) {
+	result := ops.SlowProcessAnalysisResult{
+		PreflightScope: &ops.PreflightScope{
+			SelectorSummary: "OrderProcess",
+			CoreResource:    "process_instance",
+			Total:           ptrInt64(2),
+			TotalKind:       ops.TotalCertaintyExact,
+		},
+		FrozenScopeProgress: &ops.FrozenScopeProgress{
+			Phase:        "loading runtime elements",
+			CoreResource: "process instance(s)",
+			Done:         2,
+			Total:        2,
+		},
+		Items: []ops.SlowProcessAnalysisProcessInstance{
+			{Key: "2251799813685249"},
+			{Key: "2251799813685250"},
+		},
+		Count: 2,
+	}
+
+	output := renderOpsSlowProcessAnalysisKeysOnlyForTest(t, result, false)
+
+	require.Equal(t, "2251799813685249\n2251799813685250\n", output)
+	require.NotContains(t, output, "preflight")
+	require.NotContains(t, output, "loading runtime elements")
+	require.NotContains(t, output, "process instances:")
+}
+
 // TestRenderOpsSlowProcessAnalysisResultKeysOnlyIgnoresFullTimelineFlag verifies the audit switch cannot affect pipelines.
 func TestRenderOpsSlowProcessAnalysisResultKeysOnlyIgnoresFullTimelineFlag(t *testing.T) {
 	result := ops.SlowProcessAnalysisResult{
@@ -402,6 +432,27 @@ func TestRenderOpsSlowProcessAnalysisResultJSONIncludesStableAnalysisFields(t *t
 			SelectionMode: ops.SlowProcessAnalysisSelectionModeExplicitKeys,
 			InputKeys:     typex.Keys{"2251799813685249"},
 			OutputMode:    "json",
+		},
+		PreflightScope: &ops.PreflightScope{
+			Phase:           "preflight",
+			Command:         "ops analyse slow-process-instances",
+			CoreResource:    "process_instance",
+			SelectorSummary: "OrderProcess",
+			Total:           ptrInt64(1),
+			TotalKind:       ops.TotalCertaintyExact,
+			PageSize:        1000,
+			PageCount:       ptrInt64(1),
+			PageCountKind:   ops.PageCountKindExact,
+			ConsequenceSummary: ops.ConsequenceSummary{
+				WorkSummary: "discover all matches and load runtime element timelines",
+				RiskSummary: "read-only, expensive",
+			},
+		},
+		FrozenScopeProgress: &ops.FrozenScopeProgress{
+			Phase:        "loading runtime elements",
+			CoreResource: "process instance(s)",
+			Done:         1,
+			Total:        1,
 		},
 		CapturedAt: captured,
 		Items: []ops.SlowProcessAnalysisProcessInstance{{
@@ -467,6 +518,12 @@ func TestRenderOpsSlowProcessAnalysisResultJSONIncludesStableAnalysisFields(t *t
 	require.NoError(t, json.Unmarshal(buf.Bytes(), &payload))
 	require.Equal(t, captured, payload.CapturedAt)
 	require.Equal(t, "ops analyse slow-process-instances", payload.Request.CommandName)
+	require.NotNil(t, payload.PreflightScope)
+	require.Equal(t, "OrderProcess", payload.PreflightScope.SelectorSummary)
+	require.Equal(t, ops.TotalCertaintyExact, payload.PreflightScope.TotalKind)
+	require.NotNil(t, payload.FrozenScopeProgress)
+	require.Equal(t, "loading runtime elements", payload.FrozenScopeProgress.Phase)
+	require.Equal(t, 1, payload.FrozenScopeProgress.Total)
 	require.Equal(t, "2251799813685249", payload.Items[0].Key)
 	require.Equal(t, int64(300000), payload.Items[0].DurationMillis)
 	require.Equal(t, 88, payload.Items[0].RelativePercentile)
@@ -481,8 +538,12 @@ func TestRenderOpsSlowProcessAnalysisResultJSONIncludesStableAnalysisFields(t *t
 	require.Equal(t, int64(236000), payload.Items[0].Timeline[1].DurationMillis)
 	require.Equal(t, 83, payload.Items[0].Timeline[1].RelativePercentile)
 	require.Contains(t, buf.String(), `"capturedAt"`)
+	require.Contains(t, buf.String(), `"preflightScope"`)
+	require.Contains(t, buf.String(), `"frozenScopeProgress"`)
 	require.Contains(t, buf.String(), `"comparisonSampleCount"`)
 	require.Contains(t, buf.String(), `"processDurationShare"`)
+	require.NotContains(t, buf.String(), `"progress"`)
+	require.NotContains(t, buf.String(), `"page"`)
 }
 
 // TestRenderOpsSlowProcessAnalysisResultJSONIncludesRequestedListeners verifies listener arrays stay element-only.

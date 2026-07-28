@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -13,10 +14,12 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,6 +33,19 @@ func TestGetJobCommand_HumanOutput(t *testing.T) {
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Equal(t, "2251799813711967 tenant-a FAILED pi:2251799813711000 ei:2251799813711001 r:2 d:2026-05-08T10:15:00.000 ec:PAYMENT_ERROR err:worker failed\n", output)
+}
+
+// TestGetJobCommand_HTTPFallbackActivityUsesCommandContext verifies job search preserves fallback activity.
+func TestGetJobCommand_HTTPFallbackActivityUsesCommandContext(t *testing.T) {
+	resetHTTPFallbackActivityRenderMode(t)
+	sink := &activitysink.Sink{}
+	cmd := newHTTPFallbackActivityCommand(sink)
+	api := jobActivityAPI{}
+
+	_, _, err := searchJobsWithPaging(cmd, api, job.SearchRequest{BatchSize: 1, Limit: 1})
+	require.NoError(t, err)
+
+	requireHTTPFallbackActivityStarts(t, sink, "searching jobs")
 }
 
 func TestGetJobCommand_HumanOutputKeepsLongErrorMessageInlineByDefault(t *testing.T) {
@@ -208,8 +224,9 @@ func TestGetJobCommand_SearchVerboseProgress(t *testing.T) {
 	secondPage := requireJSONObject(t, bodies[1]["page"])
 	require.Equal(t, float64(2), secondPage["limit"])
 	require.Equal(t, float64(2), secondPage["from"])
-	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
-	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+	require.Contains(t, output, "job search scope: matched at least 3 jobs; page size: 2; discovery pages: at least 2")
+	require.Contains(t, output, "discovering jobs, page 1/~2, 2 seen")
+	require.Contains(t, output, "discovering jobs, page 2/2, 3 seen")
 	require.Contains(t, output, "found: 3")
 }
 
@@ -314,6 +331,58 @@ func TestGetJobCommand_SearchModeKeysOnlyOutput(t *testing.T) {
 
 	require.Equal(t, "2251799813711967\n2251799813711968\n", output)
 	require.Len(t, bodies, 1)
+}
+
+// TestGetJobCommand_SearchMachineOutputStaysProgressFree verifies job progress can be routed later without corrupting JSON or key streams.
+func TestGetJobCommand_SearchMachineOutputStaysProgressFree(t *testing.T) {
+	t.Run("json", func(t *testing.T) {
+		var bodies []map[string]any
+		srv := newJobSearchServerResponses(t, &bodies,
+			`{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0,"tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":true}}`,
+			`{"items":[{"jobKey":"2251799813711968","state":"FAILED","retries":1,"tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+		)
+		t.Cleanup(srv.Close)
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+		stdout, stderr := executeRootForJobTestWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--json",
+			"get", "job",
+			"--batch-size", "1",
+		)
+
+		require.Len(t, bodies, 2)
+		require.Empty(t, stderr)
+		require.NotContains(t, stdout, "scope:")
+		require.NotContains(t, stdout, "page size:")
+		require.NotContains(t, stdout, "discovering jobs")
+		var envelope map[string]any
+		require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+		payload := requireJSONObject(t, envelope["payload"])
+		items := payload["items"].([]any)
+		require.Len(t, items, 2)
+	})
+
+	t.Run("keys only", func(t *testing.T) {
+		var bodies []map[string]any
+		srv := newJobSearchServer(t, &bodies, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0},{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`)
+		t.Cleanup(srv.Close)
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+		stdout, stderr := executeRootForJobTestWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--keys-only",
+			"get", "job",
+			"--state", "FAILED",
+			"--limit", "2",
+		)
+
+		require.Len(t, bodies, 1)
+		require.Empty(t, stderr)
+		require.Equal(t, "2251799813711967\n2251799813711968\n", stdout)
+		require.NotContains(t, stdout, "scope:")
+		require.NotContains(t, stdout, "page size:")
+	})
 }
 
 func TestGetJobCommand_SearchUnsupportedV87FailsBeforeLookup(t *testing.T) {
@@ -509,6 +578,25 @@ func newJobSearchServerResponses(t *testing.T, bodies *[]map[string]any, respons
 	}))
 }
 
+// jobActivityAPI records the fallback activity that the HTTP-backed job facade would emit.
+type jobActivityAPI struct {
+	job.API
+}
+
+// SearchJobsPages records job-search fallback activity before returning one completed page.
+func (jobActivityAPI) SearchJobsPages(ctx context.Context, request job.SearchRequest, visitor job.SearchPageVisitor, opts ...foptions.FacadeOption) (job.SearchPagesResult, error) {
+	recordHTTPFallbackActivity(ctx, "searching jobs")
+	page := job.Page{
+		Items:         []job.Job{{Key: "2251799813711967", State: "FAILED"}},
+		Request:       job.PageRequest{Size: request.BatchSize},
+		OverflowState: job.OverflowStateNoMore,
+	}
+	if _, err := visitor(job.SearchPageStep{Page: page, CumulativeCount: 1, LimitReached: true}); err != nil {
+		return job.SearchPagesResult{}, err
+	}
+	return job.SearchPagesResult{Items: page.Items, Limit: request.Limit, Pages: 1}, nil
+}
+
 func executeRootForJobTest(t *testing.T, args ...string) string {
 	t.Helper()
 
@@ -531,6 +619,32 @@ func executeRootForJobTest(t *testing.T, args ...string) string {
 	_, err := root.ExecuteC()
 	require.NoError(t, err)
 	return buf.String()
+}
+
+// executeRootForJobTestWithSeparateOutputs lets progress-contract tests inspect stdout independently from stderr.
+func executeRootForJobTestWithSeparateOutputs(t *testing.T, args ...string) (string, string) {
+	t.Helper()
+
+	resetGetJobFlagState()
+	resetUpdateJobFlagState()
+	t.Cleanup(func() {
+		resetGetJobFlagState()
+		resetUpdateJobFlagState()
+	})
+
+	root := Root()
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	root.SetOut(stdout)
+	root.SetErr(stderr)
+	root.SetArgs(args)
+	resetCommandTreeFlags(root)
+	resetGetJobFlagState()
+	resetUpdateJobFlagState()
+
+	_, err := root.ExecuteC()
+	require.NoError(t, err)
+	return stdout.String(), stderr.String()
 }
 
 func resetGetJobFlagState() {

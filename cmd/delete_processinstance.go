@@ -183,7 +183,7 @@ func deleteProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli 
 		}
 	}
 
-	mutationOpts := append(opts, processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+	mutationOpts := append(compactProcessInstanceMutationOptions(opts), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
 	reports, err := cli.DeleteProcessInstances(cmd.Context(), plan.Roots, flagWorkers, mutationOpts...)
 	if err != nil {
 		return processInstancePageActionResult{}, fmt.Errorf("delete process instances: %w", err)
@@ -196,6 +196,7 @@ func deleteProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli 
 	for i, report := range reports.Items {
 		result.Reports[i] = process.Reporter(report)
 	}
+	renderProcessInstanceMutationResultSummary(cmd, "delete", result.Reports, impact)
 	return result, nil
 }
 
@@ -230,7 +231,8 @@ func deleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 		return processInstancePageActionResults{}, err
 	}
 
-	opts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+	opts := append(compactProcessInstanceMutationOptions(collectOptions()), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+	opts = append(opts, processOptions.WithProgress(newProcessInstanceMutationProgressReporter(cmd, "delete")))
 	reports, err := cli.DeleteProcessInstances(cmd.Context(), plan.Roots, flagWorkers, opts...)
 	if err != nil {
 		return processInstancePageActionResults{}, fmt.Errorf("delete process instances: %w", err)
@@ -239,12 +241,14 @@ func deleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	for i, report := range reports.Items {
 		results.Reports[i] = process.Reporter(report)
 	}
+	renderProcessInstanceMutationResultSummary(cmd, "delete", results.Reports, impact)
 	return results, nil
 }
 
 // planDeleteProcessInstanceSearchPages records delete previews without mutating.
 func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (processInstancePageActionResults, error) {
 	var results processInstancePageActionResults
+	progress, progressSeen := newProcessInstanceMutationProgressReporterWithState(cmd, "delete")
 
 	planned, err := cli.PlanProcessInstanceMutationPages(cmd.Context(), process.ProcessInstanceMutationPlanRequest{
 		SearchRequest: newProcessInstanceSearchRequest(cmd, cfg, filter),
@@ -252,6 +256,7 @@ func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, c
 	}, func(step process.ProcessInstanceMutationPlanStep) (process.ProcessInstanceSearchPageAction, error) {
 		if len(step.RequestedKeys) > 0 {
 			result := processInstancePageActionResultFromPlan("delete", step)
+			printProcessInstanceMutationPlanStepFallbackProgress(cmd, "delete", step, progressSeen)
 			if result.DryRunPreview != nil {
 				results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
 			}
@@ -282,7 +287,7 @@ func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, c
 			return process.ProcessInstanceSearchPageActionContinue, nil
 		}
 		return process.ProcessInstanceSearchPageActionStop, nil
-	}, collectOptions()...)
+	}, append(collectOptions(), processOptions.WithProgress(progress))...)
 	if err != nil {
 		return processInstancePageActionResults{}, err
 	}
@@ -302,6 +307,7 @@ func planDeleteProcessInstanceSearchPagesForMutation(cmd *cobra.Command, cli pro
 
 func planDeleteProcessInstanceSearchPagesWithPrompt(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter, aborted *bool) (processInstancePageActionResults, error) {
 	var results processInstancePageActionResults
+	progress, progressSeen := newProcessInstanceMutationProgressReporterWithState(cmd, "delete")
 
 	planned, err := cli.PlanProcessInstanceMutationPages(cmd.Context(), process.ProcessInstanceMutationPlanRequest{
 		SearchRequest: newProcessInstanceSearchRequest(cmd, cfg, filter),
@@ -309,6 +315,7 @@ func planDeleteProcessInstanceSearchPagesWithPrompt(cmd *cobra.Command, cli proc
 	}, func(step process.ProcessInstanceMutationPlanStep) (process.ProcessInstanceSearchPageAction, error) {
 		if len(step.RequestedKeys) > 0 {
 			result := processInstancePageActionResultFromPlan("delete", step)
+			printProcessInstanceMutationPlanStepFallbackProgress(cmd, "delete", step, progressSeen)
 			if result.DryRunPreview != nil {
 				results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
 			}
@@ -342,7 +349,7 @@ func planDeleteProcessInstanceSearchPagesWithPrompt(cmd *cobra.Command, cli proc
 			return process.ProcessInstanceSearchPageActionContinue, nil
 		}
 		return process.ProcessInstanceSearchPageActionStop, nil
-	}, collectOptions()...)
+	}, append(collectOptions(), processOptions.WithProgress(progress))...)
 	if err != nil {
 		return processInstancePageActionResults{}, err
 	}

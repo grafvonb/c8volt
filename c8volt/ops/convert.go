@@ -28,6 +28,7 @@ func toDomainSmokeTestRequest(x SmokeTestRequest) d.SmokeTestRequest {
 		ReportFile:    x.ReportFile,
 		ReportFormat:  x.ReportFormat,
 		StartedAt:     x.StartedAt,
+		Progress:      toDomainProgressFunc(x.Progress),
 	}
 }
 
@@ -62,6 +63,7 @@ func fromDomainSmokeTestRequest(x d.SmokeTestRequest) SmokeTestRequest {
 		ReportFile:    x.ReportFile,
 		ReportFormat:  x.ReportFormat,
 		StartedAt:     x.StartedAt,
+		Progress:      fromDomainProgressFunc(x.Progress),
 	}
 }
 
@@ -101,6 +103,8 @@ func toDomainSlowProcessAnalysisRequest(x SlowProcessAnalysisRequest) d.SlowProc
 		CapturedNow:               x.CapturedNow,
 		OutputMode:                x.OutputMode,
 		WithListeners:             x.WithListeners,
+		Progress:                  toDomainProgressFunc(x.Progress),
+		ConfirmPreflight:          toDomainPreflightConfirmationFunc(x.ConfirmPreflight),
 	}
 }
 
@@ -118,6 +122,8 @@ func fromDomainSlowProcessAnalysisRequest(x d.SlowProcessAnalysisRequest) SlowPr
 		CapturedNow:               x.CapturedNow,
 		OutputMode:                x.OutputMode,
 		WithListeners:             x.WithListeners,
+		Progress:                  fromDomainProgressFunc(x.Progress),
+		ConfirmPreflight:          fromDomainPreflightConfirmationFunc(x.ConfirmPreflight),
 	}
 }
 
@@ -179,11 +185,315 @@ func fromDomainSlowProcessAnalysisResult(x d.SlowProcessAnalysisResult) SlowProc
 	return SlowProcessAnalysisResult{
 		Request:               fromDomainSlowProcessAnalysisRequest(x.Request),
 		DiscoveredScopeStatus: fromDomainDiscoveryScopeStatus(x.DiscoveredScopeStatus),
+		PreflightScope:        fromDomainPreflightScopePtr(x.PreflightScope),
+		FrozenScopeProgress:   fromDomainFrozenScopeProgressPtr(x.FrozenScopeProgress),
 		CapturedAt:            x.CapturedAt,
 		Items:                 toolx.MapSlice(x.Items, fromDomainSlowProcessAnalysisProcessInstance),
 		Count:                 x.Count,
 		Empty:                 x.Empty,
 		Warnings:              append([]string(nil), x.Warnings...),
+	}
+}
+
+// toDomainProgressFunc adapts the public callback without adding facade-owned workflow logic.
+func toDomainProgressFunc(fn func(ProgressEvent)) func(d.OpsProgressEvent) {
+	if fn == nil {
+		return nil
+	}
+	return func(event d.OpsProgressEvent) {
+		fn(fromDomainProgressEvent(event))
+	}
+}
+
+// toDomainPreflightConfirmationFunc adapts command-owned confirmation without moving prompt policy into the facade.
+func toDomainPreflightConfirmationFunc(fn func(PreflightScope) error) func(d.OpsPreflightScope) error {
+	if fn == nil {
+		return nil
+	}
+	return func(scope d.OpsPreflightScope) error {
+		return fn(fromDomainPreflightScope(scope))
+	}
+}
+
+// fromDomainProgressFunc preserves callbacks when a partial request returns through error mapping.
+func fromDomainProgressFunc(fn func(d.OpsProgressEvent)) func(ProgressEvent) {
+	if fn == nil {
+		return nil
+	}
+	return func(event ProgressEvent) {
+		fn(toDomainProgressEvent(event))
+	}
+}
+
+// fromDomainPreflightConfirmationFunc preserves confirmation callbacks when a request returns through result mapping.
+func fromDomainPreflightConfirmationFunc(fn func(d.OpsPreflightScope) error) func(PreflightScope) error {
+	if fn == nil {
+		return nil
+	}
+	return func(scope PreflightScope) error {
+		return fn(toDomainPreflightScope(scope))
+	}
+}
+
+// fromDomainProgressEvent maps one structured service progress event to public types.
+func fromDomainProgressEvent(x d.OpsProgressEvent) ProgressEvent {
+	return ProgressEvent{
+		Kind:        ProgressEventKind(x.Kind),
+		Preflight:   fromDomainPreflightScopePtr(x.Preflight),
+		Page:        fromDomainPageProgressPtr(x.Page),
+		FrozenScope: fromDomainFrozenScopeProgressPtr(x.FrozenScope),
+		ETA:         fromDomainETASampleWindowPtr(x.ETA),
+	}
+}
+
+// toDomainProgressEvent maps public callback facts into the internal event shape.
+func toDomainProgressEvent(x ProgressEvent) d.OpsProgressEvent {
+	return d.OpsProgressEvent{
+		Kind:        d.OpsProgressEventKind(x.Kind),
+		Preflight:   toDomainPreflightScopePtr(x.Preflight),
+		Page:        toDomainPageProgressPtr(x.Page),
+		FrozenScope: toDomainFrozenScopeProgressPtr(x.FrozenScope),
+		ETA:         toDomainETASampleWindowPtr(x.ETA),
+	}
+}
+
+// fromDomainPreflightScopePtr maps optional preflight metadata while preserving nil as absent.
+func fromDomainPreflightScopePtr(x *d.OpsPreflightScope) *PreflightScope {
+	if x == nil {
+		return nil
+	}
+	out := fromDomainPreflightScope(*x)
+	return &out
+}
+
+// fromDomainPreflightScope maps internal preflight metadata to the public result contract.
+func fromDomainPreflightScope(x d.OpsPreflightScope) PreflightScope {
+	return PreflightScope{
+		Phase:                x.Phase,
+		Command:              x.Command,
+		CoreResource:         x.CoreResource,
+		SelectorSummary:      x.SelectorSummary,
+		Total:                x.Total,
+		TotalKind:            TotalCertainty(x.TotalKind),
+		PageSize:             x.PageSize,
+		PageCount:            x.PageCount,
+		PageCountKind:        PageCountKind(x.PageCountKind),
+		ConsequenceSummary:   fromDomainConsequenceSummary(x.ConsequenceSummary),
+		RequiresConfirmation: x.RequiresConfirmation,
+		ExpensivePreflight:   x.ExpensivePreflight,
+	}
+}
+
+// toDomainPreflightScopePtr maps optional public preflight metadata for callback adapters.
+func toDomainPreflightScopePtr(x *PreflightScope) *d.OpsPreflightScope {
+	if x == nil {
+		return nil
+	}
+	out := toDomainPreflightScope(*x)
+	return &out
+}
+
+// toDomainPreflightScope maps public preflight metadata into the internal shape.
+func toDomainPreflightScope(x PreflightScope) d.OpsPreflightScope {
+	return d.OpsPreflightScope{
+		Phase:                x.Phase,
+		Command:              x.Command,
+		CoreResource:         x.CoreResource,
+		SelectorSummary:      x.SelectorSummary,
+		Total:                x.Total,
+		TotalKind:            d.OpsTotalCertainty(x.TotalKind),
+		PageSize:             x.PageSize,
+		PageCount:            x.PageCount,
+		PageCountKind:        d.OpsPageCountKind(x.PageCountKind),
+		ConsequenceSummary:   toDomainConsequenceSummary(x.ConsequenceSummary),
+		RequiresConfirmation: x.RequiresConfirmation,
+		ExpensivePreflight:   x.ExpensivePreflight,
+	}
+}
+
+// fromDomainConsequenceSummary maps consequence text parts to the public model.
+func fromDomainConsequenceSummary(x d.OpsConsequenceSummary) ConsequenceSummary {
+	return ConsequenceSummary{
+		ResourceSummary:  x.ResourceSummary,
+		WorkSummary:      x.WorkSummary,
+		RiskSummary:      x.RiskSummary,
+		ConfirmationText: x.ConfirmationText,
+	}
+}
+
+// toDomainConsequenceSummary maps public consequence text parts to the internal model.
+func toDomainConsequenceSummary(x ConsequenceSummary) d.OpsConsequenceSummary {
+	return d.OpsConsequenceSummary{
+		ResourceSummary:  x.ResourceSummary,
+		WorkSummary:      x.WorkSummary,
+		RiskSummary:      x.RiskSummary,
+		ConfirmationText: x.ConfirmationText,
+	}
+}
+
+// fromDomainPageProgressPtr maps optional page progress while preserving nil as absent.
+func fromDomainPageProgressPtr(x *d.OpsPageProgress) *PageProgress {
+	if x == nil {
+		return nil
+	}
+	out := fromDomainPageProgress(*x)
+	return &out
+}
+
+// fromDomainPageProgress maps internal page progress to public callback facts.
+func fromDomainPageProgress(x d.OpsPageProgress) PageProgress {
+	return PageProgress{
+		Phase:            x.Phase,
+		CurrentPage:      x.CurrentPage,
+		PageCount:        x.PageCount,
+		PageCountKind:    PageCountKind(x.PageCountKind),
+		PageSize:         x.PageSize,
+		CurrentPageCount: x.CurrentPageCount,
+		Seen:             x.Seen,
+		Selected:         x.Selected,
+		OverflowState:    OverflowState(x.OverflowState),
+		LimitReached:     x.LimitReached,
+	}
+}
+
+// toDomainPageProgressPtr maps optional public page progress for callback adapters.
+func toDomainPageProgressPtr(x *PageProgress) *d.OpsPageProgress {
+	if x == nil {
+		return nil
+	}
+	out := toDomainPageProgress(*x)
+	return &out
+}
+
+// toDomainPageProgress maps public page progress into the internal shape.
+func toDomainPageProgress(x PageProgress) d.OpsPageProgress {
+	return d.OpsPageProgress{
+		Phase:            x.Phase,
+		CurrentPage:      x.CurrentPage,
+		PageCount:        x.PageCount,
+		PageCountKind:    d.OpsPageCountKind(x.PageCountKind),
+		PageSize:         x.PageSize,
+		CurrentPageCount: x.CurrentPageCount,
+		Seen:             x.Seen,
+		Selected:         x.Selected,
+		OverflowState:    d.OpsOverflowState(x.OverflowState),
+		LimitReached:     x.LimitReached,
+	}
+}
+
+// fromDomainFrozenScopeProgressPtr maps optional frozen-scope progress while preserving nil as absent.
+func fromDomainFrozenScopeProgressPtr(x *d.OpsFrozenScopeProgress) *FrozenScopeProgress {
+	if x == nil {
+		return nil
+	}
+	out := fromDomainFrozenScopeProgress(*x)
+	return &out
+}
+
+// fromDomainFrozenScopeProgress maps internal exact counters to public callback facts.
+func fromDomainFrozenScopeProgress(x d.OpsFrozenScopeProgress) FrozenScopeProgress {
+	return FrozenScopeProgress{
+		Phase:        x.Phase,
+		CoreResource: x.CoreResource,
+		Done:         x.Done,
+		Total:        x.Total,
+		Elapsed:      x.Elapsed,
+		Rate:         x.Rate,
+		ETA:          x.ETA,
+		Errors:       x.Errors,
+	}
+}
+
+// toDomainFrozenScopeProgressPtr maps optional public frozen-scope progress for callback adapters.
+func toDomainFrozenScopeProgressPtr(x *FrozenScopeProgress) *d.OpsFrozenScopeProgress {
+	if x == nil {
+		return nil
+	}
+	out := toDomainFrozenScopeProgress(*x)
+	return &out
+}
+
+// toDomainFrozenScopeProgress maps public exact counters into the internal shape.
+func toDomainFrozenScopeProgress(x FrozenScopeProgress) d.OpsFrozenScopeProgress {
+	return d.OpsFrozenScopeProgress{
+		Phase:        x.Phase,
+		CoreResource: x.CoreResource,
+		Done:         x.Done,
+		Total:        x.Total,
+		Elapsed:      x.Elapsed,
+		Rate:         x.Rate,
+		ETA:          x.ETA,
+		Errors:       x.Errors,
+	}
+}
+
+// fromDomainETASampleWindowPtr maps optional ETA metadata while preserving nil as absent.
+func fromDomainETASampleWindowPtr(x *d.OpsETASampleWindow) *ETASampleWindow {
+	if x == nil {
+		return nil
+	}
+	out := fromDomainETASampleWindow(*x)
+	return &out
+}
+
+// fromDomainETASampleWindow maps internal timing data to public callback facts.
+func fromDomainETASampleWindow(x d.OpsETASampleWindow) ETASampleWindow {
+	return ETASampleWindow{
+		Phase:             x.Phase,
+		StartedAt:         x.StartedAt,
+		CompletedSamples:  x.CompletedSamples,
+		Total:             x.Total,
+		Elapsed:           x.Elapsed,
+		MinimumSamplesMet: x.MinimumSamplesMet,
+		Rate:              x.Rate,
+		Remaining:         x.Remaining,
+	}
+}
+
+// toDomainETASampleWindowPtr maps optional public ETA metadata for callback adapters.
+func toDomainETASampleWindowPtr(x *ETASampleWindow) *d.OpsETASampleWindow {
+	if x == nil {
+		return nil
+	}
+	out := toDomainETASampleWindow(*x)
+	return &out
+}
+
+// toDomainETASampleWindow maps public timing data into the internal shape.
+func toDomainETASampleWindow(x ETASampleWindow) d.OpsETASampleWindow {
+	return d.OpsETASampleWindow{
+		Phase:             x.Phase,
+		StartedAt:         x.StartedAt,
+		CompletedSamples:  x.CompletedSamples,
+		Total:             x.Total,
+		Elapsed:           x.Elapsed,
+		MinimumSamplesMet: x.MinimumSamplesMet,
+		Rate:              x.Rate,
+		Remaining:         x.Remaining,
+	}
+}
+
+// fromDomainProgressChannel maps internal progress-channel permissions to the public model.
+func fromDomainProgressChannel(x d.OpsProgressChannel) ProgressChannel {
+	return ProgressChannel{
+		Mode:                    ProgressMode(x.Mode),
+		TransientAllowed:        x.TransientAllowed,
+		DurableAllowed:          x.DurableAllowed,
+		StdoutAllowed:           x.StdoutAllowed,
+		StderrAllowed:           x.StderrAllowed,
+		StructuredReportAllowed: x.StructuredReportAllowed,
+	}
+}
+
+// toDomainProgressChannel maps public progress-channel permissions into the internal model.
+func toDomainProgressChannel(x ProgressChannel) d.OpsProgressChannel {
+	return d.OpsProgressChannel{
+		Mode:                    d.OpsProgressMode(x.Mode),
+		TransientAllowed:        x.TransientAllowed,
+		DurableAllowed:          x.DurableAllowed,
+		StdoutAllowed:           x.StdoutAllowed,
+		StderrAllowed:           x.StderrAllowed,
+		StructuredReportAllowed: x.StructuredReportAllowed,
 	}
 }
 
@@ -436,6 +746,7 @@ func toDomainOrphanPurgeRequest(x OrphanPurgeRequest) d.OrphanPurgeRequest {
 		ReportFile:   x.ReportFile,
 		ReportFormat: x.ReportFormat,
 		StartedAt:    x.StartedAt,
+		Progress:     toDomainProgressFunc(x.Progress),
 	}
 	if x.DiscoveredKeys != nil {
 		out.DiscoveredKeys = append(typex.Keys{}, x.DiscoveredKeys...)
@@ -471,6 +782,7 @@ func fromDomainOrphanPurgeRequest(x d.OrphanPurgeRequest) OrphanPurgeRequest {
 		ReportFile:   x.ReportFile,
 		ReportFormat: x.ReportFormat,
 		StartedAt:    x.StartedAt,
+		Progress:     fromDomainProgressFunc(x.Progress),
 	}
 	if x.DiscoveredKeys != nil {
 		out.DiscoveredKeys = append(typex.Keys{}, x.DiscoveredKeys...)
@@ -556,6 +868,7 @@ func toDomainRetentionPolicyRequest(x RetentionPolicyRequest) d.RetentionPolicyR
 		ReportFile:             x.ReportFile,
 		ReportFormat:           x.ReportFormat,
 		StartedAt:              x.StartedAt,
+		Progress:               toDomainProgressFunc(x.Progress),
 	}
 	if x.DiscoveredKeys != nil {
 		out.DiscoveredKeys = append(typex.Keys{}, x.DiscoveredKeys...)
@@ -596,6 +909,7 @@ func fromDomainRetentionPolicyRequest(x d.RetentionPolicyRequest) RetentionPolic
 		ReportFile:             x.ReportFile,
 		ReportFormat:           x.ReportFormat,
 		StartedAt:              x.StartedAt,
+		Progress:               fromDomainProgressFunc(x.Progress),
 	}
 	if x.DiscoveredKeys != nil {
 		out.DiscoveredKeys = append(typex.Keys{}, x.DiscoveredKeys...)
@@ -664,6 +978,7 @@ func fromDomainRetentionAuditReport(x d.RetentionAuditReport) RetentionAuditRepo
 		Discovery:              fromDomainRetentionDiscoveryResult(x.Discovery),
 		DeletePlan:             fromDomainRetentionDeletePlan(x.DeletePlan),
 		Deletion:               fromDomainRetentionDeletionResult(x.Deletion),
+		DeleteRequested:        x.DeleteRequested,
 		AutoConfirm:            x.AutoConfirm,
 		Automation:             x.Automation,
 		NoWait:                 x.NoWait,
@@ -713,6 +1028,7 @@ func toDomainIncidentPurgeRequest(x IncidentPurgeRequest) d.IncidentPurgeRequest
 			CandidatesFrozen: x.DiscoveredScopeStatus.CandidatesFrozen,
 		},
 		StartedAt: x.StartedAt,
+		Progress:  toDomainProgressFunc(x.Progress),
 	}
 	if x.DiscoveredCandidateProcessInstanceKeys != nil {
 		out.DiscoveredCandidateProcessInstanceKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessInstanceKeys...)
@@ -758,6 +1074,7 @@ func fromDomainIncidentPurgeRequest(x d.IncidentPurgeRequest) IncidentPurgeReque
 		ReportFormat:          x.ReportFormat,
 		DiscoveredScopeStatus: fromDomainDiscoveryScopeStatus(x.DiscoveredScopeStatus),
 		StartedAt:             x.StartedAt,
+		Progress:              fromDomainProgressFunc(x.Progress),
 	}
 	if x.DiscoveredCandidateProcessInstanceKeys != nil {
 		out.DiscoveredCandidateProcessInstanceKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessInstanceKeys...)
@@ -843,6 +1160,7 @@ func fromDomainIncidentPurgeReport(x d.IncidentPurgeReport) IncidentPurgeReport 
 		Discovery:        fromDomainIncidentDiscoveryResult(x.Discovery),
 		DeletePlan:       fromDomainIncidentPurgeDeletePlan(x.DeletePlan),
 		Deletion:         fromDomainIncidentPurgeDeletionResult(x.Deletion),
+		DeleteRequested:  x.DeleteRequested,
 		AutoConfirm:      x.AutoConfirm,
 		Automation:       x.Automation,
 		NoWait:           x.NoWait,
@@ -892,6 +1210,7 @@ func toDomainRepairRequest(x RepairRequest) d.OpsRepairRequest {
 		ReportFile:               x.ReportFile,
 		ReportFormat:             x.ReportFormat,
 		StartedAt:                x.StartedAt,
+		Progress:                 toDomainProgressFunc(x.Progress),
 	}
 }
 
@@ -938,6 +1257,7 @@ func fromDomainRepairRequest(x d.OpsRepairRequest) RepairRequest {
 		ReportFile:               x.ReportFile,
 		ReportFormat:             x.ReportFormat,
 		StartedAt:                x.StartedAt,
+		Progress:                 fromDomainProgressFunc(x.Progress),
 	}
 }
 
@@ -1088,6 +1408,7 @@ func toDomainAllProcessDefinitionsPurgeRequest(x AllProcessDefinitionsPurgeReque
 			CandidatesFrozen: x.DiscoveredScopeStatus.CandidatesFrozen,
 		},
 		StartedAt: x.StartedAt,
+		Progress:  toDomainProgressFunc(x.Progress),
 	}
 	if x.DiscoveredCandidateProcessDefinitionKeys != nil {
 		out.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessDefinitionKeys...)
@@ -1129,6 +1450,7 @@ func fromDomainAllProcessDefinitionsPurgeRequest(x d.AllProcessDefinitionsPurgeR
 		ReportFormat:          x.ReportFormat,
 		DiscoveredScopeStatus: fromDomainDiscoveryScopeStatus(x.DiscoveredScopeStatus),
 		StartedAt:             x.StartedAt,
+		Progress:              fromDomainProgressFunc(x.Progress),
 	}
 	if x.DiscoveredCandidateProcessDefinitionKeys != nil {
 		out.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessDefinitionKeys...)

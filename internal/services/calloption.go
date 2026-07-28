@@ -3,6 +3,8 @@
 
 package services
 
+import d "github.com/grafvonb/c8volt/internal/domain"
+
 func WithNoStateCheck() CallOption  { return func(c *CallCfg) { c.NoStateCheck = true } }
 func WithForce() CallOption         { return func(c *CallCfg) { c.Force = true } }
 func WithNoWait() CallOption        { return func(c *CallCfg) { c.NoWait = true } }
@@ -31,6 +33,9 @@ func WithIncidentErrorMessage(message string) CallOption {
 func WithAffectedProcessInstanceCount(count int) CallOption {
 	return func(c *CallCfg) { c.AffectedProcessInstanceCount = count }
 }
+func WithProgress(progress func(d.OpsProgressEvent)) CallOption {
+	return func(c *CallCfg) { c.Progress = progress }
+}
 
 type CallOption func(*CallCfg)
 
@@ -51,6 +56,7 @@ type CallCfg struct {
 	IncidentErrorType                 string
 	IncidentErrorMessage              string
 	AffectedProcessInstanceCount      int
+	Progress                          func(d.OpsProgressEvent)
 }
 
 func ApplyCallOptions(opts []CallOption) *CallCfg {

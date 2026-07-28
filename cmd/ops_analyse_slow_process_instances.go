@@ -11,6 +11,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
@@ -63,7 +64,9 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 	Short: "Analyse slow process-instance timings",
 	Long: "Analyse slow process-instance timings.\n\n" +
 		"The command is read-only. Select process instances by explicit --key values or by exactly one process-definition selector, then inspect process and runtime element timing without changing cluster state.\n\n" +
-		"Search mode pages through discovered process instances by default. --batch-size controls each discovery page request, --limit caps the frozen analysis scope, and explicit keys bypass discovery paging. JSON and keys-only output stay free of progress text.\n\n" +
+		"Search mode pages through discovered process instances by default. Broad search selectors show preflight scope from the first discovery page before timeline loading, including exact, lower-bound, or unknown total wording and page-count context when available. Explicit keys bypass discovery paging and broad preflight.\n\n" +
+		"--batch-size controls each discovery page request; it does not cap the frozen analysis scope, explicit keys, or timeline detail loading. --limit caps the number of matching process instances frozen for analysis across all discovery pages.\n\n" +
+		"Default human mode uses terminal activity for preflight, discovery progress, and exact frozen-scope counters. Verbose and debug modes keep durable progress lines on stderr. JSON, keys-only, quiet, and automation output stay free of progress text.\n\n" +
 		"Use --dur-longer to keep only process-instance roots whose whole duration is above a threshold. Detail filters such as --element-id, --type, --element-state, and --dur-element-longer keep only process instances with matching element or transition detail rows, then show those matching rows under the root.\n\n" +
 		"Default output shows compact slowest element contributors. Use --with-full-timeline to inspect complete chronological element and transition detail.\n\n" +
 		"Use --with-listeners to include runtime listener jobs under matching element timeline rows.\n\n" +
@@ -71,6 +74,7 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 		"JSON output exposes stable duration, comparison, and timeline fields. Keys-only output prints selected process-instance keys in result order, one per line.",
 	Example: `  ./c8volt ops analyse slow-process-instances --key <process-instance-key>
   ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --state active --dur-longer 5m
+  ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --batch-size 500 --limit 2000
   ./c8volt ops analyse slow-process-instances --pd-key <process-definition-key> --dur-element-longer 30s
   ./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-full-timeline
   ./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-listeners
@@ -103,6 +107,7 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
+		configureOpsSlowProcessAnalysisPreflight(cmd, &parsed.Request)
 		result, err := cli.AnalyseSlowProcessInstances(cmd.Context(), parsed.Request, collectOptions()...)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops analyse slow-process-instances: %w", err))
@@ -135,8 +140,8 @@ func init() {
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceEndDateAfter, "end-date-after", "", "only include process instances with end date >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceEndDateBefore, "end-date-before", "", "only include process instances with end date <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
 	fs.BoolVar(&flagOpsAnalyseSlowProcessInstanceNoIncidentsOnly, "no-incidents-only", false, "only include process instances without incidents during discovery")
-	fs.Int32VarP(&flagOpsAnalyseSlowProcessInstanceBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to inspect per discovery page; does not cap explicit keys or timeline details (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.Int32VarP(&flagOpsAnalyseSlowProcessInstanceLimit, "limit", "l", 0, "maximum number of matching process instances to freeze during discovery; omit to discover all matches")
+	fs.Int32VarP(&flagOpsAnalyseSlowProcessInstanceBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to inspect per discovery page; does not cap frozen analysis scope, explicit keys, or timeline details (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagOpsAnalyseSlowProcessInstanceLimit, "limit", "l", 0, "maximum number of matching process instances to freeze for analysis across all discovery pages; omit to discover all matches")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementID, "element-id", "", "BPMN element ID to keep in detail rows")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceType, "type", "", "runtime element type to keep in detail rows")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementState, "element-state", "", "runtime element state to keep in detail rows")
@@ -151,8 +156,8 @@ func init() {
 	setAutomationSupport(opsAnalyseSlowProcessInstancesCmd, AutomationSupportFull, "supports read-only analysis with shared machine output and key pipelines")
 	setOutputModes(opsAnalyseSlowProcessInstancesCmd,
 		OutputModeContract{Name: RenderModeOneLine.String(), Supported: true},
-		OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
-		OutputModeContract{Name: RenderModeKeysOnly.String(), Supported: true},
+		OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true, Notes: "stdout remains one JSON document; preflight and frozen-scope metadata are exposed as result fields"},
+		OutputModeContract{Name: RenderModeKeysOnly.String(), Supported: true, Notes: "stdout remains one process-instance key per line with no progress or preflight text"},
 	)
 }
 
@@ -290,6 +295,76 @@ func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string
 			WithListeners:      flagOpsAnalyseSlowProcessInstanceWithListeners,
 		},
 	}, nil
+}
+
+// configureOpsSlowProcessAnalysisPreflight wires command-owned rendering and prompting into service-owned discovery.
+func configureOpsSlowProcessAnalysisPreflight(cmd *cobra.Command, request *ops.SlowProcessAnalysisRequest) {
+	if request == nil || request.SelectionMode != ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch {
+		return
+	}
+	channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
+	request.Progress = func(event ops.ProgressEvent) {
+		switch event.Kind {
+		case ops.ProgressEventKindPreflight:
+			if event.Preflight != nil {
+				printOpsPreflightScope(cmd, *event.Preflight, channel)
+			}
+		case ops.ProgressEventKindPage:
+			if event.Page != nil {
+				printOpsSlowProcessAnalysisProgress(cmd, formatOpsPageProgress(*event.Page, "process instance(s)"), channel)
+			}
+		case ops.ProgressEventKindFrozenScope:
+			if event.FrozenScope != nil {
+				printOpsSlowProcessAnalysisProgress(cmd, formatOpsFrozenScopeProgress(*event.FrozenScope), channel)
+			}
+		case ops.ProgressEventKindETA:
+			if event.ETA != nil && opsETAAllowed(*event.ETA) {
+				printOpsSlowProcessAnalysisProgress(cmd, formatOpsETASampleWindow(*event.ETA), channel)
+			}
+		}
+	}
+	request.ConfirmPreflight = func(scope ops.PreflightScope) error {
+		if !opsSlowProcessAnalysisPreflightConfirmationAllowed(channel) || !scope.RequiresConfirmation {
+			return nil
+		}
+		prompt := strings.TrimSpace(scope.ConsequenceSummary.ConfirmationText)
+		if prompt == "" {
+			prompt = "Continue slow analysis?"
+		}
+		return confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt)
+	}
+}
+
+// printOpsSlowProcessAnalysisProgress routes transient and verbose progress without touching command stdout.
+func printOpsSlowProcessAnalysisProgress(cmd *cobra.Command, line string, channel ops.ProgressChannel) {
+	if cmd == nil || strings.TrimSpace(line) == "" {
+		return
+	}
+	if channel.TransientAllowed {
+		logging.UpdateActivityWithImportance(cmd.Context(), line, logging.ActivityImportanceWorkflow)
+	}
+	if !opsSlowProcessAnalysisDurableProgressAllowed(channel) {
+		return
+	}
+	printOpsDurableLine(cmd, line, false)
+}
+
+// printOpsPreflightScope writes durable preflight lines only to the command's stderr/activity channel.
+func printOpsPreflightScope(cmd *cobra.Command, scope ops.PreflightScope, channel ops.ProgressChannel) {
+	if cmd == nil || !channel.DurableAllowed || !channel.StderrAllowed {
+		return
+	}
+	printOpsPreflightLines(cmd, scope)
+}
+
+// opsSlowProcessAnalysisDurableProgressAllowed keeps page/counter detail behind verbose or debug while activity remains compact.
+func opsSlowProcessAnalysisDurableProgressAllowed(channel ops.ProgressChannel) bool {
+	return channel.DurableAllowed && channel.StderrAllowed && (channel.Mode == ops.ProgressModeVerbose || channel.Mode == ops.ProgressModeDebug)
+}
+
+// opsSlowProcessAnalysisPreflightConfirmationAllowed limits prompts to human progress modes.
+func opsSlowProcessAnalysisPreflightConfirmationAllowed(channel ops.ProgressChannel) bool {
+	return channel.Mode == ops.ProgressModeHuman || channel.Mode == ops.ProgressModeVerbose || channel.Mode == ops.ProgressModeDebug
 }
 
 // parseOpsSlowProcessAnalysisElementType keeps detail type filters aligned with runtime element search values.

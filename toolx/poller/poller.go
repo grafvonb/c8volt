@@ -42,8 +42,8 @@ func WaitForCompletion(ctx context.Context, log *slog.Logger, timeout time.Durat
 	if !noProgress {
 		activity = logging.ActivityFromContext(ctx)
 		if activity != nil {
-			activity.StartActivity("waiting for completion")
-			defer activity.StopActivity()
+			stopActivity := logging.StartActivityWithImportance(ctx, "waiting for completion", logging.ActivityImportanceWait)
+			defer stopActivity()
 		}
 	}
 
@@ -85,7 +85,7 @@ func WaitForCompletion(ctx context.Context, log *slog.Logger, timeout time.Durat
 			if status.Message != "" {
 				msg += fmt.Sprintf(", status %s", status.Message)
 			}
-			logging.UpdateActivity(ctx, msg)
+			logging.UpdateActivityWithImportance(ctx, msg, logging.ActivityImportanceWait)
 		}
 		log.Debug(fmt.Sprintf("waiting for completion; reason %s", status.Message))
 

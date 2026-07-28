@@ -143,10 +143,11 @@ func (s *Service) SearchIncidentsPages(ctx context.Context, filter d.IncidentFil
 }
 
 func nextIncidentSearchPageRequest(current d.IncidentPageRequest, page d.IncidentPage) d.IncidentPageRequest {
+	nextFrom := current.From + current.Size
 	if page.EndCursor != "" {
-		return d.IncidentPageRequest{Size: current.Size, After: page.EndCursor}
+		return d.IncidentPageRequest{From: nextFrom, Size: current.Size, After: page.EndCursor}
 	}
-	return d.IncidentPageRequest{From: current.From + current.Size, Size: current.Size}
+	return d.IncidentPageRequest{From: nextFrom, Size: current.Size}
 }
 
 // SearchIncidentsPage uses the top-level v8.8 incident endpoint with a tenant

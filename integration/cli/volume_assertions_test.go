@@ -34,13 +34,24 @@ func requireVolumeKeysOnly(output string) error {
 }
 
 func requireMachineStdoutClean(output string) error {
-	if !json.Valid([]byte(strings.TrimSpace(output))) && validateKeysOnlyString(output) != nil {
+	if json.Valid([]byte(strings.TrimSpace(output))) {
+		return nil
+	}
+	if validateKeysOnlyString(output) != nil {
 		return nil
 	}
 	if humanLeakPattern.MatchString(output) {
 		return fmt.Errorf("machine stdout contains human/progress text: %q", compactLogSnippet(output, 300))
 	}
 	return nil
+}
+
+func TestRequireMachineStdoutCleanAllowsStructuredProgressJSON(t *testing.T) {
+	output := `{"outcome":"succeeded","payload":{"frozenScopeProgress":{"phase":"loading runtime elements","done":2,"total":2}}}`
+
+	if err := requireMachineStdoutClean(output); err != nil {
+		t.Fatalf("expected structured progress JSON to be clean: %v", err)
+	}
 }
 
 func requireFinalOutcomeText(output string) error {

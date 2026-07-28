@@ -495,6 +495,26 @@ func TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances(t *testing.T) {
 	}
 }
 
+// TestOpsExecuteSmokeTestVerboseProgressRendersStageCounters verifies smoke-test progress is routed to stderr while stdout keeps final output.
+func TestOpsExecuteSmokeTestVerboseProgressRendersStageCounters(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	t.Cleanup(srv.Close)
+
+	_, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"--verbose",
+		"ops", "execute", "smoke-test",
+		"--workers", "1",
+		"--no-cleanup",
+		"--count", "2",
+	)
+
+	require.Contains(t, stderr, "deploying smoke-test fixture 1/1 deployment(s)")
+	require.Contains(t, stderr, "starting process instances 2/2 process instance(s)")
+	require.Contains(t, stderr, "walking process-instance families 2/2 process instance(s)")
+}
+
 func TestOpsExecuteSmokeTestNoCleanupHumanOutputReportsRetainedResources(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)

@@ -69,6 +69,7 @@ func BuildAncestryResult(ctx context.Context, api LegacyAPI, startKey string, op
 	}
 	if err == nil {
 		result.Outcome = OutcomeComplete
+		reportTraversalFrozenProgress(opts, "walking process-instance ancestry", result)
 		return result, nil
 	}
 	if errors.Is(err, services.ErrOrphanedInstance) {
@@ -79,6 +80,7 @@ func BuildAncestryResult(ctx context.Context, api LegacyAPI, startKey string, op
 		} else {
 			result.Outcome = OutcomeUnresolved
 		}
+		reportTraversalFrozenProgress(opts, "walking process-instance ancestry", result)
 		return result, nil
 	}
 	if result.HasActionableResults() {
@@ -99,6 +101,7 @@ func BuildDescendantsResult(ctx context.Context, api LegacyAPI, rootKey string, 
 	}
 	if err == nil {
 		result.Outcome = OutcomeComplete
+		reportTraversalFrozenProgress(opts, "walking process-instance descendants", result)
 		return result, nil
 	}
 	if result.HasActionableResults() {
@@ -130,5 +133,23 @@ func BuildFamilyResult(ctx context.Context, api LegacyAPI, startKey string, opts
 	if len(result.MissingAncestors) > 0 {
 		result.Outcome = OutcomePartial
 	}
+	reportTraversalFrozenProgress(opts, "walking process-instance family", result)
 	return result, nil
+}
+
+// reportTraversalFrozenProgress emits exact walk-scope progress once traversal has built the immutable result set.
+func reportTraversalFrozenProgress(opts []services.CallOption, phase string, result Result) {
+	cfg := services.ApplyCallOptions(opts)
+	if cfg.Progress == nil || len(result.Keys) == 0 {
+		return
+	}
+	cfg.Progress(d.OpsProgressEvent{
+		Kind: d.OpsProgressEventKindFrozenScope,
+		FrozenScope: &d.OpsFrozenScopeProgress{
+			Phase:        phase,
+			CoreResource: "process instance(s)",
+			Done:         len(result.Keys),
+			Total:        len(result.Keys),
+		},
+	})
 }

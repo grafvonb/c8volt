@@ -4,6 +4,8 @@
 package cmd
 
 import (
+	"bytes"
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -12,6 +14,8 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -403,6 +407,338 @@ func TestOpsAnalyseSlowProcessInstancesRejectsEmptyStdin(t *testing.T) {
 	require.Nil(t, got)
 }
 
+// TestOpsAnalyseSlowProcessInstancesPrintsPreflightCertaintyToStderr verifies human preflight wording covers exact, lower-bound, and unknown totals without stdout leakage.
+func TestOpsAnalyseSlowProcessInstancesPrintsPreflightCertaintyToStderr(t *testing.T) {
+	tests := []struct {
+		name      string
+		total     *int64
+		kind      ops.TotalCertainty
+		pageCount *int64
+		pageKind  ops.PageCountKind
+		want      []string
+	}{
+		{name: "exact", total: ptrInt64(2000), kind: ops.TotalCertaintyExact, pageCount: ptrInt64(2), pageKind: ops.PageCountKindExact, want: []string{"slow analysis scope: OrderProcess matched 2000 process instances", "discovery pages: 2"}},
+		{name: "lower bound", total: ptrInt64(2000), kind: ops.TotalCertaintyLowerBound, pageCount: ptrInt64(2), pageKind: ops.PageCountKindEstimated, want: []string{"slow analysis scope: OrderProcess matched at least 2000 process instances", "discovery pages: at least 2"}},
+		{name: "unknown", kind: ops.TotalCertaintyUnknown, pageKind: ops.PageCountKindUnknown, want: []string{"slow analysis scope: OrderProcess matched an unknown number of process instances", "page size: 1000"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+			cmd.SetOut(&stdout)
+			cmd.SetErr(&stderr)
+
+			printOpsPreflightScope(cmd, ops.PreflightScope{
+				Command:         "ops analyse slow-process-instances",
+				SelectorSummary: "OrderProcess",
+				CoreResource:    "process_instance",
+				Total:           tc.total,
+				TotalKind:       tc.kind,
+				PageSize:        1000,
+				PageCount:       tc.pageCount,
+				PageCountKind:   tc.pageKind,
+			}, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
+
+			require.Empty(t, stdout.String())
+			for _, want := range tc.want {
+				require.Contains(t, stderr.String(), want)
+			}
+		})
+	}
+}
+
+// TestOpsAnalyseSlowProcessInstancesPreflightUsesCommandLogger keeps scope output aligned with other prompt preambles.
+func TestOpsAnalyseSlowProcessInstancesPreflightUsesCommandLogger(t *testing.T) {
+	total := int64(10000)
+	pages := int64(10)
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var logBuf bytes.Buffer
+	cmd.SetContext(logging.ToContext(cmd.Context(), logging.New(logging.LoggerConfig{
+		Format: "plain-time",
+		Writer: &logBuf,
+	})))
+
+	printOpsPreflightScope(cmd, ops.PreflightScope{
+		Command:         "ops analyse slow-process-instances",
+		SelectorSummary: "OrderProcess",
+		CoreResource:    "process_instance",
+		Total:           &total,
+		TotalKind:       ops.TotalCertaintyLowerBound,
+		PageSize:        1000,
+		PageCount:       &pages,
+		PageCountKind:   ops.PageCountKindEstimated,
+		ConsequenceSummary: ops.ConsequenceSummary{
+			WorkSummary: "discover all matches and load runtime element timelines",
+			RiskSummary: "read-only, expensive",
+		},
+	}, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
+
+	got := logBuf.String()
+	require.Contains(t, got, "INFO slow analysis scope: OrderProcess matched at least 10000 process instances; page size: 1000; discovery pages: at least 10")
+	require.Contains(t, got, "WARN slow analysis is expensive: discover all matches and load runtime element timelines")
+}
+
+// TestOpsAnalyseSlowProcessInstancesConfiguresBroadPreflightOnlyForSearch verifies explicit-key mode stays concise.
+func TestOpsAnalyseSlowProcessInstancesConfiguresBroadPreflightOnlyForSearch(t *testing.T) {
+	keyRequest := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeExplicitKeys}
+	configureOpsSlowProcessAnalysisPreflight(resetOpsSlowProcessAnalysisTestFlags(t), &keyRequest)
+	require.Nil(t, keyRequest.Progress)
+	require.Nil(t, keyRequest.ConfirmPreflight)
+
+	searchRequest := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+	configureOpsSlowProcessAnalysisPreflight(resetOpsSlowProcessAnalysisTestFlags(t), &searchRequest)
+	require.NotNil(t, searchRequest.Progress)
+	require.NotNil(t, searchRequest.ConfirmPreflight)
+}
+
+// TestOpsAnalyseSlowProcessInstancesRoutesDefaultProgressToActivity verifies human search progress is visible without debug and never touches stdout.
+func TestOpsAnalyseSlowProcessInstancesRoutesDefaultProgressToActivity(t *testing.T) {
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	sink := &activitysink.Sink{}
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+		Phase:         "discovering process instances",
+		CurrentPage:   2,
+		PageCount:     ptrInt64(4),
+		PageCountKind: ops.PageCountKindExact,
+		Seen:          1500,
+		Selected:      1498,
+	}})
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+		Phase:        "loading runtime elements",
+		CoreResource: "process instance(s)",
+		Done:         48,
+		Total:        800,
+	}})
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindETA, ETA: &ops.ETASampleWindow{
+		Phase:             "loading runtime elements",
+		CompletedSamples:  48,
+		Total:             800,
+		Elapsed:           2 * time.Minute,
+		MinimumSamplesMet: true,
+		Rate:              ptrFloat64(4.25),
+		Remaining:         ptrDuration(95 * time.Second),
+	}})
+
+	require.Empty(t, stdout.String())
+	require.Empty(t, stderr.String())
+	require.Equal(t, []string{
+		"discovering process instances, page 2/4, 1500 seen, 1498 selected",
+		"loading runtime elements, 48/800 process instance(s)",
+		"loading runtime elements, 48/800 sample(s), 2m0s elapsed, ~4.2/s, ~1m35s remaining",
+	}, sink.Updates())
+	require.Equal(t, []activitysink.Update{
+		{
+			Message:    "discovering process instances, page 2/4, 1500 seen, 1498 selected",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+		{
+			Message:    "loading runtime elements, 48/800 process instance(s)",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+		{
+			Message:    "loading runtime elements, 48/800 sample(s), 2m0s elapsed, ~4.2/s, ~1m35s remaining",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+	}, sink.PriorityUpdates())
+}
+
+// TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr verifies verbose mode keeps an auditable progress trail off stdout.
+func TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr(t *testing.T) {
+	previousVerbose := flagVerbose
+	flagVerbose = true
+	t.Cleanup(func() { flagVerbose = previousVerbose })
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+		Phase:         "discovering process instances",
+		CurrentPage:   2,
+		PageCount:     ptrInt64(4),
+		PageCountKind: ops.PageCountKindExact,
+		Seen:          1500,
+		Selected:      1498,
+	}})
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+		Phase:        "loading listener jobs",
+		CoreResource: "process instance(s)",
+		Done:         3,
+		Total:        3,
+	}})
+
+	require.Empty(t, stdout.String())
+	require.Contains(t, stderr.String(), "discovering process instances, page 2/4, 1500 seen, 1498 selected")
+	require.Contains(t, stderr.String(), "loading listener jobs, 3/3 process instance(s)")
+}
+
+// TestOpsAnalyseSlowProcessInstancesJSONProgressKeepsStdoutClean verifies JSON mode suppresses transient and durable progress text.
+func TestOpsAnalyseSlowProcessInstancesJSONProgressKeepsStdoutClean(t *testing.T) {
+	previousJSON := flagViewAsJson
+	flagViewAsJson = true
+	t.Cleanup(func() { flagViewAsJson = previousJSON })
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	sink := &activitysink.Sink{}
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPreflight, Preflight: &ops.PreflightScope{
+		SelectorSummary: "OrderProcess",
+		CoreResource:    "process_instance",
+		Total:           ptrInt64(2000),
+		TotalKind:       ops.TotalCertaintyExact,
+		PageSize:        1000,
+		PageCount:       ptrInt64(2),
+		PageCountKind:   ops.PageCountKindExact,
+	}})
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+		Phase:         "discovering process instances",
+		CurrentPage:   1,
+		PageCount:     ptrInt64(2),
+		PageCountKind: ops.PageCountKindExact,
+		Seen:          1000,
+	}})
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+		Phase:        "loading runtime elements",
+		CoreResource: "process instance(s)",
+		Done:         1,
+		Total:        2,
+	}})
+
+	require.Empty(t, stdout.String())
+	require.Empty(t, stderr.String())
+	require.Empty(t, sink.Updates())
+	require.NotNil(t, request.ConfirmPreflight)
+	require.NoError(t, request.ConfirmPreflight(ops.PreflightScope{RequiresConfirmation: true}))
+}
+
+// TestOpsAnalyseSlowProcessInstancesKeysOnlyProgressKeepsStdoutClean verifies key pipelines never receive progress or preflight lines.
+func TestOpsAnalyseSlowProcessInstancesKeysOnlyProgressKeepsStdoutClean(t *testing.T) {
+	previousKeysOnly := flagViewKeysOnly
+	flagViewKeysOnly = true
+	t.Cleanup(func() { flagViewKeysOnly = previousKeysOnly })
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	sink := &activitysink.Sink{}
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPreflight, Preflight: &ops.PreflightScope{
+		SelectorSummary: "OrderProcess",
+		CoreResource:    "process_instance",
+		TotalKind:       ops.TotalCertaintyUnknown,
+		PageSize:        1000,
+	}})
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+		Phase:        "loading runtime elements",
+		CoreResource: "process instance(s)",
+		Done:         2,
+		Total:        2,
+	}})
+
+	require.Empty(t, stdout.String())
+	require.Empty(t, stderr.String())
+	require.Empty(t, sink.Updates())
+	require.NotNil(t, request.ConfirmPreflight)
+	require.NoError(t, request.ConfirmPreflight(ops.PreflightScope{RequiresConfirmation: true}))
+}
+
+// TestOpsAnalyseSlowProcessInstancesQuietAndAutomationSuppressProgress verifies non-interactive contracts stay silent.
+func TestOpsAnalyseSlowProcessInstancesQuietAndAutomationSuppressProgress(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(*cobra.Command)
+		want  ops.ProgressMode
+	}{
+		{
+			name: "quiet",
+			setup: func(*cobra.Command) {
+				flagQuiet = true
+			},
+			want: ops.ProgressModeQuiet,
+		},
+		{
+			name: "automation",
+			setup: func(cmd *cobra.Command) {
+				flagCmdAutomation = true
+				cmd.Flags().Bool("automation", true, "")
+			},
+			want: ops.ProgressModeAutomation,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			previousQuiet := flagQuiet
+			previousAutomation := flagCmdAutomation
+			t.Cleanup(func() {
+				flagQuiet = previousQuiet
+				flagCmdAutomation = previousAutomation
+			})
+			cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+			sink := &activitysink.Sink{}
+			cmd.SetOut(&stdout)
+			cmd.SetErr(&stderr)
+			cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
+			tc.setup(cmd)
+			channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
+			require.Equal(t, tc.want, channel.Mode)
+			request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+			configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+			request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPreflight, Preflight: &ops.PreflightScope{
+				SelectorSummary: "OrderProcess",
+				CoreResource:    "process_instance",
+				Total:           ptrInt64(10),
+				TotalKind:       ops.TotalCertaintyExact,
+			}})
+			request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+				Phase:       "discovering process instances",
+				CurrentPage: 1,
+				Seen:        10,
+			}})
+
+			require.Empty(t, stdout.String())
+			require.Empty(t, stderr.String())
+			require.Empty(t, sink.Updates())
+			require.NotNil(t, request.ConfirmPreflight)
+			require.NoError(t, request.ConfirmPreflight(ops.PreflightScope{RequiresConfirmation: true}))
+		})
+	}
+}
+
+// TestOpsAnalyseSlowProcessInstancesPreflightConfirmationRespectsModeGating verifies automation-safe modes skip prompts.
+func TestOpsAnalyseSlowProcessInstancesPreflightConfirmationRespectsModeGating(t *testing.T) {
+	require.True(t, opsSlowProcessAnalysisPreflightConfirmationAllowed(ops.ProgressChannel{Mode: ops.ProgressModeHuman}))
+	require.True(t, opsSlowProcessAnalysisPreflightConfirmationAllowed(ops.ProgressChannel{Mode: ops.ProgressModeVerbose}))
+	require.False(t, opsSlowProcessAnalysisPreflightConfirmationAllowed(ops.ProgressChannel{Mode: ops.ProgressModeJSON}))
+	require.False(t, opsSlowProcessAnalysisPreflightConfirmationAllowed(ops.ProgressChannel{Mode: ops.ProgressModeKeysOnly}))
+	require.False(t, opsSlowProcessAnalysisPreflightConfirmationAllowed(ops.ProgressChannel{Mode: ops.ProgressModeQuiet}))
+	require.False(t, opsSlowProcessAnalysisPreflightConfirmationAllowed(ops.ProgressChannel{Mode: ops.ProgressModeAutomation}))
+}
+
 // resetOpsSlowProcessAnalysisTestFlags restores command globals and returns a flag-aware test command.
 func resetOpsSlowProcessAnalysisTestFlags(t *testing.T) *cobra.Command {
 	t.Helper()
@@ -426,6 +762,7 @@ func resetOpsSlowProcessAnalysisTestFlags(t *testing.T) *cobra.Command {
 	flagOpsAnalyseSlowProcessInstanceWithListeners = false
 
 	cmd := &cobra.Command{Use: "slow-process-instances"}
+	cmd.SetContext(context.Background())
 	flags := cmd.Flags()
 	flags.StringVar(&flagOpsAnalyseSlowProcessInstanceState, "state", "all", "")
 	flags.Int32Var(&flagOpsAnalyseSlowProcessInstanceBatchSize, "batch-size", consts.MaxPISearchSize, "")
@@ -433,4 +770,14 @@ func resetOpsSlowProcessAnalysisTestFlags(t *testing.T) *cobra.Command {
 	flags.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithFullTimeline, "with-full-timeline", false, "")
 	flags.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithListeners, "with-listeners", false, "")
 	return cmd
+}
+
+// ptrFloat64 returns a stable pointer for compact progress callback fixtures.
+func ptrFloat64(value float64) *float64 {
+	return &value
+}
+
+// ptrDuration returns a stable pointer for compact progress callback fixtures.
+func ptrDuration(value time.Duration) *time.Duration {
+	return &value
 }

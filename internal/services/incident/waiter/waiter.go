@@ -24,7 +24,7 @@ type IncidentWaiter interface {
 
 func WaitForIncidentResolved(ctx context.Context, s IncidentWaiter, cfg *config.Config, log *slog.Logger, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 	cCfg := services.ApplyCallOptions(opts)
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for incident %s resolve", key))
+	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("waiting for incident %s resolve", key), logging.ActivityImportanceWait)
 	defer stopActivity()
 	backoff := cfg.App.Backoff
 	start := time.Now()
@@ -66,7 +66,7 @@ func WaitForIncidentResolved(ctx context.Context, s IncidentWaiter, cfg *config.
 			return d.IncidentResolutionResponse{Key: key, Ok: false, Status: status}, fmt.Errorf("%w: %s", err, status)
 		}
 		waitMsg := fmt.Sprintf("incident %s waiting; state %s, attempt %d", key, incident.State, attempts)
-		logging.UpdateActivity(ctx, waitMsg)
+		logging.UpdateActivityWithImportance(ctx, waitMsg, logging.ActivityImportanceWait)
 		logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
 		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
 			status := fmt.Sprintf("incident %s wait exceeded retries; max %d, attempts %d, elapsed %s", key, backoff.MaxRetries, attempts, time.Since(start))
@@ -86,7 +86,7 @@ func WaitForIncidentResolved(ctx context.Context, s IncidentWaiter, cfg *config.
 
 func WaitForProcessInstanceIncidentsResolved(ctx context.Context, s IncidentWaiter, cfg *config.Config, log *slog.Logger, processInstanceKey string, incidentKeys []string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 	cCfg := services.ApplyCallOptions(opts)
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for pi %s incidents resolve", processInstanceKey))
+	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("waiting for pi %s incidents resolve", processInstanceKey), logging.ActivityImportanceWait)
 	defer stopActivity()
 	backoff := cfg.App.Backoff
 	start := time.Now()
@@ -125,7 +125,7 @@ func WaitForProcessInstanceIncidentsResolved(ctx context.Context, s IncidentWait
 			return d.IncidentResolutionResponse{Key: processInstanceKey, Ok: true, Status: status}, nil
 		}
 		waitMsg := fmt.Sprintf("pi %s incidents waiting; active %v, attempt %d", processInstanceKey, active, attempts)
-		logging.UpdateActivity(ctx, waitMsg)
+		logging.UpdateActivityWithImportance(ctx, waitMsg, logging.ActivityImportanceWait)
 		logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
 		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
 			status := fmt.Sprintf("pi %s incident wait exceeded retries; max %d, attempts %d, elapsed %s", processInstanceKey, backoff.MaxRetries, attempts, time.Since(start))

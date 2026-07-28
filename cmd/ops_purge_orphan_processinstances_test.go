@@ -357,6 +357,82 @@ func TestOpsPurgeOrphanProcessInstancesWritesReportAfterPostDiscoveryFailure(t *
 	require.NotEmpty(t, report["errors"])
 }
 
+// TestOpsPurgeOrphanProcessInstancesProgressContractPendingT066 defines orphan
+// candidate discovery, parent checking, delete planning, deletion, and report progress.
+func TestOpsPurgeOrphanProcessInstancesProgressContractPendingT066(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsOrphanPurgeServerWithState(t, &requests, &deleted, true, "TERMINATED")
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "orphan-progress.json")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"--verbose",
+		"ops", "purge", "orphan-process-instances",
+		"--auto-confirm",
+		"--no-wait",
+		"--batch-size", "1",
+		"--report-file", reportPath,
+		"--report-format", "json",
+	)
+
+	require.Contains(t, stderr, "orphan purge scope: orphan-process-instances purge matched 1 process instance; page size: 1; discovery pages: 1")
+	require.Contains(t, stderr, "discovering orphan process-instance candidates, page 1/1, 1 seen")
+	require.Contains(t, stderr, "checking orphan process-instance parents 1/1 process instance(s)")
+	require.Contains(t, stderr, "planning orphan process-instance delete scope 1/1 process instance(s)")
+	require.Contains(t, stderr, "deleting process instances 1/1 process instance(s)")
+	require.NotContains(t, stderr, "/v2/")
+	require.NotContains(t, stderr, "cursor")
+	require.NotContains(t, stdout, "scope:")
+	require.NotContains(t, stdout, "discovering orphan process-instance candidates")
+	require.Contains(t, stderr, "report: written "+reportPath)
+	require.Contains(t, stderr, "outcome: deleted")
+	require.Equal(t, []string{"/v2/process-instances/" + opsOrphanChildKey + "/deletion"}, deleted.Snapshot())
+
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, "deleted", report["outcome"])
+	require.Equal(t, true, report["deleteRequested"])
+}
+
+// TestOpsPurgeOrphanProcessInstancesMachineProgressSafetyPendingT066 pins orphan
+// purge progress silence for JSON, quiet, and automation modes.
+func TestOpsPurgeOrphanProcessInstancesMachineProgressSafetyPendingT066(t *testing.T) {
+	for _, mode := range []struct {
+		name string
+		args []string
+	}{
+		{name: "json", args: []string{"--json", "ops", "purge", "orphan-process-instances", "--auto-confirm", "--no-wait", "--batch-size", "1"}},
+		{name: "quiet", args: []string{"--quiet", "ops", "purge", "orphan-process-instances", "--auto-confirm", "--no-wait", "--batch-size", "1"}},
+		{name: "automation", args: []string{"--automation", "ops", "purge", "orphan-process-instances", "--no-wait", "--batch-size", "1"}},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			var deleted testx.SafeSlice[string]
+			srv := newOpsOrphanPurgeServerWithState(t, &requests, &deleted, true, "TERMINATED")
+			t.Cleanup(srv.Close)
+
+			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.9")}, mode.args...)
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+			require.NotContains(t, stdout, "scope:")
+			require.NotContains(t, stdout, "discovering orphan process-instance candidates")
+			require.NotContains(t, stdout, "checking orphan process-instance parents")
+			require.NotContains(t, stdout, "planning orphan process-instance delete scope")
+			require.NotContains(t, stdout, "deleting process instances")
+			require.NotContains(t, stderr, "scope:")
+			require.NotContains(t, stderr, "discovering orphan process-instance candidates")
+			require.NotContains(t, stderr, "checking orphan process-instance parents")
+			require.NotContains(t, stderr, "planning orphan process-instance delete scope")
+			require.NotContains(t, stderr, "deleting process instances")
+			if mode.name == "json" {
+				var envelope map[string]any
+				require.NoError(t, json.Unmarshal([]byte(stdout), &envelope), stdout)
+			}
+		})
+	}
+}
+
 func TestOpsPurgeOrphanProcessInstancesWritesReportAfterPostDiscoveryFailureHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

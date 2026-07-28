@@ -383,6 +383,39 @@ func TestOpsPurgeAllProcessDefinitionsPagedConfirmationReusesFrozenCandidates(t 
 	require.Equal(t, 2, countOpsPurgeAllProcessDefinitionsRequests(requests.Snapshot(), "POST /v2/process-definitions/search "))
 }
 
+// TestOpsPurgeAllProcessDefinitionsVerboseDiscoveryProgress defines APD discovery progress routing.
+func TestOpsPurgeAllProcessDefinitionsVerboseDiscoveryProgress(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	t.Cleanup(srv.Close)
+
+	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, []string{
+			"--verbose",
+			"--auto-confirm",
+			"ops", "purge", "all-process-definitions",
+			"--batch-size", "1",
+			"--dry-run",
+		}),
+	})
+	require.NoError(t, err, stderr)
+	require.Empty(t, deleted.Snapshot())
+
+	require.Equal(t, 2, countProcessDefinitionSearchRequests(requests.Snapshot()))
+	require.Contains(t, stderr, "process-definition purge scope: all-process-definitions purge matched at least 2 process definitions; page size: 1; discovery pages: at least 2")
+	require.Contains(t, stderr, "discovering process definitions, page 1/~2, 1 seen")
+	require.Contains(t, stderr, "discovering process definitions, page 2/2, 2 seen")
+	require.NotContains(t, stdout, "scope:")
+	require.NotContains(t, stdout, "discovering process definitions")
+	require.Contains(t, stderr, "dry run: purge all process definitions")
+	require.Contains(t, stderr, "candidate process definitions: 2")
+}
+
 // TestOpsPurgeAllProcessDefinitionsLimitJSONOutput verifies APD flags reach discovery and machine output.
 func TestOpsPurgeAllProcessDefinitionsLimitJSONOutput(t *testing.T) {
 	resetOpsPurgeAllProcessDefinitionsFlagState()

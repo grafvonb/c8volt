@@ -347,6 +347,38 @@ func TestService_SearchAndLookup(t *testing.T) {
 		require.Empty(t, page.Items)
 	})
 
+	t.Run("TreatsExactCursorFinalPageAsNoMoreEvenWhenEndCursorIsPresent", func(t *testing.T) {
+		endCursor := camundav89.EndCursor("cursor-final")
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
+				payload := readBody(t, body)
+				assert.Contains(t, payload, `"after":"cursor-prev"`)
+				assert.Contains(t, payload, `"limit":2`)
+				return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
+					Items: []camundav89.ProcessInstanceResult{makeProcessInstanceResult("125", "ACTIVE", "")},
+					Page: camundav89.SearchQueryPageResponse{
+						TotalItems: 3,
+						EndCursor:  &endCursor,
+					},
+				}), nil
+			},
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+			deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
+			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+		})
+
+		page, err := svc.SearchForProcessInstancesPage(ctx, d.ProcessInstanceFilter{}, d.ProcessInstancePageRequest{From: 2, Size: 2, After: "cursor-prev"})
+
+		require.NoError(t, err)
+		assert.Equal(t, d.ProcessInstanceOverflowStateNoMore, page.OverflowState)
+		require.NotNil(t, page.ReportedTotal)
+		assert.EqualValues(t, 3, page.ReportedTotal.Count)
+		assert.Equal(t, d.ProcessInstanceReportedTotalKindExact, page.ReportedTotal.Kind)
+		require.Len(t, page.Items, 1)
+		require.Equal(t, "cursor-final", page.EndCursor)
+	})
+
 	t.Run("MapsVariableExistenceFilters", func(t *testing.T) {
 		exists := true
 		svc := newTestService(t, testConfig(), &mockCamundaClient{

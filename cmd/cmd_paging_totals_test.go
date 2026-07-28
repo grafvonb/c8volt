@@ -4,10 +4,15 @@
 package cmd
 
 import (
+	"context"
 	"testing"
 
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx/logging"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -104,4 +109,39 @@ func TestFormatPITotalActivityProgress(t *testing.T) {
 			ContinuationState: processInstanceContinuationCompleted,
 		}),
 	)
+}
+
+// TestSearchProcessInstancesTotalUsesWorkflowActivity verifies fallback page-counting progress outranks nested lookups.
+func TestSearchProcessInstancesTotalUsesWorkflowActivity(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+	cli := stubProcessAPI{
+		searchProcessInstancesTotal: func(_ context.Context, _ process.ProcessInstanceSearchRequest, visitor process.ProcessInstanceSearchTotalVisitor, _ ...options.FacadeOption) (int64, error) {
+			err := visitor(process.ProcessInstanceSearchTotalStep{
+				Page: process.ProcessInstancePage{
+					Items:         []process.ProcessInstance{{Key: "1"}, {Key: "2"}},
+					OverflowState: process.ProcessInstanceOverflowStateNoMore,
+				},
+				TotalAfter: 2,
+			})
+			return 2, err
+		},
+	}
+
+	got, err := searchProcessInstancesTotal(cmd, nil, cli, nil, process.ProcessInstanceFilter{})
+
+	require.NoError(t, err)
+	require.EqualValues(t, 2, got)
+	require.Equal(t, []activitysink.Start{{
+		Message:    "counting process instances page by page",
+		Importance: logging.ActivityImportanceWorkflow,
+	}}, sink.Starts())
+	require.Equal(t, []activitysink.Update{{
+		Message:    "counting process instances: 2 counted, complete",
+		Importance: logging.ActivityImportanceWorkflow,
+	}}, sink.PriorityUpdates())
 }
