@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -13,10 +14,12 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,6 +33,19 @@ func TestGetJobCommand_HumanOutput(t *testing.T) {
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Equal(t, "2251799813711967 tenant-a FAILED pi:2251799813711000 ei:2251799813711001 r:2 d:2026-05-08T10:15:00.000 ec:PAYMENT_ERROR err:worker failed\n", output)
+}
+
+// TestGetJobCommand_HTTPFallbackActivityUsesCommandContext verifies job search preserves fallback activity.
+func TestGetJobCommand_HTTPFallbackActivityUsesCommandContext(t *testing.T) {
+	resetHTTPFallbackActivityRenderMode(t)
+	sink := &activitysink.Sink{}
+	cmd := newHTTPFallbackActivityCommand(sink)
+	api := jobActivityAPI{}
+
+	_, _, err := searchJobsWithPaging(cmd, api, job.SearchRequest{BatchSize: 1, Limit: 1})
+	require.NoError(t, err)
+
+	requireHTTPFallbackActivityStarts(t, sink, "searching jobs")
 }
 
 func TestGetJobCommand_HumanOutputKeepsLongErrorMessageInlineByDefault(t *testing.T) {
@@ -560,6 +576,25 @@ func newJobSearchServerResponses(t *testing.T, bodies *[]map[string]any, respons
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(responses[responseIndex]))
 	}))
+}
+
+// jobActivityAPI records the fallback activity that the HTTP-backed job facade would emit.
+type jobActivityAPI struct {
+	job.API
+}
+
+// SearchJobsPages records job-search fallback activity before returning one completed page.
+func (jobActivityAPI) SearchJobsPages(ctx context.Context, request job.SearchRequest, visitor job.SearchPageVisitor, opts ...foptions.FacadeOption) (job.SearchPagesResult, error) {
+	recordHTTPFallbackActivity(ctx, "searching jobs")
+	page := job.Page{
+		Items:         []job.Job{{Key: "2251799813711967", State: "FAILED"}},
+		Request:       job.PageRequest{Size: request.BatchSize},
+		OverflowState: job.OverflowStateNoMore,
+	}
+	if _, err := visitor(job.SearchPageStep{Page: page, CumulativeCount: 1, LimitReached: true}); err != nil {
+		return job.SearchPagesResult{}, err
+	}
+	return job.SearchPagesResult{Items: page.Items, Limit: request.Limit, Pages: 1}, nil
 }
 
 func executeRootForJobTest(t *testing.T, args ...string) string {

@@ -101,3 +101,35 @@ Started: 2026-07-28 11:17:49
 **Learnings**:
 - Workflow, batch, and wait priorities can be migrated at existing central activity emitters without changing durable output contracts; HTTP fallback remains the next story.
 ---
+---
+## Iteration 4 - 2026-07-28 11:51
+**Work Unit**: User Story 2 - Preserve Useful Fallback Activity
+**Tasks Completed**:
+- [x] T027: Extended HTTP label table tests for all known labels in `specs/262-activity-priority/contracts/http-activity-labels.md` inside `internal/services/httpc/round_trippers_test.go`
+- [x] T028: Added HTTP fallback priority tests proving HTTP activity uses fallback importance and remains available without higher scopes in `internal/services/httpc/round_trippers_test.go`
+- [x] T029: Added representative simple command activity tests for cluster, tenant, resource, incident, job, variable, element-instance, and user-task operations
+- [x] T030: Started HTTP transport activity with HTTP fallback importance in `internal/services/httpc/round_trippers.go`
+- [x] T031: Added resource-aware fallback labels for deployment, license, resource deletion, batch operation, element-instance, variable, user-task, and tenant endpoints in `internal/services/httpc/round_trippers.go`
+- [x] T032: Normalized version-prefixed and legacy Camunda paths consistently for fallback labels in `internal/services/httpc/round_trippers.go`
+- [x] T033: Kept generic fallback wording for unknown HTTP methods and paths only when no known label matches in `internal/services/httpc/round_trippers.go`
+- [x] T034: Ran targeted US2 validation from `specs/262-activity-priority/quickstart.md`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_cluster_topology.go
+- cmd/get_element_test.go
+- cmd/get_incident_test.go
+- cmd/get_job_test.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/get_processinstance_variable_filter_test.go
+- cmd/get_tenant_test.go
+- cmd/get_test.go
+- internal/services/httpc/round_trippers.go
+- internal/services/httpc/round_trippers_test.go
+- specs/262-activity-priority/tasks.md
+- specs/262-activity-priority/ralph-memory.md
+- specs/262-activity-priority/progress.md
+**Learnings**:
+- HTTP fallback labels now cover the contract table centrally; command tests assert representative simple operations keep carrying HTTP-priority fallback activity through the command context.
+---

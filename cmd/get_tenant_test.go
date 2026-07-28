@@ -19,6 +19,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -47,6 +48,30 @@ func TestGetTenantListOutput_SortsAndRendersCompactRows(t *testing.T) {
 	require.Contains(t, output, "Beta")
 	require.Contains(t, output, "found: 2")
 	require.Less(t, strings.Index(output, "tenant-a"), strings.Index(output, "tenant-b"))
+}
+
+// TestGetTenantCommand_HTTPFallbackActivityUsesCommandContext verifies tenant search and lookup preserve fallback activity.
+func TestGetTenantCommand_HTTPFallbackActivityUsesCommandContext(t *testing.T) {
+	resetTenantRenderFlags(t)
+	sink := &activitysink.Sink{}
+	api := tenantCommandAPI{
+		searchTenants: func(ctx context.Context, filter tenant.TenantFilter, opts ...foptions.FacadeOption) (tenant.Tenants, error) {
+			recordHTTPFallbackActivity(ctx, "searching tenants")
+			return tenant.Tenants{Total: 1, Items: []tenant.Tenant{{TenantId: "tenant-a", Name: "Alpha"}}}, nil
+		},
+		getTenant: func(ctx context.Context, tenantID string, opts ...foptions.FacadeOption) (tenant.Tenant, error) {
+			require.Equal(t, "tenant-a", tenantID)
+			recordHTTPFallbackActivity(ctx, "loading tenant")
+			return tenant.Tenant{TenantId: tenantID, Name: "Alpha"}, nil
+		},
+	}
+
+	searchCmd := newHTTPFallbackActivityCommand(sink)
+	runSearchTenants(searchCmd, api, tenantTestLogger(), true, tenant.TenantFilter{})
+	getCmd := newHTTPFallbackActivityCommand(sink)
+	runGetTenantByKey(getCmd, api, tenantTestLogger(), true, "tenant-a")
+
+	requireHTTPFallbackActivityStarts(t, sink, "searching tenants", "loading tenant")
 }
 
 // Verifies tenant list columns use the current result set for dynamic alignment.

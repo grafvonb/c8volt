@@ -31,6 +31,21 @@ func TestGetElementCommand_ValidateDirectLookupKey(t *testing.T) {
 	require.NoError(t, validateGetElementFlags(getElementCmd))
 }
 
+// TestGetElementCommand_HTTPFallbackActivityUsesCommandContext verifies element search preserves fallback activity.
+func TestGetElementCommand_HTTPFallbackActivityUsesCommandContext(t *testing.T) {
+	resetGetElementFlagState()
+	t.Cleanup(resetGetElementFlagState)
+	resetHTTPFallbackActivityRenderMode(t)
+	sink := &activitysink.Sink{}
+	cmd := newHTTPFallbackActivityCommand(sink)
+	api := elementActivityAPI{}
+
+	_, _, err := searchElementsForCommand(cmd, api, elementapi.SearchRequest{ProcessInstanceKey: "2251799813688001", BatchSize: 1, Limit: 1})
+	require.NoError(t, err)
+
+	requireHTTPFallbackActivityStarts(t, sink, "searching element instances")
+}
+
 func TestGetElementCommand_RejectsInvalidKeys(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -756,6 +771,30 @@ func newElementWithListenersServer(t *testing.T, requests *[]string, elementResp
 			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
 		}
 	}))
+}
+
+// elementActivityAPI records the fallback activity that the HTTP-backed element facade would emit.
+type elementActivityAPI struct {
+	elementapi.API
+}
+
+// SearchElementsPages records element-search fallback activity before returning one completed page.
+func (elementActivityAPI) SearchElementsPages(ctx context.Context, request elementapi.SearchRequest, visitor elementapi.SearchPageVisitor, opts ...options.FacadeOption) (elementapi.SearchPagesResult, error) {
+	recordHTTPFallbackActivity(ctx, "searching element instances")
+	page := elementapi.Page{
+		Items: []elementapi.Element{{
+			ElementInstanceKey: "2251799813689002",
+			ElementId:          "ship-order",
+			State:              "ACTIVE",
+			ProcessInstanceKey: "2251799813688001",
+		}},
+		Request:       elementapi.PageRequest{Size: request.BatchSize},
+		OverflowState: elementapi.OverflowStateNoMore,
+	}
+	if _, err := visitor(elementapi.SearchPageStep{Page: page, CumulativeCount: 1, LimitReached: true}); err != nil {
+		return elementapi.SearchPagesResult{}, err
+	}
+	return elementapi.SearchPagesResult{Items: page.Items, Total: 1, Pages: 1}, nil
 }
 
 func executeRootForElementTest(t *testing.T, args ...string) string {

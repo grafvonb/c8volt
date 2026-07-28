@@ -9,15 +9,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt"
 	"github.com/grafvonb/c8volt/c8volt/cluster"
+	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/testx/activitysink"
@@ -78,6 +82,30 @@ func TestGetBasicSearchProgressUsesWorkflowImportance(t *testing.T) {
 		Message:    "discovering process instances, page 2/4, 2000 seen, 1500 selected",
 		Importance: logging.ActivityImportanceWorkflow,
 	}}, sink.PriorityUpdates())
+}
+
+// TestGetClusterAndResourceCommands_HTTPFallbackActivityUsesCommandContext verifies simple command helpers preserve fallback activity.
+func TestGetClusterAndResourceCommands_HTTPFallbackActivityUsesCommandContext(t *testing.T) {
+	resetHTTPFallbackActivityRenderMode(t)
+	sink := &activitysink.Sink{}
+	api := getFallbackActivityAPI{
+		getClusterTopology: func(ctx context.Context, opts ...foptions.FacadeOption) (cluster.Topology, error) {
+			recordHTTPFallbackActivity(ctx, "checking cluster topology")
+			return cluster.Topology{GatewayVersion: "8.8.0"}, nil
+		},
+		getResource: func(ctx context.Context, key string, opts ...foptions.FacadeOption) (resource.Resource, error) {
+			require.Equal(t, "resource-id-123", key)
+			recordHTTPFallbackActivity(ctx, "loading resource")
+			return resource.Resource{ID: key, Key: "resource-key-123", Name: "order-process.bpmn", TenantId: "tenant-a"}, nil
+		},
+	}
+
+	topologyCmd := newHTTPFallbackActivityCommand(sink)
+	runGetClusterTopologyWithClient(topologyCmd, api, discardTestLogger(), true)
+	resourceCmd := newHTTPFallbackActivityCommand(sink)
+	runGetResourceByID(resourceCmd, api, discardTestLogger(), true, "resource-id-123")
+
+	requireHTTPFallbackActivityStarts(t, sink, "checking cluster topology", "loading resource")
 }
 
 // Verifies root help advertises the finalized v8.9 runtime support contract.
@@ -1726,6 +1754,73 @@ func stringFilterEqValue(t *testing.T, value any) string {
 		t.Fatalf("expected string equality filter, got %#v", got)
 	}
 	return ""
+}
+
+// getFallbackActivityAPI lets command activity tests stub only the facade calls under inspection.
+type getFallbackActivityAPI struct {
+	c8volt.API
+	getClusterTopology func(context.Context, ...foptions.FacadeOption) (cluster.Topology, error)
+	getResource        func(context.Context, string, ...foptions.FacadeOption) (resource.Resource, error)
+}
+
+// GetClusterTopology delegates to the test-provided cluster topology function.
+func (a getFallbackActivityAPI) GetClusterTopology(ctx context.Context, opts ...foptions.FacadeOption) (cluster.Topology, error) {
+	return a.getClusterTopology(ctx, opts...)
+}
+
+// GetResource delegates to the test-provided resource lookup function.
+func (a getFallbackActivityAPI) GetResource(ctx context.Context, key string, opts ...foptions.FacadeOption) (resource.Resource, error) {
+	return a.getResource(ctx, key, opts...)
+}
+
+// newHTTPFallbackActivityCommand creates a command carrying a priority-aware activity sink.
+func newHTTPFallbackActivityCommand(sink *activitysink.Sink) *cobra.Command {
+	cmd := &cobra.Command{Use: "activity-test"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+	parent := &cobra.Command{Use: "get"}
+	parent.AddCommand(cmd)
+	return cmd
+}
+
+// recordHTTPFallbackActivity simulates the HTTP transport fallback scope in command helper tests.
+func recordHTTPFallbackActivity(ctx context.Context, message string) {
+	stop := logging.StartActivityWithImportance(ctx, message, logging.ActivityImportanceHTTP)
+	stop()
+}
+
+// requireHTTPFallbackActivityStarts checks that command paths recorded only HTTP-priority fallback starts.
+func requireHTTPFallbackActivityStarts(t *testing.T, sink *activitysink.Sink, messages ...string) {
+	t.Helper()
+	starts := sink.Starts()
+	require.Len(t, starts, len(messages))
+	for i, message := range messages {
+		require.Equal(t, activitysink.Start{
+			Message:    message,
+			Importance: logging.ActivityImportanceHTTP,
+		}, starts[i])
+	}
+	require.Equal(t, len(messages), sink.Stopped())
+}
+
+// resetHTTPFallbackActivityRenderMode isolates global render flags for direct command helper tests.
+func resetHTTPFallbackActivityRenderMode(t *testing.T) {
+	t.Helper()
+	prevJSON := flagViewAsJson
+	prevKeysOnly := flagViewKeysOnly
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+		flagViewKeysOnly = prevKeysOnly
+	})
+	flagViewAsJson = false
+	flagViewKeysOnly = false
+}
+
+// discardTestLogger returns a logger for command helper tests that only inspect activity.
+func discardTestLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 func executeRootForTest(t *testing.T, args ...string) string {

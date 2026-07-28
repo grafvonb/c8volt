@@ -5,7 +5,9 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 
+	"github.com/grafvonb/c8volt/c8volt"
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/spf13/cobra"
 )
@@ -34,23 +36,29 @@ func init() {
 	)
 }
 
+// runGetClusterTopology builds the command client before rendering topology output.
 func runGetClusterTopology(cmd *cobra.Command, args []string) {
 	cli, log, cfg, err := NewCli(cmd)
 	if err != nil {
 		handleNewCliError(cmd, log, cfg, err)
 	}
+	runGetClusterTopologyWithClient(cmd, cli, log, cfg.App.NoErrCodes)
+}
+
+// runGetClusterTopologyWithClient keeps cluster topology rendering testable with a command-scoped facade.
+func runGetClusterTopologyWithClient(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool) {
 	log.Debug("getting cluster topology")
 	topology, err := cli.GetClusterTopology(cmd.Context())
 	if err != nil {
-		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("get cluster topology: %w", err))
+		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("get cluster topology: %w", err))
 	}
 	if pickMode() == RenderModeJSON {
 		if err := renderJSONPayload(cmd, RenderModeJSON, topology); err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render cluster topology: %w", err))
+			handleCommandError(cmd, log, noErrCodes, fmt.Errorf("render cluster topology: %w", err))
 		}
 		return
 	}
 	if err := renderClusterTopologyTree(cmd, topology); err != nil {
-		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render cluster topology: %w", err))
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("render cluster topology: %w", err))
 	}
 }

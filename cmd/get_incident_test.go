@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -15,8 +16,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/incident"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,6 +55,27 @@ func TestGetIncidentCommand_KeyedLookupDeduplicatesFlagAndStdinKeys(t *testing.T
 	require.Contains(t, output, "2251799813685250")
 	require.Contains(t, output, "m:Mapping failed")
 	require.Contains(t, output, "found: 2")
+}
+
+// TestGetIncidentCommand_HTTPFallbackActivityUsesCommandContext verifies incident search preserves fallback activity.
+func TestGetIncidentCommand_HTTPFallbackActivityUsesCommandContext(t *testing.T) {
+	resetHTTPFallbackActivityRenderMode(t)
+	prevLimit := flagGetIncidentLimit
+	prevPIKeysOnly := flagGetIncidentPIKeysOnly
+	t.Cleanup(func() {
+		flagGetIncidentLimit = prevLimit
+		flagGetIncidentPIKeysOnly = prevPIKeysOnly
+	})
+	flagGetIncidentLimit = 1
+	flagGetIncidentPIKeysOnly = false
+	sink := &activitysink.Sink{}
+	cmd := newHTTPFallbackActivityCommand(sink)
+	api := incidentActivityAPI{}
+
+	_, _, err := searchIncidentsWithPaging(cmd, api, &config.Config{}, incident.Filter{State: "ACTIVE"})
+	require.NoError(t, err)
+
+	requireHTTPFallbackActivityStarts(t, sink, "searching incidents")
 }
 
 func TestGetIncidentCommand_JSONOutputUsesIncidentListPayload(t *testing.T) {
@@ -1123,6 +1149,25 @@ func TestGetIncidentCommand_RejectsKeyedLookupWithSearchFilter(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "--key cannot be combined with search filters")
 	require.Empty(t, output)
+}
+
+// incidentActivityAPI records the fallback activity that the HTTP-backed incident facade would emit.
+type incidentActivityAPI struct {
+	incident.API
+}
+
+// SearchIncidentsPages records incident-search fallback activity before returning one completed page.
+func (incidentActivityAPI) SearchIncidentsPages(ctx context.Context, filter incident.Filter, pageReq incident.PageRequest, limit int32, visitor incident.SearchPageVisitor, opts ...foptions.FacadeOption) (incident.SearchPagesResult, error) {
+	recordHTTPFallbackActivity(ctx, "searching incidents")
+	page := incident.Page{
+		Items:         []incident.ProcessInstanceIncidentDetail{{IncidentKey: "2251799813685249", State: "ACTIVE"}},
+		Request:       pageReq,
+		OverflowState: incident.OverflowStateNoMore,
+	}
+	if _, err := visitor(incident.SearchPageStep{Page: page, CumulativeCount: 1, LimitReached: true}); err != nil {
+		return incident.SearchPagesResult{}, err
+	}
+	return incident.SearchPagesResult{Items: page.Items, Limit: limit, Pages: 1}, nil
 }
 
 func newIncidentLookupServer(t *testing.T, requests *[]string, responses map[string]string) *httptest.Server {

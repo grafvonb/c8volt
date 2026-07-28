@@ -84,17 +84,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T027 [P] [US2] Extend HTTP label table tests for all known labels in `specs/262-activity-priority/contracts/http-activity-labels.md` inside `internal/services/httpc/round_trippers_test.go`
-- [ ] T028 [P] [US2] Add HTTP fallback priority tests proving HTTP activity is visible without higher scopes and hidden below workflow or wait scopes in `internal/services/httpc/round_trippers_test.go`
-- [ ] T029 [P] [US2] Add representative simple command activity tests for cluster, tenant, resource, incident, job, variable, element-instance, and user-task operations in `cmd/get_test.go`, `cmd/get_tenant_test.go`, `cmd/get_job_test.go`, `cmd/get_incident_test.go`, `cmd/get_element_test.go`, `cmd/get_processinstance_variable_filter_test.go`, and `cmd/get_processinstance_user_tasks_test.go`
+- [x] T027 [P] [US2] Extend HTTP label table tests for all known labels in `specs/262-activity-priority/contracts/http-activity-labels.md` inside `internal/services/httpc/round_trippers_test.go`
+- [x] T028 [P] [US2] Add HTTP fallback priority tests proving HTTP activity is visible without higher scopes and hidden below workflow or wait scopes in `internal/services/httpc/round_trippers_test.go`
+- [x] T029 [P] [US2] Add representative simple command activity tests for cluster, tenant, resource, incident, job, variable, element-instance, and user-task operations in `cmd/get_test.go`, `cmd/get_tenant_test.go`, `cmd/get_job_test.go`, `cmd/get_incident_test.go`, `cmd/get_element_test.go`, `cmd/get_processinstance_variable_filter_test.go`, and `cmd/get_processinstance_user_tasks_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T030 [US2] Start HTTP transport activity with HTTP fallback importance in `internal/services/httpc/round_trippers.go`
-- [ ] T031 [US2] Add resource-aware fallback labels for deployment, license, resource deletion, batch operation, element-instance, variable, user-task, and tenant endpoints in `internal/services/httpc/round_trippers.go`
-- [ ] T032 [US2] Normalize version-prefixed and legacy Camunda paths consistently for fallback labels in `internal/services/httpc/round_trippers.go`
-- [ ] T033 [US2] Ensure unknown HTTP methods and paths keep generic fallback wording only when no known label matches in `internal/services/httpc/round_trippers.go`
-- [ ] T034 [US2] Run targeted US2 validation from `specs/262-activity-priority/quickstart.md` with `go test ./internal/services/httpc ./cmd -run 'HTTPActivity|ActivityLabel|GetCluster|GetTenant|GetJob|GetIncident|GetVariable|GetResource|UserTask|ElementInstance' -count=1`
+- [x] T030 [US2] Start HTTP transport activity with HTTP fallback importance in `internal/services/httpc/round_trippers.go`
+- [x] T031 [US2] Add resource-aware fallback labels for deployment, license, resource deletion, batch operation, element-instance, variable, user-task, and tenant endpoints in `internal/services/httpc/round_trippers.go`
+- [x] T032 [US2] Normalize version-prefixed and legacy Camunda paths consistently for fallback labels in `internal/services/httpc/round_trippers.go`
+- [x] T033 [US2] Ensure unknown HTTP methods and paths keep generic fallback wording only when no known label matches in `internal/services/httpc/round_trippers.go`
+- [x] T034 [US2] Run targeted US2 validation from `specs/262-activity-priority/quickstart.md` with `go test ./internal/services/httpc ./cmd -run 'HTTPActivity|ActivityLabel|GetCluster|GetTenant|GetJob|GetIncident|GetVariable|GetResource|UserTask|ElementInstance' -count=1`
 
 **Checkpoint**: User Story 2 is independently functional when simple commands have useful fallback activity without reintroducing high-level progress flicker.
 

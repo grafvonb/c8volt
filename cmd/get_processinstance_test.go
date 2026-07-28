@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/config"
@@ -24,6 +25,7 @@ import (
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
+	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
@@ -3652,6 +3654,20 @@ func TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath(t *testing.T
 	require.Contains(t, output, `"key": "2251799813711967"`)
 }
 
+// TestGetProcessInstanceCommand_UserTaskHTTPFallbackActivityUsesCommandContext verifies user-task lookup preserves fallback activity.
+func TestGetProcessInstanceCommand_UserTaskHTTPFallbackActivityUsesCommandContext(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	resetHTTPFallbackActivityRenderMode(t)
+	sink := &activitysink.Sink{}
+	cmd := newHTTPFallbackActivityCommand(sink)
+
+	keys, err := resolveProcessInstanceKeysFromUserTasksForCommand(cmd, processUserTaskActivityAPI{}, types.Keys{"2251799815391233"}, nil)
+	require.NoError(t, err)
+	require.Equal(t, types.Keys{"2251799813711967"}, keys)
+	requireHTTPFallbackActivityStarts(t, sink, "searching user tasks")
+}
+
 // Verifies has-user-tasks resolves through native user-task search, then reuses keyed process-instance rendering.
 func TestGetProcessInstanceCommand_HasUserTasksLookupUsesNativeUserTaskAndKeyedProcessInstance(t *testing.T) {
 	for _, version := range []string{"8.8", "8.9"} {
@@ -5327,6 +5343,17 @@ func executeRootForProcessInstanceWithSeparateOutputs(t *testing.T, args ...stri
 	require.NoError(t, err)
 
 	return stdout.String(), stderr.String()
+}
+
+// processUserTaskActivityAPI records the fallback activity that native user-task resolution performs through HTTP.
+type processUserTaskActivityAPI struct {
+	c8volt.API
+}
+
+// ResolveProcessInstanceKeysFromUserTasks records user-task fallback activity before returning a resolved process-instance key.
+func (processUserTaskActivityAPI) ResolveProcessInstanceKeysFromUserTasks(ctx context.Context, taskKeys types.Keys, opts ...options.FacadeOption) (types.Keys, error) {
+	recordHTTPFallbackActivity(ctx, "searching user tasks")
+	return types.Keys{"2251799813711967"}, nil
 }
 
 // executeRootForProcessInstanceTestWithEnv runs the root command with temporary environment overrides.

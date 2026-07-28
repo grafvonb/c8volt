@@ -11,7 +11,9 @@ Started: 2026-07-28T09:17:49Z
 - Command progress emitters in `cmd/get_processinstance_paging.go`, `cmd/get_processinstance_total.go`, `cmd/get_processinstance_orphan.go`, `cmd/processinstance_mutation_progress.go`, and `cmd/ops_analyse_slow_process_instances.go` now use workflow importance for transient starts and updates.
 - Service-level bulk work in `internal/services/processinstance/bulk.go`, variable updates in `internal/services/processinstance/variables.go`, process-definition delete planning/execution in `internal/services/processdefinition/delete.go`, and deployment confirmation in `internal/services/resource/v88/service.go` and `internal/services/resource/v89/service.go` now use batch importance.
 - Process-instance, incident, and job waiters plus `toolx/poller.WaitForCompletion` now use wait importance. Poller fallback dots to `os.Stderr` remain unchanged when no activity sink exists.
-- `internal/services/httpc.LogTransport` starts activity around each request with `httpActivityMessage(req)` and already strips hosts/version prefixes. It covers topology, process-instance, incident, job, process-definition, and basic resource labels, but not every path required by `contracts/http-activity-labels.md`.
+- `internal/services/httpc.LogTransport` starts each request as `ActivityImportanceHTTP` through the priority-aware sink when available, so request fallback stays below workflow/batch/wait scopes while remaining visible for simple commands.
+- `internal/services/httpc.httpActivityMessage` strips hosts, query strings, and a leading `/v2` prefix, then maps all known labels from `contracts/http-activity-labels.md`, including legacy `/deployments`, `/resources/{key}/deletion`, `/process-instances/search`, `/process-definitions/search`, and `/variables/search`; unknown method/path combinations keep the generic Camunda API fallback wording.
+- US2 command tests use small command-helper facade stubs to record HTTP-priority fallback starts through the command context for cluster, tenant, resource, incident, job, variable, element-instance, and user-task representatives. The actual endpoint label table and priority value are enforced in `internal/services/httpc/round_trippers_test.go`.
 
 ## Decisions
 - Priority-aware APIs are additive optional interfaces: `PriorityActivitySink` and `PriorityActivityUpdater`; context helpers probe these interfaces before falling back to `ActivitySink`/`ActivityUpdater`.
@@ -31,4 +33,4 @@ Started: 2026-07-28T09:17:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should start User Story 2 only at T027. Keep HTTP fallback lower than workflow/batch/wait by using `ActivityImportanceHTTP` in `internal/services/httpc.LogTransport`, then expand resource-aware labels from `contracts/http-activity-labels.md`.
+- Next iteration should start User Story 3 at T035. Preserve the root activity writer gating for JSON, keys-only, quiet, automation, non-interactive, debug, and verbose modes; do not change durable command output wording unless a US3 test proves it is required.
