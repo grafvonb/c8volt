@@ -92,3 +92,23 @@ Started: 2026-07-28 07:17:54
 **Learnings**:
 - The existing GET/HEAD-only gate already prevents generic retries for POST search and mutation-style methods; US3 hardened that contract with focused tests.
 ---
+---
+## Iteration 5 - 2026-07-28 07:37
+**Work Unit**: Phase 6 - Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T030: Add a short compact transient read retry troubleshooting note
+- [x] T031: Run gofmt on touched Go files
+- [x] T032: Run package validation for httpc read retry files
+- [x] T033: Run mutation retry regression validation
+- [x] T034: Run customer-path orphan/process-instance regression validation
+- [x] T035: Run full repository validation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- specs/261-retry-camunda-reads/tasks.md
+- specs/261-retry-camunda-reads/ralph-memory.md
+- specs/261-retry-camunda-reads/progress.md
+**Learnings**:
+- Final polish needed only README alignment and validation; no Go formatting changes were produced.
+---

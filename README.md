@@ -30,6 +30,8 @@ During discovery, progress uses page and seen-count wording. After c8volt freeze
 
 Progress never writes to result stdout. Default human mode uses terminal activity; verbose and debug modes may keep durable progress lines on stderr. JSON output remains one document, keys-only output remains one key per line, and quiet or automation-oriented runs suppress progress chatter or keep scope in structured reports. For paged commands, `--batch-size` controls each backend discovery request, while `--limit` caps the total returned, selected, frozen, or analyzed scope as documented by the command.
 
+Transient Camunda GET and HEAD read failures are retried automatically when the shared request path sees temporary transport errors, throttling, or server availability responses. Retry messages stay compact and off result stdout, and c8volt still treats business outcomes such as not-found, invalid request, permission failure, and conflict as final.
+
 ### v4.2 Highlight: Slow Process Analysis
 
 `ops analyse slow-process-instances` is read-only analysis for slow runtime work. It combines process-instance search, runtime element timing, and optional listener-job context into an operator view: slowest roots first, slowest elements underneath.
@@ -48,8 +50,8 @@ Start destructive, repair, and cleanup work with a plan:
 
 ```bash
 ./c8volt ops execute retention-policy --retention-days 90 --dry-run
-./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
 ./c8volt ops repair incident --key <incident-key> --dry-run
+./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
 ```
 
 Generated references: [ops execute retention-policy](docs/cli/c8volt_ops_execute_retention-policy.md), [ops purge process-instances-with-incidents](docs/cli/c8volt_ops_purge_process-instances-with-incidents.md), [ops repair incident](docs/cli/c8volt_ops_repair_incident.md).

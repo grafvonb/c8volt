@@ -125,12 +125,12 @@
 
 **Purpose**: Finish validation, formatting, and documentation alignment.
 
-- [ ] T030 [P] Add a short compact transient read retry troubleshooting note in `README.md`
-- [ ] T031 Run `gofmt` on `internal/services/httpc/read_retry.go`, `internal/services/httpc/http_read_retry_test.go`, and any touched Go files
-- [ ] T032 Run package validation for `internal/services/httpc/read_retry.go` and `internal/services/httpc/http_read_retry_test.go` with `go test ./internal/services/httpc -count=1`
-- [ ] T033 Run mutation retry regression validation for `internal/services/retry.go` and `internal/services/retry_test.go` with `go test ./internal/services -run 'RetryCamundaMutation' -count=1`
-- [ ] T034 Run customer-path regression validation for process-instance orphan behavior in `cmd/` and `internal/services/processinstance/` with `go test ./cmd ./internal/services/processinstance/... -run 'Orphan|Retry' -count=1`
-- [ ] T035 Run full repository validation for all touched paths with `make test`
+- [x] T030 [P] Add a short compact transient read retry troubleshooting note in `README.md`
+- [x] T031 Run `gofmt` on `internal/services/httpc/read_retry.go`, `internal/services/httpc/http_read_retry_test.go`, and any touched Go files
+- [x] T032 Run package validation for `internal/services/httpc/read_retry.go` and `internal/services/httpc/http_read_retry_test.go` with `go test ./internal/services/httpc -count=1`
+- [x] T033 Run mutation retry regression validation for `internal/services/retry.go` and `internal/services/retry_test.go` with `go test ./internal/services -run 'RetryCamundaMutation' -count=1`
+- [x] T034 Run customer-path regression validation for process-instance orphan behavior in `cmd/` and `internal/services/processinstance/` with `go test ./cmd ./internal/services/processinstance/... -run 'Orphan|Retry' -count=1`
+- [x] T035 Run full repository validation for all touched paths with `make test`
 
 ---
 

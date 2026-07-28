@@ -11,6 +11,7 @@ Started: 2026-07-28T05:17:54Z
 - Focused shared-client install coverage is `TestNewInstallsReadRetryTransport`.
 - US2 coverage in `http_read_retry_test.go` confirms semantic 400/401/403/404/409 responses are single-call outcomes, exhausted retries return the final response object with headers/request/body readable, and canceled contexts interrupt retry sleep before another attempt.
 - US3 coverage in `http_read_retry_test.go` confirms POST search plus DELETE/PATCH/PUT/non-search POST transient responses are single-call outcomes; the existing `isReadRetryMethod` GET/HEAD-only gate required no production change.
+- `README.md` documents compact transient GET/HEAD retry behavior in the Ops-scale progress area; generated CLI docs remain unchanged because no command metadata changed.
 
 ## Decisions
 - Foundational iteration introduced `ReadRetryTransport` with policy/timing primitives; US1 completed retry decisions and shared service installation.
@@ -29,9 +30,13 @@ Started: 2026-07-28T05:17:54Z
 - `go test ./internal/services/httpc -count=1`
 - `go test ./internal/services/httpc -run 'ReadRetry' -count=1`
 - `go test ./internal/services/httpc ./internal/services -run 'ReadRetry|RetryCamundaMutation' -count=1`
+- `go test ./internal/services/httpc -count=1`
+- `go test ./internal/services -run 'RetryCamundaMutation' -count=1`
+- `go test ./cmd ./internal/services/processinstance/... -run 'Orphan|Retry' -count=1`
+- `make test`
 
 ## Do Not Repeat
 - Do not add process-instance-specific retry branches for this feature; retry behavior belongs in `internal/services/httpc`.
 
 ## Current Handoff
-- Next iteration should start Phase 6 polish only: add the README troubleshooting note, run gofmt on touched Go files, then run the focused `httpc`, mutation retry, customer-path, and full `make test` validations before terminal handoff.
+- Feature complete; no handoff required.
