@@ -2010,6 +2010,32 @@ func processInstanceMutationTestMutationPhase(operation string) string {
 	}
 }
 
+// TestCancelProcessInstanceProgressUsesWorkflowImportance verifies cancel progress stays above nested service waits and requests.
+func TestCancelProcessInstanceProgressUsesWorkflowImportance(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+
+	progress := newProcessInstanceMutationProgressReporter(cmd, "cancel")
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindFrozenScope,
+		FrozenScope: &options.FrozenScopeProgress{
+			Phase:        "cancelling process instances",
+			CoreResource: "process instance(s)",
+			Done:         3,
+			Total:        10,
+		},
+	})
+
+	require.Equal(t, []activitysink.Update{{
+		Message:    "cancelling process instances 3/10 process instance(s)",
+		Importance: logging.ActivityImportanceWorkflow,
+	}}, sink.PriorityUpdates())
+}
+
 // TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary verifies aborted paging reports partial completion.
 func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *testing.T) {
 	var requests testx.SafeSlice[string]

@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -14,9 +15,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -437,6 +441,31 @@ func TestRunProcessInstanceCommand_VerboseBulkProgressRendersCounters(t *testing
 	require.NotContains(t, stderr, "created; pd")
 	require.NotContains(t, stderr, "create requested")
 	require.Len(t, created.Snapshot(), 2)
+}
+
+// TestRunProcessInstanceBulkProgressUsesWorkflowImportance verifies explicit-count run progress outranks nested create and confirmation activity.
+func TestRunProcessInstanceBulkProgressUsesWorkflowImportance(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+
+	printExplicitLargeWorkProgressEvent(cmd, ops.ProgressEvent{
+		Kind: ops.ProgressEventKindFrozenScope,
+		FrozenScope: &ops.FrozenScopeProgress{
+			Phase:        "starting process instances",
+			CoreResource: "process instance(s)",
+			Done:         2,
+			Total:        5,
+		},
+	})
+
+	require.Equal(t, []activitysink.Update{{
+		Message:    "starting process instances 2/5 process instance(s)",
+		Importance: logging.ActivityImportanceWorkflow,
+	}}, sink.PriorityUpdates())
 }
 
 func TestRunProcessInstanceResultSortsCountOutputByStartDateAndKey(t *testing.T) {

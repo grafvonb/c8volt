@@ -229,6 +229,48 @@ func TestActivityWriter_PriorityUpdateTargetsMatchingScope(t *testing.T) {
 	stopWait()
 }
 
+// TestActivityWriter_WorkflowRemainsVisibleAboveWaitAndHTTP verifies the documented US1 hierarchy examples.
+func TestActivityWriter_WorkflowRemainsVisibleAboveWaitAndHTTP(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	w := newActivityWriter(&buf, true)
+
+	stopWorkflow := w.StartActivityWithImportance("deleting process-instance trees 48/800", ActivityImportanceWorkflow)
+	w.tick()
+	stopWait := w.StartActivityWithImportance("waiting for pi 123 state", ActivityImportanceWait)
+	w.tick()
+	stopHTTP := w.StartActivityWithImportance("loading process instance", ActivityImportanceHTTP)
+	w.tick()
+
+	require.Equal(t, "- deleting process-instance trees 48/800", lastActivityLine(buf.String()))
+
+	stopHTTP()
+	stopWait()
+	stopWorkflow()
+}
+
+// TestActivityWriter_WaitFallsBackAboveHTTPAfterWorkflowStops verifies wait scopes outrank HTTP fallback after workflow progress ends.
+func TestActivityWriter_WaitFallsBackAboveHTTPAfterWorkflowStops(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	w := newActivityWriter(&buf, true)
+
+	stopHTTP := w.StartActivityWithImportance("loading process instance", ActivityImportanceHTTP)
+	w.tick()
+	stopWorkflow := w.StartActivityWithImportance("analyzing process instances", ActivityImportanceWorkflow)
+	w.tick()
+	stopWait := w.StartActivityWithImportance("waiting for pi 123 state", ActivityImportanceWait)
+	w.tick()
+	stopWorkflow()
+
+	require.Equal(t, "| waiting for pi 123 state", lastActivityLine(buf.String()))
+
+	stopWait()
+	stopHTTP()
+}
+
 func TestStartActivityWithImportance_UsesPriorityContextSink(t *testing.T) {
 	t.Parallel()
 

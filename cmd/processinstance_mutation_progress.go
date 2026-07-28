@@ -93,7 +93,7 @@ func processInstanceMutationProgressModeForCommand(cmd *cobra.Command) opsProgre
 func printProcessInstanceMutationPreflight(cmd *cobra.Command, scope ops.PreflightScope, channel ops.ProgressChannel) {
 	lines := formatOpsPreflightScope(scope)
 	if channel.TransientAllowed && len(lines) > 0 {
-		logging.UpdateActivity(cmd.Context(), lines[0])
+		logging.UpdateActivityWithImportance(cmd.Context(), lines[0], logging.ActivityImportanceWorkflow)
 	}
 	if !processInstanceMutationDurableProgressAllowed(channel) {
 		return
@@ -106,7 +106,7 @@ func printProcessInstanceMutationProgressLine(cmd *cobra.Command, line string, c
 		return
 	}
 	if channel.TransientAllowed {
-		logging.UpdateActivity(cmd.Context(), line)
+		logging.UpdateActivityWithImportance(cmd.Context(), line, logging.ActivityImportanceWorkflow)
 	}
 	if !processInstanceMutationDurableProgressAllowed(channel) {
 		return

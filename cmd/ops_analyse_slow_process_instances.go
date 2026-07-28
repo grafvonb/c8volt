@@ -341,7 +341,7 @@ func printOpsSlowProcessAnalysisProgress(cmd *cobra.Command, line string, channe
 		return
 	}
 	if channel.TransientAllowed {
-		logging.UpdateActivity(cmd.Context(), line)
+		logging.UpdateActivityWithImportance(cmd.Context(), line, logging.ActivityImportanceWorkflow)
 	}
 	if !opsSlowProcessAnalysisDurableProgressAllowed(channel) {
 		return

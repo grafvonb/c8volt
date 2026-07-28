@@ -42,3 +42,62 @@ Started: 2026-07-28 11:17:49
 **Learnings**:
 - Priority-aware context helpers can stay additive; hidden lower-priority updates must not redraw the selected higher-priority scope.
 ---
+---
+## Iteration 3 - 2026-07-28 11:37
+**Work Unit**: User Story 1 - Keep Workflow Progress Visible
+**Tasks Completed**:
+- [x] T011: Added activity hierarchy contract tests for workflow-over-wait and workflow-over-http examples in `toolx/logging/activity_test.go`
+- [x] T012: Added process-instance mutation activity tests for delete and cancel progress not being overwritten by nested loads or waits in `cmd/cancel_test.go` and `cmd/delete_test.go`
+- [x] T013: Added bulk run activity tests for process-instance creation progress not being overwritten by individual create or confirmation activity in `cmd/run_test.go`
+- [x] T014: Added process-instance get/search progress tests for paging, totals, and orphan discovery activity stability in `cmd/get_processinstance_test.go`, `cmd/cmd_paging_totals_test.go`, and `cmd/get_test.go`
+- [x] T015: Added ops slow-process activity tests proving runtime element search activity does not replace analysis progress in `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T016: Added service waiter nesting tests for wait activity staying below workflow and above HTTP in `internal/services/processinstance/waiter/waiter_test.go`, `internal/services/incident/waiter/waiter_test.go`, and `internal/services/job/waiter/waiter_test.go`
+- [x] T017: Promoted process-instance paging and search activity to workflow importance in `cmd/get_processinstance_paging.go`
+- [x] T018: Promoted process-instance total and orphan discovery activity to workflow importance in `cmd/get_processinstance_total.go` and `cmd/get_processinstance_orphan.go`
+- [x] T019: Promoted process-instance mutation preflight, frozen-scope, and execution progress to workflow importance in `cmd/processinstance_mutation_progress.go`
+- [x] T020: Promoted ops slow-process discovery, analysis, and timeline progress to workflow importance in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T021: Marked service-level process-instance bulk create, get, cancel, delete, and variable update scopes as batch importance in `internal/services/processinstance/bulk.go` and `internal/services/processinstance/variables.go`
+- [x] T022: Marked process-definition delete impact and delete execution scopes as batch importance in `internal/services/processdefinition/delete.go`
+- [x] T023: Marked deployment confirmation scopes as batch importance in `internal/services/resource/v88/service.go` and `internal/services/resource/v89/service.go`
+- [x] T024: Marked process-instance, incident, and job waiter scopes as wait importance in `internal/services/processinstance/waiter/waiter.go`, `internal/services/incident/waiter/waiter.go`, and `internal/services/job/waiter/waiter.go`
+- [x] T025: Marked shared poller activity as wait importance in `toolx/poller/poller.go`
+- [x] T026: Ran targeted US1 validation from `specs/262-activity-priority/quickstart.md`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_test.go
+- cmd/cmd_paging_totals_test.go
+- cmd/delete_test.go
+- cmd/get_processinstance_orphan.go
+- cmd/get_processinstance_paging.go
+- cmd/get_processinstance_test.go
+- cmd/get_processinstance_total.go
+- cmd/get_test.go
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/ops_analyse_slow_process_instances_test.go
+- cmd/processinstance_mutation_progress.go
+- cmd/run_test.go
+- internal/services/incident/waiter/waiter.go
+- internal/services/incident/waiter/waiter_test.go
+- internal/services/job/waiter/waiter.go
+- internal/services/job/waiter/waiter_test.go
+- internal/services/processdefinition/delete.go
+- internal/services/processdefinition/delete_test.go
+- internal/services/processinstance/bulk.go
+- internal/services/processinstance/bulk_test.go
+- internal/services/processinstance/variables.go
+- internal/services/processinstance/waiter/waiter.go
+- internal/services/processinstance/waiter/waiter_test.go
+- internal/services/resource/v88/service.go
+- internal/services/resource/v88/service_test.go
+- internal/services/resource/v89/service.go
+- internal/services/resource/v89/service_test.go
+- toolx/logging/activity_test.go
+- toolx/poller/poller.go
+- toolx/poller/poller_test.go
+- specs/262-activity-priority/tasks.md
+- specs/262-activity-priority/ralph-memory.md
+- specs/262-activity-priority/progress.md
+**Learnings**:
+- Workflow, batch, and wait priorities can be migrated at existing central activity emitters without changing durable output contracts; HTTP fallback remains the next story.
+---

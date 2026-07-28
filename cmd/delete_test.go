@@ -347,6 +347,32 @@ func TestDeleteProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t 
 	require.Equal(t, []string{"preparing delete dry-run scope for 1 process instance(s)"}, msgs)
 }
 
+// TestDeleteProcessInstanceProgressUsesWorkflowImportance verifies delete progress stays above nested service waits and requests.
+func TestDeleteProcessInstanceProgressUsesWorkflowImportance(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+
+	progress := newProcessInstanceMutationProgressReporter(cmd, "delete")
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindFrozenScope,
+		FrozenScope: &options.FrozenScopeProgress{
+			Phase:        "deleting process instances",
+			CoreResource: "process instance(s)",
+			Done:         4,
+			Total:        12,
+		},
+	})
+
+	require.Equal(t, []activitysink.Update{{
+		Message:    "deleting process instances 4/12 process instance(s)",
+		Importance: logging.ActivityImportanceWorkflow,
+	}}, sink.PriorityUpdates())
+}
+
 // TestDeleteProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation
 // verifies root selection previews the full family without mutation.
 func TestDeleteProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t *testing.T) {

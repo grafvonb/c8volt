@@ -8,8 +8,9 @@ Started: 2026-07-28T09:17:49Z
 - Legacy `StartActivity`/`StopActivity` remains available and records legacy scopes at `ActivityImportanceBatch`; unscoped `UpdateActivity` updates the newest active scope. New helpers are `StartActivityWithImportance(ctx, msg, importance)` and `UpdateActivityWithImportance(ctx, msg, importance)`, and they fall back to legacy interfaces when a sink does not implement the priority-aware optional interfaces.
 - `ActivityImportance` is an `int` alias so external test sinks can implement priority-aware interfaces without importing `toolx/logging`; ordered constants are `ActivityImportanceHTTP`, `ActivityImportanceWait`, `ActivityImportanceBatch`, and `ActivityImportanceWorkflow`.
 - `testx/activitysink.Sink` preserves `Snapshot`, `Messages`, and `Updates`, and now also records priority-aware `Starts()` and `PriorityUpdates()` with idempotent scoped stop functions.
-- Command progress emitters already centralize high-level activity updates in `cmd/get_processinstance_paging.go`, `cmd/get_processinstance_total.go`, `cmd/get_processinstance_orphan.go`, `cmd/processinstance_mutation_progress.go`, and `cmd/ops_analyse_slow_process_instances.go`; these are the right places to promote workflow importance.
-- Service-level bulk work in `internal/services/processinstance/bulk.go`, variable updates in `internal/services/processinstance/variables.go`, process-definition delete planning/execution in `internal/services/processdefinition/delete.go`, deployment confirmation in `internal/services/resource/v88/service.go` and `internal/services/resource/v89/service.go`, and waiters/poller all use unprioritized `logging.StartActivity`.
+- Command progress emitters in `cmd/get_processinstance_paging.go`, `cmd/get_processinstance_total.go`, `cmd/get_processinstance_orphan.go`, `cmd/processinstance_mutation_progress.go`, and `cmd/ops_analyse_slow_process_instances.go` now use workflow importance for transient starts and updates.
+- Service-level bulk work in `internal/services/processinstance/bulk.go`, variable updates in `internal/services/processinstance/variables.go`, process-definition delete planning/execution in `internal/services/processdefinition/delete.go`, and deployment confirmation in `internal/services/resource/v88/service.go` and `internal/services/resource/v89/service.go` now use batch importance.
+- Process-instance, incident, and job waiters plus `toolx/poller.WaitForCompletion` now use wait importance. Poller fallback dots to `os.Stderr` remain unchanged when no activity sink exists.
 - `internal/services/httpc.LogTransport` starts activity around each request with `httpActivityMessage(req)` and already strips hosts/version prefixes. It covers topology, process-instance, incident, job, process-definition, and basic resource labels, but not every path required by `contracts/http-activity-labels.md`.
 
 ## Decisions
@@ -25,8 +26,9 @@ Started: 2026-07-28T09:17:49Z
 ## Reusable Commands
 - `go test ./toolx/logging ./internal/services/httpc ./testx/activitysink -count=1`
 - `go test ./toolx/logging ./internal/services/httpc ./testx/activitysink ./toolx/poller -count=1`
+- `go test ./toolx/logging ./cmd ./internal/services/processinstance/... ./internal/services/incident/... ./internal/services/job/... ./internal/services/processdefinition/... ./internal/services/resource/... ./toolx/poller -run 'Activity|Progress|Indicator|RunProcessInstance|DeleteProcessInstance|Ops|GetProcessInstance|Wait' -count=1`
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should start User Story 1 only, beginning with T011-T016 tests before implementation. Promote command-level progress through `StartActivityWithImportance`/`UpdateActivityWithImportance` using `ActivityImportanceWorkflow`, service bulk scopes with `ActivityImportanceBatch`, and waiters/poller with `ActivityImportanceWait`; keep HTTP fallback for US2.
+- Next iteration should start User Story 2 only at T027. Keep HTTP fallback lower than workflow/batch/wait by using `ActivityImportanceHTTP` in `internal/services/httpc.LogTransport`, then expand resource-aware labels from `contracts/http-activity-labels.md`.

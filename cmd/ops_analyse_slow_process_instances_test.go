@@ -535,6 +535,20 @@ func TestOpsAnalyseSlowProcessInstancesRoutesDefaultProgressToActivity(t *testin
 		"loading runtime elements, 48/800 process instance(s)",
 		"loading runtime elements, 48/800 sample(s), 2m0s elapsed, ~4.2/s, ~1m35s remaining",
 	}, sink.Updates())
+	require.Equal(t, []activitysink.Update{
+		{
+			Message:    "discovering process instances, page 2/4, 1500 seen, 1498 selected",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+		{
+			Message:    "loading runtime elements, 48/800 process instance(s)",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+		{
+			Message:    "loading runtime elements, 48/800 sample(s), 2m0s elapsed, ~4.2/s, ~1m35s remaining",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+	}, sink.PriorityUpdates())
 }
 
 // TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr verifies verbose mode keeps an auditable progress trail off stdout.

@@ -52,25 +52,25 @@
 
 ### Tests for User Story 1
 
-- [ ] T011 [P] [US1] Add activity hierarchy contract tests for workflow-over-wait and workflow-over-http examples in `toolx/logging/activity_test.go`
-- [ ] T012 [P] [US1] Add process-instance mutation activity tests for delete and cancel progress not being overwritten by nested loads or waits in `cmd/cancel_test.go` and `cmd/delete_test.go`
-- [ ] T013 [P] [US1] Add bulk run activity tests for process-instance creation progress not being overwritten by individual create or confirmation activity in `cmd/run_test.go`
-- [ ] T014 [P] [US1] Add process-instance get/search progress tests for paging, totals, and orphan discovery activity stability in `cmd/get_processinstance_test.go`, `cmd/cmd_paging_totals_test.go`, and `cmd/get_test.go`
-- [ ] T015 [P] [US1] Add ops slow-process activity tests proving runtime element search activity does not replace analysis progress in `cmd/ops_analyse_slow_process_instances_test.go`
-- [ ] T016 [P] [US1] Add service waiter nesting tests for wait activity staying below workflow and above HTTP in `internal/services/processinstance/waiter/waiter_test.go`, `internal/services/incident/waiter/waiter_test.go`, and `internal/services/job/waiter/waiter_test.go`
+- [x] T011 [P] [US1] Add activity hierarchy contract tests for workflow-over-wait and workflow-over-http examples in `toolx/logging/activity_test.go`
+- [x] T012 [P] [US1] Add process-instance mutation activity tests for delete and cancel progress not being overwritten by nested loads or waits in `cmd/cancel_test.go` and `cmd/delete_test.go`
+- [x] T013 [P] [US1] Add bulk run activity tests for process-instance creation progress not being overwritten by individual create or confirmation activity in `cmd/run_test.go`
+- [x] T014 [P] [US1] Add process-instance get/search progress tests for paging, totals, and orphan discovery activity stability in `cmd/get_processinstance_test.go`, `cmd/cmd_paging_totals_test.go`, and `cmd/get_test.go`
+- [x] T015 [P] [US1] Add ops slow-process activity tests proving runtime element search activity does not replace analysis progress in `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T016 [P] [US1] Add service waiter nesting tests for wait activity staying below workflow and above HTTP in `internal/services/processinstance/waiter/waiter_test.go`, `internal/services/incident/waiter/waiter_test.go`, and `internal/services/job/waiter/waiter_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T017 [US1] Promote process-instance paging and search activity to workflow importance in `cmd/get_processinstance_paging.go`
-- [ ] T018 [US1] Promote process-instance total and orphan discovery activity to workflow importance in `cmd/get_processinstance_total.go` and `cmd/get_processinstance_orphan.go`
-- [ ] T019 [US1] Promote process-instance mutation preflight, frozen-scope, and execution progress to workflow importance in `cmd/processinstance_mutation_progress.go`
-- [ ] T020 [US1] Promote ops slow-process discovery, analysis, and timeline progress to workflow importance in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T021 [US1] Mark service-level process-instance bulk create, get, cancel, delete, and variable update scopes as batch importance in `internal/services/processinstance/bulk.go` and `internal/services/processinstance/variables.go`
-- [ ] T022 [US1] Mark process-definition delete impact and delete execution scopes as batch importance in `internal/services/processdefinition/delete.go`
-- [ ] T023 [US1] Mark deployment confirmation scopes as batch importance in `internal/services/resource/v88/service.go` and `internal/services/resource/v89/service.go`
-- [ ] T024 [US1] Mark process-instance, incident, and job waiter scopes as wait importance in `internal/services/processinstance/waiter/waiter.go`, `internal/services/incident/waiter/waiter.go`, and `internal/services/job/waiter/waiter.go`
-- [ ] T025 [US1] Mark shared poller activity as wait importance in `toolx/poller/poller.go`
-- [ ] T026 [US1] Run targeted US1 validation from `specs/262-activity-priority/quickstart.md` with `go test ./toolx/logging ./cmd ./internal/services/processinstance/... ./internal/services/incident/... ./internal/services/job/... ./internal/services/processdefinition/... ./internal/services/resource/... ./toolx/poller -run 'Activity|Progress|Indicator|RunProcessInstance|DeleteProcessInstance|Ops|GetProcessInstance|Wait' -count=1`
+- [x] T017 [US1] Promote process-instance paging and search activity to workflow importance in `cmd/get_processinstance_paging.go`
+- [x] T018 [US1] Promote process-instance total and orphan discovery activity to workflow importance in `cmd/get_processinstance_total.go` and `cmd/get_processinstance_orphan.go`
+- [x] T019 [US1] Promote process-instance mutation preflight, frozen-scope, and execution progress to workflow importance in `cmd/processinstance_mutation_progress.go`
+- [x] T020 [US1] Promote ops slow-process discovery, analysis, and timeline progress to workflow importance in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T021 [US1] Mark service-level process-instance bulk create, get, cancel, delete, and variable update scopes as batch importance in `internal/services/processinstance/bulk.go` and `internal/services/processinstance/variables.go`
+- [x] T022 [US1] Mark process-definition delete impact and delete execution scopes as batch importance in `internal/services/processdefinition/delete.go`
+- [x] T023 [US1] Mark deployment confirmation scopes as batch importance in `internal/services/resource/v88/service.go` and `internal/services/resource/v89/service.go`
+- [x] T024 [US1] Mark process-instance, incident, and job waiter scopes as wait importance in `internal/services/processinstance/waiter/waiter.go`, `internal/services/incident/waiter/waiter.go`, and `internal/services/job/waiter/waiter.go`
+- [x] T025 [US1] Mark shared poller activity as wait importance in `toolx/poller/poller.go`
+- [x] T026 [US1] Run targeted US1 validation from `specs/262-activity-priority/quickstart.md` with `go test ./toolx/logging ./cmd ./internal/services/processinstance/... ./internal/services/incident/... ./internal/services/job/... ./internal/services/processdefinition/... ./internal/services/resource/... ./toolx/poller -run 'Activity|Progress|Indicator|RunProcessInstance|DeleteProcessInstance|Ops|GetProcessInstance|Wait' -count=1`
 
 **Checkpoint**: User Story 1 is independently functional when representative long-running commands preserve high-level workflow progress through nested work.
 

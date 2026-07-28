@@ -1819,10 +1819,24 @@ func TestSearchOrphanProcessInstancesWithSharedDiscovery_UsesCommandActivity(t *
 	require.Equal(t, 1, started)
 	require.Equal(t, 1, stopped)
 	require.Equal(t, []string{"discovering orphan child process instances"}, msgs)
+	require.Equal(t, []activitysink.Start{{
+		Message:    "discovering orphan child process instances",
+		Importance: logging.ActivityImportanceWorkflow,
+	}}, sink.Starts())
 	require.Equal(t, []string{
 		"orphan search: page 1 checking 2 child process instance(s) for missing parents; checked 0, found 0 orphan child process instance(s)",
 		"orphan search: page 1 checked 2 child process instance(s), found 1 on page, 1 total",
 	}, sink.Updates())
+	require.Equal(t, []activitysink.Update{
+		{
+			Message:    "orphan search: page 1 checking 2 child process instance(s) for missing parents; checked 0, found 0 orphan child process instance(s)",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+		{
+			Message:    "orphan search: page 1 checked 2 child process instance(s), found 1 on page, 1 total",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+	}, sink.PriorityUpdates())
 }
 
 func TestEnrichProcessInstancesWithIncidentActivity_UsesCommandActivity(t *testing.T) {

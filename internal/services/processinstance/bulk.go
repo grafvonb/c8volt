@@ -32,7 +32,7 @@ func CreateNProcessInstances(ctx context.Context, api API, log *slog.Logger, dat
 	cfg := services.ApplyCallOptions(opts)
 	nw := toolx.DetermineNoOfWorkers(n, wantedWorkers, cfg.NoWorkerLimit)
 	logging.InfoIfVerbose(fmt.Sprintf("creating pi: requested %d, workers %d", n, nw), log, cfg.Verbose)
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("creating %d pi", n))
+	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("creating %d pi", n), logging.ActivityImportanceBatch)
 	defer stopActivity()
 	var completed atomic.Int64
 	progress := newProcessInstanceBulkProgressTracker(actionProgressPhase("create"))
@@ -86,7 +86,7 @@ func CancelProcessInstances(ctx context.Context, api API, log *slog.Logger, keys
 	} else {
 		logging.InfoIfVerbose(fmt.Sprintf("cancelling pi: requested %d, workers %d", lk, nw), log, cfg.Verbose)
 	}
-	stopActivity := logging.StartActivity(ctx, processInstanceBulkActivity("cancelling", lk, affectedCount))
+	stopActivity := logging.StartActivityWithImportance(ctx, processInstanceBulkActivity("cancelling", lk, affectedCount), logging.ActivityImportanceBatch)
 	defer stopActivity()
 	var completed atomic.Int64
 	progress := newProcessInstanceBulkProgressTracker(actionProgressPhase("cancel"))
@@ -127,7 +127,7 @@ func DeleteProcessInstances(ctx context.Context, api API, log *slog.Logger, keys
 	} else {
 		logging.InfoIfVerbose(fmt.Sprintf("deleting pi: requested %d, workers %d", lk, nw), log, cfg.Verbose)
 	}
-	stopActivity := logging.StartActivity(ctx, processInstanceBulkActivity("deleting", lk, affectedCount))
+	stopActivity := logging.StartActivityWithImportance(ctx, processInstanceBulkActivity("deleting", lk, affectedCount), logging.ActivityImportanceBatch)
 	defer stopActivity()
 	var completed atomic.Int64
 	progress := newProcessInstanceBulkProgressTracker(actionProgressPhase("delete"))
@@ -185,7 +185,7 @@ func reportProcessInstanceBulkFrozenProgress(progress func(d.OpsProgressEvent), 
 
 func GetProcessInstances(ctx context.Context, api API, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) ([]d.ProcessInstance, error) {
 	ukeys := keys.Unique()
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("getting %d pi", len(ukeys)))
+	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("getting %d pi", len(ukeys)), logging.ActivityImportanceBatch)
 	defer stopActivity()
 	return api.GetProcessInstances(ctx, ukeys, wantedWorkers, opts...)
 }
@@ -225,7 +225,7 @@ func startProcessInstanceBulkProgress(ctx context.Context, log *slog.Logger, act
 				} else {
 					msg = fmt.Sprintf("pi %s progress; requested %d/%d done", action, doneRoots, roots)
 				}
-				logging.UpdateActivity(ctx, msg)
+				logging.UpdateActivityWithImportance(ctx, msg, logging.ActivityImportanceBatch)
 				log.Info(msg)
 				if unchangedTicks >= processInstanceBulkStallProgressThreshold {
 					logOldestProcessInstanceBulkWork(log, action, tracker, unchangedTicks)

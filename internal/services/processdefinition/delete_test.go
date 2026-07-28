@@ -19,6 +19,8 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	types "github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -252,6 +254,27 @@ func TestDeleteProcessDefinitionsRejectsUnsupportedHistoryDeletionBeforeCleanup(
 	require.ErrorIs(t, err, d.ErrUnsupported)
 	require.Contains(t, err.Error(), "requires Camunda 8.9 or newer")
 	require.Nil(t, got)
+}
+
+// TestPreviewDeleteProcessDefinitionsNoStateCheckUsesBatchActivity verifies delete impact planning stays below workflow progress.
+func TestPreviewDeleteProcessDefinitionsNoStateCheckUsesBatchActivity(t *testing.T) {
+	sink := &activitysink.Sink{}
+
+	got, err := PreviewDeleteProcessDefinitions(
+		logging.ToActivityContext(context.Background(), sink),
+		nil,
+		nil,
+		slog.Default(),
+		types.Keys{"pd-1", "pd-2"},
+		services.WithNoStateCheck(),
+	)
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 2)
+	require.Equal(t, []activitysink.Start{{
+		Message:    "checking 2 pd delete impact; pi state skipped, dry run",
+		Importance: logging.ActivityImportanceBatch,
+	}}, sink.Starts())
 }
 
 // TestDeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError verifies a server-side request-shape mismatch is reported once instead of being repeated for every selected definition.

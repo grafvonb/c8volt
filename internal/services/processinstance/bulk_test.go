@@ -212,10 +212,30 @@ func TestDeleteProcessInstancesLogsProgressWhileRootDeleteRuns(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return strings.Contains(strings.Join(sink.Updates(), "\n"), "pi delete progress; roots 0/1 done, affected 4")
 	}, time.Second, 10*time.Millisecond)
+	require.Contains(t, sink.Starts(), activitysink.Start{
+		Message:    "deleting 4 pi via 1 root(s)",
+		Importance: logging.ActivityImportanceBatch,
+	})
+	require.Eventually(t, func() bool {
+		return containsActivityUpdate(sink.PriorityUpdates(), activitysink.Update{
+			Message:    "pi delete progress; roots 0/1 done, affected 4",
+			Importance: logging.ActivityImportanceBatch,
+		})
+	}, time.Second, 10*time.Millisecond)
 	close(release)
 
 	require.NoError(t, <-errCh)
 	require.Contains(t, logBuf.String(), "pi delete done; roots 1, affected 4, ok 1, failed 0")
+}
+
+// containsActivityUpdate matches asynchronous activity updates without depending on exact retry count.
+func containsActivityUpdate(items []activitysink.Update, want activitysink.Update) bool {
+	for _, item := range items {
+		if item == want {
+			return true
+		}
+	}
+	return false
 }
 
 // TestDeleteProcessInstancesSuppressesLegacyBulkLogs verifies CLI callers can

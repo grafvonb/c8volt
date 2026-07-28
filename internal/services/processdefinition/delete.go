@@ -143,7 +143,7 @@ func PreviewDeleteProcessDefinitionsWithWorkers(ctx context.Context, pdApi API, 
 		ProcessDefinitionKeys: append([]string(nil), ukeys...),
 	}
 	if cfg.NoStateCheck {
-		stopActivity := logging.StartActivity(ctx, fmt.Sprintf("checking %d pd delete impact; pi state skipped, dry run", len(ukeys)))
+		stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("checking %d pd delete impact; pi state skipped, dry run", len(ukeys)), logging.ActivityImportanceBatch)
 		defer stopActivity()
 		for _, key := range ukeys {
 			plan.Items = append(plan.Items, d.DeleteProcessDefinitionPlanItem{Key: key})
@@ -155,7 +155,7 @@ func PreviewDeleteProcessDefinitionsWithWorkers(ctx context.Context, pdApi API, 
 	if cfg.Force {
 		activityMsg = fmt.Sprintf("checking active pi and roots for %d pd; dry run", len(ukeys))
 	}
-	stopActivity := logging.StartActivity(ctx, activityMsg)
+	stopActivity := logging.StartActivityWithImportance(ctx, activityMsg, logging.ActivityImportanceBatch)
 	defer stopActivity()
 	for _, key := range ukeys {
 		item, err := previewDeleteProcessDefinitionImpact(ctx, pdApi, piApi, key, cfg.Force, cfg.Verbose, wantedWorkers, opts...)
@@ -187,7 +187,7 @@ func DeleteProcessDefinitions(ctx context.Context, api ResourceDeleteAPI, pdApi 
 	lk := len(ukeys)
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cfg.NoWorkerLimit)
 	logging.InfoIfVerbose(fmt.Sprintf("deleting pd: requested %d, workers %d", lk, nw), log, cfg.Verbose)
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("deleting %d pd", lk))
+	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("deleting %d pd", lk), logging.ActivityImportanceBatch)
 	defer stopActivity()
 	rs, err := pool.ExecuteSlice[string, d.ResourceDeleteResponse](ctx, ukeys, nw, cfg.FailFast, func(ctx context.Context, key string, _ int) (d.ResourceDeleteResponse, error) {
 		return DeleteProcessDefinition(ctx, api, pdApi, piApi, log, key, opts...)
@@ -211,7 +211,7 @@ func DeleteProcessDefinitionResources(ctx context.Context, api ResourceDeleteAPI
 	}
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cfg.NoWorkerLimit)
 	logging.InfoIfVerbose(fmt.Sprintf("deleting pd: requested %d, workers %d", lk, nw), log, cfg.Verbose)
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("deleting %d pd", lk))
+	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("deleting %d pd", lk), logging.ActivityImportanceBatch)
 	defer stopActivity()
 
 	first, err := DeleteProcessDefinitionResourceAndWait(ctx, api, pdApi, log, plans[0], opts...)

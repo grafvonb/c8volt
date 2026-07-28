@@ -19,6 +19,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/toolx/poller"
 	"github.com/stretchr/testify/assert"
@@ -94,6 +95,7 @@ func TestService_Deploy(t *testing.T) {
 
 	t.Run("SuccessWithConfirmation", func(t *testing.T) {
 		var logBuf bytes.Buffer
+		sink := &activitysink.Sink{}
 		resourceClient := &mockResourceClient{
 			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateDeploymentResponse, error) {
 				assertMultipartDeploymentRequest(t, contentType, body, tenantID, resourceName, resourceData)
@@ -145,7 +147,7 @@ func TestService_Deploy(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		deployment, err := svc.Deploy(ctx, []d.DeploymentUnitData{{Name: resourceName, Data: resourceData}})
+		deployment, err := svc.Deploy(logging.ToActivityContext(ctx, sink), []d.DeploymentUnitData{{Name: resourceName, Data: resourceData}})
 
 		require.NoError(t, err)
 		assert.Equal(t, "deployment-1", deployment.Key)
@@ -156,6 +158,10 @@ func TestService_Deploy(t *testing.T) {
 		assert.Contains(t, logBuf.String(), "INFO pd deploy confirmed; count 1, tenant tenant")
 		assert.NotContains(t, logBuf.String(), "waiting for deployments")
 		assert.NotContains(t, logBuf.String(), "deployments confirmed")
+		require.Equal(t, []activitysink.Start{{
+			Message:    "waiting for 1 deployments",
+			Importance: logging.ActivityImportanceBatch,
+		}}, sink.Starts())
 	})
 
 	t.Run("MalformedSuccessPayload", func(t *testing.T) {

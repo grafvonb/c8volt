@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,9 +16,12 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/cluster"
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -58,6 +62,22 @@ func TestGetCommand_PreservesExistingProcessInstanceHelp(t *testing.T) {
 	require.Contains(t, output, "--key")
 	require.Contains(t, output, "--state")
 	require.Contains(t, output, "--json")
+}
+
+// TestGetBasicSearchProgressUsesWorkflowImportance verifies shared get/search progress stays above nested request activity.
+func TestGetBasicSearchProgressUsesWorkflowImportance(t *testing.T) {
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+
+	printBasicSearchProgressLine(cmd, "discovering process instances, page 2/4, 2000 seen, 1500 selected", ops.ProgressChannel{
+		TransientAllowed: true,
+	})
+
+	require.Equal(t, []activitysink.Update{{
+		Message:    "discovering process instances, page 2/4, 2000 seen, 1500 selected",
+		Importance: logging.ActivityImportanceWorkflow,
+	}}, sink.PriorityUpdates())
 }
 
 // Verifies root help advertises the finalized v8.9 runtime support contract.

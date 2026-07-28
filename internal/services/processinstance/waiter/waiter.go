@@ -30,7 +30,7 @@ func WaitForProcessInstancesState(ctx context.Context, s PIWaiter, cfg *config.C
 	ukeys := keys.Unique()
 	lk := len(ukeys)
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for %d pi state", lk))
+	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("waiting for %d pi state", lk), logging.ActivityImportanceWait)
 	defer stopActivity()
 
 	rs, err := pool.ExecuteSlice[string, d.StateResponse](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (d.StateResponse, error) {
@@ -49,7 +49,7 @@ func WaitForProcessInstancesExpectation(ctx context.Context, s PIWaiter, cfg *co
 	ukeys := keys.Unique()
 	lk := len(ukeys)
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for %d pi expectations", lk))
+	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("waiting for %d pi expectations", lk), logging.ActivityImportanceWait)
 	defer stopActivity()
 
 	rs, err := pool.ExecuteSlice[string, d.ProcessInstanceExpectationResponse](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (d.ProcessInstanceExpectationResponse, error) {
@@ -72,7 +72,7 @@ func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *con
 	}
 
 	cCfg := services.ApplyCallOptions(opts)
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for pi %s expectations", key))
+	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("waiting for pi %s expectations", key), logging.ActivityImportanceWait)
 	defer stopActivity()
 	backoff := cfg.App.Backoff
 	start := time.Now()
@@ -102,7 +102,7 @@ func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *con
 			if isProcessInstanceAbsentErr(errInDelay) {
 				pi = d.ProcessInstance{Key: key, State: d.StateAbsent}
 				waitMsg := fmt.Sprintf("pi %s absent; waiting, attempt %d", key, attempts)
-				logging.UpdateActivity(ctx, waitMsg)
+				logging.UpdateActivityWithImportance(ctx, waitMsg, logging.ActivityImportanceWait)
 				logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
 			} else {
 				elapsed := time.Since(start)
@@ -126,7 +126,7 @@ func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *con
 		}
 		if present {
 			waitMsg := fmt.Sprintf("pi %s waiting; state %s, incident %t, attempt %d", key, pi.State, pi.Incident, attempts)
-			logging.UpdateActivity(ctx, waitMsg)
+			logging.UpdateActivityWithImportance(ctx, waitMsg, logging.ActivityImportanceWait)
 			logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
 		}
 		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
@@ -149,7 +149,7 @@ func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *con
 
 func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Config, log *slog.Logger, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
 	cCfg := services.ApplyCallOptions(opts)
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for pi %s state", key))
+	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("waiting for pi %s state", key), logging.ActivityImportanceWait)
 	defer stopActivity()
 	backoff := cfg.App.Backoff
 	start := time.Now()
@@ -187,7 +187,7 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 				return d.StateResponse{Ok: true, State: got, Status: status}, pi, nil
 			}
 			waitMsg := fmt.Sprintf("pi %s waiting; state %s, attempt %d", key, got, attempts)
-			logging.UpdateActivity(ctx, waitMsg)
+			logging.UpdateActivityWithImportance(ctx, waitMsg, logging.ActivityImportanceWait)
 			logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
 		} else if errInDelay != nil {
 			if isProcessInstanceAbsentErr(errInDelay) {
@@ -200,7 +200,7 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 					return d.StateResponse{Ok: true, State: got, Status: status}, d.ProcessInstance{}, nil
 				}
 				waitMsg := fmt.Sprintf("pi %s absent; waiting, attempt %d", key, attempts)
-				logging.UpdateActivity(ctx, waitMsg)
+				logging.UpdateActivityWithImportance(ctx, waitMsg, logging.ActivityImportanceWait)
 				logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
 			} else {
 				elapsed := time.Since(start)

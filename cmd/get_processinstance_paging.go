@@ -314,7 +314,7 @@ func startCommandActivity(cmd *cobra.Command, msg string) func() {
 	if cmd == nil {
 		return func() {}
 	}
-	return logging.StartActivity(cmd.Context(), msg)
+	return logging.StartActivityWithImportance(cmd.Context(), msg, logging.ActivityImportanceWorkflow)
 }
 
 // printPISearchProgress writes verbose one-line progress to stderr for normal
@@ -398,7 +398,7 @@ func printBasicSearchPreflight(cmd *cobra.Command, scope ops.PreflightScope, cha
 	}
 	lines := formatOpsPreflightScope(scope)
 	if channel.TransientAllowed && len(lines) > 0 {
-		logging.UpdateActivity(cmd.Context(), lines[0])
+		logging.UpdateActivityWithImportance(cmd.Context(), lines[0], logging.ActivityImportanceWorkflow)
 	}
 	if !basicSearchDurableProgressAllowed(channel) {
 		return
@@ -411,7 +411,7 @@ func printBasicSearchProgressLine(cmd *cobra.Command, line string, channel ops.P
 		return
 	}
 	if channel.TransientAllowed {
-		logging.UpdateActivity(cmd.Context(), line)
+		logging.UpdateActivityWithImportance(cmd.Context(), line, logging.ActivityImportanceWorkflow)
 	}
 	if !basicSearchDurableProgressAllowed(channel) {
 		return
