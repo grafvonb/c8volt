@@ -484,12 +484,11 @@ func slowProcessAnalysisDiscoveryBatchSize(size int32) int32 {
 
 // slowProcessAnalysisNextDiscoveryPage advances cursor-based pages before falling back to offset paging.
 func slowProcessAnalysisNextDiscoveryPage(current d.ProcessInstancePageRequest, page d.ProcessInstancePage) d.ProcessInstancePageRequest {
-	next := d.ProcessInstancePageRequest{Size: current.Size}
+	next := d.ProcessInstancePageRequest{From: current.From + int32(len(page.Items)), Size: current.Size}
 	if page.EndCursor != "" {
 		next.After = page.EndCursor
 		return next
 	}
-	next.From = current.From + int32(len(page.Items))
 	return next
 }
 

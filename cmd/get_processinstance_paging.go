@@ -300,12 +300,13 @@ func canUsePIExactReportedTotal(page process.ProcessInstancePage) bool {
 // The next request is rebuilt instead of mutating the current one so any changed
 // command/config page-size rules are applied consistently.
 func nextPISearchPageRequest(cmd *cobra.Command, cfg *config.Config, current process.ProcessInstancePageRequest, page process.ProcessInstancePage) process.ProcessInstancePageRequest {
+	nextFrom := current.From + int32(len(page.Items))
 	if page.EndCursor != "" {
-		req := newPISearchPageRequest(cmd, cfg, 0)
+		req := newPISearchPageRequest(cmd, cfg, nextFrom)
 		req.After = page.EndCursor
 		return req
 	}
-	return newPISearchPageRequest(cmd, cfg, current.From+int32(len(page.Items)))
+	return newPISearchPageRequest(cmd, cfg, nextFrom)
 }
 
 // startCommandActivity wraps long page fetches with the shared activity

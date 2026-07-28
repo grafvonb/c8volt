@@ -217,7 +217,7 @@ func TestFindUnrelatedProcessInstancesForDefinitionPagesThroughMatches(t *testin
 	assert.Equal(t, d.ProcessInstanceFilter{ProcessDefinitionKey: "pd-1"}, gotFilters[1])
 	require.Equal(t, []d.ProcessInstancePageRequest{
 		{Size: MaxResultSize},
-		{Size: MaxResultSize, After: "cursor-1"},
+		{From: 1, Size: MaxResultSize, After: "cursor-1"},
 	}, gotPages)
 }
 

@@ -469,10 +469,11 @@ func repairIncidentDiscoveryPageComplete(page d.IncidentPage) bool {
 }
 
 func nextRepairIncidentDiscoveryPageRequest(current d.IncidentPageRequest, page d.IncidentPage) d.IncidentPageRequest {
+	nextFrom := current.From + current.Size
 	if page.EndCursor != "" {
-		return d.IncidentPageRequest{Size: current.Size, After: page.EndCursor}
+		return d.IncidentPageRequest{From: nextFrom, Size: current.Size, After: page.EndCursor}
 	}
-	return d.IncidentPageRequest{From: current.From + current.Size, Size: current.Size}
+	return d.IncidentPageRequest{From: nextFrom, Size: current.Size}
 }
 
 func repairProcessInstanceDiscoveryPageComplete(page d.ProcessInstancePage) bool {
@@ -480,10 +481,11 @@ func repairProcessInstanceDiscoveryPageComplete(page d.ProcessInstancePage) bool
 }
 
 func nextRepairProcessInstanceDiscoveryPageRequest(current d.ProcessInstancePageRequest, page d.ProcessInstancePage) d.ProcessInstancePageRequest {
+	nextFrom := current.From + current.Size
 	if page.EndCursor != "" {
-		return d.ProcessInstancePageRequest{Size: current.Size, After: page.EndCursor}
+		return d.ProcessInstancePageRequest{From: nextFrom, Size: current.Size, After: page.EndCursor}
 	}
-	return d.ProcessInstancePageRequest{From: current.From + current.Size, Size: current.Size}
+	return d.ProcessInstancePageRequest{From: nextFrom, Size: current.Size}
 }
 
 // skippedProcessInstanceKeysWithoutActiveIncidents reports selected process instances that are not repair targets.

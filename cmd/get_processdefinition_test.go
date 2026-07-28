@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -14,9 +15,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt"
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx/logging"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -315,6 +321,49 @@ func requireXMLDisplayModeIncompatibleFlag(flag string) func(*testing.T, error) 
 		require.Contains(t, err.Error(), "xml output only supports --key")
 		require.Contains(t, err.Error(), flag)
 	}
+}
+
+func TestSearchProcessDefinitionsWithPagingStatUsesCommandActivity(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+	flagGetPDWithStat = true
+
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+
+	cli := processDefinitionPagingActivityAPI{
+		searchProcessDefinitionsPages: func(ctx context.Context, request process.ProcessDefinitionSearchRequest, visitor process.ProcessDefinitionSearchPageVisitor, opts ...options.FacadeOption) (process.ProcessDefinitionSearchPagesResult, error) {
+			require.Equal(t, int32(1000), request.Page.Size)
+			require.True(t, options.ApplyFacadeOptions(opts).Stat)
+			return process.ProcessDefinitionSearchPagesResult{
+				Items: []process.ProcessDefinition{{
+					Key:           "2251799813685255",
+					BpmnProcessId: "order-process",
+					TenantId:      "<default>",
+				}},
+				Pages: 1,
+			}, nil
+		},
+	}
+
+	result, err := searchProcessDefinitionsWithPaging(cmd, cli, process.ProcessDefinitionFilter{})
+	require.NoError(t, err)
+	require.Len(t, result.Items, 1)
+	require.Equal(t, []activitysink.Start{{
+		Message:    "loading process-definition statistics",
+		Importance: logging.ActivityImportanceWorkflow,
+	}}, sink.Starts())
+	require.Equal(t, 1, sink.Stopped())
+}
+
+type processDefinitionPagingActivityAPI struct {
+	c8volt.API
+	searchProcessDefinitionsPages func(context.Context, process.ProcessDefinitionSearchRequest, process.ProcessDefinitionSearchPageVisitor, ...options.FacadeOption) (process.ProcessDefinitionSearchPagesResult, error)
+}
+
+func (a processDefinitionPagingActivityAPI) SearchProcessDefinitionsPages(ctx context.Context, request process.ProcessDefinitionSearchRequest, visitor process.ProcessDefinitionSearchPageVisitor, opts ...options.FacadeOption) (process.ProcessDefinitionSearchPagesResult, error) {
+	return a.searchProcessDefinitionsPages(ctx, request, visitor, opts...)
 }
 
 func resetGetProcessDefinitionCommandGlobals() {

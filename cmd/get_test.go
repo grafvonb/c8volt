@@ -1022,6 +1022,55 @@ func TestGetProcessDefinitionByKey_SelectedTenantMismatchUsesAdminScope(t *testi
 	require.Contains(t, output, `"key": "`+tenantAdminKeysProcessDefinitionKey+`"`)
 }
 
+func TestGetProcessDefinitionListWithStatRendersLoadedStats(t *testing.T) {
+	var statsRequests []string
+	var pdSearchRequests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			pdSearchRequests = append(pdSearchRequests, string(body))
+			_, _ = w.Write([]byte(`{
+  "items": [
+    {
+      "processDefinitionId": "order-process",
+      "processDefinitionKey": "2251799813685255",
+      "tenantId": "<default>",
+      "version": 7,
+      "versionTag": "stable"
+    }
+  ],
+  "page": {
+    "totalItems": 1,
+    "hasMoreTotalItems": false
+  }
+}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			statsRequests = append(statsRequests, string(body))
+			_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"4503599627370497"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForTest(t,
+		"--config", cfgPath,
+		"get", "process-definition",
+		"--stat",
+	)
+
+	require.Len(t, pdSearchRequests, 1)
+	require.Len(t, statsRequests, 4)
+	require.Contains(t, output, "2251799813685255 <default> order-process v7/stable [ac:1 cp:1 cx:1 inc:1]")
+}
+
 // TestGetProcessDefinitionXML_SelectedTenantMismatchUsesDirectEndpoint keeps
 // XML retrieval on the explicit-key backend endpoint even with a selected tenant.
 func TestGetProcessDefinitionXML_SelectedTenantMismatchUsesDirectEndpoint(t *testing.T) {

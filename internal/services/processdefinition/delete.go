@@ -308,7 +308,7 @@ func listProcessInstancesForDefinitionCleanupEligibility(ctx context.Context, pi
 		}
 		if page.EndCursor != "" {
 			pageReq.After = page.EndCursor
-			pageReq.From = 0
+			pageReq.From += int32(len(page.Items))
 			continue
 		}
 		pageReq.From += int32(len(page.Items))
@@ -370,7 +370,7 @@ func listActiveProcessInstancesForDefinition(ctx context.Context, piApi pisvc.AP
 		}
 		if page.EndCursor != "" {
 			pageReq.After = page.EndCursor
-			pageReq.From = 0
+			pageReq.From += int32(len(page.Items))
 			continue
 		}
 		pageReq.From += int32(len(page.Items))

@@ -376,12 +376,6 @@ func pickProcessInstanceOverflowState(page camundav89.SearchQueryPageResponse, r
 		return d.ProcessInstanceOverflowStateNoMore
 	}
 	visibleCount := int64(req.From) + int64(itemCount)
-	if req.After != "" {
-		if page.EndCursor != nil {
-			return d.ProcessInstanceOverflowStateHasMore
-		}
-		return d.ProcessInstanceOverflowStateNoMore
-	}
 	if page.TotalItems > visibleCount {
 		return d.ProcessInstanceOverflowStateHasMore
 	}

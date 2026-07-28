@@ -185,6 +185,11 @@ func populatePDSearchFilterOpts() process.ProcessDefinitionFilter {
 }
 
 func searchProcessDefinitionsWithPaging(cmd *cobra.Command, cli c8volt.API, filter process.ProcessDefinitionFilter) (process.ProcessDefinitions, error) {
+	if flagGetPDWithStat {
+		stopActivity := startCommandActivity(cmd, "loading process-definition statistics")
+		defer stopActivity()
+	}
+
 	pageNumber := 0
 	result, err := cli.SearchProcessDefinitionsPages(cmd.Context(), process.ProcessDefinitionSearchRequest{
 		Filter: filter,

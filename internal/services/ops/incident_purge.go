@@ -322,10 +322,11 @@ func incidentPurgeDiscoveryPageComplete(page d.IncidentPage) bool {
 }
 
 func nextIncidentPurgeDiscoveryPageRequest(current d.IncidentPageRequest, page d.IncidentPage) d.IncidentPageRequest {
+	nextFrom := current.From + current.Size
 	if page.EndCursor != "" {
-		return d.IncidentPageRequest{Size: current.Size, After: page.EndCursor}
+		return d.IncidentPageRequest{From: nextFrom, Size: current.Size, After: page.EndCursor}
 	}
-	return d.IncidentPageRequest{From: current.From + current.Size, Size: current.Size}
+	return d.IncidentPageRequest{From: nextFrom, Size: current.Size}
 }
 
 // withIncidentPurgeOptionControls records call-option controls in the durable request model.

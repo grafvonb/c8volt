@@ -451,12 +451,11 @@ func allProcessDefinitionsPurgeDiscoveryPageComplete(page d.ProcessDefinitionPag
 
 // nextAllProcessDefinitionsPurgeDiscoveryPageRequest advances by cursor when available, otherwise by returned items.
 func nextAllProcessDefinitionsPurgeDiscoveryPageRequest(current d.ProcessDefinitionPageRequest, page d.ProcessDefinitionPage) d.ProcessDefinitionPageRequest {
-	next := d.ProcessDefinitionPageRequest{Size: current.Size}
+	next := d.ProcessDefinitionPageRequest{From: current.From + int32(len(page.Items)), Size: current.Size}
 	if page.EndCursor != "" {
 		next.After = page.EndCursor
 		return next
 	}
-	next.From = current.From + int32(len(page.Items))
 	return next
 }
 

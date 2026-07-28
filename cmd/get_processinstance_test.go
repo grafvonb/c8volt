@@ -709,8 +709,8 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 		require.Equal(t, "3\n", stdout)
 		require.Contains(t, stderr, `DEBUG pi total page; mode offset, from 0, after "", limit 2, items 2, total before 0, total after 2`)
 		require.Contains(t, stderr, `reported total 10000, reported kind lower_bound, end cursor "cursor-1"`)
-		require.Contains(t, stderr, `DEBUG pi total page; mode cursor, from 0, after "cursor-1", limit 2, items 1, total before 2, total after 3`)
-		require.Contains(t, stderr, `DEBUG pi total page; mode cursor, from 0, after "cursor-2", limit 2, items 0, total before 3, total after 3`)
+		require.Contains(t, stderr, `DEBUG pi total page; mode cursor, from 2, after "cursor-1", limit 2, items 1, total before 2, total after 3`)
+		require.Contains(t, stderr, `DEBUG pi total page; mode cursor, from 3, after "cursor-2", limit 2, items 0, total before 3, total after 3`)
 		require.NotContains(t, stderr, "INFO page size:")
 	})
 
@@ -4742,6 +4742,45 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.Contains(t, prompts[0], "Fetched 2 process instance(s) on this page (2/3+ loaded)")
 		require.Contains(t, output, "process-instance search scope: matched at least 3 process instances; page size: 1000; discovery pages: at least 1")
 		require.Contains(t, output, "discovering process instances, page 1/~1, 2 seen")
+		require.Contains(t, output, "discovering process instances, page 2/2, 3 seen")
+		require.Contains(t, output, "123")
+		require.Contains(t, output, "124")
+		require.Contains(t, output, "125")
+	})
+
+	t.Run("does not prompt again when exact cursor page reaches the reported total", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":false,"endCursor":"cursor-1"}}`,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"125","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":false,"endCursor":"cursor-final"}}`,
+		)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+		prompts := []string{}
+		prevConfirm := confirmCmdOrAbortFn
+		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			prompts = append(prompts, prompt)
+			return nil
+		}
+		t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--tenant", "tenant",
+			"--verbose",
+			"get", "process-instance",
+			"--batch-size", "2",
+		)
+
+		pages := decodeCapturedPISearchPages(t, requests)
+		require.Len(t, pages, 2)
+		require.EqualValues(t, 2, pages[0]["limit"])
+		require.EqualValues(t, 0, pages[0]["from"])
+		require.Equal(t, "cursor-1", pages[1]["after"])
+		require.Len(t, prompts, 1)
+		require.Contains(t, prompts[0], "Fetched 2 process instance(s) on this page (2/3 loaded). More matching process instances remain")
+		require.NotContains(t, prompts[0], "3/3 loaded")
 		require.Contains(t, output, "discovering process instances, page 2/2, 3 seen")
 		require.Contains(t, output, "123")
 		require.Contains(t, output, "124")

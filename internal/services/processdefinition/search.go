@@ -98,11 +98,14 @@ func limitProcessDefinitionSearchItems(items []d.ProcessDefinition, limit int32,
 }
 
 func nextProcessDefinitionSearchPageRequest(current d.ProcessDefinitionPageRequest, page d.ProcessDefinitionPage, rawCount int) d.ProcessDefinitionPageRequest {
-	next := d.ProcessDefinitionPageRequest{Size: current.Size}
+	advance := rawCount
+	if advance == 0 {
+		advance = int(current.Size)
+	}
+	next := d.ProcessDefinitionPageRequest{From: current.From + int32(advance), Size: current.Size}
 	if page.EndCursor != "" {
 		next.After = page.EndCursor
 		return next
 	}
-	next.From = current.From + int32(rawCount)
 	return next
 }
