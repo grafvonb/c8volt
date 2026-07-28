@@ -133,3 +133,32 @@ Started: 2026-07-28 11:17:49
 **Learnings**:
 - HTTP fallback labels now cover the contract table centrally; command tests assert representative simple operations keep carrying HTTP-priority fallback activity through the command context.
 ---
+---
+## Iteration 5 - 2026-07-28 12:00
+**Work Unit**: User Story 3 - Keep Scripted Output Stable
+**Tasks Completed**:
+- [x] T035: Added JSON and keys-only cleanliness tests for paged process-instance output in `cmd/cmd_json_assertions_test.go`
+- [x] T036: Extended quiet and automation activity suppression tests for process-instance mutation progress in `cmd/cancel_test.go` and `cmd/delete_test.go`
+- [x] T037: Added machine-mode fallback suppression tests for simple cluster and tenant commands in `cmd/get_test.go` and `cmd/get_tenant_test.go`
+- [x] T038: Added writer-level tests proving durable log, warning, prompt, and final output clear transient activity cleanly in `toolx/logging/activity_test.go`
+- [x] T039: Preserved root command activity writer gating for quiet, automation, JSON, keys-only, and non-interactive modes in `cmd/root.go`
+- [x] T040: Verified priority-aware activity helper calls remain no-ops when no activity sink is present in `toolx/logging/activity.go`
+- [x] T041: Audited debug and verbose paths so endpoint details remain durable debug logs rather than default activity text
+- [x] T042: Ran targeted US3 validation from `specs/262-activity-priority/quickstart.md`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_test.go
+- cmd/cmd_json_assertions_test.go
+- cmd/delete_test.go
+- cmd/get_tenant_test.go
+- cmd/get_test.go
+- cmd/root.go
+- cmd/root_test.go
+- toolx/logging/activity_test.go
+- specs/262-activity-priority/tasks.md
+- specs/262-activity-priority/ralph-memory.md
+- specs/262-activity-priority/progress.md
+**Learnings**:
+- Interactive JSON and keys-only invocations need explicit root indicator gating; buffer-based tests only prove non-interactive suppression.
+---

@@ -108,17 +108,17 @@
 
 ### Tests for User Story 3
 
-- [ ] T035 [P] [US3] Add or extend JSON and keys-only cleanliness tests for paged process-instance output in `cmd/cmd_json_assertions_test.go`
-- [ ] T036 [P] [US3] Add or extend quiet and automation activity suppression tests for process-instance mutation progress in `cmd/cancel_test.go` and `cmd/delete_test.go`
-- [ ] T037 [P] [US3] Add or extend machine-mode fallback suppression tests for simple Camunda-backed commands in `cmd/get_test.go` and `cmd/get_tenant_test.go`
-- [ ] T038 [P] [US3] Add writer-level tests proving durable log, warning, prompt, and final output clear transient activity cleanly in `toolx/logging/activity_test.go`
+- [x] T035 [P] [US3] Add or extend JSON and keys-only cleanliness tests for paged process-instance output in `cmd/cmd_json_assertions_test.go`
+- [x] T036 [P] [US3] Add or extend quiet and automation activity suppression tests for process-instance mutation progress in `cmd/cancel_test.go` and `cmd/delete_test.go`
+- [x] T037 [P] [US3] Add or extend machine-mode fallback suppression tests for simple Camunda-backed commands in `cmd/get_test.go` and `cmd/get_tenant_test.go`
+- [x] T038 [P] [US3] Add writer-level tests proving durable log, warning, prompt, and final output clear transient activity cleanly in `toolx/logging/activity_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T039 [US3] Preserve root command activity writer gating for quiet, automation, JSON, keys-only, and non-interactive modes in `cmd/root.go`
-- [ ] T040 [US3] Ensure priority-aware activity helper calls remain no-ops when no activity sink is present in `toolx/logging/activity.go`
-- [ ] T041 [US3] Audit debug and verbose paths so endpoint details remain durable debug logs rather than default activity text in `internal/services/httpc/round_trippers.go` and `cmd/root.go`
-- [ ] T042 [US3] Run targeted US3 validation from `specs/262-activity-priority/quickstart.md` with `go test ./cmd ./toolx/logging -run 'JSON|KeysOnly|Quiet|Automation|Machine|ActivityWriter' -count=1`
+- [x] T039 [US3] Preserve root command activity writer gating for quiet, automation, JSON, keys-only, and non-interactive modes in `cmd/root.go`
+- [x] T040 [US3] Ensure priority-aware activity helper calls remain no-ops when no activity sink is present in `toolx/logging/activity.go`
+- [x] T041 [US3] Audit debug and verbose paths so endpoint details remain durable debug logs rather than default activity text in `internal/services/httpc/round_trippers.go` and `cmd/root.go`
+- [x] T042 [US3] Run targeted US3 validation from `specs/262-activity-priority/quickstart.md` with `go test ./cmd ./toolx/logging -run 'JSON|KeysOnly|Quiet|Automation|Machine|ActivityWriter' -count=1`
 
 **Checkpoint**: User Story 3 is independently functional when machine-oriented outputs remain deterministic and transient activity remains terminal-only.
 

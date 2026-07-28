@@ -14,6 +14,8 @@ Started: 2026-07-28T09:17:49Z
 - `internal/services/httpc.LogTransport` starts each request as `ActivityImportanceHTTP` through the priority-aware sink when available, so request fallback stays below workflow/batch/wait scopes while remaining visible for simple commands.
 - `internal/services/httpc.httpActivityMessage` strips hosts, query strings, and a leading `/v2` prefix, then maps all known labels from `contracts/http-activity-labels.md`, including legacy `/deployments`, `/resources/{key}/deletion`, `/process-instances/search`, `/process-definitions/search`, and `/variables/search`; unknown method/path combinations keep the generic Camunda API fallback wording.
 - US2 command tests use small command-helper facade stubs to record HTTP-priority fallback starts through the command context for cluster, tenant, resource, incident, job, variable, element-instance, and user-task representatives. The actual endpoint label table and priority value are enforced in `internal/services/httpc/round_trippers_test.go`.
+- Root activity indicator gating now explicitly disables transient indicators when `--json` or `--keys-only` is active, in addition to `--no-indicator`, quiet, automation, JSON log format, and non-interactive writer gating.
+- US3 machine-output tests cover paged process-instance JSON and keys-only streams, cancel/delete quiet and automation suppression, simple cluster and tenant fallback suppression, durable debug endpoint details, writer clearing before log/warn/prompt/final output, and priority helper no-op behavior without an activity sink.
 
 ## Decisions
 - Priority-aware APIs are additive optional interfaces: `PriorityActivitySink` and `PriorityActivityUpdater`; context helpers probe these interfaces before falling back to `ActivitySink`/`ActivityUpdater`.
@@ -29,8 +31,10 @@ Started: 2026-07-28T09:17:49Z
 - `go test ./toolx/logging ./internal/services/httpc ./testx/activitysink -count=1`
 - `go test ./toolx/logging ./internal/services/httpc ./testx/activitysink ./toolx/poller -count=1`
 - `go test ./toolx/logging ./cmd ./internal/services/processinstance/... ./internal/services/incident/... ./internal/services/job/... ./internal/services/processdefinition/... ./internal/services/resource/... ./toolx/poller -run 'Activity|Progress|Indicator|RunProcessInstance|DeleteProcessInstance|Ops|GetProcessInstance|Wait' -count=1`
+- `go test ./cmd ./toolx/logging -run 'JSON|KeysOnly|Quiet|Automation|Machine|ActivityWriter|IndicatorEnabled|NoOpWithoutContextSink' -count=1`
+- `go test ./cmd ./toolx/logging -count=1`
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should start User Story 3 at T035. Preserve the root activity writer gating for JSON, keys-only, quiet, automation, non-interactive, debug, and verbose modes; do not change durable command output wording unless a US3 test proves it is required.
+- Next iteration should start Phase 6 polish at T043. Review docs only for documented activity/progress wording; no command help, generated docs, or durable output wording changed during US3.

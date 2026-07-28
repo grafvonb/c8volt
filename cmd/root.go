@@ -357,7 +357,7 @@ func automationModeEnabled(cmd *cobra.Command) bool {
 }
 
 func indicatorEnabled(cmd *cobra.Command, cfg *config.Config) bool {
-	if flagNoIndicator || flagQuiet {
+	if flagNoIndicator || flagQuiet || flagViewAsJson || flagViewKeysOnly {
 		return false
 	}
 	if cfg != nil {

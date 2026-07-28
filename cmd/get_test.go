@@ -108,6 +108,65 @@ func TestGetClusterAndResourceCommands_HTTPFallbackActivityUsesCommandContext(t 
 	requireHTTPFallbackActivityStarts(t, sink, "checking cluster topology", "loading resource")
 }
 
+// TestGetClusterCommand_MachineModeSuppressesFallbackActivity verifies HTTP fallback text stays transient.
+func TestGetClusterCommand_MachineModeSuppressesFallbackActivity(t *testing.T) {
+	tests := []struct {
+		name       string
+		args       []string
+		wantStdout func(t *testing.T, stdout string)
+		wantStderr func(t *testing.T, stderr string)
+	}{
+		{
+			name: "json",
+			args: []string{"--json", "get", "cluster", "topology"},
+			wantStdout: func(t *testing.T, stdout string) {
+				t.Helper()
+				var envelope map[string]any
+				require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+				require.Equal(t, "get cluster topology", envelope["command"])
+			},
+			wantStderr: func(t *testing.T, stderr string) {
+				t.Helper()
+				require.Empty(t, stderr)
+			},
+		},
+		{
+			name: "debug keeps endpoint detail durable",
+			args: []string{"--debug", "get", "cluster", "topology"},
+			wantStdout: func(t *testing.T, stdout string) {
+				t.Helper()
+				require.Contains(t, stdout, "GatewayVersion")
+			},
+			wantStderr: func(t *testing.T, stderr string) {
+				t.Helper()
+				require.Contains(t, stderr, "/v2/topology")
+				require.NotContains(t, stderr, "checking cluster topology")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodGet, r.Method)
+				require.Equal(t, "/v2/topology", r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(unsortedClusterTopologyFixtureJSON()))
+			}))
+			t.Cleanup(srv.Close)
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+			args := append([]string{"--config", cfgPath}, tt.args...)
+
+			stdout, stderr := executeRootWithSeparateOutputsForTest(t, args...)
+
+			require.NotContains(t, stdout, "checking cluster topology")
+			require.NotContains(t, stderr, "| checking cluster topology")
+			tt.wantStdout(t, stdout)
+			tt.wantStderr(t, stderr)
+		})
+	}
+}
+
 // Verifies root help advertises the finalized v8.9 runtime support contract.
 func TestRootHelp_V89SupportMessaging(t *testing.T) {
 	output := executeRootForTest(t, "--help")

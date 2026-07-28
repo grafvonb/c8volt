@@ -1849,9 +1849,8 @@ func TestDeleteProcessInstanceSearchProgressContractPendingT064(t *testing.T) {
 	require.NotContains(t, stderr.String(), "cursor")
 }
 
-// TestDeleteProcessInstanceSearchMachineProgressSafetyPendingT064 pins the
-// machine-mode contract for future delete progress routing.
-func TestDeleteProcessInstanceSearchMachineProgressSafetyPendingT064(t *testing.T) {
+// TestDeleteProcessInstanceSearchQuietAndAutomationSuppressProgress verifies machine modes keep mutation progress transient-only.
+func TestDeleteProcessInstanceSearchQuietAndAutomationSuppressProgress(t *testing.T) {
 	pendingProcessInstanceMutationProgressT064(t)
 
 	for _, mode := range []struct {

@@ -61,6 +61,43 @@ func TestActivityWriter_ClearsIndicatorBeforeNormalOutput(t *testing.T) {
 	require.NotContains(t, out, "INFO done\n|")
 }
 
+// TestActivityWriter_ClearsIndicatorBeforeDurableOutput verifies logs, warnings, prompts, and final lines stay readable.
+func TestActivityWriter_ClearsIndicatorBeforeDurableOutput(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		output string
+	}{
+		{name: "log", output: "INFO searched 2 process instances\n"},
+		{name: "warning", output: "WARN retrying request\n"},
+		{name: "prompt", output: "Continue? [y/N] "},
+		{name: "final", output: "done: deleted 1 process-instance tree\n"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			w := newActivityWriter(&buf, true)
+			w.delay = 1 * time.Millisecond
+			w.interval = 1 * time.Millisecond
+
+			w.StartActivity("waiting")
+			time.Sleep(5 * time.Millisecond)
+			_, err := w.Write([]byte(tt.output))
+			require.NoError(t, err)
+			w.StopActivity()
+
+			out := buf.String()
+			require.Contains(t, out, "waiting")
+			require.Contains(t, out, tt.output)
+			require.Contains(t, out, "\r"+strings.Repeat(" ", activityClearWidth(len("| waiting"), w.maxWidth))+"\r"+tt.output)
+		})
+	}
+}
+
 // TestActivityWriter_DisabledSuppressesActivityOutput verifies root-level gating can silence the shared writer.
 func TestActivityWriter_DisabledSuppressesActivityOutput(t *testing.T) {
 	t.Parallel()
@@ -300,6 +337,17 @@ func TestUpdateActivityWithImportance_UsesPriorityContextUpdater(t *testing.T) {
 		Message:    "workflow 1/2",
 		Importance: ActivityImportanceWorkflow,
 	}}, sink.PriorityUpdates())
+}
+
+func TestPriorityActivityHelpers_NoOpWithoutContextSink(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	stop := StartActivityWithImportance(ctx, "workflow", ActivityImportanceWorkflow)
+	require.NotPanics(t, stop)
+	require.NotPanics(t, func() {
+		UpdateActivityWithImportance(ctx, "workflow 1/2", ActivityImportanceWorkflow)
+	})
 }
 
 func lastActivityLine(out string) string {
