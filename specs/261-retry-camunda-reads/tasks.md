@@ -55,18 +55,18 @@
 
 > Write these tests first and verify they fail before implementation.
 
-- [ ] T008 [US1] Add GET 500-then-200 retry success test in `internal/services/httpc/http_read_retry_test.go`
-- [ ] T009 [US1] Add HEAD 503-then-200 retry success test in `internal/services/httpc/http_read_retry_test.go`
-- [ ] T010 [US1] Add temporary network error retry success test in `internal/services/httpc/http_read_retry_test.go`
-- [ ] T011 [US1] Add compact retry log assertion using existing activity wording in `internal/services/httpc/http_read_retry_test.go`
+- [x] T008 [US1] Add GET 500-then-200 retry success test in `internal/services/httpc/http_read_retry_test.go`
+- [x] T009 [US1] Add HEAD 503-then-200 retry success test in `internal/services/httpc/http_read_retry_test.go`
+- [x] T010 [US1] Add temporary network error retry success test in `internal/services/httpc/http_read_retry_test.go`
+- [x] T011 [US1] Add compact retry log assertion using existing activity wording in `internal/services/httpc/http_read_retry_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Implement GET/HEAD retry decisions for transient transport errors and HTTP 429/500/502/503/504 in `internal/services/httpc/read_retry.go`
-- [ ] T013 [US1] Implement bounded exponential backoff, jitter, `Retry-After` handling, and context-aware retry sleep in `internal/services/httpc/read_retry.go`
-- [ ] T014 [US1] Implement compact rate-limited read retry logging with `httpActivityMessage` labels in `internal/services/httpc/read_retry.go`
-- [ ] T015 [US1] Install the retry transport in the shared client path from `internal/services/httpc/service.go`
-- [ ] T016 [US1] Run focused US1 validation for `internal/services/httpc/read_retry.go` and `internal/services/httpc/http_read_retry_test.go` with `go test ./internal/services/httpc -run 'ReadRetry|LogTransport' -count=1`
+- [x] T012 [US1] Implement GET/HEAD retry decisions for transient transport errors and HTTP 429/500/502/503/504 in `internal/services/httpc/read_retry.go`
+- [x] T013 [US1] Implement bounded exponential backoff, jitter, `Retry-After` handling, and context-aware retry sleep in `internal/services/httpc/read_retry.go`
+- [x] T014 [US1] Implement compact rate-limited read retry logging with `httpActivityMessage` labels in `internal/services/httpc/read_retry.go`
+- [x] T015 [US1] Install the retry transport in the shared client path from `internal/services/httpc/service.go`
+- [x] T016 [US1] Run focused US1 validation for `internal/services/httpc/read_retry.go` and `internal/services/httpc/http_read_retry_test.go` with `go test ./internal/services/httpc -run 'ReadRetry|LogTransport' -count=1`
 
 **Checkpoint**: User Story 1 is functional and testable independently.
 

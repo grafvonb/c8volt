@@ -78,6 +78,7 @@ func New(cfg *config.Config, log *slog.Logger, opts ...Option) (*Service, error)
 	for _, opt := range opts {
 		opt(s)
 	}
+	s.c.Transport = &ReadRetryTransport{base: s.c.Transport, policy: defaultReadRetryPolicy(), log: log}
 	return s, nil
 }
 
