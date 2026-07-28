@@ -162,3 +162,23 @@ Started: 2026-07-28 11:17:49
 **Learnings**:
 - Interactive JSON and keys-only invocations need explicit root indicator gating; buffer-based tests only prove non-interactive suppression.
 ---
+---
+## Iteration 6 - 2026-07-28 12:05
+**Work Unit**: Phase 6 Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T043: Reviewed README and generated CLI docs for documented activity wording; no README update was needed
+- [x] T044: Confirmed CLI docs regeneration was not needed because no command help or generated documentation input changed
+- [x] T045: Ran documentation search from `specs/262-activity-priority/quickstart.md` across `README.md`, `docs/cli`, and `cmd`
+- [x] T046: Ran focused quickstart validation commands from `specs/262-activity-priority/quickstart.md`
+- [x] T047: Ran full repository validation from `specs/262-activity-priority/quickstart.md` with `make test`
+- [x] T048: Recorded final validation notes and manual smoke gaps in `specs/262-activity-priority/quickstart.md`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/262-activity-priority/tasks.md
+- specs/262-activity-priority/ralph-memory.md
+- specs/262-activity-priority/quickstart.md
+- specs/262-activity-priority/progress.md
+**Learnings**:
+- Existing documentation already describes progress as transient and script-safe; generated CLI docs did not need regeneration because no command help changed.
+---

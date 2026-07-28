@@ -106,3 +106,17 @@ Expected outcome:
 
 - Any documented activity/progress behavior matches the new hierarchy.
 - Generated docs are refreshed only if command help text changes.
+
+## Final Validation Notes
+
+Recorded 2026-07-28 12:05 during Ralph iteration 6.
+
+- Documentation search passed with existing README and generated CLI wording still matching the output contract; no README changes were needed.
+- `make docs-content` was not run because this feature did not change command help or generated documentation inputs during polish.
+- Focused quickstart validation passed:
+  - `go test ./toolx/logging ./internal/services/httpc -count=1`
+  - `go test ./cmd -run 'Activity|Progress|Indicator|RunProcessInstance|DeleteProcessInstance|Ops|GetProcessInstance' -count=1`
+  - `go test ./internal/services/processinstance/... ./internal/services/processdefinition/... ./internal/services/resource/... -count=1`
+  - `go test ./cmd -run 'JSON|KeysOnly|Quiet|Automation|Machine' -count=1`
+- Full validation passed with `make test`.
+- Optional manual smoke checks were not run; they require a configured Camunda profile and interactive terminal. Automated coverage validates the activity hierarchy, fallback labels, and script-safe output contracts.

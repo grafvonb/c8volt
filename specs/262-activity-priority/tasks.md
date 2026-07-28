@@ -128,12 +128,12 @@
 
 **Purpose**: Validate the complete UX, update documentation only if user-visible documented behavior changed, and leave a concise implementation handoff.
 
-- [ ] T043 [P] Review README and generated CLI docs for documented activity wording and update `README.md` only if visible documented behavior changed
-- [ ] T044 [P] Regenerate CLI docs with `make docs-content` only if command help or generated documentation changed in `cmd/`
-- [ ] T045 [P] Run documentation search from `specs/262-activity-priority/quickstart.md` across `README.md`, `docs/cli`, and `cmd`
-- [ ] T046 Run focused quickstart validation commands from `specs/262-activity-priority/quickstart.md`
-- [ ] T047 Run full repository validation from `specs/262-activity-priority/quickstart.md` with `make test`
-- [ ] T048 Record final validation notes and any manual smoke gaps in `specs/262-activity-priority/quickstart.md`
+- [x] T043 [P] Review README and generated CLI docs for documented activity wording and update `README.md` only if visible documented behavior changed
+- [x] T044 [P] Regenerate CLI docs with `make docs-content` only if command help or generated documentation changed in `cmd/`
+- [x] T045 [P] Run documentation search from `specs/262-activity-priority/quickstart.md` across `README.md`, `docs/cli`, and `cmd`
+- [x] T046 Run focused quickstart validation commands from `specs/262-activity-priority/quickstart.md`
+- [x] T047 Run full repository validation from `specs/262-activity-priority/quickstart.md` with `make test`
+- [x] T048 Record final validation notes and any manual smoke gaps in `specs/262-activity-priority/quickstart.md`
 
 ---
 
