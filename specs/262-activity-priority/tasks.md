@@ -34,11 +34,11 @@
 
 **CRITICAL**: No user story implementation can begin until the shared activity API and test sink support exist.
 
-- [ ] T006 Add activity importance values, scoped activity metadata, and priority selection rules in `toolx/logging/activity.go`
-- [ ] T007 Add backward-compatible helper APIs for priority-aware start and update operations in `toolx/logging/activity.go`
-- [ ] T008 Add unit tests for priority ordering, equal-priority tie breaking, scope stop fallback, idempotent stop behavior, and disabled writer behavior in `toolx/logging/activity_test.go`
-- [ ] T009 Update activity sink test support to record priority-aware starts and updates while preserving existing callers in `testx/activitysink/activity_sink.go`
-- [ ] T010 Add tests for context helper compatibility and priority-aware activity helper routing in `toolx/logging/activity_test.go`
+- [x] T006 Add activity importance values, scoped activity metadata, and priority selection rules in `toolx/logging/activity.go`
+- [x] T007 Add backward-compatible helper APIs for priority-aware start and update operations in `toolx/logging/activity.go`
+- [x] T008 Add unit tests for priority ordering, equal-priority tie breaking, scope stop fallback, idempotent stop behavior, and disabled writer behavior in `toolx/logging/activity_test.go`
+- [x] T009 Update activity sink test support to record priority-aware starts and updates while preserving existing callers in `testx/activitysink/activity_sink.go`
+- [x] T010 Add tests for context helper compatibility and priority-aware activity helper routing in `toolx/logging/activity_test.go`
 
 **Checkpoint**: The shared activity writer can track multiple active scopes and select the visible message by importance without changing existing call sites.
 

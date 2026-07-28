@@ -21,3 +21,24 @@ Started: 2026-07-28 11:17:49
 **Learnings**:
 - Activity is currently single-message/ref-count based; durable details were compacted into `ralph-memory.md` for Phase 2.
 ---
+---
+## Iteration 2 - 2026-07-28 11:24
+**Work Unit**: Phase 2 Foundational (Blocking Prerequisites)
+**Tasks Completed**:
+- [x] T006: Added activity importance values, scoped activity metadata, and priority selection rules in `toolx/logging/activity.go`
+- [x] T007: Added backward-compatible helper APIs for priority-aware start and update operations in `toolx/logging/activity.go`
+- [x] T008: Added unit tests for priority ordering, equal-priority tie breaking, scope stop fallback, idempotent stop behavior, and disabled writer behavior in `toolx/logging/activity_test.go`
+- [x] T009: Updated activity sink test support to record priority-aware starts and updates while preserving existing callers in `testx/activitysink/activity_sink.go`
+- [x] T010: Added tests for context helper compatibility and priority-aware activity helper routing in `toolx/logging/activity_test.go`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- toolx/logging/activity.go
+- toolx/logging/activity_test.go
+- testx/activitysink/activity_sink.go
+- specs/262-activity-priority/tasks.md
+- specs/262-activity-priority/ralph-memory.md
+- specs/262-activity-priority/progress.md
+**Learnings**:
+- Priority-aware context helpers can stay additive; hidden lower-priority updates must not redraw the selected higher-priority scope.
+---
