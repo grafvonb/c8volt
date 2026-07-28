@@ -40,6 +40,73 @@ func fromDomainProcessDefinitions(xs []d.ProcessDefinition) ProcessDefinitions {
 	}
 }
 
+func toDomainProcessDefinitionPageRequest(x ProcessDefinitionPageRequest) d.ProcessDefinitionPageRequest {
+	return d.ProcessDefinitionPageRequest{
+		From:  x.From,
+		Size:  x.Size,
+		After: x.After,
+	}
+}
+
+func fromDomainProcessDefinitionPageRequest(x d.ProcessDefinitionPageRequest) ProcessDefinitionPageRequest {
+	return ProcessDefinitionPageRequest{
+		From:  x.From,
+		Size:  x.Size,
+		After: x.After,
+	}
+}
+
+func fromDomainProcessDefinitionReportedTotal(x d.ProcessDefinitionReportedTotal) ProcessDefinitionReportedTotal {
+	return ProcessDefinitionReportedTotal{
+		Count: x.Count,
+		Kind:  ProcessDefinitionReportedTotalKind(x.Kind),
+	}
+}
+
+func fromDomainProcessDefinitionPage(x d.ProcessDefinitionPage) ProcessDefinitionPage {
+	return ProcessDefinitionPage{
+		Request:       fromDomainProcessDefinitionPageRequest(x.Request),
+		OverflowState: ProcessInstanceOverflowState(x.OverflowState),
+		ReportedTotal: toolx.MapPtr(x.ReportedTotal, fromDomainProcessDefinitionReportedTotal),
+		EndCursor:     x.EndCursor,
+		Items:         toolx.MapSlice(x.Items, fromDomainProcessDefinition),
+	}
+}
+
+func toDomainProcessDefinitionSearchRequest(x ProcessDefinitionSearchRequest) d.ProcessDefinitionSearchRequest {
+	return d.ProcessDefinitionSearchRequest{
+		Filter: toDomainProcessDefinitionFilter(x.Filter),
+		Page:   toDomainProcessDefinitionPageRequest(x.Page),
+		Limit:  x.Limit,
+	}
+}
+
+func toDomainProcessDefinitionSearchPageVisitor(visitor ProcessDefinitionSearchPageVisitor) d.ProcessDefinitionSearchPageVisitor {
+	if visitor == nil {
+		return nil
+	}
+	return func(step d.ProcessDefinitionSearchPageStep) (d.ProcessDefinitionSearchPageAction, error) {
+		action, err := visitor(fromDomainProcessDefinitionSearchPageStep(step))
+		return d.ProcessDefinitionSearchPageAction(action), err
+	}
+}
+
+func fromDomainProcessDefinitionSearchPageStep(x d.ProcessDefinitionSearchPageStep) ProcessDefinitionSearchPageStep {
+	return ProcessDefinitionSearchPageStep{
+		Page:            fromDomainProcessDefinitionPage(x.Page),
+		CumulativeCount: x.CumulativeCount,
+		LimitReached:    x.LimitReached,
+	}
+}
+
+func fromDomainProcessDefinitionSearchPagesResult(x d.ProcessDefinitionSearchPagesResult) ProcessDefinitionSearchPagesResult {
+	return ProcessDefinitionSearchPagesResult{
+		Items: toolx.MapSlice(x.Items, fromDomainProcessDefinition),
+		Limit: x.Limit,
+		Pages: x.Pages,
+	}
+}
+
 func fromDomainProcessInstance(x d.ProcessInstance) ProcessInstance {
 	return ProcessInstance{
 		BpmnProcessId:            x.BpmnProcessId,

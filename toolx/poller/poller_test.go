@@ -38,4 +38,12 @@ func TestWaitForCompletion_UsesSharedActivitySink(t *testing.T) {
 	require.Equal(t, 1, stopped)
 	require.Equal(t, []string{"waiting for completion"}, msgs)
 	require.Equal(t, []string{"waiting for completion; attempt 1, elapsed 0s, status still waiting"}, sink.Updates())
+	require.Equal(t, []activitysink.Start{{
+		Message:    "waiting for completion",
+		Importance: logging.ActivityImportanceWait,
+	}}, sink.Starts())
+	require.Equal(t, []activitysink.Update{{
+		Message:    "waiting for completion; attempt 1, elapsed 0s, status still waiting",
+		Importance: logging.ActivityImportanceWait,
+	}}, sink.PriorityUpdates())
 }

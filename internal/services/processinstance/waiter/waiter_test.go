@@ -520,6 +520,14 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 		assert.Equal(t, 1, stopped)
 		assert.Equal(t, []string{"waiting for pi 123 state"}, msgs)
 		assert.Equal(t, []string{"pi 123 waiting; state ACTIVE, attempt 1"}, sink.Updates())
+		assert.Equal(t, []activitysink.Start{{
+			Message:    "waiting for pi 123 state",
+			Importance: logging.ActivityImportanceWait,
+		}}, sink.Starts())
+		assert.Equal(t, []activitysink.Update{{
+			Message:    "pi 123 waiting; state ACTIVE, attempt 1",
+			Importance: logging.ActivityImportanceWait,
+		}}, sink.PriorityUpdates())
 	})
 }
 
@@ -548,6 +556,10 @@ func TestWaitForProcessInstancesState_UsesAggregateCommandActivity(t *testing.T)
 	started, stopped, msgs := sink.Snapshot()
 	assert.Equal(t, started, stopped)
 	assert.Contains(t, msgs, "waiting for 2 pi state")
+	assert.Contains(t, sink.Starts(), activitysink.Start{
+		Message:    "waiting for 2 pi state",
+		Importance: logging.ActivityImportanceWait,
+	})
 }
 
 // testConfig builds a waiter config with explicit retry timing for unit tests.

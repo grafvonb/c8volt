@@ -77,5 +77,5 @@ c8volt ops purge process-instances-with-incidents [flags]
 
 ### SEE ALSO
 
-* [c8volt ops purge](c8volt_ops_purge)	 - Discover destructive operational cleanup workflows
+* [c8volt ops purge]({{ "/cli/c8volt_ops_purge" | relative_url }})	 - Discover destructive operational cleanup workflows
 

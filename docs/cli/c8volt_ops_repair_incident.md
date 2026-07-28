@@ -79,5 +79,5 @@ c8volt ops repair incident [flags]
 
 ### SEE ALSO
 
-* [c8volt ops repair](c8volt_ops_repair)	 - Discover repair and remediation workflows
+* [c8volt ops repair]({{ "/cli/c8volt_ops_repair" | relative_url }})	 - Discover repair and remediation workflows
 

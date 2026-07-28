@@ -54,7 +54,7 @@ c8volt resolve [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
-* [c8volt resolve incident](c8volt_resolve_incident)	 - Resolve incidents by key
-* [c8volt resolve process-instance](c8volt_resolve_process-instance)	 - Resolve process-instance incidents by key
+* [c8volt]({{ "/cli/c8volt/" | relative_url }})	 - Operate Camunda 8 workflows from the command line
+* [c8volt resolve incident]({{ "/cli/c8volt_resolve_incident" | relative_url }})	 - Resolve incidents by key
+* [c8volt resolve process-instance]({{ "/cli/c8volt_resolve_process-instance" | relative_url }})	 - Resolve process-instance incidents by key
 

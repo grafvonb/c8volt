@@ -128,6 +128,7 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 			ReportFormat:             reportFormat,
 			StartedAt:                time.Now().UTC(),
 		}
+		configureOpsRepairProgress(cmd, &request)
 		var result ops.RepairResult
 		if opsRepairNeedsPreflight(cmd) {
 			planRequest := request

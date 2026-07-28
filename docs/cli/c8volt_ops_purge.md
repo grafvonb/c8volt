@@ -53,8 +53,8 @@ c8volt ops purge [flags]
 
 ### SEE ALSO
 
-* [c8volt ops](c8volt_ops)	 - Discover high-level operational workflows
-* [c8volt ops purge all-process-definitions](c8volt_ops_purge_all-process-definitions)	 - Purge all selected process definitions
-* [c8volt ops purge orphan-process-instances](c8volt_ops_purge_orphan-process-instances)	 - Purge orphan child process instances
-* [c8volt ops purge process-instances-with-incidents](c8volt_ops_purge_process-instances-with-incidents)	 - Purge process instances selected by incidents
+* [c8volt ops]({{ "/cli/c8volt_ops" | relative_url }})	 - Discover high-level operational workflows
+* [c8volt ops purge all-process-definitions]({{ "/cli/c8volt_ops_purge_all-process-definitions" | relative_url }})	 - Purge all selected process definitions
+* [c8volt ops purge orphan-process-instances]({{ "/cli/c8volt_ops_purge_orphan-process-instances" | relative_url }})	 - Purge orphan child process instances
+* [c8volt ops purge process-instances-with-incidents]({{ "/cli/c8volt_ops_purge_process-instances-with-incidents" | relative_url }})	 - Purge process instances selected by incidents
 

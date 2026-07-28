@@ -128,7 +128,7 @@ func (s *Service) waitForDeploymentConfirmation(ctx context.Context, dr camundav
 	if !suppressDetailLogs {
 		s.log.Info(fmt.Sprintf("pd deploy wait; count %d", len(dr.Deployments)))
 	}
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for %d deployments", len(dr.Deployments)))
+	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("waiting for %d deployments", len(dr.Deployments)), logging.ActivityImportanceBatch)
 	defer stopActivity()
 	poll := s.processDefinitionDeployPoller(dr)
 	if err := poller.WaitForCompletion(ctx, s.log, poller.DefaultCompletionTimeout, true, poll); err != nil {

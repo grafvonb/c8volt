@@ -937,6 +937,11 @@ func (stubProcessAPI) SearchProcessDefinitionsLatest(context.Context, process.Pr
 	panic("unexpected call")
 }
 
+// SearchProcessDefinitionsPages is not expected in resource facade tests.
+func (stubProcessAPI) SearchProcessDefinitionsPages(context.Context, process.ProcessDefinitionSearchRequest, process.ProcessDefinitionSearchPageVisitor, ...options.FacadeOption) (process.ProcessDefinitionSearchPagesResult, error) {
+	panic("unexpected call")
+}
+
 func (s stubProcessAPI) GetProcessDefinition(ctx context.Context, key string, opts ...options.FacadeOption) (process.ProcessDefinition, error) {
 	if s.getProcessDefinition == nil {
 		panic("unexpected call")

@@ -27,7 +27,7 @@ Slow process-instance diagnosis usually requires several separate reads: find ca
 c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --state active --dur-longer 5m
 ```
 
-Generated reference: [ops analyse slow-process-instances](/cli/c8volt_ops_analyse_slow-process-instances/).
+Generated reference: [ops analyse slow-process-instances](/cli/c8volt_ops_analyse_slow-process-instances).
 
 ## Best Variants
 
@@ -46,7 +46,7 @@ c8volt get element --pi-key <process-instance-key>
 c8volt get job --pi-key <process-instance-key> --kind TASK_LISTENER
 ```
 
-Generated references: [get process-instance](/cli/c8volt_get_process-instance/), [get element](/cli/c8volt_get_element/), [get job](/cli/c8volt_get_job/).
+Generated references: [get process-instance](/cli/c8volt_get_process-instance), [get element](/cli/c8volt_get_element), [get job](/cli/c8volt_get_job).
 
 ## Output
 

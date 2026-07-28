@@ -28,7 +28,7 @@ Deleting process definitions is not just resource cleanup. `c8volt ops purge all
 c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
 ```
 
-Generated reference: [ops purge all-process-definitions](/cli/c8volt_ops_purge_all-process-definitions/).
+Generated reference: [ops purge all-process-definitions](/cli/c8volt_ops_purge_all-process-definitions).
 
 ## Best Variants
 
@@ -44,7 +44,7 @@ c8volt get process-definition --bpmn-process-id <bpmn-process-id>
 c8volt delete process-definition --key <process-definition-key>
 ```
 
-Generated references: [get process-definition](/cli/c8volt_get_process-definition/), [delete process-definition](/cli/c8volt_delete_process-definition/).
+Generated references: [get process-definition](/cli/c8volt_get_process-definition), [delete process-definition](/cli/c8volt_delete_process-definition).
 
 ## Output And Safety
 

@@ -63,5 +63,5 @@ c8volt resolve process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt resolve](c8volt_resolve)	 - Resolve operational incidents
+* [c8volt resolve]({{ "/cli/c8volt_resolve" | relative_url }})	 - Resolve operational incidents
 

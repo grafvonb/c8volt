@@ -44,6 +44,59 @@ type ProcessDefinitionFilter struct {
 	ProcessVersionTag string `json:"processVersionTag,omitempty"`
 }
 
+type ProcessDefinitionPageRequest struct {
+	From  int32  `json:"from,omitempty"`
+	Size  int32  `json:"size,omitempty"`
+	After string `json:"after,omitempty"`
+}
+
+type ProcessDefinitionReportedTotalKind string
+
+const (
+	ProcessDefinitionReportedTotalKindExact      ProcessDefinitionReportedTotalKind = "exact"
+	ProcessDefinitionReportedTotalKindLowerBound ProcessDefinitionReportedTotalKind = "lower_bound"
+)
+
+type ProcessDefinitionReportedTotal struct {
+	Count int64                              `json:"count,omitempty"`
+	Kind  ProcessDefinitionReportedTotalKind `json:"kind,omitempty"`
+}
+
+type ProcessDefinitionPage struct {
+	Request       ProcessDefinitionPageRequest    `json:"request,omitempty"`
+	OverflowState ProcessInstanceOverflowState    `json:"overflowState,omitempty"`
+	ReportedTotal *ProcessDefinitionReportedTotal `json:"reportedTotal,omitempty"`
+	EndCursor     string                          `json:"endCursor,omitempty"`
+	Items         []ProcessDefinition             `json:"items,omitempty"`
+}
+
+type ProcessDefinitionSearchPageAction string
+
+const (
+	ProcessDefinitionSearchPageActionContinue ProcessDefinitionSearchPageAction = "continue"
+	ProcessDefinitionSearchPageActionStop     ProcessDefinitionSearchPageAction = "stop"
+)
+
+type ProcessDefinitionSearchRequest struct {
+	Filter ProcessDefinitionFilter      `json:"filter,omitempty"`
+	Page   ProcessDefinitionPageRequest `json:"page,omitempty"`
+	Limit  int32                        `json:"limit,omitempty"`
+}
+
+type ProcessDefinitionSearchPageStep struct {
+	Page            ProcessDefinitionPage `json:"page"`
+	CumulativeCount int32                 `json:"cumulativeCount"`
+	LimitReached    bool                  `json:"limitReached"`
+}
+
+type ProcessDefinitionSearchPageVisitor func(ProcessDefinitionSearchPageStep) (ProcessDefinitionSearchPageAction, error)
+
+type ProcessDefinitionSearchPagesResult struct {
+	Items []ProcessDefinition `json:"items,omitempty"`
+	Limit int32               `json:"limit,omitempty"`
+	Pages int32               `json:"pages,omitempty"`
+}
+
 func (f ProcessDefinitionFilter) String() string {
 	parts := make([]string, 0, 4)
 	parts = toolx.AppendQuotedField(parts, "key", f.Key)

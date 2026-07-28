@@ -39,6 +39,7 @@ type AllProcessDefinitionsPurgeRequest struct {
 	DiscoveredCandidateProcessDefinitionKeys typex.Keys
 	DiscoveredScopeStatus                    DiscoveryScopeStatus
 	StartedAt                                time.Time
+	Progress                                 func(OpsProgressEvent)
 }
 
 // ProcessDefinitionDiscoveryResult captures immutable process-definition discovery output.

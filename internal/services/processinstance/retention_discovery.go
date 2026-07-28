@@ -16,6 +16,17 @@ type RetentionDiscoveryRequest struct {
 	Filter    d.ProcessInstanceFilter
 	BatchSize int32
 	Limit     int32
+	Progress  func(RetentionDiscoveryProgress)
+}
+
+type RetentionDiscoveryProgress struct {
+	Page                d.ProcessInstancePage
+	PageNumber          int
+	CurrentPageCount    int
+	CurrentPageSelected int
+	CandidatesSeen      int
+	CandidatesFrozen    int
+	LimitReached        bool
 }
 
 type RetentionDiscovery struct {
@@ -29,26 +40,50 @@ func DiscoverRetentionProcessInstances(ctx context.Context, api RetentionDiscove
 	pageReq := d.ProcessInstancePageRequest{Size: normalizeRetentionDiscoveryBatchSize(request.BatchSize)}
 	out := RetentionDiscovery{Filter: filter}
 	cumulative := 0
+	seen := 0
+	pageNumber := 0
 
 	for {
 		page, err := api.SearchForProcessInstancesPage(ctx, filter, pageReq, opts...)
 		if err != nil {
 			return RetentionDiscovery{}, err
 		}
+		pageNumber++
+		seen += len(page.Items)
+		limitReached := false
+		selected := 0
 		if len(page.Items) > 0 {
 			items := limitRetentionDiscoveryItems(filterRetentionDiscoveryItems(page.Items), request.Limit, cumulative)
+			selected = len(items)
 			out.Items = append(out.Items, items...)
 			for _, item := range items {
 				out.Keys = append(out.Keys, item.Key)
 			}
 			cumulative += len(items)
+			limitReached = request.Limit > 0 && cumulative >= int(request.Limit)
 		}
+		reportRetentionDiscoveryProgress(request.Progress, RetentionDiscoveryProgress{
+			Page:                page,
+			PageNumber:          pageNumber,
+			CurrentPageCount:    len(page.Items),
+			CurrentPageSelected: selected,
+			CandidatesSeen:      seen,
+			CandidatesFrozen:    cumulative,
+			LimitReached:        limitReached,
+		})
 		if shouldStopRetentionDiscovery(page, request.Limit, cumulative) {
 			out.Keys = out.Keys.Unique()
 			return out, nil
 		}
 		pageReq = nextRetentionDiscoveryPageRequest(pageReq, page)
 	}
+}
+
+func reportRetentionDiscoveryProgress(progress func(RetentionDiscoveryProgress), event RetentionDiscoveryProgress) {
+	if progress == nil {
+		return
+	}
+	progress(event)
 }
 
 func normalizeRetentionDiscoveryBatchSize(size int32) int32 {
@@ -94,11 +129,10 @@ func shouldStopRetentionDiscovery(page d.ProcessInstancePage, limit int32, cumul
 }
 
 func nextRetentionDiscoveryPageRequest(current d.ProcessInstancePageRequest, page d.ProcessInstancePage) d.ProcessInstancePageRequest {
-	next := d.ProcessInstancePageRequest{Size: current.Size}
+	next := d.ProcessInstancePageRequest{From: current.From + int32(len(page.Items)), Size: current.Size}
 	if page.EndCursor != "" {
 		next.After = page.EndCursor
 		return next
 	}
-	next.From = current.From + int32(len(page.Items))
 	return next
 }

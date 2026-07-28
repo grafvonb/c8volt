@@ -78,6 +78,7 @@ func New(cfg *config.Config, log *slog.Logger, opts ...Option) (*Service, error)
 	for _, opt := range opts {
 		opt(s)
 	}
+	s.c.Transport = &ReadRetryTransport{base: s.c.Transport, policy: defaultReadRetryPolicy(), log: log}
 	return s, nil
 }
 
@@ -106,6 +107,8 @@ func unwrapLogTransport(rt http.RoundTripper) *LogTransport {
 	case *LogTransport:
 		return t
 	case *AuthTransport:
+		return unwrapLogTransport(t.base)
+	case *ReadRetryTransport:
 		return unwrapLogTransport(t.base)
 	default:
 		return nil

@@ -278,6 +278,7 @@ func searchAllProcessDefinitionsPurgeCandidates(ctx context.Context, api pdsvc.A
 		if request.Limit > 0 && len(definitions) >= int(request.Limit) {
 			limited = true
 		}
+		reportAllProcessDefinitionsPurgeDiscoveryProgress(request, page, status, len(items), len(definitions), limited)
 		if limited || allProcessDefinitionsPurgeDiscoveryPageComplete(page) {
 			status.Complete = !limited
 			status.Limited = limited
@@ -286,6 +287,114 @@ func searchAllProcessDefinitionsPurgeCandidates(ctx context.Context, api pdsvc.A
 		pageReq = nextAllProcessDefinitionsPurgeDiscoveryPageRequest(pageReq, page)
 	}
 	return definitions, status, nil
+}
+
+func reportAllProcessDefinitionsPurgeDiscoveryProgress(request d.AllProcessDefinitionsPurgeRequest, page d.ProcessDefinitionPage, status d.DiscoveryScopeStatus, currentSelected int, selected int, limited bool) {
+	if request.Progress == nil {
+		return
+	}
+	if status.Pages == 1 {
+		preflight := newAllProcessDefinitionsPurgePreflight(request, page)
+		request.Progress(d.OpsProgressEvent{
+			Kind:      d.OpsProgressEventKindPreflight,
+			Preflight: &preflight,
+		})
+	}
+	pageCount, pageKind := allProcessDefinitionsPurgePageCount(page.ReportedTotal, status.BatchSize)
+	progress := d.OpsPageProgress{
+		Phase:            "discovering process definitions",
+		CurrentPage:      status.Pages,
+		PageCount:        pageCount,
+		PageCountKind:    pageKind,
+		PageSize:         status.BatchSize,
+		CurrentPageCount: currentSelected,
+		Seen:             status.CandidatesSeen,
+		Selected:         selected,
+		OverflowState:    allProcessDefinitionsPurgeOpsOverflowState(page.OverflowState),
+		LimitReached:     limited,
+	}
+	request.Progress(d.OpsProgressEvent{
+		Kind: d.OpsProgressEventKindPage,
+		Page: &progress,
+	})
+}
+
+func newAllProcessDefinitionsPurgePreflight(request d.AllProcessDefinitionsPurgeRequest, page d.ProcessDefinitionPage) d.OpsPreflightScope {
+	total, totalKind := allProcessDefinitionsPurgeTotal(page.ReportedTotal)
+	pageCount, pageKind := allProcessDefinitionsPurgePageCount(page.ReportedTotal, allProcessDefinitionsPurgeDiscoverySize(request))
+	return d.OpsPreflightScope{
+		Phase:           "preflight",
+		Command:         request.CommandName,
+		CoreResource:    "process_definition",
+		SelectorSummary: "all-process-definitions purge",
+		Total:           total,
+		TotalKind:       totalKind,
+		PageSize:        allProcessDefinitionsPurgeDiscoverySize(request),
+		PageCount:       pageCount,
+		PageCountKind:   pageKind,
+		ConsequenceSummary: d.OpsConsequenceSummary{
+			WorkSummary: allProcessDefinitionsPurgeWorkSummary(request.DryRun),
+			RiskSummary: allProcessDefinitionsPurgeRiskSummary(request.DryRun),
+		},
+		RequiresConfirmation: !request.DryRun && !request.AutoConfirm && !request.Automation,
+	}
+}
+
+func allProcessDefinitionsPurgeWorkSummary(dryRun bool) string {
+	if dryRun {
+		return "process-definition purge dry run will discover matching process definitions and validate delete impact only; no changes will be applied"
+	}
+	return "process-definition purge will discover matching process definitions, validate delete impact, and delete confirmed definitions"
+}
+
+func allProcessDefinitionsPurgeRiskSummary(dryRun bool) string {
+	if dryRun {
+		return ""
+	}
+	return "potentially destructive purge"
+}
+
+func allProcessDefinitionsPurgeTotal(total *d.ProcessDefinitionReportedTotal) (*int64, d.OpsTotalCertainty) {
+	if total == nil {
+		return nil, d.OpsTotalCertaintyUnknown
+	}
+	count := total.Count
+	switch total.Kind {
+	case d.ProcessDefinitionReportedTotalKindExact:
+		return &count, d.OpsTotalCertaintyExact
+	case d.ProcessDefinitionReportedTotalKindLowerBound:
+		return &count, d.OpsTotalCertaintyLowerBound
+	default:
+		return &count, d.OpsTotalCertaintyUnknown
+	}
+}
+
+func allProcessDefinitionsPurgePageCount(total *d.ProcessDefinitionReportedTotal, pageSize int32) (*int64, d.OpsPageCountKind) {
+	if total == nil || pageSize <= 0 {
+		return nil, d.OpsPageCountKindUnknown
+	}
+	pages := (total.Count + int64(pageSize) - 1) / int64(pageSize)
+	switch total.Kind {
+	case d.ProcessDefinitionReportedTotalKindExact:
+		return &pages, d.OpsPageCountKindExact
+	case d.ProcessDefinitionReportedTotalKindLowerBound:
+		return &pages, d.OpsPageCountKindEstimated
+	default:
+		return nil, d.OpsPageCountKindUnknown
+	}
+}
+
+func allProcessDefinitionsPurgeOpsOverflowState(state d.ProcessInstanceOverflowState) d.OpsOverflowState {
+	switch state {
+	case d.ProcessInstanceOverflowStateHasMore:
+		return d.OpsOverflowStateHasMore
+	case d.ProcessInstanceOverflowStateIndeterminate:
+		return d.OpsOverflowStateIndeterminate
+	case d.ProcessInstanceOverflowStateNoMore:
+		return d.OpsOverflowStateNoMore
+	default:
+		return d.OpsOverflowStateUnknown
+	}
 }
 
 func frozenAllProcessDefinitionsPurgeDiscovery(request d.AllProcessDefinitionsPurgeRequest) d.ProcessDefinitionDiscoveryResult {
@@ -342,12 +451,11 @@ func allProcessDefinitionsPurgeDiscoveryPageComplete(page d.ProcessDefinitionPag
 
 // nextAllProcessDefinitionsPurgeDiscoveryPageRequest advances by cursor when available, otherwise by returned items.
 func nextAllProcessDefinitionsPurgeDiscoveryPageRequest(current d.ProcessDefinitionPageRequest, page d.ProcessDefinitionPage) d.ProcessDefinitionPageRequest {
-	next := d.ProcessDefinitionPageRequest{Size: current.Size}
+	next := d.ProcessDefinitionPageRequest{From: current.From + int32(len(page.Items)), Size: current.Size}
 	if page.EndCursor != "" {
 		next.After = page.EndCursor
 		return next
 	}
-	next.From = current.From + int32(len(page.Items))
 	return next
 }
 
@@ -387,6 +495,9 @@ func withAllProcessDefinitionsPurgeOptionControls(request d.AllProcessDefinition
 	request.Force = request.Force || cfg.Force
 	request.FailFast = request.FailFast || cfg.FailFast
 	request.NoWorkerLimit = request.NoWorkerLimit || cfg.NoWorkerLimit
+	if request.Progress == nil {
+		request.Progress = cfg.Progress
+	}
 	return request
 }
 

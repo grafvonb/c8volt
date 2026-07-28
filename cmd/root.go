@@ -112,7 +112,10 @@ command contract.`,
 			}
 			return silenceUsageForError(cmd, bootstrapLocalPrecondition(err))
 		}
-		activityWriter := logging.NewActivityWriterEnabled(cmd.ErrOrStderr(), indicatorEnabled(cmd, cfg))
+		root := cmd.Root()
+		activityWriter := logging.NewActivityWriterEnabled(root.ErrOrStderr(), indicatorEnabled(cmd, cfg))
+		root.SetErr(activityWriter)
+		cmd.SetErr(activityWriter)
 		ctx := cfg.ToContextWithLogWriter(cmd.Context(), activityWriter)
 		ctx = logging.ToActivityContext(ctx, activityWriter)
 		log, err := logging.FromContext(ctx)
@@ -354,7 +357,7 @@ func automationModeEnabled(cmd *cobra.Command) bool {
 }
 
 func indicatorEnabled(cmd *cobra.Command, cfg *config.Config) bool {
-	if flagNoIndicator || flagQuiet {
+	if flagNoIndicator || flagQuiet || flagViewAsJson || flagViewKeysOnly {
 		return false
 	}
 	if cfg != nil {

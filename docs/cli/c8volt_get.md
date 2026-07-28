@@ -59,13 +59,13 @@ c8volt get [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
-* [c8volt get cluster](c8volt_get_cluster)	 - Inspect cluster-wide topology, version, and license information
-* [c8volt get element](c8volt_get_element)	 - List or fetch runtime element instances
-* [c8volt get incident](c8volt_get_incident)	 - List or fetch incidents
-* [c8volt get job](c8volt_get_job)	 - Inspect or search jobs
-* [c8volt get process-definition](c8volt_get_process-definition)	 - List or fetch deployed process definitions
-* [c8volt get process-instance](c8volt_get_process-instance)	 - List or fetch process instances
-* [c8volt get resource](c8volt_get_resource)	 - Get a resource by ID
-* [c8volt get tenant](c8volt_get_tenant)	 - List tenants
+* [c8volt]({{ "/cli/c8volt/" | relative_url }})	 - Operate Camunda 8 workflows from the command line
+* [c8volt get cluster]({{ "/cli/c8volt_get_cluster" | relative_url }})	 - Inspect cluster-wide topology, version, and license information
+* [c8volt get element]({{ "/cli/c8volt_get_element" | relative_url }})	 - List or fetch runtime element instances
+* [c8volt get incident]({{ "/cli/c8volt_get_incident" | relative_url }})	 - List or fetch incidents
+* [c8volt get job]({{ "/cli/c8volt_get_job" | relative_url }})	 - Inspect or search jobs
+* [c8volt get process-definition]({{ "/cli/c8volt_get_process-definition" | relative_url }})	 - List or fetch deployed process definitions
+* [c8volt get process-instance]({{ "/cli/c8volt_get_process-instance" | relative_url }})	 - List or fetch process instances
+* [c8volt get resource]({{ "/cli/c8volt_get_resource" | relative_url }})	 - Get a resource by ID
+* [c8volt get tenant]({{ "/cli/c8volt_get_tenant" | relative_url }})	 - List tenants
 

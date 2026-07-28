@@ -61,6 +61,43 @@ func TestActivityWriter_ClearsIndicatorBeforeNormalOutput(t *testing.T) {
 	require.NotContains(t, out, "INFO done\n|")
 }
 
+// TestActivityWriter_ClearsIndicatorBeforeDurableOutput verifies logs, warnings, prompts, and final lines stay readable.
+func TestActivityWriter_ClearsIndicatorBeforeDurableOutput(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		output string
+	}{
+		{name: "log", output: "INFO searched 2 process instances\n"},
+		{name: "warning", output: "WARN retrying request\n"},
+		{name: "prompt", output: "Continue? [y/N] "},
+		{name: "final", output: "done: deleted 1 process-instance tree\n"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			w := newActivityWriter(&buf, true)
+			w.delay = 1 * time.Millisecond
+			w.interval = 1 * time.Millisecond
+
+			w.StartActivity("waiting")
+			time.Sleep(5 * time.Millisecond)
+			_, err := w.Write([]byte(tt.output))
+			require.NoError(t, err)
+			w.StopActivity()
+
+			out := buf.String()
+			require.Contains(t, out, "waiting")
+			require.Contains(t, out, tt.output)
+			require.Contains(t, out, "\r"+strings.Repeat(" ", activityClearWidth(len("| waiting"), w.maxWidth))+"\r"+tt.output)
+		})
+	}
+}
+
 // TestActivityWriter_DisabledSuppressesActivityOutput verifies root-level gating can silence the shared writer.
 func TestActivityWriter_DisabledSuppressesActivityOutput(t *testing.T) {
 	t.Parallel()
@@ -70,6 +107,9 @@ func TestActivityWriter_DisabledSuppressesActivityOutput(t *testing.T) {
 
 	w.StartActivity("waiting")
 	w.UpdateActivity("checked 10")
+	stop := w.StartActivityWithImportance("workflow", ActivityImportanceWorkflow)
+	w.UpdateActivityWithImportance("workflow checked 20", ActivityImportanceWorkflow)
+	stop()
 	w.StopActivity()
 
 	require.Empty(t, buf.String())
@@ -137,22 +177,186 @@ func TestActivityWriter_TruncatesIndicatorToConfiguredWidth(t *testing.T) {
 	require.NotContains(t, buf.String(), "more matches")
 }
 
-// TestActivityWriter_NestedActivityScopesRequireMatchingStops verifies nested activity scopes keep the indicator alive until all scopes finish.
-func TestActivityWriter_NestedActivityScopesRequireMatchingStops(t *testing.T) {
+func TestActivityWriter_PriorityOrderingKeepsHigherImportanceVisible(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
 	w := newActivityWriter(&buf, true)
-	w.delay = 1 * time.Millisecond
-	w.interval = 1 * time.Millisecond
 
-	w.StartActivity("outer")
-	w.StartActivity("inner")
-	time.Sleep(5 * time.Millisecond)
-	w.StopActivity()
-	time.Sleep(5 * time.Millisecond)
-	w.StopActivity()
+	stopWorkflow := w.StartActivityWithImportance("workflow progress", ActivityImportanceWorkflow)
+	w.tick()
+	stopHTTP := w.StartActivityWithImportance("loading process instance", ActivityImportanceHTTP)
 
-	out := buf.String()
-	require.Contains(t, out, "outer")
+	require.Equal(t, "| workflow progress", lastActivityLine(buf.String()))
+
+	stopHTTP()
+	stopWorkflow()
+}
+
+func TestActivityWriter_EqualPrioritySelectsNewestScope(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	w := newActivityWriter(&buf, true)
+
+	stopFirst := w.StartActivityWithImportance("first wait", ActivityImportanceWait)
+	w.tick()
+	stopSecond := w.StartActivityWithImportance("second wait", ActivityImportanceWait)
+
+	require.Equal(t, "/ second wait", lastActivityLine(buf.String()))
+
+	stopSecond()
+	stopFirst()
+}
+
+func TestActivityWriter_StopFallsBackToRemainingHighestScope(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	w := newActivityWriter(&buf, true)
+
+	stopWait := w.StartActivityWithImportance("waiting for completion", ActivityImportanceWait)
+	w.tick()
+	stopWorkflow := w.StartActivityWithImportance("workflow progress", ActivityImportanceWorkflow)
+	w.tick()
+	stopWorkflow()
+
+	require.Equal(t, `\ waiting for completion`, lastActivityLine(buf.String()))
+
+	stopWait()
+}
+
+func TestActivityWriter_ScopedStopIsIdempotent(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	w := newActivityWriter(&buf, true)
+
+	stopBatch := w.StartActivityWithImportance("batch progress", ActivityImportanceBatch)
+	w.tick()
+	stopBatch()
+	stopBatch()
+
+	require.Contains(t, buf.String(), "batch progress")
+}
+
+func TestActivityWriter_PriorityUpdateTargetsMatchingScope(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	w := newActivityWriter(&buf, true)
+
+	stopWait := w.StartActivityWithImportance("waiting", ActivityImportanceWait)
+	w.tick()
+	stopWorkflow := w.StartActivityWithImportance("workflow", ActivityImportanceWorkflow)
+	w.tick()
+	w.UpdateActivityWithImportance("waiting 10/20", ActivityImportanceWait)
+	w.tick()
+
+	require.Equal(t, `\ workflow`, lastActivityLine(buf.String()))
+
+	w.UpdateActivityWithImportance("workflow 5/10", ActivityImportanceWorkflow)
+
+	require.Equal(t, "| workflow 5/10", lastActivityLine(buf.String()))
+
+	stopWorkflow()
+
+	require.Equal(t, "/ waiting 10/20", lastActivityLine(buf.String()))
+
+	stopWait()
+}
+
+// TestActivityWriter_WorkflowRemainsVisibleAboveWaitAndHTTP verifies the documented US1 hierarchy examples.
+func TestActivityWriter_WorkflowRemainsVisibleAboveWaitAndHTTP(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	w := newActivityWriter(&buf, true)
+
+	stopWorkflow := w.StartActivityWithImportance("deleting process-instance trees 48/800", ActivityImportanceWorkflow)
+	w.tick()
+	stopWait := w.StartActivityWithImportance("waiting for pi 123 state", ActivityImportanceWait)
+	w.tick()
+	stopHTTP := w.StartActivityWithImportance("loading process instance", ActivityImportanceHTTP)
+	w.tick()
+
+	require.Equal(t, "- deleting process-instance trees 48/800", lastActivityLine(buf.String()))
+
+	stopHTTP()
+	stopWait()
+	stopWorkflow()
+}
+
+// TestActivityWriter_WaitFallsBackAboveHTTPAfterWorkflowStops verifies wait scopes outrank HTTP fallback after workflow progress ends.
+func TestActivityWriter_WaitFallsBackAboveHTTPAfterWorkflowStops(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	w := newActivityWriter(&buf, true)
+
+	stopHTTP := w.StartActivityWithImportance("loading process instance", ActivityImportanceHTTP)
+	w.tick()
+	stopWorkflow := w.StartActivityWithImportance("analyzing process instances", ActivityImportanceWorkflow)
+	w.tick()
+	stopWait := w.StartActivityWithImportance("waiting for pi 123 state", ActivityImportanceWait)
+	w.tick()
+	stopWorkflow()
+
+	require.Equal(t, "| waiting for pi 123 state", lastActivityLine(buf.String()))
+
+	stopWait()
+	stopHTTP()
+}
+
+func TestStartActivityWithImportance_UsesPriorityContextSink(t *testing.T) {
+	t.Parallel()
+
+	sink := &activitysink.Sink{}
+	ctx := ToActivityContext(context.Background(), sink)
+
+	stop := StartActivityWithImportance(ctx, "workflow", ActivityImportanceWorkflow)
+	stop()
+	stop()
+
+	require.Equal(t, []activitysink.Start{{
+		Message:    "workflow",
+		Importance: ActivityImportanceWorkflow,
+	}}, sink.Starts())
+	require.Equal(t, 1, sink.Stopped())
+}
+
+func TestUpdateActivityWithImportance_UsesPriorityContextUpdater(t *testing.T) {
+	t.Parallel()
+
+	sink := &activitysink.Sink{}
+	ctx := ToActivityContext(context.Background(), sink)
+
+	UpdateActivityWithImportance(ctx, "workflow 1/2", ActivityImportanceWorkflow)
+
+	require.Equal(t, []activitysink.Update{{
+		Message:    "workflow 1/2",
+		Importance: ActivityImportanceWorkflow,
+	}}, sink.PriorityUpdates())
+}
+
+func TestPriorityActivityHelpers_NoOpWithoutContextSink(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	stop := StartActivityWithImportance(ctx, "workflow", ActivityImportanceWorkflow)
+	require.NotPanics(t, stop)
+	require.NotPanics(t, func() {
+		UpdateActivityWithImportance(ctx, "workflow 1/2", ActivityImportanceWorkflow)
+	})
+}
+
+func lastActivityLine(out string) string {
+	segments := strings.Split(out, "\r")
+	for i := len(segments) - 1; i >= 0; i-- {
+		segment := strings.TrimSpace(segments[i])
+		if segment != "" {
+			return segment
+		}
+	}
+	return ""
 }

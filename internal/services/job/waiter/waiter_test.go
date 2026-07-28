@@ -43,6 +43,14 @@ func TestRetryConfirmationSuccess(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int32(3), job.Retries)
 	require.Equal(t, []string{"job 2251799813711967 waiting; retries 1, target 3, attempt 1"}, sink.Updates())
+	require.Equal(t, []activitysink.Start{{
+		Message:    "waiting for job 2251799813711967 retries 3",
+		Importance: logging.ActivityImportanceWait,
+	}}, sink.Starts())
+	require.Equal(t, []activitysink.Update{{
+		Message:    "job 2251799813711967 waiting; retries 1, target 3, attempt 1",
+		Importance: logging.ActivityImportanceWait,
+	}}, sink.PriorityUpdates())
 }
 
 func TestRetryConfirmationExhaustion(t *testing.T) {

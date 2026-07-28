@@ -63,5 +63,5 @@ c8volt expect process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt expect](c8volt_expect)	 - Wait for process instances to satisfy expectations
+* [c8volt expect]({{ "/cli/c8volt_expect" | relative_url }})	 - Wait for process instances to satisfy expectations
 

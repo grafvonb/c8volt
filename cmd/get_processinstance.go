@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/grafvonb/c8volt/c8volt"
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
@@ -152,7 +153,7 @@ var getProcessInstanceCmd = &cobra.Command{
 		switch {
 		case ltk > 0:
 			log.Debug(fmt.Sprintf("resolving pi keys from user tasks [%s]", taskKeys))
-			processInstanceKeys, err := cli.ResolveProcessInstanceKeysFromUserTasks(ctx, taskKeys, collectOptions()...)
+			processInstanceKeys, err := resolveProcessInstanceKeysFromUserTasksForCommand(cmd, cli, taskKeys, collectOptions())
 			if err != nil {
 				fail(fmt.Errorf("resolve process instance key(s) from user task key(s): %w", err))
 			}
@@ -258,6 +259,11 @@ var getProcessInstanceCmd = &cobra.Command{
 			fail(fmt.Errorf("render process instances: %w", err))
 		}
 	},
+}
+
+// resolveProcessInstanceKeysFromUserTasksForCommand keeps user-task resolution testable with the command context.
+func resolveProcessInstanceKeysFromUserTasksForCommand(cmd *cobra.Command, cli c8volt.API, taskKeys types.Keys, opts []processOptions.FacadeOption) (types.Keys, error) {
+	return cli.ResolveProcessInstanceKeysFromUserTasks(cmd.Context(), taskKeys, opts...)
 }
 
 // init registers the process-instance get command and binds its command-line

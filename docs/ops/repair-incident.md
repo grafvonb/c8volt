@@ -24,7 +24,7 @@ Incident repair is rarely one API call. `c8volt ops repair incident` freezes inc
 c8volt ops repair incident --key <incident-key> --dry-run
 ```
 
-Generated reference: [ops repair incident](/cli/c8volt_ops_repair_incident/).
+Generated reference: [ops repair incident](/cli/c8volt_ops_repair_incident).
 
 ## Best Variants
 
@@ -41,7 +41,7 @@ c8volt update process-instance --key <process-instance-key> --vars '{"hasInciden
 c8volt resolve incident --key <incident-key>
 ```
 
-Generated references: [get incident](/cli/c8volt_get_incident/), [update process-instance](/cli/c8volt_update_process-instance/), [update job](/cli/c8volt_update_job/), [resolve incident](/cli/c8volt_resolve_incident/).
+Generated references: [get incident](/cli/c8volt_get_incident), [update process-instance](/cli/c8volt_update_process-instance), [update job](/cli/c8volt_update_job), [resolve incident](/cli/c8volt_resolve_incident).
 
 ## Output And Safety
 

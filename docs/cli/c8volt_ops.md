@@ -52,9 +52,9 @@ c8volt ops [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
-* [c8volt ops analyse](c8volt_ops_analyse)	 - Discover read-only operational analyses
-* [c8volt ops execute](c8volt_ops_execute)	 - Discover predefined operational playbooks
-* [c8volt ops purge](c8volt_ops_purge)	 - Discover destructive operational cleanup workflows
-* [c8volt ops repair](c8volt_ops_repair)	 - Discover repair and remediation workflows
+* [c8volt]({{ "/cli/c8volt/" | relative_url }})	 - Operate Camunda 8 workflows from the command line
+* [c8volt ops analyse]({{ "/cli/c8volt_ops_analyse" | relative_url }})	 - Discover read-only operational analyses
+* [c8volt ops execute]({{ "/cli/c8volt_ops_execute" | relative_url }})	 - Discover predefined operational playbooks
+* [c8volt ops purge]({{ "/cli/c8volt_ops_purge" | relative_url }})	 - Discover destructive operational cleanup workflows
+* [c8volt ops repair]({{ "/cli/c8volt_ops_repair" | relative_url }})	 - Discover repair and remediation workflows
 

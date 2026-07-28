@@ -130,8 +130,42 @@ func dryRunCancelOrDeletePlanLegacy(ctx context.Context, api API, keys typex.Key
 func PlanProcessInstanceMutationPages(ctx context.Context, api API, incAPI SearchProcessInstanceIncidentAPI, request d.ProcessInstanceMutationPlanRequest, visitor d.ProcessInstanceMutationPlanVisitor, opts ...services.CallOption) (d.ProcessInstanceMutationPlanPagesResult, error) {
 	var out d.ProcessInstanceMutationPlanPagesResult
 	var cumulativeImpact int32
+	cfg := services.ApplyCallOptions(opts)
+	var planningTotal int
+	if request.SearchRequest.Limit > 0 {
+		planningTotal = int(request.SearchRequest.Limit)
+	}
+	var pageNumber int
 
 	result, err := SearchProcessInstancesPages(ctx, api, incAPI, request.SearchRequest, func(step d.ProcessInstanceSearchPageStep) (d.ProcessInstanceSearchPageAction, error) {
+		pageNumber++
+		if cfg.Progress != nil {
+			if pageNumber == 1 {
+				cfg.Progress(d.OpsProgressEvent{
+					Kind:      d.OpsProgressEventKindPreflight,
+					Preflight: processInstanceMutationPreflightScope(step.Page, request.SearchRequest),
+				})
+				if planningTotal == 0 {
+					planningTotal = processInstanceMutationPlanningTotal(step.Page, request.SearchRequest)
+				}
+			}
+			cfg.Progress(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindPage,
+				Page: processInstanceMutationPageProgress(step, pageNumber, request.SearchRequest),
+			})
+			if pageNumber == 1 && planningTotal > 0 {
+				cfg.Progress(d.OpsProgressEvent{
+					Kind: d.OpsProgressEventKindFrozenScope,
+					FrozenScope: &d.OpsFrozenScopeProgress{
+						Phase:        "planning process-instance mutation scope",
+						CoreResource: "process instance(s)",
+						Done:         0,
+						Total:        planningTotal,
+					},
+				})
+			}
+		}
+
 		keys := processInstancePageKeys(step.Page.Items)
 		plan := d.DryRunPIKeyExpansion{}
 		if len(keys) > 0 {
@@ -158,6 +192,21 @@ func PlanProcessInstanceMutationPages(ctx context.Context, api API, incAPI Searc
 		if len(keys) > 0 {
 			out.Plans = append(out.Plans, planStep)
 		}
+		if cfg.Progress != nil && planningTotal > 0 {
+			done := int(step.CumulativeCount)
+			if done > planningTotal {
+				done = planningTotal
+			}
+			cfg.Progress(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindFrozenScope,
+				FrozenScope: &d.OpsFrozenScopeProgress{
+					Phase:        "planning process-instance mutation scope",
+					CoreResource: "process instance(s)",
+					Done:         done,
+					Total:        planningTotal,
+				},
+			})
+		}
 		if visitor == nil {
 			return d.ProcessInstanceSearchPageActionContinue, nil
 		}
@@ -179,6 +228,95 @@ func PlanProcessInstanceMutationPages(ctx context.Context, api API, incAPI Searc
 	out.RequestedCount = int32(len(result.Items))
 	out.CumulativeImpact = cumulativeImpact
 	return out, nil
+}
+
+func processInstanceMutationPreflightScope(page d.ProcessInstancePage, request d.ProcessInstanceSearchRequest) *d.OpsPreflightScope {
+	total, totalKind := processInstanceMutationProgressTotal(page, request)
+	pageCount, pageCountKind := processInstanceMutationProgressPageCount(total, totalKind, page.Request.Size)
+	return &d.OpsPreflightScope{
+		Phase:                "preflight",
+		Command:              "process-instance mutation",
+		CoreResource:         "process_instance",
+		SelectorSummary:      "process-instance mutation",
+		Total:                total,
+		TotalKind:            totalKind,
+		PageSize:             page.Request.Size,
+		PageCount:            pageCount,
+		PageCountKind:        pageCountKind,
+		RequiresConfirmation: true,
+		ConsequenceSummary: d.OpsConsequenceSummary{
+			WorkSummary: "plan process-instance mutation scope",
+			RiskSummary: "destructive mutation",
+		},
+	}
+}
+
+func processInstanceMutationPageProgress(step d.ProcessInstanceSearchPageStep, pageNumber int, request d.ProcessInstanceSearchRequest) *d.OpsPageProgress {
+	total, totalKind := processInstanceMutationProgressTotal(step.Page, request)
+	pageCount, pageCountKind := processInstanceMutationProgressPageCount(total, totalKind, step.Page.Request.Size)
+	return &d.OpsPageProgress{
+		Phase:            "discovering process instances",
+		CurrentPage:      pageNumber,
+		PageCount:        pageCount,
+		PageCountKind:    pageCountKind,
+		PageSize:         step.Page.Request.Size,
+		CurrentPageCount: len(step.Page.Items),
+		Seen:             int(step.CumulativeCount),
+		Selected:         int(step.CumulativeCount),
+		OverflowState:    d.OpsOverflowState(step.Page.OverflowState),
+		LimitReached:     step.LimitReached,
+	}
+}
+
+func processInstanceMutationProgressTotal(page d.ProcessInstancePage, request d.ProcessInstanceSearchRequest) (*int64, d.OpsTotalCertainty) {
+	if request.Limit > 0 {
+		total := int64(request.Limit)
+		if page.ReportedTotal != nil && page.ReportedTotal.Kind == d.ProcessInstanceReportedTotalKindExact && page.ReportedTotal.Count < total {
+			total = page.ReportedTotal.Count
+		}
+		return &total, d.OpsTotalCertaintyExact
+	}
+	if page.ReportedTotal == nil || !request.ReportedTotalAllowed {
+		return nil, d.OpsTotalCertaintyUnknown
+	}
+	total := page.ReportedTotal.Count
+	switch page.ReportedTotal.Kind {
+	case d.ProcessInstanceReportedTotalKindExact:
+		return &total, d.OpsTotalCertaintyExact
+	case d.ProcessInstanceReportedTotalKindLowerBound:
+		return &total, d.OpsTotalCertaintyLowerBound
+	default:
+		return nil, d.OpsTotalCertaintyUnknown
+	}
+}
+
+func processInstanceMutationProgressPageCount(total *int64, kind d.OpsTotalCertainty, pageSize int32) (*int64, d.OpsPageCountKind) {
+	if total == nil || pageSize <= 0 {
+		return nil, d.OpsPageCountKindUnknown
+	}
+	pages := (*total + int64(pageSize) - 1) / int64(pageSize)
+	if pages < 1 {
+		pages = 1
+	}
+	switch kind {
+	case d.OpsTotalCertaintyExact:
+		return &pages, d.OpsPageCountKindExact
+	case d.OpsTotalCertaintyLowerBound, d.OpsTotalCertaintyEstimated:
+		return &pages, d.OpsPageCountKindEstimated
+	default:
+		return nil, d.OpsPageCountKindUnknown
+	}
+}
+
+func processInstanceMutationPlanningTotal(page d.ProcessInstancePage, request d.ProcessInstanceSearchRequest) int {
+	total, kind := processInstanceMutationProgressTotal(page, request)
+	if total == nil || kind == d.OpsTotalCertaintyUnknown {
+		return 0
+	}
+	if *total < 0 {
+		return 0
+	}
+	return int(*total)
 }
 
 func processInstancePageKeys(items []d.ProcessInstance) typex.Keys {

@@ -52,6 +52,6 @@ c8volt walk [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
-* [c8volt walk process-instance](c8volt_walk_process-instance)	 - Inspect the parent/child tree of process instances
+* [c8volt]({{ "/cli/c8volt/" | relative_url }})	 - Operate Camunda 8 workflows from the command line
+* [c8volt walk process-instance]({{ "/cli/c8volt_walk_process-instance" | relative_url }})	 - Inspect the parent/child tree of process instances
 

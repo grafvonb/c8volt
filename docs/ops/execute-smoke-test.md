@@ -28,7 +28,7 @@ A profile can look valid and still fail at the first real operational step. `c8v
 c8volt ops execute smoke-test --dry-run
 ```
 
-Generated reference: [ops execute smoke-test](/cli/c8volt_ops_execute_smoke-test/).
+Generated reference: [ops execute smoke-test](/cli/c8volt_ops_execute_smoke-test).
 
 ## Best Variants
 
@@ -45,7 +45,7 @@ c8volt run process-instance --bpmn-process-id <bpmn-process-id>
 c8volt walk process-instance --key <created-process-instance-key>
 ```
 
-Generated references: [config test-connection](/cli/c8volt_config_test-connection/), [run process-instance](/cli/c8volt_run_process-instance/), [walk process-instance](/cli/c8volt_walk_process-instance/), [delete process-instance](/cli/c8volt_delete_process-instance/).
+Generated references: [config test-connection](/cli/c8volt_config_test-connection), [run process-instance](/cli/c8volt_run_process-instance), [walk process-instance](/cli/c8volt_walk_process-instance), [delete process-instance](/cli/c8volt_delete_process-instance).
 
 ## Output And Safety
 

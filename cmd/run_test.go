@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -14,9 +15,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -391,6 +395,77 @@ func TestRunProcessInstanceCommand_KeysOnlyOutputsOnlyCreatedKeys(t *testing.T) 
 	require.NotContains(t, stdout, "found:")
 	require.NotContains(t, stdout, `"outcome"`)
 	require.Contains(t, stderr, "waiting for pi 2251799813711967")
+}
+
+// TestRunProcessInstanceCommand_VerboseBulkProgressRendersCounters verifies explicit --count progress is routed to stderr.
+func TestRunProcessInstanceCommand_VerboseBulkProgressRendersCounters(t *testing.T) {
+	var created testx.SafeSlice[string]
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/process-instances":
+			require.Equal(t, http.MethodPost, r.Method)
+			created.Append(r.URL.Path)
+			key := "2251799813685248"
+			if len(created.Snapshot()) == 2 {
+				key = "2251799813685249"
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(processInstanceCreationJSON(key)))
+		case "/v2/process-instances/2251799813685248":
+			require.Equal(t, http.MethodGet, r.Method)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(processInstanceJSON("2251799813685248")))
+		case "/v2/process-instances/2251799813685249":
+			require.Equal(t, http.MethodGet, r.Method)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(processInstanceJSON("2251799813685249")))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"--verbose",
+		"run", "process-instance",
+		"--pd-key", "pd-88",
+		"--count", "2",
+		"--workers", "1",
+	)
+
+	require.Contains(t, stdout, "found: 2")
+	require.Contains(t, stderr, "starting process instances 2/2 process instance(s)")
+	require.NotContains(t, stderr, "waiting for pi 2251799813685248")
+	require.NotContains(t, stderr, "waiting for pi 2251799813685249")
+	require.NotContains(t, stderr, "created; pd")
+	require.NotContains(t, stderr, "create requested")
+	require.Len(t, created.Snapshot(), 2)
+}
+
+// TestRunProcessInstanceBulkProgressUsesWorkflowImportance verifies explicit-count run progress outranks nested create and confirmation activity.
+func TestRunProcessInstanceBulkProgressUsesWorkflowImportance(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+
+	printExplicitLargeWorkProgressEvent(cmd, ops.ProgressEvent{
+		Kind: ops.ProgressEventKindFrozenScope,
+		FrozenScope: &ops.FrozenScopeProgress{
+			Phase:        "starting process instances",
+			CoreResource: "process instance(s)",
+			Done:         2,
+			Total:        5,
+		},
+	})
+
+	require.Equal(t, []activitysink.Update{{
+		Message:    "starting process instances 2/5 process instance(s)",
+		Importance: logging.ActivityImportanceWorkflow,
+	}}, sink.PriorityUpdates())
 }
 
 func TestRunProcessInstanceResultSortsCountOutputByStartDateAndKey(t *testing.T) {

@@ -24,7 +24,7 @@ Support work often starts from process-instance keys or filters, not incident ke
 c8volt ops repair process-instance --key <process-instance-key> --dry-run
 ```
 
-Generated reference: [ops repair process-instance](/cli/c8volt_ops_repair_process-instance/).
+Generated reference: [ops repair process-instance](/cli/c8volt_ops_repair_process-instance).
 
 ## Best Variants
 
@@ -41,7 +41,7 @@ c8volt update process-instance --key <process-instance-key> --vars '{"hasInciden
 c8volt resolve incident --key <incident-key>
 ```
 
-Generated references: [get process-instance](/cli/c8volt_get_process-instance/), [update process-instance](/cli/c8volt_update_process-instance/), [update job](/cli/c8volt_update_job/), [resolve incident](/cli/c8volt_resolve_incident/).
+Generated references: [get process-instance](/cli/c8volt_get_process-instance), [update process-instance](/cli/c8volt_update_process-instance), [update job](/cli/c8volt_update_job), [resolve incident](/cli/c8volt_resolve_incident).
 
 ## Output And Safety
 

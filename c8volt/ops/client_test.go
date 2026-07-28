@@ -282,6 +282,37 @@ func TestClientExecuteSmokeTestMapsServiceBoundary(t *testing.T) {
 	require.True(t, got.Report.NoCleanup)
 }
 
+// TestClientExecuteSmokeTestMapsProgressOption verifies smoke-test callers can install structured progress through facade options.
+func TestClientExecuteSmokeTestMapsProgressOption(t *testing.T) {
+	t.Parallel()
+
+	var gotEvent foptions.ProgressEvent
+	api := stubOpsService{
+		smokeTest: func(_ context.Context, _ d.SmokeTestRequest, opts ...services.CallOption) (d.SmokeTestResult, error) {
+			progress := services.ApplyCallOptions(opts).Progress
+			require.NotNil(t, progress)
+			progress(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindFrozenScope,
+				FrozenScope: &d.OpsFrozenScopeProgress{
+					Phase:        "starting process instances",
+					CoreResource: "process instance(s)",
+					Done:         1,
+					Total:        2,
+				},
+			})
+			return d.SmokeTestResult{Request: d.SmokeTestRequest{CommandName: "ops execute smoke-test", Count: 2}}, nil
+		},
+	}
+
+	_, err := New(api, slog.Default()).ExecuteSmokeTest(context.Background(), SmokeTestRequest{CommandName: "ops execute smoke-test", Count: 2}, foptions.WithProgress(func(event foptions.ProgressEvent) {
+		gotEvent = event
+	}))
+
+	require.NoError(t, err)
+	require.Equal(t, foptions.ProgressEventKindFrozenScope, gotEvent.Kind)
+	require.Equal(t, &foptions.FrozenScopeProgress{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 1, Total: 2}, gotEvent.FrozenScope)
+}
+
 // TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary verifies the slow-analysis facade stays thin.
 func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing.T) {
 	t.Parallel()
@@ -289,8 +320,15 @@ func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing
 	captured := time.Date(2026, 7, 18, 10, 30, 0, 0, time.UTC)
 	rootDurationLonger := 10 * time.Minute
 	durationAfter := 5 * time.Second
+	progressTotal := int64(800)
+	progressPages := int64(8)
+	remaining := 3 * time.Minute
+	var progressEvents []ProgressEvent
 	api := stubOpsService{
 		slowProcessAnalysis: func(_ context.Context, request d.SlowProcessAnalysisRequest, opts ...services.CallOption) (d.SlowProcessAnalysisResult, error) {
+			require.NotNil(t, request.Progress)
+			requestForCompare := request
+			requestForCompare.Progress = nil
 			require.Equal(t, d.SlowProcessAnalysisRequest{
 				CommandName:   "ops analyse slow-process-instances",
 				SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
@@ -319,8 +357,27 @@ func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing
 				CapturedNow:        captured,
 				OutputMode:         "json",
 				WithListeners:      true,
-			}, request)
+			}, requestForCompare)
 			require.True(t, services.ApplyCallOptions(opts).Verbose)
+			request.Progress(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindPreflight,
+				Preflight: &d.OpsPreflightScope{
+					Phase:           "preflight",
+					Command:         request.CommandName,
+					CoreResource:    "process_instance",
+					SelectorSummary: "OrderProcess",
+					Total:           &progressTotal,
+					TotalKind:       d.OpsTotalCertaintyLowerBound,
+					PageSize:        250,
+					PageCount:       &progressPages,
+					PageCountKind:   d.OpsPageCountKindEstimated,
+					ConsequenceSummary: d.OpsConsequenceSummary{
+						ResourceSummary: "at least 800 process instances",
+						WorkSummary:     "discover all matches and load runtime element timelines",
+						RiskSummary:     "read-only, expensive",
+					},
+				},
+			})
 			return d.SlowProcessAnalysisResult{
 				Request: request,
 				DiscoveredScopeStatus: d.DiscoveryScopeStatus{
@@ -331,6 +388,25 @@ func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing
 					Pages:            2,
 					CandidatesSeen:   12,
 					CandidatesFrozen: 10,
+				},
+				PreflightScope: &d.OpsPreflightScope{
+					Phase:           "preflight",
+					Command:         request.CommandName,
+					CoreResource:    "process_instance",
+					SelectorSummary: "OrderProcess",
+					Total:           &progressTotal,
+					TotalKind:       d.OpsTotalCertaintyLowerBound,
+					PageSize:        250,
+					PageCount:       &progressPages,
+					PageCountKind:   d.OpsPageCountKindEstimated,
+				},
+				FrozenScopeProgress: &d.OpsFrozenScopeProgress{
+					Phase:        "loading runtime elements",
+					CoreResource: "process instance(s)",
+					Done:         48,
+					Total:        800,
+					Elapsed:      2 * time.Minute,
+					ETA:          &remaining,
 				},
 				CapturedAt: captured,
 				Items: []d.SlowProcessAnalysisProcessInstance{{
@@ -405,9 +481,15 @@ func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing
 		CapturedNow:        captured,
 		OutputMode:         "json",
 		WithListeners:      true,
+		Progress: func(event ProgressEvent) {
+			progressEvents = append(progressEvents, event)
+		},
 	}, foptions.WithVerbose())
 
 	require.NoError(t, err)
+	require.Len(t, progressEvents, 1)
+	require.Equal(t, ProgressEventKindPreflight, progressEvents[0].Kind)
+	require.Equal(t, TotalCertaintyLowerBound, progressEvents[0].Preflight.TotalKind)
 	require.Equal(t, captured, got.CapturedAt)
 	require.Equal(t, 1, got.Count)
 	require.Equal(t, []string{"sample warning"}, got.Warnings)
@@ -420,6 +502,10 @@ func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing
 		CandidatesSeen:   12,
 		CandidatesFrozen: 10,
 	}, got.DiscoveredScopeStatus)
+	require.Equal(t, TotalCertaintyLowerBound, got.PreflightScope.TotalKind)
+	require.Equal(t, PageCountKindEstimated, got.PreflightScope.PageCountKind)
+	require.Equal(t, "loading runtime elements", got.FrozenScopeProgress.Phase)
+	require.Equal(t, &remaining, got.FrozenScopeProgress.ETA)
 	require.Equal(t, process.StateCompleted, got.Items[0].State)
 	require.Equal(t, SlowProcessAnalysisTimelineEntryKindElement, got.Items[0].Timeline[0].Kind)
 	require.Equal(t, 1, got.Items[0].Timeline[0].ProcessDurationShare)

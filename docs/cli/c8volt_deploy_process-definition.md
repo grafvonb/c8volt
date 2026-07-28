@@ -56,5 +56,5 @@ c8volt deploy process-definition [flags]
 
 ### SEE ALSO
 
-* [c8volt deploy](c8volt_deploy)	 - Deploy BPMN resources to Camunda
+* [c8volt deploy]({{ "/cli/c8volt_deploy" | relative_url }})	 - Deploy BPMN resources to Camunda
 

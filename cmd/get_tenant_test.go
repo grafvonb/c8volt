@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -19,6 +20,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -47,6 +49,80 @@ func TestGetTenantListOutput_SortsAndRendersCompactRows(t *testing.T) {
 	require.Contains(t, output, "Beta")
 	require.Contains(t, output, "found: 2")
 	require.Less(t, strings.Index(output, "tenant-a"), strings.Index(output, "tenant-b"))
+}
+
+// TestGetTenantCommand_HTTPFallbackActivityUsesCommandContext verifies tenant search and lookup preserve fallback activity.
+func TestGetTenantCommand_HTTPFallbackActivityUsesCommandContext(t *testing.T) {
+	resetTenantRenderFlags(t)
+	sink := &activitysink.Sink{}
+	api := tenantCommandAPI{
+		searchTenants: func(ctx context.Context, filter tenant.TenantFilter, opts ...foptions.FacadeOption) (tenant.Tenants, error) {
+			recordHTTPFallbackActivity(ctx, "searching tenants")
+			return tenant.Tenants{Total: 1, Items: []tenant.Tenant{{TenantId: "tenant-a", Name: "Alpha"}}}, nil
+		},
+		getTenant: func(ctx context.Context, tenantID string, opts ...foptions.FacadeOption) (tenant.Tenant, error) {
+			require.Equal(t, "tenant-a", tenantID)
+			recordHTTPFallbackActivity(ctx, "loading tenant")
+			return tenant.Tenant{TenantId: tenantID, Name: "Alpha"}, nil
+		},
+	}
+
+	searchCmd := newHTTPFallbackActivityCommand(sink)
+	runSearchTenants(searchCmd, api, tenantTestLogger(), true, tenant.TenantFilter{})
+	getCmd := newHTTPFallbackActivityCommand(sink)
+	runGetTenantByKey(getCmd, api, tenantTestLogger(), true, "tenant-a")
+
+	requireHTTPFallbackActivityStarts(t, sink, "searching tenants", "loading tenant")
+}
+
+// TestGetTenantCommand_MachineModeSuppressesFallbackActivity verifies tenant fallback text stays out of machine streams.
+func TestGetTenantCommand_MachineModeSuppressesFallbackActivity(t *testing.T) {
+	tests := []struct {
+		name       string
+		args       []string
+		wantStdout func(t *testing.T, stdout string)
+	}{
+		{
+			name: "json",
+			args: []string{"--json", "get", "tenant"},
+			wantStdout: func(t *testing.T, stdout string) {
+				t.Helper()
+				var envelope map[string]any
+				require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+				payload := requireJSONObject(t, envelope["payload"])
+				requireJSONItems(t, payload["items"], 1)
+			},
+		},
+		{
+			name: "keys-only",
+			args: []string{"--keys-only", "get", "tenant"},
+			wantStdout: func(t *testing.T, stdout string) {
+				t.Helper()
+				require.Equal(t, "tenant-a\n", stdout)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetTenantRenderFlags(t)
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodPost, r.Method)
+				require.Equal(t, "/v2/tenants/search", r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"items":[{"tenantId":"tenant-a","name":"Alpha","description":"primary tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+			}))
+			t.Cleanup(srv.Close)
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+			args := append([]string{"--config", cfgPath}, tt.args...)
+
+			stdout, stderr := executeRootWithSeparateOutputsForTest(t, args...)
+
+			require.Empty(t, stderr)
+			require.NotContains(t, stdout, "searching tenants")
+			tt.wantStdout(t, stdout)
+		})
+	}
 }
 
 // Verifies tenant list columns use the current result set for dynamic alignment.

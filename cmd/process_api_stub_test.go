@@ -24,6 +24,7 @@ type stubProcessAPI struct {
 	discoverOrphans                  func(context.Context, process.OrphanDiscoveryRequest, ...options.FacadeOption) (process.OrphanDiscovery, error)
 	searchProcessDefinitions         func(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error)
 	searchProcessDefinitionsLatest   func(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error)
+	searchProcessDefinitionsPages    func(context.Context, process.ProcessDefinitionSearchRequest, process.ProcessDefinitionSearchPageVisitor, ...options.FacadeOption) (process.ProcessDefinitionSearchPagesResult, error)
 	searchProcessInstancesPage       func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
 	searchProcessInstancesPages      func(context.Context, process.ProcessInstanceSearchRequest, process.ProcessInstanceSearchPageVisitor, ...options.FacadeOption) (process.ProcessInstanceSearchPagesResult, error)
 	searchProcessInstancesTotal      func(context.Context, process.ProcessInstanceSearchRequest, process.ProcessInstanceSearchTotalVisitor, ...options.FacadeOption) (int64, error)
@@ -164,6 +165,13 @@ func (s stubProcessAPI) SearchProcessDefinitionsLatest(ctx context.Context, filt
 		panic("unexpected call")
 	}
 	return s.searchProcessDefinitionsLatest(ctx, filter, opts...)
+}
+
+func (s stubProcessAPI) SearchProcessDefinitionsPages(ctx context.Context, request process.ProcessDefinitionSearchRequest, visitor process.ProcessDefinitionSearchPageVisitor, opts ...options.FacadeOption) (process.ProcessDefinitionSearchPagesResult, error) {
+	if s.searchProcessDefinitionsPages == nil {
+		panic("unexpected call")
+	}
+	return s.searchProcessDefinitionsPages(ctx, request, visitor, opts...)
 }
 
 func (stubProcessAPI) GetProcessDefinition(context.Context, string, ...options.FacadeOption) (process.ProcessDefinition, error) {

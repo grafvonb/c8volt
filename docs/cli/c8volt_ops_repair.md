@@ -54,7 +54,7 @@ c8volt ops repair [flags]
 
 ### SEE ALSO
 
-* [c8volt ops](c8volt_ops)	 - Discover high-level operational workflows
-* [c8volt ops repair incident](c8volt_ops_repair_incident)	 - Repair incidents by key or filter
-* [c8volt ops repair process-instance](c8volt_ops_repair_process-instance)	 - Repair incidents selected by process instances
+* [c8volt ops]({{ "/cli/c8volt_ops" | relative_url }})	 - Discover high-level operational workflows
+* [c8volt ops repair incident]({{ "/cli/c8volt_ops_repair_incident" | relative_url }})	 - Repair incidents by key or filter
+* [c8volt ops repair process-instance]({{ "/cli/c8volt_ops_repair_process-instance" | relative_url }})	 - Repair incidents selected by process instances
 

@@ -52,6 +52,7 @@ func (s *Service) ExecuteRetentionPolicy(ctx context.Context, request d.Retentio
 			Filter:    filter,
 			BatchSize: request.BatchSize,
 			Limit:     request.Limit,
+			Progress:  retentionPolicyDiscoveryProgress(request),
 		}, opts...)
 		if err != nil {
 			result.Discovery.Status = d.OpsWorkflowStepStatusFailed
@@ -79,7 +80,9 @@ func (s *Service) ExecuteRetentionPolicy(ctx context.Context, request d.Retentio
 		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomePlanned, nil)
 	}
 
+	reportOpsFrozenScopeProgress(request.Progress, "planning retention delete scope", 0, len(discovery.Keys))
 	plan, err := buildRetentionDeletePlan(ctx, s.piAPI, discovery.Keys, request.Workers, !request.DryRun, opts...)
+	reportOpsFrozenScopeProgress(request.Progress, "planning retention delete scope", len(discovery.Keys), len(discovery.Keys))
 	result.DeletePlan = plan
 	if err != nil {
 		result.DeletePlan.Status = d.OpsWorkflowStepStatusFailed
@@ -106,6 +109,9 @@ func (s *Service) ExecuteRetentionPolicy(ctx context.Context, request d.Retentio
 	}
 
 	deleteOpts := compactOpsExecutionOptions(opts...)
+	if request.Progress != nil {
+		deleteOpts = append(deleteOpts, services.WithProgress(request.Progress))
+	}
 	if request.Force {
 		deleteOpts = append(deleteOpts, services.WithForce())
 	}
@@ -384,6 +390,9 @@ func withRetentionPolicyOptionControls(request d.RetentionPolicyRequest, opts ..
 	request.Force = request.Force || cfg.Force
 	request.FailFast = request.FailFast || cfg.FailFast
 	request.NoWorkerLimit = request.NoWorkerLimit || cfg.NoWorkerLimit
+	if request.Progress == nil {
+		request.Progress = cfg.Progress
+	}
 	return request
 }
 
@@ -442,6 +451,7 @@ func finishRetentionPolicyResult(result d.RetentionPolicyResult, outcome d.Reten
 	result.Report.Discovery = result.Discovery
 	result.Report.DeletePlan = result.DeletePlan
 	result.Report.Deletion = result.Deletion
+	result.Report.DeleteRequested = result.Deletion.Submitted
 	if err != nil {
 		msg := err.Error()
 		result.Errors = appendIfMissing(result.Errors, msg)

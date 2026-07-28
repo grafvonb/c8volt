@@ -5,19 +5,27 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt"
 	"github.com/grafvonb/c8volt/c8volt/cluster"
+	"github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -58,6 +66,105 @@ func TestGetCommand_PreservesExistingProcessInstanceHelp(t *testing.T) {
 	require.Contains(t, output, "--key")
 	require.Contains(t, output, "--state")
 	require.Contains(t, output, "--json")
+}
+
+// TestGetBasicSearchProgressUsesWorkflowImportance verifies shared get/search progress stays above nested request activity.
+func TestGetBasicSearchProgressUsesWorkflowImportance(t *testing.T) {
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+
+	printBasicSearchProgressLine(cmd, "discovering process instances, page 2/4, 2000 seen, 1500 selected", ops.ProgressChannel{
+		TransientAllowed: true,
+	})
+
+	require.Equal(t, []activitysink.Update{{
+		Message:    "discovering process instances, page 2/4, 2000 seen, 1500 selected",
+		Importance: logging.ActivityImportanceWorkflow,
+	}}, sink.PriorityUpdates())
+}
+
+// TestGetClusterAndResourceCommands_HTTPFallbackActivityUsesCommandContext verifies simple command helpers preserve fallback activity.
+func TestGetClusterAndResourceCommands_HTTPFallbackActivityUsesCommandContext(t *testing.T) {
+	resetHTTPFallbackActivityRenderMode(t)
+	sink := &activitysink.Sink{}
+	api := getFallbackActivityAPI{
+		getClusterTopology: func(ctx context.Context, opts ...foptions.FacadeOption) (cluster.Topology, error) {
+			recordHTTPFallbackActivity(ctx, "checking cluster topology")
+			return cluster.Topology{GatewayVersion: "8.8.0"}, nil
+		},
+		getResource: func(ctx context.Context, key string, opts ...foptions.FacadeOption) (resource.Resource, error) {
+			require.Equal(t, "resource-id-123", key)
+			recordHTTPFallbackActivity(ctx, "loading resource")
+			return resource.Resource{ID: key, Key: "resource-key-123", Name: "order-process.bpmn", TenantId: "tenant-a"}, nil
+		},
+	}
+
+	topologyCmd := newHTTPFallbackActivityCommand(sink)
+	runGetClusterTopologyWithClient(topologyCmd, api, discardTestLogger(), true)
+	resourceCmd := newHTTPFallbackActivityCommand(sink)
+	runGetResourceByID(resourceCmd, api, discardTestLogger(), true, "resource-id-123")
+
+	requireHTTPFallbackActivityStarts(t, sink, "checking cluster topology", "loading resource")
+}
+
+// TestGetClusterCommand_MachineModeSuppressesFallbackActivity verifies HTTP fallback text stays transient.
+func TestGetClusterCommand_MachineModeSuppressesFallbackActivity(t *testing.T) {
+	tests := []struct {
+		name       string
+		args       []string
+		wantStdout func(t *testing.T, stdout string)
+		wantStderr func(t *testing.T, stderr string)
+	}{
+		{
+			name: "json",
+			args: []string{"--json", "get", "cluster", "topology"},
+			wantStdout: func(t *testing.T, stdout string) {
+				t.Helper()
+				var envelope map[string]any
+				require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+				require.Equal(t, "get cluster topology", envelope["command"])
+			},
+			wantStderr: func(t *testing.T, stderr string) {
+				t.Helper()
+				require.Empty(t, stderr)
+			},
+		},
+		{
+			name: "debug keeps endpoint detail durable",
+			args: []string{"--debug", "get", "cluster", "topology"},
+			wantStdout: func(t *testing.T, stdout string) {
+				t.Helper()
+				require.Contains(t, stdout, "GatewayVersion")
+			},
+			wantStderr: func(t *testing.T, stderr string) {
+				t.Helper()
+				require.Contains(t, stderr, "/v2/topology")
+				require.NotContains(t, stderr, "checking cluster topology")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodGet, r.Method)
+				require.Equal(t, "/v2/topology", r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(unsortedClusterTopologyFixtureJSON()))
+			}))
+			t.Cleanup(srv.Close)
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+			args := append([]string{"--config", cfgPath}, tt.args...)
+
+			stdout, stderr := executeRootWithSeparateOutputsForTest(t, args...)
+
+			require.NotContains(t, stdout, "checking cluster topology")
+			require.NotContains(t, stderr, "| checking cluster topology")
+			tt.wantStdout(t, stdout)
+			tt.wantStderr(t, stderr)
+		})
+	}
 }
 
 // Verifies root help advertises the finalized v8.9 runtime support contract.
@@ -915,6 +1022,55 @@ func TestGetProcessDefinitionByKey_SelectedTenantMismatchUsesAdminScope(t *testi
 	require.Contains(t, output, `"key": "`+tenantAdminKeysProcessDefinitionKey+`"`)
 }
 
+func TestGetProcessDefinitionListWithStatRendersLoadedStats(t *testing.T) {
+	var statsRequests []string
+	var pdSearchRequests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			pdSearchRequests = append(pdSearchRequests, string(body))
+			_, _ = w.Write([]byte(`{
+  "items": [
+    {
+      "processDefinitionId": "order-process",
+      "processDefinitionKey": "2251799813685255",
+      "tenantId": "<default>",
+      "version": 7,
+      "versionTag": "stable"
+    }
+  ],
+  "page": {
+    "totalItems": 1,
+    "hasMoreTotalItems": false
+  }
+}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			statsRequests = append(statsRequests, string(body))
+			_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"4503599627370497"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForTest(t,
+		"--config", cfgPath,
+		"get", "process-definition",
+		"--stat",
+	)
+
+	require.Len(t, pdSearchRequests, 1)
+	require.Len(t, statsRequests, 4)
+	require.Contains(t, output, "2251799813685255 <default> order-process v7/stable [ac:1 cp:1 cx:1 inc:1]")
+}
+
 // TestGetProcessDefinitionXML_SelectedTenantMismatchUsesDirectEndpoint keeps
 // XML retrieval on the explicit-key backend endpoint even with a selected tenant.
 func TestGetProcessDefinitionXML_SelectedTenantMismatchUsesDirectEndpoint(t *testing.T) {
@@ -1706,6 +1862,73 @@ func stringFilterEqValue(t *testing.T, value any) string {
 		t.Fatalf("expected string equality filter, got %#v", got)
 	}
 	return ""
+}
+
+// getFallbackActivityAPI lets command activity tests stub only the facade calls under inspection.
+type getFallbackActivityAPI struct {
+	c8volt.API
+	getClusterTopology func(context.Context, ...foptions.FacadeOption) (cluster.Topology, error)
+	getResource        func(context.Context, string, ...foptions.FacadeOption) (resource.Resource, error)
+}
+
+// GetClusterTopology delegates to the test-provided cluster topology function.
+func (a getFallbackActivityAPI) GetClusterTopology(ctx context.Context, opts ...foptions.FacadeOption) (cluster.Topology, error) {
+	return a.getClusterTopology(ctx, opts...)
+}
+
+// GetResource delegates to the test-provided resource lookup function.
+func (a getFallbackActivityAPI) GetResource(ctx context.Context, key string, opts ...foptions.FacadeOption) (resource.Resource, error) {
+	return a.getResource(ctx, key, opts...)
+}
+
+// newHTTPFallbackActivityCommand creates a command carrying a priority-aware activity sink.
+func newHTTPFallbackActivityCommand(sink *activitysink.Sink) *cobra.Command {
+	cmd := &cobra.Command{Use: "activity-test"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+	parent := &cobra.Command{Use: "get"}
+	parent.AddCommand(cmd)
+	return cmd
+}
+
+// recordHTTPFallbackActivity simulates the HTTP transport fallback scope in command helper tests.
+func recordHTTPFallbackActivity(ctx context.Context, message string) {
+	stop := logging.StartActivityWithImportance(ctx, message, logging.ActivityImportanceHTTP)
+	stop()
+}
+
+// requireHTTPFallbackActivityStarts checks that command paths recorded only HTTP-priority fallback starts.
+func requireHTTPFallbackActivityStarts(t *testing.T, sink *activitysink.Sink, messages ...string) {
+	t.Helper()
+	starts := sink.Starts()
+	require.Len(t, starts, len(messages))
+	for i, message := range messages {
+		require.Equal(t, activitysink.Start{
+			Message:    message,
+			Importance: logging.ActivityImportanceHTTP,
+		}, starts[i])
+	}
+	require.Equal(t, len(messages), sink.Stopped())
+}
+
+// resetHTTPFallbackActivityRenderMode isolates global render flags for direct command helper tests.
+func resetHTTPFallbackActivityRenderMode(t *testing.T) {
+	t.Helper()
+	prevJSON := flagViewAsJson
+	prevKeysOnly := flagViewKeysOnly
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+		flagViewKeysOnly = prevKeysOnly
+	})
+	flagViewAsJson = false
+	flagViewKeysOnly = false
+}
+
+// discardTestLogger returns a logger for command helper tests that only inspect activity.
+func discardTestLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 func executeRootForTest(t *testing.T, args ...string) string {

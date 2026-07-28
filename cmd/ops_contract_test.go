@@ -64,8 +64,8 @@ func TestOpsAnalyseSlowProcessInstancesMetadataRecordsReadOnlyContract(t *testin
 	require.Contains(t, capability.AutomationNotes, "read-only analysis")
 	require.Contains(t, capability.AutomationNotes, "key pipelines")
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
-	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
-	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true, Notes: "stdout remains one process-instance key per line with no progress or preflight text"})
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true, Notes: "stdout remains one JSON document; preflight and frozen-scope metadata are exposed as result fields"})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "with-listeners",
 		Type:        "bool",

@@ -143,7 +143,7 @@ func PreviewDeleteProcessDefinitionsWithWorkers(ctx context.Context, pdApi API, 
 		ProcessDefinitionKeys: append([]string(nil), ukeys...),
 	}
 	if cfg.NoStateCheck {
-		stopActivity := logging.StartActivity(ctx, fmt.Sprintf("checking %d pd delete impact; pi state skipped, dry run", len(ukeys)))
+		stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("checking %d pd delete impact; pi state skipped, dry run", len(ukeys)), logging.ActivityImportanceBatch)
 		defer stopActivity()
 		for _, key := range ukeys {
 			plan.Items = append(plan.Items, d.DeleteProcessDefinitionPlanItem{Key: key})
@@ -155,7 +155,7 @@ func PreviewDeleteProcessDefinitionsWithWorkers(ctx context.Context, pdApi API, 
 	if cfg.Force {
 		activityMsg = fmt.Sprintf("checking active pi and roots for %d pd; dry run", len(ukeys))
 	}
-	stopActivity := logging.StartActivity(ctx, activityMsg)
+	stopActivity := logging.StartActivityWithImportance(ctx, activityMsg, logging.ActivityImportanceBatch)
 	defer stopActivity()
 	for _, key := range ukeys {
 		item, err := previewDeleteProcessDefinitionImpact(ctx, pdApi, piApi, key, cfg.Force, cfg.Verbose, wantedWorkers, opts...)
@@ -187,7 +187,7 @@ func DeleteProcessDefinitions(ctx context.Context, api ResourceDeleteAPI, pdApi 
 	lk := len(ukeys)
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cfg.NoWorkerLimit)
 	logging.InfoIfVerbose(fmt.Sprintf("deleting pd: requested %d, workers %d", lk, nw), log, cfg.Verbose)
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("deleting %d pd", lk))
+	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("deleting %d pd", lk), logging.ActivityImportanceBatch)
 	defer stopActivity()
 	rs, err := pool.ExecuteSlice[string, d.ResourceDeleteResponse](ctx, ukeys, nw, cfg.FailFast, func(ctx context.Context, key string, _ int) (d.ResourceDeleteResponse, error) {
 		return DeleteProcessDefinition(ctx, api, pdApi, piApi, log, key, opts...)
@@ -211,7 +211,7 @@ func DeleteProcessDefinitionResources(ctx context.Context, api ResourceDeleteAPI
 	}
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cfg.NoWorkerLimit)
 	logging.InfoIfVerbose(fmt.Sprintf("deleting pd: requested %d, workers %d", lk, nw), log, cfg.Verbose)
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("deleting %d pd", lk))
+	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("deleting %d pd", lk), logging.ActivityImportanceBatch)
 	defer stopActivity()
 
 	first, err := DeleteProcessDefinitionResourceAndWait(ctx, api, pdApi, log, plans[0], opts...)
@@ -308,7 +308,7 @@ func listProcessInstancesForDefinitionCleanupEligibility(ctx context.Context, pi
 		}
 		if page.EndCursor != "" {
 			pageReq.After = page.EndCursor
-			pageReq.From = 0
+			pageReq.From += int32(len(page.Items))
 			continue
 		}
 		pageReq.From += int32(len(page.Items))
@@ -370,7 +370,7 @@ func listActiveProcessInstancesForDefinition(ctx context.Context, piApi pisvc.AP
 		}
 		if page.EndCursor != "" {
 			pageReq.After = page.EndCursor
-			pageReq.From = 0
+			pageReq.From += int32(len(page.Items))
 			continue
 		}
 		pageReq.From += int32(len(page.Items))
@@ -419,7 +419,11 @@ func cancelProcessDefinitionActiveInstances(ctx context.Context, piApi pisvc.API
 		log.Info(fmt.Sprintf("%s; force cancel active pi; roots %d, affected %d", processDefinitionDeleteLogSubject(plan), len(roots), affected))
 	}
 	cancelOpts := append([]services.CallOption{}, opts...)
-	cancelOpts = append(cancelOpts, services.WithAffectedProcessInstanceCount(affected))
+	cancelOpts = append(cancelOpts,
+		services.WithAffectedProcessInstanceCount(affected),
+		services.WithSuppressWorkflowDetailLogs(),
+		services.WithSuppressProcessInstanceDetailLogs(),
+	)
 	reports, err := pisvc.CancelProcessInstances(ctx, piApi, log, roots, wantedWorkers, affected, cancelOpts...)
 	if err != nil {
 		return err
@@ -447,7 +451,11 @@ func deleteProcessDefinitionProcessInstances(ctx context.Context, piApi pisvc.AP
 		log.Info(fmt.Sprintf("%s; delete pi history; affected %d, roots %d", processDefinitionDeleteLogSubject(plan), affected, len(roots)))
 	}
 	deleteOpts := append([]services.CallOption{}, opts...)
-	deleteOpts = append(deleteOpts, services.WithAffectedProcessInstanceCount(affected))
+	deleteOpts = append(deleteOpts,
+		services.WithAffectedProcessInstanceCount(affected),
+		services.WithSuppressWorkflowDetailLogs(),
+		services.WithSuppressProcessInstanceDetailLogs(),
+	)
 	reports, err := pisvc.DeleteProcessInstances(ctx, piApi, log, roots, wantedWorkers, affected, deleteOpts...)
 	if err != nil {
 		return err
@@ -482,7 +490,11 @@ func cleanupProcessDefinitionDeletePlanForceScope(ctx context.Context, pdApi API
 		log.Info(fmt.Sprintf("pd delete; force cancel active pi; roots %d, affected %d", len(scope.Roots), affected))
 	}
 	cancelOpts := append([]services.CallOption{}, opts...)
-	cancelOpts = append(cancelOpts, services.WithAffectedProcessInstanceCount(affected))
+	cancelOpts = append(cancelOpts,
+		services.WithAffectedProcessInstanceCount(affected),
+		services.WithSuppressWorkflowDetailLogs(),
+		services.WithSuppressProcessInstanceDetailLogs(),
+	)
 	reports, err := pisvc.CancelProcessInstances(ctx, piApi, log, scope.Roots, wantedWorkers, affected, cancelOpts...)
 	if err != nil {
 		return err
@@ -498,7 +510,11 @@ func cleanupProcessDefinitionDeletePlanForceScope(ctx context.Context, pdApi API
 		log.Info(fmt.Sprintf("pd delete; delete pi history; affected %d, roots %d", affected, len(scope.Roots)))
 	}
 	deleteOpts := append([]services.CallOption{}, opts...)
-	deleteOpts = append(deleteOpts, services.WithAffectedProcessInstanceCount(affected))
+	deleteOpts = append(deleteOpts,
+		services.WithAffectedProcessInstanceCount(affected),
+		services.WithSuppressWorkflowDetailLogs(),
+		services.WithSuppressProcessInstanceDetailLogs(),
+	)
 	reports, err = pisvc.DeleteProcessInstances(ctx, piApi, log, scope.Roots, wantedWorkers, affected, deleteOpts...)
 	if err != nil {
 		return err

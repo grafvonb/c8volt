@@ -13,7 +13,11 @@ Analyse slow process-instance timings.
 
 The command is read-only. Select process instances by explicit --key values or by exactly one process-definition selector, then inspect process and runtime element timing without changing cluster state.
 
-Search mode pages through discovered process instances by default. --batch-size controls each discovery page request, --limit caps the frozen analysis scope, and explicit keys bypass discovery paging. JSON and keys-only output stay free of progress text.
+Search mode pages through discovered process instances by default. Broad search selectors show preflight scope from the first discovery page before timeline loading, including exact, lower-bound, or unknown total wording and page-count context when available. Explicit keys bypass discovery paging and broad preflight.
+
+--batch-size controls each discovery page request; it does not cap the frozen analysis scope, explicit keys, or timeline detail loading. --limit caps the number of matching process instances frozen for analysis across all discovery pages.
+
+Default human mode uses terminal activity for preflight, discovery progress, and exact frozen-scope counters. Verbose and debug modes keep durable progress lines on stderr. JSON, keys-only, quiet, and automation output stay free of progress text.
 
 Use --dur-longer to keep only process-instance roots whose whole duration is above a threshold. Detail filters such as --element-id, --type, --element-state, and --dur-element-longer keep only process instances with matching element or transition detail rows, then show those matching rows under the root.
 
@@ -34,6 +38,7 @@ c8volt ops analyse slow-process-instances [-] [flags]
 ```
   ./c8volt ops analyse slow-process-instances --key <process-instance-key>
   ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --state active --dur-longer 5m
+  ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --batch-size 500 --limit 2000
   ./c8volt ops analyse slow-process-instances --pd-key <process-definition-key> --dur-element-longer 30s
   ./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-full-timeline
   ./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-listeners
@@ -44,7 +49,7 @@ c8volt ops analyse slow-process-instances [-] [flags]
 ### Options
 
 ```
-  -n, --batch-size int32            number of process instances to inspect per discovery page; does not cap explicit keys or timeline details (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32            number of process instances to inspect per discovery page; does not cap frozen analysis scope, explicit keys, or timeline details (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string      BPMN process ID to discover process instances
       --dur-element-longer string   only include process instances with element or transition detail rows longer than this duration, for example 30s or 2m
       --dur-longer string           only include process instances whose whole duration is longer than this duration, for example 5m or 1h30m
@@ -54,7 +59,7 @@ c8volt ops analyse slow-process-instances [-] [flags]
       --end-date-before string      only include process instances with end date <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
   -h, --help                        help for slow-process-instances
   -k, --key strings                 process-instance key(s) to analyse; repeat or combine with stdin '-'
-  -l, --limit int32                 maximum number of matching process instances to freeze during discovery; omit to discover all matches
+  -l, --limit int32                 maximum number of matching process instances to freeze for analysis across all discovery pages; omit to discover all matches
       --no-incidents-only           only include process instances without incidents during discovery
       --pd-key string               process definition key to discover process instances
       --start-date-after string     only include process instances with start date >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
@@ -85,5 +90,5 @@ c8volt ops analyse slow-process-instances [-] [flags]
 
 ### SEE ALSO
 
-* [c8volt ops analyse](c8volt_ops_analyse)	 - Discover read-only operational analyses
+* [c8volt ops analyse]({{ "/cli/c8volt_ops_analyse" | relative_url }})	 - Discover read-only operational analyses
 

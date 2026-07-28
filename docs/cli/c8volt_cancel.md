@@ -53,6 +53,6 @@ c8volt cancel [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
-* [c8volt cancel process-instance](c8volt_cancel_process-instance)	 - Cancel process instances by key or filters
+* [c8volt]({{ "/cli/c8volt/" | relative_url }})	 - Operate Camunda 8 workflows from the command line
+* [c8volt cancel process-instance]({{ "/cli/c8volt_cancel_process-instance" | relative_url }})	 - Cancel process instances by key or filters
 

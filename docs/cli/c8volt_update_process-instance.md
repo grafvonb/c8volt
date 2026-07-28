@@ -67,5 +67,5 @@ c8volt update process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt update](c8volt_update)	 - Update existing resources
+* [c8volt update]({{ "/cli/c8volt_update" | relative_url }})	 - Update existing resources
 

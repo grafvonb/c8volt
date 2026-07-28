@@ -72,6 +72,8 @@ type SlowProcessAnalysisRequest struct {
 	CapturedNow               time.Time                                       `json:"capturedNow,omitempty"`
 	OutputMode                string                                          `json:"outputMode,omitempty"`
 	WithListeners             bool                                            `json:"withListeners,omitempty"`
+	Progress                  func(ProgressEvent)                             `json:"-"`
+	ConfirmPreflight          func(PreflightScope) error                      `json:"-"`
 }
 
 // SlowProcessAnalysisProcessDefinitionSelector identifies the process-definition cohort for search mode.
@@ -170,6 +172,8 @@ type RuntimeListenerJob struct {
 type SlowProcessAnalysisResult struct {
 	Request               SlowProcessAnalysisRequest           `json:"request,omitempty"`
 	DiscoveredScopeStatus DiscoveryScopeStatus                 `json:"discoveredScopeStatus,omitempty"`
+	PreflightScope        *PreflightScope                      `json:"preflightScope,omitempty"`
+	FrozenScopeProgress   *FrozenScopeProgress                 `json:"frozenScopeProgress,omitempty"`
 	CapturedAt            time.Time                            `json:"capturedAt,omitempty"`
 	Items                 []SlowProcessAnalysisProcessInstance `json:"items"`
 	Count                 int                                  `json:"count"`
@@ -239,6 +243,7 @@ type RepairRequest struct {
 	ReportFile               string                        `json:"reportFile,omitempty"`
 	ReportFormat             string                        `json:"reportFormat,omitempty"`
 	StartedAt                time.Time                     `json:"startedAt,omitempty"`
+	Progress                 func(ProgressEvent)           `json:"-"`
 }
 
 // RepairFrozenSet captures the immutable target data discovered before mutation.
@@ -378,20 +383,21 @@ const (
 
 // SmokeTestRequest captures one requested ops execute smoke-test run.
 type SmokeTestRequest struct {
-	CommandName   string    `json:"commandName,omitempty"`
-	DryRun        bool      `json:"dryRun,omitempty"`
-	Count         int       `json:"count,omitempty"`
-	Workers       int       `json:"workers,omitempty"`
-	FailFast      bool      `json:"failFast,omitempty"`
-	NoWorkerLimit bool      `json:"noWorkerLimit,omitempty"`
-	NoCleanup     bool      `json:"noCleanup,omitempty"`
-	AutoConfirm   bool      `json:"autoConfirm,omitempty"`
-	Automation    bool      `json:"automation,omitempty"`
-	NoWait        bool      `json:"noWait,omitempty"`
-	OutputMode    string    `json:"outputMode,omitempty"`
-	ReportFile    string    `json:"reportFile,omitempty"`
-	ReportFormat  string    `json:"reportFormat,omitempty"`
-	StartedAt     time.Time `json:"startedAt,omitempty"`
+	CommandName   string              `json:"commandName,omitempty"`
+	DryRun        bool                `json:"dryRun,omitempty"`
+	Count         int                 `json:"count,omitempty"`
+	Workers       int                 `json:"workers,omitempty"`
+	FailFast      bool                `json:"failFast,omitempty"`
+	NoWorkerLimit bool                `json:"noWorkerLimit,omitempty"`
+	NoCleanup     bool                `json:"noCleanup,omitempty"`
+	AutoConfirm   bool                `json:"autoConfirm,omitempty"`
+	Automation    bool                `json:"automation,omitempty"`
+	NoWait        bool                `json:"noWait,omitempty"`
+	OutputMode    string              `json:"outputMode,omitempty"`
+	ReportFile    string              `json:"reportFile,omitempty"`
+	ReportFormat  string              `json:"reportFormat,omitempty"`
+	StartedAt     time.Time           `json:"startedAt,omitempty"`
+	Progress      func(ProgressEvent) `json:"-"`
 }
 
 // WorkflowStepResult captures compact status for one smoke-test workflow step.
@@ -581,6 +587,7 @@ type OrphanPurgeRequest struct {
 	ReportFormat   string                        `json:"reportFormat,omitempty"`
 	DiscoveredKeys typex.Keys                    `json:"discoveredKeys,omitempty"`
 	StartedAt      time.Time                     `json:"startedAt,omitempty"`
+	Progress       func(ProgressEvent)           `json:"-"`
 }
 
 type OrphanDiscoveryResult struct {
@@ -673,6 +680,7 @@ type RetentionPolicyRequest struct {
 	ReportFormat           string                        `json:"reportFormat,omitempty"`
 	DiscoveredKeys         typex.Keys                    `json:"discoveredKeys,omitempty"`
 	StartedAt              time.Time                     `json:"startedAt,omitempty"`
+	Progress               func(ProgressEvent)           `json:"-"`
 }
 
 type RetentionDiscoveryResult struct {
@@ -729,6 +737,7 @@ type RetentionAuditReport struct {
 	Discovery              RetentionDiscoveryResult      `json:"discovery,omitempty"`
 	DeletePlan             RetentionDeletePlan           `json:"deletePlan,omitempty"`
 	Deletion               RetentionDeletionResult       `json:"deletion,omitempty"`
+	DeleteRequested        bool                          `json:"deleteRequested,omitempty"`
 	AutoConfirm            bool                          `json:"autoConfirm,omitempty"`
 	Automation             bool                          `json:"automation,omitempty"`
 	NoWait                 bool                          `json:"noWait,omitempty"`
@@ -793,6 +802,7 @@ type IncidentPurgeRequest struct {
 	DiscoveredIncidentCount                int                  `json:"discoveredIncidentCount,omitempty"`
 	DiscoveredScopeStatus                  DiscoveryScopeStatus `json:"discoveredScopeStatus,omitempty"`
 	StartedAt                              time.Time            `json:"startedAt,omitempty"`
+	Progress                               func(ProgressEvent)  `json:"-"`
 }
 
 // IncidentPurgeSkippedIncident records a matching incident that could not produce a delete candidate.
@@ -860,6 +870,7 @@ type IncidentPurgeReport struct {
 	Discovery        IncidentDiscoveryResult       `json:"discovery,omitempty"`
 	DeletePlan       IncidentPurgeDeletePlan       `json:"deletePlan,omitempty"`
 	Deletion         IncidentPurgeDeletionResult   `json:"deletion,omitempty"`
+	DeleteRequested  bool                          `json:"deleteRequested,omitempty"`
 	AutoConfirm      bool                          `json:"autoConfirm,omitempty"`
 	Automation       bool                          `json:"automation,omitempty"`
 	NoWait           bool                          `json:"noWait,omitempty"`
@@ -941,6 +952,7 @@ type AllProcessDefinitionsPurgeRequest struct {
 	DiscoveredCandidateProcessDefinitionKeys typex.Keys                 `json:"discoveredCandidateProcessDefinitionKeys,omitempty"`
 	DiscoveredScopeStatus                    DiscoveryScopeStatus       `json:"discoveredScopeStatus,omitempty"`
 	StartedAt                                time.Time                  `json:"startedAt,omitempty"`
+	Progress                                 func(ProgressEvent)        `json:"-"`
 }
 
 // ProcessDefinitionDiscoveryResult captures immutable process-definition discovery output.

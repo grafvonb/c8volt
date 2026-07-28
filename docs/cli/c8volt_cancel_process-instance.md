@@ -90,5 +90,5 @@ c8volt cancel process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt cancel](c8volt_cancel)	 - Cancel running process instances
+* [c8volt cancel]({{ "/cli/c8volt_cancel" | relative_url }})	 - Cancel running process instances
 

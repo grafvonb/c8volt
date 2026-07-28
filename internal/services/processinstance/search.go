@@ -345,24 +345,26 @@ func processInstanceSearchLimitReached(count int, limit int32) bool {
 // nextProcessInstanceSearchPageRequest advances by cursor when available and
 // otherwise by the raw backend page size to avoid local-filter skips.
 func nextProcessInstanceSearchPageRequest(current d.ProcessInstancePageRequest, page d.ProcessInstancePage, rawCount int) d.ProcessInstancePageRequest {
-	if page.EndCursor != "" {
-		return d.ProcessInstancePageRequest{Size: current.Size, After: page.EndCursor}
-	}
 	advance := rawCount
 	if advance == 0 {
 		advance = int(current.Size)
 	}
-	return d.ProcessInstancePageRequest{From: current.From + int32(advance), Size: current.Size}
+	nextFrom := current.From + int32(advance)
+	if page.EndCursor != "" {
+		return d.ProcessInstancePageRequest{From: nextFrom, Size: current.Size, After: page.EndCursor}
+	}
+	return d.ProcessInstancePageRequest{From: nextFrom, Size: current.Size}
 }
 
 // nextDirectIncidentSearchPageRequest advances incident pages by cursor when available.
 func nextDirectIncidentSearchPageRequest(current d.IncidentPageRequest, page d.IncidentPage) d.IncidentPageRequest {
-	if page.EndCursor != "" {
-		return d.IncidentPageRequest{Size: current.Size, After: page.EndCursor}
-	}
 	advance := len(page.Items)
 	if advance == 0 {
 		advance = int(current.Size)
 	}
-	return d.IncidentPageRequest{From: current.From + int32(advance), Size: current.Size}
+	nextFrom := current.From + int32(advance)
+	if page.EndCursor != "" {
+		return d.IncidentPageRequest{From: nextFrom, Size: current.Size, After: page.EndCursor}
+	}
+	return d.IncidentPageRequest{From: nextFrom, Size: current.Size}
 }

@@ -52,7 +52,7 @@ func updateOrphanDiscoveryActivity(cmd *cobra.Command) func(process.OrphanDiscov
 	}
 	return func(event process.OrphanDiscoveryProgress) {
 		msg := formatOrphanDiscoveryProgress(event)
-		logging.UpdateActivity(cmd.Context(), msg)
+		logging.UpdateActivityWithImportance(cmd.Context(), msg, logging.ActivityImportanceWorkflow)
 		printOrphanDiscoveryProgress(cmd, msg)
 	}
 }

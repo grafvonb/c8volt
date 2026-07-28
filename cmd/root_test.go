@@ -240,26 +240,36 @@ func TestIndicatorEnabled_DefaultsToHumanInteractiveMode(t *testing.T) {
 	prevNoIndicator := flagNoIndicator
 	prevQuiet := flagQuiet
 	prevAutomation := flagCmdAutomation
+	prevJSON := flagViewAsJson
+	prevKeysOnly := flagViewKeysOnly
 	t.Cleanup(func() {
 		flagNoIndicator = prevNoIndicator
 		flagQuiet = prevQuiet
 		flagCmdAutomation = prevAutomation
+		flagViewAsJson = prevJSON
+		flagViewKeysOnly = prevKeysOnly
 	})
 
 	flagNoIndicator = false
 	flagQuiet = false
 	flagCmdAutomation = false
+	flagViewAsJson = false
+	flagViewKeysOnly = false
 
 	require.True(t, indicatorEnabled(nil, nil))
 }
 
-// TestIndicatorEnabled_DisabledByQuietAutomationAndNoIndicator checks every non-interactive or quiet path
+// TestIndicatorEnabled_DisabledByMachineQuietAutomationAndNoIndicator checks every non-interactive or quiet path
 // that must suppress transient activity output to avoid corrupting machine-readable streams.
-func TestIndicatorEnabled_DisabledByQuietAutomationAndNoIndicator(t *testing.T) {
+func TestIndicatorEnabled_DisabledByMachineQuietAutomationAndNoIndicator(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
+	prevJSON := flagViewAsJson
+	prevKeysOnly := flagViewKeysOnly
 	t.Cleanup(func() {
 		resetCommandTreeFlags(root)
+		flagViewAsJson = prevJSON
+		flagViewKeysOnly = prevKeysOnly
 	})
 
 	require.NoError(t, root.PersistentFlags().Set("quiet", "true"))
@@ -269,6 +279,15 @@ func TestIndicatorEnabled_DisabledByQuietAutomationAndNoIndicator(t *testing.T) 
 	require.NoError(t, root.PersistentFlags().Set("no-indicator", "true"))
 	require.False(t, indicatorEnabled(root, nil))
 
+	resetCommandTreeFlags(root)
+	flagViewAsJson = true
+	require.False(t, indicatorEnabled(root, nil))
+
+	flagViewAsJson = false
+	flagViewKeysOnly = true
+	require.False(t, indicatorEnabled(root, nil))
+
+	flagViewKeysOnly = false
 	resetCommandTreeFlags(root)
 	cfg := config.New()
 	cfg.App.Automation = true

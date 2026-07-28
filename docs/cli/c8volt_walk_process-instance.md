@@ -75,5 +75,5 @@ c8volt walk process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt walk](c8volt_walk)	 - Inspect process-instance relationships
+* [c8volt walk]({{ "/cli/c8volt_walk" | relative_url }})	 - Inspect process-instance relationships
 

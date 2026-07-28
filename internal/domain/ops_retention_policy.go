@@ -39,6 +39,7 @@ type RetentionPolicyRequest struct {
 	ReportFormat           string
 	DiscoveredKeys         typex.Keys
 	StartedAt              time.Time
+	Progress               func(OpsProgressEvent) `json:"-"`
 }
 
 type RetentionDiscoveryResult struct {
@@ -95,6 +96,7 @@ type RetentionAuditReport struct {
 	Discovery              RetentionDiscoveryResult
 	DeletePlan             RetentionDeletePlan
 	Deletion               RetentionDeletionResult
+	DeleteRequested        bool
 	AutoConfirm            bool
 	Automation             bool
 	NoWait                 bool

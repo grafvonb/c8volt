@@ -47,6 +47,7 @@ type OrphanPurgeRequest struct {
 	ReportFormat   string
 	DiscoveredKeys typex.Keys
 	StartedAt      time.Time
+	Progress       func(OpsProgressEvent) `json:"-"`
 }
 
 type OrphanDiscoveryResult struct {

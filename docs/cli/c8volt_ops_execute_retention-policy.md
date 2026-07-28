@@ -75,5 +75,5 @@ c8volt ops execute retention-policy [flags]
 
 ### SEE ALSO
 
-* [c8volt ops execute](c8volt_ops_execute)	 - Discover predefined operational playbooks
+* [c8volt ops execute]({{ "/cli/c8volt_ops_execute" | relative_url }})	 - Discover predefined operational playbooks
 

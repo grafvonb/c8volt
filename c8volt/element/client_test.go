@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/stretchr/testify/require"
@@ -214,6 +215,37 @@ func TestClient_SearchElementsWithListeners_IncludesEmptyArrays(t *testing.T) {
 	require.Len(t, result.Items, 1)
 	require.NotNil(t, result.Items[0].Listeners)
 	require.Empty(t, *result.Items[0].Listeners)
+}
+
+func TestClient_SearchElementsWithListeners_MapsProgress(t *testing.T) {
+	api := NewWithListeners(fakeElementService{
+		search: func(_ context.Context, request d.ElementSearchQuery, _ ...services.CallOption) (d.ElementSearchResult, error) {
+			require.Equal(t, d.ElementSearchQuery{ProcessInstanceKey: "2251799813688001"}, request)
+			return d.ElementSearchResult{Total: 2, Items: []d.Element{
+				{ElementInstanceKey: "2251799813689002", ProcessInstanceKey: "2251799813688001"},
+				{ElementInstanceKey: "2251799813689003", ProcessInstanceKey: "2251799813688002"},
+			}}, nil
+		},
+	}, fakeJobService{
+		search: func(_ context.Context, _ d.JobSearchQuery, _ ...services.CallOption) (d.JobSearchResult, error) {
+			return d.JobSearchResult{}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	var progress []options.FrozenScopeProgress
+	result, err := api.SearchElementsWithListeners(context.Background(), SearchRequest{ProcessInstanceKey: "2251799813688001"}, options.WithProgress(func(event options.ProgressEvent) {
+		if event.Kind == options.ProgressEventKindFrozenScope && event.FrozenScope != nil {
+			progress = append(progress, *event.FrozenScope)
+		}
+	}))
+
+	require.NoError(t, err)
+	require.Len(t, result.Items, 2)
+	require.Equal(t, []options.FrozenScopeProgress{
+		{Phase: "loading listener jobs", CoreResource: "process instance(s)", Done: 0, Total: 2},
+		{Phase: "loading listener jobs", CoreResource: "process instance(s)", Done: 1, Total: 2},
+		{Phase: "loading listener jobs", CoreResource: "process instance(s)", Done: 2, Total: 2},
+	}, progress)
 }
 
 func TestClient_SearchElements_MapsRequestAndResult(t *testing.T) {

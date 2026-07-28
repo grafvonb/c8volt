@@ -26,10 +26,13 @@ func EnrichElementWithListeners(ctx context.Context, elementAPI API, jobAPI jobS
 		element.Listeners = &empty
 		return element, nil
 	}
+	progress := newListenerEnrichmentProgress(1, opts)
+	progress.emit(0)
 	listeners, err := listenerJobsForProcessInstance(ctx, jobAPI, element.ProcessInstanceKey, opts...)
 	if err != nil {
 		return d.Element{}, err
 	}
+	progress.emit(1)
 	enriched := attachListenersToElements([]d.Element{element}, listeners)
 	return enriched[0], nil
 }
@@ -51,14 +54,46 @@ func EnrichSearchElementsWithListeners(ctx context.Context, elementAPI API, jobA
 func enrichElementItemsWithListeners(ctx context.Context, jobAPI jobSearcher, elements []d.Element, opts ...services.CallOption) ([]d.Element, error) {
 	processKeys := processInstanceKeysForElements(elements)
 	listeners := make([]d.RuntimeListenerJob, 0)
-	for _, key := range processKeys {
+	progress := newListenerEnrichmentProgress(len(processKeys), opts)
+	progress.emit(0)
+	for i, key := range processKeys {
 		got, err := listenerJobsForProcessInstance(ctx, jobAPI, key, opts...)
 		if err != nil {
 			return nil, err
 		}
 		listeners = append(listeners, got...)
+		progress.emit(i + 1)
 	}
 	return attachListenersToElements(elements, listeners), nil
+}
+
+type listenerEnrichmentProgress struct {
+	total    int
+	progress func(d.OpsProgressEvent)
+}
+
+func newListenerEnrichmentProgress(total int, opts []services.CallOption) listenerEnrichmentProgress {
+	cfg := services.ApplyCallOptions(opts)
+	return listenerEnrichmentProgress{
+		total:    total,
+		progress: cfg.Progress,
+	}
+}
+
+func (p listenerEnrichmentProgress) emit(done int) {
+	if p.progress == nil || p.total == 0 {
+		return
+	}
+	frozen := d.OpsFrozenScopeProgress{
+		Phase:        "loading listener jobs",
+		CoreResource: "process instance(s)",
+		Done:         done,
+		Total:        p.total,
+	}
+	p.progress(d.OpsProgressEvent{
+		Kind:        d.OpsProgressEventKindFrozenScope,
+		FrozenScope: &frozen,
+	})
 }
 
 // processInstanceKeysForElements returns stable unique process-instance keys from search results.

@@ -29,7 +29,7 @@ c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active -
 
 Element rows appear under the owning process-instance row. `--with-listeners` requires `--with-elements` and nests execution/task listener jobs under matching element rows.
 
-Generated reference: [get process-instance](./c8volt_get_process-instance).
+Generated reference: [get process-instance]({{ "/cli/c8volt_get_process-instance" | relative_url }}).
 
 ## Element-Centric Search
 
@@ -43,7 +43,7 @@ c8volt --json get element --pi-key <process-instance-key> --with-listeners
 
 Search filters combine with AND semantics. Use the generated reference for totals, keys-only output, page size, and all supported filters.
 
-Generated reference: [get element](./c8volt_get_element).
+Generated reference: [get element]({{ "/cli/c8volt_get_element" | relative_url }}).
 
 ## Walk With Runtime Context
 
@@ -54,7 +54,7 @@ c8volt walk process-instance --key <process-instance-key> --with-elements
 c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners
 ```
 
-Generated reference: [walk process-instance](./c8volt_walk_process-instance).
+Generated reference: [walk process-instance]({{ "/cli/c8volt_walk_process-instance" | relative_url }}).
 
 ## Slow Analysis
 
@@ -65,4 +65,4 @@ c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --
 c8volt ops analyse slow-process-instances --key <process-instance-key> --with-listeners
 ```
 
-Playbook: [Analyse Slow Process Instances](../ops/analyse-slow-process-instances/). Generated reference: [ops analyse slow-process-instances](./c8volt_ops_analyse_slow-process-instances).
+Playbook: [Analyse Slow Process Instances]({{ "/ops/analyse-slow-process-instances/" | relative_url }}). Generated reference: [ops analyse slow-process-instances]({{ "/cli/c8volt_ops_analyse_slow-process-instances" | relative_url }}).

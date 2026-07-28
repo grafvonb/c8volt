@@ -154,6 +154,27 @@ func TestCreateNProcessInstancesLogsActualSuccessAndFailureCounts(t *testing.T) 
 	require.NotContains(t, logBuf.String(), "creating pi done; created 3")
 }
 
+// TestCreateNProcessInstancesEmitsFrozenProgress verifies explicit-count starts expose exact create counters.
+func TestCreateNProcessInstancesEmitsFrozenProgress(t *testing.T) {
+	var events []d.OpsProgressEvent
+	api := stubBulkProcessInstanceAPI{
+		create: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			return d.ProcessInstanceCreation{Key: "created-" + data.BpmnProcessId, BpmnProcessId: data.BpmnProcessId}, nil
+		},
+	}
+
+	got, err := CreateNProcessInstances(context.Background(), api, slog.Default(), d.ProcessInstanceData{BpmnProcessId: "demo"}, 2, 1, services.WithProgress(func(event d.OpsProgressEvent) {
+		events = append(events, event)
+	}))
+
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	require.Len(t, events, 3)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 0, Total: 2}, *events[0].FrozenScope)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 1, Total: 2}, *events[1].FrozenScope)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 2, Total: 2}, *events[2].FrozenScope)
+}
+
 // TestDeleteProcessInstancesLogsProgressWhileRootDeleteRuns verifies long root-tree deletes produce durable progress lines before the final summary.
 func TestDeleteProcessInstancesLogsProgressWhileRootDeleteRuns(t *testing.T) {
 	oldInterval := processInstanceBulkProgressInterval
@@ -191,10 +212,73 @@ func TestDeleteProcessInstancesLogsProgressWhileRootDeleteRuns(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return strings.Contains(strings.Join(sink.Updates(), "\n"), "pi delete progress; roots 0/1 done, affected 4")
 	}, time.Second, 10*time.Millisecond)
+	require.Contains(t, sink.Starts(), activitysink.Start{
+		Message:    "deleting 4 pi via 1 root(s)",
+		Importance: logging.ActivityImportanceBatch,
+	})
+	require.Eventually(t, func() bool {
+		return containsActivityUpdate(sink.PriorityUpdates(), activitysink.Update{
+			Message:    "pi delete progress; roots 0/1 done, affected 4",
+			Importance: logging.ActivityImportanceBatch,
+		})
+	}, time.Second, 10*time.Millisecond)
 	close(release)
 
 	require.NoError(t, <-errCh)
 	require.Contains(t, logBuf.String(), "pi delete done; roots 1, affected 4, ok 1, failed 0")
+}
+
+// containsActivityUpdate matches asynchronous activity updates without depending on exact retry count.
+func containsActivityUpdate(items []activitysink.Update, want activitysink.Update) bool {
+	for _, item := range items {
+		if item == want {
+			return true
+		}
+	}
+	return false
+}
+
+// TestDeleteProcessInstancesSuppressesLegacyBulkLogs verifies CLI callers can
+// rely on structured progress without duplicate durable INFO progress lines.
+func TestDeleteProcessInstancesSuppressesLegacyBulkLogs(t *testing.T) {
+	oldInterval := processInstanceBulkProgressInterval
+	processInstanceBulkProgressInterval = 10 * time.Millisecond
+	t.Cleanup(func() { processInstanceBulkProgressInterval = oldInterval })
+
+	var logBuf lockedLogBuffer
+	log := slog.New(logging.NewPlainHandler(&logBuf, slog.LevelInfo))
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var startedOnce sync.Once
+	api := stubBulkProcessInstanceAPI{
+		delete: func(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+			require.Equal(t, "root-1", key)
+			require.True(t, services.ApplyCallOptions(opts).SuppressProcessInstanceDetailLogs)
+			startedOnce.Do(func() { close(started) })
+			select {
+			case <-ctx.Done():
+				return d.DeleteResponse{}, ctx.Err()
+			case <-release:
+				return d.DeleteResponse{Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+			}
+		},
+	}
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := DeleteProcessInstances(context.Background(), api, log, typex.Keys{"root-1"}, 1, 4,
+			services.WithSuppressWorkflowDetailLogs(),
+			services.WithSuppressProcessInstanceDetailLogs(),
+		)
+		errCh <- err
+	}()
+
+	<-started
+	time.Sleep(35 * time.Millisecond)
+	require.NotContains(t, logBuf.String(), "pi delete progress")
+	close(release)
+
+	require.NoError(t, <-errCh)
+	require.NotContains(t, logBuf.String(), "pi delete done")
 }
 
 // TestCancelProcessInstancesLogsSlowRootWhenProgressStalls verifies progress output names the in-flight root when completion stops advancing.

@@ -4,9 +4,13 @@
 package cmd
 
 import (
+	"context"
 	"testing"
 
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,6 +36,25 @@ func TestParsePIVariableFilters_PreservesQuotedCommasAndArrays(t *testing.T) {
 			{Name: "email", Operator: process.ProcessInstanceVariableFilterOperatorLike, Value: `*@example.com`, Source: piVariableFilterSourceLike},
 		},
 	}, got)
+}
+
+// TestGetProcessInstanceVariables_HTTPFallbackActivityUsesCommandContext verifies variable enrichment preserves nested fallback activity.
+func TestGetProcessInstanceVariables_HTTPFallbackActivityUsesCommandContext(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	resetHTTPFallbackActivityRenderMode(t)
+	sink := &activitysink.Sink{}
+	cmd := newHTTPFallbackActivityCommand(sink)
+	pis := process.ProcessInstances{Items: []process.ProcessInstance{{Key: "123", TenantId: "tenant-a"}}}
+
+	_, err := enrichProcessInstancesWithVariableActivityOptions(cmd, processVariableActivityAPI{}, pis, nil)
+	require.NoError(t, err)
+
+	require.Equal(t, []activitysink.Start{
+		{Message: "loading variable details for 1 process instance(s)", Importance: logging.ActivityImportanceWorkflow},
+		{Message: "searching variables", Importance: logging.ActivityImportanceHTTP},
+	}, sink.Starts())
+	require.Equal(t, 2, sink.Stopped())
 }
 
 // TestParsePIVariableFilters_ExpandsRepeatedExistsInputs verifies the
@@ -192,4 +215,19 @@ func TestPopulatePISearchFilterOpts_AttachesVariableFilters(t *testing.T) {
 		},
 	}, filter.VariableFilters)
 	require.True(t, hasPISearchFilterFlags())
+}
+
+// processVariableActivityAPI records the fallback activity that variable enrichment performs through HTTP.
+type processVariableActivityAPI struct {
+	process.API
+}
+
+// EnrichProcessInstancesWithVariables records variable-search fallback activity before returning the input rows.
+func (processVariableActivityAPI) EnrichProcessInstancesWithVariables(ctx context.Context, pis process.ProcessInstances, opts ...options.FacadeOption) (process.VariableEnrichedProcessInstances, error) {
+	recordHTTPFallbackActivity(ctx, "searching variables")
+	items := make([]process.VariableEnrichedProcessInstance, 0, len(pis.Items))
+	for _, item := range pis.Items {
+		items = append(items, process.VariableEnrichedProcessInstance{Item: item})
+	}
+	return process.VariableEnrichedProcessInstances{Total: int32(len(items)), Items: items}, nil
 }

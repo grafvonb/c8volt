@@ -19,11 +19,14 @@ import (
 	"github.com/grafvonb/c8volt/toolx/pool"
 )
 
+// slowProcessAnalysisNow is isolated so timing tests can use deterministic enrichment samples without sleeping.
+var slowProcessAnalysisNow = time.Now
+
 // AnalyseSlowProcessInstances coordinates read-only slow process analysis below the command layer.
 func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.SlowProcessAnalysisRequest, opts ...services.CallOption) (d.SlowProcessAnalysisResult, error) {
 	capturedAt := request.CapturedNow
 	if capturedAt.IsZero() {
-		capturedAt = time.Now().UTC()
+		capturedAt = slowProcessAnalysisNow().UTC()
 		request.CapturedNow = capturedAt
 	}
 	result := d.SlowProcessAnalysisResult{
@@ -59,29 +62,41 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 		}
 		instances = discovery.items
 		result.DiscoveredScopeStatus = discovery.scope
+		result.PreflightScope = discovery.preflight
 	default:
 		return result, fmt.Errorf("%w: select process instances with explicit keys or one process-definition selector", d.ErrValidation)
 	}
+
+	frozenProgress := d.OpsFrozenScopeProgress{
+		Phase:        slowProcessAnalysisEnrichmentProgressPhase(request),
+		CoreResource: "process instance(s)",
+		Total:        len(instances),
+	}
+	result.FrozenScopeProgress = &frozenProgress
+	slowProcessAnalysisEmitProgress(request, slowProcessAnalysisFrozenScopeEvent(frozenProgress))
 
 	enriched := d.ElementEnrichedProcessInstances{Items: make([]d.ElementEnrichedProcessInstance, 0, len(instances))}
 	if len(instances) > 0 {
 		if s.elementAPI == nil {
 			return result, fmt.Errorf("%w: runtime element service is required for slow process analysis", d.ErrPrecondition)
 		}
-		var err error
-		lookupContext := "lookup runtime elements for slow analysis"
 		if request.WithListeners {
 			if s.jobAPI == nil {
 				return result, fmt.Errorf("%w: runtime job service is required for slow process analysis listener enrichment", d.ErrPrecondition)
 			}
-			lookupContext = "lookup runtime elements and listener jobs for slow analysis"
-			enriched, err = pisvc.EnrichProcessInstancesWithElementListeners(ctx, s.elementAPI, s.jobAPI, instances, opts...)
-		} else {
-			enriched, err = pisvc.EnrichProcessInstancesWithElements(ctx, s.elementAPI, instances, opts...)
 		}
+		var err error
+		enriched, frozenProgress, err = slowProcessAnalysisEnrichProcessInstances(ctx, s, request, instances, frozenProgress, opts...)
 		if err != nil {
-			return result, fmt.Errorf("%s: %w", lookupContext, err)
+			return result, err
 		}
+	}
+	if len(instances) == 0 {
+		frozenProgress.Done = len(instances)
+	}
+	result.FrozenScopeProgress = &frozenProgress
+	if len(instances) == 0 {
+		slowProcessAnalysisEmitProgress(request, slowProcessAnalysisFrozenScopeEvent(frozenProgress))
 	}
 
 	items := make([]d.SlowProcessAnalysisProcessInstance, 0, len(enriched.Items))
@@ -109,6 +124,65 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 	result.Empty = len(items) == 0
 	result.Request = request
 	return result, nil
+}
+
+// slowProcessAnalysisEmitProgress keeps service progress callbacks optional and nil-safe.
+func slowProcessAnalysisEmitProgress(request d.SlowProcessAnalysisRequest, event d.OpsProgressEvent) {
+	if request.Progress == nil {
+		return
+	}
+	request.Progress(event)
+}
+
+// slowProcessAnalysisFrozenScopeEvent builds a snapshot event so callbacks cannot observe later local mutations.
+func slowProcessAnalysisFrozenScopeEvent(progress d.OpsFrozenScopeProgress) d.OpsProgressEvent {
+	return d.OpsProgressEvent{
+		Kind:        d.OpsProgressEventKindFrozenScope,
+		FrozenScope: &progress,
+	}
+}
+
+// slowProcessAnalysisEnrichmentProgressPhase picks the operator-facing frozen-scope phase for the requested enrichment path.
+func slowProcessAnalysisEnrichmentProgressPhase(request d.SlowProcessAnalysisRequest) string {
+	if request.WithListeners {
+		return "loading listener jobs"
+	}
+	return "loading runtime elements"
+}
+
+// slowProcessAnalysisEnrichProcessInstances emits exact frozen-scope progress and timing samples after each root enrichment succeeds.
+func slowProcessAnalysisEnrichProcessInstances(ctx context.Context, s *Service, request d.SlowProcessAnalysisRequest, instances []d.ProcessInstance, progress d.OpsFrozenScopeProgress, opts ...services.CallOption) (d.ElementEnrichedProcessInstances, d.OpsFrozenScopeProgress, error) {
+	out := d.ElementEnrichedProcessInstances{Items: make([]d.ElementEnrichedProcessInstance, 0, len(instances))}
+	startedAt := slowProcessAnalysisNow()
+	for i, pi := range instances {
+		var (
+			enriched d.ElementEnrichedProcessInstances
+			err      error
+		)
+		if request.WithListeners {
+			enriched, err = pisvc.EnrichProcessInstancesWithElementListeners(ctx, s.elementAPI, s.jobAPI, []d.ProcessInstance{pi}, opts...)
+			if err != nil {
+				return d.ElementEnrichedProcessInstances{}, progress, fmt.Errorf("lookup runtime elements and listener jobs for slow analysis: %w", err)
+			}
+		} else {
+			enriched, err = pisvc.EnrichProcessInstancesWithElements(ctx, s.elementAPI, []d.ProcessInstance{pi}, opts...)
+			if err != nil {
+				return d.ElementEnrichedProcessInstances{}, progress, fmt.Errorf("lookup runtime elements for slow analysis: %w", err)
+			}
+		}
+		out.Items = append(out.Items, enriched.Items...)
+		progress.Done = i + 1
+		progress.Elapsed, progress.Rate, progress.ETA = slowProcessAnalysisFrozenScopeTiming(progress, startedAt, slowProcessAnalysisNow())
+		slowProcessAnalysisEmitProgress(request, slowProcessAnalysisFrozenScopeEvent(progress))
+	}
+	out.Total = int32(len(out.Items))
+	return out, progress, nil
+}
+
+// slowProcessAnalysisFrozenScopeTiming derives visible elapsed, rate, and ETA facts from the shared domain sample window.
+func slowProcessAnalysisFrozenScopeTiming(progress d.OpsFrozenScopeProgress, startedAt time.Time, now time.Time) (time.Duration, *float64, *time.Duration) {
+	window := d.NewOpsETASampleWindow(progress.Phase, startedAt, now, progress.Done, progress.Total, d.OpsDefaultETAMinimumSamples)
+	return window.Elapsed, window.Rate, window.Remaining
 }
 
 // slowProcessAnalysisApplyRootDurationFilter hides roots whose measured whole-process duration is not above the threshold.
@@ -139,8 +213,9 @@ func slowProcessAnalysisLookupExplicitKeys(ctx context.Context, api pisvc.API, k
 }
 
 type slowProcessAnalysisSearchDiscovery struct {
-	items []d.ProcessInstance
-	scope d.DiscoveryScopeStatus
+	items     []d.ProcessInstance
+	scope     d.DiscoveryScopeStatus
+	preflight *d.OpsPreflightScope
 }
 
 // slowProcessAnalysisDiscoverProcessDefinitionInstances freezes a paged process-definition selection before analysis.
@@ -161,27 +236,25 @@ func slowProcessAnalysisDiscoverProcessDefinitionInstances(ctx context.Context, 
 	}
 	seen := map[string]struct{}{}
 
+	page, err := api.SearchForProcessInstancesPage(ctx, filter, pageReq, opts...)
+	if err != nil {
+		return slowProcessAnalysisSearchDiscovery{}, fmt.Errorf("discover process instances for slow analysis: %w", err)
+	}
+	preflight := slowProcessAnalysisPreflightScope(request, page, batchSize)
+	discovery.preflight = &preflight
+	slowProcessAnalysisEmitProgress(request, d.OpsProgressEvent{Kind: d.OpsProgressEventKindPreflight, Preflight: &preflight})
+	if request.ConfirmPreflight != nil && preflight.RequiresConfirmation {
+		if err := request.ConfirmPreflight(preflight); err != nil {
+			return slowProcessAnalysisSearchDiscovery{}, err
+		}
+	}
+
 	for {
-		page, err := api.SearchForProcessInstancesPage(ctx, filter, pageReq, opts...)
-		if err != nil {
-			return slowProcessAnalysisSearchDiscovery{}, fmt.Errorf("discover process instances for slow analysis: %w", err)
-		}
-		discovery.scope.Pages++
-		discovery.scope.CandidatesSeen += len(page.Items)
-		for _, item := range page.Items {
-			if request.Limit > 0 && len(discovery.items) >= int(request.Limit) {
-				discovery.scope.Complete = false
-				discovery.scope.Limited = true
-				discovery.scope.CandidatesFrozen = len(discovery.items)
-				return discovery, nil
-			}
-			if _, ok := seen[item.Key]; ok {
-				continue
-			}
-			seen[item.Key] = struct{}{}
-			discovery.items = append(discovery.items, item)
-		}
-		if request.Limit > 0 && len(discovery.items) >= int(request.Limit) && page.OverflowState == d.ProcessInstanceOverflowStateHasMore {
+		var limited bool
+		discovery, limited = slowProcessAnalysisCollectDiscoveryPage(discovery, request, page, seen)
+		limitReached := limited || (request.Limit > 0 && len(discovery.items) >= int(request.Limit) && page.OverflowState == d.ProcessInstanceOverflowStateHasMore)
+		slowProcessAnalysisEmitDiscoveryPageProgress(request, discovery, page, preflight, limitReached)
+		if limitReached {
 			discovery.scope.Complete = false
 			discovery.scope.Limited = true
 			discovery.scope.CandidatesFrozen = len(discovery.items)
@@ -192,7 +265,181 @@ func slowProcessAnalysisDiscoverProcessDefinitionInstances(ctx context.Context, 
 			return discovery, nil
 		}
 		pageReq = slowProcessAnalysisNextDiscoveryPage(pageReq, page)
+		page, err = api.SearchForProcessInstancesPage(ctx, filter, pageReq, opts...)
+		if err != nil {
+			return slowProcessAnalysisSearchDiscovery{}, fmt.Errorf("discover process instances for slow analysis: %w", err)
+		}
 	}
+}
+
+// slowProcessAnalysisCollectDiscoveryPage freezes unique candidates from one backend page and updates shared scope counters.
+func slowProcessAnalysisCollectDiscoveryPage(discovery slowProcessAnalysisSearchDiscovery, request d.SlowProcessAnalysisRequest, page d.ProcessInstancePage, seen map[string]struct{}) (slowProcessAnalysisSearchDiscovery, bool) {
+	discovery.scope.Pages++
+	discovery.scope.CandidatesSeen += len(page.Items)
+	for _, item := range page.Items {
+		if request.Limit > 0 && len(discovery.items) >= int(request.Limit) {
+			return discovery, true
+		}
+		if _, ok := seen[item.Key]; ok {
+			continue
+		}
+		seen[item.Key] = struct{}{}
+		discovery.items = append(discovery.items, item)
+	}
+	return discovery, false
+}
+
+// slowProcessAnalysisEmitDiscoveryPageProgress publishes one discovery page snapshot after service-owned filtering and limit trimming.
+func slowProcessAnalysisEmitDiscoveryPageProgress(request d.SlowProcessAnalysisRequest, discovery slowProcessAnalysisSearchDiscovery, page d.ProcessInstancePage, preflight d.OpsPreflightScope, limitReached bool) {
+	progress := d.OpsPageProgress{
+		Phase:            "discovering process instances",
+		CurrentPage:      discovery.scope.Pages,
+		PageCount:        preflight.PageCount,
+		PageCountKind:    preflight.PageCountKind,
+		PageSize:         discovery.scope.BatchSize,
+		CurrentPageCount: len(page.Items),
+		Seen:             discovery.scope.CandidatesSeen,
+		Selected:         len(discovery.items),
+		OverflowState:    slowProcessAnalysisOpsOverflowState(page.OverflowState),
+		LimitReached:     limitReached,
+	}
+	slowProcessAnalysisEmitProgress(request, d.OpsProgressEvent{Kind: d.OpsProgressEventKindPage, Page: &progress})
+}
+
+// slowProcessAnalysisOpsOverflowState maps process-instance continuation metadata into shared ops progress state.
+func slowProcessAnalysisOpsOverflowState(state d.ProcessInstanceOverflowState) d.OpsOverflowState {
+	switch state {
+	case d.ProcessInstanceOverflowStateNoMore:
+		return d.OpsOverflowStateNoMore
+	case d.ProcessInstanceOverflowStateHasMore:
+		return d.OpsOverflowStateHasMore
+	case d.ProcessInstanceOverflowStateIndeterminate:
+		return d.OpsOverflowStateIndeterminate
+	default:
+		return d.OpsOverflowStateUnknown
+	}
+}
+
+// slowProcessAnalysisPreflightScope builds the cheap operator scope from the first reusable discovery page.
+func slowProcessAnalysisPreflightScope(request d.SlowProcessAnalysisRequest, page d.ProcessInstancePage, batchSize int32) d.OpsPreflightScope {
+	total, totalKind := slowProcessAnalysisPreflightTotal(page)
+	pageCount, pageCountKind := slowProcessAnalysisPreflightPageCount(total, totalKind, batchSize)
+	selectorSummary := slowProcessAnalysisSelectorSummary(request.ProcessDefinitionSelector)
+	emptyExactScope := slowProcessAnalysisPreflightExactEmpty(total, totalKind)
+	consequence := slowProcessAnalysisPreflightConsequenceSummary(total, totalKind)
+	scope := d.OpsPreflightScope{
+		Phase:                "preflight",
+		Command:              request.CommandName,
+		CoreResource:         "process_instance",
+		SelectorSummary:      selectorSummary,
+		Total:                total,
+		TotalKind:            totalKind,
+		PageSize:             batchSize,
+		PageCount:            pageCount,
+		PageCountKind:        pageCountKind,
+		ConsequenceSummary:   consequence,
+		RequiresConfirmation: !emptyExactScope,
+	}
+	if scope.RequiresConfirmation {
+		scope.ConsequenceSummary.ConfirmationText = slowProcessAnalysisPreflightConfirmationText(scope)
+	}
+	return scope
+}
+
+// slowProcessAnalysisPreflightTotal maps backend total metadata without treating lower bounds as exact.
+func slowProcessAnalysisPreflightTotal(page d.ProcessInstancePage) (*int64, d.OpsTotalCertainty) {
+	if page.ReportedTotal == nil {
+		return nil, d.OpsTotalCertaintyUnknown
+	}
+	count := page.ReportedTotal.Count
+	switch page.ReportedTotal.Kind {
+	case d.ProcessInstanceReportedTotalKindExact:
+		return &count, d.OpsTotalCertaintyExact
+	case d.ProcessInstanceReportedTotalKindLowerBound:
+		return &count, d.OpsTotalCertaintyLowerBound
+	default:
+		return nil, d.OpsTotalCertaintyUnknown
+	}
+}
+
+// slowProcessAnalysisPreflightPageCount derives exact or estimated page counts only from compatible total metadata.
+func slowProcessAnalysisPreflightPageCount(total *int64, totalKind d.OpsTotalCertainty, batchSize int32) (*int64, d.OpsPageCountKind) {
+	if total == nil || batchSize <= 0 {
+		return nil, d.OpsPageCountKindUnknown
+	}
+	if slowProcessAnalysisPreflightExactEmpty(total, totalKind) {
+		return nil, d.OpsPageCountKindUnknown
+	}
+	pages := (*total + int64(batchSize) - 1) / int64(batchSize)
+	if pages < 1 {
+		pages = 1
+	}
+	if totalKind == d.OpsTotalCertaintyLowerBound {
+		return &pages, d.OpsPageCountKindEstimated
+	}
+	if totalKind == d.OpsTotalCertaintyExact {
+		return &pages, d.OpsPageCountKindExact
+	}
+	return nil, d.OpsPageCountKindUnknown
+}
+
+// slowProcessAnalysisPreflightExactEmpty identifies a proven empty scope where no expensive follow-on work exists.
+func slowProcessAnalysisPreflightExactEmpty(total *int64, kind d.OpsTotalCertainty) bool {
+	return total != nil && kind == d.OpsTotalCertaintyExact && *total == 0
+}
+
+// slowProcessAnalysisPreflightConsequenceSummary describes the next phase without warning about work that will not happen.
+func slowProcessAnalysisPreflightConsequenceSummary(total *int64, kind d.OpsTotalCertainty) d.OpsConsequenceSummary {
+	summary := d.OpsConsequenceSummary{
+		ResourceSummary: slowProcessAnalysisPreflightResourceSummary(total, kind),
+	}
+	if slowProcessAnalysisPreflightExactEmpty(total, kind) {
+		summary.WorkSummary = "none; no runtime element timelines will be loaded"
+		return summary
+	}
+	summary.WorkSummary = "discover all matches and load runtime element timelines"
+	summary.RiskSummary = "read-only, expensive"
+	return summary
+}
+
+// slowProcessAnalysisSelectorSummary keeps broad selector wording compact and free of debug filters.
+func slowProcessAnalysisSelectorSummary(selector d.SlowProcessAnalysisProcessDefinitionSelector) string {
+	if selector.BpmnProcessID != "" {
+		return selector.BpmnProcessID
+	}
+	if selector.ProcessDefinitionKey != "" {
+		return "process definition " + selector.ProcessDefinitionKey
+	}
+	return "process-definition selector"
+}
+
+// slowProcessAnalysisPreflightResourceSummary formats the count fact for structured consequence metadata.
+func slowProcessAnalysisPreflightResourceSummary(total *int64, kind d.OpsTotalCertainty) string {
+	if total == nil || kind == d.OpsTotalCertaintyUnknown {
+		return "an unknown number of process instances"
+	}
+	switch kind {
+	case d.OpsTotalCertaintyExact:
+		switch *total {
+		case 0:
+			return "no process instances"
+		case 1:
+			return "1 process instance"
+		default:
+			return fmt.Sprintf("%d process instances", *total)
+		}
+	case d.OpsTotalCertaintyLowerBound:
+		return fmt.Sprintf("at least %d process instances", *total)
+	case d.OpsTotalCertaintyEstimated:
+		return fmt.Sprintf("about %d process instances", *total)
+	default:
+		return "an unknown number of process instances"
+	}
+}
+
+// slowProcessAnalysisPreflightConfirmationText freezes the prompt body used before full discovery begins.
+func slowProcessAnalysisPreflightConfirmationText(scope d.OpsPreflightScope) string {
+	return fmt.Sprintf("Continue slow analysis for %s?", slowProcessAnalysisPreflightResourceSummary(scope.Total, scope.TotalKind))
 }
 
 // slowProcessAnalysisProcessInstanceFilter maps the normalized analysis selector to process-instance search.
@@ -237,12 +484,11 @@ func slowProcessAnalysisDiscoveryBatchSize(size int32) int32 {
 
 // slowProcessAnalysisNextDiscoveryPage advances cursor-based pages before falling back to offset paging.
 func slowProcessAnalysisNextDiscoveryPage(current d.ProcessInstancePageRequest, page d.ProcessInstancePage) d.ProcessInstancePageRequest {
-	next := d.ProcessInstancePageRequest{Size: current.Size}
+	next := d.ProcessInstancePageRequest{From: current.From + int32(len(page.Items)), Size: current.Size}
 	if page.EndCursor != "" {
 		next.After = page.EndCursor
 		return next
 	}
-	next.From = current.From + int32(len(page.Items))
 	return next
 }
 

@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -15,8 +16,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/incident"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,6 +55,27 @@ func TestGetIncidentCommand_KeyedLookupDeduplicatesFlagAndStdinKeys(t *testing.T
 	require.Contains(t, output, "2251799813685250")
 	require.Contains(t, output, "m:Mapping failed")
 	require.Contains(t, output, "found: 2")
+}
+
+// TestGetIncidentCommand_HTTPFallbackActivityUsesCommandContext verifies incident search preserves fallback activity.
+func TestGetIncidentCommand_HTTPFallbackActivityUsesCommandContext(t *testing.T) {
+	resetHTTPFallbackActivityRenderMode(t)
+	prevLimit := flagGetIncidentLimit
+	prevPIKeysOnly := flagGetIncidentPIKeysOnly
+	t.Cleanup(func() {
+		flagGetIncidentLimit = prevLimit
+		flagGetIncidentPIKeysOnly = prevPIKeysOnly
+	})
+	flagGetIncidentLimit = 1
+	flagGetIncidentPIKeysOnly = false
+	sink := &activitysink.Sink{}
+	cmd := newHTTPFallbackActivityCommand(sink)
+	api := incidentActivityAPI{}
+
+	_, _, err := searchIncidentsWithPaging(cmd, api, &config.Config{}, incident.Filter{State: "ACTIVE"})
+	require.NoError(t, err)
+
+	requireHTTPFallbackActivityStarts(t, sink, "searching incidents")
 }
 
 func TestGetIncidentCommand_JSONOutputUsesIncidentListPayload(t *testing.T) {
@@ -1025,9 +1051,63 @@ func TestGetIncidentCommand_SearchVerboseProgress(t *testing.T) {
 	require.Contains(t, requests[0], `"limit":2`)
 	require.Contains(t, requests[0], `"from":0`)
 	require.Contains(t, requests[1], `"from":2`)
-	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
-	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+	require.Contains(t, output, "incident search scope: matched at least 3 incidents; page size: 2; discovery pages: at least 2")
+	require.Contains(t, output, "discovering incidents, page 1/~2, 2 seen")
+	require.Contains(t, output, "discovering incidents, page 2/2, 3 seen")
 	require.Contains(t, output, "found: 3")
+}
+
+// TestGetIncidentCommand_SearchMachineOutputStaysProgressFree verifies shared progress rollout cannot leak into incident JSON or key streams.
+func TestGetIncidentCommand_SearchMachineOutputStaysProgressFree(t *testing.T) {
+	t.Run("json", func(t *testing.T) {
+		var requests []string
+		srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":true}}`,
+			`{"items":[{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+		)
+		t.Cleanup(srv.Close)
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+		stdout, stderr := executeRootForIncidentTestWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--json",
+			"get", "incident",
+			"--batch-size", "1",
+		)
+
+		require.Len(t, requests, 2)
+		require.Empty(t, stderr)
+		require.NotContains(t, stdout, "scope:")
+		require.NotContains(t, stdout, "page size:")
+		require.NotContains(t, stdout, "discovering incidents")
+		var envelope map[string]any
+		require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+		payload := requireJSONObject(t, envelope["payload"])
+		items := payload["items"].([]any)
+		require.Len(t, items, 2)
+	})
+
+	t.Run("keys only", func(t *testing.T) {
+		var requests []string
+		srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+		)
+		t.Cleanup(srv.Close)
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+		stdout, stderr := executeRootForIncidentTestWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--keys-only",
+			"get", "incident",
+			"--state", "active",
+		)
+
+		require.Len(t, requests, 1)
+		require.Empty(t, stderr)
+		require.Equal(t, "2251799813685253\n2251799813685254\n", stdout)
+		require.NotContains(t, stdout, "scope:")
+		require.NotContains(t, stdout, "page size:")
+	})
 }
 
 func TestGetIncidentCommand_SearchErrorMessageMatchesCaseInsensitiveAcrossPages(t *testing.T) {
@@ -1069,6 +1149,25 @@ func TestGetIncidentCommand_RejectsKeyedLookupWithSearchFilter(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "--key cannot be combined with search filters")
 	require.Empty(t, output)
+}
+
+// incidentActivityAPI records the fallback activity that the HTTP-backed incident facade would emit.
+type incidentActivityAPI struct {
+	incident.API
+}
+
+// SearchIncidentsPages records incident-search fallback activity before returning one completed page.
+func (incidentActivityAPI) SearchIncidentsPages(ctx context.Context, filter incident.Filter, pageReq incident.PageRequest, limit int32, visitor incident.SearchPageVisitor, opts ...foptions.FacadeOption) (incident.SearchPagesResult, error) {
+	recordHTTPFallbackActivity(ctx, "searching incidents")
+	page := incident.Page{
+		Items:         []incident.ProcessInstanceIncidentDetail{{IncidentKey: "2251799813685249", State: "ACTIVE"}},
+		Request:       pageReq,
+		OverflowState: incident.OverflowStateNoMore,
+	}
+	if _, err := visitor(incident.SearchPageStep{Page: page, CumulativeCount: 1, LimitReached: true}); err != nil {
+		return incident.SearchPagesResult{}, err
+	}
+	return incident.SearchPagesResult{Items: page.Items, Limit: limit, Pages: 1}, nil
 }
 
 func newIncidentLookupServer(t *testing.T, requests *[]string, responses map[string]string) *httptest.Server {
@@ -1139,6 +1238,27 @@ func executeRootForIncidentTest(t *testing.T, args ...string) string {
 	_, err := root.ExecuteC()
 	require.NoError(t, err)
 	return buf.String()
+}
+
+// executeRootForIncidentTestWithSeparateOutputs lets machine-output tests prove progress stays off stdout.
+func executeRootForIncidentTestWithSeparateOutputs(t *testing.T, args ...string) (string, string) {
+	t.Helper()
+
+	resetGetIncidentFlagState()
+	t.Cleanup(resetGetIncidentFlagState)
+
+	root := Root()
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	root.SetOut(stdout)
+	root.SetErr(stderr)
+	root.SetArgs(args)
+	resetCommandTreeFlags(root)
+	resetGetIncidentFlagState()
+
+	_, err := root.ExecuteC()
+	require.NoError(t, err)
+	return stdout.String(), stderr.String()
 }
 
 func executeRootForIncidentTestWithStdin(t *testing.T, stdin string, args ...string) string {

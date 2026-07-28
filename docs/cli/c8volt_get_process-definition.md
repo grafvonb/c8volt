@@ -43,6 +43,7 @@ c8volt get process-definition [flags]
 ### Options
 
 ```
+  -n, --batch-size int32         number of process definitions to request per discovery page; does not cap total returned rows (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string   BPMN process ID to filter process instances
   -h, --help                     help for process-definition
   -k, --key string               process definition key to fetch
@@ -73,5 +74,5 @@ c8volt get process-definition [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Inspect cluster, process, job, element, incident, tenant, and resource state
+* [c8volt get]({{ "/cli/c8volt_get" | relative_url }})	 - Inspect cluster, process, job, element, incident, tenant, and resource state
 
