@@ -20,11 +20,11 @@
 
 **Purpose**: Confirm the existing activity ownership points and reusable test utilities before changing behavior.
 
-- [ ] T001 [P] Review current shared activity writer behavior and nested-scope tests in `toolx/logging/activity.go` and `toolx/logging/activity_test.go`
-- [ ] T002 [P] Review current HTTP fallback activity behavior and label tests in `internal/services/httpc/round_trippers.go` and `internal/services/httpc/round_trippers_test.go`
-- [ ] T003 [P] Review reusable activity sink test support in `testx/activitysink/activity_sink.go`
-- [ ] T004 [P] Review representative command progress emitters in `cmd/get_processinstance_paging.go`, `cmd/get_processinstance_total.go`, `cmd/get_processinstance_orphan.go`, `cmd/processinstance_mutation_progress.go`, and `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T005 [P] Review service-level bulk and waiter activity call sites in `internal/services/processinstance/bulk.go`, `internal/services/processinstance/variables.go`, `internal/services/processinstance/waiter/waiter.go`, `internal/services/processdefinition/delete.go`, `internal/services/incident/waiter/waiter.go`, `internal/services/job/waiter/waiter.go`, `internal/services/resource/v88/service.go`, and `internal/services/resource/v89/service.go`
+- [x] T001 [P] Review current shared activity writer behavior and nested-scope tests in `toolx/logging/activity.go` and `toolx/logging/activity_test.go`
+- [x] T002 [P] Review current HTTP fallback activity behavior and label tests in `internal/services/httpc/round_trippers.go` and `internal/services/httpc/round_trippers_test.go`
+- [x] T003 [P] Review reusable activity sink test support in `testx/activitysink/activity_sink.go`
+- [x] T004 [P] Review representative command progress emitters in `cmd/get_processinstance_paging.go`, `cmd/get_processinstance_total.go`, `cmd/get_processinstance_orphan.go`, `cmd/processinstance_mutation_progress.go`, and `cmd/ops_analyse_slow_process_instances.go`
+- [x] T005 [P] Review service-level bulk and waiter activity call sites in `internal/services/processinstance/bulk.go`, `internal/services/processinstance/variables.go`, `internal/services/processinstance/waiter/waiter.go`, `internal/services/processdefinition/delete.go`, `internal/services/incident/waiter/waiter.go`, `internal/services/job/waiter/waiter.go`, `internal/services/resource/v88/service.go`, and `internal/services/resource/v89/service.go`
 
 ---
 
