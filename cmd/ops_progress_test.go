@@ -232,6 +232,121 @@ func TestOpsProgressChannelForModeProtectsMachineOutput(t *testing.T) {
 	require.Equal(t, ops.ProgressChannel{Mode: ops.ProgressModeAutomation, StructuredReportAllowed: true}, opsProgressChannelForMode(opsProgressModeInput{RenderMode: RenderModeOneLine, Automation: true}))
 }
 
+// TestOpsProgressDurableMilestoneRequiresElapsedTimeAndPageProgress verifies default-human milestones wait for silence and observed discovery movement.
+func TestOpsProgressDurableMilestoneRequiresElapsedTimeAndPageProgress(t *testing.T) {
+	now := time.Date(2026, time.August, 4, 12, 0, 0, 0, time.UTC)
+	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
+	channel := ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}
+	event := ops.ProgressEvent{
+		Kind: ops.ProgressEventKindPage,
+		Page: &ops.PageProgress{Phase: "discovering process instances", CurrentPage: 1, Seen: 1000, Selected: 900},
+	}
+
+	require.False(t, pacer.AllowDurableMilestone(event, channel))
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	event.Page.CurrentPage = 2
+	event.Page.Seen = 2000
+	event.Page.Selected = 1800
+
+	require.True(t, pacer.AllowDurableMilestone(event, channel))
+}
+
+// TestOpsProgressDurableMilestoneRequiresForwardProgress verifies elapsed time alone does not repeat the same milestone.
+func TestOpsProgressDurableMilestoneRequiresForwardProgress(t *testing.T) {
+	now := time.Date(2026, time.August, 4, 12, 0, 0, 0, time.UTC)
+	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
+	channel := ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}
+	event := ops.ProgressEvent{
+		Kind: ops.ProgressEventKindPage,
+		Page: &ops.PageProgress{Phase: "discovering process instances", CurrentPage: 1, Seen: 1000, Selected: 900},
+	}
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	require.True(t, pacer.AllowDurableMilestone(event, channel))
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+
+	require.False(t, pacer.AllowDurableMilestone(event, channel))
+}
+
+// TestOpsProgressDurableMilestoneAllowsFrozenScopeProgress verifies frozen-scope counters can drive sparse default-human milestones.
+func TestOpsProgressDurableMilestoneAllowsFrozenScopeProgress(t *testing.T) {
+	now := time.Date(2026, time.August, 4, 12, 0, 0, 0, time.UTC)
+	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
+	channel := ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}
+	event := ops.ProgressEvent{
+		Kind:        ops.ProgressEventKindFrozenScope,
+		FrozenScope: &ops.FrozenScopeProgress{Phase: "loading runtime elements", CoreResource: "process instance(s)", Done: 0, Total: 100},
+	}
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	require.False(t, pacer.AllowDurableMilestone(event, channel))
+
+	event.FrozenScope.Done = 25
+
+	require.True(t, pacer.AllowDurableMilestone(event, channel))
+}
+
+// TestOpsProgressDurableMilestoneSuppressesTimerOnlyETA verifies timing-only ETA updates do not create duplicate durable milestones.
+func TestOpsProgressDurableMilestoneSuppressesTimerOnlyETA(t *testing.T) {
+	now := time.Date(2026, time.August, 4, 12, 0, 0, 0, time.UTC)
+	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
+	channel := ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}
+	remaining := 5 * time.Minute
+	event := ops.ProgressEvent{
+		Kind: ops.ProgressEventKindETA,
+		ETA: &ops.ETASampleWindow{
+			Phase:             "loading runtime elements",
+			CompletedSamples:  3,
+			Total:             100,
+			Elapsed:           30 * time.Second,
+			MinimumSamplesMet: true,
+			Remaining:         &remaining,
+		},
+	}
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	require.True(t, pacer.AllowDurableMilestone(event, channel))
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	event.ETA.Elapsed += opsDurableMilestoneMinimumElapsed
+	remaining -= time.Minute
+
+	require.False(t, pacer.AllowDurableMilestone(event, channel))
+}
+
+// TestOpsProgressDurableMilestoneChannelGatingProtectsMachineModes verifies sparse durable milestones stay out of script-safe modes.
+func TestOpsProgressDurableMilestoneChannelGatingProtectsMachineModes(t *testing.T) {
+	startedAt := time.Date(2026, time.August, 4, 12, 0, 0, 0, time.UTC)
+	now := startedAt
+	event := ops.ProgressEvent{
+		Kind: ops.ProgressEventKindPage,
+		Page: &ops.PageProgress{Phase: "discovering process instances", CurrentPage: 2, Seen: 2000, Selected: 1800},
+	}
+
+	tests := []struct {
+		name    string
+		channel ops.ProgressChannel
+		want    bool
+	}{
+		{name: "default human", channel: ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}, want: true},
+		{name: "json", channel: ops.ProgressChannel{Mode: ops.ProgressModeJSON}},
+		{name: "keys only", channel: ops.ProgressChannel{Mode: ops.ProgressModeKeysOnly}},
+		{name: "quiet", channel: ops.ProgressChannel{Mode: ops.ProgressModeQuiet}},
+		{name: "automation", channel: ops.ProgressChannel{Mode: ops.ProgressModeAutomation, StructuredReportAllowed: true}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
+			now = startedAt.Add(opsDurableMilestoneMinimumElapsed)
+
+			require.Equal(t, tc.want, pacer.AllowDurableMilestone(event, tc.channel))
+			now = startedAt
+		})
+	}
+}
+
 // TestOpsETAAllowedRequiresSamplesExactTotalAndRemaining verifies approximate remaining time needs a complete timing window.
 func TestOpsETAAllowedRequiresSamplesExactTotalAndRemaining(t *testing.T) {
 	remaining := 30 * time.Second

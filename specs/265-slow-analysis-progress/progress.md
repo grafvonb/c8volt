@@ -18,3 +18,22 @@ Started: 2026-08-04 18:54:15
 **Learnings**:
 - Existing command progress code already owns formatter/mode gating and slow analysis already emits structured events suitable for shared pacing.
 ---
+---
+## Iteration 2 - 2026-08-04 21:21
+**Work Unit**: Phase 2: Foundational (Blocking Prerequisites)
+**Tasks Completed**:
+- [x] T003: Add shared milestone pacing state and boundary tests in `cmd/ops_progress_test.go`
+- [x] T004: Add shared output-mode gating tests in `cmd/ops_progress_test.go`
+- [x] T005: Implement shared milestone pacing state and helpers in `cmd/ops_progress.go`
+- [x] T006: Run shared progress validation from `specs/265-slow-analysis-progress/quickstart.md`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_progress.go
+- cmd/ops_progress_test.go
+- specs/265-slow-analysis-progress/tasks.md
+- specs/265-slow-analysis-progress/ralph-memory.md
+- specs/265-slow-analysis-progress/progress.md
+**Learnings**:
+- Shared CLI pacing now requires default-human stderr eligibility, elapsed silence, and forward page/frozen-scope/ETA counter movement before sparse durable milestones.
+---

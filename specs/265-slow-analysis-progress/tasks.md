@@ -29,10 +29,10 @@
 
 **CRITICAL**: No user story implementation should begin until shared progress pacing expectations are captured.
 
-- [ ] T003 [P] Add shared milestone pacing state and boundary tests in `cmd/ops_progress_test.go` for no elapsed time, no forward progress, elapsed plus page progress, elapsed plus frozen-scope progress, and timer-only suppression
-- [ ] T004 [P] Add shared output-mode gating tests in `cmd/ops_progress_test.go` proving default human can use sparse durable milestones while JSON, keys-only, quiet, and automation modes suppress them
-- [ ] T005 Implement shared milestone pacing state, named elapsed threshold constant, progress signature comparison, and durable milestone decision helpers in `cmd/ops_progress.go`
-- [ ] T006 Run `go test ./cmd -run 'TestOps.*Progress|TestFormatOps.*Progress|TestOpsETA' -count=1` using validation guidance in `specs/265-slow-analysis-progress/quickstart.md` and record any failures before story work continues
+- [x] T003 [P] Add shared milestone pacing state and boundary tests in `cmd/ops_progress_test.go` for no elapsed time, no forward progress, elapsed plus page progress, elapsed plus frozen-scope progress, and timer-only suppression
+- [x] T004 [P] Add shared output-mode gating tests in `cmd/ops_progress_test.go` proving default human can use sparse durable milestones while JSON, keys-only, quiet, and automation modes suppress them
+- [x] T005 Implement shared milestone pacing state, named elapsed threshold constant, progress signature comparison, and durable milestone decision helpers in `cmd/ops_progress.go`
+- [x] T006 Run `go test ./cmd -run 'TestOps.*Progress|TestFormatOps.*Progress|TestOpsETA' -count=1` using validation guidance in `specs/265-slow-analysis-progress/quickstart.md` and record any failures before story work continues
 
 **Checkpoint**: Shared milestone policy is test-covered and available for slow-process analysis.
 
