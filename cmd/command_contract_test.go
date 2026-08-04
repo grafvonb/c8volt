@@ -157,7 +157,7 @@ func TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata(t *testing.T
 		Type:        "duration",
 		Required:    false,
 		Repeated:    false,
-		Description: "interval between process-definition watch snapshots after the immediate first snapshot (default 1s)",
+		Description: "interval between process-definition watch snapshots after the immediate first snapshot",
 	})
 	require.Contains(t, capability.OutputModes, OutputModeContract{
 		Name:      "one-line",

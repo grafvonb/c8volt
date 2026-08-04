@@ -165,3 +165,15 @@ Expected outcome:
 
 - User-facing docs match the implemented watch behavior.
 - Machine-output guarantees are documented wherever command output contracts are listed.
+
+## Final Validation Notes
+
+Iteration 6 completed the documentation and validation pass on 2026-08-04:
+
+- `make docs-content` passed and regenerated CLI reference content.
+- `go test ./toolx/... -run 'Watch|watch' -count=1` passed.
+- `go test ./internal/services/processdefinition/... -run 'SearchProcessDefinitions|Watch|Snapshot' -count=1` passed.
+- `go test ./c8volt/process -run 'ProcessDefinition|Watch|Snapshot' -count=1` passed.
+- `go test ./cmd -run 'TestGetProcessDefinition|TestCommandContract' -count=1` passed.
+- `gofmt -w toolx/watch cmd/get_processdefinition.go cmd/cmd_views_get.go cmd/command_contract.go c8volt/process internal/domain/processdefinition.go internal/services/processdefinition/search.go` completed.
+- `make test` passed.

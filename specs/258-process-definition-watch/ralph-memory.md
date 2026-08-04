@@ -14,6 +14,7 @@ Started: 2026-08-04T15:18:59Z
 - US2 watch status messages are written to `cmd.ErrOrStderr()`: retry notices, timeout stop notices, and retry-exhaustion stop notices stay away from result stdout.
 - US3 watch validation is command-local in `validateGetProcessDefinitionWatchOutputFlags`: `--watch` rejects JSON, keys-only, XML, quiet, and automation combinations before process-definition lookup work.
 - Process-definition command output metadata now explicitly advertises one-line, JSON, and keys-only modes; the notes document that watch uses terminal snapshots and rejects finite machine-oriented output combinations.
+- README and generated CLI docs now document process-definition watch examples, default `1s` interval, broad unselected watch behavior, human-only output rejections, `--batch-size`, timeout, and retry reset behavior.
 
 ## Decisions
 - Baseline setup found no pre-existing failures in the targeted command or process-definition service/facade test slices, so `quickstart.md` did not need failure notes.
@@ -22,6 +23,7 @@ Started: 2026-08-04T15:18:59Z
 - Watch retry tolerance uses the existing command backoff config: `cfg.App.Backoff.Timeout` maps to watch timeout and `cfg.App.Backoff.MaxRetries` maps to consecutive retry budget. The command default remains `0` for unlimited retries.
 - Process-definition watch retries only shared `ferrors` timeout and unavailable classes; validation, unsupported, not-found, conflict, local precondition, and unknown/internal errors stay fatal.
 - Incompatibility errors use `forbiddenFlagCombinationf("--watch cannot be combined with ...; watch prints repeated terminal snapshots")` so JSON mode returns the shared envelope and other modes use the standard invalid-args CLI error path.
+- `--watch-interval` flag usage should not include a literal `(default 1s)` because Cobra appends the default automatically in generated docs.
 
 ## Gotchas
 - Non-watch missing-selector behavior is documented as a local diagnostic; watch mode must override this only for `--watch` without selectors.
@@ -37,8 +39,10 @@ Started: 2026-08-04T15:18:59Z
 - `go test ./internal/services/processdefinition/... -run 'SearchProcessDefinitions|Watch|Snapshot' -count=1`
 - `go test ./c8volt/process -run 'ProcessDefinition|Watch|Snapshot' -count=1`
 - `go test ./... -count=1`
+- `make docs-content`
+- `make test`
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should start Phase 6 Polish at T044-T050: update README watch notes, regenerate and review CLI docs with `make docs-content`, run targeted `gofmt`, quickstart validation, full `make test`, and final quickstart notes.
+- Feature complete; no handoff required.

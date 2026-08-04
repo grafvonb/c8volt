@@ -136,13 +136,13 @@
 
 **Purpose**: Documentation, formatting, and full validation required before commit readiness.
 
-- [ ] T044 [P] Update README process-definition examples and watch behavior notes in `README.md`
-- [ ] T045 Regenerate generated CLI docs with `make docs-content` for `docs/cli/c8volt_get_process-definition.md`
-- [ ] T046 [P] Review generated process-definition docs for watch flags and output contracts in `docs/cli/c8volt_get_process-definition.md`
-- [ ] T047 Run `gofmt -w toolx/watch cmd/get_processdefinition.go cmd/cmd_views_get.go cmd/command_contract.go c8volt/process internal/domain/processdefinition.go internal/services/processdefinition/search.go`
-- [ ] T048 Run focused quickstart validation commands from `specs/258-process-definition-watch/quickstart.md`
-- [ ] T049 Run full repository validation with `make test` using `Makefile`
-- [ ] T050 Update final validation notes in `specs/258-process-definition-watch/quickstart.md`
+- [x] T044 [P] Update README process-definition examples and watch behavior notes in `README.md`
+- [x] T045 Regenerate generated CLI docs with `make docs-content` for `docs/cli/c8volt_get_process-definition.md`
+- [x] T046 [P] Review generated process-definition docs for watch flags and output contracts in `docs/cli/c8volt_get_process-definition.md`
+- [x] T047 Run `gofmt -w toolx/watch cmd/get_processdefinition.go cmd/cmd_views_get.go cmd/command_contract.go c8volt/process internal/domain/processdefinition.go internal/services/processdefinition/search.go`
+- [x] T048 Run focused quickstart validation commands from `specs/258-process-definition-watch/quickstart.md`
+- [x] T049 Run full repository validation with `make test` using `Makefile`
+- [x] T050 Update final validation notes in `specs/258-process-definition-watch/quickstart.md`
 
 ---
 

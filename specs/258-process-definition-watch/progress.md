@@ -134,3 +134,29 @@ Started: 2026-08-04 17:19:00
 **Learnings**:
 - Watch output-mode validation belongs in command flag validation; JSON rejection uses the shared envelope while other rejected modes use the standard invalid-args error path before lookup work.
 ---
+---
+## Iteration 6 - 2026-08-04 18:02
+**Work Unit**: Phase 6 Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T044: Updated README process-definition watch examples and behavior notes
+- [x] T045: Regenerated generated CLI docs with `make docs-content`
+- [x] T046: Reviewed generated process-definition docs for watch flags and output contracts
+- [x] T047: Ran targeted `gofmt`
+- [x] T048: Ran focused quickstart validation commands
+- [x] T049: Ran full repository validation with `make test`
+- [x] T050: Updated final validation notes in quickstart
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/command_contract_test.go
+- cmd/get_processdefinition.go
+- docs/cli/c8volt_get_process-definition.md
+- docs/index.md
+- specs/258-process-definition-watch/quickstart.md
+- specs/258-process-definition-watch/tasks.md
+- specs/258-process-definition-watch/ralph-memory.md
+- specs/258-process-definition-watch/progress.md
+**Learnings**:
+- Cobra appends duration defaults in generated flag docs; keep the watch interval usage text free of a manual default suffix.
+---
