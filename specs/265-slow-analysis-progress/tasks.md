@@ -18,8 +18,8 @@
 
 **Purpose**: Confirm active feature context and nearby implementation surface before changing code.
 
-- [ ] T001 Review `specs/265-slow-analysis-progress/spec.md`, `specs/265-slow-analysis-progress/plan.md`, `specs/265-slow-analysis-progress/research.md`, `specs/265-slow-analysis-progress/data-model.md`, `specs/265-slow-analysis-progress/contracts/slow-analysis-progress-contract.md`, and `specs/ralph-implementation-rules.md`
-- [ ] T002 Inspect existing progress ownership in `cmd/ops_progress.go`, `cmd/ops_analyse_slow_process_instances.go`, `internal/services/ops/slow_process_analysis.go`, `internal/domain/ops_progress.go`, and `toolx/logging/activity.go`
+- [x] T001 Review `specs/265-slow-analysis-progress/spec.md`, `specs/265-slow-analysis-progress/plan.md`, `specs/265-slow-analysis-progress/research.md`, `specs/265-slow-analysis-progress/data-model.md`, `specs/265-slow-analysis-progress/contracts/slow-analysis-progress-contract.md`, and `specs/ralph-implementation-rules.md`
+- [x] T002 Inspect existing progress ownership in `cmd/ops_progress.go`, `cmd/ops_analyse_slow_process_instances.go`, `internal/services/ops/slow_process_analysis.go`, `internal/domain/ops_progress.go`, and `toolx/logging/activity.go`
 
 ---
 
