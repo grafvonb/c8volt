@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
@@ -319,6 +320,73 @@ func TestClient_SearchProcessDefinitionsPages_MapsTraversalRequestAndVisitor(t *
 	assert.Equal(t, int64(1), steps[0].Page.ReportedTotal.Count)
 	assert.Equal(t, ProcessDefinitionReportedTotalKindExact, steps[0].Page.ReportedTotal.Kind)
 	assert.EqualValues(t, 1, steps[0].CumulativeCount)
+}
+
+// TestClient_CollectProcessDefinitionWatchSnapshot_DelegatesSnapshotCollection
+// verifies the facade only maps request fields and options around the service-owned snapshot helper.
+func TestClient_CollectProcessDefinitionWatchSnapshot_DelegatesSnapshotCollection(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	pdAPI := &stubProcessDefinitionAPI{
+		searchProcessDefinitionsPage: func(_ context.Context, filter d.ProcessDefinitionFilter, page d.ProcessDefinitionPageRequest, opts ...services.CallOption) (d.ProcessDefinitionPage, error) {
+			assert.Equal(t, d.ProcessDefinitionFilter{
+				BpmnProcessId:     "invoice",
+				ProcessVersionTag: "stable",
+			}, filter)
+			assert.Equal(t, d.ProcessDefinitionPageRequest{Size: 2}, page)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.ProcessDefinitionPage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				ReportedTotal: &d.ProcessDefinitionReportedTotal{
+					Count: 1,
+					Kind:  d.ProcessDefinitionReportedTotalKindExact,
+				},
+				Items: []d.ProcessDefinition{{
+					Key:               "2251799813685255",
+					BpmnProcessId:     "invoice",
+					ProcessVersionTag: "stable",
+				}},
+			}, nil
+		},
+	}
+
+	cli := New(pdAPI, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
+	got, err := cli.CollectProcessDefinitionWatchSnapshot(ctx, ProcessDefinitionWatchSnapshotRequest{
+		Filter: ProcessDefinitionFilter{
+			BpmnProcessId:     "invoice",
+			ProcessVersionTag: "stable",
+		},
+		Page: ProcessDefinitionPageRequest{Size: 2},
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.EqualValues(t, 1, got.Total)
+	require.EqualValues(t, 1, got.Pages)
+	require.NotNil(t, got.ReportedTotal)
+	assert.Equal(t, ProcessDefinitionReportedTotalKindExact, got.ReportedTotal.Kind)
+	require.Len(t, got.Items, 1)
+	assert.Equal(t, "invoice", got.Items[0].BpmnProcessId)
+}
+
+// TestClient_CollectProcessDefinitionWatchSnapshot_ConvertsDomainErrors verifies
+// snapshot lookup failures use the public facade error classes.
+func TestClient_CollectProcessDefinitionWatchSnapshot_ConvertsDomainErrors(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	pdAPI := &stubProcessDefinitionAPI{
+		getProcessDefinition: func(context.Context, string, ...services.CallOption) (d.ProcessDefinition, error) {
+			return d.ProcessDefinition{}, d.ErrNotFound
+		},
+	}
+
+	cli := New(pdAPI, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
+	_, err := cli.CollectProcessDefinitionWatchSnapshot(ctx, ProcessDefinitionWatchSnapshotRequest{Key: "missing"})
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, ferr.ErrNotFound)
 }
 
 // TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter verifies that

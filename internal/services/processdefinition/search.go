@@ -62,6 +62,53 @@ func SearchProcessDefinitionsPages(ctx context.Context, api API, request d.Proce
 	}, nil
 }
 
+// CollectProcessDefinitionWatchSnapshot collects one complete process-definition
+// snapshot while keeping selector dispatch and page traversal in the service layer.
+func CollectProcessDefinitionWatchSnapshot(ctx context.Context, api API, request d.ProcessDefinitionWatchSnapshotRequest, opts ...services.CallOption) (d.ProcessDefinitionWatchSnapshot, error) {
+	switch {
+	case request.Key != "":
+		item, err := api.GetProcessDefinition(ctx, request.Key, opts...)
+		if err != nil {
+			return d.ProcessDefinitionWatchSnapshot{}, err
+		}
+		return newProcessDefinitionWatchSnapshot([]d.ProcessDefinition{item}, 1, nil), nil
+	case request.Latest:
+		items, err := api.SearchProcessDefinitionsLatest(ctx, request.Filter, opts...)
+		if err != nil {
+			return d.ProcessDefinitionWatchSnapshot{}, err
+		}
+		return newProcessDefinitionWatchSnapshot(items, 1, nil), nil
+	default:
+		var reportedTotal *d.ProcessDefinitionReportedTotal
+		result, err := SearchProcessDefinitionsPages(ctx, api, d.ProcessDefinitionSearchRequest{
+			Filter: request.Filter,
+			Page:   request.Page,
+		}, func(step d.ProcessDefinitionSearchPageStep) (d.ProcessDefinitionSearchPageAction, error) {
+			if reportedTotal == nil && step.Page.ReportedTotal != nil {
+				copied := *step.Page.ReportedTotal
+				reportedTotal = &copied
+			}
+			return d.ProcessDefinitionSearchPageActionContinue, nil
+		}, opts...)
+		if err != nil {
+			return d.ProcessDefinitionWatchSnapshot{}, err
+		}
+		return newProcessDefinitionWatchSnapshot(result.Items, result.Pages, reportedTotal), nil
+	}
+}
+
+// newProcessDefinitionWatchSnapshot derives count and empty metadata from the
+// service-selected process-definition items.
+func newProcessDefinitionWatchSnapshot(items []d.ProcessDefinition, pages int32, reportedTotal *d.ProcessDefinitionReportedTotal) d.ProcessDefinitionWatchSnapshot {
+	return d.ProcessDefinitionWatchSnapshot{
+		Items:         items,
+		Total:         int32(len(items)),
+		Pages:         pages,
+		ReportedTotal: reportedTotal,
+		Empty:         len(items) == 0,
+	}
+}
+
 func normalizeProcessDefinitionSearchRequest(request *d.ProcessDefinitionSearchRequest) {
 	if request.Page.Size <= 0 {
 		request.Page.Size = MaxResultSize

@@ -40,16 +40,16 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T005 [P] Add unit tests for immediate first tick, positive interval sleeping, context cancellation, timeout termination, retry reset, and retry exhaustion in `toolx/watch/watch_test.go`
-- [ ] T006 Implement reusable watch session runner types and fixed-interval loop in `toolx/watch/watch.go`
-- [ ] T007 [P] Add process-definition watch snapshot/request model tests in `c8volt/process/model_test.go`
-- [ ] T008 Add public process-definition watch request/result structs in `c8volt/process/model.go`
-- [ ] T009 Add matching version-neutral process-definition watch request/result structs in `internal/domain/processdefinition.go`
-- [ ] T010 Wire process-definition watch request/result conversion helpers in `c8volt/process/convert.go`
-- [ ] T011 [P] Add service tests for complete paged snapshot collection and latest/key dispatch in `internal/services/processdefinition/search_test.go`
-- [ ] T012 Implement process-definition snapshot collection helper in `internal/services/processdefinition/search.go`
-- [ ] T013 Add facade tests for process-definition watch snapshot delegation and error conversion in `c8volt/process/client_test.go`
-- [ ] T014 Expose process-definition watch snapshot facade method in `c8volt/process/api.go` and implement it in `c8volt/process/client.go`
+- [x] T005 [P] Add unit tests for immediate first tick, positive interval sleeping, context cancellation, timeout termination, retry reset, and retry exhaustion in `toolx/watch/watch_test.go`
+- [x] T006 Implement reusable watch session runner types and fixed-interval loop in `toolx/watch/watch.go`
+- [x] T007 [P] Add process-definition watch snapshot/request model tests in `c8volt/process/model_test.go`
+- [x] T008 Add public process-definition watch request/result structs in `c8volt/process/model.go`
+- [x] T009 Add matching version-neutral process-definition watch request/result structs in `internal/domain/processdefinition.go`
+- [x] T010 Wire process-definition watch request/result conversion helpers in `c8volt/process/convert.go`
+- [x] T011 [P] Add service tests for complete paged snapshot collection and latest/key dispatch in `internal/services/processdefinition/search_test.go`
+- [x] T012 Implement process-definition snapshot collection helper in `internal/services/processdefinition/search.go`
+- [x] T013 Add facade tests for process-definition watch snapshot delegation and error conversion in `c8volt/process/client_test.go`
+- [x] T014 Expose process-definition watch snapshot facade method in `c8volt/process/api.go` and implement it in `c8volt/process/client.go`
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in priority order or parallel by story.
 

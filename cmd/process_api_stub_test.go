@@ -25,6 +25,7 @@ type stubProcessAPI struct {
 	searchProcessDefinitions         func(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error)
 	searchProcessDefinitionsLatest   func(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error)
 	searchProcessDefinitionsPages    func(context.Context, process.ProcessDefinitionSearchRequest, process.ProcessDefinitionSearchPageVisitor, ...options.FacadeOption) (process.ProcessDefinitionSearchPagesResult, error)
+	collectPDWatchSnapshot           func(context.Context, process.ProcessDefinitionWatchSnapshotRequest, ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error)
 	searchProcessInstancesPage       func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
 	searchProcessInstancesPages      func(context.Context, process.ProcessInstanceSearchRequest, process.ProcessInstanceSearchPageVisitor, ...options.FacadeOption) (process.ProcessInstanceSearchPagesResult, error)
 	searchProcessInstancesTotal      func(context.Context, process.ProcessInstanceSearchRequest, process.ProcessInstanceSearchTotalVisitor, ...options.FacadeOption) (int64, error)
@@ -172,6 +173,13 @@ func (s stubProcessAPI) SearchProcessDefinitionsPages(ctx context.Context, reque
 		panic("unexpected call")
 	}
 	return s.searchProcessDefinitionsPages(ctx, request, visitor, opts...)
+}
+
+func (s stubProcessAPI) CollectProcessDefinitionWatchSnapshot(ctx context.Context, request process.ProcessDefinitionWatchSnapshotRequest, opts ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+	if s.collectPDWatchSnapshot == nil {
+		panic("unexpected call")
+	}
+	return s.collectPDWatchSnapshot(ctx, request, opts...)
 }
 
 func (stubProcessAPI) GetProcessDefinition(context.Context, string, ...options.FacadeOption) (process.ProcessDefinition, error) {
