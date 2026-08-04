@@ -551,6 +551,105 @@ func TestOpsAnalyseSlowProcessInstancesRoutesDefaultProgressToActivity(t *testin
 	}, sink.PriorityUpdates())
 }
 
+// TestOpsAnalyseSlowProcessInstancesDefaultProgressWritesPacedMilestones verifies broad human runs get sparse durable progress after confirmation.
+func TestOpsAnalyseSlowProcessInstancesDefaultProgressWritesPacedMilestones(t *testing.T) {
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	sink := &activitysink.Sink{}
+	now := time.Date(2026, 8, 4, 12, 0, 0, 0, time.UTC)
+	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		require.False(t, autoConfirm)
+		require.Equal(t, "Continue slow analysis for 2000 process instances?", prompt)
+		return nil
+	}
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	configureOpsSlowProcessAnalysisPreflightWithPacer(cmd, &request, pacer)
+	require.NotNil(t, request.ConfirmPreflight)
+	require.NoError(t, request.ConfirmPreflight(ops.PreflightScope{
+		RequiresConfirmation: true,
+		Total:                ptrInt64(2000),
+		TotalKind:            ops.TotalCertaintyExact,
+		ConsequenceSummary: ops.ConsequenceSummary{
+			ConfirmationText: "Continue slow analysis for 2000 process instances?",
+		},
+	}))
+
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+		Phase:         "discovering process instances",
+		CurrentPage:   1,
+		PageCount:     ptrInt64(4),
+		PageCountKind: ops.PageCountKindExact,
+		Seen:          1000,
+		Selected:      1000,
+	}})
+	require.Empty(t, stderr.String())
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+		Phase:         "discovering process instances",
+		CurrentPage:   2,
+		PageCount:     ptrInt64(4),
+		PageCountKind: ops.PageCountKindExact,
+		Seen:          1500,
+		Selected:      1498,
+	}})
+	require.Contains(t, stderr.String(), "discovering process instances, page 2/4, 1500 seen, 1498 selected")
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+		Phase:        "loading runtime elements",
+		CoreResource: "process instance(s)",
+		Done:         48,
+		Total:        800,
+	}})
+
+	require.Empty(t, stdout.String())
+	require.Contains(t, stderr.String(), "loading runtime elements, 48/800 process instance(s)")
+	require.Equal(t, []string{
+		"discovering process instances, page 1/4, 1000 seen",
+		"discovering process instances, page 2/4, 1500 seen, 1498 selected",
+		"loading runtime elements, 48/800 process instance(s)",
+	}, sink.Updates())
+}
+
+// TestOpsAnalyseSlowProcessInstancesWorkflowActivityOutranksNestedRuntimeWork verifies slow-analysis progress keeps workflow priority.
+func TestOpsAnalyseSlowProcessInstancesWorkflowActivityOutranksNestedRuntimeWork(t *testing.T) {
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	sink := &activitysink.Sink{}
+	cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	recordHTTPFallbackActivity(cmd.Context(), "loading runtime elements from Camunda")
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+		Phase:        "loading runtime elements",
+		CoreResource: "process instance(s)",
+		Done:         48,
+		Total:        800,
+	}})
+
+	require.Equal(t, []activitysink.Update{
+		{
+			Message:    "loading runtime elements, 48/800 process instance(s)",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+	}, sink.PriorityUpdates())
+	require.Equal(t, []activitysink.Start{
+		{
+			Message:    "loading runtime elements from Camunda",
+			Importance: logging.ActivityImportanceHTTP,
+		},
+	}, sink.Starts())
+}
+
 // TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr verifies verbose mode keeps an auditable progress trail off stdout.
 func TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr(t *testing.T) {
 	previousVerbose := flagVerbose

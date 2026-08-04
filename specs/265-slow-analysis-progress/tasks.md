@@ -46,17 +46,17 @@
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Add slow-analysis default human post-confirmation milestone tests in `cmd/ops_analyse_slow_process_instances_test.go` covering page progress after elapsed silence and frozen-scope progress after elapsed silence
-- [ ] T008 [P] [US1] Add slow-analysis workflow activity preservation assertions in `cmd/ops_analyse_slow_process_instances_test.go` proving progress updates use `logging.ActivityImportanceWorkflow` while nested runtime work can occur
-- [ ] T009 [P] [US1] Add or adjust service progress event tests in `internal/services/ops/slow_process_analysis_test.go` only if implementation changes structured event emission for discovery or frozen-scope progress
+- [x] T007 [P] [US1] Add slow-analysis default human post-confirmation milestone tests in `cmd/ops_analyse_slow_process_instances_test.go` covering page progress after elapsed silence and frozen-scope progress after elapsed silence
+- [x] T008 [P] [US1] Add slow-analysis workflow activity preservation assertions in `cmd/ops_analyse_slow_process_instances_test.go` proving progress updates use `logging.ActivityImportanceWorkflow` while nested runtime work can occur
+- [x] T009 [P] [US1] Add or adjust service progress event tests in `internal/services/ops/slow_process_analysis_test.go` only if implementation changes structured event emission for discovery or frozen-scope progress
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Wire shared milestone pacing state into `configureOpsSlowProcessAnalysisPreflight` and `printOpsSlowProcessAnalysisProgress` usage in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T011 [US1] Ensure default human slow-analysis progress continues updating transient workflow activity while sparse durable milestones print only when shared pacing allows in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T012 [US1] Keep internal services emitting structured progress only and remove any accidental command-rendering policy from `internal/services/ops/slow_process_analysis.go`
-- [ ] T013 [US1] Run `go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances.*Progress|TestOpsAnalyseSlowProcessInstances.*Preflight' -count=1` for `cmd/ops_analyse_slow_process_instances_test.go`
-- [ ] T014 [US1] Run `go test ./internal/services/ops -run 'TestSlowProcessAnalysis.*Progress|TestSlowProcessAnalysis.*Preflight' -count=1` for `internal/services/ops/slow_process_analysis_test.go` if T009 or T012 touched service progress behavior
+- [x] T010 [US1] Wire shared milestone pacing state into `configureOpsSlowProcessAnalysisPreflight` and `printOpsSlowProcessAnalysisProgress` usage in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T011 [US1] Ensure default human slow-analysis progress continues updating transient workflow activity while sparse durable milestones print only when shared pacing allows in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T012 [US1] Keep internal services emitting structured progress only and remove any accidental command-rendering policy from `internal/services/ops/slow_process_analysis.go`
+- [x] T013 [US1] Run `go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances.*Progress|TestOpsAnalyseSlowProcessInstances.*Preflight' -count=1` for `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T014 [US1] Run `go test ./internal/services/ops -run 'TestSlowProcessAnalysis.*Progress|TestSlowProcessAnalysis.*Preflight' -count=1` for `internal/services/ops/slow_process_analysis_test.go` if T009 or T012 touched service progress behavior
 
 **Checkpoint**: User Story 1 is independently functional and satisfies the MVP.
 

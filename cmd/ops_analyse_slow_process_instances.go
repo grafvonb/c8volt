@@ -299,6 +299,10 @@ func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string
 
 // configureOpsSlowProcessAnalysisPreflight wires command-owned rendering and prompting into service-owned discovery.
 func configureOpsSlowProcessAnalysisPreflight(cmd *cobra.Command, request *ops.SlowProcessAnalysisRequest) {
+	configureOpsSlowProcessAnalysisPreflightWithPacer(cmd, request, newOpsProgressMilestonePacer(nil))
+}
+
+func configureOpsSlowProcessAnalysisPreflightWithPacer(cmd *cobra.Command, request *ops.SlowProcessAnalysisRequest, pacer *opsProgressMilestonePacer) {
 	if request == nil || request.SelectionMode != ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch {
 		return
 	}
@@ -311,15 +315,15 @@ func configureOpsSlowProcessAnalysisPreflight(cmd *cobra.Command, request *ops.S
 			}
 		case ops.ProgressEventKindPage:
 			if event.Page != nil {
-				printOpsSlowProcessAnalysisProgress(cmd, formatOpsPageProgress(*event.Page, "process instance(s)"), channel)
+				printOpsSlowProcessAnalysisProgressMilestone(cmd, formatOpsPageProgress(*event.Page, "process instance(s)"), event, channel, pacer)
 			}
 		case ops.ProgressEventKindFrozenScope:
 			if event.FrozenScope != nil {
-				printOpsSlowProcessAnalysisProgress(cmd, formatOpsFrozenScopeProgress(*event.FrozenScope), channel)
+				printOpsSlowProcessAnalysisProgressMilestone(cmd, formatOpsFrozenScopeProgress(*event.FrozenScope), event, channel, pacer)
 			}
 		case ops.ProgressEventKindETA:
 			if event.ETA != nil && opsETAAllowed(*event.ETA) {
-				printOpsSlowProcessAnalysisProgress(cmd, formatOpsETASampleWindow(*event.ETA), channel)
+				printOpsSlowProcessAnalysisProgressMilestone(cmd, formatOpsETASampleWindow(*event.ETA), event, channel, pacer)
 			}
 		}
 	}
@@ -337,6 +341,10 @@ func configureOpsSlowProcessAnalysisPreflight(cmd *cobra.Command, request *ops.S
 
 // printOpsSlowProcessAnalysisProgress routes transient and verbose progress without touching command stdout.
 func printOpsSlowProcessAnalysisProgress(cmd *cobra.Command, line string, channel ops.ProgressChannel) {
+	printOpsSlowProcessAnalysisProgressMilestone(cmd, line, ops.ProgressEvent{}, channel, nil)
+}
+
+func printOpsSlowProcessAnalysisProgressMilestone(cmd *cobra.Command, line string, event ops.ProgressEvent, channel ops.ProgressChannel, pacer *opsProgressMilestonePacer) {
 	if cmd == nil || strings.TrimSpace(line) == "" {
 		return
 	}
@@ -344,6 +352,9 @@ func printOpsSlowProcessAnalysisProgress(cmd *cobra.Command, line string, channe
 		logging.UpdateActivityWithImportance(cmd.Context(), line, logging.ActivityImportanceWorkflow)
 	}
 	if !opsSlowProcessAnalysisDurableProgressAllowed(channel) {
+		if pacer != nil && pacer.AllowDurableMilestone(event, channel) {
+			printOpsDurableLine(cmd, line, false)
+		}
 		return
 	}
 	printOpsDurableLine(cmd, line, false)

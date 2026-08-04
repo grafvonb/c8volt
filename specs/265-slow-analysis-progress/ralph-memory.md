@@ -7,12 +7,12 @@ Started: 2026-08-04T16:54:15Z
 
 - `cmd/ops_progress.go` owns shared progress channel selection, compact human preflight/page/frozen-scope/ETA formatters, durable stderr printing through `printOpsDurableLine`, and machine-output-safe gating via `opsProgressChannelForMode`.
 - `cmd/ops_progress.go` now also owns sparse durable milestone pacing through `opsDurableMilestoneMinimumElapsed`, `opsProgressMilestonePacer`, `opsProgressMilestoneSignatureForEvent`, and `opsProgressDurableMilestoneChannelAllowed`.
-- `cmd/ops_analyse_slow_process_instances.go` wires broad slow-analysis search progress in `configureOpsSlowProcessAnalysisPreflight`; current callback handles Preflight, Page, FrozenScope, and ETA events, updates workflow activity through `printOpsSlowProcessAnalysisProgress`, and prompts through `ConfirmPreflight`.
-- `printOpsSlowProcessAnalysisProgress` currently updates `logging.ActivityImportanceWorkflow` whenever `channel.TransientAllowed` is true, then writes durable lines only when `opsSlowProcessAnalysisDurableProgressAllowed` permits verbose/debug stderr.
+- `cmd/ops_analyse_slow_process_instances.go` wires broad slow-analysis search progress in `configureOpsSlowProcessAnalysisPreflight`; current callback handles Preflight, Page, FrozenScope, and ETA events, updates workflow activity, applies a request-local `opsProgressMilestonePacer` for default-human durable milestones, and prompts through `ConfirmPreflight`.
+- `printOpsSlowProcessAnalysisProgress` still preserves legacy immediate durable stderr for verbose/debug callers; slow-analysis post-confirmation progress uses `printOpsSlowProcessAnalysisProgressMilestone` to add default-human paced milestones while continuing `logging.ActivityImportanceWorkflow` transient updates.
 - `internal/services/ops/slow_process_analysis.go` already emits structured progress events only: preflight before confirmation, page progress after each discovery page, frozen-scope counters before and during enrichment, plus timing facts in the frozen-scope event.
 - `internal/domain/ops_progress.go` defines the shared progress event model and `OpsDefaultETAMinimumSamples`/`OpsMinimumTimingElapsed`; command milestone pacing should use command-owned constants/state rather than adding CLI policy to domain or services.
 - `toolx/logging/activity.go` supports priority activity scopes and updates; workflow importance outranks HTTP, wait, and batch activity, so nested runtime lookups should not hide slow-analysis workflow progress when updates use `ActivityImportanceWorkflow`.
-- Existing tests in `cmd/ops_progress_test.go` cover formatter wording, ETA gating, `opsProgressChannelForMode` stdout safety, sparse milestone elapsed/progress boundaries, timer-only suppression, and default-human-versus-machine-mode milestone gating; slow-analysis progress tests around `cmd/ops_analyse_slow_process_instances_test.go` cover default activity updates, verbose durable stderr, JSON/keys-only/quiet/automation suppression, and preflight prompt gating.
+- Existing tests in `cmd/ops_progress_test.go` cover formatter wording, ETA gating, `opsProgressChannelForMode` stdout safety, sparse milestone elapsed/progress boundaries, timer-only suppression, and default-human-versus-machine-mode milestone gating; slow-analysis progress tests around `cmd/ops_analyse_slow_process_instances_test.go` cover default activity updates, default-human paced post-confirmation page/frozen-scope milestones, workflow-importance preservation over nested HTTP work, verbose durable stderr, JSON/keys-only/quiet/automation suppression, and preflight prompt gating.
 
 ## Decisions
 
@@ -26,7 +26,7 @@ Started: 2026-08-04T16:54:15Z
 - Preflight scope lines already write durably in human modes before confirmation; new pacing should apply to post-confirmation page/frozen-scope/ETA-style progress, not preflight prompt text.
 - JSON, keys-only, quiet, and automation tests assert both stdout and stderr stay empty for progress callbacks; milestone gating must keep these modes silent even though default human can use stderr.
 - The slow-analysis service emits an initial frozen-scope event with `Done: 0`; pacing signatures should avoid treating unchanged or timer-only repeats as forward progress.
-- Sparse durable milestones are currently available only through shared helpers; slow-analysis has not yet been wired to instantiate or use `opsProgressMilestonePacer`.
+- `configureOpsSlowProcessAnalysisPreflightWithPacer` exists for deterministic command tests; production `configureOpsSlowProcessAnalysisPreflight` passes a real-clock pacer.
 
 ## Reusable Commands
 
@@ -42,4 +42,4 @@ Started: 2026-08-04T16:54:15Z
 - Do not change command help or generated docs unless the shipped help wording changes; run `make docs-content` if it does.
 
 ## Current Handoff
-- Next iteration should start US1 tasks T007-T014: add slow-analysis default-human milestone and activity-preservation tests, wire `opsProgressMilestonePacer` into `configureOpsSlowProcessAnalysisPreflight`/progress printing, avoid service rendering-policy changes unless tests prove they are needed, then run the targeted cmd progress/preflight test command and service progress tests only if service progress code changes.
+- Next iteration should start US2 tasks T015-T019: extend JSON/keys-only/quiet/automation slow-analysis tests so the new paced milestone path cannot leak to stdout or stderr, verify `opsProgressChannelForMode` plus slow-analysis milestone wiring keep machine modes silent, and run the targeted command test command from T019.
