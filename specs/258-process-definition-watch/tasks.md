@@ -27,10 +27,10 @@
 
 **Purpose**: Confirm current feature context and protect the existing process-definition command surface before implementation.
 
-- [ ] T001 Review `specs/258-process-definition-watch/spec.md`, `specs/258-process-definition-watch/plan.md`, `specs/258-process-definition-watch/contracts/cli-watch-contract.md`, and `specs/ralph-implementation-rules.md` before changing code
-- [ ] T002 [P] Run baseline targeted command tests with `go test ./cmd -run 'TestGetProcessDefinition|TestCommandContract' -count=1` and record any pre-existing failures in `specs/258-process-definition-watch/quickstart.md`
-- [ ] T003 [P] Run baseline process-definition service/facade tests with `go test ./internal/services/processdefinition/... ./c8volt/process -run 'ProcessDefinition|SearchProcessDefinitions' -count=1` and record any pre-existing failures in `specs/258-process-definition-watch/quickstart.md`
-- [ ] T004 [P] Inspect existing process-definition docs in `README.md`, `cmd/get_processdefinition.go`, `cmd/command_contract.go`, `docsgen/main_test.go`, and `docs/cli/c8volt_get_process-definition.md` for current examples and output contract wording
+- [x] T001 Review `specs/258-process-definition-watch/spec.md`, `specs/258-process-definition-watch/plan.md`, `specs/258-process-definition-watch/contracts/cli-watch-contract.md`, and `specs/ralph-implementation-rules.md` before changing code
+- [x] T002 [P] Run baseline targeted command tests with `go test ./cmd -run 'TestGetProcessDefinition|TestCommandContract' -count=1` and record any pre-existing failures in `specs/258-process-definition-watch/quickstart.md`
+- [x] T003 [P] Run baseline process-definition service/facade tests with `go test ./internal/services/processdefinition/... ./c8volt/process -run 'ProcessDefinition|SearchProcessDefinitions' -count=1` and record any pre-existing failures in `specs/258-process-definition-watch/quickstart.md`
+- [x] T004 [P] Inspect existing process-definition docs in `README.md`, `cmd/get_processdefinition.go`, `cmd/command_contract.go`, `docsgen/main_test.go`, and `docs/cli/c8volt_get_process-definition.md` for current examples and output contract wording
 
 ---
 
