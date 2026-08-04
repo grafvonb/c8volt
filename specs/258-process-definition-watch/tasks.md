@@ -90,17 +90,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T026 [P] [US2] Add command tests for default `1s` interval and valid `--watch-interval 2s` cadence wiring in `cmd/get_processdefinition_test.go`
-- [ ] T027 [P] [US2] Add command tests rejecting invalid, zero, and negative `--watch-interval` values before lookup work in `cmd/get_processdefinition_test.go`
-- [ ] T028 [P] [US2] Add command tests for existing retry default usage, retry budget reset after success, and retry exhaustion exit behavior in `cmd/get_processdefinition_test.go`
+- [x] T026 [P] [US2] Add command tests for default `1s` interval and valid `--watch-interval 2s` cadence wiring in `cmd/get_processdefinition_test.go`
+- [x] T027 [P] [US2] Add command tests rejecting invalid, zero, and negative `--watch-interval` values before lookup work in `cmd/get_processdefinition_test.go`
+- [x] T028 [P] [US2] Add command tests for existing retry default usage, retry budget reset after success, and retry exhaustion exit behavior in `cmd/get_processdefinition_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T029 [US2] Add `flagGetPDWatchInterval` and register `--watch-interval` with default `1s` duration parsing in `cmd/get_processdefinition.go`
-- [ ] T030 [US2] Extend `validateGetProcessDefinitionFlags` to reject invalid, zero, and negative watch intervals before lookup work in `cmd/get_processdefinition.go`
-- [ ] T031 [US2] Map existing command backoff timeout and max-retry config into `toolx/watch` runner options in `cmd/get_processdefinition.go`
-- [ ] T032 [US2] Render retry, timeout, and retry-exhaustion status away from result stdout in `cmd/get_processdefinition.go`
-- [ ] T033 [US2] Run `go test ./toolx/... -run 'Watch|watch' -count=1` and `go test ./cmd -run 'TestGetProcessDefinition' -count=1`
+- [x] T029 [US2] Add `flagGetPDWatchInterval` and register `--watch-interval` with default `1s` duration parsing in `cmd/get_processdefinition.go`
+- [x] T030 [US2] Extend `validateGetProcessDefinitionFlags` to reject invalid, zero, and negative watch intervals before lookup work in `cmd/get_processdefinition.go`
+- [x] T031 [US2] Map existing command backoff timeout and max-retry config into `toolx/watch` runner options in `cmd/get_processdefinition.go`
+- [x] T032 [US2] Render retry, timeout, and retry-exhaustion status away from result stdout in `cmd/get_processdefinition.go`
+- [x] T033 [US2] Run `go test ./toolx/... -run 'Watch|watch' -count=1` and `go test ./cmd -run 'TestGetProcessDefinition' -count=1`
 
 **Checkpoint**: User Stories 1 and 2 work independently and together.
 

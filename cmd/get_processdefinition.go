@@ -16,6 +16,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/watch"
 	"github.com/spf13/cobra"
 )
@@ -30,6 +31,7 @@ var (
 	flagGetPDAsXML             bool
 	flagGetPDBatchSize         int32
 	flagGetPDWatch             bool
+	flagGetPDWatchInterval     string
 )
 
 const defaultGetPDWatchInterval = time.Second
@@ -75,7 +77,7 @@ func runGetProcessDefinition(cmd *cobra.Command, args []string) {
 	log.Debug("getting pd")
 	filter := populatePDSearchFilterOpts()
 	if flagGetPDWatch {
-		runGetProcessDefinitionWatch(cmd, cli, log, cfg.App.NoErrCodes, filter, cfg.App.Backoff.Timeout)
+		runGetProcessDefinitionWatch(cmd, cli, log, cfg.App.NoErrCodes, filter, cfg.App.Backoff.Timeout, cfg.App.Backoff.MaxRetries)
 		return
 	}
 	if flagGetPDAsXML {
@@ -147,26 +149,32 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 	log.Debug(fmt.Sprintf("pd search done; found %d", pds.Total))
 }
 
-func runGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, filter process.ProcessDefinitionFilter, timeout time.Duration) {
+func runGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, filter process.ProcessDefinitionFilter, timeout time.Duration, maxRetries int) {
 	log.Debug(fmt.Sprintf("watching pd; filter %s", filter.String()))
-	if err := executeGetProcessDefinitionWatch(cmd, cli, filter, timeout); err != nil {
+	if err := executeGetProcessDefinitionWatch(cmd, cli, filter, timeout, maxRetries); err != nil {
 		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("watch process definitions: %w", err))
 	}
 }
 
-func executeGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, filter process.ProcessDefinitionFilter, timeout time.Duration) error {
+func executeGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, filter process.ProcessDefinitionFilter, timeout time.Duration, maxRetries int) error {
+	interval, err := resolveGetProcessDefinitionWatchInterval()
+	if err != nil {
+		return err
+	}
 	request := newGetProcessDefinitionWatchSnapshotRequest(filter)
 	opts := collectOptions()
 	if request.Key != "" {
 		opts = collectExplicitAdminInputOptions()
 	}
-	_, err := watch.Run(cmd.Context(), watch.Options{
-		Interval: defaultGetPDWatchInterval,
-		Timeout:  timeout,
-		Retryable: func(error) bool {
-			return false
+	result, err := watch.Run(cmd.Context(), watch.Options{
+		Interval:   interval,
+		Timeout:    timeout,
+		MaxRetries: maxRetries,
+		Retryable:  isGetProcessDefinitionWatchRetryable,
+		Sleep:      processDefinitionWatchSleep,
+		OnRetry: func(event watch.RetryEvent) {
+			renderGetProcessDefinitionWatchRetryStatus(cmd, event)
 		},
-		Sleep: processDefinitionWatchSleep,
 	}, func(ctx context.Context, tick watch.Tick) error {
 		snapshot, err := cli.CollectProcessDefinitionWatchSnapshot(ctx, request, opts...)
 		if err != nil {
@@ -174,7 +182,51 @@ func executeGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, filter
 		}
 		return processDefinitionWatchSnapshotView(cmd, tick.Index, snapshot)
 	})
+	renderGetProcessDefinitionWatchStopStatus(cmd, result)
 	return err
+}
+
+func resolveGetProcessDefinitionWatchInterval() (time.Duration, error) {
+	interval, err := time.ParseDuration(flagGetPDWatchInterval)
+	if err != nil {
+		return 0, invalidFlagValuef("invalid value for --watch-interval: %q, expected positive duration such as 1s, 2s, or 500ms", flagGetPDWatchInterval)
+	}
+	if interval <= 0 {
+		return 0, invalidFlagValuef("invalid value for --watch-interval: %q, expected positive duration", flagGetPDWatchInterval)
+	}
+	return interval, nil
+}
+
+func isGetProcessDefinitionWatchRetryable(err error) bool {
+	switch ferrors.Classify(err) {
+	case ferrors.ClassTimeout, ferrors.ClassUnavailable:
+		return true
+	default:
+		return false
+	}
+}
+
+func renderGetProcessDefinitionWatchRetryStatus(cmd *cobra.Command, event watch.RetryEvent) {
+	if cmd == nil {
+		return
+	}
+	if event.MaxRetries > 0 {
+		fmt.Fprintf(cmd.ErrOrStderr(), "retrying process-definition watch after snapshot %d failed (%d/%d consecutive failures): %v\n", event.Tick, event.ConsecutiveFailures, event.MaxRetries, event.Err)
+		return
+	}
+	fmt.Fprintf(cmd.ErrOrStderr(), "retrying process-definition watch after snapshot %d failed (consecutive failures: %d): %v\n", event.Tick, event.ConsecutiveFailures, event.Err)
+}
+
+func renderGetProcessDefinitionWatchStopStatus(cmd *cobra.Command, result watch.Result) {
+	if cmd == nil {
+		return
+	}
+	switch result.Reason {
+	case watch.TerminationReasonTimeout:
+		fmt.Fprintln(cmd.ErrOrStderr(), "watch stopped: timeout reached")
+	case watch.TerminationReasonRetryExhausted:
+		fmt.Fprintf(cmd.ErrOrStderr(), "watch stopped: retry budget exhausted after %d consecutive failure(s)\n", result.ConsecutiveFailures)
+	}
 }
 
 func newGetProcessDefinitionWatchSnapshotRequest(filter process.ProcessDefinitionFilter) process.ProcessDefinitionWatchSnapshotRequest {
@@ -207,6 +259,7 @@ func init() {
 	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML (requires --key and no other filters)")
 	fs.Int32VarP(&flagGetPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process definitions to request per discovery page; does not cap total returned rows (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.BoolVar(&flagGetPDWatch, "watch", false, "repeat the process-definition lookup until interrupted or timed out")
+	fs.Var(toolx.NewDurationStringValue(defaultGetPDWatchInterval.String(), &flagGetPDWatchInterval), "watch-interval", "interval between process-definition watch snapshots (default 1s)")
 
 	setCommandMutation(getProcessDefinitionCmd, CommandMutationReadOnly)
 	setContractSupport(getProcessDefinitionCmd, ContractSupportFull)
@@ -223,6 +276,11 @@ func init() {
 func validateGetProcessDefinitionFlags(cmd *cobra.Command) error {
 	if cmd != nil && cmd.Flags().Changed("batch-size") && (flagGetPDBatchSize <= 0 || flagGetPDBatchSize > consts.MaxPISearchSize) {
 		return invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagGetPDBatchSize, consts.MaxPISearchSize)
+	}
+	if flagGetPDWatch {
+		if _, err := resolveGetProcessDefinitionWatchInterval(); err != nil {
+			return err
+		}
 	}
 	return nil
 }

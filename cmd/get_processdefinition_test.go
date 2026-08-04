@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt"
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -33,6 +35,15 @@ func TestGetProcessDefinitionWatchFlagRegistered(t *testing.T) {
 	require.NotNil(t, flag)
 	require.Equal(t, "bool", flag.Value.Type())
 	require.Contains(t, flag.Usage, "repeat the process-definition lookup")
+}
+
+func TestGetProcessDefinitionWatchIntervalFlagRegistered(t *testing.T) {
+	flag := getProcessDefinitionCmd.Flags().Lookup("watch-interval")
+
+	require.NotNil(t, flag)
+	require.Equal(t, "duration", flag.Value.Type())
+	require.Equal(t, "1s", flag.DefValue)
+	require.Contains(t, flag.Usage, "interval between process-definition watch snapshots")
 }
 
 func TestGetProcessDefinitionSelectionFlagsRemainSearchFilters(t *testing.T) {
@@ -103,6 +114,171 @@ func TestGetProcessDefinitionWatchImmediateRepeatedBroadSnapshots(t *testing.T) 
 	require.Contains(t, output, "snapshot 2:")
 	require.Contains(t, output, "2251799813685255 tenant invoice v2")
 	require.Contains(t, output, "found: 1")
+}
+
+func TestGetProcessDefinitionWatchIntervalCadence(t *testing.T) {
+	tests := []struct {
+		name     string
+		raw      string
+		expected time.Duration
+	}{
+		{name: "default", expected: time.Second},
+		{name: "explicit", raw: "2s", expected: 2 * time.Second},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetGetProcessDefinitionCommandGlobals()
+			t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+			if tt.raw != "" {
+				flagGetPDWatchInterval = tt.raw
+			}
+
+			var intervals []time.Duration
+			cli := processDefinitionWatchTestAPI{
+				collect: func(_ context.Context, _ process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+					return process.ProcessDefinitionWatchSnapshot{
+						Items: []process.ProcessDefinition{{
+							Key:            "2251799813685255",
+							TenantId:       "tenant",
+							BpmnProcessId:  "invoice",
+							ProcessVersion: 1,
+						}},
+						Total: 1,
+					}, nil
+				},
+			}
+
+			stdout, stderr, err := executeGetProcessDefinitionWatchWithBackoffForTest(t, cli, process.ProcessDefinitionFilter{}, 0, defaultBackoffMaxRetries, func(_ context.Context, interval time.Duration) error {
+				intervals = append(intervals, interval)
+				return context.Canceled
+			})
+
+			require.NoError(t, err)
+			require.Equal(t, []time.Duration{tt.expected}, intervals)
+			require.Contains(t, stdout, "snapshot 1:")
+			require.Empty(t, stderr)
+		})
+	}
+}
+
+func TestValidateGetProcessDefinitionWatchIntervalRejectsInvalidValues(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+	}{
+		{name: "invalid", raw: "soon"},
+		{name: "zero", raw: "0s"},
+		{name: "negative", raw: "-1s"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetGetProcessDefinitionCommandGlobals()
+			t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+			flagGetPDWatch = true
+			flagGetPDWatchInterval = tt.raw
+
+			err := validateGetProcessDefinitionFlags(getProcessDefinitionCmd)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "invalid value for --watch-interval")
+			require.Contains(t, err.Error(), tt.raw)
+		})
+	}
+}
+
+func TestGetProcessDefinitionWatchUsesDefaultRetryBudget(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+
+	transientErr := ferrors.WrapClass(ferrors.ErrUnavailable, errors.New("temporary Camunda outage"))
+	calls := 0
+	cli := processDefinitionWatchTestAPI{
+		collect: func(_ context.Context, _ process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+			calls++
+			return process.ProcessDefinitionWatchSnapshot{}, transientErr
+		},
+	}
+
+	stdout, stderr, err := executeGetProcessDefinitionWatchWithBackoffForTest(t, cli, process.ProcessDefinitionFilter{}, 0, defaultBackoffMaxRetries, func(context.Context, time.Duration) error {
+		if calls >= 3 {
+			return context.Canceled
+		}
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 3, calls)
+	require.Empty(t, stdout)
+	require.Contains(t, stderr, "retrying process-definition watch after snapshot 1 failed")
+	require.Contains(t, stderr, "consecutive failures: 3")
+}
+
+func TestGetProcessDefinitionWatchRetryBudgetResetsAfterSuccess(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+
+	transientErr := ferrors.WrapClass(ferrors.ErrUnavailable, errors.New("temporary Camunda outage"))
+	calls := 0
+	cli := processDefinitionWatchTestAPI{
+		collect: func(_ context.Context, _ process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+			calls++
+			if calls == 1 || calls == 3 {
+				return process.ProcessDefinitionWatchSnapshot{}, transientErr
+			}
+			return process.ProcessDefinitionWatchSnapshot{
+				Items: []process.ProcessDefinition{{
+					Key:            "2251799813685255",
+					TenantId:       "tenant",
+					BpmnProcessId:  "invoice",
+					ProcessVersion: 2,
+				}},
+				Total: 1,
+			}, nil
+		},
+	}
+
+	stdout, stderr, err := executeGetProcessDefinitionWatchWithBackoffForTest(t, cli, process.ProcessDefinitionFilter{}, 0, 1, func(context.Context, time.Duration) error {
+		if calls >= 3 {
+			return context.Canceled
+		}
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 3, calls)
+	require.Contains(t, stdout, "snapshot 2:")
+	require.NotContains(t, stdout, "retrying")
+	require.NotContains(t, stdout, "temporary Camunda outage")
+	require.Equal(t, 2, strings.Count(stderr, "retrying process-definition watch"))
+	require.Contains(t, stderr, "snapshot 1 failed (1/1 consecutive failures)")
+	require.Contains(t, stderr, "snapshot 3 failed (1/1 consecutive failures)")
+}
+
+func TestGetProcessDefinitionWatchRetryExhaustionReturnsErrorAndStderrStatus(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+
+	transientErr := ferrors.WrapClass(ferrors.ErrUnavailable, errors.New("temporary Camunda outage"))
+	calls := 0
+	cli := processDefinitionWatchTestAPI{
+		collect: func(_ context.Context, _ process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+			calls++
+			return process.ProcessDefinitionWatchSnapshot{}, transientErr
+		},
+	}
+
+	stdout, stderr, err := executeGetProcessDefinitionWatchWithBackoffForTest(t, cli, process.ProcessDefinitionFilter{}, 0, 1, func(context.Context, time.Duration) error {
+		return nil
+	})
+
+	require.Error(t, err)
+	require.Equal(t, 2, calls)
+	require.Empty(t, stdout)
+	require.Contains(t, err.Error(), "watch retry exhausted")
+	require.Contains(t, stderr, "retrying process-definition watch after snapshot 1 failed")
+	require.Contains(t, stderr, "watch stopped: retry budget exhausted after 2 consecutive failure(s)")
 }
 
 func TestGetProcessDefinitionWatchExplicitLatestEmptyThenChangedSnapshot(t *testing.T) {
@@ -222,6 +398,34 @@ func TestGetProcessDefinitionWatchInterruptAndTimeoutStopCleanly(t *testing.T) {
 			require.NotContains(t, strings.ToLower(output), "lookup")
 		})
 	}
+}
+
+func TestGetProcessDefinitionWatchTimeoutStatusUsesStderr(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+
+	cli := processDefinitionWatchTestAPI{
+		collect: func(_ context.Context, _ process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+			return process.ProcessDefinitionWatchSnapshot{
+				Items: []process.ProcessDefinition{{
+					Key:            "2251799813685255",
+					TenantId:       "tenant",
+					BpmnProcessId:  "invoice",
+					ProcessVersion: 1,
+				}},
+				Total: 1,
+			}, nil
+		},
+	}
+
+	stdout, stderr, err := executeGetProcessDefinitionWatchWithBackoffForTest(t, cli, process.ProcessDefinitionFilter{}, 0, defaultBackoffMaxRetries, func(context.Context, time.Duration) error {
+		return context.DeadlineExceeded
+	})
+
+	require.NoError(t, err)
+	require.Contains(t, stdout, "snapshot 1:")
+	require.NotContains(t, stdout, "timeout")
+	require.Contains(t, stderr, "watch stopped: timeout reached")
 }
 
 func TestGetProcessDefinitionLatestSearchPreservesSelectionRequest(t *testing.T) {
@@ -556,9 +760,18 @@ func (a processDefinitionWatchTestAPI) CollectProcessDefinitionWatchSnapshot(ctx
 func executeGetProcessDefinitionWatchForTest(t *testing.T, cli c8volt.API, filter process.ProcessDefinitionFilter, timeout time.Duration, sleep func(context.Context, time.Duration) error) (string, error) {
 	t.Helper()
 
+	stdout, _, err := executeGetProcessDefinitionWatchWithBackoffForTest(t, cli, filter, timeout, defaultBackoffMaxRetries, sleep)
+	return stdout, err
+}
+
+func executeGetProcessDefinitionWatchWithBackoffForTest(t *testing.T, cli c8volt.API, filter process.ProcessDefinitionFilter, timeout time.Duration, maxRetries int, sleep func(context.Context, time.Duration) error) (string, string, error) {
+	t.Helper()
+
 	cmd := &cobra.Command{Use: "process-definition"}
 	var stdout bytes.Buffer
+	var stderr bytes.Buffer
 	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
 	cmd.SetContext(context.Background())
 
 	previousSleep := processDefinitionWatchSleep
@@ -567,8 +780,8 @@ func executeGetProcessDefinitionWatchForTest(t *testing.T, cli c8volt.API, filte
 		processDefinitionWatchSleep = previousSleep
 	})
 
-	err := executeGetProcessDefinitionWatch(cmd, cli, filter, timeout)
-	return stdout.String(), err
+	err := executeGetProcessDefinitionWatch(cmd, cli, filter, timeout, maxRetries)
+	return stdout.String(), stderr.String(), err
 }
 
 func resetGetProcessDefinitionCommandGlobals() {
@@ -581,6 +794,7 @@ func resetGetProcessDefinitionCommandGlobals() {
 	flagGetPDAsXML = false
 	flagGetPDBatchSize = 0
 	flagGetPDWatch = false
+	flagGetPDWatchInterval = defaultGetPDWatchInterval.String()
 	flagViewAsJson = false
 	flagViewKeysOnly = false
 }

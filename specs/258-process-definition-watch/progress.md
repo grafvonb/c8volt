@@ -85,3 +85,26 @@ Started: 2026-08-04 17:19:00
 **Learnings**:
 - US1 command watch uses `toolx/watch.Run` with a test-injected sleep hook and keeps snapshot collection below the facade.
 ---
+---
+## Iteration 4 - 2026-08-04 17:46
+**Work Unit**: Phase 4 User Story 2 - Control Watch Cadence And Retry Tolerance
+**Tasks Completed**:
+- [x] T026: Added command tests for default `1s` and explicit `--watch-interval 2s` cadence wiring
+- [x] T027: Added command validation tests for invalid, zero, and negative watch intervals
+- [x] T028: Added command tests for default retry budget, retry reset after success, and retry exhaustion
+- [x] T029: Added `flagGetPDWatchInterval` and registered `--watch-interval` with default `1s`
+- [x] T030: Validated watch intervals as positive durations before lookup work
+- [x] T031: Mapped command backoff timeout and max retries into the watch runner
+- [x] T032: Routed retry, timeout, and retry-exhaustion status to stderr
+- [x] T033: Ran the US2 focused `toolx` and command quality gates
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processdefinition.go
+- cmd/get_processdefinition_test.go
+- specs/258-process-definition-watch/tasks.md
+- specs/258-process-definition-watch/ralph-memory.md
+- specs/258-process-definition-watch/progress.md
+**Learnings**:
+- US2 keeps cadence and retry behavior in command-owned flag/status wiring while continuing to rely on `toolx/watch.Run` for loop mechanics and retry reset/exhaustion.
+---
