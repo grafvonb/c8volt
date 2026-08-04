@@ -91,14 +91,14 @@
 
 ### Tests for User Story 3
 
-- [ ] T020 [P] [US3] Add debug-mode durable progress coverage in `cmd/ops_analyse_slow_process_instances_test.go` matching existing verbose coverage
-- [ ] T021 [P] [US3] Add compact default-human milestone wording assertions in `cmd/ops_analyse_slow_process_instances_test.go` proving milestones exclude endpoint names, request details, cursors, and per-resource lifecycle detail
+- [x] T020 [P] [US3] Add debug-mode durable progress coverage in `cmd/ops_analyse_slow_process_instances_test.go` matching existing verbose coverage
+- [x] T021 [P] [US3] Add compact default-human milestone wording assertions in `cmd/ops_analyse_slow_process_instances_test.go` proving milestones exclude endpoint names, request details, cursors, and per-resource lifecycle detail
 
 ### Implementation for User Story 3
 
-- [ ] T022 [US3] Preserve `opsSlowProcessAnalysisDurableProgressAllowed` verbose/debug behavior while adding default-human milestone pacing in `cmd/ops_analyse_slow_process_instances.go`
-- [ ] T023 [US3] Verify shared formatters in `cmd/ops_progress.go` continue producing compact operator-facing discovery and frozen-scope text for default human milestones
-- [ ] T024 [US3] Run `go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances.*Verbose|TestOpsAnalyseSlowProcessInstances.*Debug|TestFormatOps.*Progress' -count=1` for `cmd/ops_analyse_slow_process_instances_test.go` and `cmd/ops_progress_test.go`
+- [x] T022 [US3] Preserve `opsSlowProcessAnalysisDurableProgressAllowed` verbose/debug behavior while adding default-human milestone pacing in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T023 [US3] Verify shared formatters in `cmd/ops_progress.go` continue producing compact operator-facing discovery and frozen-scope text for default human milestones
+- [x] T024 [US3] Run `go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances.*Verbose|TestOpsAnalyseSlowProcessInstances.*Debug|TestFormatOps.*Progress' -count=1` for `cmd/ops_analyse_slow_process_instances_test.go` and `cmd/ops_progress_test.go`
 
 **Checkpoint**: All user stories are independently functional.
 

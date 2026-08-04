@@ -14,6 +14,7 @@ Started: 2026-08-04T16:54:15Z
 - `toolx/logging/activity.go` supports priority activity scopes and updates; workflow importance outranks HTTP, wait, and batch activity, so nested runtime lookups should not hide slow-analysis workflow progress when updates use `ActivityImportanceWorkflow`.
 - Existing tests in `cmd/ops_progress_test.go` cover formatter wording, ETA gating, `opsProgressChannelForMode` stdout safety, sparse milestone elapsed/progress boundaries, timer-only suppression, and default-human-versus-machine-mode milestone gating; slow-analysis progress tests around `cmd/ops_analyse_slow_process_instances_test.go` cover default activity updates, default-human paced post-confirmation page/frozen-scope milestones, workflow-importance preservation over nested HTTP work, verbose durable stderr, JSON/keys-only/quiet/automation suppression, and preflight prompt gating.
 - Slow-analysis JSON, keys-only, quiet, and automation silence tests use deterministic `configureOpsSlowProcessAnalysisPreflightWithPacer` clocks advanced past `opsDurableMilestoneMinimumElapsed`; if those modes ever become milestone-eligible, the tests will catch stdout/stderr leakage.
+- US3 added explicit debug-mode durable stderr coverage and default-human compact milestone wording checks in `cmd/ops_analyse_slow_process_instances_test.go`; no production change was needed because `opsSlowProcessAnalysisDurableProgressAllowed` already allows verbose and debug while default-human milestones use shared compact formatters.
 
 ## Decisions
 
@@ -29,6 +30,7 @@ Started: 2026-08-04T16:54:15Z
 - The slow-analysis service emits an initial frozen-scope event with `Done: 0`; pacing signatures should avoid treating unchanged or timer-only repeats as forward progress.
 - `configureOpsSlowProcessAnalysisPreflightWithPacer` exists for deterministic command tests; production `configureOpsSlowProcessAnalysisPreflight` passes a real-clock pacer.
 - US2 required no command metadata or help text changes, so `cmd/command_contract_test.go` and generated docs were not touched.
+- US3 required no command metadata, help text, service, or formatter changes; it completed as regression coverage plus verification of existing verbose/debug routing and compact shared formatter output.
 
 ## Reusable Commands
 
@@ -44,4 +46,4 @@ Started: 2026-08-04T16:54:15Z
 - Do not change command help or generated docs unless the shipped help wording changes; run `make docs-content` if it does.
 
 ## Current Handoff
-- Next iteration should start US3 tasks T020-T024: add debug-mode durable slow-analysis progress coverage, assert default-human milestone wording stays compact and diagnostic-detail-free, verify verbose/debug durable behavior remains unchanged, and run the targeted command test command from T024.
+- Next iteration should start Phase 6 polish tasks T025-T030: gofmt touched Go files, review documentation impact, run `go test ./cmd -count=1`, then `make test`; only run `make docs-content` if help/docs inputs change during the docs review.

@@ -79,3 +79,22 @@ Started: 2026-08-04 18:54:15
 **Learnings**:
 - Machine-mode slow-analysis tests now force milestone-eligible progress timing through deterministic pacers while asserting stdout, stderr, and transient activity remain empty.
 ---
+---
+## Iteration 5 - 2026-08-04 21:31
+**Work Unit**: User Story 3 - Keep Detailed Diagnostics Available
+**Tasks Completed**:
+- [x] T020: Add debug-mode durable progress coverage in `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T021: Add compact default-human milestone wording assertions in `cmd/ops_analyse_slow_process_instances_test.go`
+- [x] T022: Verify verbose/debug durable behavior remains preserved in `cmd/ops_analyse_slow_process_instances.go`
+- [x] T023: Verify shared default-human formatters remain compact in `cmd/ops_progress.go`
+- [x] T024: Run targeted verbose/debug and formatter command tests
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_analyse_slow_process_instances_test.go
+- specs/265-slow-analysis-progress/tasks.md
+- specs/265-slow-analysis-progress/ralph-memory.md
+- specs/265-slow-analysis-progress/progress.md
+**Learnings**:
+- Existing routing already preserved verbose/debug durable stderr; US3 only needed regression coverage for debug mode and compact default-human milestone wording.
+---
