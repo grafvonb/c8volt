@@ -15,6 +15,7 @@ Started: 2026-08-04T16:54:15Z
 - Existing tests in `cmd/ops_progress_test.go` cover formatter wording, ETA gating, `opsProgressChannelForMode` stdout safety, sparse milestone elapsed/progress boundaries, timer-only suppression, and default-human-versus-machine-mode milestone gating; slow-analysis progress tests around `cmd/ops_analyse_slow_process_instances_test.go` cover default activity updates, default-human paced post-confirmation page/frozen-scope milestones, workflow-importance preservation over nested HTTP work, verbose durable stderr, JSON/keys-only/quiet/automation suppression, and preflight prompt gating.
 - Slow-analysis JSON, keys-only, quiet, and automation silence tests use deterministic `configureOpsSlowProcessAnalysisPreflightWithPacer` clocks advanced past `opsDurableMilestoneMinimumElapsed`; if those modes ever become milestone-eligible, the tests will catch stdout/stderr leakage.
 - US3 added explicit debug-mode durable stderr coverage and default-human compact milestone wording checks in `cmd/ops_analyse_slow_process_instances_test.go`; no production change was needed because `opsSlowProcessAnalysisDurableProgressAllowed` already allows verbose and debug while default-human milestones use shared compact formatters.
+- Phase 6 formatting produced no Go diffs; docs review found existing README, generated index, generated slow-analysis CLI reference, and command help already aligned with the shipped progress behavior, so `make docs-content` was not required.
 
 ## Decisions
 
@@ -37,6 +38,7 @@ Started: 2026-08-04T16:54:15Z
 - `go test ./cmd -run 'TestOps.*Progress|TestFormatOps.*Progress|TestOpsETA' -count=1`
 - `go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances.*Progress|TestOpsAnalyseSlowProcessInstances.*Preflight' -count=1`
 - `go test ./internal/services/ops -run 'TestSlowProcessAnalysis.*Progress|TestSlowProcessAnalysis.*Preflight' -count=1`
+- `go test ./cmd -count=1`
 - `make test`
 
 ## Do Not Repeat
@@ -46,4 +48,4 @@ Started: 2026-08-04T16:54:15Z
 - Do not change command help or generated docs unless the shipped help wording changes; run `make docs-content` if it does.
 
 ## Current Handoff
-- Next iteration should start Phase 6 polish tasks T025-T030: gofmt touched Go files, review documentation impact, run `go test ./cmd -count=1`, then `make test`; only run `make docs-content` if help/docs inputs change during the docs review.
+- Feature complete; no handoff required.

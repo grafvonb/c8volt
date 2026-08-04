@@ -108,12 +108,12 @@
 
 **Purpose**: Validate docs, formatting, and repository-wide behavior.
 
-- [ ] T025 Run `gofmt -w cmd/ops_progress.go cmd/ops_progress_test.go cmd/ops_analyse_slow_process_instances.go cmd/ops_analyse_slow_process_instances_test.go internal/services/ops/slow_process_analysis.go internal/services/ops/slow_process_analysis_test.go cmd/command_contract_test.go` for touched Go files
-- [ ] T026 Review `README.md`, `docs/index.md`, `docs/cli/c8volt_ops_analyse_slow-process-instances.md`, and `cmd/ops_analyse_slow_process_instances.go` help text for documentation impact; update source help or README only if shipped wording changes
-- [ ] T027 Run `make docs-content` via `Makefile` if T026 changes command help or generated CLI documentation inputs
-- [ ] T028 Run `go test ./cmd -count=1` for the `cmd/` package
-- [ ] T029 Run `make test` via `Makefile`
-- [ ] T030 Update `specs/265-slow-analysis-progress/quickstart.md` or implementation progress notes only if validation commands or documentation decisions differ from the planned path
+- [x] T025 Run `gofmt -w cmd/ops_progress.go cmd/ops_progress_test.go cmd/ops_analyse_slow_process_instances.go cmd/ops_analyse_slow_process_instances_test.go internal/services/ops/slow_process_analysis.go internal/services/ops/slow_process_analysis_test.go cmd/command_contract_test.go` for touched Go files
+- [x] T026 Review `README.md`, `docs/index.md`, `docs/cli/c8volt_ops_analyse_slow-process-instances.md`, and `cmd/ops_analyse_slow_process_instances.go` help text for documentation impact; update source help or README only if shipped wording changes
+- [x] T027 Run `make docs-content` via `Makefile` if T026 changes command help or generated CLI documentation inputs
+- [x] T028 Run `go test ./cmd -count=1` for the `cmd/` package
+- [x] T029 Run `make test` via `Makefile`
+- [x] T030 Update `specs/265-slow-analysis-progress/quickstart.md` or implementation progress notes only if validation commands or documentation decisions differ from the planned path
 
 ---
 
