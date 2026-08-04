@@ -108,3 +108,29 @@ Started: 2026-08-04 17:19:00
 **Learnings**:
 - US2 keeps cadence and retry behavior in command-owned flag/status wiring while continuing to rely on `toolx/watch.Run` for loop mechanics and retry reset/exhaustion.
 ---
+---
+## Iteration 5 - 2026-08-04 17:55
+**Work Unit**: Phase 5 User Story 3 - Preserve Script-Safe Watch Output
+**Tasks Completed**:
+- [x] T034: Added JSON, keys-only, XML, quiet, and automation watch rejection coverage with no lookup work
+- [x] T035: Added non-watch JSON, keys-only, quiet, and automation regression coverage
+- [x] T036: Added default and verbose human watch output contract coverage
+- [x] T037: Added key/stat compatibility coverage for human watch mode
+- [x] T038: Added command contract/help metadata coverage for terminal watch snapshots
+- [x] T039: Implemented watch validation for JSON, keys-only, XML, quiet, and automation combinations
+- [x] T040: Preserved non-watch machine-mode behavior while enabling watch validation
+- [x] T041: Kept watch snapshot rows on stdout and status/progress away from result stdout
+- [x] T042: Updated process-definition long help, examples, output-mode metadata, and watch flag descriptions
+- [x] T043: Ran the required command validation gate
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processdefinition.go
+- cmd/get_processdefinition_test.go
+- cmd/command_contract_test.go
+- specs/258-process-definition-watch/tasks.md
+- specs/258-process-definition-watch/ralph-memory.md
+- specs/258-process-definition-watch/progress.md
+**Learnings**:
+- Watch output-mode validation belongs in command flag validation; JSON rejection uses the shared envelope while other rejected modes use the standard invalid-args error path before lookup work.
+---

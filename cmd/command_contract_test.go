@@ -150,7 +150,30 @@ func TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata(t *testing.T
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "repeat the process-definition lookup until interrupted or timed out",
+		Description: "repeat the process-definition lookup as terminal snapshots until interrupted, timed out, or retry-exhausted",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "watch-interval",
+		Type:        "duration",
+		Required:    false,
+		Repeated:    false,
+		Description: "interval between process-definition watch snapshots after the immediate first snapshot (default 1s)",
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:      "one-line",
+		Supported: true,
+		Notes:     "default watch snapshots use this mode; --watch rejects JSON/keys-only/XML/quiet/automation combinations",
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:             "json",
+		Supported:        true,
+		MachinePreferred: true,
+		Notes:            "preferred for automation when not using --xml or --watch",
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:      "keys-only",
+		Supported: true,
+		Notes:     "finite key stream for non-watch invocations; --watch rejects keys-only output",
 	})
 }
 
@@ -1543,7 +1566,7 @@ func TestCommandCapabilityForCommand_BpmnSelectorAlignedCommandContracts(t *test
 			path:           "get process-definition",
 			mutation:       CommandMutationReadOnly,
 			automation:     AutomationSupportUnsupported,
-			wantOutputMode: OutputModeContract{Name: "json", Supported: true, MachinePreferred: true, Notes: "preferred for automation when not using --xml"},
+			wantOutputMode: OutputModeContract{Name: "json", Supported: true, MachinePreferred: true, Notes: "preferred for automation when not using --xml or --watch"},
 			wantBpmnFlag:   "BPMN process ID to filter process instances",
 		},
 		{
@@ -2591,6 +2614,12 @@ func TestProcessDefinitionSelectorValidationHelpContract(t *testing.T) {
 			name: "get process-definition",
 			args: []string{"get", "pd", "--help"},
 			wants: []string{
+				"Watch mode prints repeated terminal snapshots",
+				"Without a",
+				"selector, `--watch` observes all visible process definitions.",
+				"JSON, keys-only,",
+				"XML, quiet, and automation combinations are rejected before lookup work.",
+				"Existing timeout and backoff retry settings bound the watch run",
 				"When `--bpmn-process-id` is set, c8volt validates that at least one visible",
 				"process definition matches the selector before rendering output.",
 				"A missing selector",

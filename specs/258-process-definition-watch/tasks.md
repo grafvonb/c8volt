@@ -114,19 +114,19 @@
 
 ### Tests for User Story 3
 
-- [ ] T034 [P] [US3] Add JSON, keys-only, XML, quiet, and automation watch rejection tests that prove no lookup work starts in `cmd/get_processdefinition_test.go`
-- [ ] T035 [P] [US3] Add non-watch JSON, keys-only, quiet, and automation regression tests for unchanged process-definition output contracts in `cmd/get_processdefinition_test.go`
-- [ ] T036 [P] [US3] Add verbose and default human watch output contract tests in `cmd/get_processdefinition_test.go`
-- [ ] T037 [P] [US3] Add key/stat compatibility tests for human watch mode in `cmd/get_processdefinition_test.go`
-- [ ] T038 [P] [US3] Add docsgen or command contract tests for human-only watch output documentation in `docsgen/main_test.go` or `cmd/command_contract_test.go`
+- [x] T034 [P] [US3] Add JSON, keys-only, XML, quiet, and automation watch rejection tests that prove no lookup work starts in `cmd/get_processdefinition_test.go`
+- [x] T035 [P] [US3] Add non-watch JSON, keys-only, quiet, and automation regression tests for unchanged process-definition output contracts in `cmd/get_processdefinition_test.go`
+- [x] T036 [P] [US3] Add verbose and default human watch output contract tests in `cmd/get_processdefinition_test.go`
+- [x] T037 [P] [US3] Add key/stat compatibility tests for human watch mode in `cmd/get_processdefinition_test.go`
+- [x] T038 [P] [US3] Add docsgen or command contract tests for human-only watch output documentation in `docsgen/main_test.go` or `cmd/command_contract_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T039 [US3] Implement human-only watch output validation for JSON, keys-only, XML, quiet, and automation combinations in `cmd/get_processdefinition.go`
-- [ ] T040 [US3] Preserve non-watch JSON, keys-only, quiet, and automation behavior while watch validation is enabled in `cmd/get_processdefinition.go`
-- [ ] T041 [US3] Gate default human, verbose, debug, and progress/status channels according to `contracts/cli-watch-contract.md` in `cmd/get_processdefinition.go` and `cmd/cmd_views_get.go`
-- [ ] T042 [US3] Update command long help, examples, output mode metadata, and watch flag descriptions to say watch is human-output only in `cmd/get_processdefinition.go` and `cmd/command_contract.go`
-- [ ] T043 [US3] Run `go test ./cmd -run 'TestGetProcessDefinition|TestCommandContract' -count=1`
+- [x] T039 [US3] Implement human-only watch output validation for JSON, keys-only, XML, quiet, and automation combinations in `cmd/get_processdefinition.go`
+- [x] T040 [US3] Preserve non-watch JSON, keys-only, quiet, and automation behavior while watch validation is enabled in `cmd/get_processdefinition.go`
+- [x] T041 [US3] Gate default human, verbose, debug, and progress/status channels according to `contracts/cli-watch-contract.md` in `cmd/get_processdefinition.go` and `cmd/cmd_views_get.go`
+- [x] T042 [US3] Update command long help, examples, output mode metadata, and watch flag descriptions to say watch is human-output only in `cmd/get_processdefinition.go` and `cmd/command_contract.go`
+- [x] T043 [US3] Run `go test ./cmd -run 'TestGetProcessDefinition|TestCommandContract' -count=1`
 
 **Checkpoint**: All user stories are independently functional, human-watch-only, and machine-output safe.
 

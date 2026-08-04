@@ -51,6 +51,13 @@ supported. Explicit ` + "`--key`" + ` and XML key lookups are backend-authorized
 c8volt displays returned tenant metadata without rejecting solely because it differs
 from the selected tenant.
 
+Watch mode prints repeated terminal snapshots, starting immediately and then
+waiting ` + "`1s`" + ` between snapshots unless ` + "`--watch-interval`" + ` is set. Without a
+selector, ` + "`--watch`" + ` observes all visible process definitions. JSON, keys-only,
+XML, quiet, and automation combinations are rejected before lookup work.
+Existing timeout and backoff retry settings bound the watch run; successful
+snapshots reset the consecutive retry budget.
+
 When ` + "`--bpmn-process-id`" + ` is set, c8volt validates that at least one visible
 process definition matches the selector before rendering output. A missing selector
 fails with the shared local diagnostic instead of rendering an ambiguous empty list.
@@ -59,6 +66,8 @@ fails with the shared local diagnostic instead of rendering an ambiguous empty l
 counts. Camunda ` + "`8.7`" + ` does not support native statistics.`,
 	Example: `  ./c8volt get process-definition --latest
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest
+  ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --watch
+  ./c8volt get process-definition --watch --watch-interval 2s
   ./c8volt get process-definition --key <process-definition-key> --json
   ./c8volt get process-definition --key <process-definition-key> --xml`,
 	Aliases: []string{"pd", "pds"},
@@ -258,17 +267,27 @@ func init() {
 	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics; 8.8/8.9 include incident counts, 8.7 unsupported")
 	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML (requires --key and no other filters)")
 	fs.Int32VarP(&flagGetPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process definitions to request per discovery page; does not cap total returned rows (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.BoolVar(&flagGetPDWatch, "watch", false, "repeat the process-definition lookup until interrupted or timed out")
-	fs.Var(toolx.NewDurationStringValue(defaultGetPDWatchInterval.String(), &flagGetPDWatchInterval), "watch-interval", "interval between process-definition watch snapshots (default 1s)")
+	fs.BoolVar(&flagGetPDWatch, "watch", false, "repeat the process-definition lookup as terminal snapshots until interrupted, timed out, or retry-exhausted")
+	fs.Var(toolx.NewDurationStringValue(defaultGetPDWatchInterval.String(), &flagGetPDWatchInterval), "watch-interval", "interval between process-definition watch snapshots after the immediate first snapshot (default 1s)")
 
 	setCommandMutation(getProcessDefinitionCmd, CommandMutationReadOnly)
 	setContractSupport(getProcessDefinitionCmd, ContractSupportFull)
 	setOutputModes(getProcessDefinitionCmd,
 		OutputModeContract{
+			Name:      RenderModeOneLine.String(),
+			Supported: true,
+			Notes:     "default watch snapshots use this mode; --watch rejects JSON/keys-only/XML/quiet/automation combinations",
+		},
+		OutputModeContract{
 			Name:             RenderModeJSON.String(),
 			Supported:        true,
 			MachinePreferred: true,
-			Notes:            "preferred for automation when not using --xml",
+			Notes:            "preferred for automation when not using --xml or --watch",
+		},
+		OutputModeContract{
+			Name:      RenderModeKeysOnly.String(),
+			Supported: true,
+			Notes:     "finite key stream for non-watch invocations; --watch rejects keys-only output",
 		},
 	)
 }
@@ -278,11 +297,38 @@ func validateGetProcessDefinitionFlags(cmd *cobra.Command) error {
 		return invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagGetPDBatchSize, consts.MaxPISearchSize)
 	}
 	if flagGetPDWatch {
+		if err := validateGetProcessDefinitionWatchOutputFlags(cmd); err != nil {
+			return err
+		}
 		if _, err := resolveGetProcessDefinitionWatchInterval(); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// validateGetProcessDefinitionWatchOutputFlags keeps watch snapshots out of
+// finite machine-output contracts before any process-definition lookup starts.
+func validateGetProcessDefinitionWatchOutputFlags(cmd *cobra.Command) error {
+	var incompatible []string
+	for _, check := range []struct {
+		enabled bool
+		flag    string
+	}{
+		{enabled: flagViewAsJson, flag: "--json"},
+		{enabled: flagViewKeysOnly, flag: "--keys-only"},
+		{enabled: flagGetPDAsXML, flag: "--xml"},
+		{enabled: flagQuiet, flag: "--quiet"},
+		{enabled: automationModeEnabled(cmd), flag: "--automation"},
+	} {
+		if check.enabled {
+			incompatible = append(incompatible, check.flag)
+		}
+	}
+	if len(incompatible) == 0 {
+		return nil
+	}
+	return forbiddenFlagCombinationf("--watch cannot be combined with %s; watch prints repeated terminal snapshots", strings.Join(incompatible, ", "))
 }
 
 func populatePDSearchFilterOpts() process.ProcessDefinitionFilter {
