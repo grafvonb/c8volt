@@ -63,20 +63,20 @@
 
 ### Tests for User Story 1
 
-- [ ] T015 [P] [US1] Add command tests for `--watch` flag registration, immediate first snapshot, repeated snapshots, and broad missing-selector all-definition lookup in `cmd/get_processdefinition_test.go`
-- [ ] T016 [P] [US1] Add command tests for explicit BPMN/latest empty snapshots and changed population between snapshots in `cmd/get_processdefinition_test.go`
-- [ ] T017 [P] [US1] Add command tests for interrupt and timeout termination without lookup-failure wording in `cmd/get_processdefinition_test.go`
-- [ ] T018 [P] [US1] Add command contract tests for `--watch` metadata and alias coverage in `cmd/command_contract_test.go`
+- [x] T015 [P] [US1] Add command tests for `--watch` flag registration, immediate first snapshot, repeated snapshots, and broad missing-selector all-definition lookup in `cmd/get_processdefinition_test.go`
+- [x] T016 [P] [US1] Add command tests for explicit BPMN/latest empty snapshots and changed population between snapshots in `cmd/get_processdefinition_test.go`
+- [x] T017 [P] [US1] Add command tests for interrupt and timeout termination without lookup-failure wording in `cmd/get_processdefinition_test.go`
+- [x] T018 [P] [US1] Add command contract tests for `--watch` metadata and alias coverage in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T019 [US1] Add `flagGetPDWatch` and register `--watch` on `getProcessDefinitionCmd` in `cmd/get_processdefinition.go`
-- [ ] T020 [US1] Route `runGetProcessDefinition` into a watch execution path before XML/key/search one-shot branches in `cmd/get_processdefinition.go`
-- [ ] T021 [US1] Implement watch snapshot collection for broad, BPMN/latest, and key selectors via the process facade in `cmd/get_processdefinition.go`
-- [ ] T022 [US1] Render default human watch snapshots with compact human-only snapshot boundaries while reusing existing process-definition rows in `cmd/cmd_views_get.go`
-- [ ] T023 [US1] Preserve existing non-watch selector validation and one-shot output behavior in `cmd/get_processdefinition.go`
-- [ ] T024 [US1] Update command capability metadata for watch support in `cmd/command_contract.go`
-- [ ] T025 [US1] Run `go test ./toolx/... ./internal/services/processdefinition/... ./c8volt/process ./cmd -run 'Watch|watch|TestGetProcessDefinition|TestCommandContract' -count=1`
+- [x] T019 [US1] Add `flagGetPDWatch` and register `--watch` on `getProcessDefinitionCmd` in `cmd/get_processdefinition.go`
+- [x] T020 [US1] Route `runGetProcessDefinition` into a watch execution path before XML/key/search one-shot branches in `cmd/get_processdefinition.go`
+- [x] T021 [US1] Implement watch snapshot collection for broad, BPMN/latest, and key selectors via the process facade in `cmd/get_processdefinition.go`
+- [x] T022 [US1] Render default human watch snapshots with compact human-only snapshot boundaries while reusing existing process-definition rows in `cmd/cmd_views_get.go`
+- [x] T023 [US1] Preserve existing non-watch selector validation and one-shot output behavior in `cmd/get_processdefinition.go`
+- [x] T024 [US1] Update command capability metadata for watch support in `cmd/command_contract.go`
+- [x] T025 [US1] Run `go test ./toolx/... ./internal/services/processdefinition/... ./c8volt/process ./cmd -run 'Watch|watch|TestGetProcessDefinition|TestCommandContract' -count=1`
 
 **Checkpoint**: User Story 1 is fully functional and independently testable as the MVP.
 

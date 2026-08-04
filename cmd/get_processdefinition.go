@@ -4,16 +4,19 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt"
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/toolx/watch"
 	"github.com/spf13/cobra"
 )
 
@@ -26,7 +29,12 @@ var (
 	flagGetPDWithStat          bool
 	flagGetPDAsXML             bool
 	flagGetPDBatchSize         int32
+	flagGetPDWatch             bool
 )
+
+const defaultGetPDWatchInterval = time.Second
+
+var processDefinitionWatchSleep watch.SleepFunc
 
 var getProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
@@ -66,6 +74,10 @@ func runGetProcessDefinition(cmd *cobra.Command, args []string) {
 
 	log.Debug("getting pd")
 	filter := populatePDSearchFilterOpts()
+	if flagGetPDWatch {
+		runGetProcessDefinitionWatch(cmd, cli, log, cfg.App.NoErrCodes, filter, cfg.App.Backoff.Timeout)
+		return
+	}
 	if flagGetPDAsXML {
 		runGetProcessDefinitionXML(cmd, cli, log, cfg.App.NoErrCodes, filter)
 		return
@@ -135,6 +147,53 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 	log.Debug(fmt.Sprintf("pd search done; found %d", pds.Total))
 }
 
+func runGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, filter process.ProcessDefinitionFilter, timeout time.Duration) {
+	log.Debug(fmt.Sprintf("watching pd; filter %s", filter.String()))
+	if err := executeGetProcessDefinitionWatch(cmd, cli, filter, timeout); err != nil {
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("watch process definitions: %w", err))
+	}
+}
+
+func executeGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, filter process.ProcessDefinitionFilter, timeout time.Duration) error {
+	request := newGetProcessDefinitionWatchSnapshotRequest(filter)
+	opts := collectOptions()
+	if request.Key != "" {
+		opts = collectExplicitAdminInputOptions()
+	}
+	_, err := watch.Run(cmd.Context(), watch.Options{
+		Interval: defaultGetPDWatchInterval,
+		Timeout:  timeout,
+		Retryable: func(error) bool {
+			return false
+		},
+		Sleep: processDefinitionWatchSleep,
+	}, func(ctx context.Context, tick watch.Tick) error {
+		snapshot, err := cli.CollectProcessDefinitionWatchSnapshot(ctx, request, opts...)
+		if err != nil {
+			return err
+		}
+		return processDefinitionWatchSnapshotView(cmd, tick.Index, snapshot)
+	})
+	return err
+}
+
+func newGetProcessDefinitionWatchSnapshotRequest(filter process.ProcessDefinitionFilter) process.ProcessDefinitionWatchSnapshotRequest {
+	request := process.ProcessDefinitionWatchSnapshotRequest{
+		Key:    filter.Key,
+		Filter: filter,
+		Page: process.ProcessDefinitionPageRequest{
+			Size: resolveGetProcessDefinitionSearchSize(),
+		},
+		Latest: flagGetPDLatest,
+	}
+	request.WatchAllWhenUnselected = request.Key == "" &&
+		filter.BpmnProcessId == "" &&
+		filter.ProcessVersion == 0 &&
+		filter.ProcessVersionTag == "" &&
+		!request.Latest
+	return request
+}
+
 func init() {
 	getCmd.AddCommand(getProcessDefinitionCmd)
 
@@ -147,6 +206,7 @@ func init() {
 	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics; 8.8/8.9 include incident counts, 8.7 unsupported")
 	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML (requires --key and no other filters)")
 	fs.Int32VarP(&flagGetPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process definitions to request per discovery page; does not cap total returned rows (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.BoolVar(&flagGetPDWatch, "watch", false, "repeat the process-definition lookup until interrupted or timed out")
 
 	setCommandMutation(getProcessDefinitionCmd, CommandMutationReadOnly)
 	setContractSupport(getProcessDefinitionCmd, ContractSupportFull)

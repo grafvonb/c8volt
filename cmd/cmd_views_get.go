@@ -212,6 +212,26 @@ func listProcessDefinitionsView(cmd *cobra.Command, resp process.ProcessDefiniti
 	return listOrJSONFlat(cmd, resp, resp.Items, pickMode(), flatRowPD, func(it process.ProcessDefinition) string { return it.Key })
 }
 
+func processDefinitionWatchSnapshotView(cmd *cobra.Command, tick int64, snapshot process.ProcessDefinitionWatchSnapshot) error {
+	if tick > 1 {
+		renderOutputLine(cmd, "")
+	}
+	renderOutputLine(cmd, "snapshot %d:", tick)
+	for _, line := range formatProcessDefinitionFlatRows(snapshot.Items) {
+		renderOutputLine(cmd, "%s", line)
+	}
+	renderOutputLine(cmd, "found: %d", len(snapshot.Items))
+	return nil
+}
+
+func formatProcessDefinitionFlatRows(items []process.ProcessDefinition) []string {
+	rows := make([]flatRow, 0, len(items))
+	for _, it := range items {
+		rows = append(rows, flatRowPD(it))
+	}
+	return formatFlatRows(rows)
+}
+
 func oneLinePD(it process.ProcessDefinition) string {
 	return compactFlatRow(flatRowPD(it))
 }

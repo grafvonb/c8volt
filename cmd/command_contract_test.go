@@ -134,6 +134,26 @@ func TestCommandCapabilityForCommand_DocumentsTenantContract(t *testing.T) {
 	}
 }
 
+func TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(getProcessDefinitionCmd)
+
+	require.Equal(t, "get process-definition", capability.Path)
+	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Contains(t, capability.Aliases, "pd")
+	require.Contains(t, capability.Aliases, "pds")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "watch",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "repeat the process-definition lookup until interrupted or timed out",
+	})
+}
+
 // TestCommandCapabilityForCommand_BasicPagedReadContracts pins the public
 // meaning of page size, total limits, aliases, automation, and machine output.
 func TestCommandCapabilityForCommand_BasicPagedReadContracts(t *testing.T) {

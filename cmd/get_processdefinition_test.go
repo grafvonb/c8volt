@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -25,6 +26,14 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+func TestGetProcessDefinitionWatchFlagRegistered(t *testing.T) {
+	flag := getProcessDefinitionCmd.Flags().Lookup("watch")
+
+	require.NotNil(t, flag)
+	require.Equal(t, "bool", flag.Value.Type())
+	require.Contains(t, flag.Usage, "repeat the process-definition lookup")
+}
 
 func TestGetProcessDefinitionSelectionFlagsRemainSearchFilters(t *testing.T) {
 	resetGetProcessDefinitionCommandGlobals()
@@ -44,6 +53,175 @@ func TestGetProcessDefinitionSelectionFlagsRemainSearchFilters(t *testing.T) {
 		ProcessVersion:    3,
 		ProcessVersionTag: "stable",
 	}, filter)
+}
+
+func TestGetProcessDefinitionWatchImmediateRepeatedBroadSnapshots(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+
+	var (
+		events   []string
+		requests []process.ProcessDefinitionWatchSnapshotRequest
+	)
+	cli := processDefinitionWatchTestAPI{
+		collect: func(_ context.Context, request process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+			events = append(events, "collect")
+			requests = append(requests, request)
+			item := process.ProcessDefinition{
+				Key:            "2251799813685255",
+				TenantId:       "tenant",
+				BpmnProcessId:  "invoice",
+				ProcessVersion: int32(len(requests)),
+			}
+			return process.ProcessDefinitionWatchSnapshot{
+				Items: []process.ProcessDefinition{item},
+				Total: 1,
+			}, nil
+		},
+	}
+	sleepCalls := 0
+	output, err := executeGetProcessDefinitionWatchForTest(t, cli, process.ProcessDefinitionFilter{}, 0, func(_ context.Context, interval time.Duration) error {
+		events = append(events, "sleep")
+		require.Equal(t, time.Second, interval)
+		sleepCalls++
+		if sleepCalls == 1 {
+			return nil
+		}
+		return context.Canceled
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"collect", "sleep", "collect", "sleep"}, events)
+	require.Len(t, requests, 2)
+	for _, request := range requests {
+		require.True(t, request.WatchAllWhenUnselected)
+		require.Equal(t, int32(1000), request.Page.Size)
+		require.False(t, request.Latest)
+	}
+	require.Contains(t, output, "snapshot 1:")
+	require.Contains(t, output, "2251799813685255 tenant invoice v1")
+	require.Contains(t, output, "snapshot 2:")
+	require.Contains(t, output, "2251799813685255 tenant invoice v2")
+	require.Contains(t, output, "found: 1")
+}
+
+func TestGetProcessDefinitionWatchExplicitLatestEmptyThenChangedSnapshot(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+	flagGetPDBpmnProcessId = "invoice"
+	flagGetPDLatest = true
+
+	var requests []process.ProcessDefinitionWatchSnapshotRequest
+	cli := processDefinitionWatchTestAPI{
+		collect: func(_ context.Context, request process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+			requests = append(requests, request)
+			if len(requests) == 1 {
+				return process.ProcessDefinitionWatchSnapshot{Empty: true}, nil
+			}
+			item := process.ProcessDefinition{
+				Key:            "2251799813685256",
+				TenantId:       "tenant",
+				BpmnProcessId:  "invoice",
+				ProcessVersion: 7,
+			}
+			return process.ProcessDefinitionWatchSnapshot{
+				Items: []process.ProcessDefinition{item},
+				Total: 1,
+			}, nil
+		},
+	}
+	sleepCalls := 0
+	output, err := executeGetProcessDefinitionWatchForTest(t, cli, populatePDSearchFilterOpts(), 0, func(context.Context, time.Duration) error {
+		sleepCalls++
+		if sleepCalls == 1 {
+			return nil
+		}
+		return context.Canceled
+	})
+
+	require.NoError(t, err)
+	require.Len(t, requests, 2)
+	for _, request := range requests {
+		require.False(t, request.WatchAllWhenUnselected)
+		require.True(t, request.Latest)
+		require.Equal(t, "invoice", request.Filter.BpmnProcessId)
+	}
+	require.Contains(t, output, "snapshot 1:\nfound: 0")
+	require.Contains(t, output, "snapshot 2:")
+	require.Contains(t, output, "2251799813685256 tenant invoice v7")
+	require.Contains(t, output, "found: 1")
+}
+
+func TestGetProcessDefinitionWatchKeySnapshotUsesExplicitAdminOptions(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+	flagGetPDKey = "2251799813685255"
+
+	var gotOptions *options.FacadeCfg
+	cli := processDefinitionWatchTestAPI{
+		collect: func(_ context.Context, request process.ProcessDefinitionWatchSnapshotRequest, opts ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+			require.Equal(t, "2251799813685255", request.Key)
+			gotOptions = options.ApplyFacadeOptions(opts)
+			return process.ProcessDefinitionWatchSnapshot{
+				Items: []process.ProcessDefinition{{
+					Key:            "2251799813685255",
+					TenantId:       "tenant",
+					BpmnProcessId:  "invoice",
+					ProcessVersion: 3,
+				}},
+				Total: 1,
+			}, nil
+		},
+	}
+
+	output, err := executeGetProcessDefinitionWatchForTest(t, cli, populatePDSearchFilterOpts(), 0, func(context.Context, time.Duration) error {
+		return context.Canceled
+	})
+
+	require.NoError(t, err)
+	require.True(t, gotOptions.IgnoreTenant)
+	require.Contains(t, output, "2251799813685255 tenant invoice v3")
+}
+
+func TestGetProcessDefinitionWatchInterruptAndTimeoutStopCleanly(t *testing.T) {
+	tests := []struct {
+		name     string
+		sleepErr error
+	}{
+		{name: "interrupt", sleepErr: context.Canceled},
+		{name: "timeout", sleepErr: context.DeadlineExceeded},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetGetProcessDefinitionCommandGlobals()
+			t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+
+			cli := processDefinitionWatchTestAPI{
+				collect: func(_ context.Context, _ process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+					return process.ProcessDefinitionWatchSnapshot{
+						Items: []process.ProcessDefinition{{
+							Key:            "2251799813685255",
+							TenantId:       "tenant",
+							BpmnProcessId:  "invoice",
+							ProcessVersion: 1,
+						}},
+						Total: 1,
+					}, nil
+				},
+			}
+
+			output, err := executeGetProcessDefinitionWatchForTest(t, cli, process.ProcessDefinitionFilter{}, 0, func(context.Context, time.Duration) error {
+				return tt.sleepErr
+			})
+
+			require.NoError(t, err)
+			require.Contains(t, output, "snapshot 1:")
+			require.NotContains(t, strings.ToLower(output), "failed")
+			require.NotContains(t, strings.ToLower(output), "error")
+			require.NotContains(t, strings.ToLower(output), "lookup")
+		})
+	}
 }
 
 func TestGetProcessDefinitionLatestSearchPreservesSelectionRequest(t *testing.T) {
@@ -366,6 +544,33 @@ func (a processDefinitionPagingActivityAPI) SearchProcessDefinitionsPages(ctx co
 	return a.searchProcessDefinitionsPages(ctx, request, visitor, opts...)
 }
 
+type processDefinitionWatchTestAPI struct {
+	c8volt.API
+	collect func(context.Context, process.ProcessDefinitionWatchSnapshotRequest, ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error)
+}
+
+func (a processDefinitionWatchTestAPI) CollectProcessDefinitionWatchSnapshot(ctx context.Context, request process.ProcessDefinitionWatchSnapshotRequest, opts ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+	return a.collect(ctx, request, opts...)
+}
+
+func executeGetProcessDefinitionWatchForTest(t *testing.T, cli c8volt.API, filter process.ProcessDefinitionFilter, timeout time.Duration, sleep func(context.Context, time.Duration) error) (string, error) {
+	t.Helper()
+
+	cmd := &cobra.Command{Use: "process-definition"}
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetContext(context.Background())
+
+	previousSleep := processDefinitionWatchSleep
+	processDefinitionWatchSleep = sleep
+	t.Cleanup(func() {
+		processDefinitionWatchSleep = previousSleep
+	})
+
+	err := executeGetProcessDefinitionWatch(cmd, cli, filter, timeout)
+	return stdout.String(), err
+}
+
 func resetGetProcessDefinitionCommandGlobals() {
 	flagGetPDKey = ""
 	flagGetPDBpmnProcessId = ""
@@ -374,6 +579,8 @@ func resetGetProcessDefinitionCommandGlobals() {
 	flagGetPDLatest = false
 	flagGetPDWithStat = false
 	flagGetPDAsXML = false
+	flagGetPDBatchSize = 0
+	flagGetPDWatch = false
 	flagViewAsJson = false
 	flagViewKeysOnly = false
 }
