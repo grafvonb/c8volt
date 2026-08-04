@@ -13,6 +13,7 @@ Started: 2026-08-04T16:54:15Z
 - `internal/domain/ops_progress.go` defines the shared progress event model and `OpsDefaultETAMinimumSamples`/`OpsMinimumTimingElapsed`; command milestone pacing should use command-owned constants/state rather than adding CLI policy to domain or services.
 - `toolx/logging/activity.go` supports priority activity scopes and updates; workflow importance outranks HTTP, wait, and batch activity, so nested runtime lookups should not hide slow-analysis workflow progress when updates use `ActivityImportanceWorkflow`.
 - Existing tests in `cmd/ops_progress_test.go` cover formatter wording, ETA gating, `opsProgressChannelForMode` stdout safety, sparse milestone elapsed/progress boundaries, timer-only suppression, and default-human-versus-machine-mode milestone gating; slow-analysis progress tests around `cmd/ops_analyse_slow_process_instances_test.go` cover default activity updates, default-human paced post-confirmation page/frozen-scope milestones, workflow-importance preservation over nested HTTP work, verbose durable stderr, JSON/keys-only/quiet/automation suppression, and preflight prompt gating.
+- Slow-analysis JSON, keys-only, quiet, and automation silence tests use deterministic `configureOpsSlowProcessAnalysisPreflightWithPacer` clocks advanced past `opsDurableMilestoneMinimumElapsed`; if those modes ever become milestone-eligible, the tests will catch stdout/stderr leakage.
 
 ## Decisions
 
@@ -27,6 +28,7 @@ Started: 2026-08-04T16:54:15Z
 - JSON, keys-only, quiet, and automation tests assert both stdout and stderr stay empty for progress callbacks; milestone gating must keep these modes silent even though default human can use stderr.
 - The slow-analysis service emits an initial frozen-scope event with `Done: 0`; pacing signatures should avoid treating unchanged or timer-only repeats as forward progress.
 - `configureOpsSlowProcessAnalysisPreflightWithPacer` exists for deterministic command tests; production `configureOpsSlowProcessAnalysisPreflight` passes a real-clock pacer.
+- US2 required no command metadata or help text changes, so `cmd/command_contract_test.go` and generated docs were not touched.
 
 ## Reusable Commands
 
@@ -42,4 +44,4 @@ Started: 2026-08-04T16:54:15Z
 - Do not change command help or generated docs unless the shipped help wording changes; run `make docs-content` if it does.
 
 ## Current Handoff
-- Next iteration should start US2 tasks T015-T019: extend JSON/keys-only/quiet/automation slow-analysis tests so the new paced milestone path cannot leak to stdout or stderr, verify `opsProgressChannelForMode` plus slow-analysis milestone wiring keep machine modes silent, and run the targeted command test command from T019.
+- Next iteration should start US3 tasks T020-T024: add debug-mode durable slow-analysis progress coverage, assert default-human milestone wording stays compact and diagnostic-detail-free, verify verbose/debug durable behavior remains unchanged, and run the targeted command test command from T024.

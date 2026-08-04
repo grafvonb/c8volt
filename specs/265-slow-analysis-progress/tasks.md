@@ -70,14 +70,14 @@
 
 ### Tests for User Story 2
 
-- [ ] T015 [P] [US2] Extend slow-analysis JSON and keys-only progress silence tests in `cmd/ops_analyse_slow_process_instances_test.go` so paced durable milestones cannot leak to stdout or stderr
-- [ ] T016 [P] [US2] Extend slow-analysis quiet and automation progress silence tests in `cmd/ops_analyse_slow_process_instances_test.go` so paced durable milestones are suppressed
-- [ ] T017 [P] [US2] Add command contract regression coverage in `cmd/command_contract_test.go` only if command metadata or help text changes
+- [x] T015 [P] [US2] Extend slow-analysis JSON and keys-only progress silence tests in `cmd/ops_analyse_slow_process_instances_test.go` so paced durable milestones cannot leak to stdout or stderr
+- [x] T016 [P] [US2] Extend slow-analysis quiet and automation progress silence tests in `cmd/ops_analyse_slow_process_instances_test.go` so paced durable milestones are suppressed
+- [x] T017 [P] [US2] Add command contract regression coverage in `cmd/command_contract_test.go` only if command metadata or help text changes
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] Verify `opsProgressChannelForMode` and slow-analysis milestone wiring in `cmd/ops_progress.go` and `cmd/ops_analyse_slow_process_instances.go` keep `StdoutAllowed` false and durable human milestones disabled for JSON, keys-only, quiet, and automation
-- [ ] T019 [US2] Run `go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances.*JSON|TestOpsAnalyseSlowProcessInstances.*KeysOnly|TestOpsAnalyseSlowProcessInstances.*Quiet|TestOpsAnalyseSlowProcessInstances.*Automation|TestOpsProgressChannelForMode' -count=1` for `cmd/ops_analyse_slow_process_instances_test.go` and `cmd/ops_progress_test.go`
+- [x] T018 [US2] Verify `opsProgressChannelForMode` and slow-analysis milestone wiring in `cmd/ops_progress.go` and `cmd/ops_analyse_slow_process_instances.go` keep `StdoutAllowed` false and durable human milestones disabled for JSON, keys-only, quiet, and automation
+- [x] T019 [US2] Run `go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances.*JSON|TestOpsAnalyseSlowProcessInstances.*KeysOnly|TestOpsAnalyseSlowProcessInstances.*Quiet|TestOpsAnalyseSlowProcessInstances.*Automation|TestOpsProgressChannelForMode' -count=1` for `cmd/ops_analyse_slow_process_instances_test.go` and `cmd/ops_progress_test.go`
 
 **Checkpoint**: User Stories 1 and 2 both work independently without corrupting machine output.
 

@@ -60,3 +60,22 @@ Started: 2026-08-04 18:54:15
 **Learnings**:
 - Slow-analysis can add request-local default-human milestone pacing entirely in command code while preserving verbose/debug durable output and service structured-event boundaries.
 ---
+---
+## Iteration 4 - 2026-08-04 21:28
+**Work Unit**: User Story 2 - Preserve Quiet Machine Output
+**Tasks Completed**:
+- [x] T015: Extend slow-analysis JSON and keys-only progress silence tests so paced durable milestones cannot leak to stdout or stderr
+- [x] T016: Extend slow-analysis quiet and automation progress silence tests so paced durable milestones are suppressed
+- [x] T017: Confirm command contract regression coverage was not needed because command metadata and help text did not change
+- [x] T018: Verify `opsProgressChannelForMode` and slow-analysis milestone wiring keep machine modes stdout-safe and milestone-suppressed
+- [x] T019: Run targeted JSON, keys-only, quiet, automation, and channel-mode command tests
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_analyse_slow_process_instances_test.go
+- specs/265-slow-analysis-progress/tasks.md
+- specs/265-slow-analysis-progress/ralph-memory.md
+- specs/265-slow-analysis-progress/progress.md
+**Learnings**:
+- Machine-mode slow-analysis tests now force milestone-eligible progress timing through deterministic pacers while asserting stdout, stderr, and transient activity remain empty.
+---
