@@ -106,11 +106,11 @@
 
 **Purpose**: Documentation, formatting, and full validation.
 
-- [ ] T026 [P] Update README watch guidance to describe repaint behavior, normal result-body parity, slow-refresh warnings, and incompatible modes in `README.md`
-- [ ] T027 Regenerate generated CLI documentation from command metadata into `docs/cli/c8volt_get_process-definition.md`
-- [ ] T028 Run `gofmt` on touched Go files in `cmd/get_processdefinition.go`, `cmd/cmd_views_get.go`, `cmd/cmd_views_rendermode.go`, `cmd/get_processdefinition_test.go`, `cmd/command_contract_test.go`, `toolx/watch/watch.go`, and `toolx/watch/watch_test.go`
-- [ ] T029 Run focused validation from `specs/268-pd-watch-repaint/quickstart.md` and record any deviations in `specs/268-pd-watch-repaint/tasks.md`
-- [ ] T030 Run `make test` for full repository validation and record any failures or skipped checks in `specs/268-pd-watch-repaint/tasks.md`
+- [x] T026 [P] Update README watch guidance to describe repaint behavior, normal result-body parity, slow-refresh warnings, and incompatible modes in `README.md`
+- [x] T027 Regenerate generated CLI documentation from command metadata into `docs/cli/c8volt_get_process-definition.md`
+- [x] T028 Run `gofmt` on touched Go files in `cmd/get_processdefinition.go`, `cmd/cmd_views_get.go`, `cmd/cmd_views_rendermode.go`, `cmd/get_processdefinition_test.go`, `cmd/command_contract_test.go`, `toolx/watch/watch.go`, and `toolx/watch/watch_test.go`
+- [x] T029 Run focused validation from `specs/268-pd-watch-repaint/quickstart.md` and record any deviations in `specs/268-pd-watch-repaint/tasks.md`
+- [x] T030 Run `make test` for full repository validation and record any failures or skipped checks in `specs/268-pd-watch-repaint/tasks.md`
 
 ---
 

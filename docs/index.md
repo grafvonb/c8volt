@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.2.1-beta.2-15-gdcda63f2-dirty`, commit `dcda63f2`, built `2026-08-04T15:59:21Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v4.2.2-beta.1-6-g2016b460-dirty`, commit `2016b460`, built `2026-08-05T15:24:59Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -169,12 +169,14 @@ Then look around at the latest process definitions visible in the cluster:
 ./c8volt get process-definition --latest
 ```
 
-To watch deployment visibility in a terminal, add `--watch`. The first
-snapshot prints immediately, the default interval is `1s`, and
-`--watch-interval` accepts positive durations such as `2s`. Without a selector,
+To watch deployment visibility in a terminal, add `--watch`. The first refresh
+runs immediately, the default interval is `1s`, and `--watch-interval` accepts
+positive durations such as `2s`. Each successful refresh repaints one terminal
+view and uses the same human result body as the equivalent non-watch process
+definition lookup, without watch-only `snapshot N:` labels. Without a selector,
 watch mode observes all visible process definitions; `--batch-size` controls
-each backend discovery request for broad watch snapshots without capping the
-total rows in a snapshot.
+each backend discovery request for broad watch refreshes without capping the
+total rows in a refresh.
 
 ```bash
 ./c8volt get process-definition --watch
@@ -184,8 +186,10 @@ total rows in a snapshot.
 Process-definition watch output is human-only: it rejects `--json`,
 `--keys-only`, `--xml`, `--quiet`, and `--automation` before lookup work so
 script-safe output modes stay finite and deterministic. Existing timeout and
-backoff retry settings bound watch runs, and successful snapshots reset the
-consecutive retry budget.
+backoff retry settings bound watch runs, and successful refreshes reset the
+consecutive retry budget. If refresh work takes longer than the configured
+interval, default human mode warns once per continuous slow streak; verbose mode
+adds per-refresh timing on stderr.
 
 For scripts or CI, add `--json` when stdout should be data and logs should stay on stderr:
 

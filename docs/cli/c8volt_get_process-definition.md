@@ -20,12 +20,13 @@ supported. Explicit `--key` and XML key lookups are backend-authorized admin inp
 c8volt displays returned tenant metadata without rejecting solely because it differs
 from the selected tenant.
 
-Watch mode prints repeated terminal snapshots, starting immediately and then
-waiting `1s` between snapshots unless `--watch-interval` is set. Without a
-selector, `--watch` observes all visible process definitions. JSON, keys-only,
-XML, quiet, and automation combinations are rejected before lookup work.
-Existing timeout and backoff retry settings bound the watch run; successful
-snapshots reset the consecutive retry budget.
+Watch mode repaints one terminal view, starting immediately and then waiting
+`1s` between refreshes unless `--watch-interval` is set. Each refresh body
+matches normal list output without watch-only snapshot labels. Without a selector,
+`--watch` observes all visible process definitions. JSON, keys-only, XML,
+quiet, and automation combinations are rejected before lookup work. Existing
+timeout and backoff retry settings bound the watch run; successful refreshes reset
+the consecutive retry budget.
 
 When `--bpmn-process-id` is set, c8volt validates that at least one visible
 process definition matches the selector before rendering output. A missing selector
@@ -60,8 +61,8 @@ c8volt get process-definition [flags]
       --pd-version int32          process definition version
       --pd-version-tag string     process definition version tag
       --stat                      include process definition statistics; 8.8/8.9 include incident counts, 8.7 unsupported
-      --watch                     repeat the process-definition lookup as terminal snapshots until interrupted, timed out, or retry-exhausted
-      --watch-interval duration   interval between process-definition watch snapshots after the immediate first snapshot (default 1s)
+      --watch                     repeat the process-definition lookup as a repainted terminal view until interrupted, timed out, or retry-exhausted
+      --watch-interval duration   interval between process-definition watch refreshes after the immediate first refresh (default 1s)
       --xml                       output the selected process definition as raw XML (requires --key and no other filters)
 ```
 

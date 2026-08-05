@@ -6,7 +6,7 @@ Started: 2026-08-05T14:59:33Z
 ## Codebase Patterns
 - Process-definition watch is command-owned in `cmd/get_processdefinition.go`: `executeGetProcessDefinitionWatch` builds a `process.ProcessDefinitionWatchSnapshotRequest`, chooses normal or explicit-admin facade options, and delegates serial looping to `toolx/watch.Run`.
 - `toolx/watch.Run` is output-agnostic and synchronous: it executes one tick immediately, calls the tick function inline, resets consecutive failures on success, then sleeps via the injectable `SleepFunc`.
-- Current watch result rendering is isolated in `cmd/cmd_views_get.go` as `processDefinitionWatchSnapshotView`; it prints an optional blank line, `snapshot N:`, formatted process-definition flat rows, and `found: len(snapshot.Items)`.
+- Watch result rendering is isolated in `cmd/cmd_views_get.go`; `processDefinitionWatchView` delegates to normal process-definition list rendering so refresh bodies match non-watch human output.
 - Existing watch command tests in `cmd/get_processdefinition_test.go` already use separate stdout/stderr buffers through `executeGetProcessDefinitionWatchWithBackoffForTest` and deterministic sleeps through the package-level `processDefinitionWatchSleep` seam.
 - Iteration 2 added `processDefinitionWatchHarness` and `executeGetProcessDefinitionWatchHarnessForTest` in `cmd/get_processdefinition_test.go`; the older tuple-return helpers now delegate to it, and future tests can use `processDefinitionWatchRunResult` for named stdout/stderr/error fields.
 - Repaint assertions can use `processDefinitionWatchRepaintControlSequenceForTest` (`ESC [ H` then `ESC [ 2 J`), `requireProcessDefinitionWatchRepaintCount`, `requireNoProcessDefinitionWatchRepaintControls`, and `stdoutWithoutRepaintControls` without requiring a real terminal.
@@ -23,9 +23,9 @@ Started: 2026-08-05T14:59:33Z
 - Iteration 3 completed US1. Process-definition watch now repaints each successful refresh and renders the same body as normal non-watch list output, with command help/metadata updated from snapshot wording to refresh/repaint wording.
 - Iteration 4 completed US2. Watch refresh duration is measured around collection plus render, default slow warnings are streak-based on stderr, verbose timing is emitted per refresh on stderr, and runner seriality is covered in `toolx/watch`.
 - Iteration 5 completed US3. Watch remains human-only with local rejection before lookup for JSON, keys-only, XML, quiet, and automation; non-watch JSON, keys-only, XML, quiet, and automation compatibility is covered.
+- Iteration 6 completed polish. README and generated CLI docs now describe repaint refreshes, normal result-body parity, slow-refresh warnings, and human-only watch boundaries; gofmt, focused quickstart validation, and `make test` passed.
 
 ## Gotchas
-- `README.md` and generated CLI docs under `docs/cli/` still use stale "snapshot" / "repeated terminal snapshots" wording until polish tasks T026-T027 run; do not hand-edit generated docs.
 - `processDefinitionWatchSnapshotRequest` and `ProcessDefinitionWatchSnapshot` remain internal/facade type names even though user-facing text now says refresh/repaint.
 - Verbose watch mode now intentionally writes timing status to stderr, so command tests that set `flagVerbose` should not require empty stderr.
 - Command validation tests may exercise Cobra commands before a context/config is attached; automation-mode checks must tolerate a nil command context while still honoring command flags and global automation state.
@@ -35,11 +35,14 @@ Started: 2026-08-05T14:59:33Z
 - `go test ./cmd -count=1`
 - `go test ./toolx/watch -run 'TestWatchRunKeepsTicksSerialWhenTickExceedsInterval|TestWatchRun' -count=1`
 - `go test ./cmd -run 'TestValidateGetProcessDefinitionWatch|TestGetProcessDefinitionWatchRejectsMachineModesBeforeLookup|TestGetProcessDefinitionNonWatchMachineModesStayCompatible|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata' -count=1`
+- `go test ./cmd -run 'TestGetProcessDefinitionWatch|TestValidateGetProcessDefinitionWatch|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata|TestProcessDefinitionSelectorValidationHelpContract' -count=1`
+- `go test ./toolx/... -run 'Watch|watch' -count=1`
 - `make docs-content`
+- `make test`
 
 ## Do Not Repeat
 - Do not add repaint behavior to `toolx/watch`; terminal repaint/status is command rendering behavior, while the watch runner should remain output-agnostic.
 - Do not hand-edit generated CLI docs under `docs/cli/`; update command metadata/help and regenerate them.
 
 ## Current Handoff
-- Next iteration should complete polish tasks T026-T030 only: update README, regenerate CLI docs with `make docs-content`, gofmt touched Go files, run focused quickstart validation, then run `make test`. Do not hand-edit generated CLI docs.
+- Feature complete; no handoff required.

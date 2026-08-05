@@ -106,3 +106,24 @@ Started: 2026-08-05 16:59:33
 **Learnings**:
 - US3 validation exposed nil-context command validation as the only failing boundary; non-watch XML is now represented in the machine-mode compatibility coverage.
 ---
+---
+## Iteration 6 - 2026-08-05 17:27
+**Work Unit**: Phase 6 Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T026: Update README watch guidance
+- [x] T027: Regenerate generated CLI documentation
+- [x] T028: Run gofmt on touched Go files
+- [x] T029: Run focused quickstart validation
+- [x] T030: Run full repository validation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- docs/index.md
+- docs/cli/c8volt_get_process-definition.md
+- specs/268-pd-watch-repaint/tasks.md
+- specs/268-pd-watch-repaint/ralph-memory.md
+- specs/268-pd-watch-repaint/progress.md
+**Learnings**:
+- README and generated CLI references are aligned with repaint refresh behavior; focused quickstart checks and `make test` passed with no deviations.
+---
