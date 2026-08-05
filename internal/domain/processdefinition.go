@@ -127,6 +127,26 @@ type ProcessDefinitionSearchPagesResult struct {
 	Pages int32
 }
 
+// ProcessDefinitionWatchSnapshotRequest selects one complete process-definition
+// snapshot for a watch tick.
+type ProcessDefinitionWatchSnapshotRequest struct {
+	Key                    string
+	Filter                 ProcessDefinitionFilter
+	Page                   ProcessDefinitionPageRequest
+	Latest                 bool
+	WatchAllWhenUnselected bool
+}
+
+// ProcessDefinitionWatchSnapshot captures the full visible process-definition
+// set for one watch tick.
+type ProcessDefinitionWatchSnapshot struct {
+	Items         []ProcessDefinition
+	Total         int32
+	Pages         int32
+	ReportedTotal *ProcessDefinitionReportedTotal
+	Empty         bool
+}
+
 func SortByVersionDesc(pds []ProcessDefinition) {
 	slices.SortFunc(pds, func(a, b ProcessDefinition) int {
 		switch {

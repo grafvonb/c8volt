@@ -20,6 +20,13 @@ supported. Explicit `--key` and XML key lookups are backend-authorized admin inp
 c8volt displays returned tenant metadata without rejecting solely because it differs
 from the selected tenant.
 
+Watch mode prints repeated terminal snapshots, starting immediately and then
+waiting `1s` between snapshots unless `--watch-interval` is set. Without a
+selector, `--watch` observes all visible process definitions. JSON, keys-only,
+XML, quiet, and automation combinations are rejected before lookup work.
+Existing timeout and backoff retry settings bound the watch run; successful
+snapshots reset the consecutive retry budget.
+
 When `--bpmn-process-id` is set, c8volt validates that at least one visible
 process definition matches the selector before rendering output. A missing selector
 fails with the shared local diagnostic instead of rendering an ambiguous empty list.
@@ -36,6 +43,8 @@ c8volt get process-definition [flags]
 ```
   ./c8volt get process-definition --latest
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest
+  ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --watch
+  ./c8volt get process-definition --watch --watch-interval 2s
   ./c8volt get process-definition --key <process-definition-key> --json
   ./c8volt get process-definition --key <process-definition-key> --xml
 ```
@@ -43,15 +52,17 @@ c8volt get process-definition [flags]
 ### Options
 
 ```
-  -n, --batch-size int32         number of process definitions to request per discovery page; does not cap total returned rows (max limit 1000 enforced by server) (default 1000)
-  -b, --bpmn-process-id string   BPMN process ID to filter process instances
-  -h, --help                     help for process-definition
-  -k, --key string               process definition key to fetch
-      --latest                   fetch the latest version(s) of the given BPMN process(s)
-      --pd-version int32         process definition version
-      --pd-version-tag string    process definition version tag
-      --stat                     include process definition statistics; 8.8/8.9 include incident counts, 8.7 unsupported
-      --xml                      output the selected process definition as raw XML (requires --key and no other filters)
+  -n, --batch-size int32          number of process definitions to request per discovery page; does not cap total returned rows (max limit 1000 enforced by server) (default 1000)
+  -b, --bpmn-process-id string    BPMN process ID to filter process instances
+  -h, --help                      help for process-definition
+  -k, --key string                process definition key to fetch
+      --latest                    fetch the latest version(s) of the given BPMN process(s)
+      --pd-version int32          process definition version
+      --pd-version-tag string     process definition version tag
+      --stat                      include process definition statistics; 8.8/8.9 include incident counts, 8.7 unsupported
+      --watch                     repeat the process-definition lookup as terminal snapshots until interrupted, timed out, or retry-exhausted
+      --watch-interval duration   interval between process-definition watch snapshots after the immediate first snapshot (default 1s)
+      --xml                       output the selected process definition as raw XML (requires --key and no other filters)
 ```
 
 ### Options inherited from parent commands

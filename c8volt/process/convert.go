@@ -107,6 +107,30 @@ func fromDomainProcessDefinitionSearchPagesResult(x d.ProcessDefinitionSearchPag
 	}
 }
 
+// toDomainProcessDefinitionWatchSnapshotRequest maps public watch snapshot
+// selection into the service-owned domain model.
+func toDomainProcessDefinitionWatchSnapshotRequest(x ProcessDefinitionWatchSnapshotRequest) d.ProcessDefinitionWatchSnapshotRequest {
+	return d.ProcessDefinitionWatchSnapshotRequest{
+		Key:                    x.Key,
+		Filter:                 toDomainProcessDefinitionFilter(x.Filter),
+		Page:                   toDomainProcessDefinitionPageRequest(x.Page),
+		Latest:                 x.Latest,
+		WatchAllWhenUnselected: x.WatchAllWhenUnselected,
+	}
+}
+
+// fromDomainProcessDefinitionWatchSnapshot maps service-collected watch
+// snapshots across the public facade boundary.
+func fromDomainProcessDefinitionWatchSnapshot(x d.ProcessDefinitionWatchSnapshot) ProcessDefinitionWatchSnapshot {
+	return ProcessDefinitionWatchSnapshot{
+		Items:         toolx.MapSlice(x.Items, fromDomainProcessDefinition),
+		Total:         x.Total,
+		Pages:         x.Pages,
+		ReportedTotal: toolx.MapPtr(x.ReportedTotal, fromDomainProcessDefinitionReportedTotal),
+		Empty:         x.Empty,
+	}
+}
+
 func fromDomainProcessInstance(x d.ProcessInstance) ProcessInstance {
 	return ProcessInstance{
 		BpmnProcessId:            x.BpmnProcessId,

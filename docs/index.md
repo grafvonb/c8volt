@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.2.0-beta.3-73-g84cf609d`, commit `84cf609d`, built `2026-07-27T13:58:08Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v4.2.1-beta.2-15-gdcda63f2-dirty`, commit `dcda63f2`, built `2026-08-04T15:59:21Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -36,6 +36,8 @@ During discovery, progress uses page and seen-count wording. After c8volt freeze
 
 Progress never writes to result stdout. Default human mode uses terminal activity; verbose and debug modes may keep durable progress lines on stderr. JSON output remains one document, keys-only output remains one key per line, and quiet or automation-oriented runs suppress progress chatter or keep scope in structured reports. For paged commands, `--batch-size` controls each backend discovery request, while `--limit` caps the total returned, selected, frozen, or analyzed scope as documented by the command.
 
+Transient Camunda GET and HEAD read failures are retried automatically when the shared request path sees temporary transport errors, throttling, or server availability responses. Retry messages stay compact and off result stdout, and c8volt still treats business outcomes such as not-found, invalid request, permission failure, and conflict as final.
+
 ### v4.2 Highlight: Slow Process Analysis
 
 `ops analyse slow-process-instances` is read-only analysis for slow runtime work. It combines process-instance search, runtime element timing, and optional listener-job context into an operator view: slowest roots first, slowest elements underneath.
@@ -54,8 +56,8 @@ Start destructive, repair, and cleanup work with a plan:
 
 ```bash
 ./c8volt ops execute retention-policy --retention-days 90 --dry-run
-./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
 ./c8volt ops repair incident --key <incident-key> --dry-run
+./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
 ```
 
 Generated references: [ops execute retention-policy](./cli/c8volt_ops_execute_retention-policy), [ops purge process-instances-with-incidents](./cli/c8volt_ops_purge_process-instances-with-incidents), [ops repair incident](./cli/c8volt_ops_repair_incident).
@@ -166,6 +168,24 @@ Then look around at the latest process definitions visible in the cluster:
 ```bash
 ./c8volt get process-definition --latest
 ```
+
+To watch deployment visibility in a terminal, add `--watch`. The first
+snapshot prints immediately, the default interval is `1s`, and
+`--watch-interval` accepts positive durations such as `2s`. Without a selector,
+watch mode observes all visible process definitions; `--batch-size` controls
+each backend discovery request for broad watch snapshots without capping the
+total rows in a snapshot.
+
+```bash
+./c8volt get process-definition --watch
+./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --watch --watch-interval 2s
+```
+
+Process-definition watch output is human-only: it rejects `--json`,
+`--keys-only`, `--xml`, `--quiet`, and `--automation` before lookup work so
+script-safe output modes stay finite and deterministic. Existing timeout and
+backoff retry settings bound watch runs, and successful snapshots reset the
+consecutive retry budget.
 
 For scripts or CI, add `--json` when stdout should be data and logs should stay on stderr:
 

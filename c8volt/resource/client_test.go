@@ -942,6 +942,11 @@ func (stubProcessAPI) SearchProcessDefinitionsPages(context.Context, process.Pro
 	panic("unexpected call")
 }
 
+// CollectProcessDefinitionWatchSnapshot is not expected in resource facade tests.
+func (stubProcessAPI) CollectProcessDefinitionWatchSnapshot(context.Context, process.ProcessDefinitionWatchSnapshotRequest, ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+	panic("unexpected call")
+}
+
 func (s stubProcessAPI) GetProcessDefinition(ctx context.Context, key string, opts ...options.FacadeOption) (process.ProcessDefinition, error) {
 	if s.getProcessDefinition == nil {
 		panic("unexpected call")
