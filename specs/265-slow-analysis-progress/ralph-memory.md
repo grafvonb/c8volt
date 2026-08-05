@@ -1,0 +1,51 @@
+# Ralph Memory
+
+Feature: 265-slow-analysis-progress
+Started: 2026-08-04T16:54:15Z
+
+## Codebase Patterns
+
+- `cmd/ops_progress.go` owns shared progress channel selection, compact human preflight/page/frozen-scope/ETA formatters, durable stderr printing through `printOpsDurableLine`, and machine-output-safe gating via `opsProgressChannelForMode`.
+- `cmd/ops_progress.go` now also owns sparse durable milestone pacing through `opsDurableMilestoneMinimumElapsed`, `opsProgressMilestonePacer`, `opsProgressMilestoneSignatureForEvent`, and `opsProgressDurableMilestoneChannelAllowed`.
+- `cmd/ops_analyse_slow_process_instances.go` wires broad slow-analysis search progress in `configureOpsSlowProcessAnalysisPreflight`; current callback handles Preflight, Page, FrozenScope, and ETA events, updates workflow activity, applies a request-local `opsProgressMilestonePacer` for default-human durable milestones, and prompts through `ConfirmPreflight`.
+- `printOpsSlowProcessAnalysisProgress` still preserves legacy immediate durable stderr for verbose/debug callers; slow-analysis post-confirmation progress uses `printOpsSlowProcessAnalysisProgressMilestone` to add default-human paced milestones while continuing `logging.ActivityImportanceWorkflow` transient updates.
+- `internal/services/ops/slow_process_analysis.go` already emits structured progress events only: preflight before confirmation, page progress after each discovery page, frozen-scope counters before and during enrichment, plus timing facts in the frozen-scope event.
+- `internal/domain/ops_progress.go` defines the shared progress event model and `OpsDefaultETAMinimumSamples`/`OpsMinimumTimingElapsed`; command milestone pacing should use command-owned constants/state rather than adding CLI policy to domain or services.
+- `toolx/logging/activity.go` supports priority activity scopes and updates; workflow importance outranks HTTP, wait, and batch activity, so nested runtime lookups should not hide slow-analysis workflow progress when updates use `ActivityImportanceWorkflow`.
+- Existing tests in `cmd/ops_progress_test.go` cover formatter wording, ETA gating, `opsProgressChannelForMode` stdout safety, sparse milestone elapsed/progress boundaries, timer-only suppression, and default-human-versus-machine-mode milestone gating; slow-analysis progress tests around `cmd/ops_analyse_slow_process_instances_test.go` cover default activity updates, default-human paced post-confirmation page/frozen-scope milestones, workflow-importance preservation over nested HTTP work, verbose durable stderr, JSON/keys-only/quiet/automation suppression, and preflight prompt gating.
+- Slow-analysis JSON, keys-only, quiet, and automation silence tests use deterministic `configureOpsSlowProcessAnalysisPreflightWithPacer` clocks advanced past `opsDurableMilestoneMinimumElapsed`; if those modes ever become milestone-eligible, the tests will catch stdout/stderr leakage.
+- US3 added explicit debug-mode durable stderr coverage and default-human compact milestone wording checks in `cmd/ops_analyse_slow_process_instances_test.go`; no production change was needed because `opsSlowProcessAnalysisDurableProgressAllowed` already allows verbose and debug while default-human milestones use shared compact formatters.
+- Phase 6 formatting produced no Go diffs; docs review found existing README, generated index, generated slow-analysis CLI reference, and command help already aligned with the shipped progress behavior, so `make docs-content` was not required.
+
+## Decisions
+
+- Keep milestone pacing in `cmd/ops_progress.go` as shared command-rendering policy. Slow-analysis wiring should instantiate/use that state, but internal services must remain structured-event-only.
+- Default human durable milestones must require `opsDurableMilestoneMinimumElapsed` plus a forward progress signature; timer-only output is not allowed.
+- Verbose/debug durable behavior should remain immediate and detailed through the existing `opsSlowProcessAnalysisDurableProgressAllowed` path.
+
+## Gotchas
+
+- Default human `opsProgressChannelForMode` has `DurableAllowed` and `StderrAllowed` true today, but slow-analysis page/counter durable writes are suppressed by `opsSlowProcessAnalysisDurableProgressAllowed` unless mode is verbose/debug.
+- Preflight scope lines already write durably in human modes before confirmation; new pacing should apply to post-confirmation page/frozen-scope/ETA-style progress, not preflight prompt text.
+- JSON, keys-only, quiet, and automation tests assert both stdout and stderr stay empty for progress callbacks; milestone gating must keep these modes silent even though default human can use stderr.
+- The slow-analysis service emits an initial frozen-scope event with `Done: 0`; pacing signatures should avoid treating unchanged or timer-only repeats as forward progress.
+- `configureOpsSlowProcessAnalysisPreflightWithPacer` exists for deterministic command tests; production `configureOpsSlowProcessAnalysisPreflight` passes a real-clock pacer.
+- US2 required no command metadata or help text changes, so `cmd/command_contract_test.go` and generated docs were not touched.
+- US3 required no command metadata, help text, service, or formatter changes; it completed as regression coverage plus verification of existing verbose/debug routing and compact shared formatter output.
+
+## Reusable Commands
+
+- `go test ./cmd -run 'TestOps.*Progress|TestFormatOps.*Progress|TestOpsETA' -count=1`
+- `go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances.*Progress|TestOpsAnalyseSlowProcessInstances.*Preflight' -count=1`
+- `go test ./internal/services/ops -run 'TestSlowProcessAnalysis.*Progress|TestSlowProcessAnalysis.*Preflight' -count=1`
+- `go test ./cmd -count=1`
+- `make test`
+
+## Do Not Repeat
+
+- Do not move milestone pacing, wording, stderr routing, or mode gating into `internal/services/ops/slow_process_analysis.go`.
+- Do not add timer-driven "still working" lines without observed discovery or frozen-scope counter movement.
+- Do not change command help or generated docs unless the shipped help wording changes; run `make docs-content` if it does.
+
+## Current Handoff
+- Feature complete; no handoff required.

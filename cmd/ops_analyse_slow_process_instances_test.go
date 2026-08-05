@@ -551,6 +551,105 @@ func TestOpsAnalyseSlowProcessInstancesRoutesDefaultProgressToActivity(t *testin
 	}, sink.PriorityUpdates())
 }
 
+// TestOpsAnalyseSlowProcessInstancesDefaultProgressWritesPacedMilestones verifies broad human runs get sparse durable progress after confirmation.
+func TestOpsAnalyseSlowProcessInstancesDefaultProgressWritesPacedMilestones(t *testing.T) {
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	sink := &activitysink.Sink{}
+	now := time.Date(2026, 8, 4, 12, 0, 0, 0, time.UTC)
+	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		require.False(t, autoConfirm)
+		require.Equal(t, "Continue slow analysis for 2000 process instances?", prompt)
+		return nil
+	}
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	configureOpsSlowProcessAnalysisPreflightWithPacer(cmd, &request, pacer)
+	require.NotNil(t, request.ConfirmPreflight)
+	require.NoError(t, request.ConfirmPreflight(ops.PreflightScope{
+		RequiresConfirmation: true,
+		Total:                ptrInt64(2000),
+		TotalKind:            ops.TotalCertaintyExact,
+		ConsequenceSummary: ops.ConsequenceSummary{
+			ConfirmationText: "Continue slow analysis for 2000 process instances?",
+		},
+	}))
+
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+		Phase:         "discovering process instances",
+		CurrentPage:   1,
+		PageCount:     ptrInt64(4),
+		PageCountKind: ops.PageCountKindExact,
+		Seen:          1000,
+		Selected:      1000,
+	}})
+	require.Empty(t, stderr.String())
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+		Phase:         "discovering process instances",
+		CurrentPage:   2,
+		PageCount:     ptrInt64(4),
+		PageCountKind: ops.PageCountKindExact,
+		Seen:          1500,
+		Selected:      1498,
+	}})
+	require.Contains(t, stderr.String(), "discovering process instances, page 2/4, 1500 seen, 1498 selected")
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+		Phase:        "loading runtime elements",
+		CoreResource: "process instance(s)",
+		Done:         48,
+		Total:        800,
+	}})
+
+	require.Empty(t, stdout.String())
+	require.Contains(t, stderr.String(), "loading runtime elements, 48/800 process instance(s)")
+	require.Equal(t, []string{
+		"discovering process instances, page 1/4, 1000 seen",
+		"discovering process instances, page 2/4, 1500 seen, 1498 selected",
+		"loading runtime elements, 48/800 process instance(s)",
+	}, sink.Updates())
+}
+
+// TestOpsAnalyseSlowProcessInstancesWorkflowActivityOutranksNestedRuntimeWork verifies slow-analysis progress keeps workflow priority.
+func TestOpsAnalyseSlowProcessInstancesWorkflowActivityOutranksNestedRuntimeWork(t *testing.T) {
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	sink := &activitysink.Sink{}
+	cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	recordHTTPFallbackActivity(cmd.Context(), "loading runtime elements from Camunda")
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+		Phase:        "loading runtime elements",
+		CoreResource: "process instance(s)",
+		Done:         48,
+		Total:        800,
+	}})
+
+	require.Equal(t, []activitysink.Update{
+		{
+			Message:    "loading runtime elements, 48/800 process instance(s)",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+	}, sink.PriorityUpdates())
+	require.Equal(t, []activitysink.Start{
+		{
+			Message:    "loading runtime elements from Camunda",
+			Importance: logging.ActivityImportanceHTTP,
+		},
+	}, sink.Starts())
+}
+
 // TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr verifies verbose mode keeps an auditable progress trail off stdout.
 func TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr(t *testing.T) {
 	previousVerbose := flagVerbose
@@ -584,6 +683,79 @@ func TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr(t *tes
 	require.Contains(t, stderr.String(), "loading listener jobs, 3/3 process instance(s)")
 }
 
+// TestOpsAnalyseSlowProcessInstancesDebugProgressWritesDurableStderr verifies debug mode keeps detailed durable progress off stdout.
+func TestOpsAnalyseSlowProcessInstancesDebugProgressWritesDurableStderr(t *testing.T) {
+	previousDebug := flagDebug
+	flagDebug = true
+	t.Cleanup(func() { flagDebug = previousDebug })
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+		Phase:         "discovering process instances",
+		CurrentPage:   3,
+		PageCount:     ptrInt64(7),
+		PageCountKind: ops.PageCountKindEstimated,
+		Seen:          3000,
+		Selected:      2750,
+	}})
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+		Phase:        "loading runtime elements",
+		CoreResource: "process instance(s)",
+		Done:         72,
+		Total:        2750,
+		Elapsed:      2 * time.Minute,
+	}})
+
+	require.Empty(t, stdout.String())
+	require.Contains(t, stderr.String(), "discovering process instances, page 3/~7, 3000 seen, 2750 selected")
+	require.Contains(t, stderr.String(), "loading runtime elements, 72/2750 process instance(s), 2.6%, 2m0s elapsed")
+}
+
+// TestOpsAnalyseSlowProcessInstancesDefaultMilestonesStayCompact verifies default human milestones avoid diagnostic request detail.
+func TestOpsAnalyseSlowProcessInstancesDefaultMilestonesStayCompact(t *testing.T) {
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	now := time.Date(2026, 8, 4, 12, 0, 0, 0, time.UTC)
+	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	configureOpsSlowProcessAnalysisPreflightWithPacer(cmd, &request, pacer)
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+		Phase:         "discovering process instances",
+		CurrentPage:   4,
+		PageCount:     ptrInt64(10),
+		PageCountKind: ops.PageCountKindEstimated,
+		Seen:          3812,
+		Selected:      3800,
+	}})
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+		Phase:        "loading runtime elements",
+		CoreResource: "process instance(s)",
+		Done:         96,
+		Total:        3800,
+		Elapsed:      3*time.Minute + 5*time.Second,
+	}})
+
+	got := stderr.String()
+	require.Empty(t, stdout.String())
+	require.Contains(t, got, "discovering process instances, page 4/~10, 3812 seen, 3800 selected")
+	require.Contains(t, got, "loading runtime elements, 96/3800 process instance(s), 2.5%, 3m5s elapsed")
+	for _, diagnostic := range []string{"endpoint", "request", "cursor", "camunda", "/v2", "process instance key", "runtime element key", "element instance key"} {
+		require.NotContains(t, strings.ToLower(got), diagnostic)
+	}
+}
+
 // TestOpsAnalyseSlowProcessInstancesJSONProgressKeepsStdoutClean verifies JSON mode suppresses transient and durable progress text.
 func TestOpsAnalyseSlowProcessInstancesJSONProgressKeepsStdoutClean(t *testing.T) {
 	previousJSON := flagViewAsJson
@@ -593,12 +765,14 @@ func TestOpsAnalyseSlowProcessInstancesJSONProgressKeepsStdoutClean(t *testing.T
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	sink := &activitysink.Sink{}
+	now := time.Date(2026, 8, 4, 12, 0, 0, 0, time.UTC)
+	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
 	cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
 	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
 
-	configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	configureOpsSlowProcessAnalysisPreflightWithPacer(cmd, &request, pacer)
 	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPreflight, Preflight: &ops.PreflightScope{
 		SelectorSummary: "OrderProcess",
 		CoreResource:    "process_instance",
@@ -608,18 +782,21 @@ func TestOpsAnalyseSlowProcessInstancesJSONProgressKeepsStdoutClean(t *testing.T
 		PageCount:       ptrInt64(2),
 		PageCountKind:   ops.PageCountKindExact,
 	}})
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
 	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
 		Phase:         "discovering process instances",
-		CurrentPage:   1,
+		CurrentPage:   2,
 		PageCount:     ptrInt64(2),
 		PageCountKind: ops.PageCountKindExact,
-		Seen:          1000,
+		Seen:          2000,
+		Selected:      1998,
 	}})
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
 	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
 		Phase:        "loading runtime elements",
 		CoreResource: "process instance(s)",
-		Done:         1,
-		Total:        2,
+		Done:         48,
+		Total:        2000,
 	}})
 
 	require.Empty(t, stdout.String())
@@ -638,23 +815,33 @@ func TestOpsAnalyseSlowProcessInstancesKeysOnlyProgressKeepsStdoutClean(t *testi
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	sink := &activitysink.Sink{}
+	now := time.Date(2026, 8, 4, 12, 0, 0, 0, time.UTC)
+	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
 	cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
 	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
 
-	configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	configureOpsSlowProcessAnalysisPreflightWithPacer(cmd, &request, pacer)
 	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPreflight, Preflight: &ops.PreflightScope{
 		SelectorSummary: "OrderProcess",
 		CoreResource:    "process_instance",
 		TotalKind:       ops.TotalCertaintyUnknown,
 		PageSize:        1000,
 	}})
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+		Phase:       "discovering process instances",
+		CurrentPage: 3,
+		Seen:        3000,
+		Selected:    2500,
+	}})
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
 	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
 		Phase:        "loading runtime elements",
 		CoreResource: "process instance(s)",
-		Done:         2,
-		Total:        2,
+		Done:         64,
+		Total:        2500,
 	}})
 
 	require.Empty(t, stdout.String())
@@ -699,6 +886,8 @@ func TestOpsAnalyseSlowProcessInstancesQuietAndAutomationSuppressProgress(t *tes
 			var stdout bytes.Buffer
 			var stderr bytes.Buffer
 			sink := &activitysink.Sink{}
+			now := time.Date(2026, 8, 4, 12, 0, 0, 0, time.UTC)
+			pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
 			cmd.SetOut(&stdout)
 			cmd.SetErr(&stderr)
 			cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
@@ -707,17 +896,26 @@ func TestOpsAnalyseSlowProcessInstancesQuietAndAutomationSuppressProgress(t *tes
 			require.Equal(t, tc.want, channel.Mode)
 			request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
 
-			configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+			configureOpsSlowProcessAnalysisPreflightWithPacer(cmd, &request, pacer)
 			request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPreflight, Preflight: &ops.PreflightScope{
 				SelectorSummary: "OrderProcess",
 				CoreResource:    "process_instance",
 				Total:           ptrInt64(10),
 				TotalKind:       ops.TotalCertaintyExact,
 			}})
+			now = now.Add(opsDurableMilestoneMinimumElapsed)
 			request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
 				Phase:       "discovering process instances",
-				CurrentPage: 1,
-				Seen:        10,
+				CurrentPage: 2,
+				Seen:        20,
+				Selected:    18,
+			}})
+			now = now.Add(opsDurableMilestoneMinimumElapsed)
+			request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+				Phase:        "loading runtime elements",
+				CoreResource: "process instance(s)",
+				Done:         18,
+				Total:        20,
 			}})
 
 			require.Empty(t, stdout.String())
