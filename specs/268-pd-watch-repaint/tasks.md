@@ -65,17 +65,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T013 [US2] Add command test coverage for one default warning per continuous slow-refresh streak in `cmd/get_processdefinition_test.go`
-- [ ] T014 [US2] Add command test coverage that an on-time refresh resets the slow-warning streak in `cmd/get_processdefinition_test.go`
-- [ ] T015 [US2] Add command test coverage for verbose per-refresh timing/status outside the result body in `cmd/get_processdefinition_test.go`
-- [ ] T016 [P] [US2] Add watch runner test coverage that refresh ticks remain serial when a tick takes longer than the interval in `toolx/watch/watch_test.go`
+- [x] T013 [US2] Add command test coverage for one default warning per continuous slow-refresh streak in `cmd/get_processdefinition_test.go`
+- [x] T014 [US2] Add command test coverage that an on-time refresh resets the slow-warning streak in `cmd/get_processdefinition_test.go`
+- [x] T015 [US2] Add command test coverage for verbose per-refresh timing/status outside the result body in `cmd/get_processdefinition_test.go`
+- [x] T016 [P] [US2] Add watch runner test coverage that refresh ticks remain serial when a tick takes longer than the interval in `toolx/watch/watch_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Measure collection-plus-render duration for each successful refresh in `cmd/get_processdefinition.go`
-- [ ] T018 [US2] Implement default slow-refresh warning streak state and reset behavior in `cmd/get_processdefinition.go`
-- [ ] T019 [US2] Add verbose refresh timing/status output outside the result body in `cmd/get_processdefinition.go`
-- [ ] T020 [US2] Run `go test ./cmd -run 'TestGetProcessDefinitionWatch' -count=1` and resolve failures in `cmd/get_processdefinition_test.go` and `cmd/get_processdefinition.go`
+- [x] T017 [US2] Measure collection-plus-render duration for each successful refresh in `cmd/get_processdefinition.go`
+- [x] T018 [US2] Implement default slow-refresh warning streak state and reset behavior in `cmd/get_processdefinition.go`
+- [x] T019 [US2] Add verbose refresh timing/status output outside the result body in `cmd/get_processdefinition.go`
+- [x] T020 [US2] Run `go test ./cmd -run 'TestGetProcessDefinitionWatch' -count=1` and resolve failures in `cmd/get_processdefinition_test.go` and `cmd/get_processdefinition.go`
 
 **Checkpoint**: User Story 2 is independently functional with slow-refresh behavior validated.
 

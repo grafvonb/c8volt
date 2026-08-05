@@ -62,3 +62,27 @@ Started: 2026-08-05 16:59:33
 **Learnings**:
 - Repaint is command-owned and stdout body parity is easiest to assert by stripping the deterministic ANSI repaint controls.
 ---
+---
+## Iteration 4 - 2026-08-05 17:18
+**Work Unit**: User Story 2 - Slow Refreshes Are Clear Without Noise
+**Tasks Completed**:
+- [x] T013: Add command test coverage for one default warning per continuous slow-refresh streak
+- [x] T014: Add command test coverage that an on-time refresh resets the slow-warning streak
+- [x] T015: Add command test coverage for verbose per-refresh timing/status outside the result body
+- [x] T016: Add watch runner test coverage that refresh ticks remain serial when a tick takes longer than the interval
+- [x] T017: Measure collection-plus-render duration for each successful refresh
+- [x] T018: Implement default slow-refresh warning streak state and reset behavior
+- [x] T019: Add verbose refresh timing/status output outside the result body
+- [x] T020: Run focused process-definition watch command tests and resolve failures
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processdefinition.go
+- cmd/get_processdefinition_test.go
+- toolx/watch/watch_test.go
+- specs/268-pd-watch-repaint/tasks.md
+- specs/268-pd-watch-repaint/ralph-memory.md
+- specs/268-pd-watch-repaint/progress.md
+**Learnings**:
+- Slow-refresh status remains command-owned on stderr, while the watch runner stays serial and output-agnostic.
+---

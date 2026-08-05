@@ -478,6 +478,159 @@ func TestGetProcessDefinitionWatchRetryExhaustionReturnsErrorAndStderrStatus(t *
 	require.Contains(t, stderr, "watch stopped: retry budget exhausted after 2 consecutive failure(s)")
 }
 
+// TestGetProcessDefinitionWatchWarnsOncePerContinuousSlowRefreshStreak keeps
+// default slow-refresh diagnostics concise while refreshes remain slow.
+func TestGetProcessDefinitionWatchWarnsOncePerContinuousSlowRefreshStreak(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+	flagGetPDWatchInterval = time.Second.String()
+
+	calls := 0
+	cli := processDefinitionWatchTestAPI{
+		collect: func(_ context.Context, _ process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+			calls++
+			return process.ProcessDefinitionWatchSnapshot{
+				Items: []process.ProcessDefinition{{
+					Key:            "2251799813685255",
+					TenantId:       "tenant",
+					BpmnProcessId:  "invoice",
+					ProcessVersion: int32(calls),
+				}},
+				Total: 1,
+			}, nil
+		},
+	}
+
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli:        cli,
+		filter:     process.ProcessDefinitionFilter{},
+		maxRetries: defaultBackoffMaxRetries,
+		now: newProcessDefinitionWatchClockForTest(time.Unix(0, 0),
+			0, 1500*time.Millisecond,
+			2*time.Second, 3500*time.Millisecond,
+			4*time.Second, 5500*time.Millisecond,
+		),
+		sleep: func(context.Context, time.Duration) error {
+			if calls >= 3 {
+				return context.Canceled
+			}
+			return nil
+		},
+	})
+
+	require.NoError(t, result.err)
+	require.Equal(t, 3, calls)
+	requireProcessDefinitionWatchRepaintCount(t, result, 3)
+	body := result.stdoutWithoutRepaintControls()
+	require.Equal(t, 3, strings.Count(body, "found: 1"))
+	require.NotContains(t, body, "slow process-definition watch refresh")
+	require.Equal(t, 1, strings.Count(result.stderr, "slow process-definition watch refresh"))
+	require.Contains(t, result.stderr, "refresh 1")
+	require.Contains(t, result.stderr, "took 1.5s")
+	require.NotContains(t, result.stderr, "refresh 2: took")
+	require.NotContains(t, result.stderr, "refresh 3: took")
+}
+
+// TestGetProcessDefinitionWatchOnTimeRefreshResetsSlowWarningStreak verifies a
+// recovered refresh allows a later slow streak to warn again.
+func TestGetProcessDefinitionWatchOnTimeRefreshResetsSlowWarningStreak(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+	flagGetPDWatchInterval = time.Second.String()
+
+	calls := 0
+	cli := processDefinitionWatchTestAPI{
+		collect: func(_ context.Context, _ process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+			calls++
+			return process.ProcessDefinitionWatchSnapshot{
+				Items: []process.ProcessDefinition{{
+					Key:            "2251799813685255",
+					TenantId:       "tenant",
+					BpmnProcessId:  "invoice",
+					ProcessVersion: int32(calls),
+				}},
+				Total: 1,
+			}, nil
+		},
+	}
+
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli:        cli,
+		filter:     process.ProcessDefinitionFilter{},
+		maxRetries: defaultBackoffMaxRetries,
+		now: newProcessDefinitionWatchClockForTest(time.Unix(0, 0),
+			0, 1500*time.Millisecond,
+			2*time.Second, 2500*time.Millisecond,
+			3*time.Second, 4500*time.Millisecond,
+		),
+		sleep: func(context.Context, time.Duration) error {
+			if calls >= 3 {
+				return context.Canceled
+			}
+			return nil
+		},
+	})
+
+	require.NoError(t, result.err)
+	require.Equal(t, 3, calls)
+	requireProcessDefinitionWatchRepaintCount(t, result, 3)
+	require.Equal(t, 2, strings.Count(result.stderr, "slow process-definition watch refresh"))
+	require.Contains(t, result.stderr, "refresh 1")
+	require.Contains(t, result.stderr, "refresh 3")
+	require.NotContains(t, result.stderr, "refresh 2: took")
+}
+
+// TestGetProcessDefinitionWatchVerboseReportsPerRefreshTimingOutsideResultBody
+// keeps verbose timing on stderr and out of the repainted result body.
+func TestGetProcessDefinitionWatchVerboseReportsPerRefreshTimingOutsideResultBody(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+	flagGetPDWatchInterval = time.Second.String()
+	flagVerbose = true
+
+	calls := 0
+	cli := processDefinitionWatchTestAPI{
+		collect: func(_ context.Context, _ process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+			calls++
+			return process.ProcessDefinitionWatchSnapshot{
+				Items: []process.ProcessDefinition{{
+					Key:            "2251799813685255",
+					TenantId:       "tenant",
+					BpmnProcessId:  "invoice",
+					ProcessVersion: int32(calls),
+				}},
+				Total: 1,
+			}, nil
+		},
+	}
+
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli:        cli,
+		filter:     process.ProcessDefinitionFilter{},
+		maxRetries: defaultBackoffMaxRetries,
+		now: newProcessDefinitionWatchClockForTest(time.Unix(0, 0),
+			0, 500*time.Millisecond,
+			time.Second, 2500*time.Millisecond,
+		),
+		sleep: func(context.Context, time.Duration) error {
+			if calls >= 2 {
+				return context.Canceled
+			}
+			return nil
+		},
+	})
+
+	require.NoError(t, result.err)
+	body := result.stdoutWithoutRepaintControls()
+	require.Contains(t, body, "2251799813685255 tenant invoice v1")
+	require.Contains(t, body, "2251799813685255 tenant invoice v2")
+	require.NotContains(t, body, "completed in")
+	require.NotContains(t, body, "status:")
+	require.Contains(t, result.stderr, "process-definition watch refresh 1 completed in 500ms (interval 1s, status: on-time)")
+	require.Contains(t, result.stderr, "process-definition watch refresh 2 completed in 1.5s (interval 1s, status: slow)")
+	require.Contains(t, result.stderr, "slow process-definition watch refresh 2")
+}
+
 // TestGetProcessDefinitionWatchHumanModesUseNormalResultRows verifies default
 // and verbose watch output keep the normal compact result rows on stdout.
 func TestGetProcessDefinitionWatchHumanModesUseNormalResultRows(t *testing.T) {
@@ -512,13 +665,20 @@ func TestGetProcessDefinitionWatchHumanModesUseNormalResultRows(t *testing.T) {
 				cli:        cli,
 				filter:     process.ProcessDefinitionFilter{},
 				maxRetries: defaultBackoffMaxRetries,
+				now: newProcessDefinitionWatchClockForTest(time.Unix(0, 0),
+					0, time.Millisecond,
+				),
 				sleep: func(context.Context, time.Duration) error {
 					return context.Canceled
 				},
 			})
 
 			require.NoError(t, result.err)
-			require.Empty(t, result.stderr)
+			if tt.verbose {
+				require.Contains(t, result.stderr, "process-definition watch refresh 1 completed in 1ms")
+			} else {
+				require.Empty(t, result.stderr)
+			}
 			requireProcessDefinitionWatchRepaintCount(t, result, 1)
 			require.Equal(t, "2251799813685255 tenant invoice v3\nfound: 1\n", result.stdoutWithoutRepaintControls())
 		})
@@ -1164,6 +1324,7 @@ type processDefinitionWatchHarness struct {
 	filter     process.ProcessDefinitionFilter
 	timeout    time.Duration
 	maxRetries int
+	now        func() time.Time
 	sleep      func(context.Context, time.Duration) error
 }
 
@@ -1186,9 +1347,14 @@ func executeGetProcessDefinitionWatchHarnessForTest(t *testing.T, h processDefin
 	cmd.SetContext(context.Background())
 
 	previousSleep := processDefinitionWatchSleep
+	previousNow := processDefinitionWatchNow
 	processDefinitionWatchSleep = h.sleep
+	if h.now != nil {
+		processDefinitionWatchNow = h.now
+	}
 	t.Cleanup(func() {
 		processDefinitionWatchSleep = previousSleep
+		processDefinitionWatchNow = previousNow
 	})
 
 	err := executeGetProcessDefinitionWatch(cmd, h.cli, h.filter, h.timeout, h.maxRetries)
@@ -1213,6 +1379,21 @@ func requireNoProcessDefinitionWatchRepaintControls(t *testing.T, result process
 	t.Helper()
 
 	requireProcessDefinitionWatchRepaintCount(t, result, 0)
+}
+
+func newProcessDefinitionWatchClockForTest(start time.Time, offsets ...time.Duration) func() time.Time {
+	calls := 0
+	return func() time.Time {
+		if calls >= len(offsets) {
+			if len(offsets) == 0 {
+				return start
+			}
+			return start.Add(offsets[len(offsets)-1])
+		}
+		value := start.Add(offsets[calls])
+		calls++
+		return value
+	}
 }
 
 func resetGetProcessDefinitionCommandGlobals() {

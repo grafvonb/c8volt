@@ -37,6 +37,7 @@ var (
 const defaultGetPDWatchInterval = time.Second
 
 var processDefinitionWatchSleep watch.SleepFunc
+var processDefinitionWatchNow = time.Now
 
 var getProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
@@ -177,6 +178,7 @@ func executeGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, filter
 	if request.Key != "" {
 		opts = collectExplicitAdminInputOptions()
 	}
+	var slowWarnings processDefinitionWatchSlowWarningState
 	result, err := watch.Run(cmd.Context(), watch.Options{
 		Interval:   interval,
 		Timeout:    timeout,
@@ -187,6 +189,7 @@ func executeGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, filter
 			renderGetProcessDefinitionWatchRetryStatus(cmd, event)
 		},
 	}, func(ctx context.Context, tick watch.Tick) error {
+		startedAt := processDefinitionWatchNow()
 		snapshot, err := cli.CollectProcessDefinitionWatchSnapshot(ctx, request, opts...)
 		if err != nil {
 			return err
@@ -194,10 +197,39 @@ func executeGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, filter
 		if err := renderTerminalRepaint(cmd); err != nil {
 			return err
 		}
-		return processDefinitionWatchView(cmd, snapshot)
+		if err := processDefinitionWatchView(cmd, snapshot); err != nil {
+			return err
+		}
+		duration := processDefinitionWatchNow().Sub(startedAt)
+		renderGetProcessDefinitionWatchRefreshStatus(cmd, &slowWarnings, tick.Index, duration, interval)
+		return nil
 	})
 	renderGetProcessDefinitionWatchStopStatus(cmd, result)
 	return err
+}
+
+type processDefinitionWatchSlowWarningState struct {
+	active bool
+}
+
+func renderGetProcessDefinitionWatchRefreshStatus(cmd *cobra.Command, state *processDefinitionWatchSlowWarningState, refresh int64, duration, interval time.Duration) {
+	if cmd == nil {
+		return
+	}
+	slow := duration > interval
+	if slow && state != nil && !state.active {
+		fmt.Fprintf(cmd.ErrOrStderr(), "slow process-definition watch refresh %d: took %s, exceeding --watch-interval %s; suppressing repeated slow-refresh warnings until a refresh completes within the interval\n", refresh, duration, interval)
+	}
+	if state != nil {
+		state.active = slow
+	}
+	if flagVerbose {
+		status := "on-time"
+		if slow {
+			status = "slow"
+		}
+		fmt.Fprintf(cmd.ErrOrStderr(), "process-definition watch refresh %d completed in %s (interval %s, status: %s)\n", refresh, duration, interval, status)
+	}
 }
 
 func resolveGetProcessDefinitionWatchInterval() (time.Duration, error) {

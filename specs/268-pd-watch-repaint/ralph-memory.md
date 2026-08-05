@@ -10,22 +10,28 @@ Started: 2026-08-05T14:59:33Z
 - Existing watch command tests in `cmd/get_processdefinition_test.go` already use separate stdout/stderr buffers through `executeGetProcessDefinitionWatchWithBackoffForTest` and deterministic sleeps through the package-level `processDefinitionWatchSleep` seam.
 - Iteration 2 added `processDefinitionWatchHarness` and `executeGetProcessDefinitionWatchHarnessForTest` in `cmd/get_processdefinition_test.go`; the older tuple-return helpers now delegate to it, and future tests can use `processDefinitionWatchRunResult` for named stdout/stderr/error fields.
 - Repaint assertions can use `processDefinitionWatchRepaintControlSequenceForTest` (`ESC [ H` then `ESC [ 2 J`), `requireProcessDefinitionWatchRepaintCount`, `requireNoProcessDefinitionWatchRepaintControls`, and `stdoutWithoutRepaintControls` without requiring a real terminal.
+- Slow-refresh command tests can use the `processDefinitionWatchNow` seam through `processDefinitionWatchHarness.now` and `newProcessDefinitionWatchClockForTest`; pass two timestamps per successful refresh because the command samples before collection and after rendering.
 - Watch-related command capability/help expectations live in `cmd/command_contract_test.go`; generated CLI docs mirror command source through `make docs-content`.
 - US1 repaint behavior is command-layer only: `renderTerminalRepaint` in `cmd/cmd_views_rendermode.go` writes `ESC [ H` + `ESC [ 2 J` to stdout before each successful process-definition watch refresh, and `processDefinitionWatchView` delegates refresh bodies to `listProcessDefinitionsView`.
 - Retry/status text now says `refresh N failed`; repaint/body assertions should strip ANSI controls before comparing stdout body text.
+- US2 slow-refresh status is command-layer only: `executeGetProcessDefinitionWatch` measures collection plus repaint/render duration with `processDefinitionWatchNow`, writes one default slow warning per continuous slow streak to stderr, resets the streak after an on-time refresh, and writes per-refresh timing to stderr when `flagVerbose` is true.
+- `toolx/watch.Run` remains synchronous and output-agnostic; `TestWatchRunKeepsTicksSerialWhenTickExceedsInterval` protects that slow ticks finish before sleep and before the next tick starts.
 
 ## Decisions
 - Iteration 1 completed Phase 1 inspection only. No command behavior was changed.
 - Iteration 2 completed Phase 2 test foundation only. No command behavior was changed.
 - Iteration 3 completed US1. Process-definition watch now repaints each successful refresh and renders the same body as normal non-watch list output, with command help/metadata updated from snapshot wording to refresh/repaint wording.
+- Iteration 4 completed US2. Watch refresh duration is measured around collection plus render, default slow warnings are streak-based on stderr, verbose timing is emitted per refresh on stderr, and runner seriality is covered in `toolx/watch`.
 
 ## Gotchas
 - `README.md` and generated CLI docs under `docs/cli/` still use stale "snapshot" / "repeated terminal snapshots" wording until polish tasks T026-T027 run; do not hand-edit generated docs.
 - `processDefinitionWatchSnapshotRequest` and `ProcessDefinitionWatchSnapshot` remain internal/facade type names even though user-facing text now says refresh/repaint.
+- Verbose watch mode now intentionally writes timing status to stderr, so command tests that set `flagVerbose` should not require empty stderr.
 
 ## Reusable Commands
 - `go test ./cmd -run 'TestGetProcessDefinitionWatch|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata|TestProcessDefinitionSelectorValidationHelpContract' -count=1`
 - `go test ./cmd -count=1`
+- `go test ./toolx/watch -run 'TestWatchRunKeepsTicksSerialWhenTickExceedsInterval|TestWatchRun' -count=1`
 - `make docs-content`
 
 ## Do Not Repeat
@@ -33,4 +39,4 @@ Started: 2026-08-05T14:59:33Z
 - Do not hand-edit generated CLI docs under `docs/cli/`; update command metadata/help and regenerate them.
 
 ## Current Handoff
-- Next iteration should complete US2 tasks T013-T020 only. Start by adding slow-refresh warning/timing tests in `cmd/get_processdefinition_test.go`; keep warnings/status on stderr and leave stdout result bodies comparable after stripping repaint controls.
+- Next iteration should complete US3 tasks T021-T025 only. Re-run/update incompatible watch mode rejection and non-watch machine-mode compatibility tests, preserving local validation before lookup work and keeping JSON/keys-only/XML/quiet/automation incompatible with `--watch`.
