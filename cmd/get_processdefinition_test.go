@@ -326,6 +326,7 @@ func TestGetProcessDefinitionNonWatchMachineModesStayCompatible(t *testing.T) {
 		args         []string
 		wantStdout   string
 		wantNoStdout string
+		serve        func(*testing.T, *[]map[string]any) *httptest.Server
 	}{
 		{
 			name:       "json",
@@ -336,6 +337,24 @@ func TestGetProcessDefinitionNonWatchMachineModesStayCompatible(t *testing.T) {
 			name:       "keys only",
 			args:       []string{"--keys-only", "get", "process-definition"},
 			wantStdout: "2251799813685255\n",
+		},
+		{
+			name:       "xml",
+			args:       []string{"get", "process-definition", "--key", "2251799813685255", "--xml"},
+			wantStdout: "<definitions id=\"invoice\"/>",
+			serve: func(t *testing.T, requests *[]map[string]any) *httptest.Server {
+				t.Helper()
+				return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					require.Equal(t, http.MethodGet, r.Method)
+					require.Equal(t, "/v2/process-definitions/2251799813685255/xml", r.URL.Path)
+					*requests = append(*requests, map[string]any{
+						"method": r.Method,
+						"path":   r.URL.Path,
+					})
+					w.Header().Set("Content-Type", "application/xml")
+					_, _ = w.Write([]byte("<definitions id=\"invoice\"/>"))
+				}))
+			},
 		},
 		{
 			name:       "quiet",
@@ -352,9 +371,16 @@ func TestGetProcessDefinitionNonWatchMachineModesStayCompatible(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var requests []map[string]any
-			srv := newProcessDefinitionSearchServerResponses(t, &requests,
-				`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
-			)
+			serve := tt.serve
+			if serve == nil {
+				serve = func(t *testing.T, requests *[]map[string]any) *httptest.Server {
+					t.Helper()
+					return newProcessDefinitionSearchServerResponses(t, requests,
+						`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+					)
+				}
+			}
+			srv := serve(t, &requests)
 			t.Cleanup(srv.Close)
 			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 			args := append([]string{"--config", cfgPath}, tt.args...)

@@ -86,3 +86,23 @@ Started: 2026-08-05 16:59:33
 **Learnings**:
 - Slow-refresh status remains command-owned on stderr, while the watch runner stays serial and output-agnostic.
 ---
+---
+## Iteration 5 - 2026-08-05 17:22
+**Work Unit**: User Story 3 - Watch Keeps Human-Only Boundaries
+**Tasks Completed**:
+- [x] T021: Re-run and update incompatible watch mode rejection tests if wording changed
+- [x] T022: Re-run and update non-watch machine mode compatibility tests if metadata wording changed
+- [x] T023: Update command capability output-mode notes expectations if wording changed
+- [x] T024: Preserve or tighten incompatible flag validation without lookup work
+- [x] T025: Run focused US3 process-definition watch boundary validation and resolve failures
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/root.go
+- cmd/get_processdefinition_test.go
+- specs/268-pd-watch-repaint/tasks.md
+- specs/268-pd-watch-repaint/ralph-memory.md
+- specs/268-pd-watch-repaint/progress.md
+**Learnings**:
+- US3 validation exposed nil-context command validation as the only failing boundary; non-watch XML is now represented in the machine-mode compatibility coverage.
+---

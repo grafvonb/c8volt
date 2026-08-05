@@ -22,16 +22,19 @@ Started: 2026-08-05T14:59:33Z
 - Iteration 2 completed Phase 2 test foundation only. No command behavior was changed.
 - Iteration 3 completed US1. Process-definition watch now repaints each successful refresh and renders the same body as normal non-watch list output, with command help/metadata updated from snapshot wording to refresh/repaint wording.
 - Iteration 4 completed US2. Watch refresh duration is measured around collection plus render, default slow warnings are streak-based on stderr, verbose timing is emitted per refresh on stderr, and runner seriality is covered in `toolx/watch`.
+- Iteration 5 completed US3. Watch remains human-only with local rejection before lookup for JSON, keys-only, XML, quiet, and automation; non-watch JSON, keys-only, XML, quiet, and automation compatibility is covered.
 
 ## Gotchas
 - `README.md` and generated CLI docs under `docs/cli/` still use stale "snapshot" / "repeated terminal snapshots" wording until polish tasks T026-T027 run; do not hand-edit generated docs.
 - `processDefinitionWatchSnapshotRequest` and `ProcessDefinitionWatchSnapshot` remain internal/facade type names even though user-facing text now says refresh/repaint.
 - Verbose watch mode now intentionally writes timing status to stderr, so command tests that set `flagVerbose` should not require empty stderr.
+- Command validation tests may exercise Cobra commands before a context/config is attached; automation-mode checks must tolerate a nil command context while still honoring command flags and global automation state.
 
 ## Reusable Commands
 - `go test ./cmd -run 'TestGetProcessDefinitionWatch|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata|TestProcessDefinitionSelectorValidationHelpContract' -count=1`
 - `go test ./cmd -count=1`
 - `go test ./toolx/watch -run 'TestWatchRunKeepsTicksSerialWhenTickExceedsInterval|TestWatchRun' -count=1`
+- `go test ./cmd -run 'TestValidateGetProcessDefinitionWatch|TestGetProcessDefinitionWatchRejectsMachineModesBeforeLookup|TestGetProcessDefinitionNonWatchMachineModesStayCompatible|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata' -count=1`
 - `make docs-content`
 
 ## Do Not Repeat
@@ -39,4 +42,4 @@ Started: 2026-08-05T14:59:33Z
 - Do not hand-edit generated CLI docs under `docs/cli/`; update command metadata/help and regenerate them.
 
 ## Current Handoff
-- Next iteration should complete US3 tasks T021-T025 only. Re-run/update incompatible watch mode rejection and non-watch machine-mode compatibility tests, preserving local validation before lookup work and keeping JSON/keys-only/XML/quiet/automation incompatible with `--watch`.
+- Next iteration should complete polish tasks T026-T030 only: update README, regenerate CLI docs with `make docs-content`, gofmt touched Go files, run focused quickstart validation, then run `make test`. Do not hand-edit generated CLI docs.

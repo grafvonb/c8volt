@@ -89,14 +89,14 @@
 
 ### Tests for User Story 3
 
-- [ ] T021 [US3] Re-run and update incompatible watch mode rejection tests if wording changed in `cmd/get_processdefinition_test.go`
-- [ ] T022 [US3] Re-run and update non-watch machine mode compatibility tests if metadata wording changed in `cmd/get_processdefinition_test.go`
-- [ ] T023 [P] [US3] Update command capability output-mode notes expectations if wording changed in `cmd/command_contract_test.go`
+- [x] T021 [US3] Re-run and update incompatible watch mode rejection tests if wording changed in `cmd/get_processdefinition_test.go`
+- [x] T022 [US3] Re-run and update non-watch machine mode compatibility tests if metadata wording changed in `cmd/get_processdefinition_test.go`
+- [x] T023 [P] [US3] Update command capability output-mode notes expectations if wording changed in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T024 [US3] Preserve or tighten incompatible flag validation without lookup work in `cmd/get_processdefinition.go`
-- [ ] T025 [US3] Run `go test ./cmd -run 'TestValidateGetProcessDefinitionWatch|TestGetProcessDefinitionWatchRejectsMachineModesBeforeLookup|TestGetProcessDefinitionNonWatchMachineModesStayCompatible|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata' -count=1` and resolve failures in `cmd/get_processdefinition_test.go`, `cmd/command_contract_test.go`, and `cmd/get_processdefinition.go`
+- [x] T024 [US3] Preserve or tighten incompatible flag validation without lookup work in `cmd/get_processdefinition.go`
+- [x] T025 [US3] Run `go test ./cmd -run 'TestValidateGetProcessDefinitionWatch|TestGetProcessDefinitionWatchRejectsMachineModesBeforeLookup|TestGetProcessDefinitionNonWatchMachineModesStayCompatible|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata' -count=1` and resolve failures in `cmd/get_processdefinition_test.go`, `cmd/command_contract_test.go`, and `cmd/get_processdefinition.go`
 
 **Checkpoint**: User Story 3 is independently functional with human-only watch boundaries preserved.
 
