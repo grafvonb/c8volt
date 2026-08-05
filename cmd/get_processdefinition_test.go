@@ -1002,11 +1002,46 @@ func (a processDefinitionWatchTestAPI) CollectProcessDefinitionWatchSnapshot(ctx
 func executeGetProcessDefinitionWatchForTest(t *testing.T, cli c8volt.API, filter process.ProcessDefinitionFilter, timeout time.Duration, sleep func(context.Context, time.Duration) error) (string, error) {
 	t.Helper()
 
-	stdout, _, err := executeGetProcessDefinitionWatchWithBackoffForTest(t, cli, filter, timeout, defaultBackoffMaxRetries, sleep)
-	return stdout, err
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli:        cli,
+		filter:     filter,
+		timeout:    timeout,
+		maxRetries: defaultBackoffMaxRetries,
+		sleep:      sleep,
+	})
+	return result.stdout, result.err
 }
 
 func executeGetProcessDefinitionWatchWithBackoffForTest(t *testing.T, cli c8volt.API, filter process.ProcessDefinitionFilter, timeout time.Duration, maxRetries int, sleep func(context.Context, time.Duration) error) (string, string, error) {
+	t.Helper()
+
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli:        cli,
+		filter:     filter,
+		timeout:    timeout,
+		maxRetries: maxRetries,
+		sleep:      sleep,
+	})
+	return result.stdout, result.stderr, result.err
+}
+
+type processDefinitionWatchHarness struct {
+	cli        c8volt.API
+	filter     process.ProcessDefinitionFilter
+	timeout    time.Duration
+	maxRetries int
+	sleep      func(context.Context, time.Duration) error
+}
+
+type processDefinitionWatchRunResult struct {
+	stdout string
+	stderr string
+	err    error
+}
+
+const processDefinitionWatchRepaintControlSequenceForTest = "\x1b[H\x1b[2J"
+
+func executeGetProcessDefinitionWatchHarnessForTest(t *testing.T, h processDefinitionWatchHarness) processDefinitionWatchRunResult {
 	t.Helper()
 
 	cmd := &cobra.Command{Use: "process-definition"}
@@ -1017,13 +1052,33 @@ func executeGetProcessDefinitionWatchWithBackoffForTest(t *testing.T, cli c8volt
 	cmd.SetContext(context.Background())
 
 	previousSleep := processDefinitionWatchSleep
-	processDefinitionWatchSleep = sleep
+	processDefinitionWatchSleep = h.sleep
 	t.Cleanup(func() {
 		processDefinitionWatchSleep = previousSleep
 	})
 
-	err := executeGetProcessDefinitionWatch(cmd, cli, filter, timeout, maxRetries)
-	return stdout.String(), stderr.String(), err
+	err := executeGetProcessDefinitionWatch(cmd, h.cli, h.filter, h.timeout, h.maxRetries)
+	return processDefinitionWatchRunResult{
+		stdout: stdout.String(),
+		stderr: stderr.String(),
+		err:    err,
+	}
+}
+
+func (r processDefinitionWatchRunResult) stdoutWithoutRepaintControls() string {
+	return strings.ReplaceAll(r.stdout, processDefinitionWatchRepaintControlSequenceForTest, "")
+}
+
+func requireProcessDefinitionWatchRepaintCount(t *testing.T, result processDefinitionWatchRunResult, want int) {
+	t.Helper()
+
+	require.Equal(t, want, strings.Count(result.stdout, processDefinitionWatchRepaintControlSequenceForTest), "stdout should contain deterministic repaint control sequence count")
+}
+
+func requireNoProcessDefinitionWatchRepaintControls(t *testing.T, result processDefinitionWatchRunResult) {
+	t.Helper()
+
+	requireProcessDefinitionWatchRepaintCount(t, result, 0)
 }
 
 func resetGetProcessDefinitionCommandGlobals() {

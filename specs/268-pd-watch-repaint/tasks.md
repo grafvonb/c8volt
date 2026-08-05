@@ -27,8 +27,8 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 Add or adjust command test helpers for separate stdout/stderr capture and deterministic watch sleeps in `cmd/get_processdefinition_test.go`
-- [ ] T005 Add a deterministic way to assert repaint control output without requiring a real terminal in `cmd/get_processdefinition_test.go`
+- [x] T004 Add or adjust command test helpers for separate stdout/stderr capture and deterministic watch sleeps in `cmd/get_processdefinition_test.go`
+- [x] T005 Add a deterministic way to assert repaint control output without requiring a real terminal in `cmd/get_processdefinition_test.go`
 
 **Checkpoint**: Foundation ready - user story implementation can now begin.
 
