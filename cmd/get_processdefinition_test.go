@@ -29,6 +29,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestGetProcessDefinitionWatchFlagRegistered keeps the public watch flag
+// available for process-definition monitoring.
 func TestGetProcessDefinitionWatchFlagRegistered(t *testing.T) {
 	flag := getProcessDefinitionCmd.Flags().Lookup("watch")
 
@@ -37,15 +39,19 @@ func TestGetProcessDefinitionWatchFlagRegistered(t *testing.T) {
 	require.Contains(t, flag.Usage, "repeat the process-definition lookup")
 }
 
+// TestGetProcessDefinitionWatchIntervalFlagRegistered keeps the interval flag
+// documented in refresh terms.
 func TestGetProcessDefinitionWatchIntervalFlagRegistered(t *testing.T) {
 	flag := getProcessDefinitionCmd.Flags().Lookup("watch-interval")
 
 	require.NotNil(t, flag)
 	require.Equal(t, "duration", flag.Value.Type())
 	require.Equal(t, "1s", flag.DefValue)
-	require.Contains(t, flag.Usage, "after the immediate first snapshot")
+	require.Contains(t, flag.Usage, "after the immediate first refresh")
 }
 
+// TestGetProcessDefinitionSelectionFlagsRemainSearchFilters ensures existing
+// process-definition selectors still map into the facade filter unchanged.
 func TestGetProcessDefinitionSelectionFlagsRemainSearchFilters(t *testing.T) {
 	resetGetProcessDefinitionCommandGlobals()
 	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
@@ -66,7 +72,9 @@ func TestGetProcessDefinitionSelectionFlagsRemainSearchFilters(t *testing.T) {
 	}, filter)
 }
 
-func TestGetProcessDefinitionWatchImmediateRepeatedBroadSnapshots(t *testing.T) {
+// TestGetProcessDefinitionWatchRepaintsBroadRefreshes verifies broad watch mode
+// attempts a repaint before every successful refresh without snapshot labels.
+func TestGetProcessDefinitionWatchRepaintsBroadRefreshes(t *testing.T) {
 	resetGetProcessDefinitionCommandGlobals()
 	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
 
@@ -91,17 +99,21 @@ func TestGetProcessDefinitionWatchImmediateRepeatedBroadSnapshots(t *testing.T) 
 		},
 	}
 	sleepCalls := 0
-	output, err := executeGetProcessDefinitionWatchForTest(t, cli, process.ProcessDefinitionFilter{}, 0, func(_ context.Context, interval time.Duration) error {
-		events = append(events, "sleep")
-		require.Equal(t, time.Second, interval)
-		sleepCalls++
-		if sleepCalls == 1 {
-			return nil
-		}
-		return context.Canceled
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli:    cli,
+		filter: process.ProcessDefinitionFilter{},
+		sleep: func(_ context.Context, interval time.Duration) error {
+			events = append(events, "sleep")
+			require.Equal(t, time.Second, interval)
+			sleepCalls++
+			if sleepCalls == 1 {
+				return nil
+			}
+			return context.Canceled
+		},
 	})
 
-	require.NoError(t, err)
+	require.NoError(t, result.err)
 	require.Equal(t, []string{"collect", "sleep", "collect", "sleep"}, events)
 	require.Len(t, requests, 2)
 	for _, request := range requests {
@@ -109,13 +121,17 @@ func TestGetProcessDefinitionWatchImmediateRepeatedBroadSnapshots(t *testing.T) 
 		require.Equal(t, int32(1000), request.Page.Size)
 		require.False(t, request.Latest)
 	}
-	require.Contains(t, output, "snapshot 1:")
-	require.Contains(t, output, "2251799813685255 tenant invoice v1")
-	require.Contains(t, output, "snapshot 2:")
-	require.Contains(t, output, "2251799813685255 tenant invoice v2")
-	require.Contains(t, output, "found: 1")
+	requireProcessDefinitionWatchRepaintCount(t, result, 2)
+	body := result.stdoutWithoutRepaintControls()
+	require.NotContains(t, body, "snapshot 1:")
+	require.NotContains(t, body, "snapshot 2:")
+	require.Contains(t, body, "2251799813685255 tenant invoice v1")
+	require.Contains(t, body, "2251799813685255 tenant invoice v2")
+	require.Equal(t, 2, strings.Count(body, "found: 1"))
 }
 
+// TestGetProcessDefinitionWatchIntervalCadence verifies the watch runner still
+// sleeps after the immediate first refresh using the configured interval.
 func TestGetProcessDefinitionWatchIntervalCadence(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -149,19 +165,27 @@ func TestGetProcessDefinitionWatchIntervalCadence(t *testing.T) {
 				},
 			}
 
-			stdout, stderr, err := executeGetProcessDefinitionWatchWithBackoffForTest(t, cli, process.ProcessDefinitionFilter{}, 0, defaultBackoffMaxRetries, func(_ context.Context, interval time.Duration) error {
-				intervals = append(intervals, interval)
-				return context.Canceled
+			result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+				cli:        cli,
+				filter:     process.ProcessDefinitionFilter{},
+				maxRetries: defaultBackoffMaxRetries,
+				sleep: func(_ context.Context, interval time.Duration) error {
+					intervals = append(intervals, interval)
+					return context.Canceled
+				},
 			})
 
-			require.NoError(t, err)
+			require.NoError(t, result.err)
 			require.Equal(t, []time.Duration{tt.expected}, intervals)
-			require.Contains(t, stdout, "snapshot 1:")
-			require.Empty(t, stderr)
+			requireProcessDefinitionWatchRepaintCount(t, result, 1)
+			require.Contains(t, result.stdoutWithoutRepaintControls(), "2251799813685255 tenant invoice v1")
+			require.Empty(t, result.stderr)
 		})
 	}
 }
 
+// TestValidateGetProcessDefinitionWatchIntervalRejectsInvalidValues keeps bad
+// watch interval values local validation errors.
 func TestValidateGetProcessDefinitionWatchIntervalRejectsInvalidValues(t *testing.T) {
 	tests := []struct {
 		name string
@@ -189,7 +213,7 @@ func TestValidateGetProcessDefinitionWatchIntervalRejectsInvalidValues(t *testin
 }
 
 // TestValidateGetProcessDefinitionWatchRejectsMachineOutputModes verifies watch
-// validation blocks finite output contracts before snapshot collection can run.
+// validation blocks finite output contracts before refresh collection can run.
 func TestValidateGetProcessDefinitionWatchRejectsMachineOutputModes(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -247,7 +271,7 @@ func TestValidateGetProcessDefinitionWatchRejectsMachineOutputModes(t *testing.T
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "--watch cannot be combined")
 			require.Contains(t, err.Error(), tt.want)
-			require.Contains(t, err.Error(), "terminal snapshots")
+			require.Contains(t, err.Error(), "watch repaints terminal output")
 		})
 	}
 }
@@ -347,6 +371,8 @@ func TestGetProcessDefinitionNonWatchMachineModesStayCompatible(t *testing.T) {
 	}
 }
 
+// TestGetProcessDefinitionWatchUsesDefaultRetryBudget verifies retryable
+// refresh failures honor the command's default retry limit.
 func TestGetProcessDefinitionWatchUsesDefaultRetryBudget(t *testing.T) {
 	resetGetProcessDefinitionCommandGlobals()
 	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
@@ -370,10 +396,12 @@ func TestGetProcessDefinitionWatchUsesDefaultRetryBudget(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 3, calls)
 	require.Empty(t, stdout)
-	require.Contains(t, stderr, "retrying process-definition watch after snapshot 1 failed")
+	require.Contains(t, stderr, "retrying process-definition watch after refresh 1 failed")
 	require.Contains(t, stderr, "consecutive failures: 3")
 }
 
+// TestGetProcessDefinitionWatchRetryBudgetResetsAfterSuccess proves a completed
+// refresh resets the consecutive failure budget.
 func TestGetProcessDefinitionWatchRetryBudgetResetsAfterSuccess(t *testing.T) {
 	resetGetProcessDefinitionCommandGlobals()
 	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
@@ -398,23 +426,33 @@ func TestGetProcessDefinitionWatchRetryBudgetResetsAfterSuccess(t *testing.T) {
 		},
 	}
 
-	stdout, stderr, err := executeGetProcessDefinitionWatchWithBackoffForTest(t, cli, process.ProcessDefinitionFilter{}, 0, 1, func(context.Context, time.Duration) error {
-		if calls >= 3 {
-			return context.Canceled
-		}
-		return nil
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli:        cli,
+		filter:     process.ProcessDefinitionFilter{},
+		maxRetries: 1,
+		sleep: func(context.Context, time.Duration) error {
+			if calls >= 3 {
+				return context.Canceled
+			}
+			return nil
+		},
 	})
 
-	require.NoError(t, err)
+	require.NoError(t, result.err)
 	require.Equal(t, 3, calls)
-	require.Contains(t, stdout, "snapshot 2:")
-	require.NotContains(t, stdout, "retrying")
-	require.NotContains(t, stdout, "temporary Camunda outage")
-	require.Equal(t, 2, strings.Count(stderr, "retrying process-definition watch"))
-	require.Contains(t, stderr, "snapshot 1 failed (1/1 consecutive failures)")
-	require.Contains(t, stderr, "snapshot 3 failed (1/1 consecutive failures)")
+	requireProcessDefinitionWatchRepaintCount(t, result, 1)
+	body := result.stdoutWithoutRepaintControls()
+	require.NotContains(t, body, "snapshot")
+	require.Contains(t, body, "2251799813685255 tenant invoice v2")
+	require.NotContains(t, body, "retrying")
+	require.NotContains(t, body, "temporary Camunda outage")
+	require.Equal(t, 2, strings.Count(result.stderr, "retrying process-definition watch"))
+	require.Contains(t, result.stderr, "refresh 1 failed (1/1 consecutive failures)")
+	require.Contains(t, result.stderr, "refresh 3 failed (1/1 consecutive failures)")
 }
 
+// TestGetProcessDefinitionWatchRetryExhaustionReturnsErrorAndStderrStatus keeps
+// retry exhaustion explicit while leaving stdout for successful refresh bodies.
 func TestGetProcessDefinitionWatchRetryExhaustionReturnsErrorAndStderrStatus(t *testing.T) {
 	resetGetProcessDefinitionCommandGlobals()
 	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
@@ -436,13 +474,13 @@ func TestGetProcessDefinitionWatchRetryExhaustionReturnsErrorAndStderrStatus(t *
 	require.Equal(t, 2, calls)
 	require.Empty(t, stdout)
 	require.Contains(t, err.Error(), "watch retry exhausted")
-	require.Contains(t, stderr, "retrying process-definition watch after snapshot 1 failed")
+	require.Contains(t, stderr, "retrying process-definition watch after refresh 1 failed")
 	require.Contains(t, stderr, "watch stopped: retry budget exhausted after 2 consecutive failure(s)")
 }
 
-// TestGetProcessDefinitionWatchHumanModesUseSnapshotRows verifies default and
-// verbose watch output keep the same compact result rows on stdout.
-func TestGetProcessDefinitionWatchHumanModesUseSnapshotRows(t *testing.T) {
+// TestGetProcessDefinitionWatchHumanModesUseNormalResultRows verifies default
+// and verbose watch output keep the normal compact result rows on stdout.
+func TestGetProcessDefinitionWatchHumanModesUseNormalResultRows(t *testing.T) {
 	tests := []struct {
 		name    string
 		verbose bool
@@ -470,15 +508,74 @@ func TestGetProcessDefinitionWatchHumanModesUseSnapshotRows(t *testing.T) {
 				},
 			}
 
-			stdout, stderr, err := executeGetProcessDefinitionWatchWithBackoffForTest(t, cli, process.ProcessDefinitionFilter{}, 0, defaultBackoffMaxRetries, func(context.Context, time.Duration) error {
-				return context.Canceled
+			result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+				cli:        cli,
+				filter:     process.ProcessDefinitionFilter{},
+				maxRetries: defaultBackoffMaxRetries,
+				sleep: func(context.Context, time.Duration) error {
+					return context.Canceled
+				},
 			})
 
-			require.NoError(t, err)
-			require.Empty(t, stderr)
-			require.Equal(t, "snapshot 1:\n2251799813685255 tenant invoice v3\nfound: 1\n", stdout)
+			require.NoError(t, result.err)
+			require.Empty(t, result.stderr)
+			requireProcessDefinitionWatchRepaintCount(t, result, 1)
+			require.Equal(t, "2251799813685255 tenant invoice v3\nfound: 1\n", result.stdoutWithoutRepaintControls())
 		})
 	}
+}
+
+// TestGetProcessDefinitionWatchRefreshBodyMatchesNonWatchListView guards the
+// contract that watch refresh content is the same as the equivalent list output.
+func TestGetProcessDefinitionWatchRefreshBodyMatchesNonWatchListView(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+
+	resp := process.ProcessDefinitions{
+		Total: 2,
+		Items: []process.ProcessDefinition{
+			{
+				Key:            "2251799813685255",
+				TenantId:       "tenant-a",
+				BpmnProcessId:  "invoice",
+				ProcessVersion: 3,
+			},
+			{
+				Key:            "2251799813685256",
+				TenantId:       "tenant-b",
+				BpmnProcessId:  "order",
+				ProcessVersion: 12,
+			},
+		},
+	}
+	expectedCmd := &cobra.Command{Use: "process-definition"}
+	var expected bytes.Buffer
+	expectedCmd.SetOut(&expected)
+	require.NoError(t, listProcessDefinitionsView(expectedCmd, resp))
+
+	cli := processDefinitionWatchTestAPI{
+		collect: func(_ context.Context, _ process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+			return process.ProcessDefinitionWatchSnapshot{
+				Items: resp.Items,
+				Total: resp.Total,
+			}, nil
+		},
+	}
+
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli:        cli,
+		filter:     process.ProcessDefinitionFilter{},
+		maxRetries: defaultBackoffMaxRetries,
+		sleep: func(context.Context, time.Duration) error {
+			return context.Canceled
+		},
+	})
+
+	require.NoError(t, result.err)
+	require.Empty(t, result.stderr)
+	requireProcessDefinitionWatchRepaintCount(t, result, 1)
+	require.Equal(t, expected.String(), result.stdoutWithoutRepaintControls())
+	require.NotContains(t, result.stdoutWithoutRepaintControls(), "snapshot")
 }
 
 // TestGetProcessDefinitionWatchKeyAndStatRemainHumanCompatible proves direct
@@ -513,17 +610,24 @@ func TestGetProcessDefinitionWatchKeyAndStatRemainHumanCompatible(t *testing.T) 
 		},
 	}
 
-	output, err := executeGetProcessDefinitionWatchForTest(t, cli, populatePDSearchFilterOpts(), 0, func(context.Context, time.Duration) error {
-		return context.Canceled
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli:    cli,
+		filter: populatePDSearchFilterOpts(),
+		sleep: func(context.Context, time.Duration) error {
+			return context.Canceled
+		},
 	})
 
-	require.NoError(t, err)
+	require.NoError(t, result.err)
 	require.True(t, gotOptions.IgnoreTenant)
 	require.True(t, gotOptions.Stat)
-	require.Contains(t, output, "2251799813685255 tenant invoice v3 [ac:2 cp:5 cx:1 inc:1]")
+	requireProcessDefinitionWatchRepaintCount(t, result, 1)
+	require.Contains(t, result.stdoutWithoutRepaintControls(), "2251799813685255 tenant invoice v3 [ac:2 cp:5 cx:1 inc:1]")
 }
 
-func TestGetProcessDefinitionWatchExplicitLatestEmptyThenChangedSnapshot(t *testing.T) {
+// TestGetProcessDefinitionWatchExplicitLatestEmptyThenChangedRefresh verifies
+// empty and later non-empty refreshes use normal list output without labels.
+func TestGetProcessDefinitionWatchExplicitLatestEmptyThenChangedRefresh(t *testing.T) {
 	resetGetProcessDefinitionCommandGlobals()
 	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
 	flagGetPDBpmnProcessId = "invoice"
@@ -549,28 +653,36 @@ func TestGetProcessDefinitionWatchExplicitLatestEmptyThenChangedSnapshot(t *test
 		},
 	}
 	sleepCalls := 0
-	output, err := executeGetProcessDefinitionWatchForTest(t, cli, populatePDSearchFilterOpts(), 0, func(context.Context, time.Duration) error {
-		sleepCalls++
-		if sleepCalls == 1 {
-			return nil
-		}
-		return context.Canceled
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli:    cli,
+		filter: populatePDSearchFilterOpts(),
+		sleep: func(context.Context, time.Duration) error {
+			sleepCalls++
+			if sleepCalls == 1 {
+				return nil
+			}
+			return context.Canceled
+		},
 	})
 
-	require.NoError(t, err)
+	require.NoError(t, result.err)
 	require.Len(t, requests, 2)
 	for _, request := range requests {
 		require.False(t, request.WatchAllWhenUnselected)
 		require.True(t, request.Latest)
 		require.Equal(t, "invoice", request.Filter.BpmnProcessId)
 	}
-	require.Contains(t, output, "snapshot 1:\nfound: 0")
-	require.Contains(t, output, "snapshot 2:")
-	require.Contains(t, output, "2251799813685256 tenant invoice v7")
-	require.Contains(t, output, "found: 1")
+	requireProcessDefinitionWatchRepaintCount(t, result, 2)
+	body := result.stdoutWithoutRepaintControls()
+	require.NotContains(t, body, "snapshot")
+	require.Contains(t, body, "found: 0")
+	require.Contains(t, body, "2251799813685256 tenant invoice v7")
+	require.Contains(t, body, "found: 1")
 }
 
-func TestGetProcessDefinitionWatchKeySnapshotUsesExplicitAdminOptions(t *testing.T) {
+// TestGetProcessDefinitionWatchKeyRefreshUsesExplicitAdminOptions verifies
+// keyed watch refreshes keep the backend-authorized explicit key option path.
+func TestGetProcessDefinitionWatchKeyRefreshUsesExplicitAdminOptions(t *testing.T) {
 	resetGetProcessDefinitionCommandGlobals()
 	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
 	flagGetPDKey = "2251799813685255"
@@ -592,15 +704,22 @@ func TestGetProcessDefinitionWatchKeySnapshotUsesExplicitAdminOptions(t *testing
 		},
 	}
 
-	output, err := executeGetProcessDefinitionWatchForTest(t, cli, populatePDSearchFilterOpts(), 0, func(context.Context, time.Duration) error {
-		return context.Canceled
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli:    cli,
+		filter: populatePDSearchFilterOpts(),
+		sleep: func(context.Context, time.Duration) error {
+			return context.Canceled
+		},
 	})
 
-	require.NoError(t, err)
+	require.NoError(t, result.err)
 	require.True(t, gotOptions.IgnoreTenant)
-	require.Contains(t, output, "2251799813685255 tenant invoice v3")
+	requireProcessDefinitionWatchRepaintCount(t, result, 1)
+	require.Contains(t, result.stdoutWithoutRepaintControls(), "2251799813685255 tenant invoice v3")
 }
 
+// TestGetProcessDefinitionWatchInterruptAndTimeoutStopCleanly verifies stopping
+// after a rendered refresh does not add failure text to the result body.
 func TestGetProcessDefinitionWatchInterruptAndTimeoutStopCleanly(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -629,19 +748,28 @@ func TestGetProcessDefinitionWatchInterruptAndTimeoutStopCleanly(t *testing.T) {
 				},
 			}
 
-			output, err := executeGetProcessDefinitionWatchForTest(t, cli, process.ProcessDefinitionFilter{}, 0, func(context.Context, time.Duration) error {
-				return tt.sleepErr
+			result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+				cli:    cli,
+				filter: process.ProcessDefinitionFilter{},
+				sleep: func(context.Context, time.Duration) error {
+					return tt.sleepErr
+				},
 			})
 
-			require.NoError(t, err)
-			require.Contains(t, output, "snapshot 1:")
-			require.NotContains(t, strings.ToLower(output), "failed")
-			require.NotContains(t, strings.ToLower(output), "error")
-			require.NotContains(t, strings.ToLower(output), "lookup")
+			require.NoError(t, result.err)
+			requireProcessDefinitionWatchRepaintCount(t, result, 1)
+			body := result.stdoutWithoutRepaintControls()
+			require.NotContains(t, body, "snapshot")
+			require.Contains(t, body, "2251799813685255 tenant invoice v1")
+			require.NotContains(t, strings.ToLower(body), "failed")
+			require.NotContains(t, strings.ToLower(body), "error")
+			require.NotContains(t, strings.ToLower(body), "lookup")
 		})
 	}
 }
 
+// TestGetProcessDefinitionWatchTimeoutStatusUsesStderr keeps timeout status
+// separate from stdout refresh content.
 func TestGetProcessDefinitionWatchTimeoutStatusUsesStderr(t *testing.T) {
 	resetGetProcessDefinitionCommandGlobals()
 	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
@@ -660,14 +788,20 @@ func TestGetProcessDefinitionWatchTimeoutStatusUsesStderr(t *testing.T) {
 		},
 	}
 
-	stdout, stderr, err := executeGetProcessDefinitionWatchWithBackoffForTest(t, cli, process.ProcessDefinitionFilter{}, 0, defaultBackoffMaxRetries, func(context.Context, time.Duration) error {
-		return context.DeadlineExceeded
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli:        cli,
+		filter:     process.ProcessDefinitionFilter{},
+		maxRetries: defaultBackoffMaxRetries,
+		sleep: func(context.Context, time.Duration) error {
+			return context.DeadlineExceeded
+		},
 	})
 
-	require.NoError(t, err)
-	require.Contains(t, stdout, "snapshot 1:")
-	require.NotContains(t, stdout, "timeout")
-	require.Contains(t, stderr, "watch stopped: timeout reached")
+	require.NoError(t, result.err)
+	requireProcessDefinitionWatchRepaintCount(t, result, 1)
+	require.Contains(t, result.stdoutWithoutRepaintControls(), "2251799813685255 tenant invoice v1")
+	require.NotContains(t, result.stdoutWithoutRepaintControls(), "timeout")
+	require.Contains(t, result.stderr, "watch stopped: timeout reached")
 }
 
 func TestGetProcessDefinitionLatestSearchPreservesSelectionRequest(t *testing.T) {

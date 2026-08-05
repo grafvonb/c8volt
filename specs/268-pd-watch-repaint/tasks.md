@@ -42,16 +42,16 @@
 
 ### Tests for User Story 1
 
-- [ ] T006 [US1] Update the repeated broad watch test to expect repaint behavior and no `snapshot N:` labels in `cmd/get_processdefinition_test.go`
-- [ ] T007 [US1] Add a test proving a watched refresh body matches the equivalent non-watch human process-definition output in `cmd/get_processdefinition_test.go`
-- [ ] T008 [P] [US1] Update command metadata/help contract expectations from appended snapshots to repaint behavior in `cmd/command_contract_test.go`
+- [x] T006 [US1] Update the repeated broad watch test to expect repaint behavior and no `snapshot N:` labels in `cmd/get_processdefinition_test.go`
+- [x] T007 [US1] Add a test proving a watched refresh body matches the equivalent non-watch human process-definition output in `cmd/get_processdefinition_test.go`
+- [x] T008 [P] [US1] Update command metadata/help contract expectations from appended snapshots to repaint behavior in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Replace watch-specific result-body rendering with normal process-definition list rendering in `cmd/cmd_views_get.go`
-- [ ] T010 [US1] Add a terminal repaint helper in `cmd/cmd_views_rendermode.go` and call it before each successful watch refresh in `cmd/get_processdefinition.go`
-- [ ] T011 [US1] Update `get process-definition` long help, examples, and output-mode metadata to describe repaint behavior in `cmd/get_processdefinition.go`
-- [ ] T012 [US1] Run `go test ./cmd -run 'TestGetProcessDefinitionWatch|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata|TestProcessDefinitionSelectorValidationHelpContract' -count=1` and resolve failures in `cmd/get_processdefinition_test.go`, `cmd/command_contract_test.go`, `cmd/get_processdefinition.go`, and `cmd/cmd_views_get.go`
+- [x] T009 [US1] Replace watch-specific result-body rendering with normal process-definition list rendering in `cmd/cmd_views_get.go`
+- [x] T010 [US1] Add a terminal repaint helper in `cmd/cmd_views_rendermode.go` and call it before each successful watch refresh in `cmd/get_processdefinition.go`
+- [x] T011 [US1] Update `get process-definition` long help, examples, and output-mode metadata to describe repaint behavior in `cmd/get_processdefinition.go`
+- [x] T012 [US1] Run `go test ./cmd -run 'TestGetProcessDefinitionWatch|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata|TestProcessDefinitionSelectorValidationHelpContract' -count=1` and resolve failures in `cmd/get_processdefinition_test.go`, `cmd/command_contract_test.go`, `cmd/get_processdefinition.go`, and `cmd/cmd_views_get.go`
 
 **Checkpoint**: User Story 1 is independently functional and testable as the MVP.
 

@@ -212,16 +212,12 @@ func listProcessDefinitionsView(cmd *cobra.Command, resp process.ProcessDefiniti
 	return listOrJSONFlat(cmd, resp, resp.Items, pickMode(), flatRowPD, func(it process.ProcessDefinition) string { return it.Key })
 }
 
-func processDefinitionWatchSnapshotView(cmd *cobra.Command, tick int64, snapshot process.ProcessDefinitionWatchSnapshot) error {
-	if tick > 1 {
-		renderOutputLine(cmd, "")
-	}
-	renderOutputLine(cmd, "snapshot %d:", tick)
-	for _, line := range formatProcessDefinitionFlatRows(snapshot.Items) {
-		renderOutputLine(cmd, "%s", line)
-	}
-	renderOutputLine(cmd, "found: %d", len(snapshot.Items))
-	return nil
+// processDefinitionWatchView keeps each refresh body identical to normal list output.
+func processDefinitionWatchView(cmd *cobra.Command, snapshot process.ProcessDefinitionWatchSnapshot) error {
+	return listProcessDefinitionsView(cmd, process.ProcessDefinitions{
+		Total: snapshot.Total,
+		Items: snapshot.Items,
+	})
 }
 
 func formatProcessDefinitionFlatRows(items []process.ProcessDefinition) []string {
