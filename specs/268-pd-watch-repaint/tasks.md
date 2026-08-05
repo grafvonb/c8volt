@@ -15,9 +15,9 @@
 
 **Purpose**: Confirm the current command surface and known failing expectations before story work begins.
 
-- [ ] T001 Inspect current process-definition watch renderer and loop boundaries in `cmd/get_processdefinition.go`, `cmd/cmd_views_get.go`, and `toolx/watch/watch.go`
-- [ ] T002 Inspect old watch output/help expectations in `cmd/get_processdefinition_test.go`, `cmd/command_contract_test.go`, `README.md`, and `docs/cli/c8volt_get_process-definition.md`
-- [ ] T003 [P] Review the repaint contract and validation scenarios in `specs/268-pd-watch-repaint/contracts/cli-watch-repaint-contract.md` and `specs/268-pd-watch-repaint/quickstart.md`
+- [x] T001 Inspect current process-definition watch renderer and loop boundaries in `cmd/get_processdefinition.go`, `cmd/cmd_views_get.go`, and `toolx/watch/watch.go`
+- [x] T002 Inspect old watch output/help expectations in `cmd/get_processdefinition_test.go`, `cmd/command_contract_test.go`, `README.md`, and `docs/cli/c8volt_get_process-definition.md`
+- [x] T003 [P] Review the repaint contract and validation scenarios in `specs/268-pd-watch-repaint/contracts/cli-watch-repaint-contract.md` and `specs/268-pd-watch-repaint/quickstart.md`
 
 ---
 
