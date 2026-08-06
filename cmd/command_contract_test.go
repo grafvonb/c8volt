@@ -134,6 +134,8 @@ func TestCommandCapabilityForCommand_DocumentsTenantContract(t *testing.T) {
 	}
 }
 
+// TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata keeps command
+// discovery aligned with the repainting watch contract.
 func TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -150,19 +152,19 @@ func TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata(t *testing.T
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "repeat the process-definition lookup as terminal snapshots until interrupted, timed out, or retry-exhausted",
+		Description: "repeat the process-definition lookup as a repainted terminal view until interrupted, timed out, or retry-exhausted",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "watch-interval",
 		Type:        "duration",
 		Required:    false,
 		Repeated:    false,
-		Description: "interval between process-definition watch snapshots after the immediate first snapshot",
+		Description: "interval between process-definition watch refreshes after the immediate first refresh",
 	})
 	require.Contains(t, capability.OutputModes, OutputModeContract{
 		Name:      "one-line",
 		Supported: true,
-		Notes:     "default watch snapshots use this mode; --watch rejects JSON/keys-only/XML/quiet/automation combinations",
+		Notes:     "default watch refreshes repaint this normal list view; --watch rejects JSON/keys-only/XML/quiet/automation combinations",
 	})
 	require.Contains(t, capability.OutputModes, OutputModeContract{
 		Name:             "json",
@@ -2604,6 +2606,8 @@ func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
 	}
 }
 
+// TestProcessDefinitionSelectorValidationHelpContract keeps process-definition
+// help text aligned with selector validation and watch repaint behavior.
 func TestProcessDefinitionSelectorValidationHelpContract(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -2614,12 +2618,16 @@ func TestProcessDefinitionSelectorValidationHelpContract(t *testing.T) {
 			name: "get process-definition",
 			args: []string{"get", "pd", "--help"},
 			wants: []string{
-				"Watch mode prints repeated terminal snapshots",
-				"Without a",
-				"selector, `--watch` observes all visible process definitions.",
+				"Watch mode repaints one terminal view",
+				"Each refresh body",
+				"matches normal list output without watch-only snapshot labels.",
+				"Without a selector",
+				"`--watch` observes all visible process definitions.",
 				"JSON, keys-only,",
-				"XML, quiet, and automation combinations are rejected before lookup work.",
-				"Existing timeout and backoff retry settings bound the watch run",
+				"XML,",
+				"quiet, and automation combinations are rejected before lookup work.",
+				"Existing",
+				"timeout and backoff retry settings bound the watch run",
 				"When `--bpmn-process-id` is set, c8volt validates that at least one visible",
 				"process definition matches the selector before rendering output.",
 				"A missing selector",

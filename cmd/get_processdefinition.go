@@ -37,6 +37,7 @@ var (
 const defaultGetPDWatchInterval = time.Second
 
 var processDefinitionWatchSleep watch.SleepFunc
+var processDefinitionWatchNow = time.Now
 
 var getProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
@@ -51,12 +52,13 @@ supported. Explicit ` + "`--key`" + ` and XML key lookups are backend-authorized
 c8volt displays returned tenant metadata without rejecting solely because it differs
 from the selected tenant.
 
-Watch mode prints repeated terminal snapshots, starting immediately and then
-waiting ` + "`1s`" + ` between snapshots unless ` + "`--watch-interval`" + ` is set. Without a
-selector, ` + "`--watch`" + ` observes all visible process definitions. JSON, keys-only,
-XML, quiet, and automation combinations are rejected before lookup work.
-Existing timeout and backoff retry settings bound the watch run; successful
-snapshots reset the consecutive retry budget.
+Watch mode repaints one terminal view, starting immediately and then waiting
+` + "`1s`" + ` between refreshes unless ` + "`--watch-interval`" + ` is set. Each refresh body
+matches normal list output without watch-only snapshot labels. Without a selector,
+` + "`--watch`" + ` observes all visible process definitions. JSON, keys-only, XML,
+quiet, and automation combinations are rejected before lookup work. Existing
+timeout and backoff retry settings bound the watch run; successful refreshes reset
+the consecutive retry budget.
 
 When ` + "`--bpmn-process-id`" + ` is set, c8volt validates that at least one visible
 process definition matches the selector before rendering output. A missing selector
@@ -165,6 +167,7 @@ func runGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, log *slog.
 	}
 }
 
+// executeGetProcessDefinitionWatch collects serial refreshes and repaints stdout after each successful collection.
 func executeGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, filter process.ProcessDefinitionFilter, timeout time.Duration, maxRetries int) error {
 	interval, err := resolveGetProcessDefinitionWatchInterval()
 	if err != nil {
@@ -175,6 +178,7 @@ func executeGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, filter
 	if request.Key != "" {
 		opts = collectExplicitAdminInputOptions()
 	}
+	var slowWarnings processDefinitionWatchSlowWarningState
 	result, err := watch.Run(cmd.Context(), watch.Options{
 		Interval:   interval,
 		Timeout:    timeout,
@@ -185,14 +189,47 @@ func executeGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, filter
 			renderGetProcessDefinitionWatchRetryStatus(cmd, event)
 		},
 	}, func(ctx context.Context, tick watch.Tick) error {
+		startedAt := processDefinitionWatchNow()
 		snapshot, err := cli.CollectProcessDefinitionWatchSnapshot(ctx, request, opts...)
 		if err != nil {
 			return err
 		}
-		return processDefinitionWatchSnapshotView(cmd, tick.Index, snapshot)
+		if err := renderTerminalRepaint(cmd); err != nil {
+			return err
+		}
+		if err := processDefinitionWatchView(cmd, snapshot); err != nil {
+			return err
+		}
+		duration := processDefinitionWatchNow().Sub(startedAt)
+		renderGetProcessDefinitionWatchRefreshStatus(cmd, &slowWarnings, tick.Index, duration, interval)
+		return nil
 	})
 	renderGetProcessDefinitionWatchStopStatus(cmd, result)
 	return err
+}
+
+type processDefinitionWatchSlowWarningState struct {
+	active bool
+}
+
+func renderGetProcessDefinitionWatchRefreshStatus(cmd *cobra.Command, state *processDefinitionWatchSlowWarningState, refresh int64, duration, interval time.Duration) {
+	if cmd == nil {
+		return
+	}
+	slow := duration > interval
+	if slow && state != nil && !state.active {
+		fmt.Fprintf(cmd.ErrOrStderr(), "slow process-definition watch refresh %d: took %s, exceeding --watch-interval %s; suppressing repeated slow-refresh warnings until a refresh completes within the interval\n", refresh, duration, interval)
+	}
+	if state != nil {
+		state.active = slow
+	}
+	if flagVerbose {
+		status := "on-time"
+		if slow {
+			status = "slow"
+		}
+		fmt.Fprintf(cmd.ErrOrStderr(), "process-definition watch refresh %d completed in %s (interval %s, status: %s)\n", refresh, duration, interval, status)
+	}
 }
 
 func resolveGetProcessDefinitionWatchInterval() (time.Duration, error) {
@@ -215,17 +252,19 @@ func isGetProcessDefinitionWatchRetryable(err error) bool {
 	}
 }
 
+// renderGetProcessDefinitionWatchRetryStatus keeps retry diagnostics off the repainted result body.
 func renderGetProcessDefinitionWatchRetryStatus(cmd *cobra.Command, event watch.RetryEvent) {
 	if cmd == nil {
 		return
 	}
 	if event.MaxRetries > 0 {
-		fmt.Fprintf(cmd.ErrOrStderr(), "retrying process-definition watch after snapshot %d failed (%d/%d consecutive failures): %v\n", event.Tick, event.ConsecutiveFailures, event.MaxRetries, event.Err)
+		fmt.Fprintf(cmd.ErrOrStderr(), "retrying process-definition watch after refresh %d failed (%d/%d consecutive failures): %v\n", event.Tick, event.ConsecutiveFailures, event.MaxRetries, event.Err)
 		return
 	}
-	fmt.Fprintf(cmd.ErrOrStderr(), "retrying process-definition watch after snapshot %d failed (consecutive failures: %d): %v\n", event.Tick, event.ConsecutiveFailures, event.Err)
+	fmt.Fprintf(cmd.ErrOrStderr(), "retrying process-definition watch after refresh %d failed (consecutive failures: %d): %v\n", event.Tick, event.ConsecutiveFailures, event.Err)
 }
 
+// renderGetProcessDefinitionWatchStopStatus reports terminal watch stop reasons on stderr.
 func renderGetProcessDefinitionWatchStopStatus(cmd *cobra.Command, result watch.Result) {
 	if cmd == nil {
 		return
@@ -267,8 +306,8 @@ func init() {
 	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics; 8.8/8.9 include incident counts, 8.7 unsupported")
 	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML (requires --key and no other filters)")
 	fs.Int32VarP(&flagGetPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process definitions to request per discovery page; does not cap total returned rows (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.BoolVar(&flagGetPDWatch, "watch", false, "repeat the process-definition lookup as terminal snapshots until interrupted, timed out, or retry-exhausted")
-	fs.Var(toolx.NewDurationStringValue(defaultGetPDWatchInterval.String(), &flagGetPDWatchInterval), "watch-interval", "interval between process-definition watch snapshots after the immediate first snapshot")
+	fs.BoolVar(&flagGetPDWatch, "watch", false, "repeat the process-definition lookup as a repainted terminal view until interrupted, timed out, or retry-exhausted")
+	fs.Var(toolx.NewDurationStringValue(defaultGetPDWatchInterval.String(), &flagGetPDWatchInterval), "watch-interval", "interval between process-definition watch refreshes after the immediate first refresh")
 
 	setCommandMutation(getProcessDefinitionCmd, CommandMutationReadOnly)
 	setContractSupport(getProcessDefinitionCmd, ContractSupportFull)
@@ -276,7 +315,7 @@ func init() {
 		OutputModeContract{
 			Name:      RenderModeOneLine.String(),
 			Supported: true,
-			Notes:     "default watch snapshots use this mode; --watch rejects JSON/keys-only/XML/quiet/automation combinations",
+			Notes:     "default watch refreshes repaint this normal list view; --watch rejects JSON/keys-only/XML/quiet/automation combinations",
 		},
 		OutputModeContract{
 			Name:             RenderModeJSON.String(),
@@ -307,7 +346,7 @@ func validateGetProcessDefinitionFlags(cmd *cobra.Command) error {
 	return nil
 }
 
-// validateGetProcessDefinitionWatchOutputFlags keeps watch snapshots out of
+// validateGetProcessDefinitionWatchOutputFlags keeps watch repaint output out of
 // finite machine-output contracts before any process-definition lookup starts.
 func validateGetProcessDefinitionWatchOutputFlags(cmd *cobra.Command) error {
 	var incompatible []string
@@ -328,7 +367,7 @@ func validateGetProcessDefinitionWatchOutputFlags(cmd *cobra.Command) error {
 	if len(incompatible) == 0 {
 		return nil
 	}
-	return forbiddenFlagCombinationf("--watch cannot be combined with %s; watch prints repeated terminal snapshots", strings.Join(incompatible, ", "))
+	return forbiddenFlagCombinationf("--watch cannot be combined with %s; watch repaints terminal output", strings.Join(incompatible, ", "))
 }
 
 func populatePDSearchFilterOpts() process.ProcessDefinitionFilter {

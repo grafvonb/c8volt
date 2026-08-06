@@ -344,8 +344,10 @@ func bindCommandLocalConfigFlags(v *viper.Viper, bindings *resolverBindings, fs 
 
 func automationModeEnabled(cmd *cobra.Command) bool {
 	if cmd != nil {
-		if cfg, err := config.FromContext(cmd.Context()); err == nil && cfg != nil {
-			return cfg.App.Automation
+		if ctx := cmd.Context(); ctx != nil {
+			if cfg, err := config.FromContext(ctx); err == nil && cfg != nil {
+				return cfg.App.Automation
+			}
 		}
 		if flag := cmd.Flags().Lookup("automation"); flag != nil {
 			if value, err := strconv.ParseBool(flag.Value.String()); err == nil {

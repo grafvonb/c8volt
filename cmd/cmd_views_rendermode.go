@@ -59,6 +59,15 @@ func renderOutputLine(cmd *cobra.Command, format string, args ...any) {
 	cmd.Println(strings.TrimRight(fmt.Sprintf(format, args...), "\n"))
 }
 
+// renderTerminalRepaint emits the ANSI controls used by watch views to replace the visible result area.
+func renderTerminalRepaint(cmd *cobra.Command) error {
+	if cmd == nil {
+		return nil
+	}
+	_, err := fmt.Fprint(cmd.OutOrStdout(), "\x1b[H\x1b[2J")
+	return err
+}
+
 // renderHumanLine writes command output through the activity-aware renderer.
 func renderHumanLine(cmd *cobra.Command, format string, args ...any) {
 	renderHumanLogLine(cmd, false, format, args...)

@@ -6,6 +6,7 @@ package watch
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -62,6 +63,42 @@ func TestWatchRunSleepsPositiveIntervalBetweenTicks(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, TerminationReasonCanceled, result.Reason)
 	require.Equal(t, []time.Duration{25 * time.Millisecond, 25 * time.Millisecond}, intervals)
+	require.EqualValues(t, 2, result.SuccessfulTicks)
+}
+
+// TestWatchRunKeepsTicksSerialWhenTickExceedsInterval verifies a slow tick must
+// finish before the runner sleeps and starts the next tick.
+func TestWatchRunKeepsTicksSerialWhenTickExceedsInterval(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	var events []string
+	activeTicks := 0
+	result, err := Run(ctx, Options{
+		Interval: time.Nanosecond,
+		Sleep: func(_ context.Context, interval time.Duration) error {
+			require.Equal(t, time.Nanosecond, interval)
+			require.Zero(t, activeTicks)
+			events = append(events, "sleep")
+			if len(events) >= 4 {
+				cancel()
+				return context.Canceled
+			}
+			return nil
+		},
+	}, func(_ context.Context, tick Tick) error {
+		require.Zero(t, activeTicks)
+		activeTicks++
+		events = append(events, fmt.Sprintf("tick %d start", tick.Index))
+		time.Sleep(time.Millisecond)
+		events = append(events, fmt.Sprintf("tick %d end", tick.Index))
+		activeTicks--
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, TerminationReasonCanceled, result.Reason)
+	require.Equal(t, []string{"tick 1 start", "tick 1 end", "sleep", "tick 2 start", "tick 2 end", "sleep"}, events)
 	require.EqualValues(t, 2, result.SuccessfulTicks)
 }
 

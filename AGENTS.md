@@ -38,6 +38,13 @@
 - Do not add noisy endpoint, request, cursor, or per-key lifecycle detail to default human output; keep diagnostics behind `--verbose`.
 - When command output changes, update tests for the affected human, JSON, keys-only, error, prompt, and activity behavior where relevant.
 
+## Command File Cohesion
+- Keep `cmd/<verb>_<noun>.go` focused on Cobra construction, flags, validation, top-level dispatch, and the command's ordinary execution path.
+- Put a distinct execution mode or lifecycle such as watch, polling, streaming, follow, batch, or interactive operation in `cmd/<verb>_<noun>_<mode>.go` once it has its own runner, state, timing, retry, status, or request-building behavior.
+- A mode that adds three or more mode-specific declarations across functions, types, constants, or package variables must use a dedicated mode file before the change is complete.
+- Keep final output formatting in `cmd/cmd_views_<area>.go`; keep mode lifecycle and mode-only status/control behavior in the focused mode file.
+- Existing large command files are not precedent for adding another concern. Split newly added cohesive behavior without broad unrelated refactoring.
+
 ## Testing And Validation
 - Add or update tests close to the changed package.
 - Prefer targeted validation first, then broader validation when the change has wider blast radius.
