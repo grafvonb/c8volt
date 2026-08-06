@@ -109,7 +109,8 @@ Follow the existing direction of dependencies.
 
 ## Where New Behavior Usually Belongs
 
-- New CLI command: add a `cmd/<verb>_<noun>.go` file or extend the existing command file under the relevant verb (`get`, `run`, `update`, `resolve`, `delete`, `cancel`, `walk`, `expect`, `config`, `embed`, `deploy`).
+- New CLI command: add a `cmd/<verb>_<noun>.go` file under the relevant verb (`get`, `run`, `update`, `resolve`, `delete`, `cancel`, `walk`, `expect`, `config`, `embed`, `deploy`). Extend an existing command file only for the command's primary path and small cohesive wiring.
+- New command mode or lifecycle: add `cmd/<verb>_<noun>_<mode>.go` for behavior such as watch, polling, streaming, follow, batch, or interactive execution. The base command file may define the flag and dispatch to the mode, but must not absorb the mode's lifecycle implementation.
 - New CLI output row or JSON view: add or extend `cmd/cmd_views_<area>.go`.
 - New command contract metadata: update command init code and tests in `cmd/command_contract_test.go`.
 - New public operation: add to `c8volt/<area>/api.go`, implement in `c8volt/<area>/client.go`, convert in `c8volt/<area>/convert.go`, and test in `c8volt/<area>/client_test.go`.
@@ -159,10 +160,15 @@ Search, list, discovery, and search-derived mutation workflows must keep backend
 
 ## File Organization And Naming Rules
 
-- Do not contaminate Cobra command files with unrelated helper functions.
-- A command file should primarily contain command definition, flags, validation directly tied to that command, and the orchestration needed to call the facade and render output.
+- Treat file cohesion as a completion gate, not an optional cleanup. A task is incomplete while newly added behavior remains in a file that does not own that concern.
+- Keep `cmd/<verb>_<noun>.go` focused on Cobra command construction, flags, validation directly tied to the command, top-level dispatch, and the ordinary single-run execution path.
+- A distinct execution mode or lifecycle such as watch, polling, streaming, follow, batch, or interactive operation owns a focused `cmd/<verb>_<noun>_<mode>.go` file. Keep its runner, state types, clocks/timers, retry classification, status/control output, and mode-specific request construction together there.
+- The base command file may declare a mode flag and dispatch to a mode entry point. It must not contain the mode's implementation merely because the mode belongs to the same Cobra command.
+- The dedicated mode file is mandatory when a mode adds three or more mode-specific declarations across functions, types, constants, or package-level variables. A mode with fewer declarations still requires a dedicated file when it owns a separate lifecycle, repeated execution, timing, retries, or persistent state.
+- Do not use an existing large command file as precedent for adding another concern. Apply this rule to new or materially changed behavior without requiring an unrelated broad refactor.
 - Before adding a helper to a command file, first look for an existing owning file or package:
   - CLI rendering helpers belong in `cmd/cmd_views_<area>.go`.
+  - Mode-independent final output formatting stays in `cmd/cmd_views_<area>.go`; mode lifecycle and mode-only status/control behavior stay in `cmd/<verb>_<noun>_<mode>.go`.
   - Command contract helpers belong near `cmd/command_contract.go`.
   - Stdin/key parsing belongs near `cmd/cmd_stdin.go`.
   - CLI construction and confirmation behavior belongs near `cmd/cmd_cli.go`.
@@ -176,6 +182,15 @@ Search, list, discovery, and search-derived mutation workflows must keep backend
 - File names must describe the concrete concern, for example `cmd/get_incident_search.go`, `cmd/cmd_views_processinstance_incidents.go`, `internal/services/incidentfilter/incidentfilter.go`, or `toolx/filter_format.go`.
 - Function names must also describe the concrete behavior or rule they implement. Avoid names that only describe that the function is a helper.
 - If a new file would be named with a generic word, the concern is probably not clear enough yet; inspect nearby patterns and choose a more cohesive ownership boundary.
+
+Before validation and commit, inventory declarations added to each touched command file and verify ownership:
+
+```sh
+git diff --name-only -- 'cmd/*.go'
+rg -n '^(func|type|const|var) ' cmd/<touched-file>.go
+```
+
+If three or more declarations share a mode prefix or serve one secondary lifecycle, move them to the focused mode file before marking the work unit complete. Record any intentional exception and its concrete ownership reason in the feature `progress.md`; file size or convenience is not a valid exception.
 
 ## Camunda Version And API Rules
 
@@ -457,6 +472,7 @@ These rules are mandatory for CLI and ops workflow work. They capture the comman
 - Identify the first incomplete work unit and implement only that unit.
 - Before adding code, inspect nearby implementation and tests in the package that should own the behavior.
 - Before adding helpers, search `toolx`, `internal/services/common`, the current area package, and `testx`.
+- Before validation, inventory declarations added to touched command files and apply the command mode split gate from "File Organization And Naming Rules".
 - Record reusable discoveries in the feature `progress.md` under codebase patterns.
 - Mark tasks complete only after implementation and relevant validation pass.
 - When the work unit is complete, include task/progress updates in the same work-unit commit.
