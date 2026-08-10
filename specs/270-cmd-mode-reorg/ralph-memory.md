@@ -33,6 +33,7 @@ Started: 2026-08-10T11:35:19Z
 - T029 created `cmd/cmd_views_incident.go` and moved incident collection rendering plus incident process-instance-key output there; `cmd/cmd_views_get.go` now retains only resource and tenant renderer declarations for T030/T031.
 - T030 created `cmd/cmd_views_resource.go` and moved single-resource lookup rendering plus resource flat-row formatting there; `cmd/cmd_views_get.go` now retains only tenant renderer declarations for T031.
 - T031 created `cmd/cmd_views_tenant.go`, moved tenant list/single/one-line/flat-row rendering there, and removed the now-empty mixed `cmd/cmd_views_get.go`.
+- T032/T033 completed the US2 renderer ownership audit and checkpoint validation. `TestGetViewFilesAvoidBackendOwnership` and `go test ./cmd -run 'Test.*View|TestRender|Test.*JSON|Test.*KeysOnly|Test.*Flat' -count=1` passed; the only remaining renderer facade call is the existing dry-run planning exception deferred to US3 T041.
 
 ## Gotchas
 
@@ -65,4 +66,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US2 with T032 by removing or documenting any remaining facade calls, backend orchestration, traversal, polling, mutation planning, or workflow execution from renderer ownership; keep the work scoped to US2 and do not start US3.
+- Next iteration should start US3 with T034 by splitting or adding process-instance dry-run presentation tests in `cmd/cmd_views_processinstance_dryrun_test.go`; do not begin implementation task T041 before the dry-run presentation test ownership task is complete.

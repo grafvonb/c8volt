@@ -24,6 +24,7 @@
   - Shared layout: `zeroAsMinus` and any generic flat-row layout helpers should live in focused flat-row rendering ownership.
 - `cmd/cmd_views_get_test.go` mirrors the mixed renderer ownership. Candidate splits include flat-row layout tests, process-instance age/list JSON tests, process-definition list alignment tests, incident renderer tests, and shared get-view test helpers.
 - `cmd/cmd_views_processinstance_dryrun.go` still performs dry-run planning through facade calls in `planProcessInstanceDryRunPreview` and `planProcessInstanceDryRunPreviewWithOptions`; later US3 tasks should move planning coordination out of renderer ownership and leave payload construction plus terminal/JSON/key rendering in the view file.
+- US2 T032 audit found no additional renderer-owned facade calls, backend orchestration, traversal, polling, mutation planning, or workflow execution beyond the existing `cmd_views_processinstance_dryrun.go:planProcessInstanceDryRunPreviewWithOptions:cli.DryRunCancelOrDeletePlan` exception. That exception remains deferred to US3 T041 so US2 can finish presentation-only resource renderer ownership without starting process-instance dry-run planning moves.
 
 ## Deferred Ownership Corrections
 
@@ -55,3 +56,4 @@
 - Setup artifact review used `rg` over `specs/254-cli-debt-refactor/assessment.md` and declaration inventories for `cmd/get_processdefinition.go`, `cmd/get_processdefinition_test.go`, `cmd/cmd_views_get.go`, `cmd/cmd_views_get_test.go`, `cmd/cmd_views_processinstance_dryrun.go`, `cmd/update_job.go`, `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, `cmd/root.go`, `cmd/ops_analyse_slow_process_instances.go`, and `cmd/ops_progress.go`.
 - Go behavior tests were not required for this artifact-only setup work unit; no Go source or test code was changed.
 - US1 watch audit after T017 confirmed `cmd/get_processdefinition_watch.go` owns watch execution, timing, retry, slow-refresh status, stop status, and snapshot request construction; `cmd/get_processdefinition.go` still owns flag registration and incompatible-output validation per the base command boundary. Targeted watch and non-watch process-definition tests passed on 2026-08-10 14:10.
+- US2 renderer audit after T031 confirmed focused resource renderer files no longer have mixed get-view production ownership. `go test ./cmd -run '^TestGetViewFilesAvoidBackendOwnership$' -count=1` passed on 2026-08-10 15:05, and the only remaining allowed renderer facade call is the process-instance dry-run planning exception deferred to US3 T041.

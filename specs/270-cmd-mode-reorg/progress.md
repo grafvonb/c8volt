@@ -319,3 +319,20 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Tenant list, single-item, one-line, and flat-row rendering now has focused production ownership; the old mixed get renderer file is empty and removed.
 ---
+---
+## Iteration 15 - 2026-08-10 15:05
+**Work Unit**: US2 renderer ownership audit and compatibility checkpoint
+**Tasks Completed**:
+- [x] T032: Remove or document facade calls, backend orchestration, traversal, polling, mutation planning, or workflow execution from renderer ownership
+- [x] T033: Run and record the renderer compatibility checkpoint validation
+**Tasks Remaining in Work Unit**: 0 in US2; US3 T034 is next
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ownership-followups.md
+- specs/270-cmd-mode-reorg/quickstart.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Renderer ownership guard and compatibility tests passed; the only remaining renderer facade call is the already tracked process-instance dry-run planning exception deferred to US3 T041.
+---
