@@ -60,6 +60,7 @@ Started: 2026-08-10T11:35:19Z
 - T057 ran `git diff --check`; whitespace validation passed with no output.
 - T058 ran `make docs-content`; generated CLI docs and README had no command-content diff. The generator produced only `docs/index.md` build metadata churn, which was restored before recording the checkpoint.
 - T059 ran the focused Quickstart scenario validation suite for watch ownership, renderer presentation, process-instance support, large workflows, and destructive workflow safety; all five targeted `go test ./cmd -run ... -count=1` commands passed.
+- T060 ran full repository validation with `make test`; the target passed (`go test ./... -race -count=1`, including `ok github.com/grafvonb/c8volt/cmd 113.954s`).
 
 ## Gotchas
 
@@ -100,10 +101,11 @@ Started: 2026-08-10T11:35:19Z
 - `go test ./cmd -run 'Test(GetViewFilesAvoidBackendOwnership|.*DryRun|.*ProcessInstance.*Plan|.*ProcessInstance.*Selector|.*Cancel.*ProcessInstance|.*Delete.*ProcessInstance|ResolveProcessInstance)' -count=1`
 - `go test ./cmd -count=1`
 - `git diff --check`
+- `make test`
 
 ## Do Not Repeat
 
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue the Final Phase with T060 by running full repository validation with `make test`, recording the result in `specs/270-cmd-mode-reorg/quickstart.md`, and leaving SC evidence plus final handoff review for T061/T062.
+- Next iteration should continue the Final Phase with T061 by verifying SC-001 through SC-010 evidence in `specs/270-cmd-mode-reorg/ownership-followups.md`; T062 final changed-file/deferred-correction handoff review remains after that.
