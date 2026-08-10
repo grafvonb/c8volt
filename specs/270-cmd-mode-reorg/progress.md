@@ -94,7 +94,6 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - Watch mode now has explicit test guardrails for discovery metadata, documented incompatible modes, human/verbose refresh parity, and pre-refresh rejection before the T015/T016 production file move.
----
 ## Iteration 2 - 2026-08-10 14:04
 **Work Unit**: US1 process-definition watch lifecycle file split
 **Tasks Completed**:
@@ -574,4 +573,22 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - Root command production ownership now mirrors the focused root test split; focused root/config/service tests, full command package tests, and whitespace validation passed.
+---
+---
+## Iteration 30 - 2026-08-10 16:41
+**Work Unit**: US3 slow-process analysis production ownership
+**Tasks Completed**:
+- [x] T048: Split slow-process analysis command, validation, and progress declarations
+**Tasks Remaining in Work Unit**: T049-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/ops_analyse_slow_process_instances_validation.go
+- cmd/ops_analyse_slow_process_instances_progress.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ownership-followups.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Slow-process analysis command/request construction, validation/parsing, and preflight/progress routing now have focused production files matching the earlier test split.
 ---

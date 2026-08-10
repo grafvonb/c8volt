@@ -48,6 +48,7 @@ Started: 2026-08-10T11:35:19Z
 - T045 created `cmd/cancel_processinstance_selector.go` for search-derived cancel execution. `cmd/cancel_processinstance.go` now owns Cobra setup, validation, mode dispatch, and direct-key cancel execution through `runCancelProcessInstanceDirect`; selector validation, search-page planning callbacks, dry-run aggregate rendering, continuation prompts, and paged cancel report rendering live in the selector file.
 - T046 created `cmd/delete_processinstance_selector.go` for search-derived delete execution. `cmd/delete_processinstance.go` now owns Cobra setup, validation, mode dispatch, direct-key delete execution through `runDeleteProcessInstanceDirect`, direct-key plan/force checks, and init; selector validation, frozen search-plan aggregation, continuation prompts, dry-run aggregate rendering, search-mode mutation submission, and paged delete report rendering live in the selector file.
 - T047 created `cmd/root_config.go` and `cmd/root_services.go`. `cmd/root.go` now owns root command globals, Cobra construction, persistent flag registration, top-level bootstrap flow, execution, and usage silencing; `cmd/root_config.go` owns Viper binding/defaults, config source context, config resolution, config hints, and env-key detection; `cmd/root_services.go` owns remote HTTP/auth service installation plus automation/activity indicator decisions.
+- T048 created `cmd/ops_analyse_slow_process_instances_validation.go` and `cmd/ops_analyse_slow_process_instances_progress.go`. `cmd/ops_analyse_slow_process_instances.go` now owns ops analyse command construction, flags/metadata, top-level execution, and facade request building; validation owns selector/date/duration/filter parsing; progress owns preflight callbacks, durable/transient progress routing, and confirmation gating.
 
 ## Gotchas
 
@@ -56,6 +57,7 @@ Started: 2026-08-10T11:35:19Z
 - Job update backend-state lookup remains in `cmd/update_job_plan.go` as command-side planning coordination for this mechanical split; T053 is still the planned review point for whether backend-state lookup or mutation-plan construction needs a facade/service ownership follow-up.
 - Cancel and delete process-instance search-mode execution now have focused production files matching the existing selector test split. Delete search mode still freezes all selected page-level delete previews before one aggregate confirmation and mutation; do not convert it to page-by-page mutation in later cleanup.
 - Root bootstrap remains command-layer ownership after T047; service installation still constructs HTTP/auth services in `cmd/root_services.go` because root command bootstrap is the existing owner for wiring those services into context, not backend workflow logic.
+- Slow-process analysis preflight/progress remains command-layer ownership after T048 because the service exposes callback hooks and `cmd` owns stderr/activity routing, prompting, and output-mode gating.
 
 ## Reusable Commands
 
@@ -90,4 +92,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US3 with T048 by splitting slow-process analysis command, validation, and progress declarations from `cmd/ops_analyse_slow_process_instances.go` into `cmd/ops_analyse_slow_process_instances_validation.go` and `cmd/ops_analyse_slow_process_instances_progress.go`.
+- Next iteration should continue US3 with T049 by splitting ops progress mode selection, milestone pacing, formatting, and rendering from `cmd/ops_progress.go` into focused files under `cmd/ops_progress_mode.go`, `cmd/ops_progress_milestones.go`, and `cmd/ops_progress_render.go`.
