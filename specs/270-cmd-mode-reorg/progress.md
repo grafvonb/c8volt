@@ -22,7 +22,6 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Process-definition watch, mixed get renderers, dry-run planning-in-view, update job, root wiring, slow analysis, and ops progress each have clear split candidates without requiring behavior changes in this setup slice.
 ---
----
 ## Iteration 2 - 2026-08-10 13:41
 **Work Unit**: Foundational command-file cohesion contract guard
 **Tasks Completed**:
@@ -174,4 +173,20 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - Process-definition renderer coverage now owns human alignment, single/list JSON envelopes, keys-only output, and watch body parity in the focused process-definition test file.
+---
+---
+## Iteration 6 - 2026-08-10 14:26
+**Work Unit**: US2 incident renderer test ownership
+**Tasks Completed**:
+- [x] T023: Add incident renderer tests for human, JSON, keys-only, and process-instance-key output
+**Tasks Remaining in Work Unit**: T024-T033 remain in US2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_get_test.go
+- cmd/cmd_views_incident_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Plain incident renderer tests now live in the focused incident test file; shared flat-row plus resource and tenant renderer tests remain for later US2 tasks.
 ---
