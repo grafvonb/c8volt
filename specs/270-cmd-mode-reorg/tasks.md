@@ -89,7 +89,7 @@
 - [x] T026 [US2] Move shared flat-row layout helpers from `cmd/cmd_views_get.go` to `cmd/cmd_views_flat.go`
 - [x] T027 [US2] Move process-instance rendering declarations from `cmd/cmd_views_get.go` to existing process-instance view files under `cmd/cmd_views_processinstance.go`, `cmd/cmd_views_processinstance_incidents.go`, `cmd/cmd_views_processinstance_vars.go`, and `cmd/cmd_views_processinstance_activity.go`
 - [x] T028 [US2] Move process-definition rendering declarations from `cmd/cmd_views_get.go` to `cmd/cmd_views_processdefinition.go`
-- [ ] T029 [US2] Move incident rendering declarations from `cmd/cmd_views_get.go` to `cmd/cmd_views_incident.go`
+- [x] T029 [US2] Move incident rendering declarations from `cmd/cmd_views_get.go` to `cmd/cmd_views_incident.go`
 - [ ] T030 [US2] Move resource rendering declarations from `cmd/cmd_views_get.go` to `cmd/cmd_views_resource.go`
 - [ ] T031 [US2] Move tenant rendering declarations from `cmd/cmd_views_get.go` to `cmd/cmd_views_tenant.go`
 - [ ] T032 [US2] Remove facade calls, backend orchestration, traversal, polling, mutation planning, or workflow execution from renderer ownership and record any deferred corrections in `specs/270-cmd-mode-reorg/ownership-followups.md`

@@ -6,42 +6,10 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/spf13/cobra"
 )
-
-func listIncidentsView(cmd *cobra.Command, resp incident.Incidents, messageLimit int, omitMessage bool) error {
-	if flagGetIncidentPIKeysOnly {
-		return renderIncidentProcessInstanceKeys(cmd, resp.Items)
-	}
-	mode := pickMode()
-	switch mode {
-	case RenderModeJSON:
-		return renderJSONPayload(cmd, mode, resp)
-	case RenderModeKeysOnly:
-		for _, it := range resp.Items {
-			renderOutputLine(cmd, "%s", it.IncidentKey)
-		}
-	default:
-		for _, line := range formatIncidentListRowsWithTimezone(resp.Items, messageLimit, omitMessage, commandShowTimezoneOffset(cmd)) {
-			renderOutputLine(cmd, "%s", line)
-		}
-		renderOutputLine(cmd, "found: %d", len(resp.Items))
-	}
-	return nil
-}
-
-func renderIncidentProcessInstanceKeys(cmd *cobra.Command, items []incident.ProcessInstanceIncidentDetail) error {
-	for _, it := range items {
-		if it.ProcessInstanceKey == "" {
-			continue
-		}
-		renderOutputLine(cmd, "%s", it.ProcessInstanceKey)
-	}
-	return nil
-}
 
 func resourceView(cmd *cobra.Command, item resource.Resource) error {
 	return resourceItemView(cmd, item, pickMode())

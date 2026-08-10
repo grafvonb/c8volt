@@ -30,6 +30,7 @@ Started: 2026-08-10T11:35:19Z
 - T026 created `cmd/cmd_views_flat.go`, moved `flatRow`, `formatFlatRows`, `flatColumnWidths`, `hasVisibleColumnAfter`, `compactFlatRow`, and `zeroAsMinus` into focused shared flat-row rendering ownership, and left `cmd/cmd_views_rendermode.go` focused on mode selection and shared render dispatch.
 - T027 moved default process-instance list/single/total rendering, flat-row formatting, and age metadata helpers from `cmd/cmd_views_get.go` to `cmd/cmd_views_processinstance.go`; process-instance enrichment files continue to use the same shared process-instance age and row helpers.
 - T028 created `cmd/cmd_views_processdefinition.go` and moved process-definition list/single/watch rendering plus flat-row formatting there; `cmd/cmd_views_get.go` now retains incident, resource, and tenant renderer declarations for later US2 moves.
+- T029 created `cmd/cmd_views_incident.go` and moved incident collection rendering plus incident process-instance-key output there; `cmd/cmd_views_get.go` now retains only resource and tenant renderer declarations for T030/T031.
 
 ## Gotchas
 
@@ -62,4 +63,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US2 with T029 by moving incident rendering declarations from `cmd/cmd_views_get.go` to `cmd/cmd_views_incident.go`; keep the work scoped to US2 and do not start US3.
+- Next iteration should continue US2 with T030 by moving resource rendering declarations from `cmd/cmd_views_get.go` to `cmd/cmd_views_resource.go`; keep the work scoped to US2 and do not start US3.
