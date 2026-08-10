@@ -36,6 +36,7 @@ Started: 2026-08-10T11:35:19Z
 - T032/T033 completed the US2 renderer ownership audit and checkpoint validation. `TestGetViewFilesAvoidBackendOwnership` and `go test ./cmd -run 'Test.*View|TestRender|Test.*JSON|Test.*KeysOnly|Test.*Flat' -count=1` passed; the only remaining renderer facade call is the existing dry-run planning exception deferred to US3 T041.
 - T034 created `cmd/cmd_views_processinstance_dryrun_test.go` and moved process-instance dry-run preview payload, human/JSON rendering, final-state/delete-blocker messaging, and aggregate summary presentation tests out of `cmd/cancel_test.go` and `cmd/delete_test.go`. Command workflow tests for keyed execution, paging, tenant scoping, mutation guards, and subprocess scenarios remain in the cancel/delete test files for later US3 splits.
 - T035 created `cmd/get_processinstance_search_test.go`, `cmd/get_processinstance_paging_test.go`, and `cmd/processinstance_mutation_progress_test.go`; moved process-instance search request-shape tests, get paging/total/progress tests, and shared cancel/delete mutation-progress tests out of the large mixed test files. No production code moved.
+- T036 created `cmd/update_job_request_test.go`, `cmd/update_job_outcome_test.go`, and `cmd/update_job_plan_test.go`; `cmd/update_job_test.go` now keeps command wiring/result-view coverage plus shared job-update fake servers and assertion helpers.
 
 ## Gotchas
 
@@ -70,4 +71,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US3 with T036 by splitting job update tests by command wiring, request parsing, worker outcome, and planning concern in `cmd/update_job_test.go`, `cmd/update_job_request_test.go`, `cmd/update_job_outcome_test.go`, and `cmd/update_job_plan_test.go`.
+- Next iteration should continue US3 with T037 by splitting process-instance cancel and delete direct-key versus selector execution tests in `cmd/cancel_processinstance_test.go`, `cmd/cancel_processinstance_selector_test.go`, `cmd/delete_processinstance_test.go`, and `cmd/delete_processinstance_selector_test.go`.

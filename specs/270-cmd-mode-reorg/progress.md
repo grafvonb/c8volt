@@ -372,3 +372,21 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Process-instance search request-shape, get paging/total/progress, and shared cancel/delete mutation-progress tests can be split into focused files without production changes; broader `go test ./cmd -count=1` passed.
 ---
+---
+## Iteration 18 - 2026-08-10 15:27
+**Work Unit**: US3 job update test ownership
+**Tasks Completed**:
+- [x] T036: Split job update tests by command wiring, request parsing, worker outcome, and planning concern
+**Tasks Remaining in Work Unit**: T037-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/update_job_test.go
+- cmd/update_job_request_test.go
+- cmd/update_job_outcome_test.go
+- cmd/update_job_plan_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Job update command wiring, request parsing/guardrails, worker outcome, and planning/dry-run tests now have focused test files; `go test ./cmd -run 'Test(UpdateJob|ParseUpdateJob)' -count=1`, `go test ./cmd -count=1`, and `git diff --check` passed.
+---
