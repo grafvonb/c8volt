@@ -129,7 +129,6 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Watch subprocess rejection, retry, slow-refresh, stop-status, and harness coverage now lives beside focused watch mode ownership; ordinary process-definition tests retain only non-watch compatibility and the guard against watch lifecycle leakage.
 ---
----
 ## Iteration 4 - 2026-08-10 14:15
 **Work Unit**: US2 process-instance renderer test ownership
 **Tasks Completed**:
@@ -693,4 +692,19 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - Broad US3 workflow compatibility coverage passed after the workflow ownership splits, so the next checkpoint is the full command package test.
+---
+---
+## Iteration 7 - 2026-08-10 17:23
+**Work Unit**: US3 command package validation checkpoint
+**Tasks Completed**:
+- [x] T055: Run command package validation after all workflow splits
+**Tasks Remaining in Work Unit**: 0 in US3; Final Phase starts at T056
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/quickstart.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Full command package validation passed after the US3 workflow splits, so US3 is complete and the next iteration can begin polish validation.
 ---

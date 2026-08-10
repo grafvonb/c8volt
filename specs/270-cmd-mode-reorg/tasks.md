@@ -131,7 +131,7 @@
 - [x] T052 [US3] Confirm candidate dead helpers have no production, test, subprocess, example, or generated-artifact callers before removing them from affected `cmd/*.go` files and recording evidence in `specs/270-cmd-mode-reorg/ownership-followups.md`
 - [x] T053 [US3] Review job update planning, backend-state lookup, mutation-plan construction, process-instance orphan filtering, and limit ownership for follow-up scope in `specs/270-cmd-mode-reorg/ownership-followups.md`
 - [x] T054 [US3] Run `go test ./cmd -run 'Test.*(ProcessInstance|UpdateJob|Cancel|Delete|Root|SlowProcess|Ops.*Progress|Ops.*Report|RenderOps)' -count=1` and record the workflow compatibility result in `specs/270-cmd-mode-reorg/quickstart.md`
-- [ ] T055 [US3] Run `go test ./cmd -count=1` after all workflow splits and record the command package result in `specs/270-cmd-mode-reorg/quickstart.md`
+- [x] T055 [US3] Run `go test ./cmd -count=1` after all workflow splits and record the command package result in `specs/270-cmd-mode-reorg/quickstart.md`
 
 **Checkpoint**: User Story 3 is independently functional with large workflow ownership split by concern.
 
