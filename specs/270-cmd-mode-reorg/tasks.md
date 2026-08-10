@@ -53,7 +53,7 @@
 ### Tests for User Story 1
 
 - [x] T011 [US1] Move or add process-definition watch behavior tests beside the watch mode in `cmd/get_processdefinition_watch_test.go`
-- [ ] T012 [P] [US1] Add base process-definition command behavior tests that exclude watch lifecycle concerns in `cmd/get_processdefinition_test.go`
+- [x] T012 [P] [US1] Add base process-definition command behavior tests that exclude watch lifecycle concerns in `cmd/get_processdefinition_test.go`
 - [ ] T013 [P] [US1] Add process-definition watch metadata and incompatible-mode contract assertions in `cmd/command_contract_test.go`
 - [ ] T014 [P] [US1] Add process-definition watch output parity assertions for human, verbose, JSON rejection, keys-only rejection, quiet rejection, and automation rejection in `cmd/get_processdefinition_watch_test.go`
 

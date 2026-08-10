@@ -16,6 +16,7 @@ Started: 2026-08-10T11:35:19Z
 - T008 added `TestGetViewFilesAvoidBackendOwnership` in `cmd/cmd_views_get_test.go`; it parses `cmd_views_*.go`, fails on internal-service imports or public facade calls from renderer files, and allowlists only the known `cmd_views_processinstance_dryrun.go` planning exception for US3 T041.
 - T009 recorded helper caller audit notes in `ownership-followups.md`; no candidate helper is removal-ready before its planned ownership split.
 - T011 added focused watch snapshot request behavior tests in `cmd/get_processdefinition_watch_test.go` without creating `cmd/get_processdefinition_watch.go`; creating the production mode file must wait for T015/T016 because the existing contract test will then require all watch lifecycle declarations to move.
+- T012 added `TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle` in `cmd/get_processdefinition_test.go`; it keeps `flagGetPDWatchInterval` intentionally invalid and verifies ordinary list, key, and XML process-definition paths still bypass watch lifecycle validation and output.
 
 ## Gotchas
 
@@ -30,6 +31,7 @@ Started: 2026-08-10T11:35:19Z
 - `go test ./cmd -run 'TestCommandContract' -count=1`
 - `go test ./cmd -run 'TestCommandContract|Test.*View' -count=1`
 - `go test ./cmd -run 'TestGetProcessDefinition.*Watch|TestProcessDefinition.*Watch|TestValidateGetProcessDefinitionWatch|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata' -count=1`
+- `go test ./cmd -run '^TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle$' -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
@@ -37,4 +39,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US1 with T012: add base process-definition command behavior tests that exclude watch lifecycle concerns in `cmd/get_processdefinition_test.go`; do not create `cmd/get_processdefinition_watch.go` until ready to move the production watch lifecycle declarations for T015/T016.
+- Next iteration should continue US1 with T013 and T014. T013 can add process-definition watch metadata/incompatible-mode contract assertions in `cmd/command_contract_test.go`; T014 can add watch output parity assertions in `cmd/get_processdefinition_watch_test.go`. Do not create `cmd/get_processdefinition_watch.go` until ready to move the production watch lifecycle declarations for T015/T016.

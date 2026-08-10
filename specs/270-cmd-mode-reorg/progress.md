@@ -72,3 +72,20 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Focused watch tests can be added before the production mode file exists; creating `cmd/get_processdefinition_watch.go` later activates the existing declaration ownership guard.
 ---
+---
+## Iteration 5 - 2026-08-10 14:03
+**Work Unit**: Recover interrupted US1 base process-definition dispatch tests
+**Tasks Completed**:
+- [x] T012: Add base process-definition command behavior tests that exclude watch lifecycle concerns
+**Tasks Remaining in Work Unit**: T013-T020 remain in US1
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processdefinition_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Validation**:
+- `go test ./cmd -run '^TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle$' -count=1` passed
+**Learnings**:
+- Ordinary process-definition list, key, and XML lookup paths can be protected from watch-only interval validation and watch lifecycle output by keeping hostile watch interval state in the test harness.
+---
