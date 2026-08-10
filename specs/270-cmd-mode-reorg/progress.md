@@ -79,7 +79,6 @@ Started: 2026-08-10 13:35:19
 - `go test ./cmd -run '^TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle$' -count=1` passed
 **Learnings**:
 - Ordinary process-definition list, key, and XML lookup paths can be protected from watch-only interval validation and watch lifecycle output by keeping hostile watch interval state in the test harness.
----
 ## Iteration 6 - 2026-08-10 14:00
 **Work Unit**: US1 process-definition watch metadata and output guardrails
 **Tasks Completed**:
@@ -506,4 +505,23 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - Process-instance paging support can be split mechanically without behavior changes; focused process-instance tests, broader US3 workflow tests, full cmd package tests, and whitespace validation passed.
+---
+---
+## Iteration 26 - 2026-08-10 16:15
+**Work Unit**: US3 job update production ownership
+**Tasks Completed**:
+- [x] T044: Split job update command wiring, request parsing, worker-outcome handling, and planning declarations
+**Tasks Remaining in Work Unit**: T045-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/update_job.go
+- cmd/update_job_request.go
+- cmd/update_job_outcome.go
+- cmd/update_job_plan.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/ownership-followups.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Job update production ownership now mirrors the earlier test split; backend-state lookup and mutation-plan ownership remain recorded for T053 review rather than changed in this mechanical slice.
 ---
