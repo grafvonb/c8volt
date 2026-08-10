@@ -541,3 +541,20 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Cancel selector/search execution now has focused production ownership matching the existing selector test split; delete must keep frozen aggregate search-mode semantics when T046 performs its analogous move.
 ---
+---
+## Iteration 28 - 2026-08-10 16:28
+**Work Unit**: US3 delete process-instance production ownership
+**Tasks Completed**:
+- [x] T046: Separate selector/search execution from direct-key execution for process-instance delete
+**Tasks Remaining in Work Unit**: T047-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/delete_processinstance.go
+- cmd/delete_processinstance_selector.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/ownership-followups.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Delete selector/search execution now has focused production ownership while preserving the frozen aggregate delete plan before one confirmation and mutation.
+---
