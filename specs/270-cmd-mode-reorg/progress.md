@@ -287,3 +287,19 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Incident collection and process-instance-key rendering now live in focused incident view ownership; renderer tests and the view-file ownership guard passed after the move.
 ---
+---
+## Iteration 13 - 2026-08-10 14:59
+**Work Unit**: US2 resource renderer ownership
+**Tasks Completed**:
+- [x] T030: Move resource rendering declarations from cmd_views_get.go to cmd_views_resource.go
+**Tasks Remaining in Work Unit**: T031-T033 remain in US2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_get.go
+- cmd/cmd_views_resource.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Resource lookup rendering and resource flat-row formatting now live in focused resource view ownership; targeted resource, renderer ownership guard, broader renderer mode tests, and whitespace validation passed.
+---

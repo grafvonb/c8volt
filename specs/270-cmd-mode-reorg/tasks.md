@@ -90,7 +90,7 @@
 - [x] T027 [US2] Move process-instance rendering declarations from `cmd/cmd_views_get.go` to existing process-instance view files under `cmd/cmd_views_processinstance.go`, `cmd/cmd_views_processinstance_incidents.go`, `cmd/cmd_views_processinstance_vars.go`, and `cmd/cmd_views_processinstance_activity.go`
 - [x] T028 [US2] Move process-definition rendering declarations from `cmd/cmd_views_get.go` to `cmd/cmd_views_processdefinition.go`
 - [x] T029 [US2] Move incident rendering declarations from `cmd/cmd_views_get.go` to `cmd/cmd_views_incident.go`
-- [ ] T030 [US2] Move resource rendering declarations from `cmd/cmd_views_get.go` to `cmd/cmd_views_resource.go`
+- [x] T030 [US2] Move resource rendering declarations from `cmd/cmd_views_get.go` to `cmd/cmd_views_resource.go`
 - [ ] T031 [US2] Move tenant rendering declarations from `cmd/cmd_views_get.go` to `cmd/cmd_views_tenant.go`
 - [ ] T032 [US2] Remove facade calls, backend orchestration, traversal, polling, mutation planning, or workflow execution from renderer ownership and record any deferred corrections in `specs/270-cmd-mode-reorg/ownership-followups.md`
 - [ ] T033 [US2] Run `go test ./cmd -run 'Test.*View|TestRender|Test.*JSON|Test.*KeysOnly|Test.*Flat' -count=1` and record the renderer compatibility result in `specs/270-cmd-mode-reorg/quickstart.md`

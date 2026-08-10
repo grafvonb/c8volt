@@ -4,33 +4,9 @@
 package cmd
 
 import (
-	"fmt"
-
-	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/spf13/cobra"
 )
-
-func resourceView(cmd *cobra.Command, item resource.Resource) error {
-	return resourceItemView(cmd, item, pickMode())
-}
-
-func resourceItemView(cmd *cobra.Command, item resource.Resource, mode RenderMode) error {
-	return itemView(cmd, item, mode, oneLineResource, func(it resource.Resource) string { return it.ID })
-}
-
-func oneLineResource(it resource.Resource) string {
-	return compactFlatRow(flatRowResource(it))
-}
-
-// flatRowResource keeps resource names in the same human position while aligning IDs and keys in list output.
-func flatRowResource(it resource.Resource) flatRow {
-	vTag := ""
-	if it.VersionTag != "" {
-		vTag = "/" + it.VersionTag
-	}
-	return flatRow{it.ID, "k:" + it.Key, it.TenantId, it.Name, fmt.Sprintf("v%d%s", it.Version, vTag)}
-}
 
 // listTenantsView renders tenant discovery output through the shared list, keys-only, and JSON modes.
 func listTenantsView(cmd *cobra.Command, resp tenant.Tenants) error {
