@@ -23,3 +23,18 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Process-definition watch, mixed get renderers, dry-run planning-in-view, update job, root wiring, slow analysis, and ops progress each have clear split candidates without requiring behavior changes in this setup slice.
 ---
+---
+## Iteration 2 - 2026-08-10 13:41
+**Work Unit**: Foundational command-file cohesion contract guard
+**Tasks Completed**:
+- [x] T007: Add command-file cohesion contract checks for focused mode files
+**Tasks Remaining in Work Unit**: T008-T010 remain in Foundational before US1 can start
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/command_contract_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- The new contract test preserves the current unsplit process-definition watch baseline but will require the listed lifecycle declarations to live in `cmd/get_processdefinition_watch.go` once that focused file is introduced.
+---

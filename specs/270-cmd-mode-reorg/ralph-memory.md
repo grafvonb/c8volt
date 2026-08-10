@@ -12,6 +12,7 @@ Started: 2026-08-10T11:35:19Z
 
 - T001 found no conflict between `specs/ralph-implementation-rules.md` and `specs/270-cmd-mode-reorg/spec.md`.
 - Created `specs/270-cmd-mode-reorg/ownership-followups.md` as the durable tracking artifact for included moves, deferred ownership corrections, helper removals, and validation evidence.
+- T007 added `TestCommandContractFocusedModeFilesOwnLifecycleDeclarations` in `cmd/command_contract_test.go`; it parses top-level Go declarations and tracks process-definition watch lifecycle declarations in the current base-file baseline until `cmd/get_processdefinition_watch.go` exists, then requires those declarations to move there.
 
 ## Gotchas
 
@@ -22,6 +23,7 @@ Started: 2026-08-10T11:35:19Z
 
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
 - `rg -n "^(func|type|const|var) " cmd/<file>.go`
+- `go test ./cmd -run 'TestCommandContract' -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
@@ -29,4 +31,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should start with T007 in Foundational: add command-file cohesion contract checks or extend command metadata expectations for focused mode files in `cmd/command_contract_test.go`; T008-T010 also remain before any user story work starts.
+- Next iteration should start with T008 in Foundational: add renderer ownership regression checks that fail if view files call public facades or internal services in `cmd/cmd_views_get_test.go`; T009-T010 also remain before any user story work starts.
