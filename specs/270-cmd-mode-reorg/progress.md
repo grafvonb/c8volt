@@ -95,7 +95,6 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Watch mode now has explicit test guardrails for discovery metadata, documented incompatible modes, human/verbose refresh parity, and pre-refresh rejection before the T015/T016 production file move.
 ---
----
 ## Iteration 2 - 2026-08-10 14:04
 **Work Unit**: US1 process-definition watch lifecycle file split
 **Tasks Completed**:
@@ -524,4 +523,21 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - Job update production ownership now mirrors the earlier test split; backend-state lookup and mutation-plan ownership remain recorded for T053 review rather than changed in this mechanical slice.
+---
+---
+## Iteration 27 - 2026-08-10 16:22
+**Work Unit**: US3 cancel process-instance production ownership
+**Tasks Completed**:
+- [x] T045: Separate selector/search execution from direct-key execution for process-instance cancel
+**Tasks Remaining in Work Unit**: T046-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/cancel_processinstance_selector.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/ownership-followups.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Cancel selector/search execution now has focused production ownership matching the existing selector test split; delete must keep frozen aggregate search-mode semantics when T046 performs its analogous move.
 ---

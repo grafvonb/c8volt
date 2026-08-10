@@ -45,12 +45,14 @@ Started: 2026-08-10T11:35:19Z
 - T042 audited process-instance dry-run renderer ownership: `cmd/cmd_views_processinstance_dryrun.go` imports only presentation-facing process domain models, key types, Cobra, and formatting packages; no facade calls or internal-service imports remain. `go test ./cmd -run 'Test(GetViewFilesAvoidBackendOwnership|.*DryRun)' -count=1` passed.
 - T043 divided process-instance paging support by concern: `cmd/get_processinstance_search.go` owns search traversal/request construction, `cmd/get_processinstance_paging.go` owns paging/progress decisions plus shared read-search progress, `cmd/get_processinstance_total.go` owns total eligibility/counting support, and `cmd/processinstance_mutation_progress.go` owns mutation page impact/action result shapes plus direct-key dry-run planning payload construction.
 - T044 split job update production ownership: `cmd/update_job.go` now owns command flags, metadata, validation dispatch, confirmation, and top-level mutation dispatch; `cmd/update_job_request.go` owns ordinary retry/timeout request parsing and JSON guardrails; `cmd/update_job_outcome.go` owns worker outcome request parsing/submission rendering; `cmd/update_job_plan.go` owns current-job lookup planning, plan construction, worker outcome plan shape, and timeout precondition checks.
+- T045 created `cmd/cancel_processinstance_selector.go` for search-derived cancel execution. `cmd/cancel_processinstance.go` now owns Cobra setup, validation, mode dispatch, and direct-key cancel execution through `runCancelProcessInstanceDirect`; selector validation, search-page planning callbacks, dry-run aggregate rendering, continuation prompts, and paged cancel report rendering live in the selector file.
 
 ## Gotchas
 
 - `cmd/get_processdefinition.go` still contains watch flag registration and watch-specific incompatible-output validation because T016 keeps command flags and validation in the base command owner; watch timing resolution and lifecycle execution live in `cmd/get_processdefinition_watch.go`.
 - Process-instance direct-key dry-run planning is now in `cmd/processinstance_mutation_progress.go`; keep future dry-run renderer edits limited to payload/view-model construction and rendering unless a later task explicitly moves presentation ownership again.
 - Job update backend-state lookup remains in `cmd/update_job_plan.go` as command-side planning coordination for this mechanical split; T053 is still the planned review point for whether backend-state lookup or mutation-plan construction needs a facade/service ownership follow-up.
+- Cancel process-instance search-mode execution now has a focused production file matching the existing selector test split. Do not mirror this into delete until T046 because delete search mode freezes aggregate delete scope before mutation.
 
 ## Reusable Commands
 
@@ -85,4 +87,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US3 with T045 by separating selector/search execution from direct-key execution for process-instance cancel in `cmd/cancel_processinstance.go` and `cmd/cancel_processinstance_selector.go`.
+- Next iteration should continue US3 with T046 by separating selector/search execution from direct-key execution for process-instance delete in `cmd/delete_processinstance.go` and `cmd/delete_processinstance_selector.go`; preserve #254 frozen aggregate delete semantics.
