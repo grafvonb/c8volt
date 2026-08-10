@@ -390,3 +390,23 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Job update command wiring, request parsing/guardrails, worker outcome, and planning/dry-run tests now have focused test files; `go test ./cmd -run 'Test(UpdateJob|ParseUpdateJob)' -count=1`, `go test ./cmd -count=1`, and `git diff --check` passed.
 ---
+---
+## Iteration 19 - 2026-08-10 15:36
+**Work Unit**: US3 process-instance cancel/delete direct-key and selector test ownership
+**Tasks Completed**:
+- [x] T037: Split process-instance cancel and delete direct-key versus selector execution tests
+**Tasks Remaining in Work Unit**: T038-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_test.go
+- cmd/cancel_processinstance_test.go
+- cmd/cancel_processinstance_selector_test.go
+- cmd/delete_test.go
+- cmd/delete_processinstance_test.go
+- cmd/delete_processinstance_selector_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Cancel/delete process-instance direct-key and stdin/key validation tests now live separately from selector/search/paged execution tests; `go test ./cmd -run 'Test.*(Cancel|Delete).*ProcessInstance' -count=1`, `go test ./cmd -count=1`, and `git diff --check` passed.
+---
