@@ -592,3 +592,21 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Slow-process analysis command/request construction, validation/parsing, and preflight/progress routing now have focused production files matching the earlier test split.
 ---
+---
+## Iteration 31 - 2026-08-10 16:53
+**Work Unit**: US3 ops progress production ownership
+**Tasks Completed**:
+- [x] T049: Separate ops progress mode selection, milestone pacing, formatting, and rendering
+**Tasks Remaining in Work Unit**: T050-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_progress.go
+- cmd/ops_progress_mode.go
+- cmd/ops_progress_milestones.go
+- cmd/ops_progress_render.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Ops progress production ownership now mirrors the focused progress tests; mode/channel gating, durable milestone pacing, and progress/preflight rendering have separate files. Focused ops progress/report tests, the broader US3 workflow pattern, full command package tests, and whitespace validation passed.
+---
