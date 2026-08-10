@@ -20,11 +20,11 @@
 
 **Purpose**: Confirm project rules, current command layout, and baseline artifacts before implementation.
 
-- [ ] T001 Read `specs/ralph-implementation-rules.md` and verify no conflict with `specs/270-cmd-mode-reorg/spec.md`
-- [ ] T002 [P] Review the #254 ownership baseline in `specs/254-cli-debt-refactor/assessment.md` and record applicable #270 starting notes in `specs/270-cmd-mode-reorg/ownership-followups.md`
-- [ ] T003 [P] Review process-definition watch ownership in `cmd/get_processdefinition.go` and `cmd/get_processdefinition_test.go`, then record the current split candidates in `specs/270-cmd-mode-reorg/ownership-followups.md`
-- [ ] T004 [P] Review renderer ownership in `cmd/cmd_views_get.go`, `cmd/cmd_views_get_test.go`, and `cmd/cmd_views_processinstance_dryrun.go`, then record non-rendering candidates in `specs/270-cmd-mode-reorg/ownership-followups.md`
-- [ ] T005 [P] Review large workflow ownership in `cmd/update_job.go`, `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, `cmd/root.go`, `cmd/ops_analyse_slow_process_instances.go`, and `cmd/ops_progress.go`, then record split candidates in `specs/270-cmd-mode-reorg/ownership-followups.md`
+- [x] T001 Read `specs/ralph-implementation-rules.md` and verify no conflict with `specs/270-cmd-mode-reorg/spec.md`
+- [x] T002 [P] Review the #254 ownership baseline in `specs/254-cli-debt-refactor/assessment.md` and record applicable #270 starting notes in `specs/270-cmd-mode-reorg/ownership-followups.md`
+- [x] T003 [P] Review process-definition watch ownership in `cmd/get_processdefinition.go` and `cmd/get_processdefinition_test.go`, then record the current split candidates in `specs/270-cmd-mode-reorg/ownership-followups.md`
+- [x] T004 [P] Review renderer ownership in `cmd/cmd_views_get.go`, `cmd/cmd_views_get_test.go`, and `cmd/cmd_views_processinstance_dryrun.go`, then record non-rendering candidates in `specs/270-cmd-mode-reorg/ownership-followups.md`
+- [x] T005 [P] Review large workflow ownership in `cmd/update_job.go`, `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, `cmd/root.go`, `cmd/ops_analyse_slow_process_instances.go`, and `cmd/ops_progress.go`, then record split candidates in `specs/270-cmd-mode-reorg/ownership-followups.md`
 
 ---
 
@@ -34,7 +34,7 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T006 Create the ownership follow-up artifact with sections for included moves, deferred ownership corrections, helper removals, and validation evidence in `specs/270-cmd-mode-reorg/ownership-followups.md`
+- [x] T006 Create the ownership follow-up artifact with sections for included moves, deferred ownership corrections, helper removals, and validation evidence in `specs/270-cmd-mode-reorg/ownership-followups.md`
 - [ ] T007 [P] Add command-file cohesion contract checks or extend existing command metadata expectations for focused mode files in `cmd/command_contract_test.go`
 - [ ] T008 [P] Add renderer ownership regression checks that fail if view files call public facades or internal services in `cmd/cmd_views_get_test.go`
 - [ ] T009 [P] Add helper caller audit notes for candidate dead helpers in `specs/270-cmd-mode-reorg/ownership-followups.md`
