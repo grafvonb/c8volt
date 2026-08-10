@@ -57,3 +57,18 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Renderer ownership checks can be source-parsed without type loading; the only current facade-call exception is the tracked dry-run planning case scheduled for US3.
 ---
+---
+## Iteration 4 - 2026-08-10 13:49
+**Work Unit**: US1 process-definition watch behavior test ownership
+**Tasks Completed**:
+- [x] T011: Move or add process-definition watch behavior tests beside the watch mode
+**Tasks Remaining in Work Unit**: T012-T020 remain in US1
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processdefinition_watch_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Focused watch tests can be added before the production mode file exists; creating `cmd/get_processdefinition_watch.go` later activates the existing declaration ownership guard.
+---
