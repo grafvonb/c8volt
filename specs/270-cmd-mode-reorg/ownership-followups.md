@@ -42,6 +42,14 @@
 - Before removing any helper, check production, test, subprocess-helper, example, and generated-artifact callers with `rg`, then run the nearest targeted tests and `git diff --check`.
 - Initial helper audit candidates for later tasks include process-definition watch test harness helpers after test relocation, `zeroAsMinus` after flat-row ownership moves, dry-run uniqueness/formatting helpers after dry-run planning is split, and duplicated update-job parse/plan helpers after US3 file splits.
 
+### Helper Caller Audit Notes
+
+- Foundational T009 caller audit used `rg` across production, tests, specs, docs, and README for the current helper-removal candidates; no helper is removal-ready before the planned ownership moves.
+- Process-definition watch helpers are still active in `cmd/get_processdefinition.go` and `cmd/get_processdefinition_test.go`; US1 should relocate watch helpers and tests rather than remove them.
+- `zeroAsMinus` has current production callers in process-definition statistics rendering in `cmd/cmd_views_get.go`; keep it until shared flat-row and process-definition renderer ownership are split.
+- Process-instance dry-run payload, uniqueness, scope-formatting, and rendering helpers are still used by cancel, delete, resolve, paging, ops workflows, and tests; US3 should split planning from rendering before reassessing any helper deletion.
+- Update-job request, JSON guardrail, and plan precondition helpers are still used by `cmd/update_job.go` and `cmd/update_job_test.go`; US3 should split them by concern before reassessing duplication or deletion.
+
 ## Validation Evidence
 
 - Setup artifact review used `rg` over `specs/254-cli-debt-refactor/assessment.md` and declaration inventories for `cmd/get_processdefinition.go`, `cmd/get_processdefinition_test.go`, `cmd/cmd_views_get.go`, `cmd/cmd_views_get_test.go`, `cmd/cmd_views_processinstance_dryrun.go`, `cmd/update_job.go`, `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, `cmd/root.go`, `cmd/ops_analyse_slow_process_instances.go`, and `cmd/ops_progress.go`.

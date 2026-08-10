@@ -36,9 +36,9 @@
 
 - [x] T006 Create the ownership follow-up artifact with sections for included moves, deferred ownership corrections, helper removals, and validation evidence in `specs/270-cmd-mode-reorg/ownership-followups.md`
 - [x] T007 [P] Add command-file cohesion contract checks or extend existing command metadata expectations for focused mode files in `cmd/command_contract_test.go`
-- [ ] T008 [P] Add renderer ownership regression checks that fail if view files call public facades or internal services in `cmd/cmd_views_get_test.go`
-- [ ] T009 [P] Add helper caller audit notes for candidate dead helpers in `specs/270-cmd-mode-reorg/ownership-followups.md`
-- [ ] T010 Run `go test ./cmd -run 'TestCommandContract|Test.*View' -count=1` and record the baseline result in `specs/270-cmd-mode-reorg/quickstart.md`
+- [x] T008 [P] Add renderer ownership regression checks that fail if view files call public facades or internal services in `cmd/cmd_views_get_test.go`
+- [x] T009 [P] Add helper caller audit notes for candidate dead helpers in `specs/270-cmd-mode-reorg/ownership-followups.md`
+- [x] T010 Run `go test ./cmd -run 'TestCommandContract|Test.*View' -count=1` and record the baseline result in `specs/270-cmd-mode-reorg/quickstart.md`
 
 **Checkpoint**: Foundation ready - user story implementation can now begin.
 

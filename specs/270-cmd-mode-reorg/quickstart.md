@@ -94,4 +94,4 @@ Expected outcome: formatting is stable, whitespace checks pass, and the full rep
 
 ## Validation Log
 
-- Pending implementation.
+- 2026-08-10 13:45 Iteration 3 foundational baseline: `go test ./cmd -run 'TestCommandContract|Test.*View' -count=1` passed (`ok github.com/grafvonb/c8volt/cmd 0.524s`).
