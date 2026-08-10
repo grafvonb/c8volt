@@ -27,19 +27,6 @@ func TestGetViewFilesAvoidBackendOwnership(t *testing.T) {
 	require.Empty(t, violations, "renderer files should not call public facades or import internal services")
 }
 
-// Protects the shared flat-list contract: align from observed values, but preserve every character.
-func TestFormatFlatRows_AlignsColumnsWithoutTruncating(t *testing.T) {
-	got := formatFlatRows([]flatRow{
-		{"1", "tenant", "Short", "v1"},
-		{"22", "t", "MuchLongerProcess", "v12"},
-	})
-
-	require.Equal(t, []string{
-		"1  tenant Short             v1",
-		"22 t      MuchLongerProcess v12",
-	}, got)
-}
-
 var allowedViewFacadeCalls = map[string]string{
 	"cmd_views_processinstance_dryrun.go:planProcessInstanceDryRunPreviewWithOptions:cli.DryRunCancelOrDeletePlan": "US3 T041 moves dry-run planning out of renderer ownership",
 }

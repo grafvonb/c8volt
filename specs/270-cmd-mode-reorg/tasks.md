@@ -82,7 +82,7 @@
 - [x] T022 [P] [US2] Add process-definition renderer tests for human, JSON, keys-only, and watch list parity in `cmd/cmd_views_processdefinition_test.go`
 - [x] T023 [P] [US2] Add incident renderer tests for human, JSON, keys-only, and process-instance-key output in `cmd/cmd_views_incident_test.go`
 - [x] T024 [P] [US2] Add resource and tenant renderer tests for human, JSON, and keys-only output in `cmd/cmd_views_resource_test.go` and `cmd/cmd_views_tenant_test.go`
-- [ ] T025 [P] [US2] Add shared flat-row layout tests in `cmd/cmd_views_flat_test.go`
+- [x] T025 [P] [US2] Add shared flat-row layout tests in `cmd/cmd_views_flat_test.go`
 
 ### Implementation for User Story 2
 

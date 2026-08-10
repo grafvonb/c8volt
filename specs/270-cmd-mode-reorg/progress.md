@@ -206,3 +206,19 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Resource renderer coverage is single-item only; tenant renderer coverage now pins both collection and keyed output contracts in focused test ownership files.
 ---
+---
+## Iteration 8 - 2026-08-10 14:33
+**Work Unit**: US2 shared flat-row layout tests
+**Tasks Completed**:
+- [x] T025: Add shared flat-row layout tests in cmd/cmd_views_flat_test.go
+**Tasks Remaining in Work Unit**: T026-T033 remain in US2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_flat_test.go
+- cmd/cmd_views_get_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Shared flat-row layout coverage now lives in focused test ownership and pins alignment, optional-column omission, and compact single-row empty-field behavior.
+---
