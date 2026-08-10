@@ -298,10 +298,3 @@ func flatRowTenant(it tenant.Tenant) flatRow {
 	}
 	return flatRow{it.TenantId, it.Name, it.Description}
 }
-
-func zeroAsMinus(v int64) string {
-	if v == 0 {
-		return "-"
-	}
-	return fmt.Sprintf("%d", v)
-}

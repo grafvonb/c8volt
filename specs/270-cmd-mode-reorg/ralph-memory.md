@@ -27,6 +27,7 @@ Started: 2026-08-10T11:35:19Z
 - T023 created `cmd/cmd_views_incident_test.go` and moved plain incident renderer coverage there: aligned human rows, invalid timestamp age handling, message truncation, list human/no-message/JSON/keys-only modes, and process-instance-key output.
 - T024 created `cmd/cmd_views_resource_test.go` and `cmd/cmd_views_tenant_test.go`; resource lookup now has direct human/JSON/keys-only renderer coverage, and tenant list plus single-item rendering now has human/JSON/keys-only coverage.
 - T025 created `cmd/cmd_views_flat_test.go`, moved the shared flat-row alignment test out of `cmd/cmd_views_get_test.go`, and added shared coverage for all-empty optional column omission plus compact single-row empty-field skipping.
+- T026 created `cmd/cmd_views_flat.go`, moved `flatRow`, `formatFlatRows`, `flatColumnWidths`, `hasVisibleColumnAfter`, `compactFlatRow`, and `zeroAsMinus` into focused shared flat-row rendering ownership, and left `cmd/cmd_views_rendermode.go` focused on mode selection and shared render dispatch.
 
 ## Gotchas
 
@@ -59,4 +60,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US2 with T026 by moving shared flat-row layout helpers into `cmd/cmd_views_flat.go`; keep the work scoped to US2 and do not start US3.
+- Next iteration should continue US2 with T027 by moving process-instance rendering declarations from `cmd/cmd_views_get.go` to the existing process-instance view files; keep the work scoped to US2 and do not start US3.

@@ -222,3 +222,20 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Shared flat-row layout coverage now lives in focused test ownership and pins alignment, optional-column omission, and compact single-row empty-field behavior.
 ---
+---
+## Iteration 9 - 2026-08-10 14:38
+**Work Unit**: US2 shared flat-row layout helper ownership
+**Tasks Completed**:
+- [x] T026: Move shared flat-row layout helpers from cmd_views_get.go to cmd_views_flat.go
+**Tasks Remaining in Work Unit**: T027-T033 remain in US2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_flat.go
+- cmd/cmd_views_get.go
+- cmd/cmd_views_rendermode.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Generic flat-row layout primitives were in render-mode ownership in the current code, while `zeroAsMinus` remained in mixed get renderer ownership; T026 moved both shared pieces into focused flat-row rendering ownership without changing output behavior.
+---
