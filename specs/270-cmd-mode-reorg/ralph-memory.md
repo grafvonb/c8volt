@@ -57,6 +57,7 @@ Started: 2026-08-10T11:35:19Z
 - T054 recorded the US3 workflow compatibility checkpoint in `quickstart.md`: `go test ./cmd -run 'Test.*(ProcessInstance|UpdateJob|Cancel|Delete|Root|SlowProcess|Ops.*Progress|Ops.*Report|RenderOps)' -count=1` passed with `ok github.com/grafvonb/c8volt/cmd 3.684s`.
 - T055 recorded the US3 command package checkpoint in `quickstart.md`: `go test ./cmd -count=1` passed with `ok github.com/grafvonb/c8volt/cmd 33.013s`.
 - T056 ran `gofmt -w $(rg --files cmd c8volt internal/services internal/domain toolx | rg '\.go$')`; formatting passed and produced no source diffs.
+- T057 ran `git diff --check`; whitespace validation passed with no output.
 
 ## Gotchas
 
@@ -102,4 +103,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue the Final Phase with T057 by running `git diff --check` and recording the result in `specs/270-cmd-mode-reorg/quickstart.md`.
+- Next iteration should continue the Final Phase with T058 by running `make docs-content`, verifying generated documentation has no unintended diff under `docs/cli/`, `docs/`, and `README.md`, and recording the result in `specs/270-cmd-mode-reorg/quickstart.md`.
