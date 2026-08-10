@@ -106,3 +106,20 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Watch mode now has explicit test guardrails for discovery metadata, documented incompatible modes, human/verbose refresh parity, and pre-refresh rejection before the T015/T016 production file move.
 ---
+---
+## Iteration 2 - 2026-08-10 14:04
+**Work Unit**: US1 process-definition watch lifecycle file split
+**Tasks Completed**:
+- [x] T015: Move process-definition watch execution, state, timing, retry, slow-refresh status, stop status, and snapshot request construction
+- [x] T016: Keep process-definition command construction, flags, validation, metadata, and ordinary lookup execution focused
+**Tasks Remaining in Work Unit**: T017-T020 remain in US1
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processdefinition.go
+- cmd/get_processdefinition_watch.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- The focused declaration guard now activates because `cmd/get_processdefinition_watch.go` exists; targeted watch and base process-definition tests passed after the move.
+---

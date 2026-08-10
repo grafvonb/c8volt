@@ -19,10 +19,11 @@ Started: 2026-08-10T11:35:19Z
 - T012 added `TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle` in `cmd/get_processdefinition_test.go`; it keeps `flagGetPDWatchInterval` intentionally invalid and verifies ordinary list, key, and XML process-definition paths still bypass watch lifecycle validation and output.
 - T013 extended `TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata` to pin process-definition watch discovery metadata, unsupported automation status, summary text, and the help text documenting JSON/keys-only/XML/quiet/automation rejection before lookup.
 - T014 added `TestGetProcessDefinitionWatchOutputParityAssertions` in `cmd/get_processdefinition_watch_test.go`; it pins human/verbose refresh stdout parity with normal rows and local rejection of JSON, keys-only, quiet, and automation modes before watch refresh work.
+- T015/T016 created `cmd/get_processdefinition_watch.go` and moved the guarded process-definition watch lifecycle declarations there. `cmd/get_processdefinition.go` now keeps process-definition command construction, flags, validation, dispatch, XML/key/search execution, and shared ordinary lookup logic.
 
 ## Gotchas
 
-- `cmd/get_processdefinition.go` currently contains watch lifecycle declarations plus ordinary lookup execution; US1 should move watch execution/state/timing/retry/status/request construction to `cmd/get_processdefinition_watch.go` while keeping command construction and ordinary dispatch in the base file.
+- `cmd/get_processdefinition.go` still contains watch flag registration and watch-specific incompatible-output validation because T016 keeps command flags and validation in the base command owner; watch timing resolution and lifecycle execution live in `cmd/get_processdefinition_watch.go`.
 - `cmd/cmd_views_processinstance_dryrun.go` currently performs facade-backed dry-run planning. Later US3 work should move planning coordination out of renderer ownership before treating the renderer as presentation-only.
 - When US3 moves dry-run planning out of `cmd_views_processinstance_dryrun.go`, remove the matching `allowedViewFacadeCalls` entry from `cmd/cmd_views_get_test.go`; the renderer guard should then reject all view-file facade calls.
 
@@ -35,6 +36,8 @@ Started: 2026-08-10T11:35:19Z
 - `go test ./cmd -run 'TestGetProcessDefinition.*Watch|TestProcessDefinition.*Watch|TestValidateGetProcessDefinitionWatch|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata' -count=1`
 - `go test ./cmd -run '^TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle$' -count=1`
 - `go test ./cmd -run 'TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata|TestGetProcessDefinitionWatchOutputParityAssertions|TestValidateGetProcessDefinitionWatch|TestGetProcessDefinition.*Watch|TestProcessDefinition.*Watch' -count=1`
+- `go test ./cmd -run 'TestCommandContractFocusedModeFilesOwnLifecycleDeclarations|TestGetProcessDefinition.*Watch|TestProcessDefinition.*Watch|TestValidateGetProcessDefinitionWatch|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata|TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle' -count=1`
+- `go test ./cmd -run 'TestGetProcessDefinition|TestProcessDefinitionSelectorValidationHelpContract' -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
@@ -42,4 +45,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US1 with T015/T016 by creating `cmd/get_processdefinition_watch.go` and moving the process-definition watch lifecycle declarations there while keeping base command construction, flags, validation, metadata, dispatch, XML/key/search execution, and shared ordinary lookup logic in `cmd/get_processdefinition.go`.
+- Next iteration should continue US1 with T017 by moving process-definition watch test helpers and remaining watch-specific scenarios from `cmd/get_processdefinition_test.go` to `cmd/get_processdefinition_watch_test.go`; keep T018-T020 open until the audit and checkpoint validation are recorded.
