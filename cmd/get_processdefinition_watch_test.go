@@ -895,19 +895,6 @@ func (a processDefinitionWatchTestAPI) CollectProcessDefinitionWatchSnapshot(ctx
 	return a.collect(ctx, request, opts...)
 }
 
-func executeGetProcessDefinitionWatchForTest(t *testing.T, cli c8volt.API, filter process.ProcessDefinitionFilter, timeout time.Duration, sleep func(context.Context, time.Duration) error) (string, error) {
-	t.Helper()
-
-	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
-		cli:        cli,
-		filter:     filter,
-		timeout:    timeout,
-		maxRetries: defaultBackoffMaxRetries,
-		sleep:      sleep,
-	})
-	return result.stdout, result.err
-}
-
 func executeGetProcessDefinitionWatchWithBackoffForTest(t *testing.T, cli c8volt.API, filter process.ProcessDefinitionFilter, timeout time.Duration, maxRetries int, sleep func(context.Context, time.Duration) error) (string, string, error) {
 	t.Helper()
 

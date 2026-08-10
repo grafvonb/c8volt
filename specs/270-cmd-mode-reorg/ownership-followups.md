@@ -42,7 +42,7 @@
 
 ## Helper Removals
 
-- No helper is confirmed dead in this setup pass.
+- T052 removed the unused watch test wrapper `executeGetProcessDefinitionWatchForTest` from `cmd/get_processdefinition_watch_test.go` after confirming no production, test, subprocess-helper, example, docs, generated-doc, embedded, or spec callers remained.
 - Before removing any helper, check production, test, subprocess-helper, example, and generated-artifact callers with `rg`, then run the nearest targeted tests and `git diff --check`.
 - Initial helper audit candidates for later tasks include process-definition watch test harness helpers after test relocation, `zeroAsMinus` after flat-row ownership moves, dry-run uniqueness/formatting helpers after dry-run planning is split, and duplicated update-job parse/plan helpers after US3 file splits.
 
@@ -53,6 +53,7 @@
 - `zeroAsMinus` has current production callers in process-definition statistics rendering in `cmd/cmd_views_get.go`; keep it until shared flat-row and process-definition renderer ownership are split.
 - Process-instance dry-run payload, uniqueness, scope-formatting, and rendering helpers are still used by cancel, delete, resolve, paging, ops workflows, and tests; US3 should split planning from rendering before reassessing any helper deletion.
 - Update-job request, JSON guardrail, and plan precondition helpers are still used by `cmd/update_job.go` and `cmd/update_job_test.go`; US3 should split them by concern before reassessing duplication or deletion.
+- T052 caller audit used direct `rg` checks across `cmd`, feature specs, docs, README, `docsgen`, embedded assets, and `testx`. `executeGetProcessDefinitionWatchForTest` had only its declaration occurrence and was removed. `zeroAsMinus` remains used by process-definition rendering; remaining watch harness helpers remain used by watch tests; process-instance dry-run uniqueness/formatting helpers remain used by dry-run payload aggregation/rendering; update-job parse, JSON guardrail, worker-outcome, and plan helpers remain used by command wiring or focused tests, including subprocess helper scenarios.
 
 ## Validation Evidence
 
@@ -66,3 +67,4 @@
 - US3 cancel process-instance split after T045 confirmed search-mode cancel declarations are in `cmd/cancel_processinstance_selector.go` and direct-key execution remains distinguishable in `cmd/cancel_processinstance.go`. `go test ./cmd -run 'Test.*Cancel.*ProcessInstance' -count=1`, `go test ./cmd -run 'Test.*(Cancel|Delete).*ProcessInstance' -count=1`, `go test ./cmd -count=1`, and `git diff --check` passed on 2026-08-10 16:22.
 - US3 delete process-instance split after T046 confirmed search-mode delete declarations are in `cmd/delete_processinstance_selector.go` and direct-key execution remains distinguishable in `cmd/delete_processinstance.go`. `go test ./cmd -run 'Test.*Delete.*ProcessInstance|TestDeleteProcessInstance.*|Test.*ProcessInstance.*Delete' -count=1`, `go test ./cmd -run 'Test.*(ProcessInstance|UpdateJob|Cancel|Delete|Root|SlowProcess|Ops.*Progress|Ops.*Report|RenderOps)' -count=1`, `go test ./cmd -count=1`, and `git diff --check` passed on 2026-08-10 16:28.
 - US3 slow-process analysis split after T048 confirmed command/request, validation/parsing, and preflight/progress declarations are in focused files. `go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances' -count=1`, `go test ./cmd -run 'Test.*(ProcessInstance|UpdateJob|Cancel|Delete|Root|SlowProcess|Ops.*Progress|Ops.*Report|RenderOps)' -count=1`, `go test ./cmd -count=1`, and `git diff --check` passed on 2026-08-10 16:41.
+- US3 helper removal audit after T052 confirmed candidate caller status before deleting the unused watch test wrapper. `go test ./cmd -run 'TestGetProcessDefinition.*Watch|TestProcessDefinition.*Watch|TestValidateGetProcessDefinitionWatch|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata' -count=1`, `go test ./cmd -run 'Test(GetViewFilesAvoidBackendOwnership|.*DryRun|.*UpdateJob|.*ProcessDefinition.*Watch)' -count=1`, `go test ./cmd -count=1`, and `git diff --check` passed on 2026-08-10 17:13.

@@ -649,3 +649,19 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Workflow report encoders now live in focused ops report files, and slow-process JSON/keys-only output is separate from the terminal tree renderer; focused ops tests, broader US3 workflow tests, full cmd package tests, and whitespace validation passed.
 ---
+---
+## Iteration 4 - 2026-08-10 17:13
+**Work Unit**: US3 helper removal audit
+**Tasks Completed**:
+- [x] T052: Confirm candidate dead helpers and remove only helpers with no callers
+**Tasks Remaining in Work Unit**: T053-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processdefinition_watch_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ownership-followups.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Only `executeGetProcessDefinitionWatchForTest` was truly dead among the named helper-removal candidates; other candidates still have production, test, or subprocess-helper references.
+---
