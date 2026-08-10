@@ -95,3 +95,5 @@ Expected outcome: formatting is stable, whitespace checks pass, and the full rep
 ## Validation Log
 
 - 2026-08-10 13:45 Iteration 3 foundational baseline: `go test ./cmd -run 'TestCommandContract|Test.*View' -count=1` passed (`ok github.com/grafvonb/c8volt/cmd 0.524s`).
+- 2026-08-10 14:10 Iteration 3 US1 watch checkpoint: `go test ./cmd -run 'TestGetProcessDefinition.*Watch|TestProcessDefinition.*Watch|TestValidateGetProcessDefinitionWatch|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata' -count=1` passed (`ok github.com/grafvonb/c8volt/cmd 0.623s`).
+- 2026-08-10 14:10 Iteration 3 US1 non-watch checkpoint: `go test ./cmd -run 'TestGetProcessDefinition|TestProcessDefinitionSelectorValidationHelpContract' -count=1` passed (`ok github.com/grafvonb/c8volt/cmd 5.001s`).

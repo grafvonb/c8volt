@@ -54,3 +54,4 @@
 
 - Setup artifact review used `rg` over `specs/254-cli-debt-refactor/assessment.md` and declaration inventories for `cmd/get_processdefinition.go`, `cmd/get_processdefinition_test.go`, `cmd/cmd_views_get.go`, `cmd/cmd_views_get_test.go`, `cmd/cmd_views_processinstance_dryrun.go`, `cmd/update_job.go`, `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, `cmd/root.go`, `cmd/ops_analyse_slow_process_instances.go`, and `cmd/ops_progress.go`.
 - Go behavior tests were not required for this artifact-only setup work unit; no Go source or test code was changed.
+- US1 watch audit after T017 confirmed `cmd/get_processdefinition_watch.go` owns watch execution, timing, retry, slow-refresh status, stop status, and snapshot request construction; `cmd/get_processdefinition.go` still owns flag registration and incompatible-output validation per the base command boundary. Targeted watch and non-watch process-definition tests passed on 2026-08-10 14:10.

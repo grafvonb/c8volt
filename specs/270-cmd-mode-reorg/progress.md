@@ -123,3 +123,24 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - The focused declaration guard now activates because `cmd/get_processdefinition_watch.go` exists; targeted watch and base process-definition tests passed after the move.
 ---
+---
+## Iteration 3 - 2026-08-10 14:10
+**Work Unit**: US1 process-definition watch test relocation and checkpoint validation
+**Tasks Completed**:
+- [x] T017: Move process-definition watch test helpers and watch-specific scenarios
+- [x] T018: Audit process-definition watch moved code for unchanged behavior
+- [x] T019: Run and record the watch process-definition checkpoint validation
+- [x] T020: Run and record the non-watch process-definition compatibility validation
+**Tasks Remaining in Work Unit**: 0 in US1; US2 T021 is next
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processdefinition_test.go
+- cmd/get_processdefinition_watch_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/quickstart.md
+- specs/270-cmd-mode-reorg/ownership-followups.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Watch subprocess rejection, retry, slow-refresh, stop-status, and harness coverage now lives beside focused watch mode ownership; ordinary process-definition tests retain only non-watch compatibility and the guard against watch lifecycle leakage.
+---

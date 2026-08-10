@@ -20,6 +20,8 @@ Started: 2026-08-10T11:35:19Z
 - T013 extended `TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata` to pin process-definition watch discovery metadata, unsupported automation status, summary text, and the help text documenting JSON/keys-only/XML/quiet/automation rejection before lookup.
 - T014 added `TestGetProcessDefinitionWatchOutputParityAssertions` in `cmd/get_processdefinition_watch_test.go`; it pins human/verbose refresh stdout parity with normal rows and local rejection of JSON, keys-only, quiet, and automation modes before watch refresh work.
 - T015/T016 created `cmd/get_processdefinition_watch.go` and moved the guarded process-definition watch lifecycle declarations there. `cmd/get_processdefinition.go` now keeps process-definition command construction, flags, validation, dispatch, XML/key/search execution, and shared ordinary lookup logic.
+- T017 moved process-definition watch scenarios, subprocess rejection helper, and watch harness helpers from `cmd/get_processdefinition_test.go` to `cmd/get_processdefinition_watch_test.go`. The base test file now keeps selector/filter, non-watch machine modes, base dispatch, XML/search, paging activity, and shared ordinary helpers.
+- T018-T020 completed the US1 audit and checkpoints: watch lifecycle declarations remain in `cmd/get_processdefinition_watch.go`, base validation still owns incompatible watch output-mode rejection, and both watch plus non-watch process-definition targeted commands passed.
 
 ## Gotchas
 
@@ -45,4 +47,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US1 with T017 by moving process-definition watch test helpers and remaining watch-specific scenarios from `cmd/get_processdefinition_test.go` to `cmd/get_processdefinition_watch_test.go`; keep T018-T020 open until the audit and checkpoint validation are recorded.
+- Next iteration should start US2 with T021 by moving process-instance renderer tests from `cmd/cmd_views_get_test.go` to `cmd/cmd_views_processinstance_test.go`; keep renderer behavior output-compatible and do not start US3.

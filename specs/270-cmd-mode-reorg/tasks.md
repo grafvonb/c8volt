@@ -61,10 +61,10 @@
 
 - [x] T015 [US1] Move process-definition watch execution, state, timing, retry, slow-refresh status, stop status, and snapshot request construction from `cmd/get_processdefinition.go` to `cmd/get_processdefinition_watch.go`
 - [x] T016 [US1] Keep process-definition command construction, flags, validation, metadata, and ordinary lookup execution focused in `cmd/get_processdefinition.go`
-- [ ] T017 [US1] Move process-definition watch test helpers and watch-specific scenarios from `cmd/get_processdefinition_test.go` to `cmd/get_processdefinition_watch_test.go`
-- [ ] T018 [US1] Audit process-definition watch moved code for unchanged output text, prompts, validation errors, exit behavior, and backend request semantics in `cmd/get_processdefinition_watch.go`
-- [ ] T019 [US1] Run `go test ./cmd -run 'TestGetProcessDefinition.*Watch|TestProcessDefinition.*Watch|TestValidateGetProcessDefinitionWatch|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata' -count=1` and record the result in `specs/270-cmd-mode-reorg/quickstart.md`
-- [ ] T020 [US1] Run `go test ./cmd -run 'TestGetProcessDefinition|TestProcessDefinitionSelectorValidationHelpContract' -count=1` and record the non-watch compatibility result in `specs/270-cmd-mode-reorg/quickstart.md`
+- [x] T017 [US1] Move process-definition watch test helpers and watch-specific scenarios from `cmd/get_processdefinition_test.go` to `cmd/get_processdefinition_watch_test.go`
+- [x] T018 [US1] Audit process-definition watch moved code for unchanged output text, prompts, validation errors, exit behavior, and backend request semantics in `cmd/get_processdefinition_watch.go`
+- [x] T019 [US1] Run `go test ./cmd -run 'TestGetProcessDefinition.*Watch|TestProcessDefinition.*Watch|TestValidateGetProcessDefinitionWatch|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata' -count=1` and record the result in `specs/270-cmd-mode-reorg/quickstart.md`
+- [x] T020 [US1] Run `go test ./cmd -run 'TestGetProcessDefinition|TestProcessDefinitionSelectorValidationHelpContract' -count=1` and record the non-watch compatibility result in `specs/270-cmd-mode-reorg/quickstart.md`
 
 **Checkpoint**: User Story 1 is independently functional as the MVP.
 
