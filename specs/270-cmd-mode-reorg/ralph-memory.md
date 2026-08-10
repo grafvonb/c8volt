@@ -62,6 +62,7 @@ Started: 2026-08-10T11:35:19Z
 - T059 ran the focused Quickstart scenario validation suite for watch ownership, renderer presentation, process-instance support, large workflows, and destructive workflow safety; all five targeted `go test ./cmd -run ... -count=1` commands passed.
 - T060 ran full repository validation with `make test`; the target passed (`go test ./... -race -count=1`, including `ok github.com/grafvonb/c8volt/cmd 113.954s`).
 - T061 added explicit SC-001 through SC-010 evidence to `specs/270-cmd-mode-reorg/ownership-followups.md`; direct SC coverage checks and `git diff --check` passed.
+- T062 added final handoff notes to `specs/270-cmd-mode-reorg/ownership-followups.md` after reviewing final changed files, declaration ownership inventories, renderer backend-ownership checks, and deferred ownership corrections.
 
 ## Gotchas
 
@@ -109,4 +110,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should complete Final Phase T062 by reviewing final changed files and deferred ownership corrections, then adding final handoff notes to `specs/270-cmd-mode-reorg/ownership-followups.md`.
+- Feature complete; no handoff required.
