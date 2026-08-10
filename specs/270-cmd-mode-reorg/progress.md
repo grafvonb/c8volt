@@ -783,3 +783,18 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Full repository validation passed through `make test`, which ran `go test ./... -race -count=1`; SC evidence review is the next Final Phase checkpoint.
 ---
+---
+## Iteration 13 - 2026-08-10 17:41
+**Work Unit**: Final Phase success criteria evidence audit
+**Tasks Completed**:
+- [x] T061: Verify SC-001 through SC-010 evidence is recorded in ownership follow-ups
+**Tasks Remaining in Work Unit**: T062 remains in Final Phase
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ownership-followups.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Ownership follow-ups now map SC-001 through SC-010 to concrete move, test, docs, and validation evidence; direct SC coverage checks and whitespace validation passed.
+---
