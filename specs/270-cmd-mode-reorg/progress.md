@@ -34,8 +34,6 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - The new contract test preserves the current unsplit process-definition watch baseline but will require the listed lifecycle declarations to live in `cmd/get_processdefinition_watch.go` once that focused file is introduced.
----
----
 ## Iteration 3 - 2026-08-10 13:45
 **Work Unit**: Foundational renderer ownership and helper audit guardrails
 **Tasks Completed**:
@@ -53,8 +51,6 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - Renderer ownership checks can be source-parsed without type loading; the only current facade-call exception is the tracked dry-run planning case scheduled for US3.
----
----
 ## Iteration 4 - 2026-08-10 13:49
 **Work Unit**: US1 process-definition watch behavior test ownership
 **Tasks Completed**:
@@ -409,4 +405,21 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - Cancel/delete process-instance direct-key and stdin/key validation tests now live separately from selector/search/paged execution tests; `go test ./cmd -run 'Test.*(Cancel|Delete).*ProcessInstance' -count=1`, `go test ./cmd -count=1`, and `git diff --check` passed.
+---
+---
+## Iteration 20 - 2026-08-10 15:41
+**Work Unit**: US3 root command test ownership
+**Tasks Completed**:
+- [x] T038: Split root command wiring, configuration resolution, and service installation tests
+**Tasks Remaining in Work Unit**: T039-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/root_test.go
+- cmd/root_config_test.go
+- cmd/root_services_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Root help and flag UX tests can stay in root wiring ownership while config resolution and activity-indicator bootstrap behavior have focused test files.
 ---
