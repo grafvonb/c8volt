@@ -13,7 +13,7 @@ Started: 2026-08-10T11:35:19Z
 - T001 found no conflict between `specs/ralph-implementation-rules.md` and `specs/270-cmd-mode-reorg/spec.md`.
 - Created `specs/270-cmd-mode-reorg/ownership-followups.md` as the durable tracking artifact for included moves, deferred ownership corrections, helper removals, and validation evidence.
 - T007 added `TestCommandContractFocusedModeFilesOwnLifecycleDeclarations` in `cmd/command_contract_test.go`; it parses top-level Go declarations and tracks process-definition watch lifecycle declarations in the current base-file baseline until `cmd/get_processdefinition_watch.go` exists, then requires those declarations to move there.
-- T008 added `TestGetViewFilesAvoidBackendOwnership` in `cmd/cmd_views_get_test.go`; it parses `cmd_views_*.go`, fails on internal-service imports or public facade calls from renderer files, and allowlists only the known `cmd_views_processinstance_dryrun.go` planning exception for US3 T041.
+- T008 added `TestGetViewFilesAvoidBackendOwnership` in `cmd/cmd_views_get_test.go`; it parses `cmd_views_*.go` and fails on internal-service imports or public facade calls from renderer files. The temporary dry-run planning allowlist was removed by T041.
 - T009 recorded helper caller audit notes in `ownership-followups.md`; no candidate helper is removal-ready before its planned ownership split.
 - T011 added focused watch snapshot request behavior tests in `cmd/get_processdefinition_watch_test.go` without creating `cmd/get_processdefinition_watch.go`; creating the production mode file must wait for T015/T016 because the existing contract test will then require all watch lifecycle declarations to move.
 - T012 added `TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle` in `cmd/get_processdefinition_test.go`; it keeps `flagGetPDWatchInterval` intentionally invalid and verifies ordinary list, key, and XML process-definition paths still bypass watch lifecycle validation and output.
@@ -33,7 +33,7 @@ Started: 2026-08-10T11:35:19Z
 - T029 created `cmd/cmd_views_incident.go` and moved incident collection rendering plus incident process-instance-key output there; `cmd/cmd_views_get.go` now retains only resource and tenant renderer declarations for T030/T031.
 - T030 created `cmd/cmd_views_resource.go` and moved single-resource lookup rendering plus resource flat-row formatting there; `cmd/cmd_views_get.go` now retains only tenant renderer declarations for T031.
 - T031 created `cmd/cmd_views_tenant.go`, moved tenant list/single/one-line/flat-row rendering there, and removed the now-empty mixed `cmd/cmd_views_get.go`.
-- T032/T033 completed the US2 renderer ownership audit and checkpoint validation. `TestGetViewFilesAvoidBackendOwnership` and `go test ./cmd -run 'Test.*View|TestRender|Test.*JSON|Test.*KeysOnly|Test.*Flat' -count=1` passed; the only remaining renderer facade call is the existing dry-run planning exception deferred to US3 T041.
+- T032/T033 completed the US2 renderer ownership audit and checkpoint validation. `TestGetViewFilesAvoidBackendOwnership` and `go test ./cmd -run 'Test.*View|TestRender|Test.*JSON|Test.*KeysOnly|Test.*Flat' -count=1` passed; T041 later removed the deferred dry-run planning exception.
 - T034 created `cmd/cmd_views_processinstance_dryrun_test.go` and moved process-instance dry-run preview payload, human/JSON rendering, final-state/delete-blocker messaging, and aggregate summary presentation tests out of `cmd/cancel_test.go` and `cmd/delete_test.go`. Command workflow tests for keyed execution, paging, tenant scoping, mutation guards, and subprocess scenarios remain in the cancel/delete test files for later US3 splits.
 - T035 created `cmd/get_processinstance_search_test.go`, `cmd/get_processinstance_paging_test.go`, and `cmd/processinstance_mutation_progress_test.go`; moved process-instance search request-shape tests, get paging/total/progress tests, and shared cancel/delete mutation-progress tests out of the large mixed test files. No production code moved.
 - T036 created `cmd/update_job_request_test.go`, `cmd/update_job_outcome_test.go`, and `cmd/update_job_plan_test.go`; `cmd/update_job_test.go` now keeps command wiring/result-view coverage plus shared job-update fake servers and assertion helpers.
@@ -41,12 +41,12 @@ Started: 2026-08-10T11:35:19Z
 - T038 created `cmd/root_config_test.go` and `cmd/root_services_test.go`; `cmd/root_test.go` now keeps root/help/flag-wiring UX tests, config resolution tests live in config ownership, and activity-indicator service/bootstrap tests live in service ownership.
 - T039 created `cmd/ops_analyse_slow_process_instances_validation_test.go` and `cmd/ops_analyse_slow_process_instances_progress_test.go`; command/request-shape tests stay in the base slow-process test file, validation rejection tests live in validation ownership, and preflight/progress/channel tests live in progress ownership.
 - T040 created `cmd/ops_report_test.go`, `cmd/ops_report_markdown_test.go`, and `cmd/ops_report_json_test.go`; shared preflight/report contract tests moved out of `cmd/ops_progress_test.go` and `cmd/ops_contract_test.go`, while progress mode, milestone, frozen-scope, and ETA tests remain in `cmd/ops_progress_test.go`.
+- T041 moved process-instance dry-run facade planning out of `cmd/cmd_views_processinstance_dryrun.go` into `cmd/get_processinstance_paging.go`. `cmd/cmd_views_processinstance_dryrun.go` now owns only payload mapping/aggregation and terminal/JSON/key rendering for dry-run previews and summaries, and `TestGetViewFilesAvoidBackendOwnership` no longer has a dry-run planning allowlist.
 
 ## Gotchas
 
 - `cmd/get_processdefinition.go` still contains watch flag registration and watch-specific incompatible-output validation because T016 keeps command flags and validation in the base command owner; watch timing resolution and lifecycle execution live in `cmd/get_processdefinition_watch.go`.
-- `cmd/cmd_views_processinstance_dryrun.go` currently performs facade-backed dry-run planning. Later US3 work should move planning coordination out of renderer ownership before treating the renderer as presentation-only.
-- When US3 moves dry-run planning out of `cmd_views_processinstance_dryrun.go`, remove the matching `allowedViewFacadeCalls` entry from `cmd/cmd_views_get_test.go`; the renderer guard should then reject all view-file facade calls.
+- Process-instance dry-run planning is now in `cmd/get_processinstance_paging.go`; keep future dry-run renderer edits limited to payload/view-model construction and rendering unless a later task explicitly moves presentation ownership again.
 
 ## Reusable Commands
 
@@ -72,6 +72,7 @@ Started: 2026-08-10T11:35:19Z
 - `go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances|Test.*SlowProcess' -count=1`
 - `go test ./cmd -run 'Test(FormatOps|OpsProgress|OpsETA|OpsWorkflowReport|ValidateOpsWorkflowReport|ResolveOpsRepairReport|OpsExecute.*Report|WriteOpsWorkflowReport|FormatOpsPurgeReportTime|WriteMarkdownReport|RenderOps.*Report)' -count=1`
 - `go test ./cmd -run 'Test.*(ProcessInstance|UpdateJob|Cancel|Delete|Root|SlowProcess|Ops.*Progress|Ops.*Report|RenderOps)' -count=1`
+- `go test ./cmd -run 'Test(GetViewFilesAvoidBackendOwnership|.*DryRun|.*ProcessInstance.*Plan|.*ProcessInstance.*Selector|.*Cancel.*ProcessInstance|.*Delete.*ProcessInstance|ResolveProcessInstance)' -count=1`
 - `go test ./cmd -count=1`
 - `git diff --check`
 
@@ -80,4 +81,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US3 with T041 by moving process-instance dry-run facade calls and planning construction out of `cmd/cmd_views_processinstance_dryrun.go` into focused command or support ownership in `cmd/get_processinstance_paging.go`, then record non-mechanical follow-ups in `specs/270-cmd-mode-reorg/ownership-followups.md`.
+- Next iteration should continue US3 with T042 by auditing that `cmd/cmd_views_processinstance_dryrun.go` remains presentation-only for dry-run payloads and terminal rendering after T041, then validate the renderer ownership guard and dry-run output tests before marking T042.

@@ -4,12 +4,14 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/config"
@@ -95,6 +97,38 @@ type processInstancePageActionResult struct {
 type processInstancePageActionResults struct {
 	Reports        []process.Reporter
 	DryRunPreviews []processInstanceDryRunPreview
+}
+
+// processInstanceDryRunPlanResult keeps command-owned dry-run planning data
+// together before the caller either renders a preview or submits a mutation.
+type processInstanceDryRunPlanResult struct {
+	Plan    process.DryRunPIKeyExpansion
+	Impact  processInstancePageImpact
+	Preview processInstanceDryRunPreview
+}
+
+// planProcessInstanceDryRunPreview builds the shared dry-run plan, impact
+// counts, and render payload for one direct-key process-instance batch.
+func planProcessInstanceDryRunPreview(cmd *cobra.Command, cli process.API, operation string, keys types.Keys) (processInstanceDryRunPlanResult, error) {
+	return planProcessInstanceDryRunPreviewWithOptions(cmd, cli, operation, keys, collectOptions())
+}
+
+// planProcessInstanceDryRunPreviewWithOptions lets direct-key callers preserve
+// admin-input semantics while search-derived callers keep tenant scoping.
+func planProcessInstanceDryRunPreviewWithOptions(cmd *cobra.Command, cli process.API, operation string, keys types.Keys, opts []processOptions.FacadeOption) (processInstanceDryRunPlanResult, error) {
+	stopActivity := startCommandActivity(cmd, fmt.Sprintf("preparing %s dry-run scope for %d process instance(s)", operation, len(keys)))
+	defer stopActivity()
+
+	plan, err := cli.DryRunCancelOrDeletePlan(context.Background(), keys, flagWorkers, opts...)
+	if err != nil {
+		return processInstanceDryRunPlanResult{}, fmt.Errorf("%s validation: %w", operation, err)
+	}
+
+	return processInstanceDryRunPlanResult{
+		Plan:    plan,
+		Impact:  processInstancePageImpact{Requested: len(keys), Affected: len(plan.Collected), Roots: len(plan.Roots)},
+		Preview: newProcessInstanceDryRunPreview(operation, keys, plan),
+	}, nil
 }
 
 func processInstancePageActionResultFromPlan(operation string, step process.ProcessInstanceMutationPlanStep) processInstancePageActionResult {

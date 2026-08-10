@@ -18,17 +18,13 @@ import (
 )
 
 // TestGetViewFilesAvoidBackendOwnership keeps renderer files free of backend
-// orchestration, with the known dry-run planning exception tracked for US3.
+// orchestration and facade calls.
 func TestGetViewFilesAvoidBackendOwnership(t *testing.T) {
 	t.Parallel()
 
 	violations := collectViewBackendOwnershipViolations(t)
 
 	require.Empty(t, violations, "renderer files should not call public facades or import internal services")
-}
-
-var allowedViewFacadeCalls = map[string]string{
-	"cmd_views_processinstance_dryrun.go:planProcessInstanceDryRunPreviewWithOptions:cli.DryRunCancelOrDeletePlan": "US3 T041 moves dry-run planning out of renderer ownership",
 }
 
 // collectViewBackendOwnershipViolations scans renderer source without loading
@@ -52,7 +48,7 @@ func collectViewBackendOwnershipViolations(t *testing.T) []string {
 }
 
 // viewBackendOwnershipViolationsForFile returns backend ownership markers from
-// one renderer file while preserving the existing dry-run planning baseline.
+// one renderer file.
 func viewBackendOwnershipViolationsForFile(t *testing.T, path string) []string {
 	t.Helper()
 
@@ -99,14 +95,10 @@ func viewBackendOwnershipViolationsForFile(t *testing.T, path string) []string {
 	return violations
 }
 
-// appendViolationIfNotAllowed keeps the known dry-run planning violation from
-// blocking foundational checks while still failing on any new renderer call.
+// appendViolationIfNotAllowed records each renderer facade call as an ownership
+// violation.
 func appendViolationIfNotAllowed(violations []string, path, functionName, callName string) []string {
-	violation := path + ":" + functionName + ":" + callName
-	if _, ok := allowedViewFacadeCalls[violation]; ok {
-		return violations
-	}
-	return append(violations, violation)
+	return append(violations, path+":"+functionName+":"+callName)
 }
 
 // viewFileImports maps the effective package name to the imported path.

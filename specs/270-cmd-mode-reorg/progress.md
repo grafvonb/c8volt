@@ -458,3 +458,21 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Ops progress tests now cover progress formatting, pacing, frozen-scope counters, and ETA only; shared preflight/report contract, Markdown helper, and JSON report serialization checks have focused report test files.
 ---
+---
+## Iteration 23 - 2026-08-10 15:59
+**Work Unit**: US3 process-instance dry-run planning ownership
+**Tasks Completed**:
+- [x] T041: Move process-instance dry-run facade calls and planning construction out of cmd_views_processinstance_dryrun.go
+**Tasks Remaining in Work Unit**: T042-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_get_test.go
+- cmd/cmd_views_processinstance_dryrun.go
+- cmd/get_processinstance_paging.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ownership-followups.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Dry-run planning now lives with process-instance paging/support ownership; the renderer facade-call guard has no remaining allowlist.
+---
