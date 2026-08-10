@@ -58,6 +58,7 @@ Started: 2026-08-10T11:35:19Z
 - T055 recorded the US3 command package checkpoint in `quickstart.md`: `go test ./cmd -count=1` passed with `ok github.com/grafvonb/c8volt/cmd 33.013s`.
 - T056 ran `gofmt -w $(rg --files cmd c8volt internal/services internal/domain toolx | rg '\.go$')`; formatting passed and produced no source diffs.
 - T057 ran `git diff --check`; whitespace validation passed with no output.
+- T058 ran `make docs-content`; generated CLI docs and README had no command-content diff. The generator produced only `docs/index.md` build metadata churn, which was restored before recording the checkpoint.
 
 ## Gotchas
 
@@ -69,6 +70,7 @@ Started: 2026-08-10T11:35:19Z
 - Slow-process analysis preflight/progress remains command-layer ownership after T048 because the service exposes callback hooks and `cmd` owns stderr/activity routing, prompting, and output-mode gating.
 - Shared report-file, Markdown primitives, and workflow-specific repair/purge report serialization now have focused production ownership after T050/T051. The T052 helper audit removed only the dead watch-test wrapper; keep remaining helper candidates until a later change proves their callers are gone.
 - Process-instance orphan discovery limits are service-owned for ordinary orphan discovery and ops orphan purge. The special `get process-instance --orphan-children-only` plus direct incident filter path still disables service limiting and reapplies `limitPIItems` after command-local incident filtering; treat that as the T053 deferred follow-up, not a pattern for new limits.
+- `make docs-content` embeds current build metadata in `docs/index.md`; for behavior-preserving doc verification, treat build-stamp-only churn separately from command documentation content and keep the generated docs diff clean unless metadata refresh is intentional.
 
 ## Reusable Commands
 
@@ -103,4 +105,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue the Final Phase with T058 by running `make docs-content`, verifying generated documentation has no unintended diff under `docs/cli/`, `docs/`, and `README.md`, and recording the result in `specs/270-cmd-mode-reorg/quickstart.md`.
+- Next iteration should continue the Final Phase with T059 by running the focused validation commands from `specs/270-cmd-mode-reorg/quickstart.md`, recording passed, failed, or skipped checks in `quickstart.md`, and leaving T060 full `make test` for the following task.

@@ -104,3 +104,4 @@ Expected outcome: formatting is stable, whitespace checks pass, and the full rep
 - 2026-08-10 17:23 Iteration 7 US3 command package checkpoint: `go test ./cmd -count=1` passed (`ok github.com/grafvonb/c8volt/cmd 33.013s`).
 - 2026-08-10 17:25 Iteration 8 final formatting checkpoint: `gofmt -w $(rg --files cmd c8volt internal/services internal/domain toolx | rg '\.go$')` passed with no source diffs.
 - 2026-08-10 17:28 Iteration 9 final whitespace checkpoint: `git diff --check` passed with no whitespace errors.
+- 2026-08-10 17:30 Iteration 10 generated documentation checkpoint: `make docs-content` passed; `git diff -- docs README.md` was clean after discarding generated build-metadata-only churn in `docs/index.md`.
