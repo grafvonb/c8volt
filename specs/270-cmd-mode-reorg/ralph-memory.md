@@ -56,6 +56,7 @@ Started: 2026-08-10T11:35:19Z
 - T053 recorded follow-up ownership scope without moving code: job update backend-state lookup and plan construction stay as deferred CLI-plan ownership pending any future facade/service planning API; process-instance mutation page planning is already service-owned; the remaining concrete follow-up is the combined orphan-plus-direct-incident filter/limit path in `cmd/get_processinstance_orphan.go`.
 - T054 recorded the US3 workflow compatibility checkpoint in `quickstart.md`: `go test ./cmd -run 'Test.*(ProcessInstance|UpdateJob|Cancel|Delete|Root|SlowProcess|Ops.*Progress|Ops.*Report|RenderOps)' -count=1` passed with `ok github.com/grafvonb/c8volt/cmd 3.684s`.
 - T055 recorded the US3 command package checkpoint in `quickstart.md`: `go test ./cmd -count=1` passed with `ok github.com/grafvonb/c8volt/cmd 33.013s`.
+- T056 ran `gofmt -w $(rg --files cmd c8volt internal/services internal/domain toolx | rg '\.go$')`; formatting passed and produced no source diffs.
 
 ## Gotchas
 
@@ -101,4 +102,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should start the Final Phase with T056 by running `gofmt` on the configured Go source areas and recording the result in `specs/270-cmd-mode-reorg/quickstart.md`.
+- Next iteration should continue the Final Phase with T057 by running `git diff --check` and recording the result in `specs/270-cmd-mode-reorg/quickstart.md`.

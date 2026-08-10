@@ -102,3 +102,4 @@ Expected outcome: formatting is stable, whitespace checks pass, and the full rep
 - 2026-08-10 16:02 Iteration 24 US3 dry-run renderer ownership audit: `go test ./cmd -run 'Test(GetViewFilesAvoidBackendOwnership|.*DryRun)' -count=1` passed (`ok github.com/grafvonb/c8volt/cmd 0.872s`).
 - 2026-08-10 17:20 Iteration 6 US3 workflow compatibility checkpoint: `go test ./cmd -run 'Test.*(ProcessInstance|UpdateJob|Cancel|Delete|Root|SlowProcess|Ops.*Progress|Ops.*Report|RenderOps)' -count=1` passed (`ok github.com/grafvonb/c8volt/cmd 3.684s`).
 - 2026-08-10 17:23 Iteration 7 US3 command package checkpoint: `go test ./cmd -count=1` passed (`ok github.com/grafvonb/c8volt/cmd 33.013s`).
+- 2026-08-10 17:25 Iteration 8 final formatting checkpoint: `gofmt -w $(rg --files cmd c8volt internal/services internal/domain toolx | rg '\.go$')` passed with no source diffs.

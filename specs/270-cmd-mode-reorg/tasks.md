@@ -141,7 +141,7 @@
 
 **Purpose**: Validate the complete feature, keep artifacts synchronized, and prepare for handoff.
 
-- [ ] T056 [P] Run `gofmt` on touched Go files in `cmd/`, `c8volt/`, `internal/services/`, `internal/domain/`, and `toolx/`, then record the result in `specs/270-cmd-mode-reorg/quickstart.md`
+- [x] T056 [P] Run `gofmt` on touched Go files in `cmd/`, `c8volt/`, `internal/services/`, `internal/domain/`, and `toolx/`, then record the result in `specs/270-cmd-mode-reorg/quickstart.md`
 - [ ] T057 [P] Run `git diff --check` and record the result in `specs/270-cmd-mode-reorg/quickstart.md`
 - [ ] T058 Verify generated CLI documentation has no unintended diff after `make docs-content` by checking `docs/cli/`, `docs/`, and `README.md`, then record the result in `specs/270-cmd-mode-reorg/quickstart.md`
 - [ ] T059 Run focused validation from `specs/270-cmd-mode-reorg/quickstart.md` and record any failures or skipped checks in `specs/270-cmd-mode-reorg/quickstart.md`

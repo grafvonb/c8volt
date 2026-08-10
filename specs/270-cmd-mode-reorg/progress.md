@@ -708,3 +708,18 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Full command package validation passed after the US3 workflow splits, so US3 is complete and the next iteration can begin polish validation.
 ---
+---
+## Iteration 8 - 2026-08-10 17:25
+**Work Unit**: Final Phase formatting checkpoint
+**Tasks Completed**:
+- [x] T056: Run gofmt on configured Go source areas and record the result
+**Tasks Remaining in Work Unit**: T057-T062 remain in Final Phase
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/quickstart.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- The configured Go source areas were already gofmt-stable; the formatting command produced no source diffs.
+---
