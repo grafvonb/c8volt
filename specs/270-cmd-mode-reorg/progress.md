@@ -64,7 +64,6 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - Focused watch tests can be added before the production mode file exists; creating `cmd/get_processdefinition_watch.go` later activates the existing declaration ownership guard.
----
 ## Iteration 5 - 2026-08-10 14:03
 **Work Unit**: Recover interrupted US1 base process-definition dispatch tests
 **Tasks Completed**:
@@ -475,4 +474,20 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - Dry-run planning now lives with process-instance paging/support ownership; the renderer facade-call guard has no remaining allowlist.
+---
+---
+## Iteration 24 - 2026-08-10 16:02
+**Work Unit**: US3 process-instance dry-run renderer ownership audit
+**Tasks Completed**:
+- [x] T042: Keep process-instance dry-run payload and terminal rendering presentation-only in cmd/cmd_views_processinstance_dryrun.go
+**Tasks Remaining in Work Unit**: T043-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ownership-followups.md
+- specs/270-cmd-mode-reorg/quickstart.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Dry-run renderer ownership remains presentation-only after T041; the renderer guard and focused dry-run output tests passed without source changes.
 ---

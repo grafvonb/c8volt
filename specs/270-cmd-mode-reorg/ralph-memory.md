@@ -42,6 +42,7 @@ Started: 2026-08-10T11:35:19Z
 - T039 created `cmd/ops_analyse_slow_process_instances_validation_test.go` and `cmd/ops_analyse_slow_process_instances_progress_test.go`; command/request-shape tests stay in the base slow-process test file, validation rejection tests live in validation ownership, and preflight/progress/channel tests live in progress ownership.
 - T040 created `cmd/ops_report_test.go`, `cmd/ops_report_markdown_test.go`, and `cmd/ops_report_json_test.go`; shared preflight/report contract tests moved out of `cmd/ops_progress_test.go` and `cmd/ops_contract_test.go`, while progress mode, milestone, frozen-scope, and ETA tests remain in `cmd/ops_progress_test.go`.
 - T041 moved process-instance dry-run facade planning out of `cmd/cmd_views_processinstance_dryrun.go` into `cmd/get_processinstance_paging.go`. `cmd/cmd_views_processinstance_dryrun.go` now owns only payload mapping/aggregation and terminal/JSON/key rendering for dry-run previews and summaries, and `TestGetViewFilesAvoidBackendOwnership` no longer has a dry-run planning allowlist.
+- T042 audited process-instance dry-run renderer ownership: `cmd/cmd_views_processinstance_dryrun.go` imports only presentation-facing process domain models, key types, Cobra, and formatting packages; no facade calls or internal-service imports remain. `go test ./cmd -run 'Test(GetViewFilesAvoidBackendOwnership|.*DryRun)' -count=1` passed.
 
 ## Gotchas
 
@@ -81,4 +82,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US3 with T042 by auditing that `cmd/cmd_views_processinstance_dryrun.go` remains presentation-only for dry-run payloads and terminal rendering after T041, then validate the renderer ownership guard and dry-run output tests before marking T042.
+- Next iteration should continue US3 with T043 by dividing process-instance paging support by search request construction, paging progress, shared search progress, and mutation-result ownership across `cmd/get_processinstance_search.go`, `cmd/get_processinstance_paging.go`, `cmd/get_processinstance_total.go`, and `cmd/processinstance_mutation_progress.go`.

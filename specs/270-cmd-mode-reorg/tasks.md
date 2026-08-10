@@ -118,7 +118,7 @@
 ### Implementation for User Story 3
 
 - [x] T041 [US3] Move process-instance dry-run facade calls and planning construction out of `cmd/cmd_views_processinstance_dryrun.go` into focused command or support ownership in `cmd/get_processinstance_paging.go` and record non-mechanical follow-ups in `specs/270-cmd-mode-reorg/ownership-followups.md`
-- [ ] T042 [US3] Keep process-instance dry-run payload and terminal rendering presentation-only in `cmd/cmd_views_processinstance_dryrun.go`
+- [x] T042 [US3] Keep process-instance dry-run payload and terminal rendering presentation-only in `cmd/cmd_views_processinstance_dryrun.go`
 - [ ] T043 [US3] Divide process-instance paging support by search request construction, paging progress, shared search progress, and mutation-result ownership across `cmd/get_processinstance_search.go`, `cmd/get_processinstance_paging.go`, `cmd/get_processinstance_total.go`, and `cmd/processinstance_mutation_progress.go`
 - [ ] T044 [US3] Split job update command wiring, request parsing, worker-outcome handling, and planning declarations from `cmd/update_job.go` into `cmd/update_job_request.go`, `cmd/update_job_outcome.go`, and `cmd/update_job_plan.go`
 - [ ] T045 [US3] Separate selector/search execution from direct-key execution for process-instance cancel in `cmd/cancel_processinstance.go` and `cmd/cancel_processinstance_selector.go`
