@@ -610,3 +610,21 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Ops progress production ownership now mirrors the focused progress tests; mode/channel gating, durable milestone pacing, and progress/preflight rendering have separate files. Focused ops progress/report tests, the broader US3 workflow pattern, full command package tests, and whitespace validation passed.
 ---
+---
+## Iteration 32 - 2026-08-10 16:58
+**Work Unit**: US3 ops report helper ownership
+**Tasks Completed**:
+- [x] T050: Move shared report-file and Markdown helpers into focused ops report files
+**Tasks Remaining in Work Unit**: T051-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_contract.go
+- cmd/ops_report.go
+- cmd/ops_report_markdown.go
+- cmd/cmd_views_ops_purge_orphan_processinstances.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Shared report file policy helpers and Markdown primitives now have focused production ownership matching the existing report helper tests; focused report tests, broader US3 workflow tests, full cmd package tests, and whitespace validation passed.
+---
