@@ -255,3 +255,19 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Default process-instance rendering, row formatting, total output, and age metadata can live in `cmd_views_processinstance.go`; enrichment renderers can reuse those declarations without import or output changes.
 ---
+---
+## Iteration 11 - 2026-08-10 14:51
+**Work Unit**: US2 process-definition renderer ownership
+**Tasks Completed**:
+- [x] T028: Move process-definition rendering declarations from cmd_views_get.go to cmd_views_processdefinition.go
+**Tasks Remaining in Work Unit**: T029-T033 remain in US2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_get.go
+- cmd/cmd_views_processdefinition.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Process-definition single, list, watch, and flat-row rendering now has focused production ownership beside the existing process-definition renderer tests; targeted process-definition and renderer ownership guard tests passed.
+---
