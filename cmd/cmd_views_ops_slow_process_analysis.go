@@ -20,35 +20,30 @@ import (
 func renderOpsSlowProcessAnalysisResult(cmd *cobra.Command, result ops.SlowProcessAnalysisResult) error {
 	switch pickMode() {
 	case RenderModeJSON:
-		return renderJSONPayload(cmd, RenderModeJSON, result)
+		return renderOpsSlowProcessAnalysisJSONResult(cmd, result)
 	case RenderModeKeysOnly:
-		seen := map[string]struct{}{}
-		for _, item := range result.Items {
-			if item.Key == "" {
-				continue
-			}
-			if _, ok := seen[item.Key]; ok {
-				continue
-			}
-			seen[item.Key] = struct{}{}
-			renderOutputLine(cmd, "%s", item.Key)
-		}
+		renderOpsSlowProcessAnalysisKeysOnlyResult(cmd, result)
 	default:
-		showTimezoneOffset := commandShowTimezoneOffset(cmd)
-		rootBarContext := opsSlowProcessAnalysisRootBarContext(result.Items)
-		for _, item := range result.Items {
-			renderOutputLine(cmd, "%s", formatOpsSlowProcessAnalysisRootRow(item, rootBarContext, showTimezoneOffset))
-			if len(item.Timeline) > 0 {
-				if flagOpsAnalyseSlowProcessInstanceWithFullTimeline {
-					renderOpsSlowProcessAnalysisFullTimeline(cmd, item, showTimezoneOffset)
-				} else {
-					renderOpsSlowProcessAnalysisHotspotSummary(cmd, item, showTimezoneOffset)
-				}
-			}
-		}
-		renderOutputLine(cmd, "process instances: %d", result.Count)
+		renderOpsSlowProcessAnalysisHumanResult(cmd, result)
 	}
 	return nil
+}
+
+// renderOpsSlowProcessAnalysisHumanResult renders the terminal tree view for slow-analysis results.
+func renderOpsSlowProcessAnalysisHumanResult(cmd *cobra.Command, result ops.SlowProcessAnalysisResult) {
+	showTimezoneOffset := commandShowTimezoneOffset(cmd)
+	rootBarContext := opsSlowProcessAnalysisRootBarContext(result.Items)
+	for _, item := range result.Items {
+		renderOutputLine(cmd, "%s", formatOpsSlowProcessAnalysisRootRow(item, rootBarContext, showTimezoneOffset))
+		if len(item.Timeline) > 0 {
+			if flagOpsAnalyseSlowProcessInstanceWithFullTimeline {
+				renderOpsSlowProcessAnalysisFullTimeline(cmd, item, showTimezoneOffset)
+			} else {
+				renderOpsSlowProcessAnalysisHotspotSummary(cmd, item, showTimezoneOffset)
+			}
+		}
+	}
+	renderOutputLine(cmd, "process instances: %d", result.Count)
 }
 
 // renderOpsSlowProcessAnalysisHotspotSummary renders the compact default detail view.

@@ -51,6 +51,7 @@ Started: 2026-08-10T11:35:19Z
 - T048 created `cmd/ops_analyse_slow_process_instances_validation.go` and `cmd/ops_analyse_slow_process_instances_progress.go`. `cmd/ops_analyse_slow_process_instances.go` now owns ops analyse command construction, flags/metadata, top-level execution, and facade request building; validation owns selector/date/duration/filter parsing; progress owns preflight callbacks, durable/transient progress routing, and confirmation gating.
 - T049 removed mixed `cmd/ops_progress.go` and split progress ownership by concern: `cmd/ops_progress_mode.go` owns mode/channel gating, `cmd/ops_progress_milestones.go` owns durable milestone pacing/signatures, and `cmd/ops_progress_render.go` owns progress/preflight formatting plus durable stderr rendering.
 - T050 created `cmd/ops_report.go` and `cmd/ops_report_markdown.go`; shared report format/path/write-mode helpers moved out of `cmd/ops_contract.go`, and shared Markdown field/list/time helpers moved out of the orphan purge renderer.
+- T051 moved repair, incident-purge, and all-process-definitions purge JSON/Markdown audit report serialization out of `cmd/cmd_views_ops_*.go` terminal view files into focused `cmd/ops_report_*.go` files. Slow-process analysis machine output now lives in `cmd/cmd_views_ops_slow_process_analysis_machine.go`, while `cmd/cmd_views_ops_slow_process_analysis.go` owns the terminal tree view.
 
 ## Gotchas
 
@@ -60,7 +61,7 @@ Started: 2026-08-10T11:35:19Z
 - Cancel and delete process-instance search-mode execution now have focused production files matching the existing selector test split. Delete search mode still freezes all selected page-level delete previews before one aggregate confirmation and mutation; do not convert it to page-by-page mutation in later cleanup.
 - Root bootstrap remains command-layer ownership after T047; service installation still constructs HTTP/auth services in `cmd/root_services.go` because root command bootstrap is the existing owner for wiring those services into context, not backend workflow logic.
 - Slow-process analysis preflight/progress remains command-layer ownership after T048 because the service exposes callback hooks and `cmd` owns stderr/activity routing, prompting, and output-mode gating.
-- Shared report-file and Markdown helpers now have focused production ownership after T050. Workflow-specific JSON/Markdown report serialization still stays in workflow renderer files until T051 separates terminal rendering from JSON and Markdown report serialization.
+- Shared report-file, Markdown primitives, and workflow-specific repair/purge report serialization now have focused production ownership after T050/T051. T052 should audit candidate dead helpers against production, tests, subprocess helpers, examples, and generated artifacts before removing anything.
 
 ## Reusable Commands
 
@@ -95,4 +96,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US3 with T051 by separating terminal rendering from JSON and Markdown report serialization in the affected ops workflow view files.
+- Next iteration should continue US3 with T052 by confirming candidate dead helpers have no production, test, subprocess, example, or generated-artifact callers before removing them and recording evidence in `specs/270-cmd-mode-reorg/ownership-followups.md`.

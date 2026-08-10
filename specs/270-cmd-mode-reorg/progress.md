@@ -110,7 +110,6 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - The focused declaration guard now activates because `cmd/get_processdefinition_watch.go` exists; targeted watch and base process-definition tests passed after the move.
 ---
----
 ## Iteration 3 - 2026-08-10 14:10
 **Work Unit**: US1 process-definition watch test relocation and checkpoint validation
 **Tasks Completed**:
@@ -627,4 +626,26 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - Shared report file policy helpers and Markdown primitives now have focused production ownership matching the existing report helper tests; focused report tests, broader US3 workflow tests, full cmd package tests, and whitespace validation passed.
+---
+---
+## Iteration 3 - 2026-08-10 17:08
+**Work Unit**: US3 ops workflow report serialization ownership
+**Tasks Completed**:
+- [x] T051: Separate terminal rendering from JSON and Markdown report serialization for affected ops workflows
+**Tasks Remaining in Work Unit**: T052-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_ops_purge_all_processdefinitions.go
+- cmd/cmd_views_ops_purge_processinstances_with_incidents.go
+- cmd/cmd_views_ops_repair.go
+- cmd/cmd_views_ops_slow_process_analysis.go
+- cmd/cmd_views_ops_slow_process_analysis_machine.go
+- cmd/ops_report_purge_all_processdefinitions.go
+- cmd/ops_report_purge_processinstances_with_incidents.go
+- cmd/ops_report_repair.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Workflow report encoders now live in focused ops report files, and slow-process JSON/keys-only output is separate from the terminal tree renderer; focused ops tests, broader US3 workflow tests, full cmd package tests, and whitespace validation passed.
 ---
