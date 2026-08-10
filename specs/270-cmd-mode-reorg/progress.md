@@ -159,3 +159,19 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Process-instance row, list, age metadata, variable enrichment, incident enrichment, activity enrichment, and process-instance incident-line renderer tests now live in the focused process-instance test file; shared flat-row, process-definition, and plain incident renderer tests remain for later US2 tasks.
 ---
+---
+## Iteration 5 - 2026-08-10 14:20
+**Work Unit**: US2 process-definition renderer test ownership
+**Tasks Completed**:
+- [x] T022: Add process-definition renderer tests for human, JSON, keys-only, and watch list parity
+**Tasks Remaining in Work Unit**: T023-T033 remain in US2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_get_test.go
+- cmd/cmd_views_processdefinition_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Process-definition renderer coverage now owns human alignment, single/list JSON envelopes, keys-only output, and watch body parity in the focused process-definition test file.
+---

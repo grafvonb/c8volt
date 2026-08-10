@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/incident"
-	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -176,44 +175,6 @@ func facadeAPIParamNames(function *ast.FuncDecl, publicFacadeAliases map[string]
 		}
 	}
 	return names
-}
-
-// Verifies process-definition scan output uses the same dynamic alignment as process-instance lists.
-func TestListProcessDefinitionsView_AlignsFlatRowsDynamically(t *testing.T) {
-	cmd := &cobra.Command{Use: "process-definition"}
-	buf := &bytes.Buffer{}
-	cmd.SetOut(buf)
-
-	err := listProcessDefinitionsView(cmd, process.ProcessDefinitions{
-		Items: []process.ProcessDefinition{
-			{
-				Key:            "1",
-				TenantId:       "tenant",
-				BpmnProcessId:  "Short",
-				ProcessVersion: 1,
-			},
-			{
-				Key:               "22",
-				TenantId:          "tenant",
-				BpmnProcessId:     "MuchLongerDefinition",
-				ProcessVersion:    12,
-				ProcessVersionTag: "stable",
-				Statistics: &process.ProcessDefinitionStatistics{
-					Active:                 4,
-					Completed:              9,
-					Canceled:               2,
-					Incidents:              3,
-					IncidentCountSupported: true,
-				},
-			},
-		},
-	})
-
-	require.NoError(t, err)
-	require.Equal(t, ""+
-		"1  tenant Short                v1\n"+
-		"22 tenant MuchLongerDefinition v12/stable [ac:4 cp:9 cx:2 inc:3]\n"+
-		"found: 2\n", buf.String())
 }
 
 func TestIncidentHumanLineWithMessageLimit_RendersAlignedIncidentListFieldsAndAge(t *testing.T) {
