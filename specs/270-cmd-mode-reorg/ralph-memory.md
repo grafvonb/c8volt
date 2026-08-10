@@ -17,6 +17,8 @@ Started: 2026-08-10T11:35:19Z
 - T009 recorded helper caller audit notes in `ownership-followups.md`; no candidate helper is removal-ready before its planned ownership split.
 - T011 added focused watch snapshot request behavior tests in `cmd/get_processdefinition_watch_test.go` without creating `cmd/get_processdefinition_watch.go`; creating the production mode file must wait for T015/T016 because the existing contract test will then require all watch lifecycle declarations to move.
 - T012 added `TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle` in `cmd/get_processdefinition_test.go`; it keeps `flagGetPDWatchInterval` intentionally invalid and verifies ordinary list, key, and XML process-definition paths still bypass watch lifecycle validation and output.
+- T013 extended `TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata` to pin process-definition watch discovery metadata, unsupported automation status, summary text, and the help text documenting JSON/keys-only/XML/quiet/automation rejection before lookup.
+- T014 added `TestGetProcessDefinitionWatchOutputParityAssertions` in `cmd/get_processdefinition_watch_test.go`; it pins human/verbose refresh stdout parity with normal rows and local rejection of JSON, keys-only, quiet, and automation modes before watch refresh work.
 
 ## Gotchas
 
@@ -32,6 +34,7 @@ Started: 2026-08-10T11:35:19Z
 - `go test ./cmd -run 'TestCommandContract|Test.*View' -count=1`
 - `go test ./cmd -run 'TestGetProcessDefinition.*Watch|TestProcessDefinition.*Watch|TestValidateGetProcessDefinitionWatch|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata' -count=1`
 - `go test ./cmd -run '^TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle$' -count=1`
+- `go test ./cmd -run 'TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata|TestGetProcessDefinitionWatchOutputParityAssertions|TestValidateGetProcessDefinitionWatch|TestGetProcessDefinition.*Watch|TestProcessDefinition.*Watch' -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
@@ -39,4 +42,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US1 with T013 and T014. T013 can add process-definition watch metadata/incompatible-mode contract assertions in `cmd/command_contract_test.go`; T014 can add watch output parity assertions in `cmd/get_processdefinition_watch_test.go`. Do not create `cmd/get_processdefinition_watch.go` until ready to move the production watch lifecycle declarations for T015/T016.
+- Next iteration should continue US1 with T015/T016 by creating `cmd/get_processdefinition_watch.go` and moving the process-definition watch lifecycle declarations there while keeping base command construction, flags, validation, metadata, dispatch, XML/key/search execution, and shared ordinary lookup logic in `cmd/get_processdefinition.go`.

@@ -148,6 +148,9 @@ func TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata(t *testing.T
 	require.Equal(t, "get process-definition", capability.Path)
 	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
 	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportUnsupported, capability.AutomationSupport)
+	require.Empty(t, capability.AutomationNotes)
+	require.Equal(t, "List or fetch deployed process definitions", capability.Summary)
 	require.Contains(t, capability.Aliases, "pd")
 	require.Contains(t, capability.Aliases, "pds")
 	require.Contains(t, capability.Flags, FlagContract{
@@ -180,6 +183,7 @@ func TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata(t *testing.T
 		Supported: true,
 		Notes:     "finite key stream for non-watch invocations; --watch rejects keys-only output",
 	})
+	require.Contains(t, getProcessDefinitionCmd.Long, "JSON, keys-only, XML,\nquiet, and automation combinations are rejected before lookup work")
 }
 
 // TestCommandContractFocusedModeFilesOwnLifecycleDeclarations guards the file

@@ -89,3 +89,20 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Ordinary process-definition list, key, and XML lookup paths can be protected from watch-only interval validation and watch lifecycle output by keeping hostile watch interval state in the test harness.
 ---
+---
+## Iteration 6 - 2026-08-10 14:00
+**Work Unit**: US1 process-definition watch metadata and output guardrails
+**Tasks Completed**:
+- [x] T013: Add process-definition watch metadata and incompatible-mode contract assertions
+- [x] T014: Add process-definition watch output parity assertions for human, verbose, JSON rejection, keys-only rejection, quiet rejection, and automation rejection
+**Tasks Remaining in Work Unit**: T015-T020 remain in US1
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/command_contract_test.go
+- cmd/get_processdefinition_watch_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Watch mode now has explicit test guardrails for discovery metadata, documented incompatible modes, human/verbose refresh parity, and pre-refresh rejection before the T015/T016 production file move.
+---
