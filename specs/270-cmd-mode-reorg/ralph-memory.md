@@ -53,6 +53,7 @@ Started: 2026-08-10T11:35:19Z
 - T050 created `cmd/ops_report.go` and `cmd/ops_report_markdown.go`; shared report format/path/write-mode helpers moved out of `cmd/ops_contract.go`, and shared Markdown field/list/time helpers moved out of the orphan purge renderer.
 - T051 moved repair, incident-purge, and all-process-definitions purge JSON/Markdown audit report serialization out of `cmd/cmd_views_ops_*.go` terminal view files into focused `cmd/ops_report_*.go` files. Slow-process analysis machine output now lives in `cmd/cmd_views_ops_slow_process_analysis_machine.go`, while `cmd/cmd_views_ops_slow_process_analysis.go` owns the terminal tree view.
 - T052 audited the named helper-removal candidates across `cmd`, specs, docs, README, docsgen, embedded assets, and test helpers. Only unused `executeGetProcessDefinitionWatchForTest` had no callers and was removed; `zeroAsMinus`, remaining watch harness helpers, dry-run helpers, and update-job parse/plan helpers still have active production, test, or subprocess coverage references.
+- T053 recorded follow-up ownership scope without moving code: job update backend-state lookup and plan construction stay as deferred CLI-plan ownership pending any future facade/service planning API; process-instance mutation page planning is already service-owned; the remaining concrete follow-up is the combined orphan-plus-direct-incident filter/limit path in `cmd/get_processinstance_orphan.go`.
 
 ## Gotchas
 
@@ -63,6 +64,7 @@ Started: 2026-08-10T11:35:19Z
 - Root bootstrap remains command-layer ownership after T047; service installation still constructs HTTP/auth services in `cmd/root_services.go` because root command bootstrap is the existing owner for wiring those services into context, not backend workflow logic.
 - Slow-process analysis preflight/progress remains command-layer ownership after T048 because the service exposes callback hooks and `cmd` owns stderr/activity routing, prompting, and output-mode gating.
 - Shared report-file, Markdown primitives, and workflow-specific repair/purge report serialization now have focused production ownership after T050/T051. The T052 helper audit removed only the dead watch-test wrapper; keep remaining helper candidates until a later change proves their callers are gone.
+- Process-instance orphan discovery limits are service-owned for ordinary orphan discovery and ops orphan purge. The special `get process-instance --orphan-children-only` plus direct incident filter path still disables service limiting and reapplies `limitPIItems` after command-local incident filtering; treat that as the T053 deferred follow-up, not a pattern for new limits.
 
 ## Reusable Commands
 
@@ -97,4 +99,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US3 with T053 by reviewing job update planning, backend-state lookup, mutation-plan construction, process-instance orphan filtering, and limit ownership for follow-up scope in `specs/270-cmd-mode-reorg/ownership-followups.md`.
+- Next iteration should continue US3 with T054 by running `go test ./cmd -run 'Test.*(ProcessInstance|UpdateJob|Cancel|Delete|Root|SlowProcess|Ops.*Progress|Ops.*Report|RenderOps)' -count=1` and recording the workflow compatibility result in `specs/270-cmd-mode-reorg/quickstart.md`.

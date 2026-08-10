@@ -665,3 +665,18 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Only `executeGetProcessDefinitionWatchForTest` was truly dead among the named helper-removal candidates; other candidates still have production, test, or subprocess-helper references.
 ---
+---
+## Iteration 5 - 2026-08-10 17:17
+**Work Unit**: US3 follow-up ownership scope review
+**Tasks Completed**:
+- [x] T053: Review job update planning, backend-state lookup, mutation-plan construction, process-instance orphan filtering, and limit ownership for follow-up scope
+**Tasks Remaining in Work Unit**: T054-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ownership-followups.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Job update planning remains a deferred CLI-plan ownership question, process-instance mutation page planning is already service-owned, and the combined orphan-plus-direct-incident filter/limit path is the remaining concrete follow-up candidate.
+---
