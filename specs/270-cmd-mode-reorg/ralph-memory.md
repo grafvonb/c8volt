@@ -39,6 +39,7 @@ Started: 2026-08-10T11:35:19Z
 - T036 created `cmd/update_job_request_test.go`, `cmd/update_job_outcome_test.go`, and `cmd/update_job_plan_test.go`; `cmd/update_job_test.go` now keeps command wiring/result-view coverage plus shared job-update fake servers and assertion helpers.
 - T037 created `cmd/cancel_processinstance_test.go`, `cmd/cancel_processinstance_selector_test.go`, `cmd/delete_processinstance_test.go`, and `cmd/delete_processinstance_selector_test.go`; direct-key/stdin/key-validation tests now live apart from selector/search/paged execution tests, while broad cancel/delete help and process-definition coverage stay in the original files.
 - T038 created `cmd/root_config_test.go` and `cmd/root_services_test.go`; `cmd/root_test.go` now keeps root/help/flag-wiring UX tests, config resolution tests live in config ownership, and activity-indicator service/bootstrap tests live in service ownership.
+- T039 created `cmd/ops_analyse_slow_process_instances_validation_test.go` and `cmd/ops_analyse_slow_process_instances_progress_test.go`; command/request-shape tests stay in the base slow-process test file, validation rejection tests live in validation ownership, and preflight/progress/channel tests live in progress ownership.
 
 ## Gotchas
 
@@ -67,6 +68,7 @@ Started: 2026-08-10T11:35:19Z
 - `go test ./cmd -run 'TestGetProcessInstance(SearchScaffold|Search_Var|Search_Tenant|Search_HumanOutput|TotalOutput|SearchMachineOutput|PagingFlow)|TestResolvePISearchSize|TestPIContinuationProgress|Test.*ProcessInstance.*Progress' -count=1`
 - `go test ./cmd -run 'Test.*(Cancel|Delete).*ProcessInstance' -count=1`
 - `go test ./cmd -run 'Test(Root|ProcessInstanceHelp|TimeoutFlag|FlagParse|RetrieveAndNormalizeConfig|AutomationModeEnabled|MissingConfigHint|IndicatorEnabled)' -count=1`
+- `go test ./cmd -run 'TestOpsAnalyseSlowProcessInstances|Test.*SlowProcess' -count=1`
 - `go test ./cmd -count=1`
 - `git diff --check`
 
@@ -75,4 +77,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US3 with T039 by splitting slow-process analysis command, validation, and progress tests in `cmd/ops_analyse_slow_process_instances_test.go`, `cmd/ops_analyse_slow_process_instances_validation_test.go`, and `cmd/ops_analyse_slow_process_instances_progress_test.go`.
+- Next iteration should continue US3 with T040 by splitting ops progress and report serialization tests in `cmd/ops_progress_test.go`, `cmd/ops_report_test.go`, `cmd/ops_report_markdown_test.go`, and `cmd/ops_report_json_test.go`.

@@ -112,7 +112,7 @@
 - [x] T036 [P] [US3] Split job update tests by command wiring, request parsing, worker outcome, and planning concern in `cmd/update_job_test.go`, `cmd/update_job_request_test.go`, `cmd/update_job_outcome_test.go`, and `cmd/update_job_plan_test.go`
 - [x] T037 [P] [US3] Split process-instance cancel and delete direct-key versus selector execution tests in `cmd/cancel_processinstance_test.go`, `cmd/cancel_processinstance_selector_test.go`, `cmd/delete_processinstance_test.go`, and `cmd/delete_processinstance_selector_test.go`
 - [x] T038 [P] [US3] Split root command wiring, configuration resolution, and service installation tests in `cmd/root_test.go`, `cmd/root_config_test.go`, and `cmd/root_services_test.go`
-- [ ] T039 [P] [US3] Split slow-process analysis command, validation, and progress tests in `cmd/ops_analyse_slow_process_instances_test.go`, `cmd/ops_analyse_slow_process_instances_validation_test.go`, and `cmd/ops_analyse_slow_process_instances_progress_test.go`
+- [x] T039 [P] [US3] Split slow-process analysis command, validation, and progress tests in `cmd/ops_analyse_slow_process_instances_test.go`, `cmd/ops_analyse_slow_process_instances_validation_test.go`, and `cmd/ops_analyse_slow_process_instances_progress_test.go`
 - [ ] T040 [P] [US3] Split ops progress and report serialization tests in `cmd/ops_progress_test.go`, `cmd/ops_report_test.go`, `cmd/ops_report_markdown_test.go`, and `cmd/ops_report_json_test.go`
 
 ### Implementation for User Story 3

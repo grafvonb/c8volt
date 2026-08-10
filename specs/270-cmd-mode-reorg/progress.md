@@ -65,7 +65,6 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Focused watch tests can be added before the production mode file exists; creating `cmd/get_processdefinition_watch.go` later activates the existing declaration ownership guard.
 ---
----
 ## Iteration 5 - 2026-08-10 14:03
 **Work Unit**: Recover interrupted US1 base process-definition dispatch tests
 **Tasks Completed**:
@@ -422,4 +421,21 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - Root help and flag UX tests can stay in root wiring ownership while config resolution and activity-indicator bootstrap behavior have focused test files.
+---
+---
+## Iteration 21 - 2026-08-10 15:47
+**Work Unit**: US3 slow-process analysis test ownership
+**Tasks Completed**:
+- [x] T039: Split slow-process analysis command, validation, and progress tests
+**Tasks Remaining in Work Unit**: T040-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_analyse_slow_process_instances_test.go
+- cmd/ops_analyse_slow_process_instances_validation_test.go
+- cmd/ops_analyse_slow_process_instances_progress_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Slow-process analysis request-shape, validation rejection, and preflight/progress tests now live in focused test files; targeted slow-process tests, full command package tests, and whitespace validation passed.
 ---
