@@ -144,7 +144,7 @@
 - [x] T056 [P] Run `gofmt` on touched Go files in `cmd/`, `c8volt/`, `internal/services/`, `internal/domain/`, and `toolx/`, then record the result in `specs/270-cmd-mode-reorg/quickstart.md`
 - [x] T057 [P] Run `git diff --check` and record the result in `specs/270-cmd-mode-reorg/quickstart.md`
 - [x] T058 Verify generated CLI documentation has no unintended diff after `make docs-content` by checking `docs/cli/`, `docs/`, and `README.md`, then record the result in `specs/270-cmd-mode-reorg/quickstart.md`
-- [ ] T059 Run focused validation from `specs/270-cmd-mode-reorg/quickstart.md` and record any failures or skipped checks in `specs/270-cmd-mode-reorg/quickstart.md`
+- [x] T059 Run focused validation from `specs/270-cmd-mode-reorg/quickstart.md` and record any failures or skipped checks in `specs/270-cmd-mode-reorg/quickstart.md`
 - [ ] T060 Run full repository validation with `make test` and record the result in `specs/270-cmd-mode-reorg/quickstart.md`
 - [ ] T061 Verify SC-001 through SC-010 evidence is recorded in `specs/270-cmd-mode-reorg/ownership-followups.md`
 - [ ] T062 Review final changed files and deferred ownership corrections, then add handoff notes to `specs/270-cmd-mode-reorg/ownership-followups.md`
