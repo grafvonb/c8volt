@@ -439,3 +439,22 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Slow-process analysis request-shape, validation rejection, and preflight/progress tests now live in focused test files; targeted slow-process tests, full command package tests, and whitespace validation passed.
 ---
+---
+## Iteration 22 - 2026-08-10 15:54
+**Work Unit**: US3 ops progress and report serialization test ownership
+**Tasks Completed**:
+- [x] T040: Split ops progress and report serialization tests
+**Tasks Remaining in Work Unit**: T041-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_contract_test.go
+- cmd/ops_progress_test.go
+- cmd/ops_report_test.go
+- cmd/ops_report_markdown_test.go
+- cmd/ops_report_json_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Ops progress tests now cover progress formatting, pacing, frozen-scope counters, and ETA only; shared preflight/report contract, Markdown helper, and JSON report serialization checks have focused report test files.
+---
