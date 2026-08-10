@@ -109,7 +109,6 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - The focused declaration guard now activates because `cmd/get_processdefinition_watch.go` exists; targeted watch and base process-definition tests passed after the move.
----
 ## Iteration 3 - 2026-08-10 14:10
 **Work Unit**: US1 process-definition watch test relocation and checkpoint validation
 **Tasks Completed**:
@@ -679,4 +678,19 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - Job update planning remains a deferred CLI-plan ownership question, process-instance mutation page planning is already service-owned, and the combined orphan-plus-direct-incident filter/limit path is the remaining concrete follow-up candidate.
+---
+---
+## Iteration 6 - 2026-08-10 17:20
+**Work Unit**: US3 workflow compatibility checkpoint
+**Tasks Completed**:
+- [x] T054: Run broad US3 workflow compatibility validation and record the result
+**Tasks Remaining in Work Unit**: T055 remains in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/quickstart.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Broad US3 workflow compatibility coverage passed after the workflow ownership splits, so the next checkpoint is the full command package test.
 ---

@@ -54,6 +54,7 @@ Started: 2026-08-10T11:35:19Z
 - T051 moved repair, incident-purge, and all-process-definitions purge JSON/Markdown audit report serialization out of `cmd/cmd_views_ops_*.go` terminal view files into focused `cmd/ops_report_*.go` files. Slow-process analysis machine output now lives in `cmd/cmd_views_ops_slow_process_analysis_machine.go`, while `cmd/cmd_views_ops_slow_process_analysis.go` owns the terminal tree view.
 - T052 audited the named helper-removal candidates across `cmd`, specs, docs, README, docsgen, embedded assets, and test helpers. Only unused `executeGetProcessDefinitionWatchForTest` had no callers and was removed; `zeroAsMinus`, remaining watch harness helpers, dry-run helpers, and update-job parse/plan helpers still have active production, test, or subprocess coverage references.
 - T053 recorded follow-up ownership scope without moving code: job update backend-state lookup and plan construction stay as deferred CLI-plan ownership pending any future facade/service planning API; process-instance mutation page planning is already service-owned; the remaining concrete follow-up is the combined orphan-plus-direct-incident filter/limit path in `cmd/get_processinstance_orphan.go`.
+- T054 recorded the US3 workflow compatibility checkpoint in `quickstart.md`: `go test ./cmd -run 'Test.*(ProcessInstance|UpdateJob|Cancel|Delete|Root|SlowProcess|Ops.*Progress|Ops.*Report|RenderOps)' -count=1` passed with `ok github.com/grafvonb/c8volt/cmd 3.684s`.
 
 ## Gotchas
 
@@ -99,4 +100,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US3 with T054 by running `go test ./cmd -run 'Test.*(ProcessInstance|UpdateJob|Cancel|Delete|Root|SlowProcess|Ops.*Progress|Ops.*Report|RenderOps)' -count=1` and recording the workflow compatibility result in `specs/270-cmd-mode-reorg/quickstart.md`.
+- Next iteration should continue US3 with T055 by running `go test ./cmd -count=1` after all workflow splits and recording the command package result in `specs/270-cmd-mode-reorg/quickstart.md`.

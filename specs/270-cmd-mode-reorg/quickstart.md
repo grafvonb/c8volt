@@ -100,3 +100,4 @@ Expected outcome: formatting is stable, whitespace checks pass, and the full rep
 - 2026-08-10 15:05 Iteration 15 US2 renderer ownership guard: `go test ./cmd -run '^TestGetViewFilesAvoidBackendOwnership$' -count=1` passed (`ok github.com/grafvonb/c8volt/cmd 0.540s`).
 - 2026-08-10 15:05 Iteration 15 US2 renderer compatibility checkpoint: `go test ./cmd -run 'Test.*View|TestRender|Test.*JSON|Test.*KeysOnly|Test.*Flat' -count=1` passed (`ok github.com/grafvonb/c8volt/cmd 1.101s`).
 - 2026-08-10 16:02 Iteration 24 US3 dry-run renderer ownership audit: `go test ./cmd -run 'Test(GetViewFilesAvoidBackendOwnership|.*DryRun)' -count=1` passed (`ok github.com/grafvonb/c8volt/cmd 0.872s`).
+- 2026-08-10 17:20 Iteration 6 US3 workflow compatibility checkpoint: `go test ./cmd -run 'Test.*(ProcessInstance|UpdateJob|Cancel|Delete|Root|SlowProcess|Ops.*Progress|Ops.*Report|RenderOps)' -count=1` passed (`ok github.com/grafvonb/c8volt/cmd 3.684s`).
