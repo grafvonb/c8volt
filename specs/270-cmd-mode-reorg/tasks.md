@@ -108,7 +108,7 @@
 ### Tests for User Story 3
 
 - [x] T034 [US3] Split or add process-instance dry-run presentation tests in `cmd/cmd_views_processinstance_dryrun_test.go`
-- [ ] T035 [P] [US3] Split process-instance search, paging, progress, and mutation-result tests into focused files under `cmd/get_processinstance_search_test.go`, `cmd/get_processinstance_paging_test.go`, and `cmd/processinstance_mutation_progress_test.go`
+- [x] T035 [P] [US3] Split process-instance search, paging, progress, and mutation-result tests into focused files under `cmd/get_processinstance_search_test.go`, `cmd/get_processinstance_paging_test.go`, and `cmd/processinstance_mutation_progress_test.go`
 - [ ] T036 [P] [US3] Split job update tests by command wiring, request parsing, worker outcome, and planning concern in `cmd/update_job_test.go`, `cmd/update_job_request_test.go`, `cmd/update_job_outcome_test.go`, and `cmd/update_job_plan_test.go`
 - [ ] T037 [P] [US3] Split process-instance cancel and delete direct-key versus selector execution tests in `cmd/cancel_processinstance_test.go`, `cmd/cancel_processinstance_selector_test.go`, `cmd/delete_processinstance_test.go`, and `cmd/delete_processinstance_selector_test.go`
 - [ ] T038 [P] [US3] Split root command wiring, configuration resolution, and service installation tests in `cmd/root_test.go`, `cmd/root_config_test.go`, and `cmd/root_services_test.go`

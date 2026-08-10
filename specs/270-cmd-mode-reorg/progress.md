@@ -352,3 +352,23 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Dry-run payload, preview rendering, and aggregate summary presentation tests now live beside dry-run renderer ownership; cancel/delete command files retain execution and planning coverage.
 ---
+---
+## Iteration 17 - 2026-08-10 15:20
+**Work Unit**: US3 process-instance search, paging, and mutation progress test ownership
+**Tasks Completed**:
+- [x] T035: Split process-instance search, paging, progress, and mutation-result tests into focused files
+**Tasks Remaining in Work Unit**: T036-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processinstance_search_test.go
+- cmd/get_processinstance_paging_test.go
+- cmd/processinstance_mutation_progress_test.go
+- cmd/get_processinstance_test.go
+- cmd/cancel_test.go
+- cmd/delete_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Process-instance search request-shape, get paging/total/progress, and shared cancel/delete mutation-progress tests can be split into focused files without production changes; broader `go test ./cmd -count=1` passed.
+---
