@@ -21,7 +21,6 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - Process-definition watch, mixed get renderers, dry-run planning-in-view, update job, root wiring, slow analysis, and ops progress each have clear split candidates without requiring behavior changes in this setup slice.
----
 ## Iteration 2 - 2026-08-10 13:41
 **Work Unit**: Foundational command-file cohesion contract guard
 **Tasks Completed**:
@@ -335,4 +334,21 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - Renderer ownership guard and compatibility tests passed; the only remaining renderer facade call is the already tracked process-instance dry-run planning exception deferred to US3 T041.
+---
+---
+## Iteration 16 - 2026-08-10 15:13
+**Work Unit**: US3 process-instance dry-run presentation test ownership
+**Tasks Completed**:
+- [x] T034: Split or add process-instance dry-run presentation tests in cmd/cmd_views_processinstance_dryrun_test.go
+**Tasks Remaining in Work Unit**: T035-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_processinstance_dryrun_test.go
+- cmd/cancel_test.go
+- cmd/delete_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Dry-run payload, preview rendering, and aggregate summary presentation tests now live beside dry-run renderer ownership; cancel/delete command files retain execution and planning coverage.
 ---
