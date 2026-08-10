@@ -123,7 +123,7 @@
 - [x] T044 [US3] Split job update command wiring, request parsing, worker-outcome handling, and planning declarations from `cmd/update_job.go` into `cmd/update_job_request.go`, `cmd/update_job_outcome.go`, and `cmd/update_job_plan.go`
 - [x] T045 [US3] Separate selector/search execution from direct-key execution for process-instance cancel in `cmd/cancel_processinstance.go` and `cmd/cancel_processinstance_selector.go`
 - [x] T046 [US3] Separate selector/search execution from direct-key execution for process-instance delete in `cmd/delete_processinstance.go` and `cmd/delete_processinstance_selector.go`
-- [ ] T047 [US3] Split root command wiring, configuration resolution, and service installation from `cmd/root.go` into `cmd/root_config.go` and `cmd/root_services.go`
+- [x] T047 [US3] Split root command wiring, configuration resolution, and service installation from `cmd/root.go` into `cmd/root_config.go` and `cmd/root_services.go`
 - [ ] T048 [US3] Split slow-process analysis command, validation, and progress declarations from `cmd/ops_analyse_slow_process_instances.go` into `cmd/ops_analyse_slow_process_instances_validation.go` and `cmd/ops_analyse_slow_process_instances_progress.go`
 - [ ] T049 [US3] Separate ops progress mode selection, milestone pacing, formatting, and rendering from `cmd/ops_progress.go` into focused progress files under `cmd/ops_progress_mode.go`, `cmd/ops_progress_milestones.go`, and `cmd/ops_progress_render.go`
 - [ ] T050 [US3] Move shared report-file and Markdown helpers into focused ops report files under `cmd/ops_report.go` and `cmd/ops_report_markdown.go`

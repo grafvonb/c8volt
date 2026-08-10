@@ -47,6 +47,7 @@ Started: 2026-08-10T11:35:19Z
 - T044 split job update production ownership: `cmd/update_job.go` now owns command flags, metadata, validation dispatch, confirmation, and top-level mutation dispatch; `cmd/update_job_request.go` owns ordinary retry/timeout request parsing and JSON guardrails; `cmd/update_job_outcome.go` owns worker outcome request parsing/submission rendering; `cmd/update_job_plan.go` owns current-job lookup planning, plan construction, worker outcome plan shape, and timeout precondition checks.
 - T045 created `cmd/cancel_processinstance_selector.go` for search-derived cancel execution. `cmd/cancel_processinstance.go` now owns Cobra setup, validation, mode dispatch, and direct-key cancel execution through `runCancelProcessInstanceDirect`; selector validation, search-page planning callbacks, dry-run aggregate rendering, continuation prompts, and paged cancel report rendering live in the selector file.
 - T046 created `cmd/delete_processinstance_selector.go` for search-derived delete execution. `cmd/delete_processinstance.go` now owns Cobra setup, validation, mode dispatch, direct-key delete execution through `runDeleteProcessInstanceDirect`, direct-key plan/force checks, and init; selector validation, frozen search-plan aggregation, continuation prompts, dry-run aggregate rendering, search-mode mutation submission, and paged delete report rendering live in the selector file.
+- T047 created `cmd/root_config.go` and `cmd/root_services.go`. `cmd/root.go` now owns root command globals, Cobra construction, persistent flag registration, top-level bootstrap flow, execution, and usage silencing; `cmd/root_config.go` owns Viper binding/defaults, config source context, config resolution, config hints, and env-key detection; `cmd/root_services.go` owns remote HTTP/auth service installation plus automation/activity indicator decisions.
 
 ## Gotchas
 
@@ -54,6 +55,7 @@ Started: 2026-08-10T11:35:19Z
 - Process-instance direct-key dry-run planning is now in `cmd/processinstance_mutation_progress.go`; keep future dry-run renderer edits limited to payload/view-model construction and rendering unless a later task explicitly moves presentation ownership again.
 - Job update backend-state lookup remains in `cmd/update_job_plan.go` as command-side planning coordination for this mechanical split; T053 is still the planned review point for whether backend-state lookup or mutation-plan construction needs a facade/service ownership follow-up.
 - Cancel and delete process-instance search-mode execution now have focused production files matching the existing selector test split. Delete search mode still freezes all selected page-level delete previews before one aggregate confirmation and mutation; do not convert it to page-by-page mutation in later cleanup.
+- Root bootstrap remains command-layer ownership after T047; service installation still constructs HTTP/auth services in `cmd/root_services.go` because root command bootstrap is the existing owner for wiring those services into context, not backend workflow logic.
 
 ## Reusable Commands
 
@@ -88,4 +90,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US3 with T047 by splitting root command wiring, configuration resolution, and service installation from `cmd/root.go` into `cmd/root_config.go` and `cmd/root_services.go`.
+- Next iteration should continue US3 with T048 by splitting slow-process analysis command, validation, and progress declarations from `cmd/ops_analyse_slow_process_instances.go` into `cmd/ops_analyse_slow_process_instances_validation.go` and `cmd/ops_analyse_slow_process_instances_progress.go`.

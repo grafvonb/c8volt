@@ -558,3 +558,20 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Delete selector/search execution now has focused production ownership while preserving the frozen aggregate delete plan before one confirmation and mutation.
 ---
+---
+## Iteration 29 - 2026-08-10 16:34
+**Work Unit**: US3 root command production ownership
+**Tasks Completed**:
+- [x] T047: Split root command wiring, configuration resolution, and service installation
+**Tasks Remaining in Work Unit**: T048-T055 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/root.go
+- cmd/root_config.go
+- cmd/root_services.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Root command production ownership now mirrors the focused root test split; focused root/config/service tests, full command package tests, and whitespace validation passed.
+---
