@@ -190,3 +190,19 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Plain incident renderer tests now live in the focused incident test file; shared flat-row plus resource and tenant renderer tests remain for later US2 tasks.
 ---
+---
+## Iteration 7 - 2026-08-10 14:30
+**Work Unit**: US2 resource and tenant renderer tests
+**Tasks Completed**:
+- [x] T024: Add resource and tenant renderer tests for human, JSON, and keys-only output
+**Tasks Remaining in Work Unit**: T025-T033 remain in US2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_resource_test.go
+- cmd/cmd_views_tenant_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Resource renderer coverage is single-item only; tenant renderer coverage now pins both collection and keyed output contracts in focused test ownership files.
+---

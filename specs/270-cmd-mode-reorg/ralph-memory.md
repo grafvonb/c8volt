@@ -25,6 +25,7 @@ Started: 2026-08-10T11:35:19Z
 - T021 created `cmd/cmd_views_processinstance_test.go` and moved process-instance row, list, age metadata, variable enrichment, incident enrichment, activity enrichment, and process-instance incident-line tests out of `cmd/cmd_views_get_test.go`; shared flat-row, process-definition, and plain incident renderer tests remain in the old mixed file until their US2 tasks.
 - T022 created `cmd/cmd_views_processdefinition_test.go`, moved the process-definition human list alignment test there, and added single-item human/JSON/keys-only, list JSON/keys-only, and watch-list parity renderer tests.
 - T023 created `cmd/cmd_views_incident_test.go` and moved plain incident renderer coverage there: aligned human rows, invalid timestamp age handling, message truncation, list human/no-message/JSON/keys-only modes, and process-instance-key output.
+- T024 created `cmd/cmd_views_resource_test.go` and `cmd/cmd_views_tenant_test.go`; resource lookup now has direct human/JSON/keys-only renderer coverage, and tenant list plus single-item rendering now has human/JSON/keys-only coverage.
 
 ## Gotchas
 
@@ -46,6 +47,7 @@ Started: 2026-08-10T11:35:19Z
 - `go test ./cmd -run 'Test(ProcessInstance|OneLinePI|ListProcessInstances|IncidentEnrichedProcessInstances|VariableEnrichedProcessInstances|ProcessInstanceVariableHumanLine|IncidentHumanLine|GetViewFilesAvoidBackendOwnership|ListProcessDefinitionsView|ListIncidentsView|FormatFlatRows|TruncateIncident)' -count=1`
 - `go test ./cmd -run 'Test(ListProcessDefinitionsView|ProcessDefinitionView|ProcessDefinitionWatchView)' -count=1`
 - `go test ./cmd -run 'Test(IncidentHumanLineWithMessageLimit|TruncateIncidentHumanMessage|ListIncidentsView|RenderIncidentProcessInstanceKeys|GetViewFilesAvoidBackendOwnership)' -count=1`
+- `go test ./cmd -run 'Test(ResourceView|ListTenantsView|TenantView)' -count=1`
 - `go test ./cmd -run 'Test.*View|Test.*JSON|Test.*KeysOnly' -count=1`
 - `git diff --check`
 
@@ -54,4 +56,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should continue US2 with T024 by adding resource and tenant renderer tests for human, JSON, and keys-only output in `cmd/cmd_views_resource_test.go` and `cmd/cmd_views_tenant_test.go`; do not start US3.
+- Next iteration should continue US2 with T025 by adding shared flat-row layout tests in `cmd/cmd_views_flat_test.go`; do not start US3.
