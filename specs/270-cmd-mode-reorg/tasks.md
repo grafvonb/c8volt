@@ -78,7 +78,7 @@
 
 ### Tests for User Story 2
 
-- [ ] T021 [US2] Move process-instance renderer tests from `cmd/cmd_views_get_test.go` to `cmd/cmd_views_processinstance_test.go`
+- [x] T021 [US2] Move process-instance renderer tests from `cmd/cmd_views_get_test.go` to `cmd/cmd_views_processinstance_test.go`
 - [ ] T022 [P] [US2] Add process-definition renderer tests for human, JSON, keys-only, and watch list parity in `cmd/cmd_views_processdefinition_test.go`
 - [ ] T023 [P] [US2] Add incident renderer tests for human, JSON, keys-only, and process-instance-key output in `cmd/cmd_views_incident_test.go`
 - [ ] T024 [P] [US2] Add resource and tenant renderer tests for human, JSON, and keys-only output in `cmd/cmd_views_resource_test.go` and `cmd/cmd_views_tenant_test.go`

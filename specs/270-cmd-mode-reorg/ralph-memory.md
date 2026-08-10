@@ -22,6 +22,7 @@ Started: 2026-08-10T11:35:19Z
 - T015/T016 created `cmd/get_processdefinition_watch.go` and moved the guarded process-definition watch lifecycle declarations there. `cmd/get_processdefinition.go` now keeps process-definition command construction, flags, validation, dispatch, XML/key/search execution, and shared ordinary lookup logic.
 - T017 moved process-definition watch scenarios, subprocess rejection helper, and watch harness helpers from `cmd/get_processdefinition_test.go` to `cmd/get_processdefinition_watch_test.go`. The base test file now keeps selector/filter, non-watch machine modes, base dispatch, XML/search, paging activity, and shared ordinary helpers.
 - T018-T020 completed the US1 audit and checkpoints: watch lifecycle declarations remain in `cmd/get_processdefinition_watch.go`, base validation still owns incompatible watch output-mode rejection, and both watch plus non-watch process-definition targeted commands passed.
+- T021 created `cmd/cmd_views_processinstance_test.go` and moved process-instance row, list, age metadata, variable enrichment, incident enrichment, activity enrichment, and process-instance incident-line tests out of `cmd/cmd_views_get_test.go`; shared flat-row, process-definition, and plain incident renderer tests remain in the old mixed file until their US2 tasks.
 
 ## Gotchas
 
@@ -40,6 +41,7 @@ Started: 2026-08-10T11:35:19Z
 - `go test ./cmd -run 'TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata|TestGetProcessDefinitionWatchOutputParityAssertions|TestValidateGetProcessDefinitionWatch|TestGetProcessDefinition.*Watch|TestProcessDefinition.*Watch' -count=1`
 - `go test ./cmd -run 'TestCommandContractFocusedModeFilesOwnLifecycleDeclarations|TestGetProcessDefinition.*Watch|TestProcessDefinition.*Watch|TestValidateGetProcessDefinitionWatch|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata|TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle' -count=1`
 - `go test ./cmd -run 'TestGetProcessDefinition|TestProcessDefinitionSelectorValidationHelpContract' -count=1`
+- `go test ./cmd -run 'Test(ProcessInstance|OneLinePI|ListProcessInstances|IncidentEnrichedProcessInstances|VariableEnrichedProcessInstances|ProcessInstanceVariableHumanLine|IncidentHumanLine|GetViewFilesAvoidBackendOwnership|ListProcessDefinitionsView|ListIncidentsView|FormatFlatRows|TruncateIncident)' -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
@@ -47,4 +49,4 @@ Started: 2026-08-10T11:35:19Z
 - Do not redo the setup ownership audit from scratch; use `specs/270-cmd-mode-reorg/ownership-followups.md` and only refresh notes for files a later task actually touches.
 
 ## Current Handoff
-- Next iteration should start US2 with T021 by moving process-instance renderer tests from `cmd/cmd_views_get_test.go` to `cmd/cmd_views_processinstance_test.go`; keep renderer behavior output-compatible and do not start US3.
+- Next iteration should continue US2 with T022 by adding process-definition renderer tests for human, JSON, keys-only, and watch list parity in `cmd/cmd_views_processdefinition_test.go`; do not start US3.

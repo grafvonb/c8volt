@@ -3,7 +3,6 @@
 Feature: 270-cmd-mode-reorg
 Started: 2026-08-10 13:35:19
 
----
 ## Iteration 1 - 2026-08-10 13:37
 **Work Unit**: Setup baseline and ownership follow-up artifact
 **Tasks Completed**:
@@ -143,4 +142,20 @@ Started: 2026-08-10 13:35:19
 - specs/270-cmd-mode-reorg/progress.md
 **Learnings**:
 - Watch subprocess rejection, retry, slow-refresh, stop-status, and harness coverage now lives beside focused watch mode ownership; ordinary process-definition tests retain only non-watch compatibility and the guard against watch lifecycle leakage.
+---
+---
+## Iteration 4 - 2026-08-10 14:15
+**Work Unit**: US2 process-instance renderer test ownership
+**Tasks Completed**:
+- [x] T021: Move process-instance renderer tests from cmd_views_get_test.go to cmd_views_processinstance_test.go
+**Tasks Remaining in Work Unit**: T022-T033 remain in US2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_get_test.go
+- cmd/cmd_views_processinstance_test.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Process-instance row, list, age metadata, variable enrichment, incident enrichment, activity enrichment, and process-instance incident-line renderer tests now live in the focused process-instance test file; shared flat-row, process-definition, and plain incident renderer tests remain for later US2 tasks.
 ---
