@@ -239,3 +239,19 @@ Started: 2026-08-10 13:35:19
 **Learnings**:
 - Generic flat-row layout primitives were in render-mode ownership in the current code, while `zeroAsMinus` remained in mixed get renderer ownership; T026 moved both shared pieces into focused flat-row rendering ownership without changing output behavior.
 ---
+---
+## Iteration 10 - 2026-08-10 14:48
+**Work Unit**: US2 process-instance renderer ownership
+**Tasks Completed**:
+- [x] T027: Move process-instance rendering declarations from cmd_views_get.go to existing process-instance view files
+**Tasks Remaining in Work Unit**: T028-T033 remain in US2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_get.go
+- cmd/cmd_views_processinstance.go
+- specs/270-cmd-mode-reorg/tasks.md
+- specs/270-cmd-mode-reorg/ralph-memory.md
+- specs/270-cmd-mode-reorg/progress.md
+**Learnings**:
+- Default process-instance rendering, row formatting, total output, and age metadata can live in `cmd_views_processinstance.go`; enrichment renderers can reuse those declarations without import or output changes.
+---
