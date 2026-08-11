@@ -65,6 +65,7 @@ type API interface {
 	SearchProcessDefinitions(ctx context.Context, filter ProcessDefinitionFilter, opts ...options.FacadeOption) (ProcessDefinitions, error)
 	SearchProcessDefinitionsLatest(ctx context.Context, filter ProcessDefinitionFilter, opts ...options.FacadeOption) (ProcessDefinitions, error)
 	SearchProcessDefinitionsPages(ctx context.Context, request ProcessDefinitionSearchRequest, visitor ProcessDefinitionSearchPageVisitor, opts ...options.FacadeOption) (ProcessDefinitionSearchPagesResult, error)
+	CollectProcessDefinitionWatchSnapshot(ctx context.Context, request ProcessDefinitionWatchSnapshotRequest, opts ...options.FacadeOption) (ProcessDefinitionWatchSnapshot, error)
 	GetProcessDefinition(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessDefinition, error)
 	GetProcessDefinitionXML(ctx context.Context, key string, opts ...options.FacadeOption) (string, error)
 

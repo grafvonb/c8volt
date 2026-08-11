@@ -163,6 +163,28 @@ Then look around at the latest process definitions visible in the cluster:
 ./c8volt get process-definition --latest
 ```
 
+To watch deployment visibility in a terminal, add `--watch`. The first refresh
+runs immediately, the default interval is `1s`, and `--watch-interval` accepts
+positive durations such as `2s`. Each successful refresh repaints one terminal
+view and uses the same human result body as the equivalent non-watch process
+definition lookup, without watch-only `snapshot N:` labels. Without a selector,
+watch mode observes all visible process definitions; `--batch-size` controls
+each backend discovery request for broad watch refreshes without capping the
+total rows in a refresh.
+
+```bash
+./c8volt get process-definition --watch
+./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --watch --watch-interval 2s
+```
+
+Process-definition watch output is human-only: it rejects `--json`,
+`--keys-only`, `--xml`, `--quiet`, and `--automation` before lookup work so
+script-safe output modes stay finite and deterministic. Existing timeout and
+backoff retry settings bound watch runs, and successful refreshes reset the
+consecutive retry budget. If refresh work takes longer than the configured
+interval, default human mode warns once per continuous slow streak; verbose mode
+adds per-refresh timing on stderr.
+
 For scripts or CI, add `--json` when stdout should be data and logs should stay on stderr:
 
 ```bash

@@ -26,6 +26,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestGetProcessDefinitionSelectionFlagsRemainSearchFilters ensures existing
+// process-definition selectors still map into the facade filter unchanged.
 func TestGetProcessDefinitionSelectionFlagsRemainSearchFilters(t *testing.T) {
 	resetGetProcessDefinitionCommandGlobals()
 	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
@@ -44,6 +46,155 @@ func TestGetProcessDefinitionSelectionFlagsRemainSearchFilters(t *testing.T) {
 		ProcessVersion:    3,
 		ProcessVersionTag: "stable",
 	}, filter)
+}
+
+// TestGetProcessDefinitionNonWatchMachineModesStayCompatible keeps finite
+// process-definition output modes unchanged while watch validation is added.
+func TestGetProcessDefinitionNonWatchMachineModesStayCompatible(t *testing.T) {
+	tests := []struct {
+		name         string
+		args         []string
+		wantStdout   string
+		wantNoStdout string
+		serve        func(*testing.T, *[]map[string]any) *httptest.Server
+	}{
+		{
+			name:       "json",
+			args:       []string{"--json", "get", "process-definition"},
+			wantStdout: `"outcome": "succeeded"`,
+		},
+		{
+			name:       "keys only",
+			args:       []string{"--keys-only", "get", "process-definition"},
+			wantStdout: "2251799813685255\n",
+		},
+		{
+			name:       "xml",
+			args:       []string{"get", "process-definition", "--key", "2251799813685255", "--xml"},
+			wantStdout: "<definitions id=\"invoice\"/>",
+			serve: func(t *testing.T, requests *[]map[string]any) *httptest.Server {
+				t.Helper()
+				return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					require.Equal(t, http.MethodGet, r.Method)
+					require.Equal(t, "/v2/process-definitions/2251799813685255/xml", r.URL.Path)
+					*requests = append(*requests, map[string]any{
+						"method": r.Method,
+						"path":   r.URL.Path,
+					})
+					w.Header().Set("Content-Type", "application/xml")
+					_, _ = w.Write([]byte("<definitions id=\"invoice\"/>"))
+				}))
+			},
+		},
+		{
+			name:       "quiet",
+			args:       []string{"--quiet", "get", "process-definition"},
+			wantStdout: "2251799813685255",
+		},
+		{
+			name:       "automation",
+			args:       []string{"--automation", "get", "process-definition"},
+			wantStdout: "found: 1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []map[string]any
+			serve := tt.serve
+			if serve == nil {
+				serve = func(t *testing.T, requests *[]map[string]any) *httptest.Server {
+					t.Helper()
+					return newProcessDefinitionSearchServerResponses(t, requests,
+						`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+					)
+				}
+			}
+			srv := serve(t, &requests)
+			t.Cleanup(srv.Close)
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+			args := append([]string{"--config", cfgPath}, tt.args...)
+
+			stdout, stderr := executeRootForProcessDefinitionTestWithSeparateOutputs(t, args...)
+
+			require.Len(t, requests, 1)
+			require.Empty(t, stderr)
+			require.Contains(t, stdout, tt.wantStdout)
+			if tt.wantNoStdout != "" {
+				require.NotContains(t, stdout, tt.wantNoStdout)
+			}
+		})
+	}
+}
+
+// TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle verifies ordinary
+// process-definition paths remain independent from watch timing and repaint
+// behavior, even if stale watch interval state would be invalid for watch mode.
+func TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle(t *testing.T) {
+	tests := []struct {
+		name             string
+		args             []string
+		wantRequest      string
+		responseType     string
+		responseBody     string
+		wantStdout       string
+		wantNoStdout     string
+		wantRequestCount int
+	}{
+		{
+			name:             "list",
+			args:             []string{"get", "process-definition"},
+			wantRequest:      "POST /v2/process-definitions/search",
+			responseType:     "application/json",
+			responseBody:     `{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			wantStdout:       "2251799813685255 tenant invoice v3/stable\nfound: 1\n",
+			wantRequestCount: 1,
+		},
+		{
+			name:             "key lookup",
+			args:             []string{"get", "process-definition", "--key", "2251799813685255"},
+			wantRequest:      "GET /v2/process-definitions/2251799813685255",
+			responseType:     "application/json",
+			responseBody:     `{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"}`,
+			wantStdout:       "2251799813685255 tenant invoice v3/stable\n",
+			wantNoStdout:     "found:",
+			wantRequestCount: 1,
+		},
+		{
+			name:             "xml lookup",
+			args:             []string{"get", "process-definition", "--key", "2251799813685255", "--xml"},
+			wantRequest:      "GET /v2/process-definitions/2251799813685255/xml",
+			responseType:     "application/xml",
+			responseBody:     "<definitions id=\"invoice\"/>",
+			wantStdout:       "<definitions id=\"invoice\"/>",
+			wantRequestCount: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				request := r.Method + " " + r.URL.Path
+				requests = append(requests, request)
+				require.Equal(t, tt.wantRequest, request)
+				w.Header().Set("Content-Type", tt.responseType)
+				_, _ = w.Write([]byte(tt.responseBody))
+			}))
+			t.Cleanup(srv.Close)
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+			args := append([]string{"--config", cfgPath}, tt.args...)
+
+			stdout, stderr := executeRootForProcessDefinitionBaseDispatchTest(t, args...)
+
+			require.Equal(t, tt.wantRequestCount, len(requests))
+			require.Equal(t, tt.wantStdout, stdout)
+			if tt.wantNoStdout != "" {
+				require.NotContains(t, stdout, tt.wantNoStdout)
+			}
+			requireNoProcessDefinitionWatchLifecycleOutput(t, stdout, stderr)
+		})
+	}
 }
 
 func TestGetProcessDefinitionLatestSearchPreservesSelectionRequest(t *testing.T) {
@@ -374,8 +525,24 @@ func resetGetProcessDefinitionCommandGlobals() {
 	flagGetPDLatest = false
 	flagGetPDWithStat = false
 	flagGetPDAsXML = false
+	flagGetPDBatchSize = 0
+	flagGetPDWatch = false
+	flagGetPDWatchInterval = defaultGetPDWatchInterval.String()
 	flagViewAsJson = false
 	flagViewKeysOnly = false
+	flagQuiet = false
+	flagVerbose = false
+	flagDebug = false
+	flagCmdAutomation = false
+}
+
+// marshalStringSliceForEnv keeps subprocess argument fixtures shell-safe.
+func marshalStringSliceForEnv(t *testing.T, items []string) string {
+	t.Helper()
+
+	data, err := json.Marshal(items)
+	require.NoError(t, err)
+	return string(data)
 }
 
 func TestGetProcessDefinitionLatestSearchPreservesSelectionRequestHelper(t *testing.T) {
@@ -436,6 +603,42 @@ func executeRootForProcessDefinitionTestWithSeparateOutputs(t *testing.T, args .
 	_, err := root.ExecuteC()
 	require.NoError(t, err)
 	return stdout.String(), stderr.String()
+}
+
+// executeRootForProcessDefinitionBaseDispatchTest keeps watch-only globals
+// hostile so base dispatch tests fail if ordinary paths validate watch state.
+func executeRootForProcessDefinitionBaseDispatchTest(t *testing.T, args ...string) (string, string) {
+	t.Helper()
+
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+
+	root := Root()
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	root.SetOut(stdout)
+	root.SetErr(stderr)
+	root.SetArgs(args)
+	resetCommandTreeFlags(root)
+	resetGetProcessDefinitionCommandGlobals()
+	flagGetPDWatchInterval = "not-a-duration"
+
+	_, err := root.ExecuteC()
+	require.NoError(t, err)
+	return stdout.String(), stderr.String()
+}
+
+// requireNoProcessDefinitionWatchLifecycleOutput keeps watch repaint, retry, and
+// stop status text out of ordinary process-definition command output.
+func requireNoProcessDefinitionWatchLifecycleOutput(t *testing.T, stdout, stderr string) {
+	t.Helper()
+
+	require.NotContains(t, stdout, processDefinitionWatchRepaintControlSequenceForTest)
+	require.NotContains(t, stdout, "process-definition watch")
+	require.NotContains(t, stdout, "watch stopped")
+	require.NotContains(t, stderr, "process-definition watch")
+	require.NotContains(t, stderr, "watch stopped")
+	require.Empty(t, stderr)
 }
 
 func newProcessDefinitionSearchServerResponses(t *testing.T, requests *[]map[string]any, responses ...string) *httptest.Server {

@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -13,14 +14,92 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/toolx/logging"
+	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
+
+// processInstancePageImpact captures per-page impact counts used by cancel/delete paging prompts.
+//
+// These values are accumulated across pages to present users with a continuation prompt that reflects
+// both the visible page size and the real operational impact when dependencies are included.
+type processInstancePageImpact struct {
+	// Requested is the raw number of keys selected from the current search page.
+	Requested int
+	// Affected is the expanded number of instances impacted after dependency resolution.
+	Affected int
+	// Roots is the number of root instances in the expanded impact set.
+	Roots int
+}
+
+// processInstancePageActionResult is the per-page result produced by mutating
+// process-instance commands. It keeps operational impact, reporters, and dry-run
+// previews together so the paging loop can aggregate them without knowing the
+// command-specific cancel/delete implementation details.
+type processInstancePageActionResult struct {
+	Impact        processInstancePageImpact
+	Reports       []process.Reporter
+	DryRunPreview *processInstanceDryRunPreview
+}
+
+// processInstancePageActionResults is the accumulated result returned from a
+// paged cancel/delete operation after all selected pages are processed.
+type processInstancePageActionResults struct {
+	Reports        []process.Reporter
+	DryRunPreviews []processInstanceDryRunPreview
+}
+
+// processInstanceDryRunPlanResult keeps command-owned dry-run planning data
+// together before the caller either renders a preview or submits a mutation.
+type processInstanceDryRunPlanResult struct {
+	Plan    process.DryRunPIKeyExpansion
+	Impact  processInstancePageImpact
+	Preview processInstanceDryRunPreview
+}
 
 // processInstanceMutationProgressState serializes progress rendering shared by
 // service worker callbacks and command fallback output.
 type processInstanceMutationProgressState struct {
 	mu   sync.Mutex
 	seen bool
+}
+
+// planProcessInstanceDryRunPreview builds the shared dry-run plan, impact
+// counts, and render payload for one direct-key process-instance batch.
+func planProcessInstanceDryRunPreview(cmd *cobra.Command, cli process.API, operation string, keys types.Keys) (processInstanceDryRunPlanResult, error) {
+	return planProcessInstanceDryRunPreviewWithOptions(cmd, cli, operation, keys, collectOptions())
+}
+
+// planProcessInstanceDryRunPreviewWithOptions lets direct-key callers preserve
+// admin-input semantics while search-derived callers keep tenant scoping.
+func planProcessInstanceDryRunPreviewWithOptions(cmd *cobra.Command, cli process.API, operation string, keys types.Keys, opts []processOptions.FacadeOption) (processInstanceDryRunPlanResult, error) {
+	stopActivity := startCommandActivity(cmd, fmt.Sprintf("preparing %s dry-run scope for %d process instance(s)", operation, len(keys)))
+	defer stopActivity()
+
+	plan, err := cli.DryRunCancelOrDeletePlan(context.Background(), keys, flagWorkers, opts...)
+	if err != nil {
+		return processInstanceDryRunPlanResult{}, fmt.Errorf("%s validation: %w", operation, err)
+	}
+
+	return processInstanceDryRunPlanResult{
+		Plan:    plan,
+		Impact:  processInstancePageImpact{Requested: len(keys), Affected: len(plan.Collected), Roots: len(plan.Roots)},
+		Preview: newProcessInstanceDryRunPreview(operation, keys, plan),
+	}, nil
+}
+
+// processInstancePageActionResultFromPlan converts a service-owned mutation
+// planning step into the command result shape used by cancel/delete pagination.
+func processInstancePageActionResultFromPlan(operation string, step process.ProcessInstanceMutationPlanStep) processInstancePageActionResult {
+	keys := types.Keys(step.RequestedKeys)
+	preview := newProcessInstanceDryRunPreview(operation, keys, step.Plan)
+	return processInstancePageActionResult{
+		Impact: processInstancePageImpact{
+			Requested: len(keys),
+			Affected:  len(step.Plan.Collected),
+			Roots:     len(step.Plan.Roots),
+		},
+		DryRunPreview: &preview,
+	}
 }
 
 // newProcessInstanceMutationProgressReporter creates a serialized command

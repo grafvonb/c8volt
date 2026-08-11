@@ -97,6 +97,26 @@ type ProcessDefinitionSearchPagesResult struct {
 	Pages int32               `json:"pages,omitempty"`
 }
 
+// ProcessDefinitionWatchSnapshotRequest selects one complete process-definition
+// snapshot for a watch tick.
+type ProcessDefinitionWatchSnapshotRequest struct {
+	Key                    string                       `json:"key,omitempty"`
+	Filter                 ProcessDefinitionFilter      `json:"filter,omitempty"`
+	Page                   ProcessDefinitionPageRequest `json:"page,omitempty"`
+	Latest                 bool                         `json:"latest,omitempty"`
+	WatchAllWhenUnselected bool                         `json:"watchAllWhenUnselected,omitempty"`
+}
+
+// ProcessDefinitionWatchSnapshot captures process definitions visible for one
+// watch tick.
+type ProcessDefinitionWatchSnapshot struct {
+	Items         []ProcessDefinition             `json:"items,omitempty"`
+	Total         int32                           `json:"total,omitempty"`
+	Pages         int32                           `json:"pages,omitempty"`
+	ReportedTotal *ProcessDefinitionReportedTotal `json:"reportedTotal,omitempty"`
+	Empty         bool                            `json:"empty"`
+}
+
 func (f ProcessDefinitionFilter) String() string {
 	parts := make([]string, 0, 4)
 	parts = toolx.AppendQuotedField(parts, "key", f.Key)

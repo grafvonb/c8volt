@@ -66,123 +66,6 @@ func TestFormatOpsPageProgressLabelsPageCountCertainty(t *testing.T) {
 	}
 }
 
-// TestFormatOpsPreflightScopeRendersConsequencesAndConfirmationContext verifies broad selector summaries stay compact and certainty-aware.
-func TestFormatOpsPreflightScopeRendersConsequencesAndConfirmationContext(t *testing.T) {
-	total := int64(10000)
-	pages := int64(10)
-
-	got := formatOpsPreflightScope(ops.PreflightScope{
-		Command:         "ops analyse slow-process-instances",
-		SelectorSummary: "OrderProcess",
-		CoreResource:    "process_instance",
-		Total:           &total,
-		TotalKind:       ops.TotalCertaintyLowerBound,
-		PageSize:        1000,
-		PageCount:       &pages,
-		PageCountKind:   ops.PageCountKindEstimated,
-		ConsequenceSummary: ops.ConsequenceSummary{
-			WorkSummary: "discover all matches and load runtime element timelines",
-			RiskSummary: "read-only, expensive",
-		},
-		RequiresConfirmation: true,
-	})
-
-	require.Equal(t, []string{
-		"slow analysis scope: OrderProcess matched at least 10000 process instances; page size: 1000; discovery pages: at least 10",
-		"slow analysis is expensive: discover all matches and load runtime element timelines",
-	}, got)
-}
-
-// TestFormatOpsPreflightScopeLabelsExactLowerBoundAndUnknownTotals verifies count wording covers all US1 certainty cases.
-func TestFormatOpsPreflightScopeLabelsExactLowerBoundAndUnknownTotals(t *testing.T) {
-	tests := []struct {
-		name      string
-		total     *int64
-		kind      ops.TotalCertainty
-		pageCount *int64
-		pageKind  ops.PageCountKind
-		want      string
-	}{
-		{name: "exact", total: ptrInt64(2000), kind: ops.TotalCertaintyExact, pageCount: ptrInt64(2), pageKind: ops.PageCountKindExact, want: "slow analysis scope: OrderProcess matched 2000 process instances; page size: 1000; discovery pages: 2"},
-		{name: "zero exact", total: ptrInt64(0), kind: ops.TotalCertaintyExact, pageKind: ops.PageCountKindUnknown, want: "slow analysis scope: OrderProcess matched no process instances; page size: 1000"},
-		{name: "lower bound", total: ptrInt64(2000), kind: ops.TotalCertaintyLowerBound, pageCount: ptrInt64(2), pageKind: ops.PageCountKindEstimated, want: "slow analysis scope: OrderProcess matched at least 2000 process instances; page size: 1000; discovery pages: at least 2"},
-		{name: "unknown", kind: ops.TotalCertaintyUnknown, pageKind: ops.PageCountKindUnknown, want: "slow analysis scope: OrderProcess matched an unknown number of process instances; page size: 1000"},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := formatOpsPreflightScope(ops.PreflightScope{
-				Command:         "ops analyse slow-process-instances",
-				SelectorSummary: "OrderProcess",
-				CoreResource:    "process_instance",
-				Total:           tc.total,
-				TotalKind:       tc.kind,
-				PageSize:        1000,
-				PageCount:       tc.pageCount,
-				PageCountKind:   tc.pageKind,
-			})
-
-			require.Equal(t, tc.want, got[0])
-		})
-	}
-}
-
-// TestFormatOpsPreflightScopeRendersEmptyScopeWithoutBlankLines verifies zero-match output stays calm and grammatical.
-func TestFormatOpsPreflightScopeRendersEmptyScopeWithoutBlankLines(t *testing.T) {
-	total := int64(0)
-
-	got := formatOpsPreflightScope(ops.PreflightScope{
-		Command:         "ops analyse slow-process-instances",
-		SelectorSummary: "EmptyProcess",
-		CoreResource:    "process_instance",
-		Total:           &total,
-		TotalKind:       ops.TotalCertaintyExact,
-		PageSize:        1000,
-		PageCountKind:   ops.PageCountKindUnknown,
-		ConsequenceSummary: ops.ConsequenceSummary{
-			WorkSummary: "none; no runtime element timelines will be loaded",
-		},
-	})
-
-	require.Equal(t, []string{
-		"slow analysis scope: EmptyProcess matched no process instances; page size: 1000",
-		"slow analysis: none; no runtime element timelines will be loaded",
-	}, got)
-}
-
-// TestFormatOpsPreflightScopeNamesBasicInspectionResources verifies the shared preflight formatter has stable resource labels for the basic get rollout.
-func TestFormatOpsPreflightScopeNamesBasicInspectionResources(t *testing.T) {
-	total := int64(3000)
-	pages := int64(3)
-	tests := []struct {
-		name         string
-		coreResource string
-		command      string
-		selector     string
-		want         string
-	}{
-		{name: "process instances", coreResource: "process_instance", command: "get process-instance", selector: "active instances", want: "process-instance search scope: active instances matched 3000 process instances; page size: 1000; discovery pages: 3"},
-		{name: "incidents", coreResource: "incident", command: "get incident", selector: "active incidents", want: "incident search scope: active incidents matched 3000 incidents; page size: 1000; discovery pages: 3"},
-		{name: "jobs", coreResource: "job", command: "get job", selector: "failed jobs", want: "job search scope: failed jobs matched 3000 jobs; page size: 1000; discovery pages: 3"},
-		{name: "elements", coreResource: "element", command: "get element", selector: "active elements", want: "element search scope: active elements matched 3000 elements; page size: 1000; discovery pages: 3"},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := formatOpsPreflightScope(ops.PreflightScope{
-				Command:         tc.command,
-				SelectorSummary: tc.selector,
-				CoreResource:    tc.coreResource,
-				Total:           &total,
-				TotalKind:       ops.TotalCertaintyExact,
-				PageSize:        1000,
-				PageCount:       &pages,
-				PageCountKind:   ops.PageCountKindExact,
-			})
-
-			require.Equal(t, tc.want, got[0])
-		})
-	}
-}
-
 // TestFormatOpsFrozenScopeProgressGatesETA verifies exact counters can show elapsed, percent, and rate while ETA waits for a remaining estimate.
 func TestFormatOpsFrozenScopeProgressGatesETA(t *testing.T) {
 	rate := 4.25
@@ -230,6 +113,121 @@ func TestOpsProgressChannelForModeProtectsMachineOutput(t *testing.T) {
 	require.Equal(t, ops.ProgressChannel{Mode: ops.ProgressModeKeysOnly}, opsProgressChannelForMode(opsProgressModeInput{RenderMode: RenderModeKeysOnly}))
 	require.Equal(t, ops.ProgressChannel{Mode: ops.ProgressModeQuiet}, opsProgressChannelForMode(opsProgressModeInput{RenderMode: RenderModeOneLine, Quiet: true}))
 	require.Equal(t, ops.ProgressChannel{Mode: ops.ProgressModeAutomation, StructuredReportAllowed: true}, opsProgressChannelForMode(opsProgressModeInput{RenderMode: RenderModeOneLine, Automation: true}))
+}
+
+// TestOpsProgressDurableMilestoneRequiresElapsedTimeAndPageProgress verifies default-human milestones wait for silence and observed discovery movement.
+func TestOpsProgressDurableMilestoneRequiresElapsedTimeAndPageProgress(t *testing.T) {
+	now := time.Date(2026, time.August, 4, 12, 0, 0, 0, time.UTC)
+	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
+	channel := ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}
+	event := ops.ProgressEvent{
+		Kind: ops.ProgressEventKindPage,
+		Page: &ops.PageProgress{Phase: "discovering process instances", CurrentPage: 1, Seen: 1000, Selected: 900},
+	}
+
+	require.False(t, pacer.AllowDurableMilestone(event, channel))
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	event.Page.CurrentPage = 2
+	event.Page.Seen = 2000
+	event.Page.Selected = 1800
+
+	require.True(t, pacer.AllowDurableMilestone(event, channel))
+}
+
+// TestOpsProgressDurableMilestoneRequiresForwardProgress verifies elapsed time alone does not repeat the same milestone.
+func TestOpsProgressDurableMilestoneRequiresForwardProgress(t *testing.T) {
+	now := time.Date(2026, time.August, 4, 12, 0, 0, 0, time.UTC)
+	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
+	channel := ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}
+	event := ops.ProgressEvent{
+		Kind: ops.ProgressEventKindPage,
+		Page: &ops.PageProgress{Phase: "discovering process instances", CurrentPage: 1, Seen: 1000, Selected: 900},
+	}
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	require.True(t, pacer.AllowDurableMilestone(event, channel))
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+
+	require.False(t, pacer.AllowDurableMilestone(event, channel))
+}
+
+// TestOpsProgressDurableMilestoneAllowsFrozenScopeProgress verifies frozen-scope counters can drive sparse default-human milestones.
+func TestOpsProgressDurableMilestoneAllowsFrozenScopeProgress(t *testing.T) {
+	now := time.Date(2026, time.August, 4, 12, 0, 0, 0, time.UTC)
+	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
+	channel := ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}
+	event := ops.ProgressEvent{
+		Kind:        ops.ProgressEventKindFrozenScope,
+		FrozenScope: &ops.FrozenScopeProgress{Phase: "loading runtime elements", CoreResource: "process instance(s)", Done: 0, Total: 100},
+	}
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	require.False(t, pacer.AllowDurableMilestone(event, channel))
+
+	event.FrozenScope.Done = 25
+
+	require.True(t, pacer.AllowDurableMilestone(event, channel))
+}
+
+// TestOpsProgressDurableMilestoneSuppressesTimerOnlyETA verifies timing-only ETA updates do not create duplicate durable milestones.
+func TestOpsProgressDurableMilestoneSuppressesTimerOnlyETA(t *testing.T) {
+	now := time.Date(2026, time.August, 4, 12, 0, 0, 0, time.UTC)
+	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
+	channel := ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}
+	remaining := 5 * time.Minute
+	event := ops.ProgressEvent{
+		Kind: ops.ProgressEventKindETA,
+		ETA: &ops.ETASampleWindow{
+			Phase:             "loading runtime elements",
+			CompletedSamples:  3,
+			Total:             100,
+			Elapsed:           30 * time.Second,
+			MinimumSamplesMet: true,
+			Remaining:         &remaining,
+		},
+	}
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	require.True(t, pacer.AllowDurableMilestone(event, channel))
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	event.ETA.Elapsed += opsDurableMilestoneMinimumElapsed
+	remaining -= time.Minute
+
+	require.False(t, pacer.AllowDurableMilestone(event, channel))
+}
+
+// TestOpsProgressDurableMilestoneChannelGatingProtectsMachineModes verifies sparse durable milestones stay out of script-safe modes.
+func TestOpsProgressDurableMilestoneChannelGatingProtectsMachineModes(t *testing.T) {
+	startedAt := time.Date(2026, time.August, 4, 12, 0, 0, 0, time.UTC)
+	now := startedAt
+	event := ops.ProgressEvent{
+		Kind: ops.ProgressEventKindPage,
+		Page: &ops.PageProgress{Phase: "discovering process instances", CurrentPage: 2, Seen: 2000, Selected: 1800},
+	}
+
+	tests := []struct {
+		name    string
+		channel ops.ProgressChannel
+		want    bool
+	}{
+		{name: "default human", channel: ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}, want: true},
+		{name: "json", channel: ops.ProgressChannel{Mode: ops.ProgressModeJSON}},
+		{name: "keys only", channel: ops.ProgressChannel{Mode: ops.ProgressModeKeysOnly}},
+		{name: "quiet", channel: ops.ProgressChannel{Mode: ops.ProgressModeQuiet}},
+		{name: "automation", channel: ops.ProgressChannel{Mode: ops.ProgressModeAutomation, StructuredReportAllowed: true}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
+			now = startedAt.Add(opsDurableMilestoneMinimumElapsed)
+
+			require.Equal(t, tc.want, pacer.AllowDurableMilestone(event, tc.channel))
+			now = startedAt
+		})
+	}
 }
 
 // TestOpsETAAllowedRequiresSamplesExactTotalAndRemaining verifies approximate remaining time needs a complete timing window.

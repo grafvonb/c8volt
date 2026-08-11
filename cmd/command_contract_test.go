@@ -4,6 +4,9 @@
 package cmd
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"strings"
@@ -131,6 +134,104 @@ func TestCommandCapabilityForCommand_DocumentsTenantContract(t *testing.T) {
 	} {
 		require.Contains(t, cmd.Long, "Tenant contract:")
 		require.Contains(t, cmd.Long, "backend-authorized admin input")
+	}
+}
+
+// TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata keeps command
+// discovery aligned with the repainting watch contract.
+func TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(getProcessDefinitionCmd)
+
+	require.Equal(t, "get process-definition", capability.Path)
+	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportUnsupported, capability.AutomationSupport)
+	require.Empty(t, capability.AutomationNotes)
+	require.Equal(t, "List or fetch deployed process definitions", capability.Summary)
+	require.Contains(t, capability.Aliases, "pd")
+	require.Contains(t, capability.Aliases, "pds")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "watch",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "repeat the process-definition lookup as a repainted terminal view until interrupted, timed out, or retry-exhausted",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "watch-interval",
+		Type:        "duration",
+		Required:    false,
+		Repeated:    false,
+		Description: "interval between process-definition watch refreshes after the immediate first refresh",
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:      "one-line",
+		Supported: true,
+		Notes:     "default watch refreshes repaint this normal list view; --watch rejects JSON/keys-only/XML/quiet/automation combinations",
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:             "json",
+		Supported:        true,
+		MachinePreferred: true,
+		Notes:            "preferred for automation when not using --xml or --watch",
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:      "keys-only",
+		Supported: true,
+		Notes:     "finite key stream for non-watch invocations; --watch rejects keys-only output",
+	})
+	require.Contains(t, getProcessDefinitionCmd.Long, "JSON, keys-only, XML,\nquiet, and automation combinations are rejected before lookup work")
+}
+
+// TestCommandContractFocusedModeFilesOwnLifecycleDeclarations guards the file
+// cohesion contract for modes that need a dedicated lifecycle owner.
+func TestCommandContractFocusedModeFilesOwnLifecycleDeclarations(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                  string
+		baseFile              string
+		focusedFile           string
+		lifecycleDeclarations []string
+	}{
+		{
+			name:        "process definition watch",
+			baseFile:    "get_processdefinition.go",
+			focusedFile: "get_processdefinition_watch.go",
+			lifecycleDeclarations: []string{
+				"defaultGetPDWatchInterval",
+				"processDefinitionWatchSleep",
+				"processDefinitionWatchNow",
+				"runGetProcessDefinitionWatch",
+				"executeGetProcessDefinitionWatch",
+				"processDefinitionWatchSlowWarningState",
+				"renderGetProcessDefinitionWatchRefreshStatus",
+				"resolveGetProcessDefinitionWatchInterval",
+				"isGetProcessDefinitionWatchRetryable",
+				"renderGetProcessDefinitionWatchRetryStatus",
+				"renderGetProcessDefinitionWatchStopStatus",
+				"newGetProcessDefinitionWatchSnapshotRequest",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			baseDeclarations := readGoTopLevelDeclarations(t, tt.baseFile)
+			focusedDeclarations, focusedExists := readGoTopLevelDeclarationsIfExists(t, tt.focusedFile)
+
+			for _, declaration := range tt.lifecycleDeclarations {
+				if focusedExists {
+					require.Containsf(t, focusedDeclarations, declaration, "%s should own %s", tt.focusedFile, declaration)
+					require.NotContainsf(t, baseDeclarations, declaration, "%s must leave %s after %s exists", declaration, tt.baseFile, tt.focusedFile)
+					continue
+				}
+				require.Containsf(t, baseDeclarations, declaration, "%s should remain discoverable in %s until %s is created", declaration, tt.baseFile, tt.focusedFile)
+			}
+		})
 	}
 }
 
@@ -1523,7 +1624,7 @@ func TestCommandCapabilityForCommand_BpmnSelectorAlignedCommandContracts(t *test
 			path:           "get process-definition",
 			mutation:       CommandMutationReadOnly,
 			automation:     AutomationSupportUnsupported,
-			wantOutputMode: OutputModeContract{Name: "json", Supported: true, MachinePreferred: true, Notes: "preferred for automation when not using --xml"},
+			wantOutputMode: OutputModeContract{Name: "json", Supported: true, MachinePreferred: true, Notes: "preferred for automation when not using --xml or --watch"},
 			wantBpmnFlag:   "BPMN process ID to filter process instances",
 		},
 		{
@@ -2561,6 +2662,8 @@ func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
 	}
 }
 
+// TestProcessDefinitionSelectorValidationHelpContract keeps process-definition
+// help text aligned with selector validation and watch repaint behavior.
 func TestProcessDefinitionSelectorValidationHelpContract(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -2571,6 +2674,16 @@ func TestProcessDefinitionSelectorValidationHelpContract(t *testing.T) {
 			name: "get process-definition",
 			args: []string{"get", "pd", "--help"},
 			wants: []string{
+				"Watch mode repaints one terminal view",
+				"Each refresh body",
+				"matches normal list output without watch-only snapshot labels.",
+				"Without a selector",
+				"`--watch` observes all visible process definitions.",
+				"JSON, keys-only,",
+				"XML,",
+				"quiet, and automation combinations are rejected before lookup work.",
+				"Existing",
+				"timeout and backoff retry settings bound the watch run",
 				"When `--bpmn-process-id` is set, c8volt validates that at least one visible",
 				"process definition matches the selector before rendering output.",
 				"A missing selector",
@@ -2674,4 +2787,55 @@ func readCLIDebtAssessmentCommandPaths(t *testing.T) []string {
 	}
 
 	return paths
+}
+
+// readGoTopLevelDeclarations returns names declared at package scope in a Go source file.
+func readGoTopLevelDeclarations(t *testing.T, path string) map[string]struct{} {
+	t.Helper()
+
+	declarations, err := readGoTopLevelDeclarationsFromFile(path)
+	require.NoError(t, err)
+	return declarations
+}
+
+// readGoTopLevelDeclarationsIfExists lets source-structure tests distinguish an
+// unsplit baseline from a focused file that now has to own the listed declarations.
+func readGoTopLevelDeclarationsIfExists(t *testing.T, path string) (map[string]struct{}, bool) {
+	t.Helper()
+
+	declarations, err := readGoTopLevelDeclarationsFromFile(path)
+	if os.IsNotExist(err) {
+		return nil, false
+	}
+	require.NoError(t, err)
+	return declarations, true
+}
+
+// readGoTopLevelDeclarationsFromFile parses package-scope names without loading
+// or type-checking the command package.
+func readGoTopLevelDeclarationsFromFile(path string) (map[string]struct{}, error) {
+	file, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.SkipObjectResolution)
+	if err != nil {
+		return nil, err
+	}
+
+	declarations := make(map[string]struct{})
+	for _, declaration := range file.Decls {
+		switch decl := declaration.(type) {
+		case *ast.FuncDecl:
+			declarations[decl.Name.Name] = struct{}{}
+		case *ast.GenDecl:
+			for _, spec := range decl.Specs {
+				switch typed := spec.(type) {
+				case *ast.TypeSpec:
+					declarations[typed.Name.Name] = struct{}{}
+				case *ast.ValueSpec:
+					for _, name := range typed.Names {
+						declarations[name.Name] = struct{}{}
+					}
+				}
+			}
+		}
+	}
+	return declarations, nil
 }

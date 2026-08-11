@@ -79,6 +79,17 @@ func (c *client) SearchProcessDefinitionsPages(ctx context.Context, request Proc
 	return out, nil
 }
 
+// CollectProcessDefinitionWatchSnapshot delegates complete watch snapshot
+// collection and selector dispatch to the process-definition service layer.
+func (c *client) CollectProcessDefinitionWatchSnapshot(ctx context.Context, request ProcessDefinitionWatchSnapshotRequest, opts ...options.FacadeOption) (ProcessDefinitionWatchSnapshot, error) {
+	result, err := pdsvc.CollectProcessDefinitionWatchSnapshot(ctx, c.pdApi, toDomainProcessDefinitionWatchSnapshotRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainProcessDefinitionWatchSnapshot(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
+}
+
 func (c *client) GetProcessDefinition(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessDefinition, error) {
 	pd, err := c.pdApi.GetProcessDefinition(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
