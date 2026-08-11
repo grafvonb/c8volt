@@ -4,11 +4,171 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
+
+//nolint:unused
+func processInstanceView(cmd *cobra.Command, item process.ProcessInstance) error {
+	if pickMode() == RenderModeJSON {
+		return renderJSONPayload(cmd, RenderModeJSON, processInstanceWithAgeMeta(item))
+	}
+	return itemView(cmd, item, pickMode(), func(it process.ProcessInstance) string {
+		return oneLinePIWithTimezone(it, commandShowTimezoneOffset(cmd))
+	}, func(it process.ProcessInstance) string { return it.Key })
+}
+
+func processInstanceTotalView(cmd *cobra.Command, total int64) error {
+	_, err := fmt.Fprintln(cmd.OutOrStdout(), total)
+	return err
+}
+
+func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances) error {
+	if pickMode() == RenderModeJSON {
+		return renderJSONPayload(cmd, RenderModeJSON, processInstancesWithAgeMeta(resp))
+	}
+	return listOrJSONFlat(cmd, resp, resp.Items, pickMode(), func(it process.ProcessInstance) flatRow {
+		return flatRowPIWithTimezone(it, commandShowTimezoneOffset(cmd))
+	}, func(it process.ProcessInstance) string { return it.Key })
+}
+
+// renderProcessInstanceFlatRows shares aligned process-instance rows between collected lists and incremental search pages.
+func renderProcessInstanceFlatRows(cmd *cobra.Command, items []process.ProcessInstance) error {
+	for _, line := range formatProcessInstanceFlatRowsWithTimezone(items, commandShowTimezoneOffset(cmd)) {
+		renderOutputLine(cmd, "%s", line)
+	}
+	return nil
+}
+
+// formatProcessInstanceFlatRows keeps process-instance page rendering list-aware without changing machine modes.
+func formatProcessInstanceFlatRows(items []process.ProcessInstance) []string {
+	return formatProcessInstanceFlatRowsWithTimezone(items, false)
+}
+
+func formatProcessInstanceFlatRowsWithTimezone(items []process.ProcessInstance, showTimezoneOffset bool) []string {
+	rows := make([]flatRow, 0, len(items))
+	for _, it := range items {
+		rows = append(rows, flatRowPIWithTimezone(it, showTimezoneOffset))
+	}
+	return formatFlatRows(rows)
+}
+
+func oneLinePI(it process.ProcessInstance) string {
+	return oneLinePIWithTimezone(it, false)
+}
+
+func oneLinePIWithTimezone(it process.ProcessInstance, showTimezoneOffset bool) string {
+	return compactFlatRow(flatRowPIWithTimezone(it, showTimezoneOffset))
+}
+
+// flatRowPI defines the process-instance scan order, keeping BPMN IDs before operational state columns.
+func flatRowPI(it process.ProcessInstance) flatRow {
+	return flatRowPIWithTimezone(it, false)
+}
+
+func flatRowPIWithTimezone(it process.ProcessInstance, showTimezoneOffset bool) flatRow {
+	pTag := " p:<root>"
+	if it.ParentKey != "" {
+		pTag = " p:" + it.ParentKey
+	}
+	eTag := ""
+	if it.EndDate != "" {
+		eTag = " e:" + toolx.FormatTimestamp(it.EndDate, showTimezoneOffset)
+	}
+	vTag := ""
+	if it.ProcessVersionTag != "" {
+		vTag = "/" + it.ProcessVersionTag
+	}
+	ageTag := ""
+	if age, ok := processInstanceAgeDays(it.StartDate); ok {
+		if age == 0 {
+			ageTag = " (today)"
+		} else {
+			ageTag = fmt.Sprintf(" (%d days ago)", age)
+		}
+	}
+	incidentTag := ""
+	if it.Incident {
+		incidentTag = " inc!"
+	}
+	return flatRow{
+		it.Key,
+		it.TenantId,
+		it.BpmnProcessId,
+		fmt.Sprintf("v%d%s", it.ProcessVersion, vTag),
+		string(it.State),
+		"s:" + toolx.FormatTimestamp(it.StartDate, showTimezoneOffset),
+		strings.TrimSpace(eTag),
+		strings.TrimSpace(pTag),
+		strings.TrimSpace(incidentTag),
+		strings.TrimSpace(ageTag),
+	}
+}
+
+type processInstanceAgeMeta struct {
+	WithAge   bool           `json:"withAge"`
+	AgeDays   int            `json:"ageDays,omitempty"`
+	AgeDaysBy map[string]int `json:"ageDaysByKey,omitempty"`
+}
+
+type processInstanceJSONWithMeta struct {
+	Item process.ProcessInstance `json:"item"`
+	Meta processInstanceAgeMeta  `json:"meta"`
+}
+
+type processInstancesJSONWithMeta struct {
+	Total int32                     `json:"total,omitempty"`
+	Items []process.ProcessInstance `json:"items,omitempty"`
+	Meta  processInstanceAgeMeta    `json:"meta"`
+}
+
+func processInstanceWithAgeMeta(item process.ProcessInstance) processInstanceJSONWithMeta {
+	meta := processInstanceAgeMeta{WithAge: true}
+	if age, ok := processInstanceAgeDays(item.StartDate); ok {
+		meta.AgeDays = age
+	}
+	return processInstanceJSONWithMeta{Item: item, Meta: meta}
+}
+
+func processInstancesWithAgeMeta(resp process.ProcessInstances) processInstancesJSONWithMeta {
+	meta := processInstanceAgeMeta{WithAge: true, AgeDaysBy: map[string]int{}}
+	for _, it := range resp.Items {
+		if age, ok := processInstanceAgeDays(it.StartDate); ok {
+			meta.AgeDaysBy[it.Key] = age
+		}
+	}
+	if len(meta.AgeDaysBy) == 0 {
+		meta.AgeDaysBy = nil
+	}
+	return processInstancesJSONWithMeta{
+		Total: resp.Total,
+		Items: resp.Items,
+		Meta:  meta,
+	}
+}
+
+func processInstanceAgeDays(startDate string) (int, bool) {
+	if startDate == "" {
+		return 0, false
+	}
+	start, err := time.Parse(time.RFC3339Nano, startDate)
+	if err != nil {
+		return 0, false
+	}
+	now := relativeDayNow().UTC()
+	startDay := time.Date(start.UTC().Year(), start.UTC().Month(), start.UTC().Day(), 0, 0, 0, 0, time.UTC)
+	nowDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	if nowDay.Before(startDay) {
+		return 0, false
+	}
+	days := int(nowDay.Sub(startDay).Hours() / 24)
+	return days, true
+}
 
 func printDryRunExpansionWarning(cmd *cobra.Command, plan process.DryRunPIKeyExpansion) {
 	if plan.Warning == "" && len(plan.MissingAncestors) == 0 {

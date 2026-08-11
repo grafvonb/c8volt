@@ -15,7 +15,6 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/toolx/logging"
-	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
 
@@ -65,49 +64,6 @@ type processInstanceProgressSummary struct {
 	OverflowState process.ProcessInstanceOverflowState
 	// ContinuationState determines the next paging action (prompt/auto-continue/complete/etc.).
 	ContinuationState processInstanceContinuationState
-}
-
-// processInstancePageImpact captures per-page impact counts used by cancel/delete paging prompts.
-//
-// These values are accumulated across pages to present users with a continuation prompt that reflects
-// both the visible page size and the real operational impact when dependencies are included.
-type processInstancePageImpact struct {
-	// Requested is the raw number of keys selected from the current search page.
-	Requested int
-	// Affected is the expanded number of instances impacted after dependency resolution.
-	Affected int
-	// Roots is the number of root instances in the expanded impact set.
-	Roots int
-}
-
-// processInstancePageActionResult is the per-page result produced by mutating
-// process-instance commands. It keeps operational impact, reporters, and dry-run
-// previews together so the paging loop can aggregate them without knowing the
-// command-specific cancel/delete implementation details.
-type processInstancePageActionResult struct {
-	Impact        processInstancePageImpact
-	Reports       []process.Reporter
-	DryRunPreview *processInstanceDryRunPreview
-}
-
-// processInstancePageActionResults is the accumulated result returned from a
-// paged cancel/delete operation after all selected pages are processed.
-type processInstancePageActionResults struct {
-	Reports        []process.Reporter
-	DryRunPreviews []processInstanceDryRunPreview
-}
-
-func processInstancePageActionResultFromPlan(operation string, step process.ProcessInstanceMutationPlanStep) processInstancePageActionResult {
-	keys := types.Keys(step.RequestedKeys)
-	preview := newProcessInstanceDryRunPreview(operation, keys, step.Plan)
-	return processInstancePageActionResult{
-		Impact: processInstancePageImpact{
-			Requested: len(keys),
-			Affected:  len(step.Plan.Collected),
-			Roots:     len(step.Plan.Roots),
-		},
-		DryRunPreview: &preview,
-	}
 }
 
 // searchPageProgressSummary is the command-owned progress contract for basic
@@ -276,23 +232,6 @@ func isCmdAborted(err error) bool {
 		return true
 	}
 	return false
-}
-
-// canUsePIReportedTotal reports whether server total metadata still matches the
-// result the command will present. Client-side relationship and incident filters
-// run after the page is fetched, so totals from Operate would overstate the final
-// output for those modes.
-func canUsePIReportedTotal() bool {
-	return !(flagGetPIChildrenOnly || flagGetPIRootsOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPIDirectIncidentsOnly || flagGetPINoIncidentsOnly || hasPIIncidentDetailFilters())
-}
-
-// canUsePIExactReportedTotal guards the fast total path used by count-style
-// commands. Lower-bound totals are useful for progress, but only an exact total
-// can replace page iteration when the operator asks for a precise count.
-func canUsePIExactReportedTotal(page process.ProcessInstancePage) bool {
-	return canUsePIReportedTotal() &&
-		page.ReportedTotal != nil &&
-		page.ReportedTotal.Kind == process.ProcessInstanceReportedTotalKindExact
 }
 
 // nextPISearchPageRequest advances using cursor paging when Operate provides an

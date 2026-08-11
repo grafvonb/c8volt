@@ -5,16 +5,11 @@ package cmd
 
 import (
 	"bytes"
-	"context"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/grafvonb/c8volt/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 
@@ -160,148 +155,6 @@ func TestFlagParseErrorsDoNotPrintUsage(t *testing.T) {
 			require.NotContains(t, output, "Global Flags:")
 		})
 	}
-}
-
-// TestRetrieveAndNormalizeConfig_BindsAutomationFlagAndEnvironment verifies that automation mode can be
-// configured through environment variables, not only through CLI flags.
-func TestRetrieveAndNormalizeConfig_BindsAutomationFlagAndEnvironment(t *testing.T) {
-	t.Setenv("C8VOLT_APP_AUTOMATION", "true")
-
-	root := Root()
-	resetCommandTreeFlags(root)
-	t.Cleanup(func() {
-		resetCommandTreeFlags(root)
-	})
-
-	v := viper.New()
-	bindings, err := initViper(v, root)
-	require.NoError(t, err)
-
-	cfg, err := retrieveAndNormalizeConfig(v, bindings)
-	require.NoError(t, err)
-	require.True(t, cfg.App.Automation)
-}
-
-// TestAutomationModeEnabled_PrefersResolvedConfigContext ensures runtime decisions read the resolved
-// config placed on the command context, even when the raw persistent flag value says otherwise.
-func TestAutomationModeEnabled_PrefersResolvedConfigContext(t *testing.T) {
-	root := Root()
-	resetCommandTreeFlags(root)
-	t.Cleanup(func() {
-		resetCommandTreeFlags(root)
-	})
-	require.NoError(t, root.PersistentFlags().Set("automation", "false"))
-
-	cfg := config.New()
-	cfg.App.Automation = true
-	root.SetContext(cfg.ToContext(context.Background()))
-
-	require.True(t, automationModeEnabled(root))
-}
-
-// TestMissingConfigHint_PrefersLocalExampleConfigWhenPresent keeps the bootstrap error helpful for new
-// users by pointing at a nearby config.example.yaml when one exists.
-func TestMissingConfigHint_PrefersLocalExampleConfigWhenPresent(t *testing.T) {
-	prevWD, err := os.Getwd()
-	require.NoError(t, err)
-
-	dir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "config.example.yaml"), []byte("apis: {}\n"), 0o600))
-	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() {
-		_ = os.Chdir(prevWD)
-	})
-
-	got := missingConfigHint()
-	require.Contains(t, got, `found "config.example.yaml" in the current directory`)
-	require.Contains(t, got, "config show --validate")
-}
-
-// TestMissingConfigHint_FallsBackToTemplateAdviceWhenNoLocalExampleExists covers the no-local-example path,
-// where the best recovery hint is to generate a template with config show --template.
-func TestMissingConfigHint_FallsBackToTemplateAdviceWhenNoLocalExampleExists(t *testing.T) {
-	prevWD, err := os.Getwd()
-	require.NoError(t, err)
-
-	dir := t.TempDir()
-	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() {
-		_ = os.Chdir(prevWD)
-	})
-
-	got := missingConfigHint()
-	require.Contains(t, got, "config show --template")
-	require.NotContains(t, got, "config.example.yaml")
-}
-
-// TestIndicatorEnabled_DefaultsToHumanInteractiveMode verifies the activity indicator remains enabled for
-// normal interactive usage unless a mode explicitly disables transient output.
-func TestIndicatorEnabled_DefaultsToHumanInteractiveMode(t *testing.T) {
-	prevNoIndicator := flagNoIndicator
-	prevQuiet := flagQuiet
-	prevAutomation := flagCmdAutomation
-	prevJSON := flagViewAsJson
-	prevKeysOnly := flagViewKeysOnly
-	t.Cleanup(func() {
-		flagNoIndicator = prevNoIndicator
-		flagQuiet = prevQuiet
-		flagCmdAutomation = prevAutomation
-		flagViewAsJson = prevJSON
-		flagViewKeysOnly = prevKeysOnly
-	})
-
-	flagNoIndicator = false
-	flagQuiet = false
-	flagCmdAutomation = false
-	flagViewAsJson = false
-	flagViewKeysOnly = false
-
-	require.True(t, indicatorEnabled(nil, nil))
-}
-
-// TestIndicatorEnabled_DisabledByMachineQuietAutomationAndNoIndicator checks every non-interactive or quiet path
-// that must suppress transient activity output to avoid corrupting machine-readable streams.
-func TestIndicatorEnabled_DisabledByMachineQuietAutomationAndNoIndicator(t *testing.T) {
-	root := Root()
-	resetCommandTreeFlags(root)
-	prevJSON := flagViewAsJson
-	prevKeysOnly := flagViewKeysOnly
-	t.Cleanup(func() {
-		resetCommandTreeFlags(root)
-		flagViewAsJson = prevJSON
-		flagViewKeysOnly = prevKeysOnly
-	})
-
-	require.NoError(t, root.PersistentFlags().Set("quiet", "true"))
-	require.False(t, indicatorEnabled(root, nil))
-
-	resetCommandTreeFlags(root)
-	require.NoError(t, root.PersistentFlags().Set("no-indicator", "true"))
-	require.False(t, indicatorEnabled(root, nil))
-
-	resetCommandTreeFlags(root)
-	flagViewAsJson = true
-	require.False(t, indicatorEnabled(root, nil))
-
-	flagViewAsJson = false
-	flagViewKeysOnly = true
-	require.False(t, indicatorEnabled(root, nil))
-
-	flagViewKeysOnly = false
-	resetCommandTreeFlags(root)
-	cfg := config.New()
-	cfg.App.Automation = true
-	root.SetContext(cfg.ToContext(context.Background()))
-	require.False(t, indicatorEnabled(root, cfg))
-}
-
-// TestIndicatorEnabled_DisabledForJSONLogFormat ensures JSON logs are never mixed with terminal activity
-// indicators, because both write to the same user-visible stream.
-func TestIndicatorEnabled_DisabledForJSONLogFormat(t *testing.T) {
-	cfg := config.New()
-	cfg.Log.Format = "json"
-
-	require.False(t, indicatorEnabled(nil, cfg))
 }
 
 func assertCommandHelpOutput(t *testing.T, args []string, contains []string, omits []string) string {

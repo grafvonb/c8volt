@@ -13,6 +13,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// canUsePIReportedTotal reports whether server total metadata still matches the
+// result the command will present. Client-side relationship and incident filters
+// run after the page is fetched, so totals from Operate would overstate the final
+// output for those modes.
+func canUsePIReportedTotal() bool {
+	return !(flagGetPIChildrenOnly || flagGetPIRootsOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPIDirectIncidentsOnly || flagGetPINoIncidentsOnly || hasPIIncidentDetailFilters())
+}
+
+// canUsePIExactReportedTotal guards the fast total path used by count-style
+// commands. Lower-bound totals are useful for progress, but only an exact total
+// can replace page iteration when the operator asks for a precise count.
+func canUsePIExactReportedTotal(page process.ProcessInstancePage) bool {
+	return canUsePIReportedTotal() &&
+		page.ReportedTotal != nil &&
+		page.ReportedTotal.Kind == process.ProcessInstanceReportedTotalKindExact
+}
+
 // searchProcessInstancesTotal implements `get process-instance --total`. It uses exact
 // backend totals when they still describe the command's final output, and falls
 // back to page-by-page counting when client-side filters or lower-bound totals

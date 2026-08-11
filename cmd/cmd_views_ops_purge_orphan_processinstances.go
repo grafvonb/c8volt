@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/config"
@@ -173,33 +172,4 @@ func renderOpsPurgeOrphanProcessInstancesMarkdownReport(report ops.OrphanPurgeRe
 	writeMarkdownReportList(&out, "Run Errors", report.Errors)
 
 	return []byte(out.String()), nil
-}
-
-func writeMarkdownReportField(out *strings.Builder, name string, value string) {
-	if value == "" {
-		value = "-"
-	}
-	out.WriteString(fmt.Sprintf("- %s: %s\n", name, value))
-}
-
-func writeMarkdownReportList(out *strings.Builder, name string, values []string) {
-	if len(values) == 0 {
-		out.WriteString(fmt.Sprintf("- %s: -\n", name))
-		return
-	}
-	out.WriteString(fmt.Sprintf("- %s:\n", name))
-	for _, value := range values {
-		out.WriteString(fmt.Sprintf("  - %s\n", value))
-	}
-}
-
-func formatOpsPurgeReportTime(t time.Time, cfg *config.Config) string {
-	if t.IsZero() {
-		return ""
-	}
-	showTimezoneOffset := false
-	if cfg != nil {
-		showTimezoneOffset = cfg.App.ShowTimezoneOffset
-	}
-	return toolx.FormatTime(t.UTC(), showTimezoneOffset)
 }

@@ -1154,7 +1154,7 @@ func TestWalkIncidentLines_RenderGroupedIncidentDetails(t *testing.T) {
 
 // TestWalkProcessInstanceCommand_WithIncidentsChildrenHumanOutputShowsIncident renders incident keys under child-walk rows.
 func TestWalkProcessInstanceCommand_WithIncidentsChildrenHumanOutputShowsIncident(t *testing.T) {
-	var incidentRequests []string
+	var incidentRequests testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -1167,7 +1167,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsChildrenHumanOutputShowsInciden
 			require.Contains(t, string(body), `"parentProcessInstanceKey":"123"`)
 			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
-			incidentRequests = append(incidentRequests, r.URL.Path)
+			incidentRequests.Append(r.URL.Path)
 			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "123", "Root job failed")))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -1186,7 +1186,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsChildrenHumanOutputShowsInciden
 		"--incident-message-limit", "7",
 	)
 
-	require.Equal(t, []string{"/v2/process-instances/123/incidents/search"}, incidentRequests)
+	require.Equal(t, []string{"/v2/process-instances/123/incidents/search"}, incidentRequests.Snapshot())
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "inc!")
 	require.Contains(t, output, "└─ incidents:\n   └─ incident-1 JOB_NO_RETRIES ACTIVE j:n/a m:Root jo...")
@@ -1293,7 +1293,7 @@ func TestWalkProcessInstanceCommand_WithVarsOnlyDoesNotShowIncidentSectionForInc
 
 // TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleIncidents keeps incidents attached to their walked owners.
 func TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleIncidents(t *testing.T) {
-	var incidentRequests []string
+	var incidentRequests testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -1312,10 +1312,10 @@ func TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleI
 				t.Fatalf("unexpected search body: %s", string(body))
 			}
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
-			incidentRequests = append(incidentRequests, r.URL.Path)
+			incidentRequests.Append(r.URL.Path)
 			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "123", "Root failed")))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/124/incidents/search":
-			incidentRequests = append(incidentRequests, r.URL.Path)
+			incidentRequests.Append(r.URL.Path)
 			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "124", "Child failed", "Child timed out")))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -1336,7 +1336,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleI
 	require.ElementsMatch(t, []string{
 		"/v2/process-instances/123/incidents/search",
 		"/v2/process-instances/124/incidents/search",
-	}, incidentRequests)
+	}, incidentRequests.Snapshot())
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "124")
 	require.Contains(t, output, "└─ incidents:\n   └─ incident-1 JOB_NO_RETRIES ACTIVE j:n/a m:Root failed")
@@ -1346,7 +1346,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleI
 
 // TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentLinesWhenNoneReturned avoids implying missing details exist.
 func TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentLinesWhenNoneReturned(t *testing.T) {
-	var incidentRequests []string
+	var incidentRequests testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -1356,10 +1356,10 @@ func TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentL
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
 			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", false)))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/124/incidents/search":
-			incidentRequests = append(incidentRequests, r.URL.Path)
+			incidentRequests.Append(r.URL.Path)
 			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "124")))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
-			incidentRequests = append(incidentRequests, r.URL.Path)
+			incidentRequests.Append(r.URL.Path)
 			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "123")))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -1380,7 +1380,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentL
 	require.ElementsMatch(t, []string{
 		"/v2/process-instances/124/incidents/search",
 		"/v2/process-instances/123/incidents/search",
-	}, incidentRequests)
+	}, incidentRequests.Snapshot())
 	require.Contains(t, output, "124")
 	require.Contains(t, output, "123")
 	require.NotContains(t, output, "  inc ")
@@ -2091,7 +2091,7 @@ func TestWalkProcessInstanceCommand_KeyTenantMismatchUsesAdminTraversal(t *testi
 
 // TestWalkProcessInstanceCommand_WithIncidentsUsesEffectiveTenantForIncidentSearches applies command tenant overrides to incident lookup.
 func TestWalkProcessInstanceCommand_WithIncidentsUsesEffectiveTenantForIncidentSearches(t *testing.T) {
-	var incidentRequests []string
+	var incidentRequests testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -2106,7 +2106,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsUsesEffectiveTenantForIncidentS
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			incidentRequests = append(incidentRequests, string(body))
+			incidentRequests.Append(string(body))
 			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "123", "Root failed")))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -2132,8 +2132,9 @@ apis:
 	)
 
 	require.Contains(t, output, "incident-1 JOB_NO_RETRIES ACTIVE j:n/a m:Root failed")
-	require.Len(t, incidentRequests, 1)
-	body := decodeCapturedPISearchRequest(t, incidentRequests[0])
+	gotIncidentRequests := incidentRequests.Snapshot()
+	require.Len(t, gotIncidentRequests, 1)
+	body := decodeCapturedPISearchRequest(t, gotIncidentRequests[0])
 	filter, ok := body["filter"].(map[string]any)
 	require.True(t, ok, "expected incident search request filter object")
 	require.Equal(t, "tenant-a", filter["tenantId"])
