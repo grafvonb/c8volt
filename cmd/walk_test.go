@@ -1346,7 +1346,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleI
 
 // TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentLinesWhenNoneReturned avoids implying missing details exist.
 func TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentLinesWhenNoneReturned(t *testing.T) {
-	var incidentRequests []string
+	var incidentRequests testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -1356,10 +1356,10 @@ func TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentL
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
 			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", false)))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/124/incidents/search":
-			incidentRequests = append(incidentRequests, r.URL.Path)
+			incidentRequests.Append(r.URL.Path)
 			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "124")))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
-			incidentRequests = append(incidentRequests, r.URL.Path)
+			incidentRequests.Append(r.URL.Path)
 			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "123")))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -1380,7 +1380,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentL
 	require.ElementsMatch(t, []string{
 		"/v2/process-instances/124/incidents/search",
 		"/v2/process-instances/123/incidents/search",
-	}, incidentRequests)
+	}, incidentRequests.Snapshot())
 	require.Contains(t, output, "124")
 	require.Contains(t, output, "123")
 	require.NotContains(t, output, "  inc ")
