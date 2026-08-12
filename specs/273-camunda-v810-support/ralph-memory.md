@@ -32,6 +32,8 @@ Started: 2026-08-12T16:38:49Z
 - V810 process-instance construction owns the nested native V810 variable service; `internal/services/v810_source_boundary_test.go` has a single allowlist for `processinstance/v810/service.go` importing `variable/v810`.
 - Native V810 variable adapters preserve raw JSON decoding for value/truncation fields omitted by generated models and use the process-instance key as the element-instance scope for updates.
 - Process-instance and variable factories now have explicit `toolx.V810` cases and package-level interface assertions; `toolx.ImplementedCamundaVersions()` remains staged until all eleven US2 service families are wired.
+- Native V810 resource and tenant adapters can follow v89 unified-client behavior with local V810 generated types; resource deployment visibility polling and resource history deletion confirmation reuse the existing shared poller/payload helpers.
+- Resource and tenant factories now have explicit `toolx.V810` cases and package-level interface assertions; `toolx.ImplementedCamundaVersions()` remains staged until all eleven US2 service families are wired.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -58,8 +60,9 @@ Started: 2026-08-12T16:38:49Z
 - `go test ./internal/services/job/... -count=1`
 - `go test ./internal/services/processdefinition/... -count=1`
 - `go test ./internal/services/processinstance/... ./internal/services/variable/... -count=1`
+- `go test ./internal/services/resource/... ./internal/services/tenant/... -count=1`
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T022: add V810 factory, deployment visibility, tenant conversion, success, error, and confirmation cases for resources and tenants in `internal/services/resource/factory_test.go`, `internal/services/resource/v810/`, `internal/services/tenant/factory_test.go`, and `internal/services/tenant/v810/`.
+- Next iteration should continue User Story 2 at T023: add unified-client-only V810 user-task factory/behavior tests that reject any Tasklist fallback and prove explicit unavailable/not-found outcomes in `internal/services/usertask/factory_test.go` and `internal/services/usertask/v810/`.

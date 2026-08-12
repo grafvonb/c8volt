@@ -32,8 +32,6 @@ Started: 2026-08-12 18:38:49
 - specs/273-camunda-v810-support/progress.md
 **Learnings**:
 - Syntax validation passes; the new red tests currently fail on missing `--target v810` support and absent V810 provenance/client artifacts as intended.
----
----
 ## Iteration 3 - 2026-08-12 18:53
 **Work Unit**: Phase 2 foundational V810 refresh target dispatch
 **Tasks Completed**:
@@ -278,4 +276,33 @@ Started: 2026-08-12 18:38:49
 - specs/273-camunda-v810-support/progress.md
 **Learnings**:
 - V810 process-instance construction owns the nested V810 variable service, and the source-boundary allowlist is limited to that required import.
+---
+---
+## Iteration 14 - 2026-08-12 20:12
+**Work Unit**: US2 V810 resource and tenant adapters
+**Tasks Completed**:
+- [x] T022: Add V810 factory, deployment visibility, tenant conversion, success, error, and confirmation cases for resources and tenants
+- [x] T030: Implement native V810 resource and tenant adapters plus explicit factory cases
+**Tasks Remaining in Work Unit**: T023-T025 and T031-T038 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/resource/api.go
+- internal/services/resource/factory.go
+- internal/services/resource/factory_test.go
+- internal/services/resource/v810/contract.go
+- internal/services/resource/v810/convert.go
+- internal/services/resource/v810/service.go
+- internal/services/resource/v810/service_test.go
+- internal/services/tenant/api.go
+- internal/services/tenant/factory.go
+- internal/services/tenant/factory_test.go
+- internal/services/tenant/v810/contract.go
+- internal/services/tenant/v810/convert.go
+- internal/services/tenant/v810/service.go
+- internal/services/tenant/v810/service_test.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- V810 resource and tenant generated shapes match the v89 unified-client paths for deployment, history deletion, resource lookup, and tenant search/get.
 ---
