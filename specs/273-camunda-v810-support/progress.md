@@ -2,8 +2,6 @@
 
 Feature: 273-camunda-v810-support
 Started: 2026-08-12 18:38:49
-
----
 ## Iteration 1 - 2026-08-12 18:42
 **Work Unit**: Phase 1 setup test infrastructure
 **Tasks Completed**:
@@ -65,4 +63,20 @@ Started: 2026-08-12 18:38:49
 - specs/273-camunda-v810-support/progress.md
 **Learnings**:
 - The upstream v8.10 OpenAPI root requires sparse-fetching the full v2 directory for Redocly bundling, and temp compile validation needs its own `go mod tidy`.
+---
+---
+## Iteration 5 - 2026-08-12 19:05
+**Work Unit**: Phase 2 foundational V810 pinned generated artifacts
+**Tasks Completed**:
+- [x] T007: Generate and check in pinned `8.10.0-alpha4` V810 client and provenance artifacts
+**Tasks Remaining in Work Unit**: T008-T009 remain in Phase 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/clients/camunda/v810/camunda/client.gen.go
+- internal/clients/camunda/v810/camunda/provenance.json
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- The canonical V810 refresh command now produces checked-in artifacts; generated package compile and provenance determinism checks pass with protected stable trees untouched.
 ---

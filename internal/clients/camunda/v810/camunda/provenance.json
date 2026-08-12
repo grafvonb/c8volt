@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "repository": "https://github.com/camunda/camunda.git",
+  "tag": "8.10.0-alpha4",
+  "commit": "4a76f06c9df8ad0a6c64fe88b92c618c2ebf2ef6",
+  "sourceSpec": "zeebe/gateway-protocol/src/main/proto/v2/rest-api.yaml",
+  "sourceSpecSha256": "f3225e5fe859b6d811e8848a86856dbb58bbdea101712120e88a506eb48885c8",
+  "transformations": [
+    {
+      "path": "api/mutations/mutate-search-query-schemas.py",
+      "sha256": "3687396193df5ade934b1b275ae525801e6f9b27d92f23cdd81ae205898b031a"
+    },
+    {
+      "path": "api/mutations/mutate-search-result-schemas.py",
+      "sha256": "4a20bdb68eb30e050010daeb49cdee4df117cacc5ea2f6012a66cf2b924bda55"
+    },
+    {
+      "path": "api/mutations/mutate-fix-process-instance-filter-fields.py",
+      "sha256": "4bdf30a8b58a8c1a6a39882d90e41528dacc592fe8baa6cb6c6c5ed4d807ae64"
+    },
+    {
+      "path": "api/mutations/mutate-fix-jobresult-discriminator.py",
+      "sha256": "93e8b3beb49f3d2e438a97433fb6c89b04b399a9bf70336b8425cd55c10c463a"
+    },
+    {
+      "path": "api/mutations/mutate-fix-camunda-v2-operation-id-collisions.py",
+      "sha256": "ffefa6aecb897d32fca4f3af93a26bc1127554e5119d2e2579ca8cdf5b45bfd9"
+    }
+  ],
+  "tools": {
+    "redocly": "2.29.2",
+    "oapi-codegen": "2.5.0"
+  },
+  "preparedSpecSha256": "c13743867b61393a1ff665a4807fa27f084a6bb1c44fb66881c627eea5f2fc90",
+  "generatedClientSha256": "db385893e382f1131a3e04ecbe1936261b7be6c9a5d76ad2a92ae7e6e3637f2c",
+  "command": "bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.0-alpha4"
+}
