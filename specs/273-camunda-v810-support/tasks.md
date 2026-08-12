@@ -45,15 +45,15 @@
 
 - [x] T010 [US1] Add V810 alias, canonical string, supported/implemented-set staging, source-tag rejection, and unchanged-default tests in `toolx/version_test.go` and `config/app_test.go`
 - [x] T011 [P] [US1] Add gateway `8.10`, patch, alpha4, different-minor, empty, and malformed comparison cases in `cmd/config_test.go`
-- [ ] T012 [P] [US1] Add human/JSON baseline disclosure, root help, supported-version, and bootstrap behavior tests in `cmd/version_test.go`, `cmd/bootstrap_errors_test.go`, and `cmd/get_test.go`
+- [x] T012 [P] [US1] Add human/JSON baseline disclosure, root help, supported-version, and bootstrap behavior tests in `cmd/version_test.go`, `cmd/bootstrap_errors_test.go`, and `cmd/get_test.go`
 
 ### Implementation for User Story 1
 
 - [x] T013 [US1] Add `toolx.V810`, canonical/alias normalization, string rendering, and supported-version membership while retaining `CurrentCamundaVersion = V88` in `toolx/version.go`
 - [x] T014 [US1] Implement explicit match/mismatch/unrecognizable release-line comparison and preserve diagnostic rendering in `cmd/config_diagnostics.go` and `cmd/config_test_connection.go`
-- [ ] T015 [US1] Add one V810 active-baseline metadata model sourced from the pinned client provenance in `toolx/camunda_baseline.go` and `toolx/camunda_baseline_test.go`
-- [ ] T016 [US1] Add compact baseline disclosure and additive JSON fields to version/root output in `cmd/version.go` and `cmd/root.go`
-- [ ] T017 [US1] Run and fix the US1 focused suites for `toolx/version_test.go`, `toolx/camunda_baseline_test.go`, `config/app_test.go`, `cmd/config_test.go`, `cmd/version_test.go`, `cmd/bootstrap_errors_test.go`, and `cmd/get_test.go`
+- [x] T015 [US1] Add one V810 active-baseline metadata model sourced from the pinned client provenance in `toolx/camunda_baseline.go` and `toolx/camunda_baseline_test.go`
+- [x] T016 [US1] Add compact baseline disclosure and additive JSON fields to version/root output in `cmd/version.go` and `cmd/root.go`
+- [x] T017 [US1] Run and fix the US1 focused suites for `toolx/version_test.go`, `toolx/camunda_baseline_test.go`, `config/app_test.go`, `cmd/config_test.go`, `cmd/version_test.go`, `cmd/bootstrap_errors_test.go`, and `cmd/get_test.go`
 
 **Checkpoint**: User Story 1 is independently demonstrable through configuration and version diagnostics; it does not claim implemented V810 workflows until User Story 2 completes.
 

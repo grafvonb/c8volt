@@ -35,7 +35,8 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 		"version",
 		"capabilities",
 		"Use capabilities for the machine-readable",
-		"Camunda 8.7, 8.8, and 8.9",
+		"Camunda 8.7, 8.8, 8.9, and 8.10",
+		"Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)",
 		"--automation",
 		"Examples:",
 		"./c8volt config show --template",
@@ -64,7 +65,8 @@ func TestRootHelpAndGeneratedMarkdownShareDiscoveryAnchors(t *testing.T) {
 
 	for _, anchor := range []string{
 		"Use capabilities for the machine-readable",
-		"Camunda 8.7, 8.8, and 8.9",
+		"Camunda 8.7, 8.8, 8.9, and 8.10",
+		"Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)",
 	} {
 		require.Contains(t, helpOutput, anchor)
 		require.Contains(t, markdown, anchor)

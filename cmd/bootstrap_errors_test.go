@@ -27,7 +27,8 @@ func TestRootCommand_V89SupportMessagingIsUpdated(t *testing.T) {
 
 	root := Root()
 
-	require.Contains(t, root.Long, "Camunda 8.7, 8.8, and 8.9")
+	require.Contains(t, root.Long, "Camunda 8.7, 8.8, 8.9, and 8.10")
+	require.Contains(t, root.Long, "Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)")
 	require.NotContains(t, root.Long, "version 8.9 is recognized by config normalization")
 	require.Contains(t, root.PersistentFlags().Lookup("camunda-version").Usage, toolx.SupportedCamundaVersionsString())
 }
@@ -68,6 +69,37 @@ func TestNewCliConstructsSupportedV89Client(t *testing.T) {
 	_, _, cli, err := NewCli(cmd)
 	require.NoError(t, err)
 	require.NotNil(t, cli)
+}
+
+// Verifies V810 is accepted through bootstrap configuration but remains
+// honestly staged until the native service factories are wired.
+func TestNewCliV810BootstrapReportsStagedUnsupportedRuntime(t *testing.T) {
+	cfg := &config.Config{
+		App: config.App{
+			CamundaVersion: toolx.V810,
+		},
+		APIs: config.APIs{
+			Camunda: config.API{
+				BaseURL: "http://127.0.0.1:1",
+			},
+		},
+		HTTP: config.HTTP{
+			Timeout: "30s",
+		},
+	}
+	ctx := cfg.ToContext(context.Background())
+
+	httpSvc, err := httpc.New(cfg, nil)
+	require.NoError(t, err)
+
+	cmd := &cobra.Command{}
+	cmd.SetContext(httpSvc.ToContext(ctx))
+
+	_, _, _, err = NewCli(cmd)
+	require.Error(t, err)
+	require.Equal(t, ferrors.ClassUnsupported, ferrors.Classify(err))
+	require.Contains(t, err.Error(), `unknown API version: "8.10"`)
+	require.Contains(t, err.Error(), "supported: 8.7, 8.8, 8.9")
 }
 
 // Verifies execute-time config validation failures use the shared failure model and exit behavior.

@@ -135,3 +135,28 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - Gateway compatibility now warns for empty or malformed observed versions instead of silently treating them as compatible; command diagnostics remain owned by `cmd/config_diagnostics.go`.
 ---
+---
+## Iteration 9 - 2026-08-12 19:34
+**Work Unit**: US1 V810 baseline disclosure and command output
+**Tasks Completed**:
+- [x] T012: Add human/JSON baseline disclosure, root help, supported-version, and bootstrap behavior tests
+- [x] T015: Add V810 active-baseline metadata model sourced from pinned client provenance
+- [x] T016: Add compact baseline disclosure and additive JSON fields to version/root output
+- [x] T017: Run and fix the US1 focused suites
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- toolx/camunda_baseline.go
+- toolx/camunda_baseline_test.go
+- cmd/version.go
+- cmd/version_test.go
+- cmd/root.go
+- cmd/root_test.go
+- cmd/bootstrap_errors_test.go
+- cmd/get_test.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- Baseline disclosure stays additive in root/version output, and V810 bootstrap remains honestly staged until US2 implements native service factories.
+---

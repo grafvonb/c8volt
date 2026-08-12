@@ -38,8 +38,9 @@ var rootCmd = &cobra.Command{
 Deploy BPMN models, start process instances, inspect workflow state, wait for
 state changes, walk process trees, cancel, and delete.
 
-Supports Camunda 8.7, 8.8, and 8.9. Use capabilities for the machine-readable
-command contract.`,
+Supports Camunda 8.7, 8.8, 8.9, and 8.10.
+Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease).
+Use capabilities for the machine-readable command contract.`,
 	Example: `  ./c8volt config show --template
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt get cluster topology

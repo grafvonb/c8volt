@@ -14,6 +14,9 @@ Started: 2026-08-12T16:38:49Z
 - With the checked-in artifacts present, `python3 api/tests/v810_provenance_test.py` passes and performs a second canonical generation run to prove deterministic provenance/client output.
 - `api/generate-v810-client.sh` preserves existing package-local files when republishing V810 artifacts, so canonical regeneration does not delete `client_test.go`.
 - V810 generation guard negative cases now compare the V810 publication checksum before/after failed runs because detached worktrees already contain the committed pinned V810 artifacts.
+- `toolx/camunda_baseline.go` owns the active V810 baseline metadata; `toolx/camunda_baseline_test.go` verifies it matches `internal/clients/camunda/v810/camunda/provenance.json`.
+- `cmd/version.go` renders V810 baseline disclosure as an additive human line and two additive JSON payload string fields: `camunda810Baseline` and `camunda810BaselineStatus`.
+- Root help now lists supported versions through 8.10 and discloses the active 8.10 prerelease baseline, but V810 remains staged out of `ImplementedCamundaVersions()` until US2 factory wiring is complete.
 - Source-boundary tests use AST import scanning rather than package loading so they can catch layering regressions before type checking.
 - `internal/services/v810_source_boundary_test.go` is active for `cmd/` and public facade generated-client/versioned-service imports, and conditionally scans V810 adapter packages as they appear.
 - `toolx.V810` now normalizes only the stable aliases `8.10`, `810`, `v810`, and `v8.10`; prerelease/source tags such as `8.10.0-alpha4` remain rejected configuration identities.
@@ -36,8 +39,11 @@ Started: 2026-08-12T16:38:49Z
 - `python3 -m py_compile api/tests/v810_provenance_test.py`
 - `go test ./internal/clients/camunda/v810/camunda -count=1`
 - `go test ./internal/services -run 'TestV810AdapterSourceBoundary|TestCommandAndFacadeSourceBoundaryForGeneratedClients' -count=1`
+- `go test ./toolx -run 'CamundaVersion|CurrentDefault|V810|Baseline' -count=1`
+- `go test ./config -run 'AppNormalize|CurrentDefault|CamundaVersion|V810' -count=1`
+- `go test ./cmd -run 'ConfigTestConnectionCommand_VersionComparison|ConfigTestConnectionDiagnostics_V810|Version|RootHelp|SupportMessaging|V810Bootstrap|GetHelp|GetClusterHelp|GetProcessDefinitionHelp' -count=1`
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 1 at T012: add human/JSON baseline disclosure, root help, supported-version, and bootstrap behavior tests in `cmd/version_test.go`, `cmd/bootstrap_errors_test.go`, and `cmd/get_test.go`.
+- Next iteration should start User Story 2 at T018: add V810 batch-operation and cluster factory/adapter tests in `internal/services/batchoperation/factory_test.go`, `internal/services/batchoperation/v810/`, `internal/services/cluster/factory_test.go`, and `internal/services/cluster/v810/`.
