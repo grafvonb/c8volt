@@ -51,6 +51,7 @@ Started: 2026-08-12T16:38:49Z
 - `api/tests/v810_repository_boundary_test.sh` guards the US3 repository boundary by requiring clean v87-v89 generated client trees, a clean `integration/` tree, no untracked files in those paths, and no V810/C810/8.10 integration path or content references.
 - US4 generation-transition tests now stub only `api/generate-v810-client.sh` inside detached worktrees so `api/refresh-clients.sh` target/tag routing, in-place `v810/camunda` publication, deterministic reruns, failure rollback, and no `v810alpha`/`v810rc`/`v810final` paths are verified without upstream fetches.
 - US4 provenance identity invariance lives in `api/tests/v810_provenance_test.py`; use `canonical_command_for_tag` and keep generated client/provenance parent paths fixed to `internal/clients/camunda/v810/camunda` for later alpha/RC/final tag scenarios.
+- US4 baseline identity tests now cover later alpha/RC/final tag replacements in `toolx/camunda_baseline_test.go` and command JSON/human output separation in `cmd/version_test.go`; supported-version discovery must keep reporting only `8.10`, never baseline tag/status strings.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -96,8 +97,10 @@ Started: 2026-08-12T16:38:49Z
 - `bash -n api/tests/v810_repository_boundary_test.sh`
 - `bash api/tests/v810_repository_boundary_test.sh`
 - `go test ./internal/services/batchoperation ./internal/services/cluster ./internal/services/element ./internal/services/incident ./internal/services/job ./internal/services/processdefinition ./internal/services/processinstance ./internal/services/resource ./internal/services/tenant ./internal/services/usertask ./internal/services/variable -run 'TestFactory_StableVersionSelectionUnchanged' -count=1`
+- `go test ./toolx -run 'V810Baseline' -count=1`
+- `go test ./cmd -run 'VersionCommand|CurrentBuildInfo|VersionHelp' -count=1`
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 4 at T045: add baseline tag/status update and version-output invariance tests in `toolx/camunda_baseline_test.go` and `cmd/version_test.go`.
+- Next iteration should continue User Story 4 at T046: harden target validation, deterministic provenance replacement, and atomic rollback for later 8.10 baselines without alpha/RC package naming in `api/generate-v810-client.sh`.

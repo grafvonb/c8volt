@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/toolx"
@@ -40,6 +41,35 @@ func TestVersionCommandJSONIncludesSupportedCamundaVersions(t *testing.T) {
 	require.Equal(t, "prerelease", payload["camunda810BaselineStatus"])
 }
 
+// TestVersionCommandSeparatesBaselineMetadataFromVersionIdentity verifies
+// baseline tag/status updates cannot leak into supported-version discovery.
+func TestVersionCommandSeparatesBaselineMetadataFromVersionIdentity(t *testing.T) {
+	jsonOutput := executeRootForTest(t, "version", "--json")
+
+	var envelope struct {
+		Payload map[string]string `json:"payload"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(jsonOutput), &envelope))
+
+	supportedVersions := envelope.Payload["supportedCamundaVersions"]
+	baselineTag := envelope.Payload["camunda810Baseline"]
+	baselineStatus := envelope.Payload["camunda810BaselineStatus"]
+	require.Equal(t, "8.7, 8.8, 8.9, 8.10", supportedVersions)
+	require.Equal(t, toolx.V810Baseline().Tag, baselineTag)
+	require.Equal(t, toolx.V810Baseline().Status, baselineStatus)
+	require.NotContains(t, supportedVersions, baselineTag)
+	require.NotContains(t, supportedVersions, baselineStatus)
+	require.NotContains(t, supportedVersions, "alpha")
+	require.NotContains(t, supportedVersions, "rc")
+	require.NotContains(t, supportedVersions, "8.10.0")
+
+	humanOutput := executeRootForTest(t, "version")
+	supportedLine := firstVersionOutputLineContaining(t, humanOutput, "Supported Camunda versions:")
+	require.Contains(t, supportedLine, "Supported Camunda versions: "+supportedVersions)
+	require.NotContains(t, supportedLine, baselineTag)
+	require.Contains(t, humanOutput, "Camunda 8.10 baseline: "+baselineTag+" ("+baselineStatus+")")
+}
+
 // TestVersionCommand_DefaultOutputRemainsCompactPlainText verifies human output
 // remains a compact plain text block while supported versions expand.
 func TestVersionCommand_DefaultOutputRemainsCompactPlainText(t *testing.T) {
@@ -59,4 +89,18 @@ func TestVersionHelp_DocumentsReadOnlyAutomationGuidance(t *testing.T) {
 
 	require.Contains(t, output, "Use --json for version metadata")
 	require.Contains(t, output, "./c8volt version --json")
+}
+
+// firstVersionOutputLineContaining extracts a single line from version output
+// while tolerating the logger prefix present in command test harness output.
+func firstVersionOutputLineContaining(t *testing.T, output string, text string) string {
+	t.Helper()
+
+	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, text) {
+			return line
+		}
+	}
+	require.Failf(t, "missing version output line", "text %q not found in %q", text, output)
+	return ""
 }

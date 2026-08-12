@@ -527,3 +527,19 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - Later 8.10 baseline transition checks can be kept fast by stubbing only the generator in detached worktrees while still proving refresh target identity and publication-path invariants.
 ---
+---
+## Iteration 26 - 2026-08-12 21:19
+**Work Unit**: US4 baseline tag/status and version-output invariance tests
+**Tasks Completed**:
+- [x] T045: Add baseline tag/status update and version-output invariance tests
+**Tasks Remaining in Work Unit**: T046-T048 remain in User Story 4
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/version_test.go
+- toolx/camunda_baseline_test.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- Later 8.10 baseline tags can be tested as provenance-only updates while command output continues to expose `8.10` as the only compatibility identity.
+---

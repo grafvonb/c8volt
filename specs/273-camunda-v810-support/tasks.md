@@ -126,7 +126,7 @@
 ### Tests for User Story 4
 
 - [x] T044 [P] [US4] Add in-place alpha-to-later-prerelease/final transition, deterministic rerun, rollback-on-failure, and identity/path invariance cases in `api/tests/v810_generation_test.sh` and `api/tests/v810_provenance_test.py`
-- [ ] T045 [P] [US4] Add baseline tag/status update and version-output invariance tests in `toolx/camunda_baseline_test.go` and `cmd/version_test.go`
+- [x] T045 [P] [US4] Add baseline tag/status update and version-output invariance tests in `toolx/camunda_baseline_test.go` and `cmd/version_test.go`
 
 ### Implementation for User Story 4
 
