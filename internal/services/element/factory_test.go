@@ -55,6 +55,33 @@ func TestFactory_SupportedVersions(t *testing.T) {
 	}
 }
 
+// TestFactory_StableVersionSelectionUnchanged proves V810 support does not reroute stable service selection or the current default.
+func TestFactory_StableVersionSelectionUnchanged(t *testing.T) {
+	tests := []struct {
+		name    string
+		version toolx.CamundaVersion
+		assert  func(*testing.T, element.API)
+	}{
+		{name: "v87", version: toolx.V87, assert: func(t *testing.T, svc element.API) { require.IsType(t, &v87.Service{}, svc) }},
+		{name: "v88", version: toolx.V88, assert: func(t *testing.T, svc element.API) { require.IsType(t, &v88.Service{}, svc) }},
+		{name: "v89", version: toolx.V89, assert: func(t *testing.T, svc element.API) { require.IsType(t, &v89.Service{}, svc) }},
+		{name: "current-default", version: toolx.CurrentCamundaVersion, assert: func(t *testing.T, svc element.API) { require.IsType(t, &v88.Service{}, svc) }},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := testConfig()
+			cfg.App.CamundaVersion = tt.version
+
+			svc, err := element.New(cfg, &http.Client{}, slog.Default())
+
+			require.NoError(t, err)
+			require.NotNil(t, svc)
+			tt.assert(t, svc)
+		})
+	}
+}
+
 // TestFactory_UnknownVersion preserves the shared unknown-version error contract.
 func TestFactory_UnknownVersion(t *testing.T) {
 	cfg := testConfig()
@@ -66,16 +93,4 @@ func TestFactory_UnknownVersion(t *testing.T) {
 	require.Nil(t, svc)
 	require.ErrorIs(t, err, services.ErrUnknownAPIVersion)
 	require.Contains(t, err.Error(), toolx.ImplementedCamundaVersionsString())
-}
-
-// TestFactory_CurrentDefaultVersionStillUsesV88 prevents V810 support from changing default selection.
-func TestFactory_CurrentDefaultVersionStillUsesV88(t *testing.T) {
-	cfg := testConfig()
-	cfg.App.CamundaVersion = toolx.CurrentCamundaVersion
-
-	svc, err := element.New(cfg, &http.Client{}, slog.Default())
-
-	require.NoError(t, err)
-	require.NotNil(t, svc)
-	require.IsType(t, &v88.Service{}, svc)
 }

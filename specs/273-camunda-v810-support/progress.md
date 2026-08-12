@@ -471,3 +471,28 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - V810 production fixture reuse is now explicit in `toolx.ProductionFixturePrefix`; embed and smoke-test selection consume that mapping while V810's identity prefix remains unmapped.
 ---
+---
+## Iteration 23 - 2026-08-12 21:03
+**Work Unit**: US3 stable service factory selection regressions
+**Tasks Completed**:
+- [x] T040: Extend current-default and V87-V89 selection regressions across all eleven service factory test files
+**Tasks Remaining in Work Unit**: T041 and T043 remain in User Story 3
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/batchoperation/factory_test.go
+- internal/services/cluster/factory_test.go
+- internal/services/element/factory_test.go
+- internal/services/incident/factory_test.go
+- internal/services/job/factory_test.go
+- internal/services/processdefinition/factory_test.go
+- internal/services/processinstance/factory_test.go
+- internal/services/resource/factory_test.go
+- internal/services/tenant/factory_test.go
+- internal/services/usertask/factory_test.go
+- internal/services/variable/factory_test.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- Stable factory regression coverage is now isolated from V810 factory-branch proof in every version-aware service family.
+---

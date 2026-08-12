@@ -47,6 +47,7 @@ Started: 2026-08-12T16:38:49Z
 - User Story 2 T038 validation passed all eleven quickstart service-family suites, `go test ./c8volt -run 'TestNew_V810' -count=1`, and the V810/source-boundary scan in `internal/services`.
 - `toolx.ProductionFixturePrefix` owns production embedded/smoke fixture compatibility; V810 maps explicitly to `C89_` while `toolx.V810.FilePrefix()` remains `unknown` so version identity is not overloaded.
 - Embed list/export-all filtering and ops smoke-test fixture selection consume `ProductionFixturePrefix`; unknown versions still produce no embed selection or a pre-mutation smoke-test precondition failure.
+- Each of the eleven version-aware service factory test files now has `TestFactory_StableVersionSelectionUnchanged`, which separately asserts V87, V88, V89, and `toolx.CurrentCamundaVersion` still select stable adapters after adding V810.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -93,4 +94,4 @@ Started: 2026-08-12T16:38:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 3 at T040: extend current-default and V87-V89 selection regressions across the eleven service factory test files, then proceed to T041/T043.
+- Next iteration should continue User Story 3 at T041: add `api/tests/v810_repository_boundary_test.sh` repository allowlist assertions, then proceed to T043 stable regression and boundary validation.
