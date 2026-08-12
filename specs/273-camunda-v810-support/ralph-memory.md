@@ -17,7 +17,8 @@ Started: 2026-08-12T16:38:49Z
 
 ## Gotchas
 - Git worktrees expose `.git` as a file that points at worktree metadata, not as a directory; shell assertions should check path existence for that case.
-- T003/T004 are intended red TDD guards until `api/refresh-clients.sh`, `api/generate-v810-client.sh`, and the checked-in V810 provenance/client exist; validate syntax with `bash -n` and `python3 -m py_compile`, then confirm the red failures point at missing target/provenance behavior.
+- `api/tests/v810_generation_test.sh` creates detached worktrees from `HEAD`; use direct isolated smoke tests for uncommitted refresh-script changes, then rerun the guard after the work-unit commit.
+- T003/T004 remain red TDD guards until `api/generate-v810-client.sh` and the checked-in V810 provenance/client exist; validate syntax with `bash -n` and `python3 -m py_compile`, then confirm remaining red failures point at missing generator/provenance behavior.
 
 ## Reusable Commands
 - `bash api/tests/v810_generation_test.sh`
@@ -29,4 +30,4 @@ Started: 2026-08-12T16:38:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should start at T005 in Phase 2: add backward-compatible `--target v810` parsing/dispatch in `api/refresh-clients.sh` while preserving the no-target all-client behavior; do not begin US1 until T005-T009 complete.
+- Next iteration should start at T006 in Phase 2: implement `api/generate-v810-client.sh` with temporary fetch, peeled-commit verification, bundling, ordered mutations, symbol checks, protected-tree fingerprints, deterministic provenance, and atomic publication; do not begin US1 until T006-T009 complete.

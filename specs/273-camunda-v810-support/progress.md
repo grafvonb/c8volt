@@ -36,3 +36,18 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - Syntax validation passes; the new red tests currently fail on missing `--target v810` support and absent V810 provenance/client artifacts as intended.
 ---
+---
+## Iteration 3 - 2026-08-12 18:53
+**Work Unit**: Phase 2 foundational V810 refresh target dispatch
+**Tasks Completed**:
+- [x] T005: Add backward-compatible V810 refresh target parsing and dispatch
+**Tasks Remaining in Work Unit**: T006-T009 remain in Phase 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- api/refresh-clients.sh
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- `refresh-clients.sh` now preserves the no-target all-client script sequence and routes validated `--target v810 --camunda-tag <8.10-tag>` invocations to the isolated generator entrypoint.
+---
