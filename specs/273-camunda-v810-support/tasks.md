@@ -12,8 +12,8 @@
 
 **Purpose**: Establish isolated, reusable validation seams before changing version or generated-client behavior.
 
-- [ ] T001 Create the temporary-worktree, checksum, fake-tool, and assertion harness for V810 generation tests in `api/tests/v810_generation_test.sh`
-- [ ] T002 [P] Create the repository import/source-boundary test scaffold for V810 adapters and command/facade layering in `internal/services/v810_source_boundary_test.go`
+- [x] T001 Create the temporary-worktree, checksum, fake-tool, and assertion harness for V810 generation tests in `api/tests/v810_generation_test.sh`
+- [x] T002 [P] Create the repository import/source-boundary test scaffold for V810 adapters and command/facade layering in `internal/services/v810_source_boundary_test.go`
 
 ---
 
