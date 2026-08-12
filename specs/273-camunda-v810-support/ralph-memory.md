@@ -26,6 +26,8 @@ Started: 2026-08-12T16:38:49Z
 - Batch-operation and cluster factories now have explicit `toolx.V810` cases and package-level interface assertions, but `toolx.ImplementedCamundaVersions()` remains staged until all eleven US2 service families are wired.
 - Native V810 element and incident adapters can follow v89 behavior with local V810 generated types; V810 element search differs by requiring `ElementIdFilterProperty` for `elementId`, and V810 cursor pagination requires `*EndCursor` for `after`.
 - Element and incident factories now have explicit `toolx.V810` cases and package-level interface assertions; `toolx.ImplementedCamundaVersions()` remains staged until the remaining US2 service families are wired.
+- Native V810 job and process-definition adapters can follow v89 unified-client behavior with local generated types; V810 process-definition cursor pagination uses `*EndCursor` for `after`, and V810 job tests should use `JobKindEnumBPMNELEMENT`.
+- Job and process-definition factories now have explicit `toolx.V810` cases and package-level interface assertions; `toolx.ImplementedCamundaVersions()` remains staged until all eleven US2 service families are wired.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -49,8 +51,10 @@ Started: 2026-08-12T16:38:49Z
 - `go test ./cmd -run 'ConfigTestConnectionCommand_VersionComparison|ConfigTestConnectionDiagnostics_V810|Version|RootHelp|SupportMessaging|V810Bootstrap|GetHelp|GetClusterHelp|GetProcessDefinitionHelp' -count=1`
 - `go test ./internal/services/batchoperation/... -count=1`
 - `go test ./internal/services/cluster/... -count=1`
+- `go test ./internal/services/job/... -count=1`
+- `go test ./internal/services/processdefinition/... -count=1`
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T020: add V810 factory, filter-shape, success, error, and mutation-confirmation tests for jobs and process definitions in `internal/services/job/factory_test.go`, `internal/services/job/v810/`, `internal/services/processdefinition/factory_test.go`, and `internal/services/processdefinition/v810/`.
+- Next iteration should continue User Story 2 at T021: add V810 factory, nested-variable selection, paging/walk/wait, value conversion, success, and error cases for process instances and variables in `internal/services/processinstance/factory_test.go`, `internal/services/processinstance/v810/`, `internal/services/variable/factory_test.go`, and `internal/services/variable/v810/`.

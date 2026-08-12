@@ -17,7 +17,6 @@ Started: 2026-08-12 18:38:49
 - specs/273-camunda-v810-support/progress.md
 **Learnings**:
 - Generation tests now have reusable isolated-worktree and fake-tool helpers; V810 adapter import scans are ready to activate when adapter directories are added.
----
 ## Iteration 2 - 2026-08-12 18:47
 **Work Unit**: Phase 2 foundational V810 generation/provenance red tests
 **Tasks Completed**:
@@ -217,4 +216,33 @@ Started: 2026-08-12 18:38:49
 - specs/273-camunda-v810-support/progress.md
 **Learnings**:
 - V810 element search needs an `ElementIdFilterProperty`, and V810 cursor pagination accepts an `*EndCursor` where the v89 adapter passed a string.
+---
+---
+## Iteration 12 - 2026-08-12 19:57
+**Work Unit**: US2 V810 job and process-definition adapters
+**Tasks Completed**:
+- [x] T020: Add V810 factory, filter-shape, success, error, and mutation-confirmation cases for jobs and process definitions
+- [x] T028: Implement native V810 job and process-definition adapters plus explicit factory cases
+**Tasks Remaining in Work Unit**: T021-T025 and T029-T038 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/job/api.go
+- internal/services/job/factory.go
+- internal/services/job/factory_test.go
+- internal/services/job/v810/contract.go
+- internal/services/job/v810/convert.go
+- internal/services/job/v810/service.go
+- internal/services/job/v810/service_test.go
+- internal/services/processdefinition/api.go
+- internal/services/processdefinition/factory.go
+- internal/services/processdefinition/factory_test.go
+- internal/services/processdefinition/v810/contract.go
+- internal/services/processdefinition/v810/convert.go
+- internal/services/processdefinition/v810/service.go
+- internal/services/processdefinition/v810/service_test.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- V810 job and process-definition adapters reuse v89 unified-client behavior with local generated types; process-definition cursor requests require pointer `EndCursor` values.
 ---
