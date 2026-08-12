@@ -511,3 +511,19 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - The repository boundary guard can stay strict because `integration/` currently contains no V810/C810/8.10 path or content references, and stable generated-client/integration paths are clean.
 ---
+---
+## Iteration 25 - 2026-08-12 21:15
+**Work Unit**: US4 generation/provenance baseline transition tests
+**Tasks Completed**:
+- [x] T044: Add in-place alpha-to-later-prerelease/final transition, deterministic rerun, rollback-on-failure, and identity/path invariance cases
+**Tasks Remaining in Work Unit**: T045-T048 remain in User Story 4
+**Commit**: This work-unit commit
+**Files Changed**:
+- api/tests/v810_generation_test.sh
+- api/tests/v810_provenance_test.py
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- Later 8.10 baseline transition checks can be kept fast by stubbing only the generator in detached worktrees while still proving refresh target identity and publication-path invariants.
+---

@@ -49,6 +49,8 @@ Started: 2026-08-12T16:38:49Z
 - Embed list/export-all filtering and ops smoke-test fixture selection consume `ProductionFixturePrefix`; unknown versions still produce no embed selection or a pre-mutation smoke-test precondition failure.
 - Each of the eleven version-aware service factory test files now has `TestFactory_StableVersionSelectionUnchanged`, which separately asserts V87, V88, V89, and `toolx.CurrentCamundaVersion` still select stable adapters after adding V810.
 - `api/tests/v810_repository_boundary_test.sh` guards the US3 repository boundary by requiring clean v87-v89 generated client trees, a clean `integration/` tree, no untracked files in those paths, and no V810/C810/8.10 integration path or content references.
+- US4 generation-transition tests now stub only `api/generate-v810-client.sh` inside detached worktrees so `api/refresh-clients.sh` target/tag routing, in-place `v810/camunda` publication, deterministic reruns, failure rollback, and no `v810alpha`/`v810rc`/`v810final` paths are verified without upstream fetches.
+- US4 provenance identity invariance lives in `api/tests/v810_provenance_test.py`; use `canonical_command_for_tag` and keep generated client/provenance parent paths fixed to `internal/clients/camunda/v810/camunda` for later alpha/RC/final tag scenarios.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -98,4 +100,4 @@ Started: 2026-08-12T16:38:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should start User Story 4 at T044: add in-place alpha-to-later-prerelease/final transition, deterministic rerun, rollback-on-failure, and identity/path invariance cases in `api/tests/v810_generation_test.sh` and `api/tests/v810_provenance_test.py`.
+- Next iteration should continue User Story 4 at T045: add baseline tag/status update and version-output invariance tests in `toolx/camunda_baseline_test.go` and `cmd/version_test.go`.

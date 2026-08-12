@@ -80,6 +80,17 @@ assert_file_contains() {
   assert_contains "$(cat "$path")" "$needle" "$label"
 }
 
+assert_file_not_contains() {
+  local path="$1"
+  local needle="$2"
+  local label="${3:-unexpected text present}"
+
+  assert_file_exists "$path"
+  if [[ "$(cat "$path")" == *"$needle"* ]]; then
+    fail "$label: expected <$path> not to contain <$needle>"
+  fi
+}
+
 assert_success() {
   local label="$1"
   shift
@@ -236,6 +247,49 @@ write_existing_v810_publication() {
   mkdir -p "$output_dir"
   printf 'package camunda\n// existing client\n' >"$output_dir/client.gen.go"
   printf '{"schemaVersion":1,"existing":true}\n' >"$output_dir/provenance.json"
+}
+
+install_stub_v810_generator() {
+  local worktree="$1"
+  local generator="$worktree/api/generate-v810-client.sh"
+
+  cat >"$generator" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+camunda_tag=""
+while (($# > 0)); do
+  case "$1" in
+    --camunda-tag)
+      camunda_tag="$2"
+      shift 2
+      ;;
+    *)
+      echo "unexpected argument: $1" >&2
+      exit 1
+      ;;
+  esac
+done
+
+printf '%s\n' "--camunda-tag $camunda_tag" >>"$repo_root/stub-v810-generator.log"
+
+if [[ "$camunda_tag" == *rollback-fail* ]]; then
+  echo "stubbed generation failure for $camunda_tag" >&2
+  exit 1
+fi
+
+output_dir="$repo_root/internal/clients/camunda/v810/camunda"
+mkdir -p "$output_dir"
+cat >"$output_dir/client.gen.go" <<CLIENT
+package camunda
+// stub generated from $camunda_tag
+CLIENT
+cat >"$output_dir/provenance.json" <<PROVENANCE
+{"schemaVersion":1,"tag":"$camunda_tag","command":"bash api/refresh-clients.sh --target v810 --camunda-tag $camunda_tag"}
+PROVENANCE
+EOF
+  chmod +x "$generator"
 }
 
 checksum_v810_publication() {
@@ -469,6 +523,73 @@ test_refresh_failure_preserves_existing_publication_atomically() {
   assert_eq "$before" "$after" "existing v810 publication changed after failed generation"
 }
 
+test_refresh_updates_later_810_baselines_in_place() {
+  local worktree
+  local output_dir
+
+  worktree="$(make_repo_worktree baseline-transition-worktree)"
+  install_stub_v810_generator "$worktree"
+  write_existing_v810_publication "$worktree"
+  output_dir="$(v810_output_dir "$worktree")"
+
+  assert_success \
+    "later prerelease baseline is accepted" \
+    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.0-rc1
+  assert_file_contains "$output_dir/client.gen.go" "package camunda" "v810 package identity changed"
+  assert_file_contains "$output_dir/client.gen.go" "8.10.0-rc1" "later prerelease was not published"
+  assert_file_contains "$output_dir/provenance.json" '"tag":"8.10.0-rc1"' "later prerelease provenance tag"
+  assert_file_contains "$output_dir/provenance.json" "--target v810 --camunda-tag 8.10.0-rc1" "later prerelease command"
+
+  assert_success \
+    "final release baseline is accepted" \
+    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.0
+  assert_file_contains "$output_dir/client.gen.go" "8.10.0" "final release was not published"
+  assert_file_contains "$output_dir/provenance.json" '"tag":"8.10.0"' "final release provenance tag"
+  assert_file_contains "$worktree/stub-v810-generator.log" "--camunda-tag 8.10.0-rc1" "later prerelease dispatch"
+  assert_file_contains "$worktree/stub-v810-generator.log" "--camunda-tag 8.10.0" "final release dispatch"
+  assert_not_exists "$worktree/internal/clients/camunda/v810alpha"
+  assert_not_exists "$worktree/internal/clients/camunda/v810rc"
+  assert_not_exists "$worktree/internal/clients/camunda/v810final"
+}
+
+test_refresh_later_baseline_rerun_is_deterministic() {
+  local worktree
+  local before
+  local after
+
+  worktree="$(make_repo_worktree deterministic-transition-worktree)"
+  install_stub_v810_generator "$worktree"
+
+  assert_success \
+    "first later baseline generation succeeds" \
+    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.0-alpha5
+  before="$(checksum_v810_publication "$worktree")"
+  assert_success \
+    "second later baseline generation succeeds" \
+    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.0-alpha5
+  after="$(checksum_v810_publication "$worktree")"
+
+  assert_eq "$before" "$after" "later v810 baseline rerun changed published artifacts"
+}
+
+test_refresh_later_baseline_failure_rolls_back() {
+  local worktree
+  local before
+
+  worktree="$(make_repo_worktree transition-rollback-worktree)"
+  install_stub_v810_generator "$worktree"
+  write_existing_v810_publication "$worktree"
+  before="$(checksum_optional_v810_publication "$worktree")"
+  COMMAND_OUTPUT="$TEST_TMPDIR/transition-rollback.out"
+
+  assert_failure_output_contains \
+    "failed later baseline generation rolls back" \
+    "stubbed generation failure for 8.10.0-rollback-fail" \
+    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.0-rollback-fail
+  assert_v810_publication_unchanged "$worktree" "$before"
+  assert_file_not_contains "$(v810_output_dir "$worktree")/provenance.json" "8.10.0-rollback-fail" "failed baseline leaked into provenance"
+}
+
 main() {
   setup_tmpdir
   trap cleanup_tmpdir EXIT
@@ -484,6 +605,9 @@ main() {
   test_refresh_names_missing_generation_tool_before_writes
   test_refresh_rejects_mutation_no_op_before_publication
   test_refresh_failure_preserves_existing_publication_atomically
+  test_refresh_updates_later_810_baselines_in_place
+  test_refresh_later_baseline_rerun_is_deterministic
+  test_refresh_later_baseline_failure_rolls_back
 
   echo "ok api/tests/v810_generation_test.sh"
 }

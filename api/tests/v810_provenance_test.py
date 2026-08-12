@@ -23,10 +23,8 @@ PROVENANCE_PATH = (
 GENERATED_CLIENT_PATH = (
     REPO_ROOT / "internal/clients/camunda/v810/camunda/client.gen.go"
 )
-CANONICAL_COMMAND = (
-    "bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.0-alpha4"
-)
 EXPECTED_COMMIT = "4a76f06c9df8ad0a6c64fe88b92c618c2ebf2ef6"
+EXPECTED_OUTPUT_PARTS = ("internal", "clients", "camunda", "v810", "camunda")
 EXPECTED_TRANSFORMATIONS = [
     "api/mutations/mutate-search-query-schemas.py",
     "api/mutations/mutate-search-result-schemas.py",
@@ -61,6 +59,10 @@ DISALLOWED_KEY_FRAGMENTS = (
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
+def canonical_command_for_tag(tag: str) -> str:
+    return f"bash api/refresh-clients.sh --target v810 --camunda-tag {tag}"
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -88,6 +90,18 @@ def walk_json(value: Any) -> list[Any]:
 class V810ProvenanceTest(unittest.TestCase):
     """Contract checks for reproducible v8.10 generation evidence."""
 
+    def assert_v810_identity_invariant(self, provenance: dict[str, Any]) -> None:
+        """Baseline provenance must keep the single v810 target identity."""
+        tag = provenance["tag"]
+
+        self.assertRegex(tag, r"^8\.10([.-].*)?$")
+        self.assertEqual(canonical_command_for_tag(tag), provenance["command"])
+        self.assertIn("--target v810", provenance["command"])
+        self.assertNotIn("v810alpha", provenance["command"])
+        self.assertNotIn("v810rc", provenance["command"])
+        self.assertEqual(EXPECTED_OUTPUT_PARTS, GENERATED_CLIENT_PATH.parent.parts[-5:])
+        self.assertEqual(EXPECTED_OUTPUT_PARTS, PROVENANCE_PATH.parent.parts[-5:])
+
     def test_schema_and_canonical_source_identity(self) -> None:
         """The provenance file must identify exactly one pinned v8.10 baseline."""
         provenance = load_provenance()
@@ -101,7 +115,19 @@ class V810ProvenanceTest(unittest.TestCase):
             "zeebe/gateway-protocol/src/main/proto/v2/rest-api.yaml",
             provenance["sourceSpec"],
         )
-        self.assertEqual(CANONICAL_COMMAND, provenance["command"])
+        self.assertEqual(canonical_command_for_tag("8.10.0-alpha4"), provenance["command"])
+        self.assert_v810_identity_invariant(provenance)
+
+    def test_future_baseline_commands_keep_v810_identity(self) -> None:
+        """Later alpha, RC, and final tags still update the same v810 artifacts."""
+        provenance = load_provenance()
+
+        for tag in ("8.10.0-alpha5", "8.10.0-rc1", "8.10.0"):
+            with self.subTest(tag=tag):
+                updated = dict(provenance)
+                updated["tag"] = tag
+                updated["command"] = canonical_command_for_tag(tag)
+                self.assert_v810_identity_invariant(updated)
 
     def test_transformations_are_ordered_and_hashed(self) -> None:
         """The mutation chain is recorded in the same order the generator applies it."""
@@ -143,7 +169,7 @@ class V810ProvenanceTest(unittest.TestCase):
                 self.assertNotIn("\\Temp\\", value)
 
     def test_second_generation_run_is_diff_free(self) -> None:
-        """Running the canonical generator twice must not change published artifacts."""
+        """Running the alpha4 generator twice must not change published artifacts."""
         for _ in range(2):
             result = subprocess.run(
                 ["bash", "api/refresh-clients.sh", "--target", "v810", "--camunda-tag", "8.10.0-alpha4"],
