@@ -1,20 +1,17 @@
 // SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-package element
+package v810
 
 import (
 	"context"
 
+	camundav810 "github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
-	v810 "github.com/grafvonb/c8volt/internal/services/element/v810"
-	v87 "github.com/grafvonb/c8volt/internal/services/element/v87"
-	v88 "github.com/grafvonb/c8volt/internal/services/element/v88"
-	v89 "github.com/grafvonb/c8volt/internal/services/element/v89"
 )
 
-// API exposes tenant-safe runtime element lookup and search operations.
+// API describes the runtime element operations expected from the v8.10 adapter.
 type API interface {
 	GetElement(ctx context.Context, key string, opts ...services.CallOption) (d.Element, error)
 	SearchElements(ctx context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (d.ElementSearchResult, error)
@@ -23,11 +20,11 @@ type API interface {
 	SearchElementsTotal(ctx context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (int64, error)
 }
 
-var _ API = (*v87.Service)(nil)
-var _ API = (*v88.Service)(nil)
-var _ API = (*v89.Service)(nil)
-var _ API = (*v810.Service)(nil)
-var _ API = (v87.API)(nil)
-var _ API = (v88.API)(nil)
-var _ API = (v89.API)(nil)
-var _ API = (v810.API)(nil)
+// GenElementClient contains the generated Camunda methods needed for runtime element operations.
+type GenElementClient interface {
+	GetElementInstanceWithResponse(ctx context.Context, elementInstanceKey camundav810.ElementInstanceKey, reqEditors ...camundav810.RequestEditorFn) (*camundav810.GetElementInstanceResponse, error)
+	SearchElementInstancesWithResponse(ctx context.Context, body camundav810.SearchElementInstancesJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchElementInstancesResponse, error)
+}
+
+var _ API = (*Service)(nil)
+var _ GenElementClient = (*camundav810.ClientWithResponses)(nil)

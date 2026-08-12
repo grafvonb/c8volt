@@ -24,6 +24,8 @@ Started: 2026-08-12T16:38:49Z
 - Native V810 batch-operation adapters can follow the V89 unified v2 shape with V810 generated types: read access uses `SearchBatchOperationsWithResponse`, cancel uses `CancelProcessInstancesBatchOperationWithResponse`, and completion polls `GetBatchOperationWithResponse`.
 - Native V810 cluster adapters reuse `internal/services/cluster/common` for response/error handling; only generated-client wiring and V810-to-domain conversions are package-local.
 - Batch-operation and cluster factories now have explicit `toolx.V810` cases and package-level interface assertions, but `toolx.ImplementedCamundaVersions()` remains staged until all eleven US2 service families are wired.
+- Native V810 element and incident adapters can follow v89 behavior with local V810 generated types; V810 element search differs by requiring `ElementIdFilterProperty` for `elementId`, and V810 cursor pagination requires `*EndCursor` for `after`.
+- Element and incident factories now have explicit `toolx.V810` cases and package-level interface assertions; `toolx.ImplementedCamundaVersions()` remains staged until the remaining US2 service families are wired.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -51,4 +53,4 @@ Started: 2026-08-12T16:38:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T019: add V810 factory, interface, paging, success, error, and mutation-confirmation tests for elements and incidents in `internal/services/element/factory_test.go`, `internal/services/element/v810/`, `internal/services/incident/factory_test.go`, and `internal/services/incident/v810/`.
+- Next iteration should continue User Story 2 at T020: add V810 factory, filter-shape, success, error, and mutation-confirmation tests for jobs and process definitions in `internal/services/job/factory_test.go`, `internal/services/job/v810/`, `internal/services/processdefinition/factory_test.go`, and `internal/services/processdefinition/v810/`.

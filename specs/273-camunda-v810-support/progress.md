@@ -188,3 +188,33 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - Batch-operation and cluster V810 generated shapes match the V89 unified-client paths closely enough for native adapters with local V810 conversions.
 ---
+---
+## Iteration 11 - 2026-08-12 19:49
+**Work Unit**: US2 V810 element and incident adapters
+**Tasks Completed**:
+- [x] T019: Add V810 factory, interface, paging, success, error, and mutation-confirmation cases for elements and incidents
+- [x] T027: Implement native V810 element and incident adapters plus explicit factory cases
+**Tasks Remaining in Work Unit**: T020-T025 and T028-T038 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/element/api.go
+- internal/services/element/factory.go
+- internal/services/element/factory_test.go
+- internal/services/element/v810/contract.go
+- internal/services/element/v810/convert.go
+- internal/services/element/v810/service.go
+- internal/services/element/v810/service_test.go
+- internal/services/incident/api.go
+- internal/services/incident/factory.go
+- internal/services/incident/factory_test.go
+- internal/services/incident/v810/contract.go
+- internal/services/incident/v810/convert.go
+- internal/services/incident/v810/incidents.go
+- internal/services/incident/v810/incidents_test.go
+- internal/services/incident/v810/service.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- V810 element search needs an `ElementIdFilterProperty`, and V810 cursor pagination accepts an `*EndCursor` where the v89 adapter passed a string.
+---
