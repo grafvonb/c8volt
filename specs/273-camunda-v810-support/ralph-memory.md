@@ -54,6 +54,7 @@ Started: 2026-08-12T16:38:49Z
 - US4 baseline identity tests now cover later alpha/RC/final tag replacements in `toolx/camunda_baseline_test.go` and command JSON/human output separation in `cmd/version_test.go`; supported-version discovery must keep reporting only `8.10`, never baseline tag/status strings.
 - `api/generate-v810-client.sh` now accepts only final-style `8.10`/`8.10.x` tags and prerelease `8.10.x-alphaN`/`8.10.x-rcN` tags; malformed suffixes fail before tool or repository work in the real generator.
 - V810 publication stages replacement artifacts in a hidden same-parent directory, verifies provenance command identity remains `--target v810`, backs up the existing `v810/camunda` directory before final move, and restores it if publication fails.
+- `api/README.md` now documents the V810 isolated baseline workflow: exact alpha4 reproduction command, provenance field inventory, ordered mutation chain, in-place later-baseline update examples, rollback guarantees, protected stable paths, and generation guard commands.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -105,4 +106,4 @@ Started: 2026-08-12T16:38:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 4 at T047: document the initial reproduction command, provenance fields, update-in-place procedure, failure guarantees, and protected paths in `api/README.md`.
+- Next iteration should continue User Story 4 at T048: execute the alpha4 reproduction twice and update-transition fixture cases, resolving only generator/provenance/doc discrepancies in the scoped US4 paths.

@@ -558,3 +558,18 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - The real V810 generator now rejects malformed 8.10 tags before tool or repository work and stages publication with backup restoration around the final output move.
 ---
+---
+## Iteration 28 - 2026-08-12 21:30
+**Work Unit**: US4 V810 baseline reproduction and update documentation
+**Tasks Completed**:
+- [x] T047: Document the exact initial reproduction command, provenance fields, update-in-place procedure, failure guarantees, and protected paths
+**Tasks Remaining in Work Unit**: T048 remains in User Story 4
+**Commit**: This work-unit commit
+**Files Changed**:
+- api/README.md
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- V810 baseline update guidance belongs in `api/README.md` and can stay documentation-only because the generator already records deterministic provenance and performs staged rollback.
+---
