@@ -55,6 +55,8 @@ Started: 2026-08-12T16:38:49Z
 - `api/generate-v810-client.sh` now accepts only final-style `8.10`/`8.10.x` tags and prerelease `8.10.x-alphaN`/`8.10.x-rcN` tags; malformed suffixes fail before tool or repository work in the real generator.
 - V810 publication stages replacement artifacts in a hidden same-parent directory, verifies provenance command identity remains `--target v810`, backs up the existing `v810/camunda` directory before final move, and restores it if publication fails.
 - `api/README.md` now documents the V810 isolated baseline workflow: exact alpha4 reproduction command, provenance field inventory, ordered mutation chain, in-place later-baseline update examples, rollback guarantees, protected stable paths, and generation guard commands.
+- V810 generator target validation must compare physical parent paths on both sides; macOS temp/worktree paths can differ as logical `/var/...` versus physical `/private/var/...`.
+- To validate uncommitted generator changes with `api/tests/v810_generation_test.sh`, run the guard in a temporary local clone with the diff committed because the guard creates detached worktrees from `HEAD`.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -106,4 +108,4 @@ Started: 2026-08-12T16:38:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 4 at T048: execute the alpha4 reproduction twice and update-transition fixture cases, resolving only generator/provenance/doc discrepancies in the scoped US4 paths.
+- Next iteration should start Phase 7 at T049: update supported-version wording, aliases, unchanged default, prerelease baseline, and in-place update model across README, command help/source, and docsgen files.

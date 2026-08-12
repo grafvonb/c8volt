@@ -121,6 +121,7 @@ fingerprint_protected_trees() {
 validate_target_path() {
   local output_parent
   local resolved_parent
+  local expected_parent
 
   case "$OUTPUT_DIR" in
     "$REPO_ROOT"/internal/clients/camunda/v810/camunda)
@@ -139,7 +140,8 @@ validate_target_path() {
   output_parent="$(dirname "$OUTPUT_DIR")"
   if [ -e "$output_parent" ]; then
     resolved_parent="$(cd "$output_parent" && pwd -P)"
-    if [ "$resolved_parent" != "$REPO_ROOT/internal/clients/camunda/v810" ]; then
+    expected_parent="$(cd "$REPO_ROOT/internal/clients/camunda/v810" && pwd -P)"
+    if [ "$resolved_parent" != "$expected_parent" ]; then
       echo "V810 output path escapes repository" >&2
       exit 1
     fi

@@ -573,3 +573,18 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - V810 baseline update guidance belongs in `api/README.md` and can stay documentation-only because the generator already records deterministic provenance and performs staged rollback.
 ---
+---
+## Iteration 29 - 2026-08-12 21:37
+**Work Unit**: US4 V810 alpha4 reproduction and transition validation
+**Tasks Completed**:
+- [x] T048: Execute the alpha4 reproduction twice and the update-transition fixture cases
+**Tasks Remaining in Work Unit**: 0; User Story 4 complete
+**Commit**: This work-unit commit
+**Files Changed**:
+- api/generate-v810-client.sh
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- The real alpha4 provenance reproduction is diff-free; the transition guard needs committed HEAD state, so prospective validation used a temporary clone containing the generator path fix.
+---
