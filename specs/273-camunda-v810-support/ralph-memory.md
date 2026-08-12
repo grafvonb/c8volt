@@ -48,6 +48,7 @@ Started: 2026-08-12T16:38:49Z
 - `toolx.ProductionFixturePrefix` owns production embedded/smoke fixture compatibility; V810 maps explicitly to `C89_` while `toolx.V810.FilePrefix()` remains `unknown` so version identity is not overloaded.
 - Embed list/export-all filtering and ops smoke-test fixture selection consume `ProductionFixturePrefix`; unknown versions still produce no embed selection or a pre-mutation smoke-test precondition failure.
 - Each of the eleven version-aware service factory test files now has `TestFactory_StableVersionSelectionUnchanged`, which separately asserts V87, V88, V89, and `toolx.CurrentCamundaVersion` still select stable adapters after adding V810.
+- `api/tests/v810_repository_boundary_test.sh` guards the US3 repository boundary by requiring clean v87-v89 generated client trees, a clean `integration/` tree, no untracked files in those paths, and no V810/C810/8.10 integration path or content references.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -90,8 +91,11 @@ Started: 2026-08-12T16:38:49Z
 - `go test ./internal/services/ops -run 'TestExecuteSmokeTestSelectsVersionMatchedFixtures|TestExecuteSmokeTestMissingFixtureFailsBeforeMutation' -count=1`
 - `go test ./cmd -run 'Embed' -count=1`
 - `go test ./internal/services/ops -run 'SmokeTest' -count=1`
+- `bash -n api/tests/v810_repository_boundary_test.sh`
+- `bash api/tests/v810_repository_boundary_test.sh`
+- `go test ./internal/services/batchoperation ./internal/services/cluster ./internal/services/element ./internal/services/incident ./internal/services/job ./internal/services/processdefinition ./internal/services/processinstance ./internal/services/resource ./internal/services/tenant ./internal/services/usertask ./internal/services/variable -run 'TestFactory_StableVersionSelectionUnchanged' -count=1`
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 3 at T041: add `api/tests/v810_repository_boundary_test.sh` repository allowlist assertions, then proceed to T043 stable regression and boundary validation.
+- Next iteration should start User Story 4 at T044: add in-place alpha-to-later-prerelease/final transition, deterministic rerun, rollback-on-failure, and identity/path invariance cases in `api/tests/v810_generation_test.sh` and `api/tests/v810_provenance_test.py`.

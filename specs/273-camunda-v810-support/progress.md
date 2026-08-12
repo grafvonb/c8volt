@@ -46,7 +46,6 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - `refresh-clients.sh` now preserves the no-target all-client script sequence and routes validated `--target v810 --camunda-tag <8.10-tag>` invocations to the isolated generator entrypoint.
 ---
----
 ## Iteration 4 - 2026-08-12 19:01
 **Work Unit**: Phase 2 foundational V810 isolated generator
 **Tasks Completed**:
@@ -495,4 +494,20 @@ Started: 2026-08-12 18:38:49
 - specs/273-camunda-v810-support/progress.md
 **Learnings**:
 - Stable factory regression coverage is now isolated from V810 factory-branch proof in every version-aware service family.
+---
+---
+## Iteration 24 - 2026-08-12 21:07
+**Work Unit**: US3 repository boundary guard and stable regression validation
+**Tasks Completed**:
+- [x] T041: Add repository allowlist assertions for unchanged v87-v89 generated trees and zero V810 integration assets
+- [x] T043: Run stable V87-V89 package/command regressions and repository boundary checks
+**Tasks Remaining in Work Unit**: 0; User Story 3 complete
+**Commit**: This work-unit commit
+**Files Changed**:
+- api/tests/v810_repository_boundary_test.sh
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- The repository boundary guard can stay strict because `integration/` currently contains no V810/C810/8.10 path or content references, and stable generated-client/integration paths are clean.
 ---
