@@ -104,13 +104,13 @@
 
 ### Tests for User Story 3
 
-- [ ] T039 [P] [US3] Add explicit V810-to-C89 production fixture mapping and stable-version selection tests in `toolx/fixture_compatibility_test.go`, `cmd/embed_test.go`, and `internal/services/ops/smoke_test_test.go`
+- [x] T039 [P] [US3] Add explicit V810-to-C89 production fixture mapping and stable-version selection tests in `toolx/fixture_compatibility_test.go`, `cmd/embed_test.go`, and `internal/services/ops/smoke_test_test.go`
 - [ ] T040 [P] [US3] Extend current-default and V87-V89 selection regressions in `internal/services/batchoperation/factory_test.go`, `internal/services/cluster/factory_test.go`, `internal/services/element/factory_test.go`, `internal/services/incident/factory_test.go`, `internal/services/job/factory_test.go`, `internal/services/processdefinition/factory_test.go`, `internal/services/processinstance/factory_test.go`, `internal/services/resource/factory_test.go`, `internal/services/tenant/factory_test.go`, `internal/services/usertask/factory_test.go`, and `internal/services/variable/factory_test.go`
 - [ ] T041 [P] [US3] Add repository allowlist assertions for unchanged v87-v89 generated trees and zero V810 integration assets in `api/tests/v810_repository_boundary_test.sh`
 
 ### Implementation for User Story 3
 
-- [ ] T042 [US3] Implement the named V810-to-C89 production fixture mapping and update embedded/smoke consumers in `toolx/fixture_compatibility.go`, `cmd/embed_files.go`, and `internal/services/ops/smoke_test_service.go`
+- [x] T042 [US3] Implement the named V810-to-C89 production fixture mapping and update embedded/smoke consumers in `toolx/fixture_compatibility.go`, `cmd/embed_files.go`, and `internal/services/ops/smoke_test_service.go`
 - [ ] T043 [US3] Run stable V87-V89 package/command regressions and repository boundary checks, resolving any regression only in V810/shared compatibility files identified by `api/tests/v810_repository_boundary_test.sh`
 
 **Checkpoint**: Stable behavior and protected artifacts match their pre-feature baseline, and `integration/` has no V810 changes.

@@ -450,3 +450,24 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - All eleven service-family suites, full V810 client construction, and V810/source-boundary tests passed without production changes.
 ---
+---
+## Iteration 22 - 2026-08-12 20:57
+**Work Unit**: US3 fixture compatibility mapping
+**Tasks Completed**:
+- [x] T039: Add explicit V810-to-C89 production fixture mapping and stable-version selection tests
+- [x] T042: Implement the named V810-to-C89 production fixture mapping and update embedded/smoke consumers
+**Tasks Remaining in Work Unit**: T040-T041 and T043 remain in User Story 3
+**Commit**: This work-unit commit
+**Files Changed**:
+- toolx/fixture_compatibility.go
+- toolx/fixture_compatibility_test.go
+- cmd/embed_files.go
+- cmd/embed_test.go
+- internal/services/ops/smoke_test_service.go
+- internal/services/ops/smoke_test_test.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- V810 production fixture reuse is now explicit in `toolx.ProductionFixturePrefix`; embed and smoke-test selection consume that mapping while V810's identity prefix remains unmapped.
+---

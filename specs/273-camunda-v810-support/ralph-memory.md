@@ -45,6 +45,8 @@ Started: 2026-08-12T16:38:49Z
 - V810 command fake-server coverage now proves resource read human/JSON/keys-only modes, process-definition deletion request/confirmation lifecycle, job update prompt/confirmation flow, process-instance variable update confirmation, and run process-instance JSON/keys-only activity routing without production command changes.
 - V810-aware command help now uses `8.8 or newer` or capability-oriented `full process-definition history deletion` wording where 8.10 is verified; ops purge unsupported text is service-owned in `internal/services/ops/all_process_definitions_purge.go`.
 - User Story 2 T038 validation passed all eleven quickstart service-family suites, `go test ./c8volt -run 'TestNew_V810' -count=1`, and the V810/source-boundary scan in `internal/services`.
+- `toolx.ProductionFixturePrefix` owns production embedded/smoke fixture compatibility; V810 maps explicitly to `C89_` while `toolx.V810.FilePrefix()` remains `unknown` so version identity is not overloaded.
+- Embed list/export-all filtering and ops smoke-test fixture selection consume `ProductionFixturePrefix`; unknown versions still produce no embed selection or a pre-mutation smoke-test precondition failure.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -55,7 +57,6 @@ Started: 2026-08-12T16:38:49Z
 ## Gotchas
 - Git worktrees expose `.git` as a file that points at worktree metadata, not as a directory; shell assertions should check path existence for that case.
 - `api/tests/v810_generation_test.sh` creates detached worktrees from `HEAD`; use direct isolated smoke tests for uncommitted refresh-script changes, and rerun the guard after the work-unit commit because it does not see uncommitted changes.
-- `go test ./internal/services/... -count=1` currently reaches an unrelated `internal/services/ops` smoke-test fixture wording failure (`unsupported smoke-test fixture version` expected vs `embedded smoke-test fixture not found` actual); keep T024/T032 validation scoped to incidentfilter, incident consumers, cmd incident validation, and source boundaries.
 
 ## Reusable Commands
 - `bash api/tests/v810_generation_test.sh`
@@ -83,8 +84,13 @@ Started: 2026-08-12T16:38:49Z
 - `go test ./internal/services/ops -run 'PurgeAllProcessDefinitions' -count=1`
 - `go test ./cmd -run 'GetResourceCommand|DeleteProcessDefinitionCommand|UpdateJobCommand|UpdatePICommand|RunProcessInstanceCommand' -count=1`
 - `go test ./cmd -count=1`
+- `go test ./toolx -run 'ProductionFixture|V810FilePrefix' -count=1`
+- `go test ./cmd -run 'Embed.*V810|EmbedListCommand_DetailsFilters|EmbedListCommand_Filters' -count=1`
+- `go test ./internal/services/ops -run 'TestExecuteSmokeTestSelectsVersionMatchedFixtures|TestExecuteSmokeTestMissingFixtureFailsBeforeMutation' -count=1`
+- `go test ./cmd -run 'Embed' -count=1`
+- `go test ./internal/services/ops -run 'SmokeTest' -count=1`
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should start User Story 3 at T039: add explicit V810-to-C89 production fixture mapping and stable-version selection tests in `toolx/fixture_compatibility_test.go`, `cmd/embed_test.go`, and `internal/services/ops/smoke_test_test.go`.
+- Next iteration should continue User Story 3 at T040: extend current-default and V87-V89 selection regressions across the eleven service factory test files, then proceed to T041/T043.

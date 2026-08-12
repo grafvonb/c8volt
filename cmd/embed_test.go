@@ -51,6 +51,19 @@ func TestEmbedListCommand_DetailsFiltersFilesForConfiguredCamundaVersion(t *test
 	require.NotContains(t, output, "processdefinitions/C88_")
 }
 
+func TestEmbedListCommand_V810UsesC89ProductionFixtureMapping(t *testing.T) {
+	resetEmbedCommandStateForTest()
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.10")
+
+	output := executeRootForTest(t, "--config", cfgPath, "embed", "list", "--details")
+
+	require.Contains(t, output, "processdefinitions/C89_SimpleUserTask.bpmn")
+	require.Contains(t, output, "processdefinitions/C89_MultipleSubProcessesParent.bpmn")
+	require.NotContains(t, output, "processdefinitions/C87_")
+	require.NotContains(t, output, "processdefinitions/C88_")
+	require.NotContains(t, output, "processdefinitions/C810_")
+}
+
 func TestEmbedExportHelp_DocumentsSelectionWorkflow(t *testing.T) {
 	output := executeRootForTest(t, "embed", "export", "--help")
 

@@ -188,6 +188,11 @@ func TestExecuteSmokeTestSelectsVersionMatchedFixtures(t *testing.T) {
 			file:    "embedded/processdefinitions/C89_MultipleSubProcessesParent.bpmn",
 			process: "C89_MultipleSubProcessesParent",
 		},
+		{
+			version: toolx.V810,
+			file:    "embedded/processdefinitions/C89_MultipleSubProcessesParent.bpmn",
+			process: "C89_MultipleSubProcessesParent",
+		},
 	}
 
 	for _, tt := range tests {
@@ -209,7 +214,7 @@ func TestExecuteSmokeTestMissingFixtureFailsBeforeMutation(t *testing.T) {
 	t.Parallel()
 
 	resource := &stubSmokeTestResourceAPI{}
-	got, err := NewWithWorkflowDependencies(nil, nil, nil, nil, resource, toolx.CamundaVersion("8.10")).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
+	got, err := NewWithWorkflowDependencies(nil, nil, nil, nil, resource, toolx.CamundaVersion("8.11")).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
 		CommandName: "ops execute smoke-test",
 		Count:       1,
 	})
