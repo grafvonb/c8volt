@@ -98,3 +98,22 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - Committed V810 artifacts mean negative generation guards must assert unchanged publication, and canonical regeneration must preserve package-local tests.
 ---
+---
+## Iteration 7 - 2026-08-12 19:21
+**Work Unit**: US1 V810 version identity selection
+**Tasks Completed**:
+- [x] T010: Add V810 alias, canonical string, supported/implemented-set staging, source-tag rejection, and unchanged-default tests
+- [x] T013: Add V810 canonical/alias normalization, string rendering, and supported-version membership
+**Tasks Remaining in Work Unit**: T011-T012 and T014-T017 remain in User Story 1
+**Commit**: This work-unit commit
+**Files Changed**:
+- toolx/version.go
+- toolx/version_test.go
+- config/app_test.go
+- cmd/version_test.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- V810 is now selectable and listed as supported, while implemented-version discovery remains staged on V87-V89 until native V810 factories are complete.
+---

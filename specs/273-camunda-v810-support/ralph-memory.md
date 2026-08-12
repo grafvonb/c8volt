@@ -16,10 +16,12 @@ Started: 2026-08-12T16:38:49Z
 - V810 generation guard negative cases now compare the V810 publication checksum before/after failed runs because detached worktrees already contain the committed pinned V810 artifacts.
 - Source-boundary tests use AST import scanning rather than package loading so they can catch layering regressions before type checking.
 - `internal/services/v810_source_boundary_test.go` is active for `cmd/` and public facade generated-client/versioned-service imports, and conditionally scans V810 adapter packages as they appear.
+- `toolx.V810` now normalizes only the stable aliases `8.10`, `810`, `v810`, and `v8.10`; prerelease/source tags such as `8.10.0-alpha4` remain rejected configuration identities.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
 - Command and public facade boundary checks reject any generated Camunda client import and any direct versioned service implementation import.
+- V810 is listed in supported versions for operator discovery, but `ImplementedCamundaVersions()` intentionally remains `V87,V88,V89` until the complete native V810 factory/client wiring is done.
 
 ## Gotchas
 - Git worktrees expose `.git` as a file that points at worktree metadata, not as a directory; shell assertions should check path existence for that case.
@@ -37,4 +39,4 @@ Started: 2026-08-12T16:38:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should start at T010 in User Story 1: add V810 alias, canonical string, supported/implemented-set staging, source-tag rejection, and unchanged-default tests in `toolx/version_test.go` and `config/app_test.go`.
+- Next iteration should continue User Story 1 at T011: add gateway `8.10`, patch, alpha4, different-minor, empty, and malformed comparison cases in `cmd/config_test.go`.

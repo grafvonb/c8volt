@@ -7,15 +7,20 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/stretchr/testify/require"
 )
 
+// TestCurrentBuildInfoIncludesSupportedCamundaVersions verifies build metadata
+// reports the shared supported-version list used by the CLI.
 func TestCurrentBuildInfoIncludesSupportedCamundaVersions(t *testing.T) {
 	info := CurrentBuildInfo()
 
-	require.Equal(t, "8.7, 8.8, 8.9", info.SupportedCamundaVersions)
+	require.Equal(t, toolx.SupportedCamundaVersionsString(), info.SupportedCamundaVersions)
 }
 
+// TestVersionCommandJSONIncludesSupportedCamundaVersions verifies JSON version
+// output follows the additive supported-version discovery contract.
 func TestVersionCommandJSONIncludesSupportedCamundaVersions(t *testing.T) {
 	output := executeRootForTest(t, "version", "--json")
 
@@ -28,18 +33,22 @@ func TestVersionCommandJSONIncludesSupportedCamundaVersions(t *testing.T) {
 	require.Equal(t, string(OutcomeSucceeded), envelope.Outcome)
 	require.Equal(t, "version", envelope.Command)
 	payload := envelope.Payload
-	require.Equal(t, "8.7, 8.8, 8.9", payload["supportedCamundaVersions"])
+	require.Equal(t, toolx.SupportedCamundaVersionsString(), payload["supportedCamundaVersions"])
 }
 
+// TestVersionCommand_DefaultOutputRemainsCompactPlainText verifies human output
+// remains a compact plain text block while supported versions expand.
 func TestVersionCommand_DefaultOutputRemainsCompactPlainText(t *testing.T) {
 	output := executeRootForTest(t, "version")
 
 	require.Contains(t, output, "c8volt ")
-	require.Contains(t, output, "Supported Camunda versions: 8.7, 8.8, 8.9")
+	require.Contains(t, output, "Supported Camunda versions: "+toolx.SupportedCamundaVersionsString())
 	require.NotContains(t, output, `"outcome"`)
 	require.NotContains(t, output, `"command"`)
 }
 
+// TestVersionHelp_DocumentsReadOnlyAutomationGuidance verifies help still
+// advertises the script-friendly metadata path.
 func TestVersionHelp_DocumentsReadOnlyAutomationGuidance(t *testing.T) {
 	output := executeRootForTest(t, "version", "--help")
 
