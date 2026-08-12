@@ -119,6 +119,9 @@ fingerprint_protected_trees() {
 }
 
 validate_target_path() {
+  local output_parent
+  local resolved_parent
+
   case "$OUTPUT_DIR" in
     "$REPO_ROOT"/internal/clients/camunda/v810/camunda)
       ;;
@@ -127,12 +130,26 @@ validate_target_path() {
       exit 1
       ;;
   esac
+
+  if [ -L "$OUTPUT_DIR" ]; then
+    echo "V810 output path escapes repository" >&2
+    exit 1
+  fi
+
+  output_parent="$(dirname "$OUTPUT_DIR")"
+  if [ -e "$output_parent" ]; then
+    resolved_parent="$(cd "$output_parent" && pwd -P)"
+    if [ "$resolved_parent" != "$REPO_ROOT/internal/clients/camunda/v810" ]; then
+      echo "V810 output path escapes repository" >&2
+      exit 1
+    fi
+  fi
 }
 
 validate_tag() {
   local tag="$1"
 
-  if [[ ! "$tag" =~ ^8\.10([.-].*)?$ ]]; then
+  if [[ ! "$tag" =~ ^8\.10(\.[0-9]+)?$ ]] && [[ ! "$tag" =~ ^8\.10\.[0-9]+-(alpha|rc)[0-9]+$ ]]; then
     echo "Invalid Camunda tag for v810: $tag" >&2
     exit 1
   fi
@@ -380,27 +397,105 @@ if provenance.get("generatedClientSha256") != actual:
 PY
 }
 
+verify_provenance_identity() {
+  local tag="$1"
+  local provenance="$2"
+
+  python3 - "$tag" "$provenance" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+tag, provenance_path = sys.argv[1:]
+provenance = json.loads(Path(provenance_path).read_text(encoding="utf-8"))
+expected_command = f"bash api/refresh-clients.sh --target v810 --camunda-tag {tag}"
+
+if provenance.get("tag") != tag:
+    raise SystemExit("provenance tag does not match requested v810 baseline")
+if provenance.get("command") != expected_command:
+    raise SystemExit("provenance command does not preserve v810 target identity")
+command = provenance.get("command", "")
+if any(identity in command for identity in ("v810alpha", "v810rc", "v810final")):
+    raise SystemExit("provenance command uses a prerelease-specific v810 identity")
+PY
+}
+
 publish_artifacts() {
   local generated_client="$1"
   local provenance="$2"
-  local staged_dir="$TMP_ROOT/publish/camunda"
+  local output_parent
+  local staging_root
+  local staged_dir
+  local backup_dir=""
+  local had_existing=false
 
-  mkdir -p "$staged_dir"
-  if [ -d "$OUTPUT_DIR" ]; then
-    cp -R "$OUTPUT_DIR/." "$staged_dir/"
+  output_parent="$(dirname "$OUTPUT_DIR")"
+  mkdir -p "$output_parent"
+  staging_root="$(mktemp -d "$output_parent/.v810-publish.XXXXXX")"
+  staged_dir="$staging_root/camunda"
+  if ! mkdir -p "$staged_dir"; then
+    rm -rf "$staging_root"
+    exit 1
   fi
-  cp "$generated_client" "$staged_dir/client.gen.go"
-  cp "$provenance" "$staged_dir/provenance.json"
 
-  rm -rf "$OUTPUT_DIR"
-  mkdir -p "$(dirname "$OUTPUT_DIR")"
-  mv "$staged_dir" "$OUTPUT_DIR"
+  if [ -d "$OUTPUT_DIR" ]; then
+    if ! cp -R "$OUTPUT_DIR/." "$staged_dir/"; then
+      echo "Failed to stage existing V810 generated artifacts" >&2
+      rm -rf "$staging_root"
+      exit 1
+    fi
+  fi
+  if ! cp "$generated_client" "$staged_dir/client.gen.go"; then
+    echo "Failed to stage V810 generated client" >&2
+    rm -rf "$staging_root"
+    exit 1
+  fi
+  if ! cp "$provenance" "$staged_dir/provenance.json"; then
+    echo "Failed to stage V810 provenance" >&2
+    rm -rf "$staging_root"
+    exit 1
+  fi
+
+  if [ -e "$OUTPUT_DIR" ]; then
+    backup_dir="$(mktemp -d "$output_parent/.v810-backup.XXXXXX")"
+    if ! rmdir "$backup_dir"; then
+      echo "Failed to prepare V810 publication backup" >&2
+      rm -rf "$staging_root" "$backup_dir"
+      exit 1
+    fi
+    had_existing=true
+    if ! mv "$OUTPUT_DIR" "$backup_dir"; then
+      echo "Failed to backup existing V810 generated artifacts" >&2
+      rm -rf "$staging_root" "$backup_dir"
+      exit 1
+    fi
+  fi
+
+  if ! mv "$staged_dir" "$OUTPUT_DIR"; then
+    echo "Failed to publish V810 generated artifacts" >&2
+    if [ "$had_existing" = true ] && [ -e "$backup_dir" ]; then
+      rm -rf "$OUTPUT_DIR"
+      if ! mv "$backup_dir" "$OUTPUT_DIR"; then
+        echo "Failed to restore existing V810 generated artifacts" >&2
+        rm -rf "$staging_root"
+        exit 1
+      fi
+    fi
+    rm -rf "$staging_root"
+    exit 1
+  fi
+
+  rm -rf "$staging_root"
+  if [ "$had_existing" = true ]; then
+    rm -rf "$backup_dir"
+  fi
 }
 
 assert_no_removed_target_dirs() {
   for path in \
     "$REPO_ROOT/internal/clients/camunda/v810alpha" \
-    "$REPO_ROOT/internal/clients/camunda/v810rc"; do
+    "$REPO_ROOT/internal/clients/camunda/v810rc" \
+    "$REPO_ROOT/internal/clients/camunda/v810final"; do
     if [ -e "$path" ]; then
       echo "Unexpected V810 prerelease output directory: $path" >&2
       exit 1
@@ -475,6 +570,7 @@ compile_generated_client "$generated_client" >/dev/null
 
 provenance="$(write_provenance "$CAMUNDA_TAG" "$peeled_commit" "$source_spec_hash" "$prepared_spec" "$generated_client")" || exit 1
 verify_provenance_hashes "$generated_client" "$provenance"
+verify_provenance_identity "$CAMUNDA_TAG" "$provenance"
 
 assert_protected_unchanged "$protected_before"
 publish_artifacts "$generated_client" "$provenance"

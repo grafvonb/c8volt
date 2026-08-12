@@ -543,3 +543,18 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - Later 8.10 baseline tags can be tested as provenance-only updates while command output continues to expose `8.10` as the only compatibility identity.
 ---
+---
+## Iteration 27 - 2026-08-12 21:28
+**Work Unit**: US4 V810 generation publication hardening
+**Tasks Completed**:
+- [x] T046: Harden target validation, deterministic provenance replacement, and atomic rollback for later 8.10 baselines without alpha/RC package naming
+**Tasks Remaining in Work Unit**: T047-T048 remain in User Story 4
+**Commit**: This work-unit commit
+**Files Changed**:
+- api/generate-v810-client.sh
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- The real V810 generator now rejects malformed 8.10 tags before tool or repository work and stages publication with backup restoration around the final output move.
+---

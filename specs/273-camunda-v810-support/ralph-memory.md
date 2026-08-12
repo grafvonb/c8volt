@@ -52,6 +52,8 @@ Started: 2026-08-12T16:38:49Z
 - US4 generation-transition tests now stub only `api/generate-v810-client.sh` inside detached worktrees so `api/refresh-clients.sh` target/tag routing, in-place `v810/camunda` publication, deterministic reruns, failure rollback, and no `v810alpha`/`v810rc`/`v810final` paths are verified without upstream fetches.
 - US4 provenance identity invariance lives in `api/tests/v810_provenance_test.py`; use `canonical_command_for_tag` and keep generated client/provenance parent paths fixed to `internal/clients/camunda/v810/camunda` for later alpha/RC/final tag scenarios.
 - US4 baseline identity tests now cover later alpha/RC/final tag replacements in `toolx/camunda_baseline_test.go` and command JSON/human output separation in `cmd/version_test.go`; supported-version discovery must keep reporting only `8.10`, never baseline tag/status strings.
+- `api/generate-v810-client.sh` now accepts only final-style `8.10`/`8.10.x` tags and prerelease `8.10.x-alphaN`/`8.10.x-rcN` tags; malformed suffixes fail before tool or repository work in the real generator.
+- V810 publication stages replacement artifacts in a hidden same-parent directory, verifies provenance command identity remains `--target v810`, backs up the existing `v810/camunda` directory before final move, and restores it if publication fails.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -103,4 +105,4 @@ Started: 2026-08-12T16:38:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 4 at T046: harden target validation, deterministic provenance replacement, and atomic rollback for later 8.10 baselines without alpha/RC package naming in `api/generate-v810-client.sh`.
+- Next iteration should continue User Story 4 at T047: document the initial reproduction command, provenance fields, update-in-place procedure, failure guarantees, and protected paths in `api/README.md`.

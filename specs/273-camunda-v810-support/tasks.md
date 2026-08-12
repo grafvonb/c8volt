@@ -130,7 +130,7 @@
 
 ### Implementation for User Story 4
 
-- [ ] T046 [US4] Harden target validation, deterministic provenance replacement, and atomic rollback for later 8.10 baselines without alpha/RC package naming in `api/generate-v810-client.sh`
+- [x] T046 [US4] Harden target validation, deterministic provenance replacement, and atomic rollback for later 8.10 baselines without alpha/RC package naming in `api/generate-v810-client.sh`
 - [ ] T047 [US4] Document the exact initial reproduction command, provenance fields, update-in-place procedure, failure guarantees, and protected paths in `api/README.md`
 - [ ] T048 [US4] Execute the alpha4 reproduction twice and the update-transition fixture cases, then resolve only generator/provenance/doc discrepancies in `api/generate-v810-client.sh`, `internal/clients/camunda/v810/camunda/provenance.json`, and `api/README.md`
 
