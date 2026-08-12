@@ -58,6 +58,7 @@ Started: 2026-08-12T16:38:49Z
 - V810 generator target validation must compare physical parent paths on both sides; macOS temp/worktree paths can differ as logical `/var/...` versus physical `/private/var/...`.
 - To validate uncommitted generator changes with `api/tests/v810_generation_test.sh`, run the guard in a temporary local clone with the diff committed because the guard creates detached worktrees from `HEAD`.
 - T049 left generated docs untouched for T050; authored/source-owned docs now disclose 8.10 aliases, V88 default, alpha4 prerelease baseline, and the in-place baseline update model in README/root/version/docsgen sources.
+- T050 regenerated only generated documentation via `make docs-content`; focused docs/help validation passed with `go test ./docsgen ./cmd -run 'Docs|Version|Help' -count=1`.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -111,4 +112,4 @@ Started: 2026-08-12T16:38:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should start Phase 7 at T050: regenerate `docs/cli/` and `docs/index.md` with `make docs-content`, then verify generated CLI documentation was produced from source metadata rather than hand-edited.
+- Next iteration should continue Phase 7 at T051: run `gofmt` on all touched Go files and execute the focused validation sequence documented in `specs/273-camunda-v810-support/quickstart.md`.

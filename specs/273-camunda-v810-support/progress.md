@@ -58,8 +58,6 @@ Started: 2026-08-12 18:38:49
 - specs/273-camunda-v810-support/progress.md
 **Learnings**:
 - The upstream v8.10 OpenAPI root requires sparse-fetching the full v2 directory for Redocly bundling, and temp compile validation needs its own `go mod tidy`.
----
----
 ## Iteration 5 - 2026-08-12 19:05
 **Work Unit**: Phase 2 foundational V810 pinned generated artifacts
 **Tasks Completed**:
@@ -605,4 +603,30 @@ Started: 2026-08-12 18:38:49
 - specs/273-camunda-v810-support/progress.md
 **Learnings**:
 - T049 is source-owned only; generated `docs/` output remains deferred to T050 and is now backed by docsgen baseline disclosure tests.
+---
+---
+## Iteration 31 - 2026-08-12 21:47
+**Work Unit**: Phase 7 T050 generated CLI documentation refresh
+**Tasks Completed**:
+- [x] T050: Regenerate `docs/cli/` and `docs/index.md` with `make docs-content`
+**Tasks Remaining in Work Unit**: T051-T053 remain in Phase 7
+**Commit**: This work-unit commit
+**Files Changed**:
+- docs/cli/c8volt.md
+- docs/cli/c8volt_delete_process-definition.md
+- docs/cli/c8volt_get_element.md
+- docs/cli/c8volt_get_job.md
+- docs/cli/c8volt_get_process-definition.md
+- docs/cli/c8volt_get_process-instance.md
+- docs/cli/c8volt_ops_purge_all-process-definitions.md
+- docs/cli/c8volt_update.md
+- docs/cli/c8volt_update_job.md
+- docs/cli/c8volt_update_process-instance.md
+- docs/cli/c8volt_version.md
+- docs/index.md
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- Generated CLI documentation changes came from `make docs-content`; focused docs/help tests passed without manual edits to generated docs.
 ---

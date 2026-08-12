@@ -143,7 +143,7 @@
 **Purpose**: Align all authored/generated documentation, format touched code, and execute the repository delivery gate.
 
 - [x] T049 Update supported-version wording, aliases, unchanged default, prerelease baseline, and in-place update model in `README.md`, `cmd/root.go`, `cmd/version.go`, `cmd/get_processinstance.go`, `cmd/get_element.go`, `cmd/get_job.go`, `cmd/get_processdefinition.go`, `cmd/update.go`, `cmd/update_job.go`, `cmd/update_processinstance.go`, `cmd/delete_processdefinition.go`, `cmd/ops_purge_all_processdefinitions.go`, `docsgen/main.go`, and `docsgen/main_test.go`
-- [ ] T050 Regenerate `docs/cli/` and `docs/index.md` with the `Makefile` `docs-content` target and verify no generated CLI documentation was hand-edited
+- [x] T050 Regenerate `docs/cli/` and `docs/index.md` with the `Makefile` `docs-content` target and verify no generated CLI documentation was hand-edited
 - [ ] T051 Run `gofmt` on all touched Go files and execute the focused validation sequence documented in `specs/273-camunda-v810-support/quickstart.md`
 - [ ] T052 Run the race-enabled repository gate from the `Makefile` `test` target and resolve all failures in their owning production/test files
 - [ ] T053 Verify `git diff --check`, deterministic V810 regeneration, unchanged `internal/clients/camunda/v87`, `v88`, `v89`, and zero feature changes under `integration/` using `api/tests/v810_repository_boundary_test.sh`

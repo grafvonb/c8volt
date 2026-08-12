@@ -12,7 +12,7 @@ Inspect or search jobs
 
 Inspect or search Camunda jobs.
 
-Use --key with the jobKey exposed by incident-aware process-instance output to inspect a matching runtime job directly. Search mode will use list filters such as --state, --type, --pi-key, --element-instance-key, --element-id, --worker, --retries, --kind, and --listener-event-type. Search mode pages through matching jobs by default. --batch-size controls each backend page request, --limit caps total returned jobs across all pages, and --total returns only the matching count. Verbose paging progress is written away from stdout; JSON, keys-only, quiet, and automation output remain free of prompts and progress text. Use --json for the stable job payload, or --error-message-limit to shorten long error messages. Job lookup and search are supported for Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error.
+Use --key with the jobKey exposed by incident-aware process-instance output to inspect a matching runtime job directly. Search mode will use list filters such as --state, --type, --pi-key, --element-instance-key, --element-id, --worker, --retries, --kind, and --listener-event-type. Search mode pages through matching jobs by default. --batch-size controls each backend page request, --limit caps total returned jobs across all pages, and --total returns only the matching count. Verbose paging progress is written away from stdout; JSON, keys-only, quiet, and automation output remain free of prompts and progress text. Use --json for the stable job payload, or --error-message-limit to shorten long error messages. Job lookup and search are supported for Camunda 8.8 or newer; Camunda 8.7 returns an unsupported-version error.
 
 ```
 c8volt get job [flags]
