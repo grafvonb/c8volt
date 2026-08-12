@@ -82,6 +82,27 @@ func TestCommandAndFacadeSourceBoundaryForGeneratedClients(t *testing.T) {
 	require.Empty(t, violations, "cmd and public facades must not import generated clients or versioned services")
 }
 
+// TestIncidentFilterSourceBoundaryForGeneratedClients keeps version-neutral
+// incident filter validation independent from generated enum packages.
+func TestIncidentFilterSourceBoundaryForGeneratedClients(t *testing.T) {
+	t.Parallel()
+
+	root := repositoryRoot(t)
+	scanRoot := filepath.Join(root, "internal", "services", "incidentfilter")
+
+	var violations []string
+	for _, file := range goFiles(t, scanRoot, true) {
+		for _, importPath := range parseImports(t, file) {
+			if strings.Contains(importPath, "/internal/clients/camunda/") {
+				violations = append(violations, relativePath(t, root, file)+":import:"+importPath)
+			}
+		}
+	}
+
+	sort.Strings(violations)
+	require.Empty(t, violations, "incident filters must use version-neutral canonical values")
+}
+
 func v810AdapterImportViolations(t *testing.T, root, file string) []string {
 	t.Helper()
 
@@ -142,6 +163,12 @@ func parseImports(t *testing.T, path string) []string {
 func goSourceFiles(t *testing.T, root string) []string {
 	t.Helper()
 
+	return goFiles(t, root, false)
+}
+
+func goFiles(t *testing.T, root string, includeTests bool) []string {
+	t.Helper()
+
 	var files []string
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		require.NoError(t, err)
@@ -151,7 +178,7 @@ func goSourceFiles(t *testing.T, root string) []string {
 			}
 			return nil
 		}
-		if strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "_test.go") {
+		if strings.HasSuffix(path, ".go") && (includeTests || !strings.HasSuffix(path, "_test.go")) {
 			files = append(files, path)
 		}
 		return nil

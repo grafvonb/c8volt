@@ -328,3 +328,21 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - V810 user-task lookup can stay unified-client-only with direct task lookup, local tenant visibility checks, and shared HTTP error classification.
 ---
+---
+## Iteration 16 - 2026-08-12 20:24
+**Work Unit**: US2 version-neutral incident filters
+**Tasks Completed**:
+- [x] T024: Add version-neutral incident state/error-type normalization tests and generated-enum boundary rejection
+- [x] T032: Replace the generated v89 enum dependency with version-neutral canonical incident filter values
+**Tasks Remaining in Work Unit**: T025 and T033-T038 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/incidentfilter/incidentfilter.go
+- internal/services/incidentfilter/incidentfilter_test.go
+- internal/services/v810_source_boundary_test.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- Incident filter validation is now generated-client-free and includes V810 `SECRET_RESOLUTION_ERROR`; broad `go test ./internal/services/...` still has an unrelated ops smoke-test fixture wording failure for later fixture work.
+---

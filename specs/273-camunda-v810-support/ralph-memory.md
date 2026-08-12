@@ -36,6 +36,8 @@ Started: 2026-08-12T16:38:49Z
 - Native V810 user-task adapters use only `GetUserTaskWithResponse` from the V810 unified client; tenant mismatches are mapped to the existing not-found/visibility wording and 503 responses preserve `domain.ErrUnavailable`.
 - User-task factories now have an explicit `toolx.V810` case and package-level interface assertions, but `toolx.ImplementedCamundaVersions()` remains staged until the remaining US2 work is wired.
 - Resource and tenant factories now have explicit `toolx.V810` cases and package-level interface assertions; `toolx.ImplementedCamundaVersions()` remains staged until all eleven US2 service families are wired.
+- `internal/services/incidentfilter` now owns version-neutral canonical incident state/error-type validation without generated-client imports; the list includes V810 `SECRET_RESOLUTION_ERROR`.
+- `internal/services/v810_source_boundary_test.go` scans `incidentfilter` production and test files to reject generated Camunda client imports, in addition to V810 adapter and cmd/facade boundary scans.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -45,6 +47,7 @@ Started: 2026-08-12T16:38:49Z
 ## Gotchas
 - Git worktrees expose `.git` as a file that points at worktree metadata, not as a directory; shell assertions should check path existence for that case.
 - `api/tests/v810_generation_test.sh` creates detached worktrees from `HEAD`; use direct isolated smoke tests for uncommitted refresh-script changes, and rerun the guard after the work-unit commit because it does not see uncommitted changes.
+- `go test ./internal/services/... -count=1` currently reaches an unrelated `internal/services/ops` smoke-test fixture wording failure (`unsupported smoke-test fixture version` expected vs `embedded smoke-test fixture not found` actual); keep T024/T032 validation scoped to incidentfilter, incident consumers, cmd incident validation, and source boundaries.
 
 ## Reusable Commands
 - `bash api/tests/v810_generation_test.sh`
@@ -54,6 +57,9 @@ Started: 2026-08-12T16:38:49Z
 - `python3 -m py_compile api/tests/v810_provenance_test.py`
 - `go test ./internal/clients/camunda/v810/camunda -count=1`
 - `go test ./internal/services -run 'TestV810AdapterSourceBoundary|TestCommandAndFacadeSourceBoundaryForGeneratedClients' -count=1`
+- `go test ./internal/services/incidentfilter -count=1`
+- `go test ./internal/services -run 'TestIncidentFilterSourceBoundaryForGeneratedClients|TestV810AdapterSourceBoundary|TestCommandAndFacadeSourceBoundaryForGeneratedClients' -count=1`
+- `go test ./internal/services/incident/... -count=1`
 - `go test ./toolx -run 'CamundaVersion|CurrentDefault|V810|Baseline' -count=1`
 - `go test ./config -run 'AppNormalize|CurrentDefault|CamundaVersion|V810' -count=1`
 - `go test ./cmd -run 'ConfigTestConnectionCommand_VersionComparison|ConfigTestConnectionDiagnostics_V810|Version|RootHelp|SupportMessaging|V810Bootstrap|GetHelp|GetClusterHelp|GetProcessDefinitionHelp' -count=1`
@@ -68,4 +74,4 @@ Started: 2026-08-12T16:38:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T024: add version-neutral incident state/error-type normalization tests in `internal/services/incidentfilter/incidentfilter_test.go` and extend generated-enum rejection rules in `internal/services/v810_source_boundary_test.go`.
+- Next iteration should continue User Story 2 at T025: add named full-process-definition-history capability tests for V87/V88 rejection and V89/V810 acceptance before discovery/mutation in `toolx/camunda_capabilities_test.go`, `cmd/delete_processdefinition_test.go`, `cmd/ops_purge_all_processdefinitions_test.go`, and `internal/services/ops/all_process_definitions_purge_test.go`.
