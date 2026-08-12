@@ -90,7 +90,7 @@
 - [x] T035 [US2] Finalize complete-client wiring and publish V810 in the implemented-version set only after all eleven adapters construct in `c8volt/client.go` and `toolx/version.go`
 - [x] T036 [US2] Add representative command fake-server coverage for supported reads, confirmed mutations, unsupported-before-mutation errors, and stable human/JSON/keys-only/prompt/activity behavior in `cmd/get_test.go`, `cmd/delete_test.go`, `cmd/update_test.go`, and `cmd/run_test.go`
 - [x] T037 [US2] Update V810-aware capability and unsupported-version descriptions without adding command-local backend mechanics in `cmd/get_processinstance.go`, `cmd/get_element.go`, `cmd/get_job.go`, `cmd/get_processdefinition.go`, `cmd/update.go`, `cmd/update_job.go`, `cmd/update_processinstance.go`, `cmd/delete_processdefinition.go`, and `cmd/ops_purge_all_processdefinitions.go`
-- [ ] T038 [US2] Run the eleven service-suite commands from `specs/273-camunda-v810-support/quickstart.md`, plus `c8volt/client_test.go` and `internal/services/v810_source_boundary_test.go`, resolving failures only in the named owning V810/service/factory/command paths
+- [x] T038 [US2] Run the eleven service-suite commands from `specs/273-camunda-v810-support/quickstart.md`, plus `c8volt/client_test.go` and `internal/services/v810_source_boundary_test.go`, resolving failures only in the named owning V810/service/factory/command paths
 
 **Checkpoint**: User Story 2 provides a complete native V810 client with operational proof and no older/removed runtime fallback.
 

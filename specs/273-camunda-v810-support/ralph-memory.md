@@ -44,6 +44,7 @@ Started: 2026-08-12T16:38:49Z
 - `cmd/bootstrap_errors_test.go` now expects `NewCli` to construct a V810-backed client successfully; V810 is no longer a staged unsupported bootstrap identity.
 - V810 command fake-server coverage now proves resource read human/JSON/keys-only modes, process-definition deletion request/confirmation lifecycle, job update prompt/confirmation flow, process-instance variable update confirmation, and run process-instance JSON/keys-only activity routing without production command changes.
 - V810-aware command help now uses `8.8 or newer` or capability-oriented `full process-definition history deletion` wording where 8.10 is verified; ops purge unsupported text is service-owned in `internal/services/ops/all_process_definitions_purge.go`.
+- User Story 2 T038 validation passed all eleven quickstart service-family suites, `go test ./c8volt -run 'TestNew_V810' -count=1`, and the V810/source-boundary scan in `internal/services`.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -86,4 +87,4 @@ Started: 2026-08-12T16:38:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T038: run the eleven service-suite commands from `specs/273-camunda-v810-support/quickstart.md`, plus `c8volt/client_test.go` and `internal/services/v810_source_boundary_test.go`; resolve failures only in owning V810/service/factory/command paths.
+- Next iteration should start User Story 3 at T039: add explicit V810-to-C89 production fixture mapping and stable-version selection tests in `toolx/fixture_compatibility_test.go`, `cmd/embed_test.go`, and `internal/services/ops/smoke_test_test.go`.
