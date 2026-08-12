@@ -1,32 +1,29 @@
 // SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-package cluster_test
+package batchoperation_test
 
 import (
+	"log/slog"
 	"net/http"
 	"testing"
 
-	"log/slog"
-
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/services"
-	"github.com/grafvonb/c8volt/internal/services/cluster"
-	v810 "github.com/grafvonb/c8volt/internal/services/cluster/v810"
-	v87 "github.com/grafvonb/c8volt/internal/services/cluster/v87"
-	v88 "github.com/grafvonb/c8volt/internal/services/cluster/v88"
-	v89 "github.com/grafvonb/c8volt/internal/services/cluster/v89"
+	"github.com/grafvonb/c8volt/internal/services/batchoperation"
+	v810 "github.com/grafvonb/c8volt/internal/services/batchoperation/v810"
+	v87 "github.com/grafvonb/c8volt/internal/services/batchoperation/v87"
+	v88 "github.com/grafvonb/c8volt/internal/services/batchoperation/v88"
+	v89 "github.com/grafvonb/c8volt/internal/services/batchoperation/v89"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/stretchr/testify/require"
 )
 
-// testConfig returns the minimal config needed to construct versioned cluster services.
+// testConfig returns the minimal config needed to construct versioned batch-operation services.
 func testConfig() *config.Config {
 	return &config.Config{
 		APIs: config.APIs{
-			Camunda: config.API{
-				BaseURL: "http://localhost:8080/v2",
-			},
+			Camunda: config.API{BaseURL: "http://localhost:8080/v2"},
 		},
 	}
 }
@@ -36,36 +33,12 @@ func TestFactory_SupportedVersions(t *testing.T) {
 	tests := []struct {
 		name    string
 		version toolx.CamundaVersion
-		assert  func(*testing.T, cluster.API)
+		assert  func(*testing.T, batchoperation.API)
 	}{
-		{
-			name:    "v87",
-			version: toolx.V87,
-			assert: func(t *testing.T, svc cluster.API) {
-				require.IsType(t, &v87.Service{}, svc)
-			},
-		},
-		{
-			name:    "v88",
-			version: toolx.V88,
-			assert: func(t *testing.T, svc cluster.API) {
-				require.IsType(t, &v88.Service{}, svc)
-			},
-		},
-		{
-			name:    "v89",
-			version: toolx.V89,
-			assert: func(t *testing.T, svc cluster.API) {
-				require.IsType(t, &v89.Service{}, svc)
-			},
-		},
-		{
-			name:    "v810",
-			version: toolx.V810,
-			assert: func(t *testing.T, svc cluster.API) {
-				require.IsType(t, &v810.Service{}, svc)
-			},
-		},
+		{name: "v87", version: toolx.V87, assert: func(t *testing.T, svc batchoperation.API) { require.IsType(t, &v87.Service{}, svc) }},
+		{name: "v88", version: toolx.V88, assert: func(t *testing.T, svc batchoperation.API) { require.IsType(t, &v88.Service{}, svc) }},
+		{name: "v89", version: toolx.V89, assert: func(t *testing.T, svc batchoperation.API) { require.IsType(t, &v89.Service{}, svc) }},
+		{name: "v810", version: toolx.V810, assert: func(t *testing.T, svc batchoperation.API) { require.IsType(t, &v810.Service{}, svc) }},
 	}
 
 	for _, tt := range tests {
@@ -73,7 +46,7 @@ func TestFactory_SupportedVersions(t *testing.T) {
 			cfg := testConfig()
 			cfg.App.CamundaVersion = tt.version
 
-			svc, err := cluster.New(cfg, &http.Client{}, slog.Default())
+			svc, err := batchoperation.New(cfg, &http.Client{}, slog.Default())
 
 			require.NoError(t, err)
 			require.NotNil(t, svc)
@@ -87,7 +60,7 @@ func TestFactory_UnknownVersion(t *testing.T) {
 	cfg := testConfig()
 	cfg.App.CamundaVersion = "v0"
 
-	svc, err := cluster.New(cfg, &http.Client{}, slog.Default())
+	svc, err := batchoperation.New(cfg, &http.Client{}, slog.Default())
 
 	require.Error(t, err)
 	require.Nil(t, svc)
@@ -101,7 +74,7 @@ func TestFactory_CurrentDefaultVersionStillUsesV88(t *testing.T) {
 	cfg := testConfig()
 	cfg.App.CamundaVersion = toolx.CurrentCamundaVersion
 
-	svc, err := cluster.New(cfg, &http.Client{}, slog.Default())
+	svc, err := batchoperation.New(cfg, &http.Client{}, slog.Default())
 
 	require.NoError(t, err)
 	require.NotNil(t, svc)

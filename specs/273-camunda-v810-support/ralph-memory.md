@@ -21,6 +21,9 @@ Started: 2026-08-12T16:38:49Z
 - `internal/services/v810_source_boundary_test.go` is active for `cmd/` and public facade generated-client/versioned-service imports, and conditionally scans V810 adapter packages as they appear.
 - `toolx.V810` now normalizes only the stable aliases `8.10`, `810`, `v810`, and `v8.10`; prerelease/source tags such as `8.10.0-alpha4` remain rejected configuration identities.
 - Config test-connection gateway compatibility now compares explicit release-line states: same major/minor matches (including `8.10.0-alpha4`), different major/minor warns with existing mismatch wording, and empty/malformed gateway versions warn that compatibility cannot be verified.
+- Native V810 batch-operation adapters can follow the V89 unified v2 shape with V810 generated types: read access uses `SearchBatchOperationsWithResponse`, cancel uses `CancelProcessInstancesBatchOperationWithResponse`, and completion polls `GetBatchOperationWithResponse`.
+- Native V810 cluster adapters reuse `internal/services/cluster/common` for response/error handling; only generated-client wiring and V810-to-domain conversions are package-local.
+- Batch-operation and cluster factories now have explicit `toolx.V810` cases and package-level interface assertions, but `toolx.ImplementedCamundaVersions()` remains staged until all eleven US2 service families are wired.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -42,8 +45,10 @@ Started: 2026-08-12T16:38:49Z
 - `go test ./toolx -run 'CamundaVersion|CurrentDefault|V810|Baseline' -count=1`
 - `go test ./config -run 'AppNormalize|CurrentDefault|CamundaVersion|V810' -count=1`
 - `go test ./cmd -run 'ConfigTestConnectionCommand_VersionComparison|ConfigTestConnectionDiagnostics_V810|Version|RootHelp|SupportMessaging|V810Bootstrap|GetHelp|GetClusterHelp|GetProcessDefinitionHelp' -count=1`
+- `go test ./internal/services/batchoperation/... -count=1`
+- `go test ./internal/services/cluster/... -count=1`
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should start User Story 2 at T018: add V810 batch-operation and cluster factory/adapter tests in `internal/services/batchoperation/factory_test.go`, `internal/services/batchoperation/v810/`, `internal/services/cluster/factory_test.go`, and `internal/services/cluster/v810/`.
+- Next iteration should continue User Story 2 at T019: add V810 factory, interface, paging, success, error, and mutation-confirmation tests for elements and incidents in `internal/services/element/factory_test.go`, `internal/services/element/v810/`, `internal/services/incident/factory_test.go`, and `internal/services/incident/v810/`.

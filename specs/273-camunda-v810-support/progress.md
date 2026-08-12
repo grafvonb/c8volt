@@ -160,3 +160,31 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - Baseline disclosure stays additive in root/version output, and V810 bootstrap remains honestly staged until US2 implements native service factories.
 ---
+---
+## Iteration 10 - 2026-08-12 19:42
+**Work Unit**: US2 V810 batch-operation and cluster adapters
+**Tasks Completed**:
+- [x] T018: Add V810 factory, interface, conversion, success, transport, and malformed-payload cases for batch operations and cluster
+- [x] T026: Implement native V810 batch-operation and cluster adapters plus explicit factory cases
+**Tasks Remaining in Work Unit**: T019-T025 and T027-T038 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/batchoperation/api.go
+- internal/services/batchoperation/factory.go
+- internal/services/batchoperation/factory_test.go
+- internal/services/batchoperation/v810/contract.go
+- internal/services/batchoperation/v810/service.go
+- internal/services/batchoperation/v810/service_test.go
+- internal/services/cluster/api.go
+- internal/services/cluster/factory.go
+- internal/services/cluster/factory_test.go
+- internal/services/cluster/v810/contract.go
+- internal/services/cluster/v810/convert.go
+- internal/services/cluster/v810/service.go
+- internal/services/cluster/v810/service_test.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- Batch-operation and cluster V810 generated shapes match the V89 unified-client paths closely enough for native adapters with local V810 conversions.
+---

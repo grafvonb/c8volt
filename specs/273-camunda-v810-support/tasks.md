@@ -67,7 +67,7 @@
 
 ### Tests for User Story 2
 
-- [ ] T018 [P] [US2] Add V810 factory, interface, conversion, success, transport, and malformed-payload cases for batch operations and cluster in `internal/services/batchoperation/factory_test.go`, `internal/services/batchoperation/v810/`, `internal/services/cluster/factory_test.go`, and `internal/services/cluster/v810/`
+- [x] T018 [P] [US2] Add V810 factory, interface, conversion, success, transport, and malformed-payload cases for batch operations and cluster in `internal/services/batchoperation/factory_test.go`, `internal/services/batchoperation/v810/`, `internal/services/cluster/factory_test.go`, and `internal/services/cluster/v810/`
 - [ ] T019 [P] [US2] Add V810 factory, interface, paging, success, error, and mutation-confirmation cases for elements and incidents in `internal/services/element/factory_test.go`, `internal/services/element/v810/`, `internal/services/incident/factory_test.go`, and `internal/services/incident/v810/`
 - [ ] T020 [P] [US2] Add V810 factory, filter-shape, success, error, and mutation-confirmation cases for jobs and process definitions in `internal/services/job/factory_test.go`, `internal/services/job/v810/`, `internal/services/processdefinition/factory_test.go`, and `internal/services/processdefinition/v810/`
 - [ ] T021 [P] [US2] Add V810 factory, nested-variable selection, paging/walk/wait, value conversion, success, and error cases for process instances and variables in `internal/services/processinstance/factory_test.go`, `internal/services/processinstance/v810/`, `internal/services/variable/factory_test.go`, and `internal/services/variable/v810/`
@@ -78,7 +78,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T026 [P] [US2] Implement native V810 batch-operation and cluster adapters plus explicit factory cases in `internal/services/batchoperation/v810/`, `internal/services/batchoperation/factory.go`, `internal/services/cluster/v810/`, and `internal/services/cluster/factory.go`
+- [x] T026 [P] [US2] Implement native V810 batch-operation and cluster adapters plus explicit factory cases in `internal/services/batchoperation/v810/`, `internal/services/batchoperation/factory.go`, `internal/services/cluster/v810/`, and `internal/services/cluster/factory.go`
 - [ ] T027 [P] [US2] Implement native V810 element and incident adapters plus explicit factory cases in `internal/services/element/v810/`, `internal/services/element/factory.go`, `internal/services/incident/v810/`, and `internal/services/incident/factory.go`
 - [ ] T028 [P] [US2] Implement native V810 job and process-definition adapters plus explicit factory cases in `internal/services/job/v810/`, `internal/services/job/factory.go`, `internal/services/processdefinition/v810/`, and `internal/services/processdefinition/factory.go`
 - [ ] T029 [P] [US2] Implement native V810 process-instance and variable adapters, nested V810 variable construction, and factory cases in `internal/services/processinstance/v810/`, `internal/services/processinstance/factory.go`, `internal/services/variable/v810/`, and `internal/services/variable/factory.go`
