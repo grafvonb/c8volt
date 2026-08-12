@@ -143,7 +143,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 }
 
 func validateDeleteProcessDefinitionSupportedVersion(version toolx.CamundaVersion) error {
-	if version == toolx.V89 {
+	if toolx.SupportsFullProcessDefinitionHistoryDeletion(version) {
 		return nil
 	}
 	return fmt.Errorf("%w: process-definition deletion requires Camunda 8.9 or newer for full history deletion; configured Camunda version is %s; to delete process instances for a process definition instead, use c8volt delete process-instance --bpmn-process-id <bpmn-process-id>", d.ErrUnsupported, version.String())

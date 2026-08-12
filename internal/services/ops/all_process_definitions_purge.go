@@ -518,7 +518,7 @@ func validateAllProcessDefinitionsPurgeSupportedVersion(version toolx.CamundaVer
 	if version == "" {
 		version = toolx.CurrentCamundaVersion
 	}
-	if version != toolx.V89 {
+	if !toolx.SupportsFullProcessDefinitionHistoryDeletion(version) {
 		return fmt.Errorf("%w: all-process-definitions purge requires Camunda 8.9 or newer; configured Camunda version is %s", d.ErrUnsupported, version.String())
 	}
 	return nil

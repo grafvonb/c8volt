@@ -346,3 +346,25 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - Incident filter validation is now generated-client-free and includes V810 `SECRET_RESOLUTION_ERROR`; broad `go test ./internal/services/...` still has an unrelated ops smoke-test fixture wording failure for later fixture work.
 ---
+---
+## Iteration 17 - 2026-08-12 20:30
+**Work Unit**: US2 full process-definition history capability gate
+**Tasks Completed**:
+- [x] T025: Add named full-process-definition-history capability tests for V87/V88 rejection and V89/V810 acceptance before discovery/mutation
+- [x] T033: Implement the named full-process-definition-history capability and consume it in both mutation gates
+**Tasks Remaining in Work Unit**: T034-T038 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- toolx/camunda_capabilities.go
+- toolx/camunda_capabilities_test.go
+- cmd/delete_processdefinition.go
+- cmd/delete_test.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- internal/services/ops/all_process_definitions_purge.go
+- internal/services/ops/all_process_definitions_purge_test.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- Full process-definition history deletion is now a named V89/V810 capability consumed by both direct delete and APD purge preflight gates.
+---

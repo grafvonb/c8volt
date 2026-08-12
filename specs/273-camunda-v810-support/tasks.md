@@ -74,7 +74,7 @@
 - [x] T022 [P] [US2] Add V810 factory, deployment visibility, tenant conversion, success, error, and confirmation cases for resources and tenants in `internal/services/resource/factory_test.go`, `internal/services/resource/v810/`, `internal/services/tenant/factory_test.go`, and `internal/services/tenant/v810/`
 - [x] T023 [P] [US2] Add V810 unified user-task factory/behavior tests that reject any Tasklist fallback and prove explicit unavailable/not-found outcomes in `internal/services/usertask/factory_test.go` and `internal/services/usertask/v810/`
 - [x] T024 [P] [US2] Add version-neutral incident state/error-type normalization tests that do not import generated enums in `internal/services/incidentfilter/incidentfilter_test.go` and extend the rejection rules in `internal/services/v810_source_boundary_test.go`
-- [ ] T025 [P] [US2] Add named full-process-definition-history capability tests for V87/V88 rejection and V89/V810 acceptance before discovery/mutation in `toolx/camunda_capabilities_test.go`, `cmd/delete_processdefinition_test.go`, `cmd/ops_purge_all_processdefinitions_test.go`, and `internal/services/ops/all_process_definitions_purge_test.go`
+- [x] T025 [P] [US2] Add named full-process-definition-history capability tests for V87/V88 rejection and V89/V810 acceptance before discovery/mutation in `toolx/camunda_capabilities_test.go`, `cmd/delete_processdefinition_test.go`, `cmd/ops_purge_all_processdefinitions_test.go`, and `internal/services/ops/all_process_definitions_purge_test.go`
 
 ### Implementation for User Story 2
 
@@ -85,7 +85,7 @@
 - [x] T030 [P] [US2] Implement native V810 resource and tenant adapters plus explicit factory cases in `internal/services/resource/v810/`, `internal/services/resource/factory.go`, `internal/services/tenant/v810/`, and `internal/services/tenant/factory.go`
 - [x] T031 [P] [US2] Implement the unified-client-only V810 user-task adapter and explicit factory case without Operate/Tasklist/Admin dependencies in `internal/services/usertask/v810/` and `internal/services/usertask/factory.go`
 - [x] T032 [US2] Replace the generated v89 enum dependency with version-neutral canonical incident filter values in `internal/services/incidentfilter/incidentfilter.go`
-- [ ] T033 [US2] Implement the named full-process-definition-history capability and consume it in both mutation gates in `toolx/camunda_capabilities.go`, `cmd/delete_processdefinition.go`, and `internal/services/ops/all_process_definitions_purge.go`
+- [x] T033 [US2] Implement the named full-process-definition-history capability and consume it in both mutation gates in `toolx/camunda_capabilities.go`, `cmd/delete_processdefinition.go`, and `internal/services/ops/all_process_definitions_purge.go`
 - [ ] T034 [US2] Add failing full V810 client-construction and CLI bootstrap tests across all factories in `c8volt/client_test.go` and `cmd/bootstrap_errors_test.go`
 - [ ] T035 [US2] Finalize complete-client wiring and publish V810 in the implemented-version set only after all eleven adapters construct in `c8volt/client.go` and `toolx/version.go`
 - [ ] T036 [US2] Add representative command fake-server coverage for supported reads, confirmed mutations, unsupported-before-mutation errors, and stable human/JSON/keys-only/prompt/activity behavior in `cmd/get_test.go`, `cmd/delete_test.go`, `cmd/update_test.go`, and `cmd/run_test.go`

@@ -700,29 +700,60 @@ func TestOpsPurgeAllProcessDefinitionsExistingReportPreservation(t *testing.T) {
 	}
 }
 
-// TestOpsPurgeAllProcessDefinitionsRejectsV88BeforePlanning keeps APD on the first fully supported Camunda version.
-func TestOpsPurgeAllProcessDefinitionsRejectsV88BeforePlanning(t *testing.T) {
-	var requests testx.SafeSlice[string]
-	var deleted testx.SafeSlice[string]
-	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
-	t.Cleanup(srv.Close)
+// TestOpsPurgeAllProcessDefinitionsRejectsUnsupportedFullHistoryVersionsBeforePlanning
+// keeps unsupported full-history delete capability failures before APD discovery.
+func TestOpsPurgeAllProcessDefinitionsRejectsUnsupportedFullHistoryVersionsBeforePlanning(t *testing.T) {
+	for _, version := range []toolx.CamundaVersion{toolx.V87, toolx.V88} {
+		t.Run(version.String(), func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			var deleted testx.SafeSlice[string]
+			srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+			t.Cleanup(srv.Close)
 
-	output, err := testx.RunCmdSubprocess(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
-		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, toolx.V88.String()),
-		"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, []string{
-			"ops", "purge", "all-process-definitions",
-			"--dry-run",
-		}),
-	})
-	require.Error(t, err)
+			output, err := testx.RunCmdSubprocess(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
+				"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, version.String()),
+				"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, []string{
+					"ops", "purge", "all-process-definitions",
+					"--dry-run",
+				}),
+			})
+			require.Error(t, err)
 
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "all-process-definitions purge requires Camunda 8.9 or newer")
-	require.Empty(t, requests.Snapshot())
-	require.Empty(t, deleted.Snapshot())
+			exitErr, ok := err.(*exec.ExitError)
+			require.True(t, ok)
+			require.Equal(t, exitcode.Error, exitErr.ExitCode())
+			require.Contains(t, string(output), "unsupported capability")
+			require.Contains(t, string(output), "all-process-definitions purge requires Camunda 8.9 or newer")
+			require.Empty(t, requests.Snapshot())
+			require.Empty(t, deleted.Snapshot())
+		})
+	}
+}
+
+// TestOpsPurgeAllProcessDefinitionsAcceptsFullHistoryCapabilityVersionsBeforeDiscovery
+// proves V89 and V810 pass the APD capability gate and reach dry-run discovery.
+func TestOpsPurgeAllProcessDefinitionsAcceptsFullHistoryCapabilityVersionsBeforeDiscovery(t *testing.T) {
+	for _, version := range []toolx.CamundaVersion{toolx.V89, toolx.V810} {
+		t.Run(version.String(), func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			var deleted testx.SafeSlice[string]
+			srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+			t.Cleanup(srv.Close)
+
+			output, err := testx.RunCmdSubprocess(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
+				"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, version.String()),
+				"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, []string{
+					"ops", "purge", "all-process-definitions",
+					"--dry-run",
+				}),
+			})
+
+			require.NoError(t, err, string(output))
+			require.Contains(t, string(output), "dry run: purge all process definitions")
+			require.NotEmpty(t, requests.Snapshot())
+			require.Empty(t, deleted.Snapshot())
+		})
+	}
 }
 
 // TestOpsPurgeAllProcessDefinitionsCommandHelper runs all-process-definitions purge command subprocess cases.

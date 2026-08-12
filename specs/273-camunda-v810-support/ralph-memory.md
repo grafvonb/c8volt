@@ -38,11 +38,14 @@ Started: 2026-08-12T16:38:49Z
 - Resource and tenant factories now have explicit `toolx.V810` cases and package-level interface assertions; `toolx.ImplementedCamundaVersions()` remains staged until all eleven US2 service families are wired.
 - `internal/services/incidentfilter` now owns version-neutral canonical incident state/error-type validation without generated-client imports; the list includes V810 `SECRET_RESOLUTION_ERROR`.
 - `internal/services/v810_source_boundary_test.go` scans `incidentfilter` production and test files to reject generated Camunda client imports, in addition to V810 adapter and cmd/facade boundary scans.
+- `toolx.SupportsFullProcessDefinitionHistoryDeletion` is the named capability for full process-definition history deletion and explicitly returns true only for V89 and V810.
+- Direct process-definition deletion and all-process-definitions purge both consume the named capability; V87/V88 still fail before remote discovery or mutation, while V89/V810 pass the local gate.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
 - Command and public facade boundary checks reject any generated Camunda client import and any direct versioned service implementation import.
 - V810 is listed in supported versions for operator discovery, but `ImplementedCamundaVersions()` intentionally remains `V87,V88,V89` until the complete native V810 factory/client wiring is done.
+- Full process-definition history deletion capability is an explicit V89/V810 set, not a version-order comparison.
 
 ## Gotchas
 - Git worktrees expose `.git` as a file that points at worktree metadata, not as a directory; shell assertions should check path existence for that case.
@@ -61,8 +64,10 @@ Started: 2026-08-12T16:38:49Z
 - `go test ./internal/services -run 'TestIncidentFilterSourceBoundaryForGeneratedClients|TestV810AdapterSourceBoundary|TestCommandAndFacadeSourceBoundaryForGeneratedClients' -count=1`
 - `go test ./internal/services/incident/... -count=1`
 - `go test ./toolx -run 'CamundaVersion|CurrentDefault|V810|Baseline' -count=1`
+- `go test ./toolx -count=1`
 - `go test ./config -run 'AppNormalize|CurrentDefault|CamundaVersion|V810' -count=1`
 - `go test ./cmd -run 'ConfigTestConnectionCommand_VersionComparison|ConfigTestConnectionDiagnostics_V810|Version|RootHelp|SupportMessaging|V810Bootstrap|GetHelp|GetClusterHelp|GetProcessDefinitionHelp' -count=1`
+- `go test ./cmd -run 'DeleteProcessDefinition|OpsPurgeAllProcessDefinitions' -count=1`
 - `go test ./internal/services/batchoperation/... -count=1`
 - `go test ./internal/services/cluster/... -count=1`
 - `go test ./internal/services/job/... -count=1`
@@ -70,8 +75,9 @@ Started: 2026-08-12T16:38:49Z
 - `go test ./internal/services/processinstance/... ./internal/services/variable/... -count=1`
 - `go test ./internal/services/resource/... ./internal/services/tenant/... -count=1`
 - `go test ./internal/services/usertask/... -count=1`
+- `go test ./internal/services/ops -run 'PurgeAllProcessDefinitions' -count=1`
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T025: add named full-process-definition-history capability tests for V87/V88 rejection and V89/V810 acceptance before discovery/mutation in `toolx/camunda_capabilities_test.go`, `cmd/delete_processdefinition_test.go`, `cmd/ops_purge_all_processdefinitions_test.go`, and `internal/services/ops/all_process_definitions_purge_test.go`.
+- Next iteration should continue User Story 2 at T034: add failing full V810 client-construction and CLI bootstrap tests across all factories in `c8volt/client_test.go` and `cmd/bootstrap_errors_test.go`.

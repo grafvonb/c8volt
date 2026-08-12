@@ -129,32 +129,75 @@ func TestPurgeAllProcessDefinitionsValidatesServiceDependencies(t *testing.T) {
 	}
 }
 
-// TestPurgeAllProcessDefinitionsRejectsUnsupportedVersionBeforeDiscovery keeps APD on the fully supported v8.9+ path.
-func TestPurgeAllProcessDefinitionsRejectsUnsupportedVersionBeforeDiscovery(t *testing.T) {
+// TestPurgeAllProcessDefinitionsRejectsUnsupportedFullHistoryVersionsBeforeDiscovery
+// keeps unsupported full-history delete capability failures before APD discovery.
+func TestPurgeAllProcessDefinitionsRejectsUnsupportedFullHistoryVersionsBeforeDiscovery(t *testing.T) {
 	t.Parallel()
 
-	got, err := NewWithWorkflowDependencies(
-		nil,
-		stubProcessInstanceAPI{},
-		nil,
-		stubProcessDefinitionAPI{
-			searchProcessDefinitions: func(context.Context, d.ProcessDefinitionFilter, int32, ...services.CallOption) ([]d.ProcessDefinition, error) {
-				t.Fatal("unsupported version must fail before discovery")
-				return nil, nil
-			},
-		},
-		stubResourceAPI{},
-		toolx.V88,
-	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{})
+	for _, version := range []toolx.CamundaVersion{toolx.V87, toolx.V88} {
+		t.Run(version.String(), func(t *testing.T) {
+			t.Parallel()
 
-	require.Error(t, err)
-	require.True(t, errors.Is(err, d.ErrUnsupported), "got %v", err)
-	require.Contains(t, err.Error(), "requires Camunda 8.9 or newer")
-	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeFailed, got.Outcome)
-	require.Equal(t, d.OpsWorkflowStepStatusFailed, got.Discovery.Status)
-	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
-	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
-	require.Empty(t, got.Discovery.CandidateProcessDefinitionKeys)
+			got, err := NewWithWorkflowDependencies(
+				nil,
+				stubProcessInstanceAPI{},
+				nil,
+				stubProcessDefinitionAPI{
+					searchProcessDefinitions: func(context.Context, d.ProcessDefinitionFilter, int32, ...services.CallOption) ([]d.ProcessDefinition, error) {
+						t.Fatal("unsupported version must fail before discovery")
+						return nil, nil
+					},
+				},
+				stubResourceAPI{},
+				version,
+			).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{})
+
+			require.Error(t, err)
+			require.True(t, errors.Is(err, d.ErrUnsupported), "got %v", err)
+			require.Contains(t, err.Error(), "requires Camunda 8.9 or newer")
+			require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeFailed, got.Outcome)
+			require.Equal(t, d.OpsWorkflowStepStatusFailed, got.Discovery.Status)
+			require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+			require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
+			require.Empty(t, got.Discovery.CandidateProcessDefinitionKeys)
+		})
+	}
+}
+
+// TestPurgeAllProcessDefinitionsAcceptsFullHistoryCapabilityVersionsBeforeDiscovery
+// proves V89 and V810 pass the service capability gate and reach discovery.
+func TestPurgeAllProcessDefinitionsAcceptsFullHistoryCapabilityVersionsBeforeDiscovery(t *testing.T) {
+	t.Parallel()
+
+	for _, version := range []toolx.CamundaVersion{toolx.V89, toolx.V810} {
+		t.Run(version.String(), func(t *testing.T) {
+			t.Parallel()
+
+			var searched bool
+			got, err := NewWithWorkflowDependencies(
+				nil,
+				stubProcessInstanceAPI{},
+				nil,
+				stubProcessDefinitionAPI{
+					searchProcessDefinitions: func(_ context.Context, filter d.ProcessDefinitionFilter, size int32, _ ...services.CallOption) ([]d.ProcessDefinition, error) {
+						searched = true
+						require.Equal(t, d.ProcessDefinitionFilter{}, filter)
+						require.Equal(t, pdsvc.MaxResultSize, size)
+						return nil, nil
+					},
+				},
+				stubResourceAPI{},
+				version,
+			).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{DryRun: true})
+
+			require.NoError(t, err)
+			require.True(t, searched)
+			require.Equal(t, d.AllProcessDefinitionsPurgeOutcomePlanned, got.Outcome)
+			require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Discovery.Status)
+			require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+			require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
+		})
+	}
 }
 
 // TestPurgeAllProcessDefinitionsDiscoversCandidates verifies get-pd-equivalent discovery and frozen candidate extraction.
