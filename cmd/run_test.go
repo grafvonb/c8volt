@@ -252,6 +252,48 @@ func TestRunProcessInstanceCommand_V89NoWait(t *testing.T) {
 	require.Contains(t, stderr, "INFO")
 }
 
+// TestRunProcessInstanceCommand_V810NoWaitJSONUsesNativeCreation verifies V810 creation preserves the accepted JSON envelope.
+func TestRunProcessInstanceCommand_V810NoWaitJSONUsesNativeCreation(t *testing.T) {
+	var requests []string
+	var createBody map[string]any
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-definitions/search":
+			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"<default>","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances":
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&createBody))
+			_, _ = w.Write([]byte(`{"processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","state":"ACTIVE","tenantId":"<default>","variables":{}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.10")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--automation",
+		"--json",
+		"run", "process-instance",
+		"--bpmn-process-id", "order-process",
+		"--no-wait",
+	)
+
+	require.Equal(t, []string{"POST /v2/process-definitions/search", "POST /v2/process-instances"}, requests)
+	require.Equal(t, "order-process", createBody["processDefinitionId"])
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	require.Equal(t, string(OutcomeAccepted), got["outcome"])
+	require.Equal(t, "run process-instance", got["command"])
+	payload := requireJSONObject(t, got["payload"])
+	require.EqualValues(t, 1, payload["total"])
+	require.NotContains(t, stdout, "found:")
+	require.Contains(t, stderr, "INFO")
+}
+
 func TestRunProcessInstanceCommand_VarsPayloadRemainsCreationInput(t *testing.T) {
 	var sawRun bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -394,6 +436,26 @@ func TestRunProcessInstanceCommand_KeysOnlyOutputsOnlyCreatedKeys(t *testing.T) 
 	require.NotContains(t, stdout, "COMPLETED")
 	require.NotContains(t, stdout, "found:")
 	require.NotContains(t, stdout, `"outcome"`)
+	require.Contains(t, stderr, "waiting for pi 2251799813711967")
+}
+
+// TestRunProcessInstanceCommand_V810KeysOnlyKeepsActivityOffStdout verifies V810 keys-only output remains pipeline-safe while activity is routed away from stdout.
+func TestRunProcessInstanceCommand_V810KeysOnlyKeepsActivityOffStdout(t *testing.T) {
+	srv := newRunProcessInstanceObservedStateServer(t, "COMPLETED")
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.10")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"run", "process-instance",
+		"--bpmn-process-id", "order-process",
+		"--keys-only",
+	)
+
+	require.Equal(t, "2251799813711967\n", stdout)
+	require.NotContains(t, stdout, "COMPLETED")
+	require.NotContains(t, stdout, "waiting for pi")
 	require.Contains(t, stderr, "waiting for pi 2251799813711967")
 }
 

@@ -42,6 +42,7 @@ Started: 2026-08-12T16:38:49Z
 - Direct process-definition deletion and all-process-definitions purge both consume the named capability; V87/V88 still fail before remote discovery or mutation, while V89/V810 pass the local gate.
 - `c8volt/client_test.go` now proves full V810 top-level construction by calling one blocked-transport method through each facade surface plus process-instance variable lookup for the nested V810 variable service.
 - `cmd/bootstrap_errors_test.go` now expects `NewCli` to construct a V810-backed client successfully; V810 is no longer a staged unsupported bootstrap identity.
+- V810 command fake-server coverage now proves resource read human/JSON/keys-only modes, process-definition deletion request/confirmation lifecycle, job update prompt/confirmation flow, process-instance variable update confirmation, and run process-instance JSON/keys-only activity routing without production command changes.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -78,8 +79,10 @@ Started: 2026-08-12T16:38:49Z
 - `go test ./internal/services/resource/... ./internal/services/tenant/... -count=1`
 - `go test ./internal/services/usertask/... -count=1`
 - `go test ./internal/services/ops -run 'PurgeAllProcessDefinitions' -count=1`
+- `go test ./cmd -run 'GetResourceCommand|DeleteProcessDefinitionCommand|UpdateJobCommand|UpdatePICommand|RunProcessInstanceCommand' -count=1`
+- `go test ./cmd -count=1`
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T036: add representative command fake-server coverage for supported reads, confirmed mutations, unsupported-before-mutation errors, and stable human/JSON/keys-only/prompt/activity behavior in `cmd/get_test.go`, `cmd/delete_test.go`, `cmd/update_test.go`, and `cmd/run_test.go`.
+- Next iteration should continue User Story 2 at T037: update V810-aware capability and unsupported-version descriptions in the listed command files without adding command-local backend mechanics.

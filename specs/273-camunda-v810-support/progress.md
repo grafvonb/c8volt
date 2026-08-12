@@ -387,3 +387,22 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - Existing factories already constructed V810 successfully; publishing `ImplementedCamundaVersions()` after full top-level proof makes bootstrap and factory guidance match runtime behavior.
 ---
+---
+## Iteration 19 - 2026-08-12 20:46
+**Work Unit**: US2 representative V810 command fake-server coverage
+**Tasks Completed**:
+- [x] T036: Add representative command fake-server coverage for supported reads, confirmed mutations, unsupported-before-mutation errors, and stable human/JSON/keys-only/prompt/activity behavior
+**Tasks Remaining in Work Unit**: T037-T038 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_test.go
+- cmd/delete_test.go
+- cmd/update_job_test.go
+- cmd/update_processinstance_test.go
+- cmd/run_test.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- V810 command coverage can be added as fake-server assertions over existing command flows; no production command mechanics changed for T036.
+---

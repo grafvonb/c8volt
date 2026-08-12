@@ -280,7 +280,9 @@ func TestDeleteProcessDefinitionCommand_AcceptsFullHistoryCapabilityVersionsBefo
 	for _, version := range []toolx.CamundaVersion{toolx.V89, toolx.V810} {
 		t.Run(version.String(), func(t *testing.T) {
 			var deleteBodies []string
+			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests = append(requests, r.Method+" "+r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
 				case "/v2/batch-operations/search":
@@ -308,6 +310,13 @@ func TestDeleteProcessDefinitionCommand_AcceptsFullHistoryCapabilityVersionsBefo
 
 			require.NoError(t, err, string(output))
 			require.Contains(t, string(output), "pd delete done; requested 1, ok 1, failed 0")
+			require.NotContains(t, string(output), `"outcome"`)
+			require.Equal(t, []string{
+				"POST /v2/batch-operations/search",
+				"POST /v2/resources/2251799813692357/deletion",
+				"GET /v2/batch-operations/batch-1",
+				"GET /v2/process-definitions/2251799813692357",
+			}, requests)
 			body := decodeSingleRequestJSON(t, deleteBodies)
 			require.Equal(t, true, body["deleteHistory"])
 		})
