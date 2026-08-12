@@ -146,7 +146,7 @@
 - [x] T050 Regenerate `docs/cli/` and `docs/index.md` with the `Makefile` `docs-content` target and verify no generated CLI documentation was hand-edited
 - [x] T051 Run `gofmt` on all touched Go files and execute the focused validation sequence documented in `specs/273-camunda-v810-support/quickstart.md`
 - [x] T052 Run the race-enabled repository gate from the `Makefile` `test` target and resolve all failures in their owning production/test files
-- [ ] T053 Verify `git diff --check`, deterministic V810 regeneration, unchanged `internal/clients/camunda/v87`, `v88`, `v89`, and zero feature changes under `integration/` using `api/tests/v810_repository_boundary_test.sh`
+- [x] T053 Verify `git diff --check`, deterministic V810 regeneration, unchanged `internal/clients/camunda/v87`, `v88`, `v89`, and zero feature changes under `integration/` using `api/tests/v810_repository_boundary_test.sh`
 
 ---
 
