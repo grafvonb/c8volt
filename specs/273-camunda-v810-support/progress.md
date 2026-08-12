@@ -117,3 +117,21 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - V810 is now selectable and listed as supported, while implemented-version discovery remains staged on V87-V89 until native V810 factories are complete.
 ---
+---
+## Iteration 8 - 2026-08-12 19:28
+**Work Unit**: US1 V810 gateway release-line diagnostics
+**Tasks Completed**:
+- [x] T011: Add gateway `8.10`, patch, alpha4, different-minor, empty, and malformed comparison cases
+- [x] T014: Implement explicit match/mismatch/unrecognizable release-line comparison and preserve diagnostic rendering
+**Tasks Remaining in Work Unit**: T012 and T015-T017 remain in User Story 1
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/config_test.go
+- cmd/config_diagnostics.go
+- cmd/config_test_connection.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- Gateway compatibility now warns for empty or malformed observed versions instead of silently treating them as compatible; command diagnostics remain owned by `cmd/config_diagnostics.go`.
+---

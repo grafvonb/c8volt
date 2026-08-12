@@ -17,6 +17,7 @@ Started: 2026-08-12T16:38:49Z
 - Source-boundary tests use AST import scanning rather than package loading so they can catch layering regressions before type checking.
 - `internal/services/v810_source_boundary_test.go` is active for `cmd/` and public facade generated-client/versioned-service imports, and conditionally scans V810 adapter packages as they appear.
 - `toolx.V810` now normalizes only the stable aliases `8.10`, `810`, `v810`, and `v8.10`; prerelease/source tags such as `8.10.0-alpha4` remain rejected configuration identities.
+- Config test-connection gateway compatibility now compares explicit release-line states: same major/minor matches (including `8.10.0-alpha4`), different major/minor warns with existing mismatch wording, and empty/malformed gateway versions warn that compatibility cannot be verified.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -39,4 +40,4 @@ Started: 2026-08-12T16:38:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 1 at T011: add gateway `8.10`, patch, alpha4, different-minor, empty, and malformed comparison cases in `cmd/config_test.go`.
+- Next iteration should continue User Story 1 at T012: add human/JSON baseline disclosure, root help, supported-version, and bootstrap behavior tests in `cmd/version_test.go`, `cmd/bootstrap_errors_test.go`, and `cmd/get_test.go`.

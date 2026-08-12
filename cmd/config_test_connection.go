@@ -57,7 +57,7 @@ Use --json for a structured diagnostic payload on stdout; logs remain on stderr.
 		}
 
 		log.Info(fmt.Sprintf("camunda connection ok; base URL %s", cfg.APIs.Camunda.BaseURL))
-		warnings := camundaMajorMinorMismatchWarnings(string(cfg.App.CamundaVersion), topology.GatewayVersion)
+		warnings := camundaReleaseLineCompatibilityWarnings(string(cfg.App.CamundaVersion), topology.GatewayVersion)
 		for _, warning := range warnings {
 			log.Warn(warning)
 		}

@@ -435,6 +435,47 @@ func TestConfigTestConnectionCommand_JSONIncludesVersionMismatchWarning(t *testi
 	require.NotContains(t, stdout, "Cluster:")
 }
 
+func TestConfigTestConnectionDiagnostics_V810GatewayReleaseLineWarnings(t *testing.T) {
+	// V810 diagnostics accept matching patch/prerelease gateway lines but keep mismatches and unrecognizable lines visible.
+	testCases := []struct {
+		name           string
+		gatewayVersion string
+		wantWarning    string
+	}{
+		{name: "same release line", gatewayVersion: "8.10"},
+		{name: "patch release line", gatewayVersion: "8.10.7"},
+		{name: "alpha baseline release line", gatewayVersion: "8.10.0-alpha4"},
+		{
+			name:           "different minor",
+			gatewayVersion: "8.9.0",
+			wantWarning:    "configured Camunda version 8.10 differs from gateway version 8.9.0 by major/minor version",
+		},
+		{
+			name:           "empty gateway version",
+			gatewayVersion: "",
+			wantWarning:    "gateway version is empty; cannot verify compatibility with configured Camunda version 8.10",
+		},
+		{
+			name:           "malformed gateway version",
+			gatewayVersion: "not-a-version",
+			wantWarning:    `gateway version "not-a-version" is not recognizable as a Camunda major/minor version; cannot verify compatibility with configured Camunda version 8.10`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			warnings := camundaReleaseLineCompatibilityWarnings("8.10", tc.gatewayVersion)
+
+			if tc.wantWarning == "" {
+				require.Empty(t, warnings)
+				return
+			}
+			require.Len(t, warnings, 1)
+			require.Contains(t, warnings[0], tc.wantWarning)
+		})
+	}
+}
+
 func TestConfigTestConnectionCommand_RemoteFailureUsesStandardErrorPath(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/v2/topology", r.URL.Path)
