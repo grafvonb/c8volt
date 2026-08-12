@@ -10,8 +10,10 @@ Started: 2026-08-12T16:38:49Z
 - `api/generate-v810-client.sh` fetches the full upstream v2 spec directory with sparse checkout; fetching only `rest-api.yaml` breaks Redocly bundling because the spec contains local `$ref` files.
 - The V810 generator compiles generated output in a temporary standalone Go module and runs `go mod tidy` there before `go test`, avoiding repository writes before publication.
 - Provenance validation lives in `api/tests/v810_provenance_test.py` and checks exact schema keys, ordered mutation hashes, generated-client hash agreement, nondeterministic-field/path absence, and canonical second-run determinism.
-- The checked-in pinned V810 artifacts now live at `internal/clients/camunda/v810/camunda/client.gen.go` and `internal/clients/camunda/v810/camunda/provenance.json`; `go test ./internal/clients/camunda/v810/camunda -count=1` compiles the generated package before T008 adds explicit symbol tests.
+- The checked-in pinned V810 artifacts now live at `internal/clients/camunda/v810/camunda/client.gen.go` and `internal/clients/camunda/v810/camunda/provenance.json`; `internal/clients/camunda/v810/camunda/client_test.go` adds package-local compile/constructor/required-symbol coverage.
 - With the checked-in artifacts present, `python3 api/tests/v810_provenance_test.py` passes and performs a second canonical generation run to prove deterministic provenance/client output.
+- `api/generate-v810-client.sh` preserves existing package-local files when republishing V810 artifacts, so canonical regeneration does not delete `client_test.go`.
+- V810 generation guard negative cases now compare the V810 publication checksum before/after failed runs because detached worktrees already contain the committed pinned V810 artifacts.
 - Source-boundary tests use AST import scanning rather than package loading so they can catch layering regressions before type checking.
 - `internal/services/v810_source_boundary_test.go` is active for `cmd/` and public facade generated-client/versioned-service imports, and conditionally scans V810 adapter packages as they appear.
 
@@ -29,9 +31,10 @@ Started: 2026-08-12T16:38:49Z
 - `bash -n api/tests/v810_generation_test.sh`
 - `bash -n api/generate-v810-client.sh`
 - `python3 -m py_compile api/tests/v810_provenance_test.py`
+- `go test ./internal/clients/camunda/v810/camunda -count=1`
 - `go test ./internal/services -run 'TestV810AdapterSourceBoundary|TestCommandAndFacadeSourceBoundaryForGeneratedClients' -count=1`
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should start at T008 in Phase 2: add generated-client compile and required-symbol contract tests in `internal/clients/camunda/v810/camunda/client_test.go`, then use T009 to run the committed foundational generation guards.
+- Next iteration should start at T010 in User Story 1: add V810 alias, canonical string, supported/implemented-set staging, source-tag rejection, and unchanged-default tests in `toolx/version_test.go` and `config/app_test.go`.

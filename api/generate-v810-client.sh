@@ -386,6 +386,9 @@ publish_artifacts() {
   local staged_dir="$TMP_ROOT/publish/camunda"
 
   mkdir -p "$staged_dir"
+  if [ -d "$OUTPUT_DIR" ]; then
+    cp -R "$OUTPUT_DIR/." "$staged_dir/"
+  fi
   cp "$generated_client" "$staged_dir/client.gen.go"
   cp "$provenance" "$staged_dir/provenance.json"
 

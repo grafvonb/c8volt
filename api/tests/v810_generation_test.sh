@@ -204,6 +204,30 @@ assert_no_v810_publication() {
   assert_not_exists "$worktree/internal/clients/camunda/v810rc"
 }
 
+checksum_optional_v810_publication() {
+  local worktree="$1"
+  local output_dir
+
+  output_dir="$(v810_output_dir "$worktree")"
+  if [ ! -e "$output_dir" ]; then
+    printf 'absent\n'
+    return 0
+  fi
+
+  checksum_tree "$output_dir"
+}
+
+assert_v810_publication_unchanged() {
+  local worktree="$1"
+  local before="$2"
+  local after
+
+  after="$(checksum_optional_v810_publication "$worktree")"
+  assert_eq "$before" "$after" "v810 publication changed after failed generation"
+  assert_not_exists "$worktree/internal/clients/camunda/v810alpha"
+  assert_not_exists "$worktree/internal/clients/camunda/v810rc"
+}
+
 write_existing_v810_publication() {
   local worktree="$1"
   local output_dir
@@ -318,47 +342,55 @@ test_fake_tool_and_assertions() {
 
 test_refresh_rejects_unknown_target_before_writes() {
   local worktree
+  local before
 
   worktree="$(make_repo_worktree unknown-target-worktree)"
+  before="$(checksum_optional_v810_publication "$worktree")"
   COMMAND_OUTPUT="$TEST_TMPDIR/unknown-target.out"
 
   assert_failure_output_contains \
     "unknown target is rejected" \
     "Unknown target: v999" \
     "$worktree/api/refresh-clients.sh" --target v999 --camunda-tag 8.10.0-alpha4
-  assert_no_v810_publication "$worktree"
+  assert_v810_publication_unchanged "$worktree" "$before"
 }
 
 test_refresh_rejects_missing_v810_tag_before_writes() {
   local worktree
+  local before
 
   worktree="$(make_repo_worktree missing-tag-worktree)"
+  before="$(checksum_optional_v810_publication "$worktree")"
   COMMAND_OUTPUT="$TEST_TMPDIR/missing-tag.out"
 
   assert_failure_output_contains \
     "v810 target requires explicit tag" \
     "Missing value for --camunda-tag" \
     "$worktree/api/refresh-clients.sh" --target v810
-  assert_no_v810_publication "$worktree"
+  assert_v810_publication_unchanged "$worktree" "$before"
 }
 
 test_refresh_rejects_non_810_source_tag_before_writes() {
   local worktree
+  local before
 
   worktree="$(make_repo_worktree invalid-tag-worktree)"
+  before="$(checksum_optional_v810_publication "$worktree")"
   COMMAND_OUTPUT="$TEST_TMPDIR/invalid-tag.out"
 
   assert_failure_output_contains \
     "non-8.10 source tag is rejected" \
     "Invalid Camunda tag for v810: 8.9.0" \
     "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.9.0
-  assert_no_v810_publication "$worktree"
+  assert_v810_publication_unchanged "$worktree" "$before"
 }
 
 test_refresh_rejects_commit_mismatch_before_writes() {
   local worktree
+  local before
 
   worktree="$(make_repo_worktree commit-mismatch-worktree)"
+  before="$(checksum_optional_v810_publication "$worktree")"
   COMMAND_OUTPUT="$TEST_TMPDIR/commit-mismatch.out"
 
   reset_path
@@ -367,41 +399,47 @@ test_refresh_rejects_commit_mismatch_before_writes() {
     "pinned commit mismatch is rejected" \
     "Commit mismatch for v810 tag 8.10.0-alpha4" \
     "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.0-alpha4
-  assert_no_v810_publication "$worktree"
+  assert_v810_publication_unchanged "$worktree" "$before"
   reset_path
 }
 
 test_refresh_rejects_output_escape_before_writes() {
   local worktree
+  local before
 
   worktree="$(make_repo_worktree output-escape-worktree)"
+  before="$(checksum_optional_v810_publication "$worktree")"
   COMMAND_OUTPUT="$TEST_TMPDIR/output-escape.out"
 
   assert_failure_output_contains \
     "escaped output path is rejected" \
     "V810 output path escapes repository" \
     "$worktree/api/refresh-clients.sh" --target ../v810 --camunda-tag 8.10.0-alpha4
-  assert_no_v810_publication "$worktree"
+  assert_v810_publication_unchanged "$worktree" "$before"
   assert_not_exists "$worktree/../escaped-v810"
 }
 
 test_refresh_names_missing_generation_tool_before_writes() {
   local worktree
+  local before
 
   worktree="$(make_repo_worktree missing-tool-worktree)"
+  before="$(checksum_optional_v810_publication "$worktree")"
   COMMAND_OUTPUT="$TEST_TMPDIR/missing-tool.out"
 
   assert_failure_output_contains \
     "missing redocly is reported" \
     "missing tool: redocly" \
     env PATH="/bin:/usr/bin" "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.0-alpha4
-  assert_no_v810_publication "$worktree"
+  assert_v810_publication_unchanged "$worktree" "$before"
 }
 
 test_refresh_rejects_mutation_no_op_before_publication() {
   local worktree
+  local before
 
   worktree="$(make_repo_worktree mutation-no-op-worktree)"
+  before="$(checksum_optional_v810_publication "$worktree")"
   break_v810_mutation_effect "$worktree"
   COMMAND_OUTPUT="$TEST_TMPDIR/mutation-no-op.out"
 
@@ -409,7 +447,7 @@ test_refresh_rejects_mutation_no_op_before_publication() {
     "mutation no-op is rejected" \
     "mutation produced no expected effect: api/mutations/mutate-search-query-schemas.py" \
     "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.0-alpha4
-  assert_no_v810_publication "$worktree"
+  assert_v810_publication_unchanged "$worktree" "$before"
 }
 
 test_refresh_failure_preserves_existing_publication_atomically() {

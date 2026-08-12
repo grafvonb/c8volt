@@ -80,3 +80,21 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - The canonical V810 refresh command now produces checked-in artifacts; generated package compile and provenance determinism checks pass with protected stable trees untouched.
 ---
+---
+## Iteration 6 - 2026-08-12 19:16
+**Work Unit**: Phase 2 foundational V810 client contract and generation guards
+**Tasks Completed**:
+- [x] T008: Add generated-client compile and required-symbol contract tests
+- [x] T009: Run foundational generation guards and resolve allowed failures
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- api/generate-v810-client.sh
+- api/tests/v810_generation_test.sh
+- internal/clients/camunda/v810/camunda/client_test.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- Committed V810 artifacts mean negative generation guards must assert unchanged publication, and canonical regeneration must preserve package-local tests.
+---

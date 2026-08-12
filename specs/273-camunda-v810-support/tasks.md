@@ -28,8 +28,8 @@
 - [x] T005 Add backward-compatible `--target v810` parsing and dispatch while preserving no-target behavior in `api/refresh-clients.sh`
 - [x] T006 Implement temporary fetch, peeled-commit verification, bundling, ordered mutations, symbol checks, protected-tree fingerprints, provenance creation, and atomic publication in `api/generate-v810-client.sh`
 - [x] T007 Generate and check in the pinned `8.10.0-alpha4` artifacts at `internal/clients/camunda/v810/camunda/client.gen.go` and `internal/clients/camunda/v810/camunda/provenance.json`
-- [ ] T008 Add generated-client compile and required-symbol contract tests in `internal/clients/camunda/v810/camunda/client_test.go`
-- [ ] T009 Run the foundational generation guards and resolve failures only in `api/refresh-clients.sh`, `api/generate-v810-client.sh`, `api/tests/`, and `internal/clients/camunda/v810/camunda/`
+- [x] T008 Add generated-client compile and required-symbol contract tests in `internal/clients/camunda/v810/camunda/client_test.go`
+- [x] T009 Run the foundational generation guards and resolve failures only in `api/refresh-clients.sh`, `api/generate-v810-client.sh`, `api/tests/`, and `internal/clients/camunda/v810/camunda/`
 
 **Checkpoint**: The canonical V810 generation command succeeds twice with no second-run diff, while protected client trees retain their recorded content.
 
