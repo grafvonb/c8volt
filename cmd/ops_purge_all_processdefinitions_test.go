@@ -723,7 +723,7 @@ func TestOpsPurgeAllProcessDefinitionsRejectsUnsupportedFullHistoryVersionsBefor
 			require.True(t, ok)
 			require.Equal(t, exitcode.Error, exitErr.ExitCode())
 			require.Contains(t, string(output), "unsupported capability")
-			require.Contains(t, string(output), "all-process-definitions purge requires Camunda 8.9 or newer")
+			require.Contains(t, string(output), "all-process-definitions purge requires the full process-definition history deletion capability, currently Camunda 8.9 or newer")
 			require.Empty(t, requests.Snapshot())
 			require.Empty(t, deleted.Snapshot())
 		})

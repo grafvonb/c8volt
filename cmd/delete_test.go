@@ -147,7 +147,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 	output = assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{
 		"Delete process definition resources from Camunda",
 		"checks delete impact without changing anything",
-		"requires Camunda 8.9 or newer",
+		"requires the full process-definition history deletion capability, currently Camunda 8.9 or newer",
 		"associated history",
 		"c8volt delete process-instance --bpmn-process-id <bpmn-process-id>",
 		"Use --dry-run to preview process-definition delete impact without submitting deletion or cancellation requests",
@@ -267,7 +267,7 @@ func TestDeleteProcessDefinitionCommand_RejectsUnsupportedFullHistoryVersionsBef
 			require.True(t, ok)
 			require.Equal(t, exitcode.Error, exitErr.ExitCode())
 			require.Contains(t, string(output), "unsupported capability")
-			require.Contains(t, string(output), "process-definition deletion requires Camunda 8.9 or newer")
+			require.Contains(t, string(output), "process-definition deletion requires the full process-definition history deletion capability, currently Camunda 8.9 or newer")
 			require.Contains(t, string(output), "c8volt delete process-instance --bpmn-process-id")
 			require.False(t, called)
 		})

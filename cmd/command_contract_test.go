@@ -2411,7 +2411,7 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"--total returns only the matching count",
 		"Use --json for the stable job payload",
 		"--error-message-limit",
-		"Camunda 8.8 and 8.9",
+		"Camunda 8.8 or newer",
 		"./c8volt get job --key <job-key>",
 		"./c8volt get job --state failed --batch-size 10 --limit 50",
 		"./c8volt get job --state failed --total",
@@ -2481,7 +2481,7 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 		"Compact human rows include dur:<duration>",
 		"Use --with-listeners to include runtime listener jobs under matching element rows",
 		"Use --json for the stable element payload and --keys-only when piping element instance keys",
-		"Element lookup and search require Camunda 8.8 or 8.9",
+		"Element lookup and search require Camunda 8.8 or newer",
 		"Aliases:",
 		"ei",
 		"./c8volt get element --key <element-instance-key>",
@@ -2569,7 +2569,7 @@ func TestIncidentCommandHelpOmitsLegacyElementTerminology(t *testing.T) {
 func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"update"}, []string{
 		"Update existing resources",
-		"Camunda 8.8 and 8.9",
+		"Camunda 8.8 or newer",
 		"unsupported-version error before these mutations",
 		"./c8volt update process-instance --key <process-instance-key> --vars",
 		"./c8volt update process-instance --key <process-instance-key> --vars-file",

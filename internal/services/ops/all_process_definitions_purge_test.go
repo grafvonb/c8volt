@@ -154,7 +154,7 @@ func TestPurgeAllProcessDefinitionsRejectsUnsupportedFullHistoryVersionsBeforeDi
 
 			require.Error(t, err)
 			require.True(t, errors.Is(err, d.ErrUnsupported), "got %v", err)
-			require.Contains(t, err.Error(), "requires Camunda 8.9 or newer")
+			require.Contains(t, err.Error(), "requires the full process-definition history deletion capability, currently Camunda 8.9 or newer")
 			require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeFailed, got.Outcome)
 			require.Equal(t, d.OpsWorkflowStepStatusFailed, got.Discovery.Status)
 			require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)

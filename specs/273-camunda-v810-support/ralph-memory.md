@@ -43,6 +43,7 @@ Started: 2026-08-12T16:38:49Z
 - `c8volt/client_test.go` now proves full V810 top-level construction by calling one blocked-transport method through each facade surface plus process-instance variable lookup for the nested V810 variable service.
 - `cmd/bootstrap_errors_test.go` now expects `NewCli` to construct a V810-backed client successfully; V810 is no longer a staged unsupported bootstrap identity.
 - V810 command fake-server coverage now proves resource read human/JSON/keys-only modes, process-definition deletion request/confirmation lifecycle, job update prompt/confirmation flow, process-instance variable update confirmation, and run process-instance JSON/keys-only activity routing without production command changes.
+- V810-aware command help now uses `8.8 or newer` or capability-oriented `full process-definition history deletion` wording where 8.10 is verified; ops purge unsupported text is service-owned in `internal/services/ops/all_process_definitions_purge.go`.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -85,4 +86,4 @@ Started: 2026-08-12T16:38:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T037: update V810-aware capability and unsupported-version descriptions in the listed command files without adding command-local backend mechanics.
+- Next iteration should continue User Story 2 at T038: run the eleven service-suite commands from `specs/273-camunda-v810-support/quickstart.md`, plus `c8volt/client_test.go` and `internal/services/v810_source_boundary_test.go`; resolve failures only in owning V810/service/factory/command paths.

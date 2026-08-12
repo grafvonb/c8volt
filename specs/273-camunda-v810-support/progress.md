@@ -406,3 +406,33 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - V810 command coverage can be added as fake-server assertions over existing command flows; no production command mechanics changed for T036.
 ---
+---
+## Iteration 20 - 2026-08-12 20:50
+**Work Unit**: US2 V810-aware command capability descriptions
+**Tasks Completed**:
+- [x] T037: Update V810-aware capability and unsupported-version descriptions without adding command-local backend mechanics
+**Tasks Remaining in Work Unit**: T038 remains in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/command_contract_test.go
+- cmd/delete_processdefinition.go
+- cmd/delete_test.go
+- cmd/get_element.go
+- cmd/get_job.go
+- cmd/get_processdefinition.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/get_test.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- cmd/update.go
+- cmd/update_job.go
+- cmd/update_processinstance.go
+- internal/services/ops/all_process_definitions_purge.go
+- internal/services/ops/all_process_definitions_purge_test.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- V810-aware help wording is command-owned; ops purge unsupported wording remains service-owned and is only surfaced by the command.
+---

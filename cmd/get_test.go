@@ -314,7 +314,7 @@ func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 	require.Contains(t, output, "List or fetch deployed process definitions")
 	require.Contains(t, output, "Inspect deployed BPMN models")
 	require.Contains(t, output, "Use `--xml` only with `--key`")
-	require.Contains(t, output, "`--stat` requires Camunda `8.8` or `8.9`")
+	require.Contains(t, output, "`--stat` requires Camunda `8.8` or newer")
 	require.Contains(t, output, "prints exact-version")
 	require.Contains(t, output, "Camunda `8.7` does not support")
 	require.Contains(t, output, "Tenant contract:")
