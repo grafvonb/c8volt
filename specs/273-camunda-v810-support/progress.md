@@ -645,3 +645,17 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - Feature-changed Go files were already gofmt-clean; focused quickstart validation passed across identity/defaults, commands, service families, V810 client construction, capability gates, generated-client compile, source-boundary scans, and docs/version/help checks.
 ---
+---
+## Iteration 3 - 2026-08-12 21:57
+**Work Unit**: Phase 7 T052 race-enabled repository gate
+**Tasks Completed**:
+- [x] T052: Run the race-enabled repository gate from the `Makefile` `test` target and resolve all failures in their owning production/test files
+**Tasks Remaining in Work Unit**: 0; T053 remains in Phase 7
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- The race-enabled repository gate passed with `make test`; no owning production or test files needed changes.
+---

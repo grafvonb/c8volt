@@ -61,6 +61,7 @@ Started: 2026-08-12T16:38:49Z
 - T050 regenerated only generated documentation via `make docs-content`; focused docs/help validation passed with `go test ./docsgen ./cmd -run 'Docs|Version|Help' -count=1`.
 - T051 `gofmt` over the feature's changed Go files produced no Go-file diff; focused quickstart validation passed for identity/default/fixtures, command help/version/embed/V810, all eleven service suites, V810 client construction, capability gates, generated-client compile, source-boundary scans, docs generation, and docs/version/help tests.
 - Running `make docs-content` after a new work-unit commit advances `docs/index.md` build metadata to the current pre-commit `git describe`/commit/date even when CLI markdown content is otherwise unchanged.
+- T052 race-enabled repository gate passed with `make test`, which runs `go test ./... -race -count=1`; no production or test fixes were required.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -114,4 +115,4 @@ Started: 2026-08-12T16:38:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue Phase 7 at T052: run the race-enabled repository gate from the `Makefile` `test` target and resolve all failures in owning production/test files.
+- Next iteration should continue Phase 7 at T053: verify `git diff --check`, deterministic V810 regeneration, unchanged v87-v89 generated clients, and zero feature changes under `integration/` using `api/tests/v810_repository_boundary_test.sh`.
