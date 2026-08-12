@@ -57,6 +57,7 @@ Started: 2026-08-12T16:38:49Z
 - `api/README.md` now documents the V810 isolated baseline workflow: exact alpha4 reproduction command, provenance field inventory, ordered mutation chain, in-place later-baseline update examples, rollback guarantees, protected stable paths, and generation guard commands.
 - V810 generator target validation must compare physical parent paths on both sides; macOS temp/worktree paths can differ as logical `/var/...` versus physical `/private/var/...`.
 - To validate uncommitted generator changes with `api/tests/v810_generation_test.sh`, run the guard in a temporary local clone with the diff committed because the guard creates detached worktrees from `HEAD`.
+- T049 left generated docs untouched for T050; authored/source-owned docs now disclose 8.10 aliases, V88 default, alpha4 prerelease baseline, and the in-place baseline update model in README/root/version/docsgen sources.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -104,8 +105,10 @@ Started: 2026-08-12T16:38:49Z
 - `go test ./internal/services/batchoperation ./internal/services/cluster ./internal/services/element ./internal/services/incident ./internal/services/job ./internal/services/processdefinition ./internal/services/processinstance ./internal/services/resource ./internal/services/tenant ./internal/services/usertask ./internal/services/variable -run 'TestFactory_StableVersionSelectionUnchanged' -count=1`
 - `go test ./toolx -run 'V810Baseline' -count=1`
 - `go test ./cmd -run 'VersionCommand|CurrentBuildInfo|VersionHelp' -count=1`
+- `go test ./docsgen -count=1`
+- `go test ./cmd -run 'Version|RootHelp|GetProcessInstanceDocs|Help|SupportMessaging' -count=1`
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should start Phase 7 at T049: update supported-version wording, aliases, unchanged default, prerelease baseline, and in-place update model across README, command help/source, and docsgen files.
+- Next iteration should start Phase 7 at T050: regenerate `docs/cli/` and `docs/index.md` with `make docs-content`, then verify generated CLI documentation was produced from source metadata rather than hand-edited.

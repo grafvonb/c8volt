@@ -45,7 +45,6 @@ Started: 2026-08-12 18:38:49
 - specs/273-camunda-v810-support/progress.md
 **Learnings**:
 - `refresh-clients.sh` now preserves the no-target all-client script sequence and routes validated `--target v810 --camunda-tag <8.10-tag>` invocations to the isolated generator entrypoint.
----
 ## Iteration 4 - 2026-08-12 19:01
 **Work Unit**: Phase 2 foundational V810 isolated generator
 **Tasks Completed**:
@@ -587,4 +586,23 @@ Started: 2026-08-12 18:38:49
 - specs/273-camunda-v810-support/progress.md
 **Learnings**:
 - The real alpha4 provenance reproduction is diff-free; the transition guard needs committed HEAD state, so prospective validation used a temporary clone containing the generator path fix.
+---
+---
+## Iteration 30 - 2026-08-12 21:42
+**Work Unit**: Phase 7 T049 documentation and help wording alignment
+**Tasks Completed**:
+- [x] T049: Update supported-version wording, aliases, unchanged default, prerelease baseline, and in-place update model
+**Tasks Remaining in Work Unit**: T050-T053 remain in Phase 7
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/root.go
+- cmd/version.go
+- docsgen/main.go
+- docsgen/main_test.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- T049 is source-owned only; generated `docs/` output remains deferred to T050 and is now backed by docsgen baseline disclosure tests.
 ---

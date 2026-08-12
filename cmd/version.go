@@ -48,7 +48,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
 	Long: "Print version information.\n\n" +
-		"Use --json for version metadata.",
+		"Use --json for version metadata, including supported Camunda versions and the active Camunda 8.10 baseline.",
 	Example: `  ./c8volt version
   ./c8volt version --json`,
 	Run: func(cmd *cobra.Command, args []string) {
