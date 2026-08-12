@@ -78,11 +78,11 @@ func TestCurrentCamundaVersionRemainsV88(t *testing.T) {
 	require.Equal(t, V88, CurrentCamundaVersion)
 }
 
-// TestImplementedCamundaVersionsStayOnRuntimeImplementedSet verifies V810 is
-// not advertised as factory-complete until the native adapter story is done.
-func TestImplementedCamundaVersionsStayOnRuntimeImplementedSet(t *testing.T) {
+// TestImplementedCamundaVersionsIncludeCompleteV810Runtime verifies V810 is
+// advertised only after all native service factories and top-level wiring exist.
+func TestImplementedCamundaVersionsIncludeCompleteV810Runtime(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, []CamundaVersion{V87, V88, V89}, ImplementedCamundaVersions())
-	require.Equal(t, "8.7, 8.8, 8.9", ImplementedCamundaVersionsString())
+	require.Equal(t, []CamundaVersion{V87, V88, V89, V810}, ImplementedCamundaVersions())
+	require.Equal(t, "8.7, 8.8, 8.9, 8.10", ImplementedCamundaVersionsString())
 }

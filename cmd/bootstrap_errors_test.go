@@ -71,9 +71,9 @@ func TestNewCliConstructsSupportedV89Client(t *testing.T) {
 	require.NotNil(t, cli)
 }
 
-// Verifies V810 is accepted through bootstrap configuration but remains
-// honestly staged until the native service factories are wired.
-func TestNewCliV810BootstrapReportsStagedUnsupportedRuntime(t *testing.T) {
+// Verifies NewCli constructs a v8.10-backed client after every native service
+// factory is wired into the complete c8volt facade.
+func TestNewCliConstructsSupportedV810Client(t *testing.T) {
 	cfg := &config.Config{
 		App: config.App{
 			CamundaVersion: toolx.V810,
@@ -95,11 +95,9 @@ func TestNewCliV810BootstrapReportsStagedUnsupportedRuntime(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetContext(httpSvc.ToContext(ctx))
 
-	_, _, _, err = NewCli(cmd)
-	require.Error(t, err)
-	require.Equal(t, ferrors.ClassUnsupported, ferrors.Classify(err))
-	require.Contains(t, err.Error(), `unknown API version: "8.10"`)
-	require.Contains(t, err.Error(), "supported: 8.7, 8.8, 8.9")
+	_, _, cli, err := NewCli(cmd)
+	require.NoError(t, err)
+	require.NotNil(t, cli)
 }
 
 // Verifies execute-time config validation failures use the shared failure model and exit behavior.

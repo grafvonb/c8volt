@@ -368,3 +368,22 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - Full process-definition history deletion is now a named V89/V810 capability consumed by both direct delete and APD purge preflight gates.
 ---
+---
+## Iteration 18 - 2026-08-12 20:38
+**Work Unit**: US2 full V810 client construction and implemented-version publication
+**Tasks Completed**:
+- [x] T034: Add full V810 client-construction and CLI bootstrap tests across all factories
+- [x] T035: Finalize complete-client wiring and publish V810 in the implemented-version set
+**Tasks Remaining in Work Unit**: T036-T038 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/client_test.go
+- cmd/bootstrap_errors_test.go
+- toolx/version.go
+- toolx/version_test.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- Existing factories already constructed V810 successfully; publishing `ImplementedCamundaVersions()` after full top-level proof makes bootstrap and factory guidance match runtime behavior.
+---

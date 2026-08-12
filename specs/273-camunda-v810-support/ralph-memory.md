@@ -16,35 +16,37 @@ Started: 2026-08-12T16:38:49Z
 - V810 generation guard negative cases now compare the V810 publication checksum before/after failed runs because detached worktrees already contain the committed pinned V810 artifacts.
 - `toolx/camunda_baseline.go` owns the active V810 baseline metadata; `toolx/camunda_baseline_test.go` verifies it matches `internal/clients/camunda/v810/camunda/provenance.json`.
 - `cmd/version.go` renders V810 baseline disclosure as an additive human line and two additive JSON payload string fields: `camunda810Baseline` and `camunda810BaselineStatus`.
-- Root help now lists supported versions through 8.10 and discloses the active 8.10 prerelease baseline, but V810 remains staged out of `ImplementedCamundaVersions()` until US2 factory wiring is complete.
+- Root help now lists supported versions through 8.10 and discloses the active 8.10 prerelease baseline; after full US2 factory construction proof, V810 is also included in `ImplementedCamundaVersions()`.
 - Source-boundary tests use AST import scanning rather than package loading so they can catch layering regressions before type checking.
 - `internal/services/v810_source_boundary_test.go` is active for `cmd/` and public facade generated-client/versioned-service imports, and conditionally scans V810 adapter packages as they appear.
 - `toolx.V810` now normalizes only the stable aliases `8.10`, `810`, `v810`, and `v8.10`; prerelease/source tags such as `8.10.0-alpha4` remain rejected configuration identities.
 - Config test-connection gateway compatibility now compares explicit release-line states: same major/minor matches (including `8.10.0-alpha4`), different major/minor warns with existing mismatch wording, and empty/malformed gateway versions warn that compatibility cannot be verified.
 - Native V810 batch-operation adapters can follow the V89 unified v2 shape with V810 generated types: read access uses `SearchBatchOperationsWithResponse`, cancel uses `CancelProcessInstancesBatchOperationWithResponse`, and completion polls `GetBatchOperationWithResponse`.
 - Native V810 cluster adapters reuse `internal/services/cluster/common` for response/error handling; only generated-client wiring and V810-to-domain conversions are package-local.
-- Batch-operation and cluster factories now have explicit `toolx.V810` cases and package-level interface assertions, but `toolx.ImplementedCamundaVersions()` remains staged until all eleven US2 service families are wired.
+- Batch-operation and cluster factories now have explicit `toolx.V810` cases and package-level interface assertions.
 - Native V810 element and incident adapters can follow v89 behavior with local V810 generated types; V810 element search differs by requiring `ElementIdFilterProperty` for `elementId`, and V810 cursor pagination requires `*EndCursor` for `after`.
-- Element and incident factories now have explicit `toolx.V810` cases and package-level interface assertions; `toolx.ImplementedCamundaVersions()` remains staged until the remaining US2 service families are wired.
+- Element and incident factories now have explicit `toolx.V810` cases and package-level interface assertions.
 - Native V810 job and process-definition adapters can follow v89 unified-client behavior with local generated types; V810 process-definition cursor pagination uses `*EndCursor` for `after`, and V810 job tests should use `JobKindEnumBPMNELEMENT`.
-- Job and process-definition factories now have explicit `toolx.V810` cases and package-level interface assertions; `toolx.ImplementedCamundaVersions()` remains staged until all eleven US2 service families are wired.
+- Job and process-definition factories now have explicit `toolx.V810` cases and package-level interface assertions.
 - Native V810 process-instance adapters can follow v89 unified-client behavior with local V810 generated types and V810 cursor pagination requires `*EndCursor` for `after`.
 - V810 process-instance construction owns the nested native V810 variable service; `internal/services/v810_source_boundary_test.go` has a single allowlist for `processinstance/v810/service.go` importing `variable/v810`.
 - Native V810 variable adapters preserve raw JSON decoding for value/truncation fields omitted by generated models and use the process-instance key as the element-instance scope for updates.
-- Process-instance and variable factories now have explicit `toolx.V810` cases and package-level interface assertions; `toolx.ImplementedCamundaVersions()` remains staged until all eleven US2 service families are wired.
+- Process-instance and variable factories now have explicit `toolx.V810` cases and package-level interface assertions.
 - Native V810 resource and tenant adapters can follow v89 unified-client behavior with local V810 generated types; resource deployment visibility polling and resource history deletion confirmation reuse the existing shared poller/payload helpers.
 - Native V810 user-task adapters use only `GetUserTaskWithResponse` from the V810 unified client; tenant mismatches are mapped to the existing not-found/visibility wording and 503 responses preserve `domain.ErrUnavailable`.
-- User-task factories now have an explicit `toolx.V810` case and package-level interface assertions, but `toolx.ImplementedCamundaVersions()` remains staged until the remaining US2 work is wired.
-- Resource and tenant factories now have explicit `toolx.V810` cases and package-level interface assertions; `toolx.ImplementedCamundaVersions()` remains staged until all eleven US2 service families are wired.
+- User-task factories now have an explicit `toolx.V810` case and package-level interface assertions.
+- Resource and tenant factories now have explicit `toolx.V810` cases and package-level interface assertions.
 - `internal/services/incidentfilter` now owns version-neutral canonical incident state/error-type validation without generated-client imports; the list includes V810 `SECRET_RESOLUTION_ERROR`.
 - `internal/services/v810_source_boundary_test.go` scans `incidentfilter` production and test files to reject generated Camunda client imports, in addition to V810 adapter and cmd/facade boundary scans.
 - `toolx.SupportsFullProcessDefinitionHistoryDeletion` is the named capability for full process-definition history deletion and explicitly returns true only for V89 and V810.
 - Direct process-definition deletion and all-process-definitions purge both consume the named capability; V87/V88 still fail before remote discovery or mutation, while V89/V810 pass the local gate.
+- `c8volt/client_test.go` now proves full V810 top-level construction by calling one blocked-transport method through each facade surface plus process-instance variable lookup for the nested V810 variable service.
+- `cmd/bootstrap_errors_test.go` now expects `NewCli` to construct a V810-backed client successfully; V810 is no longer a staged unsupported bootstrap identity.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
 - Command and public facade boundary checks reject any generated Camunda client import and any direct versioned service implementation import.
-- V810 is listed in supported versions for operator discovery, but `ImplementedCamundaVersions()` intentionally remains `V87,V88,V89` until the complete native V810 factory/client wiring is done.
+- V810 is listed in supported and implemented versions after complete native factory/client construction proof.
 - Full process-definition history deletion capability is an explicit V89/V810 set, not a version-order comparison.
 
 ## Gotchas
@@ -80,4 +82,4 @@ Started: 2026-08-12T16:38:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T034: add failing full V810 client-construction and CLI bootstrap tests across all factories in `c8volt/client_test.go` and `cmd/bootstrap_errors_test.go`.
+- Next iteration should continue User Story 2 at T036: add representative command fake-server coverage for supported reads, confirmed mutations, unsupported-before-mutation errors, and stable human/JSON/keys-only/prompt/activity behavior in `cmd/get_test.go`, `cmd/delete_test.go`, `cmd/update_test.go`, and `cmd/run_test.go`.
