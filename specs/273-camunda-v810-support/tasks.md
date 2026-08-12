@@ -23,8 +23,8 @@
 
 **Critical**: No user-story implementation begins until the generated client compiles and protected v8.7-v8.9 trees remain unchanged.
 
-- [ ] T003 [P] Add failing target, tag, commit, output-escape, missing-tool, mutation-no-op, and atomic-publication cases to `api/tests/v810_generation_test.sh`
-- [ ] T004 [P] Add failing provenance schema, ordered-transformation, hash, nondeterministic-field, and second-run checks in `api/tests/v810_provenance_test.py`
+- [x] T003 [P] Add failing target, tag, commit, output-escape, missing-tool, mutation-no-op, and atomic-publication cases to `api/tests/v810_generation_test.sh`
+- [x] T004 [P] Add failing provenance schema, ordered-transformation, hash, nondeterministic-field, and second-run checks in `api/tests/v810_provenance_test.py`
 - [ ] T005 Add backward-compatible `--target v810` parsing and dispatch while preserving no-target behavior in `api/refresh-clients.sh`
 - [ ] T006 Implement temporary fetch, peeled-commit verification, bundling, ordered mutations, symbol checks, protected-tree fingerprints, provenance creation, and atomic publication in `api/generate-v810-client.sh`
 - [ ] T007 Generate and check in the pinned `8.10.0-alpha4` artifacts at `internal/clients/camunda/v810/camunda/client.gen.go` and `internal/clients/camunda/v810/camunda/provenance.json`
