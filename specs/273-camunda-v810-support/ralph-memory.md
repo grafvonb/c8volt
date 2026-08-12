@@ -59,6 +59,8 @@ Started: 2026-08-12T16:38:49Z
 - To validate uncommitted generator changes with `api/tests/v810_generation_test.sh`, run the guard in a temporary local clone with the diff committed because the guard creates detached worktrees from `HEAD`.
 - T049 left generated docs untouched for T050; authored/source-owned docs now disclose 8.10 aliases, V88 default, alpha4 prerelease baseline, and the in-place baseline update model in README/root/version/docsgen sources.
 - T050 regenerated only generated documentation via `make docs-content`; focused docs/help validation passed with `go test ./docsgen ./cmd -run 'Docs|Version|Help' -count=1`.
+- T051 `gofmt` over the feature's changed Go files produced no Go-file diff; focused quickstart validation passed for identity/default/fixtures, command help/version/embed/V810, all eleven service suites, V810 client construction, capability gates, generated-client compile, source-boundary scans, docs generation, and docs/version/help tests.
+- Running `make docs-content` after a new work-unit commit advances `docs/index.md` build metadata to the current pre-commit `git describe`/commit/date even when CLI markdown content is otherwise unchanged.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.
@@ -112,4 +114,4 @@ Started: 2026-08-12T16:38:49Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue Phase 7 at T051: run `gofmt` on all touched Go files and execute the focused validation sequence documented in `specs/273-camunda-v810-support/quickstart.md`.
+- Next iteration should continue Phase 7 at T052: run the race-enabled repository gate from the `Makefile` `test` target and resolve all failures in owning production/test files.
