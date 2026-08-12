@@ -51,3 +51,18 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - `refresh-clients.sh` now preserves the no-target all-client script sequence and routes validated `--target v810 --camunda-tag <8.10-tag>` invocations to the isolated generator entrypoint.
 ---
+---
+## Iteration 4 - 2026-08-12 19:01
+**Work Unit**: Phase 2 foundational V810 isolated generator
+**Tasks Completed**:
+- [x] T006: Implement temporary fetch, peeled-commit verification, bundling, ordered mutations, symbol checks, protected-tree fingerprints, provenance creation, and atomic publication
+**Tasks Remaining in Work Unit**: T007-T009 remain in Phase 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- api/generate-v810-client.sh
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- The upstream v8.10 OpenAPI root requires sparse-fetching the full v2 directory for Redocly bundling, and temp compile validation needs its own `go mod tidy`.
+---
