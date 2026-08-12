@@ -246,3 +246,36 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - V810 job and process-definition adapters reuse v89 unified-client behavior with local generated types; process-definition cursor requests require pointer `EndCursor` values.
 ---
+---
+## Iteration 13 - 2026-08-12 20:06
+**Work Unit**: US2 V810 process-instance and variable adapters
+**Tasks Completed**:
+- [x] T021: Add V810 factory, nested-variable selection, paging/walk/wait, value conversion, success, and error cases for process instances and variables
+- [x] T029: Implement native V810 process-instance and variable adapters, nested V810 variable construction, and factory cases
+**Tasks Remaining in Work Unit**: T022-T025 and T030-T038 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/api.go
+- internal/services/processinstance/factory.go
+- internal/services/processinstance/factory_test.go
+- internal/services/processinstance/v810/bulk.go
+- internal/services/processinstance/v810/contract.go
+- internal/services/processinstance/v810/convert.go
+- internal/services/processinstance/v810/service.go
+- internal/services/processinstance/v810/service_test.go
+- internal/services/processinstance/v810/variable_filter.go
+- internal/services/processinstance/v810/variables.go
+- internal/services/v810_source_boundary_test.go
+- internal/services/variable/factory.go
+- internal/services/variable/factory_test.go
+- internal/services/variable/v810/contract.go
+- internal/services/variable/v810/convert.go
+- internal/services/variable/v810/service.go
+- internal/services/variable/v810/service_test.go
+- internal/services/variable/v810/variables.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- V810 process-instance construction owns the nested V810 variable service, and the source-boundary allowlist is limited to that required import.
+---

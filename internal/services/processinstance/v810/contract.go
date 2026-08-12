@@ -1,24 +1,20 @@
 // SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-package processinstance
+package v810
 
 import (
 	"context"
-	"fmt"
+	"io"
 
+	camundav810 "github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
-	"github.com/grafvonb/c8volt/internal/services/common"
-	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
-	v810 "github.com/grafvonb/c8volt/internal/services/processinstance/v810"
-	v87 "github.com/grafvonb/c8volt/internal/services/processinstance/v87"
-	v88 "github.com/grafvonb/c8volt/internal/services/processinstance/v88"
-	v89 "github.com/grafvonb/c8volt/internal/services/processinstance/v89"
 	"github.com/grafvonb/c8volt/typex"
 )
 
+// API describes the process-instance operations implemented by the native v8.10 adapter.
 type API interface {
 	CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error)
 	GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error)
@@ -39,56 +35,18 @@ type API interface {
 	AncestryResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error)
 	DescendantsResult(ctx context.Context, rootKey string, opts ...services.CallOption) (pitraversal.Result, error)
 	FamilyResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error)
-
 	GetProcessInstances(ctx context.Context, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) ([]d.ProcessInstance, error)
 	WaitForProcessInstancesState(ctx context.Context, keys typex.Keys, desired d.States, wantedWorkers int, opts ...services.CallOption) (d.StateResponses, error)
 	WaitForProcessInstancesExpectation(ctx context.Context, keys typex.Keys, request d.ProcessInstanceExpectationRequest, wantedWorkers int, opts ...services.CallOption) (d.ProcessInstanceExpectationResponses, error)
 }
 
-type TenantSafeLookupSearcher interface {
-	SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error)
+// GenProcessInstanceClientCamunda captures the generated Camunda calls used by the v8.10 process-instance service.
+type GenProcessInstanceClientCamunda interface {
+	CancelProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body camundav810.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CancelProcessInstanceResponse, error)
+	CreateProcessInstanceWithResponse(ctx context.Context, body camundav810.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CreateProcessInstanceResponse, error)
+	DeleteProcessInstanceWithResponse(ctx context.Context, processInstanceKey camundav810.ProcessInstanceKey, body camundav810.DeleteProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.DeleteProcessInstanceResponse, error)
+	GetProcessInstanceWithResponse(ctx context.Context, processInstanceKey camundav810.ProcessInstanceKey, reqEditors ...camundav810.RequestEditorFn) (*camundav810.GetProcessInstanceResponse, error)
+	SearchProcessInstancesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchProcessInstancesResponse, error)
 }
 
-type RetentionDiscoveryAPI interface {
-	SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error)
-}
-
-// SearchProcessInstanceIncidentAPI captures the incident lookups needed by
-// process-instance search compatibility filtering and direct incident indexing.
-type SearchProcessInstanceIncidentAPI interface {
-	SearchIncidentsPage(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error)
-	SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
-}
-
-var _ SearchProcessInstanceIncidentAPI = (incsvc.API)(nil)
-
-func TenantSafeLookupUnsupported(operation string) error {
-	return fmt.Errorf("%w: %s", d.ErrUnsupported, operation)
-}
-
-func LookupProcessInstance(ctx context.Context, api TenantSafeLookupSearcher, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
-	items, err := api.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{Key: key}, 2, opts...)
-	if err != nil {
-		return d.ProcessInstance{}, err
-	}
-	return common.RequireSingleProcessInstance(items, key)
-}
-
-func LookupProcessInstanceStateByKey(ctx context.Context, api TenantSafeLookupSearcher, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
-	pi, err := LookupProcessInstance(ctx, api, key, opts...)
-	if err != nil {
-		return "", d.ProcessInstance{}, err
-	}
-	return pi.State, pi, nil
-}
-
-// Both supported versioned services must continue to satisfy the shared
-// processinstance service surface while the internals are refactored.
-var _ API = (*v87.Service)(nil)
-var _ API = (*v88.Service)(nil)
-var _ API = (*v89.Service)(nil)
-var _ API = (*v810.Service)(nil)
-var _ API = (v87.API)(nil)
-var _ API = (v88.API)(nil)
-var _ API = (v89.API)(nil)
-var _ API = (v810.API)(nil)
+var _ GenProcessInstanceClientCamunda = (*camundav810.ClientWithResponses)(nil)

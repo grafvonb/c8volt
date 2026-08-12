@@ -93,11 +93,20 @@ func v810AdapterImportViolations(t *testing.T, root, file string) []string {
 			violations = append(violations, relativePath(t, root, file)+":import:"+importPath)
 			continue
 		}
-		if strings.Contains(importPath, "/internal/services/") && strings.Contains(importPath, "/v8") {
+		if strings.Contains(importPath, "/internal/services/") && strings.Contains(importPath, "/v8") && !allowedV810ServiceImport(root, file, importPath) {
 			violations = append(violations, relativePath(t, root, file)+":import:"+importPath)
 		}
 	}
 	return violations
+}
+
+func allowedV810ServiceImport(root, file, importPath string) bool {
+	rel, err := filepath.Rel(root, file)
+	if err != nil {
+		return false
+	}
+	return filepath.ToSlash(rel) == "internal/services/processinstance/v810/service.go" &&
+		importPath == "github.com/grafvonb/c8volt/internal/services/variable/v810"
 }
 
 func commandFacadeImportViolations(t *testing.T, root, file string) []string {

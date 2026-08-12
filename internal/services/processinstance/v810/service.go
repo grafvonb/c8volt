@@ -1,0 +1,712 @@
+// SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package v810
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"time"
+
+	"github.com/grafvonb/c8volt/config"
+	camundav810 "github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/internal/services/common"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
+	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
+	"github.com/grafvonb/c8volt/internal/services/processinstance/waiter"
+	"github.com/grafvonb/c8volt/internal/services/processinstance/walker"
+	varsvc "github.com/grafvonb/c8volt/internal/services/variable"
+	varv810 "github.com/grafvonb/c8volt/internal/services/variable/v810"
+	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/logging"
+	"github.com/grafvonb/c8volt/typex"
+)
+
+// Service adapts Camunda 8.10 process-instance endpoints to the version-neutral API.
+type Service struct {
+	cc          GenProcessInstanceClientCamunda
+	variableAPI varsvc.API
+	cfg         *config.Config
+	log         *slog.Logger
+}
+
+// ClientCamunda returns the generated Camunda process-instance client used by this service.
+func (s *Service) ClientCamunda() GenProcessInstanceClientCamunda { return s.cc }
+
+// Config returns the normalized configuration used by this service.
+func (s *Service) Config() *config.Config { return s.cfg }
+
+// Logger returns the logger used by this service.
+func (s *Service) Logger() *slog.Logger { return s.log }
+
+// Option customizes v8.10 process-instance service construction.
+type Option func(*Service)
+
+// WithClientCamunda overrides the generated Camunda client, primarily for service tests.
+func WithClientCamunda(c GenProcessInstanceClientCamunda) Option {
+	return func(s *Service) {
+		if c != nil {
+			s.cc = c
+		}
+	}
+}
+
+// WithLogger overrides the default logger for tests and callers that need custom logging.
+func WithLogger(logger *slog.Logger) Option {
+	return func(s *Service) {
+		if logger != nil {
+			s.log = logger
+		}
+	}
+}
+
+// WithVariableAPI overrides nested variable behavior, primarily for process-instance tests.
+func WithVariableAPI(api varsvc.API) Option {
+	return func(s *Service) {
+		if api != nil {
+			s.variableAPI = api
+		}
+	}
+}
+
+// New prepares a v8.10 process-instance service with generated Camunda v2 dependencies.
+func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
+	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
+	if err != nil {
+		return nil, err
+	}
+	cc, err := camundav810.NewClientWithResponses(
+		deps.Config.APIs.Camunda.BaseURL,
+		camundav810.WithHTTPClient(deps.HTTPClient),
+	)
+	if err != nil {
+		return nil, err
+	}
+	s := &Service{cc: cc, cfg: deps.Config, log: deps.Logger}
+	for _, opt := range opts {
+		opt(s)
+	}
+	logger, err := common.EnsureLoggerAndClients(s.log, s.cc)
+	if err != nil {
+		return nil, err
+	}
+	s.log = logger
+	if s.variableAPI == nil {
+		variableOpts := []varv810.Option{}
+		if variableClient, ok := s.cc.(varv810.GenVariableClientCamunda); ok {
+			variableOpts = append(variableOpts, varv810.WithClientCamunda(variableClient))
+		}
+		variableAPI, err := varv810.New(s.cfg, deps.HTTPClient, s.log, variableOpts...)
+		if err != nil {
+			return nil, err
+		}
+		s.variableAPI = variableAPI
+	}
+	return s, nil
+}
+
+// CreateProcessInstance starts a process instance and optionally waits for an observable created state.
+func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error) {
+	cCfg := services.ApplyCallOptions(opts)
+	if data.TenantId == "" {
+		data.TenantId = s.cfg.App.TargetTenant()
+	}
+	s.log.Debug(fmt.Sprintf("creating pi on pd %s", data.ProcessDefinitionSpecificId))
+	body, err := toProcessInstanceCreationInstruction(data)
+	if err != nil {
+		return d.ProcessInstanceCreation{}, fmt.Errorf("building process instance creation instruction: %w", err)
+	}
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "create pi", func(ctx context.Context) (*camundav810.CreateProcessInstanceResponse, *http.Response, []byte, error) {
+		resp, err := s.cc.CreateProcessInstanceWithResponse(ctx, body)
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
+	if err != nil {
+		return d.ProcessInstanceCreation{}, err
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.ProcessInstanceCreation{}, err
+	}
+	pi := fromCreateProcessInstanceResult(*payload)
+	s.log.Debug(fmt.Sprintf("pi %s created by API; pd %s %s v%d %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
+	if !cCfg.NoWait {
+		if !cCfg.SuppressWorkflowDetailLogs {
+			s.log.Info(fmt.Sprintf("waiting for pi %s; pd %s", pi.Key, pi.ProcessDefinitionKey))
+		}
+		states := d.ObservableProcessInstanceCreationStates()
+		_, created, err := waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, pi.Key, states, opts...)
+		if err != nil {
+			return d.ProcessInstanceCreation{}, fmt.Errorf("wait for observable state: %w", err)
+		}
+		pi.StartDate = created.StartDate
+		pi.State = created.State
+		pi.StartConfirmedAt = time.Now().UTC().Format(time.RFC3339)
+		if !cCfg.SuppressWorkflowDetailLogs {
+			s.log.Info(fmt.Sprintf("pi %s created; pd %s %s v%d %s; state %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId, pi.State))
+		}
+	} else {
+		pi.StartDate = time.Now().UTC().Format(time.RFC3339)
+		if !cCfg.SuppressWorkflowDetailLogs {
+			s.log.Info(fmt.Sprintf("pi %s create requested; pd %s %s v%d %s; no-wait", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
+		}
+	}
+	return pi, nil
+}
+
+// GetProcessInstance retrieves one visible process instance by key.
+func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
+	_ = services.ApplyCallOptions(opts)
+	s.log.Debug(fmt.Sprintf("fetching pi %s", key))
+	resp, err := s.cc.GetProcessInstanceWithResponse(ctx, key)
+	if err != nil {
+		return d.ProcessInstance{}, fmt.Errorf("get process instance: %w", err)
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.ProcessInstance{}, fmt.Errorf("get process instance: %w", err)
+	}
+	return fromProcessInstanceResult(*payload), nil
+}
+
+// GetDirectChildrenOfProcessInstance searches for direct child process instances.
+func (s *Service) GetDirectChildrenOfProcessInstance(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+	_ = services.ApplyCallOptions(opts)
+	resp, err := s.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{ParentKey: key}, 1000, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("search child process instances: %w", err)
+	}
+	return resp, nil
+}
+
+// FilterProcessInstanceWithOrphanParent returns items whose recorded parent cannot be found.
+func (s *Service) FilterProcessInstanceWithOrphanParent(ctx context.Context, items []d.ProcessInstance, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+	_ = services.ApplyCallOptions(opts)
+	if items == nil {
+		return nil, nil
+	}
+	var result []d.ProcessInstance
+	for _, it := range items {
+		if it.ParentKey == "" {
+			continue
+		}
+		_, err := s.GetProcessInstance(ctx, it.ParentKey, opts...)
+		if errors.Is(err, d.ErrNotFound) {
+			result = append(result, it)
+		} else if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+// SearchForProcessInstances returns one mapped search page using the requested size.
+func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+	page, err := s.SearchForProcessInstancesPage(ctx, filter, d.ProcessInstancePageRequest{Size: size}, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return page.Items, nil
+}
+
+// SearchForProcessInstancesPage fetches and maps one v8.10 process-instance search page.
+func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, pageReq d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+	cCfg := services.ApplyCallOptions(opts)
+	s.log.Debug(fmt.Sprintf("searching pi; filter %s", filter.String()))
+
+	startDateAfter, err := parseInclusiveDateLowerBound(filter.StartDateAfter)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building start-date filter: %w", err)
+	}
+	startDateBefore, err := parseInclusiveDateUpperBound(filter.StartDateBefore)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building start-date filter: %w", err)
+	}
+	endDateAfter, err := parseInclusiveDateLowerBound(filter.EndDateAfter)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building end-date filter: %w", err)
+	}
+	endDateBefore, err := parseInclusiveDateUpperBound(filter.EndDateBefore)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building end-date filter: %w", err)
+	}
+	tenant := s.cfg.App.Tenant
+	if cCfg.IgnoreTenant {
+		tenant = ""
+	}
+	tenantFilter, err := newStringEqFilterPtr(tenant)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building tenant filter: %w", err)
+	}
+	processInstanceKeyFilter, err := newProcessInstanceKeyEqFilterPtr(filter.Key)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building process-instance-key filter: %w", err)
+	}
+	processDefinitionIDFilter, err := newStringEqFilterPtr(filter.BpmnProcessId)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building process-definition-id filter: %w", err)
+	}
+	processDefinitionKeyFilter, err := newProcessDefinitionKeyEqFilterPtr(filter.ProcessDefinitionKey)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building process-definition-key filter: %w", err)
+	}
+	processDefinitionVersionFilter, err := newIntegerEqFilterPtr(filter.ProcessVersion)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building process-definition-version filter: %w", err)
+	}
+	processDefinitionVersionTagFilter, err := newStringEqFilterPtr(filter.ProcessVersionTag)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building process-definition-version-tag filter: %w", err)
+	}
+	startDateFilter, err := newDateTimeRangeFilterPtr(startDateAfter, startDateBefore, nil)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building start-date filter: %w", err)
+	}
+	endDateFilter, err := newDateTimeRangeFilterPtr(endDateAfter, endDateBefore, endDateExistsFilter(filter))
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building end-date filter: %w", err)
+	}
+	stateFilter, err := newProcessInstanceStateEqFilterPtr(string(normalizeSearchState(filter.State)))
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building state filter: %w", err)
+	}
+	parentProcessInstanceKeyFilter, err := newParentProcessInstanceKeyFilter(filter)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building parent-process-instance-key filter: %w", err)
+	}
+	variableFilters, err := newVariableValueFiltersPtr(filter.VariableFilters)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building variable filters: %w", err)
+	}
+
+	bodyFilter := &processInstanceFilter{
+		TenantId:                    tenantFilter,
+		ProcessInstanceKey:          processInstanceKeyFilter,
+		ProcessDefinitionId:         processDefinitionIDFilter,
+		ProcessDefinitionKey:        processDefinitionKeyFilter,
+		ProcessDefinitionVersion:    processDefinitionVersionFilter,
+		ProcessDefinitionVersionTag: processDefinitionVersionTagFilter,
+		StartDate:                   startDateFilter,
+		EndDate:                     endDateFilter,
+		State:                       stateFilter,
+		HasIncident:                 filter.HasIncident,
+		ParentProcessInstanceKey:    parentProcessInstanceKeyFilter,
+		Variables:                   variableFilters,
+	}
+	if bodyFilter.isEmpty() {
+		bodyFilter = nil
+	}
+
+	page := newSearchQueryPageRequest(pageReq)
+	sort := []camundav810.ProcessInstanceSearchQuerySortRequest{
+		{
+			Field: camundav810.ProcessInstanceSearchQuerySortRequestFieldProcessDefinitionName,
+			Order: new(camundav810.DESC),
+		},
+		{
+			Field: camundav810.ProcessInstanceSearchQuerySortRequestFieldProcessDefinitionVersion,
+			Order: new(camundav810.ASC),
+		},
+	}
+	body := processInstanceSearchQuery{
+		Filter: bodyFilter,
+		Page:   &page,
+		Sort:   &sort,
+	}
+
+	bodyJSON, err := json.Marshal(body)
+	if err != nil {
+		return d.ProcessInstancePage{}, err
+	}
+	resp, err := s.cc.SearchProcessInstancesWithBodyWithResponse(ctx, "application/json", bytes.NewReader(bodyJSON))
+	if err != nil {
+		return d.ProcessInstancePage{}, err
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.ProcessInstancePage{}, err
+	}
+	result, err := decodeSearchProcessInstancesResponse(resp.Body, payload)
+	if err != nil {
+		return d.ProcessInstancePage{}, err
+	}
+
+	return d.ProcessInstancePage{
+		Items:         toolx.MapSlice(result.Items, fromProcessInstanceResult),
+		Request:       pageReq,
+		OverflowState: pickProcessInstanceOverflowState(result.Page, pageReq, len(result.Items)),
+		ReportedTotal: pickProcessInstanceReportedTotal(result.Page, len(result.Items)),
+		EndCursor:     processInstanceEndCursor(result.Page),
+	}, nil
+}
+
+// newSearchQueryPageRequest builds the v8.10 page request, preferring cursor pagination when available.
+func newSearchQueryPageRequest(pageReq d.ProcessInstancePageRequest) camundav810.SearchQueryPageRequest {
+	page := camundav810.SearchQueryPageRequest{}
+	if pageReq.After != "" {
+		after := camundav810.EndCursor(pageReq.After)
+		_ = page.FromCursorForwardPagination(camundav810.CursorForwardPagination{
+			After: &after,
+			Limit: &pageReq.Size,
+		})
+		return page
+	}
+	_ = page.FromOffsetPagination(camundav810.OffsetPagination{
+		From:  &pageReq.From,
+		Limit: &pageReq.Size,
+	})
+	return page
+}
+
+func processInstanceEndCursor(page camundav810.SearchQueryPageResponse) string {
+	if page.EndCursor == nil {
+		return ""
+	}
+	return string(*page.EndCursor)
+}
+
+// newParentProcessInstanceKeyFilter builds either an equality or existence filter for parent process-instance keys.
+func newParentProcessInstanceKeyFilter(filter d.ProcessInstanceFilter) (*camundav810.ProcessInstanceKeyFilterProperty, error) {
+	if filter.ParentKey != "" {
+		return newProcessInstanceKeyEqFilterPtr(filter.ParentKey)
+	}
+	return newProcessInstanceKeyExistsFilterPtr(filter.HasParent)
+}
+
+func normalizeSearchState(state d.State) d.State {
+	if state == d.StateCanceled {
+		return d.StateTerminated
+	}
+	return state
+}
+
+func pickProcessInstanceOverflowState(page camundav810.SearchQueryPageResponse, req d.ProcessInstancePageRequest, itemCount int) d.ProcessInstanceOverflowState {
+	if itemCount == 0 {
+		return d.ProcessInstanceOverflowStateNoMore
+	}
+	visibleCount := int64(req.From) + int64(itemCount)
+	if page.TotalItems > visibleCount {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
+	if page.HasMoreTotalItems && req.Size > 0 && itemCount >= int(req.Size) {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
+	if page.TotalItems == 0 {
+		return d.ProcessInstanceOverflowStateIndeterminate
+	}
+	return d.ProcessInstanceOverflowStateNoMore
+}
+
+func pickProcessInstanceReportedTotal(page camundav810.SearchQueryPageResponse, itemCount int) *d.ProcessInstanceReportedTotal {
+	if page.TotalItems == 0 && itemCount > 0 {
+		return nil
+	}
+	kind := d.ProcessInstanceReportedTotalKindExact
+	if page.HasMoreTotalItems {
+		kind = d.ProcessInstanceReportedTotalKindLowerBound
+	}
+	return &d.ProcessInstanceReportedTotal{
+		Count: page.TotalItems,
+		Kind:  kind,
+	}
+}
+
+func parseInclusiveDateLowerBound(raw string) (*time.Time, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	if t, ok := parseProcessInstanceTimestamp(raw); ok {
+		return &t, nil
+	}
+	t, err := time.Parse(time.DateOnly, raw)
+	if err != nil {
+		return nil, fmt.Errorf("parse %q as process-instance date/time: %w", raw, err)
+	}
+	return new(t), nil
+}
+
+func parseInclusiveDateUpperBound(raw string) (*time.Time, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	if t, ok := parseProcessInstanceTimestamp(raw); ok {
+		return &t, nil
+	}
+	t, err := time.Parse(time.DateOnly, raw)
+	if err != nil {
+		return nil, fmt.Errorf("parse %q as process-instance date/time: %w", raw, err)
+	}
+	t = t.AddDate(0, 0, 1).Add(-time.Nanosecond)
+	return new(t), nil
+}
+
+// parseProcessInstanceTimestamp accepts precise UTC or offset timestamps for process-instance search bounds.
+func parseProcessInstanceTimestamp(raw string) (time.Time, bool) {
+	if t, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return t, true
+	}
+	return time.Time{}, false
+}
+
+func endDateExistsFilter(filter d.ProcessInstanceFilter) *bool {
+	if filter.EndDateAfter == "" && filter.EndDateBefore == "" {
+		return nil
+	}
+	return new(true)
+}
+
+// CancelProcessInstance cancels a process instance and confirms terminal state unless waiting is disabled.
+func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+	cCfg := services.ApplyCallOptions(opts)
+	var pis []d.ProcessInstance
+	if !cCfg.NoStateCheck {
+		s.log.Debug(fmt.Sprintf("pi %s cancel precheck; loading state and parent", key))
+		st, pi, err := s.GetProcessInstanceStateByKey(ctx, key, opts...)
+		if err != nil {
+			return d.CancelResponse{}, nil, err
+		}
+		s.log.Debug(fmt.Sprintf("pi %s cancel precheck; state %s", key, st))
+		if st.IsTerminal() {
+			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s already %s; cancel skipped", key, st))
+			return d.CancelResponse{
+				StatusCode: http.StatusOK,
+				Status:     fmt.Sprintf("process instance with key %s is already in state %s, no need to cancel", key, st),
+			}, pis, nil
+		}
+		s.log.Debug(fmt.Sprintf("pi %s cancel precheck; checking parent", key))
+		if pi.ParentKey != "" {
+			s.log.Debug("child pi; loading root ancestry")
+			rootPIKey, _, _, erra := walker.Ancestry(ctx, s, key, opts...)
+			if erra != nil {
+				return d.CancelResponse{}, pis, fmt.Errorf("cancel ancestry: %w", erra)
+			}
+			if cCfg.Force {
+				keys, _, family, err := walker.Descendants(ctx, s, rootPIKey, opts...)
+				if err != nil {
+					return d.CancelResponse{}, pis, fmt.Errorf("cancel descendants: %w", err)
+				}
+				for i := range family {
+					pis = append(pis, family[i])
+				}
+				if cCfg.DryRun {
+					s.log.Debug(fmt.Sprintf("dry-run: cancel %d pi; keys %v", len(keys), keys))
+					return d.CancelResponse{
+						StatusCode: http.StatusOK,
+						Status:     fmt.Sprintf("dry-run: would cancel %d process instances with keys %v", len(keys), keys),
+					}, pis, nil
+				}
+				if !cCfg.SuppressProcessInstanceDetailLogs {
+					logging.InfoOrVerbose(
+						fmt.Sprintf("force: cancelling %d pi", len(keys)),
+						fmt.Sprintf("force: cancelling %d pi; keys %v", len(keys), keys),
+						s.log,
+						cCfg.Verbose,
+					)
+				}
+				return s.CancelProcessInstance(ctx, rootPIKey, opts...)
+			}
+			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s is child of root %s; use --force to cancel tree", key, rootPIKey))
+			return d.CancelResponse{StatusCode: http.StatusConflict}, pis, nil
+		}
+		pis = append(pis, pi)
+	} else {
+		s.log.Debug(fmt.Sprintf("pi %s cancel precheck skipped", key))
+	}
+
+	s.log.Debug(fmt.Sprintf("cancelling pi %s", key))
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "cancel pi", func(ctx context.Context) (*camundav810.CancelProcessInstanceResponse, *http.Response, []byte, error) {
+		resp, err := s.cc.CancelProcessInstanceWithResponse(ctx, key, camundav810.CancelProcessInstanceJSONRequestBody{})
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
+	if err != nil {
+		return d.CancelResponse{}, nil, err
+	}
+	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		return d.CancelResponse{}, nil, err
+	}
+	if !cCfg.NoWait {
+		keys, _, _, err := s.Family(ctx, key, opts...)
+		if err != nil {
+			return d.CancelResponse{}, nil, fmt.Errorf("cancel family: %w", err)
+		}
+		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
+		states := []d.State{d.StateCanceled, d.StateTerminated}
+		if _, err = waiter.WaitForProcessInstancesState(ctx, s, s.cfg, s.log, keys, states, len(keys), opts...); err != nil {
+			return d.CancelResponse{}, nil, fmt.Errorf("cancel wait: %w", err)
+		}
+		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s canceled", key))
+	} else {
+		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s cancel requested; no-wait", key))
+	}
+	return d.CancelResponse{
+		Ok:         true,
+		StatusCode: resp.StatusCode(),
+		Status:     resp.Status(),
+	}, pis, nil
+}
+
+// GetProcessInstanceStateByKey returns the current state and process-instance row for a key.
+func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
+	_ = services.ApplyCallOptions(opts)
+	s.log.Debug(fmt.Sprintf("checking pi %s state", key))
+	pi, err := s.GetProcessInstance(ctx, key, opts...)
+	if err != nil {
+		return "", d.ProcessInstance{}, fmt.Errorf("process instance state: %w", err)
+	}
+	st := pi.State
+	s.log.Debug(fmt.Sprintf("pi %s state %s", key, st))
+	return st, pi, nil
+}
+
+// DeleteProcessInstance deletes a process instance and reports the raw deletion response.
+func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+	cCfg := services.ApplyCallOptions(opts)
+	s.log.Debug(fmt.Sprintf("deleting pi %s", key))
+
+	s.log.Debug(fmt.Sprintf("pi %s delete precheck; loading children", key))
+	scope, edges, chain, err := s.Descendants(ctx, key, opts...)
+	if err != nil {
+		return d.DeleteResponse{}, err
+	}
+	if !cCfg.Force && len(scope) > 1 && !deleteScopeIsFinal(scope, chain) {
+		logging.InfoIfVerbose(fmt.Sprintf("pi %s delete blocked; child tree has non-terminal pi, use --force", key), s.log, cCfg.Verbose)
+		return d.DeleteResponse{StatusCode: http.StatusConflict}, nil
+	}
+	children := edges[key]
+	if len(children) > 0 {
+		for _, ch := range children {
+			s.log.Debug(fmt.Sprintf("deleting child pi %s of %s", ch, key))
+			if _, err = s.DeleteProcessInstance(ctx, ch, opts...); err != nil {
+				return d.DeleteResponse{}, fmt.Errorf("deleting child process instance with key %s of process instance with key %s: %w", ch, key, err)
+			}
+		}
+	}
+
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "delete pi", func(ctx context.Context) (*camundav810.DeleteProcessInstanceResponse, *http.Response, []byte, error) {
+		resp, err := s.cc.DeleteProcessInstanceWithResponse(ctx, key, camundav810.DeleteProcessInstanceJSONRequestBody{})
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
+	if err != nil {
+		return d.DeleteResponse{}, err
+	}
+	if resp.StatusCode() == http.StatusConflict {
+		if cCfg.Force {
+			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s not terminal; cancelling before delete", key))
+			if _, _, err = s.CancelProcessInstance(ctx, key, opts...); err != nil {
+				return d.DeleteResponse{}, fmt.Errorf("delete cancel: %w", err)
+			}
+			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
+			states := []d.State{d.StateCanceled, d.StateTerminated}
+			if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
+				return d.DeleteResponse{}, fmt.Errorf("delete wait canceled: %w", err)
+			}
+			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("retrying pi %s delete", key))
+			resp, err = services.RetryCamundaMutation(ctx, s.log, "delete pi", func(ctx context.Context) (*camundav810.DeleteProcessInstanceResponse, *http.Response, []byte, error) {
+				resp, err := s.cc.DeleteProcessInstanceWithResponse(ctx, key, camundav810.DeleteProcessInstanceJSONRequestBody{})
+				if resp == nil {
+					return resp, nil, nil, err
+				}
+				return resp, resp.HTTPResponse, resp.Body, err
+			})
+			if err != nil {
+				return d.DeleteResponse{}, err
+			}
+		} else {
+			logging.InfoIfVerbose(fmt.Sprintf("pi %s delete blocked; state not terminal, use --force", key), s.log, cCfg.Verbose)
+			return d.DeleteResponse{StatusCode: http.StatusConflict}, nil
+		}
+	}
+	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		return d.DeleteResponse{}, err
+	}
+	if !cCfg.NoWait {
+		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s delete", key))
+		states := []d.State{d.StateAbsent}
+		if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
+			return d.DeleteResponse{}, fmt.Errorf("delete wait absent: %w", err)
+		}
+	}
+	s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s deleted", key))
+	return d.DeleteResponse{
+		Ok:         true,
+		StatusCode: resp.StatusCode(),
+	}, nil
+}
+
+func (s *Service) infoProcessInstanceDetail(cCfg *services.CallCfg, msg string) {
+	if cCfg != nil && cCfg.SuppressProcessInstanceDetailLogs {
+		return
+	}
+	s.log.Info(msg)
+}
+
+// WaitForProcessInstanceState polls until a process instance reaches one of the desired states.
+func (s *Service) WaitForProcessInstanceState(ctx context.Context, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
+	return waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, desired, opts...)
+}
+
+// WaitForProcessInstanceExpectation polls one process instance until an expectation is met or exhausted.
+func (s *Service) WaitForProcessInstanceExpectation(ctx context.Context, key string, request d.ProcessInstanceExpectationRequest, opts ...services.CallOption) (d.ProcessInstanceExpectationResponse, d.ProcessInstance, error) {
+	return waiter.WaitForProcessInstanceExpectation(ctx, s, s.cfg, s.log, key, request, opts...)
+}
+
+// WaitForProcessInstancesExpectation polls multiple process instances with bounded worker execution.
+func (s *Service) WaitForProcessInstancesExpectation(ctx context.Context, keys typex.Keys, request d.ProcessInstanceExpectationRequest, wantedWorkers int, opts ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
+	return waiter.WaitForProcessInstancesExpectation(ctx, s, s.cfg, s.log, keys, request, wantedWorkers, opts...)
+}
+
+// deleteScopeIsFinal reports whether every resolved process instance is already terminal.
+func deleteScopeIsFinal(keys []string, chain map[string]d.ProcessInstance) bool {
+	for _, key := range keys {
+		pi, ok := chain[key]
+		if !ok || !pi.State.IsTerminal() {
+			return false
+		}
+	}
+	return true
+}
+
+// Ancestry returns the parent chain for a process instance key.
+func (s *Service) Ancestry(ctx context.Context, startKey string, opts ...services.CallOption) (rootKey string, path []string, chain map[string]d.ProcessInstance, err error) {
+	return walker.Ancestry(ctx, s, startKey, opts...)
+}
+
+// Descendants returns all descendant keys and edges for a process-instance root.
+func (s *Service) Descendants(ctx context.Context, rootKey string, opts ...services.CallOption) (desc []string, edges map[string][]string, chain map[string]d.ProcessInstance, err error) {
+	return walker.Descendants(ctx, s, rootKey, opts...)
+}
+
+// Family returns the ancestry and descendant family for a process instance key.
+func (s *Service) Family(ctx context.Context, startKey string, opts ...services.CallOption) (fam []string, edges map[string][]string, chain map[string]d.ProcessInstance, err error) {
+	return walker.Family(ctx, s, startKey, opts...)
+}
+
+// AncestryResult returns a structured traversal result for a process instance's ancestry.
+func (s *Service) AncestryResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+	return pitraversal.BuildAncestryResult(ctx, s, startKey, opts...)
+}
+
+// DescendantsResult returns a structured traversal result for a process instance's descendants.
+func (s *Service) DescendantsResult(ctx context.Context, rootKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+	return pitraversal.BuildDescendantsResult(ctx, s, rootKey, opts...)
+}
+
+// FamilyResult returns a structured traversal result for a process instance's full family.
+func (s *Service) FamilyResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+	return pitraversal.BuildFamilyResult(ctx, s, startKey, opts...)
+}
