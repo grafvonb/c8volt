@@ -306,3 +306,25 @@ Started: 2026-08-12 18:38:49
 **Learnings**:
 - V810 resource and tenant generated shapes match the v89 unified-client paths for deployment, history deletion, resource lookup, and tenant search/get.
 ---
+---
+## Iteration 15 - 2026-08-12 20:18
+**Work Unit**: US2 V810 user-task adapter
+**Tasks Completed**:
+- [x] T023: Add V810 unified user-task factory/behavior tests that reject any Tasklist fallback and prove explicit unavailable/not-found outcomes
+- [x] T031: Implement the unified-client-only V810 user-task adapter and explicit factory case without Operate/Tasklist/Admin dependencies
+**Tasks Remaining in Work Unit**: T024-T025 and T032-T038 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/usertask/api.go
+- internal/services/usertask/factory.go
+- internal/services/usertask/factory_test.go
+- internal/services/usertask/v810/contract.go
+- internal/services/usertask/v810/convert.go
+- internal/services/usertask/v810/service.go
+- internal/services/usertask/v810/service_test.go
+- specs/273-camunda-v810-support/tasks.md
+- specs/273-camunda-v810-support/ralph-memory.md
+- specs/273-camunda-v810-support/progress.md
+**Learnings**:
+- V810 user-task lookup can stay unified-client-only with direct task lookup, local tenant visibility checks, and shared HTTP error classification.
+---

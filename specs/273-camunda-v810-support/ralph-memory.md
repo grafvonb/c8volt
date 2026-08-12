@@ -33,6 +33,8 @@ Started: 2026-08-12T16:38:49Z
 - Native V810 variable adapters preserve raw JSON decoding for value/truncation fields omitted by generated models and use the process-instance key as the element-instance scope for updates.
 - Process-instance and variable factories now have explicit `toolx.V810` cases and package-level interface assertions; `toolx.ImplementedCamundaVersions()` remains staged until all eleven US2 service families are wired.
 - Native V810 resource and tenant adapters can follow v89 unified-client behavior with local V810 generated types; resource deployment visibility polling and resource history deletion confirmation reuse the existing shared poller/payload helpers.
+- Native V810 user-task adapters use only `GetUserTaskWithResponse` from the V810 unified client; tenant mismatches are mapped to the existing not-found/visibility wording and 503 responses preserve `domain.ErrUnavailable`.
+- User-task factories now have an explicit `toolx.V810` case and package-level interface assertions, but `toolx.ImplementedCamundaVersions()` remains staged until the remaining US2 work is wired.
 - Resource and tenant factories now have explicit `toolx.V810` cases and package-level interface assertions; `toolx.ImplementedCamundaVersions()` remains staged until all eleven US2 service families are wired.
 
 ## Decisions
@@ -61,8 +63,9 @@ Started: 2026-08-12T16:38:49Z
 - `go test ./internal/services/processdefinition/... -count=1`
 - `go test ./internal/services/processinstance/... ./internal/services/variable/... -count=1`
 - `go test ./internal/services/resource/... ./internal/services/tenant/... -count=1`
+- `go test ./internal/services/usertask/... -count=1`
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T023: add unified-client-only V810 user-task factory/behavior tests that reject any Tasklist fallback and prove explicit unavailable/not-found outcomes in `internal/services/usertask/factory_test.go` and `internal/services/usertask/v810/`.
+- Next iteration should continue User Story 2 at T024: add version-neutral incident state/error-type normalization tests in `internal/services/incidentfilter/incidentfilter_test.go` and extend generated-enum rejection rules in `internal/services/v810_source_boundary_test.go`.
