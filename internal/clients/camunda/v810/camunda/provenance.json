@@ -20,7 +20,7 @@
     },
     {
       "path": "api/mutations/mutate-fix-jobresult-discriminator.py",
-      "sha256": "93e8b3beb49f3d2e438a97433fb6c89b04b399a9bf70336b8425cd55c10c463a"
+      "sha256": "529946717b8a19f75594bcd5e21f370b283911549e628b1cce06edb7e416530f"
     },
     {
       "path": "api/mutations/mutate-fix-camunda-v2-operation-id-collisions.py",
@@ -31,7 +31,7 @@
     "redocly": "2.29.2",
     "oapi-codegen": "2.5.0"
   },
-  "preparedSpecSha256": "c13743867b61393a1ff665a4807fa27f084a6bb1c44fb66881c627eea5f2fc90",
-  "generatedClientSha256": "db385893e382f1131a3e04ecbe1936261b7be6c9a5d76ad2a92ae7e6e3637f2c",
+  "preparedSpecSha256": "a48caad4e8aa60d75c0e0d25b37889e6f9ee05c17ea32f4e8a9f9c7a4b8840d9",
+  "generatedClientSha256": "85376d3a6da4fa34b895be89cb6dcbac98fc7658349e1cee22c125bbbea7495c",
   "command": "bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.0-alpha4"
 }

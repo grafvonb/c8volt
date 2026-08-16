@@ -112,6 +112,75 @@ checksum_tree() {
   ) | sha256_stream
 }
 
+fingerprint_repository_except_output() {
+  (
+    cd "$REPO_ROOT"
+    python3 - "$OUTPUT_DIR" <<'PY'
+import hashlib
+import os
+import stat
+import subprocess
+import sys
+from pathlib import Path
+
+root = Path.cwd()
+output = Path(sys.argv[1]).resolve()
+output_rel = output.relative_to(root).as_posix()
+
+
+def excluded(path: str) -> bool:
+    return path == output_rel or path.startswith(output_rel + "/")
+
+
+digest = hashlib.sha256()
+index = subprocess.run(
+    ["git", "ls-files", "--stage", "-z"],
+    check=True,
+    stdout=subprocess.PIPE,
+).stdout
+for record in index.split(b"\0"):
+    if not record:
+        continue
+    metadata, raw_path = record.split(b"\t", 1)
+    path = os.fsdecode(raw_path)
+    if excluded(path):
+        continue
+    digest.update(b"index\0" + metadata + b"\0" + raw_path + b"\0")
+
+listed = subprocess.run(
+    ["git", "ls-files", "-co", "--exclude-standard", "-z"],
+    check=True,
+    stdout=subprocess.PIPE,
+).stdout
+paths = sorted({os.fsdecode(item) for item in listed.split(b"\0") if item})
+for path in paths:
+    if excluded(path):
+        continue
+    raw_path = os.fsencode(path)
+    digest.update(b"worktree\0" + raw_path + b"\0")
+    try:
+        file_stat = os.lstat(path)
+    except FileNotFoundError:
+        digest.update(b"missing\0")
+        continue
+    digest.update(f"{stat.S_IMODE(file_stat.st_mode):o}".encode() + b"\0")
+    if stat.S_ISLNK(file_stat.st_mode):
+        digest.update(b"symlink\0" + os.fsencode(os.readlink(path)) + b"\0")
+        continue
+    if not stat.S_ISREG(file_stat.st_mode):
+        digest.update(b"other\0")
+        continue
+    digest.update(b"file\0")
+    with open(path, "rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    digest.update(b"\0")
+
+print(digest.hexdigest())
+PY
+  )
+}
+
 fingerprint_protected_trees() {
   for version in v87 v88 v89; do
     printf '%s %s\n' "$version" "$(checksum_tree "$REPO_ROOT/internal/clients/camunda/$version")"
@@ -225,6 +294,11 @@ apply_mutation() {
     exit 1
   fi
 
+  if ! assert_mutation_semantic_effect "$input" "$output" "$suffix"; then
+    echo "mutation produced no expected semantic effect: $mutation_path" >&2
+    exit 1
+  fi
+
   after="$(sha256_file "$output")"
   if [ "$before" = "$after" ]; then
     echo "mutation produced no expected effect: $mutation_path" >&2
@@ -232,6 +306,14 @@ apply_mutation() {
   fi
 
   printf '%s\n' "$output"
+}
+
+assert_mutation_semantic_effect() {
+  local input="$1"
+  local output="$2"
+  local suffix="$3"
+
+  python3 "$SCRIPT_DIR/validate-v810-mutation-effects.py" "$input" "$output" "$suffix"
 }
 
 prepare_spec() {
@@ -516,6 +598,17 @@ assert_protected_unchanged() {
   fi
 }
 
+assert_repository_allowlist_unchanged() {
+  local before="$1"
+  local after
+
+  after="$(fingerprint_repository_except_output)"
+  if [ "$before" != "$after" ]; then
+    echo "Repository changed outside the V810 output allowlist during generation" >&2
+    exit 1
+  fi
+}
+
 CAMUNDA_TAG=""
 while (($# > 0)); do
   case "$1" in
@@ -559,6 +652,7 @@ TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/c8volt-v810-client.XXXXXX")"
 trap cleanup EXIT
 
 protected_before="$(fingerprint_protected_trees)"
+repository_before="$(fingerprint_repository_except_output)"
 peeled_commit="$(resolve_peeled_commit "$CAMUNDA_TAG")" || exit 1
 verify_commit_policy "$CAMUNDA_TAG" "$peeled_commit"
 
@@ -575,6 +669,8 @@ verify_provenance_hashes "$generated_client" "$provenance"
 verify_provenance_identity "$CAMUNDA_TAG" "$provenance"
 
 assert_protected_unchanged "$protected_before"
+assert_repository_allowlist_unchanged "$repository_before"
 publish_artifacts "$generated_client" "$provenance"
 assert_no_removed_target_dirs
 assert_protected_unchanged "$protected_before"
+assert_repository_allowlist_unchanged "$repository_before"

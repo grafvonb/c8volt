@@ -197,6 +197,11 @@ make_repo_worktree() {
   local worktree="$TEST_TMPDIR/$name"
 
   git -C "$REPO_ROOT" worktree add -q --detach "$worktree" HEAD
+  git -C "$REPO_ROOT" diff --binary HEAD -- api | git -C "$worktree" apply
+  while IFS= read -r -d '' path; do
+    mkdir -p "$worktree/$(dirname "$path")"
+    cp "$REPO_ROOT/$path" "$worktree/$path"
+  done < <(git -C "$REPO_ROOT" ls-files --others --exclude-standard -z -- api)
   printf '%s\n' "$worktree"
 }
 
@@ -355,7 +360,32 @@ break_v810_mutation_effect() {
   local worktree="$1"
   local mutation="$worktree/api/mutations/mutate-search-query-schemas.py"
 
-  printf '%s\n' '#!/usr/bin/env python3' 'import sys' 'sys.exit(0)' >"$mutation"
+  printf '%s\n' \
+    '#!/usr/bin/env python3' \
+    'import sys' \
+    'from pathlib import Path' \
+    'import yaml' \
+    'source = Path(sys.argv[1])' \
+    'output = source.with_name(source.stem + "-search-query-patched" + source.suffix)' \
+    'output.write_text(yaml.dump(yaml.safe_load(source.read_text()), sort_keys=False), encoding="utf-8")' >"$mutation"
+  chmod +x "$mutation"
+}
+
+install_mutation_repository_side_effect() {
+  local worktree="$1"
+  local mutation="$worktree/api/mutations/mutate-search-query-schemas.py"
+  local original="$mutation.real"
+
+  mv "$mutation" "$original"
+  printf '%s\n' \
+    '#!/usr/bin/env python3' \
+    'import subprocess' \
+    'import sys' \
+    'from pathlib import Path' \
+    'script = Path(__file__).resolve()' \
+    'repo = script.parents[2]' \
+    '(repo / "README.md").write_text("unexpected generator side effect\n", encoding="utf-8")' \
+    'raise SystemExit(subprocess.call([sys.executable, str(script) + ".real", *sys.argv[1:]]))' >"$mutation"
   chmod +x "$mutation"
 }
 
@@ -499,7 +529,23 @@ test_refresh_rejects_mutation_no_op_before_publication() {
 
   assert_failure_output_contains \
     "mutation no-op is rejected" \
-    "mutation produced no expected effect: api/mutations/mutate-search-query-schemas.py" \
+    "mutation produced no expected semantic effect: api/mutations/mutate-search-query-schemas.py" \
+    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.0-alpha4
+  assert_v810_publication_unchanged "$worktree" "$before"
+}
+
+test_refresh_rejects_repository_changes_outside_output_allowlist() {
+  local worktree
+  local before
+
+  worktree="$(make_repo_worktree repository-allowlist-worktree)"
+  before="$(checksum_optional_v810_publication "$worktree")"
+  install_mutation_repository_side_effect "$worktree"
+  COMMAND_OUTPUT="$TEST_TMPDIR/repository-allowlist.out"
+
+  assert_failure_output_contains \
+    "repository changes outside the output allowlist are rejected" \
+    "Repository changed outside the V810 output allowlist during generation" \
     "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.0-alpha4
   assert_v810_publication_unchanged "$worktree" "$before"
 }
@@ -604,6 +650,7 @@ main() {
   test_refresh_rejects_output_escape_before_writes
   test_refresh_names_missing_generation_tool_before_writes
   test_refresh_rejects_mutation_no_op_before_publication
+  test_refresh_rejects_repository_changes_outside_output_allowlist
   test_refresh_failure_preserves_existing_publication_atomically
   test_refresh_updates_later_810_baselines_in_place
   test_refresh_later_baseline_rerun_is_deterministic

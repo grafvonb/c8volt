@@ -75,3 +75,21 @@ func TestV810GeneratedClientConstructsWithResponses(t *testing.T) {
 		t.Fatal("NewClientWithResponses() returned nil client")
 	}
 }
+
+func TestV810TerminateInstructionUsesWireDiscriminator(t *testing.T) {
+	if got := string(TERMINATEPROCESSINSTANCE); got != "TERMINATE_PROCESS_INSTANCE" {
+		t.Fatalf("terminate instruction discriminator = %q, want %q", got, "TERMINATE_PROCESS_INSTANCE")
+	}
+
+	var instruction ProcessInstanceCreationRuntimeInstruction
+	if err := instruction.FromProcessInstanceCreationTerminateInstruction(ProcessInstanceCreationTerminateInstruction{}); err != nil {
+		t.Fatalf("FromProcessInstanceCreationTerminateInstruction() error = %v", err)
+	}
+	got, err := instruction.Discriminator()
+	if err != nil {
+		t.Fatalf("Discriminator() error = %v", err)
+	}
+	if got != "TERMINATE_PROCESS_INSTANCE" {
+		t.Fatalf("runtime instruction discriminator = %q, want %q", got, "TERMINATE_PROCESS_INSTANCE")
+	}
+}

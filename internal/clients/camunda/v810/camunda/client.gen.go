@@ -827,7 +827,7 @@ const (
 
 // Defines values for ProcessInstanceCreationTerminateInstructionType.
 const (
-	ProcessInstanceCreationTerminateInstructionTypeProcessInstanceCreationTerminateInstruction ProcessInstanceCreationTerminateInstructionType = "ProcessInstanceCreationTerminateInstruction"
+	TERMINATEPROCESSINSTANCE ProcessInstanceCreationTerminateInstructionType = "TERMINATE_PROCESS_INSTANCE"
 )
 
 // Defines values for ProcessInstanceSearchQuerySortRequestField.

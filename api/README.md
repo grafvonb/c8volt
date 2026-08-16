@@ -108,7 +108,7 @@ To advance the active baseline to a later Camunda 8.10 alpha, release candidate,
 or final tag, keep the same target and replace only the tag value:
 
 - `bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.0-rc1`
-- `bash api/refresh-clients.sh --target v810 --camunda-tag 8.10`
+- `bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.0`
 
 Do not create `v810alpha`, `v810rc`, `v810final`, or another operator version
 identity. Later baselines replace the existing `v810/camunda` client and
