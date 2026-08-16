@@ -3144,7 +3144,7 @@ func TestGetProcessInstanceCommand_VariableFiltersUnsupportedOnV87(t *testing.T)
 			require.Equal(t, exitcode.Error, code)
 			require.Contains(t, output, "unsupported capability")
 			require.Contains(t, output, "process-instance variable search is unsupported in Camunda 8.7")
-			require.Contains(t, output, "requires Camunda 8.8 or 8.9")
+			require.Contains(t, output, "requires Camunda 8.8 or newer")
 		})
 	}
 }
@@ -3729,7 +3729,7 @@ func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87(t *testing.T) {
 	require.Equal(t, exitcode.Error, code)
 	require.Contains(t, output, "unsupported capability")
 	require.Contains(t, output, "has-user-tasks lookup is unsupported in Camunda 8.7")
-	require.Contains(t, output, "requires Camunda 8.8 or 8.9")
+	require.Contains(t, output, "requires Camunda 8.8 or newer")
 }
 
 // requireUserTaskSearchRequest validates the native user-task search request and returns its decoded body for scenario-specific assertions.

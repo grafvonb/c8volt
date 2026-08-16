@@ -12,7 +12,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services/common"
 )
 
-// Service implements incident operations through the Camunda 8.9 API.
+// Service implements incident operations through the Camunda 8.10 API.
 type Service struct {
 	cc  GenIncidentClientCamunda
 	cfg *config.Config

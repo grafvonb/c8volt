@@ -16,7 +16,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services/common"
 )
 
-// Service adapts Camunda 8.9 runtime element endpoints to the internal API.
+// Service adapts Camunda 8.10 runtime element endpoints to the internal API.
 type Service struct {
 	c   GenElementClient
 	cfg *config.Config
