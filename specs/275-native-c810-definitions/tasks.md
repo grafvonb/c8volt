@@ -28,7 +28,7 @@
 
 **⚠️ CRITICAL**: User-story work starts only after all eight resources exist.
 
-- [ ] T002 Create the eight C89-derived files `embedded/processdefinitions/C810_DoubleUserTask.bpmn`, `embedded/processdefinitions/C810_MultipleSubProcessesParent.bpmn`, `embedded/processdefinitions/C810_NoOpCompletion.bpmn`, `embedded/processdefinitions/C810_SimpleParent.bpmn`, `embedded/processdefinitions/C810_SimpleParentWithIncidentSubprocess.bpmn`, `embedded/processdefinitions/C810_SimpleServiceTask.bpmn`, `embedded/processdefinitions/C810_SimpleUserTask.bpmn`, and `embedded/processdefinitions/C810_SimpleUserTaskWithIncident.bpmn`; change only C89-to-C810 identity references and `8.9.0` to `8.10.0`, preserve each source `exporterVersion`, and leave all C87/C88/C89 files untouched
+- [x] T002 Create the eight C89-derived files `embedded/processdefinitions/C810_DoubleUserTask.bpmn`, `embedded/processdefinitions/C810_MultipleSubProcessesParent.bpmn`, `embedded/processdefinitions/C810_NoOpCompletion.bpmn`, `embedded/processdefinitions/C810_SimpleParent.bpmn`, `embedded/processdefinitions/C810_SimpleParentWithIncidentSubprocess.bpmn`, `embedded/processdefinitions/C810_SimpleServiceTask.bpmn`, `embedded/processdefinitions/C810_SimpleUserTask.bpmn`, and `embedded/processdefinitions/C810_SimpleUserTaskWithIncident.bpmn`; change only C89-to-C810 identity references and `8.9.0` to `8.10.0`, preserve each source `exporterVersion`, and leave all C87/C88/C89 files untouched
 
 **Checkpoint**: The complete C810 family is available to the existing embedded filesystem.
 
