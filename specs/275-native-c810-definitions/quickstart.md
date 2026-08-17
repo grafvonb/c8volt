@@ -51,18 +51,19 @@ Expected: both commands produce no diff. The feature adds no stable-fixture chan
 ## 5. Verify #273 has one final fixture decision
 
 ```bash
-rg -n 'V810.*C89|8\.10.*C89|C89.*8\.10' \
+! (rg -n 'V810.*C89|8\.10.*C89|C89.*8\.10' \
   specs/273-camunda-v810-support/spec.md \
   specs/273-camunda-v810-support/plan.md \
   specs/273-camunda-v810-support/research.md \
   specs/273-camunda-v810-support/data-model.md \
   specs/273-camunda-v810-support/quickstart.md \
-  specs/273-camunda-v810-support/contracts/service-compatibility.md
+  specs/273-camunda-v810-support/contracts/service-compatibility.md \
+  | rg -v 'Alternatives considered')
 
 rg -ni 'superseded.*#275|#275.*superseded' specs/273-camunda-v810-support/tasks.md
 ```
 
-Expected: no active C89-reuse requirement remains in the normative #273 design artifacts, and `tasks.md` records that its completed C89-mapping tasks were superseded by #275 without rewriting those historical descriptions.
+Expected: no active C89-reuse requirement remains in the normative #273 design artifacts, while explicit "Alternatives considered" references are allowed; `tasks.md` records that its completed C89-mapping tasks were superseded by #275 without rewriting those historical descriptions.
 
 ## 6. Run the repository delivery gate
 
