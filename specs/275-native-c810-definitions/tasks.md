@@ -18,7 +18,7 @@
 
 **Purpose**: Confirm the immutable pre-feature boundary before adding resources.
 
-- [ ] T001 Verify commit `f2658425` as the #275 fork baseline and confirm no pre-existing changes under `embedded/processdefinitions/C87_*.bpmn`, `embedded/processdefinitions/C88_*.bpmn`, `embedded/processdefinitions/C89_*.bpmn`, `integration/`, or `Makefile`
+- [x] T001 Verify commit `f2658425` as the #275 fork baseline and confirm no pre-existing changes under `embedded/processdefinitions/C87_*.bpmn`, `embedded/processdefinitions/C88_*.bpmn`, `embedded/processdefinitions/C89_*.bpmn`, `integration/`, or `Makefile`
 
 ---
 
