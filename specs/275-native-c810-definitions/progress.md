@@ -64,3 +64,19 @@ Started: 2026-08-17 16:08:19
 **Learnings**:
 - V810 native selection flowed through the existing shared prefix selector; embed and smoke consumers needed only focused test updates.
 ---
+---
+## Iteration 4 - 2026-08-17 16:23
+**Work Unit**: US2 Preserve the Known Fixture Workflows
+**Tasks Completed**:
+- [x] T009: Added `embedded/fs_test.go` coverage for exact C810 inventory, XML structure, C810 identity/platform/version-tag ownership, called-process closure, C89-reference rejection, and normalized C89 parity.
+- [x] T010: Ran `go test ./embedded -run 'TestC810ProductionDefinitions' -count=1`; no C810 BPMN discrepancies required correction.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- embedded/fs_test.go
+- specs/275-native-c810-definitions/tasks.md
+- specs/275-native-c810-definitions/ralph-memory.md
+- specs/275-native-c810-definitions/progress.md
+**Learnings**:
+- Standard-library XML token parsing was enough to protect the C810 fixture invariants without adding a BPMN parser dependency.
+---

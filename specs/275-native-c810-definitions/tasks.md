@@ -64,8 +64,8 @@
 
 ### Verification for User Story 2
 
-- [ ] T009 [US2] Add `embedded/fs_test.go` coverage that enumerates exactly eight C810 files, parses each as well-formed XML, checks C810 filenames/process names/process IDs/BPMNPlane ownership/platform version/version tag, rejects residual C89 references, resolves all called processes within the family, and proves normalized equality with the matching C89 source
-- [ ] T010 [US2] Run `go test ./embedded -run 'TestC810ProductionDefinitions' -count=1` against `embedded/fs_test.go` and resolve only C810 identity or parity discrepancies in `embedded/processdefinitions/C810_*.bpmn`
+- [x] T009 [US2] Add `embedded/fs_test.go` coverage that enumerates exactly eight C810 files, parses each as well-formed XML, checks C810 filenames/process names/process IDs/BPMNPlane ownership/platform version/version tag, rejects residual C89 references, resolves all called processes within the family, and proves normalized equality with the matching C89 source
+- [x] T010 [US2] Run `go test ./embedded -run 'TestC810ProductionDefinitions' -count=1` against `embedded/fs_test.go` and resolve only C810 identity or parity discrepancies in `embedded/processdefinitions/C810_*.bpmn`
 
 **Checkpoint**: All eight C810 definitions have automated structural and behavioral parity proof.
 
