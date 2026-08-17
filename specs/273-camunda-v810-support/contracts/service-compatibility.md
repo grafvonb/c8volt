@@ -33,8 +33,8 @@ New 8.10 schemas do not add commands/public APIs unless an existing workflow req
 
 - Full process-definition history deletion includes V89 and V810 through one named predicate; V87/V88 retain pre-mutation rejection.
 - No generic version ordering is introduced.
-- V810 production embedded/smoke fixtures map explicitly to `C89_` while reports remain `8.10`.
-- No C810 fixture or integration selection is added.
+- V810 production embedded/smoke fixtures map explicitly to `C810_` while reports remain `8.10`.
+- No live 8.10 integration fixture or integration selection is added.
 
 ## Verification Per Family
 

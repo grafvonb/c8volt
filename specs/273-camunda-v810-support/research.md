@@ -56,13 +56,13 @@
 
 **Alternatives considered**: String/ordinal comparisons were rejected. Leaving exact checks would deny V810 incorrectly.
 
-## Decision 8: Explicit Fixture Compatibility
+## Decision 8: Explicit Native Fixture Compatibility
 
-**Decision**: Add a named production-fixture mapping from V810 to `C89_`. Keep report identity `8.10`; add no C810 fixtures or integration profiles.
+**Decision**: Add a named production-fixture mapping from V810 to `C810_`. Keep report identity `8.10`; add no live 8.10 integration profile.
 
-**Rationale**: Fixture reuse is a compatibility decision, not version identity. Naming/testing it is more auditable than silently overloading `FilePrefix`.
+**Rationale**: Native C810 embedded/smoke resources make the 8.10 ownership visible while preserving the already-compatible workflow behavior. Naming/testing the mapping is more auditable than silently overloading `FilePrefix`.
 
-**Alternatives considered**: Fixture duplication is unnecessary scope. Implicitly returning C89 from an identity method obscures the decision.
+**Alternatives considered**: Continuing to reuse C89 resources obscures 8.10 fixture ownership. Extending live integration selection remains out of scope for this support line.
 
 ## Decision 9: Release-Line Gateway Compatibility
 

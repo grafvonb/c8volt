@@ -79,9 +79,9 @@
 
 ### Implementation and Verification for User Story 3
 
-- [ ] T011 [P] [US3] Replace active V810-to-C89 fixture reuse with native C810 selection in `specs/273-camunda-v810-support/spec.md`, `specs/273-camunda-v810-support/plan.md`, `specs/273-camunda-v810-support/research.md`, `specs/273-camunda-v810-support/data-model.md`, `specs/273-camunda-v810-support/quickstart.md`, and `specs/273-camunda-v810-support/contracts/service-compatibility.md`
-- [ ] T012 [US3] Add a #275 supersession note to `specs/273-camunda-v810-support/tasks.md` without rewriting the checked T039/T042 descriptions or changing `specs/273-camunda-v810-support/progress.md` and `specs/273-camunda-v810-support/ralph-memory.md`
-- [ ] T013 [US3] Run stable and unknown mapping cases from `toolx/fixture_compatibility_test.go`, retain V89 selection assertions in `cmd/embed_test.go` and `internal/services/ops/smoke_test_test.go`, and verify empty diffs from `f2658425` for `embedded/processdefinitions/C87_*.bpmn`, `embedded/processdefinitions/C88_*.bpmn`, `embedded/processdefinitions/C89_*.bpmn`, `integration/`, and `Makefile`
+- [x] T011 [P] [US3] Replace active V810-to-C89 fixture reuse with native C810 selection in `specs/273-camunda-v810-support/spec.md`, `specs/273-camunda-v810-support/plan.md`, `specs/273-camunda-v810-support/research.md`, `specs/273-camunda-v810-support/data-model.md`, `specs/273-camunda-v810-support/quickstart.md`, and `specs/273-camunda-v810-support/contracts/service-compatibility.md`
+- [x] T012 [US3] Add a #275 supersession note to `specs/273-camunda-v810-support/tasks.md` without rewriting the checked T039/T042 descriptions or changing `specs/273-camunda-v810-support/progress.md` and `specs/273-camunda-v810-support/ralph-memory.md`
+- [x] T013 [US3] Run stable and unknown mapping cases from `toolx/fixture_compatibility_test.go`, retain V89 selection assertions in `cmd/embed_test.go` and `internal/services/ops/smoke_test_test.go`, and verify empty diffs from `f2658425` for `embedded/processdefinitions/C87_*.bpmn`, `embedded/processdefinitions/C88_*.bpmn`, `embedded/processdefinitions/C89_*.bpmn`, `integration/`, and `Makefile`
 
 **Checkpoint**: Stable runtime behavior and historical records are protected, while all active #273 guidance points to native C810 resources.
 

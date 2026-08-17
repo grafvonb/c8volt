@@ -80,3 +80,26 @@ Started: 2026-08-17 16:08:19
 **Learnings**:
 - Standard-library XML token parsing was enough to protect the C810 fixture invariants without adding a BPMN parser dependency.
 ---
+---
+## Iteration 5 - 2026-08-17 16:26
+**Work Unit**: US3 Preserve Existing Compatibility Lines
+**Tasks Completed**:
+- [x] T011: Replaced active #273 V810-to-C89 fixture reuse guidance with native C810 production fixture selection in the normative spec, plan, research, data model, quickstart, and service-compatibility contract.
+- [x] T012: Added a #275 supersession note to #273 `tasks.md` while preserving checked T039/T042 descriptions and leaving #273 progress/Ralph memory untouched.
+- [x] T013: Ran stable/unknown production-prefix tests, retained V89 embed/smoke selection coverage, and verified protected stable BPMN, `integration/`, and `Makefile` diffs against `f2658425` are empty.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/273-camunda-v810-support/spec.md
+- specs/273-camunda-v810-support/plan.md
+- specs/273-camunda-v810-support/research.md
+- specs/273-camunda-v810-support/data-model.md
+- specs/273-camunda-v810-support/quickstart.md
+- specs/273-camunda-v810-support/contracts/service-compatibility.md
+- specs/273-camunda-v810-support/tasks.md
+- specs/275-native-c810-definitions/tasks.md
+- specs/275-native-c810-definitions/ralph-memory.md
+- specs/275-native-c810-definitions/progress.md
+**Learnings**:
+- The active #273 normative artifacts now point to C810, with only preserved historical #273 task descriptions retaining the original V810-to-C89 wording behind a supersession note.
+---

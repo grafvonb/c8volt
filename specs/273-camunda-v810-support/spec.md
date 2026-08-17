@@ -92,7 +92,7 @@ As a c8volt maintainer, I want a single reproducible Camunda 8.10 baseline that 
 - The active provenance tag and revision do not identify the same upstream source state.
 - A newer 8.10 baseline removes or changes a contract used by an existing c8volt workflow.
 - An existing exact-8.9 capability check is valid for 8.10 but not for all versions newer than 8.9.
-- Production example selection can reuse 8.9 content, but the compatibility decision still needs an explicit, testable 8.10 mapping.
+- Production example selection uses native C810 content through an explicit, testable 8.10 mapping, while live integration coverage remains limited to stable versions through Camunda 8.9.
 - Preparation succeeds but unexpectedly changes protected Camunda 8.7, 8.8, or 8.9 artifacts.
 - The final 8.10.0 release introduces newly available capabilities that are not needed by an existing c8volt workflow.
 - Client construction succeeds while one of the eleven version-aware service families is missing or uses an older runtime contract.
@@ -123,7 +123,7 @@ As a c8volt maintainer, I want a single reproducible Camunda 8.10 baseline that 
 - **FR-020**: Moving to the final Camunda 8.10.0 baseline MUST preserve the existing 8.10 operator configuration and service-family identity.
 - **FR-021**: Adding or updating Camunda 8.10 support MUST NOT modify generated runtime contracts owned by Camunda 8.7, 8.8, or 8.9.
 - **FR-022**: Existing behavior for Camunda 8.7, 8.8, and 8.9 MUST remain unchanged and pass the stable-version regression suite.
-- **FR-023**: Production fixtures reused for 8.10 MUST be selected through an explicit and testable compatibility mapping.
+- **FR-023**: Native production fixtures for 8.10 MUST be selected through an explicit and testable C810 compatibility mapping.
 - **FR-024**: The feature MUST NOT add or change live integration profiles, fixtures, scripts, targets, or real-state scenarios for Camunda 8.10.
 - **FR-025**: Capabilities newly introduced by Camunda 8.10 MUST remain out of scope unless an existing c8volt workflow requires them.
 - **FR-026**: User-facing documentation and examples MUST describe the accepted 8.10 identifiers, the unchanged default, the active baseline's prerelease status, and the in-place update model.
@@ -137,7 +137,7 @@ As a c8volt maintainer, I want a single reproducible Camunda 8.10 baseline that 
 - **Version-Aware Service Family**: One of the eleven existing behavior families that must select native 8.10 behavior while preserving its version-neutral contract.
 - **Capability Predicate**: A named statement that determines whether a workflow is available for a release without relying on an accidental exact-version comparison.
 - **Protected Stable Artifact**: A generated runtime contract or behavior owned by Camunda 8.7, 8.8, or 8.9 that must remain unchanged.
-- **Fixture Compatibility Mapping**: An explicit decision that associates 8.10 with an existing production fixture while keeping live integration coverage out of scope.
+- **Fixture Compatibility Mapping**: An explicit decision that associates 8.10 with native C810 production fixtures while keeping live integration coverage out of scope.
 
 ## Success Criteria *(mandatory)*
 
@@ -162,7 +162,7 @@ As a c8volt maintainer, I want a single reproducible Camunda 8.10 baseline that 
 - The prerelease tag identifies the source revision used to prepare compatibility artifacts; it is not a separate operator-selectable c8volt version.
 - Existing c8volt workflows define the supported scope. Newly introduced Camunda 8.10 capabilities do not expand product scope automatically.
 - Existing authentication, configuration precedence, CLI envelopes, output modes, exit behavior, paging, polling, retry, and confirmation semantics remain unchanged.
-- Existing production fixtures may be reused where their behavior is compatible, but live integration coverage remains limited to stable versions through Camunda 8.9.
+- Native C810 production fixtures may mirror compatible 8.9 workflows, but live integration coverage remains limited to stable versions through Camunda 8.9.
 - Any incompatibility discovered in a later 8.10 baseline is handled explicitly rather than hidden by falling back to an older generated runtime contract.
 
 ### Dependencies

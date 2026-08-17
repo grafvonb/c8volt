@@ -36,7 +36,7 @@ go test ./toolx ./config -run 'CamundaVersion|CurrentDefault|Capability|Fixture|
 go test ./cmd -run 'Version|RootHelp|SupportMessaging|ConfigTestConnectionCommand_VersionComparison|Embed|V810' -count=1
 ```
 
-Expected: four aliases select V810; source-tag aliases fail; default stays V88; gateway `8.10.0-alpha4` matches `8.10` while another/unparseable line does not; version output discloses baseline separately; V810 explicitly uses C89 production fixture content while reporting `8.10`.
+Expected: four aliases select V810; source-tag aliases fail; default stays V88; gateway `8.10.0-alpha4` matches `8.10` while another/unparseable line does not; version output discloses baseline separately; V810 explicitly uses native C810 production fixture content while reporting `8.10`.
 
 ## 4. Validate All Eleven Service Boundaries
 
@@ -82,7 +82,7 @@ git diff -- internal/clients/camunda/v87 internal/clients/camunda/v88 internal/c
 git diff -- integration
 ```
 
-Both outputs match the recorded baseline. No 8.10 integration profile, fixture, script, Make target, or real-state scenario exists.
+Both outputs match the recorded baseline. No 8.10 live integration profile, fixture, script, Make target, or real-state scenario exists.
 
 ## 8. Run the Repository Gate
 

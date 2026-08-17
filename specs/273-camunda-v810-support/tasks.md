@@ -100,7 +100,9 @@
 
 **Goal**: Prove V810 is additive: V87-V89 clients and behavior, the V88 default, and the real-cluster integration harness remain unchanged.
 
-**Independent Test**: Compare protected client and integration baselines, run all stable-version factory/command regression tests, and verify V810 production fixtures reuse C89 content only through an explicit mapping.
+**Independent Test**: Compare protected client and integration baselines, run all stable-version factory/command regression tests, and verify V810 production fixtures use native C810 content only through an explicit mapping.
+
+**Supersession Note (#275)**: The checked T039/T042 descriptions below record the original #273 implementation. Active design guidance is superseded by #275 native C810 production fixture selection; historical checked task descriptions, progress, and Ralph memory remain unchanged.
 
 ### Tests for User Story 3
 

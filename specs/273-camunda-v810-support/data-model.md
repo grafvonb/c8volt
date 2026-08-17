@@ -101,8 +101,8 @@ Membership never uses ordinal/string comparison. Unsupported mutations fail befo
 | Field | Type | Rules |
 |-------|------|-------|
 | version | CamundaVersion | V810 |
-| sourcePrefix | string | `C89_` |
+| sourcePrefix | string | `C810_` |
 | scope | enum | production embedded/smoke fixtures only |
 | reportedVersion | string | `8.10` |
 
-The mapping creates no integration profile/fixture. Unknown versions do not inherit the latest prefix.
+The mapping creates no live integration profile or fixture. Unknown versions do not inherit the latest prefix.
