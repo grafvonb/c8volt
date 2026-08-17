@@ -40,4 +40,4 @@ Started: 2026-08-17T14:08:19Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next task: T015 in Phase 6. Run the repository race-enabled delivery gate from `Makefile` with `make test` and resolve only #275-scope regressions.
+- Next task: T016 in Phase 6. Run `git diff --check` and review the complete #275/#273 diff scope listed in `tasks.md`, confirming no generated CLI docs, new dependency, generator, stable BPMN, or integration asset changed.

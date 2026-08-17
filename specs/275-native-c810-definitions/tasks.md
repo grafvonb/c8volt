@@ -92,7 +92,7 @@
 **Purpose**: Execute the complete delivery gate and perform the final scope audit.
 
 - [x] T014 Run every command in `specs/275-native-c810-definitions/quickstart.md` and reconcile any mismatch in that guide with the implemented test names and outcomes
-- [ ] T015 Run the repository race-enabled delivery gate from `Makefile` with `make test` and resolve all regressions within the #275 scope
+- [x] T015 Run the repository race-enabled delivery gate from `Makefile` with `make test` and resolve all regressions within the #275 scope
 - [ ] T016 Run `git diff --check` and review the complete diff for `embedded/processdefinitions/C810_*.bpmn`, `embedded/fs_test.go`, `toolx/fixture_compatibility.go`, `toolx/fixture_compatibility_test.go`, `cmd/embed_test.go`, `cmd/ops_execute_smoke_test_test.go`, `internal/services/ops/smoke_test_test.go`, and the listed #273/#275 artifacts; confirm no generated CLI documentation, new dependency, generator, stable BPMN, or integration asset changed
 
 ---
