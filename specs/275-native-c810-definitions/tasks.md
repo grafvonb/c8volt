@@ -42,15 +42,15 @@
 
 ### Tests for User Story 1
 
-- [ ] T003 [P] [US1] Update the V810 expectation to `C810_` while retaining V87/V88/V89 mappings and unknown-version rejection in `toolx/fixture_compatibility_test.go`
-- [ ] T004 [P] [US1] Replace the V810-to-C89 embed-list case with an exact eight-file C810 family assertion and explicit C89 exclusion in `cmd/embed_test.go`
-- [ ] T005 [P] [US1] Update V810 fixture selection and add the three-resource C810 smoke deployment-closure assertion in `internal/services/ops/smoke_test_test.go`
-- [ ] T006 [P] [US1] Add one V810 smoke command case whose unchanged output schema reports the C810 fixture identity in `cmd/ops_execute_smoke_test_test.go`
+- [x] T003 [P] [US1] Update the V810 expectation to `C810_` while retaining V87/V88/V89 mappings and unknown-version rejection in `toolx/fixture_compatibility_test.go`
+- [x] T004 [P] [US1] Replace the V810-to-C89 embed-list case with an exact eight-file C810 family assertion and explicit C89 exclusion in `cmd/embed_test.go`
+- [x] T005 [P] [US1] Update V810 fixture selection and add the three-resource C810 smoke deployment-closure assertion in `internal/services/ops/smoke_test_test.go`
+- [x] T006 [P] [US1] Add one V810 smoke command case whose unchanged output schema reports the C810 fixture identity in `cmd/ops_execute_smoke_test_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Change only the V810 case of `toolx.ProductionFixturePrefix` from `C89_` to `C810_` in `toolx/fixture_compatibility.go`; keep stable mappings and unknown-version failure unchanged
-- [ ] T008 [US1] Run the US1-focused tests for `toolx/fixture_compatibility_test.go`, `cmd/embed_test.go`, `internal/services/ops/smoke_test_test.go`, and `cmd/ops_execute_smoke_test_test.go`, confirming the existing consumers require no production special cases
+- [x] T007 [US1] Change only the V810 case of `toolx.ProductionFixturePrefix` from `C89_` to `C810_` in `toolx/fixture_compatibility.go`; keep stable mappings and unknown-version failure unchanged
+- [x] T008 [US1] Run the US1-focused tests for `toolx/fixture_compatibility_test.go`, `cmd/embed_test.go`, `internal/services/ops/smoke_test_test.go`, and `cmd/ops_execute_smoke_test_test.go`, confirming the existing consumers require no production special cases
 
 **Checkpoint**: V810 uses C810 resources through the existing shared selector, while V89 still uses C89.
 

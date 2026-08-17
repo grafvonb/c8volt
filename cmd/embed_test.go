@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -51,17 +52,26 @@ func TestEmbedListCommand_DetailsFiltersFilesForConfiguredCamundaVersion(t *test
 	require.NotContains(t, output, "processdefinitions/C88_")
 }
 
-func TestEmbedListCommand_V810UsesC89ProductionFixtureMapping(t *testing.T) {
+// TestEmbedListCommand_V810UsesNativeProductionFixtures verifies the shared embed selector exposes only the native C810 family.
+func TestEmbedListCommand_V810UsesNativeProductionFixtures(t *testing.T) {
 	resetEmbedCommandStateForTest()
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.10")
 
 	output := executeRootForTest(t, "--config", cfgPath, "embed", "list", "--details")
 
-	require.Contains(t, output, "processdefinitions/C89_SimpleUserTask.bpmn")
-	require.Contains(t, output, "processdefinitions/C89_MultipleSubProcessesParent.bpmn")
+	require.Equal(t, strings.Join([]string{
+		"processdefinitions/C810_DoubleUserTask.bpmn",
+		"processdefinitions/C810_MultipleSubProcessesParent.bpmn",
+		"processdefinitions/C810_NoOpCompletion.bpmn",
+		"processdefinitions/C810_SimpleParent.bpmn",
+		"processdefinitions/C810_SimpleParentWithIncidentSubprocess.bpmn",
+		"processdefinitions/C810_SimpleServiceTask.bpmn",
+		"processdefinitions/C810_SimpleUserTask.bpmn",
+		"processdefinitions/C810_SimpleUserTaskWithIncident.bpmn",
+	}, "\n"), strings.TrimSpace(output))
 	require.NotContains(t, output, "processdefinitions/C87_")
 	require.NotContains(t, output, "processdefinitions/C88_")
-	require.NotContains(t, output, "processdefinitions/C810_")
+	require.NotContains(t, output, "processdefinitions/C89_")
 }
 
 func TestEmbedExportHelp_DocumentsSelectionWorkflow(t *testing.T) {

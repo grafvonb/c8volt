@@ -10,8 +10,10 @@ func ProductionFixturePrefix(version CamundaVersion) (string, bool) {
 		return "C87_", true
 	case V88:
 		return "C88_", true
-	case V89, V810:
+	case V89:
 		return "C89_", true
+	case V810:
+		return "C810_", true
 	default:
 		return "", false
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestProductionFixturePrefixMapsSupportedVersions protects the production fixture family selected for each supported compatibility line.
 func TestProductionFixturePrefixMapsSupportedVersions(t *testing.T) {
 	t.Parallel()
 
@@ -33,9 +34,9 @@ func TestProductionFixturePrefixMapsSupportedVersions(t *testing.T) {
 			want:    "C89_",
 		},
 		{
-			name:    "v810 reuses v89 production fixtures",
+			name:    "v810",
 			version: V810,
-			want:    "C89_",
+			want:    "C810_",
 		},
 	}
 
@@ -51,6 +52,7 @@ func TestProductionFixturePrefixMapsSupportedVersions(t *testing.T) {
 	}
 }
 
+// TestProductionFixturePrefixRejectsUnknownVersions ensures future versions do not inherit a known fixture family silently.
 func TestProductionFixturePrefixRejectsUnknownVersions(t *testing.T) {
 	t.Parallel()
 
