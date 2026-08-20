@@ -262,6 +262,7 @@ func TestConfigShowCommand_TemplatePreservesBlankTemplateOutput(t *testing.T) {
 	output := executeRootForTest(t, "config", "show", "--template")
 
 	require.Equal(t, expected+"\n", output)
+	require.Contains(t, output, `camunda_version: "8.9"`)
 	require.Contains(t, output, "mode: oauth2|cookie|none")
 	require.Contains(t, output, "format: plain-time|plain|text|json")
 	require.NotContains(t, output, "'*****'")

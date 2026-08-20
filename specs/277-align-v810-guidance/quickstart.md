@@ -23,7 +23,7 @@ Expected:
 
 - Every complete supported-runtime adapter/client inventory includes V810.
 - V810 is identified as newest where a newest line is named.
-- V88 remains the default.
+- V89 is the default.
 - Version-neutral layering rules remain unchanged.
 
 ## 2. Verify the Shipped Configuration Template
@@ -36,7 +36,7 @@ go test ./cmd -run 'TestConfigTemplate.*SupportedCamundaVersions' -count=1
 Expected:
 
 - The supported values include 8.7, 8.8, 8.9, and 8.10.
-- The comment identifies 8.8 as the default.
+- The comment identifies 8.9 as the default.
 - The rendered template exposes the same guidance.
 
 ## 3. Verify Gateway Requirement and Help Semantics
@@ -97,7 +97,7 @@ go test ./cmd ./docsgen -count=1
 
 Expected:
 
-- Operator sources agree on the canonical identity, four aliases, V88 default, active prerelease baseline, and in-place replacement model where each topic is relevant.
+- Operator sources agree on the canonical identity, four aliases, V89 default, active prerelease baseline, and in-place replacement model where each topic is relevant.
 - Gateway help reflects the full match/diagnostic matrix.
 - Focused command and documentation tests pass.
 
@@ -122,14 +122,13 @@ Expected: integration guidance and assets remain limited to the established stab
 ```bash
 git diff --exit-code d7f87d5d -- \
   internal/clients/camunda \
-  internal/services \
   c8volt \
   embedded/processdefinitions \
   integration \
   api
 ```
 
-Expected: no diff. Focused documentation assertions under `cmd/` are allowed; production runtime changes are not.
+Expected: no diff. The V89 constant, focused default-routing tests under `internal/services`, and authored/default documentation changes are allowed; production service implementations are not.
 
 ## 8. Run the Delivery Gate
 

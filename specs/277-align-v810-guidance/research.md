@@ -2,7 +2,7 @@
 
 ## Decision 1: Use the Delivered #273/#275 Contract as Baseline
 
-**Decision**: Use issue #273 as the authority for the V810 identity, aliases, baseline lifecycle, native service behavior, V88 default, and live-integration boundary. Apply issue #275 as the authoritative replacement for #273's original embedded-fixture mapping only. Validate these decisions against current version, baseline, gateway-diagnostic, and fixture-selection behavior.
+**Decision**: Use issue #273 as the authority for the V810 identity, aliases, baseline lifecycle, native service behavior, and live-integration boundary. Apply issue #275 as the authoritative replacement for #273's original embedded-fixture mapping, and apply #277 as the intentional replacement of #273's former V88 default with V89. Validate these decisions against current version, baseline, gateway-diagnostic, and fixture-selection behavior.
 
 **Rationale**: The detailed #273 contracts and current behavior agree, while #275 explicitly finalizes #273 by replacing the temporary C89 selection with native C810 definitions. This yields one coherent current model without reopening unrelated decisions.
 
@@ -42,7 +42,7 @@
 
 ## Decision 6: Correct the Shipped Configuration Template at Its Source
 
-**Decision**: Extend the supported-version comment in `config/templates/config.example.yaml` to include 8.10 and identify 8.8 as the default, while retaining the example's explicit configured value. Add a focused assertion close to existing config command tests that checks rendered template guidance.
+**Decision**: Extend the supported-version comment in `config/templates/config.example.yaml` to include 8.10 and identify 8.9 as the default, while retaining the example's explicit configured value. Assert the rendered V89 selection close to existing config command tests and verify the source-only supported-version comment with a content scan because YAML rendering strips comments.
 
 **Rationale**: The template is operator-facing and currently lists only 8.7–8.9. It is rendered through existing config commands, so correcting the source and protecting the rendered result covers both file users and CLI users without changing configuration behavior.
 
@@ -52,7 +52,7 @@
 
 **Decision**: Review README, API guidance, the generated documentation homepage, root CLI reference, version reference, and config test-connection reference against the V810 contract. Change authored sources only for concrete drift, then run `make docs-content` and retain only source-driven generated changes.
 
-**Rationale**: README, API guidance, root CLI help, and version output already state the correct supported versions, aliases, prerelease baseline, and V88 default. Generated documentation must remain derived from README and command metadata.
+**Rationale**: README, API guidance, root CLI help, and version output must state the correct supported versions, aliases, prerelease baseline, and V89 default. Generated documentation must remain derived from README and command metadata.
 
 **Alternatives considered**: Rewriting all operator pages was rejected because most are already aligned. Skipping generated-document review was rejected because issue #277 requires one coherent operator contract.
 

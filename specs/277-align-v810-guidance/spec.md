@@ -23,13 +23,13 @@ As a c8volt maintainer, I want repository guidance to describe Camunda 8.10 alon
 
 **Why this priority**: Guidance that stops at Camunda 8.9 can cause otherwise correct changes to omit the newest supported runtime and silently create incomplete cross-version behavior.
 
-**Independent Test**: Review every normative maintainer section that enumerates supported Camunda versions or version-specific components and verify that it includes V87, V88, V89, and V810, identifies V810 as the newest supported runtime, and retains V88 as the default.
+**Independent Test**: Review every normative maintainer section that enumerates supported Camunda versions or version-specific components and verify that it includes V87, V88, V89, and V810, identifies V810 as the newest supported runtime, and identifies V89 as the default.
 
 **Acceptance Scenarios**:
 
 1. **Given** a maintainer is adding version-aware behavior, **When** they consult the repository guidance, **Then** they are instructed to evaluate and test V810 as well as V87, V88, and V89.
 2. **Given** a maintainer is locating version-specific behavior, **When** they consult the architecture map, **Then** it identifies the native V810 service-adapter and generated-contract lines.
-3. **Given** V810 is the newest supported runtime, **When** the guidance describes support and defaults, **Then** it distinguishes newest support from the unchanged V88 default.
+3. **Given** V810 is the newest supported runtime, **When** the guidance describes support and defaults, **Then** it distinguishes newest support from the V89 default.
 
 ---
 
@@ -67,17 +67,17 @@ As a c8volt maintainer, I want active Camunda 8.10 guidance to select native C81
 
 ### User Story 4 - See One Coherent Operator Contract (Priority: P2)
 
-As a c8volt operator, I want all operator-facing guidance to present one coherent Camunda 8.10 support contract so that I can configure the correct identity, understand its active source baseline, and know which defaults and boundaries remain unchanged.
+As a c8volt operator, I want all operator-facing guidance to present one coherent Camunda 8.10 support contract so that I can configure the correct identity, understand its active source baseline, and know that V89 is the current default.
 
 **Why this priority**: The primary behavior is already delivered, but consistent operator guidance reduces configuration mistakes and prevents prerelease provenance from being confused with a selectable compatibility identity.
 
-**Independent Test**: Review the operator-facing version and configuration guidance and verify that it consistently presents the canonical identity, accepted aliases, unchanged default, active prerelease baseline, in-place baseline replacement model, and applicable embedded-definition family.
+**Independent Test**: Review the operator-facing version and configuration guidance and verify that it consistently presents the canonical identity, accepted aliases, V89 default, active prerelease baseline, in-place baseline replacement model, and applicable embedded-definition family.
 
 **Acceptance Scenarios**:
 
 1. **Given** an operator wants to configure Camunda 8.10, **When** they consult the documentation, **Then** they see canonical `8.10` and the aliases `810`, `v810`, and `v8.10`.
 2. **Given** the active V810 generated contracts originate from a prerelease, **When** an operator reviews version information, **Then** the prerelease source is disclosed separately from the configured `8.10` identity.
-3. **Given** no Camunda version is configured, **When** an operator reviews the documented default, **Then** V88 remains the stated default.
+3. **Given** no Camunda version is configured, **When** an operator reviews the documented default, **Then** V89 is the stated default.
 4. **Given** a later 8.10 baseline is adopted, **When** an operator reviews the compatibility model, **Then** it remains one in-place V810 identity rather than creating a new selectable prerelease or patch identity.
 
 ### Edge Cases
@@ -95,7 +95,7 @@ As a c8volt operator, I want all operator-facing guidance to present one coheren
 ### Functional Requirements
 
 - **FR-001**: Normative maintainer guidance MUST identify V87, V88, V89, and V810 as the supported version-specific runtime lines.
-- **FR-002**: Normative maintainer guidance MUST identify V810 as the newest supported runtime while stating that V88 remains the default when no version is configured.
+- **FR-002**: Normative maintainer guidance MUST identify V810 as the newest supported runtime while stating that V89 is the default when no version is configured.
 - **FR-003**: Version-aware development guidance MUST require maintainers to evaluate factory selection, owned behavior, capability availability, and automated coverage for V810 whenever a change applies to supported runtime lines.
 - **FR-004**: Architecture guidance MUST identify a native V810 service-adapter line and a native V810 generated-contract line alongside their V87, V88, and V89 counterparts.
 - **FR-005**: Guidance MUST preserve the boundary between version-neutral contracts and version-specific runtime behavior when adding V810 to the architecture description.
@@ -114,12 +114,12 @@ As a c8volt operator, I want all operator-facing guidance to present one coheren
 - **FR-018**: Historical completed tasks, progress records, and implementation memory that describe the former C89 fallback MUST remain preserved as historical records.
 - **FR-019**: Retained historical C89 records MUST remain clearly superseded by the native C810 decision from issue #275.
 - **FR-020**: Guidance MUST continue to state that live Camunda 8.10 integration infrastructure is outside the delivered support scope.
-- **FR-021**: The refinement MUST NOT change runtime behavior, compatibility identities, defaults, embedded process definitions, or stable-version behavior.
+- **FR-021**: The refinement MUST change only the omitted-version fallback from V88 to V89; it MUST NOT otherwise change runtime behavior, compatibility identities, embedded process definitions, or stable-version behavior.
 - **FR-022**: The final guidance set MUST contain no contradictory active statement about V810 identity, gateway release-line results, default selection, source-baseline status, or embedded-definition selection.
 
 ### Key Entities
 
-- **V810 Compatibility Line**: The single operator-facing Camunda 8.10 identity, its accepted aliases, version-specific behavior, and relationship to the unchanged default.
+- **V810 Compatibility Line**: The single operator-facing Camunda 8.10 identity, its accepted aliases, version-specific behavior, and relationship to the V89 default.
 - **Active V810 Baseline**: The one upstream Camunda 8.10 source state from which current compatibility artifacts originate; it may be replaced in place without creating another compatibility identity.
 - **Gateway Release-Line Result**: One of match, diagnostic mismatch, or unverifiable diagnostic, determined from the configured and observed major/minor release lines.
 - **C810 Embedded Definition Family**: The native Camunda 8.10 process definitions selected by embedded listing, export, deployment, and smoke workflows.
@@ -135,16 +135,16 @@ As a c8volt operator, I want all operator-facing guidance to present one coheren
 - **SC-003**: All six gateway cases—plain 8.10, 8.10 patch, 8.10 prerelease, different major/minor, empty, and unparseable—have one unambiguous documented outcome matching the established diagnostic contract.
 - **SC-004**: 100% of active fixture-selection statements map V810 to C810, with zero active statements permitting a C89 fallback.
 - **SC-005**: 100% of retained historical C89 implementation records remain preserved and clearly distinguishable from active guidance.
-- **SC-006**: 100% of reviewed operator-facing version summaries agree on the canonical identity, four accepted aliases, V88 default, active baseline status, and in-place replacement model.
+- **SC-006**: 100% of reviewed operator-facing version summaries agree on the canonical identity, four accepted aliases, V89 default, active baseline status, and in-place replacement model.
 - **SC-007**: A maintainer using only normative repository guidance can correctly identify all four supported runtime lines, the newest supported line, the default line, and the V810 fixture family on the first review.
-- **SC-008**: Repository review finds zero runtime-behavior, compatibility-identity, embedded-definition, stable-version, or live-integration scope changes in this refinement.
+- **SC-008**: Repository review finds only the intended V88-to-V89 fallback change, with zero other runtime-behavior, compatibility-identity, embedded-definition, stable-version, or live-integration scope changes.
 - **SC-009**: All documentation consistency checks applicable to the affected guidance complete with zero contradictions or failures.
 
 ## Assumptions
 
-- Issue #273 remains authoritative for the V810 compatibility identity, aliases, baseline lifecycle, native runtime behavior, unchanged V88 default, and live-integration boundary.
+- Issue #273 remains authoritative for the V810 compatibility identity, aliases, baseline lifecycle, native runtime behavior, and live-integration boundary; this refinement intentionally supersedes its former V88 default with V89.
 - Issue #275 remains authoritative for native C810 embedded-definition selection and supersedes only the former V810-to-C89 fixture mapping.
-- Existing runtime behavior and its automated coverage express the intended product contract; this feature reconciles guidance without changing that behavior.
+- Existing runtime behavior remains authoritative except for the explicitly requested V88-to-V89 fallback promotion, which requires updated factory regression coverage.
 - Historical delivery records are valuable audit evidence and should be labeled through existing supersession context rather than rewritten.
 - Primary operator documentation already contains much of the correct V810 contract and should change only where a consistency review finds a concrete contradiction or omission.
 
@@ -156,9 +156,8 @@ As a c8volt operator, I want all operator-facing guidance to present one coheren
 
 ### Out of Scope
 
-- Runtime, service, command, configuration, or generated-client behavior changes.
+- Runtime, service, command, configuration, or generated-client behavior changes other than the V88-to-V89 omitted-version fallback.
 - New Camunda compatibility identities or configuration aliases.
-- Changing the default Camunda version.
 - Updating the active Camunda 8.10 source baseline.
 - Restoring V810-to-C89 embedded-definition fallback.
 - Modifying C87, C88, C89, or C810 process definitions.

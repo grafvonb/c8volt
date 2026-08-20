@@ -70,12 +70,12 @@ func TestNormalizeCamundaVersionRejectsV810SourceTags(t *testing.T) {
 	}
 }
 
-// TestCurrentCamundaVersionRemainsV88 verifies adding V810 does not change the
-// default runtime selected when configuration omits a version.
-func TestCurrentCamundaVersionRemainsV88(t *testing.T) {
+// TestCurrentCamundaVersionIsV89 verifies configuration without an explicit
+// version selects the current stable runtime.
+func TestCurrentCamundaVersionIsV89(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, V88, CurrentCamundaVersion)
+	require.Equal(t, V89, CurrentCamundaVersion)
 }
 
 // TestImplementedCamundaVersionsIncludeCompleteV810Runtime verifies V810 is

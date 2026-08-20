@@ -17,7 +17,7 @@
 - Public facade options live in `c8volt/foptions`; public facade error conversion lives in `c8volt/ferrors`.
 - Version-neutral domain types live in `internal/domain`.
 - Version-neutral service contracts and factories live in `internal/services/<area>`.
-- Camunda version-specific adapters live in `internal/services/<area>/v87`, `v88`, and `v89`.
+- Camunda version-specific adapters live in `internal/services/<area>/v87`, `v88`, `v89`, and `v810`.
 - Generated Camunda clients live in `internal/clients/camunda`; avoid hand-editing generated code unless explicitly required.
 - Shared production helpers live in `toolx`; shared test helpers live in `testx`.
 - Feature planning artifacts live under `specs/<feature>/`.
@@ -27,7 +27,7 @@
 - `cmd` may call public facades and command support helpers, but must not call generated Camunda clients or versioned service implementations directly.
 - Public facades should be thin: map public inputs to internal service inputs, delegate to internal services, map outputs back, and convert errors through `c8volt/ferrors`.
 - Backend mechanics such as pagination loops, worker pools, polling, retries, wait loops, dependency expansion, and mutation workflows belong in internal services, not in CLI commands or public facades.
-- Keep version-specific API differences explicit in the matching `v87`, `v88`, or `v89` service package.
+- Keep version-specific API differences explicit in the matching `v87`, `v88`, `v89`, or `v810` service package.
 - Reuse `toolx`, `toolx/pool`, `internal/services/common`, and `testx` helpers before adding new helper code.
 
 ## CLI And Operator UX

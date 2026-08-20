@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.2.2-beta.1-95-gf2a8b36a`, commit `f2a8b36a`, built `2026-08-12T19:51:47Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.2.2-beta.1-110-g4f5155ee-dirty`, commit `4f5155ee`, built `2026-08-19T12:03:16Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -119,7 +119,7 @@ From zero to a real Camunda read in a few minutes. Download the matching archive
 cp config.example.yaml config.yaml
 
 # 3. Edit only the essentials:
-#    app.camunda_version: "8.8"   # default; use "8.10" for Camunda 8.10
+#    app.camunda_version: "8.9"   # default; use "8.10" for Camunda 8.10
 #    apis.camunda_api.base_url: "http://localhost:8080"
 #    auth.mode: "none"
 #
@@ -145,7 +145,7 @@ The smallest local/dev config is this:
 
 ```yaml
 app:
-  camunda_version: "8.8"
+  camunda_version: "8.9"
 apis:
   camunda_api:
     base_url: "http://localhost:8080"
@@ -211,7 +211,7 @@ Documentation examples use full command, resource, and flag names so they match 
 
 `8.10` is selected as the ordinary compatibility identity `8.10`. Accepted aliases are `8.10`, `810`, `v810`, and `v8.10`; alpha, release-candidate, and patch tags are provenance, not configuration identities. The active 8.10 artifacts currently come from Camunda `8.10.0-alpha4` and are disclosed by `c8volt version`.
 
-`8.8` remains the default when no Camunda version is configured. `8.9` and `8.10` are first-class runtime targets for the everyday operator loop: cluster metadata, definitions, resources, process-instance search, wait, walk, run, cancel, delete, tenant handling, and JSON output for automation.
+`8.9` is the default when no Camunda version is configured. `8.9` and `8.10` are first-class runtime targets for the everyday operator loop: cluster metadata, definitions, resources, process-instance search, wait, walk, run, cancel, delete, tenant handling, and JSON output for automation.
 
 Process-instance variable updates, incident resolution, and `get job`/`update job` commands are supported on Camunda `8.8` or newer; Camunda `8.7` returns an unsupported-version error for those state-changing job, variable update, and incident resolution commands. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
 

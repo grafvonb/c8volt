@@ -18,7 +18,7 @@ const (
 	// V810 is the operator-facing Camunda 8.10 compatibility identity.
 	V810 CamundaVersion = "8.10"
 
-	CurrentCamundaVersion = V88
+	CurrentCamundaVersion = V89
 )
 
 type CamundaVersion string

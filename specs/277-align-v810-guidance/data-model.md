@@ -9,7 +9,7 @@ This feature changes documentation state rather than runtime data. The model def
 | operator identity | `8.10` | Exactly one current V810 identity exists |
 | accepted aliases | `8.10`, `810`, `v810`, `v8.10` | Source tags, prerelease tags, and patch identifiers are not aliases |
 | newest supported runtime | V810 | Must be distinguished from default selection |
-| default runtime | V88 | Must remain unchanged |
+| default runtime | V89 | Intentionally supersedes the V88 default recorded by #273 |
 | active source baseline | `8.10.0-alpha4` prerelease | Disclosed separately from operator identity |
 | baseline lifecycle | replace in place | Later 8.10 sources do not create parallel identities |
 | service-adapter family | native V810 | Listed alongside V87, V88, and V89 |

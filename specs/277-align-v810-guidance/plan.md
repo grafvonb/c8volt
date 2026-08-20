@@ -6,7 +6,7 @@
 
 ## Summary
 
-Align every current maintainer and operator guidance source with the Camunda 8.10 support model delivered by issue #273 and finalized by issue #275. Update version inventories and architecture facts to include V810, correct the shipped configuration template, clarify that gateway release-line mismatches produce diagnostics rather than a new hard failure, and preserve historical C89 implementation records while keeping all active fixture guidance on native C810. Add focused documentation assertions and complete the repository validation gate without changing runtime behavior, generated clients, embedded definitions, or integration assets.
+Align every current maintainer and operator guidance source with the Camunda 8.10 support model delivered by issue #273 and finalized by issue #275, while intentionally promoting the omitted-version fallback from V88 to the current stable V89 line. Update version inventories, default-routing regressions, root help, README/config guidance, and generated documentation; preserve historical #273 records, generated clients, embedded definitions, and integration assets.
 
 ## Technical Context
 
@@ -14,17 +14,17 @@ Align every current maintainer and operator guidance source with the Camunda 8.1
 
 **Primary Dependencies**: Go standard library, existing Cobra/config rendering paths, existing documentation generator, and repository-native shell/search tooling; no new dependency
 
-**Storage**: N/A; checked-in guidance, specification, generated documentation, and configuration-template files only
+**Storage**: N/A; one runtime version constant plus checked-in guidance, tests, generated documentation, and configuration-template files
 
-**Testing**: Focused Go tests for configuration-template and documentation metadata, repository content scans, documentation regeneration review, `git diff --check`, protected-scope diff checks, and `make test`
+**Testing**: Focused Go tests for version/default routing, configuration-template and documentation metadata, repository content scans, documentation regeneration review, `git diff --check`, protected-scope diff checks, and `make test`
 
 **Target Platform**: Maintainers and operators of the existing cross-platform c8volt CLI
 
-**Project Type**: Go CLI documentation and maintainer-guidance refinement
+**Project Type**: Go CLI default-version promotion and guidance refinement
 
-**Performance Goals**: No runtime or CLI performance change; guidance review and validation remain bounded to the checked-in repository
+**Performance Goals**: No runtime or CLI performance regression; guidance review and validation remain bounded to the checked-in repository
 
-**Constraints**: Preserve all command behavior and output contracts; keep V88 as default; keep one V810 identity; retain the current pinned baseline; select only C810 for V810 embedded workflows; preserve historical #273 records; do not touch generated clients, BPMN definitions, or live integration assets
+**Constraints**: Preserve command behavior and output contracts other than intentionally changing the fallback runtime from V88 to V89; keep one V810 identity; retain the current pinned baseline; select only C810 for V810 embedded workflows; preserve historical #273 records; do not touch generated clients, BPMN definitions, or live integration assets
 
 **Scale/Scope**: Two core maintainer guides, current architecture fact/synthesis documents, one shipped configuration template and its focused assertion, two normative #273 gateway requirements, authored gateway help plus its generated page, review-only operator documentation, and the #277 design artifacts
 
@@ -32,8 +32,8 @@ Align every current maintainer and operator guidance source with the Camunda 8.1
 
 *GATE: Must pass before Phase 0 research. Re-checked after Phase 1 design.*
 
-- **I. Operational Proof Over Intent — PASS**: The feature changes no operational workflow. Validation compares guidance against established version, gateway-diagnostic, and embedded-selection behavior rather than inventing a new contract.
-- **II. CLI-First, Script-Safe Interfaces — PASS**: Commands, flags, exit codes, human output, and structured output remain unchanged. The plan explicitly preserves diagnostic behavior instead of turning warnings into failures.
+- **I. Operational Proof Over Intent — PASS**: The feature changes only omitted-version selection from V88 to V89. Validation proves the new default through configuration and every version-aware factory while preserving gateway-diagnostic and embedded-selection behavior.
+- **II. CLI-First, Script-Safe Interfaces — PASS**: Commands, flags, exit codes, and structured output remain unchanged; root help accurately discloses the new default. The plan preserves diagnostic behavior instead of turning warnings into failures.
 - **III. Tests and Validation Are Mandatory — PASS**: The design adds or extends the closest useful documentation assertions, runs focused package checks, regenerates authored CLI documentation, guards protected runtime paths, and finishes with `make test`.
 - **IV. Documentation Matches User Behavior — PASS**: This feature exists to reconcile maintainer and operator guidance with shipped V810 behavior. Generated CLI pages are updated through command metadata and the repository generator rather than by hand.
 - **V. Small, Compatible, Repository-Native Changes — PASS**: The design updates existing guidance and tests in place, introduces no new abstraction or dependency, and preserves historical delivery records.
@@ -75,9 +75,16 @@ specs/
 └── architecture-repo-facts.md            # update observable runtime/client facts to V810
 
 config/templates/
-└── config.example.yaml                   # advertise all supported versions and V88 default
+└── config.example.yaml                   # advertise all supported versions and V89 default
+
+toolx/
+├── version.go                            # promote omitted-version fallback to V89
+└── version_test.go                       # assert V89 as current default
+
+internal/services/*/factory_test.go       # assert CurrentCamundaVersion routes to v89
 
 cmd/
+├── root.go                               # disclose V89 default
 ├── config_test_connection.go             # clarify authored gateway diagnostic help
 └── config_test.go                        # protect template/help guidance
 
@@ -93,18 +100,18 @@ docs/cli/c8volt_config_test-connection.md  # regenerate from authored help
 ## Design Sequence
 
 1. Establish an explicit guidance classification from [data-model.md](data-model.md): active normative guidance may be corrected; generated derivatives follow their source; historical completed records remain unchanged and rely on the existing #275 supersession context.
-2. Update the current maintainer and architecture inventories to include V810 wherever all supported adapters, generated clients, capability reviews, or newest-runtime guidance are enumerated. Preserve V88 as the default, retain version-neutral layering rules, and leave integration-only 8.7–8.9 matrices unchanged because live V810 integration remains out of scope.
-3. Correct the shipped configuration template to list 8.10 and distinguish the supported set from the V88 default. Add a focused assertion against rendered template output so future supported-version additions cannot leave the template stale unnoticed.
+2. Update the current maintainer and architecture inventories to include V810 wherever all supported adapters, generated clients, capability reviews, or newest-runtime guidance are enumerated. Set V89 as the default, retain version-neutral layering rules, and leave integration-only 8.7–8.9 matrices unchanged because live V810 integration remains out of scope.
+3. Correct the shipped configuration template to list 8.10 and distinguish the supported set from the V89 default. Add a focused assertion against rendered template output for the V89 fallback and verify the source-only supported-version comment with a content scan.
 4. Refine #273 FR-006 and SC-002 to use the gateway result language already defined by its version-selection contract: same release line is a match; different release line is a diagnostic non-match; empty or unparseable output is an unverifiable diagnostic; neither creates a new hard-failure contract.
 5. Clarify the authored `config test-connection` help with the same gateway outcomes, update its nearby test, and regenerate its CLI reference through `make docs-content` rather than editing generated Markdown.
 6. Audit all active #273 fixture guidance against #275. Leave its C810 statements unchanged when correct, retain the existing supersession note, and do not rewrite historical checked tasks, progress, or Ralph memory that record the former C89 implementation.
 7. Review README, API guidance, and generated root/version documentation against the contract. Change source documentation only for a concrete mismatch and avoid unrelated generated churn.
-8. Run the focused guidance checks from [quickstart.md](quickstart.md), verify protected runtime/generated/BPMN/integration paths have no diff, then complete `make test` and final diff review.
+8. Run focused default-routing and guidance checks from [quickstart.md](quickstart.md), verify production service implementations, generated clients, BPMN, and integration paths have no unintended diff, then complete `make test` and final diff review.
 
 ## Post-Design Constitution Check
 
 - **I. Operational Proof Over Intent — PASS**: The gateway and fixture contracts are tied to observable established outcomes, and the validation guide proves documentation alignment without a live mutation.
-- **II. CLI-First, Script-Safe Interfaces — PASS**: The contract explicitly forbids changes to command behavior, output, aliases, defaults, and diagnostics.
+- **II. CLI-First, Script-Safe Interfaces — PASS**: The contract limits default behavior to the explicit V89 promotion and forbids changes to commands, output contracts, aliases, and diagnostics.
 - **III. Tests and Validation Are Mandatory — PASS**: Phase 1 defines focused assertions, content audits, protected-scope checks, documentation regeneration, and the full race-enabled repository test gate.
 - **IV. Documentation Matches User Behavior — PASS**: The design assigns one source of truth per guidance topic and treats generated docs as derived artifacts.
 - **V. Small, Compatible, Repository-Native Changes — PASS**: The design touches only existing guidance seams and nearby documentation tests; there is no new dependency, generator, or abstraction.

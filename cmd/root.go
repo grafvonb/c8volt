@@ -40,7 +40,7 @@ state changes, walk process trees, cancel, and delete.
 
 Supports Camunda 8.7, 8.8, 8.9, and 8.10.
 Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease).
-Camunda 8.10 aliases: 8.10, 810, v810, v8.10. Default: 8.8.
+Camunda 8.10 aliases: 8.10, 810, v810, v8.10. Default: 8.9.
 Use capabilities for the machine-readable command contract.`,
 	Example: `  ./c8volt config show --template
   ./c8volt --config ./config.yaml config show --validate

@@ -34,9 +34,9 @@ func TestAppNormalize_DefaultsMissingCamundaVersionToCurrentVersion(t *testing.T
 	require.Equal(t, toolx.CurrentCamundaVersion, app.CamundaVersion)
 }
 
-// TestAppNormalize_DefaultCamundaVersionRemainsV88 verifies V810 support does
-// not alter the existing no-configuration default.
-func TestAppNormalize_DefaultCamundaVersionRemainsV88(t *testing.T) {
+// TestAppNormalize_DefaultCamundaVersionIsV89 verifies omitted configuration
+// selects the current stable runtime.
+func TestAppNormalize_DefaultCamundaVersionIsV89(t *testing.T) {
 	t.Parallel()
 
 	app := &App{}
@@ -44,7 +44,7 @@ func TestAppNormalize_DefaultCamundaVersionRemainsV88(t *testing.T) {
 	err := app.Normalize()
 
 	require.NoError(t, err)
-	require.Equal(t, toolx.V88, app.CamundaVersion)
+	require.Equal(t, toolx.V89, app.CamundaVersion)
 }
 
 func TestAppNormalize_DefaultsTimezoneOffsetOutputToFalse(t *testing.T) {

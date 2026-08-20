@@ -9,7 +9,7 @@ Every current maintainer inventory that claims to enumerate supported Camunda ru
 - V89 / `v89`
 - V810 / `v810`
 
-V810 is the newest supported runtime line. V88 remains the default when configuration does not select a version. "Newest supported" and "default" must never be used as synonyms.
+V810 is the newest supported runtime line. V89 is the default when configuration does not select a version. "Newest supported" and "default" must never be used as synonyms.
 
 Version-neutral interfaces remain above version-specific adapters. Adding V810 to guidance does not permit commands or public facades to depend directly on generated Camunda contracts.
 
@@ -19,7 +19,7 @@ Version-neutral interfaces remain above version-specific adapters. Adding V810 t
 |----------|----------------|
 | Canonical identity | `8.10` |
 | Accepted aliases | `8.10`, `810`, `v810`, `v8.10` |
-| Default | `8.8` |
+| Default | `8.9` |
 | Active baseline | `8.10.0-alpha4` |
 | Baseline status | prerelease |
 | Update model | replace the V810 baseline in place |
@@ -62,11 +62,11 @@ A non-match is not accepted as compatible. Issue #277 does not convert these dia
 
 ## Protected Boundaries
 
-The refinement must leave unchanged:
+Except for the intentional omitted-version promotion from V88 to V89, the refinement must leave unchanged:
 
 - CLI commands, flags, exit behavior, human output, and structured output;
-- runtime service behavior and factory selection;
-- configuration normalization and the V88 default;
+- explicit runtime service selection and version-specific behavior;
+- configuration normalization rules other than the V89 fallback;
 - generated Camunda clients and provenance;
 - C87, C88, C89, and C810 BPMN definitions;
 - live integration profiles, scripts, targets, and scenarios;

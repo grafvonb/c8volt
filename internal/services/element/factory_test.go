@@ -65,7 +65,7 @@ func TestFactory_StableVersionSelectionUnchanged(t *testing.T) {
 		{name: "v87", version: toolx.V87, assert: func(t *testing.T, svc element.API) { require.IsType(t, &v87.Service{}, svc) }},
 		{name: "v88", version: toolx.V88, assert: func(t *testing.T, svc element.API) { require.IsType(t, &v88.Service{}, svc) }},
 		{name: "v89", version: toolx.V89, assert: func(t *testing.T, svc element.API) { require.IsType(t, &v89.Service{}, svc) }},
-		{name: "current-default", version: toolx.CurrentCamundaVersion, assert: func(t *testing.T, svc element.API) { require.IsType(t, &v88.Service{}, svc) }},
+		{name: "current-default", version: toolx.CurrentCamundaVersion, assert: func(t *testing.T, svc element.API) { require.IsType(t, &v89.Service{}, svc) }},
 	}
 
 	for _, tt := range tests {
