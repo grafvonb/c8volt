@@ -13,7 +13,7 @@ Normalization is trim- and case-insensitive.
 
 ## Rejected Inputs and Default
 
-Source/release identifiers such as `8.10-alpha4`, `8.10.0-alpha4`, release-candidate/patch variants, and unknown aliases return the existing unknown-version classification. Missing configuration continues to select V88.
+Source/release identifiers such as `8.10-alpha4`, `8.10.0-alpha4`, release-candidate/patch variants, and unknown aliases return the existing unknown-version classification. Missing configuration selects V89; issue #277 supersedes the V88 default used when V810 was originally delivered.
 
 ## Supported and Implemented Discovery
 
@@ -32,7 +32,7 @@ Source/release identifiers such as `8.10-alpha4`, `8.10.0-alpha4`, release-candi
 | `8.10` | another major/minor | mismatch diagnostic |
 | `8.10` | empty/unparseable | unrecognizable diagnostic |
 
-Mismatch/unrecognizable values are never accepted as compatibility matches. Stable-version diagnostic behavior remains unchanged.
+Mismatch/unrecognizable values are never accepted as compatibility matches. They emit the established diagnostics and do not create a mandatory command failure. Stable-version diagnostic behavior remains unchanged.
 
 ## Human Version Output
 

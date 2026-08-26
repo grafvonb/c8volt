@@ -2,7 +2,7 @@
 
 ## Decision 1: One Ordinary V810 Identity
 
-**Decision**: Add `toolx.V810` with canonical value `8.10` and aliases `8.10`, `810`, `v810`, and `v8.10`. Keep `CurrentCamundaVersion = V88`. Treat `8.10.0-alpha4` as source provenance, not a selectable identity.
+**Decision**: Add `toolx.V810` with canonical value `8.10` and aliases `8.10`, `810`, `v810`, and `v8.10`. The original delivery kept `CurrentCamundaVersion = V88`; issue #277 later supersedes that default with V89. Treat `8.10.0-alpha4` as source provenance, not a selectable identity.
 
 **Rationale**: `toolx/version.go` already owns normalization, display, support sets, and the default. One identity lets later alpha, RC, and GA baselines replace the implementation without operator/package renames.
 

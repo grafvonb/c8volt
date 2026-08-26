@@ -77,6 +77,11 @@ func TestConfigTestConnectionHelp_ExplainsConnectionDiagnostic(t *testing.T) {
 
 	require.Contains(t, output, "Test configured Camunda connection")
 	require.Contains(t, output, "validates local configuration before retrieving cluster topology")
+	require.Contains(t, output, "Plain, patch,")
+	require.Contains(t, output, "prerelease values on the configured release line match without a warning")
+	require.Contains(t, output, "different major/minor release line warns about a mismatch")
+	require.Contains(t, output, "gateway versions warn that compatibility cannot be verified")
+	require.Contains(t, output, "diagnostics do not make an otherwise successful connection test")
 	require.Contains(t, output, "./c8volt --config ./config.yaml config test-connection")
 	require.NotContains(t, output, "--template")
 }

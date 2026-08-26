@@ -31,7 +31,7 @@ The central flow is: a user, script, CI job, or agent invokes the CLI; c8volt re
 
 | Tradeoff | Chosen Direction | Consequence | Revisit When |
 |----------|------------------|-------------|--------------|
-| Stable CLI contract vs. upstream API churn | Hide versioned generated clients below service/facade boundaries. | Commands can keep stable semantics across Camunda 8.7, 8.8, and 8.9 where supported. | Adding a new Camunda version or changing generated clients. |
+| Stable CLI contract vs. upstream API churn | Hide versioned generated clients below service/facade boundaries. | Commands can keep stable semantics across Camunda 8.7, 8.8, 8.9, and 8.10 where supported. | Adding a new Camunda version or changing generated clients. |
 | Human terminal UX vs. machine automation | Support explicit output/automation modes and capability discovery. | Scripts and agents can avoid help-text scraping and prompts. | Adding new commands, flags, or render modes. |
 | Fast destructive operations vs. safe operator workflows | Prefer dry-run, target freezing, confirmation, force controls, waits, and reports. | Risky operations take more steps but expose scope and closure. | Adding mutation or purge/repair workflows. |
 | Low-level primitives vs. high-level playbooks | Keep both; playbooks compose primitives rather than replacing them. | Operators can use manual control or repeatable ops workflows. | Playbook behavior diverges from primitive command behavior. |
@@ -100,7 +100,7 @@ This section normalizes the 4+1 design results into the architecture SSOT. Recor
 |------------|--------|----------------|-------|--------------------------|
 | External workflow state authority | Repo Facts: System Boundaries; Logical View | Scenario, Logical, Process, Physical | All workflow resources | c8volt must read/verify through Camunda rather than local assumptions. |
 | Explicit automation support | Repo Facts: User-Visible Behaviors; Process View | Scenario, Process, Development | Non-interactive command execution | Unsupported automation paths are rejected before prompting. |
-| Version-gated behavior | Repo Facts: Runtime and Process Clues; Development View | Scenario, Logical, Process, Development | Camunda 8.7/8.8/8.9 operation support | Feature changes require compatibility review. |
+| Version-gated behavior | Repo Facts: Runtime and Process Clues; Development View | Scenario, Logical, Process, Development | Camunda 8.7/8.8/8.9/8.10 operation support | Feature changes require compatibility review. |
 | Generated docs follow commands | Repo Facts: Development Structure Clues; Development View | Development, Physical | CLI reference and docs site | Regenerate docs from command metadata. |
 | No unproven deployment topology | Repo Facts: Evidence Gaps; Physical View | Physical | Runtime hosting | Architecture stays limited to local/CI binary, external systems, and static docs publishing. |
 | Repository-first governance absent | Repo Facts: Repository-First Projection; Development View | Development, Synthesis | Dependency rules | Current dependency rules are inferred and should be validated by a future repository-first pass. |

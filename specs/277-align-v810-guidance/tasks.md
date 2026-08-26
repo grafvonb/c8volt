@@ -18,8 +18,8 @@
 
 **Purpose**: Establish the feature rules, baseline, and evidence record before changing guidance.
 
-- [ ] T001 Read `AGENTS.md`, `specs/ralph-implementation-rules.md`, `specs/277-align-v810-guidance/spec.md`, `specs/277-align-v810-guidance/plan.md`, `specs/277-align-v810-guidance/research.md`, `specs/277-align-v810-guidance/data-model.md`, `specs/277-align-v810-guidance/contracts/v810-guidance-contract.md`, `specs/277-align-v810-guidance/quickstart.md`, and `.specify/memory/constitution.md`, then initialize `specs/277-align-v810-guidance/progress.md` with the conflict check and constitution result
-- [ ] T002 Record feature baseline `d7f87d5d`, current branch, editable guidance paths, generated derivatives, integration-only guidance, and protected historical/runtime paths in `specs/277-align-v810-guidance/progress.md`
+- [x] T001 Read `AGENTS.md`, `specs/ralph-implementation-rules.md`, `specs/277-align-v810-guidance/spec.md`, `specs/277-align-v810-guidance/plan.md`, `specs/277-align-v810-guidance/research.md`, `specs/277-align-v810-guidance/data-model.md`, `specs/277-align-v810-guidance/contracts/v810-guidance-contract.md`, `specs/277-align-v810-guidance/quickstart.md`, and `.specify/memory/constitution.md`, then initialize `specs/277-align-v810-guidance/progress.md` with the conflict check and constitution result
+- [x] T002 Record feature baseline `d7f87d5d`, current branch, editable guidance paths, generated derivatives, integration-only guidance, and protected historical/runtime paths in `specs/277-align-v810-guidance/progress.md`
 
 ---
 
@@ -29,8 +29,8 @@
 
 **⚠️ CRITICAL**: Complete this phase before editing any user-story guidance.
 
-- [ ] T003 Set and verify the V89 default alongside the canonical V810 identity, aliases, support sets, and active baseline in `toolx/version.go`, `toolx/version_test.go`, `toolx/camunda_baseline.go`, and every version-aware `internal/services/*/factory_test.go`
-- [ ] T004 Verify gateway diagnostics and C810 selection in `cmd/config_diagnostics.go`, `toolx/fixture_compatibility.go`, `cmd/embed_files.go`, and `internal/services/ops/smoke_test_service.go`, then record the active-behavior baseline in `specs/277-align-v810-guidance/progress.md`
+- [x] T003 Set and verify the V89 default alongside the canonical V810 identity, aliases, support sets, and active baseline in `toolx/version.go`, `toolx/version_test.go`, `toolx/camunda_baseline.go`, and every version-aware `internal/services/*/factory_test.go`
+- [x] T004 Verify gateway diagnostics and C810 selection in `cmd/config_diagnostics.go`, `toolx/fixture_compatibility.go`, `cmd/embed_files.go`, and `internal/services/ops/smoke_test_service.go`, then record the active-behavior baseline in `specs/277-align-v810-guidance/progress.md`
 
 **Checkpoint**: The #273/#275 final behavior, guidance classifications, and protected scope are explicit and ready for story work.
 
@@ -44,11 +44,11 @@
 
 ### Implementation for User Story 1
 
-- [ ] T005 [P] [US1] Add `v810` to the version-specific adapter and API-difference guidance in `AGENTS.md` without changing the existing layer boundaries
-- [ ] T006 [P] [US1] Update supported factory, adapter, generated-client, capability-review, fixture-family, and testing inventories for V810 while declaring the explicit V89 default and preserving stable-only exceptions in `specs/ralph-implementation-rules.md`
-- [ ] T007 [P] [US1] Extend the supported-version tradeoff and version-gated architecture statements through Camunda 8.10 in `.specify/memory/architecture.md`
-- [ ] T008 [P] [US1] Update V810 target, external boundary, generated-client provenance, adapter inventory, and service-client facts in `.specify/memory/architecture-repo-facts.md`
-- [ ] T009 [US1] Run the maintainer inventory scan from `specs/277-align-v810-guidance/quickstart.md` and record exact US1 evidence plus any intentional non-enumerating exceptions in `specs/277-align-v810-guidance/progress.md`
+- [x] T005 [P] [US1] Add `v810` to the version-specific adapter and API-difference guidance in `AGENTS.md` without changing the existing layer boundaries
+- [x] T006 [P] [US1] Update supported factory, adapter, generated-client, capability-review, fixture-family, and testing inventories for V810 while declaring the explicit V89 default and preserving stable-only exceptions in `specs/ralph-implementation-rules.md`
+- [x] T007 [P] [US1] Extend the supported-version tradeoff and version-gated architecture statements through Camunda 8.10 in `.specify/memory/architecture.md`
+- [x] T008 [P] [US1] Update V810 target, external boundary, generated-client provenance, adapter inventory, and service-client facts in `.specify/memory/architecture-repo-facts.md`
+- [x] T009 [US1] Run the maintainer inventory scan from `specs/277-align-v810-guidance/quickstart.md` and record exact US1 evidence plus any intentional non-enumerating exceptions in `specs/277-align-v810-guidance/progress.md`
 
 **Checkpoint**: A maintainer can discover all four supported runtime lines, the V810-owned implementation boundaries, and the V89 default from current repository guidance alone.
 
@@ -62,14 +62,14 @@
 
 ### Tests for User Story 2
 
-- [ ] T010 [P] [US2] Add a failing help-contract assertion for the complete V810 match, mismatch, and unverifiable diagnostic matrix in `cmd/config_test.go`, and confirm it fails before authored help changes
+- [x] T010 [P] [US2] Add a failing help-contract assertion for the complete V810 match, mismatch, and unverifiable diagnostic matrix in `cmd/config_test.go`, and confirm it fails before authored help changes
 
 ### Implementation for User Story 2
 
-- [ ] T011 [P] [US2] Replace ambiguous hard-rejection language in FR-006 and SC-002 with match, diagnostic non-match, and unverifiable-diagnostic semantics in `specs/273-camunda-v810-support/spec.md`
-- [ ] T012 [US2] Clarify the authored `config test-connection` help for same-line patch/prerelease matches, different-line warnings, and empty/unparseable warnings in `cmd/config_test_connection.go`
-- [ ] T013 [US2] Run `go test ./cmd -run 'TestConfigTestConnection.*(Help|V810GatewayReleaseLineWarnings)' -count=1` and record the passing gateway matrix in `specs/277-align-v810-guidance/progress.md`
-- [ ] T014 [US2] Compare `specs/273-camunda-v810-support/spec.md`, `specs/273-camunda-v810-support/contracts/version-selection.md`, and `cmd/config_test_connection.go` against `specs/277-align-v810-guidance/contracts/v810-guidance-contract.md`, then record the no-hard-failure consistency result in `specs/277-align-v810-guidance/progress.md`
+- [x] T011 [P] [US2] Replace ambiguous hard-rejection language in FR-006 and SC-002 with match, diagnostic non-match, and unverifiable-diagnostic semantics in `specs/273-camunda-v810-support/spec.md`
+- [x] T012 [US2] Clarify the authored `config test-connection` help for same-line patch/prerelease matches, different-line warnings, and empty/unparseable warnings in `cmd/config_test_connection.go`
+- [x] T013 [US2] Run `go test ./cmd -run 'TestConfigTestConnection.*(Help|V810GatewayReleaseLineWarnings)' -count=1` and record the passing gateway matrix in `specs/277-align-v810-guidance/progress.md`
+- [x] T014 [US2] Compare `specs/273-camunda-v810-support/spec.md`, `specs/273-camunda-v810-support/contracts/version-selection.md`, and `cmd/config_test_connection.go` against `specs/277-align-v810-guidance/contracts/v810-guidance-contract.md`, then record the no-hard-failure consistency result in `specs/277-align-v810-guidance/progress.md`
 
 **Checkpoint**: Normative requirements, detailed contract, authored help, and existing behavior define the same six gateway outcomes.
 
@@ -83,9 +83,9 @@
 
 ### Verification for User Story 3
 
-- [ ] T015 [US3] Audit active C810 guidance in `specs/273-camunda-v810-support/spec.md`, `specs/273-camunda-v810-support/plan.md`, `specs/273-camunda-v810-support/research.md`, `specs/273-camunda-v810-support/data-model.md`, `specs/273-camunda-v810-support/quickstart.md`, and `specs/273-camunda-v810-support/contracts/service-compatibility.md`; correct only a concrete active fallback and record the result in `specs/277-align-v810-guidance/progress.md`
-- [ ] T016 [US3] Verify `specs/273-camunda-v810-support/tasks.md`, `specs/273-camunda-v810-support/progress.md`, and `specs/273-camunda-v810-support/ralph-memory.md` retain their baseline content and existing #275 supersession context, then record the protected-history result in `specs/277-align-v810-guidance/progress.md`
-- [ ] T017 [US3] Run focused C810 mapping, embedded-family, and smoke-selection checks anchored in `toolx/fixture_compatibility_test.go`, `cmd/embed_test.go`, `embedded/fs_test.go`, and `internal/services/ops/smoke_test_test.go`, then record commands and outcomes in `specs/277-align-v810-guidance/progress.md`
+- [x] T015 [US3] Audit active C810 guidance in `specs/273-camunda-v810-support/spec.md`, `specs/273-camunda-v810-support/plan.md`, `specs/273-camunda-v810-support/research.md`, `specs/273-camunda-v810-support/data-model.md`, `specs/273-camunda-v810-support/quickstart.md`, and `specs/273-camunda-v810-support/contracts/service-compatibility.md`; correct only a concrete active fallback and record the result in `specs/277-align-v810-guidance/progress.md`
+- [x] T016 [US3] Verify `specs/273-camunda-v810-support/tasks.md`, `specs/273-camunda-v810-support/progress.md`, and `specs/273-camunda-v810-support/ralph-memory.md` retain their baseline content and existing #275 supersession context, then record the protected-history result in `specs/277-align-v810-guidance/progress.md`
+- [x] T017 [US3] Run focused C810 mapping, embedded-family, and smoke-selection checks anchored in `toolx/fixture_compatibility_test.go`, `cmd/embed_test.go`, `embedded/fs_test.go`, and `internal/services/ops/smoke_test_test.go`, then record commands and outcomes in `specs/277-align-v810-guidance/progress.md`
 
 **Checkpoint**: Current V810 fixture guidance has one C810 decision, historical C89 records remain truthful, and live integration remains intentionally limited to stable profiles through V89.
 
@@ -99,14 +99,14 @@
 
 ### Tests for User Story 4
 
-- [ ] T018 [US4] Add a rendered-template assertion for the V89 default in `cmd/config_test.go`, and verify the authored supported-version comment lists `8.7, 8.8, 8.9, 8.10`
+- [x] T018 [US4] Add a rendered-template assertion for the V89 default in `cmd/config_test.go`, and verify the authored supported-version comment lists `8.7, 8.8, 8.9, 8.10`
 
 ### Implementation for User Story 4
 
-- [ ] T019 [US4] Add Camunda 8.10 and explicit V89 default guidance to `config/templates/config.example.yaml` while retaining its intentional example selection
-- [ ] T020 [P] [US4] Update `README.md` and `cmd/root.go` for the V89 default, review `api/README.md` and `cmd/version.go` against the operator identity contract, and record the correction result in `specs/277-align-v810-guidance/progress.md`
-- [ ] T021 [US4] Run `make docs-content` after the US2 help change, retain only source-driven updates in `docs/index.md` and `docs/cli/`, and verify `docs/cli/c8volt_config_test-connection.md` exposes the complete gateway diagnostic matrix
-- [ ] T022 [US4] Run the operator-contract scans and `go test ./cmd ./docsgen -count=1` from `specs/277-align-v810-guidance/quickstart.md`, then record the passing US4 evidence in `specs/277-align-v810-guidance/progress.md`
+- [x] T019 [US4] Add Camunda 8.10 and explicit V89 default guidance to `config/templates/config.example.yaml` while retaining its intentional example selection
+- [x] T020 [P] [US4] Update `README.md` and `cmd/root.go` for the V89 default, add V810 to the authored support matrix in `docs/cli/index.md`, review `api/README.md` and `cmd/version.go` against the operator identity contract, and record the correction result in `specs/277-align-v810-guidance/progress.md`
+- [x] T021 [US4] Run `make docs-content` after the US2 help change, retain only source-driven updates in `docs/index.md` and `docs/cli/`, and verify `docs/cli/c8volt_config_test-connection.md` exposes the complete gateway diagnostic matrix
+- [x] T022 [US4] Run the operator-contract scans and `go test ./cmd ./docsgen -count=1` from `specs/277-align-v810-guidance/quickstart.md`, then record the passing US4 evidence in `specs/277-align-v810-guidance/progress.md`
 
 **Checkpoint**: Operators see one coherent V810 configuration, baseline, gateway, and embedded-family contract across authored and generated guidance.
 
@@ -116,12 +116,12 @@
 
 **Purpose**: Format touched code, prove protected scope, and complete the repository delivery gate.
 
-- [ ] T023 Run `gofmt` on all touched Go source and test files, then review the diff for the intended V89 fallback and documentation behavior
-- [ ] T024 Run every content and classification scan in `specs/277-align-v810-guidance/quickstart.md` and record final maintainer, gateway, fixture, operator, and integration-scope evidence in `specs/277-align-v810-guidance/progress.md`
-- [ ] T025 Verify zero diff from `d7f87d5d` under `internal/clients/camunda/`, `c8volt/`, `embedded/processdefinitions/`, `integration/`, and `api/`, and verify `internal/services/` changes are limited to factory default assertions
-- [ ] T026 Run `git diff --check` and `go test ./cmd ./docsgen -count=1`, resolving only #277 guidance, generated-document, formatting, or documentation-assertion failures in the paths listed by `specs/277-align-v810-guidance/plan.md`
-- [ ] T027 Run `make test` and record the full race-enabled repository result in `specs/277-align-v810-guidance/progress.md`
-- [ ] T028 Audit the complete diff against `specs/277-align-v810-guidance/spec.md`, `specs/277-align-v810-guidance/contracts/v810-guidance-contract.md`, and the issue #277 scope; confirm the only runtime change is the V89 fallback and there is no rewritten history, new V810 identity, baseline change, BPMN change, or integration expansion
+- [x] T023 Run `gofmt` on all touched Go source and test files, then review the diff for the intended V89 fallback and documentation behavior
+- [x] T024 Run every content and classification scan in `specs/277-align-v810-guidance/quickstart.md` and record final maintainer, gateway, fixture, operator, and integration-scope evidence in `specs/277-align-v810-guidance/progress.md`
+- [x] T025 Verify zero diff from `d7f87d5d` under `internal/clients/camunda/`, `c8volt/`, `embedded/processdefinitions/`, `integration/`, and `api/`, and verify `internal/services/` changes are limited to factory default assertions
+- [x] T026 Run `git diff --check` and `go test ./cmd ./docsgen -count=1`, resolving only #277 guidance, generated-document, formatting, or documentation-assertion failures in the paths listed by `specs/277-align-v810-guidance/plan.md`
+- [x] T027 Run `make test` and record the full race-enabled repository result in `specs/277-align-v810-guidance/progress.md`
+- [x] T028 Audit the complete diff against `specs/277-align-v810-guidance/spec.md`, `specs/277-align-v810-guidance/contracts/v810-guidance-contract.md`, and the issue #277 scope; confirm the only runtime change is the V89 fallback and there is no rewritten history, new V810 identity, baseline change, BPMN change, or integration expansion
 
 ---
 

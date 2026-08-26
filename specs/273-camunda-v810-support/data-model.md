@@ -10,7 +10,7 @@ This feature adds no persistent business database. The model describes configura
 | aliases | set | `8.10`, `810`, `v810`, `v8.10`; trim/case-insensitive |
 | supported | boolean | true after complete support |
 | implemented | boolean | true after all eleven factories exist |
-| default | boolean | false; V88 remains default |
+| default | boolean | false for V810; V89 is the current default after issue #277 superseded the original V88 default |
 
 Alpha/RC/patch tags are never aliases. Unknown input returns the existing error. Display/report identity stays `8.10` for every baseline.
 

@@ -55,7 +55,7 @@ A non-match is not accepted as compatible. Issue #277 does not convert these dia
 | Gateway requirement | #273 specification plus its version-selection contract | Align normative wording with the detailed contract |
 | Fixture selection | #275-finalized active #273 design | C810 only |
 | Operator template and help | Authored template and command metadata | Correct source, test rendered output |
-| Operator overview | README and version metadata | Change only when a concrete mismatch exists |
+| Operator overview | README, authored CLI landing page, and version metadata | Change only when a concrete mismatch exists |
 | Generated documentation | Existing documentation workflow | Never hand-edit; regenerate from source |
 | Live integration guidance | Existing stable integration matrix | Preserve V87–V89 scope |
 | Completed implementation history | #273 tasks, progress, and Ralph memory | Preserve with supersession context |

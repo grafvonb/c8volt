@@ -30,7 +30,7 @@ Expected:
 
 ```bash
 rg -n 'Supported values|default|camunda_version' config/templates/config.example.yaml
-go test ./cmd -run 'TestConfigTemplate.*SupportedCamundaVersions' -count=1
+go test ./cmd -run '^TestConfigShowCommand_TemplatePreservesBlankTemplateOutput$' -count=1
 ```
 
 Expected:
@@ -87,6 +87,7 @@ rg -n '8\.10|810|v810|v8\.10|8\.10\.0-alpha4|default' \
   README.md \
   api/README.md \
   docs/index.md \
+  docs/cli/index.md \
   docs/cli/c8volt.md \
   docs/cli/c8volt_version.md \
   docs/cli/c8volt_config_test-connection.md \
@@ -107,7 +108,7 @@ Regenerate derived documentation through the repository workflow:
 make docs-content
 ```
 
-Review generated diffs and retain only source-driven changes. Do not hand-edit `docs/index.md` or `docs/cli/*`.
+Review generated diffs and retain only source-driven changes. Do not hand-edit `docs/index.md` or generated command pages under `docs/cli/`; `docs/cli/index.md` is the authored CLI landing page.
 
 ## 6. Verify Intentional Integration Scope
 

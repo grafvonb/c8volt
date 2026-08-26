@@ -90,6 +90,7 @@ cmd/
 
 README.md                                 # review authoritative operator contract; change only if drift exists
 docs/index.md                              # generated README mirror; do not hand-edit
+docs/cli/index.md                          # authored CLI support matrix; include V810
 docs/cli/c8volt.md                         # generated root contract; do not hand-edit
 docs/cli/c8volt_version.md                 # generated baseline disclosure; do not hand-edit
 docs/cli/c8volt_config_test-connection.md  # regenerate from authored help
@@ -105,7 +106,7 @@ docs/cli/c8volt_config_test-connection.md  # regenerate from authored help
 4. Refine #273 FR-006 and SC-002 to use the gateway result language already defined by its version-selection contract: same release line is a match; different release line is a diagnostic non-match; empty or unparseable output is an unverifiable diagnostic; neither creates a new hard-failure contract.
 5. Clarify the authored `config test-connection` help with the same gateway outcomes, update its nearby test, and regenerate its CLI reference through `make docs-content` rather than editing generated Markdown.
 6. Audit all active #273 fixture guidance against #275. Leave its C810 statements unchanged when correct, retain the existing supersession note, and do not rewrite historical checked tasks, progress, or Ralph memory that record the former C89 implementation.
-7. Review README, API guidance, and generated root/version documentation against the contract. Change source documentation only for a concrete mismatch and avoid unrelated generated churn.
+7. Review README, API guidance, the authored CLI landing-page support matrix, and generated root/version documentation against the contract. Change source documentation only for a concrete mismatch and avoid unrelated generated churn.
 8. Run focused default-routing and guidance checks from [quickstart.md](quickstart.md), verify production service implementations, generated clients, BPMN, and integration paths have no unintended diff, then complete `make test` and final diff review.
 
 ## Post-Design Constitution Check

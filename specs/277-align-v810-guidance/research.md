@@ -50,7 +50,7 @@
 
 ## Decision 7: Keep Generated Documentation Source-Driven
 
-**Decision**: Review README, API guidance, the generated documentation homepage, root CLI reference, version reference, and config test-connection reference against the V810 contract. Change authored sources only for concrete drift, then run `make docs-content` and retain only source-driven generated changes.
+**Decision**: Review README, API guidance, the authored CLI landing-page support matrix, the generated documentation homepage, root CLI reference, version reference, and config test-connection reference against the V810 contract. Change authored sources only for concrete drift, then run `make docs-content` and retain only source-driven generated changes.
 
 **Rationale**: README, API guidance, root CLI help, and version output must state the correct supported versions, aliases, prerelease baseline, and V89 default. Generated documentation must remain derived from README and command metadata.
 

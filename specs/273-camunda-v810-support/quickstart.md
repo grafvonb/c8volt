@@ -36,7 +36,7 @@ go test ./toolx ./config -run 'CamundaVersion|CurrentDefault|Capability|Fixture|
 go test ./cmd -run 'Version|RootHelp|SupportMessaging|ConfigTestConnectionCommand_VersionComparison|Embed|V810' -count=1
 ```
 
-Expected: four aliases select V810; source-tag aliases fail; default stays V88; gateway `8.10.0-alpha4` matches `8.10` while another/unparseable line does not; version output discloses baseline separately; V810 explicitly uses native C810 production fixture content while reporting `8.10`.
+Expected: four aliases select V810; source-tag aliases fail; missing configuration selects V89; gateway `8.10.0-alpha4` matches `8.10`, another line emits a mismatch diagnostic, and an empty/unparseable value emits an unverifiable diagnostic without a new mandatory failure; version output discloses baseline separately; V810 explicitly uses native C810 production fixture content while reporting `8.10`.
 
 ## 4. Validate All Eleven Service Boundaries
 
@@ -73,7 +73,7 @@ make docs-content
 go test ./docsgen ./cmd -run 'Docs|Version|Help' -count=1
 ```
 
-README, API guidance, root help, version output, docs homepage, and CLI references must consistently show canonical `8.10`, its aliases, V88 default, the `8.10.0-alpha4` prerelease baseline, and in-place update model.
+README, API guidance, root help, version output, docs homepage, and CLI references must consistently show canonical `8.10`, its aliases, V89 default, the `8.10.0-alpha4` prerelease baseline, and in-place update model.
 
 ## 7. Recheck Protected Boundaries
 

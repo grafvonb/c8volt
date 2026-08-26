@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-19
 
-**Status**: Draft
+**Status**: Complete
 
 **Input**: GitHub issue #277: "docs: align Camunda 8.10 guidance with #273 and #275"
 

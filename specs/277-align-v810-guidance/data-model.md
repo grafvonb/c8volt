@@ -73,5 +73,5 @@ This feature changes documentation state rather than runtime data. The model def
 | Integration profile and real-state matrices | integration-only | Preserve stable V87–V89 scope |
 | Configuration example template | active operator guidance | Add V810 and default disclosure |
 | Authored command help | active operator guidance | Complete the gateway diagnostic matrix |
-| README, API guide, and command metadata | active operator source | Verify against contract; edit only on concrete drift |
+| README, API guide, CLI landing page, and command metadata | active operator source | Verify against contract; edit only on concrete drift |
 | Generated docs homepage and CLI pages | generated derivative | Regenerate only through the established workflow |
