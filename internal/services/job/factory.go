@@ -10,6 +10,7 @@ import (
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/services"
+	v810 "github.com/grafvonb/c8volt/internal/services/job/v810"
 	v87 "github.com/grafvonb/c8volt/internal/services/job/v87"
 	v88 "github.com/grafvonb/c8volt/internal/services/job/v88"
 	v89 "github.com/grafvonb/c8volt/internal/services/job/v89"
@@ -26,6 +27,8 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (API, er
 		return v88.New(cfg, httpClient, log)
 	case toolx.V89:
 		return v89.New(cfg, httpClient, log)
+	case toolx.V810:
+		return v810.New(cfg, httpClient, log)
 	default:
 		return nil, fmt.Errorf("%w: %q (supported: %v)", services.ErrUnknownAPIVersion, v, toolx.ImplementedCamundaVersionsString())
 	}

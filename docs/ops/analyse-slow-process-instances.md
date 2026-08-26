@@ -62,4 +62,4 @@ This command does not submit mutations. It reads process instances, runtime elem
 - Select either explicit process-instance keys/stdin or one process-definition selector.
 - `--with-listeners` cannot be combined with `--keys-only`.
 - Duration thresholds use Go duration syntax such as `500ms`, `30s`, `5m`, `1h`, `1h30m`, or `24h`; calendar units such as `1d` are not accepted.
-- Camunda 8.8 and 8.9 support runtime element analysis; Camunda 8.7 returns an unsupported-version error.
+- Camunda 8.8 or newer supports runtime element analysis; Camunda 8.7 returns an unsupported-version error.

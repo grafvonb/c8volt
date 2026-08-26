@@ -240,7 +240,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		return d.ProcessInstancePage{}, fmt.Errorf("%w: process-instance date filters require Camunda 8.8", d.ErrUnsupported)
 	}
 	if len(filter.VariableFilters.Clauses) > 0 {
-		return d.ProcessInstancePage{}, fmt.Errorf("%w: process-instance variable search is unsupported in Camunda 8.7; requires Camunda 8.8 or 8.9", d.ErrUnsupported)
+		return d.ProcessInstancePage{}, fmt.Errorf("%w: process-instance variable search is unsupported in Camunda 8.7; requires Camunda 8.8 or newer", d.ErrUnsupported)
 	}
 	fetchSize := pickProcessInstanceSearchFetchSize(pageReq)
 	body, err := searchProcessInstancesRequest(s.cfg.App.Tenant, filter, fetchSize)

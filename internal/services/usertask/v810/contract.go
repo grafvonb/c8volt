@@ -1,0 +1,23 @@
+// SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package v810
+
+import (
+	"context"
+
+	camundav810 "github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
+)
+
+type API interface {
+	GetUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error)
+}
+
+type GenUserTaskClientCamunda interface {
+	GetUserTaskWithResponse(ctx context.Context, userTaskKey camundav810.UserTaskKey, reqEditors ...camundav810.RequestEditorFn) (*camundav810.GetUserTaskResponse, error)
+}
+
+var _ API = (*Service)(nil)
+var _ GenUserTaskClientCamunda = (*camundav810.ClientWithResponses)(nil)

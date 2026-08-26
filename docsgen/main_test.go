@@ -13,12 +13,15 @@ import (
 	"github.com/spf13/cobra/doc"
 )
 
+// TestFormatDocsBuildInfoRelease verifies generated docs disclose release provenance and Camunda support metadata.
 func TestFormatDocsBuildInfoRelease(t *testing.T) {
 	info := cmd.BuildInfo{
 		Version:                  "v2.1.0",
 		Commit:                   "abcdef123456",
 		Date:                     "2026-04-11T09:10:11Z",
-		SupportedCamundaVersions: "8.7, 8.8",
+		SupportedCamundaVersions: "8.7, 8.8, 8.9, 8.10",
+		Camunda810Baseline:       "8.10.0-alpha4",
+		Camunda810BaselineStatus: "prerelease",
 	}
 
 	got := formatDocsBuildInfo(info)
@@ -27,7 +30,8 @@ func TestFormatDocsBuildInfoRelease(t *testing.T) {
 		"Generated from release `v2.1.0`",
 		"commit `abcdef123456`",
 		"built `2026-04-11T09:10:11Z`",
-		"Supported Camunda 8 versions: 8.7, 8.8",
+		"Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10",
+		"Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("expected build info to contain %q, got %q", want, got)
@@ -35,12 +39,15 @@ func TestFormatDocsBuildInfoRelease(t *testing.T) {
 	}
 }
 
+// TestFormatDocsBuildInfoNonRelease verifies non-release docs still disclose compatibility metadata.
 func TestFormatDocsBuildInfoNonRelease(t *testing.T) {
 	info := cmd.BuildInfo{
 		Version:                  "v2.1.0-8-gabcdef123456-dirty",
 		Commit:                   "abcdef123456",
 		Date:                     "2026-04-11T09:10:11Z",
-		SupportedCamundaVersions: "8.7, 8.8",
+		SupportedCamundaVersions: "8.7, 8.8, 8.9, 8.10",
+		Camunda810Baseline:       "8.10.0-alpha4",
+		Camunda810BaselineStatus: "prerelease",
 	}
 
 	got := formatDocsBuildInfo(info)
@@ -49,7 +56,8 @@ func TestFormatDocsBuildInfoNonRelease(t *testing.T) {
 		"Generated from build `c8volt v2.1.0-8-gabcdef123456-dirty`",
 		"commit `abcdef123456`",
 		"built `2026-04-11T09:10:11Z`",
-		"Supported Camunda 8 versions: 8.7, 8.8",
+		"Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10",
+		"Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("expected build info to contain %q, got %q", want, got)
@@ -970,7 +978,7 @@ func TestGeneratedGetProcessInstanceDocsDocumentVariableSearch(t *testing.T) {
 
 	piDoc := readGeneratedDocForTest(t, out, "c8volt_get_process-instance.md")
 	for _, want := range []string{
-		"Use variable-search flags to narrow list/search results natively on Camunda 8.8 and 8.9",
+		"Use variable-search flags to narrow list/search results natively on Camunda 8.8 or newer",
 		"--var accepts name=value equality shorthand plus advanced name.$operator=value clauses",
 		"--var-like uses native wildcard patterns",
 		"Variable scopeKey means the scope where the variable is directly defined.",

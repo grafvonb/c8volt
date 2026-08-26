@@ -247,12 +247,17 @@ func docsLinkName(name string) string {
 	return strings.TrimSuffix(lower, filepath.Ext(lower))
 }
 
+// formatDocsBuildInfo renders release/build provenance plus compatibility disclosure for generated docs.
 func formatDocsBuildInfo(info cmd.BuildInfo) string {
+	baseline := ""
+	if info.Camunda810Baseline != "" && info.Camunda810BaselineStatus != "" {
+		baseline = fmt.Sprintf(" | Camunda 8.10 baseline: %s (%s)", info.Camunda810Baseline, info.Camunda810BaselineStatus)
+	}
 	if isTaggedReleaseVersion(info.Version) {
-		return fmt.Sprintf("> Generated from release `%s`, commit `%s`, built `%s` | Supported Camunda 8 versions: %s\n\n", info.Version, info.Commit, info.Date, info.SupportedCamundaVersions)
+		return fmt.Sprintf("> Generated from release `%s`, commit `%s`, built `%s` | Supported Camunda 8 versions: %s%s\n\n", info.Version, info.Commit, info.Date, info.SupportedCamundaVersions, baseline)
 	}
 
-	return fmt.Sprintf("> Generated from build `c8volt %s`, commit `%s`, built `%s` | Supported Camunda 8 versions: %s\n\n", info.Version, info.Commit, info.Date, info.SupportedCamundaVersions)
+	return fmt.Sprintf("> Generated from build `c8volt %s`, commit `%s`, built `%s` | Supported Camunda 8 versions: %s%s\n\n", info.Version, info.Commit, info.Date, info.SupportedCamundaVersions, baseline)
 }
 
 func isTaggedReleaseVersion(version string) bool {

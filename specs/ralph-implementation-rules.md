@@ -37,9 +37,9 @@ Use this map before searching from scratch.
 | Public facade errors | `c8volt/ferrors/errors.go` | Converts domain/service/local errors into CLI classes and exit-code behavior. |
 | Internal domain model | `internal/domain/*.go` | Shared internal domain types, sentinels, filters, pages, and sorting helpers. |
 | Internal service interfaces | `internal/services/<area>/api.go` | Version-neutral service contracts. Facades should depend on these interfaces. |
-| Internal service factories | `internal/services/<area>/factory.go` | Select v87, v88, or v89 implementations from `config.App.CamundaVersion`. |
-| Versioned Camunda service implementations | `internal/services/<area>/v87`, `v88`, `v89` | Generated-client adapters and version-specific compatibility behavior. |
-| Generated Camunda clients | `internal/clients/camunda/v87`, `v88`, `v89` | Generated code. Do not hand-edit unless explicitly required; prefer API regeneration flow. |
+| Internal service factories | `internal/services/<area>/factory.go` | Select v87, v88, v89, or v810 implementations from `config.App.CamundaVersion`. |
+| Versioned Camunda service implementations | `internal/services/<area>/v87`, `v88`, `v89`, `v810` | Generated-client adapters and version-specific compatibility behavior. |
+| Generated Camunda clients | `internal/clients/camunda/v87`, `v88`, `v89`, `v810` | Generated code. Do not hand-edit unless explicitly required; prefer API regeneration flow. |
 | Generated auth clients | `internal/clients/auth/oauth2` | Generated OAuth client code. |
 | HTTP service, auth transport, request logging | `internal/services/httpc`, `internal/services/auth` | Root command installs these services into context. |
 | Shared service helpers | `internal/services/common` | Payload validation, tenant handling, filter helpers, deployment helpers, defaults, and common service dependency preparation. |
@@ -49,7 +49,7 @@ Use this map before searching from scratch.
 | Generated docs | `docs/cli/*`, `docs/index.md` | Generated through `make docs-content`. Do not hand-edit generated CLI docs when command metadata changed. |
 | Docs generator | `docsgen/main.go` | Uses Cobra command tree to regenerate CLI markdown. |
 | API client generation | `api/*`, `api/mutations/*` | Fetch, mutate, and regenerate OpenAPI clients. See `api/README.md`. |
-| Embedded BPMN fixtures | `embedded/processdefinitions/*` | Version-prefixed fixtures use `C87_`, `C88_`, and `C89_`. |
+| Embedded BPMN fixtures | `embedded/processdefinitions/*` | Version-prefixed fixtures use `C87_`, `C88_`, `C89_`, and `C810_`. |
 | Feature artifacts | `specs/<feature>/` | Speckit specs, plans, tasks, progress, research, data-models, and quickstarts. |
 
 ## Layering Rules
@@ -81,10 +81,10 @@ Follow the existing direction of dependencies.
 
 4. `internal/services/<area>` is the version-neutral service contract layer.
    - Owns interfaces consumed by facades and factories.
-   - Factories select versioned implementations using `toolx.V87`, `toolx.V88`, and `toolx.V89`.
+   - Factories select versioned implementations using `toolx.V87`, `toolx.V88`, `toolx.V89`, and `toolx.V810`.
    - Shared service-level helpers belong in `internal/services/common` or the area package, not in `cmd`.
 
-5. `internal/services/<area>/v87`, `v88`, `v89` are generated-client adapter layers.
+5. `internal/services/<area>/v87`, `v88`, `v89`, `v810` are generated-client adapter layers.
    - Own Camunda version-specific request bodies, generated type conversions, endpoint differences, and compatibility workarounds.
    - Use generated client methods such as `...WithResponse`.
    - Convert generated types into `internal/domain` values before returning.
@@ -114,7 +114,7 @@ Follow the existing direction of dependencies.
 - New CLI output row or JSON view: add or extend `cmd/cmd_views_<area>.go`.
 - New command contract metadata: update command init code and tests in `cmd/command_contract_test.go`.
 - New public operation: add to `c8volt/<area>/api.go`, implement in `c8volt/<area>/client.go`, convert in `c8volt/<area>/convert.go`, and test in `c8volt/<area>/client_test.go`.
-- New internal service capability: add to `internal/services/<area>/api.go`, implement in each supported `v87`, `v88`, and `v89` package or return an explicit unsupported domain error for unsupported versions.
+- New internal service capability: add to `internal/services/<area>/api.go`, implement in each supported `v87`, `v88`, `v89`, and `v810` package or return an explicit unsupported domain error for unsupported versions.
 - New generated-client mapping: put generated-to-domain conversion in the versioned service's `convert.go`.
 - New shared service helper: use `internal/services/common` only when at least two service areas or versions need it.
 - New public helper: use `toolx` only when it is general, production-safe, and not tied to one feature.
@@ -128,7 +128,7 @@ Before implementing a work unit, classify the change and apply the matching owne
 - CLI-only changes may stay in `cmd` only when they are limited to flags, validation, command metadata, help text, render-mode selection, prompts, progress output, or final rendering.
 - Public API changes belong in `c8volt/<area>` only as model/interface additions, conversion, error normalization, and delegation to internal services.
 - Backend behavior belongs in `internal/services/<area>` when it performs remote traversal, query strategy selection, compatibility filtering, enrichment, dependency expansion, mutation planning, worker scheduling, retries, waits, polling, total computation, or cross-resource coordination.
-- Version-specific API shape belongs in `internal/services/<area>/v87`, `v88`, or `v89`; do not hide version differences in commands or facades.
+- Version-specific API shape belongs in `internal/services/<area>/v87`, `v88`, `v89`, or `v810`; do not hide version differences in commands or facades.
 - Shared production helpers belong in `toolx` or `internal/services/common` only after at least two concrete call sites need the same behavior. Otherwise keep the helper in the owning service area.
 - If a work unit touches a command and adds more than flag translation, rendering, prompting, or progress logic, pause and ask whether a facade/service method is missing.
 - If a work unit touches a facade and adds loops, goroutines, retries, waits, polling, or multi-step backend behavior, move that behavior to an internal service before marking the task complete.
@@ -140,7 +140,7 @@ Search, list, discovery, and search-derived mutation workflows must keep backend
 
 - Commands must not implement page-until-done loops for backend resources. A command may call a facade method that accepts a page visitor so it can render, report progress, or prompt after each selected page, but the command must not own offset/cursor advancement, request page-size capping, result accumulation, total counting, local compatibility filtering, or user-limit trimming.
 - Public facades must not implement page-until-done loops either. Facades must map public request types and visitors to internal domain types, delegate to internal service traversal APIs, map results back, and convert errors.
-- Internal services own cross-page traversal. Add version-neutral traversal contracts in `internal/services/<area>/api.go` or narrowly named service files such as `internal/services/processinstance/search.go`, then implement version-specific single-page API calls in `v87`, `v88`, and `v89` as applicable.
+- Internal services own cross-page traversal. Add version-neutral traversal contracts in `internal/services/<area>/api.go` or narrowly named service files such as `internal/services/processinstance/search.go`, then implement version-specific single-page API calls in `v87`, `v88`, `v89`, and `v810` as applicable.
 - Use backend API paging capabilities for single-page fetches: pass the API's page request body, cursor, offset, limit, sort, and filter fields through the versioned adapter. The repository still owns multi-page orchestration because CLI behavior, local filters, command limits, progress, prompts, and compatibility fallbacks must be stable across API versions.
 - Prefer cursor continuation when the backend returns an end cursor. Fall back to offset advancement only when cursor metadata is unavailable. When local filters can remove every item from a page, advance by the raw backend page count, not the filtered count, so sparse matches do not loop forever or skip later backend pages.
 - Treat `--batch-size` as per-request page size. Treat `--limit` as a total user-selected cap across all pages unless command-family help explicitly documents a different frozen-scope meaning.
@@ -194,16 +194,16 @@ If three or more declarations share a mode prefix or serve one secondary lifecyc
 
 ## Camunda Version And API Rules
 
-- The repository supports Camunda 8.7, 8.8, and 8.9 through `toolx.V87`, `toolx.V88`, and `toolx.V89`.
-- The newest supported runtime path is 8.9. Prefer extending v8.9 first for new Camunda v2 API behavior.
-- `toolx.CurrentCamundaVersion` is currently `V88`; do not change the default runtime unless the feature explicitly asks for it.
+- The repository supports Camunda 8.7, 8.8, 8.9, and 8.10 through `toolx.V87`, `toolx.V88`, `toolx.V89`, and `toolx.V810`.
+- The newest supported runtime path is 8.10. Prefer extending v8.10 first for new Camunda v2 API behavior while checking capability differences explicitly rather than assuming version ordering implies support.
+- `toolx.CurrentCamundaVersion` is currently `V89`; do not change the default runtime unless the feature explicitly asks for it.
 - Camunda v2 API is the preferred path for new behavior. The normalized Camunda base URL version is managed in `config/api.go` with `CamundaApiVersionConst = "v2"`.
 - Do not introduce Operate v1 or Tasklist v1 workarounds when a generated v2 Camunda client supports the operation.
 - Legacy component APIs still exist in config (`operate_api` and `tasklist_api`, both v1). Use them only when the existing service area already uses them or the feature explicitly requires that path.
 - Every service factory under `internal/services/<area>/factory.go` must keep explicit cases for supported versions and return `services.ErrUnknownAPIVersion` for unsupported versions.
 - When adding version-specific behavior:
-  - Check the v89 package first.
-  - Compare the v88 package for compatibility fallbacks.
+  - Check the v810 package first.
+  - Compare the v89 and v88 packages for compatibility differences and fallbacks.
   - Check v87 before assuming a method exists.
   - Add tests to the version package that owns the compatibility behavior.
 - Existing v8.8 incident search intentionally uses compatibility-oriented local filtering where richer request filters may be rejected by clusters. v8.9 uses richer server-side filters where available. Preserve this kind of version-specific behavior instead of flattening versions together.
@@ -393,7 +393,7 @@ These rules are mandatory for CLI and ops workflow work. They capture the comman
 - If backend metadata includes `ReportedTotal`, `HasMoreTotalItems`, `EndCursor`, or equivalent fields, normalize it into domain page metadata once in the service layer and test the exact/indeterminate/no-more cases there.
 - Service methods that accept call options must call `services.ApplyCallOptions` once at the owning layer and propagate relevant options to nested service calls. Do not silently drop `FailFast`, `NoWorkerLimit`, `NoWait`, tenant, dry-run, or suppression options.
 - Service-owned workflows must return enough structured result data for commands to render truthful summaries without rediscovering backend state.
-- If v87 lacks a v2 endpoint that v88/v89 have, return a clear unsupported domain error from v87. Do not fake success.
+- If v87 lacks a v2 endpoint that v88/v89/v810 have, return a clear unsupported domain error from v87. Do not fake success.
 - Avoid introducing new service interfaces until an existing area cannot own the operation.
 
 ## Domain And Conversion Rules

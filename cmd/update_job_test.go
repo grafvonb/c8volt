@@ -98,6 +98,37 @@ func TestUpdateJobCommand_MaterialInteractiveRetriesUpdateRequiresConfirmation(t
 	require.Contains(t, output, "updated job 2251799813711967: confirmed retries=3")
 }
 
+// TestUpdateJobCommand_V810PromptedRetriesUpdatePreservesConfirmationFlow verifies V810 job updates keep the command prompt and confirmation contract.
+func TestUpdateJobCommand_V810PromptedRetriesUpdatePreservesConfirmationFlow(t *testing.T) {
+	prevConfirm := confirmCmdOrAbortFn
+	var prompt string
+	confirmCmdOrAbortFn = func(autoConfirm bool, got string) error {
+		require.False(t, autoConfirm)
+		prompt = got
+		return nil
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	var requests []string
+	var patchBodies []map[string]any
+	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+		jobSearchResponse("2251799813711967", 1),
+		jobSearchResponse("2251799813711967", 3),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.10")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3")
+
+	require.Equal(t, "You are about to update job 2251799813711967. Do you want to proceed?", prompt)
+	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967", "POST /v2/jobs/search"}, requests)
+	require.Len(t, patchBodies, 1)
+	requirePatchRetries(t, patchBodies[0], float64(3))
+	require.Contains(t, output, "plan: update job 2251799813711967: retries: 1 -> 3")
+	require.Contains(t, output, "updated job 2251799813711967: confirmed retries=3")
+	require.NotContains(t, output, `"outcome"`)
+}
+
 // TestUpdateJobTimeoutSubmittedViewIncludesSubmittedTimeoutOnly verifies the update job command wiring behavior covered by this scenario.
 func TestUpdateJobTimeoutSubmittedViewIncludesSubmittedTimeoutOnly(t *testing.T) {
 	timeoutMillis := int64(300000)

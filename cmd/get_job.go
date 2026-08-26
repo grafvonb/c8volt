@@ -34,7 +34,7 @@ var getJobCmd = &cobra.Command{
 	Use:   "job",
 	Short: "Inspect or search jobs",
 	Long: "Inspect or search Camunda jobs.\n\n" +
-		"Use --key with the jobKey exposed by incident-aware process-instance output to inspect a matching runtime job directly. Search mode will use list filters such as --state, --type, --pi-key, --element-instance-key, --element-id, --worker, --retries, --kind, and --listener-event-type. Search mode pages through matching jobs by default. --batch-size controls each backend page request, --limit caps total returned jobs across all pages, and --total returns only the matching count. Verbose paging progress is written away from stdout; JSON, keys-only, quiet, and automation output remain free of prompts and progress text. Use --json for the stable job payload, or --error-message-limit to shorten long error messages. Job lookup and search are supported for Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error.",
+		"Use --key with the jobKey exposed by incident-aware process-instance output to inspect a matching runtime job directly. Search mode will use list filters such as --state, --type, --pi-key, --element-instance-key, --element-id, --worker, --retries, --kind, and --listener-event-type. Search mode pages through matching jobs by default. --batch-size controls each backend page request, --limit caps total returned jobs across all pages, and --total returns only the matching count. Verbose paging progress is written away from stdout; JSON, keys-only, quiet, and automation output remain free of prompts and progress text. Use --json for the stable job payload, or --error-message-limit to shorten long error messages. Job lookup and search are supported for Camunda 8.8 or newer; Camunda 8.7 returns an unsupported-version error.",
 	Example: `  ./c8volt get job --key <job-key>
   ./c8volt get job --state failed --batch-size 10 --limit 50
   ./c8volt get job --state failed --total
@@ -204,7 +204,7 @@ func effectiveGetJobLimit() int32 {
 	return 0
 }
 
-// validJobStates is the explicit Camunda v8.8/v8.9 job state allowlist for
+// validJobStates is the explicit Camunda v8.8-or-newer job state allowlist for
 // local search validation.
 var validJobStates = []string{
 	"CANCELED",
@@ -217,7 +217,7 @@ var validJobStates = []string{
 	"TIMED_OUT",
 }
 
-// validJobKinds is the explicit Camunda v8.8/v8.9 job kind allowlist for local
+// validJobKinds is the explicit Camunda v8.8-or-newer job kind allowlist for local
 // search validation.
 var validJobKinds = []string{
 	"AD_HOC_SUB_PROCESS",
@@ -226,7 +226,7 @@ var validJobKinds = []string{
 	"TASK_LISTENER",
 }
 
-// validJobListenerEventTypes is the explicit Camunda v8.8/v8.9 listener event
+// validJobListenerEventTypes is the explicit Camunda v8.8-or-newer listener event
 // allowlist for local search validation.
 var validJobListenerEventTypes = []string{
 	"ASSIGNING",

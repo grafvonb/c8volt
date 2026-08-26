@@ -8,6 +8,7 @@ import (
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	v810 "github.com/grafvonb/c8volt/internal/services/incident/v810"
 	v87 "github.com/grafvonb/c8volt/internal/services/incident/v87"
 	v88 "github.com/grafvonb/c8volt/internal/services/incident/v88"
 	v89 "github.com/grafvonb/c8volt/internal/services/incident/v89"
@@ -29,6 +30,8 @@ type API interface {
 var _ API = (*v87.Service)(nil)
 var _ API = (*v88.Service)(nil)
 var _ API = (*v89.Service)(nil)
+var _ API = (*v810.Service)(nil)
 var _ API = (v87.API)(nil)
 var _ API = (v88.API)(nil)
 var _ API = (v89.API)(nil)
+var _ API = (v810.API)(nil)

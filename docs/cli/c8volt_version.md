@@ -12,7 +12,7 @@ Print version information
 
 Print version information.
 
-Use --json for version metadata.
+Use --json for version metadata, including supported Camunda versions and the active Camunda 8.10 baseline.
 
 ```
 c8volt version [flags]

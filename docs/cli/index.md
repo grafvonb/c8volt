@@ -24,19 +24,19 @@ For the generated command hierarchy, use the [CLI Command Tree](./command-tree/)
 
 ## Version Support
 
-`c8volt` supports Camunda `8.7`, `8.8`, and `8.9`, but not every command is
+`c8volt` supports Camunda `8.7`, `8.8`, `8.9`, and `8.10`, but not every command is
 available on every upstream version.
 
-| Area | 8.9 | 8.8 | 8.7 |
-| --- | --- | --- | --- |
-| Cluster, config, tenant, process-definition, process-instance reads | supported | supported | supported |
-| Deploy and run process instances | supported | supported | supported |
-| Cancel and delete process instances | supported | supported | limited |
-| Process-instance variable update | supported | supported | unsupported |
-| `get job` and `update job` | supported | supported | unsupported |
-| Incident resolution and repair workflows | supported | supported | unsupported |
-| `delete process-definition` | supported | unsupported | unsupported |
-| `ops purge all-process-definitions` | supported | unsupported | unsupported |
+| Area | 8.10 | 8.9 | 8.8 | 8.7 |
+| --- | --- | --- | --- | --- |
+| Cluster, config, tenant, process-definition, process-instance reads | supported | supported | supported | supported |
+| Deploy and run process instances | supported | supported | supported | supported |
+| Cancel and delete process instances | supported | supported | supported | limited |
+| Process-instance variable update | supported | supported | supported | unsupported |
+| `get job` and `update job` | supported | supported | supported | unsupported |
+| Incident resolution and repair workflows | supported | supported | supported | unsupported |
+| `delete process-definition` | supported | supported | unsupported | unsupported |
+| `ops purge all-process-definitions` | supported | supported | unsupported | unsupported |
 
 Process-definition deletion requires Camunda `8.9` or newer because c8volt
 depends on the endpoint shape that supports full process-definition history

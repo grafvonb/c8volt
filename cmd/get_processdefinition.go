@@ -56,7 +56,7 @@ When ` + "`--bpmn-process-id`" + ` is set, c8volt validates that at least one vi
 process definition matches the selector before rendering output. A missing selector
 fails with the shared local diagnostic instead of rendering an ambiguous empty list.
 
-` + "`--stat`" + ` requires Camunda ` + "`8.8`" + ` or ` + "`8.9`" + ` and prints exact-version
+` + "`--stat`" + ` requires Camunda ` + "`8.8`" + ` or newer and prints exact-version
 counts. Camunda ` + "`8.7`" + ` does not support native statistics.`,
 	Example: `  ./c8volt get process-definition --latest
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest
@@ -161,7 +161,7 @@ func init() {
 	fs.BoolVar(&flagGetPDLatest, "latest", false, "fetch the latest version(s) of the given BPMN process(s)")
 	fs.Int32Var(&flagGetPDProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
-	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics; 8.8/8.9 include incident counts, 8.7 unsupported")
+	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics; 8.8 or newer includes incident counts, 8.7 unsupported")
 	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML (requires --key and no other filters)")
 	fs.Int32VarP(&flagGetPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process definitions to request per discovery page; does not cap total returned rows (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.BoolVar(&flagGetPDWatch, "watch", false, "repeat the process-definition lookup as a repainted terminal view until interrupted, timed out, or retry-exhausted")

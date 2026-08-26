@@ -165,6 +165,7 @@ func TestExecuteSmokeTestDryRunPlansReadOnlyWorkflow(t *testing.T) {
 	require.Equal(t, got.Deployment, got.Report.Deployment)
 }
 
+// TestExecuteSmokeTestSelectsVersionMatchedFixtures verifies each supported compatibility line resolves to its own smoke fixture.
 func TestExecuteSmokeTestSelectsVersionMatchedFixtures(t *testing.T) {
 	t.Parallel()
 
@@ -188,6 +189,11 @@ func TestExecuteSmokeTestSelectsVersionMatchedFixtures(t *testing.T) {
 			file:    "embedded/processdefinitions/C89_MultipleSubProcessesParent.bpmn",
 			process: "C89_MultipleSubProcessesParent",
 		},
+		{
+			version: toolx.V810,
+			file:    "embedded/processdefinitions/C810_MultipleSubProcessesParent.bpmn",
+			process: "C810_MultipleSubProcessesParent",
+		},
 	}
 
 	for _, tt := range tests {
@@ -205,11 +211,32 @@ func TestExecuteSmokeTestSelectsVersionMatchedFixtures(t *testing.T) {
 	}
 }
 
+// TestSmokeTestDeploymentUnitsUsesV810Closure verifies the native 8.10 parent fixture deploys with its C810 child definitions.
+func TestSmokeTestDeploymentUnitsUsesV810Closure(t *testing.T) {
+	t.Parallel()
+
+	fixture, err := smokeTestFixtureForVersion(toolx.V810)
+	require.NoError(t, err)
+
+	units, err := smokeTestDeploymentUnits(fixture)
+
+	require.NoError(t, err)
+	require.Len(t, units, 3)
+	require.Equal(t, "processdefinitions/C810_SimpleUserTask.bpmn", units[0].Name)
+	require.Equal(t, "processdefinitions/C810_SimpleParent.bpmn", units[1].Name)
+	require.Equal(t, "processdefinitions/C810_MultipleSubProcessesParent.bpmn", units[2].Name)
+	for _, unit := range units {
+		require.Equal(t, "application/xml", unit.ContentType)
+		require.Contains(t, string(unit.Data), "C810_")
+		require.NotContains(t, string(unit.Data), "C89_")
+	}
+}
+
 func TestExecuteSmokeTestMissingFixtureFailsBeforeMutation(t *testing.T) {
 	t.Parallel()
 
 	resource := &stubSmokeTestResourceAPI{}
-	got, err := NewWithWorkflowDependencies(nil, nil, nil, nil, resource, toolx.CamundaVersion("8.10")).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
+	got, err := NewWithWorkflowDependencies(nil, nil, nil, nil, resource, toolx.CamundaVersion("8.11")).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
 		CommandName: "ops execute smoke-test",
 		Count:       1,
 	})

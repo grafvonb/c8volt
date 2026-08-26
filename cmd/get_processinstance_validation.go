@@ -313,7 +313,7 @@ func validatePISearchVersionSupport(cfg *config.Config) error {
 	}
 	if hasPIVariableFilterFlags() && cfg.App.CamundaVersion == toolx.V87 {
 		return ferrors.WrapClass(ferrors.ErrUnsupported,
-			fmt.Errorf("process-instance variable search is unsupported in Camunda 8.7; requires Camunda 8.8 or 8.9"))
+			fmt.Errorf("process-instance variable search is unsupported in Camunda 8.7; requires Camunda 8.8 or newer"))
 	}
 	if flagGetPIOrphanChildrenOnly && cfg.App.CamundaVersion == toolx.V87 {
 		return ferrors.WrapClass(ferrors.ErrUnsupported,

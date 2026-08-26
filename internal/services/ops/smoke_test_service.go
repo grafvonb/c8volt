@@ -649,7 +649,11 @@ func smokeTestFixtureForVersion(version toolx.CamundaVersion) (d.EmbeddedSmokeTe
 	if err != nil {
 		return d.EmbeddedSmokeTestFixture{}, fmt.Errorf("%w: unsupported smoke-test fixture version %q", d.ErrPrecondition, version)
 	}
-	processID := normalized.FilePrefix() + "MultipleSubProcessesParent"
+	prefix, ok := toolx.ProductionFixturePrefix(normalized)
+	if !ok {
+		return d.EmbeddedSmokeTestFixture{}, fmt.Errorf("%w: unsupported smoke-test fixture version %q", d.ErrPrecondition, version)
+	}
+	processID := prefix + "MultipleSubProcessesParent"
 	fsPath := "processdefinitions/" + processID + ".bpmn"
 	if _, err := fs.Stat(embedded.FS, fsPath); err != nil {
 		return d.EmbeddedSmokeTestFixture{}, fmt.Errorf("%w: embedded smoke-test fixture not found: %s", d.ErrPrecondition, fsPath)

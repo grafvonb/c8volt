@@ -32,7 +32,7 @@ When `--bpmn-process-id` is set, c8volt validates that at least one visible
 process definition matches the selector before rendering output. A missing selector
 fails with the shared local diagnostic instead of rendering an ambiguous empty list.
 
-`--stat` requires Camunda `8.8` or `8.9` and prints exact-version
+`--stat` requires Camunda `8.8` or newer and prints exact-version
 counts. Camunda `8.7` does not support native statistics.
 
 ```
@@ -60,7 +60,7 @@ c8volt get process-definition [flags]
       --latest                    fetch the latest version(s) of the given BPMN process(s)
       --pd-version int32          process definition version
       --pd-version-tag string     process definition version tag
-      --stat                      include process definition statistics; 8.8/8.9 include incident counts, 8.7 unsupported
+      --stat                      include process definition statistics; 8.8 or newer includes incident counts, 8.7 unsupported
       --watch                     repeat the process-definition lookup as a repainted terminal view until interrupted, timed out, or retry-exhausted
       --watch-interval duration   interval between process-definition watch refreshes after the immediate first refresh (default 1s)
       --xml                       output the selected process definition as raw XML (requires --key and no other filters)

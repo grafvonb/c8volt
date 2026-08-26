@@ -19,6 +19,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -146,7 +147,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 	output = assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{
 		"Delete process definition resources from Camunda",
 		"checks delete impact without changing anything",
-		"requires Camunda 8.9 or newer",
+		"requires the full process-definition history deletion capability, currently Camunda 8.9 or newer",
 		"associated history",
 		"c8volt delete process-instance --bpmn-process-id <bpmn-process-id>",
 		"Use --dry-run to preview process-definition delete impact without submitting deletion or cancellation requests",
@@ -244,28 +245,82 @@ func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *test
 	require.Equal(t, true, body["deleteHistory"])
 }
 
-// TestDeleteProcessDefinitionCommand_V88RejectsBeforeMutation keeps process-definition deletion on the first fully supported Camunda version.
-func TestDeleteProcessDefinitionCommand_V88RejectsBeforeMutation(t *testing.T) {
-	var called bool
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
-		http.Error(w, "unexpected request", http.StatusInternalServerError)
-	}))
-	t.Cleanup(srv.Close)
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+// TestDeleteProcessDefinitionCommand_RejectsUnsupportedFullHistoryVersionsBeforeMutation keeps
+// unsupported process-definition history delete capability failures before any remote request.
+func TestDeleteProcessDefinitionCommand_RejectsUnsupportedFullHistoryVersionsBeforeMutation(t *testing.T) {
+	for _, version := range []toolx.CamundaVersion{toolx.V87, toolx.V88} {
+		t.Run(version.String(), func(t *testing.T) {
+			var called bool
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+				http.Error(w, "unexpected request", http.StatusInternalServerError)
+			}))
+			t.Cleanup(srv.Close)
+			cfgPath := writeTestConfigForVersion(t, srv.URL, version.String())
 
-	output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	}, "2251799813692357\n")
+			output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector", map[string]string{
+				"C8VOLT_TEST_CONFIG": cfgPath,
+			}, "2251799813692357\n")
 
-	require.Error(t, err)
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "process-definition deletion requires Camunda 8.9 or newer")
-	require.Contains(t, string(output), "c8volt delete process-instance --bpmn-process-id")
-	require.False(t, called)
+			require.Error(t, err)
+			exitErr, ok := err.(*exec.ExitError)
+			require.True(t, ok)
+			require.Equal(t, exitcode.Error, exitErr.ExitCode())
+			require.Contains(t, string(output), "unsupported capability")
+			require.Contains(t, string(output), "process-definition deletion requires the full process-definition history deletion capability, currently Camunda 8.9 or newer")
+			require.Contains(t, string(output), "c8volt delete process-instance --bpmn-process-id")
+			require.False(t, called)
+		})
+	}
+}
+
+// TestDeleteProcessDefinitionCommand_AcceptsFullHistoryCapabilityVersionsBeforeMutation
+// proves V89 and V810 pass the local capability gate and submit the expected history delete.
+func TestDeleteProcessDefinitionCommand_AcceptsFullHistoryCapabilityVersionsBeforeMutation(t *testing.T) {
+	for _, version := range []toolx.CamundaVersion{toolx.V89, toolx.V810} {
+		t.Run(version.String(), func(t *testing.T) {
+			var deleteBodies []string
+			var requests []string
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests = append(requests, r.Method+" "+r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/v2/batch-operations/search":
+					require.Equal(t, http.MethodPost, r.Method)
+					_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+				case "/v2/resources/2251799813692357/deletion":
+					require.Equal(t, http.MethodPost, r.Method)
+					body, err := io.ReadAll(r.Body)
+					require.NoError(t, err)
+					deleteBodies = append(deleteBodies, string(body))
+					_, _ = w.Write([]byte(`{"resourceKey":"2251799813692357","batchOperation":{"batchOperationKey":"batch-1","batchOperationType":"DELETE_PROCESS_DEFINITION"}}`))
+				case "/v2/batch-operations/batch-1":
+					require.Equal(t, http.MethodGet, r.Method)
+					_, _ = w.Write([]byte(`{"batchOperationKey":"batch-1","batchOperationType":"DELETE_PROCESS_DEFINITION","state":"COMPLETED"}`))
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			t.Cleanup(srv.Close)
+			cfgPath := writeTestConfigForVersion(t, srv.URL, version.String())
+
+			output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector", map[string]string{
+				"C8VOLT_TEST_CONFIG": cfgPath,
+			}, "2251799813692357\n")
+
+			require.NoError(t, err, string(output))
+			require.Contains(t, string(output), "pd delete done; requested 1, ok 1, failed 0")
+			require.NotContains(t, string(output), `"outcome"`)
+			require.Equal(t, []string{
+				"POST /v2/batch-operations/search",
+				"POST /v2/resources/2251799813692357/deletion",
+				"GET /v2/batch-operations/batch-1",
+				"GET /v2/process-definitions/2251799813692357",
+			}, requests)
+			body := decodeSingleRequestJSON(t, deleteBodies)
+			require.Equal(t, true, body["deleteHistory"])
+		})
+	}
 }
 
 // TestDeleteProcessDefinitionCommand_BatchReadCheckBlocksBeforeMutation verifies

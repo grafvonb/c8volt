@@ -21,14 +21,19 @@ type BuildInfo struct {
 	Commit                   string
 	Date                     string
 	SupportedCamundaVersions string
+	Camunda810Baseline       string
+	Camunda810BaselineStatus string
 }
 
 func CurrentBuildInfo() BuildInfo {
+	v810Baseline := toolx.V810Baseline()
 	return BuildInfo{
 		Version:                  version,
 		Commit:                   commit,
 		Date:                     date,
 		SupportedCamundaVersions: toolx.SupportedCamundaVersionsString(),
+		Camunda810Baseline:       v810Baseline.Tag,
+		Camunda810BaselineStatus: v810Baseline.Status,
 	}
 }
 
@@ -43,7 +48,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
 	Long: "Print version information.\n\n" +
-		"Use --json for version metadata.",
+		"Use --json for version metadata, including supported Camunda versions and the active Camunda 8.10 baseline.",
 	Example: `  ./c8volt version
   ./c8volt version --json`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -54,13 +59,15 @@ var versionCmd = &cobra.Command{
 				"commit":                   info.Commit,
 				"date":                     info.Date,
 				"supportedCamundaVersions": info.SupportedCamundaVersions,
+				"camunda810Baseline":       info.Camunda810Baseline,
+				"camunda810BaselineStatus": info.Camunda810BaselineStatus,
 			}
 			if err := renderJSONPayload(cmd, RenderModeJSON, out); err != nil {
 				handleCommandError(cmd, nil, flagNoErrCodes, err)
 			}
 			return
 		}
-		renderHumanLine(cmd, "c8volt %s (%s, %s) | https://c8volt.info\nSupported Camunda versions: %s\n(c) %d Adam Bogdan Boczek | https://boczek.info", info.Version, info.Commit, info.Date, info.SupportedCamundaVersions, buildYear())
+		renderHumanLine(cmd, "c8volt %s (%s, %s) | https://c8volt.info\nSupported Camunda versions: %s\nCamunda 8.10 baseline: %s (%s)\n(c) %d Adam Bogdan Boczek | https://boczek.info", info.Version, info.Commit, info.Date, info.SupportedCamundaVersions, info.Camunda810Baseline, info.Camunda810BaselineStatus, buildYear())
 	},
 }
 

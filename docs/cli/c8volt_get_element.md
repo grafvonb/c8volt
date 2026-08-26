@@ -22,7 +22,7 @@ Use --with-listeners to include runtime listener jobs under matching element row
 
 Use --json for the stable element payload and --keys-only when piping element instance keys.
 
-Element lookup and search require Camunda 8.8 or 8.9. Camunda 8.7 returns an unsupported-version error.
+Element lookup and search require Camunda 8.8 or newer. Camunda 8.7 returns an unsupported-version error.
 
 ```
 c8volt get element [flags]

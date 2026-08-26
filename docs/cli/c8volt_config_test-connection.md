@@ -13,9 +13,12 @@ Test configured Camunda connection
 Test configured Camunda connection.
 
 Loads the effective configuration and logs the config source. The command
-validates local configuration before retrieving cluster topology, then warns
-when the configured Camunda version differs from the gateway version by
-major/minor version.
+validates local configuration before retrieving cluster topology. Plain, patch,
+and prerelease values on the configured release line match without a warning.
+A different major/minor release line warns about a mismatch. Empty or
+unparseable gateway versions warn that compatibility cannot be verified. These
+compatibility diagnostics do not make an otherwise successful connection test
+fail.
 
 Use --json for a structured diagnostic payload on stdout; logs remain on stderr.
 

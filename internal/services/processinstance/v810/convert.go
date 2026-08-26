@@ -1,0 +1,264 @@
+// SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package v810
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"time"
+
+	camundav810 "github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/toolx"
+)
+
+func fromProcessInstanceResult(r camundav810.ProcessInstanceResult) d.ProcessInstance {
+	return d.ProcessInstance{
+		BpmnProcessId:            r.ProcessDefinitionId,
+		EndDate:                  formatTimePtr(r.EndDate),
+		Incident:                 r.HasIncident,
+		Key:                      r.ProcessInstanceKey,
+		ParentElementInstanceKey: valueOrEmpty(r.ParentElementInstanceKey),
+		ParentKey:                valueOrEmpty(r.ParentProcessInstanceKey),
+		ProcessDefinitionKey:     r.ProcessDefinitionKey,
+		RootProcessInstanceKey:   valueOrEmpty(r.RootProcessInstanceKey),
+		ProcessVersion:           r.ProcessDefinitionVersion,
+		ProcessVersionTag:        valueOrEmpty(r.ProcessDefinitionVersionTag),
+		StartDate:                formatTime(r.StartDate),
+		State:                    d.State(r.State),
+		TenantId:                 r.TenantId,
+	}
+}
+
+func formatTime(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.UTC().Format(time.RFC3339Nano)
+}
+
+func formatTimePtr(p *time.Time) string {
+	if p == nil {
+		return ""
+	}
+	return formatTime(*p)
+}
+
+func toProcessInstanceCreationInstruction(in d.ProcessInstanceData) (camundav810.ProcessInstanceCreationInstruction, error) {
+	var instr camundav810.ProcessInstanceCreationInstruction
+	switch {
+	case in.BpmnProcessId != "":
+		err := instr.FromProcessInstanceCreationInstructionById(
+			camundav810.ProcessInstanceCreationInstructionById{
+				ProcessDefinitionId:      in.BpmnProcessId,
+				ProcessDefinitionVersion: normalizeVersion(in.ProcessDefinitionVersion),
+				Variables:                toolx.PtrCopyMap(in.Variables),
+				TenantId:                 toolx.PtrIf(in.TenantId, ""),
+			},
+		)
+		return instr, err
+	case in.ProcessDefinitionSpecificId != "":
+		err := instr.FromProcessInstanceCreationInstructionByKey(
+			camundav810.ProcessInstanceCreationInstructionByKey{
+				ProcessDefinitionKey: in.ProcessDefinitionSpecificId,
+				Variables:            toolx.PtrCopyMap(in.Variables),
+				TenantId:             toolx.PtrIf(in.TenantId, ""),
+			},
+		)
+		return instr, err
+	default:
+		return instr, errors.New("provide ProcessDefinitionId or ProcessDefinitionKey")
+	}
+}
+
+func normalizeVersion(v int32) *int32 {
+	latest := int32(-1)
+	switch {
+	case v == -1:
+		return new(latest)
+	case v > 0:
+		return new(v)
+	default:
+		return new(latest)
+	}
+}
+
+func fromCreateProcessInstanceResult(r camundav810.CreateProcessInstanceResult) d.ProcessInstanceCreation {
+	return d.ProcessInstanceCreation{
+		Key:                      r.ProcessInstanceKey,
+		BpmnProcessId:            r.ProcessDefinitionId,
+		ProcessDefinitionKey:     r.ProcessDefinitionKey,
+		ProcessDefinitionVersion: r.ProcessDefinitionVersion,
+		TenantId:                 r.TenantId,
+		Variables:                toolx.CopyMap(r.Variables),
+		StartConfirmedAt:         "<not available>",
+	}
+}
+
+type processInstanceSearchQuery struct {
+	Filter *processInstanceFilter                               `json:"filter,omitempty"`
+	Page   *camundav810.SearchQueryPageRequest                  `json:"page,omitempty"`
+	Sort   *[]camundav810.ProcessInstanceSearchQuerySortRequest `json:"sort,omitempty"`
+}
+
+type processInstanceFilter struct {
+	TenantId                    *camundav810.StringFilterProperty               `json:"tenantId,omitempty"`
+	ProcessInstanceKey          *camundav810.ProcessInstanceKeyFilterProperty   `json:"processInstanceKey,omitempty"`
+	ProcessDefinitionId         *camundav810.StringFilterProperty               `json:"processDefinitionId,omitempty"`
+	ProcessDefinitionKey        *camundav810.ProcessDefinitionKeyFilterProperty `json:"processDefinitionKey,omitempty"`
+	ProcessDefinitionVersion    *camundav810.IntegerFilterProperty              `json:"processDefinitionVersion,omitempty"`
+	ProcessDefinitionVersionTag *camundav810.StringFilterProperty               `json:"processDefinitionVersionTag,omitempty"`
+	StartDate                   *camundav810.DateTimeFilterProperty             `json:"startDate,omitempty"`
+	EndDate                     *camundav810.DateTimeFilterProperty             `json:"endDate,omitempty"`
+	State                       *camundav810.ProcessInstanceStateFilterProperty `json:"state,omitempty"`
+	HasIncident                 *bool                                           `json:"hasIncident,omitempty"`
+	ParentProcessInstanceKey    *camundav810.ProcessInstanceKeyFilterProperty   `json:"parentProcessInstanceKey,omitempty"`
+	Variables                   *[]camundav810.VariableValueFilterProperty      `json:"variables,omitempty"`
+}
+
+func (f *processInstanceFilter) isEmpty() bool {
+	return f != nil &&
+		f.TenantId == nil &&
+		f.ProcessInstanceKey == nil &&
+		f.ProcessDefinitionId == nil &&
+		f.ProcessDefinitionKey == nil &&
+		f.ProcessDefinitionVersion == nil &&
+		f.ProcessDefinitionVersionTag == nil &&
+		f.StartDate == nil &&
+		f.EndDate == nil &&
+		f.State == nil &&
+		f.HasIncident == nil &&
+		f.ParentProcessInstanceKey == nil &&
+		f.Variables == nil
+}
+
+type processInstanceSearchQueryResult struct {
+	Items []camundav810.ProcessInstanceResult `json:"items"`
+	Page  camundav810.SearchQueryPageResponse `json:"page"`
+}
+
+func decodeSearchProcessInstancesResponse(body []byte, page *camundav810.ProcessInstanceSearchQueryResult) (processInstanceSearchQueryResult, error) {
+	if len(bytesTrimSpace(body)) == 0 {
+		return processInstanceSearchQueryResult{}, d.ErrMalformedResponse
+	}
+	var result processInstanceSearchQueryResult
+	if err := json.Unmarshal(body, &result); err != nil {
+		return processInstanceSearchQueryResult{}, err
+	}
+	result.Page = page.Page
+	return result, nil
+}
+
+// newStringEqFilterPtr builds a v8.10 string equality filter when a value is set.
+func newStringEqFilterPtr(v string) (*camundav810.StringFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	var f camundav810.StringFilterProperty
+	if err := f.FromStringFilterProperty0(v); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
+// newIntegerEqFilterPtr builds a v8.10 integer equality filter when a value is set.
+func newIntegerEqFilterPtr(v int32) (*camundav810.IntegerFilterProperty, error) {
+	if v == 0 {
+		return nil, nil
+	}
+	var f camundav810.IntegerFilterProperty
+	if err := f.FromIntegerFilterProperty0(v); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
+// newProcessInstanceKeyEqFilterPtr builds a v8.10 process-instance-key equality filter when a key is set.
+func newProcessInstanceKeyEqFilterPtr(v string) (*camundav810.ProcessInstanceKeyFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	var f camundav810.ProcessInstanceKeyFilterProperty
+	if err := f.FromProcessInstanceKeyFilterProperty0(v); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
+func newProcessDefinitionKeyEqFilterPtr(v string) (*camundav810.ProcessDefinitionKeyFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	var f camundav810.ProcessDefinitionKeyFilterProperty
+	if err := f.FromProcessDefinitionKeyFilterProperty0(v); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
+// newScopeKeyEqFilterPtr builds a v8.10 scope-key equality filter when a key is set.
+func newScopeKeyEqFilterPtr(v string) (*camundav810.ScopeKeyFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	var f camundav810.ScopeKeyFilterProperty
+	if err := f.FromScopeKeyFilterProperty0(v); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
+// newProcessInstanceKeyExistsFilterPtr builds a v8.10 process-instance-key existence filter when explicitly requested.
+func newProcessInstanceKeyExistsFilterPtr(exists *bool) (*camundav810.ProcessInstanceKeyFilterProperty, error) {
+	if exists == nil {
+		return nil, nil
+	}
+	var f camundav810.ProcessInstanceKeyFilterProperty
+	if err := f.FromAdvancedProcessInstanceKeyFilter(camundav810.AdvancedProcessInstanceKeyFilter{
+		Exists: exists,
+	}); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
+// newProcessInstanceStateEqFilterPtr builds a v8.10 process-instance-state equality filter when a state is set.
+func newProcessInstanceStateEqFilterPtr(v string) (*camundav810.ProcessInstanceStateFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	var f camundav810.ProcessInstanceStateFilterProperty
+	if err := f.FromProcessInstanceStateFilterProperty0(camundav810.ProcessInstanceStateEnum(v)); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
+// newDateTimeRangeFilterPtr builds a v8.10 datetime range or existence filter when any bound is set.
+func newDateTimeRangeFilterPtr(after, before *time.Time, exists *bool) (*camundav810.DateTimeFilterProperty, error) {
+	if after == nil && before == nil && exists == nil {
+		return nil, nil
+	}
+	var f camundav810.DateTimeFilterProperty
+	if err := f.FromAdvancedDateTimeFilter(camundav810.AdvancedDateTimeFilter{
+		Gte:    after,
+		Lte:    before,
+		Exists: exists,
+	}); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
+func valueOrEmpty[T ~string](v *T) T {
+	if v == nil {
+		return ""
+	}
+	return *v
+}
+
+func bytesTrimSpace(b []byte) []byte {
+	return bytes.TrimSpace(b)
+}

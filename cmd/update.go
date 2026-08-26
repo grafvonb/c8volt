@@ -11,7 +11,7 @@ var updateCmd = &cobra.Command{
 	Long: `Update existing resources.
 
 The process-instance command updates process-instance-scope variables on
-existing Camunda 8.8 and 8.9 process instances. The job command updates
+existing Camunda 8.8 or newer process instances. The job command updates
 job retries and timeout by key, with dry-run planning, confirmation prompts,
 and submitted output. Camunda 8.7 configurations return an
 unsupported-version error before these mutations.`,

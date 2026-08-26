@@ -34,6 +34,19 @@ func TestAppNormalize_DefaultsMissingCamundaVersionToCurrentVersion(t *testing.T
 	require.Equal(t, toolx.CurrentCamundaVersion, app.CamundaVersion)
 }
 
+// TestAppNormalize_DefaultCamundaVersionIsV89 verifies omitted configuration
+// selects the current stable runtime.
+func TestAppNormalize_DefaultCamundaVersionIsV89(t *testing.T) {
+	t.Parallel()
+
+	app := &App{}
+
+	err := app.Normalize()
+
+	require.NoError(t, err)
+	require.Equal(t, toolx.V89, app.CamundaVersion)
+}
+
 func TestAppNormalize_DefaultsTimezoneOffsetOutputToFalse(t *testing.T) {
 	t.Parallel()
 
@@ -88,6 +101,62 @@ func TestAppNormalize_DoesNotForceDefaultTenantForV89AuditOnlyConfig(t *testing.
 	require.NoError(t, err)
 	require.Equal(t, toolx.V89, app.CamundaVersion)
 	require.Empty(t, app.Tenant)
+}
+
+// TestAppNormalize_AcceptsV810Aliases verifies configuration normalization
+// routes all stable 8.10 aliases to the single canonical V810 identity.
+func TestAppNormalize_AcceptsV810Aliases(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input toolx.CamundaVersion
+	}{
+		{name: "canonical", input: "8.10"},
+		{name: "numeric", input: "810"},
+		{name: "compact with prefix", input: "v810"},
+		{name: "dotted with prefix", input: "v8.10"},
+		{name: "trim and case", input: " V8.10 "},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			app := &App{CamundaVersion: tt.input}
+
+			err := app.Normalize()
+
+			require.NoError(t, err)
+			require.Equal(t, toolx.V810, app.CamundaVersion)
+			require.Empty(t, app.Tenant)
+		})
+	}
+}
+
+// TestAppNormalize_RejectsV810SourceTags verifies Camunda source-release tags
+// stay out of the operator-facing version identity contract.
+func TestAppNormalize_RejectsV810SourceTags(t *testing.T) {
+	t.Parallel()
+
+	tests := []toolx.CamundaVersion{
+		"8.10-alpha4",
+		"8.10.0-alpha4",
+		"8.10.0",
+		"v8.10.0-alpha4",
+	}
+
+	for _, input := range tests {
+		t.Run(string(input), func(t *testing.T) {
+			t.Parallel()
+
+			app := &App{CamundaVersion: input}
+
+			err := app.Normalize()
+
+			require.ErrorContains(t, err, "version: unknown Camunda version")
+		})
+	}
 }
 
 func TestAppTargetTenant_DefaultsEmptyTenant(t *testing.T) {

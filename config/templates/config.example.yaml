@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 app:
-  # Supported values: 8.7, 8.8, 8.9
+  # Supported values: 8.7, 8.8, 8.9 (default), 8.10
   # Keep this aligned with the cluster gateway version reported by
   # `c8volt config test-connection`.
   camunda_version: "8.9"

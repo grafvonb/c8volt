@@ -10,6 +10,7 @@ import (
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/services"
+	v810 "github.com/grafvonb/c8volt/internal/services/cluster/v810"
 	v87 "github.com/grafvonb/c8volt/internal/services/cluster/v87"
 	v88 "github.com/grafvonb/c8volt/internal/services/cluster/v88"
 	v89 "github.com/grafvonb/c8volt/internal/services/cluster/v89"
@@ -28,8 +29,12 @@ var constructors = map[toolx.CamundaVersion]constructor{
 	toolx.V89: func(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (API, error) {
 		return v89.New(cfg, httpClient, log)
 	},
+	toolx.V810: func(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (API, error) {
+		return v810.New(cfg, httpClient, log)
+	},
 }
 
+// New creates a cluster service for the configured Camunda API version.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (API, error) {
 	v := cfg.App.CamundaVersion
 	build, ok := constructors[v]

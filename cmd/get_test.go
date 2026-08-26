@@ -171,8 +171,8 @@ func TestGetClusterCommand_MachineModeSuppressesFallbackActivity(t *testing.T) {
 func TestRootHelp_V89SupportMessaging(t *testing.T) {
 	output := executeRootForTest(t, "--help")
 
-	require.Contains(t, output, "Camunda 8.7, 8.8, and 8.9")
-	require.Contains(t, output, "Camunda 8.7, 8.8, and 8.9")
+	require.Contains(t, output, "Camunda 8.7, 8.8, 8.9, and 8.10")
+	require.Contains(t, output, "Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)")
 	require.Contains(t, output, "capabilities")
 	require.NotContains(t, output, "version 8.9 is recognized by config normalization")
 	require.NotContains(t, output, "does not yet have a process-instance service implementation")
@@ -314,7 +314,7 @@ func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 	require.Contains(t, output, "List or fetch deployed process definitions")
 	require.Contains(t, output, "Inspect deployed BPMN models")
 	require.Contains(t, output, "Use `--xml` only with `--key`")
-	require.Contains(t, output, "`--stat` requires Camunda `8.8` or `8.9`")
+	require.Contains(t, output, "`--stat` requires Camunda `8.8` or newer")
 	require.Contains(t, output, "prints exact-version")
 	require.Contains(t, output, "Camunda `8.7` does not support")
 	require.Contains(t, output, "Tenant contract:")
@@ -1318,6 +1318,78 @@ func TestGetResourceCommand_KeysOnlyOutput(t *testing.T) {
 	output := executeRootForTest(t, "--config", cfgPath, "--keys-only", "get", "resource", "--id", "resource-id-123")
 
 	require.Equal(t, "resource-id-123\n", output)
+}
+
+// Verifies V810 resource lookup keeps the established human, JSON, and keys-only render contracts.
+func TestGetResourceCommand_V810PreservesReadOutputModes(t *testing.T) {
+	tests := []struct {
+		name   string
+		args   []string
+		assert func(*testing.T, string)
+	}{
+		{
+			name: "human",
+			args: []string{"get", "resource", "--id", "resource-id-v810"},
+			assert: func(t *testing.T, output string) {
+				t.Helper()
+				require.Contains(t, output, "resource-id-v810")
+				require.Contains(t, output, "k:resource-key-v810")
+				require.Contains(t, output, "tenant-v810")
+				require.Contains(t, output, "order-v810.bpmn")
+				require.NotContains(t, output, `"outcome"`)
+			},
+		},
+		{
+			name: "json",
+			args: []string{"--json", "get", "resource", "--id", "resource-id-v810"},
+			assert: func(t *testing.T, output string) {
+				t.Helper()
+				var got map[string]any
+				require.NoError(t, json.Unmarshal([]byte(output), &got))
+				require.Equal(t, string(OutcomeSucceeded), got["outcome"])
+				require.Equal(t, "get resource", got["command"])
+				payload := requireJSONObject(t, got["payload"])
+				require.Equal(t, "resource-id-v810", payload["id"])
+				require.Equal(t, "resource-key-v810", payload["key"])
+				require.Equal(t, "tenant-v810", payload["tenantId"])
+			},
+		},
+		{
+			name: "keys-only",
+			args: []string{"--keys-only", "get", "resource", "--id", "resource-id-v810"},
+			assert: func(t *testing.T, output string) {
+				t.Helper()
+				require.Equal(t, "resource-id-v810\n", output)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests = append(requests, r.Method+" "+r.URL.Path)
+				require.Equal(t, http.MethodGet, r.Method)
+				require.Equal(t, "/v2/resources/resource-id-v810", r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{
+  "resourceId": "resource-id-v810",
+  "resourceKey": "resource-key-v810",
+  "resourceName": "order-v810.bpmn",
+  "tenantId": "tenant-v810",
+  "version": 8,
+  "versionTag": "alpha4"
+}`))
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.10")
+			output := executeRootForTest(t, append([]string{"--config", cfgPath}, tt.args...)...)
+
+			require.Equal(t, []string{"GET /v2/resources/resource-id-v810"}, requests)
+			tt.assert(t, output)
+		})
+	}
 }
 
 // Verifies resource lookup HTTP failures map to not-found exit behavior.
