@@ -107,3 +107,20 @@ Started: 2026-08-26 21:53:00
 **Learnings**:
 - Ordinary process-definition searches in all three affected adapters now have explicit serialized offset/filter/sort regressions; facade and command selector compatibility tests pass, with no protected generated-client or documentation diff.
 ---
+---
+## Iteration 7 - 2026-08-26 22:26
+**Work Unit**: Polish & Cross-Cutting Validation
+**Tasks Completed**:
+- [x] T018: Run `gofmt` on touched files under `internal/services/processdefinition/v88/`, `internal/services/processdefinition/v89/`, `internal/services/processdefinition/v810/`, and `internal/services/processdefinition/search_test.go`
+- [x] T019: Run focused tests for `internal/services/processdefinition/...`, `c8volt/process`, and `cmd`, including the process-definition and run-selector patterns from `specs/279-omit-empty-cursor/quickstart.md`
+- [x] T020: Run the required race-enabled `make test` repository gate from `Makefile`
+- [x] T021: Run `git diff --check` and verify protected generated-client and documentation boundaries for `internal/clients/camunda/`, `README.md`, and `docs/cli/`
+**Tasks Remaining in Work Unit**: None; all tasks in `specs/279-omit-empty-cursor/tasks.md` are complete
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/279-omit-empty-cursor/tasks.md
+- specs/279-omit-empty-cursor/ralph-memory.md
+- specs/279-omit-empty-cursor/progress.md
+**Learnings**:
+- Final validation passed with no source formatting diff and no generated-client, README, or CLI documentation boundary diff.
+---

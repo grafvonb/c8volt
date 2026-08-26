@@ -10,6 +10,7 @@ Started: 2026-08-26T19:53:00Z
 - v8.8 adapter tests can inspect serialized page keys by marshaling the generated `SearchQueryPageRequest`; v8.9/v8.10 tests inspect raw request JSON because those services send body readers.
 - Latest traversal wire tests are `TestService_SearchProcessDefinitionsLatestPagesUseCursorOnlyAfterFirstPage` in v8.8, v8.9, and v8.10; they assert a limit-only first page, exact non-empty cursor continuation, and no third request after an empty final cursor.
 - Ordinary offset wire regressions are `TestService_SearchProcessDefinitionsOrdinaryUsesOffsetPage` in v8.8, v8.9, and v8.10; they assert explicit `from: 0`, `limit: 25`, absent `after`, retained BPMN ID/version/versionTag/tenant filters, absent `isLatestVersion`, and ordinary `version DESC`, `name ASC` sort.
+- Final polish validation for this feature passed: targeted gofmt produced no source diff, focused process-definition/facade/command regressions passed, `make test` passed with `go test ./... -race -count=1`, `git diff --check` passed, and protected generated-client/README/docs diff was empty.
 
 ## Decisions
 - v8.9 process-definition paging now branches in adapter code: non-empty `After` uses `CursorForwardPagination`, initial latest uses generated `LimitPagination`, and ordinary searches keep `OffsetPagination`.
@@ -27,6 +28,10 @@ Started: 2026-08-26T19:53:00Z
 - `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/processdefinition/v88 ./internal/services/processdefinition/v89 ./internal/services/processdefinition/v810 -run TestService_SearchProcessDefinitionsOrdinaryUsesOffsetPage -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/processdefinition/... -count=1`
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'ProcessDefinition|RunProcessInstance|Selector' -count=1`
+- `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process ./cmd -run 'ProcessDefinition|RunProcessInstance|Selector' -count=1`
+- `make test`
+- `git diff --check`
+- `git diff -- internal/clients/camunda README.md docs/cli`
 - `GOCACHE=/tmp/c8volt-gocache go build -o /tmp/c8volt-279 .`
 - `/tmp/c8volt-279 --config /tmp/c8volt-279-c8run.yaml --json config test-connection`
 - `/tmp/c8volt-279 --config /tmp/c8volt-279-c8run.yaml get cluster version`
@@ -36,4 +41,4 @@ Started: 2026-08-26T19:53:00Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should start Polish with T018: run `gofmt` on touched process-definition files, then continue the focused and repository-wide validation gates T019-T021.
+- Feature complete; no handoff required.

@@ -106,10 +106,10 @@ description: "Implementation tasks for omitting empty initial process-definition
 
 **Purpose**: Format the finished change and run the required focused, repository-wide, and boundary gates.
 
-- [ ] T018 Run `gofmt` on touched files under `internal/services/processdefinition/v88/`, `internal/services/processdefinition/v89/`, `internal/services/processdefinition/v810/`, and `internal/services/processdefinition/search_test.go`
-- [ ] T019 Run focused tests for `internal/services/processdefinition/...`, `c8volt/process`, and `cmd`, including the process-definition and run-selector patterns from `specs/279-omit-empty-cursor/quickstart.md`
-- [ ] T020 Run the required race-enabled `make test` repository gate from `Makefile`
-- [ ] T021 Run `git diff --check` and verify protected generated-client and documentation boundaries for `internal/clients/camunda/`, `README.md`, and `docs/cli/`
+- [x] T018 Run `gofmt` on touched files under `internal/services/processdefinition/v88/`, `internal/services/processdefinition/v89/`, `internal/services/processdefinition/v810/`, and `internal/services/processdefinition/search_test.go`
+- [x] T019 Run focused tests for `internal/services/processdefinition/...`, `c8volt/process`, and `cmd`, including the process-definition and run-selector patterns from `specs/279-omit-empty-cursor/quickstart.md`
+- [x] T020 Run the required race-enabled `make test` repository gate from `Makefile`
+- [x] T021 Run `git diff --check` and verify protected generated-client and documentation boundaries for `internal/clients/camunda/`, `README.md`, and `docs/cli/`
 
 ---
 
