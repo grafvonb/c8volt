@@ -23,7 +23,7 @@ description: "Implementation tasks for omitting empty initial process-definition
 
 **Purpose**: Establish the pre-change behavior and keep the implementation inside the approved adapter boundary.
 
-- [ ] T001 Run the existing latest-search tests and confirm the empty-`after` expectations in `internal/services/processdefinition/v88/service_test.go`, `internal/services/processdefinition/v89/service_test.go`, and `internal/services/processdefinition/v810/service_test.go` before editing production code
+- [x] T001 Run the existing latest-search tests and confirm the empty-`after` expectations in `internal/services/processdefinition/v88/service_test.go`, `internal/services/processdefinition/v89/service_test.go`, and `internal/services/processdefinition/v810/service_test.go` before editing production code
 
 ---
 
