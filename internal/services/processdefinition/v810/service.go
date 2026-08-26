@@ -422,13 +422,19 @@ func pickProcessDefinitionOverflowState(page camundav810.SearchQueryPageResponse
 	return d.ProcessInstanceOverflowStateNoMore
 }
 
-// newProcessDefinitionSearchPageRequest builds the v8.10 page request, using cursor pagination when requested.
+// newProcessDefinitionSearchPageRequest builds the v8.10 page request for latest cursor, initial latest, or ordinary offset paging.
 func newProcessDefinitionSearchPageRequest(pageReq d.ProcessDefinitionPageRequest, preferCursor bool) camundav810.SearchQueryPageRequest {
 	page := camundav810.SearchQueryPageRequest{}
-	if preferCursor || pageReq.After != "" {
+	if pageReq.After != "" {
 		after := camundav810.EndCursor(pageReq.After)
 		_ = page.FromCursorForwardPagination(camundav810.CursorForwardPagination{
 			After: &after,
+			Limit: &pageReq.Size,
+		})
+		return page
+	}
+	if preferCursor {
+		_ = page.FromLimitPagination(camundav810.LimitPagination{
 			Limit: &pageReq.Size,
 		})
 		return page

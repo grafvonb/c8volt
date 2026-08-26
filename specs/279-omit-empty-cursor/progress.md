@@ -62,3 +62,27 @@ Started: 2026-08-26 21:53:00
 **Learnings**:
 - Disposable C8 Run 8.9.17 with default H2/RDBMS passed the BPMN-ID start workflow on port `18089`; `c89local` was reachable but rejected for this proof because it reported gateway `8.10.0-alpha4`.
 ---
+---
+## Iteration 5 - 2026-08-26 22:15
+**Work Unit**: User Story 2 cross-version latest page contract
+**Tasks Completed**:
+- [x] T007: Add failing initial-latest plus continuation/final-page wire assertions for Camunda 8.8 in `internal/services/processdefinition/v88/service_test.go`, including a non-empty opaque cursor that must be preserved exactly
+- [x] T008: Add failing initial-latest plus continuation/final-page wire assertions for Camunda 8.10 in `internal/services/processdefinition/v810/service_test.go`, including a non-empty opaque cursor that must be preserved exactly
+- [x] T009: Extend `internal/services/processdefinition/v89/service_test.go` with continuation and final-page assertions that complement the initial-page MVP test and prove no cursor request follows an empty response cursor
+- [x] T010: After T007 fails, implement the cursor/limit-only/offset branches with generated v8.8 pagination variants in `internal/services/processdefinition/v88/service.go`
+- [x] T011: After T008 fails, implement the cursor/limit-only/offset branches with generated v8.10 pagination variants in `internal/services/processdefinition/v810/service.go`
+- [x] T012: Run all adapter and shared traversal tests under `internal/services/processdefinition/...` and confirm v8.8, v8.9, and v8.10 satisfy `specs/279-omit-empty-cursor/contracts/latest-process-definition-search.md`
+**Tasks Remaining in Work Unit**: None for User Story 2; next incomplete task is T013 in User Story 3
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/v88/service.go
+- internal/services/processdefinition/v88/service_test.go
+- internal/services/processdefinition/v89/service_test.go
+- internal/services/processdefinition/v810/service.go
+- internal/services/processdefinition/v810/service_test.go
+- specs/279-omit-empty-cursor/tasks.md
+- specs/279-omit-empty-cursor/ralph-memory.md
+- specs/279-omit-empty-cursor/progress.md
+**Learnings**:
+- v8.8, v8.9, and v8.10 now share the same latest-page state machine; focused latest/page tests and `go test ./internal/services/processdefinition/...` pass with exact serialized field assertions.
+---

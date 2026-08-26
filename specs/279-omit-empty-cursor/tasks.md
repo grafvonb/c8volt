@@ -67,15 +67,15 @@ description: "Implementation tasks for omitting empty initial process-definition
 
 ### Tests for User Story 2
 
-- [ ] T007 [P] [US2] Add failing initial-latest plus continuation/final-page wire assertions for Camunda 8.8 in `internal/services/processdefinition/v88/service_test.go`, including a non-empty opaque cursor that must be preserved exactly
-- [ ] T008 [P] [US2] Add failing initial-latest plus continuation/final-page wire assertions for Camunda 8.10 in `internal/services/processdefinition/v810/service_test.go`, including a non-empty opaque cursor that must be preserved exactly
-- [ ] T009 [P] [US2] Extend `internal/services/processdefinition/v89/service_test.go` with continuation and final-page assertions that complement the initial-page MVP test and prove no cursor request follows an empty response cursor
+- [x] T007 [P] [US2] Add failing initial-latest plus continuation/final-page wire assertions for Camunda 8.8 in `internal/services/processdefinition/v88/service_test.go`, including a non-empty opaque cursor that must be preserved exactly
+- [x] T008 [P] [US2] Add failing initial-latest plus continuation/final-page wire assertions for Camunda 8.10 in `internal/services/processdefinition/v810/service_test.go`, including a non-empty opaque cursor that must be preserved exactly
+- [x] T009 [P] [US2] Extend `internal/services/processdefinition/v89/service_test.go` with continuation and final-page assertions that complement the initial-page MVP test and prove no cursor request follows an empty response cursor
 
 ### Implementation for User Story 2
 
-- [ ] T010 [P] [US2] After T007 fails, implement the cursor/limit-only/offset branches with generated v8.8 pagination variants in `internal/services/processdefinition/v88/service.go`
-- [ ] T011 [P] [US2] After T008 fails, implement the cursor/limit-only/offset branches with generated v8.10 pagination variants in `internal/services/processdefinition/v810/service.go`
-- [ ] T012 [US2] Run all adapter and shared traversal tests under `internal/services/processdefinition/...` and confirm v8.8, v8.9, and v8.10 satisfy `specs/279-omit-empty-cursor/contracts/latest-process-definition-search.md`
+- [x] T010 [P] [US2] After T007 fails, implement the cursor/limit-only/offset branches with generated v8.8 pagination variants in `internal/services/processdefinition/v88/service.go`
+- [x] T011 [P] [US2] After T008 fails, implement the cursor/limit-only/offset branches with generated v8.10 pagination variants in `internal/services/processdefinition/v810/service.go`
+- [x] T012 [US2] Run all adapter and shared traversal tests under `internal/services/processdefinition/...` and confirm v8.8, v8.9, and v8.10 satisfy `specs/279-omit-empty-cursor/contracts/latest-process-definition-search.md`
 
 **Checkpoint**: All three supported adapters implement the same latest-page state machine and preserve non-empty cursors unchanged.
 

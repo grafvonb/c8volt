@@ -17,6 +17,7 @@ import (
 	camundav810 "github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda"
 	"github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	processdefinition "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	v810 "github.com/grafvonb/c8volt/internal/services/processdefinition/v810"
 	"github.com/grafvonb/c8volt/testx/activitysink"
 	activitylogging "github.com/grafvonb/c8volt/toolx/logging"
@@ -264,7 +265,7 @@ func TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator(t *testi
 	m.AssertExpectations(t)
 }
 
-// TestService_SearchProcessDefinitionsLatestForcesLatest verifies v8.10 latest search uses cursor pagination and restricted sort fields.
+// TestService_SearchProcessDefinitionsLatestForcesLatest verifies v8.10 latest search sends a limit-only initial page.
 func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 	ctx := context.Background()
 	m := &mockProcessDefinitionClient{}
@@ -281,11 +282,16 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 			require.NotNil(t, body.Filter.IsLatestVersion)
 			assert.True(t, *body.Filter.IsLatestVersion)
 			assert.Nil(t, body.Filter.TenantID)
-			assert.NotNil(t, body.Page.After)
-			assert.Equal(t, "", *body.Page.After)
+
+			pageFields := decodeProcessDefinitionSearchPageFields(t, args.String(2))
 			require.NotNil(t, body.Page.Limit)
 			assert.Equal(t, int32(1000), *body.Page.Limit)
+			assert.Contains(t, pageFields, "limit")
+			assert.NotContains(t, pageFields, "after")
+			assert.NotContains(t, pageFields, "from")
+			assert.Nil(t, body.Page.After)
 			assert.Nil(t, body.Page.From)
+
 			require.Len(t, body.Sort, 2)
 			assert.Equal(t, "processDefinitionId", body.Sort[0].Field)
 			assert.Equal(t, "tenantId", body.Sort[1].Field)
@@ -308,6 +314,67 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 	assert.Equal(t, int64(5), defs[0].Statistics.Canceled)
 	assert.Zero(t, defs[0].Statistics.Incidents)
 	assert.True(t, defs[0].Statistics.IncidentCountSupported)
+	m.AssertExpectations(t)
+}
+
+// TestService_SearchProcessDefinitionsLatestPagesUseCursorOnlyAfterFirstPage verifies v8.10 latest traversal preserves only non-empty cursors.
+func TestService_SearchProcessDefinitionsLatestPagesUseCursorOnlyAfterFirstPage(t *testing.T) {
+	ctx := context.Background()
+	m := &mockProcessDefinitionClient{}
+
+	firstResp := &camundav810.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
+		Body:         []byte(`{"items":[{"hasStartForm":false,"name":"name-proc-a","processDefinitionId":"proc-a","processDefinitionKey":"121","resourceName":"proc-a.bpmn","tenantId":"tenant","version":1,"versionTag":"tag"}],"page":{"endCursor":"opaque cursor:/=keep","hasMoreTotalItems":true,"totalItems":3}}`),
+		JSON200:      &camundav810.ProcessDefinitionSearchQueryResult{},
+	}
+	finalResp := &camundav810.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
+		Body:         []byte(`{"items":[{"hasStartForm":false,"name":"name-proc-b","processDefinitionId":"proc-b","processDefinitionKey":"122","resourceName":"proc-b.bpmn","tenantId":"tenant","version":1,"versionTag":"tag"}],"page":{"endCursor":"","hasMoreTotalItems":false,"totalItems":2}}`),
+		JSON200:      &camundav810.ProcessDefinitionSearchQueryResult{},
+	}
+
+	m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).
+		Run(func(args mock.Arguments) {
+			raw := args.String(2)
+			body := decodeProcessDefinitionSearchRequest(t, raw)
+			require.NotNil(t, body.Filter.IsLatestVersion)
+			assert.True(t, *body.Filter.IsLatestVersion)
+			require.NotNil(t, body.Page.Limit)
+			assert.Equal(t, int32(2), *body.Page.Limit)
+			pageFields := decodeProcessDefinitionSearchPageFields(t, raw)
+			assert.Contains(t, pageFields, "limit")
+			assert.NotContains(t, pageFields, "after")
+			assert.NotContains(t, pageFields, "from")
+		}).
+		Return(firstResp, nil).
+		Once()
+	m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).
+		Run(func(args mock.Arguments) {
+			raw := args.String(2)
+			body := decodeProcessDefinitionSearchRequest(t, raw)
+			require.NotNil(t, body.Page.After)
+			assert.Equal(t, "opaque cursor:/=keep", *body.Page.After)
+			require.NotNil(t, body.Page.Limit)
+			assert.Equal(t, int32(2), *body.Page.Limit)
+			assert.Nil(t, body.Page.From)
+			pageFields := decodeProcessDefinitionSearchPageFields(t, raw)
+			assert.Contains(t, pageFields, "after")
+			assert.Contains(t, pageFields, "limit")
+			assert.NotContains(t, pageFields, "from")
+		}).
+		Return(finalResp, nil).
+		Once()
+
+	svc, err := v810.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v810.WithClientCamunda(m))
+	require.NoError(t, err)
+	result, err := processdefinition.SearchProcessDefinitionsPages(ctx, svc, domain.ProcessDefinitionSearchRequest{
+		Filter: domain.ProcessDefinitionFilter{IsLatestVersion: true},
+		Page:   domain.ProcessDefinitionPageRequest{Size: 2},
+	}, nil)
+
+	require.NoError(t, err)
+	require.Len(t, result.Items, 2)
+	assert.Equal(t, int32(2), result.Pages)
 	m.AssertExpectations(t)
 }
 
@@ -882,6 +949,18 @@ func decodeProcessDefinitionSearchRequest(t *testing.T, raw string) processDefin
 	var body processDefinitionSearchRequest
 	require.NoError(t, json.Unmarshal([]byte(raw), &body))
 	return body
+}
+
+// decodeProcessDefinitionSearchPageFields preserves serialized page-field presence for wire-shape assertions.
+func decodeProcessDefinitionSearchPageFields(t *testing.T, raw string) map[string]json.RawMessage {
+	t.Helper()
+
+	var body struct {
+		Page map[string]json.RawMessage `json:"page"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(raw), &body))
+	require.NotNil(t, body.Page)
+	return body.Page
 }
 
 // newHTTPResponse builds a minimal HTTP response for v8.10 process-definition error handling tests.
