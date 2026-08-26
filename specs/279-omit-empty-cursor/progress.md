@@ -3,7 +3,6 @@
 Feature: 279-omit-empty-cursor
 Started: 2026-08-26 21:53:00
 
----
 ## Iteration 1 - 2026-08-26 21:56
 **Work Unit**: Shared baseline latest-search test confirmation
 **Tasks Completed**:
@@ -48,4 +47,18 @@ Started: 2026-08-26 21:53:00
 - specs/279-omit-empty-cursor/progress.md
 **Learnings**:
 - The v8.9 adapter has an existing generated `LimitPagination` union variant that serializes the initial latest page as limit-only; the local `kind-camunda-platform-local-c89` profile failed preflight auth before live T006 proof.
+---
+---
+## Iteration 4 - 2026-08-26 22:09
+**Work Unit**: User Story 1 live Camunda 8.9.17 H2 workflow proof
+**Tasks Completed**:
+- [x] T006: Execute the disposable Camunda 8 Run 8.9.17 H2 workflow from `specs/279-omit-empty-cursor/quickstart.md` and verify `/tmp/c8volt-279-process-instance-keys.txt` contains exactly ten keys with no latest-search server error
+**Tasks Remaining in Work Unit**: None for User Story 1; next incomplete task is T007 in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/279-omit-empty-cursor/tasks.md
+- specs/279-omit-empty-cursor/ralph-memory.md
+- specs/279-omit-empty-cursor/progress.md
+**Learnings**:
+- Disposable C8 Run 8.9.17 with default H2/RDBMS passed the BPMN-ID start workflow on port `18089`; `c89local` was reachable but rejected for this proof because it reported gateway `8.10.0-alpha4`.
 ---
