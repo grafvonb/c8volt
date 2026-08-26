@@ -86,3 +86,24 @@ Started: 2026-08-26 21:53:00
 **Learnings**:
 - v8.8, v8.9, and v8.10 now share the same latest-page state machine; focused latest/page tests and `go test ./internal/services/processdefinition/...` pass with exact serialized field assertions.
 ---
+---
+## Iteration 6 - 2026-08-26 22:21
+**Work Unit**: User Story 3 process-definition compatibility lock
+**Tasks Completed**:
+- [x] T013: Add or strengthen the ordinary offset request regression in `internal/services/processdefinition/v88/service_test.go` to require explicit `from` and `limit`, absent `after`, and unchanged filters and ordinary sort
+- [x] T014: Add or strengthen the ordinary offset request regression in `internal/services/processdefinition/v89/service_test.go` to require explicit `from` and `limit`, absent `after`, and unchanged filters and ordinary sort
+- [x] T015: Add or strengthen the ordinary offset request regression in `internal/services/processdefinition/v810/service_test.go` to require explicit `from` and `limit`, absent `after`, and unchanged filters and ordinary sort
+- [x] T016: Run exact-version, key, tenant, latest-filter, no-partial-creation, and output regressions in `c8volt/process/client_test.go`, `cmd/get_processdefinition_test.go`, `cmd/process_definition_selector_validation_test.go`, and `cmd/run_test.go`
+- [x] T017: Confirm the implementation introduces no changes under `internal/clients/camunda/`, `README.md`, or `docs/cli/`, documenting the internal-only decision in `specs/279-omit-empty-cursor/plan.md` if any unexpected user-facing diff appears
+**Tasks Remaining in Work Unit**: None for User Story 3; next incomplete task is T018 in Polish
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/v88/service_test.go
+- internal/services/processdefinition/v89/service_test.go
+- internal/services/processdefinition/v810/service_test.go
+- specs/279-omit-empty-cursor/tasks.md
+- specs/279-omit-empty-cursor/ralph-memory.md
+- specs/279-omit-empty-cursor/progress.md
+**Learnings**:
+- Ordinary process-definition searches in all three affected adapters now have explicit serialized offset/filter/sort regressions; facade and command selector compatibility tests pass, with no protected generated-client or documentation diff.
+---

@@ -391,6 +391,72 @@ func TestService_SearchProcessDefinitionsLatestPagesUseCursorOnlyAfterFirstPage(
 	m.AssertExpectations(t)
 }
 
+// TestService_SearchProcessDefinitionsOrdinaryUsesOffsetPage verifies ordinary v8.8 searches preserve offset paging, filters, and sort.
+func TestService_SearchProcessDefinitionsOrdinaryUsesOffsetPage(t *testing.T) {
+	ctx := context.Background()
+	m := &mockProcessDefinitionClient{}
+
+	resp := &camundav88.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
+		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
+			Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 3)},
+		},
+	}
+
+	m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			body := args.Get(1).(camundav88.SearchProcessDefinitionsJSONRequestBody)
+			require.NotNil(t, body.Filter)
+			require.NotNil(t, body.Filter.ProcessDefinitionId)
+			processDefinitionID, err := body.Filter.ProcessDefinitionId.AsStringFilterProperty0()
+			require.NoError(t, err)
+			assert.Equal(t, "proc", string(processDefinitionID))
+			require.NotNil(t, body.Filter.TenantId)
+			assert.Equal(t, camundav88.TenantId("tenant-a"), *body.Filter.TenantId)
+			require.NotNil(t, body.Filter.Version)
+			assert.Equal(t, int32(3), *body.Filter.Version)
+			require.NotNil(t, body.Filter.VersionTag)
+			assert.Equal(t, "stable", *body.Filter.VersionTag)
+			assert.Nil(t, body.Filter.IsLatestVersion)
+
+			require.NotNil(t, body.Page)
+			pageFields := processDefinitionSearchPageFields(t, *body.Page)
+			page, err := body.Page.AsOffsetPagination()
+			require.NoError(t, err)
+			require.NotNil(t, page.From)
+			require.NotNil(t, page.Limit)
+			assert.Equal(t, int32(0), *page.From)
+			assert.Equal(t, int32(25), *page.Limit)
+			assert.Contains(t, pageFields, "from")
+			assert.Contains(t, pageFields, "limit")
+			assert.NotContains(t, pageFields, "after")
+
+			require.NotNil(t, body.Sort)
+			require.Len(t, *body.Sort, 2)
+			assert.Equal(t, camundav88.ProcessDefinitionSearchQuerySortRequestFieldVersion, (*body.Sort)[0].Field)
+			require.NotNil(t, (*body.Sort)[0].Order)
+			assert.Equal(t, camundav88.DESC, *(*body.Sort)[0].Order)
+			assert.Equal(t, camundav88.ProcessDefinitionSearchQuerySortRequestFieldName, (*body.Sort)[1].Field)
+			require.NotNil(t, (*body.Sort)[1].Order)
+			assert.Equal(t, camundav88.ASC, *(*body.Sort)[1].Order)
+		}).
+		Return(resp, nil)
+
+	cfg := testConfig()
+	cfg.App.Tenant = "tenant-a"
+	svc, err := v88.New(cfg, &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v88.WithClientCamunda(m))
+	require.NoError(t, err)
+	page, err := svc.SearchProcessDefinitionsPage(ctx, domain.ProcessDefinitionFilter{
+		BpmnProcessId:     "proc",
+		ProcessVersion:    3,
+		ProcessVersionTag: "stable",
+	}, domain.ProcessDefinitionPageRequest{Size: 25})
+
+	require.NoError(t, err)
+	require.Len(t, page.Items, 1)
+	m.AssertExpectations(t)
+}
+
 func TestService_SearchProcessDefinitions_IncludesTenantFilterWhenConfigured(t *testing.T) {
 	ctx := context.Background()
 	m := &mockProcessDefinitionClient{}

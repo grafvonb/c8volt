@@ -89,14 +89,14 @@ description: "Implementation tasks for omitting empty initial process-definition
 
 ### Tests for User Story 3
 
-- [ ] T013 [P] [US3] Add or strengthen the ordinary offset request regression in `internal/services/processdefinition/v88/service_test.go` to require explicit `from` and `limit`, absent `after`, and unchanged filters and ordinary sort
-- [ ] T014 [P] [US3] Add or strengthen the ordinary offset request regression in `internal/services/processdefinition/v89/service_test.go` to require explicit `from` and `limit`, absent `after`, and unchanged filters and ordinary sort
-- [ ] T015 [P] [US3] Add or strengthen the ordinary offset request regression in `internal/services/processdefinition/v810/service_test.go` to require explicit `from` and `limit`, absent `after`, and unchanged filters and ordinary sort
+- [x] T013 [P] [US3] Add or strengthen the ordinary offset request regression in `internal/services/processdefinition/v88/service_test.go` to require explicit `from` and `limit`, absent `after`, and unchanged filters and ordinary sort
+- [x] T014 [P] [US3] Add or strengthen the ordinary offset request regression in `internal/services/processdefinition/v89/service_test.go` to require explicit `from` and `limit`, absent `after`, and unchanged filters and ordinary sort
+- [x] T015 [P] [US3] Add or strengthen the ordinary offset request regression in `internal/services/processdefinition/v810/service_test.go` to require explicit `from` and `limit`, absent `after`, and unchanged filters and ordinary sort
 
 ### Compatibility Proof for User Story 3
 
-- [ ] T016 [US3] Run exact-version, key, tenant, latest-filter, no-partial-creation, and output regressions in `c8volt/process/client_test.go`, `cmd/get_processdefinition_test.go`, `cmd/process_definition_selector_validation_test.go`, and `cmd/run_test.go`
-- [ ] T017 [US3] Confirm the implementation introduces no changes under `internal/clients/camunda/`, `README.md`, or `docs/cli/`, documenting the internal-only decision in `specs/279-omit-empty-cursor/plan.md` if any unexpected user-facing diff appears
+- [x] T016 [US3] Run exact-version, key, tenant, latest-filter, no-partial-creation, and output regressions in `c8volt/process/client_test.go`, `cmd/get_processdefinition_test.go`, `cmd/process_definition_selector_validation_test.go`, and `cmd/run_test.go`
+- [x] T017 [US3] Confirm the implementation introduces no changes under `internal/clients/camunda/`, `README.md`, or `docs/cli/`, documenting the internal-only decision in `specs/279-omit-empty-cursor/plan.md` if any unexpected user-facing diff appears
 
 **Checkpoint**: Ordinary, exact-version, key-based, filter, tenant, sort, limit, CLI, and rendering behavior all remain compatible.
 
