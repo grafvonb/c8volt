@@ -5,6 +5,7 @@ Started: 2026-08-26T19:53:00Z
 
 ## Codebase Patterns
 - Existing latest-definition adapter tests are `TestService_SearchProcessDefinitionsLatestForcesLatest` in `internal/services/processdefinition/v88`, `v89`, and `v810`.
+- Shared process-definition traversal coverage lives in `TestSearchProcessDefinitionsPagesUsesCursorTraversal`; it now asserts exact opaque cursor propagation into the next `ProcessDefinitionPageRequest` and two-page termination when the final page has an empty cursor.
 
 ## Decisions
 
@@ -17,4 +18,4 @@ Started: 2026-08-26T19:53:00Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Next iteration should start with T002 in `internal/services/processdefinition/search_test.go`: add shared traversal coverage proving non-empty `EndCursor` is copied unchanged and empty final cursor stops without another cursor request.
+- Next iteration should start with T003 in `internal/services/processdefinition/v89/service_test.go`: replace the empty-cursor latest-search expectation with serialized-wire assertions for initial latest requests.

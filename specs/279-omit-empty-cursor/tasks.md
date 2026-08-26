@@ -33,7 +33,7 @@ description: "Implementation tasks for omitting empty initial process-definition
 
 **Critical**: Complete this phase before the user-story adapter changes.
 
-- [ ] T002 Extend `internal/services/processdefinition/search_test.go` to prove a non-empty opaque `EndCursor` is copied unchanged into the next `ProcessDefinitionPageRequest` and an empty final cursor produces no further cursor request
+- [x] T002 Extend `internal/services/processdefinition/search_test.go` to prove a non-empty opaque `EndCursor` is copied unchanged into the next `ProcessDefinitionPageRequest` and an empty final cursor produces no further cursor request
 
 **Checkpoint**: Shared traversal preserves real cursors and stops without synthesizing an empty one.
 

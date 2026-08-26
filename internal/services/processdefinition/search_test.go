@@ -12,8 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestSearchProcessDefinitionsPagesUsesCursorTraversal verifies shared traversal
+// preserves non-empty opaque cursors and stops when the final page has no cursor.
 func TestSearchProcessDefinitionsPagesUsesCursorTraversal(t *testing.T) {
 	t.Parallel()
+
+	const opaqueCursor = " cursor/next?token=a%2Fb&state=raw "
 
 	var requests []d.ProcessDefinitionPageRequest
 	var steps []d.ProcessDefinitionSearchPageStep
@@ -30,14 +34,15 @@ func TestSearchProcessDefinitionsPagesUsesCursorTraversal(t *testing.T) {
 						{Key: "pd-b", BpmnProcessId: "invoice"},
 					},
 					OverflowState: d.ProcessInstanceOverflowStateHasMore,
-					EndCursor:     "cursor-2",
+					EndCursor:     opaqueCursor,
 				}, nil
 			case 2:
-				require.Equal(t, "cursor-2", page.After)
+				require.Equal(t, opaqueCursor, page.After)
 				return d.ProcessDefinitionPage{
 					Request:       page,
 					Items:         []d.ProcessDefinition{{Key: "pd-c", BpmnProcessId: "invoice"}},
 					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+					EndCursor:     "",
 				}, nil
 			default:
 				t.Fatalf("unexpected process-definition page request %d", len(requests))
@@ -55,7 +60,10 @@ func TestSearchProcessDefinitionsPagesUsesCursorTraversal(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Len(t, requests, 2)
+	require.Equal(t, []d.ProcessDefinitionPageRequest{
+		{Size: 2},
+		{From: 2, Size: 2, After: opaqueCursor},
+	}, requests)
 	require.Len(t, got.Items, 3)
 	require.Equal(t, []string{"pd-a", "pd-b", "pd-c"}, []string{got.Items[0].Key, got.Items[1].Key, got.Items[2].Key})
 	require.EqualValues(t, 2, got.Pages)
