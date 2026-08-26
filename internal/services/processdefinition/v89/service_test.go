@@ -263,6 +263,7 @@ func TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator(t *testi
 	m.AssertExpectations(t)
 }
 
+// TestService_SearchProcessDefinitionsLatestForcesLatest verifies v8.9 latest search sends a limit-only initial page.
 func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 	ctx := context.Background()
 	m := &mockProcessDefinitionClient{}
@@ -275,18 +276,26 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 
 	m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).
 		Run(func(args mock.Arguments) {
-			body := decodeProcessDefinitionSearchRequest(t, args.String(2))
+			raw := args.String(2)
+			body := decodeProcessDefinitionSearchRequest(t, raw)
 			require.NotNil(t, body.Filter.IsLatestVersion)
 			assert.True(t, *body.Filter.IsLatestVersion)
 			assert.Nil(t, body.Filter.TenantID)
-			assert.NotNil(t, body.Page.After)
-			assert.Equal(t, "", *body.Page.After)
+
+			pageFields := decodeProcessDefinitionSearchPageFields(t, raw)
 			require.NotNil(t, body.Page.Limit)
 			assert.Equal(t, int32(1000), *body.Page.Limit)
+			assert.Contains(t, pageFields, "limit")
+			assert.NotContains(t, pageFields, "after")
+			assert.NotContains(t, pageFields, "from")
+			assert.Nil(t, body.Page.After)
 			assert.Nil(t, body.Page.From)
+
 			require.Len(t, body.Sort, 2)
 			assert.Equal(t, "processDefinitionId", body.Sort[0].Field)
+			assert.Equal(t, "ASC", body.Sort[0].Order)
 			assert.Equal(t, "tenantId", body.Sort[1].Field)
+			assert.Equal(t, "ASC", body.Sort[1].Order)
 		}).
 		Return(resp, nil)
 	mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnumACTIVE, 3)
@@ -873,6 +882,18 @@ func decodeProcessDefinitionSearchRequest(t *testing.T, raw string) processDefin
 	var body processDefinitionSearchRequest
 	require.NoError(t, json.Unmarshal([]byte(raw), &body))
 	return body
+}
+
+// decodeProcessDefinitionSearchPageFields preserves serialized page-field presence for wire-shape assertions.
+func decodeProcessDefinitionSearchPageFields(t *testing.T, raw string) map[string]json.RawMessage {
+	t.Helper()
+
+	var body struct {
+		Page map[string]json.RawMessage `json:"page"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(raw), &body))
+	require.NotNil(t, body.Page)
+	return body.Page
 }
 
 // newHTTPResponse builds a minimal HTTP response for v8.9 process-definition error handling tests.

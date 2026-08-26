@@ -47,12 +47,12 @@ description: "Implementation tasks for omitting empty initial process-definition
 
 ### Tests for User Story 1
 
-- [ ] T003 [US1] Replace the empty-cursor expectation in `internal/services/processdefinition/v89/service_test.go` with a failing serialized-wire assertion that the initial latest request contains `limit: 1000`, omits `after` and `from`, and retains `isLatestVersion`, tenant behavior, and stable latest sort
+- [x] T003 [US1] Replace the empty-cursor expectation in `internal/services/processdefinition/v89/service_test.go` with a failing serialized-wire assertion that the initial latest request contains `limit: 1000`, omits `after` and `from`, and retains `isLatestVersion`, tenant behavior, and stable latest sort
 
 ### Implementation for User Story 1
 
-- [ ] T004 [US1] Implement three-way page selection in `internal/services/processdefinition/v89/service.go`: real non-empty `After` uses cursor-forward pagination, initial latest uses generated `LimitPagination`, and ordinary search retains offset pagination
-- [ ] T005 [US1] Run the focused v8.9 adapter and selector regressions covering `internal/services/processdefinition/v89/service_test.go`, `cmd/process_definition_selector_validation_test.go`, and `cmd/run_test.go`
+- [x] T004 [US1] Implement three-way page selection in `internal/services/processdefinition/v89/service.go`: real non-empty `After` uses cursor-forward pagination, initial latest uses generated `LimitPagination`, and ordinary search retains offset pagination
+- [x] T005 [US1] Run the focused v8.9 adapter and selector regressions covering `internal/services/processdefinition/v89/service_test.go`, `cmd/process_definition_selector_validation_test.go`, and `cmd/run_test.go`
 - [ ] T006 [US1] Execute the disposable Camunda 8 Run 8.9.17 H2 workflow from `specs/279-omit-empty-cursor/quickstart.md` and verify `/tmp/c8volt-279-process-instance-keys.txt` contains exactly ten keys with no latest-search server error
 
 **Checkpoint**: The reported Camunda 8.9.17 BPMN-ID workflow succeeds without a key or exact-version workaround and still validates all selectors before creation.
