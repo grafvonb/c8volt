@@ -16,6 +16,12 @@
 
 `c8volt` is not an official Camunda product. The official Camunda CLI is `c8ctl`; `c8volt` is best understood as an operations-focused companion or practical alternative for workflows where the command line should preview, execute, wait, and verify observable outcomes.
 
+## New in v4.3: Experimental Camunda 8.10 Support
+
+[c8volt v4.3.0](https://github.com/grafvonb/c8volt/releases/tag/v4.3.0) adds experimental Camunda 8.10 support through an isolated native API client, version-specific service adapters, and dedicated C810 process definitions for embedded and integration workflows.
+
+The release also makes Camunda 8.9 the default compatibility version, strengthens generated-client provenance and publication safeguards, and improves release-line diagnostics while preserving the established script-safe CLI contract.
+
 ## New in v4.2: C8 Ops CLI and Slow Process Analysis
 
 The v4 line introduced the C8 Ops CLI at [CamundaCon 2026](https://www.camundacon.com/). The event is done, but the idea is now the center of c8volt: low-level commands do work; `c8volt ops` gets the job done.
