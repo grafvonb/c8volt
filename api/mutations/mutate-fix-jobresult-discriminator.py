@@ -17,7 +17,7 @@ schemas = doc.get("components", {}).get("schemas", {})
 mapping = {
     "JobResultUserTask": "userTask",
     "JobResultAdHocSubProcess": "adHocSubProcess",
-    "ProcessInstanceCreationTerminateInstruction": "ProcessInstanceCreationTerminateInstruction",
+    "ProcessInstanceCreationTerminateInstruction": "TERMINATE_PROCESS_INSTANCE",
 }
 
 for name, const in mapping.items():

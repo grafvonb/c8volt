@@ -10,7 +10,10 @@ import (
 )
 
 func embeddedFilesForCamundaVersion(files []string, version toolx.CamundaVersion) []string {
-	prefix := version.FilePrefix()
+	prefix, ok := toolx.ProductionFixturePrefix(version)
+	if !ok {
+		return nil
+	}
 	var out []string
 	for _, f := range files {
 		if strings.Contains(f, prefix) {

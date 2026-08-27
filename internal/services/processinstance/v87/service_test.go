@@ -464,7 +464,7 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, d.ErrUnsupported)
 		assert.Contains(t, err.Error(), "process-instance variable search is unsupported in Camunda 8.7")
-		assert.Contains(t, err.Error(), "requires Camunda 8.8 or 8.9")
+		assert.Contains(t, err.Error(), "requires Camunda 8.8 or newer")
 	})
 
 	t.Run("RejectsAnyDateBoundAsUnsupported", func(t *testing.T) {

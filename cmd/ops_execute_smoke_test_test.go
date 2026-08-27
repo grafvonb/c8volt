@@ -147,13 +147,14 @@ func TestOpsExecuteSmokeTestDryRunHumanOutputPlansWithoutMutation(t *testing.T) 
 	require.Equal(t, []string{"GET /v2/topology"}, requests.Snapshot())
 }
 
-func TestOpsExecuteSmokeTestDryRunJSONOutputIsStructured(t *testing.T) {
+// TestOpsExecuteSmokeTestDryRunJSONOutputReportsV810Fixture protects the dry-run envelope and verifies V810 reports the native fixture identity.
+func TestOpsExecuteSmokeTestDryRunJSONOutputReportsV810Fixture(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newOpsExecuteSmokeTestDryRunServer(t, &requests)
 	t.Cleanup(srv.Close)
 
 	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
-		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.10"),
 		"--json",
 		"ops", "execute", "smoke-test",
 		"--dry-run",
@@ -172,9 +173,9 @@ func TestOpsExecuteSmokeTestDryRunJSONOutputIsStructured(t *testing.T) {
 	require.Equal(t, float64(1), request["count"])
 	plan := requireJSONObject(t, payload["plan"])
 	require.Equal(t, "planned", plan["status"])
-	require.Equal(t, "8.9", plan["camundaVersion"])
+	require.Equal(t, "8.10", plan["camundaVersion"])
 	fixture := requireJSONObject(t, plan["fixture"])
-	require.Equal(t, "embedded/processdefinitions/C89_MultipleSubProcessesParent.bpmn", fixture["file"])
+	require.Equal(t, "embedded/processdefinitions/C810_MultipleSubProcessesParent.bpmn", fixture["file"])
 	steps := plan["plannedSteps"].([]any)
 	require.Len(t, steps, 7)
 	connectivity := requireJSONObject(t, steps[0])

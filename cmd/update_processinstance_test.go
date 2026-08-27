@@ -75,6 +75,62 @@ func TestUpdatePICommand_SubmitsV88UpdateAndConfirmsVariables(t *testing.T) {
 	require.Equal(t, "confirmed", item["confirmationStatus"])
 }
 
+// TestUpdatePICommand_V810SubmitsAndConfirmsVariables verifies the CLI uses native V810 variable mutation and confirmation paths.
+func TestUpdatePICommand_V810SubmitsAndConfirmsVariables(t *testing.T) {
+	var requests []string
+	var sawUpdate bool
+	searchCalls := 0
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		switch r.URL.Path {
+		case "/v2/element-instances/2251799813711967/variables":
+			require.Equal(t, http.MethodPut, r.Method)
+			sawUpdate = true
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			require.Equal(t, map[string]any{"foo": "bar"}, body["variables"])
+			w.WriteHeader(http.StatusNoContent)
+		case "/v2/variables/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			searchCalls++
+			w.Header().Set("Content-Type", "application/json")
+			if searchCalls == 1 {
+				_, _ = w.Write([]byte(emptyVariableSearchResponse()))
+				return
+			}
+			_, _ = w.Write([]byte(variableSearchResponse(`{"name":"foo","value":"\"bar\"","variableKey":"901","processInstanceKey":"2251799813711967","scopeKey":"2251799813711967","tenantId":"<default>"}`)))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.10")
+
+	stdout, _ := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--automation",
+		"--json",
+		"update", "process-instance",
+		"--key", "2251799813711967",
+		"--vars", `{"foo":"bar"}`,
+	)
+
+	require.True(t, sawUpdate)
+	require.Equal(t, []string{
+		"POST /v2/variables/search",
+		"PUT /v2/element-instances/2251799813711967/variables",
+		"POST /v2/variables/search",
+		"POST /v2/variables/search",
+	}, requests)
+	envelope := requireUpdateProcessInstanceEnvelope(t, stdout)
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	require.Equal(t, "update process-instance", envelope["command"])
+	item := firstUpdateResultItem(t, envelope)
+	require.Equal(t, "2251799813711967", item["key"])
+	require.Equal(t, "confirmed", item["status"])
+	require.Equal(t, "confirmed", item["confirmationStatus"])
+}
+
 // Protects the existing `update process-instance --vars` request path after adding resolve commands.
 func TestUpdatePICommand_RegressionVarsUsesVariableMutationAndConfirmation(t *testing.T) {
 	var requests []string

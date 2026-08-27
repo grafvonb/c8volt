@@ -95,7 +95,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 func TestGetProcessInstanceHelp_DocumentsVariableSearchContract(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
 
-	require.Contains(t, output, "Use variable-search flags to narrow list/search results natively on Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error for those flags.")
+	require.Contains(t, output, "Use variable-search flags to narrow list/search results natively on Camunda 8.8 or newer; Camunda 8.7 returns an unsupported-version error for those flags.")
 	require.Contains(t, output, "--var-exists requires every listed variable name to exist.")
 	require.Contains(t, output, "--var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn.")
 	require.Contains(t, output, "--var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal.")
@@ -3144,7 +3144,7 @@ func TestGetProcessInstanceCommand_VariableFiltersUnsupportedOnV87(t *testing.T)
 			require.Equal(t, exitcode.Error, code)
 			require.Contains(t, output, "unsupported capability")
 			require.Contains(t, output, "process-instance variable search is unsupported in Camunda 8.7")
-			require.Contains(t, output, "requires Camunda 8.8 or 8.9")
+			require.Contains(t, output, "requires Camunda 8.8 or newer")
 		})
 	}
 }
@@ -3729,7 +3729,7 @@ func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87(t *testing.T) {
 	require.Equal(t, exitcode.Error, code)
 	require.Contains(t, output, "unsupported capability")
 	require.Contains(t, output, "has-user-tasks lookup is unsupported in Camunda 8.7")
-	require.Contains(t, output, "requires Camunda 8.8 or 8.9")
+	require.Contains(t, output, "requires Camunda 8.8 or newer")
 }
 
 // requireUserTaskSearchRequest validates the native user-task search request and returns its decoded body for scenario-specific assertions.

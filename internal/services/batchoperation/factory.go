@@ -10,15 +10,19 @@ import (
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/services"
+	v810 "github.com/grafvonb/c8volt/internal/services/batchoperation/v810"
 	v87 "github.com/grafvonb/c8volt/internal/services/batchoperation/v87"
 	v88 "github.com/grafvonb/c8volt/internal/services/batchoperation/v88"
 	v89 "github.com/grafvonb/c8volt/internal/services/batchoperation/v89"
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// New creates a batch-operation service for the configured Camunda API version.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (API, error) {
 	v := cfg.App.CamundaVersion
 	switch v {
+	case toolx.V810:
+		return v810.New(cfg, httpClient, log)
 	case toolx.V89:
 		return v89.New(cfg, httpClient, log)
 	case toolx.V88:

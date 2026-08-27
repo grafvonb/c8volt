@@ -16,7 +16,7 @@ The command accepts repeated --key values or newline-separated keys from stdin w
 
 By default c8volt loads current process-instance-scope variables, previews planned additions and changes, asks for confirmation, then waits until requested variables are visible through the same lookup path as `get process-instance --with-vars`. Use --dry-run to preview without mutating, or --auto-confirm for unattended mutation.
 
-Variable updates are supported for Camunda 8.8 and 8.9. Camunda 8.7 returns an unsupported-version error before mutation.
+Variable updates are supported for Camunda 8.8 or newer. Camunda 8.7 returns an unsupported-version error before mutation.
 
 ```
 c8volt update process-instance [flags]

@@ -17,8 +17,10 @@ c8volt: Camunda 8 Operations CLI.
 Deploy BPMN models, start process instances, inspect workflow state, wait for
 state changes, walk process trees, cancel, and delete.
 
-Supports Camunda 8.7, 8.8, and 8.9. Use capabilities for the machine-readable
-command contract.
+Supports Camunda 8.7, 8.8, 8.9, and 8.10.
+Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease).
+Camunda 8.10 aliases: 8.10, 810, v810, v8.10. Default: 8.9.
+Use capabilities for the machine-readable command contract.
 
 ```
 c8volt [flags]

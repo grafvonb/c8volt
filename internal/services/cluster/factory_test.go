@@ -12,6 +12,7 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/cluster"
+	v810 "github.com/grafvonb/c8volt/internal/services/cluster/v810"
 	v87 "github.com/grafvonb/c8volt/internal/services/cluster/v87"
 	v88 "github.com/grafvonb/c8volt/internal/services/cluster/v88"
 	v89 "github.com/grafvonb/c8volt/internal/services/cluster/v89"
@@ -19,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testConfig returns the minimal config needed to construct versioned cluster services.
 func testConfig() *config.Config {
 	return &config.Config{
 		APIs: config.APIs{
@@ -29,6 +31,7 @@ func testConfig() *config.Config {
 	}
 }
 
+// TestFactory_SupportedVersions verifies every implemented version has an explicit factory branch.
 func TestFactory_SupportedVersions(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -56,6 +59,13 @@ func TestFactory_SupportedVersions(t *testing.T) {
 				require.IsType(t, &v89.Service{}, svc)
 			},
 		},
+		{
+			name:    "v810",
+			version: toolx.V810,
+			assert: func(t *testing.T, svc cluster.API) {
+				require.IsType(t, &v810.Service{}, svc)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -72,6 +82,34 @@ func TestFactory_SupportedVersions(t *testing.T) {
 	}
 }
 
+// TestFactory_StableVersionSelectionUnchanged proves V810 support does not reroute stable service selection or the current default.
+func TestFactory_StableVersionSelectionUnchanged(t *testing.T) {
+	tests := []struct {
+		name    string
+		version toolx.CamundaVersion
+		assert  func(*testing.T, cluster.API)
+	}{
+		{name: "v87", version: toolx.V87, assert: func(t *testing.T, svc cluster.API) { require.IsType(t, &v87.Service{}, svc) }},
+		{name: "v88", version: toolx.V88, assert: func(t *testing.T, svc cluster.API) { require.IsType(t, &v88.Service{}, svc) }},
+		{name: "v89", version: toolx.V89, assert: func(t *testing.T, svc cluster.API) { require.IsType(t, &v89.Service{}, svc) }},
+		{name: "current-default", version: toolx.CurrentCamundaVersion, assert: func(t *testing.T, svc cluster.API) { require.IsType(t, &v89.Service{}, svc) }},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := testConfig()
+			cfg.App.CamundaVersion = tt.version
+
+			svc, err := cluster.New(cfg, &http.Client{}, slog.Default())
+
+			require.NoError(t, err)
+			require.NotNil(t, svc)
+			tt.assert(t, svc)
+		})
+	}
+}
+
+// TestFactory_UnknownVersion preserves the shared unknown-version error contract.
 func TestFactory_UnknownVersion(t *testing.T) {
 	cfg := testConfig()
 	cfg.App.CamundaVersion = "v0"
@@ -83,15 +121,4 @@ func TestFactory_UnknownVersion(t *testing.T) {
 	require.ErrorIs(t, err, services.ErrUnknownAPIVersion)
 	require.Contains(t, err.Error(), "\"unknown\"")
 	require.Contains(t, err.Error(), toolx.ImplementedCamundaVersionsString())
-}
-
-func TestFactory_CurrentDefaultVersionStillUsesV88(t *testing.T) {
-	cfg := testConfig()
-	cfg.App.CamundaVersion = toolx.CurrentCamundaVersion
-
-	svc, err := cluster.New(cfg, &http.Client{}, slog.Default())
-
-	require.NoError(t, err)
-	require.NotNil(t, svc)
-	require.IsType(t, &v88.Service{}, svc)
 }

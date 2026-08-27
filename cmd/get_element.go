@@ -36,7 +36,7 @@ var getElementCmd = &cobra.Command{
 		"Compact human rows include dur:<duration> when start/end timestamps or active state support a runtime duration.\n\n" +
 		"Use --with-listeners to include runtime listener jobs under matching element rows.\n\n" +
 		"Use --json for the stable element payload and --keys-only when piping element instance keys.\n\n" +
-		"Element lookup and search require Camunda 8.8 or 8.9. Camunda 8.7 returns an unsupported-version error.",
+		"Element lookup and search require Camunda 8.8 or newer. Camunda 8.7 returns an unsupported-version error.",
 	Example: `  ./c8volt get element --key <element-instance-key>
   ./c8volt get element --key <element-instance-key> --with-listeners
   ./c8volt get element --pi-key <process-instance-key> --limit 10

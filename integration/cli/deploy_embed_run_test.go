@@ -319,6 +319,30 @@ func selectEmbeddedSeedFixture(expectedVersion string, files []string) (embedded
 	return embeddedFixtureSelection{}, fmt.Errorf("no embedded SimpleUserTask fixture found for Camunda version %q", expectedVersion)
 }
 
+func TestEmbeddedFixturePrefix(t *testing.T) {
+	tests := []struct {
+		version string
+		want    string
+	}{
+		{version: "8.7", want: "C87_"},
+		{version: "8.8", want: "C88_"},
+		{version: "8.9", want: "C89_"},
+		{version: "8.10", want: "C810_"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.version, func(t *testing.T) {
+			got, err := embeddedFixturePrefix(tt.version)
+			if err != nil {
+				t.Fatalf("embeddedFixturePrefix(%q): %v", tt.version, err)
+			}
+			if got != tt.want {
+				t.Fatalf("embeddedFixturePrefix(%q) = %q, want %q", tt.version, got, tt.want)
+			}
+		})
+	}
+}
+
 // embeddedFixturePrefix converts a Camunda minor version into the embedded fixture filename prefix.
 func embeddedFixturePrefix(expectedVersion string) (string, error) {
 	switch {
@@ -328,6 +352,8 @@ func embeddedFixturePrefix(expectedVersion string) (string, error) {
 		return "C88_", nil
 	case strings.Contains(expectedVersion, "8.9"):
 		return "C89_", nil
+	case strings.Contains(expectedVersion, "8.10"):
+		return "C810_", nil
 	default:
 		return "", fmt.Errorf("unsupported embedded fixture version %q", expectedVersion)
 	}

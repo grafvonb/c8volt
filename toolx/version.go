@@ -15,8 +15,10 @@ const (
 	V87 CamundaVersion = "8.7"
 	V88 CamundaVersion = "8.8"
 	V89 CamundaVersion = "8.9"
+	// V810 is the operator-facing Camunda 8.10 compatibility identity.
+	V810 CamundaVersion = "8.10"
 
-	CurrentCamundaVersion = V88
+	CurrentCamundaVersion = V89
 )
 
 type CamundaVersion string
@@ -29,6 +31,8 @@ func (v CamundaVersion) String() string {
 		return "8.8"
 	case V89:
 		return "8.9"
+	case V810:
+		return "8.10"
 	default:
 		return "unknown"
 	}
@@ -56,17 +60,19 @@ func NormalizeCamundaVersion(s string) (CamundaVersion, error) {
 		return V88, nil
 	case "8.9", "89", "v89", "v8.9":
 		return V89, nil
+	case "8.10", "810", "v810", "v8.10":
+		return V810, nil
 	default:
 		return "", fmt.Errorf("%w: %s", ErrUnknownCamundaVersion, v)
 	}
 }
 
 func SupportedCamundaVersions() []CamundaVersion {
-	return []CamundaVersion{V87, V88, V89}
+	return []CamundaVersion{V87, V88, V89, V810}
 }
 
 func ImplementedCamundaVersions() []CamundaVersion {
-	return []CamundaVersion{V87, V88, V89}
+	return []CamundaVersion{V87, V88, V89, V810}
 }
 
 func SupportedCamundaVersionsString() string {

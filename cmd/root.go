@@ -38,8 +38,10 @@ var rootCmd = &cobra.Command{
 Deploy BPMN models, start process instances, inspect workflow state, wait for
 state changes, walk process trees, cancel, and delete.
 
-Supports Camunda 8.7, 8.8, and 8.9. Use capabilities for the machine-readable
-command contract.`,
+Supports Camunda 8.7, 8.8, 8.9, and 8.10.
+Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease).
+Camunda 8.10 aliases: 8.10, 810, v810, v8.10. Default: 8.9.
+Use capabilities for the machine-readable command contract.`,
 	Example: `  ./c8volt config show --template
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt get cluster topology
@@ -174,7 +176,7 @@ func init() {
 	pf.String("tenant", "", "tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized")
 	pf.BoolVar(&flagNoErrCodes, "no-err-codes", false, "suppress error codes in error outputs")
 
-	pf.String("camunda-version", string(toolx.CurrentCamundaVersion), fmt.Sprintf("Camunda version (%s) expected. Causes usage of specific API versions.", toolx.SupportedCamundaVersionsString()))
+	pf.String("camunda-version", string(toolx.CurrentCamundaVersion), fmt.Sprintf("Camunda version (%s) expected; aliases include 810, v810, and v8.10 for 8.10. Causes usage of specific API versions.", toolx.SupportedCamundaVersionsString()))
 	_ = rootCmd.PersistentFlags().MarkHidden("camunda-version") // not used currently
 	_ = rootCmd.PersistentFlags().MarkHidden("log-format")
 	_ = rootCmd.PersistentFlags().MarkHidden("log-with-source")

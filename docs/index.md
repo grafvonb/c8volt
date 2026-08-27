@@ -6,13 +6,13 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.2.2-beta.1-6-g2016b460-dirty`, commit `2016b460`, built `2026-08-05T15:24:59Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v4.3.0-beta.1-dirty`, commit `0002151d`, built `2026-08-26T12:37:04Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
 # c8volt Camunda 8 CLI
 
-**Operator-grade Camunda 8 control for people and pipelines. 8.9-ready, script-safe, and built to finish the job.**
+**Operator-grade Camunda 8 control for people and pipelines. 8.10-aware, script-safe, and built to finish the job.**
 
 > **done is done**
 >
@@ -119,7 +119,7 @@ From zero to a real Camunda read in a few minutes. Download the matching archive
 cp config.example.yaml config.yaml
 
 # 3. Edit only the essentials:
-#    app.camunda_version: "8.9"
+#    app.camunda_version: "8.9"   # default; use "8.10" for Camunda 8.10
 #    apis.camunda_api.base_url: "http://localhost:8080"
 #    auth.mode: "none"
 #
@@ -207,11 +207,15 @@ Documentation examples use full command, resource, and flag names so they match 
 
 ## Supported Camunda Versions
 
-`c8volt` supports Camunda `8.7`, `8.8`, and `8.9`.
+`c8volt` supports Camunda `8.7`, `8.8`, `8.9`, and `8.10`.
 
-`8.9` is a first-class runtime target. The everyday operator loop is covered: cluster metadata, definitions, resources, process-instance search, wait, walk, run, cancel, delete, tenant handling, and JSON output for automation.
+`8.10` is selected as the ordinary compatibility identity `8.10`. Accepted aliases are `8.10`, `810`, `v810`, and `v8.10`; alpha, release-candidate, and patch tags are provenance, not configuration identities. The active 8.10 artifacts currently come from Camunda `8.10.0-alpha4` and are disclosed by `c8volt version`.
 
-`8.8` remains the established baseline. Process-instance variable updates, incident resolution, and `get job`/`update job` commands are supported on Camunda `8.8` and `8.9`; Camunda `8.7` returns an unsupported-version error for those state-changing job, variable update, and incident resolution commands. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
+`8.9` is the default when no Camunda version is configured. `8.9` and `8.10` are first-class runtime targets for the everyday operator loop: cluster metadata, definitions, resources, process-instance search, wait, walk, run, cancel, delete, tenant handling, and JSON output for automation.
+
+Process-instance variable updates, incident resolution, and `get job`/`update job` commands are supported on Camunda `8.8` or newer; Camunda `8.7` returns an unsupported-version error for those state-changing job, variable update, and incident resolution commands. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
+
+The 8.10 baseline is updated in place as later alphas, release candidates, or the final 8.10.0 source are adopted. Operator configuration, docs, package names, and service-family identity remain `8.10` across those baseline updates.
 
 ## Core Workflows
 

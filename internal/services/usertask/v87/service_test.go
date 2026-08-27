@@ -37,5 +37,5 @@ func TestService_GetUserTask_ReturnsExplicitUnsupportedError(t *testing.T) {
 	require.Error(t, err)
 	require.True(t, errors.Is(err, d.ErrUnsupported))
 	require.Contains(t, err.Error(), "has-user-tasks lookup is unsupported in Camunda 8.7")
-	require.Contains(t, err.Error(), "requires Camunda 8.8 or 8.9")
+	require.Contains(t, err.Error(), "requires Camunda 8.8 or newer")
 }
