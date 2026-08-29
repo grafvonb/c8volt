@@ -142,3 +142,34 @@ Started: 2026-08-29 14:20:03
 **Learnings**:
 - Delete selector tenant context mirrors cancel's output routing but renders after aggregate scope freezing for destructive confirmation.
 ---
+---
+## Iteration 7 - 2026-08-29 15:00
+**Work Unit**: Phase 3 US1 shared process-instance dry-run and progress tenant context
+**Tasks Completed**:
+- [x] T012: Add human, JSON, quiet, and keys-only discovery-context tests for process-instance plan views.
+- [x] T015: Carry discovery context through shared process-instance dry-run/progress views without changing candidate counts or stdout contracts.
+- [x] T016: Run targeted process-instance selector and dry-run tests for the US1 independent criteria.
+**Tasks Remaining in Work Unit**: 0; US1 complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_processinstance_selector.go
+- cmd/cmd_tenant_context.go
+- cmd/cmd_views_processinstance_dryrun.go
+- cmd/cmd_views_processinstance_dryrun_test.go
+- cmd/cmd_views_tenant_context.go
+- cmd/delete_processinstance_selector.go
+- cmd/processinstance_mutation_progress.go
+- cmd/processinstance_mutation_progress_test.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Shared dry-run summaries now own attached discovery-context rendering and keys-only summary output remains one affected key per line; progress preflight can render the same context on stderr in verbose mode.
+- Passed: `go test ./cmd -run 'TestProcessInstance(DryRunSummary|MutationProgress).*TenantContext|Test(Cancel|Delete)ProcessInstance(DryRun_SearchTenantContextPrecedesPreview|Search_TenantContextPrecedesConfirmation)|Test(Cancel|Delete)ProcessInstanceSearchQuietAndAutomationSuppressProgress' -count=1`.
+- Passed: `go test ./cmd -run 'Test.*(Cancel|Delete).*ProcessInstance|Test.*DryRun.*Tenant|Test.*MutationProgress|TestProcessInstanceDryRunSummary|TestRenderTenantContext' -count=1`.
+- Passed: `go test ./cmd -run 'TestCancelProcessInstance' -count=1`.
+- Passed: `go test ./cmd -run 'TestDeleteProcessInstance' -count=1`.
+- Passed: `go test ./cmd -run 'Test.*(DryRun.*Tenant|MutationProgress|ProcessInstanceDryRunSummary)' -count=1`.
+- Passed: `go test ./cmd -count=1`.
+- Passed: `git diff --check`.
+---

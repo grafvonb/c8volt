@@ -215,6 +215,7 @@ func renderProcessInstanceDryRunPreview(cmd *cobra.Command, preview processInsta
 		return nil
 	}
 
+	renderAttachedTenantContext(cmd)
 	renderHumanLine(cmd, "dry run: %s process-instance", preview.Operation)
 	renderHumanLine(cmd, "selected process instances: %d", preview.RequestedCount)
 	renderHumanLine(cmd, "process-instance trees to %s: %d", preview.Operation, preview.ResolvedRootCount)
@@ -235,7 +236,16 @@ func renderProcessInstanceDryRunSummary(cmd *cobra.Command, summary processInsta
 	if pickMode() == RenderModeJSON {
 		return renderProcessInstanceDryRunResult(cmd, summary)
 	}
+	if pickMode() == RenderModeKeysOnly {
+		for _, preview := range summary.Previews {
+			for _, key := range preview.AffectedFamilyKeys {
+				renderOutputLine(cmd, "%s", key)
+			}
+		}
+		return nil
+	}
 
+	renderAttachedTenantContext(cmd)
 	renderHumanLine(cmd, "dry run: %s process-instance", summary.Operation)
 	renderHumanLine(cmd, "selected process instances: %d", summary.RequestedCount)
 	renderHumanLine(cmd, "process-instance trees to %s: %d", summary.Operation, summary.ResolvedRootCount)
@@ -252,6 +262,14 @@ func renderProcessInstanceDryRunResult[T any](cmd *cobra.Command, payload T) err
 		return nil
 	}
 	return renderSucceededResult(cmd, payload)
+}
+
+// renderAttachedTenantContext emits the command-scoped tenant context when a
+// shared process-instance view owns the visible preflight surface.
+func renderAttachedTenantContext(cmd *cobra.Command) {
+	if ctx, ok := attachedTenantContext(cmd); ok {
+		renderTenantContext(cmd, *ctx)
+	}
 }
 
 // printProcessInstanceDryRunKeys writes a labeled verbose dry-run key list.

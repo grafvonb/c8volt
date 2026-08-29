@@ -16,6 +16,10 @@ func renderTenantContext(cmd *cobra.Command, ctx tenant.Context) {
 	if !shouldRenderTenantContextHuman(cmd, ctx) {
 		return
 	}
+	if tenantContextHumanRendered(cmd) {
+		return
+	}
+	markTenantContextHumanRendered(cmd)
 
 	if line := tenantContextPrimaryHumanLine(ctx); line != "" {
 		renderHumanLine(cmd, "%s", line)

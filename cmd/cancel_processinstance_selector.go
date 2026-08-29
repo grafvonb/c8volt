@@ -181,6 +181,7 @@ func renderCancelSearchTenantContext(cmd *cobra.Command, ctx tenant.Context) {
 		return
 	}
 	if line := tenantContextPrimaryHumanLine(ctx); line != "" {
+		markTenantContextHumanRendered(cmd)
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), line)
 	}
 }

@@ -12,6 +12,7 @@ import (
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	types "github.com/grafvonb/c8volt/typex"
@@ -177,7 +178,44 @@ func printProcessInstanceMutationPreflight(cmd *cobra.Command, scope ops.Preflig
 	if !processInstanceMutationDurableProgressAllowed(channel) {
 		return
 	}
+	printProcessInstanceMutationTenantContext(cmd, channel)
 	printOpsPreflightLines(cmd, scope)
+}
+
+// printProcessInstanceMutationTenantContext routes attached discovery context
+// through the durable progress channel before process-instance mutation scope.
+func printProcessInstanceMutationTenantContext(cmd *cobra.Command, channel ops.ProgressChannel) {
+	if !processInstanceMutationTenantContextAllowed(channel) {
+		return
+	}
+	ctx, ok := attachedTenantContext(cmd)
+	if !ok || !shouldRenderTenantContextHuman(cmd, *ctx) || tenantContextHumanRendered(cmd) {
+		return
+	}
+	markTenantContextHumanRendered(cmd)
+	if line := tenantContextPrimaryHumanLine(*ctx); line != "" {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), line)
+	}
+	switch len(ctx.ResolvedTenantIDs) {
+	case 1:
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Resource tenant: %s\n", ctx.ResolvedTenantIDs[0])
+	case 0:
+	default:
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Resource tenants: %s\n", strings.Join(ctx.ResolvedTenantIDs, ", "))
+	}
+	for _, warning := range ctx.Warnings {
+		if warning.Code == tenant.ContextWarningUnfilteredSelection {
+			continue
+		}
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), warning.Message)
+	}
+}
+
+// processInstanceMutationTenantContextAllowed keeps tenant preflight lines on
+// the same human stderr channel as durable process-instance progress.
+func processInstanceMutationTenantContextAllowed(channel ops.ProgressChannel) bool {
+	return channel.DurableAllowed && channel.StderrAllowed &&
+		(channel.Mode == ops.ProgressModeHuman || channel.Mode == ops.ProgressModeVerbose || channel.Mode == ops.ProgressModeDebug)
 }
 
 func printProcessInstanceMutationProgressLine(cmd *cobra.Command, line string, channel ops.ProgressChannel) {

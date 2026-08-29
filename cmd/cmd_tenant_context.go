@@ -15,6 +15,7 @@ import (
 )
 
 type tenantContextKey struct{}
+type tenantContextHumanRenderedKey struct{}
 
 // attachTenantContext stores the immutable tenant context for later shared
 // envelope rendering.
@@ -41,6 +42,29 @@ func attachedTenantContext(cmd *cobra.Command) (*tenant.Context, bool) {
 	}
 	cloned := cloneTenantContext(ctx)
 	return &cloned, true
+}
+
+// markTenantContextHumanRendered records that a command already emitted the
+// current human tenant-context block so shared renderers do not duplicate it.
+func markTenantContextHumanRendered(cmd *cobra.Command) {
+	if cmd == nil {
+		return
+	}
+	parent := cmd.Context()
+	if parent == nil {
+		parent = context.Background()
+	}
+	cmd.SetContext(context.WithValue(parent, tenantContextHumanRenderedKey{}, true))
+}
+
+// tenantContextHumanRendered reports whether this command already emitted
+// human tenant-context output.
+func tenantContextHumanRendered(cmd *cobra.Command) bool {
+	if cmd == nil || cmd.Context() == nil {
+		return false
+	}
+	rendered, _ := cmd.Context().Value(tenantContextHumanRenderedKey{}).(bool)
+	return rendered
 }
 
 // attachConfigurationTenantContext records configured tenant semantics for

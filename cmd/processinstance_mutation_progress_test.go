@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -137,6 +138,74 @@ func TestCancelProcessInstanceSearchQuietAndAutomationSuppressProgress(t *testin
 	}
 }
 
+// TestProcessInstanceMutationProgress_AttachedDiscoveryTenantContextPrecedesVerbosePreflight
+// verifies shared process-instance progress can render the attached discovery
+// context before verbose mutation preflight scope.
+func TestProcessInstanceMutationProgress_AttachedDiscoveryTenantContextPrecedesVerbosePreflight(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagVerbose = true
+
+	cmd := &cobra.Command{}
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	attachTenantContext(cmd, newDiscoveryTenantContext("tenant-a"))
+
+	progress := newProcessInstanceMutationProgressReporter(cmd, "cancel")
+	progress(processInstanceMutationTestPreflightEvent("cancel"))
+
+	require.Empty(t, stdout.String())
+	output := stderr.String()
+	tenantLine := "Tenant filter: tenant-a\n"
+	scopeLine := "process-instance cancel scope:"
+	require.Contains(t, output, tenantLine)
+	require.Contains(t, output, scopeLine)
+	require.Less(t, strings.Index(output, tenantLine), strings.Index(output, scopeLine))
+}
+
+// TestProcessInstanceMutationProgress_ProtectedModesSuppressAttachedDiscoveryTenantContext
+// verifies quiet and keys-only progress modes do not leak tenant context to
+// stdout or stderr.
+func TestProcessInstanceMutationProgress_ProtectedModesSuppressAttachedDiscoveryTenantContext(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func()
+	}{
+		{name: "quiet", setup: func() { flagQuiet = true }},
+		{name: "keys only", setup: func() { flagViewKeysOnly = true }},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			prevQuiet := flagQuiet
+			prevKeysOnly := flagViewKeysOnly
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			t.Cleanup(func() {
+				flagQuiet = prevQuiet
+				flagViewKeysOnly = prevKeysOnly
+			})
+			tt.setup()
+
+			cmd := &cobra.Command{}
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			cmd.SetOut(stdout)
+			cmd.SetErr(stderr)
+			attachTenantContext(cmd, newDiscoveryTenantContext(""))
+
+			progress := newProcessInstanceMutationProgressReporter(cmd, "cancel")
+			progress(processInstanceMutationTestPreflightEvent("cancel"))
+
+			require.Empty(t, stdout.String())
+			require.NotContains(t, stderr.String(), "Tenant filter:")
+			require.NotContains(t, stderr.String(), "resources from multiple tenants")
+		})
+	}
+}
+
 // exerciseProcessInstanceMutationProgressOutput captures stdout and stderr for
 // progress mode gating without running a full destructive command.
 func exerciseProcessInstanceMutationProgressOutput(t *testing.T, operation string, setup func()) (string, string) {
@@ -159,26 +228,8 @@ func exerciseProcessInstanceMutationProgressOutput(t *testing.T, operation strin
 	cmd.SetOut(stdout)
 	cmd.SetErr(stderr)
 
-	total := int64(1)
-	pageCount := int64(1)
 	progress := newProcessInstanceMutationProgressReporter(cmd, operation)
-	progress(options.ProgressEvent{
-		Kind: options.ProgressEventKindPreflight,
-		Preflight: &options.PreflightScope{
-			CoreResource:    "process_instance",
-			SelectorSummary: operation + " process-instance",
-			Total:           &total,
-			TotalKind:       options.TotalCertaintyExact,
-			PageSize:        1,
-			PageCount:       &pageCount,
-			PageCountKind:   options.PageCountKindExact,
-			ConsequenceSummary: options.ConsequenceSummary{
-				WorkSummary: "plan process-instance " + operation + " scope",
-				RiskSummary: "destructive mutation",
-			},
-			RequiresConfirmation: true,
-		},
-	})
+	progress(processInstanceMutationTestPreflightEvent(operation))
 	progress(options.ProgressEvent{
 		Kind: options.ProgressEventKindFrozenScope,
 		FrozenScope: &options.FrozenScopeProgress{
@@ -198,6 +249,30 @@ func exerciseProcessInstanceMutationProgressOutput(t *testing.T, operation strin
 		},
 	})
 	return stdout.String(), stderr.String()
+}
+
+// processInstanceMutationTestPreflightEvent returns a reusable destructive
+// preflight event for progress renderer contract tests.
+func processInstanceMutationTestPreflightEvent(operation string) options.ProgressEvent {
+	total := int64(1)
+	pageCount := int64(1)
+	return options.ProgressEvent{
+		Kind: options.ProgressEventKindPreflight,
+		Preflight: &options.PreflightScope{
+			CoreResource:    "process_instance",
+			SelectorSummary: operation + " process-instance",
+			Total:           &total,
+			TotalKind:       options.TotalCertaintyExact,
+			PageSize:        1,
+			PageCount:       &pageCount,
+			PageCountKind:   options.PageCountKindExact,
+			ConsequenceSummary: options.ConsequenceSummary{
+				WorkSummary: "plan process-instance " + operation + " scope",
+				RiskSummary: "destructive mutation",
+			},
+			RequiresConfirmation: true,
+		},
+	}
 }
 
 // processInstanceMutationTestMutationPhase returns the service phase text the
