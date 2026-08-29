@@ -172,6 +172,38 @@ Started: 2026-08-29 14:20:03
 - Passed: `git diff --check`.
 ---
 ---
+## Iteration 12 - 2026-08-29 15:41
+**Work Unit**: Phase 5 US3 process-instance explicit-key command tenant context
+**Tasks Completed**:
+- [x] T025: Add explicit-key, known/unknown resource tenant, mismatch, and unchanged `IgnoreTenant` tests for PI cancel/delete/resolve/update.
+- [x] T029: Attach explicit-key semantics and resolved tenant evidence to PI cancel, delete, and resolve previews and confirmations without changing `IgnoreTenant`.
+- [x] T030: Preserve available variable tenant metadata in the PI update plan and render explicit-key context without enrichment calls.
+**Tasks Remaining in Work Unit**: US3 remains: T026 and T031-T033.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/cancel_processinstance_test.go
+- cmd/cmd_views_processinstance_update.go
+- cmd/delete_processinstance.go
+- cmd/delete_processinstance_test.go
+- cmd/process_api_stub_test.go
+- cmd/processinstance_mutation_progress.go
+- cmd/resolve_processinstance.go
+- cmd/resolve_processinstance_test.go
+- cmd/update_processinstance.go
+- cmd/update_processinstance_test.go
+- cmd/update_processinstance_variables.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Direct PI explicit-key paths now attach command-owned not-applied semantics and merge already-resolved plan or variable tenant evidence without adding backend enrichment calls.
+- Passed: `go test ./cmd -run 'Test(CancelProcessInstanceDryRun_ExplicitKeyRendersActualTenantMismatch|DeleteProcessInstanceDryRun_ExplicitKeyRendersUnknownTenantEvidence|ResolveProcessInstancesWithPlan_ExplicitKeyRendersActualTenant|UpdateProcessInstanceVariableDryRun_ExplicitKeyRendersVariableTenant)' -count=1`.
+- Passed: `go test ./cmd -run 'Test.*(Cancel|Delete|Resolve|Update).*ProcessInstance|TestUpdatePICommand|TestUpdateProcessInstanceVariable' -count=1`.
+- Passed: `go test ./cmd -count=1`.
+- Passed: `git diff --check`.
+---
+---
 ## Iteration 8 - 2026-08-29 15:10
 **Work Unit**: Phase 4 US2 deploy creation target context
 **Tasks Completed**:

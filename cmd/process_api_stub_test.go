@@ -36,6 +36,7 @@ type stubProcessAPI struct {
 	enrichProcessInstanceVars        func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.VariableEnrichedProcessInstances, error)
 	enrichProcessInstanceElements    func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error)
 	enrichProcessInstanceListeners   func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error)
+	searchProcessInstanceVariables   func(context.Context, string, ...options.FacadeOption) ([]process.ProcessInstanceVariable, error)
 	updateProcessInstancesVars       func(context.Context, types.Keys, map[string]any, int, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error)
 	resolveProcessInstancesIncidents func(context.Context, types.Keys, int, ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error)
 }
@@ -259,8 +260,11 @@ func (s stubProcessAPI) ResolveProcessInstancesIncidents(ctx context.Context, ke
 	return s.resolveProcessInstancesIncidents(ctx, keys, wantedWorkers, opts...)
 }
 
-func (stubProcessAPI) SearchProcessInstanceVariables(context.Context, string, ...options.FacadeOption) ([]process.ProcessInstanceVariable, error) {
-	panic("unexpected call")
+func (s stubProcessAPI) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...options.FacadeOption) ([]process.ProcessInstanceVariable, error) {
+	if s.searchProcessInstanceVariables == nil {
+		panic("unexpected call")
+	}
+	return s.searchProcessInstanceVariables(ctx, key, opts...)
 }
 
 func (stubProcessAPI) UpdateProcessInstanceVariables(context.Context, process.ProcessInstanceVariableUpdateRequest, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResult, error) {

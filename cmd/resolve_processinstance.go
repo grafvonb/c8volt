@@ -72,7 +72,7 @@ var resolveProcessInstanceCmd = &cobra.Command{
 }
 
 func resolveProcessInstancesWithPlan(cmd *cobra.Command, cli resolveProcessInstanceAPI, keys types.Keys, firstPage bool) (incident.ProcessInstanceResolutionResults, error) {
-	planned, err := planProcessInstanceDryRunPreview(cmd, cli, "resolve", keys)
+	planned, err := planProcessInstanceDryRunPreviewWithOptions(cmd, cli, "resolve", keys, collectExplicitPIAdminInputOptions())
 	if err != nil {
 		return incident.ProcessInstanceResolutionResults{}, err
 	}
@@ -83,7 +83,7 @@ func resolveProcessInstancesWithPlan(cmd *cobra.Command, cli resolveProcessInsta
 				return incident.ProcessInstanceResolutionResults{}, fmt.Errorf("render resolve dry-run scope: %w", err)
 			}
 		}
-		opts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+		opts := append(collectExplicitPIAdminInputOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
 		results, err := cli.ResolveProcessInstancesIncidents(cmd.Context(), plan.Collected, flagWorkers, opts...)
 		renderErr := renderProcessInstanceResolutionResults(cmd, results)
 		if err != nil {
@@ -94,6 +94,7 @@ func resolveProcessInstancesWithPlan(cmd *cobra.Command, cli resolveProcessInsta
 		}
 		return results, nil
 	}
+	renderAttachedTenantContext(cmd)
 	printDryRunExpansionWarning(cmd, plan)
 
 	if firstPage {
@@ -108,7 +109,7 @@ func resolveProcessInstancesWithPlan(cmd *cobra.Command, cli resolveProcessInsta
 		}
 	}
 
-	opts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+	opts := append(collectExplicitPIAdminInputOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
 	results, err := cli.ResolveProcessInstancesIncidents(cmd.Context(), plan.Collected, flagWorkers, opts...)
 	renderErr := renderProcessInstanceResolutionResults(cmd, results)
 	if err != nil {

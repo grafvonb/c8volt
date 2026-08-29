@@ -122,6 +122,7 @@ func deleteProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli 
 			DryRunPreview: &planned.Preview,
 		}, nil
 	}
+	renderAttachedTenantContext(cmd)
 	printDryRunExpansionWarning(cmd, plan)
 	if err := rejectDeletePlanRequiringForce(plan); err != nil {
 		return processInstancePageActionResult{}, err

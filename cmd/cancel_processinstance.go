@@ -127,6 +127,7 @@ func cancelProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli 
 			DryRunPreview: &planned.Preview,
 		}, nil
 	}
+	renderAttachedTenantContext(cmd)
 	printDryRunExpansionWarning(cmd, plan)
 
 	impact := planned.Impact

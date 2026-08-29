@@ -80,12 +80,32 @@ func planProcessInstanceDryRunPreviewWithOptions(cmd *cobra.Command, cli process
 	if err != nil {
 		return processInstanceDryRunPlanResult{}, fmt.Errorf("%s validation: %w", operation, err)
 	}
+	if processOptions.ApplyFacadeOptions(opts).IgnoreTenant {
+		attachProcessInstanceExplicitTenantContext(cmd, plan.TenantEvidence)
+	}
 
 	return processInstanceDryRunPlanResult{
 		Plan:    plan,
 		Impact:  processInstancePageImpact{Requested: len(keys), Affected: len(plan.Collected), Roots: len(plan.Roots)},
 		Preview: newProcessInstanceDryRunPreview(operation, keys, plan),
 	}, nil
+}
+
+// attachProcessInstanceExplicitTenantContext combines direct-key semantics with
+// tenant evidence already carried by a frozen process-instance plan.
+func attachProcessInstanceExplicitTenantContext(cmd *cobra.Command, evidence process.TenantEvidence) {
+	cfg, _ := config.FromContext(commandContextOrBackground(cmd))
+	base := newExplicitKeysTenantContext(configuredTenantID(cfg))
+	attachTenantContext(cmd, withTenantContextEvidence(base, evidence.ResolvedTenantIDs, evidence.UnknownTargetCount))
+}
+
+// commandContextOrBackground gives direct unit tests the same nil-safe context
+// fallback as command execution helpers.
+func commandContextOrBackground(cmd *cobra.Command) context.Context {
+	if cmd == nil || cmd.Context() == nil {
+		return context.Background()
+	}
+	return cmd.Context()
 }
 
 // processInstancePageActionResultFromPlan converts a service-owned mutation

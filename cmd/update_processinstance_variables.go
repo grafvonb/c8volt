@@ -12,6 +12,7 @@ import (
 	"sort"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
 	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
@@ -70,13 +71,15 @@ func planUpdateProcessInstanceVariables(ctx context.Context, cmd *cobra.Command,
 
 	plans := make([]processInstanceVariableUpdatePlan, 0, len(uniqueKeys))
 	for _, key := range uniqueKeys {
-		existing, err := cli.SearchProcessInstanceVariables(ctx, key, collectOptions()...)
+		existing, err := cli.SearchProcessInstanceVariables(ctx, key, collectExplicitPIAdminInputOptions()...)
 		if err != nil {
 			return processInstanceVariableUpdatePreview{}, fmt.Errorf("load variables for process-instance %s: %w", key, err)
 		}
 		plans = append(plans, newProcessInstanceVariableUpdatePlan(key, existing, requested))
 	}
-	return newProcessInstanceVariableUpdatePreview(uniqueKeys, plans), nil
+	preview := newProcessInstanceVariableUpdatePreview(uniqueKeys, plans)
+	attachProcessInstanceVariableUpdateTenantContext(cmd, preview)
+	return preview, nil
 }
 
 // newProcessInstanceVariableUpdatePlan compares existing process-scope variables with the requested payload.
@@ -84,7 +87,10 @@ func newProcessInstanceVariableUpdatePlan(key string, existing []process.Process
 	currentByName := processScopeVariableValuesByName(key, existing)
 	requestedNames := sortedMapKeys(requested)
 
-	plan := processInstanceVariableUpdatePlan{ProcessInstanceKey: key}
+	plan := processInstanceVariableUpdatePlan{
+		ProcessInstanceKey: key,
+		tenantID:           processInstanceVariableTenantIDForKey(key, existing),
+	}
 	for _, name := range requestedNames {
 		after := requested[name]
 		before, ok := currentByName[name]
@@ -105,6 +111,31 @@ func newProcessInstanceVariableUpdatePlan(key string, existing []process.Process
 		plan.Untouched = append(plan.Untouched, processInstanceVariablePlannedValue{Name: name, Value: current.Value, APITruncated: current.APITruncated})
 	}
 	return plan
+}
+
+// attachProcessInstanceVariableUpdateTenantContext records direct-key update
+// semantics using only variable tenant metadata loaded for the preview.
+func attachProcessInstanceVariableUpdateTenantContext(cmd *cobra.Command, preview processInstanceVariableUpdatePreview) {
+	cfg, _ := config.FromContext(commandContextOrBackground(cmd))
+	base := newExplicitKeysTenantContext(configuredTenantID(cfg))
+	attachTenantContext(cmd, withTenantContextEvidence(base, preview.tenantIDs, preview.unknownTenantCount))
+}
+
+// processInstanceVariableTenantIDForKey returns the first available tenant for
+// process-scope variables belonging to one explicit process-instance key.
+func processInstanceVariableTenantIDForKey(key string, variables []process.ProcessInstanceVariable) string {
+	for _, variable := range variables {
+		if variable.ProcessInstanceKey != "" && variable.ProcessInstanceKey != key {
+			continue
+		}
+		if variable.ScopeKey != "" && variable.ScopeKey != key {
+			continue
+		}
+		if variable.TenantId != "" {
+			return variable.TenantId
+		}
+	}
+	return ""
 }
 
 type processInstanceVariableCurrentValue struct {

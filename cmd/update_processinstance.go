@@ -84,7 +84,7 @@ var updateProcessInstanceCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 		}
-		results, err := cli.UpdateProcessInstancesVariables(cmd.Context(), keys, variables, flagWorkers, collectOptions()...)
+		results, err := cli.UpdateProcessInstancesVariables(cmd.Context(), keys, variables, flagWorkers, collectExplicitPIAdminInputOptions()...)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("update process-instance variables: %w", err))
 		}

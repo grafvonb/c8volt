@@ -386,6 +386,47 @@ func TestCancelProcessInstanceDryRun_KeyTenantMismatchUsesAdminScope(t *testing.
 	require.Contains(t, output, tenantAdminKeysProcessInstanceKey)
 }
 
+// TestCancelProcessInstanceDryRun_ExplicitKeyRendersActualTenantMismatch verifies
+// direct-key cancellation says the tenant filter is not applied and shows the
+// resolved resource tenant without locally rejecting a configured mismatch.
+func TestCancelProcessInstanceDryRun_ExplicitKeyRendersActualTenantMismatch(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	cfg := &config.Config{App: config.App{Tenant: tenantAdminKeysSelectedTenant}}
+	cmd.SetContext(cfg.ToContextWithLogWriter(context.Background(), buf))
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{tenantAdminKeysProcessInstanceKey}, keys)
+			require.True(t, options.ApplyFacadeOptions(opts).IgnoreTenant)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{tenantAdminKeysProcessInstanceKey},
+				Collected: typex.Keys{tenantAdminKeysProcessInstanceKey},
+				TenantEvidence: process.TenantEvidence{
+					ResolvedTenantIDs: []string{tenantAdminKeysReturnedTenant},
+					TargetCount:       1,
+				},
+				Outcome: process.TraversalOutcomeComplete,
+			}, nil
+		},
+		cancelProcessInstances: dryRunCancelMutationGuard(t),
+	}
+
+	_, err := cancelProcessInstancesWithPlan(cmd, cli, typex.Keys{tenantAdminKeysProcessInstanceKey}, true)
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "Tenant filter: not applied for explicit resource keys\n")
+	require.Contains(t, output, "Resource tenant: "+tenantAdminKeysReturnedTenant+"\n")
+	require.NotContains(t, output, "Tenant filter: "+tenantAdminKeysSelectedTenant)
+}
+
 // TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedImpactCheck verifies keyed impact-check warnings are printed.
 func TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedImpactCheck(t *testing.T) {
 	resetProcessInstanceCommandGlobals()

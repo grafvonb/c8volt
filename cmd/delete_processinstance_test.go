@@ -389,6 +389,47 @@ func TestDeleteProcessInstanceDryRun_KeyTenantMismatchUsesAdminScope(t *testing.
 	require.Contains(t, output, tenantAdminKeysProcessInstanceKey)
 }
 
+// TestDeleteProcessInstanceDryRun_ExplicitKeyRendersUnknownTenantEvidence verifies
+// direct-key deletion keeps admin-scope options while warning when the frozen
+// plan lacks tenant metadata for affected targets.
+func TestDeleteProcessInstanceDryRun_ExplicitKeyRendersUnknownTenantEvidence(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	cfg := &config.Config{App: config.App{Tenant: tenantAdminKeysSelectedTenant}}
+	cmd.SetContext(cfg.ToContextWithLogWriter(context.Background(), buf))
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"child-a"}, keys)
+			require.True(t, options.ApplyFacadeOptions(opts).IgnoreTenant)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-a"},
+				Collected: typex.Keys{"root-a", "child-a"},
+				TenantEvidence: process.TenantEvidence{
+					UnknownTargetCount: 2,
+					TargetCount:        2,
+				},
+				Outcome: process.TraversalOutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstances: dryRunDeleteMutationGuard(t),
+	}
+
+	_, err := deleteProcessInstancesWithPlan(cmd, cli, typex.Keys{"child-a"}, true)
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "Tenant filter: not applied for explicit resource keys\n")
+	require.Contains(t, output, "WARNING: tenant metadata is unknown for 2 targets\n")
+	require.NotContains(t, output, "Resource tenant:")
+}
+
 // Verifies date filters cannot be combined with direct key lookup mode.
 func TestDeleteProcessInstanceCommand_RejectsKeyAndDateFilters(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")

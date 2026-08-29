@@ -19,6 +19,8 @@ Started: 2026-08-29T12:20:03Z
 - Deployment result evidence now reuses `processDefinitionDeploymentTenantIDs` in `cmd/cmd_views_deploy.go` to populate resolved tenant IDs from returned deployment resources without changing deployment payloads or keys-only streams.
 - PI dry-run domain plans now carry `domain.TenantEvidence`; `internal/services/processinstance.DryRunCancelOrDeletePlan` fills it from already-loaded traversal chains, preferring any known tenant metadata for each affected key and counting legacy key-only targets as unknown.
 - The public process facade mirrors dry-run plan evidence with `process.TenantEvidence` on `DryRunPIKeyExpansion`; `fromDomainTenantEvidence` copies the resolved tenant ID slice and keeps command-owned operation semantics separate from service evidence.
+- Direct PI cancel/delete/resolve plans attach explicit-key tenant context only when the planning options carry `IgnoreTenant`, then merge resolved plan evidence with command-configured tenant semantics before dry-run, confirmation, or JSON result rendering.
+- PI variable update previews derive actual tenant evidence from already-loaded process-scope variables, count one unknown target per explicit key when no usable tenant metadata is visible, and keep the evidence in unexported preview fields so JSON payload shape stays stable.
 
 ## Decisions
 - Phase 1 setup was treated as the first work unit because T001 was the first incomplete task and Phase 2 depends on it.
@@ -32,6 +34,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 9 completed the run half of US2 by pairing T018 with T020-T022; deploy and run creation contexts are now both validated before US3 starts.
 - Iteration 10 paired T023 with T027 so service tests for PI dry-run tenant evidence were committed only after the domain/service implementation passed.
 - Iteration 11 paired T024 with T028 so PI facade tests for plan evidence and slice isolation were committed only after public model/conversion wiring passed.
+- Iteration 12 paired T025 with T029 and T030 so PI command explicit-key tests, tenant-context attachment, and variable-update evidence rendering were validated together.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.
@@ -43,6 +46,7 @@ Started: 2026-08-29T12:20:03Z
 - `resetProcessInstanceCommandGlobals()` does not reset `flagQuiet`; tests that set quiet must restore it explicitly or use a helper that does.
 - Root command instances retain Cobra context values across in-process tests, including the tenant-context rendered marker; deploy/embed tests clear command contexts before asserting pre-call rendering order.
 - Run command tests that assert per-execution tenant-context rendering must clear retained Cobra contexts before each case; otherwise the human-rendered marker can suppress later subtests.
+- In command unit tests that install `config.Config` on context, use `ToContextWithLogWriter(..., buf)` when asserting human output; otherwise `renderHumanLine` routes through the logger and the Cobra output buffer remains empty.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -71,6 +75,8 @@ Started: 2026-08-29T12:20:03Z
 - `go test ./c8volt/process -run 'TestClient_DryRunCancelOrDeletePlan_(ReturnsStructuredExpansion|MapsTenantEvidenceCopy)|TestDryRunPIKeyExpansionConversionCopiesTenantEvidence|TestClient_PlanProcessInstanceMutationPages_DelegatesSearchAndExpansion' -count=1`
 - `go test ./c8volt/process -count=1`
 - `go test ./internal/domain ./internal/services/common ./internal/services/processinstance ./c8volt/process -count=1`
+- `go test ./cmd -run 'Test(CancelProcessInstanceDryRun_ExplicitKeyRendersActualTenantMismatch|DeleteProcessInstanceDryRun_ExplicitKeyRendersUnknownTenantEvidence|ResolveProcessInstancesWithPlan_ExplicitKeyRendersActualTenant|UpdateProcessInstanceVariableDryRun_ExplicitKeyRendersVariableTenant)' -count=1`
+- `go test ./cmd -run 'Test.*(Cancel|Delete|Resolve|Update).*ProcessInstance|TestUpdatePICommand|TestUpdateProcessInstanceVariable' -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
@@ -78,4 +84,4 @@ Started: 2026-08-29T12:20:03Z
 - Do not render destructive cancel selector tenant context to stdout; the progress contract reserves stdout for command results and keeps compact progress on stderr.
 
 ## Current Handoff
-- Continue Phase 5 / US3 at T025, adding explicit-key, known/unknown resource tenant, mismatch, and unchanged `IgnoreTenant` command tests for PI cancel/delete/resolve/update; then implement T029 and T030 command wiring without changing backend authorization or adding enrichment calls.
+- Continue Phase 5 / US3 at T026, adding explicit-key mismatch and actual-tenant tests for process-definition deletion and job update plans/results before implementing T031/T032; keep T033 open until all US3 command families are validated together.
