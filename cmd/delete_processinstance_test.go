@@ -226,6 +226,77 @@ func TestDeleteProcessInstanceSearch_TenantContextPrecedesConfirmation(t *testin
 	require.Contains(t, buf.String(), "deletion: deleted 1/1 process-instance tree(s)")
 }
 
+// TestDeleteProcessInstanceSearch_TenantWarningsPrecedeConfirmation verifies
+// aggregate destructive deletion renders merged tenant evidence before the
+// operator confirms the frozen mutation scope.
+func TestDeleteProcessInstanceSearch_TenantWarningsPrecedeConfirmation(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	var prompt string
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(_ bool, got string) error {
+		prompt = got
+		outputBeforePrompt := buf.String()
+		require.Contains(t, outputBeforePrompt, "Tenant filter: none — resources from multiple tenants may be affected\n")
+		require.Contains(t, outputBeforePrompt, "Resource tenants: tenant-a, tenant-b\n")
+		require.Contains(t, outputBeforePrompt, "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b\n")
+		require.Contains(t, outputBeforePrompt, "WARNING: tenant metadata is unknown for 1 target\n")
+		require.Less(t, strings.Index(outputBeforePrompt, "Tenant filter:"), strings.Index(outputBeforePrompt, "Resource tenants:"))
+		require.Less(t, strings.Index(outputBeforePrompt, "Resource tenants:"), strings.Index(outputBeforePrompt, "WARNING: resources from multiple tenants"))
+		require.Less(t, strings.Index(outputBeforePrompt, "WARNING: resources from multiple tenants"), strings.Index(outputBeforePrompt, "WARNING: tenant metadata is unknown"))
+		return nil
+	}
+
+	pagePlan := process.DryRunPIKeyExpansion{
+		Roots:     typex.Keys{"root-401"},
+		Collected: typex.Keys{"root-401", "401", "unknown-401"},
+		TenantEvidence: process.TenantEvidence{
+			ResolvedTenantIDs:  []string{"tenant-b", "tenant-a"},
+			UnknownTargetCount: 1,
+			TargetCount:        3,
+		},
+		Outcome: process.TraversalOutcomeComplete,
+	}
+	cli := stubProcessAPI{
+		planProcessInstanceMutationPages: func(_ context.Context, _ process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, _ ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+			action, err := visitor(process.ProcessInstanceMutationPlanStep{
+				Page: process.ProcessInstancePage{
+					Items:         []process.ProcessInstance{{Key: "401", State: process.StateCompleted}},
+					OverflowState: process.ProcessInstanceOverflowStateNoMore,
+				},
+				RequestedKeys:    []string{"401"},
+				Plan:             pagePlan,
+				CumulativeCount:  1,
+				CumulativeImpact: 3,
+			})
+			require.NoError(t, err)
+			require.Equal(t, process.ProcessInstanceSearchPageActionStop, action)
+			return process.ProcessInstanceMutationPlanPagesResult{
+				RequestedCount:   1,
+				CumulativeImpact: 3,
+				TenantEvidence:   pagePlan.TenantEvidence,
+			}, nil
+		},
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, _ int, _ ...options.FacadeOption) (process.DeleteReports, error) {
+			require.Equal(t, typex.Keys{"root-401"}, keys)
+			return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-401", Ok: true}}}, nil
+		},
+	}
+
+	results, err := deleteProcessInstanceSearchPages(cmd, cli, &config.Config{}, process.ProcessInstanceFilter{})
+
+	require.NoError(t, err)
+	require.Len(t, results.Reports, 1)
+	require.Contains(t, prompt, "You have requested to delete 1 process instance(s)")
+}
+
 func TestDeleteProcessInstanceStdinPipelineKeysSkipBpmnSelectorValidation(t *testing.T) {
 	const key = "2251799813711967"
 	var requests []string

@@ -68,11 +68,11 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	progress, progressSeen := newProcessInstanceMutationProgressReporterWithState(cmd, "cancel")
 	tenantCtx := attachDiscoveryTenantContext(cmd, cfg)
 	tenantContextRendered := false
-	renderDiscoveryTenantContext := func() {
+	renderDiscoveryTenantContext := func(evidence process.TenantEvidence) {
 		if tenantContextRendered {
 			return
 		}
-		renderCancelSearchTenantContext(cmd, tenantCtx)
+		renderCancelSearchTenantContext(cmd, attachProcessInstanceDiscoveryTenantContext(cmd, tenantCtx, evidence))
 		tenantContextRendered = true
 	}
 
@@ -83,7 +83,7 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 		hasSelection := len(step.RequestedKeys) > 0
 		if hasSelection {
 			if !flagDryRun {
-				renderDiscoveryTenantContext()
+				renderDiscoveryTenantContext(step.Plan.TenantEvidence)
 			}
 			result := processInstancePageActionResultFromPlan("cancel", step)
 			printProcessInstanceMutationPlanStepFallbackProgress(cmd, "cancel", step, progressSeen)
@@ -134,7 +134,9 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 			}
 			return process.ProcessInstanceSearchPageActionContinue, nil
 		case processInstanceContinuationPrompt:
-			renderDiscoveryTenantContext()
+			if hasSelection {
+				renderDiscoveryTenantContext(step.Plan.TenantEvidence)
+			}
 			prompt := fmt.Sprintf("Processed %d process instance(s) on this page (%s, %d including dependencies). More matching process instances remain. Continue?", summary.CurrentPageCount, formatProcessInstancePagingProgress(step.Page, summary.CumulativeCount, "requested"), step.CumulativeImpact)
 			if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 				if isCmdAborted(err) {
@@ -182,11 +184,5 @@ func renderCancelSearchTenantContext(cmd *cobra.Command, ctx tenant.Context) {
 		renderTenantContext(cmd, ctx)
 		return
 	}
-	if flagCmdAutomation || !shouldRenderTenantContextHuman(cmd, ctx) {
-		return
-	}
-	if line := tenantContextPrimaryHumanLine(ctx); line != "" {
-		markTenantContextHumanRendered(cmd)
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), line)
-	}
+	renderProcessInstanceMutationTenantContextStderr(cmd, ctx)
 }

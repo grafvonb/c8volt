@@ -47,6 +47,15 @@ type processInstancePageActionResult struct {
 type processInstancePageActionResults struct {
 	Reports        []process.Reporter
 	DryRunPreviews []processInstanceDryRunPreview
+	TenantEvidence process.TenantEvidence
+}
+
+// attachProcessInstanceDiscoveryTenantContext combines search semantics with
+// tenant evidence already carried by a frozen process-instance plan.
+func attachProcessInstanceDiscoveryTenantContext(cmd *cobra.Command, base tenant.Context, evidence process.TenantEvidence) tenant.Context {
+	ctx := withTenantContextEvidence(base, evidence.ResolvedTenantIDs, evidence.UnknownTargetCount)
+	attachTenantContext(cmd, ctx)
+	return ctx
 }
 
 // processInstanceDryRunPlanResult keeps command-owned dry-run planning data
@@ -214,6 +223,31 @@ func printProcessInstanceMutationTenantContext(cmd *cobra.Command, channel ops.P
 	}
 	markTenantContextHumanRendered(cmd)
 	if line := tenantContextPrimaryHumanLine(*ctx); line != "" {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), line)
+	}
+	switch len(ctx.ResolvedTenantIDs) {
+	case 1:
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Resource tenant: %s\n", ctx.ResolvedTenantIDs[0])
+	case 0:
+	default:
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Resource tenants: %s\n", strings.Join(ctx.ResolvedTenantIDs, ", "))
+	}
+	for _, warning := range ctx.Warnings {
+		if warning.Code == tenant.ContextWarningUnfilteredSelection {
+			continue
+		}
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), warning.Message)
+	}
+}
+
+// renderProcessInstanceMutationTenantContextStderr emits search confirmation
+// context on stderr so stdout remains reserved for machine-oriented results.
+func renderProcessInstanceMutationTenantContextStderr(cmd *cobra.Command, ctx tenant.Context) {
+	if flagCmdAutomation || !shouldRenderTenantContextHuman(cmd, ctx) || tenantContextHumanRendered(cmd) {
+		return
+	}
+	markTenantContextHumanRendered(cmd)
+	if line := tenantContextPrimaryHumanLine(ctx); line != "" {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), line)
 	}
 	switch len(ctx.ResolvedTenantIDs) {

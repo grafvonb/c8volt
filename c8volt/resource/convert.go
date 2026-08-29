@@ -97,6 +97,9 @@ func fromDomainDryRunPIKeyExpansion(x d.DryRunPIKeyExpansion) process.DryRunPIKe
 			ResolvedTenantIDs:  append([]string(nil), x.TenantEvidence.ResolvedTenantIDs...),
 			UnknownTargetCount: x.TenantEvidence.UnknownTargetCount,
 			TargetCount:        x.TenantEvidence.TargetCount,
+			Targets: toolx.MapSlice(x.TenantEvidence.Targets, func(target d.TenantEvidenceTarget) process.TenantEvidenceTarget {
+				return process.TenantEvidenceTarget{Key: target.Key, TenantID: target.TenantID}
+			}),
 		},
 		SelectedFinalState:         toolx.MapSlice(x.SelectedFinalState, fromDomainProcessInstance),
 		RequiresCancelBeforeDelete: toolx.MapSlice(x.RequiresCancelBeforeDelete, fromDomainProcessInstance),

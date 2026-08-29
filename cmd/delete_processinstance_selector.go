@@ -75,8 +75,9 @@ func deleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	if aborted || len(results.DryRunPreviews) == 0 {
 		return results, nil
 	}
-	plan := aggregateDeleteSearchPlan(results.DryRunPreviews)
-	renderDeleteSearchTenantContext(cmd, attachDiscoveryTenantContext(cmd, cfg))
+	tenantCtx := attachProcessInstanceDiscoveryTenantContext(cmd, attachDiscoveryTenantContext(cmd, cfg), results.TenantEvidence)
+	plan := aggregateDeleteSearchPlan(results.DryRunPreviews, results.TenantEvidence)
+	renderDeleteSearchTenantContext(cmd, tenantCtx)
 	printDryRunExpansionWarning(cmd, plan)
 	if err := rejectDeletePlanRequiringForce(plan); err != nil {
 		return processInstancePageActionResults{}, err
@@ -114,11 +115,11 @@ func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, c
 	progress, progressSeen := newProcessInstanceMutationProgressReporterWithState(cmd, "delete")
 	tenantCtx := attachDiscoveryTenantContext(cmd, cfg)
 	tenantContextRendered := false
-	renderDiscoveryTenantContext := func() {
+	renderDiscoveryTenantContext := func(evidence process.TenantEvidence) {
 		if tenantContextRendered {
 			return
 		}
-		renderDeleteSearchTenantContext(cmd, tenantCtx)
+		renderDeleteSearchTenantContext(cmd, attachProcessInstanceDiscoveryTenantContext(cmd, tenantCtx, evidence))
 		tenantContextRendered = true
 	}
 
@@ -128,7 +129,7 @@ func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, c
 	}, func(step process.ProcessInstanceMutationPlanStep) (process.ProcessInstanceSearchPageAction, error) {
 		if len(step.RequestedKeys) > 0 {
 			if !flagDryRun {
-				renderDiscoveryTenantContext()
+				renderDiscoveryTenantContext(step.Plan.TenantEvidence)
 			}
 			result := processInstancePageActionResultFromPlan("delete", step)
 			printProcessInstanceMutationPlanStepFallbackProgress(cmd, "delete", step, progressSeen)
@@ -169,6 +170,7 @@ func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, c
 	if flagDryRun && planned.RequestedCount > 0 {
 		attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, planned.TenantEvidence.ResolvedTenantIDs, planned.TenantEvidence.UnknownTargetCount))
 	}
+	results.TenantEvidence = planned.TenantEvidence
 	if planned.RequestedCount == 0 {
 		renderOutputLine(cmd, "found: %d", 0)
 	}
@@ -182,13 +184,7 @@ func renderDeleteSearchTenantContext(cmd *cobra.Command, ctx tenant.Context) {
 		renderTenantContext(cmd, ctx)
 		return
 	}
-	if flagCmdAutomation || !shouldRenderTenantContextHuman(cmd, ctx) {
-		return
-	}
-	if line := tenantContextPrimaryHumanLine(ctx); line != "" {
-		markTenantContextHumanRendered(cmd)
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), line)
-	}
+	renderProcessInstanceMutationTenantContextStderr(cmd, ctx)
 }
 
 // planDeleteProcessInstanceSearchPagesForMutation records every selected
@@ -249,14 +245,16 @@ func planDeleteProcessInstanceSearchPagesWithPrompt(cmd *cobra.Command, cli proc
 	if err != nil {
 		return processInstancePageActionResults{}, err
 	}
+	results.TenantEvidence = planned.TenantEvidence
 	if planned.RequestedCount == 0 {
 		renderOutputLine(cmd, "found: %d", 0)
 	}
 	return results, nil
 }
 
-// aggregateDeleteSearchPlan merges page-level delete previews into one frozen mutation plan.
-func aggregateDeleteSearchPlan(previews []processInstanceDryRunPreview) process.DryRunPIKeyExpansion {
+// aggregateDeleteSearchPlan merges page-level delete previews into one frozen
+// mutation plan while preserving the service-owned tenant evidence snapshot.
+func aggregateDeleteSearchPlan(previews []processInstanceDryRunPreview, evidence process.TenantEvidence) process.DryRunPIKeyExpansion {
 	var roots types.Keys
 	var collected types.Keys
 	var requiresCancel []process.ProcessInstance
@@ -289,6 +287,7 @@ func aggregateDeleteSearchPlan(previews []processInstanceDryRunPreview) process.
 	return process.DryRunPIKeyExpansion{
 		Roots:                      roots.Unique(),
 		Collected:                  collected.Unique(),
+		TenantEvidence:             evidence,
 		RequiresCancelBeforeDelete: requiresCancel,
 		MissingAncestors:           missing,
 		Warning:                    warning,

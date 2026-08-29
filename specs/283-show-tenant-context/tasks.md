@@ -131,10 +131,10 @@
 
 ### Implementation for User Story 4
 
-- [ ] T036 [US4] Merge tenant evidence by unique affected key across PI mutation pages and confirmation boundaries in `internal/services/processinstance/dryrun.go`, `internal/services/processinstance/traversal/result.go`, and `cmd/processinstance_mutation_progress.go`
-- [ ] T037 [US4] Render sorted resolved tenant summaries plus coexisting cross-tenant and unknown warnings in dry-run output and destructive confirmations in `cmd/cmd_views_processinstance_dryrun.go`, `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, and `cmd/resolve_processinstance.go`
-- [ ] T038 [US4] Merge process-definition item and nested cancellation-plan evidence and render the same warning contract in `internal/services/processdefinition/delete.go`, `c8volt/resource/convert.go`, and `cmd/delete_processdefinition.go`
-- [ ] T039 [US4] Run targeted cross-tenant and unknown-metadata service/command tests for the US4 independent criteria and record the results in `specs/283-show-tenant-context/progress.md`
+- [x] T036 [US4] Merge tenant evidence by unique affected key across PI mutation pages and confirmation boundaries in `internal/services/processinstance/dryrun.go`, `internal/services/processinstance/traversal/result.go`, and `cmd/processinstance_mutation_progress.go`
+- [x] T037 [US4] Render sorted resolved tenant summaries plus coexisting cross-tenant and unknown warnings in dry-run output and destructive confirmations in `cmd/cmd_views_processinstance_dryrun.go`, `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, and `cmd/resolve_processinstance.go`
+- [x] T038 [US4] Merge process-definition item and nested cancellation-plan evidence and render the same warning contract in `internal/services/processdefinition/delete.go`, `c8volt/resource/convert.go`, and `cmd/delete_processdefinition.go`
+- [x] T039 [US4] Run targeted cross-tenant and unknown-metadata service/command tests for the US4 independent criteria and record the results in `specs/283-show-tenant-context/progress.md`
 
 **Checkpoint**: Cross-tenant and unknown-target risks are deterministic, prominent, and non-blocking across representative frozen mutation plans.
 

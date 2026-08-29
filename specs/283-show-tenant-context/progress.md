@@ -29,7 +29,6 @@ Started: 2026-08-29 14:20:03
 - Read `ralph-memory.md` before other feature artifacts in every Ralph iteration.
 - Use `specs/ralph-implementation-rules.md` as binding context for implementation, validation, and commit discipline.
 
----
 ## Iteration 1 - 2026-08-29 14:21
 **Work Unit**: Phase 1 setup
 **Tasks Completed**:
@@ -393,6 +392,41 @@ Started: 2026-08-29 14:20:03
 - Passed: `go test ./internal/services/processdefinition/... -run 'Test.*(Tenant|DryRun|Plan|DeleteProcessDefinition|PreviewDeleteProcessDefinitions)' -count=1`.
 - Passed: `go test ./c8volt/resource -run 'Test.*(Tenant|DryRun|Plan|Preview|DeleteProcessDefinition)' -count=1`.
 - Passed: `go test ./cmd -run 'Test.*Delete.*ProcessDefinition' -count=1`.
+- Passed: `go test ./internal/domain ./c8volt/tenant ./internal/services/common ./internal/services/processinstance ./internal/services/processdefinition ./c8volt/process ./c8volt/resource ./cmd -count=1`.
+- Passed: `git diff --check`.
+---
+---
+## Iteration 16 - 2026-08-29 16:24
+**Work Unit**: Phase 6 US4 cross-tenant mutation warnings
+**Tasks Completed**:
+- [x] T036: Merge tenant evidence by unique affected key across PI mutation pages and confirmation boundaries.
+- [x] T037: Render sorted resolved tenant summaries plus coexisting cross-tenant and unknown warnings in PI dry-run output and destructive confirmations.
+- [x] T038: Merge process-definition item and nested cancellation-plan evidence and render the same warning contract.
+- [x] T039: Run targeted cross-tenant and unknown-metadata service/command tests for the US4 independent criteria.
+**Tasks Remaining in Work Unit**: 0; US4 complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/resource/client_test.go
+- c8volt/resource/convert.go
+- cmd/cancel_processinstance_selector.go
+- cmd/cancel_processinstance_test.go
+- cmd/delete_processinstance_selector.go
+- cmd/delete_processinstance_test.go
+- cmd/processinstance_mutation_progress.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- PI destructive search confirmations must attach resolved plan evidence before rendering the tenant block; delete search also needs the service aggregate evidence preserved across page-preview aggregation.
+- PD facade conversion must copy nested PI tenant evidence targets so public command rendering can dedupe known and unknown targets exactly.
+- Passed: `go test ./cmd -run 'Test(CancelProcessInstanceSearch_TenantWarningsPrecedeConfirmation|DeleteProcessInstanceSearch_TenantWarningsPrecedeConfirmation)' -count=1`.
+- Passed: `go test ./internal/services/processinstance/... -run 'Test.*(Tenant|DryRun|Plan|MutationPages)' -count=1`.
+- Passed: `go test ./c8volt/process -run 'Test.*(Tenant|DryRun|Plan|MutationPages)' -count=1`.
+- Passed: `go test ./cmd -run 'Test.*(Cancel|Delete).*ProcessInstance|Test.*DryRun.*Tenant|Test.*MutationProgress|TestProcessInstanceDryRunSummary' -count=1`.
+- Passed: `go test ./c8volt/resource -run 'TestDeleteProcessDefinitionPlan_TenantEvidenceAggregatesPlanItemsAndCancellation|TestClient_PreviewDeleteProcessDefinitionsMapsParentElementInstanceKey' -count=1`.
+- Passed: `go test ./internal/services/processinstance/... ./internal/services/processdefinition/... -run 'Test.*(Tenant|DryRun|Plan|DeleteProcessDefinition|PreviewDeleteProcessDefinitions|MutationPages)' -count=1`.
+- Passed: `go test ./c8volt/process ./c8volt/resource -run 'Test.*(Tenant|DryRun|Plan|Preview|DeleteProcessDefinition|MutationPages)' -count=1`.
+- Passed: `go test ./cmd -run 'Test.*(Cancel|Delete|Resolve).*ProcessInstance|Test.*DryRun.*Tenant|Test.*MutationProgress|TestProcessInstanceDryRunSummary|Test.*Delete.*ProcessDefinition' -count=1`.
 - Passed: `go test ./internal/domain ./c8volt/tenant ./internal/services/common ./internal/services/processinstance ./internal/services/processdefinition ./c8volt/process ./c8volt/resource ./cmd -count=1`.
 - Passed: `git diff --check`.
 ---

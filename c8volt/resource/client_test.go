@@ -448,6 +448,10 @@ func TestDeleteProcessDefinitionPlan_TenantEvidenceAggregatesPlanItemsAndCancell
 						ResolvedTenantIDs:  []string{"tenant-c", "tenant-b"},
 						UnknownTargetCount: 1,
 						TargetCount:        2,
+						Targets: []d.TenantEvidenceTarget{
+							{Key: "pi-1", TenantID: "tenant-c"},
+							{Key: "pi-2"},
+						},
 					},
 				},
 			},
@@ -463,6 +467,8 @@ func TestDeleteProcessDefinitionPlan_TenantEvidenceAggregatesPlanItemsAndCancell
 		TargetCount:        4,
 		Targets: []process.TenantEvidenceTarget{
 			{Key: "pd-1", TenantID: "tenant-b"},
+			{Key: "pi-1", TenantID: "tenant-c"},
+			{Key: "pi-2"},
 			{Key: "pd-2"},
 		},
 	}, plan.TenantEvidence())
