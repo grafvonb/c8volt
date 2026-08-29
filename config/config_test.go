@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -344,6 +345,78 @@ profiles:
 
 	require.Equal(t, "profile-tenant", cfg.App.Tenant)
 	require.Equal(t, "http://profile.example.test/v2", cfg.APIs.Camunda.BaseURL)
+}
+
+// TestResolveEffectiveConfig_VersionSpecificEmptyTenantSemantics documents the
+// configuration boundary between Camunda 8.7 default-only tenant normalization
+// and the unfiltered discovery semantics retained by newer runtimes.
+func TestResolveEffectiveConfig_VersionSpecificEmptyTenantSemantics(t *testing.T) {
+	tests := []struct {
+		name        string
+		appYAML     string
+		wantTenant  string
+		wantVersion toolx.CamundaVersion
+	}{
+		{
+			name: "v87 omitted tenant normalizes to default",
+			appYAML: `
+  camunda_version: "8.7"`,
+			wantTenant:  DefaultTenant,
+			wantVersion: toolx.V87,
+		},
+		{
+			name: "v87 explicit empty tenant remains empty",
+			appYAML: `
+  camunda_version: "8.7"
+  tenant: ""`,
+			wantVersion: toolx.V87,
+		},
+		{
+			name: "v88 omitted tenant remains empty",
+			appYAML: `
+  camunda_version: "8.8"`,
+			wantVersion: toolx.V88,
+		},
+		{
+			name: "v89 omitted tenant remains empty",
+			appYAML: `
+  camunda_version: "8.9"`,
+			wantVersion: toolx.V89,
+		},
+		{
+			name: "v810 alias omitted tenant remains empty",
+			appYAML: `
+  camunda_version: "810"`,
+			wantVersion: toolx.V810,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := viper.New()
+			v.SetConfigType("yaml")
+			err := v.ReadConfig(strings.NewReader(`
+app:` + tt.appYAML + `
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+`))
+			require.NoError(t, err)
+
+			cfg, err := ResolveEffectiveConfig(
+				v,
+				func(string) bool { return false },
+				func(activeProfile, key string) bool {
+					return v.InConfig("profiles." + activeProfile + "." + key)
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantVersion, cfg.App.CamundaVersion)
+			require.Equal(t, tt.wantTenant, cfg.App.Tenant)
+		})
+	}
 }
 
 func TestConfig_ToSanitizedYAMLWithTenantContextIncludesNamedContext(t *testing.T) {

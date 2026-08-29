@@ -34,6 +34,102 @@ func TestRetrieveAndNormalizeConfig_BindsAutomationFlagAndEnvironment(t *testing
 	require.True(t, cfg.App.Automation)
 }
 
+// TestRetrieveAndNormalizeConfig_VersionSpecificEmptyTenantSemantics verifies root
+// config loading applies Camunda 8.7 default-tenant normalization without
+// converting explicitly empty or newer-version discovery configuration.
+func TestRetrieveAndNormalizeConfig_VersionSpecificEmptyTenantSemantics(t *testing.T) {
+	tests := []struct {
+		name       string
+		configYAML string
+		wantTenant string
+	}{
+		{
+			name: "v87 omitted tenant defaults to default tenant",
+			configYAML: `
+app:
+  camunda_version: "8.7"
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`,
+			wantTenant: config.DefaultTenant,
+		},
+		{
+			name: "v87 explicit empty tenant stays unfiltered",
+			configYAML: `
+app:
+  camunda_version: "8.7"
+  tenant: ""
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`,
+		},
+		{
+			name: "v88 omitted tenant stays unfiltered",
+			configYAML: `
+app:
+  camunda_version: "8.8"
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`,
+		},
+		{
+			name: "v89 omitted tenant stays unfiltered",
+			configYAML: `
+app:
+  camunda_version: "8.9"
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`,
+		},
+		{
+			name: "v810 omitted tenant stays unfiltered",
+			configYAML: `
+app:
+  camunda_version: "8.10"
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := Root()
+			resetCommandTreeFlags(root)
+			t.Cleanup(func() {
+				resetCommandTreeFlags(root)
+			})
+
+			cfgPath := filepath.Join(t.TempDir(), "config.yaml")
+			require.NoError(t, os.WriteFile(cfgPath, []byte(tt.configYAML), 0o600))
+			require.NoError(t, root.PersistentFlags().Set("config", cfgPath))
+
+			v := viper.New()
+			bindings, err := initViper(v, root)
+			require.NoError(t, err)
+
+			cfg, err := retrieveAndNormalizeConfig(v, bindings)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantTenant, cfg.App.Tenant)
+		})
+	}
+}
+
 // TestAutomationModeEnabled_PrefersResolvedConfigContext ensures runtime decisions read the resolved
 // config placed on the command context, even when the raw persistent flag value says otherwise.
 func TestAutomationModeEnabled_PrefersResolvedConfigContext(t *testing.T) {

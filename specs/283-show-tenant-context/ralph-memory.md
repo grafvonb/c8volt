@@ -41,6 +41,7 @@ Started: 2026-08-29T12:20:03Z
 - Ops human preflight/confirmation tenant blocks are routed through durable stderr/log progress with `printOpsTenantContext`; dry-run/final summaries call `renderAttachedTenantContext`, so quiet and keys-only modes remain silent and shared envelopes pick up the attached context.
 - Ops Markdown reports render `Tenant Context`, resource tenant(s), unknown count, cross-tenant state, and tenant warnings through `writeMarkdownTenantContext`; JSON reports include the common root `tenantContext` while unfiltered discovery omits legacy `tenantId`.
 - Cross-family machine-contract assertions now live in the named T049 files: `cmd/cmd_json_assertions_test.go` has `requireSingleJSONObjectDocument` plus run JSON/quiet/keys-only tenant-context checks, `cmd/command_contract_test.go` guards root envelope placement without payload reshaping, and `cmd/ops_contract_test.go` guards root `tenantContext` placement in an ops JSON report.
+- Camunda-version tenant normalization is now guarded at the root/config/common-service boundary: omitted 8.7 tenant normalizes to `<default>`, explicitly empty 8.7 remains empty, and omitted 8.8/8.9/8.10 remains unfiltered for discovery/service request helpers.
 
 ## Decisions
 - Phase 1 setup was treated as the first work unit because T001 was the first incomplete task and Phase 2 depends on it.
@@ -63,6 +64,8 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 18 paired T041 with T045 so ops model/conversion tests were committed only after optional nested tenant context was wired through domain reports, public reports, ops preflight, and progress callbacks.
 - Iteration 19 paired T042 with T046 so no-extra-call ops service aggregation tests were committed only after frozen workflow tenant evidence was wired through domain and public ops plan/result models.
 - Iteration 20 paired T043 with T047/T048 so ops command/report tenant-context tests were committed only after command-layer semantics, preflight routing, human summaries, and JSON/Markdown audit rendering passed.
+- Iteration 21 completed T049 by adding representative JSON/quiet/keys-only/shared-envelope/ops-report machine contract assertions for the common `tenantContext` object.
+- Iteration 22 completed T050 and T051 with version-specific tenant normalization tests plus the quickstart cross-family acceptance command suite; US5 is complete.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.
@@ -124,10 +127,16 @@ Started: 2026-08-29T12:20:03Z
 - `go test ./cmd -run 'Test(OpsExecuteRetentionPolicyResultTenantContext|OpsPurgeAllProcessDefinitionsKeyTenantContextUsesExplicitSemantics|OpsPurgeProcessInstancesWithIncidentsKeyTenantContextUsesExplicitSemantics|OpsPurgeOrphanProcessInstancesUnfilteredTenantContext|OpsRepairIncidentKeyTenantContextUsesExplicitSemantics|OpsRepairProcessInstanceSearchTenantContextUsesDiscoverySemantics|OpsExecuteSmokeTestTenantContextUsesCreationSemantics|PrintOpsPreflightScope.*TenantContext|OpsAuditReportJSONIncludesTenantContextAndOmitsUnfilteredLegacyTenant|WriteMarkdownTenantContextUsesSharedHumanContract)' -count=1`
 - `go test ./cmd -run 'Test.*Ops.*(Retention|Purge|Repair|Smoke|Report)|Test.*Report.*(JSON|Markdown|Tenant)' -count=1`
 - `go test ./internal/services/ops/... ./c8volt/ops ./cmd -count=1`
+- `go test ./cmd -run 'TestRetrieveAndNormalizeConfig_VersionSpecificEmptyTenantSemantics' -count=1`
+- `go test ./config -run 'TestResolveEffectiveConfig_VersionSpecificEmptyTenantSemantics|TestConfig_ToSanitizedYAMLWithTenantContext' -count=1`
+- `go test ./internal/services/common -run 'TestEffectiveTenant_UsesNormalizedVersionSpecificTenantSemantics|TestTenantEvidenceAccumulator' -count=1`
+- `go test ./cmd ./config ./internal/services/common -count=1`
+- `go test ./internal/services/common ./internal/services/processinstance/... ./internal/services/processdefinition/... -run 'Test.*Tenant|Test.*DryRun|Test.*Plan' -count=1`
+- `go test ./c8volt/tenant ./c8volt/process ./c8volt/resource ./c8volt/job ./c8volt/incident ./c8volt/ops -run 'Test.*Tenant|Test.*Convert|Test.*Plan' -count=1`
 
 ## Do Not Repeat
 - Do not add accumulator or renderer behavior to the domain/public model; T003/T006 own service evidence aggregation and T004/T007/T008 own command rendering/envelope plumbing.
 - Do not render destructive cancel selector tenant context to stdout; the progress contract reserves stdout for command results and keeps compact progress on stderr.
 
 ## Current Handoff
-- Continue Phase 7 / US5 at T050 by verifying Camunda 8.7 normalization versus 8.8-8.10 unfiltered behavior through configuration and service tests in `cmd/root_config_test.go`, `config/config_test.go`, and `internal/services/common/tenant_context_test.go`; T051 remains open after that.
+- Continue Phase 8 / Polish at T052 by updating affected Cobra `Long` text and examples with operation-specific tenant semantics; T053 can proceed in parallel afterward, but do not start both documentation work units in one Ralph iteration unless they are deliberately committed as the same polish work unit.

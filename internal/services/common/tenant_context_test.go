@@ -6,7 +6,10 @@ package common
 import (
 	"testing"
 
+	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Verifies tenant evidence is counted by unique affected target and known tenant IDs are sorted.
@@ -95,4 +98,34 @@ func TestTenantEvidenceAccumulator_SnapshotReturnsCopies(t *testing.T) {
 	next := acc.Snapshot()
 
 	assert.Equal(t, []string{"tenant-a", "tenant-b"}, next.ResolvedTenantIDs)
+}
+
+// TestEffectiveTenant_UsesNormalizedVersionSpecificTenantSemantics verifies
+// service request builders consume the effective tenant directly instead of
+// rendering empty discovery as a default tenant for Camunda 8.8 and newer.
+func TestEffectiveTenant_UsesNormalizedVersionSpecificTenantSemantics(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		version    toolx.CamundaVersion
+		wantTenant string
+	}{
+		{name: "v87 omitted tenant becomes default tenant", version: toolx.V87, wantTenant: config.DefaultTenant},
+		{name: "v88 omitted tenant stays unfiltered", version: toolx.V88},
+		{name: "v89 omitted tenant stays unfiltered", version: toolx.V89},
+		{name: "v810 omitted tenant stays unfiltered", version: toolx.V810},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := config.New()
+			cfg.App.CamundaVersion = tt.version
+			require.NoError(t, cfg.Normalize())
+
+			assert.Equal(t, tt.wantTenant, EffectiveTenant(cfg))
+		})
+	}
 }

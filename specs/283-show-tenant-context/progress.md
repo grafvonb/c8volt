@@ -598,3 +598,33 @@ Started: 2026-08-29 14:20:03
 - Passed: `go test ./cmd -count=1`.
 - Passed: `git diff --check`.
 ---
+---
+## Iteration 22 - 2026-08-29 17:36
+**Work Unit**: Phase 7 US5 version normalization and cross-family acceptance
+**Tasks Completed**:
+- [x] T050: Verify Camunda 8.7 normalization versus 8.8-8.10 unfiltered behavior through configuration and service tests without modifying generated clients.
+- [x] T051: Run the quickstart cross-family acceptance commands and record output-contract and no-extra-backend-call results.
+**Tasks Remaining in Work Unit**: 0; US5 complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/root_config_test.go
+- config/config_test.go
+- internal/services/common/tenant_context_test.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Root/config/common-service tests now pin the tenant semantics split: omitted Camunda 8.7 tenant normalizes to `<default>`, explicitly empty 8.7 remains empty, and omitted 8.8/8.9/8.10 remains unfiltered.
+- Generated clients were not modified; the service request boundary continues to consume the normalized effective tenant directly through common helpers.
+- Passed: `go test ./cmd -run 'TestRetrieveAndNormalizeConfig_VersionSpecificEmptyTenantSemantics' -count=1`.
+- Passed: `go test ./config -run 'TestResolveEffectiveConfig_VersionSpecificEmptyTenantSemantics|TestConfig_ToSanitizedYAMLWithTenantContext' -count=1`.
+- Passed: `go test ./internal/services/common -run 'TestEffectiveTenant_UsesNormalizedVersionSpecificTenantSemantics|TestTenantEvidenceAccumulator' -count=1`.
+- Passed: `go test ./cmd ./config ./internal/services/common -count=1`.
+- Passed: `go test ./internal/services/common ./internal/services/processinstance/... ./internal/services/processdefinition/... -run 'Test.*Tenant|Test.*DryRun|Test.*Plan' -count=1`.
+- Passed: `go test ./c8volt/tenant ./c8volt/process ./c8volt/resource ./c8volt/job ./c8volt/incident ./c8volt/ops -run 'Test.*Tenant|Test.*Convert|Test.*Plan' -count=1`.
+- Passed: `go test ./cmd -run 'Test.*Config|Test.*TenantContext|Test.*CommandContract|Test.*JSON' -count=1`.
+- Passed: `go test ./cmd -run 'Test.*(Cancel|Delete|Resolve|Update).*ProcessInstance|Test.*DryRun.*Tenant|Test.*MutationProgress' -count=1`.
+- Passed: `go test ./cmd -run 'Test.*Delete.*ProcessDefinition|Test.*UpdateJob|Test.*Deploy|Test.*Run.*ProcessInstance' -count=1`.
+- Passed: `go test ./cmd -run 'Test.*Ops.*(Retention|Purge|Repair|Smoke|Report)|Test.*Report.*(JSON|Markdown|Tenant)' -count=1`.
+- Passed: `git diff --check`.
+---
