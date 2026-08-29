@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -84,11 +85,12 @@ type ResultDetail struct {
 }
 
 type ResultEnvelope[T any] struct {
-	Outcome Outcome       `json:"outcome"`
-	Class   string        `json:"class,omitempty"`
-	Command string        `json:"command"`
-	Payload T             `json:"payload,omitempty"`
-	Detail  *ResultDetail `json:"detail,omitempty"`
+	Outcome       Outcome         `json:"outcome"`
+	Class         string          `json:"class,omitempty"`
+	Command       string          `json:"command"`
+	TenantContext *tenant.Context `json:"tenantContext,omitempty"`
+	Payload       T               `json:"payload,omitempty"`
+	Detail        *ResultDetail   `json:"detail,omitempty"`
 }
 
 const (

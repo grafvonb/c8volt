@@ -82,3 +82,26 @@ Started: 2026-08-29 14:20:03
 **Learnings**:
 - The common accumulator keeps merge-dedupe state inside snapshots so service pages can combine known and unknown target evidence without backend enrichment.
 ---
+---
+## Iteration 4 - 2026-08-29 14:39
+**Work Unit**: Phase 2 foundational command tenant-context rendering and envelope
+**Tasks Completed**:
+- [x] T004: Add renderer and envelope tests for exact human wording, warning order, optional `tenantContext`, unchanged payload shape, quiet suppression, and keys-only silence.
+- [x] T007: Implement command-context attachment, operation-specific base-context construction, and human label/warning rendering.
+- [x] T008: Add optional tenant context to the shared result envelope and propagate attached context through existing JSON result helpers without reshaping payloads.
+- [x] T009: Run focused domain, facade, accumulator, and command-contract tests and record results and reusable patterns.
+**Tasks Remaining in Work Unit**: 0; Phase 2 foundation complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_tenant_context.go
+- cmd/cmd_views_tenant_context.go
+- cmd/cmd_views_tenant_context_test.go
+- cmd/command_contract.go
+- cmd/cmd_views_contract.go
+- cmd/command_contract_test.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Passed focused and full foundational validation; tenant warnings need a feature-specific warning renderer because the legacy warning helper strips `WARNING:`.
+---

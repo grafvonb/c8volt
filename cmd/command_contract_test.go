@@ -4,6 +4,8 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -12,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -135,6 +138,59 @@ func TestCommandCapabilityForCommand_DocumentsTenantContract(t *testing.T) {
 		require.Contains(t, cmd.Long, "Tenant contract:")
 		require.Contains(t, cmd.Long, "backend-authorized admin input")
 	}
+}
+
+// TestRenderSucceededResult_AttachesTenantContextBesidePayload verifies the
+// shared envelope adds tenant context without wrapping or reshaping payloads.
+func TestRenderSucceededResult_AttachesTenantContextBesidePayload(t *testing.T) {
+	resetTenantContextRenderFlags(t)
+	flagViewAsJson = true
+	cmd, buf := newContractTenantContextTestCommand()
+	setContractSupport(cmd, ContractSupportFull)
+	attachTenantContext(cmd, withTenantContextEvidence(newExplicitKeysTenantContext("tenant-a"), []string{"tenant-b"}, 0))
+
+	require.NoError(t, renderSucceededResult(cmd, map[string]any{"items": []string{"pi-1"}}))
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	require.Equal(t, "cancel process-instance", envelope["command"])
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, []any{"pi-1"}, payload["items"])
+	tenantContext := requireJSONObject(t, envelope["tenantContext"])
+	require.Equal(t, string(tenant.ContextModeExplicitKeys), tenantContext["mode"])
+	require.Equal(t, string(tenant.ContextFilterNotApplied), tenantContext["filter"])
+	require.Equal(t, "tenant-a", tenantContext["configuredTenantId"])
+	require.Equal(t, []any{"tenant-b"}, tenantContext["resolvedTenantIds"])
+}
+
+// TestRenderSucceededResult_OmitsTenantContextWhenUnattached keeps commands
+// without tenant semantics on the previous envelope shape.
+func TestRenderSucceededResult_OmitsTenantContextWhenUnattached(t *testing.T) {
+	resetTenantContextRenderFlags(t)
+	flagViewAsJson = true
+	cmd, buf := newContractTenantContextTestCommand()
+	setContractSupport(cmd, ContractSupportFull)
+
+	require.NoError(t, renderSucceededResult(cmd, map[string]any{"ok": true}))
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope))
+	require.NotContains(t, envelope, "tenantContext")
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, true, payload["ok"])
+}
+
+// newContractTenantContextTestCommand builds a nested command so envelope tests
+// exercise the same command-path logic as normal subcommands.
+func newContractTenantContextTestCommand() (*cobra.Command, *bytes.Buffer) {
+	buf := &bytes.Buffer{}
+	parent := &cobra.Command{Use: "cancel"}
+	cmd := &cobra.Command{Use: "process-instance"}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	parent.AddCommand(cmd)
+	return cmd, buf
 }
 
 // TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata keeps command
