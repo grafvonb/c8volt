@@ -14,6 +14,8 @@ Start process instances and confirm creation.
 
 Run by BPMN process ID for the latest version, or by process definition key for an exact definition.
 
+Tenant contract: process-instance start is a creation operation. A named tenant is reported as "Create in tenant: <tenant>" before creation; empty tenant configuration targets and reports "Create in tenant: <default>".
+
 When running by BPMN process ID, c8volt validates all requested process definitions before creating anything. Mixed visible and missing BPMN IDs fail as one request, so no partial process instances are started; automation-oriented modes never prompt for recovery output.
 
 By default c8volt waits until created instances are observable. Created instances are confirmed after Camunda observes ACTIVE, COMPLETED, CANCELED, or TERMINATED.
@@ -28,6 +30,7 @@ c8volt run process-instance [flags]
 
 ```
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
+  ./c8volt --tenant tenant-a run process-instance --bpmn-process-id <bpmn-process-id>
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2
   ./c8volt --json run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'

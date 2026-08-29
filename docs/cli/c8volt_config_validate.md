@@ -15,6 +15,10 @@ Validate effective configuration.
 Loads the effective configuration through the normal config resolver and uses
 the same validation behavior as `config show --validate`.
 
+Tenant context describes configuration scope only: a named tenant is a discovery
+filter, while an empty tenant means no configured tenant filter and is not
+reported as <default>.
+
 ```
 c8volt config validate [flags]
 ```
@@ -24,6 +28,8 @@ c8volt config validate [flags]
 ```
   ./c8volt --config ./config.yaml config validate
   ./c8volt --profile prod config validate
+  ./c8volt --tenant tenant-a config validate
+  ./c8volt --tenant "" config validate
 ```
 
 ### Options

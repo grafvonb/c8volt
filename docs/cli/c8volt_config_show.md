@@ -13,6 +13,9 @@ Show effective configuration
 Show effective configuration with sensitive values sanitized.
 
 Precedence: flag > env > profile > base config > default.
+Tenant context in the sanitized document describes configuration scope only:
+a named tenant is a discovery filter, while an empty tenant means no configured
+tenant filter and is not reported as <default>.
 The --validate and --template flags remain supported as compatibility shortcuts
 for validation and template rendering.
 
@@ -25,6 +28,8 @@ c8volt config show [flags]
 ```
   ./c8volt config show
   ./c8volt --config ./config.yaml --profile prod config show
+  ./c8volt --tenant tenant-a config show
+  ./c8volt --tenant "" config show
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt config show --template
 ```

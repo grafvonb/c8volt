@@ -14,7 +14,9 @@ Cancel process instances by key or search filters.
 
 By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.
 
-Tenant contract: --tenant scopes search-derived candidate discovery where supported. Explicit --key and stdin keys are backend-authorized admin input; existing dry-run, confirmation, force, and wait safety checks still apply.
+Tenant contract: --tenant scopes search-derived candidate discovery where supported. Empty tenant configuration leaves discovery unfiltered and is reported as "Tenant filter: none — resources from multiple tenants may be affected". Explicit --key and stdin keys are backend-authorized admin input and report that the tenant filter is not applied; existing dry-run, confirmation, force, and wait safety checks still apply.
+
+Resolved plans show known resource tenants and warn when the frozen scope spans multiple tenants or includes targets with unknown tenant metadata.
 
 When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, or cancellation; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no cancellation request is submitted.
 
@@ -34,6 +36,9 @@ c8volt cancel process-instance [flags]
   ./c8volt cancel process-instance --key <process-instance-key>
   ./c8volt cancel process-instance --key <process-instance-key> --dry-run
   ./c8volt cancel process-instance --key <process-instance-key> --force
+  ./c8volt --tenant tenant-a cancel process-instance --key <process-instance-key> --dry-run
+  ./c8volt --tenant tenant-a cancel process-instance --state active --limit 5 --dry-run
+  ./c8volt --tenant "" cancel process-instance --state active --limit 5 --dry-run
   ./c8volt cancel process-instance --state active --batch-size 250 --limit 5 --dry-run
   ./c8volt cancel process-instance --state active --start-date-before 2026-05-31 --limit 5 --dry-run
   ./c8volt cancel process-instance --state active --start-date-newer-days 30 --limit 5 --dry-run

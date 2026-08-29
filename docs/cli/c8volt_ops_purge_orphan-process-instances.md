@@ -11,6 +11,8 @@ Purge orphan child process instances
 
 Purge orphan child process instances.
 
+Tenant contract: orphan purge uses discovery semantics. A named tenant scopes candidate discovery; empty tenant configuration leaves discovery unfiltered and is reported as "Tenant filter: none — resources from multiple tenants may be affected". Frozen plans and audit reports show known resource tenants and warn when the scope spans multiple tenants or includes targets with unknown tenant metadata.
+
 The workflow discovers child process instances with missing parents, freezes the discovered key set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.
 
 ```
@@ -21,6 +23,8 @@ c8volt ops purge orphan-process-instances [flags]
 
 ```
   ./c8volt ops purge orphan-process-instances --dry-run
+  ./c8volt --tenant tenant-a ops purge orphan-process-instances --dry-run
+  ./c8volt --tenant "" ops purge orphan-process-instances --dry-run
   ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id <bpmn-process-id> --limit 25
   ./c8volt ops purge orphan-process-instances --state completed --limit 25
   ./c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md

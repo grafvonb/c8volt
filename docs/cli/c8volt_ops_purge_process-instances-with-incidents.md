@@ -11,6 +11,8 @@ Purge process instances selected by incidents
 
 Purge process instances selected by incidents.
 
+Tenant contract: incident-filter mode uses discovery semantics, where a named tenant scopes candidate discovery and empty tenant configuration leaves discovery unfiltered. Direct --inc-key input uses explicit-key semantics and reports that the tenant filter is not applied. Frozen plans and audit reports show known resource tenants and warn when the scope spans multiple tenants or includes targets with unknown tenant metadata.
+
 The workflow discovers candidate incidents from incident filters, freezes the candidate process-instance keys, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Discovery pages through all matching incidents by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.
 
 ```
@@ -22,6 +24,8 @@ c8volt ops purge process-instances-with-incidents [flags]
 ```
   ./c8volt ops purge process-instances-with-incidents --dry-run
   ./c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
+  ./c8volt --tenant tenant-a ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
+  ./c8volt --tenant "" ops purge process-instances-with-incidents --state active --limit 5 --dry-run
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md

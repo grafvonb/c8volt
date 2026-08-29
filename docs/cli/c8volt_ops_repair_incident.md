@@ -11,6 +11,8 @@ Repair incidents by key or filter
 
 Repair incidents by key or filter.
 
+Tenant contract: incident-filter mode uses discovery semantics, where a named tenant scopes candidate discovery and empty tenant configuration leaves discovery unfiltered. Direct --key and stdin input use explicit-key semantics and report that the tenant filter is not applied. Frozen plans and audit reports show known resource tenants and warn when the scope spans multiple tenants or includes targets with unknown tenant metadata.
+
 The command accepts repeated --key values, newline-separated keys from stdin with '-', or incident search filters. Keyed mode and search mode are mutually exclusive. Search mode pages through all matching incidents by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. It builds a fixed incident target set before mutation, applies process-instance-scope variable updates once per unique scope when requested, applies job retry and timeout updates only when an incident has a related job, resolves each incident, and confirms clearance unless --no-wait is set. Incidents without related jobs are reported and still proceed to incident resolution. Use --report-file with Markdown or JSON output for an audit record of discovery, targets, step statuses, notices, errors, and final outcome.
 
 ```
@@ -21,6 +23,8 @@ c8volt ops repair incident [flags]
 
 ```
   ./c8volt ops repair incident --key <incident-key> --dry-run
+  ./c8volt --tenant tenant-a ops repair incident --key <incident-key> --dry-run
+  ./c8volt --tenant "" ops repair incident --state active --limit 5 --dry-run
   ./c8volt ops repair incident --state active --error-type io_mapping_error --limit 5 --dry-run
   ./c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --dry-run
   ./c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --report-file repair-incident.md

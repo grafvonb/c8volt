@@ -685,3 +685,40 @@ Started: 2026-08-29 14:20:03
 - README and ops playbooks now document discovery, creation, explicit-key tenant semantics, non-blocking cross/unknown warnings, JSON `tenantContext`, and quiet/keys-only stdout protection without touching generated CLI docs.
 - Passed: `git diff --check -- README.md docs/ops/execute-retention-policy.md docs/ops/execute-smoke-test.md docs/ops/purge-all-process-definitions.md docs/ops/purge-orphan-process-instances.md docs/ops/purge-process-instances-with-incidents.md docs/ops/repair-incident.md docs/ops/repair-process-instance.md`.
 ---
+---
+## Iteration 25 - 2026-08-29 17:54
+**Work Unit**: Phase 8 T054 generated CLI documentation
+**Tasks Completed**:
+- [x] T054: Regenerate CLI documentation with `make docs-content`, review affected generated CLI pages and `docs/index.md`, then record the command and results.
+**Tasks Remaining in Work Unit**: Phase 8 remains: T055-T056.
+**Commit**: This work-unit commit
+**Files Changed**:
+- docs/cli/c8volt_config_show.md
+- docs/cli/c8volt_config_validate.md
+- docs/cli/c8volt_config_test-connection.md
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/cli/c8volt_delete_process-definition.md
+- docs/cli/c8volt_resolve_process-instance.md
+- docs/cli/c8volt_update_process-instance.md
+- docs/cli/c8volt_update_job.md
+- docs/cli/c8volt_deploy_process-definition.md
+- docs/cli/c8volt_run_process-instance.md
+- docs/cli/c8volt_ops_execute_retention-policy.md
+- docs/cli/c8volt_ops_execute_smoke-test.md
+- docs/cli/c8volt_ops_purge_all-process-definitions.md
+- docs/cli/c8volt_ops_purge_orphan-process-instances.md
+- docs/cli/c8volt_ops_purge_process-instances-with-incidents.md
+- docs/cli/c8volt_ops_repair_incident.md
+- docs/cli/c8volt_ops_repair_process-instance.md
+- docs/index.md
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Generated CLI docs picked up the source command tenant-context wording across the expected T054 page set; no generated Camunda clients or tenant-selection request code changed.
+- `docs/index.md` was refreshed from README content and now carries the tenant-context guidance plus the current generated build banner.
+- Passed: `make docs-content`.
+- Passed: `go test ./docsgen -count=1`.
+- Passed: `git diff --check`.
+---

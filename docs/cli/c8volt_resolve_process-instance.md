@@ -14,6 +14,8 @@ Resolve process-instance incidents by key.
 
 The command accepts repeated --key values or newline-separated keys from stdin with '-'. For each unique process instance, c8volt expands to the process-instance family, discovers active incidents at command start for direct incidents on in-scope instances, resolves that fixed incident set, and reports process instances with no active incidents as skipped.
 
+Tenant contract: explicit --key and stdin keys are backend-authorized admin input and report that the tenant filter is not applied. Resolved plans show known resource tenants and warn when the frozen scope spans multiple tenants or includes targets with unknown tenant metadata.
+
 By default c8volt validates the affected root and descendant instances and asks for confirmation before resolving active incidents in the family. Use --dry-run to preview the family scope and incident resolution plan without submitting mutations.
 
 By default c8volt waits until the initially discovered incidents are no longer active by polling process-instance incident lookup through the incident service.
@@ -27,6 +29,7 @@ c8volt resolve process-instance [flags]
 ```
   ./c8volt resolve process-instance --key <process-instance-key> --dry-run
   ./c8volt resolve process-instance --key <process-instance-key>
+  ./c8volt --tenant tenant-a resolve process-instance --key <process-instance-key> --dry-run
   ./c8volt resolve process-instance --key <process-instance-key> --key <another-process-instance-key>
   printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt resolve process-instance -
 ```

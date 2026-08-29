@@ -44,6 +44,7 @@ Started: 2026-08-29T12:20:03Z
 - Camunda-version tenant normalization is now guarded at the root/config/common-service boundary: omitted 8.7 tenant normalizes to `<default>`, explicitly empty 8.7 remains empty, and omitted 8.8/8.9/8.10 remains unfiltered for discovery/service request helpers.
 - Affected Cobra `Long` text and examples now document configuration, discovery, creation, explicit-key, cross-tenant, and unknown-tenant semantics in source metadata only; generated CLI docs are intentionally left for T054.
 - Operator-facing README and ops playbooks now explain operation-specific tenant context, non-blocking cross/unknown warnings, JSON `tenantContext`, and protected quiet/keys-only stdout behavior; generated CLI docs are intentionally left for T054.
+- Generated CLI docs now reflect the tenant-context command metadata across the T054 page set, and `docs/index.md` carries the README tenant-context guidance plus the current generated build banner.
 
 ## Decisions
 - Phase 1 setup was treated as the first work unit because T001 was the first incomplete task and Phase 2 depends on it.
@@ -70,6 +71,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 22 completed T050 and T051 with version-specific tenant normalization tests plus the quickstart cross-family acceptance command suite; US5 is complete.
 - Iteration 23 completed T052 by updating affected Cobra command `Long` text and examples with operation-specific tenant semantics; generated docs and operator guides remain open.
 - Iteration 24 completed T053 by updating README and affected ops playbooks with tenant semantics and protected output-mode guidance; generated CLI documentation remains queued for T054.
+- Iteration 25 completed T054 by running `make docs-content`, reviewing the affected generated CLI pages and `docs/index.md`, and validating the docs generator plus whitespace checks.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.
@@ -140,10 +142,11 @@ Started: 2026-08-29T12:20:03Z
 - `go test ./cmd ./docsgen -run 'Test.*Help|Test.*TenantContext|TestCommandCapability|TestGeneratedOpsPagedDiscoveryDocsDocumentHelp' -count=1`
 - `go test ./cmd -count=1`
 - `go test ./docsgen -count=1`
+- `make docs-content`
 
 ## Do Not Repeat
 - Do not add accumulator or renderer behavior to the domain/public model; T003/T006 own service evidence aggregation and T004/T007/T008 own command rendering/envelope plumbing.
 - Do not render destructive cancel selector tenant context to stdout; the progress contract reserves stdout for command results and keeps compact progress on stderr.
 
 ## Current Handoff
-- Continue Phase 8 / Polish at T054 by running `make docs-content`, reviewing the affected generated CLI pages and `docs/index.md`, then recording the command and results.
+- Continue Phase 8 / Polish at T055 by inventorying new and modified command declarations for cohesion, verifying no generated client or tenant-selection request changed, running `gofmt`/`git diff --check`, and recording the audit.
