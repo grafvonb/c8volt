@@ -74,7 +74,6 @@ Started: 2026-08-29 14:20:03
 - specs/283-show-tenant-context/progress.md
 **Learnings**:
 - The common accumulator keeps merge-dedupe state inside snapshots so service pages can combine known and unknown target evidence without backend enrichment.
----
 ## Iteration 4 - 2026-08-29 14:39
 **Work Unit**: Phase 2 foundational command tenant-context rendering and envelope
 **Tasks Completed**:
@@ -164,7 +163,6 @@ Started: 2026-08-29 14:20:03
 - Passed: `go test ./cmd -run 'Test.*(DryRun.*Tenant|MutationProgress|ProcessInstanceDryRunSummary)' -count=1`.
 - Passed: `go test ./cmd -count=1`.
 - Passed: `git diff --check`.
----
 ---
 ## Iteration 12 - 2026-08-29 15:41
 **Work Unit**: Phase 5 US3 process-instance explicit-key command tenant context
@@ -663,4 +661,27 @@ Started: 2026-08-29 14:20:03
 - Passed: `go test ./cmd -count=1`.
 - Passed: `go test ./docsgen -count=1`.
 - Passed: `git diff --check`.
+---
+---
+## Iteration 24 - 2026-08-29 17:51
+**Work Unit**: Phase 8 T053 operator tenant guidance
+**Tasks Completed**:
+- [x] T053: Update operator guidance for tenant semantics and protected output modes.
+**Tasks Remaining in Work Unit**: Phase 8 remains: T054-T056.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- docs/ops/execute-retention-policy.md
+- docs/ops/execute-smoke-test.md
+- docs/ops/purge-all-process-definitions.md
+- docs/ops/purge-orphan-process-instances.md
+- docs/ops/purge-process-instances-with-incidents.md
+- docs/ops/repair-incident.md
+- docs/ops/repair-process-instance.md
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- README and ops playbooks now document discovery, creation, explicit-key tenant semantics, non-blocking cross/unknown warnings, JSON `tenantContext`, and quiet/keys-only stdout protection without touching generated CLI docs.
+- Passed: `git diff --check -- README.md docs/ops/execute-retention-policy.md docs/ops/execute-smoke-test.md docs/ops/purge-all-process-definitions.md docs/ops/purge-orphan-process-instances.md docs/ops/purge-process-instances-with-incidents.md docs/ops/repair-incident.md docs/ops/repair-process-instance.md`.
 ---

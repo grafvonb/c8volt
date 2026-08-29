@@ -49,3 +49,5 @@ Generated references: [get process-instance](/cli/c8volt_get_process-instance), 
 ## Output And Safety
 
 `--dry-run` reports the frozen retention set and delete plan without mutation. Real execution confirms or runs under automation, deletes through normal process-instance delete planning, waits unless disabled, and can write Markdown or JSON reports. Discovery page size and frozen scope are separate: use `--batch-size` for request size and `--limit` only when the retention scope should intentionally stop early.
+
+Retention is discovery-driven. A named tenant configuration is shown as `Tenant filter: tenant-a`; an empty tenant configuration is shown as `Tenant filter: none — resources from multiple tenants may be affected` and is not described as `<default>`. The frozen delete plan reports known resource tenants when available and emits non-blocking warnings for cross-tenant scope or unknown tenant metadata. JSON output and JSON reports carry the same `tenantContext` object, while quiet mode and keys-only pipelines keep tenant guidance out of stdout.

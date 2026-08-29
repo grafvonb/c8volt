@@ -49,3 +49,5 @@ Generated references: [get process-definition](/cli/c8volt_get_process-definitio
 ## Output And Safety
 
 `--dry-run` reports selected definitions and process-instance impact without mutation. Real execution requires confirmation unless automation controls are used. Full process-definition purge is supported from Camunda 8.9 onward.
+
+Selector mode is tenant-filtered discovery: named configuration is shown as `Tenant filter: tenant-a`, while an empty tenant is shown as `Tenant filter: none — resources from multiple tenants may be affected`. Explicit `--key` targets use backend authorization instead, so c8volt reports `Tenant filter: not applied for explicit resource keys` and then shows known definition or nested process-instance tenant evidence from the frozen impact plan. Cross-tenant and unknown-metadata warnings are informational and appear before confirmation. JSON reports include `tenantContext`; quiet and keys-only modes do not add tenant lines to stdout.

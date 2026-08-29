@@ -46,3 +46,5 @@ Generated references: [get incident](/cli/c8volt_get_incident), [update process-
 ## Output And Safety
 
 `--dry-run` shows selected incidents and planned variable, job, and resolution steps without mutation. Real execution submits only the requested repair actions and reports planned, skipped, submitted, confirmed, and failed work. Keyed mode and search mode are mutually exclusive.
+
+Search mode uses discovery semantics and reports either `Tenant filter: tenant-a` or `Tenant filter: none — resources from multiple tenants may be affected` before repair. Keyed mode uses explicit-key semantics: c8volt states that the tenant filter is not applied for explicit resource keys and reports actual resource tenant evidence only when the frozen incident or process-instance plan already contains it. Cross-tenant and unknown-metadata warnings do not block repair, but they are shown before confirmation and recorded in JSON reports as `tenantContext`. Quiet output suppresses these human lines.

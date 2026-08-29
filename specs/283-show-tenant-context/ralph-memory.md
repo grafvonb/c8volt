@@ -43,6 +43,7 @@ Started: 2026-08-29T12:20:03Z
 - Cross-family machine-contract assertions now live in the named T049 files: `cmd/cmd_json_assertions_test.go` has `requireSingleJSONObjectDocument` plus run JSON/quiet/keys-only tenant-context checks, `cmd/command_contract_test.go` guards root envelope placement without payload reshaping, and `cmd/ops_contract_test.go` guards root `tenantContext` placement in an ops JSON report.
 - Camunda-version tenant normalization is now guarded at the root/config/common-service boundary: omitted 8.7 tenant normalizes to `<default>`, explicitly empty 8.7 remains empty, and omitted 8.8/8.9/8.10 remains unfiltered for discovery/service request helpers.
 - Affected Cobra `Long` text and examples now document configuration, discovery, creation, explicit-key, cross-tenant, and unknown-tenant semantics in source metadata only; generated CLI docs are intentionally left for T054.
+- Operator-facing README and ops playbooks now explain operation-specific tenant context, non-blocking cross/unknown warnings, JSON `tenantContext`, and protected quiet/keys-only stdout behavior; generated CLI docs are intentionally left for T054.
 
 ## Decisions
 - Phase 1 setup was treated as the first work unit because T001 was the first incomplete task and Phase 2 depends on it.
@@ -68,6 +69,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 21 completed T049 by adding representative JSON/quiet/keys-only/shared-envelope/ops-report machine contract assertions for the common `tenantContext` object.
 - Iteration 22 completed T050 and T051 with version-specific tenant normalization tests plus the quickstart cross-family acceptance command suite; US5 is complete.
 - Iteration 23 completed T052 by updating affected Cobra command `Long` text and examples with operation-specific tenant semantics; generated docs and operator guides remain open.
+- Iteration 24 completed T053 by updating README and affected ops playbooks with tenant semantics and protected output-mode guidance; generated CLI documentation remains queued for T054.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.
@@ -144,4 +146,4 @@ Started: 2026-08-29T12:20:03Z
 - Do not render destructive cancel selector tenant context to stdout; the progress contract reserves stdout for command results and keeps compact progress on stderr.
 
 ## Current Handoff
-- Continue Phase 8 / Polish at T053 by updating README and affected ops guides with tenant semantics and protected output-mode guidance; T054 docs generation should wait until T053 is complete.
+- Continue Phase 8 / Polish at T054 by running `make docs-content`, reviewing the affected generated CLI pages and `docs/index.md`, then recording the command and results.

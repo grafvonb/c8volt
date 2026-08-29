@@ -49,3 +49,5 @@ Generated references: [get incident](/cli/c8volt_get_incident), [delete process-
 ## Output And Safety
 
 `--dry-run` reports the discovered incidents, frozen process-instance keys, and delete plan without mutation. Real execution requires confirmation unless automation controls are used. Incident matching is discovery only; deletion still follows the same process-instance family rules as `delete process-instance`.
+
+Incident-filtered purge reports the tenant meaning used for discovery. Named configuration appears as `Tenant filter: tenant-a`; an empty tenant appears as `Tenant filter: none — resources from multiple tenants may be affected`. Direct incident keys use explicit-key semantics instead, so the configured tenant is reported as not applied and resource tenant evidence is shown only when already present in the frozen plan. Cross-tenant and unknown-metadata warnings are non-blocking and are also represented in JSON reports through `tenantContext`; quiet and keys-only output stay free of tenant commentary on stdout.
