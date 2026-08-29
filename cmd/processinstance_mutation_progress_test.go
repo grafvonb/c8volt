@@ -11,6 +11,7 @@ import (
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
@@ -204,6 +205,85 @@ func TestProcessInstanceMutationProgress_ProtectedModesSuppressAttachedDiscovery
 			require.NotContains(t, stderr.String(), "resources from multiple tenants")
 		})
 	}
+}
+
+// TestCancelProcessInstanceSearchDryRun_RendersMergedTenantWarnings verifies
+// search dry-run summaries use aggregate page evidence for resource tenant
+// warnings instead of only the base discovery filter line.
+func TestCancelProcessInstanceSearchDryRun_RendersMergedTenantWarnings(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+	flagGetPISize = 1
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Int32("batch-size", 1000, "")
+	require.NoError(t, cmd.Flags().Set("batch-size", "1"))
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	cli := stubProcessAPI{
+		planProcessInstanceMutationPages: func(_ context.Context, _ process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, _ ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+			page := process.ProcessInstancePage{
+				Items:         []process.ProcessInstance{{Key: "401", State: process.StateActive}},
+				Request:       process.ProcessInstancePageRequest{From: 0, Size: 1},
+				OverflowState: process.ProcessInstanceOverflowStateNoMore,
+			}
+			plan := process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-401"},
+				Collected: typex.Keys{"root-401", "401", "unknown-401"},
+				TenantEvidence: process.TenantEvidence{
+					ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+					UnknownTargetCount: 1,
+					TargetCount:        3,
+				},
+				Outcome: process.TraversalOutcomeComplete,
+			}
+			action, err := visitor(process.ProcessInstanceMutationPlanStep{
+				Page:             page,
+				RequestedKeys:    []string{"401"},
+				Plan:             plan,
+				CumulativeCount:  1,
+				CumulativeImpact: 3,
+			})
+			require.NoError(t, err)
+			require.Equal(t, process.ProcessInstanceSearchPageActionStop, action)
+			return process.ProcessInstanceMutationPlanPagesResult{
+				Plans:            []process.ProcessInstanceMutationPlanStep{{Page: page, RequestedKeys: []string{"401"}, Plan: plan, CumulativeCount: 1, CumulativeImpact: 3}},
+				Pages:            1,
+				RequestedCount:   1,
+				CumulativeImpact: 3,
+				TenantEvidence: process.TenantEvidence{
+					ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+					UnknownTargetCount: 1,
+					TargetCount:        3,
+				},
+			}, nil
+		},
+		cancelProcessInstances: dryRunCancelMutationGuard(t),
+	}
+
+	results, err := cancelProcessInstanceSearchPages(cmd, cli, &config.Config{}, process.ProcessInstanceFilter{State: process.StateActive})
+	require.NoError(t, err)
+	require.Len(t, results.DryRunPreviews, 1)
+	require.NoError(t, renderProcessInstanceDryRunSummary(cmd, newProcessInstanceDryRunSummary("cancel", results.DryRunPreviews)))
+
+	output := buf.String()
+	tenantLine := "Tenant filter: none — resources from multiple tenants may be affected\n"
+	resourceLine := "Resource tenants: tenant-a, tenant-b\n"
+	crossWarning := "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b\n"
+	unknownWarning := "WARNING: tenant metadata is unknown for 1 target\n"
+	summaryLine := "dry run: cancel process-instance\n"
+	require.Contains(t, output, tenantLine)
+	require.Contains(t, output, resourceLine)
+	require.Contains(t, output, crossWarning)
+	require.Contains(t, output, unknownWarning)
+	require.Contains(t, output, summaryLine)
+	require.Less(t, strings.Index(output, tenantLine), strings.Index(output, resourceLine))
+	require.Less(t, strings.Index(output, resourceLine), strings.Index(output, crossWarning))
+	require.Less(t, strings.Index(output, crossWarning), strings.Index(output, unknownWarning))
+	require.Less(t, strings.Index(output, unknownWarning), strings.Index(output, summaryLine))
 }
 
 // exerciseProcessInstanceMutationProgressOutput captures stdout and stderr for

@@ -127,7 +127,9 @@ func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, c
 		Workers:       flagWorkers,
 	}, func(step process.ProcessInstanceMutationPlanStep) (process.ProcessInstanceSearchPageAction, error) {
 		if len(step.RequestedKeys) > 0 {
-			renderDiscoveryTenantContext()
+			if !flagDryRun {
+				renderDiscoveryTenantContext()
+			}
 			result := processInstancePageActionResultFromPlan("delete", step)
 			printProcessInstanceMutationPlanStepFallbackProgress(cmd, "delete", step, progressSeen)
 			if result.DryRunPreview != nil {
@@ -163,6 +165,9 @@ func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, c
 	}, append(collectOptions(), processOptions.WithProgress(progress))...)
 	if err != nil {
 		return processInstancePageActionResults{}, err
+	}
+	if flagDryRun && planned.RequestedCount > 0 {
+		attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, planned.TenantEvidence.ResolvedTenantIDs, planned.TenantEvidence.UnknownTargetCount))
 	}
 	if planned.RequestedCount == 0 {
 		renderOutputLine(cmd, "found: %d", 0)

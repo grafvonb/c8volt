@@ -134,6 +134,9 @@ func dryRunCancelOrDeletePlanLegacy(ctx context.Context, api API, keys typex.Key
 func PlanProcessInstanceMutationPages(ctx context.Context, api API, incAPI SearchProcessInstanceIncidentAPI, request d.ProcessInstanceMutationPlanRequest, visitor d.ProcessInstanceMutationPlanVisitor, opts ...services.CallOption) (d.ProcessInstanceMutationPlanPagesResult, error) {
 	var out d.ProcessInstanceMutationPlanPagesResult
 	var cumulativeImpact int32
+	evidence := common.NewTenantEvidenceAccumulator()
+	var evidenceTargets []d.TenantEvidenceTarget
+	seenEvidenceTargets := make(map[string]struct{})
 	cfg := services.ApplyCallOptions(opts)
 	var planningTotal int
 	if request.SearchRequest.Limit > 0 {
@@ -195,6 +198,7 @@ func PlanProcessInstanceMutationPages(ctx context.Context, api API, incAPI Searc
 		}
 		if len(keys) > 0 {
 			out.Plans = append(out.Plans, planStep)
+			evidenceTargets = mergeTenantEvidenceTargets(evidence, evidenceTargets, seenEvidenceTargets, plan.TenantEvidence)
 		}
 		if cfg.Progress != nil && planningTotal > 0 {
 			done := int(step.CumulativeCount)
@@ -231,6 +235,8 @@ func PlanProcessInstanceMutationPages(ctx context.Context, api API, incAPI Searc
 	out.Pages = result.Pages
 	out.RequestedCount = int32(len(result.Items))
 	out.CumulativeImpact = cumulativeImpact
+	out.TenantEvidence = domainTenantEvidence(evidence.Snapshot())
+	out.TenantEvidence.Targets = evidenceTargets
 	return out, nil
 }
 
@@ -348,10 +354,15 @@ func tenantEvidenceFromTraversalResults(collected typex.Keys, resultGroups ...[]
 	}
 
 	acc := common.NewTenantEvidenceAccumulator()
+	targets := make([]d.TenantEvidenceTarget, 0, len(collected.Unique()))
 	for _, key := range collected.Unique() {
-		acc.Add(key, tenantByKey[key])
+		tenantID := tenantByKey[key]
+		acc.Add(key, tenantID)
+		targets = append(targets, d.TenantEvidenceTarget{Key: key, TenantID: tenantID})
 	}
-	return domainTenantEvidence(acc.Snapshot())
+	evidence := domainTenantEvidence(acc.Snapshot())
+	evidence.Targets = targets
+	return evidence
 }
 
 // mergeTraversalTenantEvidence prefers known tenant metadata when any traversal result provides it.
@@ -373,10 +384,14 @@ func mergeTraversalTenantEvidence(tenantByKey map[string]string, chain map[strin
 // tenantEvidenceFromKeys marks key-only legacy dry-run targets as unknown without enrichment.
 func tenantEvidenceFromKeys(keys typex.Keys) d.TenantEvidence {
 	acc := common.NewTenantEvidenceAccumulator()
+	targets := make([]d.TenantEvidenceTarget, 0, len(keys.Unique()))
 	for _, key := range keys.Unique() {
 		acc.Add(key, "")
+		targets = append(targets, d.TenantEvidenceTarget{Key: key})
 	}
-	return domainTenantEvidence(acc.Snapshot())
+	evidence := domainTenantEvidence(acc.Snapshot())
+	evidence.Targets = targets
+	return evidence
 }
 
 // domainTenantEvidence converts service accumulator output into a domain plan value.
@@ -386,6 +401,26 @@ func domainTenantEvidence(snapshot common.TenantEvidenceSnapshot) d.TenantEviden
 		UnknownTargetCount: snapshot.UnknownTargetCount,
 		TargetCount:        snapshot.TargetCount,
 	}
+}
+
+// mergeTenantEvidenceTargets adds per-target evidence from a page plan so
+// duplicate affected keys across page boundaries are counted once.
+func mergeTenantEvidenceTargets(acc *common.TenantEvidenceAccumulator, targets []d.TenantEvidenceTarget, seen map[string]struct{}, evidence d.TenantEvidence) []d.TenantEvidenceTarget {
+	if acc == nil {
+		return targets
+	}
+	for _, target := range evidence.Targets {
+		if target.Key == "" {
+			continue
+		}
+		acc.Add(target.Key, target.TenantID)
+		if _, ok := seen[target.Key]; ok {
+			continue
+		}
+		seen[target.Key] = struct{}{}
+		targets = append(targets, d.TenantEvidenceTarget{Key: target.Key, TenantID: target.TenantID})
+	}
+	return targets
 }
 
 func mapDryRunTraversalWarning(results []pitraversal.Result) (warning string, missing []d.MissingAncestor, outcome d.TraversalOutcome) {

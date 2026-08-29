@@ -18,11 +18,19 @@ type MissingAncestor struct {
 	StartKey string
 }
 
+// TenantEvidenceTarget records one affected target's tenant observation for
+// cross-page deduplication.
+type TenantEvidenceTarget struct {
+	Key      string
+	TenantID string
+}
+
 // TenantEvidence captures already-resolved tenant metadata for affected targets.
 type TenantEvidence struct {
 	ResolvedTenantIDs  []string
 	UnknownTargetCount int
 	TargetCount        int
+	Targets            []TenantEvidenceTarget
 }
 
 type DryRunPIKeyExpansion struct {

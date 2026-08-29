@@ -403,6 +403,9 @@ func fromDomainTenantEvidence(x d.TenantEvidence) TenantEvidence {
 		ResolvedTenantIDs:  append([]string(nil), x.ResolvedTenantIDs...),
 		UnknownTargetCount: x.UnknownTargetCount,
 		TargetCount:        x.TargetCount,
+		Targets: toolx.MapSlice(x.Targets, func(target d.TenantEvidenceTarget) TenantEvidenceTarget {
+			return TenantEvidenceTarget{Key: target.Key, TenantID: target.TenantID}
+		}),
 	}
 }
 
@@ -458,6 +461,7 @@ func fromDomainProcessInstanceSearchPageStep(x d.ProcessInstanceSearchPageStep) 
 func fromDomainProcessInstanceMutationPlanPagesResult(x d.ProcessInstanceMutationPlanPagesResult) ProcessInstanceMutationPlanPagesResult {
 	return ProcessInstanceMutationPlanPagesResult{
 		Plans:            toolx.MapSlice(x.Plans, fromDomainProcessInstanceMutationPlanStep),
+		TenantEvidence:   fromDomainTenantEvidence(x.TenantEvidence),
 		Limit:            x.Limit,
 		Pages:            x.Pages,
 		RequestedCount:   x.RequestedCount,

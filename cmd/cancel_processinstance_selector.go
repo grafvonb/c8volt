@@ -82,7 +82,9 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	}, func(step process.ProcessInstanceMutationPlanStep) (process.ProcessInstanceSearchPageAction, error) {
 		hasSelection := len(step.RequestedKeys) > 0
 		if hasSelection {
-			renderDiscoveryTenantContext()
+			if !flagDryRun {
+				renderDiscoveryTenantContext()
+			}
 			result := processInstancePageActionResultFromPlan("cancel", step)
 			printProcessInstanceMutationPlanStepFallbackProgress(cmd, "cancel", step, progressSeen)
 			if flagDryRun {
@@ -156,6 +158,9 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	}, append(collectOptions(), processOptions.WithProgress(progress))...)
 	if err != nil {
 		return processInstancePageActionResults{}, err
+	}
+	if flagDryRun && planned.RequestedCount > 0 {
+		attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, planned.TenantEvidence.ResolvedTenantIDs, planned.TenantEvidence.UnknownTargetCount))
 	}
 	if len(results.Reports) > 0 {
 		renderProcessInstanceMutationResultSummary(cmd, "cancel", results.Reports, processInstancePageImpact{

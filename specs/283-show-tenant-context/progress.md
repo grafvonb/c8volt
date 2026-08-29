@@ -337,3 +337,34 @@ Started: 2026-08-29 14:20:03
 - Passed: `go test ./cmd -count=1`.
 - Passed: `git diff --check`.
 ---
+---
+## Iteration 14 - 2026-08-29 16:03
+**Work Unit**: Phase 6 US4 PI cross-tenant and unknown warning tests
+**Tasks Completed**:
+- [x] T034: Add PI plan/page merge and command dry-run warning tests for stable tenant deduplication, unique unknown counting, cross-plus-unknown warnings, and no enrichment calls.
+**Tasks Remaining in Work Unit**: US4 remains: T035-T039. T036/T037 have partial PI support in place but remain unchecked until destructive confirmation-boundary behavior is completed and validated.
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/domain/processinstance.go
+- internal/domain/processinstance_traversal.go
+- internal/services/processinstance/dryrun.go
+- internal/services/processinstance/dryrun_test.go
+- c8volt/process/api.go
+- c8volt/process/model.go
+- c8volt/process/convert.go
+- c8volt/process/client_test.go
+- cmd/cancel_processinstance_selector.go
+- cmd/delete_processinstance_selector.go
+- cmd/processinstance_mutation_progress_test.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- PI page-result tenant evidence needs per-target observations to dedupe unknown metadata across repeated affected keys; dry-run summaries can render aggregate cross-plus-unknown warnings once the result evidence is attached.
+- Passed: `go test ./internal/services/processinstance ./cmd -run 'TestPlanProcessInstanceMutationPages_MergesTenantEvidenceAcrossPages|TestCancelProcessInstanceSearchDryRun_RendersMergedTenantWarnings' -count=1`.
+- Passed: `go test ./internal/services/processinstance/... -run 'Test.*(Tenant|DryRun|Plan|MutationPages)' -count=1`.
+- Passed: `go test ./c8volt/process -run 'Test.*(Tenant|DryRun|Plan|MutationPages)' -count=1`.
+- Passed: `go test ./cmd -run 'Test.*(Cancel|Delete).*ProcessInstance|Test.*DryRun.*Tenant|Test.*MutationProgress|TestProcessInstanceDryRunSummary' -count=1`.
+- Passed: `go test ./internal/domain ./c8volt/tenant ./internal/services/common ./internal/services/processinstance ./c8volt/process ./cmd -count=1`.
+- Passed: `git diff --check`.
+---

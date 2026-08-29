@@ -2268,6 +2268,12 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
 		UnknownTargetCount: 0,
 		TargetCount:        4,
+		Targets: []TenantEvidenceTarget{
+			{Key: "r1", TenantID: "tenant-a"},
+			{Key: "c1", TenantID: "tenant-a"},
+			{Key: "r2", TenantID: "tenant-b"},
+			{Key: "c2", TenantID: "tenant-b"},
+		},
 	}, got.TenantEvidence)
 }
 
@@ -2314,9 +2320,14 @@ func TestClient_DryRunCancelOrDeletePlan_MapsTenantEvidenceCopy(t *testing.T) {
 	require.Equal(t, TenantEvidence{
 		ResolvedTenantIDs: []string{"tenant-a"},
 		TargetCount:       2,
+		Targets: []TenantEvidenceTarget{
+			{Key: "root", TenantID: "tenant-a"},
+			{Key: "child", TenantID: "tenant-a"},
+		},
 	}, got.TenantEvidence)
 
 	got.TenantEvidence.ResolvedTenantIDs[0] = "changed"
+	got.TenantEvidence.Targets[0].TenantID = "changed"
 	require.Equal(t, "tenant-a", domainTenants[0])
 }
 
