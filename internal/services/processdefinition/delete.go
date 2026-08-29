@@ -12,6 +12,7 @@ import (
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/internal/services/common"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/logging"
@@ -148,6 +149,7 @@ func PreviewDeleteProcessDefinitionsWithWorkers(ctx context.Context, pdApi API, 
 		for _, key := range ukeys {
 			plan.Items = append(plan.Items, d.DeleteProcessDefinitionPlanItem{Key: key})
 		}
+		plan.TenantEvidence = processDefinitionPlanTenantEvidence(plan.Items)
 		return plan, nil
 	}
 
@@ -164,7 +166,65 @@ func PreviewDeleteProcessDefinitionsWithWorkers(ctx context.Context, pdApi API, 
 		}
 		plan.Items = append(plan.Items, item)
 	}
+	plan.TenantEvidence = processDefinitionPlanTenantEvidence(plan.Items)
 	return plan, nil
+}
+
+// processDefinitionPlanTenantEvidence aggregates plan-item and nested PI
+// evidence by affected target key without querying for missing tenant metadata.
+func processDefinitionPlanTenantEvidence(items []d.DeleteProcessDefinitionPlanItem) d.TenantEvidence {
+	acc := common.NewTenantEvidenceAccumulator()
+	targets := make([]d.TenantEvidenceTarget, 0)
+	seen := make(map[string]struct{})
+	fallbackTargetCount := 0
+	fallbackUnknownTargetCount := 0
+	for _, item := range items {
+		targets = addProcessDefinitionPlanTenantEvidenceTarget(acc, targets, seen, "pd", item.Key, item.TenantId)
+		if len(item.CancellationPlan.TenantEvidence.Targets) > 0 {
+			for _, target := range item.CancellationPlan.TenantEvidence.Targets {
+				targets = addProcessDefinitionPlanTenantEvidenceTarget(acc, targets, seen, "pi", target.Key, target.TenantID)
+			}
+			continue
+		}
+		for _, tenantID := range item.CancellationPlan.TenantEvidence.ResolvedTenantIDs {
+			if tenantID != "" {
+				acc.Add("pi-known:"+tenantID, tenantID)
+			}
+		}
+		fallbackTargetCount += item.CancellationPlan.TenantEvidence.TargetCount
+		fallbackUnknownTargetCount += item.CancellationPlan.TenantEvidence.UnknownTargetCount
+	}
+	evidence := domainTenantEvidenceFromSnapshot(acc.Snapshot())
+	evidence.TargetCount += fallbackTargetCount
+	evidence.UnknownTargetCount += fallbackUnknownTargetCount
+	evidence.Targets = targets
+	return evidence
+}
+
+// addProcessDefinitionPlanTenantEvidenceTarget counts each target once while
+// preserving first-seen target order for auditability in tests and converters.
+func addProcessDefinitionPlanTenantEvidenceTarget(acc *common.TenantEvidenceAccumulator, targets []d.TenantEvidenceTarget, seen map[string]struct{}, kind string, key string, tenantID string) []d.TenantEvidenceTarget {
+	if key == "" {
+		return targets
+	}
+	seenKey := kind + ":" + key
+	if _, ok := seen[seenKey]; ok {
+		return targets
+	}
+	seen[seenKey] = struct{}{}
+	acc.Add(seenKey, tenantID)
+	targets = append(targets, d.TenantEvidenceTarget{Key: key, TenantID: tenantID})
+	return targets
+}
+
+// domainTenantEvidenceFromSnapshot converts shared accumulator output into the
+// internal process-definition plan evidence shape.
+func domainTenantEvidenceFromSnapshot(snapshot common.TenantEvidenceSnapshot) d.TenantEvidence {
+	return d.TenantEvidence{
+		ResolvedTenantIDs:  snapshot.ResolvedTenantIDs,
+		UnknownTargetCount: snapshot.UnknownTargetCount,
+		TargetCount:        snapshot.TargetCount,
+	}
 }
 
 // DeleteProcessDefinitions deletes process definitions, sharing force cleanup across overlapping process-instance trees.

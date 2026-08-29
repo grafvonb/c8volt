@@ -127,7 +127,7 @@
 ### Tests for User Story 4
 
 - [x] T034 [P] [US4] Add failing PI plan/page merge tests for stable tenant deduplication, unique unknown counting, cross-plus-unknown warnings, and no enrichment calls in `internal/services/processinstance/dryrun_test.go` and `cmd/processinstance_mutation_progress_test.go`
-- [ ] T035 [P] [US4] Add failing process-definition impact tests for duplicate tenants, multi-tenant cancellation subplans, unknown items, and compact confirmation warning order in `internal/services/processdefinition/delete_test.go` and `cmd/delete_test.go`
+- [x] T035 [P] [US4] Add failing process-definition impact tests for duplicate tenants, multi-tenant cancellation subplans, unknown items, and compact confirmation warning order in `internal/services/processdefinition/delete_test.go` and `cmd/delete_test.go`
 
 ### Implementation for User Story 4
 

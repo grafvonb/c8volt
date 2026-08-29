@@ -368,3 +368,31 @@ Started: 2026-08-29 14:20:03
 - Passed: `go test ./internal/domain ./c8volt/tenant ./internal/services/common ./internal/services/processinstance ./c8volt/process ./cmd -count=1`.
 - Passed: `git diff --check`.
 ---
+---
+## Iteration 15 - 2026-08-29 16:13
+**Work Unit**: Phase 6 US4 process-definition impact warning tests
+**Tasks Completed**:
+- [x] T035: Add process-definition impact tests for duplicate tenants, multi-tenant cancellation subplans, unknown items, and compact confirmation warning order.
+**Tasks Remaining in Work Unit**: US4 remains: T036-T039. T036/T037 continue PI confirmation-boundary merge/render work; T038 remains open for the remaining process-definition implementation audit; T039 records targeted US4 validation.
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/domain/resource_workflow.go
+- internal/services/processdefinition/delete.go
+- internal/services/processdefinition/delete_test.go
+- c8volt/resource/model.go
+- c8volt/resource/client_test.go
+- cmd/delete_processdefinition.go
+- cmd/delete_test.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- PD impact plans now preserve aggregate tenant evidence from already-loaded process-definition items and nested PI cancellation evidence; empty process-definition tenant IDs are counted as unknown targets.
+- PD delete command context is attached from the frozen impact plan for explicit-key and discovery paths, and compact impact rendering shows sorted resource tenants before cross/unknown warnings.
+- Passed: `go test ./internal/services/processdefinition ./cmd -run 'TestPreviewDeleteProcessDefinitionsAggregatesTenantEvidence|TestDeleteProcessDefinitionImpact_RendersTenantWarningsBeforeImpact' -count=1`.
+- Passed: `go test ./internal/services/processdefinition/... -run 'Test.*(Tenant|DryRun|Plan|DeleteProcessDefinition|PreviewDeleteProcessDefinitions)' -count=1`.
+- Passed: `go test ./c8volt/resource -run 'Test.*(Tenant|DryRun|Plan|Preview|DeleteProcessDefinition)' -count=1`.
+- Passed: `go test ./cmd -run 'Test.*Delete.*ProcessDefinition' -count=1`.
+- Passed: `go test ./internal/domain ./c8volt/tenant ./internal/services/common ./internal/services/processinstance ./internal/services/processdefinition ./c8volt/process ./c8volt/resource ./cmd -count=1`.
+- Passed: `git diff --check`.
+---

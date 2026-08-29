@@ -27,6 +27,8 @@ Started: 2026-08-29T12:20:03Z
 - `renderAttachedTenantContext` now lives in `cmd/cmd_views_tenant_context.go` because it is shared by PI, PD, and job views; command tests that reuse global Cobra commands should reset command contexts to avoid stale tenant rendered markers.
 - PI tenant evidence now carries per-target observations (`TenantEvidenceTarget`) so `PlanProcessInstanceMutationPages` can merge tenant IDs and unknown counts by unique affected key across selected pages; public process facade conversion copies the target slice.
 - Search-derived PI dry-run commands defer first human tenant rendering until aggregate page evidence is attached, allowing summary rendering to show sorted resource tenants plus coexisting cross-tenant and unknown warnings.
+- Process-definition preview plans now aggregate tenant evidence from process-definition items and nested PI cancellation plans in `internal/services/processdefinition/delete.go`; public `resource.DeleteProcessDefinitionPlan.TenantEvidence()` mirrors the same unknown-PD-item behavior for command rendering.
+- PD delete command tenant context is attached after the frozen impact plan for both explicit keys and selector/search discovery; `renderDeleteProcessDefinitionImpact` emits the attached sorted tenant summary and coexisting cross/unknown warnings before compact impact/force lines.
 
 ## Decisions
 - Phase 1 setup was treated as the first work unit because T001 was the first incomplete task and Phase 2 depends on it.
@@ -43,6 +45,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 12 paired T025 with T029 and T030 so PI command explicit-key tests, tenant-context attachment, and variable-update evidence rendering were validated together.
 - Iteration 13 completed the remaining US3 work by pairing T026 with T031-T033; process-definition delete and job update now report explicit-key tenant context using already-loaded plan/current-job data.
 - Iteration 14 completed T034 only; implementation support was added for PI page-result evidence aggregation and dry-run summary attachment, but T036/T037 remain open for full confirmation-boundary behavior.
+- Iteration 15 completed T035 only; supporting PD preview aggregation and command attachment were added so the new PD tests pass, but T036-T039 remain open for the rest of US4 validation and implementation.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.
@@ -103,4 +106,4 @@ Started: 2026-08-29T12:20:03Z
 - Do not render destructive cancel selector tenant context to stdout; the progress contract reserves stdout for command results and keeps compact progress on stderr.
 
 ## Current Handoff
-- Continue Phase 6 / US4 at T035 if staying in test order, or T036/T037 for the PI implementation already partially prepared by T034: finish destructive confirmation-boundary merging/rendering for cancel/delete/resolve and ensure cross-plus-unknown warnings are shown from frozen evidence without extra enrichment calls.
+- Continue Phase 6 / US4 at T036/T037 for PI confirmation-boundary merge/render completion; T038 remains open for any remaining process-definition implementation audit after T035's supporting PD evidence plumbing, then T039 should run and record the targeted US4 validation.

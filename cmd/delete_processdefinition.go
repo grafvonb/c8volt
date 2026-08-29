@@ -112,11 +112,12 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("checking process-definition delete impact: %w", err))
 		}
+		tenantCtx := newDiscoveryTenantContext(configuredTenantID(cfg))
 		if explicitInput {
-			tenantCtx := newExplicitKeysTenantContext(configuredTenantID(cfg))
-			evidence := impactPlan.TenantEvidence()
-			attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, evidence.ResolvedTenantIDs, evidence.UnknownTargetCount))
+			tenantCtx = newExplicitKeysTenantContext(configuredTenantID(cfg))
 		}
+		evidence := impactPlan.TenantEvidence()
+		attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, evidence.ResolvedTenantIDs, evidence.UnknownTargetCount))
 		if flagDryRun {
 			if err := renderDeleteProcessDefinitionDryRun(cmd, impactPlan); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render delete dry-run result: %w", err))

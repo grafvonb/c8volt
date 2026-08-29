@@ -191,6 +191,45 @@ func TestDeleteProcessDefinitionImpact_RenderForceImpact(t *testing.T) {
 	require.NotContains(t, output, "WARNING:")
 }
 
+// TestDeleteProcessDefinitionImpact_RendersTenantWarningsBeforeImpact verifies
+// compact destructive confirmation context keeps cross-tenant and unknown
+// warnings prominent before process-definition impact details.
+func TestDeleteProcessDefinitionImpact_RendersTenantWarningsBeforeImpact(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagForce = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	attachTenantContext(cmd, withTenantContextEvidence(newDiscoveryTenantContext(""), []string{"tenant-b", "tenant-a"}, 1))
+
+	renderDeleteProcessDefinitionImpact(cmd, resource.DeleteProcessDefinitionPlan{
+		Items: []resource.DeleteProcessDefinitionPlanItem{
+			{
+				Key:                        "pd-1",
+				TenantId:                   "tenant-b",
+				ActiveProcessInstanceCount: 2,
+				CancellationPlan: process.DryRunPIKeyExpansion{
+					Roots:     typex.Keys{"root-1"},
+					Collected: typex.Keys{"root-1", "child-1"},
+				},
+			},
+		},
+	})
+
+	output := buf.String()
+	requireLineOrder(t, output,
+		"Tenant filter: none — resources from multiple tenants may be affected",
+		"Resource tenants: tenant-a, tenant-b",
+		"WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b",
+		"WARNING: tenant metadata is unknown for 1 target",
+		"delete impact check: 1 process definition(s); 2 active process instance(s) found; no changes made yet",
+		"--force will cancel 1 root process instance(s), then delete 2 affected process instance(s), before deleting process definitions",
+	)
+}
+
 // Verifies delete process-definition requires either --key or --bpmn-process-id as a target selector.
 func TestDeleteProcessDefinitionCommand_RequiresTargetSelector(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
@@ -238,8 +277,9 @@ func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *test
 	}, "2251799813692357\n")
 	require.NoError(t, err, string(output))
 	require.NotContains(t, string(output), "either --key")
-	require.NotContains(t, string(output), "WARN WARNING")
-	require.NotContains(t, string(output), "WARNING:")
+	require.Contains(t, string(output), "Tenant filter: not applied for explicit resource keys")
+	require.Contains(t, string(output), "WARNING: tenant metadata is unknown for 1 target")
+	require.NotContains(t, string(output), "WARNING: resources from multiple tenants")
 	require.Contains(t, string(output), "pd delete done; requested 1, ok 1, failed 0")
 	body := decodeSingleRequestJSON(t, deleteBodies)
 	require.Equal(t, true, body["deleteHistory"])
@@ -637,6 +677,20 @@ func countRequestPrefixes(requests []string, prefix string) int {
 		}
 	}
 	return count
+}
+
+// requireLineOrder asserts that each expected fragment appears after the
+// previous one in a combined command-output stream.
+func requireLineOrder(t *testing.T, output string, expected ...string) {
+	t.Helper()
+
+	last := -1
+	for _, want := range expected {
+		idx := strings.Index(output, want)
+		require.NotEqualf(t, -1, idx, "missing output fragment %q in:\n%s", want, output)
+		require.Greaterf(t, idx, last, "output fragment %q appeared out of order in:\n%s", want, output)
+		last = idx
+	}
 }
 
 func requestBodyForPrefix(t *testing.T, requests []string, prefix string) []string {

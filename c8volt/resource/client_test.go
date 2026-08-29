@@ -459,8 +459,12 @@ func TestDeleteProcessDefinitionPlan_TenantEvidenceAggregatesPlanItemsAndCancell
 
 	require.Equal(t, process.TenantEvidence{
 		ResolvedTenantIDs:  []string{"tenant-b", "tenant-c"},
-		UnknownTargetCount: 1,
+		UnknownTargetCount: 2,
 		TargetCount:        4,
+		Targets: []process.TenantEvidenceTarget{
+			{Key: "pd-1", TenantID: "tenant-b"},
+			{Key: "pd-2"},
+		},
 	}, plan.TenantEvidence())
 }
 
