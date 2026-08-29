@@ -31,13 +31,13 @@
 ### Foundational tests
 
 - [x] T002 [P] Add failing model and conversion tests for valid mode/filter combinations, required/omitted identifiers, copied slices, and stable JSON/YAML tags in `internal/domain/tenant_context_test.go` and `c8volt/tenant/context_test.go`
-- [ ] T003 [P] Add failing accumulator tests for unique target counting, lexical tenant ordering, duplicate target suppression, unknown counts, and known/unknown merges in `internal/services/common/tenant_context_test.go`
+- [x] T003 [P] Add failing accumulator tests for unique target counting, lexical tenant ordering, duplicate target suppression, unknown counts, and known/unknown merges in `internal/services/common/tenant_context_test.go`
 - [ ] T004 [P] Add failing renderer and envelope tests for exact human wording, warning order, optional `tenantContext`, unchanged payload shape, quiet suppression, and keys-only silence in `cmd/cmd_views_tenant_context_test.go` and `cmd/command_contract_test.go`
 
 ### Foundational implementation
 
 - [x] T005 Implement version-neutral and public tenant-context enums, values, validation constructors, warnings, and mechanical conversions in `internal/domain/tenant_context.go`, `c8volt/tenant/context.go`, and `c8volt/tenant/convert.go`
-- [ ] T006 Implement deterministic per-key tenant evidence accumulation and snapshot merging without backend access in `internal/services/common/tenant_context.go`
+- [x] T006 Implement deterministic per-key tenant evidence accumulation and snapshot merging without backend access in `internal/services/common/tenant_context.go`
 - [ ] T007 Implement command-context attachment, operation-specific base-context construction, and human label/warning rendering in `cmd/cmd_tenant_context.go` and `cmd/cmd_views_tenant_context.go`
 - [ ] T008 Add optional tenant context to the shared result envelope and propagate attached context through existing JSON result helpers without reshaping payloads in `cmd/command_contract.go` and `cmd/cmd_views_contract.go`
 - [ ] T009 Run the focused domain, facade, accumulator, and command-contract tests and record results and reusable patterns in `specs/283-show-tenant-context/progress.md`

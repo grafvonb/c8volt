@@ -65,3 +65,20 @@ Started: 2026-08-29 14:20:03
 **Learnings**:
 - Domain constructors now enforce the tenant context mode/filter matrix and derive stable warnings while public conversion remains mechanical and slice-safe.
 ---
+---
+## Iteration 3 - 2026-08-29 14:31
+**Work Unit**: Phase 2 foundational tenant evidence accumulator
+**Tasks Completed**:
+- [x] T003: Add accumulator tests for unique target counting, lexical tenant ordering, duplicate target suppression, unknown counts, and known/unknown merges.
+- [x] T006: Implement deterministic per-key tenant evidence accumulation and snapshot merging without backend access.
+**Tasks Remaining in Work Unit**: Foundational phase remains: T004 and T007-T009.
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/common/tenant_context.go
+- internal/services/common/tenant_context_test.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- The common accumulator keeps merge-dedupe state inside snapshots so service pages can combine known and unknown target evidence without backend enrichment.
+---
