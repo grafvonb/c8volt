@@ -81,6 +81,10 @@ func printOpsPreflightScope(cmd *cobra.Command, scope ops.PreflightScope, channe
 	if cmd == nil || !channel.DurableAllowed || !channel.StderrAllowed {
 		return
 	}
+	if scope.TenantContext != nil {
+		attachTenantContext(cmd, *scope.TenantContext)
+		printOpsTenantContext(cmd, *scope.TenantContext, channel)
+	}
 	printOpsPreflightLines(cmd, scope)
 }
 

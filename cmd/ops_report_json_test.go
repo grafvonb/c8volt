@@ -8,6 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,4 +49,31 @@ func TestOpsWorkflowReportJSONSerializationUsesStableTokens(t *testing.T) {
 	require.Equal(t, "planned", steps[0].(map[string]any)["status"])
 	require.Equal(t, "skipped", steps[1].(map[string]any)["status"])
 	require.Len(t, got["errors"], 1)
+}
+
+// TestOpsAuditReportJSONIncludesTenantContextAndOmitsUnfilteredLegacyTenant
+// verifies unfiltered ops reports are not mislabeled as default-tenant work.
+func TestOpsAuditReportJSONIncludesTenantContextAndOmitsUnfilteredLegacyTenant(t *testing.T) {
+	report := enrichOpsExecuteRetentionPolicyReport(ops.RetentionAuditReport{
+		DeletePlan: ops.RetentionDeletePlan{
+			TenantEvidence: process.TenantEvidence{
+				Targets: []process.TenantEvidenceTarget{{Key: "root-a", TenantID: "tenant-a"}},
+			},
+		},
+	}, &config.Config{})
+
+	data, err := renderOpsExecuteRetentionPolicyJSONReport(report)
+
+	require.NoError(t, err)
+	var got struct {
+		TenantID      string          `json:"tenantId"`
+		TenantContext *tenant.Context `json:"tenantContext"`
+	}
+	require.NoError(t, json.Unmarshal(data, &got))
+	require.Empty(t, got.TenantID)
+	require.NotNil(t, got.TenantContext)
+	require.Equal(t, tenant.ContextModeDiscovery, got.TenantContext.Mode)
+	require.Equal(t, tenant.ContextFilterNone, got.TenantContext.Filter)
+	require.Equal(t, []string{"tenant-a"}, got.TenantContext.ResolvedTenantIDs)
+	require.Equal(t, tenant.ContextWarningUnfilteredSelection, got.TenantContext.Warnings[0].Code)
 }

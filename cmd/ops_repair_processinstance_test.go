@@ -14,11 +14,45 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+// TestOpsRepairProcessInstanceSearchTenantContextUsesDiscoverySemantics verifies
+// process-instance repair search reports tenant filtering separately from
+// resolved target evidence.
+func TestOpsRepairProcessInstanceSearchTenantContextUsesDiscoverySemantics(t *testing.T) {
+	cmd := &cobra.Command{}
+	cfg := &config.Config{App: config.App{Tenant: "tenant-a"}}
+	result := ops.RepairResult{
+		Request: ops.RepairRequest{DiscoveryMode: ops.RepairDiscoveryModeSearch},
+		FrozenSet: ops.RepairFrozenSet{
+			TenantEvidence: process.TenantEvidence{
+				ResolvedTenantIDs: []string{"tenant-a", "tenant-b"},
+				Targets: []process.TenantEvidenceTarget{
+					{Key: "2251799813685249", TenantID: "tenant-b"},
+					{Key: "2251799813685250", TenantID: "tenant-a"},
+				},
+			},
+		},
+	}
+
+	got := attachOpsRepairResultTenantContext(cmd, cfg, result)
+
+	require.NotNil(t, got.Report.TenantContext)
+	require.Equal(t, tenant.ContextModeDiscovery, got.Report.TenantContext.Mode)
+	require.Equal(t, tenant.ContextFilterNamed, got.Report.TenantContext.Filter)
+	require.True(t, got.Report.TenantContext.CrossTenant)
+	require.Equal(t, tenant.ContextWarningMultipleTenants, got.Report.TenantContext.Warnings[0].Code)
+	require.Equal(t, "tenant-a", got.Report.TenantID)
+}
 
 // TestOpsRepairProcessInstanceHelpDocumentsSelectionShape verifies the target-specific key and incident selector contract.
 func TestOpsRepairProcessInstanceHelpDocumentsSelectionShape(t *testing.T) {

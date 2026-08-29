@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/typex"
@@ -81,6 +82,8 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 				return
 			}
 			if planned.Discovery.Count > 0 {
+				ctx := attachOpsDiscoveryTenantContext(cmd, cfg, planned.DeletionPlan.TenantEvidence)
+				printOpsTenantContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
 				prompt := opsPurgeOrphanProcessInstancesConfirmationPrompt(planned)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsPurgeOrphanProcessInstancesAfterReport(cmd, log, cfg, markOpsPurgeOrphanProcessInstancesLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
@@ -92,6 +95,7 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 		result, err := purgeOrphanProcessInstancesWithCommandActivity(cmd, request, func() (ops.OrphanPurgeResult, error) {
 			return cli.PurgeOrphanProcessInstances(cmd.Context(), request, collectOptions()...)
 		})
+		result = attachOpsPurgeOrphanProcessInstancesResultTenantContext(cmd, cfg, result)
 		if err != nil {
 			if reportErr := writeOpsPurgeOrphanProcessInstancesReport(result, cfg, opsPurgeOrphanProcessInstancesReportWriteMode(result)); reportErr != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge orphan process instances: %w; write audit report: %v", err, reportErr))
@@ -232,6 +236,8 @@ func writeOpsPurgeOrphanProcessInstancesReport(result ops.OrphanPurgeResult, cfg
 
 func enrichOpsPurgeOrphanProcessInstancesReport(report ops.OrphanPurgeReport, cfg *config.Config) ops.OrphanPurgeReport {
 	report.C8voltVersion = CurrentBuildInfo().Version
+	ctx := attachOpsPurgeOrphanProcessInstancesReportTenantContext(report, cfg)
+	report.TenantContext = cloneTenantContextPtr(ctx)
 	if cfg != nil {
 		report.CamundaVersion = cfg.App.CamundaVersion.String()
 		if cfg.ActiveProfile != "" {
@@ -241,4 +247,18 @@ func enrichOpsPurgeOrphanProcessInstancesReport(report ops.OrphanPurgeReport, cf
 		}
 	}
 	return report
+}
+
+// attachOpsPurgeOrphanProcessInstancesResultTenantContext freezes orphan-purge
+// tenant context before command result rendering.
+func attachOpsPurgeOrphanProcessInstancesResultTenantContext(cmd *cobra.Command, cfg *config.Config, result ops.OrphanPurgeResult) ops.OrphanPurgeResult {
+	ctx := attachOpsDiscoveryTenantContext(cmd, cfg, result.DeletionPlan.TenantEvidence)
+	result.Report.TenantContext = cloneTenantContextPtr(ctx)
+	return result
+}
+
+// attachOpsPurgeOrphanProcessInstancesReportTenantContext derives audit context
+// from the frozen orphan-purge delete plan.
+func attachOpsPurgeOrphanProcessInstancesReportTenantContext(report ops.OrphanPurgeReport, cfg *config.Config) tenant.Context {
+	return opsTenantContextWithEvidence(newDiscoveryTenantContext(configuredTenantID(cfg)), report.DeletionPlan.TenantEvidence)
 }

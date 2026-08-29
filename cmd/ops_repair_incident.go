@@ -142,6 +142,10 @@ var opsRepairIncidentCmd = &cobra.Command{
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops repair incident: %w", err))
 			}
+			if opsRepairPlanHasRepairTargets(planned) {
+				ctx := attachOpsRepairTenantContext(cmd, cfg, planned)
+				printOpsTenantContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
+			}
 			if err := confirmCmdOrAbortFn(false, opsRepairConfirmationPrompt(planned)); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
@@ -150,6 +154,7 @@ var opsRepairIncidentCmd = &cobra.Command{
 		result, err := repairIncidentWithCommandActivity(cmd, request, func() (ops.RepairResult, error) {
 			return cli.RepairIncidents(cmd.Context(), request, collectOptions()...)
 		})
+		result = attachOpsRepairResultTenantContext(cmd, cfg, result)
 		if reportErr := writeOpsRepairReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops repair incident: %w; write audit report: %v", err, reportErr))

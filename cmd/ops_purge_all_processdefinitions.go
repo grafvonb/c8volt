@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/typex"
@@ -85,6 +86,8 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 				return
 			}
 			if len(planned.DeletePlan.CandidateProcessDefinitionKeys) > 0 {
+				ctx := attachOpsPurgeAllProcessDefinitionsTenantContext(cmd, cfg, planned)
+				printOpsTenantContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
 				prompt := opsPurgeAllProcessDefinitionsConfirmationPrompt(planned)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsPurgeAllProcessDefinitionsAfterReport(cmd, log, cfg, markOpsPurgeAllProcessDefinitionsLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
@@ -97,6 +100,7 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 		result, err := purgeAllProcessDefinitionsWithCommandActivity(cmd, request, func() (ops.AllProcessDefinitionsPurgeResult, error) {
 			return cli.PurgeAllProcessDefinitions(cmd.Context(), request, collectOptions()...)
 		})
+		result = attachOpsPurgeAllProcessDefinitionsResultTenantContext(cmd, cfg, result)
 		if err != nil {
 			if reportErr := writeOpsPurgeAllProcessDefinitionsReport(result, cfg, opsPurgeAllProcessDefinitionsReportWriteMode(result)); reportErr != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge all process definitions: %w; write audit report: %v", err, reportErr))
@@ -304,9 +308,11 @@ func writeOpsPurgeAllProcessDefinitionsReport(result ops.AllProcessDefinitionsPu
 // enrichOpsPurgeAllProcessDefinitionsReport adds runtime config metadata that is not owned by services.
 func enrichOpsPurgeAllProcessDefinitionsReport(report ops.AllProcessDefinitionsPurgeReport, cfg *config.Config) ops.AllProcessDefinitionsPurgeReport {
 	report.C8voltVersion = CurrentBuildInfo().Version
+	ctx := opsPurgeAllProcessDefinitionsReportTenantContext(report, cfg)
+	report.TenantContext = cloneTenantContextPtr(ctx)
+	report.TenantID = opsLegacyTenantIDForContext(report.TenantContext)
 	if cfg != nil {
 		report.CamundaVersion = cfg.App.CamundaVersion.String()
-		report.TenantID = cfg.App.ViewTenant()
 		if cfg.ActiveProfile != "" {
 			report.ProfileIdentity = "profile:" + cfg.ActiveProfile
 		} else {
@@ -314,6 +320,34 @@ func enrichOpsPurgeAllProcessDefinitionsReport(report ops.AllProcessDefinitionsP
 		}
 	}
 	return report
+}
+
+// attachOpsPurgeAllProcessDefinitionsResultTenantContext freezes all-PD purge
+// tenant context before command result rendering.
+func attachOpsPurgeAllProcessDefinitionsResultTenantContext(cmd *cobra.Command, cfg *config.Config, result ops.AllProcessDefinitionsPurgeResult) ops.AllProcessDefinitionsPurgeResult {
+	ctx := attachOpsPurgeAllProcessDefinitionsTenantContext(cmd, cfg, result)
+	result.Report.TenantContext = cloneTenantContextPtr(ctx)
+	result.Report.TenantID = opsLegacyTenantIDForContext(result.Report.TenantContext)
+	return result
+}
+
+// attachOpsPurgeAllProcessDefinitionsTenantContext chooses explicit-key
+// semantics for direct process-definition keys and discovery semantics otherwise.
+func attachOpsPurgeAllProcessDefinitionsTenantContext(cmd *cobra.Command, cfg *config.Config, result ops.AllProcessDefinitionsPurgeResult) tenant.Context {
+	if result.Request.Selection.Key != "" {
+		return attachOpsExplicitKeysTenantContext(cmd, cfg, result.DeletePlan.TenantEvidence)
+	}
+	return attachOpsDiscoveryTenantContext(cmd, cfg, result.DeletePlan.TenantEvidence)
+}
+
+// opsPurgeAllProcessDefinitionsReportTenantContext mirrors command semantics
+// for audit report enrichment.
+func opsPurgeAllProcessDefinitionsReportTenantContext(report ops.AllProcessDefinitionsPurgeReport, cfg *config.Config) tenant.Context {
+	base := newDiscoveryTenantContext(configuredTenantID(cfg))
+	if report.SelectionFilters.Key != "" {
+		base = newExplicitKeysTenantContext(configuredTenantID(cfg))
+	}
+	return opsTenantContextWithEvidence(base, report.DeletePlan.TenantEvidence)
 }
 
 func populateOpsPurgeAllProcessDefinitionsSelection() ops.ProcessDefinitionSelection {

@@ -11,6 +11,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/services/incidentfilter"
@@ -101,6 +102,8 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 				return
 			}
 			if len(planned.DeletePlan.ResolvedRootKeys) > 0 {
+				ctx := attachOpsPurgeProcessInstancesWithIncidentsTenantContext(cmd, cfg, planned)
+				printOpsTenantContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
 				prompt := opsPurgeProcessInstancesWithIncidentsConfirmationPrompt(planned)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsPurgeProcessInstancesWithIncidentsAfterReport(cmd, log, cfg, markOpsPurgeProcessInstancesWithIncidentsLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
@@ -115,6 +118,7 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 		result, err := purgeProcessInstancesWithIncidentsWithCommandActivity(cmd, request, func() (ops.IncidentPurgeResult, error) {
 			return cli.PurgeProcessInstancesWithIncidents(cmd.Context(), request, collectOptions()...)
 		})
+		result = attachOpsPurgeProcessInstancesWithIncidentsResultTenantContext(cmd, cfg, result)
 		if err != nil {
 			if reportErr := writeOpsPurgeProcessInstancesWithIncidentsReport(result, cfg, opsPurgeProcessInstancesWithIncidentsReportWriteMode(result)); reportErr != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge process-instances with incidents: %w; write audit report: %v", err, reportErr))
@@ -329,9 +333,11 @@ func writeOpsPurgeProcessInstancesWithIncidentsReport(result ops.IncidentPurgeRe
 // enrichOpsPurgeProcessInstancesWithIncidentsReport adds runtime config metadata that is not owned by services.
 func enrichOpsPurgeProcessInstancesWithIncidentsReport(report ops.IncidentPurgeReport, cfg *config.Config) ops.IncidentPurgeReport {
 	report.C8voltVersion = CurrentBuildInfo().Version
+	ctx := opsPurgeProcessInstancesWithIncidentsReportTenantContext(report, cfg)
+	report.TenantContext = cloneTenantContextPtr(ctx)
+	report.TenantID = opsLegacyTenantIDForContext(report.TenantContext)
 	if cfg != nil {
 		report.CamundaVersion = cfg.App.CamundaVersion.String()
-		report.TenantID = cfg.App.ViewTenant()
 		if cfg.ActiveProfile != "" {
 			report.ProfileIdentity = "profile:" + cfg.ActiveProfile
 		} else {
@@ -339,6 +345,34 @@ func enrichOpsPurgeProcessInstancesWithIncidentsReport(report ops.IncidentPurgeR
 		}
 	}
 	return report
+}
+
+// attachOpsPurgeProcessInstancesWithIncidentsResultTenantContext freezes
+// incident-purge tenant context before command result rendering.
+func attachOpsPurgeProcessInstancesWithIncidentsResultTenantContext(cmd *cobra.Command, cfg *config.Config, result ops.IncidentPurgeResult) ops.IncidentPurgeResult {
+	ctx := attachOpsPurgeProcessInstancesWithIncidentsTenantContext(cmd, cfg, result)
+	result.Report.TenantContext = cloneTenantContextPtr(ctx)
+	result.Report.TenantID = opsLegacyTenantIDForContext(result.Report.TenantContext)
+	return result
+}
+
+// attachOpsPurgeProcessInstancesWithIncidentsTenantContext chooses explicit-key
+// semantics for incident-key input and discovery semantics for searches.
+func attachOpsPurgeProcessInstancesWithIncidentsTenantContext(cmd *cobra.Command, cfg *config.Config, result ops.IncidentPurgeResult) tenant.Context {
+	if len(result.Request.Selection.Keys) > 0 {
+		return attachOpsExplicitKeysTenantContext(cmd, cfg, result.DeletePlan.TenantEvidence)
+	}
+	return attachOpsDiscoveryTenantContext(cmd, cfg, result.DeletePlan.TenantEvidence)
+}
+
+// opsPurgeProcessInstancesWithIncidentsReportTenantContext mirrors command
+// semantics for audit report enrichment.
+func opsPurgeProcessInstancesWithIncidentsReportTenantContext(report ops.IncidentPurgeReport, cfg *config.Config) tenant.Context {
+	base := newDiscoveryTenantContext(configuredTenantID(cfg))
+	if len(report.SelectionFilters.Keys) > 0 {
+		base = newExplicitKeysTenantContext(configuredTenantID(cfg))
+	}
+	return opsTenantContextWithEvidence(base, report.DeletePlan.TenantEvidence)
 }
 
 // formatOpsPurgeProcessInstancesWithIncidentsNonFinalScope summarizes the post-planning blocker without listing keys by default.

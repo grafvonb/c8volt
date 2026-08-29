@@ -13,11 +13,40 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+// TestOpsRepairIncidentKeyTenantContextUsesExplicitSemantics verifies direct
+// incident repair does not present the configured tenant as a local filter.
+func TestOpsRepairIncidentKeyTenantContextUsesExplicitSemantics(t *testing.T) {
+	cmd := &cobra.Command{}
+	cfg := &config.Config{App: config.App{Tenant: "tenant-a"}}
+	result := ops.RepairResult{
+		Request: ops.RepairRequest{DiscoveryMode: ops.RepairDiscoveryModeKeyed},
+		FrozenSet: ops.RepairFrozenSet{
+			TenantEvidence: process.TenantEvidence{
+				ResolvedTenantIDs: []string{"tenant-b"},
+				Targets:           []process.TenantEvidenceTarget{{Key: "2251799813685249", TenantID: "tenant-b"}},
+			},
+		},
+	}
+
+	got := attachOpsRepairResultTenantContext(cmd, cfg, result)
+
+	require.NotNil(t, got.Report.TenantContext)
+	require.Equal(t, tenant.ContextModeExplicitKeys, got.Report.TenantContext.Mode)
+	require.Equal(t, tenant.ContextFilterNotApplied, got.Report.TenantContext.Filter)
+	require.Equal(t, []string{"tenant-b"}, got.Report.TenantContext.ResolvedTenantIDs)
+	require.Empty(t, got.Report.TenantID)
+}
 
 func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 	resetOpsRepairIncidentFlagState()

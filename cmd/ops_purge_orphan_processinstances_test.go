@@ -16,6 +16,9 @@ import (
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/testx/activitysink"
@@ -23,6 +26,29 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+// TestOpsPurgeOrphanProcessInstancesUnfilteredTenantContext verifies orphan
+// purge keeps empty discovery unfiltered and never reports it as default tenant.
+func TestOpsPurgeOrphanProcessInstancesUnfilteredTenantContext(t *testing.T) {
+	cmd := &cobra.Command{}
+	result := ops.OrphanPurgeResult{
+		DeletionPlan: ops.DeletionPlan{
+			TenantEvidence: process.TenantEvidence{
+				ResolvedTenantIDs: []string{"tenant-b"},
+				Targets:           []process.TenantEvidenceTarget{{Key: opsOrphanProcessKey, TenantID: "tenant-b"}},
+			},
+		},
+	}
+
+	got := attachOpsPurgeOrphanProcessInstancesResultTenantContext(cmd, &config.Config{}, result)
+
+	require.NotNil(t, got.Report.TenantContext)
+	require.Equal(t, tenant.ContextModeDiscovery, got.Report.TenantContext.Mode)
+	require.Equal(t, tenant.ContextFilterNone, got.Report.TenantContext.Filter)
+	require.Empty(t, got.Report.TenantContext.ConfiguredTenantID)
+	require.Equal(t, []string{"tenant-b"}, got.Report.TenantContext.ResolvedTenantIDs)
+	require.Equal(t, tenant.ContextWarningUnfilteredSelection, got.Report.TenantContext.Warnings[0].Code)
+}
 
 const (
 	opsOrphanChildKey   = "2251799813685250"

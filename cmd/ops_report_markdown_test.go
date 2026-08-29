@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/stretchr/testify/require"
 )
@@ -40,4 +41,21 @@ func TestFormatOpsPurgeReportTimeUsesUTCAndConfiguredOffset(t *testing.T) {
 	require.Equal(t, "2026-08-10T10:34:56.000", formatOpsPurgeReportTime(when, nil))
 	require.Equal(t, "2026-08-10T10:34:56.000", formatOpsPurgeReportTime(when, &config.Config{}))
 	require.Equal(t, "2026-08-10T10:34:56.000+00:00", formatOpsPurgeReportTime(when, &config.Config{App: config.App{ShowTimezoneOffset: true}}))
+}
+
+// TestWriteMarkdownTenantContextUsesSharedHumanContract verifies ops Markdown
+// reports render the common context and warnings without a generic tenant label.
+func TestWriteMarkdownTenantContextUsesSharedHumanContract(t *testing.T) {
+	ctx := withTenantContextEvidence(newExplicitKeysTenantContext("tenant-a"), []string{"tenant-b", "tenant-a"}, 1)
+	var out strings.Builder
+
+	writeMarkdownTenantContext(&out, &ctx)
+
+	got := out.String()
+	require.Contains(t, got, "- Tenant Context: Tenant filter: not applied for explicit resource keys")
+	require.Contains(t, got, "- Resource Tenants: tenant-a, tenant-b")
+	require.Contains(t, got, "- Cross Tenant: true")
+	require.Contains(t, got, "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b")
+	require.Contains(t, got, "WARNING: tenant metadata is unknown for 1 target")
+	require.NotContains(t, got, string(tenant.ContextWarningUnfilteredSelection))
 }

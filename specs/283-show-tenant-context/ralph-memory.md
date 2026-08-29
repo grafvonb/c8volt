@@ -37,6 +37,9 @@ Started: 2026-08-29T12:20:03Z
 - Ops progress preflight and audit report models now carry optional nested tenant context pointers; public ops reports use `*tenant.Context`, while `c8volt/foptions` uses a local progress-only mirror to avoid the existing `tenant -> foptions` import cycle.
 - Ops facade conversion owns local field-for-field tenant-context copy helpers because `c8volt/tenant` conversion helpers are unexported; resolved tenant IDs and warnings must be copied when crossing both ops model and progress callback boundaries.
 - Ops service workflow plans now preserve `domain.TenantEvidence` from frozen data: retention/orphan/incident purge use PI traversal previews, all-process-definitions purge preserves delete-PD preview evidence, repair freezes incident or PI target evidence, and smoke test records deployment/run/PI-cleanup evidence. Public ops conversion mirrors those evidence fields with `process.TenantEvidence` for later command/report enrichment.
+- Ops command tenant-context ownership now lives in `cmd/ops_tenant_context.go`; commands choose discovery, explicit-key, or creation semantics, merge frozen `process.TenantEvidence`, attach the context before shared JSON rendering, and use truthful legacy `tenantId` only for named discovery/configuration or creation targets.
+- Ops human preflight/confirmation tenant blocks are routed through durable stderr/log progress with `printOpsTenantContext`; dry-run/final summaries call `renderAttachedTenantContext`, so quiet and keys-only modes remain silent and shared envelopes pick up the attached context.
+- Ops Markdown reports render `Tenant Context`, resource tenant(s), unknown count, cross-tenant state, and tenant warnings through `writeMarkdownTenantContext`; JSON reports include the common root `tenantContext` while unfiltered discovery omits legacy `tenantId`.
 
 ## Decisions
 - Phase 1 setup was treated as the first work unit because T001 was the first incomplete task and Phase 2 depends on it.
@@ -58,6 +61,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 17 paired T040 with T044 so configuration diagnostic tests were committed only after sanitized YAML, validate, and test-connection configuration context passed.
 - Iteration 18 paired T041 with T045 so ops model/conversion tests were committed only after optional nested tenant context was wired through domain reports, public reports, ops preflight, and progress callbacks.
 - Iteration 19 paired T042 with T046 so no-extra-call ops service aggregation tests were committed only after frozen workflow tenant evidence was wired through domain and public ops plan/result models.
+- Iteration 20 paired T043 with T047/T048 so ops command/report tenant-context tests were committed only after command-layer semantics, preflight routing, human summaries, and JSON/Markdown audit rendering passed.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.
@@ -71,6 +75,8 @@ Started: 2026-08-29T12:20:03Z
 - Run command tests that assert per-execution tenant-context rendering must clear retained Cobra contexts before each case; otherwise the human-rendered marker can suppress later subtests.
 - In command unit tests that install `config.Config` on context, use `ToContextWithLogWriter(..., buf)` when asserting human output; otherwise `renderHumanLine` routes through the logger and the Cobra output buffer remains empty.
 - Process-definition direct-key no-state-check plans may contain only a key and no tenant metadata; do not count that as an unknown-target warning until US4 expands the PD warning contract, because existing stdin/no-state-check output asserts no warning chatter.
+- Ops report enrichment must not use `cfg.App.ViewTenant()` for discovery or explicit-key reports; empty discovery is unfiltered and explicit keys are not locally tenant-filtered, while smoke-test creation may still use `<default>` as the truthful target tenant.
+- `printOpsTenantContext` marks the command context as human-rendered; command result rendering can still replace the attached context later for JSON/report evidence, but it will not duplicate the human block in the same command execution.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -114,10 +120,13 @@ Started: 2026-08-29T12:20:03Z
 - `git diff --check`
 - `go test ./cmd ./config -run 'TestConfig.*(TenantContext|ToSanitizedYAML|Validate|TestConnection)|TestResolveEffectiveConfig_.*Tenant' -count=1`
 - `go test ./cmd ./config -count=1`
+- `go test ./cmd -run 'Test(OpsExecuteRetentionPolicyResultTenantContext|OpsPurgeAllProcessDefinitionsKeyTenantContextUsesExplicitSemantics|OpsPurgeProcessInstancesWithIncidentsKeyTenantContextUsesExplicitSemantics|OpsPurgeOrphanProcessInstancesUnfilteredTenantContext|OpsRepairIncidentKeyTenantContextUsesExplicitSemantics|OpsRepairProcessInstanceSearchTenantContextUsesDiscoverySemantics|OpsExecuteSmokeTestTenantContextUsesCreationSemantics|PrintOpsPreflightScope.*TenantContext|OpsAuditReportJSONIncludesTenantContextAndOmitsUnfilteredLegacyTenant|WriteMarkdownTenantContextUsesSharedHumanContract)' -count=1`
+- `go test ./cmd -run 'Test.*Ops.*(Retention|Purge|Repair|Smoke|Report)|Test.*Report.*(JSON|Markdown|Tenant)' -count=1`
+- `go test ./internal/services/ops/... ./c8volt/ops ./cmd -count=1`
 
 ## Do Not Repeat
 - Do not add accumulator or renderer behavior to the domain/public model; T003/T006 own service evidence aggregation and T004/T007/T008 own command rendering/envelope plumbing.
 - Do not render destructive cancel selector tenant context to stdout; the progress contract reserves stdout for command results and keeps compact progress on stderr.
 
 ## Current Handoff
-- Continue Phase 7 / US5 at T043 by adding failing ops command/report tests for preflight, confirmation, JSON/Markdown report, unfiltered-not-default, quiet, and keys-only behavior before implementing T047/T048.
+- Continue Phase 7 / US5 at T049 by extending representative cross-family machine-contract assertions for one JSON document, common object placement, unchanged payloads, quiet suppression, and exact keys-only stdout in `cmd/cmd_json_assertions_test.go`, `cmd/command_contract_test.go`, and `cmd/ops_contract_test.go`; T050-T051 remain open after that.

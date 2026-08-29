@@ -527,3 +527,54 @@ Started: 2026-08-29 14:20:03
 - Passed: `go test ./internal/services/ops/... ./c8volt/ops ./cmd -count=1`.
 - Passed: `git diff --check`.
 ---
+---
+## Iteration 20 - 2026-08-29 17:19
+**Work Unit**: Phase 7 US5 ops command and audit tenant context
+**Tasks Completed**:
+- [x] T043: Add ops command/report tests for preflight, confirmation, JSON/Markdown report, unfiltered-not-default, quiet, and keys-only behavior.
+- [x] T047: Attach discovery, explicit-key, or creation semantics to ops preflight and report enrichment while removing unfiltered `ViewTenant()` misuse.
+- [x] T048: Render the common context and warnings in affected ops human summaries and JSON/Markdown audits while retaining truthful optional legacy fields and v1 schema identifiers.
+**Tasks Remaining in Work Unit**: US5 remains: T049-T051.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_ops_execute_retention_policy.go
+- cmd/cmd_views_ops_execute_smoketest.go
+- cmd/cmd_views_ops_purge_all_processdefinitions.go
+- cmd/cmd_views_ops_purge_orphan_processinstances.go
+- cmd/cmd_views_ops_purge_processinstances_with_incidents.go
+- cmd/cmd_views_ops_repair.go
+- cmd/ops_analyse_slow_process_instances_progress.go
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_execute_retention_policy_test.go
+- cmd/ops_execute_smoke_test_test.go
+- cmd/ops_execute_smoketest.go
+- cmd/ops_progress_test.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- cmd/ops_purge_orphan_processinstances.go
+- cmd/ops_purge_orphan_processinstances_test.go
+- cmd/ops_purge_processinstances_with_incidents.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- cmd/ops_repair.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_incident_test.go
+- cmd/ops_repair_processinstance.go
+- cmd/ops_repair_processinstance_test.go
+- cmd/ops_report_json_test.go
+- cmd/ops_report_markdown_test.go
+- cmd/ops_report_purge_all_processdefinitions.go
+- cmd/ops_report_purge_processinstances_with_incidents.go
+- cmd/ops_report_repair.go
+- cmd/ops_tenant_context.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Ops command-layer context now owns semantic mode selection: retention/orphan use discovery, incident/all-PD purge direct keys and repair keyed/stdin use explicit keys, and smoke test uses creation target semantics.
+- Ops audit enrichment must omit legacy `tenantId` for unfiltered discovery and explicit keys; JSON reports carry root `tenantContext`, while Markdown reports render the shared semantic line, resource tenant evidence, unknown counts, cross-tenant state, and warnings.
+- Passed: `go test ./cmd -run 'Test(OpsExecuteRetentionPolicyResultTenantContext|OpsPurgeAllProcessDefinitionsKeyTenantContextUsesExplicitSemantics|OpsPurgeProcessInstancesWithIncidentsKeyTenantContextUsesExplicitSemantics|OpsPurgeOrphanProcessInstancesUnfilteredTenantContext|OpsRepairIncidentKeyTenantContextUsesExplicitSemantics|OpsRepairProcessInstanceSearchTenantContextUsesDiscoverySemantics|OpsExecuteSmokeTestTenantContextUsesCreationSemantics|PrintOpsPreflightScope.*TenantContext|OpsAuditReportJSONIncludesTenantContextAndOmitsUnfilteredLegacyTenant|WriteMarkdownTenantContextUsesSharedHumanContract)' -count=1`.
+- Passed: `go test ./cmd -run 'Test.*Ops.*(Retention|Purge|Repair|Smoke|Report)|Test.*Report.*(JSON|Markdown|Tenant)' -count=1`.
+- Passed: `go test ./cmd -count=1`.
+- Passed: `go test ./internal/services/ops/... ./c8volt/ops ./cmd -count=1`.
+- Passed: `git diff --check`.
+---

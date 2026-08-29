@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/typex"
@@ -98,6 +99,8 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 				return
 			}
 			if len(planned.DeletePlan.ResolvedRootKeys) > 0 {
+				ctx := attachOpsDiscoveryTenantContext(cmd, cfg, planned.DeletePlan.TenantEvidence)
+				printOpsTenantContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
 				prompt := opsExecuteRetentionPolicyConfirmationPrompt(planned)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsExecuteRetentionPolicyAfterReport(cmd, log, cfg, markOpsExecuteRetentionPolicyLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
@@ -109,6 +112,7 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 		result, err := executeRetentionPolicyWithCommandActivity(cmd, request, func() (ops.RetentionPolicyResult, error) {
 			return cli.ExecuteRetentionPolicy(cmd.Context(), request, collectOptions()...)
 		})
+		result = attachOpsExecuteRetentionPolicyResultTenantContext(cmd, cfg, result)
 		if err != nil {
 			if reportErr := writeOpsExecuteRetentionPolicyReport(result, cfg, opsExecuteRetentionPolicyReportWriteMode(result)); reportErr != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops execute retention-policy: %w; write audit report: %v", err, reportErr))
@@ -295,9 +299,11 @@ func writeOpsExecuteRetentionPolicyReport(result ops.RetentionPolicyResult, cfg 
 
 func enrichOpsExecuteRetentionPolicyReport(report ops.RetentionAuditReport, cfg *config.Config) ops.RetentionAuditReport {
 	report.C8voltVersion = CurrentBuildInfo().Version
+	ctx := attachOpsExecuteRetentionPolicyReportTenantContext(report, cfg)
+	report.TenantContext = cloneTenantContextPtr(ctx)
+	report.TenantID = opsLegacyTenantIDForContext(report.TenantContext)
 	if cfg != nil {
 		report.CamundaVersion = cfg.App.CamundaVersion.String()
-		report.TenantID = cfg.App.ViewTenant()
 		if cfg.ActiveProfile != "" {
 			report.ProfileIdentity = "profile:" + cfg.ActiveProfile
 		} else {
@@ -305,4 +311,19 @@ func enrichOpsExecuteRetentionPolicyReport(report ops.RetentionAuditReport, cfg 
 		}
 	}
 	return report
+}
+
+// attachOpsExecuteRetentionPolicyResultTenantContext freezes retention tenant
+// context before command result rendering.
+func attachOpsExecuteRetentionPolicyResultTenantContext(cmd *cobra.Command, cfg *config.Config, result ops.RetentionPolicyResult) ops.RetentionPolicyResult {
+	ctx := attachOpsDiscoveryTenantContext(cmd, cfg, result.DeletePlan.TenantEvidence)
+	result.Report.TenantContext = cloneTenantContextPtr(ctx)
+	result.Report.TenantID = opsLegacyTenantIDForContext(result.Report.TenantContext)
+	return result
+}
+
+// attachOpsExecuteRetentionPolicyReportTenantContext derives audit context from
+// the frozen retention delete plan.
+func attachOpsExecuteRetentionPolicyReportTenantContext(report ops.RetentionAuditReport, cfg *config.Config) tenant.Context {
+	return opsTenantContextWithEvidence(newDiscoveryTenantContext(configuredTenantID(cfg)), report.DeletePlan.TenantEvidence)
 }

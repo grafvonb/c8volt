@@ -18,6 +18,8 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
@@ -25,6 +27,33 @@ import (
 )
 
 const opsRetentionPolicySeedKey = "2251799813685249"
+
+// TestOpsExecuteRetentionPolicyResultTenantContext verifies retention cleanup
+// uses discovery semantics and frozen delete-plan evidence for command output.
+func TestOpsExecuteRetentionPolicyResultTenantContext(t *testing.T) {
+	cmd := &cobra.Command{}
+	cfg := &config.Config{App: config.App{Tenant: "tenant-a"}}
+	result := ops.RetentionPolicyResult{
+		DeletePlan: ops.RetentionDeletePlan{
+			TenantEvidence: process.TenantEvidence{
+				ResolvedTenantIDs: []string{"tenant-b"},
+				Targets:           []process.TenantEvidenceTarget{{Key: "root-a", TenantID: "tenant-b"}},
+			},
+		},
+	}
+
+	got := attachOpsExecuteRetentionPolicyResultTenantContext(cmd, cfg, result)
+
+	require.NotNil(t, got.Report.TenantContext)
+	require.Equal(t, tenant.ContextModeDiscovery, got.Report.TenantContext.Mode)
+	require.Equal(t, tenant.ContextFilterNamed, got.Report.TenantContext.Filter)
+	require.Equal(t, "tenant-a", got.Report.TenantContext.ConfiguredTenantID)
+	require.Equal(t, []string{"tenant-b"}, got.Report.TenantContext.ResolvedTenantIDs)
+	require.Equal(t, "tenant-a", got.Report.TenantID)
+	attached, ok := attachedTenantContext(cmd)
+	require.True(t, ok)
+	require.Equal(t, *got.Report.TenantContext, *attached)
+}
 
 func TestOpsExecuteRetentionPolicyHelpDocumentsCommand(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "ops", "execute", "--help")
@@ -341,7 +370,9 @@ func TestOpsExecuteRetentionPolicyWritesMarkdownReport(t *testing.T) {
 	require.Contains(t, report, "- Outcome: planned")
 	require.Contains(t, report, "- Camunda Version: 8.8")
 	require.Contains(t, report, "- Profile: default")
-	require.Contains(t, report, "- Tenant: <default>")
+	require.Contains(t, report, "- Tenant: -")
+	require.Contains(t, report, "- Tenant Context: Tenant filter: none — resources from multiple tenants may be affected")
+	require.Contains(t, report, "- Resource Tenant: tenant")
 	require.Contains(t, report, "  - "+opsRetentionPolicySeedKey)
 }
 
@@ -374,7 +405,11 @@ func TestOpsExecuteRetentionPolicyWritesJSONReport(t *testing.T) {
 	require.Equal(t, "deleted", report["outcome"])
 	require.Equal(t, float64(90), report["retentionDays"])
 	require.Equal(t, "8.9", report["camundaVersion"])
-	require.Equal(t, "<default>", report["tenantId"])
+	require.NotContains(t, report, "tenantId")
+	tenantContext := requireJSONObject(t, report["tenantContext"])
+	require.Equal(t, "discovery", tenantContext["mode"])
+	require.Equal(t, "none", tenantContext["filter"])
+	require.Equal(t, []any{"tenant"}, tenantContext["resolvedTenantIds"])
 	discovery := requireJSONObject(t, report["discovery"])
 	require.Equal(t, float64(1), discovery["count"])
 	keys := discovery["seedKeys"].([]any)

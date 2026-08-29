@@ -65,6 +65,8 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if !flagDryRun && !flagOpsExecuteSmokeTestNoCleanup {
+			ctx := attachCreationTenantContext(cmd, cfg)
+			printOpsTenantContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
 			prompt := opsExecuteSmokeTestConfirmationPrompt(request)
 			if err := confirmCmdOrAbortFn(effectiveAutoConfirm, prompt); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
@@ -73,6 +75,7 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
 		result, err := executeSmokeTestWithCommandActivity(cmd, request, func() (ops.SmokeTestResult, error) {
 			return cli.ExecuteSmokeTest(cmd.Context(), request, collectOptions()...)
 		})
+		result = attachOpsExecuteSmokeTestResultTenantContext(cmd, cfg, result)
 		if err != nil {
 			if reportErr := writeOpsExecuteSmokeTestReport(result, cfg, opsExecuteSmokeTestReportWriteMode(result)); reportErr != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops execute smoke-test: %w; write audit report: %v", err, reportErr))

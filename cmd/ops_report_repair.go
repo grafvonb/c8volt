@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/toolx"
 )
@@ -42,9 +43,11 @@ func writeOpsRepairReport(result ops.RepairResult, cfg *config.Config, mode OpsW
 // enrichOpsRepairReport adds local runtime metadata that is not known to the service layer.
 func enrichOpsRepairReport(report ops.RepairAuditReport, cfg *config.Config) ops.RepairAuditReport {
 	report.C8voltVersion = CurrentBuildInfo().Version
+	ctx := opsRepairReportTenantContext(report, cfg)
+	report.TenantContext = cloneTenantContextPtr(ctx)
+	report.TenantID = opsLegacyTenantIDForContext(report.TenantContext)
 	if cfg != nil {
 		report.CamundaVersion = cfg.App.CamundaVersion.String()
-		report.TenantID = cfg.App.ViewTenant()
 		if cfg.ActiveProfile != "" {
 			report.ProfileIdentity = "profile:" + cfg.ActiveProfile
 		} else {
@@ -52,6 +55,16 @@ func enrichOpsRepairReport(report ops.RepairAuditReport, cfg *config.Config) ops
 		}
 	}
 	return report
+}
+
+// opsRepairReportTenantContext mirrors command repair semantics for audit
+// report enrichment.
+func opsRepairReportTenantContext(report ops.RepairAuditReport, cfg *config.Config) tenant.Context {
+	base := newExplicitKeysTenantContext(configuredTenantID(cfg))
+	if report.Request.DiscoveryMode == ops.RepairDiscoveryModeSearch {
+		base = newDiscoveryTenantContext(configuredTenantID(cfg))
+	}
+	return opsTenantContextWithEvidence(base, report.FrozenSet.TenantEvidence)
 }
 
 // renderOpsRepairJSONReport encodes the complete repair audit model deterministically.
@@ -77,6 +90,7 @@ func renderOpsRepairMarkdownReport(report ops.RepairAuditReport, cfg *config.Con
 	writeMarkdownReportField(&out, "Camunda Version", report.CamundaVersion)
 	writeMarkdownReportField(&out, "Profile", report.ProfileIdentity)
 	writeMarkdownReportField(&out, "Tenant", report.TenantID)
+	writeMarkdownTenantContext(&out, report.TenantContext)
 	writeMarkdownReportField(&out, "Auto Confirm", fmt.Sprintf("%t", report.AutoConfirm))
 	writeMarkdownReportField(&out, "Automation", fmt.Sprintf("%t", report.Automation))
 	writeMarkdownReportField(&out, "No Wait", fmt.Sprintf("%t", report.NoWait))
