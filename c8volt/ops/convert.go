@@ -658,6 +658,7 @@ func fromDomainSmokeTestDeploymentResult(x d.SmokeTestDeploymentResult) SmokeTes
 		ProcessDefinitionKey:     x.ProcessDefinitionKey,
 		ProcessDefinitionVersion: x.ProcessDefinitionVersion,
 		TenantID:                 x.TenantID,
+		TenantEvidence:           fromDomainOpsTenantEvidence(x.TenantEvidence),
 		Errors:                   append([]string(nil), x.Errors...),
 	}
 }
@@ -676,6 +677,7 @@ func fromDomainSmokeTestRunResult(x d.SmokeTestRunResult) SmokeTestRunResult {
 		RequestedCount:      x.RequestedCount,
 		CreatedCount:        x.CreatedCount,
 		ProcessInstanceKeys: append(typex.Keys(nil), x.ProcessInstanceKeys...),
+		TenantEvidence:      fromDomainOpsTenantEvidence(x.TenantEvidence),
 		Items:               toolx.MapSlice(x.Items, fromDomainSmokeTestRunItem),
 		Errors:              append([]string(nil), x.Errors...),
 	}
@@ -720,13 +722,14 @@ func fromDomainSmokeTestCleanupEligibility(x d.SmokeTestCleanupEligibility) Smok
 
 func fromDomainSmokeTestProcessInstanceCleanupResult(x d.SmokeTestProcessInstanceCleanupResult) SmokeTestProcessInstanceCleanupResult {
 	return SmokeTestProcessInstanceCleanupResult{
-		Status:        WorkflowStepStatus(x.Status),
-		SubmittedKeys: append(typex.Keys(nil), x.SubmittedKeys...),
-		Items:         toolx.MapSlice(x.Items, fromDomainDeleteReport),
-		Submitted:     x.Submitted,
-		Confirmed:     x.Confirmed,
-		NoWait:        x.NoWait,
-		Errors:        append([]string(nil), x.Errors...),
+		Status:         WorkflowStepStatus(x.Status),
+		SubmittedKeys:  append(typex.Keys(nil), x.SubmittedKeys...),
+		TenantEvidence: fromDomainOpsTenantEvidence(x.TenantEvidence),
+		Items:          toolx.MapSlice(x.Items, fromDomainDeleteReport),
+		Submitted:      x.Submitted,
+		Confirmed:      x.Confirmed,
+		NoWait:         x.NoWait,
+		Errors:         append([]string(nil), x.Errors...),
 	}
 }
 
@@ -860,6 +863,7 @@ func fromDomainDeletionPlan(x d.DeletionPlan) DeletionPlan {
 		RequestedKeys:        append([]string(nil), x.RequestedKeys...),
 		AffectedKeys:         append([]string(nil), x.AffectedKeys...),
 		RootKeys:             append([]string(nil), x.RootKeys...),
+		TenantEvidence:       fromDomainOpsTenantEvidence(x.TenantEvidence),
 		RequiresConfirmation: x.RequiresConfirmation,
 		DryRunPreview:        fromDomainDryRunPIKeyExpansion(x.DryRunPreview),
 		Errors:               append([]string(nil), x.Errors...),
@@ -991,6 +995,7 @@ func fromDomainRetentionDeletePlan(x d.RetentionDeletePlan) RetentionDeletePlan 
 		SeedKeys:              append([]string(nil), x.SeedKeys...),
 		ResolvedRootKeys:      append([]string(nil), x.ResolvedRootKeys...),
 		AffectedKeys:          append([]string(nil), x.AffectedKeys...),
+		TenantEvidence:        fromDomainOpsTenantEvidence(x.TenantEvidence),
 		DuplicateKeys:         append([]string(nil), x.DuplicateKeys...),
 		FinalStateItems:       toolx.MapSlice(x.FinalStateItems, fromDomainProcessInstance),
 		NonFinalAffectedItems: toolx.MapSlice(x.NonFinalAffectedItems, fromDomainProcessInstance),
@@ -1175,6 +1180,7 @@ func fromDomainIncidentPurgeDeletePlan(x d.IncidentPurgeDeletePlan) IncidentPurg
 		CandidateProcessInstanceKeys:          append(typex.Keys{}, x.CandidateProcessInstanceKeys...),
 		ResolvedRootKeys:                      append(typex.Keys{}, x.ResolvedRootKeys...),
 		AffectedKeys:                          append(typex.Keys{}, x.AffectedKeys...),
+		TenantEvidence:                        fromDomainOpsTenantEvidence(x.TenantEvidence),
 		DuplicateCandidateProcessInstanceKeys: append(typex.Keys{}, x.DuplicateCandidateProcessInstanceKeys...),
 		DuplicateResolvedRootKeys:             append(typex.Keys{}, x.DuplicateResolvedRootKeys...),
 		FinalStateItems:                       toolx.MapSlice(x.FinalStateItems, fromDomainProcessInstance),
@@ -1332,6 +1338,7 @@ func fromDomainRepairFrozenSet(x d.OpsRepairFrozenSet) RepairFrozenSet {
 		RootProcessKeys:            append(typex.Keys{}, x.RootProcessKeys...),
 		JobKeys:                    append(typex.Keys{}, x.JobKeys...),
 		VariableScopes:             append(typex.Keys{}, x.VariableScopes...),
+		TenantEvidence:             fromDomainOpsTenantEvidence(x.TenantEvidence),
 		OriginalIncidents:          toolx.MapSlice(x.OriginalIncidents, fromDomainIncidentDetail),
 		IncidentFilters:            fromDomainIncidentFilter(x.IncidentFilters),
 		ProcessFilters:             fromDomainProcessInstanceFilter(x.ProcessFilters),
@@ -1538,6 +1545,7 @@ func fromDomainAllProcessDefinitionsPurgeDeletePlan(x d.AllProcessDefinitionsPur
 		Status:                                  WorkflowStepStatus(x.Status),
 		CandidateProcessDefinitionKeys:          append(typex.Keys{}, x.CandidateProcessDefinitionKeys...),
 		Items:                                   toolx.MapSlice(x.Items, fromDomainDeleteProcessDefinitionPlanItem),
+		TenantEvidence:                          fromDomainOpsTenantEvidence(x.TenantEvidence),
 		DuplicateCandidateProcessDefinitionKeys: append(typex.Keys{}, x.DuplicateCandidateProcessDefinitionKeys...),
 		AffectedProcessInstanceCount:            x.AffectedProcessInstanceCount,
 		ActiveProcessInstanceCount:              x.ActiveProcessInstanceCount,
@@ -1695,11 +1703,25 @@ func fromDomainDryRunPIKeyExpansion(x d.DryRunPIKeyExpansion) process.DryRunPIKe
 	return process.DryRunPIKeyExpansion{
 		Roots:                      append([]string(nil), x.Roots...),
 		Collected:                  append([]string(nil), x.Collected...),
+		TenantEvidence:             fromDomainOpsTenantEvidence(x.TenantEvidence),
 		SelectedFinalState:         toolx.MapSlice(x.SelectedFinalState, fromDomainProcessInstance),
 		RequiresCancelBeforeDelete: toolx.MapSlice(x.RequiresCancelBeforeDelete, fromDomainProcessInstance),
 		MissingAncestors:           toolx.MapSlice(x.MissingAncestors, fromDomainMissingAncestor),
 		Warning:                    x.Warning,
 		Outcome:                    process.TraversalOutcome(x.Outcome),
+	}
+}
+
+// fromDomainOpsTenantEvidence copies tenant evidence into the public process
+// evidence shape used by ops plans and reports.
+func fromDomainOpsTenantEvidence(x d.TenantEvidence) process.TenantEvidence {
+	return process.TenantEvidence{
+		ResolvedTenantIDs:  append([]string(nil), x.ResolvedTenantIDs...),
+		UnknownTargetCount: x.UnknownTargetCount,
+		TargetCount:        x.TargetCount,
+		Targets: toolx.MapSlice(x.Targets, func(target d.TenantEvidenceTarget) process.TenantEvidenceTarget {
+			return process.TenantEvidenceTarget{Key: target.Key, TenantID: target.TenantID}
+		}),
 	}
 }
 

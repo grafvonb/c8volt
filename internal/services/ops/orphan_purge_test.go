@@ -107,6 +107,58 @@ func TestPurgeOrphanProcessInstancesDryRunDiscoversOrphansAndPlansDeletion(t *te
 	require.Equal(t, d.OrphanPurgeOutcomePlanned, got.Report.Outcome)
 }
 
+// TestPurgeOrphanProcessInstancesAggregatesTenantEvidenceFromFrozenPlan proves
+// orphan purge exposes dry-run plan evidence without an enrichment lookup.
+func TestPurgeOrphanProcessInstancesAggregatesTenantEvidenceFromFrozenPlan(t *testing.T) {
+	t.Parallel()
+
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				StartKey: key,
+				RootKey:  key,
+				Keys:     []string{key},
+				Chain: map[string]d.ProcessInstance{
+					key: {Key: key, State: d.StateCompleted, TenantId: "tenant-b"},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{rootKey, "child-unknown"},
+				Chain: map[string]d.ProcessInstance{
+					rootKey:         {Key: rootKey, State: d.StateCompleted, TenantId: "tenant-b"},
+					"child-unknown": {Key: "child-unknown", State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	got, err := New(piAPI, nil).PurgeOrphanProcessInstances(context.Background(), d.OrphanPurgeRequest{
+		CommandName:    "ops purge orphan-process-instances",
+		DryRun:         true,
+		DiscoveredKeys: typexKeys("root-a"),
+		StartedAt:      time.Date(2026, 5, 11, 12, 0, 0, 0, time.UTC),
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-b"},
+		UnknownTargetCount: 1,
+		TargetCount:        2,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "root-a", TenantID: "tenant-b"},
+			{Key: "child-unknown"},
+		},
+	}, got.DeletionPlan.TenantEvidence)
+	require.Equal(t, got.DeletionPlan.TenantEvidence, got.DeletionPlan.DryRunPreview.TenantEvidence)
+	require.Equal(t, got.DeletionPlan.TenantEvidence, got.Report.DeletionPlan.TenantEvidence)
+}
+
 func TestPurgeOrphanProcessInstancesDryRunNoTargetsSkipsPlan(t *testing.T) {
 	t.Parallel()
 

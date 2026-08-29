@@ -68,6 +68,7 @@ func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.Orp
 		RequestedKeys:        discovery.Keys,
 		AffectedKeys:         plan.Collected,
 		RootKeys:             plan.Roots,
+		TenantEvidence:       plan.TenantEvidence,
 		RequiresConfirmation: !request.DryRun,
 		DryRunPreview:        plan,
 	}

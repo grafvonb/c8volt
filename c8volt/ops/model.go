@@ -260,6 +260,7 @@ type RepairFrozenSet struct {
 	RootProcessKeys            typex.Keys                               `json:"rootProcessKeys,omitempty"`
 	JobKeys                    typex.Keys                               `json:"jobKeys,omitempty"`
 	VariableScopes             typex.Keys                               `json:"variableScopes,omitempty"`
+	TenantEvidence             process.TenantEvidence                   `json:"tenantEvidence,omitempty"`
 	OriginalIncidents          []incident.ProcessInstanceIncidentDetail `json:"originalIncidents,omitempty"`
 	IncidentFilters            incident.Filter                          `json:"incidentFilters,omitempty"`
 	ProcessFilters             process.ProcessInstanceFilter            `json:"processFilters,omitempty"`
@@ -430,13 +431,14 @@ type SmokeTestPlan struct {
 
 // SmokeTestDeploymentResult captures deployment step output.
 type SmokeTestDeploymentResult struct {
-	Status                   WorkflowStepStatus `json:"status,omitempty"`
-	FixtureFile              string             `json:"fixtureFile,omitempty"`
-	BpmnProcessID            string             `json:"bpmnProcessId,omitempty"`
-	ProcessDefinitionKey     string             `json:"processDefinitionKey,omitempty"`
-	ProcessDefinitionVersion int32              `json:"processDefinitionVersion,omitempty"`
-	TenantID                 string             `json:"tenantId,omitempty"`
-	Errors                   []string           `json:"errors,omitempty"`
+	Status                   WorkflowStepStatus     `json:"status,omitempty"`
+	FixtureFile              string                 `json:"fixtureFile,omitempty"`
+	BpmnProcessID            string                 `json:"bpmnProcessId,omitempty"`
+	ProcessDefinitionKey     string                 `json:"processDefinitionKey,omitempty"`
+	ProcessDefinitionVersion int32                  `json:"processDefinitionVersion,omitempty"`
+	TenantID                 string                 `json:"tenantId,omitempty"`
+	TenantEvidence           process.TenantEvidence `json:"tenantEvidence,omitempty"`
+	Errors                   []string               `json:"errors,omitempty"`
 }
 
 // SmokeTestRunItem captures one process-instance creation attempt.
@@ -448,12 +450,13 @@ type SmokeTestRunItem struct {
 
 // SmokeTestRunResult captures process-instance creation output.
 type SmokeTestRunResult struct {
-	Status              WorkflowStepStatus `json:"status,omitempty"`
-	RequestedCount      int                `json:"requestedCount"`
-	CreatedCount        int                `json:"createdCount"`
-	ProcessInstanceKeys typex.Keys         `json:"processInstanceKeys,omitempty"`
-	Items               []SmokeTestRunItem `json:"items,omitempty"`
-	Errors              []string           `json:"errors,omitempty"`
+	Status              WorkflowStepStatus     `json:"status,omitempty"`
+	RequestedCount      int                    `json:"requestedCount"`
+	CreatedCount        int                    `json:"createdCount"`
+	ProcessInstanceKeys typex.Keys             `json:"processInstanceKeys,omitempty"`
+	TenantEvidence      process.TenantEvidence `json:"tenantEvidence,omitempty"`
+	Items               []SmokeTestRunItem     `json:"items,omitempty"`
+	Errors              []string               `json:"errors,omitempty"`
 }
 
 // SmokeTestTraversalSummary captures report-safe traversal details for one created instance family.
@@ -491,13 +494,14 @@ type SmokeTestCleanupEligibility struct {
 
 // SmokeTestProcessInstanceCleanupResult captures delete-pi cleanup output.
 type SmokeTestProcessInstanceCleanupResult struct {
-	Status        WorkflowStepStatus     `json:"status,omitempty"`
-	SubmittedKeys typex.Keys             `json:"submittedKeys,omitempty"`
-	Items         []process.DeleteReport `json:"items,omitempty"`
-	Submitted     bool                   `json:"submitted,omitempty"`
-	Confirmed     bool                   `json:"confirmed,omitempty"`
-	NoWait        bool                   `json:"noWait,omitempty"`
-	Errors        []string               `json:"errors,omitempty"`
+	Status         WorkflowStepStatus     `json:"status,omitempty"`
+	SubmittedKeys  typex.Keys             `json:"submittedKeys,omitempty"`
+	TenantEvidence process.TenantEvidence `json:"tenantEvidence,omitempty"`
+	Items          []process.DeleteReport `json:"items,omitempty"`
+	Submitted      bool                   `json:"submitted,omitempty"`
+	Confirmed      bool                   `json:"confirmed,omitempty"`
+	NoWait         bool                   `json:"noWait,omitempty"`
+	Errors         []string               `json:"errors,omitempty"`
 }
 
 // SmokeTestProcessDefinitionCleanupResult captures process-definition cleanup output.
@@ -606,6 +610,7 @@ type DeletionPlan struct {
 	RequestedKeys        typex.Keys                   `json:"requestedKeys,omitempty"`
 	AffectedKeys         typex.Keys                   `json:"affectedKeys,omitempty"`
 	RootKeys             typex.Keys                   `json:"rootKeys,omitempty"`
+	TenantEvidence       process.TenantEvidence       `json:"tenantEvidence,omitempty"`
 	RequiresConfirmation bool                         `json:"requiresConfirmation,omitempty"`
 	DryRunPreview        process.DryRunPIKeyExpansion `json:"dryRunPreview,omitempty"`
 	Errors               []string                     `json:"errors,omitempty"`
@@ -703,6 +708,7 @@ type RetentionDeletePlan struct {
 	SeedKeys              typex.Keys                `json:"seedKeys,omitempty"`
 	ResolvedRootKeys      typex.Keys                `json:"resolvedRootKeys,omitempty"`
 	AffectedKeys          typex.Keys                `json:"affectedKeys,omitempty"`
+	TenantEvidence        process.TenantEvidence    `json:"tenantEvidence,omitempty"`
 	DuplicateKeys         typex.Keys                `json:"duplicateKeys,omitempty"`
 	FinalStateItems       []process.ProcessInstance `json:"finalStateItems,omitempty"`
 	NonFinalAffectedItems []process.ProcessInstance `json:"nonFinalAffectedItems,omitempty"`
@@ -838,6 +844,7 @@ type IncidentPurgeDeletePlan struct {
 	CandidateProcessInstanceKeys          typex.Keys                `json:"candidateProcessInstanceKeys,omitempty"`
 	ResolvedRootKeys                      typex.Keys                `json:"resolvedRootKeys,omitempty"`
 	AffectedKeys                          typex.Keys                `json:"affectedKeys,omitempty"`
+	TenantEvidence                        process.TenantEvidence    `json:"tenantEvidence,omitempty"`
 	DuplicateCandidateProcessInstanceKeys typex.Keys                `json:"duplicateCandidateProcessInstanceKeys,omitempty"`
 	DuplicateResolvedRootKeys             typex.Keys                `json:"duplicateResolvedRootKeys,omitempty"`
 	FinalStateItems                       []process.ProcessInstance `json:"finalStateItems,omitempty"`
@@ -980,6 +987,7 @@ type AllProcessDefinitionsPurgeDeletePlan struct {
 	Status                                  WorkflowStepStatus                         `json:"status,omitempty"`
 	CandidateProcessDefinitionKeys          typex.Keys                                 `json:"candidateProcessDefinitionKeys,omitempty"`
 	Items                                   []resource.DeleteProcessDefinitionPlanItem `json:"items,omitempty"`
+	TenantEvidence                          process.TenantEvidence                     `json:"tenantEvidence,omitempty"`
 	DuplicateCandidateProcessDefinitionKeys typex.Keys                                 `json:"duplicateCandidateProcessDefinitionKeys,omitempty"`
 	AffectedProcessInstanceCount            int64                                      `json:"affectedProcessInstanceCount,omitempty"`
 	ActiveProcessInstanceCount              int64                                      `json:"activeProcessInstanceCount,omitempty"`

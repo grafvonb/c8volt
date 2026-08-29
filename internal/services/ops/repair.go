@@ -184,7 +184,7 @@ func (s *Service) repairExplicitProcessInstances(ctx context.Context, request d.
 		result.FrozenSet.Errors = []string{err.Error()}
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
 	}
-	result.FrozenSet = freezeProcessInstanceRepairSet(request, processInstanceKeys, incidents)
+	result.FrozenSet = freezeProcessInstanceRepairSet(request, processInstanceKeys, pis, incidents)
 	return s.finishProcessInstanceIncidentRepair(ctx, request, result, incidents, opts...)
 }
 
@@ -207,7 +207,7 @@ func (s *Service) repairFilteredProcessInstances(ctx context.Context, request d.
 	if request.DirectIncidentsOnly {
 		processInstanceKeys = processInstanceKeysFromIncidents(incidents)
 	}
-	result.FrozenSet = freezeProcessInstanceRepairSet(request, processInstanceKeys, incidents)
+	result.FrozenSet = freezeProcessInstanceRepairSet(request, processInstanceKeys, pis, incidents)
 	result.FrozenSet.DiscoveryMode = d.OpsRepairDiscoveryModeSearch
 	result.FrozenSet.InputKeys = nil
 	result.FrozenSet.ProcessFilters = request.ProcessInstanceSelection
@@ -315,6 +315,7 @@ func freezeExplicitIncidentSet(request d.OpsRepairRequest, incidents []d.Process
 	if len(request.Variables) > 0 {
 		frozen.VariableScopes = frozen.ProcessInstanceKeys.Unique()
 	}
+	frozen.TenantEvidence = opsTenantEvidenceFromIncidents(incidents)
 	frozen.OriginalIncidents = append([]d.ProcessInstanceIncidentDetail(nil), incidents...)
 	return frozen
 }
@@ -329,7 +330,7 @@ func freezeIncidentSearchSet(request d.OpsRepairRequest, incidents []d.ProcessIn
 }
 
 // freezeProcessInstanceRepairSet records repairable process instances and skipped direct selections.
-func freezeProcessInstanceRepairSet(request d.OpsRepairRequest, selectedProcessInstanceKeys typex.Keys, incidents []d.ProcessInstanceIncidentDetail) d.OpsRepairFrozenSet {
+func freezeProcessInstanceRepairSet(request d.OpsRepairRequest, selectedProcessInstanceKeys typex.Keys, selectedProcessInstances []d.ProcessInstance, incidents []d.ProcessInstanceIncidentDetail) d.OpsRepairFrozenSet {
 	frozen := newRepairResult(request).FrozenSet
 	frozen.Status = d.OpsWorkflowStepStatusConfirmed
 	frozen.IncidentKeys = incidentKeysFromDetails(incidents)
@@ -340,6 +341,7 @@ func freezeProcessInstanceRepairSet(request d.OpsRepairRequest, selectedProcessI
 	if len(request.Variables) > 0 {
 		frozen.VariableScopes = frozen.ProcessInstanceKeys.Unique()
 	}
+	frozen.TenantEvidence = opsTenantEvidenceFromProcessInstanceKeysAndDetails(selectedProcessInstanceKeys, selectedProcessInstances, incidents)
 	frozen.OriginalIncidents = append([]d.ProcessInstanceIncidentDetail(nil), incidents...)
 	return frozen
 }

@@ -247,6 +247,80 @@ func TestExecuteRetentionPolicyDryRunDiscoversFrozenSeedSetAndSkipsDeleteWork(t 
 	require.Empty(t, got.Errors)
 }
 
+// TestExecuteRetentionPolicyAggregatesTenantEvidenceFromFrozenTraversal proves
+// retention planning reuses already-loaded traversal chains for tenant evidence.
+func TestExecuteRetentionPolicyAggregatesTenantEvidenceFromFrozenTraversal(t *testing.T) {
+	t.Parallel()
+
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			tenantID := "tenant-b"
+			if key == "root-b" {
+				tenantID = ""
+			}
+			return pitraversal.Result{
+				StartKey: key,
+				RootKey:  key,
+				Keys:     []string{key},
+				Chain: map[string]d.ProcessInstance{
+					key: {Key: key, State: d.StateCompleted, TenantId: tenantID},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			switch rootKey {
+			case "root-a":
+				return pitraversal.Result{
+					StartKey: rootKey,
+					RootKey:  rootKey,
+					Keys:     []string{"root-a", "child-unknown"},
+					Chain: map[string]d.ProcessInstance{
+						"root-a":        {Key: "root-a", State: d.StateCompleted, TenantId: "tenant-b"},
+						"child-unknown": {Key: "child-unknown", State: d.StateCompleted},
+					},
+					Outcome: pitraversal.OutcomeComplete,
+				}, nil
+			case "root-b":
+				return pitraversal.Result{
+					StartKey: rootKey,
+					RootKey:  rootKey,
+					Keys:     []string{"root-b"},
+					Chain: map[string]d.ProcessInstance{
+						"root-b": {Key: "root-b", State: d.StateCompleted, TenantId: "tenant-a"},
+					},
+					Outcome: pitraversal.OutcomeComplete,
+				}, nil
+			default:
+				t.Fatalf("unexpected root key %s", rootKey)
+				return pitraversal.Result{}, nil
+			}
+		},
+	}
+
+	got, err := New(piAPI, nil).ExecuteRetentionPolicy(context.Background(), d.RetentionPolicyRequest{
+		CommandName:            "ops execute retention-policy",
+		RetentionDays:          90,
+		DerivedEndDateBoundary: "2026-02-13",
+		DryRun:                 true,
+		DiscoveredKeys:         typexKeys("root-a", "root-b"),
+		StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+		UnknownTargetCount: 1,
+		TargetCount:        3,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "root-a", TenantID: "tenant-b"},
+			{Key: "child-unknown"},
+			{Key: "root-b", TenantID: "tenant-a"},
+		},
+	}, got.DeletePlan.TenantEvidence)
+	require.Equal(t, got.DeletePlan.TenantEvidence, got.Report.DeletePlan.TenantEvidence)
+}
+
 func TestExecuteRetentionPolicyDryRunNoTargetsSkipsPlanAndDeletion(t *testing.T) {
 	t.Parallel()
 

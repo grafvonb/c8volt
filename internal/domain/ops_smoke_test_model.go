@@ -78,6 +78,7 @@ type SmokeTestDeploymentResult struct {
 	ProcessDefinitionKey     string
 	ProcessDefinitionVersion int32
 	TenantID                 string
+	TenantEvidence           TenantEvidence
 	Errors                   []string
 }
 
@@ -94,6 +95,7 @@ type SmokeTestRunResult struct {
 	RequestedCount      int
 	CreatedCount        int
 	ProcessInstanceKeys typex.Keys
+	TenantEvidence      TenantEvidence
 	Items               []SmokeTestRunItem
 	Errors              []string
 }
@@ -133,13 +135,14 @@ type SmokeTestCleanupEligibility struct {
 
 // SmokeTestProcessInstanceCleanupResult captures delete-pi cleanup output.
 type SmokeTestProcessInstanceCleanupResult struct {
-	Status        OpsWorkflowStepStatus
-	SubmittedKeys typex.Keys
-	Items         []Reporter
-	Submitted     bool
-	Confirmed     bool
-	NoWait        bool
-	Errors        []string
+	Status         OpsWorkflowStepStatus
+	SubmittedKeys  typex.Keys
+	TenantEvidence TenantEvidence
+	Items          []Reporter
+	Submitted      bool
+	Confirmed      bool
+	NoWait         bool
+	Errors         []string
 }
 
 // SmokeTestProcessDefinitionCleanupResult captures process-definition cleanup output.

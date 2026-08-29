@@ -36,6 +36,7 @@ Started: 2026-08-29T12:20:03Z
 - Keep `config` package YAML tests free of imports from `c8volt/tenant`; use plain serialized maps there to avoid a test-only import cycle through the public tenant facade.
 - Ops progress preflight and audit report models now carry optional nested tenant context pointers; public ops reports use `*tenant.Context`, while `c8volt/foptions` uses a local progress-only mirror to avoid the existing `tenant -> foptions` import cycle.
 - Ops facade conversion owns local field-for-field tenant-context copy helpers because `c8volt/tenant` conversion helpers are unexported; resolved tenant IDs and warnings must be copied when crossing both ops model and progress callback boundaries.
+- Ops service workflow plans now preserve `domain.TenantEvidence` from frozen data: retention/orphan/incident purge use PI traversal previews, all-process-definitions purge preserves delete-PD preview evidence, repair freezes incident or PI target evidence, and smoke test records deployment/run/PI-cleanup evidence. Public ops conversion mirrors those evidence fields with `process.TenantEvidence` for later command/report enrichment.
 
 ## Decisions
 - Phase 1 setup was treated as the first work unit because T001 was the first incomplete task and Phase 2 depends on it.
@@ -56,6 +57,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 16 completed the remaining US4 tasks T036-T039; PI destructive confirmations and PD facade conversion now preserve and render cross-tenant plus unknown metadata warnings from frozen evidence.
 - Iteration 17 paired T040 with T044 so configuration diagnostic tests were committed only after sanitized YAML, validate, and test-connection configuration context passed.
 - Iteration 18 paired T041 with T045 so ops model/conversion tests were committed only after optional nested tenant context was wired through domain reports, public reports, ops preflight, and progress callbacks.
+- Iteration 19 paired T042 with T046 so no-extra-call ops service aggregation tests were committed only after frozen workflow tenant evidence was wired through domain and public ops plan/result models.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.
@@ -118,4 +120,4 @@ Started: 2026-08-29T12:20:03Z
 - Do not render destructive cancel selector tenant context to stdout; the progress contract reserves stdout for command results and keeps compact progress on stderr.
 
 ## Current Handoff
-- Continue Phase 7 / US5 at T042 by adding failing no-extra-call tenant aggregation tests for retention, all-definition purge, orphan purge, incident purge, repair, and smoke test services before implementing T046.
+- Continue Phase 7 / US5 at T043 by adding failing ops command/report tests for preflight, confirmation, JSON/Markdown report, unfiltered-not-default, quiet, and keys-only behavior before implementing T047/T048.

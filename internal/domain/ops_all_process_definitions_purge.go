@@ -61,6 +61,7 @@ type AllProcessDefinitionsPurgeDeletePlan struct {
 	Status                                  OpsWorkflowStepStatus
 	CandidateProcessDefinitionKeys          typex.Keys
 	Items                                   []DeleteProcessDefinitionPlanItem
+	TenantEvidence                          TenantEvidence
 	DuplicateCandidateProcessDefinitionKeys typex.Keys
 	AffectedProcessInstanceCount            int64
 	ActiveProcessInstanceCount              int64

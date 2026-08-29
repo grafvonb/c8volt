@@ -58,6 +58,7 @@ type RetentionDeletePlan struct {
 	SeedKeys              typex.Keys
 	ResolvedRootKeys      typex.Keys
 	AffectedKeys          typex.Keys
+	TenantEvidence        TenantEvidence
 	DuplicateKeys         typex.Keys
 	FinalStateItems       []ProcessInstance
 	NonFinalAffectedItems []ProcessInstance

@@ -87,6 +87,7 @@ type OpsRepairFrozenSet struct {
 	RootProcessKeys            typex.Keys
 	JobKeys                    typex.Keys
 	VariableScopes             typex.Keys
+	TenantEvidence             TenantEvidence
 	OriginalIncidents          []ProcessInstanceIncidentDetail
 	IncidentFilters            IncidentFilter
 	ProcessFilters             ProcessInstanceFilter

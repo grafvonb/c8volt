@@ -59,7 +59,6 @@ Started: 2026-08-29 14:20:03
 - specs/283-show-tenant-context/progress.md
 **Learnings**:
 - Domain constructors now enforce the tenant context mode/filter matrix and derive stable warnings while public conversion remains mechanical and slice-safe.
----
 ## Iteration 3 - 2026-08-29 14:31
 **Work Unit**: Phase 2 foundational tenant evidence accumulator
 **Tasks Completed**:
@@ -485,5 +484,46 @@ Started: 2026-08-29 14:20:03
 - Passed: `go test ./internal/domain ./c8volt/ops ./c8volt/foptions -run 'TestOps.*TenantContext|Test.*TenantContext|TestAuditReports_.*Tenant|TestProgressConversions_CopyTenantContext|TestClientExecuteSmokeTestMapsProgressTenantContext' -count=1`.
 - Passed: `go test ./internal/domain ./c8volt/... -count=1`.
 - Passed: `go test ./internal/services/ops/... ./cmd -count=1`.
+- Passed: `git diff --check`.
+---
+---
+## Iteration 19 - 2026-08-29 17:00
+**Work Unit**: Phase 7 US5 ops service tenant evidence aggregation
+**Tasks Completed**:
+- [x] T042: Add no-extra-call tenant aggregation tests for retention, all-definition purge, orphan purge, incident purge, repair, and smoke test services.
+- [x] T046: Aggregate tenant evidence from already-frozen ops workflow plans/results without additional backend requests.
+**Tasks Remaining in Work Unit**: US5 remains: T043 and T047-T051.
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/ops/client_test.go
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- internal/domain/ops_all_process_definitions_purge.go
+- internal/domain/ops_incident_purge.go
+- internal/domain/ops_orphan_purge.go
+- internal/domain/ops_repair.go
+- internal/domain/ops_retention_policy.go
+- internal/domain/ops_smoke_test_model.go
+- internal/services/ops/all_process_definitions_purge.go
+- internal/services/ops/all_process_definitions_purge_test.go
+- internal/services/ops/incident_purge.go
+- internal/services/ops/incident_purge_test.go
+- internal/services/ops/orphan_purge.go
+- internal/services/ops/orphan_purge_test.go
+- internal/services/ops/repair.go
+- internal/services/ops/repair_test.go
+- internal/services/ops/retention_policy.go
+- internal/services/ops/retention_policy_test.go
+- internal/services/ops/smoke_test_service.go
+- internal/services/ops/smoke_test_test.go
+- internal/services/ops/tenant_evidence.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Ops service tenant evidence belongs on frozen plan/result models, not root tenant context; command-owned T047/T048 will merge these snapshots with operation semantics for rendering and reports.
+- Passed: `go test ./internal/services/ops -run 'Test(ExecuteRetentionPolicyAggregatesTenantEvidenceFromFrozenTraversal|PurgeAllProcessDefinitionsAggregatesTenantEvidenceFromFrozenPreview|PurgeOrphanProcessInstancesAggregatesTenantEvidenceFromFrozenPlan|PurgeProcessInstancesWithIncidentsAggregatesTenantEvidenceFromFrozenPlan|RepairIncidentsAggregatesTenantEvidenceFromFrozenIncidents|ExecuteSmokeTestAggregatesTenantEvidenceFromCreatedResources)' -count=1`.
+- Passed: `go test ./internal/services/ops ./c8volt/ops -run 'Test(ExecuteRetentionPolicyAggregatesTenantEvidenceFromFrozenTraversal|PurgeAllProcessDefinitionsAggregatesTenantEvidenceFromFrozenPreview|PurgeOrphanProcessInstancesAggregatesTenantEvidenceFromFrozenPlan|PurgeProcessInstancesWithIncidentsAggregatesTenantEvidenceFromFrozenPlan|RepairIncidentsAggregatesTenantEvidenceFromFrozenIncidents|ExecuteSmokeTestAggregatesTenantEvidenceFromCreatedResources|ClientPurgeOrphanProcessInstancesMapsServiceBoundary)' -count=1`.
+- Passed: `go test ./internal/services/ops/... ./c8volt/ops ./cmd -count=1`.
 - Passed: `git diff --check`.
 ---

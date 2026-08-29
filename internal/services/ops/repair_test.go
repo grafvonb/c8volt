@@ -125,6 +125,43 @@ func TestRepairProcessInstancesDryRunDiscoversExplicitTargets(t *testing.T) {
 	require.Equal(t, got.FrozenSet, got.Report.FrozenSet)
 }
 
+// TestRepairIncidentsAggregatesTenantEvidenceFromFrozenIncidents proves repair
+// evidence comes from the incident payloads already fetched for the frozen set.
+func TestRepairIncidentsAggregatesTenantEvidenceFromFrozenIncidents(t *testing.T) {
+	t.Parallel()
+
+	incidents := map[string]d.ProcessInstanceIncidentDetail{
+		"inc-a": {IncidentKey: "inc-a", ProcessInstanceKey: "pi-a", TenantId: "tenant-b", State: "ACTIVE"},
+		"inc-b": {IncidentKey: "inc-b", ProcessInstanceKey: "pi-b", TenantId: "tenant-a", State: "ACTIVE"},
+		"inc-c": {IncidentKey: "inc-c", ProcessInstanceKey: "pi-c", State: "ACTIVE"},
+	}
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
+		getIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			return incidents[key], nil
+		},
+	}, nil, nil, stubJobAPI{}, "")
+
+	got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{
+		CommandName:   "ops repair incident",
+		DiscoveryMode: d.OpsRepairDiscoveryModeKeyed,
+		InputKeys:     typex.Keys{"inc-a", "inc-b", "inc-c"},
+		DryRun:        true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+		UnknownTargetCount: 1,
+		TargetCount:        3,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "inc-a", TenantID: "tenant-b"},
+			{Key: "inc-b", TenantID: "tenant-a"},
+			{Key: "inc-c"},
+		},
+	}, got.FrozenSet.TenantEvidence)
+	require.Equal(t, got.FrozenSet.TenantEvidence, got.Report.FrozenSet.TenantEvidence)
+}
+
 // TestRepairProcessInstancesDryRunReportsExplicitTargetsWithoutIncidents verifies direct PI keys can include non-applicable instances.
 func TestRepairProcessInstancesDryRunReportsExplicitTargetsWithoutIncidents(t *testing.T) {
 	t.Parallel()

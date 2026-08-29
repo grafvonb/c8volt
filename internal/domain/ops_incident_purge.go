@@ -87,6 +87,7 @@ type IncidentPurgeDeletePlan struct {
 	CandidateProcessInstanceKeys          typex.Keys
 	ResolvedRootKeys                      typex.Keys
 	AffectedKeys                          typex.Keys
+	TenantEvidence                        TenantEvidence
 	DuplicateCandidateProcessInstanceKeys typex.Keys
 	DuplicateResolvedRootKeys             typex.Keys
 	FinalStateItems                       []ProcessInstance

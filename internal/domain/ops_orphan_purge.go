@@ -63,6 +63,7 @@ type DeletionPlan struct {
 	RequestedKeys        typex.Keys
 	AffectedKeys         typex.Keys
 	RootKeys             typex.Keys
+	TenantEvidence       TenantEvidence
 	RequiresConfirmation bool
 	DryRunPreview        DryRunPIKeyExpansion
 	Errors               []string

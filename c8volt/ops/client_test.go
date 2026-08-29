@@ -62,15 +62,25 @@ func TestClientPurgeOrphanProcessInstancesMapsServiceBoundary(t *testing.T) {
 					Count:  1,
 				},
 				DeletionPlan: d.DeletionPlan{
-					Status:               d.OpsWorkflowStepStatusPlanned,
-					RequestedKeys:        []string{"2251799813685249"},
-					AffectedKeys:         []string{"2251799813685249", "2251799813685250"},
-					RootKeys:             []string{"2251799813685248"},
+					Status:        d.OpsWorkflowStepStatusPlanned,
+					RequestedKeys: []string{"2251799813685249"},
+					AffectedKeys:  []string{"2251799813685249", "2251799813685250"},
+					RootKeys:      []string{"2251799813685248"},
+					TenantEvidence: d.TenantEvidence{
+						ResolvedTenantIDs: []string{"tenant-a"},
+						TargetCount:       1,
+						Targets:           []d.TenantEvidenceTarget{{Key: "2251799813685249", TenantID: "tenant-a"}},
+					},
 					RequiresConfirmation: true,
 					DryRunPreview: d.DryRunPIKeyExpansion{
 						Roots:     []string{"2251799813685248"},
 						Collected: []string{"2251799813685249", "2251799813685250"},
-						Outcome:   d.TraversalOutcomeComplete,
+						TenantEvidence: d.TenantEvidence{
+							ResolvedTenantIDs: []string{"tenant-a"},
+							TargetCount:       1,
+							Targets:           []d.TenantEvidenceTarget{{Key: "2251799813685249", TenantID: "tenant-a"}},
+						},
+						Outcome: d.TraversalOutcomeComplete,
 					},
 				},
 				Deletion: d.DeletionResult{
@@ -114,6 +124,12 @@ func TestClientPurgeOrphanProcessInstancesMapsServiceBoundary(t *testing.T) {
 	require.Equal(t, OrphanPurgeOutcomePlanned, got.Outcome)
 	require.Equal(t, []string{"2251799813685249"}, []string(got.Discovery.Keys))
 	require.Equal(t, []string{"2251799813685248"}, []string(got.DeletionPlan.RootKeys))
+	require.Equal(t, process.TenantEvidence{
+		ResolvedTenantIDs: []string{"tenant-a"},
+		TargetCount:       1,
+		Targets:           []process.TenantEvidenceTarget{{Key: "2251799813685249", TenantID: "tenant-a"}},
+	}, got.DeletionPlan.TenantEvidence)
+	require.Equal(t, got.DeletionPlan.TenantEvidence, got.DeletionPlan.DryRunPreview.TenantEvidence)
 	require.Equal(t, process.TraversalOutcomeComplete, got.DeletionPlan.DryRunPreview.Outcome)
 	require.True(t, got.DeleteRequested)
 	require.Equal(t, WorkflowStepStatusSubmitted, got.Deletion.Status)
