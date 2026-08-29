@@ -26,8 +26,10 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
 	Use:   "smoke-test",
 	Short: "Execute a cluster smoke test workflow",
 	Long: "Execute a cluster smoke test workflow.\n\n" +
+		"Tenant contract: smoke-test setup is a creation operation. A named tenant is reported as \"Create in tenant: <tenant>\" before deployment and start; empty tenant configuration targets and reports \"Create in tenant: <default>\". The audit report carries the same context for created resources and cleanup evidence.\n\n" +
 		"The workflow validates the configured profile, selects the embedded multiple-subprocess fixture for the configured Camunda version, deploys it, creates process instances, walks their families, and cleans up resources it can safely attribute to the run unless --no-cleanup is set. Cleanup always removes created process instances. Process-definition cleanup runs only when no unrelated instances still use the deployed fixture definition; dirty clusters skip that final definition cleanup and report retained resources instead of failing the smoke proof. Use --dry-run to validate the requested plan without submitting mutation requests.",
 	Example: `  ./c8volt ops execute smoke-test --dry-run
+  ./c8volt --tenant tenant-a ops execute smoke-test --dry-run
   ./c8volt ops execute smoke-test --report-file smoke-test.md
   ./c8volt ops execute smoke-test --count 5 --report-file smoke-test.md`,
 	Aliases: []string{"st"},

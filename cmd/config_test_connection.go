@@ -25,10 +25,16 @@ unparseable gateway versions warn that compatibility cannot be verified. These
 compatibility diagnostics do not make an otherwise successful connection test
 fail.
 
+Tenant context describes configuration scope only: a named tenant is a discovery
+filter, while an empty tenant means no configured tenant filter and is not
+reported as <default>.
+
 Use --json for a structured diagnostic payload on stdout; logs remain on stderr.`,
 	Example: `  ./c8volt --config ./config.yaml config test-connection
   ./c8volt --config ./config.yaml config test-connection --json
-  ./c8volt --profile prod config test-connection`,
+  ./c8volt --profile prod config test-connection
+  ./c8volt --tenant tenant-a config test-connection
+  ./c8volt --tenant "" config test-connection --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log, _ := logging.FromContext(cmd.Context())
 		cfg, err := config.FromContext(cmd.Context())

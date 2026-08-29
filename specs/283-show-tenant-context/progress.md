@@ -75,7 +75,6 @@ Started: 2026-08-29 14:20:03
 **Learnings**:
 - The common accumulator keeps merge-dedupe state inside snapshots so service pages can combine known and unknown target evidence without backend enrichment.
 ---
----
 ## Iteration 4 - 2026-08-29 14:39
 **Work Unit**: Phase 2 foundational command tenant-context rendering and envelope
 **Tasks Completed**:
@@ -626,5 +625,42 @@ Started: 2026-08-29 14:20:03
 - Passed: `go test ./cmd -run 'Test.*(Cancel|Delete|Resolve|Update).*ProcessInstance|Test.*DryRun.*Tenant|Test.*MutationProgress' -count=1`.
 - Passed: `go test ./cmd -run 'Test.*Delete.*ProcessDefinition|Test.*UpdateJob|Test.*Deploy|Test.*Run.*ProcessInstance' -count=1`.
 - Passed: `go test ./cmd -run 'Test.*Ops.*(Retention|Purge|Repair|Smoke|Report)|Test.*Report.*(JSON|Markdown|Tenant)' -count=1`.
+- Passed: `git diff --check`.
+---
+---
+## Iteration 23 - 2026-08-29 17:46
+**Work Unit**: Phase 8 T052 Cobra tenant semantics metadata
+**Tasks Completed**:
+- [x] T052: Update affected Cobra `Long` text and examples with named discovery, unfiltered discovery, default creation, explicit-key, cross-tenant, and unknown semantics.
+**Tasks Remaining in Work Unit**: Phase 8 remains: T053-T056.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/config_show.go
+- cmd/config_validate.go
+- cmd/config_test_connection.go
+- cmd/cancel_processinstance.go
+- cmd/delete_processinstance.go
+- cmd/resolve_processinstance.go
+- cmd/update_processinstance.go
+- cmd/delete_processdefinition.go
+- cmd/update_job.go
+- cmd/deploy_processdefinition.go
+- cmd/run_processinstance.go
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_execute_smoketest.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_orphan_processinstances.go
+- cmd/ops_purge_processinstances_with_incidents.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_processinstance.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Cobra metadata now explains tenant semantics at the source level; generated CLI reference refresh remains intentionally queued for T054.
+- No new command declarations were added during the cohesion inventory; changes were limited to `Long` and `Example` fields.
+- Passed: `go test ./cmd ./docsgen -run 'Test.*Help|Test.*TenantContext|TestCommandCapability|TestGeneratedOpsPagedDiscoveryDocsDocumentHelp' -count=1`.
+- Passed: `go test ./cmd -count=1`.
+- Passed: `go test ./docsgen -count=1`.
 - Passed: `git diff --check`.
 ---

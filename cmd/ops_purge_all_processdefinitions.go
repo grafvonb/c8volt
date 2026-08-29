@@ -34,8 +34,11 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 	Use:   "all-process-definitions",
 	Short: "Purge all selected process definitions",
 	Long: "Purge all selected process definitions.\n\n" +
+		"Tenant contract: selector mode uses discovery semantics, where a named tenant scopes candidate discovery and empty tenant configuration leaves discovery unfiltered. Direct --key input uses explicit-key semantics and reports that the tenant filter is not applied. Frozen plans and audit reports show known process-definition and nested process-instance tenants and warn when the scope spans multiple tenants or includes targets with unknown tenant metadata.\n\n" +
 		"The workflow discovers candidate process-definition versions using the same filters as `get process-definition`, freezes the candidate keys, validates the existing delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Discovery pages through all matching process definitions by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. This purge requires the full process-definition history deletion capability, currently Camunda 8.9 or newer. Preview with --dry-run before confirmed deletion. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
 	Example: `  ./c8volt ops purge all-process-definitions --dry-run
+  ./c8volt --tenant tenant-a ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
+  ./c8volt --tenant "" ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --force
   ./c8volt ops purge all-process-definitions --key <process-definition-key> --force --report-file process-definition-purge.md`,
