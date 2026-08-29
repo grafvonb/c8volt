@@ -45,6 +45,7 @@ Started: 2026-08-29T12:20:03Z
 - Affected Cobra `Long` text and examples now document configuration, discovery, creation, explicit-key, cross-tenant, and unknown-tenant semantics in source metadata only; generated CLI docs are intentionally left for T054.
 - Operator-facing README and ops playbooks now explain operation-specific tenant context, non-blocking cross/unknown warnings, JSON `tenantContext`, and protected quiet/keys-only stdout behavior; generated CLI docs are intentionally left for T054.
 - Generated CLI docs now reflect the tenant-context command metadata across the T054 page set, and `docs/index.md` carries the README tenant-context guidance plus the current generated build banner.
+- T055 command cohesion audit found tenant-context production declarations concentrated in focused ownership files: `cmd/cmd_tenant_context.go`, `cmd/cmd_views_tenant_context.go`, `cmd/ops_tenant_context.go`, selector-specific search files, and existing PI progress/render files; no generated client, API mutation, versioned adapter, or tenant-selection request construction changed.
 
 ## Decisions
 - Phase 1 setup was treated as the first work unit because T001 was the first incomplete task and Phase 2 depends on it.
@@ -72,6 +73,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 23 completed T052 by updating affected Cobra command `Long` text and examples with operation-specific tenant semantics; generated docs and operator guides remain open.
 - Iteration 24 completed T053 by updating README and affected ops playbooks with tenant semantics and protected output-mode guidance; generated CLI documentation remains queued for T054.
 - Iteration 25 completed T054 by running `make docs-content`, reviewing the affected generated CLI pages and `docs/index.md`, and validating the docs generator plus whitespace checks.
+- Iteration 26 completed T055 as an audit-only work unit; `gofmt` over branch-touched Go files and `git diff --check` passed without producing code changes.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.
@@ -143,10 +145,16 @@ Started: 2026-08-29T12:20:03Z
 - `go test ./cmd -count=1`
 - `go test ./docsgen -count=1`
 - `make docs-content`
+- `git diff --name-only 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- 'cmd/*.go' | rg -v '_test\\.go$'`
+- `git diff -U0 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- 'cmd/*.go' ':(exclude)cmd/*_test.go' | rg '^\\+(func|type|const|var) '`
+- `git diff -U0 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- cmd/cancel_processinstance.go cmd/delete_processinstance.go cmd/resolve_processinstance.go cmd/update_processinstance.go cmd/deploy_processdefinition.go cmd/embed_deploy.go cmd/run_processinstance.go cmd/delete_processdefinition.go cmd/update_job.go cmd/update_job_plan.go cmd/update_processinstance_variables.go | rg '^[-+].*(WithIgnoreTenant|IgnoreTenant|TargetTenant|newProcessInstanceSearchRequest|TenantId:|TenantID:|Tenant:|TenantId\\b|tenantId\\b)'`
+- `git diff --name-only 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- 'internal/clients/**' 'api/**' 'api/mutations/**'`
+- `git diff --name-only 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- 'internal/services/*/v87/**' 'internal/services/*/v88/**' 'internal/services/*/v89/**' 'internal/services/*/v810/**'`
+- `git diff --name-only 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- '*.go' | xargs gofmt -w`
 
 ## Do Not Repeat
 - Do not add accumulator or renderer behavior to the domain/public model; T003/T006 own service evidence aggregation and T004/T007/T008 own command rendering/envelope plumbing.
 - Do not render destructive cancel selector tenant context to stdout; the progress contract reserves stdout for command results and keeps compact progress on stderr.
 
 ## Current Handoff
-- Continue Phase 8 / Polish at T055 by inventorying new and modified command declarations for cohesion, verifying no generated client or tenant-selection request changed, running `gofmt`/`git diff --check`, and recording the audit.
+- Continue Phase 8 / Polish at T056 by running `make vet` and constitution-required `make test`, resolving any failures, recording final validation/completion status, then using the terminal handoff only if every task is complete and the worktree is clean.

@@ -95,8 +95,6 @@ Started: 2026-08-29 14:20:03
 - specs/283-show-tenant-context/progress.md
 **Learnings**:
 - Passed focused and full foundational validation; tenant warnings need a feature-specific warning renderer because the legacy warning helper strips `WARNING:`.
----
----
 ## Iteration 5 - 2026-08-29 14:47
 **Work Unit**: Phase 3 US1 cancel selector tenant context
 **Tasks Completed**:
@@ -720,5 +718,26 @@ Started: 2026-08-29 14:20:03
 - `docs/index.md` was refreshed from README content and now carries the tenant-context guidance plus the current generated build banner.
 - Passed: `make docs-content`.
 - Passed: `go test ./docsgen -count=1`.
+- Passed: `git diff --check`.
+---
+---
+## Iteration 26 - 2026-08-29 17:59
+**Work Unit**: Phase 8 T055 command cohesion and request audit
+**Tasks Completed**:
+- [x] T055: Inventory new and modified declarations for command-file cohesion, verify no generated client or tenant-selection request changed, run `gofmt`/`git diff --check`, and record the audit.
+**Tasks Remaining in Work Unit**: Phase 8 remains: T056.
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Production command declaration inventory found tenant-context additions placed in focused command-context, view, ops-context, selector, and mutation-progress owners; no secondary lifecycle or mode-specific cluster required a new split.
+- Generated-client/API/versioned-adapter diffs were empty, and focused tenant request-boundary grep showed only evidence reads from already-loaded `TenantId` fields, not tenant-selection request changes.
+- Passed: `git diff --name-only 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- 'cmd/*.go' | rg -v '_test\\.go$'`.
+- Passed: `git diff -U0 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- 'cmd/*.go' ':(exclude)cmd/*_test.go' | rg '^\\+(func|type|const|var) '`.
+- Passed: `git diff --name-only 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- 'internal/clients/**' 'api/**' 'api/mutations/**'`.
+- Passed: `git diff --name-only 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- 'internal/services/*/v87/**' 'internal/services/*/v88/**' 'internal/services/*/v89/**' 'internal/services/*/v810/**'`.
+- Passed: `git diff --name-only 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- '*.go' | xargs gofmt -w`.
 - Passed: `git diff --check`.
 ---
