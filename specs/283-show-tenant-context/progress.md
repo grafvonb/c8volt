@@ -578,3 +578,23 @@ Started: 2026-08-29 14:20:03
 - Passed: `go test ./internal/services/ops/... ./c8volt/ops ./cmd -count=1`.
 - Passed: `git diff --check`.
 ---
+---
+## Iteration 21 - 2026-08-29 17:30
+**Work Unit**: Phase 7 US5 machine-contract assertions
+**Tasks Completed**:
+- [x] T049: Extend representative cross-family machine-contract assertions for one JSON document, common object placement, unchanged payloads, quiet suppression, and exact keys-only stdout.
+**Tasks Remaining in Work Unit**: US5 remains: T050-T051.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_json_assertions_test.go
+- cmd/command_contract_test.go
+- cmd/ops_contract_test.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Added a single-document JSON assertion helper and representative tenant-context machine contract checks for run JSON, quiet, keys-only, shared envelopes, and ops JSON reports.
+- Passed: `go test ./cmd -run 'Test(TenantContextMachineOutputCleanlinessAcrossFamilies|RenderSucceededResult_AttachesTenantContextBesidePayload|OpsJSONReportContractPlacesTenantContextAtRoot)' -count=1`.
+- Passed: `go test ./cmd -count=1`.
+- Passed: `git diff --check`.
+---

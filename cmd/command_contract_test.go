@@ -157,11 +157,15 @@ func TestRenderSucceededResult_AttachesTenantContextBesidePayload(t *testing.T) 
 	require.Equal(t, "cancel process-instance", envelope["command"])
 	payload := requireJSONObject(t, envelope["payload"])
 	require.Equal(t, []any{"pi-1"}, payload["items"])
+	require.NotContains(t, payload, "tenantContext")
 	tenantContext := requireJSONObject(t, envelope["tenantContext"])
 	require.Equal(t, string(tenant.ContextModeExplicitKeys), tenantContext["mode"])
 	require.Equal(t, string(tenant.ContextFilterNotApplied), tenantContext["filter"])
 	require.Equal(t, "tenant-a", tenantContext["configuredTenantId"])
 	require.Equal(t, []any{"tenant-b"}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+	require.NotContains(t, tenantContext, "payload")
 }
 
 // TestRenderSucceededResult_OmitsTenantContextWhenUnattached keeps commands
