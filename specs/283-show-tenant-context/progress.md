@@ -3,8 +3,6 @@
 Feature: 283-show-tenant-context
 Started: 2026-08-29 14:20:03
 
----
-
 ## Artifact Links
 
 - Spec: [spec.md](./spec.md)
@@ -221,5 +219,27 @@ Started: 2026-08-29 14:20:03
 - Passed: `go test ./cmd -run 'TestRunProcessInstanceCommand_(CreationContextPrecedesCreateRequest|JSONEnvelopeIncludesCreationContext|ProtectedModesSuppressCreationContext)|TestProcessInstanceTenantIDs_CollectsCreatedInstanceTenantEvidence' -count=1`.
 - Passed: `go test ./cmd -run 'Test.*(Deploy|Embed|Run.*ProcessInstance)' -count=1`.
 - Passed: `go test ./cmd -count=1`.
+- Passed: `git diff --check`.
+---
+---
+## Iteration 10 - 2026-08-29 15:24
+**Work Unit**: Phase 5 US3 process-instance dry-run tenant evidence
+**Tasks Completed**:
+- [x] T023: Add service tests proving PI dry-run plans retain known tenant evidence from traversal data and mark legacy key-only metadata unknown.
+- [x] T027: Preserve resolved PI tenant evidence in domain dry-run plans and aggregate traversal-chain targets before metadata is discarded.
+**Tasks Remaining in Work Unit**: US3 remains: T024-T026 and T028-T033.
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/domain/processinstance_traversal.go
+- internal/services/processinstance/dryrun.go
+- internal/services/processinstance/dryrun_test.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- PI dry-run plans now carry tenant evidence from existing traversal chains; legacy key-only traversal records unique affected targets as unknown without enrichment.
+- Passed: `go test ./internal/services/processinstance -run 'TestDryRunCancelOrDeletePlan|TestPlanProcessInstanceMutationPages' -count=1`.
+- Passed: `go test ./internal/domain ./internal/services/common ./internal/services/processinstance ./c8volt/process -count=1`.
+- Passed: `go test ./internal/services/processinstance/... -count=1`.
 - Passed: `git diff --check`.
 ---

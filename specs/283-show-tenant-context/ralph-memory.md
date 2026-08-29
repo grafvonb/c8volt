@@ -17,6 +17,7 @@ Started: 2026-08-29T12:20:03Z
 - Process-instance mutation progress can render an attached discovery context before verbose preflight scope on stderr; selector-specific renderers mark the context as already emitted to avoid duplicate human lines.
 - Deploy and embedded deploy attach creation-mode context after local file/fixture validation and before `DeployProcessDefinition`; human mode renders `Create in tenant: ...` before the POST, while JSON envelopes receive the attached context through `renderCommandResult`.
 - Deployment result evidence now reuses `processDefinitionDeploymentTenantIDs` in `cmd/cmd_views_deploy.go` to populate resolved tenant IDs from returned deployment resources without changing deployment payloads or keys-only streams.
+- PI dry-run domain plans now carry `domain.TenantEvidence`; `internal/services/processinstance.DryRunCancelOrDeletePlan` fills it from already-loaded traversal chains, preferring any known tenant metadata for each affected key and counting legacy key-only targets as unknown.
 
 ## Decisions
 - Phase 1 setup was treated as the first work unit because T001 was the first incomplete task and Phase 2 depends on it.
@@ -28,6 +29,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 7 completed the remaining US1 work by pairing T012 with T015 and T016, validating shared dry-run/progress output modes plus cancel/delete selector targets.
 - Iteration 8 completed the deploy half of US2 by pairing T017 with T019; T021 remains open because run structured results are not implemented yet.
 - Iteration 9 completed the run half of US2 by pairing T018 with T020-T022; deploy and run creation contexts are now both validated before US3 starts.
+- Iteration 10 paired T023 with T027 so service tests for PI dry-run tenant evidence were committed only after the domain/service implementation passed.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.
@@ -60,6 +62,9 @@ Started: 2026-08-29T12:20:03Z
 - `go test ./cmd -run 'Test.*(Deploy|Embed|Run.*ProcessInstance)' -count=1`
 - `go test ./cmd -run 'TestCancelProcessInstance' -count=1`
 - `go test ./cmd -count=1`
+- `go test ./internal/services/processinstance -run 'TestDryRunCancelOrDeletePlan|TestPlanProcessInstanceMutationPages' -count=1`
+- `go test ./internal/domain ./internal/services/common ./internal/services/processinstance ./c8volt/process -count=1`
+- `go test ./internal/services/processinstance/... -count=1`
 - `go test ./internal/domain ./c8volt/tenant ./internal/services/common ./cmd -count=1`
 - `git diff --check`
 
@@ -68,4 +73,4 @@ Started: 2026-08-29T12:20:03Z
 - Do not render destructive cancel selector tenant context to stdout; the progress contract reserves stdout for command results and keeps compact progress on stderr.
 
 ## Current Handoff
-- Continue Phase 5 / US3 at T023, adding PI dry-run plan tenant-evidence tests in `internal/services/processinstance/dryrun_test.go`; then continue T024-T033 within US3 only.
+- Continue Phase 5 / US3 at T024, adding facade conversion tests for PI plan tenant evidence and slice-copy isolation in `c8volt/process/client_test.go` and `c8volt/process/model_test.go`; then implement T028 public model/conversion wiring before moving to later US3 command surfaces.

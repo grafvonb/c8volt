@@ -18,9 +18,17 @@ type MissingAncestor struct {
 	StartKey string
 }
 
+// TenantEvidence captures already-resolved tenant metadata for affected targets.
+type TenantEvidence struct {
+	ResolvedTenantIDs  []string
+	UnknownTargetCount int
+	TargetCount        int
+}
+
 type DryRunPIKeyExpansion struct {
 	Roots                      typex.Keys
 	Collected                  typex.Keys
+	TenantEvidence             TenantEvidence
 	DuplicateRoots             typex.Keys
 	SelectedFinalState         []ProcessInstance
 	RequiresCancelBeforeDelete []ProcessInstance

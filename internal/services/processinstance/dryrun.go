@@ -9,6 +9,7 @@ import (
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/internal/services/common"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/pool"
@@ -76,6 +77,7 @@ func DryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wan
 	plan := d.DryRunPIKeyExpansion{
 		Roots:                      roots,
 		Collected:                  collected,
+		TenantEvidence:             tenantEvidenceFromTraversalResults(collected, ancestryResults, descendantResults),
 		DuplicateRoots:             duplicateRoots.Unique(),
 		SelectedFinalState:         selectedFinalStateProcessInstances(keys, ancestryResults),
 		RequiresCancelBeforeDelete: nonFinalProcessInstances(collected, descendantResults),
@@ -117,10 +119,12 @@ func dryRunCancelOrDeletePlanLegacy(ctx context.Context, api API, keys typex.Key
 	for _, desc := range descendantLists {
 		collected = append(collected, desc...)
 	}
+	collected = collected.Unique()
 	return d.DryRunPIKeyExpansion{
-		Roots:     roots,
-		Collected: collected.Unique(),
-		Outcome:   d.TraversalOutcomeComplete,
+		Roots:          roots,
+		Collected:      collected,
+		TenantEvidence: tenantEvidenceFromKeys(collected),
+		Outcome:        d.TraversalOutcomeComplete,
 	}, nil
 }
 
@@ -328,6 +332,60 @@ func processInstancePageKeys(items []d.ProcessInstance) typex.Keys {
 		keys = append(keys, item.Key)
 	}
 	return keys
+}
+
+// tenantEvidenceFromTraversalResults records evidence for affected keys from traversal chains.
+func tenantEvidenceFromTraversalResults(collected typex.Keys, resultGroups ...[]pitraversal.Result) d.TenantEvidence {
+	if len(collected) == 0 {
+		return d.TenantEvidence{ResolvedTenantIDs: []string{}}
+	}
+
+	tenantByKey := make(map[string]string, len(collected))
+	for _, results := range resultGroups {
+		for _, result := range results {
+			mergeTraversalTenantEvidence(tenantByKey, result.Chain)
+		}
+	}
+
+	acc := common.NewTenantEvidenceAccumulator()
+	for _, key := range collected.Unique() {
+		acc.Add(key, tenantByKey[key])
+	}
+	return domainTenantEvidence(acc.Snapshot())
+}
+
+// mergeTraversalTenantEvidence prefers known tenant metadata when any traversal result provides it.
+func mergeTraversalTenantEvidence(tenantByKey map[string]string, chain map[string]d.ProcessInstance) {
+	for key, pi := range chain {
+		if key == "" {
+			key = pi.Key
+		}
+		if key == "" {
+			continue
+		}
+		if existing, ok := tenantByKey[key]; ok && existing != "" {
+			continue
+		}
+		tenantByKey[key] = pi.TenantId
+	}
+}
+
+// tenantEvidenceFromKeys marks key-only legacy dry-run targets as unknown without enrichment.
+func tenantEvidenceFromKeys(keys typex.Keys) d.TenantEvidence {
+	acc := common.NewTenantEvidenceAccumulator()
+	for _, key := range keys.Unique() {
+		acc.Add(key, "")
+	}
+	return domainTenantEvidence(acc.Snapshot())
+}
+
+// domainTenantEvidence converts service accumulator output into a domain plan value.
+func domainTenantEvidence(snapshot common.TenantEvidenceSnapshot) d.TenantEvidence {
+	return d.TenantEvidence{
+		ResolvedTenantIDs:  append([]string{}, snapshot.ResolvedTenantIDs...),
+		UnknownTargetCount: snapshot.UnknownTargetCount,
+		TargetCount:        snapshot.TargetCount,
+	}
 }
 
 func mapDryRunTraversalWarning(results []pitraversal.Result) (warning string, missing []d.MissingAncestor, outcome d.TraversalOutcome) {
