@@ -198,3 +198,28 @@ Started: 2026-08-29 14:20:03
 - Passed: `go test ./cmd -count=1`.
 - Passed: `git diff --check`.
 ---
+---
+## Iteration 9 - 2026-08-29 15:17
+**Work Unit**: Phase 4 US2 run creation target context
+**Tasks Completed**:
+- [x] T018: Add named/default creation-context, pre-call ordering, JSON-envelope, quiet, and keys-only tests for process-instance creation.
+- [x] T020: Attach and render creation-mode context before process-instance creation while preserving existing `TargetTenant()` request behavior.
+- [x] T021: Include creation context in deploy/run structured results without changing deployment/run payloads or key streams.
+- [x] T022: Run targeted deploy and run tests for the US2 independent criteria.
+**Tasks Remaining in Work Unit**: 0; US2 complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/run_processinstance.go
+- cmd/run_test.go
+- cmd/cmd_deploy_run_data.go
+- cmd/cmd_deploy_run_data_test.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Run now renders creation tenant context before process-instance creation, attaches returned tenant evidence for shared JSON envelopes, and keeps quiet/keys-only streams free of tenant labels.
+- Passed: `go test ./cmd -run 'TestRunProcessInstanceCommand_(CreationContextPrecedesCreateRequest|JSONEnvelopeIncludesCreationContext|ProtectedModesSuppressCreationContext)|TestProcessInstanceTenantIDs_CollectsCreatedInstanceTenantEvidence' -count=1`.
+- Passed: `go test ./cmd -run 'Test.*(Deploy|Embed|Run.*ProcessInstance)' -count=1`.
+- Passed: `go test ./cmd -count=1`.
+- Passed: `git diff --check`.
+---

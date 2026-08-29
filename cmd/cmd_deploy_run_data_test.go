@@ -6,6 +6,7 @@ package cmd
 import (
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/stretchr/testify/require"
 )
@@ -21,6 +22,19 @@ func TestBuildRunProcessInstanceDatasFromDeployments_UsesDefinitionKey(t *testin
 	require.Len(t, datas, 1)
 	require.Equal(t, "2251799813685255", datas[0].ProcessDefinitionSpecificId)
 	require.Equal(t, "tenant-a", datas[0].TenantId)
+}
+
+// Verifies run result tenant evidence is collected mechanically from created process instances.
+func TestProcessInstanceTenantIDs_CollectsCreatedInstanceTenantEvidence(t *testing.T) {
+	t.Parallel()
+
+	got := processInstanceTenantIDs([]process.ProcessInstance{
+		{Key: "1", TenantId: "tenant-b"},
+		{Key: "2", TenantId: ""},
+		{Key: "3", TenantId: "tenant-a"},
+	})
+
+	require.Equal(t, []string{"tenant-b", "", "tenant-a"}, got)
 }
 
 func TestBuildRunProcessInstanceDatasFromDeployments_FallsBackToDefinitionID(t *testing.T) {

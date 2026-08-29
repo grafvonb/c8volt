@@ -78,14 +78,14 @@
 ### Tests for User Story 2
 
 - [x] T017 [P] [US2] Add failing named/default creation-context, pre-call ordering, non-interactive, JSON-envelope, and quiet tests for deployment in `cmd/deploy_test.go` and `cmd/cmd_views_deploy_test.go`
-- [ ] T018 [P] [US2] Add failing named/default creation-context, pre-call ordering, JSON-envelope, quiet, and keys-only tests for process-instance creation in `cmd/run_test.go` and `cmd/cmd_deploy_run_data_test.go`
+- [x] T018 [P] [US2] Add failing named/default creation-context, pre-call ordering, JSON-envelope, quiet, and keys-only tests for process-instance creation in `cmd/run_test.go` and `cmd/cmd_deploy_run_data_test.go`
 
 ### Implementation for User Story 2
 
 - [x] T019 [US2] Attach and render creation-mode context before process-definition deployment, including embedded deployment reuse, in `cmd/deploy_processdefinition.go` and `cmd/embed_deploy.go`
-- [ ] T020 [US2] Attach and render creation-mode context before process-instance creation while preserving existing `TargetTenant()` request behavior in `cmd/run_processinstance.go`
-- [ ] T021 [US2] Include creation context in deploy/run structured results without changing deployment/run payloads or key streams in `cmd/cmd_views_deploy.go` and `cmd/cmd_deploy_run_data.go`
-- [ ] T022 [US2] Run targeted deploy and run tests for the US2 independent criteria and record the commands and results in `specs/283-show-tenant-context/progress.md`
+- [x] T020 [US2] Attach and render creation-mode context before process-instance creation while preserving existing `TargetTenant()` request behavior in `cmd/run_processinstance.go`
+- [x] T021 [US2] Include creation context in deploy/run structured results without changing deployment/run payloads or key streams in `cmd/cmd_views_deploy.go` and `cmd/cmd_deploy_run_data.go`
+- [x] T022 [US2] Run targeted deploy and run tests for the US2 independent criteria and record the commands and results in `specs/283-show-tenant-context/progress.md`
 
 **Checkpoint**: Operators and automation can identify the creation tenant before deploy/run mutation with no interaction change.
 

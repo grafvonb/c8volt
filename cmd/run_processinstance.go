@@ -105,6 +105,9 @@ var runProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("provide either --pd-key or --bpmn-process-id"))
 		}
 
+		tenantCtx := attachCreationTenantContext(cmd, cfg)
+		renderTenantContext(cmd, tenantCtx)
+
 		if flagFailFast {
 			fopts = append(fopts, foptions.WithFailFast())
 		}
@@ -114,6 +117,7 @@ var runProcessInstanceCmd = &cobra.Command{
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("running process instance(s) for %s: %w", contextForErr, err))
 			}
+			attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, processInstanceTenantIDs(created), 0))
 			if err := renderRunProcessInstanceResult(cmd, process.ProcessInstances{
 				Total: int32(len(created)),
 				Items: created,
@@ -133,6 +137,7 @@ var runProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("running %d process instances for %s: %w", flagRunPICount, contextForErr, err))
 		}
 		sortRunProcessInstancesForOutput(created)
+		attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, processInstanceTenantIDs(created), 0))
 		if err := renderRunProcessInstanceResult(cmd, process.ProcessInstances{
 			Total: int32(len(created)),
 			Items: created,

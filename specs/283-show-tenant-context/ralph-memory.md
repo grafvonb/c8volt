@@ -27,6 +27,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 6 paired T011 with T014 so delete selector tests and implementation were validated together without committing failing tests.
 - Iteration 7 completed the remaining US1 work by pairing T012 with T015 and T016, validating shared dry-run/progress output modes plus cancel/delete selector targets.
 - Iteration 8 completed the deploy half of US2 by pairing T017 with T019; T021 remains open because run structured results are not implemented yet.
+- Iteration 9 completed the run half of US2 by pairing T018 with T020-T022; deploy and run creation contexts are now both validated before US3 starts.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.
@@ -37,6 +38,7 @@ Started: 2026-08-29T12:20:03Z
 - Destructive delete search also freezes all page-level plans before one aggregate confirmation; render the discovery tenant context after freezing the aggregate scope and before that confirmation, routed to stderr for non-dry-run output.
 - `resetProcessInstanceCommandGlobals()` does not reset `flagQuiet`; tests that set quiet must restore it explicitly or use a helper that does.
 - Root command instances retain Cobra context values across in-process tests, including the tenant-context rendered marker; deploy/embed tests clear command contexts before asserting pre-call rendering order.
+- Run command tests that assert per-execution tenant-context rendering must clear retained Cobra contexts before each case; otherwise the human-rendered marker can suppress later subtests.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -54,6 +56,8 @@ Started: 2026-08-29T12:20:03Z
 - `go test ./cmd -run 'Test.*(DryRun.*Tenant|MutationProgress|ProcessInstanceDryRunSummary)' -count=1`
 - `go test ./cmd -run 'TestDeployProcessDefinitionCommand_(CreationContextPrecedesDeploymentRequest|JSONEnvelopeIncludesCreationContext|QuietSuppressesCreationContext)|TestListProcessDefinitionDeploymentsView_(JSONEnvelopeIncludesAttachedTenantContext|KeysOnlySuppressesTenantContext)|TestEmbedDeployCommand_CreationContextPrecedesDeploymentRequest' -count=1`
 - `go test ./cmd -run 'Test.*(Deploy|Embed)' -count=1`
+- `go test ./cmd -run 'TestRunProcessInstanceCommand_(CreationContextPrecedesCreateRequest|JSONEnvelopeIncludesCreationContext|ProtectedModesSuppressCreationContext)|TestProcessInstanceTenantIDs_CollectsCreatedInstanceTenantEvidence' -count=1`
+- `go test ./cmd -run 'Test.*(Deploy|Embed|Run.*ProcessInstance)' -count=1`
 - `go test ./cmd -run 'TestCancelProcessInstance' -count=1`
 - `go test ./cmd -count=1`
 - `go test ./internal/domain ./c8volt/tenant ./internal/services/common ./cmd -count=1`
@@ -64,4 +68,4 @@ Started: 2026-08-29T12:20:03Z
 - Do not render destructive cancel selector tenant context to stdout; the progress contract reserves stdout for command results and keeps compact progress on stderr.
 
 ## Current Handoff
-- Continue Phase 4 / US2 at T018, adding run process-instance creation-context tests in `cmd/run_test.go` and `cmd/cmd_deploy_run_data_test.go`; T020-T022 remain open, and T021 must finish the run side before it can be marked complete.
+- Continue Phase 5 / US3 at T023, adding PI dry-run plan tenant-evidence tests in `internal/services/processinstance/dryrun_test.go`; then continue T024-T033 within US3 only.
