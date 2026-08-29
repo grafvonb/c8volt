@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func TestResolveEffectiveConfig_ProfileOverlaysBaseConfigWithoutReplacingExplicitSources(t *testing.T) {
@@ -343,6 +344,60 @@ profiles:
 
 	require.Equal(t, "profile-tenant", cfg.App.Tenant)
 	require.Equal(t, "http://profile.example.test/v2", cfg.APIs.Camunda.BaseURL)
+}
+
+func TestConfig_ToSanitizedYAMLWithTenantContextIncludesNamedContext(t *testing.T) {
+	cfg := New()
+	cfg.App.Tenant = "tenant-a"
+	cfg.Auth.Mode = ModeOAuth2
+	cfg.Auth.OAuth2.ClientID = "client-id"
+	cfg.Auth.OAuth2.ClientSecret = "super-secret"
+	cfg.APIs.Camunda.BaseURL = "https://camunda.example.test/v2"
+
+	out, err := cfg.ToSanitizedYAMLWithTenantContext(map[string]any{
+		"mode":               "configuration",
+		"filter":             "named",
+		"configuredTenantId": "tenant-a",
+		"resolvedTenantIds":  []string{},
+		"unknownTargetCount": 0,
+		"crossTenant":        false,
+	})
+	require.NoError(t, err)
+
+	var got map[string]any
+	require.NoError(t, yaml.Unmarshal([]byte(out), &got))
+	require.Equal(t, "*****", got["auth"].(map[string]any)["oauth2"].(map[string]any)["client_secret"])
+	tenantContext := got["tenantContext"].(map[string]any)
+	require.Equal(t, "configuration", tenantContext["mode"])
+	require.Equal(t, "named", tenantContext["filter"])
+	require.Equal(t, "tenant-a", tenantContext["configuredTenantId"])
+	require.Equal(t, []any{}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, 0, tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+}
+
+func TestConfig_ToSanitizedYAMLWithTenantContextKeepsEmptyTenantUnfiltered(t *testing.T) {
+	cfg := New()
+	cfg.Auth.Mode = ModeNone
+	cfg.APIs.Camunda.BaseURL = "https://camunda.example.test/v2"
+
+	out, err := cfg.ToSanitizedYAMLWithTenantContext(map[string]any{
+		"mode":               "configuration",
+		"filter":             "none",
+		"resolvedTenantIds":  []string{},
+		"unknownTargetCount": 0,
+		"crossTenant":        false,
+	})
+	require.NoError(t, err)
+
+	var got map[string]any
+	require.NoError(t, yaml.Unmarshal([]byte(out), &got))
+	require.Equal(t, "", got["app"].(map[string]any)["tenant"])
+	tenantContext := got["tenantContext"].(map[string]any)
+	require.Equal(t, "configuration", tenantContext["mode"])
+	require.Equal(t, "none", tenantContext["filter"])
+	require.NotContains(t, tenantContext, "configuredTenantId")
+	require.NotContains(t, tenantContext, "targetTenantId")
 }
 
 func TestResolveEffectiveConfig_CriticalBaselineSettingsShareOneContract(t *testing.T) {

@@ -28,6 +28,8 @@ the same validation behavior as ` + "`config show --validate`" + `.`,
 			_, noErrCodes := bootstrapFailureContext(cmd)
 			ferrors.HandleAndExit(log, noErrCodes, normalizeBootstrapError(fmt.Errorf("loading configuration: %w", err)))
 		}
+		tenantCtx := attachConfigurationTenantContext(cmd, cfg)
+		renderTenantContext(cmd, tenantCtx)
 		validateConfigForCommand(log, cfg)
 	},
 }

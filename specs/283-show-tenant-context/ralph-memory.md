@@ -32,6 +32,8 @@ Started: 2026-08-29T12:20:03Z
 - Destructive PI search confirmations now attach resolved page or aggregate tenant evidence before rendering the tenant block to stderr, so compact confirmations show sorted resource tenants plus cross/unknown warnings without contaminating stdout.
 - Delete process-instance search carries service aggregate tenant evidence in the command result and preserves it when merging page previews into the final frozen delete plan.
 - Resource facade conversion for PD delete plans copies nested PI `TenantEvidence.Targets`; public aggregation can now dedupe nested known and unknown targets exactly instead of falling back to summary counts.
+- Configuration diagnostics now attach configuration-mode tenant context: `config show` embeds it in sanitized YAML via `config.ToSanitizedYAMLWithTenantContext`, `config validate` renders the semantic line before the validation outcome, and `config test-connection` renders it in human mode while including the same object at the raw JSON root.
+- Keep `config` package YAML tests free of imports from `c8volt/tenant`; use plain serialized maps there to avoid a test-only import cycle through the public tenant facade.
 
 ## Decisions
 - Phase 1 setup was treated as the first work unit because T001 was the first incomplete task and Phase 2 depends on it.
@@ -50,6 +52,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 14 completed T034 only; implementation support was added for PI page-result evidence aggregation and dry-run summary attachment, but T036/T037 remain open for full confirmation-boundary behavior.
 - Iteration 15 completed T035 only; supporting PD preview aggregation and command attachment were added so the new PD tests pass, but T036-T039 remain open for the rest of US4 validation and implementation.
 - Iteration 16 completed the remaining US4 tasks T036-T039; PI destructive confirmations and PD facade conversion now preserve and render cross-tenant plus unknown metadata warnings from frozen evidence.
+- Iteration 17 paired T040 with T044 so configuration diagnostic tests were committed only after sanitized YAML, validate, and test-connection configuration context passed.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.
@@ -104,10 +107,12 @@ Started: 2026-08-29T12:20:03Z
 - `go test ./cmd -run 'Test.*(Cancel|Delete).*ProcessInstance|Test.*DryRun.*Tenant|Test.*MutationProgress|TestProcessInstanceDryRunSummary' -count=1`
 - `go test ./internal/domain ./c8volt/tenant ./internal/services/common ./internal/services/processinstance ./c8volt/process ./cmd -count=1`
 - `git diff --check`
+- `go test ./cmd ./config -run 'TestConfig.*(TenantContext|ToSanitizedYAML|Validate|TestConnection)|TestResolveEffectiveConfig_.*Tenant' -count=1`
+- `go test ./cmd ./config -count=1`
 
 ## Do Not Repeat
 - Do not add accumulator or renderer behavior to the domain/public model; T003/T006 own service evidence aggregation and T004/T007/T008 own command rendering/envelope plumbing.
 - Do not render destructive cancel selector tenant context to stdout; the progress contract reserves stdout for command results and keeps compact progress on stderr.
 
 ## Current Handoff
-- Continue Phase 7 / US5 at T040-T043 by adding failing configuration, ops model/conversion, ops service aggregation, and ops command/report tenant-context tests before implementation.
+- Continue Phase 7 / US5 at T041 by adding failing internal/public ops model and conversion tests for the common nested tenant-context object before implementing T045.

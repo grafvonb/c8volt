@@ -41,8 +41,6 @@ Started: 2026-08-29 14:20:03
 - specs/283-show-tenant-context/tasks.md
 **Learnings**:
 - The first incomplete task was the setup gate; Phase 2 remains blocked until this coordinated work-unit commit exists.
----
----
 ## Iteration 2 - 2026-08-29 14:27
 **Work Unit**: Phase 2 foundational tenant-context model and conversion
 **Tasks Completed**:
@@ -429,4 +427,29 @@ Started: 2026-08-29 14:20:03
 - Passed: `go test ./cmd -run 'Test.*(Cancel|Delete|Resolve).*ProcessInstance|Test.*DryRun.*Tenant|Test.*MutationProgress|TestProcessInstanceDryRunSummary|Test.*Delete.*ProcessDefinition' -count=1`.
 - Passed: `go test ./internal/domain ./c8volt/tenant ./internal/services/common ./internal/services/processinstance ./internal/services/processdefinition ./c8volt/process ./c8volt/resource ./cmd -count=1`.
 - Passed: `git diff --check`.
+---
+---
+## Iteration 17 - 2026-08-29 16:32
+**Work Unit**: Phase 7 US5 configuration tenant context
+**Tasks Completed**:
+- [x] T040: Add named/empty configuration-context tests for validate, sanitized show YAML, and test-connection human/JSON output.
+- [x] T044: Add configuration-mode context to validation and connection diagnostics and embed the common object in sanitized config YAML.
+**Tasks Remaining in Work Unit**: US5 remains: T041-T043 and T045-T051.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_config_test_connection.go
+- cmd/config_show.go
+- cmd/config_test.go
+- cmd/config_test_connection.go
+- cmd/config_validate.go
+- config/config.go
+- config/config_test.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Configuration-mode context is now shown for validate/test-connection diagnostics and embedded in sanitized `config show` YAML without converting empty discovery configuration into `<default>`.
+- `config` package YAML tests must avoid importing the public tenant facade because that creates a test-only cycle through tenant services.
+- Passed: `go test ./cmd ./config -run 'TestConfig.*(TenantContext|ToSanitizedYAML|Validate|TestConnection)|TestResolveEffectiveConfig_.*Tenant' -count=1`.
+- Passed: `go test ./cmd ./config -count=1`.
 ---

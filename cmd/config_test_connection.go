@@ -43,6 +43,8 @@ Use --json for a structured diagnostic payload on stdout; logs remain on stderr.
 		if err := cfg.Validate(); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(config.FormatValidationError("configuration is invalid", err)))
 		}
+		tenantCtx := attachConfigurationTenantContext(cmd, cfg)
+		renderTenantContext(cmd, tenantCtx)
 
 		ctx, err := installRemoteCommandServices(cmd.Context(), cfg, log)
 		if err != nil {
@@ -65,7 +67,7 @@ Use --json for a structured diagnostic payload on stdout; logs remain on stderr.
 			log.Warn(warning)
 		}
 		if pickMode() == RenderModeJSON {
-			if err := renderJSONPayload(cmd, RenderModeJSON, newConfigTestConnectionView(cfg, configSource, topology, warnings)); err != nil {
+			if err := renderJSONPayload(cmd, RenderModeJSON, newConfigTestConnectionView(cfg, configSource, topology, warnings, tenantCtx)); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render config test-connection result: %w", err))
 			}
 			return

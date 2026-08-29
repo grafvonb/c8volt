@@ -41,7 +41,8 @@ for validation and template rendering.`,
 			configSource := configSourceDescriptionFromContext(cmd.Context())
 			log.Info(configSource.InfoMessage())
 
-			yCfg, err := cfg.ToSanitizedYAML()
+			tenantCtx := attachConfigurationTenantContext(cmd, cfg)
+			yCfg, err := cfg.ToSanitizedYAMLWithTenantContext(tenantCtx)
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("marshaling configuration to YAML: %w", err))
 			}
@@ -50,6 +51,7 @@ for validation and template rendering.`,
 				cmd.PrintErrf("warning: %s\n", warning)
 			}
 			if flagShowConfigValidate {
+				renderTenantContext(cmd, tenantCtx)
 				validateConfigForCommand(log, cfg)
 			}
 		} else {
