@@ -432,6 +432,13 @@ func TestDeleteProcessDefinitionCommand_KeyTenantMismatchUsesAdminScope(t *testi
 		require.NotContains(t, filter, "tenantId")
 		require.Equal(t, tenantAdminKeysProcessDefinitionKey, stringFilterEqValue(t, filter["processDefinitionKey"]))
 	}
+	require.Contains(t, output, "Tenant filter: not applied for explicit resource keys\n")
+	require.Contains(t, output, "Resource tenant: "+tenantAdminKeysReturnedTenant+"\n")
+	require.NotContains(t, output, "Tenant filter: "+tenantAdminKeysSelectedTenant)
+	require.Less(t,
+		strings.Index(output, "Tenant filter: not applied for explicit resource keys"),
+		strings.Index(output, "delete impact check:"),
+	)
 	require.Contains(t, output, "tenant-b")
 	require.Contains(t, output, "delete accepted")
 }

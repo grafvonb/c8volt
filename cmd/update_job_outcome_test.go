@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -30,6 +31,30 @@ func TestUpdateJobCommand_TechnicalFailureDryRunLoadsCurrentJobAndSkipsMutation(
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, failBodies)
 	require.Contains(t, output, "dry run: update job 2251799813711967: technical failure: submit; retries: 0; message: worker unavailable; no changes applied")
+}
+
+// TestUpdateJobCommand_TechnicalFailureDryRunRendersExplicitKeyTenantContext
+// verifies worker outcome plans reuse the current job tenant as direct-key evidence.
+func TestUpdateJobCommand_TechnicalFailureDryRunRendersExplicitKeyTenantContext(t *testing.T) {
+	var requests []string
+	var failBodies []map[string]any
+	srv := newJobFailServer(t, &requests, &failBodies, []string{
+		jobSearchResponseWithTenant("2251799813711967", 1, "FAILED", tenantAdminKeysReturnedTenant),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "--tenant", tenantAdminKeysSelectedTenant, "update", "job", "--key", "2251799813711967", "--fail", "--retries", "0", "--message", "worker unavailable", "--dry-run")
+
+	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
+	require.Empty(t, failBodies)
+	require.Contains(t, output, "Tenant filter: not applied for explicit resource keys\n")
+	require.Contains(t, output, "Resource tenant: "+tenantAdminKeysReturnedTenant+"\n")
+	require.NotContains(t, output, "Tenant filter: "+tenantAdminKeysSelectedTenant)
+	require.Less(t,
+		strings.Index(output, "Tenant filter: not applied for explicit resource keys"),
+		strings.Index(output, "dry run: update job"),
+	)
 }
 
 // TestUpdateJobCommand_TechnicalFailureSubmittedHumanOutput verifies the update job worker outcome behavior covered by this scenario.

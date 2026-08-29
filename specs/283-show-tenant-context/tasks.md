@@ -102,7 +102,7 @@
 - [x] T023 [P] [US3] Add failing service tests proving PI dry-run plans retain known tenant evidence from existing traversal data and mark legacy key-only metadata unknown without extra requests in `internal/services/processinstance/dryrun_test.go`
 - [x] T024 [P] [US3] Add failing facade conversion tests for PI plan tenant evidence and slice-copy isolation in `c8volt/process/client_test.go` and `c8volt/process/model_test.go`
 - [x] T025 [P] [US3] Add failing explicit-key, known/unknown resource tenant, mismatch, and unchanged `IgnoreTenant` tests for PI cancel/delete/resolve/update in `cmd/cancel_processinstance_test.go`, `cmd/delete_processinstance_test.go`, `cmd/resolve_processinstance_test.go`, and `cmd/update_processinstance_test.go`
-- [ ] T026 [P] [US3] Add failing explicit-key mismatch and actual-tenant tests for process-definition deletion and job update plans/results in `cmd/delete_test.go`, `cmd/update_job_plan_test.go`, `cmd/update_job_test.go`, and `cmd/update_job_outcome_test.go`
+- [x] T026 [P] [US3] Add failing explicit-key mismatch and actual-tenant tests for process-definition deletion and job update plans/results in `cmd/delete_test.go`, `cmd/update_job_plan_test.go`, `cmd/update_job_test.go`, and `cmd/update_job_outcome_test.go`
 
 ### Implementation for User Story 3
 
@@ -110,9 +110,9 @@
 - [x] T028 [US3] Expose PI plan tenant evidence through public models and mechanical facade conversion in `c8volt/process/api.go`, `c8volt/process/dryrun.go`, and `c8volt/process/convert.go`
 - [x] T029 [US3] Attach explicit-key semantics and resolved tenant evidence to PI cancel, delete, and resolve previews and confirmations without changing `IgnoreTenant` in `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, and `cmd/resolve_processinstance.go`
 - [x] T030 [US3] Preserve available variable tenant metadata in the PI update plan and render explicit-key context without enrichment calls in `cmd/update_processinstance_variables.go`, `cmd/update_processinstance.go`, and `cmd/cmd_views_processinstance_update.go`
-- [ ] T031 [US3] Aggregate existing process-definition plan-item tenant IDs and render explicit-key context while preserving backend-authorized keys in `c8volt/resource/model.go`, `cmd/delete_processdefinition.go`, and `cmd/cmd_views_processdefinition.go`
-- [ ] T032 [US3] Derive actual tenant evidence from the already-loaded current job and render it in update preview, confirmation, and result views in `cmd/update_job_plan.go`, `cmd/update_job.go`, `cmd/update_job_outcome.go`, and `cmd/cmd_views_job.go`
-- [ ] T033 [US3] Run targeted service, facade, PI, process-definition, and job explicit-key tests for the US3 independent criteria and record the results in `specs/283-show-tenant-context/progress.md`
+- [x] T031 [US3] Aggregate existing process-definition plan-item tenant IDs and render explicit-key context while preserving backend-authorized keys in `c8volt/resource/model.go`, `cmd/delete_processdefinition.go`, and `cmd/cmd_views_processdefinition.go`
+- [x] T032 [US3] Derive actual tenant evidence from the already-loaded current job and render it in update preview, confirmation, and result views in `cmd/update_job_plan.go`, `cmd/update_job.go`, `cmd/update_job_outcome.go`, and `cmd/cmd_views_job.go`
+- [x] T033 [US3] Run targeted service, facade, PI, process-definition, and job explicit-key tests for the US3 independent criteria and record the results in `specs/283-show-tenant-context/progress.md`
 
 **Checkpoint**: Explicit-key paths truthfully separate configured context from actual tenant evidence and preserve backend authorization.
 

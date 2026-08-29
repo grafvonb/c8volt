@@ -21,6 +21,10 @@ Started: 2026-08-29T12:20:03Z
 - The public process facade mirrors dry-run plan evidence with `process.TenantEvidence` on `DryRunPIKeyExpansion`; `fromDomainTenantEvidence` copies the resolved tenant ID slice and keeps command-owned operation semantics separate from service evidence.
 - Direct PI cancel/delete/resolve plans attach explicit-key tenant context only when the planning options carry `IgnoreTenant`, then merge resolved plan evidence with command-configured tenant semantics before dry-run, confirmation, or JSON result rendering.
 - PI variable update previews derive actual tenant evidence from already-loaded process-scope variables, count one unknown target per explicit key when no usable tenant metadata is visible, and keep the evidence in unexported preview fields so JSON payload shape stays stable.
+- Process-definition delete plans expose `TenantEvidence()` from public resource plans by aggregating known process-definition plan-item tenant IDs plus nested PI cancellation evidence; PD-only missing tenant metadata is left for the later cross/unknown warning story rather than emitting a new no-state-check warning now.
+- Resource facade conversion for nested PD cancellation plans must copy `TenantEvidence`; otherwise command-level PD context loses PI tenant evidence during domain-to-public mapping.
+- Job update planning attaches explicit-key tenant context from the already-loaded current job before any dry-run, interactive plan, auto-confirmed mutation, or JSON result rendering; no job search or mutation request receives a tenant filter for this reporting.
+- `renderAttachedTenantContext` now lives in `cmd/cmd_views_tenant_context.go` because it is shared by PI, PD, and job views; command tests that reuse global Cobra commands should reset command contexts to avoid stale tenant rendered markers.
 
 ## Decisions
 - Phase 1 setup was treated as the first work unit because T001 was the first incomplete task and Phase 2 depends on it.
@@ -35,6 +39,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 10 paired T023 with T027 so service tests for PI dry-run tenant evidence were committed only after the domain/service implementation passed.
 - Iteration 11 paired T024 with T028 so PI facade tests for plan evidence and slice isolation were committed only after public model/conversion wiring passed.
 - Iteration 12 paired T025 with T029 and T030 so PI command explicit-key tests, tenant-context attachment, and variable-update evidence rendering were validated together.
+- Iteration 13 completed the remaining US3 work by pairing T026 with T031-T033; process-definition delete and job update now report explicit-key tenant context using already-loaded plan/current-job data.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.
@@ -47,6 +52,7 @@ Started: 2026-08-29T12:20:03Z
 - Root command instances retain Cobra context values across in-process tests, including the tenant-context rendered marker; deploy/embed tests clear command contexts before asserting pre-call rendering order.
 - Run command tests that assert per-execution tenant-context rendering must clear retained Cobra contexts before each case; otherwise the human-rendered marker can suppress later subtests.
 - In command unit tests that install `config.Config` on context, use `ToContextWithLogWriter(..., buf)` when asserting human output; otherwise `renderHumanLine` routes through the logger and the Cobra output buffer remains empty.
+- Process-definition direct-key no-state-check plans may contain only a key and no tenant metadata; do not count that as an unknown-target warning until US4 expands the PD warning contract, because existing stdin/no-state-check output asserts no warning chatter.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -77,6 +83,11 @@ Started: 2026-08-29T12:20:03Z
 - `go test ./internal/domain ./internal/services/common ./internal/services/processinstance ./c8volt/process -count=1`
 - `go test ./cmd -run 'Test(CancelProcessInstanceDryRun_ExplicitKeyRendersActualTenantMismatch|DeleteProcessInstanceDryRun_ExplicitKeyRendersUnknownTenantEvidence|ResolveProcessInstancesWithPlan_ExplicitKeyRendersActualTenant|UpdateProcessInstanceVariableDryRun_ExplicitKeyRendersVariableTenant)' -count=1`
 - `go test ./cmd -run 'Test.*(Cancel|Delete|Resolve|Update).*ProcessInstance|TestUpdatePICommand|TestUpdateProcessInstanceVariable' -count=1`
+- `go test ./cmd -run 'Test(DeleteProcessDefinitionCommand_KeyTenantMismatchUsesAdminScope|UpdateJobCommand_(RetriesDryRunRendersExplicitKeyTenantContext|JSONDryRunIncludesExplicitKeyTenantContext|RetriesConfirmedRendersExplicitKeyTenantContext|TechnicalFailureDryRunRendersExplicitKeyTenantContext))' -count=1`
+- `go test ./c8volt/resource -run 'TestDeleteProcessDefinitionPlan_TenantEvidenceAggregatesPlanItemsAndCancellation|TestClient_PreviewDeleteProcessDefinitionsMapsParentElementInstanceKey' -count=1`
+- `go test ./cmd -run 'Test.*(Cancel|Delete|Resolve|Update).*ProcessInstance|TestUpdatePICommand|TestUpdateProcessInstanceVariable|Test.*Delete.*ProcessDefinition|Test.*UpdateJob' -count=1`
+- `go test ./internal/services/processinstance/... ./internal/services/processdefinition/... -run 'Test.*(Tenant|DryRun|Plan|DeleteProcessDefinition)' -count=1`
+- `go test ./c8volt/process ./c8volt/resource ./c8volt/job -run 'Test.*(Tenant|DryRun|Plan|Preview|UpdateJob|DeleteProcessDefinition)' -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
@@ -84,4 +95,4 @@ Started: 2026-08-29T12:20:03Z
 - Do not render destructive cancel selector tenant context to stdout; the progress contract reserves stdout for command results and keeps compact progress on stderr.
 
 ## Current Handoff
-- Continue Phase 5 / US3 at T026, adding explicit-key mismatch and actual-tenant tests for process-definition deletion and job update plans/results before implementing T031/T032; keep T033 open until all US3 command families are validated together.
+- Continue Phase 6 / US4 at T034, adding PI plan/page merge tests for stable tenant dedupe, cross-plus-unknown warnings, and no enrichment calls before implementing warning merge/render behavior.

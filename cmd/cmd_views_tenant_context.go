@@ -41,6 +41,14 @@ func renderTenantContext(cmd *cobra.Command, ctx tenant.Context) {
 	}
 }
 
+// renderAttachedTenantContext emits the command-scoped tenant context for
+// command views that own a visible preflight, confirmation, or result surface.
+func renderAttachedTenantContext(cmd *cobra.Command) {
+	if ctx, ok := attachedTenantContext(cmd); ok {
+		renderTenantContext(cmd, *ctx)
+	}
+}
+
 // shouldRenderTenantContextHuman keeps tenant context out of protected output
 // modes and absent contexts.
 func shouldRenderTenantContextHuman(_ *cobra.Command, ctx tenant.Context) bool {

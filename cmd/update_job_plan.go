@@ -11,6 +11,8 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt"
 	"github.com/grafvonb/c8volt/c8volt/job"
+	"github.com/grafvonb/c8volt/config"
+	"github.com/spf13/cobra"
 )
 
 // planUpdateJob loads current backend state and builds the command-facing mutation plan.
@@ -66,6 +68,20 @@ func buildUpdateJobPlan(current job.Job, request job.UpdateRequest) job.UpdatePl
 		})
 	}
 	return plan
+}
+
+// attachUpdateJobExplicitTenantContext records direct-key job semantics and
+// uses the already-loaded current job as tenant evidence.
+func attachUpdateJobExplicitTenantContext(cmd *cobra.Command, cfg *config.Config, plan job.UpdatePlan) {
+	resolvedTenantIDs := []string{}
+	unknownTargetCount := 0
+	if plan.Current.TenantId != "" {
+		resolvedTenantIDs = append(resolvedTenantIDs, plan.Current.TenantId)
+	} else if plan.Current.Key != "" || plan.Key != "" {
+		unknownTargetCount = 1
+	}
+	tenantCtx := newExplicitKeysTenantContext(configuredTenantID(cfg))
+	attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, resolvedTenantIDs, unknownTargetCount))
 }
 
 // buildWorkerOutcomeUpdatePlan renders worker outcomes through the same dry-run and confirmation plan shape used by retry and timeout updates.

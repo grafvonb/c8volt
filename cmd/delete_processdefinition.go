@@ -112,6 +112,11 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("checking process-definition delete impact: %w", err))
 		}
+		if explicitInput {
+			tenantCtx := newExplicitKeysTenantContext(configuredTenantID(cfg))
+			evidence := impactPlan.TenantEvidence()
+			attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, evidence.ResolvedTenantIDs, evidence.UnknownTargetCount))
+		}
 		if flagDryRun {
 			if err := renderDeleteProcessDefinitionDryRun(cmd, impactPlan); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render delete dry-run result: %w", err))
@@ -166,12 +171,14 @@ func renderDeleteProcessDefinitionDryRun(cmd *cobra.Command, plan resource.Delet
 	if commandUsesSharedEnvelope(cmd, pickMode()) {
 		return renderSucceededResult(cmd, preview)
 	}
+	renderAttachedTenantContext(cmd)
 	renderHumanLine(cmd, "dry run: delete process-definition")
 	renderDeleteProcessDefinitionImpact(cmd, plan)
 	return nil
 }
 
 func renderDeleteProcessDefinitionImpact(cmd *cobra.Command, plan resource.DeleteProcessDefinitionPlan) {
+	renderAttachedTenantContext(cmd)
 	totals := plan.Totals()
 	if plan.StateCheckSkipped {
 		renderHumanLine(cmd, "delete impact check: %d process definition(s); process-instance state check skipped; no changes made yet", totals.ProcessDefinitions)

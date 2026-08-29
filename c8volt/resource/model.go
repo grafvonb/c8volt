@@ -3,7 +3,11 @@
 
 package resource
 
-import "github.com/grafvonb/c8volt/c8volt/process"
+import (
+	"slices"
+
+	"github.com/grafvonb/c8volt/c8volt/process"
+)
 
 type ProcessDefinitionDeployment struct {
 	Key               string `json:"key"`
@@ -87,6 +91,45 @@ func (p DeleteProcessDefinitionPlan) Totals() DeleteProcessDefinitionPlanTotals 
 	}
 	totals.Warnings += len(p.Warnings)
 	return totals
+}
+
+// TenantEvidence aggregates tenant metadata already present in the process-definition
+// impact plan and any nested process-instance cancellation plan.
+func (p DeleteProcessDefinitionPlan) TenantEvidence() process.TenantEvidence {
+	tenantSet := make(map[string]struct{})
+	targetCount := 0
+	unknownTargetCount := 0
+	for _, item := range p.Items {
+		if item.Key != "" {
+			targetCount++
+			if item.TenantId != "" {
+				tenantSet[item.TenantId] = struct{}{}
+			}
+		}
+		for _, tenantID := range item.CancellationPlan.TenantEvidence.ResolvedTenantIDs {
+			if tenantID != "" {
+				tenantSet[tenantID] = struct{}{}
+			}
+		}
+		unknownTargetCount += item.CancellationPlan.TenantEvidence.UnknownTargetCount
+		targetCount += item.CancellationPlan.TenantEvidence.TargetCount
+	}
+	resolvedTenantIDs := make([]string, 0, len(tenantSet))
+	for tenantID := range tenantSet {
+		resolvedTenantIDs = append(resolvedTenantIDs, tenantID)
+	}
+	return process.TenantEvidence{
+		ResolvedTenantIDs:  sortProcessDefinitionPlanTenantIDs(resolvedTenantIDs),
+		UnknownTargetCount: unknownTargetCount,
+		TargetCount:        targetCount,
+	}
+}
+
+// sortProcessDefinitionPlanTenantIDs keeps command-rendered resource tenant
+// evidence deterministic for previews and structured envelopes.
+func sortProcessDefinitionPlanTenantIDs(ids []string) []string {
+	slices.Sort(ids)
+	return slices.Compact(ids)
 }
 
 type DeleteProcessDefinitionPlanTotals struct {

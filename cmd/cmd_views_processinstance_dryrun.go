@@ -264,14 +264,6 @@ func renderProcessInstanceDryRunResult[T any](cmd *cobra.Command, payload T) err
 	return renderSucceededResult(cmd, payload)
 }
 
-// renderAttachedTenantContext emits the command-scoped tenant context when a
-// shared process-instance view owns the visible preflight surface.
-func renderAttachedTenantContext(cmd *cobra.Command) {
-	if ctx, ok := attachedTenantContext(cmd); ok {
-		renderTenantContext(cmd, *ctx)
-	}
-}
-
 // printProcessInstanceDryRunKeys writes a labeled verbose dry-run key list.
 func printProcessInstanceDryRunKeys(cmd *cobra.Command, label string, keys []string) {
 	if len(keys) == 0 {

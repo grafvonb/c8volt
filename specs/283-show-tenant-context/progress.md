@@ -298,3 +298,42 @@ Started: 2026-08-29 14:20:03
 - Passed: `go test ./internal/domain ./internal/services/common ./internal/services/processinstance ./c8volt/process -count=1`.
 - Passed: `git diff --check`.
 ---
+---
+## Iteration 13 - 2026-08-29 15:52
+**Work Unit**: Phase 5 US3 process-definition and job explicit-key tenant context
+**Tasks Completed**:
+- [x] T026: Add explicit-key mismatch and actual-tenant tests for process-definition deletion and job update plans/results.
+- [x] T031: Aggregate existing process-definition plan-item tenant IDs and render explicit-key context while preserving backend-authorized keys.
+- [x] T032: Derive actual tenant evidence from the already-loaded current job and render it in update preview, confirmation, and result views.
+- [x] T033: Run targeted service, facade, PI, process-definition, and job explicit-key tests for the US3 independent criteria.
+**Tasks Remaining in Work Unit**: 0; US3 complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/resource/model.go
+- c8volt/resource/convert.go
+- c8volt/resource/client_test.go
+- cmd/cmd_views_job.go
+- cmd/cmd_views_processinstance_dryrun.go
+- cmd/cmd_views_tenant_context.go
+- cmd/delete_processdefinition.go
+- cmd/delete_test.go
+- cmd/get_job_test.go
+- cmd/get_test.go
+- cmd/update_job.go
+- cmd/update_job_plan.go
+- cmd/update_job_plan_test.go
+- cmd/update_job_test.go
+- cmd/update_job_outcome_test.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- PD and job explicit-key context can be attached from already-frozen public plans/current-job data without changing backend request filters.
+- Passed: `go test ./cmd -run 'Test(DeleteProcessDefinitionCommand_KeyTenantMismatchUsesAdminScope|UpdateJobCommand_(RetriesDryRunRendersExplicitKeyTenantContext|JSONDryRunIncludesExplicitKeyTenantContext|RetriesConfirmedRendersExplicitKeyTenantContext|TechnicalFailureDryRunRendersExplicitKeyTenantContext))' -count=1`.
+- Passed: `go test ./c8volt/resource -run 'TestDeleteProcessDefinitionPlan_TenantEvidenceAggregatesPlanItemsAndCancellation|TestClient_PreviewDeleteProcessDefinitionsMapsParentElementInstanceKey' -count=1`.
+- Passed: `go test ./cmd -run 'Test.*(Cancel|Delete|Resolve|Update).*ProcessInstance|TestUpdatePICommand|TestUpdateProcessInstanceVariable|Test.*Delete.*ProcessDefinition|Test.*UpdateJob' -count=1`.
+- Passed: `go test ./internal/services/processinstance/... ./internal/services/processdefinition/... -run 'Test.*(Tenant|DryRun|Plan|DeleteProcessDefinition)' -count=1`.
+- Passed: `go test ./c8volt/process ./c8volt/resource ./c8volt/job -run 'Test.*(Tenant|DryRun|Plan|Preview|UpdateJob|DeleteProcessDefinition)' -count=1`.
+- Passed: `go test ./cmd -count=1`.
+- Passed: `git diff --check`.
+---

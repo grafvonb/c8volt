@@ -53,6 +53,7 @@ var updateJobCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan job update: %w", err))
 		}
+		attachUpdateJobExplicitTenantContext(cmd, cfg, plan)
 		request.UpdatePlan = &plan
 		if err := validateUpdateJobPlanPreconditions(plan, request); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
@@ -77,6 +78,8 @@ var updateJobCmd = &cobra.Command{
 			if err := confirmCmdOrAbortFn(false, prompt); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
+		} else {
+			renderAttachedTenantContext(cmd)
 		}
 		if request.WorkerOutcome != nil {
 			if err := executeUpdateJobWorkerOutcome(cmd, cli, request, plan); err != nil {

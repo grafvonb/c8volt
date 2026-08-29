@@ -40,6 +40,31 @@ func TestUpdateJobCommand_RetriesConfirmedHumanOutput(t *testing.T) {
 	require.Contains(t, output, "updated job 2251799813711967: confirmed retries=3")
 }
 
+// TestUpdateJobCommand_RetriesConfirmedRendersExplicitKeyTenantContext verifies
+// auto-confirmed direct job updates show tenant evidence before mutation output.
+func TestUpdateJobCommand_RetriesConfirmedRendersExplicitKeyTenantContext(t *testing.T) {
+	var requests []string
+	var patchBodies []map[string]any
+	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+		jobSearchResponseWithTenant("2251799813711967", 1, "FAILED", tenantAdminKeysReturnedTenant),
+		jobSearchResponseWithTenant("2251799813711967", 3, "FAILED", tenantAdminKeysReturnedTenant),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "--tenant", tenantAdminKeysSelectedTenant, "update", "job", "--key", "2251799813711967", "--retries", "3", "--auto-confirm")
+
+	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967", "POST /v2/jobs/search"}, requests)
+	require.Len(t, patchBodies, 1)
+	require.Contains(t, output, "Tenant filter: not applied for explicit resource keys\n")
+	require.Contains(t, output, "Resource tenant: "+tenantAdminKeysReturnedTenant+"\n")
+	require.NotContains(t, output, "Tenant filter: "+tenantAdminKeysSelectedTenant)
+	require.Less(t,
+		strings.Index(output, "Tenant filter: not applied for explicit resource keys"),
+		strings.Index(output, "updated job 2251799813711967"),
+	)
+}
+
 // TestUpdateJobCommand_RetriesConfirmedJSONOutput verifies the update job command wiring behavior covered by this scenario.
 func TestUpdateJobCommand_RetriesConfirmedJSONOutput(t *testing.T) {
 	var requests []string
@@ -428,7 +453,12 @@ func jobSearchResponse(key string, retries int32) string {
 
 // jobSearchResponseWithState builds a get job response fixture with an explicit state.
 func jobSearchResponseWithState(key string, retries int32, state string) string {
-	return `{"items":[{"jobKey":"` + key + `","state":"` + state + `","retries":` + strconvFormatInt32(retries) + `,"processInstanceKey":"2251799813711000","elementInstanceKey":"2251799813711001","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`
+	return jobSearchResponseWithTenant(key, retries, state, "tenant-a")
+}
+
+// jobSearchResponseWithTenant builds a get job response fixture with explicit tenant evidence.
+func jobSearchResponseWithTenant(key string, retries int32, state string, tenantID string) string {
+	return `{"items":[{"jobKey":"` + key + `","state":"` + state + `","retries":` + strconvFormatInt32(retries) + `,"processInstanceKey":"2251799813711000","elementInstanceKey":"2251799813711001","tenantId":"` + tenantID + `"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`
 }
 
 // requirePatchRetries asserts the retry changeset sent to the job update endpoint.

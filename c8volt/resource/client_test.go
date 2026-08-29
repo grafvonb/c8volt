@@ -433,6 +433,37 @@ func TestClient_PreviewDeleteProcessDefinitionsMapsParentElementInstanceKey(t *t
 	require.NotContains(t, string(raw), "parentFlowNodeInstanceKey")
 }
 
+// TestDeleteProcessDefinitionPlan_TenantEvidenceAggregatesPlanItemsAndCancellation
+// verifies process-definition plans expose already-resolved tenant evidence for command context.
+func TestDeleteProcessDefinitionPlan_TenantEvidenceAggregatesPlanItemsAndCancellation(t *testing.T) {
+	t.Parallel()
+
+	plan := fromDomainDeleteProcessDefinitionPlan(d.DeleteProcessDefinitionPlan{
+		Items: []d.DeleteProcessDefinitionPlanItem{
+			{
+				Key:      "pd-1",
+				TenantId: "tenant-b",
+				CancellationPlan: d.DryRunPIKeyExpansion{
+					TenantEvidence: d.TenantEvidence{
+						ResolvedTenantIDs:  []string{"tenant-c", "tenant-b"},
+						UnknownTargetCount: 1,
+						TargetCount:        2,
+					},
+				},
+			},
+			{
+				Key: "pd-2",
+			},
+		},
+	})
+
+	require.Equal(t, process.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-b", "tenant-c"},
+		UnknownTargetCount: 1,
+		TargetCount:        4,
+	}, plan.TenantEvidence())
+}
+
 // TestClient_DeleteProcessDefinitions_UsesActivityIndicator verifies bulk deletion
 // wraps each direct item delete with its own delete-impact activity scope.
 func TestClient_DeleteProcessDefinitions_UsesActivityIndicator(t *testing.T) {
