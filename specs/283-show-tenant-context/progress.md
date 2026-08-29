@@ -105,3 +105,22 @@ Started: 2026-08-29 14:20:03
 **Learnings**:
 - Passed focused and full foundational validation; tenant warnings need a feature-specific warning renderer because the legacy warning helper strips `WARNING:`.
 ---
+---
+## Iteration 5 - 2026-08-29 14:47
+**Work Unit**: Phase 3 US1 cancel selector tenant context
+**Tasks Completed**:
+- [x] T010: Add named/empty tenant selector and pre-confirmation ordering tests for cancel workflows.
+- [x] T013: Attach discovery-mode tenant context to selector-based cancel planning and render it before preview or continuation confirmation.
+**Tasks Remaining in Work Unit**: US1 remains: T011-T012 and T014-T016.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_processinstance_selector.go
+- cmd/cmd_views_tenant_context.go
+- cmd/cancel_processinstance_selector_test.go
+- cmd/cancel_processinstance_test.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Cancel selector tenant context must render before dry-run preview or confirmation while preserving destructive stdout cleanliness by using stderr for non-dry-run search context.
+---

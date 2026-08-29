@@ -17,15 +17,8 @@ func renderTenantContext(cmd *cobra.Command, ctx tenant.Context) {
 		return
 	}
 
-	switch {
-	case ctx.Mode == tenant.ContextModeCreation:
-		renderHumanLine(cmd, "Create in tenant: %s", ctx.TargetTenantID)
-	case ctx.Filter == tenant.ContextFilterNamed:
-		renderHumanLine(cmd, "Tenant filter: %s", ctx.ConfiguredTenantID)
-	case ctx.Filter == tenant.ContextFilterNone:
-		renderHumanLine(cmd, "Tenant filter: none — resources from multiple tenants may be affected")
-	case ctx.Filter == tenant.ContextFilterNotApplied:
-		renderHumanLine(cmd, "Tenant filter: not applied for explicit resource keys")
+	if line := tenantContextPrimaryHumanLine(ctx); line != "" {
+		renderHumanLine(cmd, "%s", line)
 	}
 
 	switch len(ctx.ResolvedTenantIDs) {
@@ -51,6 +44,23 @@ func shouldRenderTenantContextHuman(_ *cobra.Command, ctx tenant.Context) bool {
 		return false
 	}
 	return pickMode() == RenderModeOneLine
+}
+
+// tenantContextPrimaryHumanLine centralizes the semantic line so command
+// workflows can choose the correct output channel without changing wording.
+func tenantContextPrimaryHumanLine(ctx tenant.Context) string {
+	switch {
+	case ctx.Mode == tenant.ContextModeCreation:
+		return "Create in tenant: " + ctx.TargetTenantID
+	case ctx.Filter == tenant.ContextFilterNamed:
+		return "Tenant filter: " + ctx.ConfiguredTenantID
+	case ctx.Filter == tenant.ContextFilterNone:
+		return "Tenant filter: none — resources from multiple tenants may be affected"
+	case ctx.Filter == tenant.ContextFilterNotApplied:
+		return "Tenant filter: not applied for explicit resource keys"
+	default:
+		return ""
+	}
 }
 
 // renderTenantContextWarningLine preserves the feature's required WARNING:

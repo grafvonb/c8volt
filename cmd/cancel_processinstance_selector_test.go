@@ -17,6 +17,7 @@ import (
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/typex"
@@ -186,6 +187,74 @@ func TestCancelProcessInstanceDryRun_SearchTenantScopedCandidates(t *testing.T) 
 	require.Contains(t, output, `"101"`)
 	require.Contains(t, output, `"102"`)
 	require.NotContains(t, output, tenantAdminKeysReturnedTenant)
+}
+
+// TestCancelProcessInstanceDryRun_SearchTenantContextPrecedesPreview verifies
+// selector-based cancel previews explain named and unfiltered discovery scope
+// before the dry-run body is rendered.
+func TestCancelProcessInstanceDryRun_SearchTenantContextPrecedesPreview(t *testing.T) {
+	tests := []struct {
+		name   string
+		tenant string
+		want   string
+	}{
+		{name: "named", tenant: "tenant-a", want: "Tenant filter: tenant-a\n"},
+		{name: "empty", tenant: "", want: "Tenant filter: none — resources from multiple tenants may be affected\n"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			flagDryRun = true
+
+			cmd := &cobra.Command{Use: "process-instance"}
+			buf := &bytes.Buffer{}
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			prevConfirm := confirmCmdOrAbortFn
+			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+			confirmCmdOrAbortFn = func(bool, string) error {
+				t.Fatal("unexpected confirmation prompt during cancel dry-run search")
+				return nil
+			}
+
+			cli := stubProcessAPI{
+				planProcessInstanceMutationPages: func(_ context.Context, _ process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, _ ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+					plan := process.DryRunPIKeyExpansion{
+						Roots:     typex.Keys{"101"},
+						Collected: typex.Keys{"101"},
+						Outcome:   process.TraversalOutcomeComplete,
+					}
+					action, err := visitor(process.ProcessInstanceMutationPlanStep{
+						Page: process.ProcessInstancePage{
+							Items:         []process.ProcessInstance{{Key: "101", State: process.StateActive}},
+							OverflowState: process.ProcessInstanceOverflowStateNoMore,
+						},
+						RequestedKeys:    []string{"101"},
+						Plan:             plan,
+						CumulativeCount:  1,
+						CumulativeImpact: 1,
+					})
+					require.NoError(t, err)
+					require.Equal(t, process.ProcessInstanceSearchPageActionStop, action)
+					return process.ProcessInstanceMutationPlanPagesResult{RequestedCount: 1, CumulativeImpact: 1}, nil
+				},
+				cancelProcessInstances: dryRunCancelMutationGuard(t),
+			}
+
+			results, err := cancelProcessInstanceSearchPages(cmd, cli, &config.Config{App: config.App{Tenant: tt.tenant}}, process.ProcessInstanceFilter{})
+			require.NoError(t, err)
+			require.Len(t, results.DryRunPreviews, 1)
+			require.NoError(t, renderProcessInstanceDryRunSummary(cmd, newProcessInstanceDryRunSummary("cancel", results.DryRunPreviews)))
+
+			output := buf.String()
+			require.Contains(t, output, tt.want)
+			require.Contains(t, output, "dry run: cancel process-instance\n")
+			require.Less(t, strings.Index(output, tt.want), strings.Index(output, "dry run: cancel process-instance\n"))
+		})
+	}
 }
 
 // TestCancelProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage verifies

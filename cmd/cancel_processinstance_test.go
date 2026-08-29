@@ -16,6 +16,7 @@ import (
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/testx"
@@ -163,6 +164,64 @@ func TestCancelProcessInstanceCommand_DuplicateStdinKeysDeduplicateBeforePlannin
 
 	require.Contains(t, output, "selected process instances: 2")
 	require.NotContains(t, output, "selected process instances: 4")
+}
+
+// TestCancelProcessInstanceSearch_TenantContextPrecedesConfirmation verifies
+// selector-based destructive cancellation renders discovery scope before the
+// operator is asked to confirm the frozen mutation plan.
+func TestCancelProcessInstanceSearch_TenantContextPrecedesConfirmation(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	var prompt string
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(_ bool, got string) error {
+		prompt = got
+		outputBeforePrompt := buf.String()
+		require.Contains(t, outputBeforePrompt, "Tenant filter: none — resources from multiple tenants may be affected\n")
+		require.NotContains(t, outputBeforePrompt, "cancellation:")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		planProcessInstanceMutationPages: func(_ context.Context, _ process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, _ ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+			plan := process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"101"},
+				Collected: typex.Keys{"101"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}
+			action, err := visitor(process.ProcessInstanceMutationPlanStep{
+				Page: process.ProcessInstancePage{
+					Items:         []process.ProcessInstance{{Key: "101", State: process.StateActive}},
+					OverflowState: process.ProcessInstanceOverflowStateNoMore,
+				},
+				RequestedKeys:    []string{"101"},
+				Plan:             plan,
+				CumulativeCount:  1,
+				CumulativeImpact: 1,
+			})
+			require.NoError(t, err)
+			require.Equal(t, process.ProcessInstanceSearchPageActionStop, action)
+			return process.ProcessInstanceMutationPlanPagesResult{RequestedCount: 1, CumulativeImpact: 1}, nil
+		},
+		cancelProcessInstances: func(_ context.Context, keys typex.Keys, _ int, _ ...options.FacadeOption) (process.CancelReports, error) {
+			require.Equal(t, typex.Keys{"101"}, keys)
+			return process.CancelReports{Items: []process.CancelReport{{Key: "101", Ok: true}}}, nil
+		},
+	}
+
+	results, err := cancelProcessInstanceSearchPages(cmd, cli, &config.Config{}, process.ProcessInstanceFilter{})
+
+	require.NoError(t, err)
+	require.Len(t, results.Reports, 1)
+	require.Contains(t, prompt, "You are about to cancel 1 process instance(s)")
+	require.Contains(t, buf.String(), "cancellation: canceled 1/1 process-instance tree(s)")
 }
 
 func TestCancelProcessInstanceStdinPipelineKeysSkipBpmnSelectorValidation(t *testing.T) {
