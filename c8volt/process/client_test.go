@@ -2205,7 +2205,7 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 					StartKey:         "c1",
 					RootKey:          "r1",
 					Keys:             []string{"c1", "r1"},
-					Chain:            map[string]d.ProcessInstance{"c1": {Key: "c1", State: d.StateCanceled}, "r1": {Key: "r1", State: d.StateActive}},
+					Chain:            map[string]d.ProcessInstance{"c1": {Key: "c1", State: d.StateCanceled, TenantId: "tenant-a"}, "r1": {Key: "r1", State: d.StateActive, TenantId: "tenant-a"}},
 					MissingAncestors: []pitraversal.MissingAncestor{{Key: "missing", StartKey: "c1"}},
 					Warning:          "one or more parent process instances were not found",
 					Outcome:          pitraversal.OutcomePartial,
@@ -2216,7 +2216,7 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 					StartKey: "c2",
 					RootKey:  "r2",
 					Keys:     []string{"c2", "r2"},
-					Chain:    map[string]d.ProcessInstance{"c2": {Key: "c2", State: d.StateActive}, "r2": {Key: "r2", State: d.StateActive}},
+					Chain:    map[string]d.ProcessInstance{"c2": {Key: "c2", State: d.StateActive, TenantId: "tenant-b"}, "r2": {Key: "r2", State: d.StateActive, TenantId: "tenant-b"}},
 					Outcome:  pitraversal.OutcomeComplete,
 				}, nil
 			default:
@@ -2231,7 +2231,7 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 					Mode:    pitraversal.ModeDescendants,
 					RootKey: "r1",
 					Keys:    []string{"r1", "c1"},
-					Chain:   map[string]d.ProcessInstance{"r1": {Key: "r1", State: d.StateActive}, "c1": {Key: "c1", State: d.StateCanceled}},
+					Chain:   map[string]d.ProcessInstance{"r1": {Key: "r1", State: d.StateActive, TenantId: "tenant-a"}, "c1": {Key: "c1", State: d.StateCanceled, TenantId: "tenant-a"}},
 					Outcome: pitraversal.OutcomeComplete,
 				}, nil
 			case "r2":
@@ -2239,7 +2239,7 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 					Mode:    pitraversal.ModeDescendants,
 					RootKey: "r2",
 					Keys:    []string{"r2", "c2"},
-					Chain:   map[string]d.ProcessInstance{"r2": {Key: "r2", State: d.StateActive}, "c2": {Key: "c2", State: d.StateActive}},
+					Chain:   map[string]d.ProcessInstance{"r2": {Key: "r2", State: d.StateActive, TenantId: "tenant-b"}, "c2": {Key: "c2", State: d.StateActive, TenantId: "tenant-b"}},
 					Outcome: pitraversal.OutcomeComplete,
 				}, nil
 			default:
@@ -2256,14 +2256,68 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 	assert.Equal(t, typex.Keys{"r1", "r2"}, got.Roots)
 	assert.Equal(t, typex.Keys{"r1", "c1", "r2", "c2"}, got.Collected)
 	assert.Equal(t, []MissingAncestor{{Key: "missing", StartKey: "c1"}}, got.MissingAncestors)
-	assert.Equal(t, []ProcessInstance{{Key: "c1", State: StateCanceled}}, got.SelectedFinalState)
+	assert.Equal(t, []ProcessInstance{{Key: "c1", State: StateCanceled, TenantId: "tenant-a"}}, got.SelectedFinalState)
 	assert.Equal(t, []ProcessInstance{
-		{Key: "r1", State: StateActive},
-		{Key: "r2", State: StateActive},
-		{Key: "c2", State: StateActive},
+		{Key: "r1", State: StateActive, TenantId: "tenant-a"},
+		{Key: "r2", State: StateActive, TenantId: "tenant-b"},
+		{Key: "c2", State: StateActive, TenantId: "tenant-b"},
 	}, got.RequiresCancelBeforeDelete)
 	assert.Equal(t, TraversalOutcomePartial, got.Outcome)
 	assert.NotEmpty(t, got.Warning)
+	assert.Equal(t, TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+		UnknownTargetCount: 0,
+		TargetCount:        4,
+	}, got.TenantEvidence)
+}
+
+// TestClient_DryRunCancelOrDeletePlan_MapsTenantEvidenceCopy verifies resolved
+// tenant metadata from service dry-run plans crosses the facade boundary without
+// exposing mutable internal slices to callers.
+func TestClient_DryRunCancelOrDeletePlan_MapsTenantEvidenceCopy(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	domainTenants := []string{"tenant-a"}
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "child", startKey)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: "child",
+				RootKey:  "root",
+				Keys:     []string{"child", "root"},
+				Chain: map[string]d.ProcessInstance{
+					"child": {Key: "child", State: d.StateActive, TenantId: domainTenants[0]},
+					"root":  {Key: "root", State: d.StateActive, TenantId: domainTenants[0]},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "root", rootKey)
+			return pitraversal.Result{
+				Mode:    pitraversal.ModeDescendants,
+				RootKey: "root",
+				Keys:    []string{"root", "child"},
+				Chain: map[string]d.ProcessInstance{
+					"root":  {Key: "root", State: d.StateActive, TenantId: domainTenants[0]},
+					"child": {Key: "child", State: d.StateActive, TenantId: domainTenants[0]},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	got, err := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default()).DryRunCancelOrDeletePlan(ctx, typex.Keys{"child"}, 1)
+	require.NoError(t, err)
+	require.Equal(t, TenantEvidence{
+		ResolvedTenantIDs: []string{"tenant-a"},
+		TargetCount:       2,
+	}, got.TenantEvidence)
+
+	got.TenantEvidence.ResolvedTenantIDs[0] = "changed"
+	require.Equal(t, "tenant-a", domainTenants[0])
 }
 
 // TestClient_DryRunCancelOrDeletePlan_UsesWorkersForStructuredTraversal keeps

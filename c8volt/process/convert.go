@@ -396,10 +396,21 @@ func fromDomainDeleteReports(xs []d.Reporter) DeleteReports {
 	return DeleteReports{Items: toolx.MapSlice(xs, func(x d.Reporter) DeleteReport { return fromDomainReporter(x) })}
 }
 
+// fromDomainTenantEvidence copies service-resolved tenant evidence without
+// adding operation semantics, which command code attaches later.
+func fromDomainTenantEvidence(x d.TenantEvidence) TenantEvidence {
+	return TenantEvidence{
+		ResolvedTenantIDs:  append([]string(nil), x.ResolvedTenantIDs...),
+		UnknownTargetCount: x.UnknownTargetCount,
+		TargetCount:        x.TargetCount,
+	}
+}
+
 func fromDomainDryRunPIKeyExpansion(x d.DryRunPIKeyExpansion) DryRunPIKeyExpansion {
 	return DryRunPIKeyExpansion{
 		Roots:                      append([]string(nil), x.Roots...),
 		Collected:                  append([]string(nil), x.Collected...),
+		TenantEvidence:             fromDomainTenantEvidence(x.TenantEvidence),
 		SelectedFinalState:         toolx.MapSlice(x.SelectedFinalState, fromDomainProcessInstance),
 		RequiresCancelBeforeDelete: toolx.MapSlice(x.RequiresCancelBeforeDelete, fromDomainProcessInstance),
 		MissingAncestors: toolx.MapSlice(x.MissingAncestors, func(item d.MissingAncestor) MissingAncestor {

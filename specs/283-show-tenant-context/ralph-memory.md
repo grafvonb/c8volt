@@ -18,6 +18,7 @@ Started: 2026-08-29T12:20:03Z
 - Deploy and embedded deploy attach creation-mode context after local file/fixture validation and before `DeployProcessDefinition`; human mode renders `Create in tenant: ...` before the POST, while JSON envelopes receive the attached context through `renderCommandResult`.
 - Deployment result evidence now reuses `processDefinitionDeploymentTenantIDs` in `cmd/cmd_views_deploy.go` to populate resolved tenant IDs from returned deployment resources without changing deployment payloads or keys-only streams.
 - PI dry-run domain plans now carry `domain.TenantEvidence`; `internal/services/processinstance.DryRunCancelOrDeletePlan` fills it from already-loaded traversal chains, preferring any known tenant metadata for each affected key and counting legacy key-only targets as unknown.
+- The public process facade mirrors dry-run plan evidence with `process.TenantEvidence` on `DryRunPIKeyExpansion`; `fromDomainTenantEvidence` copies the resolved tenant ID slice and keeps command-owned operation semantics separate from service evidence.
 
 ## Decisions
 - Phase 1 setup was treated as the first work unit because T001 was the first incomplete task and Phase 2 depends on it.
@@ -30,6 +31,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 8 completed the deploy half of US2 by pairing T017 with T019; T021 remains open because run structured results are not implemented yet.
 - Iteration 9 completed the run half of US2 by pairing T018 with T020-T022; deploy and run creation contexts are now both validated before US3 starts.
 - Iteration 10 paired T023 with T027 so service tests for PI dry-run tenant evidence were committed only after the domain/service implementation passed.
+- Iteration 11 paired T024 with T028 so PI facade tests for plan evidence and slice isolation were committed only after public model/conversion wiring passed.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.
@@ -66,6 +68,9 @@ Started: 2026-08-29T12:20:03Z
 - `go test ./internal/domain ./internal/services/common ./internal/services/processinstance ./c8volt/process -count=1`
 - `go test ./internal/services/processinstance/... -count=1`
 - `go test ./internal/domain ./c8volt/tenant ./internal/services/common ./cmd -count=1`
+- `go test ./c8volt/process -run 'TestClient_DryRunCancelOrDeletePlan_(ReturnsStructuredExpansion|MapsTenantEvidenceCopy)|TestDryRunPIKeyExpansionConversionCopiesTenantEvidence|TestClient_PlanProcessInstanceMutationPages_DelegatesSearchAndExpansion' -count=1`
+- `go test ./c8volt/process -count=1`
+- `go test ./internal/domain ./internal/services/common ./internal/services/processinstance ./c8volt/process -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
@@ -73,4 +78,4 @@ Started: 2026-08-29T12:20:03Z
 - Do not render destructive cancel selector tenant context to stdout; the progress contract reserves stdout for command results and keeps compact progress on stderr.
 
 ## Current Handoff
-- Continue Phase 5 / US3 at T024, adding facade conversion tests for PI plan tenant evidence and slice-copy isolation in `c8volt/process/client_test.go` and `c8volt/process/model_test.go`; then implement T028 public model/conversion wiring before moving to later US3 command surfaces.
+- Continue Phase 5 / US3 at T025, adding explicit-key, known/unknown resource tenant, mismatch, and unchanged `IgnoreTenant` command tests for PI cancel/delete/resolve/update; then implement T029 and T030 command wiring without changing backend authorization or adding enrichment calls.

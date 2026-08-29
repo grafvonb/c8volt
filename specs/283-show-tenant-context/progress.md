@@ -243,3 +243,26 @@ Started: 2026-08-29 14:20:03
 - Passed: `go test ./internal/services/processinstance/... -count=1`.
 - Passed: `git diff --check`.
 ---
+---
+## Iteration 11 - 2026-08-29 15:30
+**Work Unit**: Phase 5 US3 process facade tenant evidence
+**Tasks Completed**:
+- [x] T024: Add facade conversion tests for PI plan tenant evidence and slice-copy isolation.
+- [x] T028: Expose PI plan tenant evidence through public models and mechanical facade conversion.
+**Tasks Remaining in Work Unit**: US3 remains: T025-T026 and T029-T033.
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/process/api.go
+- c8volt/process/convert.go
+- c8volt/process/client_test.go
+- c8volt/process/model_test.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- PI facade dry-run plans now expose service-resolved tenant evidence separately from command-owned tenant semantics, with copied resolved-tenant slices.
+- Passed: `go test ./c8volt/process -run 'TestClient_DryRunCancelOrDeletePlan_(ReturnsStructuredExpansion|MapsTenantEvidenceCopy)|TestDryRunPIKeyExpansionConversionCopiesTenantEvidence|TestClient_PlanProcessInstanceMutationPages_DelegatesSearchAndExpansion' -count=1`.
+- Passed: `go test ./c8volt/process -count=1`.
+- Passed: `go test ./internal/domain ./internal/services/common ./internal/services/processinstance ./c8volt/process -count=1`.
+- Passed: `git diff --check`.
+---
