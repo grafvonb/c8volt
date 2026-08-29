@@ -18,7 +18,7 @@
 
 **Purpose**: Establish persistent implementation tracking for Ralph work units.
 
-- [ ] T001 Create `specs/283-show-tenant-context/progress.md` with artifact links, work-unit status, validation results, and codebase-pattern sections required by `specs/ralph-implementation-rules.md`
+- [x] T001 Create `specs/283-show-tenant-context/progress.md` with artifact links, work-unit status, validation results, and codebase-pattern sections required by `specs/ralph-implementation-rules.md`
 
 ---
 
