@@ -124,3 +124,21 @@ Started: 2026-08-29 14:20:03
 **Learnings**:
 - Cancel selector tenant context must render before dry-run preview or confirmation while preserving destructive stdout cleanliness by using stderr for non-dry-run search context.
 ---
+---
+## Iteration 6 - 2026-08-29 14:52
+**Work Unit**: Phase 3 US1 delete selector tenant context
+**Tasks Completed**:
+- [x] T011: Add named/empty tenant selector and frozen-scope confirmation tests for delete workflows.
+- [x] T014: Attach discovery-mode tenant context to selector-based delete planning and render it before the frozen-scope confirmation.
+**Tasks Remaining in Work Unit**: US1 remains: T012 and T015-T016.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/delete_processinstance_selector.go
+- cmd/delete_processinstance_selector_test.go
+- cmd/delete_processinstance_test.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Delete selector tenant context mirrors cancel's output routing but renders after aggregate scope freezing for destructive confirmation.
+---

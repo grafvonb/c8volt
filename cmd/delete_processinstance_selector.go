@@ -9,6 +9,7 @@ import (
 
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
@@ -75,6 +76,7 @@ func deleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 		return results, nil
 	}
 	plan := aggregateDeleteSearchPlan(results.DryRunPreviews)
+	renderDeleteSearchTenantContext(cmd, attachDiscoveryTenantContext(cmd, cfg))
 	printDryRunExpansionWarning(cmd, plan)
 	if err := rejectDeletePlanRequiringForce(plan); err != nil {
 		return processInstancePageActionResults{}, err
@@ -110,12 +112,22 @@ func deleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (processInstancePageActionResults, error) {
 	var results processInstancePageActionResults
 	progress, progressSeen := newProcessInstanceMutationProgressReporterWithState(cmd, "delete")
+	tenantCtx := attachDiscoveryTenantContext(cmd, cfg)
+	tenantContextRendered := false
+	renderDiscoveryTenantContext := func() {
+		if tenantContextRendered {
+			return
+		}
+		renderDeleteSearchTenantContext(cmd, tenantCtx)
+		tenantContextRendered = true
+	}
 
 	planned, err := cli.PlanProcessInstanceMutationPages(cmd.Context(), process.ProcessInstanceMutationPlanRequest{
 		SearchRequest: newProcessInstanceSearchRequest(cmd, cfg, filter),
 		Workers:       flagWorkers,
 	}, func(step process.ProcessInstanceMutationPlanStep) (process.ProcessInstanceSearchPageAction, error) {
 		if len(step.RequestedKeys) > 0 {
+			renderDiscoveryTenantContext()
 			result := processInstancePageActionResultFromPlan("delete", step)
 			printProcessInstanceMutationPlanStepFallbackProgress(cmd, "delete", step, progressSeen)
 			if result.DryRunPreview != nil {
@@ -156,6 +168,21 @@ func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, c
 		renderOutputLine(cmd, "found: %d", 0)
 	}
 	return results, nil
+}
+
+// renderDeleteSearchTenantContext keeps preview scope visible while preserving
+// the destructive search progress contract that reserves stdout for results.
+func renderDeleteSearchTenantContext(cmd *cobra.Command, ctx tenant.Context) {
+	if flagDryRun {
+		renderTenantContext(cmd, ctx)
+		return
+	}
+	if flagCmdAutomation || !shouldRenderTenantContextHuman(cmd, ctx) {
+		return
+	}
+	if line := tenantContextPrimaryHumanLine(ctx); line != "" {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), line)
+	}
 }
 
 // planDeleteProcessInstanceSearchPagesForMutation records every selected

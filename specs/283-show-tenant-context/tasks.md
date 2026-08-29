@@ -55,13 +55,13 @@
 ### Tests for User Story 1
 
 - [x] T010 [P] [US1] Add failing named/empty tenant selector and pre-confirmation ordering tests for cancel workflows in `cmd/cancel_processinstance_selector_test.go` and `cmd/cancel_processinstance_test.go`
-- [ ] T011 [P] [US1] Add failing named/empty tenant selector and frozen-scope confirmation tests for delete workflows in `cmd/delete_processinstance_selector_test.go` and `cmd/delete_processinstance_test.go`
+- [x] T011 [P] [US1] Add failing named/empty tenant selector and frozen-scope confirmation tests for delete workflows in `cmd/delete_processinstance_selector_test.go` and `cmd/delete_processinstance_test.go`
 - [ ] T012 [P] [US1] Add failing human, JSON, quiet, and keys-only discovery-context tests for process-instance plan views in `cmd/cmd_views_processinstance_dryrun_test.go` and `cmd/processinstance_mutation_progress_test.go`
 
 ### Implementation for User Story 1
 
 - [x] T013 [US1] Attach discovery-mode tenant context to selector-based cancel planning and render it before preview or continuation confirmation in `cmd/cancel_processinstance_selector.go` and `cmd/cancel_processinstance.go`
-- [ ] T014 [US1] Attach discovery-mode tenant context to selector-based delete planning and render it before the frozen-scope confirmation in `cmd/delete_processinstance_selector.go` and `cmd/delete_processinstance.go`
+- [x] T014 [US1] Attach discovery-mode tenant context to selector-based delete planning and render it before the frozen-scope confirmation in `cmd/delete_processinstance_selector.go` and `cmd/delete_processinstance.go`
 - [ ] T015 [US1] Carry discovery context through shared process-instance dry-run/progress views without changing candidate counts or stdout contracts in `cmd/cmd_views_processinstance_dryrun.go` and `cmd/processinstance_mutation_progress.go`
 - [ ] T016 [US1] Run targeted process-instance selector and dry-run tests for the US1 independent criteria and record the commands and results in `specs/283-show-tenant-context/progress.md`
 

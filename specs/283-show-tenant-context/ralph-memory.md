@@ -20,6 +20,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 3 paired T003 with T006 because the accumulator tests can only be completed when the service helper passes them.
 - Iteration 4 completed the remaining Phase 2 foundation by pairing T004 renderer/envelope tests with T007/T008 CLI implementation and T009 focused validation.
 - Iteration 5 paired T010 with T013 so cancel selector tests and implementation were validated together without committing failing tests.
+- Iteration 6 paired T011 with T014 so delete selector tests and implementation were validated together without committing failing tests.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.
@@ -27,6 +28,7 @@ Started: 2026-08-29T12:20:03Z
 - `TenantEvidenceSnapshot` carries unexported per-target state for merge dedupe; merge snapshots produced by `TenantEvidenceAccumulator.Snapshot()` instead of constructing snapshots manually.
 - The existing generic `renderHumanWarningLine` strips a leading `WARNING:` for older messages; tenant warning rendering uses a tenant-specific wrapper around `renderHumanLogLine` so the feature's exact human contract remains visible.
 - Destructive cancel search progress tests expect stdout to stay empty; route pre-confirmation tenant context to `cmd.ErrOrStderr()` on non-dry-run selector cancellation.
+- Destructive delete search also freezes all page-level plans before one aggregate confirmation; render the discovery tenant context after freezing the aggregate scope and before that confirmation, routed to stderr for non-dry-run output.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -38,6 +40,9 @@ Started: 2026-08-29T12:20:03Z
 - `go test ./cmd -run 'Test(NewTenantContexts|WithTenantContextEvidence|RenderTenantContext|RenderSucceededResult_.*TenantContext)' -count=1`
 - `go test ./internal/domain ./c8volt/tenant ./internal/services/common ./cmd -run 'Test.*TenantContext|Test.*Context|TestTenantEvidenceAccumulator|Test.*CommandContract|TestRenderSucceededResult_.*TenantContext' -count=1`
 - `go test ./cmd -run 'TestCancelProcessInstance(DryRun_SearchTenantContextPrecedesPreview|Search_TenantContextPrecedesConfirmation)' -count=1`
+- `go test ./cmd -run 'TestDeleteProcessInstance(DryRun_SearchTenantContextPrecedesPreview|Search_TenantContextPrecedesConfirmation)' -count=1`
+- `go test ./cmd -run 'TestDeleteProcessInstance' -count=1`
+- `go test ./cmd -run 'Test(Cancel|Delete)ProcessInstance' -count=1`
 - `go test ./cmd -run 'TestCancelProcessInstance' -count=1`
 - `go test ./cmd -count=1`
 - `go test ./internal/domain ./c8volt/tenant ./internal/services/common ./cmd -count=1`
@@ -48,4 +53,4 @@ Started: 2026-08-29T12:20:03Z
 - Do not render destructive cancel selector tenant context to stdout; the progress contract reserves stdout for command results and keeps compact progress on stderr.
 
 ## Current Handoff
-- Next iteration should continue Phase 3 / US1 at T011, adding named/empty tenant selector and frozen-scope confirmation tests for delete workflows in `cmd/delete_processinstance_selector_test.go` and `cmd/delete_processinstance_test.go`; T012 and T014-T016 remain open in the same story.
+- Next iteration should continue Phase 3 / US1 at T012, adding human, JSON, quiet, and keys-only discovery-context tests for process-instance plan views in `cmd/cmd_views_processinstance_dryrun_test.go` and `cmd/processinstance_mutation_progress_test.go`; T015 and T016 remain open in the same story.
