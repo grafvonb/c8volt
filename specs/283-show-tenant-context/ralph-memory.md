@@ -34,6 +34,8 @@ Started: 2026-08-29T12:20:03Z
 - Resource facade conversion for PD delete plans copies nested PI `TenantEvidence.Targets`; public aggregation can now dedupe nested known and unknown targets exactly instead of falling back to summary counts.
 - Configuration diagnostics now attach configuration-mode tenant context: `config show` embeds it in sanitized YAML via `config.ToSanitizedYAMLWithTenantContext`, `config validate` renders the semantic line before the validation outcome, and `config test-connection` renders it in human mode while including the same object at the raw JSON root.
 - Keep `config` package YAML tests free of imports from `c8volt/tenant`; use plain serialized maps there to avoid a test-only import cycle through the public tenant facade.
+- Ops progress preflight and audit report models now carry optional nested tenant context pointers; public ops reports use `*tenant.Context`, while `c8volt/foptions` uses a local progress-only mirror to avoid the existing `tenant -> foptions` import cycle.
+- Ops facade conversion owns local field-for-field tenant-context copy helpers because `c8volt/tenant` conversion helpers are unexported; resolved tenant IDs and warnings must be copied when crossing both ops model and progress callback boundaries.
 
 ## Decisions
 - Phase 1 setup was treated as the first work unit because T001 was the first incomplete task and Phase 2 depends on it.
@@ -53,6 +55,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 15 completed T035 only; supporting PD preview aggregation and command attachment were added so the new PD tests pass, but T036-T039 remain open for the rest of US4 validation and implementation.
 - Iteration 16 completed the remaining US4 tasks T036-T039; PI destructive confirmations and PD facade conversion now preserve and render cross-tenant plus unknown metadata warnings from frozen evidence.
 - Iteration 17 paired T040 with T044 so configuration diagnostic tests were committed only after sanitized YAML, validate, and test-connection configuration context passed.
+- Iteration 18 paired T041 with T045 so ops model/conversion tests were committed only after optional nested tenant context was wired through domain reports, public reports, ops preflight, and progress callbacks.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.
@@ -115,4 +118,4 @@ Started: 2026-08-29T12:20:03Z
 - Do not render destructive cancel selector tenant context to stdout; the progress contract reserves stdout for command results and keeps compact progress on stderr.
 
 ## Current Handoff
-- Continue Phase 7 / US5 at T041 by adding failing internal/public ops model and conversion tests for the common nested tenant-context object before implementing T045.
+- Continue Phase 7 / US5 at T042 by adding failing no-extra-call tenant aggregation tests for retention, all-definition purge, orphan purge, incident purge, repair, and smoke test services before implementing T046.

@@ -9,6 +9,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
 )
@@ -335,6 +336,7 @@ type RepairAuditReport struct {
 	CamundaVersion   string                         `json:"camundaVersion,omitempty"`
 	ProfileIdentity  string                         `json:"profileIdentity,omitempty"`
 	TenantID         string                         `json:"tenantId,omitempty"`
+	TenantContext    *tenant.Context                `json:"tenantContext,omitempty"`
 	Request          RepairRequest                  `json:"request,omitempty"`
 	FrozenSet        RepairFrozenSet                `json:"frozenSet,omitempty"`
 	Plan             []RepairPlanItem               `json:"plan,omitempty"`
@@ -534,6 +536,7 @@ type SmokeTestAuditReport struct {
 	CamundaVersion   string                    `json:"camundaVersion,omitempty"`
 	ProfileIdentity  string                    `json:"profileIdentity,omitempty"`
 	TenantID         string                    `json:"tenantId,omitempty"`
+	TenantContext    *tenant.Context           `json:"tenantContext,omitempty"`
 	Fixture          EmbeddedSmokeTestFixture  `json:"fixture,omitempty"`
 	Plan             SmokeTestPlan             `json:"plan,omitempty"`
 	Deployment       SmokeTestDeploymentResult `json:"deployment,omitempty"`
@@ -627,6 +630,7 @@ type OrphanPurgeReport struct {
 	C8voltVersion    string                        `json:"c8voltVersion,omitempty"`
 	CamundaVersion   string                        `json:"camundaVersion,omitempty"`
 	ProfileIdentity  string                        `json:"profileIdentity,omitempty"`
+	TenantContext    *tenant.Context               `json:"tenantContext,omitempty"`
 	SelectionFilters process.ProcessInstanceFilter `json:"selectionFilters,omitempty"`
 	Discovery        OrphanDiscoveryResult         `json:"discovery,omitempty"`
 	DeletionPlan     DeletionPlan                  `json:"deletionPlan,omitempty"`
@@ -731,6 +735,7 @@ type RetentionAuditReport struct {
 	CamundaVersion         string                        `json:"camundaVersion,omitempty"`
 	ProfileIdentity        string                        `json:"profileIdentity,omitempty"`
 	TenantID               string                        `json:"tenantId,omitempty"`
+	TenantContext          *tenant.Context               `json:"tenantContext,omitempty"`
 	RetentionDays          int                           `json:"retentionDays"`
 	DerivedEndDateBoundary string                        `json:"derivedEndDateBoundary,omitempty"`
 	SelectionFilters       process.ProcessInstanceFilter `json:"selectionFilters,omitempty"`
@@ -866,6 +871,7 @@ type IncidentPurgeReport struct {
 	CamundaVersion   string                        `json:"camundaVersion,omitempty"`
 	ProfileIdentity  string                        `json:"profileIdentity,omitempty"`
 	TenantID         string                        `json:"tenantId,omitempty"`
+	TenantContext    *tenant.Context               `json:"tenantContext,omitempty"`
 	SelectionFilters incident.Filter               `json:"selectionFilters,omitempty"`
 	Discovery        IncidentDiscoveryResult       `json:"discovery,omitempty"`
 	DeletePlan       IncidentPurgeDeletePlan       `json:"deletePlan,omitempty"`
@@ -1005,6 +1011,7 @@ type AllProcessDefinitionsPurgeReport struct {
 	CamundaVersion   string                                   `json:"camundaVersion,omitempty"`
 	ProfileIdentity  string                                   `json:"profileIdentity,omitempty"`
 	TenantID         string                                   `json:"tenantId,omitempty"`
+	TenantContext    *tenant.Context                          `json:"tenantContext,omitempty"`
 	SelectionFilters ProcessDefinitionSelection               `json:"selectionFilters,omitempty"`
 	Discovery        ProcessDefinitionDiscoveryResult         `json:"discovery,omitempty"`
 	DeletePlan       AllProcessDefinitionsPurgeDeletePlan     `json:"deletePlan,omitempty"`

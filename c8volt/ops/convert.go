@@ -4,9 +4,12 @@
 package ops
 
 import (
+	"slices"
+
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
@@ -273,6 +276,7 @@ func fromDomainPreflightScope(x d.OpsPreflightScope) PreflightScope {
 		Command:              x.Command,
 		CoreResource:         x.CoreResource,
 		SelectorSummary:      x.SelectorSummary,
+		TenantContext:        fromDomainTenantContextPtr(x.TenantContext),
 		Total:                x.Total,
 		TotalKind:            TotalCertainty(x.TotalKind),
 		PageSize:             x.PageSize,
@@ -300,6 +304,7 @@ func toDomainPreflightScope(x PreflightScope) d.OpsPreflightScope {
 		Command:              x.Command,
 		CoreResource:         x.CoreResource,
 		SelectorSummary:      x.SelectorSummary,
+		TenantContext:        toDomainTenantContextPtr(x.TenantContext),
 		Total:                x.Total,
 		TotalKind:            d.OpsTotalCertainty(x.TotalKind),
 		PageSize:             x.PageSize,
@@ -329,6 +334,54 @@ func toDomainConsequenceSummary(x ConsequenceSummary) d.OpsConsequenceSummary {
 		RiskSummary:      x.RiskSummary,
 		ConfirmationText: x.ConfirmationText,
 	}
+}
+
+// fromDomainTenantContextPtr maps optional tenant semantics into public ops
+// models while copying mutable evidence slices.
+func fromDomainTenantContextPtr(ctx *d.TenantContext) *tenant.Context {
+	if ctx == nil {
+		return nil
+	}
+	out := tenant.Context{
+		Mode:               tenant.ContextMode(ctx.Mode),
+		Filter:             tenant.ContextFilter(ctx.Filter),
+		ConfiguredTenantID: ctx.ConfiguredTenantID,
+		TargetTenantID:     ctx.TargetTenantID,
+		ResolvedTenantIDs:  slices.Clone(ctx.ResolvedTenantIDs),
+		UnknownTargetCount: ctx.UnknownTargetCount,
+		CrossTenant:        ctx.CrossTenant,
+		Warnings: toolx.MapSlice(ctx.Warnings, func(w d.TenantContextWarning) tenant.ContextWarning {
+			return tenant.ContextWarning{
+				Code:    tenant.ContextWarningCode(w.Code),
+				Message: w.Message,
+			}
+		}),
+	}
+	return &out
+}
+
+// toDomainTenantContextPtr maps optional public tenant semantics into service
+// callback payloads while copying mutable evidence slices.
+func toDomainTenantContextPtr(ctx *tenant.Context) *d.TenantContext {
+	if ctx == nil {
+		return nil
+	}
+	out := d.TenantContext{
+		Mode:               d.TenantContextMode(ctx.Mode),
+		Filter:             d.TenantContextFilter(ctx.Filter),
+		ConfiguredTenantID: ctx.ConfiguredTenantID,
+		TargetTenantID:     ctx.TargetTenantID,
+		ResolvedTenantIDs:  slices.Clone(ctx.ResolvedTenantIDs),
+		UnknownTargetCount: ctx.UnknownTargetCount,
+		CrossTenant:        ctx.CrossTenant,
+		Warnings: toolx.MapSlice(ctx.Warnings, func(w tenant.ContextWarning) d.TenantContextWarning {
+			return d.TenantContextWarning{
+				Code:    d.TenantContextWarningCode(w.Code),
+				Message: w.Message,
+			}
+		}),
+	}
+	return &out
 }
 
 // fromDomainPageProgressPtr maps optional page progress while preserving nil as absent.
@@ -715,6 +768,7 @@ func fromDomainSmokeTestAuditReport(x d.SmokeTestAuditReport) SmokeTestAuditRepo
 		CamundaVersion:   x.CamundaVersion,
 		ProfileIdentity:  x.ProfileIdentity,
 		TenantID:         x.TenantID,
+		TenantContext:    fromDomainTenantContextPtr(x.TenantContext),
 		Fixture:          fromDomainEmbeddedSmokeTestFixture(x.Fixture),
 		Plan:             fromDomainSmokeTestPlan(x.Plan),
 		Deployment:       fromDomainSmokeTestDeploymentResult(x.Deployment),
@@ -834,6 +888,7 @@ func fromDomainOrphanPurgeReport(x d.OrphanPurgeReport) OrphanPurgeReport {
 		C8voltVersion:    x.C8voltVersion,
 		CamundaVersion:   x.CamundaVersion,
 		ProfileIdentity:  x.ProfileIdentity,
+		TenantContext:    fromDomainTenantContextPtr(x.TenantContext),
 		SelectionFilters: fromDomainProcessInstanceFilter(x.SelectionFilters),
 		Discovery:        fromDomainOrphanDiscoveryResult(x.Discovery),
 		DeletionPlan:     fromDomainDeletionPlan(x.DeletionPlan),
@@ -972,6 +1027,7 @@ func fromDomainRetentionAuditReport(x d.RetentionAuditReport) RetentionAuditRepo
 		CamundaVersion:         x.CamundaVersion,
 		ProfileIdentity:        x.ProfileIdentity,
 		TenantID:               x.TenantID,
+		TenantContext:          fromDomainTenantContextPtr(x.TenantContext),
 		RetentionDays:          x.RetentionDays,
 		DerivedEndDateBoundary: x.DerivedEndDateBoundary,
 		SelectionFilters:       fromDomainProcessInstanceFilter(x.SelectionFilters),
@@ -1156,6 +1212,7 @@ func fromDomainIncidentPurgeReport(x d.IncidentPurgeReport) IncidentPurgeReport 
 		CamundaVersion:   x.CamundaVersion,
 		ProfileIdentity:  x.ProfileIdentity,
 		TenantID:         x.TenantID,
+		TenantContext:    fromDomainTenantContextPtr(x.TenantContext),
 		SelectionFilters: fromDomainIncidentFilter(x.SelectionFilters),
 		Discovery:        fromDomainIncidentDiscoveryResult(x.Discovery),
 		DeletePlan:       fromDomainIncidentPurgeDeletePlan(x.DeletePlan),
@@ -1353,6 +1410,7 @@ func fromDomainRepairAuditReport(x d.OpsRepairAuditReport) RepairAuditReport {
 		CamundaVersion:   x.CamundaVersion,
 		ProfileIdentity:  x.ProfileIdentity,
 		TenantID:         x.TenantID,
+		TenantContext:    fromDomainTenantContextPtr(x.TenantContext),
 		Request:          fromDomainRepairRequest(x.Request),
 		FrozenSet:        fromDomainRepairFrozenSet(x.FrozenSet),
 		Plan:             toolx.MapSlice(x.Plan, fromDomainRepairPlanItem),
@@ -1515,6 +1573,7 @@ func fromDomainAllProcessDefinitionsPurgeReport(x d.AllProcessDefinitionsPurgeRe
 		CamundaVersion:   x.CamundaVersion,
 		ProfileIdentity:  x.ProfileIdentity,
 		TenantID:         x.TenantID,
+		TenantContext:    fromDomainTenantContextPtr(x.TenantContext),
 		SelectionFilters: fromDomainProcessDefinitionSelection(x.SelectionFilters),
 		Discovery:        fromDomainProcessDefinitionDiscoveryResult(x.Discovery),
 		DeletePlan:       fromDomainAllProcessDefinitionsPurgeDeletePlan(x.DeletePlan),

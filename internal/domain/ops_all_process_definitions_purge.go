@@ -92,6 +92,7 @@ type AllProcessDefinitionsPurgeReport struct {
 	CamundaVersion   string
 	ProfileIdentity  string
 	TenantID         string
+	TenantContext    *TenantContext
 	SelectionFilters ProcessDefinitionFilter
 	Discovery        ProcessDefinitionDiscoveryResult
 	DeletePlan       AllProcessDefinitionsPurgeDeletePlan

@@ -87,6 +87,7 @@ type OrphanPurgeReport struct {
 	C8voltVersion    string
 	CamundaVersion   string
 	ProfileIdentity  string
+	TenantContext    *TenantContext
 	SelectionFilters ProcessInstanceFilter
 	Discovery        OrphanDiscoveryResult
 	DeletionPlan     DeletionPlan

@@ -163,6 +163,7 @@ type OpsRepairAuditReport struct {
 	CamundaVersion   string
 	ProfileIdentity  string
 	TenantID         string
+	TenantContext    *TenantContext
 	Request          OpsRepairRequest
 	FrozenSet        OpsRepairFrozenSet
 	Plan             []OpsRepairPlanItem

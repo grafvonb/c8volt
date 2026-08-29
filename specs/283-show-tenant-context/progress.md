@@ -60,7 +60,6 @@ Started: 2026-08-29 14:20:03
 **Learnings**:
 - Domain constructors now enforce the tenant context mode/filter matrix and derive stable warnings while public conversion remains mechanical and slice-safe.
 ---
----
 ## Iteration 3 - 2026-08-29 14:31
 **Work Unit**: Phase 2 foundational tenant evidence accumulator
 **Tasks Completed**:
@@ -452,4 +451,39 @@ Started: 2026-08-29 14:20:03
 - `config` package YAML tests must avoid importing the public tenant facade because that creates a test-only cycle through tenant services.
 - Passed: `go test ./cmd ./config -run 'TestConfig.*(TenantContext|ToSanitizedYAML|Validate|TestConnection)|TestResolveEffectiveConfig_.*Tenant' -count=1`.
 - Passed: `go test ./cmd ./config -count=1`.
+---
+---
+## Iteration 18 - 2026-08-29 16:44
+**Work Unit**: Phase 7 US5 ops model and facade tenant context
+**Tasks Completed**:
+- [x] T041: Add internal/public ops model and conversion tests for the common nested object, copied slices, deprecated `tenantId`, and unfiltered omission.
+- [x] T045: Add tenant context to ops preflight/report domain and public models and map it mechanically across the facade boundary.
+**Tasks Remaining in Work Unit**: US5 remains: T042-T043 and T046-T051.
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/foptions/options.go
+- c8volt/foptions/tenant_context.go
+- c8volt/ops/client_test.go
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- c8volt/ops/model_test.go
+- c8volt/ops/progress_model.go
+- internal/domain/ops_all_process_definitions_purge.go
+- internal/domain/ops_incident_purge.go
+- internal/domain/ops_orphan_purge.go
+- internal/domain/ops_progress.go
+- internal/domain/ops_progress_test.go
+- internal/domain/ops_repair.go
+- internal/domain/ops_retention_policy.go
+- internal/domain/ops_smoke_test_model.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Ops preflight and affected audit report models now expose optional nested tenant context without populating legacy `tenantId` for unfiltered reports.
+- `c8volt/foptions` cannot import `c8volt/tenant`; progress callbacks use a local same-shape tenant context mirror to preserve the existing tenant facade import direction.
+- Passed: `go test ./internal/domain ./c8volt/ops ./c8volt/foptions -run 'TestOps.*TenantContext|Test.*TenantContext|TestAuditReports_.*Tenant|TestProgressConversions_CopyTenantContext|TestClientExecuteSmokeTestMapsProgressTenantContext' -count=1`.
+- Passed: `go test ./internal/domain ./c8volt/... -count=1`.
+- Passed: `go test ./internal/services/ops/... ./cmd -count=1`.
+- Passed: `git diff --check`.
 ---

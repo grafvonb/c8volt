@@ -178,6 +178,7 @@ type SmokeTestAuditReport struct {
 	CamundaVersion   string
 	ProfileIdentity  string
 	TenantID         string
+	TenantContext    *TenantContext
 	Fixture          EmbeddedSmokeTestFixture
 	Plan             SmokeTestPlan
 	Deployment       SmokeTestDeploymentResult

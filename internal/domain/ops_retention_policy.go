@@ -90,6 +90,7 @@ type RetentionAuditReport struct {
 	CamundaVersion         string
 	ProfileIdentity        string
 	TenantID               string
+	TenantContext          *TenantContext
 	RetentionDays          int
 	DerivedEndDateBoundary string
 	SelectionFilters       ProcessInstanceFilter

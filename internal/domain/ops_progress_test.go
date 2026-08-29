@@ -4,6 +4,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -48,4 +49,61 @@ func TestNewOpsETASampleWindowOmitsRemainingWhenComplete(t *testing.T) {
 	require.True(t, got.MinimumSamplesMet)
 	require.NotNil(t, got.Rate)
 	require.Nil(t, got.Remaining)
+}
+
+// TestOpsPreflightScope_TenantContextJSONContract verifies progress preflight
+// can carry the same optional nested tenant-context object as final reports.
+func TestOpsPreflightScope_TenantContextJSONContract(t *testing.T) {
+	t.Parallel()
+
+	noContext, err := json.Marshal(OpsPreflightScope{Phase: "preflight"})
+	require.NoError(t, err)
+	require.NotContains(t, string(noContext), "tenantContext")
+
+	ctx, err := NewTenantContext(TenantContextModeDiscovery, TenantContextInput{
+		Filter:             TenantContextFilterNamed,
+		ConfiguredTenantID: "tenant-a",
+		ResolvedTenantIDs:  []string{"tenant-b", "tenant-a"},
+	})
+	require.NoError(t, err)
+
+	withContext, err := json.Marshal(OpsPreflightScope{
+		Phase:         "preflight",
+		TenantContext: &ctx,
+	})
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"phase": "preflight",
+		"consequenceSummary": {},
+		"tenantContext": {
+			"mode": "discovery",
+			"filter": "named",
+			"configuredTenantId": "tenant-a",
+			"resolvedTenantIds": ["tenant-a", "tenant-b"],
+			"unknownTargetCount": 0,
+			"crossTenant": true,
+			"warnings": [
+				{
+					"code": "multiple_tenants",
+					"message": "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b"
+				}
+			]
+		}
+	}`, string(withContext))
+}
+
+// TestOpsAuditReports_CarryTenantContext verifies every affected ops audit
+// report model has a shared optional tenant-context field.
+func TestOpsAuditReports_CarryTenantContext(t *testing.T) {
+	t.Parallel()
+
+	ctx, err := NewDiscoveryTenantContext("")
+	require.NoError(t, err)
+
+	require.Same(t, &ctx, RetentionAuditReport{TenantContext: &ctx}.TenantContext)
+	require.Same(t, &ctx, OrphanPurgeReport{TenantContext: &ctx}.TenantContext)
+	require.Same(t, &ctx, IncidentPurgeReport{TenantContext: &ctx}.TenantContext)
+	require.Same(t, &ctx, AllProcessDefinitionsPurgeReport{TenantContext: &ctx}.TenantContext)
+	require.Same(t, &ctx, OpsRepairAuditReport{TenantContext: &ctx}.TenantContext)
+	require.Same(t, &ctx, SmokeTestAuditReport{TenantContext: &ctx}.TenantContext)
 }

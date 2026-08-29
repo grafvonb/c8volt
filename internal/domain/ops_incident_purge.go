@@ -120,6 +120,7 @@ type IncidentPurgeReport struct {
 	CamundaVersion   string
 	ProfileIdentity  string
 	TenantID         string
+	TenantContext    *TenantContext
 	SelectionFilters IncidentFilter
 	Discovery        IncidentDiscoveryResult
 	DeletePlan       IncidentPurgeDeletePlan

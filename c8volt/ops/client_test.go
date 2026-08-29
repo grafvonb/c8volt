@@ -313,6 +313,47 @@ func TestClientExecuteSmokeTestMapsProgressOption(t *testing.T) {
 	require.Equal(t, &foptions.FrozenScopeProgress{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 1, Total: 2}, gotEvent.FrozenScope)
 }
 
+// TestClientExecuteSmokeTestMapsProgressTenantContext verifies preflight
+// callbacks expose the common tenant context through the public facade.
+func TestClientExecuteSmokeTestMapsProgressTenantContext(t *testing.T) {
+	t.Parallel()
+
+	domainCtx := d.TenantContext{
+		Mode:              d.TenantContextModeCreation,
+		Filter:            d.TenantContextFilterNotApplicable,
+		TargetTenantID:    "<default>",
+		ResolvedTenantIDs: []string{"<default>"},
+	}
+	var gotEvent foptions.ProgressEvent
+	api := stubOpsService{
+		smokeTest: func(_ context.Context, _ d.SmokeTestRequest, opts ...services.CallOption) (d.SmokeTestResult, error) {
+			progress := services.ApplyCallOptions(opts).Progress
+			require.NotNil(t, progress)
+			progress(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindPreflight,
+				Preflight: &d.OpsPreflightScope{
+					Phase:         "preflight",
+					TenantContext: &domainCtx,
+				},
+			})
+			return d.SmokeTestResult{Request: d.SmokeTestRequest{CommandName: "ops execute smoke-test", Count: 1}}, nil
+		},
+	}
+
+	_, err := New(api, slog.Default()).ExecuteSmokeTest(context.Background(), SmokeTestRequest{CommandName: "ops execute smoke-test", Count: 1}, foptions.WithProgress(func(event foptions.ProgressEvent) {
+		gotEvent = event
+	}))
+	require.NoError(t, err)
+	domainCtx.ResolvedTenantIDs[0] = "changed"
+
+	require.Equal(t, foptions.ProgressEventKindPreflight, gotEvent.Kind)
+	require.NotNil(t, gotEvent.Preflight.TenantContext)
+	require.Equal(t, foptions.TenantContextModeCreation, gotEvent.Preflight.TenantContext.Mode)
+	require.Equal(t, foptions.TenantContextFilterNotApplicable, gotEvent.Preflight.TenantContext.Filter)
+	require.Equal(t, "<default>", gotEvent.Preflight.TenantContext.TargetTenantID)
+	require.Equal(t, []string{"<default>"}, gotEvent.Preflight.TenantContext.ResolvedTenantIDs)
+}
+
 // TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary verifies the slow-analysis facade stays thin.
 func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing.T) {
 	t.Parallel()

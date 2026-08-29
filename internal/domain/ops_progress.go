@@ -110,6 +110,7 @@ type OpsPreflightScope struct {
 	Command              string                `json:"command,omitempty"`
 	CoreResource         string                `json:"coreResource,omitempty"`
 	SelectorSummary      string                `json:"selectorSummary,omitempty"`
+	TenantContext        *TenantContext        `json:"tenantContext,omitempty"`
 	Total                *int64                `json:"total,omitempty"`
 	TotalKind            OpsTotalCertainty     `json:"totalKind,omitempty"`
 	PageSize             int32                 `json:"pageSize,omitempty"`
