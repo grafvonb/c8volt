@@ -173,3 +173,28 @@ Started: 2026-08-29 14:20:03
 - Passed: `go test ./cmd -count=1`.
 - Passed: `git diff --check`.
 ---
+---
+## Iteration 8 - 2026-08-29 15:10
+**Work Unit**: Phase 4 US2 deploy creation target context
+**Tasks Completed**:
+- [x] T017: Add named/default creation-context, pre-call ordering, non-interactive, JSON-envelope, and quiet tests for deployment.
+- [x] T019: Attach and render creation-mode context before process-definition deployment, including embedded deployment reuse.
+**Tasks Remaining in Work Unit**: US2 remains: T018 and T020-T022. T021 is partially covered for deploy structured output but remains open until run structured output is implemented and validated.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/deploy_processdefinition.go
+- cmd/embed_deploy.go
+- cmd/cmd_views_deploy.go
+- cmd/deploy_test.go
+- cmd/embed_test.go
+- cmd/cmd_views_deploy_test.go
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Deploy and embedded deploy now render creation target context before the deployment POST and attach the same context for shared JSON envelopes without changing keys-only output.
+- Passed: `go test ./cmd -run 'TestDeployProcessDefinitionCommand_(CreationContextPrecedesDeploymentRequest|JSONEnvelopeIncludesCreationContext|QuietSuppressesCreationContext)|TestListProcessDefinitionDeploymentsView_(JSONEnvelopeIncludesAttachedTenantContext|KeysOnlySuppressesTenantContext)|TestEmbedDeployCommand_CreationContextPrecedesDeploymentRequest' -count=1`.
+- Passed: `go test ./cmd -run 'Test.*(Deploy|Embed)' -count=1`.
+- Passed: `go test ./cmd -count=1`.
+- Passed: `git diff --check`.
+---

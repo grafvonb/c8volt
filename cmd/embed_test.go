@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"mime"
 	"net/http"
@@ -201,6 +202,56 @@ func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87(t *testing.T) {
 	require.True(t, sawRun)
 }
 
+func TestEmbedDeployCommand_CreationContextPrecedesDeploymentRequest(t *testing.T) {
+	resetEmbedCommandStateForTest()
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	var sawDeploy bool
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
+			sawDeploy = true
+			require.Contains(t, stderr.String(), "Create in tenant: tenant-a")
+			require.NoError(t, r.ParseMultipartForm(1<<20))
+			require.Equal(t, "tenant-a", r.FormValue("tenantId"))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"deploymentKey":"deployment-188","tenantId":"tenant-a","deployments":[{"processDefinition":{"processDefinitionId":"C89_MultipleSubProcessesParent","processDefinitionKey":"188001","processDefinitionVersion":1,"resourceName":"processdefinitions/C89_MultipleSubProcessesParent.bpmn","tenantId":"tenant-a"}}]}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetOut(stdout)
+	root.SetErr(stderr)
+	root.SetArgs([]string{
+		"--config", cfgPath,
+		"embed", "deploy",
+		"--file", "processdefinitions/C89_MultipleSubProcessesParent.bpmn",
+		"--no-wait",
+	})
+
+	_, err := root.ExecuteC()
+	require.NoError(t, err)
+	require.True(t, sawDeploy)
+	require.Empty(t, stdout.String())
+	require.Contains(t, stderr.String(), "Create in tenant: tenant-a")
+	require.Less(t, strings.Index(stderr.String(), "Create in tenant: tenant-a"), strings.Index(stderr.String(), "pd deploy done"))
+}
+
 func TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnlyHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -277,6 +328,11 @@ func resetEmbedCommandStateForTest() {
 	flagEmbedExportOut = "."
 	flagEmbedExportAll = false
 	flagForce = false
+	flagNoWait = false
+	flagViewAsJson = false
+	flagViewKeysOnly = false
+	flagQuiet = false
+	resetDeployCommandContextForTest(Root())
 }
 
 // Helper-process entrypoint for embed export selection validation.

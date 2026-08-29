@@ -15,6 +15,8 @@ Started: 2026-08-29T12:20:03Z
 - `tenantContextPrimaryHumanLine` centralizes the first human tenant-context line so workflows can choose stdout/stderr routing without changing the exact contract wording.
 - Shared process-instance dry-run summaries now render an attached discovery tenant context before human plan output, include it through the shared JSON envelope, suppress it in quiet mode, and keep keys-only summaries to affected keys only.
 - Process-instance mutation progress can render an attached discovery context before verbose preflight scope on stderr; selector-specific renderers mark the context as already emitted to avoid duplicate human lines.
+- Deploy and embedded deploy attach creation-mode context after local file/fixture validation and before `DeployProcessDefinition`; human mode renders `Create in tenant: ...` before the POST, while JSON envelopes receive the attached context through `renderCommandResult`.
+- Deployment result evidence now reuses `processDefinitionDeploymentTenantIDs` in `cmd/cmd_views_deploy.go` to populate resolved tenant IDs from returned deployment resources without changing deployment payloads or keys-only streams.
 
 ## Decisions
 - Phase 1 setup was treated as the first work unit because T001 was the first incomplete task and Phase 2 depends on it.
@@ -24,6 +26,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 5 paired T010 with T013 so cancel selector tests and implementation were validated together without committing failing tests.
 - Iteration 6 paired T011 with T014 so delete selector tests and implementation were validated together without committing failing tests.
 - Iteration 7 completed the remaining US1 work by pairing T012 with T015 and T016, validating shared dry-run/progress output modes plus cancel/delete selector targets.
+- Iteration 8 completed the deploy half of US2 by pairing T017 with T019; T021 remains open because run structured results are not implemented yet.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.
@@ -33,6 +36,7 @@ Started: 2026-08-29T12:20:03Z
 - Destructive cancel search progress tests expect stdout to stay empty; route pre-confirmation tenant context to `cmd.ErrOrStderr()` on non-dry-run selector cancellation.
 - Destructive delete search also freezes all page-level plans before one aggregate confirmation; render the discovery tenant context after freezing the aggregate scope and before that confirmation, routed to stderr for non-dry-run output.
 - `resetProcessInstanceCommandGlobals()` does not reset `flagQuiet`; tests that set quiet must restore it explicitly or use a helper that does.
+- Root command instances retain Cobra context values across in-process tests, including the tenant-context rendered marker; deploy/embed tests clear command contexts before asserting pre-call rendering order.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -48,6 +52,8 @@ Started: 2026-08-29T12:20:03Z
 - `go test ./cmd -run 'TestDeleteProcessInstance' -count=1`
 - `go test ./cmd -run 'Test(Cancel|Delete)ProcessInstance' -count=1`
 - `go test ./cmd -run 'Test.*(DryRun.*Tenant|MutationProgress|ProcessInstanceDryRunSummary)' -count=1`
+- `go test ./cmd -run 'TestDeployProcessDefinitionCommand_(CreationContextPrecedesDeploymentRequest|JSONEnvelopeIncludesCreationContext|QuietSuppressesCreationContext)|TestListProcessDefinitionDeploymentsView_(JSONEnvelopeIncludesAttachedTenantContext|KeysOnlySuppressesTenantContext)|TestEmbedDeployCommand_CreationContextPrecedesDeploymentRequest' -count=1`
+- `go test ./cmd -run 'Test.*(Deploy|Embed)' -count=1`
 - `go test ./cmd -run 'TestCancelProcessInstance' -count=1`
 - `go test ./cmd -count=1`
 - `go test ./internal/domain ./c8volt/tenant ./internal/services/common ./cmd -count=1`
@@ -58,4 +64,4 @@ Started: 2026-08-29T12:20:03Z
 - Do not render destructive cancel selector tenant context to stdout; the progress contract reserves stdout for command results and keeps compact progress on stderr.
 
 ## Current Handoff
-- US1 is complete. Next iteration should start Phase 4 / US2 at T017, adding deployment creation-context tests in `cmd/deploy_test.go` and `cmd/cmd_views_deploy_test.go`; T018-T022 remain open in the same story.
+- Continue Phase 4 / US2 at T018, adding run process-instance creation-context tests in `cmd/run_test.go` and `cmd/cmd_deploy_run_data_test.go`; T020-T022 remain open, and T021 must finish the run side before it can be marked complete.

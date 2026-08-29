@@ -40,12 +40,15 @@ var deployProcessDefinitionCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("collecting process definition(s): %w", err))
 		}
+		tenantCtx := attachCreationTenantContext(cmd, cfg)
+		renderTenantContext(cmd, tenantCtx)
 		log.Debug(fmt.Sprintf("deploying pd; tenant %s", cfg.App.ViewTenant()))
 		opts := collectOptions()
 		pdds, err := cli.DeployProcessDefinition(cmd.Context(), res, opts...)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("deploying process definition(s): %w", err))
 		}
+		attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, processDefinitionDeploymentTenantIDs(pdds), 0))
 		if err := renderCommandResult(cmd, pdds); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render deployment result: %w", err))
 		}

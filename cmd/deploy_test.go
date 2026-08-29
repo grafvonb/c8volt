@@ -5,10 +5,12 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -171,6 +173,181 @@ func TestDeployProcessDefinitionCommand_V89NoWait(t *testing.T) {
 	require.Len(t, payload, 1)
 }
 
+func TestDeployProcessDefinitionCommand_CreationContextPrecedesDeploymentRequest(t *testing.T) {
+	tests := []struct {
+		name       string
+		configYAML func(baseURL string) string
+		wantLine   string
+		wantTenant string
+	}{
+		{
+			name: "named target",
+			configYAML: func(baseURL string) string {
+				return `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: ` + baseURL + `
+`
+			},
+			wantLine:   "Create in tenant: tenant-a",
+			wantTenant: "tenant-a",
+		},
+		{
+			name: "default target",
+			configYAML: func(baseURL string) string {
+				return `app:
+  camunda_version: "8.9"
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: ` + baseURL + `
+`
+			},
+			wantLine:   "Create in tenant: <default>",
+			wantTenant: "<default>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetDeployCommandStateForTest()
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			var sawDeploy bool
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch {
+				case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
+					sawDeploy = true
+					require.Contains(t, stderr.String(), tt.wantLine)
+					require.NoError(t, r.ParseMultipartForm(1<<20))
+					require.Equal(t, tt.wantTenant, r.FormValue("tenantId"))
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"deploymentKey":"deployment-123","tenantId":"` + tt.wantTenant + `","deployments":[{"processDefinition":{"processDefinitionId":"order-process","processDefinitionKey":"2251799813685255","processDefinitionVersion":3,"resourceName":"order-process.bpmn","tenantId":"` + tt.wantTenant + `"}}]}`))
+				default:
+					t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+				}
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeRawTestConfig(t, tt.configYAML(srv.URL))
+			bpmnPath := writeTempFile(t, "order-process.bpmn", []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
+  <bpmn:process id="order-process" isExecutable="true" />
+</bpmn:definitions>`))
+
+			root := Root()
+			resetCommandTreeFlags(root)
+			root.SetOut(stdout)
+			root.SetErr(stderr)
+			root.SetArgs([]string{"--config", cfgPath, "deploy", "process-definition", "--file", bpmnPath, "--no-wait"})
+
+			_, err := root.ExecuteC()
+			require.NoError(t, err)
+			require.True(t, sawDeploy)
+			require.Empty(t, stdout.String())
+			require.Contains(t, stderr.String(), tt.wantLine)
+			require.Less(t, strings.Index(stderr.String(), tt.wantLine), strings.Index(stderr.String(), "pd deploy done"))
+		})
+	}
+}
+
+func TestDeployProcessDefinitionCommand_JSONEnvelopeIncludesCreationContext(t *testing.T) {
+	resetDeployCommandStateForTest()
+	var sawDeploy bool
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
+			sawDeploy = true
+			require.NoError(t, r.ParseMultipartForm(1<<20))
+			require.Equal(t, "tenant-a", r.FormValue("tenantId"))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"deploymentKey":"deployment-123","tenantId":"tenant-a","deployments":[{"processDefinition":{"processDefinitionId":"order-process","processDefinitionKey":"2251799813685255","processDefinitionVersion":3,"resourceName":"order-process.bpmn","tenantId":"tenant-a"}}]}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+	bpmnPath := writeTempFile(t, "order-process.bpmn", []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
+  <bpmn:process id="order-process" isExecutable="true" />
+</bpmn:definitions>`))
+
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t,
+		"--config", cfgPath,
+		"--automation",
+		"--json",
+		"deploy", "process-definition",
+		"--file", bpmnPath,
+		"--no-wait",
+	)
+
+	require.True(t, sawDeploy)
+	require.NotContains(t, stderr, "Create in tenant:")
+	require.NotContains(t, stdout, "Create in tenant:")
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	require.Equal(t, string(OutcomeAccepted), got["outcome"])
+	tenantContext := requireJSONObject(t, got["tenantContext"])
+	require.Equal(t, "creation", tenantContext["mode"])
+	require.Equal(t, "not_applicable", tenantContext["filter"])
+	require.Equal(t, "tenant-a", tenantContext["targetTenantId"])
+	require.Equal(t, []any{"tenant-a"}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+	requireJSONItems(t, got["payload"], 1)
+	require.Empty(t, tenantContext["warnings"])
+}
+
+func TestDeployProcessDefinitionCommand_QuietSuppressesCreationContext(t *testing.T) {
+	resetDeployCommandStateForTest()
+	var sawDeploy bool
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
+			sawDeploy = true
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"deploymentKey":"deployment-123","tenantId":"<default>","deployments":[{"processDefinition":{"processDefinitionId":"order-process","processDefinitionKey":"2251799813685255","processDefinitionVersion":3,"resourceName":"order-process.bpmn","tenantId":"<default>"}}]}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+	bpmnPath := writeTempFile(t, "order-process.bpmn", []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
+  <bpmn:process id="order-process" isExecutable="true" />
+</bpmn:definitions>`))
+
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t,
+		"--config", cfgPath,
+		"--quiet",
+		"deploy", "process-definition",
+		"--file", bpmnPath,
+		"--no-wait",
+	)
+
+	require.True(t, sawDeploy)
+	require.Empty(t, stdout)
+	require.NotContains(t, stderr, "Create in tenant:")
+	require.NotContains(t, stderr, "pd deploy done")
+}
+
 func TestDeployProcessDefinitionCommand_RunFallsBackToBPMNIDForV87Helper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -223,6 +400,27 @@ func TestDeployProcessDefinitionCommand_V89NoWaitHelper(t *testing.T) {
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
+}
+
+func resetDeployCommandStateForTest() {
+	flagDeployPDFiles = nil
+	flagDeployPDWithRun = false
+	flagNoWait = false
+	flagForce = false
+	flagViewAsJson = false
+	flagViewKeysOnly = false
+	flagQuiet = false
+	resetDeployCommandContextForTest(Root())
+}
+
+func resetDeployCommandContextForTest(cmd *cobra.Command) {
+	if cmd == nil {
+		return
+	}
+	cmd.SetContext(context.Background())
+	for _, child := range cmd.Commands() {
+		resetDeployCommandContextForTest(child)
+	}
 }
 
 // Verifies deploy process-definition rejects multiple stdin markers in --file arguments.
