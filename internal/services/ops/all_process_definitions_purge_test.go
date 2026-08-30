@@ -676,6 +676,37 @@ func TestPurgeAllProcessDefinitionsAggregatesTenantEvidenceFromFrozenPreview(t *
 	require.Equal(t, got.DeletePlan.TenantEvidence, got.Report.DeletePlan.TenantEvidence)
 }
 
+// TestOpsMergeTenantEvidencePreservesAggregateOnlyFallback verifies legacy
+// nested evidence without target records remains visible without inventing
+// synthetic targets or dropping its counts.
+func TestOpsMergeTenantEvidencePreservesAggregateOnlyFallback(t *testing.T) {
+	t.Parallel()
+
+	got := opsMergeTenantEvidence(
+		d.TenantEvidence{
+			ResolvedTenantIDs: []string{"tenant-b"},
+			TargetCount:       1,
+			Targets: []d.TenantEvidenceTarget{
+				{Key: "pd-1", TenantID: "tenant-b"},
+			},
+		},
+		d.TenantEvidence{
+			ResolvedTenantIDs:  []string{"tenant-a", "tenant-a"},
+			UnknownTargetCount: 1,
+			TargetCount:        3,
+		},
+	)
+
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+		UnknownTargetCount: 1,
+		TargetCount:        4,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "pd-1", TenantID: "tenant-b"},
+		},
+	}, got)
+}
+
 // TestPurgeAllProcessDefinitionsBlocksUnsafeActiveInstancesWithoutForce verifies destructive planning stops before mutation.
 func TestPurgeAllProcessDefinitionsBlocksUnsafeActiveInstancesWithoutForce(t *testing.T) {
 	t.Parallel()

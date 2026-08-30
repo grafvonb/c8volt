@@ -176,8 +176,6 @@ func processDefinitionPlanTenantEvidence(items []d.DeleteProcessDefinitionPlanIt
 	acc := common.NewTenantEvidenceAccumulator()
 	targets := make([]d.TenantEvidenceTarget, 0)
 	seen := make(map[string]struct{})
-	fallbackTargetCount := 0
-	fallbackUnknownTargetCount := 0
 	for _, item := range items {
 		targets = addProcessDefinitionPlanTenantEvidenceTarget(acc, targets, seen, "pd", item.Key, item.TenantId)
 		if len(item.CancellationPlan.TenantEvidence.Targets) > 0 {
@@ -186,17 +184,10 @@ func processDefinitionPlanTenantEvidence(items []d.DeleteProcessDefinitionPlanIt
 			}
 			continue
 		}
-		for _, tenantID := range item.CancellationPlan.TenantEvidence.ResolvedTenantIDs {
-			if tenantID != "" {
-				acc.Add("pi-known:"+tenantID, tenantID)
-			}
-		}
-		fallbackTargetCount += item.CancellationPlan.TenantEvidence.TargetCount
-		fallbackUnknownTargetCount += item.CancellationPlan.TenantEvidence.UnknownTargetCount
+		fallback := item.CancellationPlan.TenantEvidence
+		acc.AddAggregate(fallback.ResolvedTenantIDs, fallback.TargetCount, fallback.UnknownTargetCount)
 	}
 	evidence := domainTenantEvidenceFromSnapshot(acc.Snapshot())
-	evidence.TargetCount += fallbackTargetCount
-	evidence.UnknownTargetCount += fallbackUnknownTargetCount
 	evidence.Targets = targets
 	return evidence
 }

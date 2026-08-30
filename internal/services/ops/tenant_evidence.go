@@ -131,35 +131,37 @@ func opsTenantEvidenceFromCreations(items []d.ProcessInstanceCreation) d.TenantE
 // opsTenantEvidenceFromTargets normalizes target observations into the shared
 // domain evidence shape while preserving first-observation target order.
 func opsTenantEvidenceFromTargets(targets []d.TenantEvidenceTarget) d.TenantEvidence {
+	return opsMergeTenantEvidence(d.TenantEvidence{Targets: targets})
+}
+
+// opsMergeTenantEvidence combines evidence snapshots by target key so reports
+// do not double-count resources observed in multiple frozen workflow steps.
+func opsMergeTenantEvidence(items ...d.TenantEvidence) d.TenantEvidence {
 	acc := common.NewTenantEvidenceAccumulator()
-	outTargets := make([]d.TenantEvidenceTarget, 0, len(targets))
-	seen := make(map[string]struct{}, len(targets))
-	for _, target := range targets {
-		if target.Key == "" {
+	targets := make([]d.TenantEvidenceTarget, 0)
+	seen := make(map[string]struct{})
+	for _, item := range items {
+		if len(item.Targets) == 0 {
+			acc.AddAggregate(item.ResolvedTenantIDs, item.TargetCount, item.UnknownTargetCount)
 			continue
 		}
-		acc.Add(target.Key, target.TenantID)
-		if _, ok := seen[target.Key]; ok {
-			continue
+		for _, target := range item.Targets {
+			if target.Key == "" {
+				continue
+			}
+			acc.Add(target.Key, target.TenantID)
+			if _, ok := seen[target.Key]; ok {
+				continue
+			}
+			seen[target.Key] = struct{}{}
+			targets = append(targets, d.TenantEvidenceTarget{Key: target.Key, TenantID: target.TenantID})
 		}
-		seen[target.Key] = struct{}{}
-		outTargets = append(outTargets, d.TenantEvidenceTarget{Key: target.Key, TenantID: target.TenantID})
 	}
 	snapshot := acc.Snapshot()
 	return d.TenantEvidence{
 		ResolvedTenantIDs:  append([]string(nil), snapshot.ResolvedTenantIDs...),
 		UnknownTargetCount: snapshot.UnknownTargetCount,
 		TargetCount:        snapshot.TargetCount,
-		Targets:            outTargets,
+		Targets:            targets,
 	}
-}
-
-// opsMergeTenantEvidence combines evidence snapshots by target key so reports
-// do not double-count resources observed in multiple frozen workflow steps.
-func opsMergeTenantEvidence(items ...d.TenantEvidence) d.TenantEvidence {
-	var targets []d.TenantEvidenceTarget
-	for _, item := range items {
-		targets = append(targets, item.Targets...)
-	}
-	return opsTenantEvidenceFromTargets(targets)
 }

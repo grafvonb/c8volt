@@ -84,6 +84,24 @@ func TestTenantEvidenceAccumulator_MergeDeduplicatesKnownAndUnknownTargets(t *te
 	assert.Equal(t, 2, got.UnknownTargetCount)
 }
 
+// Verifies aggregate-only evidence contributes tenant IDs and counts without
+// being represented as synthetic keyed targets.
+func TestTenantEvidenceAccumulator_AddAggregateKeepsIdentitySeparateFromCount(t *testing.T) {
+	t.Parallel()
+
+	page := NewTenantEvidenceAccumulator()
+	page.Add("pd-1", "tenant-b")
+	page.AddAggregate([]string{"tenant-a", "tenant-a", ""}, 3, 1)
+
+	merged := NewTenantEvidenceAccumulator()
+	merged.Merge(page.Snapshot())
+	got := merged.Snapshot()
+
+	assert.Equal(t, 4, got.TargetCount)
+	assert.Equal(t, []string{"tenant-a", "tenant-b"}, got.ResolvedTenantIDs)
+	assert.Equal(t, 1, got.UnknownTargetCount)
+}
+
 // Verifies snapshots are immutable copies so callers cannot corrupt accumulated evidence.
 func TestTenantEvidenceAccumulator_SnapshotReturnsCopies(t *testing.T) {
 	t.Parallel()

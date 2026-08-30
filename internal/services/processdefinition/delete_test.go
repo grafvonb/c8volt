@@ -323,6 +323,34 @@ func TestPreviewDeleteProcessDefinitionsAggregatesTenantEvidence(t *testing.T) {
 	}, got.TenantEvidence)
 }
 
+// TestProcessDefinitionPlanTenantEvidenceAggregateOnlyFallbackDoesNotDoubleCountKnownTenants
+// verifies legacy nested evidence can contribute tenant IDs without turning those IDs
+// into synthetic affected targets in the aggregate count.
+func TestProcessDefinitionPlanTenantEvidenceAggregateOnlyFallbackDoesNotDoubleCountKnownTenants(t *testing.T) {
+	t.Parallel()
+
+	got := processDefinitionPlanTenantEvidence([]d.DeleteProcessDefinitionPlanItem{
+		{
+			Key:      "pd-1",
+			TenantId: "tenant-b",
+			CancellationPlan: d.DryRunPIKeyExpansion{TenantEvidence: d.TenantEvidence{
+				ResolvedTenantIDs:  []string{"tenant-a"},
+				UnknownTargetCount: 1,
+				TargetCount:        3,
+			}},
+		},
+	})
+
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+		UnknownTargetCount: 1,
+		TargetCount:        4,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "pd-1", TenantID: "tenant-b"},
+		},
+	}, got)
+}
+
 // TestDeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError verifies a server-side request-shape mismatch is reported once instead of being repeated for every selected definition.
 func TestDeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError(t *testing.T) {
 	var calls atomic.Int64
