@@ -23,6 +23,10 @@
 - Q: How should the command report a resolved mutation plan when at least one target's tenant is unknown? → A: Warn that some target tenants are unknown without blocking execution, and also show any warning required by the known tenant values.
 - Q: How should JSON and YAML results expose tenant context when a command already returns structured output? → A: Use one common nested tenant-context object wherever tenant context applies.
 
+### Session 2026-08-30
+
+- Q: Which canonical grammar should tenant-context human messages use? → A: Use lower-case c8volt-style labels: `selection scope`, `creation target`, and `affected tenants`; keep `WARNING:` uppercase.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - See Search And Selection Scope (Priority: P1)
@@ -35,8 +39,8 @@ As an operator, I want previews and confirmations to state whether discovery is 
 
 **Acceptance Scenarios**:
 
-1. **Given** the effective configured tenant is `tenant-a`, **When** an operator reviews a search or selection preflight, **Then** the output states `Tenant filter: tenant-a` before execution.
-2. **Given** the effective configured tenant is empty, **When** an operator reviews a search or selection preflight, **Then** the output states `Tenant filter: none — resources from multiple tenants may be affected` rather than describing the scope as `<default>`.
+1. **Given** the effective configured tenant is `tenant-a`, **When** an operator reviews a search or selection preflight, **Then** the output states `selection scope: tenant-a only` before execution.
+2. **Given** the effective configured tenant is empty, **When** an operator reviews a search or selection preflight, **Then** the output states `selection scope: unfiltered across accessible tenants` rather than describing the scope as the default tenant.
 3. **Given** an unfiltered search resolves resources from one tenant only, **When** the operator reviews the mutation plan, **Then** the output still states that no tenant filter was applied because the selection semantics remain unfiltered.
 
 ---
@@ -51,8 +55,8 @@ As an operator, I want create, deploy, and run commands to state the tenant wher
 
 **Acceptance Scenarios**:
 
-1. **Given** the effective configured tenant is empty, **When** an operator reviews a create, deploy, or run command before execution, **Then** the output states `Create in tenant: <default>`.
-2. **Given** the effective configured tenant is `tenant-a`, **When** an operator reviews a create, deploy, or run command before execution, **Then** the output states `Create in tenant: tenant-a`.
+1. **Given** the effective configured tenant is empty, **When** an operator reviews a create, deploy, or run command before execution, **Then** the output states `creation target: default tenant`.
+2. **Given** the effective configured tenant is `tenant-a`, **When** an operator reviews a create, deploy, or run command before execution, **Then** the output states `creation target: tenant-a`.
 3. **Given** a non-interactive create, deploy, or run command is invoked, **When** execution information is produced in its selected output mode, **Then** the tenant target is represented without introducing an interactive prompt.
 
 ---
@@ -67,8 +71,8 @@ As an administrator supplying explicit resource keys, I want the command to stat
 
 **Acceptance Scenarios**:
 
-1. **Given** an operator supplies one or more explicit resource keys, **When** the command presents information before resolution, **Then** it states `Tenant filter: not applied for explicit resource keys`.
-2. **Given** an explicit resource resolves to `tenant-b`, **When** the resource tenant is available in the resolved plan, **Then** the output states `Resource tenant: tenant-b`.
+1. **Given** an operator supplies one or more explicit resource keys, **When** the command presents information before resolution, **Then** it states `selection scope: explicit resource keys; tenant filter not applied`.
+2. **Given** an explicit resource resolves to `tenant-b`, **When** the resource tenant is available in the resolved plan, **Then** the output states `affected tenants: tenant-b`.
 3. **Given** an explicit resource's tenant is not available in the resolved plan, **When** the operator reviews the plan, **Then** the command does not invent, infer, or mislabel a resource tenant.
 4. **Given** the configured tenant differs from the resolved resource tenant, **When** the operator reviews the plan, **Then** the command reports the actual resource tenant without rejecting the target solely for that difference.
 
@@ -84,8 +88,8 @@ As an operator, I want a prominent warning when a resolved mutation plan spans t
 
 **Acceptance Scenarios**:
 
-1. **Given** a resolved mutation plan contains resources from `tenant-a` and `tenant-b`, **When** the plan is shown before execution, **Then** it prominently states `WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b`.
-2. **Given** multiple resolved resources all belong to `tenant-a`, **When** the plan is shown, **Then** no cross-tenant warning is emitted and the known tenant context remains visible.
+1. **Given** a resolved mutation plan contains resources from `tenant-a` and `tenant-b`, **When** the plan is shown before execution, **Then** it states `affected tenants: tenant-a, tenant-b` and prominently states `WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b`.
+2. **Given** multiple resolved resources all belong to `tenant-a`, **When** the plan is shown, **Then** it states `affected tenants: tenant-a` and no cross-tenant warning is emitted.
 3. **Given** resolved resources contain repeated tenant values, **When** the warning is produced, **Then** each distinct known tenant appears once in a stable order.
 4. **Given** some resolved resources have unknown tenant metadata, **When** the plan is shown, **Then** a non-blocking warning states that some target tenants are unknown without inventing a tenant value.
 5. **Given** some resolved resources have unknown tenant metadata and known resources span multiple tenants, **When** the plan is shown, **Then** both the unknown-tenant warning and the known cross-tenant warning are emitted.
@@ -125,13 +129,13 @@ As an operator or automation author, I want configuration diagnostics, mutation 
 
 ### Functional Requirements
 
-- **FR-001**: Search and selection preflight information MUST display `Tenant filter: <tenant>` when a named effective tenant limits discovery.
-- **FR-002**: Search and selection preflight information MUST display `Tenant filter: none — resources from multiple tenants may be affected` when the effective tenant is empty.
+- **FR-001**: Search and selection preflight information MUST display `selection scope: <tenant> only` when a named effective tenant limits discovery.
+- **FR-002**: Search and selection preflight information MUST display `selection scope: unfiltered across accessible tenants` when the effective tenant is empty.
 - **FR-003**: Search and selection reporting MUST NOT represent an empty tenant as `<default>`.
-- **FR-004**: Create, deploy, and run commands MUST display `Create in tenant: <default>` before execution when the effective tenant is empty.
-- **FR-005**: Create, deploy, and run commands MUST display `Create in tenant: <tenant>` before execution when a named effective tenant is configured.
-- **FR-006**: Explicit-key operations MUST state `Tenant filter: not applied for explicit resource keys` before the configured tenant could be mistaken for an enforced filter.
-- **FR-007**: Explicit-key operations MUST display `Resource tenant: <tenant>` when the actual tenant is already available in the resolved plan.
+- **FR-004**: Create, deploy, and run commands MUST display `creation target: default tenant` before execution when the effective tenant is empty.
+- **FR-005**: Create, deploy, and run commands MUST display `creation target: <tenant>` before execution when a named effective tenant is configured.
+- **FR-006**: Explicit-key operations MUST state `selection scope: explicit resource keys; tenant filter not applied` before the configured tenant could be mistaken for an enforced filter.
+- **FR-007**: Explicit-key operations MUST display `affected tenants: <tenant>` when the actual tenant is already available in the resolved plan.
 - **FR-008**: Explicit-key operations MUST NOT invent or infer an actual resource tenant when that tenant is unavailable in the resolved plan.
 - **FR-009**: Reporting tenant context MUST NOT change the backend-authorized behavior of explicit resource keys or impose a new local tenant restriction.
 - **FR-010**: A resolved mutation plan containing resources from more than one distinct known tenant MUST produce a prominent warning that identifies every distinct known tenant affected.
@@ -148,6 +152,7 @@ As an operator or automation author, I want configuration diagnostics, mutation 
 - **FR-021**: User-facing help, examples, and generated documentation MUST explain operation-specific tenant meanings wherever affected command behavior is documented.
 - **FR-022**: Configuration validation and connection diagnostics MUST distinguish a named configured tenant from no configured tenant and MUST NOT describe the absence of a configured tenant as a default-tenant operation.
 - **FR-023**: A resolved mutation plan containing any target with unknown tenant metadata MUST produce a non-blocking unknown-tenant warning, and this warning MUST appear in addition to any cross-tenant warning required by the known targets.
+- **FR-024**: Human-oriented tenant context MUST follow c8volt's operational output grammar: lower-case sentence fragments for ordinary labels and uppercase `WARNING:` only for prominent safety warnings.
 
 ### Key Entities *(include if feature involves data)*
 

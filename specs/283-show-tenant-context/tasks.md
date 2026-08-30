@@ -303,3 +303,12 @@ Each iteration completes only the current work unit, updates `tasks.md` and `pro
 - Do not add local tenant mismatch rejection or an all-tenants flag.
 - Do not fetch tenant metadata solely for reporting.
 - Do not hand-edit generated Camunda clients.
+
+---
+
+## Phase 9: Convergence
+
+- [ ] T057 Update exact tenant-context wording, ordering, warning, quiet, keys-only, JSON/YAML, and report assertions in `internal/domain/tenant_context_test.go`, `cmd/cmd_views_tenant_context_test.go`, and affected command and ops test files per FR-020 and SC-001–SC-006 (contradicts)
+- [ ] T058 Replace ordinary tenant-context human labels and unfiltered messages in `internal/domain/tenant_context.go`, `cmd/cmd_tenant_context.go`, `cmd/cmd_views_tenant_context.go`, `cmd/processinstance_mutation_progress.go`, and `cmd/ops_tenant_context.go` with the exact lower-case selection, creation, and affected-tenant grammar while preserving uppercase safety warnings, tenant behavior, and structured schema per FR-001–FR-007 and FR-024 (contradicts)
+- [ ] T059 Align affected Cobra help source, `README.md`, `docs/ops/`, `specs/283-show-tenant-context/contracts/tenant-context.md`, and `specs/283-show-tenant-context/quickstart.md` with the revised grammar, then regenerate `docs/cli/` and `docs/index.md` with `make docs-content` per FR-021 and Constitution IV (contradicts)
+- [ ] T060 Run `gofmt` on touched Go files, scan for obsolete tenant phrases, execute focused tenant-context tests, `make vet`, and constitution-required `make test`, and record the results in `specs/283-show-tenant-context/progress.md` per Constitution III and the plan validation decision (partial)
