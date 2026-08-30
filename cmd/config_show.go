@@ -27,6 +27,8 @@ Precedence: flag > env > profile > base config > default.
 Tenant context in the sanitized document describes configuration scope only:
 a named tenant is a discovery filter, while an empty tenant means no configured
 tenant filter and is not reported as <default>.
+Human diagnostics report explicit --tenant changes before the resulting scope;
+--tenant "" warns when it clears a named configured filter.
 The --validate and --template flags remain supported as compatibility shortcuts
 for validation and template rendering.`,
 	Example: `  ./c8volt config show

@@ -841,3 +841,134 @@ Started: 2026-08-29 14:20:03
 - Final validation required no code changes; `make vet` passed.
 - Constitution-required `make test` passed via `go test ./... -race -count=1`, including `cmd` in 116.696s.
 ---
+---
+## Iteration 29 - 2026-08-30 16:27
+**Work Unit**: Phase 10 tenant override provenance and single-shot warnings
+**Tasks Completed**:
+- [x] T061: Add configured-versus-explicit transition and rendering tests for absent, equal, named-to-empty, named-to-different, and empty-to-named tenant values plus single-tenant information and multi-tenant warning severity.
+- [x] T062: Retain the configured tenant before explicit command-line override and the tenant flag's presence/value through root configuration setup.
+- [x] T063: Centralize human tenant-context line classification and render configured tenant provenance, override warning/info lines, one resolved tenant informationally, and multiple resolved tenants once at warning severity.
+- [x] T064: Apply provenance and single-shot affected-tenant rendering to durable process-instance progress, ops progress, compact confirmations, and Markdown audit output.
+- [x] T065: Update README, affected Cobra help source, tenant-context feature docs, ops guidance, and regenerated CLI docs for tenant override provenance and single warning-level affected-tenant summaries.
+- [x] T066: Run formatting, obsolete duplicate phrase scan, focused tests, `make vet`, and constitution-required `make test`.
+**Tasks Remaining in Work Unit**: 0; feature complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/ops/model_test.go
+- c8volt/tenant/context_test.go
+- cmd/cancel_processinstance.go
+- cmd/cancel_processinstance_test.go
+- cmd/cmd_tenant_context.go
+- cmd/cmd_views_processinstance_dryrun_test.go
+- cmd/cmd_views_tenant_context.go
+- cmd/cmd_views_tenant_context_test.go
+- cmd/command_contract_test.go
+- cmd/config_show.go
+- cmd/config_test_connection.go
+- cmd/config_validate.go
+- cmd/delete_processdefinition.go
+- cmd/delete_processinstance.go
+- cmd/delete_processinstance_test.go
+- cmd/delete_test.go
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_progress_test.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_orphan_processinstances.go
+- cmd/ops_purge_processinstances_with_incidents.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_processinstance.go
+- cmd/ops_report_markdown_test.go
+- cmd/ops_tenant_context.go
+- cmd/processinstance_mutation_progress.go
+- cmd/processinstance_mutation_progress_test.go
+- cmd/resolve_processinstance.go
+- cmd/root.go
+- cmd/root_config.go
+- cmd/root_config_test.go
+- cmd/update_processinstance.go
+- docs/cli/c8volt.md
+- docs/cli/c8volt_cancel.md
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_capabilities.md
+- docs/cli/c8volt_config.md
+- docs/cli/c8volt_config_show.md
+- docs/cli/c8volt_config_template.md
+- docs/cli/c8volt_config_test-connection.md
+- docs/cli/c8volt_config_validate.md
+- docs/cli/c8volt_delete.md
+- docs/cli/c8volt_delete_process-definition.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/cli/c8volt_deploy.md
+- docs/cli/c8volt_deploy_process-definition.md
+- docs/cli/c8volt_embed.md
+- docs/cli/c8volt_embed_deploy.md
+- docs/cli/c8volt_embed_export.md
+- docs/cli/c8volt_embed_list.md
+- docs/cli/c8volt_expect.md
+- docs/cli/c8volt_expect_process-instance.md
+- docs/cli/c8volt_get.md
+- docs/cli/c8volt_get_cluster.md
+- docs/cli/c8volt_get_cluster_license.md
+- docs/cli/c8volt_get_cluster_topology.md
+- docs/cli/c8volt_get_cluster_version.md
+- docs/cli/c8volt_get_element.md
+- docs/cli/c8volt_get_incident.md
+- docs/cli/c8volt_get_job.md
+- docs/cli/c8volt_get_process-definition.md
+- docs/cli/c8volt_get_process-instance.md
+- docs/cli/c8volt_get_resource.md
+- docs/cli/c8volt_get_tenant.md
+- docs/cli/c8volt_ops.md
+- docs/cli/c8volt_ops_analyse.md
+- docs/cli/c8volt_ops_analyse_slow-process-instances.md
+- docs/cli/c8volt_ops_execute.md
+- docs/cli/c8volt_ops_execute_retention-policy.md
+- docs/cli/c8volt_ops_execute_smoke-test.md
+- docs/cli/c8volt_ops_purge.md
+- docs/cli/c8volt_ops_purge_all-process-definitions.md
+- docs/cli/c8volt_ops_purge_orphan-process-instances.md
+- docs/cli/c8volt_ops_purge_process-instances-with-incidents.md
+- docs/cli/c8volt_ops_repair.md
+- docs/cli/c8volt_ops_repair_incident.md
+- docs/cli/c8volt_ops_repair_process-instance.md
+- docs/cli/c8volt_resolve.md
+- docs/cli/c8volt_resolve_incident.md
+- docs/cli/c8volt_resolve_process-instance.md
+- docs/cli/c8volt_run.md
+- docs/cli/c8volt_run_process-instance.md
+- docs/cli/c8volt_update.md
+- docs/cli/c8volt_update_job.md
+- docs/cli/c8volt_update_process-instance.md
+- docs/cli/c8volt_version.md
+- docs/cli/c8volt_walk.md
+- docs/cli/c8volt_walk_process-instance.md
+- docs/index.md
+- docs/ops/execute-retention-policy.md
+- docs/ops/execute-smoke-test.md
+- docs/ops/purge-all-process-definitions.md
+- docs/ops/purge-orphan-process-instances.md
+- docs/ops/purge-process-instances-with-incidents.md
+- docs/ops/repair-incident.md
+- docs/ops/repair-process-instance.md
+- internal/domain/ops_progress_test.go
+- internal/domain/tenant_context.go
+- internal/domain/tenant_context_test.go
+- specs/283-show-tenant-context/contracts/tenant-context.md
+- specs/283-show-tenant-context/data-model.md
+- specs/283-show-tenant-context/quickstart.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Root config now carries command-private tenant override provenance; explicit `--tenant` changes do not alter resolved config precedence or the serialized `tenantContext` schema.
+- Multi-tenant human output and structured warning messages now use one `affected tenants: ...` warning summary; unknown-tenant warnings still follow and protected output modes remain silent.
+- Passed: `go test ./cmd -run 'Test(TenantOverrideProvenanceFromConfigTracksExplicitTenantFlagTransitions|TenantContextHumanLinesClassifyTenantOverridesAndAffectedTenants|RenderTenantContextHumanExactWordingAndOrder|ProcessInstanceMutationProgress_RendersTenantOverrideBeforeScope|CancelProcessInstanceSearchDryRun_RendersMergedTenantWarnings|PrintOpsPreflightScopeRendersTenantContextBeforeScope|PrintOpsTenantContextUsesLoggerSeverityExactlyOnce|PrintOpsTenantContextRendersTenantOverrideProvenance)' -count=1`.
+- Passed: `go test ./cmd ./internal/domain ./c8volt/tenant ./c8volt/ops -run 'Test.*(Config|TenantContext|TenantOverride|TenantWarnings|ProcessInstanceMutationProgress|CancelProcessInstanceSearch_TenantWarnings|DeleteProcessInstanceSearch_TenantWarnings|DeleteProcessDefinitionCommand_SearchTenantWarnings|Ops.*Report|PrintOps|Markdown)' -count=1`.
+- Passed: obsolete duplicate phrase scan for `resources from multiple tenants will be affected`, `resources from multiple tenants`, `warn when the scope spans multiple tenants`, and `Cross-tenant warning message`.
+- Passed: command-file declaration inventory for touched command production files; new behavior is concentrated in root config provenance and focused tenant-context rendering/progress files.
+- Passed: `git diff --check`.
+- Passed: `make docs-content`.
+- Passed: `make vet`.
+- Passed: `make test`.
+---

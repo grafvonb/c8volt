@@ -53,9 +53,10 @@ func TestWriteMarkdownTenantContextUsesSharedHumanContract(t *testing.T) {
 
 	got := out.String()
 	require.Contains(t, got, "- Tenant Context: selection scope: explicit resource keys; tenant filter not applied")
-	require.Contains(t, got, "- Resource Tenants: tenant-a, tenant-b")
+	require.NotContains(t, got, "- Resource Tenants: tenant-a, tenant-b")
 	require.Contains(t, got, "- Cross Tenant: true")
-	require.Contains(t, got, "resources from multiple tenants will be affected: tenant-a, tenant-b")
+	require.Contains(t, got, "affected tenants: tenant-a, tenant-b")
 	require.Contains(t, got, "tenant metadata is unknown for 1 target")
+	require.Equal(t, 1, strings.Count(got, "affected tenants: tenant-a, tenant-b"))
 	require.NotContains(t, got, string(tenant.ContextWarningUnfilteredSelection))
 }

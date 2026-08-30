@@ -37,6 +37,8 @@ Expected cases:
 
 - named configuration renders `selection scope: tenant-a only`;
 - empty configuration renders no configured tenant and never calls it `<default>`;
+- explicit `--tenant ""` over a named configuration first reports `configured tenant: tenant-a`, then warns `--tenant "" overrides the configured tenant filter; selection is unfiltered`;
+- explicit named tenant changes are informational, and absent or equal `--tenant` values are silent;
 - `config show` remains parseable YAML with `tenantContext`;
 - `config test-connection --json` remains one parseable document;
 - existing envelope payloads are unchanged and the optional object is present only where applicable.
@@ -52,7 +54,7 @@ Expected cases:
 - named and empty selector paths show the correct discovery line before confirmation;
 - explicit keys state that the filter is not applied;
 - a configured `tenant-a` and resolved `tenant-b` succeeds subject to backend behavior and reports `tenant-b`;
-- multiple known tenants produce one sorted prominent warning;
+- multiple known tenants produce one sorted warning-level `affected tenants: ...` summary with no duplicate cross-tenant tenant list;
 - unknown metadata produces a non-blocking warning, including alongside a cross-tenant warning;
 - JSON, quiet, and keys-only contracts remain exact.
 

@@ -4,8 +4,6 @@
 package cmd
 
 import (
-	"strings"
-
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/spf13/cobra"
 )
@@ -21,23 +19,12 @@ func renderTenantContext(cmd *cobra.Command, ctx tenant.Context) {
 	}
 	markTenantContextHumanRendered(cmd)
 
-	if line := tenantContextPrimaryHumanLine(ctx); line != "" {
-		renderHumanLine(cmd, "%s", line)
-	}
-
-	switch len(ctx.ResolvedTenantIDs) {
-	case 0:
-	case 1:
-		renderHumanLine(cmd, "affected tenants: %s", ctx.ResolvedTenantIDs[0])
-	default:
-		renderHumanLine(cmd, "affected tenants: %s", strings.Join(ctx.ResolvedTenantIDs, ", "))
-	}
-
-	for _, warning := range ctx.Warnings {
-		if warning.Code == tenant.ContextWarningUnfilteredSelection {
+	for _, line := range tenantContextHumanLines(cmd, ctx) {
+		if line.Warn {
+			renderHumanWarningLine(cmd, "%s", line.Text)
 			continue
 		}
-		renderHumanWarningLine(cmd, "%s", warning.Message)
+		renderHumanLine(cmd, "%s", line.Text)
 	}
 }
 

@@ -103,7 +103,7 @@ func TestFromDomainAuditReports_CopyTenantContext(t *testing.T) {
 		Warnings: []d.TenantContextWarning{
 			{
 				Code:    d.TenantContextWarningMultipleTenants,
-				Message: "resources from multiple tenants will be affected: tenant-a, tenant-b",
+				Message: "affected tenants: tenant-a, tenant-b",
 			},
 		},
 	}
@@ -126,7 +126,7 @@ func TestFromDomainAuditReports_CopyTenantContext(t *testing.T) {
 		require.Equal(t, tenant.ContextFilterNamed, ctx.Filter)
 		require.Equal(t, "tenant-a", ctx.ConfiguredTenantID)
 		require.Equal(t, []string{"tenant-a", "tenant-b"}, ctx.ResolvedTenantIDs)
-		require.Equal(t, "resources from multiple tenants will be affected: tenant-a, tenant-b", ctx.Warnings[0].Message)
+		require.Equal(t, "affected tenants: tenant-a, tenant-b", ctx.Warnings[0].Message)
 	}
 }
 

@@ -48,6 +48,11 @@ Started: 2026-08-29T12:20:03Z
 - T055 command cohesion audit found tenant-context production declarations concentrated in focused ownership files: `cmd/cmd_tenant_context.go`, `cmd/cmd_views_tenant_context.go`, `cmd/ops_tenant_context.go`, selector-specific search files, and existing PI progress/render files; no generated client, API mutation, versioned adapter, or tenant-selection request construction changed.
 - Tenant-context human grammar is lower-case and contract-aligned: discovery renders `selection scope: <tenant> only` or `selection scope: unfiltered across accessible tenants`, creation renders `creation target: <tenant>` or `creation target: default tenant`, and resolved evidence renders `affected tenants: ...`; warning messages are prefix-free so logger-backed channels supply `WARN` exactly once.
 - Machine-output safety tests must not use generic `scope:` exclusions on JSON that can legitimately include structured `tenantContext` warning messages; guard workflow progress labels such as `retention cleanup scope:` or `process-instance cancel scope:` instead.
+- Root config now captures command-private `tenantOverrideProvenance` when `--tenant` is explicitly supplied: it retains the tenant value that config/env/profile would have produced before the flag, the explicit flag value, and the flag presence without changing resolved `config.Config` or public `tenantContext` schema.
+- Human tenant-context output is classified centrally by `tenantContextHumanLines`; discovery/configuration contexts report changed explicit tenant flags before the semantic scope line, warn only for named-to-empty broadening, and keep absent/equal overrides silent.
+- Multi-tenant human output now emits `affected tenants: ...` once at warning severity instead of printing an informational `affected tenants` line plus a second cross-tenant warning with the same IDs; unknown-tenant warnings still coexist afterward.
+- Process-instance durable progress, ops progress, compact confirmations, and ops Markdown tenant warnings share the same single-shot tenant line classification; Markdown omits a separate multi-tenant `Resource Tenants` field to avoid repeating known tenant IDs.
+- Structured tenant-context warning messages for `multiple_tenants` now use `affected tenants: ...` while keeping the same code, object placement, and JSON/YAML field names.
 
 ## Decisions
 - Phase 1 setup was treated as the first work unit because T001 was the first incomplete task and Phase 2 depends on it.
@@ -78,6 +83,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 26 completed T055 as an audit-only work unit; `gofmt` over branch-touched Go files and `git diff --check` passed without producing code changes.
 - Iteration 27 completed T056 as the final validation work unit; `make vet` and constitution-required `make test` passed with no code changes required.
 - Iteration 28 completed convergence tasks T057-T060 by updating tenant-context assertions, emitters, source docs, generated docs, and validation to the clarified lower-case grammar.
+- Iteration 29 completed T061-T066 by adding tenant override provenance, centralizing single-shot warning-level affected-tenant rendering, updating docs/generated CLI pages, and passing focused tests, `make vet`, and `make test`.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.

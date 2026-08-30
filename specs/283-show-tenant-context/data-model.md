@@ -15,6 +15,12 @@ One immutable description of tenant semantics and resolved tenant evidence for a
 | `crossTenant` | boolean | yes | True exactly when `resolvedTenantIds` contains more than one value |
 | `warnings` | array of `TenantContextWarning` | no | Stable-code warnings derived deterministically from the other fields |
 
+Tenant override provenance is command-private human evidence, not part of this
+serialized value. Root command setup retains the configured tenant before an
+explicit `--tenant` flag, the flag's presence, and the flag value so human
+renderers can explain changed scope without altering `tenantContext`, backend
+requests, or tenant precedence.
+
 ### Mode and filter invariants
 
 | Mode | Valid filter | Additional invariant |
@@ -33,7 +39,7 @@ One immutable description of tenant semantics and resolved tenant evidence for a
 | `code` | enum | `unfiltered_selection`, `multiple_tenants`, or `unknown_target_tenants` |
 | `message` | string | Stable human-readable explanation generated from the context |
 
-Warnings are ordered `unfiltered_selection`, `multiple_tenants`, then `unknown_target_tenants`. Multiple-tenant and unknown warnings can coexist. No warning changes command eligibility, exit status, or confirmation policy.
+Warnings are ordered `unfiltered_selection`, `multiple_tenants`, then `unknown_target_tenants`. Multiple-tenant warnings use the same `affected tenants: ...` message as human warning output, so known tenant IDs are emitted once. Multiple-tenant and unknown warnings can coexist. No warning changes command eligibility, exit status, or confirmation policy.
 
 ## TenantEvidenceAccumulator
 

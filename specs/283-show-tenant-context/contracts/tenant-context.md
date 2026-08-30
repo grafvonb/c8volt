@@ -19,7 +19,7 @@ Every applicable structured surface uses this object and these field names:
       },
       {
         "code": "multiple_tenants",
-        "message": "resources from multiple tenants will be affected: tenant-a, tenant-b"
+        "message": "affected tenants: tenant-a, tenant-b"
       },
       {
         "code": "unknown_target_tenants",
@@ -105,12 +105,15 @@ Render the applicable semantic line before the mutation or its confirmation:
 - Default creation: `creation target: default tenant`
 - Explicit keys: `selection scope: explicit resource keys; tenant filter not applied`
 - One resolved tenant: `affected tenants: tenant-b`
-- Multiple resolved tenants: `affected tenants: tenant-a, tenant-b`
-- Cross-tenant warning message: `resources from multiple tenants will be affected: tenant-a, tenant-b`
+- Multiple resolved tenants, warning-level: `affected tenants: tenant-a, tenant-b`
+- Configured tenant before override: `configured tenant: tenant-a`
+- Named-to-empty override warning: `--tenant "" overrides the configured tenant filter; selection is unfiltered`
+- Named-to-different override information: `--tenant "tenant-b" overrides configured tenant filter`
+- Empty-to-named override information: `--tenant "tenant-a" sets the tenant filter`
 - Unknown metadata message, singular: `tenant metadata is unknown for 1 target`
 - Unknown metadata message, plural: `tenant metadata is unknown for N targets`
 
-Tenant IDs are unique and lexically sorted. Warning messages do not embed `WARN` or `WARNING:`; the output channel supplies severity exactly once. The cross-tenant warning follows the semantic/filter line and resolved tenant line, remains visible in compact confirmation text, and is followed by the unknown warning when both apply.
+Tenant IDs are unique and lexically sorted. Warning messages do not embed `WARN` or `WARNING:`; the output channel supplies severity exactly once. The cross-tenant warning uses the same `affected tenants: ...` summary instead of printing a second message with the same tenant IDs, remains visible in compact confirmation text, and is followed by the unknown warning when both apply.
 
 ## Output-mode matrix
 

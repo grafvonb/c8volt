@@ -142,12 +142,12 @@ func TestPrintOpsPreflightScopeRendersTenantContextBeforeScope(t *testing.T) {
 	require.Contains(t, got, "incident purge scope")
 	require.Less(t, strings.Index(got, "selection scope: unfiltered across accessible tenants"), strings.Index(got, "incident purge scope"))
 	require.Contains(t, got, "affected tenants: tenant-a, tenant-b")
-	require.Contains(t, got, "resources from multiple tenants will be affected: tenant-a, tenant-b")
 	require.Contains(t, got, "tenant metadata is unknown for 1 target")
+	require.Equal(t, 1, strings.Count(got, "affected tenants: tenant-a, tenant-b"))
 }
 
-// TestPrintOpsTenantContextUsesLoggerSeverityExactlyOnce guards against
-// embedding WARNING in a message that the logger already prefixes with WARN.
+// TestPrintOpsTenantContextUsesLoggerSeverityExactlyOnce guards the compact
+// warning contract when the logger supplies severity prefixes.
 func TestPrintOpsTenantContextUsesLoggerSeverityExactlyOnce(t *testing.T) {
 	cmd := &cobra.Command{}
 	var logBuf bytes.Buffer
@@ -164,10 +164,40 @@ func TestPrintOpsTenantContextUsesLoggerSeverityExactlyOnce(t *testing.T) {
 	})
 
 	got := logBuf.String()
-	require.Contains(t, got, " WARN resources from multiple tenants will be affected: tenant-a, tenant-b\n")
+	require.Contains(t, got, " WARN affected tenants: tenant-a, tenant-b\n")
 	require.Contains(t, got, " WARN tenant metadata is unknown for 1 target\n")
+	require.Equal(t, 1, strings.Count(got, "affected tenants: tenant-a, tenant-b"))
 	require.NotContains(t, got, "WARN WARNING")
 	require.NotContains(t, got, "WARNING:")
+}
+
+// TestPrintOpsTenantContextRendersTenantOverrideProvenance verifies ops
+// durable progress reports explicit tenant broadening before the final scope.
+func TestPrintOpsTenantContextRendersTenantOverrideProvenance(t *testing.T) {
+	cmd := &cobra.Command{}
+	var logBuf bytes.Buffer
+	cmd.SetContext(tenantOverrideProvenance{
+		ConfiguredTenantID: "tenant-a",
+		ExplicitTenantID:   "",
+		Explicit:           true,
+	}.ToContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{
+		Format: "plain-time",
+		Writer: &logBuf,
+	}))))
+	ctx := newDiscoveryTenantContext("")
+
+	printOpsTenantContext(cmd, ctx, ops.ProgressChannel{
+		Mode:           ops.ProgressModeHuman,
+		DurableAllowed: true,
+		StderrAllowed:  true,
+	})
+
+	got := logBuf.String()
+	require.Contains(t, got, " INFO configured tenant: tenant-a\n")
+	require.Contains(t, got, " WARN --tenant \"\" overrides the configured tenant filter; selection is unfiltered\n")
+	require.Contains(t, got, " INFO selection scope: unfiltered across accessible tenants\n")
+	require.Less(t, strings.Index(got, "configured tenant: tenant-a"), strings.Index(got, "--tenant \"\" overrides"))
+	require.Less(t, strings.Index(got, "--tenant \"\" overrides"), strings.Index(got, "selection scope: unfiltered"))
 }
 
 // TestPrintOpsPreflightScopeSuppressesTenantContextForProtectedModes verifies

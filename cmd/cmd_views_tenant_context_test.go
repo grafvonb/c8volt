@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/tenant"
@@ -67,7 +68,7 @@ func TestWithTenantContextEvidence_NormalizesWarnings(t *testing.T) {
 			},
 			{
 				Code:    tenant.ContextWarningMultipleTenants,
-				Message: "resources from multiple tenants will be affected: tenant-a, tenant-b",
+				Message: "affected tenants: tenant-a, tenant-b",
 			},
 			{
 				Code:    tenant.ContextWarningUnknownTargetTenants,
@@ -89,8 +90,108 @@ func TestRenderTenantContextHumanExactWordingAndOrder(t *testing.T) {
 	require.Equal(t, ""+
 		"selection scope: explicit resource keys; tenant filter not applied\n"+
 		"affected tenants: tenant-a, tenant-b\n"+
-		"resources from multiple tenants will be affected: tenant-a, tenant-b\n"+
 		"tenant metadata is unknown for 2 targets\n", buf.String())
+}
+
+// TestTenantContextHumanLinesClassifyTenantOverridesAndAffectedTenants verifies
+// override provenance and multi-tenant evidence are classified once before
+// renderers choose stdout, stderr, or logger-backed channels.
+func TestTenantContextHumanLinesClassifyTenantOverridesAndAffectedTenants(t *testing.T) {
+	tests := []struct {
+		name       string
+		provenance tenantOverrideProvenance
+		ctx        tenant.Context
+		want       []tenantContextHumanLine
+	}{
+		{
+			name:       "absent flag has no override chatter",
+			provenance: tenantOverrideProvenance{},
+			ctx:        newDiscoveryTenantContext("tenant-a"),
+			want: []tenantContextHumanLine{
+				{Text: "selection scope: tenant-a only"},
+			},
+		},
+		{
+			name: "equal explicit flag stays silent",
+			provenance: tenantOverrideProvenance{
+				ConfiguredTenantID: "tenant-a",
+				ExplicitTenantID:   "tenant-a",
+				Explicit:           true,
+			},
+			ctx: newDiscoveryTenantContext("tenant-a"),
+			want: []tenantContextHumanLine{
+				{Text: "selection scope: tenant-a only"},
+			},
+		},
+		{
+			name: "named to empty warns about unfiltered selection",
+			provenance: tenantOverrideProvenance{
+				ConfiguredTenantID: "tenant-a",
+				ExplicitTenantID:   "",
+				Explicit:           true,
+			},
+			ctx: newDiscoveryTenantContext(""),
+			want: []tenantContextHumanLine{
+				{Text: "configured tenant: tenant-a"},
+				{Text: `--tenant "" overrides the configured tenant filter; selection is unfiltered`, Warn: true},
+				{Text: "selection scope: unfiltered across accessible tenants"},
+			},
+		},
+		{
+			name: "named to different is informational",
+			provenance: tenantOverrideProvenance{
+				ConfiguredTenantID: "tenant-a",
+				ExplicitTenantID:   "tenant-b",
+				Explicit:           true,
+			},
+			ctx: newDiscoveryTenantContext("tenant-b"),
+			want: []tenantContextHumanLine{
+				{Text: "configured tenant: tenant-a"},
+				{Text: `--tenant "tenant-b" overrides configured tenant filter`},
+				{Text: "selection scope: tenant-b only"},
+			},
+		},
+		{
+			name: "empty to named is informational",
+			provenance: tenantOverrideProvenance{
+				ConfiguredTenantID: "",
+				ExplicitTenantID:   "tenant-a",
+				Explicit:           true,
+			},
+			ctx: newDiscoveryTenantContext("tenant-a"),
+			want: []tenantContextHumanLine{
+				{Text: "configured tenant: none"},
+				{Text: `--tenant "tenant-a" sets the tenant filter`},
+				{Text: "selection scope: tenant-a only"},
+			},
+		},
+		{
+			name: "multiple tenants use one warning-level affected summary",
+			ctx:  withTenantContextEvidence(newExplicitKeysTenantContext("tenant-a"), []string{"tenant-b", "tenant-a"}, 1),
+			want: []tenantContextHumanLine{
+				{Text: "selection scope: explicit resource keys; tenant filter not applied"},
+				{Text: "affected tenants: tenant-a, tenant-b", Warn: true},
+				{Text: "tenant metadata is unknown for 1 target", Warn: true},
+			},
+		},
+		{
+			name: "single tenant stays informational",
+			ctx:  withTenantContextEvidence(newExplicitKeysTenantContext("tenant-a"), []string{"tenant-b"}, 0),
+			want: []tenantContextHumanLine{
+				{Text: "selection scope: explicit resource keys; tenant filter not applied"},
+				{Text: "affected tenants: tenant-b"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd, _ := newTenantContextRenderTestCommand()
+			cmd.SetContext(tt.provenance.ToContext(context.Background()))
+
+			require.Equal(t, tt.want, tenantContextHumanLines(cmd, tt.ctx))
+		})
+	}
 }
 
 // TestRenderTenantContextHumanModeLines verifies each operation mode receives

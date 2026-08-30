@@ -11,7 +11,7 @@ Purge process instances selected by incidents
 
 Purge process instances selected by incidents.
 
-Tenant contract: incident-filter mode uses discovery semantics, where a named tenant scopes candidate discovery and empty tenant configuration leaves discovery unfiltered. Direct --inc-key input uses explicit-key semantics and reports that the tenant filter is not applied. Frozen plans and audit reports show known resource tenants and warn when the scope spans multiple tenants or includes targets with unknown tenant metadata.
+Tenant contract: incident-filter mode uses discovery semantics, where a named tenant scopes candidate discovery and empty tenant configuration leaves discovery unfiltered. Explicit --tenant changes are reported before scope, and --tenant "" warns when it clears a named configured filter. Direct --inc-key input uses explicit-key semantics and reports that the tenant filter is not applied. Frozen plans and audit reports show one known resource tenant informationally, emit one warning-level "affected tenants" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.
 
 The workflow discovers candidate incidents from incident filters, freezes the candidate process-instance keys, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Discovery pages through all matching incidents by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.
 
@@ -74,7 +74,7 @@ c8volt ops purge process-instances-with-incidents [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

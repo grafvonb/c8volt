@@ -71,7 +71,7 @@ func TestFromDomainTenantContext_CopiesSlices(t *testing.T) {
 	domainWarnings := []d.TenantContextWarning{
 		{
 			Code:    d.TenantContextWarningMultipleTenants,
-			Message: "resources from multiple tenants will be affected: tenant-a, tenant-b",
+			Message: "affected tenants: tenant-a, tenant-b",
 		},
 	}
 	domainValue := d.TenantContext{
@@ -96,7 +96,7 @@ func TestFromDomainTenantContext_CopiesSlices(t *testing.T) {
 		Warnings: []ContextWarning{
 			{
 				Code:    ContextWarningMultipleTenants,
-				Message: "resources from multiple tenants will be affected: tenant-a, tenant-b",
+				Message: "affected tenants: tenant-a, tenant-b",
 			},
 		},
 	}, got)

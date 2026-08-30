@@ -14,9 +14,9 @@ Delete process instances by key or search filters, optionally cancelling first.
 
 By default c8volt validates the complete affected tree before submitting any delete request, prompts before deletion, and waits until deletion is observed. If any affected process instance is not in a final state, the whole delete batch is refused before mutation. Use --force to cancel the affected scope first, then delete it.
 
-Tenant contract: --tenant scopes search-derived candidate discovery where supported. Empty tenant configuration leaves discovery unfiltered and is reported as "selection scope: unfiltered across accessible tenants". Explicit --key and stdin keys are backend-authorized admin input and report that the tenant filter is not applied; existing dry-run, confirmation, force, and wait safety checks still apply.
+Tenant contract: --tenant scopes search-derived candidate discovery where supported. Empty tenant configuration leaves discovery unfiltered and is reported as "selection scope: unfiltered across accessible tenants". Explicit --tenant changes are reported before scope, and --tenant "" warns when it clears a named configured filter. Explicit --key and stdin keys are backend-authorized admin input and report that the tenant filter is not applied; existing dry-run, confirmation, force, and wait safety checks still apply.
 
-Resolved delete plans show known resource tenants and warn when the frozen scope spans multiple tenants or includes targets with unknown tenant metadata.
+Resolved delete plans show one known resource tenant informationally, emit one warning-level "affected tenants" summary when the frozen scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.
 
 When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, cancellation, or deletion; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no deletion request is submitted.
 
@@ -85,7 +85,7 @@ c8volt delete process-instance [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

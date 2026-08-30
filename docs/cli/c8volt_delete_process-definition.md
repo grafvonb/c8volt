@@ -14,9 +14,9 @@ Delete process definition resources from Camunda.
 
 By default c8volt first checks delete impact without changing anything: active process instances, required cancellation roots and process-instance tree scope when --force is used, and batch-operation read access before prompting. Process-definition deletion requires the full process-definition history deletion capability, currently Camunda 8.9 or newer. With --force, it cancels the root process instances, deletes the affected process-instance history, then asks Camunda to delete the process definition and remaining associated history. If you only want to delete process instances for a definition, use `c8volt delete process-instance --bpmn-process-id <bpmn-process-id>`.
 
-Tenant contract: --tenant scopes BPMN selector discovery where supported. Empty tenant configuration leaves discovery unfiltered and is reported as "selection scope: unfiltered across accessible tenants". Explicit --key and stdin process-definition keys are backend-authorized admin input and report that the tenant filter is not applied; existing impact, confirmation, force, and wait safety checks still apply.
+Tenant contract: --tenant scopes BPMN selector discovery where supported. Empty tenant configuration leaves discovery unfiltered and is reported as "selection scope: unfiltered across accessible tenants". Explicit --tenant changes are reported before scope, and --tenant "" warns when it clears a named configured filter. Explicit --key and stdin process-definition keys are backend-authorized admin input and report that the tenant filter is not applied; existing impact, confirmation, force, and wait safety checks still apply.
 
-Resolved delete impact shows known process-definition and nested process-instance tenants and warns when the frozen scope spans multiple tenants or includes targets with unknown tenant metadata.
+Resolved delete impact shows one known process-definition or nested process-instance tenant informationally, emits one warning-level "affected tenants" summary when the frozen scope spans multiple tenants, and warns separately for targets with unknown tenant metadata.
 
 When --bpmn-process-id is set, c8volt validates visible process-definition matches before delete impact planning, confirmation, cancellation, or deletion. A missing selector fails with the shared local diagnostic.
 
@@ -74,7 +74,7 @@ c8volt delete process-definition [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

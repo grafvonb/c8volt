@@ -11,7 +11,7 @@ Purge orphan child process instances
 
 Purge orphan child process instances.
 
-Tenant contract: orphan purge uses discovery semantics. A named tenant scopes candidate discovery; empty tenant configuration leaves discovery unfiltered and is reported as "selection scope: unfiltered across accessible tenants". Frozen plans and audit reports show known resource tenants and warn when the scope spans multiple tenants or includes targets with unknown tenant metadata.
+Tenant contract: orphan purge uses discovery semantics. A named tenant scopes candidate discovery; empty tenant configuration leaves discovery unfiltered and is reported as "selection scope: unfiltered across accessible tenants". Explicit --tenant changes are reported before scope, and --tenant "" warns when it clears a named configured filter. Frozen plans and audit reports show one known resource tenant informationally, emit one warning-level "affected tenants" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.
 
 The workflow discovers child process instances with missing parents, freezes the discovered key set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.
 
@@ -75,7 +75,7 @@ c8volt ops purge orphan-process-instances [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

@@ -17,7 +17,8 @@ the same validation behavior as `config show --validate`.
 
 Tenant context describes configuration scope only: a named tenant is a discovery
 filter, while an empty tenant means no configured tenant filter and is not
-reported as <default>.
+reported as <default>. Human diagnostics report explicit --tenant changes before
+the resulting scope; --tenant "" warns when it clears a named configured filter.
 
 ```
 c8volt config validate [flags]
@@ -51,7 +52,7 @@ c8volt config validate [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

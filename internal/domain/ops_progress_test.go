@@ -85,7 +85,7 @@ func TestOpsPreflightScope_TenantContextJSONContract(t *testing.T) {
 			"warnings": [
 				{
 					"code": "multiple_tenants",
-					"message": "resources from multiple tenants will be affected: tenant-a, tenant-b"
+					"message": "affected tenants: tenant-a, tenant-b"
 				}
 			]
 		}

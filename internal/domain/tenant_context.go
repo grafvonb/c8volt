@@ -223,7 +223,7 @@ func tenantContextWarnings(ctx TenantContext) []TenantContextWarning {
 	if ctx.CrossTenant {
 		warnings = append(warnings, TenantContextWarning{
 			Code:    TenantContextWarningMultipleTenants,
-			Message: "resources from multiple tenants will be affected: " + strings.Join(ctx.ResolvedTenantIDs, ", "),
+			Message: "affected tenants: " + strings.Join(ctx.ResolvedTenantIDs, ", "),
 		})
 	}
 	if ctx.UnknownTargetCount > 0 {

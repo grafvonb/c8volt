@@ -11,7 +11,7 @@ Execute process-instance retention cleanup
 
 Execute process-instance retention cleanup.
 
-Tenant contract: retention cleanup uses discovery semantics. A named tenant scopes candidate discovery; empty tenant configuration leaves discovery unfiltered and is reported as "selection scope: unfiltered across accessible tenants". Frozen plans and audit reports show known resource tenants and warn when the scope spans multiple tenants or includes targets with unknown tenant metadata.
+Tenant contract: retention cleanup uses discovery semantics. A named tenant scopes candidate discovery; empty tenant configuration leaves discovery unfiltered and is reported as "selection scope: unfiltered across accessible tenants". Explicit --tenant changes are reported before scope, and --tenant "" warns when it clears a named configured filter. Frozen plans and audit reports show one known resource tenant informationally, emit one warning-level "affected tenants" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.
 
 The workflow discovers process instances older than the required retention age, freezes that candidate set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion after confirmation. Discovery pages through all matching retention candidates by default. --batch-size controls each discovery page request, --limit caps the frozen retention scope, and --workers, --fail-fast, and --no-worker-limit bound independent delete planning or deletion work. Human, JSON, and audit report output identify whether discovery completed or was user-limited. Use compatible process-instance filters to narrow discovery, --auto-confirm or --automation for unattended deletion, and --report-file to write an audit report.
 
@@ -72,7 +72,7 @@ c8volt ops execute retention-policy [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

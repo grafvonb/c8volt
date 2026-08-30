@@ -11,7 +11,7 @@ Repair incidents by key or filter
 
 Repair incidents by key or filter.
 
-Tenant contract: incident-filter mode uses discovery semantics, where a named tenant scopes candidate discovery and empty tenant configuration leaves discovery unfiltered. Direct --key and stdin input use explicit-key semantics and report that the tenant filter is not applied. Frozen plans and audit reports show known resource tenants and warn when the scope spans multiple tenants or includes targets with unknown tenant metadata.
+Tenant contract: incident-filter mode uses discovery semantics, where a named tenant scopes candidate discovery and empty tenant configuration leaves discovery unfiltered. Explicit --tenant changes are reported before scope, and --tenant "" warns when it clears a named configured filter. Direct --key and stdin input use explicit-key semantics and report that the tenant filter is not applied. Frozen plans and audit reports show one known resource tenant informationally, emit one warning-level "affected tenants" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.
 
 The command accepts repeated --key values, newline-separated keys from stdin with '-', or incident search filters. Keyed mode and search mode are mutually exclusive. Search mode pages through all matching incidents by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. It builds a fixed incident target set before mutation, applies process-instance-scope variable updates once per unique scope when requested, applies job retry and timeout updates only when an incident has a related job, resolves each incident, and confirms clearance unless --no-wait is set. Incidents without related jobs are reported and still proceed to incident resolution. Use --report-file with Markdown or JSON output for an audit record of discovery, targets, step statuses, notices, errors, and final outcome.
 
@@ -76,7 +76,7 @@ c8volt ops repair incident [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

@@ -166,6 +166,40 @@ func TestProcessInstanceMutationProgress_AttachedDiscoveryTenantContextPrecedesV
 	require.Less(t, strings.Index(output, tenantLine), strings.Index(output, scopeLine))
 }
 
+// TestProcessInstanceMutationProgress_RendersTenantOverrideBeforeScope verifies
+// durable PI progress includes explicit tenant broadening provenance before the
+// normal discovery scope line.
+func TestProcessInstanceMutationProgress_RendersTenantOverrideBeforeScope(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagVerbose = true
+
+	cmd := &cobra.Command{}
+	stderr := &bytes.Buffer{}
+	cmd.SetErr(stderr)
+	cmd.SetContext(tenantOverrideProvenance{
+		ConfiguredTenantID: "tenant-a",
+		ExplicitTenantID:   "",
+		Explicit:           true,
+	}.ToContext(context.Background()))
+	attachTenantContext(cmd, newDiscoveryTenantContext(""))
+
+	progress := newProcessInstanceMutationProgressReporter(cmd, "cancel")
+	progress(processInstanceMutationTestPreflightEvent("cancel"))
+
+	output := stderr.String()
+	configuredLine := "configured tenant: tenant-a\n"
+	overrideWarning := "--tenant \"\" overrides the configured tenant filter; selection is unfiltered\n"
+	tenantLine := "selection scope: unfiltered across accessible tenants\n"
+	scopeLine := "process-instance cancel scope:"
+	require.Contains(t, output, configuredLine)
+	require.Contains(t, output, overrideWarning)
+	require.Contains(t, output, tenantLine)
+	require.Less(t, strings.Index(output, configuredLine), strings.Index(output, overrideWarning))
+	require.Less(t, strings.Index(output, overrideWarning), strings.Index(output, tenantLine))
+	require.Less(t, strings.Index(output, tenantLine), strings.Index(output, scopeLine))
+}
+
 // TestProcessInstanceMutationProgress_ProtectedModesSuppressAttachedDiscoveryTenantContext
 // verifies quiet and keys-only progress modes do not leak tenant context to
 // stdout or stderr.
@@ -202,7 +236,7 @@ func TestProcessInstanceMutationProgress_ProtectedModesSuppressAttachedDiscovery
 
 			require.Empty(t, stdout.String())
 			require.NotContains(t, stderr.String(), "selection scope:")
-			require.NotContains(t, stderr.String(), "resources from multiple tenants")
+			require.NotContains(t, stderr.String(), "affected tenants:")
 		})
 	}
 }
@@ -272,17 +306,15 @@ func TestCancelProcessInstanceSearchDryRun_RendersMergedTenantWarnings(t *testin
 	output := buf.String()
 	tenantLine := "selection scope: unfiltered across accessible tenants\n"
 	resourceLine := "affected tenants: tenant-a, tenant-b\n"
-	crossWarning := "resources from multiple tenants will be affected: tenant-a, tenant-b\n"
 	unknownWarning := "tenant metadata is unknown for 1 target\n"
 	summaryLine := "dry run: cancel process-instance\n"
 	require.Contains(t, output, tenantLine)
 	require.Contains(t, output, resourceLine)
-	require.Contains(t, output, crossWarning)
 	require.Contains(t, output, unknownWarning)
 	require.Contains(t, output, summaryLine)
+	require.Equal(t, 1, strings.Count(output, resourceLine))
 	require.Less(t, strings.Index(output, tenantLine), strings.Index(output, resourceLine))
-	require.Less(t, strings.Index(output, resourceLine), strings.Index(output, crossWarning))
-	require.Less(t, strings.Index(output, crossWarning), strings.Index(output, unknownWarning))
+	require.Less(t, strings.Index(output, resourceLine), strings.Index(output, unknownWarning))
 	require.Less(t, strings.Index(output, unknownWarning), strings.Index(output, summaryLine))
 }
 

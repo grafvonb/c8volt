@@ -130,6 +130,132 @@ apis:
 	}
 }
 
+// TestTenantOverrideProvenanceFromConfigTracksExplicitTenantFlagTransitions
+// verifies root config setup preserves the pre-flag tenant and explicit flag
+// value without changing the resolved tenant used by commands.
+func TestTenantOverrideProvenanceFromConfigTracksExplicitTenantFlagTransitions(t *testing.T) {
+	tests := []struct {
+		name           string
+		configYAML     string
+		tenantFlag     *string
+		wantTenant     string
+		wantProvenance tenantOverrideProvenance
+	}{
+		{
+			name: "absent flag records no provenance",
+			configYAML: `
+app:
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`,
+			wantTenant: "tenant-a",
+		},
+		{
+			name: "equal explicit flag preserves both values",
+			configYAML: `
+app:
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`,
+			tenantFlag: stringPtr("tenant-a"),
+			wantTenant: "tenant-a",
+			wantProvenance: tenantOverrideProvenance{
+				ConfiguredTenantID: "tenant-a",
+				ExplicitTenantID:   "tenant-a",
+				Explicit:           true,
+			},
+		},
+		{
+			name: "named to empty keeps configured tenant",
+			configYAML: `
+app:
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`,
+			tenantFlag: stringPtr(""),
+			wantProvenance: tenantOverrideProvenance{
+				ConfiguredTenantID: "tenant-a",
+				ExplicitTenantID:   "",
+				Explicit:           true,
+			},
+		},
+		{
+			name: "named to different keeps explicit tenant",
+			configYAML: `
+app:
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`,
+			tenantFlag: stringPtr("tenant-b"),
+			wantTenant: "tenant-b",
+			wantProvenance: tenantOverrideProvenance{
+				ConfiguredTenantID: "tenant-a",
+				ExplicitTenantID:   "tenant-b",
+				Explicit:           true,
+			},
+		},
+		{
+			name: "empty to named records empty configured tenant",
+			configYAML: `
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`,
+			tenantFlag: stringPtr("tenant-a"),
+			wantTenant: "tenant-a",
+			wantProvenance: tenantOverrideProvenance{
+				ConfiguredTenantID: "",
+				ExplicitTenantID:   "tenant-a",
+				Explicit:           true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := Root()
+			resetCommandTreeFlags(root)
+			t.Cleanup(func() {
+				resetCommandTreeFlags(root)
+			})
+
+			cfgPath := filepath.Join(t.TempDir(), "config.yaml")
+			require.NoError(t, os.WriteFile(cfgPath, []byte(tt.configYAML), 0o600))
+			require.NoError(t, root.PersistentFlags().Set("config", cfgPath))
+			if tt.tenantFlag != nil {
+				require.NoError(t, root.PersistentFlags().Set("tenant", *tt.tenantFlag))
+			}
+
+			v := viper.New()
+			bindings, err := initViper(v, root)
+			require.NoError(t, err)
+
+			cfg, err := retrieveAndNormalizeConfig(v, bindings)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantTenant, cfg.App.Tenant)
+			require.Equal(t, tt.wantProvenance, tenantOverrideProvenanceFromConfig(v, bindings, cfg))
+		})
+	}
+}
+
 // TestAutomationModeEnabled_PrefersResolvedConfigContext ensures runtime decisions read the resolved
 // config placed on the command context, even when the raw persistent flag value says otherwise.
 func TestAutomationModeEnabled_PrefersResolvedConfigContext(t *testing.T) {
@@ -180,4 +306,10 @@ func TestMissingConfigHint_FallsBackToTemplateAdviceWhenNoLocalExampleExists(t *
 	got := missingConfigHint()
 	require.Contains(t, got, "config show --template")
 	require.NotContains(t, got, "config.example.yaml")
+}
+
+// stringPtr keeps table-driven root-config tests readable when an explicit
+// empty flag value must be distinguished from an absent flag.
+func stringPtr(value string) *string {
+	return &value
 }

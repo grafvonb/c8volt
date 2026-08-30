@@ -11,7 +11,7 @@ Repair incidents selected by process instances
 
 Repair incidents selected by process instances.
 
-Tenant contract: process-instance search mode uses discovery semantics, where a named tenant scopes candidate discovery and empty tenant configuration leaves discovery unfiltered. Direct --key and stdin input use explicit-key semantics and report that the tenant filter is not applied. Frozen plans and audit reports show known resource tenants and warn when the scope spans multiple tenants or includes targets with unknown tenant metadata.
+Tenant contract: process-instance search mode uses discovery semantics, where a named tenant scopes candidate discovery and empty tenant configuration leaves discovery unfiltered. Explicit --tenant changes are reported before scope, and --tenant "" warns when it clears a named configured filter. Direct --key and stdin input use explicit-key semantics and report that the tenant filter is not applied. Frozen plans and audit reports show one known resource tenant informationally, emit one warning-level "affected tenants" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.
 
 The command accepts repeated --key values, newline-separated process-instance keys from stdin with '-', or process-instance search filters. Search mode automatically limits discovery to incident-bearing process instances; use --direct-incidents-only for stricter direct active incident matching. Search mode pages through all matching incident-bearing process instances by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. The workflow builds a fixed target set of repairable process instances and active incidents before mutation, applies process-instance-scope variable updates once per unique scope when requested, then reuses the incident repair steps for job updates, incident resolution, and confirmation. Use --report-file with Markdown or JSON output for an audit record of discovery, targets, duplicate handling, skipped keys, step statuses, notices, errors, and final outcome.
 
@@ -83,7 +83,7 @@ c8volt ops repair process-instance [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

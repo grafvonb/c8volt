@@ -116,7 +116,7 @@ func TestCommandCapabilityForCommand_DocumentsTenantContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
 
-	const tenantDescription = "tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized"
+	const tenantDescription = "tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized"
 	capability := commandCapabilityForCommand(getProcessInstanceCmd)
 
 	require.Contains(t, capability.Flags, FlagContract{

@@ -11,7 +11,7 @@ Purge all selected process definitions
 
 Purge all selected process definitions.
 
-Tenant contract: selector mode uses discovery semantics, where a named tenant scopes candidate discovery and empty tenant configuration leaves discovery unfiltered. Direct --key input uses explicit-key semantics and reports that the tenant filter is not applied. Frozen plans and audit reports show known process-definition and nested process-instance tenants and warn when the scope spans multiple tenants or includes targets with unknown tenant metadata.
+Tenant contract: selector mode uses discovery semantics, where a named tenant scopes candidate discovery and empty tenant configuration leaves discovery unfiltered. Explicit --tenant changes are reported before scope, and --tenant "" warns when it clears a named configured filter. Direct --key input uses explicit-key semantics and reports that the tenant filter is not applied. Frozen plans and audit reports show one known process-definition or nested process-instance tenant informationally, emit one warning-level "affected tenants" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.
 
 The workflow discovers candidate process-definition versions using the same filters as `get process-definition`, freezes the candidate keys, validates the existing delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Discovery pages through all matching process definitions by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. This purge requires the full process-definition history deletion capability, currently Camunda 8.9 or newer. Preview with --dry-run before confirmed deletion. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.
 
@@ -64,7 +64,7 @@ c8volt ops purge all-process-definitions [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

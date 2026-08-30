@@ -406,7 +406,7 @@ func TestProcessInstanceDryRunSummary_ProtectedModesDoNotRenderDiscoveryContext(
 			require.NoError(t, renderProcessInstanceDryRunSummary(cmd, summary))
 			require.Equal(t, tt.want, buf.String())
 			require.NotContains(t, buf.String(), "selection scope:")
-			require.NotContains(t, buf.String(), "resources from multiple tenants")
+			require.NotContains(t, buf.String(), "affected tenants:")
 		})
 	}
 }

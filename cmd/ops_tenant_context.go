@@ -45,21 +45,8 @@ func printOpsTenantContext(cmd *cobra.Command, ctx tenant.Context, channel ops.P
 		return
 	}
 	markTenantContextHumanRendered(cmd)
-	if line := tenantContextPrimaryHumanLine(ctx); line != "" {
-		printOpsDurableLine(cmd, line, false)
-	}
-	switch len(ctx.ResolvedTenantIDs) {
-	case 0:
-	case 1:
-		printOpsDurableLine(cmd, "affected tenants: "+ctx.ResolvedTenantIDs[0], false)
-	default:
-		printOpsDurableLine(cmd, "affected tenants: "+strings.Join(ctx.ResolvedTenantIDs, ", "), false)
-	}
-	for _, warning := range ctx.Warnings {
-		if warning.Code == tenant.ContextWarningUnfilteredSelection {
-			continue
-		}
-		printOpsDurableLine(cmd, warning.Message, true)
+	for _, line := range tenantContextHumanLines(cmd, ctx) {
+		printOpsDurableLine(cmd, line.Text, line.Warn)
 	}
 }
 
@@ -150,16 +137,20 @@ func writeMarkdownTenantContext(out *strings.Builder, ctx *tenant.Context) {
 	case 1:
 		writeMarkdownReportField(out, "Resource Tenant", ctx.ResolvedTenantIDs[0])
 	default:
-		writeMarkdownReportField(out, "Resource Tenants", strings.Join(ctx.ResolvedTenantIDs, ", "))
 	}
 	writeMarkdownReportField(out, "Unknown Target Tenants", strconv.Itoa(ctx.UnknownTargetCount))
 	writeMarkdownReportField(out, "Cross Tenant", strconv.FormatBool(ctx.CrossTenant))
-	warnings := make([]string, 0, len(ctx.Warnings))
+	warnings := make([]string, 0, len(ctx.Warnings)+1)
+	if len(ctx.ResolvedTenantIDs) > 1 {
+		warnings = append(warnings, "affected tenants: "+strings.Join(ctx.ResolvedTenantIDs, ", "))
+	}
 	for _, warning := range ctx.Warnings {
-		if warning.Code == tenant.ContextWarningUnfilteredSelection {
+		switch warning.Code {
+		case tenant.ContextWarningUnfilteredSelection, tenant.ContextWarningMultipleTenants:
 			continue
+		default:
+			warnings = append(warnings, warning.Message)
 		}
-		warnings = append(warnings, warning.Message)
 	}
 	writeMarkdownReportList(out, "Tenant Warnings", warnings)
 }

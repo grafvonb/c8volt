@@ -16,6 +16,40 @@ import (
 
 type tenantContextKey struct{}
 type tenantContextHumanRenderedKey struct{}
+type tenantOverrideProvenanceKey struct{}
+
+type tenantOverrideProvenance struct {
+	ConfiguredTenantID string
+	ExplicitTenantID   string
+	Explicit           bool
+}
+
+type tenantContextHumanLine struct {
+	Text string
+	Warn bool
+}
+
+// ToContext stores tenant override provenance for human renderers while
+// keeping the public tenant-context schema unchanged.
+func (p tenantOverrideProvenance) ToContext(ctx context.Context) context.Context {
+	if !p.Explicit {
+		return ctx
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, tenantOverrideProvenanceKey{}, p)
+}
+
+// tenantOverrideProvenanceFromCommand reads command-private tenant flag
+// provenance captured during root configuration.
+func tenantOverrideProvenanceFromCommand(cmd *cobra.Command) tenantOverrideProvenance {
+	if cmd == nil || cmd.Context() == nil {
+		return tenantOverrideProvenance{}
+	}
+	provenance, _ := cmd.Context().Value(tenantOverrideProvenanceKey{}).(tenantOverrideProvenance)
+	return provenance
+}
 
 // attachTenantContext stores the immutable tenant context for later shared
 // envelope rendering.
@@ -176,7 +210,7 @@ func withTenantContextWarnings(ctx tenant.Context) tenant.Context {
 	if ctx.CrossTenant {
 		ctx.Warnings = append(ctx.Warnings, tenant.ContextWarning{
 			Code:    tenant.ContextWarningMultipleTenants,
-			Message: "resources from multiple tenants will be affected: " + strings.Join(ctx.ResolvedTenantIDs, ", "),
+			Message: "affected tenants: " + strings.Join(ctx.ResolvedTenantIDs, ", "),
 		})
 	}
 	if ctx.UnknownTargetCount > 0 {
@@ -190,6 +224,77 @@ func withTenantContextWarnings(ctx tenant.Context) tenant.Context {
 		})
 	}
 	return ctx
+}
+
+// tenantContextHumanLines classifies every human tenant-context line once so
+// stdout/stderr renderers and durable progress agree on warning severity.
+func tenantContextHumanLines(cmd *cobra.Command, ctx tenant.Context) []tenantContextHumanLine {
+	lines := tenantOverrideHumanLines(cmd, ctx)
+	if line := tenantContextPrimaryHumanLine(ctx); line != "" {
+		lines = append(lines, tenantContextHumanLine{Text: line})
+	}
+
+	switch len(ctx.ResolvedTenantIDs) {
+	case 0:
+	case 1:
+		lines = append(lines, tenantContextHumanLine{Text: "affected tenants: " + ctx.ResolvedTenantIDs[0]})
+	default:
+		lines = append(lines, tenantContextHumanLine{
+			Text: "affected tenants: " + strings.Join(ctx.ResolvedTenantIDs, ", "),
+			Warn: true,
+		})
+	}
+
+	for _, warning := range ctx.Warnings {
+		switch warning.Code {
+		case tenant.ContextWarningUnfilteredSelection, tenant.ContextWarningMultipleTenants:
+			continue
+		default:
+			lines = append(lines, tenantContextHumanLine{Text: warning.Message, Warn: true})
+		}
+	}
+	return lines
+}
+
+// tenantOverrideHumanLines reports meaningful command-line tenant overrides
+// only for contexts where the configured discovery filter applies.
+func tenantOverrideHumanLines(cmd *cobra.Command, ctx tenant.Context) []tenantContextHumanLine {
+	if ctx.Mode != tenant.ContextModeConfiguration && ctx.Mode != tenant.ContextModeDiscovery {
+		return nil
+	}
+	provenance := tenantOverrideProvenanceFromCommand(cmd)
+	if !provenance.Explicit || provenance.ConfiguredTenantID == provenance.ExplicitTenantID {
+		return nil
+	}
+
+	lines := []tenantContextHumanLine{{
+		Text: "configured tenant: " + tenantOverrideConfiguredTenantLabel(provenance.ConfiguredTenantID),
+	}}
+	if provenance.ConfiguredTenantID != "" && provenance.ExplicitTenantID == "" {
+		return append(lines, tenantContextHumanLine{
+			Text: `--tenant "" overrides the configured tenant filter; selection is unfiltered`,
+			Warn: true,
+		})
+	}
+	if provenance.ExplicitTenantID == "" {
+		return lines
+	}
+	text := "--tenant " + strconv.Quote(provenance.ExplicitTenantID)
+	if provenance.ConfiguredTenantID == "" {
+		text += " sets the tenant filter"
+	} else {
+		text += " overrides configured tenant filter"
+	}
+	return append(lines, tenantContextHumanLine{Text: text})
+}
+
+// tenantOverrideConfiguredTenantLabel keeps empty configured provenance visible
+// without confusing it with default-tenant creation semantics.
+func tenantOverrideConfiguredTenantLabel(configuredTenantID string) string {
+	if configuredTenantID == "" {
+		return "none"
+	}
+	return configuredTenantID
 }
 
 // cloneTenantContext copies mutable slices held inside a public tenant context.

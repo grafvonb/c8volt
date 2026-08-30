@@ -27,7 +27,8 @@ fail.
 
 Tenant context describes configuration scope only: a named tenant is a discovery
 filter, while an empty tenant means no configured tenant filter and is not
-reported as <default>.
+reported as <default>. Human diagnostics report explicit --tenant changes before
+the resulting scope; --tenant "" warns when it clears a named configured filter.
 
 Use --json for a structured diagnostic payload on stdout; logs remain on stderr.`,
 	Example: `  ./c8volt --config ./config.yaml config test-connection
