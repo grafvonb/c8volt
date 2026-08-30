@@ -26,6 +26,7 @@
 ### Session 2026-08-30
 
 - Q: Which canonical grammar should tenant-context human messages use? → A: Use lower-case c8volt-style labels and prefix-free warning messages; the output channel supplies warning severity exactly once.
+- Q: How should c8volt report an explicit tenant flag that changes the configured tenant and a resolved plan spanning multiple tenants? → A: Retain configured-versus-explicit provenance; warn only when a named configured filter is cleared, report other explicit changes as information, and emit affected tenant IDs once at warning severity when multiple tenants are affected.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -35,13 +36,16 @@ As an operator, I want previews and confirmations to state whether discovery is 
 
 **Why this priority**: An unfiltered search can produce a cross-tenant candidate set, making this the most immediate safeguard against an unexpectedly broad mutation.
 
-**Independent Test**: Run the same search-derived mutation preview with a named tenant and with an empty tenant, then verify the first identifies the named tenant filter and the second explicitly warns that no tenant filter is applied and multiple tenants may be affected.
+**Independent Test**: Run the same search-derived mutation preview with a named tenant, with an empty configured tenant, and with an explicit `--tenant ""` overriding a named configured tenant; verify the output distinguishes the configured value, the explicit override, and the resulting selection scope without changing selection behavior.
 
 **Acceptance Scenarios**:
 
 1. **Given** the effective configured tenant is `tenant-a`, **When** an operator reviews a search or selection preflight, **Then** the output states `selection scope: tenant-a only` before execution.
 2. **Given** the effective configured tenant is empty, **When** an operator reviews a search or selection preflight, **Then** the output states `selection scope: unfiltered across accessible tenants` rather than describing the scope as the default tenant.
 3. **Given** an unfiltered search resolves resources from one tenant only, **When** the operator reviews the mutation plan, **Then** the output still states that no tenant filter was applied because the selection semantics remain unfiltered.
+4. **Given** the configured tenant is `tenant-a`, **When** an operator explicitly supplies `--tenant ""`, **Then** human preflight output identifies `configured tenant: tenant-a`, warns `--tenant "" overrides the configured tenant filter; selection is unfiltered`, and reports the unfiltered selection scope before execution.
+5. **Given** an explicit tenant value replaces a different named configured tenant or narrows an empty configured tenant to a named tenant, **When** human preflight output is produced, **Then** the changed tenant context is reported informationally and no broadening warning is emitted.
+6. **Given** the tenant flag is absent or explicitly equals the configured tenant, **When** human preflight output is produced, **Then** no tenant-override message is emitted.
 
 ---
 
@@ -84,11 +88,11 @@ As an operator, I want a prominent warning when a resolved mutation plan spans t
 
 **Why this priority**: Once a plan is resolved, the actual tenant distribution is stronger safety evidence than configuration alone and must be visible before destructive work proceeds.
 
-**Independent Test**: Resolve a mutation plan containing resources from `tenant-a` and `tenant-b`, then verify the preview and destructive confirmation both warn that multiple tenants will be affected and identify the distinct tenants.
+**Independent Test**: Resolve a mutation plan containing resources from `tenant-a` and `tenant-b`, then verify the preview and destructive confirmation each emit one warning-level `affected tenants` summary containing the distinct tenants and no duplicate information-level tenant summary.
 
 **Acceptance Scenarios**:
 
-1. **Given** a resolved mutation plan contains resources from `tenant-a` and `tenant-b`, **When** the plan is shown before execution, **Then** it states `affected tenants: tenant-a, tenant-b` and the warning channel prominently states `resources from multiple tenants will be affected: tenant-a, tenant-b` without duplicating a severity marker.
+1. **Given** a resolved mutation plan contains resources from `tenant-a` and `tenant-b`, **When** the plan is shown before execution, **Then** the warning channel emits `affected tenants: tenant-a, tenant-b` exactly once and no information-level duplicate or separate cross-tenant warning repeats those tenant IDs.
 2. **Given** multiple resolved resources all belong to `tenant-a`, **When** the plan is shown, **Then** it states `affected tenants: tenant-a` and no cross-tenant warning is emitted.
 3. **Given** resolved resources contain repeated tenant values, **When** the warning is produced, **Then** each distinct known tenant appears once in a stable order.
 4. **Given** some resolved resources have unknown tenant metadata, **When** the plan is shown, **Then** a non-blocking warning states that some target tenants are unknown without inventing a tenant value.
@@ -122,6 +126,9 @@ As an operator or automation author, I want configuration diagnostics, mutation 
 - A plan may include duplicate tenant values; tenant summaries and warnings must list distinct tenants deterministically.
 - An unfiltered search that happens to return resources from only one tenant remains an unfiltered search and must not be reported as tenant-scoped.
 - A cross-tenant plan must remain prominent when confirmation output is compact, and must not be hidden by per-resource detail.
+- An explicit empty `--tenant ""` must remain distinguishable from an absent tenant flag so an operator can see that a named configured filter was intentionally removed.
+- An explicit tenant equal to the configured tenant must not create noisy override output.
+- Tenant override reporting must not change the effective value used for discovery, selection, or creation.
 - Machine-readable, quiet, and keys-only modes must not receive human-oriented warning text that would invalidate their existing contracts.
 - Commands that do not search, select, create, deploy, run, resolve explicit resources, or mutate tenant-associated resources must not display irrelevant tenant context.
 
@@ -138,7 +145,7 @@ As an operator or automation author, I want configuration diagnostics, mutation 
 - **FR-007**: Explicit-key operations MUST display `affected tenants: <tenant>` when the actual tenant is already available in the resolved plan.
 - **FR-008**: Explicit-key operations MUST NOT invent or infer an actual resource tenant when that tenant is unavailable in the resolved plan.
 - **FR-009**: Reporting tenant context MUST NOT change the backend-authorized behavior of explicit resource keys or impose a new local tenant restriction.
-- **FR-010**: A resolved mutation plan containing resources from more than one distinct known tenant MUST produce a prominent warning that identifies every distinct known tenant affected.
+- **FR-010**: A resolved mutation plan containing resources from more than one distinct known tenant MUST emit one prominent warning-level `affected tenants: <tenant-list>` summary that identifies every distinct known tenant affected, without also emitting an information-level tenant summary or a separate warning that repeats those tenant IDs.
 - **FR-011**: Cross-tenant warning tenant values MUST be unique and presented in a deterministic order.
 - **FR-012**: Tenant context MUST be visible where applicable in configuration validation, connection diagnostics, dry-run output, preflight output, and destructive mutation confirmations.
 - **FR-013**: Tenant context MUST be applied where relevant to process-instance cancel, delete, resolve, and update commands; process-definition deletion; job updates; retention, purge, repair, and smoke-test workflows; and deploy and run commands.
@@ -153,10 +160,14 @@ As an operator or automation author, I want configuration diagnostics, mutation 
 - **FR-022**: Configuration validation and connection diagnostics MUST distinguish a named configured tenant from no configured tenant and MUST NOT describe the absence of a configured tenant as a default-tenant operation.
 - **FR-023**: A resolved mutation plan containing any target with unknown tenant metadata MUST produce a non-blocking unknown-tenant warning, and this warning MUST appear in addition to any cross-tenant warning required by the known targets.
 - **FR-024**: Human-oriented tenant context MUST follow c8volt's operational output grammar: ordinary labels and warning messages use lower-case sentence fragments, warning messages do not embed a severity prefix, and warning-capable output channels supply warning severity exactly once.
+- **FR-025**: Human tenant-context reporting MUST retain the configured tenant value before explicit command-line override and distinguish whether the tenant flag was absent, explicitly empty, or explicitly named; this provenance MUST NOT change the effective tenant used by the operation or alter machine-readable schemas.
+- **FR-026**: Clearing a named configured tenant with explicit `--tenant ""` MUST identify the configured tenant and emit the warning `--tenant "" overrides the configured tenant filter; selection is unfiltered`; replacing a configured tenant with another named tenant or narrowing an empty configuration to a named tenant MUST be informational; an absent flag or an explicit value equal to configuration MUST emit no override message.
+- **FR-027**: A resolved plan with exactly one distinct known tenant MUST emit `affected tenants: <tenant>` at information severity, while a plan with multiple distinct known tenants MUST emit the same summary once at warning severity as required by FR-010.
 
 ### Key Entities *(include if feature involves data)*
 
 - **Effective Tenant Context**: The tenant value resolved for one command execution, interpreted according to whether the operation searches, selects, creates, deploys, runs, or acts on explicit resources.
+- **Tenant Override Provenance**: The configured tenant before command-line processing, whether the tenant flag was explicitly supplied, and its explicit value, retained only to explain how the effective tenant was obtained.
 - **Tenant Filter**: A named tenant constraint applied to search or selection; when absent, discovery is unfiltered across resources accessible to the operator.
 - **Creation Tenant Target**: The named or default tenant in which a create, deploy, or run operation will create new work.
 - **Explicit Resource Target**: A resource key supplied directly by the operator and governed by backend authorization rather than the configured tenant filter.
@@ -177,10 +188,12 @@ As an operator or automation author, I want configuration diagnostics, mutation 
 - **SC-008**: In operator review of the named, empty, default-target, explicit-key, and cross-tenant examples, at least 90% of reviewers correctly identify within 10 seconds which tenant or tenants may be affected before execution.
 - **SC-009**: Existing tenant-selection behavior remains unchanged across all regression scenarios; only its operator-visible explanation is added or corrected.
 - **SC-010**: In acceptance tests, 100% of resolved mutation plans containing unknown tenant metadata produce a non-blocking unknown-tenant warning, including plans whose known targets also span multiple tenants.
+- **SC-011**: Acceptance tests cover every configured-versus-explicit tenant transition and verify that only named-to-empty broadening warns, other changed values are informational, unchanged or absent overrides are silent, and multi-tenant IDs appear in exactly one warning-level summary.
 
 ## Assumptions
 
 - The existing effective tenant resolution from flags, environment, profiles, or base configuration remains authoritative and is not changed by this feature.
+- The pre-override configured tenant and explicit flag presence can be retained for human reporting without changing tenant precedence, backend requests, or the common structured tenant-context object.
 - Existing tenant-selection behavior distinguishes tenant-scoped discovery, unfiltered discovery, default-tenant creation, and backend-authorized explicit resource keys; this feature exposes those established meanings rather than redefining them.
 - The established user-facing representation for the default tenant is reused when actual resource tenant metadata identifies the default tenant.
 - Cross-tenant warnings are based on tenant metadata already available in the resolved plan; unavailable tenant data may remain unknown.
@@ -193,6 +206,7 @@ As an operator or automation author, I want configuration diagnostics, mutation 
 - Adding an `--all-tenants` flag or another new tenant-selection control.
 - Rejecting backend-authorized explicit resource keys because they differ from the configured tenant.
 - Fetching otherwise unavailable tenant metadata solely to enrich tenant-context reporting.
+- Changing tenant precedence or the tenant value selected by existing configuration and command-line resolution.
 
 ## Implementation Governance
 
