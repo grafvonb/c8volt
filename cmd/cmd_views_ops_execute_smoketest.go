@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
@@ -23,6 +24,7 @@ func renderOpsExecuteSmokeTestResult(cmd *cobra.Command, result ops.SmokeTestRes
 	} else {
 		renderHumanLine(cmd, "execute smoke test")
 	}
+	renderAttachedTenantContext(cmd)
 	renderOpsExecuteSmokeTestPlan(cmd, result)
 	renderOpsExecuteSmokeTestDeployment(cmd, result)
 	renderOpsExecuteSmokeTestRun(cmd, result)
@@ -328,9 +330,11 @@ func writeOpsExecuteSmokeTestReport(result ops.SmokeTestResult, cfg *config.Conf
 
 func enrichOpsExecuteSmokeTestReport(report ops.SmokeTestAuditReport, cfg *config.Config) ops.SmokeTestAuditReport {
 	report.C8voltVersion = CurrentBuildInfo().Version
+	ctx := opsExecuteSmokeTestReportTenantContext(report, cfg)
+	report.TenantContext = cloneTenantContextPtr(ctx)
+	report.TenantID = opsLegacyTenantIDForContext(report.TenantContext)
 	if cfg != nil {
 		report.CamundaVersion = cfg.App.CamundaVersion.String()
-		report.TenantID = cfg.App.ViewTenant()
 		if cfg.ActiveProfile != "" {
 			report.ProfileIdentity = "profile:" + cfg.ActiveProfile
 		} else {
@@ -338,6 +342,23 @@ func enrichOpsExecuteSmokeTestReport(report ops.SmokeTestAuditReport, cfg *confi
 		}
 	}
 	return report
+}
+
+// attachOpsExecuteSmokeTestResultTenantContext freezes creation tenant context
+// with returned smoke-test resource evidence before rendering.
+func attachOpsExecuteSmokeTestResultTenantContext(cmd *cobra.Command, cfg *config.Config, result ops.SmokeTestResult) ops.SmokeTestResult {
+	evidence := opsMergedTenantEvidence(result.Deployment.TenantEvidence, result.Run.TenantEvidence)
+	ctx := attachOpsCreationTenantContext(cmd, cfg, evidence)
+	result.Report.TenantContext = cloneTenantContextPtr(ctx)
+	result.Report.TenantID = opsLegacyTenantIDForContext(result.Report.TenantContext)
+	return result
+}
+
+// opsExecuteSmokeTestReportTenantContext derives report-level creation context
+// from smoke-test deployment and run evidence.
+func opsExecuteSmokeTestReportTenantContext(report ops.SmokeTestAuditReport, cfg *config.Config) tenant.Context {
+	evidence := opsMergedTenantEvidence(report.Deployment.TenantEvidence, report.Run.TenantEvidence)
+	return opsTenantContextWithEvidence(newCreationTenantContext(creationTenantID(cfg)), evidence)
 }
 
 func renderOpsExecuteSmokeTestJSONReport(report ops.SmokeTestAuditReport) ([]byte, error) {
@@ -361,6 +382,7 @@ func renderOpsExecuteSmokeTestMarkdownReport(report ops.SmokeTestAuditReport, cf
 	writeMarkdownReportField(&out, "Camunda Version", report.CamundaVersion)
 	writeMarkdownReportField(&out, "Profile", report.ProfileIdentity)
 	writeMarkdownReportField(&out, "Tenant", report.TenantID)
+	writeMarkdownTenantContext(&out, report.TenantContext)
 	writeMarkdownReportField(&out, "Auto Confirm", fmt.Sprintf("%t", report.AutoConfirm))
 	writeMarkdownReportField(&out, "Automation", fmt.Sprintf("%t", report.Automation))
 	writeMarkdownReportField(&out, "No Wait", fmt.Sprintf("%t", report.NoWait))

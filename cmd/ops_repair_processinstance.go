@@ -30,8 +30,11 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Repair incidents selected by process instances",
 	Long: "Repair incidents selected by process instances.\n\n" +
+		"Tenant contract: process-instance search mode uses discovery semantics, where a named tenant scopes candidate discovery and empty tenant configuration leaves discovery unfiltered. Explicit --tenant changes are reported before scope, and --tenant \"\" warns when it clears a named configured filter. Direct --key and stdin input use explicit-key semantics and report that the tenant filter is not applied. Frozen plans and audit reports show one known resource tenant informationally, emit one warning-level \"affected tenants\" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.\n\n" +
 		"The command accepts repeated --key values, newline-separated process-instance keys from stdin with '-', or process-instance search filters. Search mode automatically limits discovery to incident-bearing process instances; use --direct-incidents-only for stricter direct active incident matching. Search mode pages through all matching incident-bearing process instances by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. The workflow builds a fixed target set of repairable process instances and active incidents before mutation, applies process-instance-scope variable updates once per unique scope when requested, then reuses the incident repair steps for job updates, incident resolution, and confirmation. Use --report-file with Markdown or JSON output for an audit record of discovery, targets, duplicate handling, skipped keys, step statuses, notices, errors, and final outcome.",
 	Example: `  ./c8volt ops repair process-instance --key <process-instance-key> --dry-run
+  ./c8volt --tenant tenant-a ops repair process-instance --key <process-instance-key> --dry-run
+  ./c8volt --tenant "" ops repair process-instance --state active --limit 5 --dry-run
   ./c8volt ops repair process-instance --state active --limit 5 --dry-run
   ./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id <bpmn-process-id> --limit 5 --dry-run
   ./c8volt ops repair process-instance --key <process-instance-key> --vars '{"hasIncident":false}' --report-file repair-process-instance.md`,
@@ -140,6 +143,8 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops repair process-instance: %w", err))
 			}
 			if opsRepairPlanHasRepairTargets(planned) {
+				ctx := attachOpsRepairTenantContext(cmd, cfg, planned)
+				printOpsTenantContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
 				if err := confirmCmdOrAbortFn(false, opsRepairConfirmationPrompt(planned)); err != nil {
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}
@@ -155,6 +160,7 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 				return cli.RepairProcessInstances(cmd.Context(), request, collectOptions()...)
 			})
 		}
+		result = attachOpsRepairResultTenantContext(cmd, cfg, result)
 		if reportErr := writeOpsRepairReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops repair process-instance: %w; write audit report: %v", err, reportErr))

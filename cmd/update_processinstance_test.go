@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -15,7 +16,9 @@ import (
 	"sync"
 	"testing"
 
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	types "github.com/grafvonb/c8volt/typex"
@@ -522,6 +525,46 @@ func TestUpdateProcessInstanceVariableDryRun_HumanOutputUsesCompactPlanSyntax(t 
 	require.NotContains(t, output, "variables to add")
 	require.NotContains(t, output, "variables to change")
 	require.NotContains(t, output, "\n\n")
+}
+
+// TestUpdateProcessInstanceVariableDryRun_ExplicitKeyRendersVariableTenant
+// verifies update previews reuse already-loaded variable tenant metadata and
+// keep direct-key variable searches on the admin-scope option path.
+func TestUpdateProcessInstanceVariableDryRun_ExplicitKeyRendersVariableTenant(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	cfg := &config.Config{App: config.App{Tenant: tenantAdminKeysSelectedTenant}}
+	cmd.SetContext(cfg.ToContextWithLogWriter(context.Background(), buf))
+
+	cli := stubProcessAPI{
+		searchProcessInstanceVariables: func(_ context.Context, key string, opts ...options.FacadeOption) ([]process.ProcessInstanceVariable, error) {
+			require.Equal(t, tenantAdminKeysProcessInstanceKey, key)
+			require.True(t, options.ApplyFacadeOptions(opts).IgnoreTenant)
+			return []process.ProcessInstanceVariable{{
+				Name:               "foo",
+				Value:              `"before"`,
+				VariableKey:        "901",
+				ProcessInstanceKey: tenantAdminKeysProcessInstanceKey,
+				ScopeKey:           tenantAdminKeysProcessInstanceKey,
+				TenantId:           tenantAdminKeysReturnedTenant,
+			}}, nil
+		},
+	}
+
+	preview, err := planUpdateProcessInstanceVariables(cmd.Context(), cmd, cli, types.Keys{tenantAdminKeysProcessInstanceKey}, map[string]any{"foo": "after"})
+	require.NoError(t, err)
+	require.NoError(t, renderUpdateProcessInstanceVariablePreview(cmd, preview))
+
+	output := buf.String()
+	require.Contains(t, output, "selection scope: explicit resource keys; tenant filter not applied\n")
+	require.Contains(t, output, "affected tenants: "+tenantAdminKeysReturnedTenant+"\n")
+	require.NotContains(t, output, "selection scope: "+tenantAdminKeysSelectedTenant)
 }
 
 func TestUpdateProcessInstanceVariableDryRun_JSONIgnoresVerboseForStableShape(t *testing.T) {

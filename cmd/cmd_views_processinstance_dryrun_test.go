@@ -6,9 +6,11 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -294,6 +296,119 @@ func TestCancelProcessInstanceDryRun_SearchSummaryExplainsPartialScope(t *testin
 	require.NoError(t, renderProcessInstanceDryRunSummary(cmd, summary))
 	require.Contains(t, buf.String(), "selected process instances already in final state: 1 (states: TERMINATED; not affected by cancel; 103=TERMINATED)")
 	require.Contains(t, buf.String(), "scope: partial (one or more parent process instances were not found; missing ancestor keys: missing-parent)")
+}
+
+// TestProcessInstanceDryRunSummary_HumanOutputRendersAttachedDiscoveryTenantContext
+// verifies shared search-derived dry-run summaries place discovery semantics
+// before the plan body without changing candidate counts.
+func TestProcessInstanceDryRunSummary_HumanOutputRendersAttachedDiscoveryTenantContext(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	attachTenantContext(cmd, newDiscoveryTenantContext(""))
+
+	summary := newProcessInstanceDryRunSummary("cancel", []processInstanceDryRunPreview{
+		newProcessInstanceDryRunPreview("cancel", typex.Keys{"101"}, process.DryRunPIKeyExpansion{
+			Roots:     typex.Keys{"root-101"},
+			Collected: typex.Keys{"root-101", "101"},
+			Outcome:   process.TraversalOutcomeComplete,
+		}),
+	})
+
+	require.NoError(t, renderProcessInstanceDryRunSummary(cmd, summary))
+
+	output := buf.String()
+	tenantLine := "selection scope: unfiltered across accessible tenants\n"
+	planLine := "dry run: cancel process-instance\n"
+	require.Contains(t, output, tenantLine)
+	require.Contains(t, output, planLine)
+	require.Less(t, strings.Index(output, tenantLine), strings.Index(output, planLine))
+	require.Contains(t, output, "selected process instances: 1")
+	require.Contains(t, output, "process instances in scope: 2")
+}
+
+// TestProcessInstanceDryRunSummary_JSONOutputIncludesAttachedDiscoveryTenantContext
+// verifies JSON summaries carry tenant context beside the unchanged payload.
+func TestProcessInstanceDryRunSummary_JSONOutputIncludesAttachedDiscoveryTenantContext(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagViewAsJson = true
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	setContractSupport(cmd, ContractSupportFull)
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	attachTenantContext(cmd, newDiscoveryTenantContext("tenant-a"))
+
+	summary := newProcessInstanceDryRunSummary("cancel", []processInstanceDryRunPreview{
+		newProcessInstanceDryRunPreview("cancel", typex.Keys{"101"}, process.DryRunPIKeyExpansion{
+			Roots:     typex.Keys{"root-101"},
+			Collected: typex.Keys{"root-101", "101"},
+			Outcome:   process.TraversalOutcomeComplete,
+		}),
+	})
+
+	require.NoError(t, renderProcessInstanceDryRunSummary(cmd, summary))
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope))
+	tenantContext := requireJSONObject(t, envelope["tenantContext"])
+	require.Equal(t, string(tenant.ContextModeDiscovery), tenantContext["mode"])
+	require.Equal(t, string(tenant.ContextFilterNamed), tenantContext["filter"])
+	require.Equal(t, "tenant-a", tenantContext["configuredTenantId"])
+	payload := requireJSONObject(t, envelope["payload"])
+	requireDryRunSummaryPayload(t, payload, "cancel", 1, 1, 2, 1)
+}
+
+// TestProcessInstanceDryRunSummary_ProtectedModesDoNotRenderDiscoveryContext
+// verifies quiet and keys-only outputs keep tenant labels out of stdout.
+func TestProcessInstanceDryRunSummary_ProtectedModesDoNotRenderDiscoveryContext(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func()
+		want  string
+	}{
+		{name: "quiet", setup: func() { flagQuiet = true }, want: "dry run: cancel process-instance\nselected process instances: 1\nprocess-instance trees to cancel: 1\nprocess instances in scope: 2\nprocess-instance family scope: complete (all related process instances were found)\n"},
+		{name: "keys only", setup: func() { flagViewKeysOnly = true }, want: "root-101\n101\n"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			prevQuiet := flagQuiet
+			prevKeysOnly := flagViewKeysOnly
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			t.Cleanup(func() {
+				flagQuiet = prevQuiet
+				flagViewKeysOnly = prevKeysOnly
+			})
+			tt.setup()
+
+			cmd := &cobra.Command{}
+			buf := &bytes.Buffer{}
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+			attachTenantContext(cmd, newDiscoveryTenantContext(""))
+
+			summary := newProcessInstanceDryRunSummary("cancel", []processInstanceDryRunPreview{
+				newProcessInstanceDryRunPreview("cancel", typex.Keys{"101"}, process.DryRunPIKeyExpansion{
+					Roots:     typex.Keys{"root-101"},
+					Collected: typex.Keys{"root-101", "101"},
+					Outcome:   process.TraversalOutcomeComplete,
+				}),
+			})
+
+			require.NoError(t, renderProcessInstanceDryRunSummary(cmd, summary))
+			require.Equal(t, tt.want, buf.String())
+			require.NotContains(t, buf.String(), "selection scope:")
+			require.NotContains(t, buf.String(), "affected tenants:")
+		})
+	}
 }
 
 // TestDeleteProcessInstanceDryRunPreviewPayloadMapping verifies delete dry-run plans map to the public JSON payload.

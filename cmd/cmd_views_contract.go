@@ -14,6 +14,11 @@ import (
 )
 
 func renderResultEnvelope[T any](cmd *cobra.Command, envelope ResultEnvelope[T]) error {
+	if envelope.TenantContext == nil {
+		if ctx, ok := attachedTenantContext(cmd); ok {
+			envelope.TenantContext = ctx
+		}
+	}
 	cmd.Print(toolx.ToJSONString(envelope))
 	return nil
 }

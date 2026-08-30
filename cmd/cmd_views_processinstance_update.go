@@ -32,6 +32,7 @@ type processInstanceVariableUpdatePlan struct {
 	Changes            []processInstanceVariablePlannedChange `json:"changes"`
 	UnchangedRequested []processInstanceVariablePlannedValue  `json:"unchangedRequested"`
 	Untouched          []processInstanceVariablePlannedValue  `json:"untouched"`
+	tenantID           string
 }
 
 type processInstanceVariableUpdatePreview struct {
@@ -45,6 +46,8 @@ type processInstanceVariableUpdatePreview struct {
 	VariableUntouchedCount int                                 `json:"variableUntouchedCount"`
 	ProcessInstances       []processInstanceVariableUpdatePlan `json:"processInstances,omitempty"`
 	MutationSubmitted      bool                                `json:"mutationSubmitted"`
+	tenantIDs              []string
+	unknownTenantCount     int
 }
 
 // newProcessInstanceVariableUpdatePreview aggregates per-instance variable plans into the command payload contract.
@@ -57,6 +60,11 @@ func newProcessInstanceVariableUpdatePreview(requestedKeys types.Keys, plans []p
 		MutationSubmitted: false,
 	}
 	for _, plan := range plans {
+		if plan.tenantID == "" {
+			preview.unknownTenantCount++
+		} else {
+			preview.tenantIDs = append(preview.tenantIDs, plan.tenantID)
+		}
 		if plan.HasPlannedChanges() {
 			preview.UpdateCount++
 		}
@@ -101,6 +109,7 @@ func renderUpdateProcessInstanceVariablePlan(cmd *cobra.Command, preview process
 }
 
 func renderProcessInstanceVariableUpdatePlanHuman(cmd *cobra.Command, preview processInstanceVariableUpdatePreview, label string) {
+	renderAttachedTenantContext(cmd)
 	status := processInstanceVariableUpdatePlanHumanStatus(preview, label)
 	if !preview.HasPlannedChanges() {
 		renderHumanLine(cmd, "%s: update process-instance variables: nothing to update (%d requested value(s) already match visible variables); %s", label, preview.VariableUnchangedCount, status)

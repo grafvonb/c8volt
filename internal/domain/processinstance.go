@@ -312,6 +312,7 @@ type ProcessInstanceMutationPlanVisitor func(ProcessInstanceMutationPlanStep) (P
 // cancel/delete pages without taking over CLI rendering or confirmation.
 type ProcessInstanceMutationPlanPagesResult struct {
 	Plans            []ProcessInstanceMutationPlanStep
+	TenantEvidence   TenantEvidence
 	Limit            int32
 	Pages            int32
 	RequestedCount   int32

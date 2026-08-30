@@ -25,10 +25,17 @@ unparseable gateway versions warn that compatibility cannot be verified. These
 compatibility diagnostics do not make an otherwise successful connection test
 fail.
 
+Tenant context describes configuration scope only: a named tenant is a discovery
+filter, while an empty tenant means no configured tenant filter and is not
+reported as <default>. Human diagnostics report explicit --tenant changes before
+the resulting scope; --tenant "" warns when it clears a named configured filter.
+
 Use --json for a structured diagnostic payload on stdout; logs remain on stderr.`,
 	Example: `  ./c8volt --config ./config.yaml config test-connection
   ./c8volt --config ./config.yaml config test-connection --json
-  ./c8volt --profile prod config test-connection`,
+  ./c8volt --profile prod config test-connection
+  ./c8volt --tenant tenant-a config test-connection
+  ./c8volt --tenant "" config test-connection --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log, _ := logging.FromContext(cmd.Context())
 		cfg, err := config.FromContext(cmd.Context())
@@ -43,6 +50,8 @@ Use --json for a structured diagnostic payload on stdout; logs remain on stderr.
 		if err := cfg.Validate(); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(config.FormatValidationError("configuration is invalid", err)))
 		}
+		tenantCtx := attachConfigurationTenantContext(cmd, cfg)
+		renderTenantContext(cmd, tenantCtx)
 
 		ctx, err := installRemoteCommandServices(cmd.Context(), cfg, log)
 		if err != nil {
@@ -65,7 +74,7 @@ Use --json for a structured diagnostic payload on stdout; logs remain on stderr.
 			log.Warn(warning)
 		}
 		if pickMode() == RenderModeJSON {
-			if err := renderJSONPayload(cmd, RenderModeJSON, newConfigTestConnectionView(cfg, configSource, topology, warnings)); err != nil {
+			if err := renderJSONPayload(cmd, RenderModeJSON, newConfigTestConnectionView(cfg, configSource, topology, warnings, tenantCtx)); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render config test-connection result: %w", err))
 			}
 			return

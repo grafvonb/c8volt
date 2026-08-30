@@ -9,6 +9,7 @@ import (
 
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
@@ -74,7 +75,9 @@ func deleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	if aborted || len(results.DryRunPreviews) == 0 {
 		return results, nil
 	}
-	plan := aggregateDeleteSearchPlan(results.DryRunPreviews)
+	tenantCtx := attachProcessInstanceDiscoveryTenantContext(cmd, attachDiscoveryTenantContext(cmd, cfg), results.TenantEvidence)
+	plan := aggregateDeleteSearchPlan(results.DryRunPreviews, results.TenantEvidence)
+	renderDeleteSearchTenantContext(cmd, tenantCtx)
 	printDryRunExpansionWarning(cmd, plan)
 	if err := rejectDeletePlanRequiringForce(plan); err != nil {
 		return processInstancePageActionResults{}, err
@@ -110,12 +113,24 @@ func deleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (processInstancePageActionResults, error) {
 	var results processInstancePageActionResults
 	progress, progressSeen := newProcessInstanceMutationProgressReporterWithState(cmd, "delete")
+	tenantCtx := attachDiscoveryTenantContext(cmd, cfg)
+	tenantContextRendered := false
+	renderDiscoveryTenantContext := func(evidence process.TenantEvidence) {
+		if tenantContextRendered {
+			return
+		}
+		renderDeleteSearchTenantContext(cmd, attachProcessInstanceDiscoveryTenantContext(cmd, tenantCtx, evidence))
+		tenantContextRendered = true
+	}
 
 	planned, err := cli.PlanProcessInstanceMutationPages(cmd.Context(), process.ProcessInstanceMutationPlanRequest{
 		SearchRequest: newProcessInstanceSearchRequest(cmd, cfg, filter),
 		Workers:       flagWorkers,
 	}, func(step process.ProcessInstanceMutationPlanStep) (process.ProcessInstanceSearchPageAction, error) {
 		if len(step.RequestedKeys) > 0 {
+			if !flagDryRun {
+				renderDiscoveryTenantContext(step.Plan.TenantEvidence)
+			}
 			result := processInstancePageActionResultFromPlan("delete", step)
 			printProcessInstanceMutationPlanStepFallbackProgress(cmd, "delete", step, progressSeen)
 			if result.DryRunPreview != nil {
@@ -152,10 +167,24 @@ func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, c
 	if err != nil {
 		return processInstancePageActionResults{}, err
 	}
+	if flagDryRun && planned.RequestedCount > 0 {
+		attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, planned.TenantEvidence.ResolvedTenantIDs, planned.TenantEvidence.UnknownTargetCount))
+	}
+	results.TenantEvidence = planned.TenantEvidence
 	if planned.RequestedCount == 0 {
 		renderOutputLine(cmd, "found: %d", 0)
 	}
 	return results, nil
+}
+
+// renderDeleteSearchTenantContext keeps preview scope visible while preserving
+// the destructive search progress contract that reserves stdout for results.
+func renderDeleteSearchTenantContext(cmd *cobra.Command, ctx tenant.Context) {
+	if flagDryRun {
+		renderTenantContext(cmd, ctx)
+		return
+	}
+	renderProcessInstanceMutationTenantContextStderr(cmd, ctx)
 }
 
 // planDeleteProcessInstanceSearchPagesForMutation records every selected
@@ -216,14 +245,16 @@ func planDeleteProcessInstanceSearchPagesWithPrompt(cmd *cobra.Command, cli proc
 	if err != nil {
 		return processInstancePageActionResults{}, err
 	}
+	results.TenantEvidence = planned.TenantEvidence
 	if planned.RequestedCount == 0 {
 		renderOutputLine(cmd, "found: %d", 0)
 	}
 	return results, nil
 }
 
-// aggregateDeleteSearchPlan merges page-level delete previews into one frozen mutation plan.
-func aggregateDeleteSearchPlan(previews []processInstanceDryRunPreview) process.DryRunPIKeyExpansion {
+// aggregateDeleteSearchPlan merges page-level delete previews into one frozen
+// mutation plan while preserving the service-owned tenant evidence snapshot.
+func aggregateDeleteSearchPlan(previews []processInstanceDryRunPreview, evidence process.TenantEvidence) process.DryRunPIKeyExpansion {
 	var roots types.Keys
 	var collected types.Keys
 	var requiresCancel []process.ProcessInstance
@@ -256,6 +287,7 @@ func aggregateDeleteSearchPlan(previews []processInstanceDryRunPreview) process.
 	return process.DryRunPIKeyExpansion{
 		Roots:                      roots.Unique(),
 		Collected:                  collected.Unique(),
+		TenantEvidence:             evidence,
 		RequiresCancelBeforeDelete: requiresCancel,
 		MissingAncestors:           missing,
 		Warning:                    warning,

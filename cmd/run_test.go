@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -328,6 +329,209 @@ func TestRunProcessInstanceCommand_VarsPayloadRemainsCreationInput(t *testing.T)
 
 	require.True(t, sawRun)
 	require.Contains(t, output, "2251799813711967")
+}
+
+// Verifies run process-instance renders the creation tenant before the backend creation request.
+func TestRunProcessInstanceCommand_CreationContextPrecedesCreateRequest(t *testing.T) {
+	tests := []struct {
+		name       string
+		configYAML func(baseURL string) string
+		wantLine   string
+		wantTenant string
+	}{
+		{
+			name: "named target",
+			configYAML: func(baseURL string) string {
+				return `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: ` + baseURL + `
+`
+			},
+			wantLine:   "creation target: tenant-a",
+			wantTenant: "tenant-a",
+		},
+		{
+			name: "default target",
+			configYAML: func(baseURL string) string {
+				return `app:
+  camunda_version: "8.9"
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: ` + baseURL + `
+`
+			},
+			wantLine:   "creation target: default tenant",
+			wantTenant: "<default>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			var sawRun bool
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodPost, r.Method)
+				require.Equal(t, "/v2/process-instances", r.URL.Path)
+				sawRun = true
+				require.Contains(t, stderr.String(), tt.wantLine)
+				defer r.Body.Close()
+				var body map[string]any
+				require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+				require.Equal(t, "2251799813685255", body["processDefinitionKey"])
+				require.Equal(t, tt.wantTenant, body["tenantId"])
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"processDefinitionKey":"2251799813685255","processInstanceKey":"2251799813711967","tenantId":"` + tt.wantTenant + `","variables":{}}`))
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeRawTestConfig(t, tt.configYAML(srv.URL))
+			root := Root()
+			resetCommandTreeFlags(root)
+			resetDeployCommandContextForTest(root)
+			root.SetOut(stdout)
+			root.SetErr(stderr)
+			root.SetArgs([]string{"--config", cfgPath, "run", "process-instance", "--pd-key", "2251799813685255", "--no-wait"})
+
+			_, err := root.ExecuteC()
+			require.NoError(t, err)
+			require.True(t, sawRun)
+			require.Contains(t, stdout.String(), "2251799813711967")
+			require.Contains(t, stderr.String(), tt.wantLine)
+			require.NotContains(t, stderr.String(), "Proceed?")
+		})
+	}
+}
+
+// Verifies run process-instance JSON results include creation context without reshaping the payload.
+func TestRunProcessInstanceCommand_JSONEnvelopeIncludesCreationContext(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	var sawRun bool
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-instances", r.URL.Path)
+		sawRun = true
+		defer r.Body.Close()
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		require.Equal(t, "tenant-a", body["tenantId"])
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"processDefinitionKey":"2251799813685255","processInstanceKey":"2251799813711967","tenantId":"tenant-a","variables":{}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+	resetDeployCommandContextForTest(Root())
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--automation",
+		"--json",
+		"run", "process-instance",
+		"--pd-key", "2251799813685255",
+		"--no-wait",
+	)
+
+	require.True(t, sawRun)
+	require.NotContains(t, stderr, "creation target:")
+	require.NotContains(t, stdout, "creation target:")
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	require.Equal(t, string(OutcomeAccepted), got["outcome"])
+	require.Equal(t, "run process-instance", got["command"])
+	tenantContext := requireJSONObject(t, got["tenantContext"])
+	require.Equal(t, "creation", tenantContext["mode"])
+	require.Equal(t, "not_applicable", tenantContext["filter"])
+	require.Equal(t, "tenant-a", tenantContext["targetTenantId"])
+	require.Equal(t, []any{"tenant-a"}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+	require.Empty(t, tenantContext["warnings"])
+	payload := requireJSONObject(t, got["payload"])
+	require.EqualValues(t, 1, payload["total"])
+	items, ok := payload["items"].([]any)
+	require.True(t, ok)
+	require.Len(t, items, 1)
+}
+
+// Verifies quiet and keys-only run output never mixes tenant context into protected streams.
+func TestRunProcessInstanceCommand_ProtectedModesSuppressCreationContext(t *testing.T) {
+	tests := []struct {
+		name       string
+		argsPrefix []string
+		wantStdout string
+		exact      bool
+	}{
+		{
+			name:       "quiet",
+			argsPrefix: []string{"--quiet"},
+			wantStdout: "2251799813711967",
+		},
+		{
+			name:       "keys only",
+			argsPrefix: []string{},
+			wantStdout: "2251799813711967\n",
+			exact:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			resetDeployCommandContextForTest(Root())
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodPost, r.Method)
+				require.Equal(t, "/v2/process-instances", r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"processDefinitionKey":"2251799813685255","processInstanceKey":"2251799813711967","tenantId":"tenant-a","variables":{}}`))
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+			args := append([]string{"--config", cfgPath}, tt.argsPrefix...)
+			args = append(args, "run", "process-instance", "--pd-key", "2251799813685255", "--no-wait")
+			if tt.name == "keys only" {
+				args = append(args, "--keys-only")
+			}
+
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+
+			if tt.exact {
+				require.Equal(t, tt.wantStdout, stdout)
+			} else {
+				require.Contains(t, stdout, tt.wantStdout)
+			}
+			require.NotContains(t, stdout, "creation target:")
+			require.NotContains(t, stderr, "creation target:")
+		})
+	}
 }
 
 // Verifies normal run output shows the state observed by creation confirmation.

@@ -9,6 +9,7 @@ import (
 
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/spf13/cobra"
 )
@@ -65,6 +66,15 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	firstPage := true
 	var results processInstancePageActionResults
 	progress, progressSeen := newProcessInstanceMutationProgressReporterWithState(cmd, "cancel")
+	tenantCtx := attachDiscoveryTenantContext(cmd, cfg)
+	tenantContextRendered := false
+	renderDiscoveryTenantContext := func(evidence process.TenantEvidence) {
+		if tenantContextRendered {
+			return
+		}
+		renderCancelSearchTenantContext(cmd, attachProcessInstanceDiscoveryTenantContext(cmd, tenantCtx, evidence))
+		tenantContextRendered = true
+	}
 
 	planned, err := cli.PlanProcessInstanceMutationPages(cmd.Context(), process.ProcessInstanceMutationPlanRequest{
 		SearchRequest: newProcessInstanceSearchRequest(cmd, cfg, filter),
@@ -72,6 +82,9 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	}, func(step process.ProcessInstanceMutationPlanStep) (process.ProcessInstanceSearchPageAction, error) {
 		hasSelection := len(step.RequestedKeys) > 0
 		if hasSelection {
+			if !flagDryRun {
+				renderDiscoveryTenantContext(step.Plan.TenantEvidence)
+			}
 			result := processInstancePageActionResultFromPlan("cancel", step)
 			printProcessInstanceMutationPlanStepFallbackProgress(cmd, "cancel", step, progressSeen)
 			if flagDryRun {
@@ -121,6 +134,9 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 			}
 			return process.ProcessInstanceSearchPageActionContinue, nil
 		case processInstanceContinuationPrompt:
+			if hasSelection {
+				renderDiscoveryTenantContext(step.Plan.TenantEvidence)
+			}
 			prompt := fmt.Sprintf("Processed %d process instance(s) on this page (%s, %d including dependencies). More matching process instances remain. Continue?", summary.CurrentPageCount, formatProcessInstancePagingProgress(step.Page, summary.CumulativeCount, "requested"), step.CumulativeImpact)
 			if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 				if isCmdAborted(err) {
@@ -145,6 +161,9 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	if err != nil {
 		return processInstancePageActionResults{}, err
 	}
+	if flagDryRun && planned.RequestedCount > 0 {
+		attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, planned.TenantEvidence.ResolvedTenantIDs, planned.TenantEvidence.UnknownTargetCount))
+	}
 	if len(results.Reports) > 0 {
 		renderProcessInstanceMutationResultSummary(cmd, "cancel", results.Reports, processInstancePageImpact{
 			Requested: int(planned.RequestedCount),
@@ -156,4 +175,14 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 		renderOutputLine(cmd, "found: %d", 0)
 	}
 	return results, nil
+}
+
+// renderCancelSearchTenantContext keeps preview scope visible while preserving
+// the destructive search progress contract that reserves stdout for results.
+func renderCancelSearchTenantContext(cmd *cobra.Command, ctx tenant.Context) {
+	if flagDryRun {
+		renderTenantContext(cmd, ctx)
+		return
+	}
+	renderProcessInstanceMutationTenantContextStderr(cmd, ctx)
 }

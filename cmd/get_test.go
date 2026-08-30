@@ -2008,6 +2008,7 @@ func executeRootForTest(t *testing.T, args ...string) string {
 
 	root := Root()
 	resetCommandTreeFlags(root)
+	resetDeployCommandContextForTest(root)
 	buf := &bytes.Buffer{}
 	root.SetOut(buf)
 	root.SetErr(buf)
@@ -2024,6 +2025,7 @@ func executeRootWithSeparateOutputsForTest(t *testing.T, args ...string) (string
 
 	root := Root()
 	resetCommandTreeFlags(root)
+	resetDeployCommandContextForTest(root)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	root.SetOut(stdout)

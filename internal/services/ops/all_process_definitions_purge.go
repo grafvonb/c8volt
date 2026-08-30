@@ -124,6 +124,7 @@ func buildAllProcessDefinitionsPurgeDeletePlan(ctx context.Context, pdAPI pdsvc.
 		Status:                                  d.OpsWorkflowStepStatusPlanned,
 		CandidateProcessDefinitionKeys:          candidates,
 		Items:                                   append([]d.DeleteProcessDefinitionPlanItem(nil), preview.Items...),
+		TenantEvidence:                          opsTenantEvidenceFromProcessDefinitionPlan(preview),
 		DuplicateCandidateProcessDefinitionKeys: discovery.DuplicateCandidateProcessDefinitionKeys.Unique(),
 		RequiresConfirmation:                    requiresConfirmation && len(candidates) > 0,
 	}

@@ -18,6 +18,9 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
@@ -25,6 +28,34 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+// TestOpsPurgeProcessInstancesWithIncidentsKeyTenantContextUsesExplicitSemantics
+// verifies incident-key purge reports explicit-key tenant behavior with frozen
+// target evidence and no legacy discovery tenant.
+func TestOpsPurgeProcessInstancesWithIncidentsKeyTenantContextUsesExplicitSemantics(t *testing.T) {
+	cmd := &cobra.Command{}
+	cfg := &config.Config{App: config.App{Tenant: "tenant-a"}}
+	result := ops.IncidentPurgeResult{
+		Request: ops.IncidentPurgeRequest{
+			Selection: incident.Filter{Keys: []string{"2251799813685249"}},
+		},
+		DeletePlan: ops.IncidentPurgeDeletePlan{
+			TenantEvidence: process.TenantEvidence{
+				UnknownTargetCount: 1,
+				Targets:            []process.TenantEvidenceTarget{{Key: "2251799813685249"}},
+			},
+		},
+	}
+
+	got := attachOpsPurgeProcessInstancesWithIncidentsResultTenantContext(cmd, cfg, result)
+
+	require.NotNil(t, got.Report.TenantContext)
+	require.Equal(t, tenant.ContextModeExplicitKeys, got.Report.TenantContext.Mode)
+	require.Equal(t, tenant.ContextFilterNotApplied, got.Report.TenantContext.Filter)
+	require.Equal(t, 1, got.Report.TenantContext.UnknownTargetCount)
+	require.Equal(t, tenant.ContextWarningUnknownTargetTenants, got.Report.TenantContext.Warnings[0].Code)
+	require.Empty(t, got.Report.TenantID)
+}
 
 // TestOpsPurgeProcessInstancesWithIncidentsHelpDocumentsCommandShape verifies the registered command, alias, and safe examples.
 func TestOpsPurgeProcessInstancesWithIncidentsHelpDocumentsCommandShape(t *testing.T) {
@@ -747,7 +778,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsProgressContractPendingT066(t *tes
 	require.Contains(t, stderr, "deleting process instances 2/2 process instance(s)")
 	require.NotContains(t, stderr, "/v2/")
 	require.NotContains(t, stderr, "cursor")
-	require.NotContains(t, stdout, "scope:")
+	require.NotContains(t, stdout, "incident purge scope:")
 	require.NotContains(t, stdout, "discovering incidents")
 	require.Contains(t, stderr, "report: written "+reportPath)
 	require.Contains(t, stderr, "outcome: deleted")
@@ -788,11 +819,11 @@ func TestOpsPurgeProcessInstancesWithIncidentsMachineProgressSafetyPendingT066(t
 					append(mode.args, "--report-file", filepath.Join(t.TempDir(), mode.name+".json"), "--report-format", "json")),
 			})
 			require.NoError(t, err, stderr)
-			require.NotContains(t, stdout, "scope:")
+			require.NotContains(t, stdout, "incident purge scope:")
 			require.NotContains(t, stdout, "discovering incidents")
 			require.NotContains(t, stdout, "planning incident process-instance delete scope")
 			require.NotContains(t, stdout, "deleting process instances")
-			require.NotContains(t, stderr, "scope:")
+			require.NotContains(t, stderr, "incident purge scope:")
 			require.NotContains(t, stderr, "discovering incidents")
 			require.NotContains(t, stderr, "planning incident process-instance delete scope")
 			require.NotContains(t, stderr, "deleting process instances")

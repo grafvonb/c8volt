@@ -4,10 +4,15 @@
 package cmd
 
 import (
+	"bytes"
+	"context"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/toolx/logging"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -113,6 +118,106 @@ func TestOpsProgressChannelForModeProtectsMachineOutput(t *testing.T) {
 	require.Equal(t, ops.ProgressChannel{Mode: ops.ProgressModeKeysOnly}, opsProgressChannelForMode(opsProgressModeInput{RenderMode: RenderModeKeysOnly}))
 	require.Equal(t, ops.ProgressChannel{Mode: ops.ProgressModeQuiet}, opsProgressChannelForMode(opsProgressModeInput{RenderMode: RenderModeOneLine, Quiet: true}))
 	require.Equal(t, ops.ProgressChannel{Mode: ops.ProgressModeAutomation, StructuredReportAllowed: true}, opsProgressChannelForMode(opsProgressModeInput{RenderMode: RenderModeOneLine, Automation: true}))
+}
+
+// TestPrintOpsPreflightScopeRendersTenantContextBeforeScope verifies ops
+// preflight emits the shared tenant block before expensive-work scope lines.
+func TestPrintOpsPreflightScopeRendersTenantContextBeforeScope(t *testing.T) {
+	cmd := &cobra.Command{}
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
+	ctx := withTenantContextEvidence(newDiscoveryTenantContext(""), []string{"tenant-b", "tenant-a"}, 1)
+
+	printOpsPreflightScope(cmd, ops.PreflightScope{
+		Command:         "ops purge process-instances-with-incidents",
+		CoreResource:    "process_instance",
+		SelectorSummary: "incident filters",
+		Total:           ptrInt64(2),
+		TotalKind:       ops.TotalCertaintyExact,
+		TenantContext:   &ctx,
+	}, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
+
+	got := stderr.String()
+	require.Contains(t, got, "selection scope: unfiltered across accessible tenants")
+	require.Contains(t, got, "incident purge scope")
+	require.Less(t, strings.Index(got, "selection scope: unfiltered across accessible tenants"), strings.Index(got, "incident purge scope"))
+	require.Contains(t, got, "affected tenants: tenant-a, tenant-b")
+	require.Contains(t, got, "tenant metadata is unknown for 1 target")
+	require.Equal(t, 1, strings.Count(got, "affected tenants: tenant-a, tenant-b"))
+}
+
+// TestPrintOpsTenantContextUsesLoggerSeverityExactlyOnce guards the compact
+// warning contract when the logger supplies severity prefixes.
+func TestPrintOpsTenantContextUsesLoggerSeverityExactlyOnce(t *testing.T) {
+	cmd := &cobra.Command{}
+	var logBuf bytes.Buffer
+	cmd.SetContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{
+		Format: "plain-time",
+		Writer: &logBuf,
+	})))
+	ctx := withTenantContextEvidence(newDiscoveryTenantContext(""), []string{"tenant-b", "tenant-a"}, 1)
+
+	printOpsTenantContext(cmd, ctx, ops.ProgressChannel{
+		Mode:           ops.ProgressModeHuman,
+		DurableAllowed: true,
+		StderrAllowed:  true,
+	})
+
+	got := logBuf.String()
+	require.Contains(t, got, " WARN affected tenants: tenant-a, tenant-b\n")
+	require.Contains(t, got, " WARN tenant metadata is unknown for 1 target\n")
+	require.Equal(t, 1, strings.Count(got, "affected tenants: tenant-a, tenant-b"))
+	require.NotContains(t, got, "WARN WARNING")
+	require.NotContains(t, got, "WARNING:")
+}
+
+// TestPrintOpsTenantContextRendersTenantOverrideProvenance verifies ops
+// durable progress reports explicit tenant broadening before the final scope.
+func TestPrintOpsTenantContextRendersTenantOverrideProvenance(t *testing.T) {
+	cmd := &cobra.Command{}
+	var logBuf bytes.Buffer
+	cmd.SetContext(tenantOverrideProvenance{
+		ConfiguredTenantID: "tenant-a",
+		ExplicitTenantID:   "",
+		Explicit:           true,
+	}.ToContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{
+		Format: "plain-time",
+		Writer: &logBuf,
+	}))))
+	ctx := newDiscoveryTenantContext("")
+
+	printOpsTenantContext(cmd, ctx, ops.ProgressChannel{
+		Mode:           ops.ProgressModeHuman,
+		DurableAllowed: true,
+		StderrAllowed:  true,
+	})
+
+	got := logBuf.String()
+	require.Contains(t, got, " INFO configured tenant: tenant-a\n")
+	require.Contains(t, got, " WARN --tenant \"\" overrides the configured tenant filter; selection is unfiltered\n")
+	require.Contains(t, got, " INFO selection scope: unfiltered across accessible tenants\n")
+	require.Less(t, strings.Index(got, "configured tenant: tenant-a"), strings.Index(got, "--tenant \"\" overrides"))
+	require.Less(t, strings.Index(got, "--tenant \"\" overrides"), strings.Index(got, "selection scope: unfiltered"))
+}
+
+// TestPrintOpsPreflightScopeSuppressesTenantContextForProtectedModes verifies
+// quiet and keys-only progress channels keep stdout-safe contracts silent.
+func TestPrintOpsPreflightScopeSuppressesTenantContextForProtectedModes(t *testing.T) {
+	ctx := withTenantContextEvidence(newDiscoveryTenantContext("tenant-a"), []string{"tenant-a"}, 0)
+	for _, channel := range []ops.ProgressChannel{
+		{Mode: ops.ProgressModeKeysOnly},
+		{Mode: ops.ProgressModeQuiet},
+	} {
+		cmd := &cobra.Command{}
+		var stderr bytes.Buffer
+		cmd.SetErr(&stderr)
+
+		printOpsPreflightScope(cmd, ops.PreflightScope{TenantContext: &ctx}, channel)
+
+		require.Empty(t, stderr.String())
+		_, ok := attachedTenantContext(cmd)
+		require.False(t, ok)
+	}
 }
 
 // TestOpsProgressDurableMilestoneRequiresElapsedTimeAndPageProgress verifies default-human milestones wait for silence and observed discovery movement.

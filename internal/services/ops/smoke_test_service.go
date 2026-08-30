@@ -248,6 +248,7 @@ func smokeTestCreateProcessInstances(ctx context.Context, api pisvc.API, log *sl
 	}
 	data := smokeTestProcessInstanceData(deployment)
 	created, err := pisvc.CreateNProcessInstances(ctx, api, log, data, request.Count, request.Workers, opts...)
+	out.TenantEvidence = opsTenantEvidenceFromCreations(created)
 	out.Items = make([]d.SmokeTestRunItem, 0, len(created))
 	for _, item := range created {
 		if item.Key == "" {
@@ -478,6 +479,7 @@ func smokeTestCleanupProcessInstances(ctx context.Context, api pisvc.API, log *s
 		return out, nil, err
 	}
 	roots := plan.Roots.Unique()
+	out.TenantEvidence = plan.TenantEvidence
 	affected := len(plan.Collected.Unique())
 	if affected == 0 {
 		affected = len(roots)
@@ -731,6 +733,7 @@ func smokeTestDeploymentResult(fixture d.EmbeddedSmokeTestFixture, deployment d.
 		}
 		break
 	}
+	out.TenantEvidence = opsTenantEvidenceFromDeployment(out)
 	return out
 }
 

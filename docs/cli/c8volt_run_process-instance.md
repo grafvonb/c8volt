@@ -14,6 +14,8 @@ Start process instances and confirm creation.
 
 Run by BPMN process ID for the latest version, or by process definition key for an exact definition.
 
+Tenant contract: process-instance start is a creation operation. A named tenant is reported as "creation target: <tenant>" before creation; empty tenant configuration targets and reports "creation target: default tenant".
+
 When running by BPMN process ID, c8volt validates all requested process definitions before creating anything. Mixed visible and missing BPMN IDs fail as one request, so no partial process instances are started; automation-oriented modes never prompt for recovery output.
 
 By default c8volt waits until created instances are observable. Created instances are confirmed after Camunda observes ACTIVE, COMPLETED, CANCELED, or TERMINATED.
@@ -28,6 +30,7 @@ c8volt run process-instance [flags]
 
 ```
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
+  ./c8volt --tenant tenant-a run process-instance --bpmn-process-id <bpmn-process-id>
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2
   ./c8volt --json run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'
@@ -63,7 +66,7 @@ c8volt run process-instance [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

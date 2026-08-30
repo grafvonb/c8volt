@@ -4,6 +4,7 @@
 package foptions
 
 import (
+	"slices"
 	"time"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -152,6 +153,7 @@ type PreflightScope struct {
 	Command              string             `json:"command,omitempty"`
 	CoreResource         string             `json:"coreResource,omitempty"`
 	SelectorSummary      string             `json:"selectorSummary,omitempty"`
+	TenantContext        *TenantContext     `json:"tenantContext,omitempty"`
 	Total                *int64             `json:"total,omitempty"`
 	TotalKind            TotalCertainty     `json:"totalKind,omitempty"`
 	PageSize             int32              `json:"pageSize,omitempty"`
@@ -292,6 +294,7 @@ func fromDomainPreflightScopePtr(scope *d.OpsPreflightScope) *PreflightScope {
 		Command:         scope.Command,
 		CoreResource:    scope.CoreResource,
 		SelectorSummary: scope.SelectorSummary,
+		TenantContext:   fromDomainTenantContextPtr(scope.TenantContext),
 		Total:           scope.Total,
 		TotalKind:       TotalCertainty(scope.TotalKind),
 		PageSize:        scope.PageSize,
@@ -305,6 +308,33 @@ func fromDomainPreflightScopePtr(scope *d.OpsPreflightScope) *PreflightScope {
 		},
 		RequiresConfirmation: scope.RequiresConfirmation,
 		ExpensivePreflight:   scope.ExpensivePreflight,
+	}
+	return &out
+}
+
+// fromDomainTenantContextPtr copies optional tenant context from service
+// progress so facade callers cannot mutate service-owned evidence slices.
+func fromDomainTenantContextPtr(ctx *d.TenantContext) *TenantContext {
+	if ctx == nil {
+		return nil
+	}
+	out := TenantContext{
+		Mode:               TenantContextMode(ctx.Mode),
+		Filter:             TenantContextFilter(ctx.Filter),
+		ConfiguredTenantID: ctx.ConfiguredTenantID,
+		TargetTenantID:     ctx.TargetTenantID,
+		ResolvedTenantIDs:  slices.Clone(ctx.ResolvedTenantIDs),
+		UnknownTargetCount: ctx.UnknownTargetCount,
+		CrossTenant:        ctx.CrossTenant,
+	}
+	if ctx.Warnings != nil {
+		out.Warnings = make([]TenantContextWarning, len(ctx.Warnings))
+		for i, warning := range ctx.Warnings {
+			out.Warnings[i] = TenantContextWarning{
+				Code:    TenantContextWarningCode(warning.Code),
+				Message: warning.Message,
+			}
+		}
 	}
 	return &out
 }

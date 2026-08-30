@@ -412,6 +412,18 @@ func (c *Config) ToSanitizedYAML() (string, error) {
 	})
 }
 
+func (c *Config) ToSanitizedYAMLWithTenantContext(tenantContext any) (string, error) {
+	return c.toYaml(yamlExportOptions{
+		template: false,
+		sanitizeKeys: []string{
+			"client_secret",
+			"password",
+			"token",
+		},
+		tenantContext: tenantContext,
+	})
+}
+
 func (c *Config) ToTemplateYAML() (string, error) {
 	return c.toYaml(yamlExportOptions{
 		template:     true,
@@ -420,8 +432,9 @@ func (c *Config) ToTemplateYAML() (string, error) {
 }
 
 type yamlExportOptions struct {
-	template     bool
-	sanitizeKeys []string
+	template      bool
+	sanitizeKeys  []string
+	tenantContext any
 }
 
 func (c *Config) toYaml(opts yamlExportOptions) (string, error) {
@@ -434,6 +447,19 @@ func (c *Config) toYaml(opts yamlExportOptions) (string, error) {
 		return "", err
 	}
 
+	if opts.tenantContext != nil {
+		b, err := json.Marshal(opts.tenantContext)
+		if err != nil {
+			return "", err
+		}
+		var tenantContext map[string]any
+		if err := json.Unmarshal(b, &tenantContext); err != nil {
+			return "", err
+		}
+		if len(tenantContext) > 0 {
+			m["tenantContext"] = tenantContext
+		}
+	}
 	if len(opts.sanitizeKeys) > 0 {
 		sanitize(m, opts.sanitizeKeys)
 	}

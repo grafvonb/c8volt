@@ -63,6 +63,7 @@ type DeletionPlan struct {
 	RequestedKeys        typex.Keys
 	AffectedKeys         typex.Keys
 	RootKeys             typex.Keys
+	TenantEvidence       TenantEvidence
 	RequiresConfirmation bool
 	DryRunPreview        DryRunPIKeyExpansion
 	Errors               []string
@@ -87,6 +88,7 @@ type OrphanPurgeReport struct {
 	C8voltVersion    string
 	CamundaVersion   string
 	ProfileIdentity  string
+	TenantContext    *TenantContext
 	SelectionFilters ProcessInstanceFilter
 	Discovery        OrphanDiscoveryResult
 	DeletionPlan     DeletionPlan

@@ -77,6 +77,7 @@ Use capabilities for the machine-readable command contract.`,
 		root.SetErr(activityWriter)
 		cmd.SetErr(activityWriter)
 		ctx := cfg.ToContextWithLogWriter(cmd.Context(), activityWriter)
+		ctx = tenantOverrideProvenanceFromConfig(v, bindings, cfg).ToContext(ctx)
 		ctx = logging.ToActivityContext(ctx, activityWriter)
 		log, err := logging.FromContext(ctx)
 		if err != nil {
@@ -173,7 +174,7 @@ func init() {
 	pf.String("log-format", "plain-time", "log format (plain-time, plain, json, text)")
 	pf.Bool("log-with-source", false, "include source file and line number in logs")
 
-	pf.String("tenant", "", "tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized")
+	pf.String("tenant", "", "tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized")
 	pf.BoolVar(&flagNoErrCodes, "no-err-codes", false, "suppress error codes in error outputs")
 
 	pf.String("camunda-version", string(toolx.CurrentCamundaVersion), fmt.Sprintf("Camunda version (%s) expected; aliases include 810, v810, and v8.10 for 8.10. Causes usage of specific API versions.", toolx.SupportedCamundaVersionsString()))

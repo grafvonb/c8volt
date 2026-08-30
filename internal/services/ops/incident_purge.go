@@ -117,6 +117,7 @@ func buildIncidentPurgeDeletePlan(ctx context.Context, api pisvc.API, discovery 
 		CandidateProcessInstanceKeys:          candidates,
 		ResolvedRootKeys:                      preview.Roots,
 		AffectedKeys:                          preview.Collected,
+		TenantEvidence:                        preview.TenantEvidence,
 		DuplicateCandidateProcessInstanceKeys: discovery.DuplicateCandidateProcessInstanceKeys.Unique(),
 		DuplicateResolvedRootKeys:             preview.DuplicateRoots,
 		FinalStateItems:                       preview.SelectedFinalState,

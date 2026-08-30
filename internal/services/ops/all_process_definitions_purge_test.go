@@ -627,6 +627,86 @@ func TestPurgeAllProcessDefinitionsBuildsDeletePlan(t *testing.T) {
 	require.Equal(t, got.DeletePlan, got.Report.DeletePlan)
 }
 
+// TestPurgeAllProcessDefinitionsAggregatesTenantEvidenceFromFrozenPreview
+// proves APD purge preserves delete-pd preview evidence without extra lookups.
+func TestPurgeAllProcessDefinitionsAggregatesTenantEvidenceFromFrozenPreview(t *testing.T) {
+	t.Parallel()
+
+	getCalls := 0
+	got, err := NewWithProcessDefinitionPurge(
+		stubProcessInstanceAPI{},
+		nil,
+		stubProcessDefinitionAPI{
+			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+				getCalls++
+				require.True(t, services.ApplyCallOptions(opts).WithStat)
+				tenants := map[string]string{
+					"pd-a": "tenant-b",
+					"pd-b": "tenant-a",
+				}
+				return d.ProcessDefinition{
+					Key:        key,
+					TenantId:   tenants[key],
+					Statistics: &d.ProcessDefinitionStatistics{},
+				}, nil
+			},
+		},
+		stubResourceAPI{},
+	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{
+		DryRun: true,
+		DiscoveredCandidateProcessDefinitionKeys: typex.Keys{
+			"pd-a",
+			"pd-b",
+			"pd-missing-tenant",
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 3, getCalls)
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+		UnknownTargetCount: 1,
+		TargetCount:        3,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "pd-a", TenantID: "tenant-b"},
+			{Key: "pd-b", TenantID: "tenant-a"},
+			{Key: "pd-missing-tenant"},
+		},
+	}, got.DeletePlan.TenantEvidence)
+	require.Equal(t, got.DeletePlan.TenantEvidence, got.Report.DeletePlan.TenantEvidence)
+}
+
+// TestOpsMergeTenantEvidencePreservesAggregateOnlyFallback verifies legacy
+// nested evidence without target records remains visible without inventing
+// synthetic targets or dropping its counts.
+func TestOpsMergeTenantEvidencePreservesAggregateOnlyFallback(t *testing.T) {
+	t.Parallel()
+
+	got := opsMergeTenantEvidence(
+		d.TenantEvidence{
+			ResolvedTenantIDs: []string{"tenant-b"},
+			TargetCount:       1,
+			Targets: []d.TenantEvidenceTarget{
+				{Key: "pd-1", TenantID: "tenant-b"},
+			},
+		},
+		d.TenantEvidence{
+			ResolvedTenantIDs:  []string{"tenant-a", "tenant-a"},
+			UnknownTargetCount: 1,
+			TargetCount:        3,
+		},
+	)
+
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+		UnknownTargetCount: 1,
+		TargetCount:        4,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "pd-1", TenantID: "tenant-b"},
+		},
+	}, got)
+}
+
 // TestPurgeAllProcessDefinitionsBlocksUnsafeActiveInstancesWithoutForce verifies destructive planning stops before mutation.
 func TestPurgeAllProcessDefinitionsBlocksUnsafeActiveInstancesWithoutForce(t *testing.T) {
 	t.Parallel()

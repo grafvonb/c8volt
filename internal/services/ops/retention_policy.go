@@ -210,6 +210,7 @@ func buildRetentionDeletePlan(ctx context.Context, api pisvc.API, seedKeys typex
 		SeedKeys:              seeds,
 		ResolvedRootKeys:      roots,
 		AffectedKeys:          collected,
+		TenantEvidence:        opsTenantEvidenceFromTraversalResults(collected, ancestryResults, descendantResults),
 		DuplicateKeys:         duplicateRoots.Unique(),
 		FinalStateItems:       retentionSelectedFinalStateProcessInstances(seeds, ancestryResults),
 		NonFinalAffectedItems: retentionNonFinalProcessInstances(collected, descendantResults),

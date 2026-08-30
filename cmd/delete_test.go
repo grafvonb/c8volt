@@ -191,6 +191,45 @@ func TestDeleteProcessDefinitionImpact_RenderForceImpact(t *testing.T) {
 	require.NotContains(t, output, "WARNING:")
 }
 
+// TestDeleteProcessDefinitionImpact_RendersTenantWarningsBeforeImpact verifies
+// compact destructive confirmation context keeps cross-tenant and unknown
+// warnings prominent before process-definition impact details.
+func TestDeleteProcessDefinitionImpact_RendersTenantWarningsBeforeImpact(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagForce = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	attachTenantContext(cmd, withTenantContextEvidence(newDiscoveryTenantContext(""), []string{"tenant-b", "tenant-a"}, 1))
+
+	renderDeleteProcessDefinitionImpact(cmd, resource.DeleteProcessDefinitionPlan{
+		Items: []resource.DeleteProcessDefinitionPlanItem{
+			{
+				Key:                        "pd-1",
+				TenantId:                   "tenant-b",
+				ActiveProcessInstanceCount: 2,
+				CancellationPlan: process.DryRunPIKeyExpansion{
+					Roots:     typex.Keys{"root-1"},
+					Collected: typex.Keys{"root-1", "child-1"},
+				},
+			},
+		},
+	})
+
+	output := buf.String()
+	requireLineOrder(t, output,
+		"selection scope: unfiltered across accessible tenants",
+		"affected tenants: tenant-a, tenant-b",
+		"tenant metadata is unknown for 1 target",
+		"delete impact check: 1 process definition(s); 2 active process instance(s) found; no changes made yet",
+		"--force will cancel 1 root process instance(s), then delete 2 affected process instance(s), before deleting process definitions",
+	)
+	require.Equal(t, 1, strings.Count(output, "affected tenants: tenant-a, tenant-b"))
+}
+
 // Verifies delete process-definition requires either --key or --bpmn-process-id as a target selector.
 func TestDeleteProcessDefinitionCommand_RequiresTargetSelector(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
@@ -238,8 +277,9 @@ func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *test
 	}, "2251799813692357\n")
 	require.NoError(t, err, string(output))
 	require.NotContains(t, string(output), "either --key")
-	require.NotContains(t, string(output), "WARN WARNING")
-	require.NotContains(t, string(output), "WARNING:")
+	require.Contains(t, string(output), "selection scope: explicit resource keys; tenant filter not applied")
+	require.Contains(t, string(output), "tenant metadata is unknown for 1 target")
+	require.NotContains(t, string(output), "affected tenants:")
 	require.Contains(t, string(output), "pd delete done; requested 1, ok 1, failed 0")
 	body := decodeSingleRequestJSON(t, deleteBodies)
 	require.Equal(t, true, body["deleteHistory"])
@@ -432,6 +472,13 @@ func TestDeleteProcessDefinitionCommand_KeyTenantMismatchUsesAdminScope(t *testi
 		require.NotContains(t, filter, "tenantId")
 		require.Equal(t, tenantAdminKeysProcessDefinitionKey, stringFilterEqValue(t, filter["processDefinitionKey"]))
 	}
+	require.Contains(t, output, "selection scope: explicit resource keys; tenant filter not applied\n")
+	require.Contains(t, output, "affected tenants: "+tenantAdminKeysReturnedTenant+"\n")
+	require.NotContains(t, output, "selection scope: "+tenantAdminKeysSelectedTenant)
+	require.Less(t,
+		strings.Index(output, "selection scope: explicit resource keys; tenant filter not applied"),
+		strings.Index(output, "delete impact check:"),
+	)
 	require.Contains(t, output, "tenant-b")
 	require.Contains(t, output, "delete accepted")
 }
@@ -630,6 +677,20 @@ func countRequestPrefixes(requests []string, prefix string) int {
 		}
 	}
 	return count
+}
+
+// requireLineOrder asserts that each expected fragment appears after the
+// previous one in a combined command-output stream.
+func requireLineOrder(t *testing.T, output string, expected ...string) {
+	t.Helper()
+
+	last := -1
+	for _, want := range expected {
+		idx := strings.Index(output, want)
+		require.NotEqualf(t, -1, idx, "missing output fragment %q in:\n%s", want, output)
+		require.Greaterf(t, idx, last, "output fragment %q appeared out of order in:\n%s", want, output)
+		last = idx
+	}
 }
 
 func requestBodyForPrefix(t *testing.T, requests []string, prefix string) []string {

@@ -16,6 +16,7 @@ import (
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/testx"
@@ -165,6 +166,134 @@ func TestDeleteProcessInstanceCommand_DuplicateStdinKeysDeduplicateBeforePlannin
 
 	require.Contains(t, output, "selected process instances: 2")
 	require.NotContains(t, output, "selected process instances: 4")
+}
+
+// TestDeleteProcessInstanceSearch_TenantContextPrecedesConfirmation verifies
+// selector-based destructive deletion renders discovery scope before the
+// operator is asked to confirm the frozen mutation plan.
+func TestDeleteProcessInstanceSearch_TenantContextPrecedesConfirmation(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	var prompt string
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(_ bool, got string) error {
+		prompt = got
+		outputBeforePrompt := buf.String()
+		require.Contains(t, outputBeforePrompt, "selection scope: unfiltered across accessible tenants\n")
+		require.NotContains(t, outputBeforePrompt, "deletion:")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		planProcessInstanceMutationPages: func(_ context.Context, _ process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, _ ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+			plan := process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"401"},
+				Collected: typex.Keys{"401"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}
+			action, err := visitor(process.ProcessInstanceMutationPlanStep{
+				Page: process.ProcessInstancePage{
+					Items:         []process.ProcessInstance{{Key: "401", State: process.StateCompleted}},
+					OverflowState: process.ProcessInstanceOverflowStateNoMore,
+				},
+				RequestedKeys:    []string{"401"},
+				Plan:             plan,
+				CumulativeCount:  1,
+				CumulativeImpact: 1,
+			})
+			require.NoError(t, err)
+			require.Equal(t, process.ProcessInstanceSearchPageActionStop, action)
+			return process.ProcessInstanceMutationPlanPagesResult{RequestedCount: 1, CumulativeImpact: 1}, nil
+		},
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, _ int, _ ...options.FacadeOption) (process.DeleteReports, error) {
+			require.Equal(t, typex.Keys{"401"}, keys)
+			return process.DeleteReports{Items: []process.DeleteReport{{Key: "401", Ok: true}}}, nil
+		},
+	}
+
+	results, err := deleteProcessInstanceSearchPages(cmd, cli, &config.Config{}, process.ProcessInstanceFilter{})
+
+	require.NoError(t, err)
+	require.Len(t, results.Reports, 1)
+	require.Contains(t, prompt, "You are about to delete 1 process instance(s)")
+	require.Contains(t, buf.String(), "deletion: deleted 1/1 process-instance tree(s)")
+}
+
+// TestDeleteProcessInstanceSearch_TenantWarningsPrecedeConfirmation verifies
+// aggregate destructive deletion renders merged tenant evidence before the
+// operator confirms the frozen mutation scope.
+func TestDeleteProcessInstanceSearch_TenantWarningsPrecedeConfirmation(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	var prompt string
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(_ bool, got string) error {
+		prompt = got
+		outputBeforePrompt := buf.String()
+		require.Contains(t, outputBeforePrompt, "selection scope: unfiltered across accessible tenants\n")
+		require.Contains(t, outputBeforePrompt, "affected tenants: tenant-a, tenant-b\n")
+		require.Equal(t, 1, strings.Count(outputBeforePrompt, "affected tenants: tenant-a, tenant-b\n"))
+		require.Contains(t, outputBeforePrompt, "tenant metadata is unknown for 1 target\n")
+		require.Less(t, strings.Index(outputBeforePrompt, "selection scope:"), strings.Index(outputBeforePrompt, "affected tenants:"))
+		require.Less(t, strings.Index(outputBeforePrompt, "affected tenants:"), strings.Index(outputBeforePrompt, "tenant metadata is unknown"))
+		return nil
+	}
+
+	pagePlan := process.DryRunPIKeyExpansion{
+		Roots:     typex.Keys{"root-401"},
+		Collected: typex.Keys{"root-401", "401", "unknown-401"},
+		TenantEvidence: process.TenantEvidence{
+			ResolvedTenantIDs:  []string{"tenant-b", "tenant-a"},
+			UnknownTargetCount: 1,
+			TargetCount:        3,
+		},
+		Outcome: process.TraversalOutcomeComplete,
+	}
+	cli := stubProcessAPI{
+		planProcessInstanceMutationPages: func(_ context.Context, _ process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, _ ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+			action, err := visitor(process.ProcessInstanceMutationPlanStep{
+				Page: process.ProcessInstancePage{
+					Items:         []process.ProcessInstance{{Key: "401", State: process.StateCompleted}},
+					OverflowState: process.ProcessInstanceOverflowStateNoMore,
+				},
+				RequestedKeys:    []string{"401"},
+				Plan:             pagePlan,
+				CumulativeCount:  1,
+				CumulativeImpact: 3,
+			})
+			require.NoError(t, err)
+			require.Equal(t, process.ProcessInstanceSearchPageActionStop, action)
+			return process.ProcessInstanceMutationPlanPagesResult{
+				RequestedCount:   1,
+				CumulativeImpact: 3,
+				TenantEvidence:   pagePlan.TenantEvidence,
+			}, nil
+		},
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, _ int, _ ...options.FacadeOption) (process.DeleteReports, error) {
+			require.Equal(t, typex.Keys{"root-401"}, keys)
+			return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-401", Ok: true}}}, nil
+		},
+	}
+
+	results, err := deleteProcessInstanceSearchPages(cmd, cli, &config.Config{}, process.ProcessInstanceFilter{})
+
+	require.NoError(t, err)
+	require.Len(t, results.Reports, 1)
+	require.Contains(t, prompt, "You have requested to delete 1 process instance(s)")
 }
 
 func TestDeleteProcessInstanceStdinPipelineKeysSkipBpmnSelectorValidation(t *testing.T) {
@@ -328,6 +457,47 @@ func TestDeleteProcessInstanceDryRun_KeyTenantMismatchUsesAdminScope(t *testing.
 	require.Contains(t, requests.Snapshot(), "POST /v2/process-instances/search")
 	require.Contains(t, output, `"requestedCount": 1`)
 	require.Contains(t, output, tenantAdminKeysProcessInstanceKey)
+}
+
+// TestDeleteProcessInstanceDryRun_ExplicitKeyRendersUnknownTenantEvidence verifies
+// direct-key deletion keeps admin-scope options while warning when the frozen
+// plan lacks tenant metadata for affected targets.
+func TestDeleteProcessInstanceDryRun_ExplicitKeyRendersUnknownTenantEvidence(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	cfg := &config.Config{App: config.App{Tenant: tenantAdminKeysSelectedTenant}}
+	cmd.SetContext(cfg.ToContextWithLogWriter(context.Background(), buf))
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"child-a"}, keys)
+			require.True(t, options.ApplyFacadeOptions(opts).IgnoreTenant)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-a"},
+				Collected: typex.Keys{"root-a", "child-a"},
+				TenantEvidence: process.TenantEvidence{
+					UnknownTargetCount: 2,
+					TargetCount:        2,
+				},
+				Outcome: process.TraversalOutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstances: dryRunDeleteMutationGuard(t),
+	}
+
+	_, err := deleteProcessInstancesWithPlan(cmd, cli, typex.Keys{"child-a"}, true)
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "selection scope: explicit resource keys; tenant filter not applied\n")
+	require.Contains(t, output, "tenant metadata is unknown for 2 targets\n")
+	require.NotContains(t, output, "affected tenants:")
 }
 
 // Verifies date filters cannot be combined with direct key lookup mode.

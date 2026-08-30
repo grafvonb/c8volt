@@ -351,6 +351,77 @@ func TestExecuteSmokeTestDeploysSelectedFixtureThroughResourceAPI(t *testing.T) 
 	require.Equal(t, got.Walk, got.Report.Walk)
 }
 
+// TestExecuteSmokeTestAggregatesTenantEvidenceFromCreatedResources proves
+// smoke-test tenant evidence comes from deployment and run responses already used.
+func TestExecuteSmokeTestAggregatesTenantEvidenceFromCreatedResources(t *testing.T) {
+	t.Parallel()
+
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
+			return d.Deployment{Units: []d.DeploymentUnit{{
+				ProcessDefinition: d.ProcessDefinitionDeployment{
+					ProcessDefinitionId:  "C88_MultipleSubProcessesParent",
+					ProcessDefinitionKey: "pd-smoke",
+					TenantId:             "tenant-b",
+				},
+			}}}, nil
+		},
+	}
+	created := 0
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			created++
+			tenantID := data.TenantId
+			key := "pi-a"
+			if created == 1 {
+				tenantID = "tenant-a"
+				key = "pi-b"
+			}
+			return d.ProcessInstanceCreation{
+				Key:                  key,
+				BpmnProcessId:        "C88_MultipleSubProcessesParent",
+				ProcessDefinitionKey: data.ProcessDefinitionSpecificId,
+				TenantId:             tenantID,
+			}, nil
+		},
+		familyResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeFamily,
+				StartKey: startKey,
+				RootKey:  startKey,
+				Keys:     []string{startKey},
+				Outcome:  pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	got, err := NewWithWorkflowDependencies(nil, piAPI, nil, nil, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
+		CommandName: "ops execute smoke-test",
+		Count:       2,
+		Workers:     1,
+		NoCleanup:   true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs: []string{"tenant-b"},
+		TargetCount:       1,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "pd-smoke", TenantID: "tenant-b"},
+		},
+	}, got.Deployment.TenantEvidence)
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs: []string{"tenant-a", "tenant-b"},
+		TargetCount:       2,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "pi-b", TenantID: "tenant-a"},
+			{Key: "pi-a", TenantID: "tenant-b"},
+		},
+	}, got.Run.TenantEvidence)
+	require.Equal(t, got.Deployment.TenantEvidence, got.Report.Deployment.TenantEvidence)
+	require.Equal(t, got.Run.TenantEvidence, got.Report.Run.TenantEvidence)
+}
+
 func TestExecuteSmokeTestStartsCreatedInstancesByDeployedProcessDefinitionKey(t *testing.T) {
 	t.Parallel()
 

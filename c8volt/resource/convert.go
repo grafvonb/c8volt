@@ -91,8 +91,16 @@ func fromDomainDeleteProcessDefinitionPlanItem(item d.DeleteProcessDefinitionPla
 
 func fromDomainDryRunPIKeyExpansion(x d.DryRunPIKeyExpansion) process.DryRunPIKeyExpansion {
 	return process.DryRunPIKeyExpansion{
-		Roots:                      append([]string(nil), x.Roots...),
-		Collected:                  append([]string(nil), x.Collected...),
+		Roots:     append([]string(nil), x.Roots...),
+		Collected: append([]string(nil), x.Collected...),
+		TenantEvidence: process.TenantEvidence{
+			ResolvedTenantIDs:  append([]string(nil), x.TenantEvidence.ResolvedTenantIDs...),
+			UnknownTargetCount: x.TenantEvidence.UnknownTargetCount,
+			TargetCount:        x.TenantEvidence.TargetCount,
+			Targets: toolx.MapSlice(x.TenantEvidence.Targets, func(target d.TenantEvidenceTarget) process.TenantEvidenceTarget {
+				return process.TenantEvidenceTarget{Key: target.Key, TenantID: target.TenantID}
+			}),
+		},
 		SelectedFinalState:         toolx.MapSlice(x.SelectedFinalState, fromDomainProcessInstance),
 		RequiresCancelBeforeDelete: toolx.MapSlice(x.RequiresCancelBeforeDelete, fromDomainProcessInstance),
 		MissingAncestors: toolx.MapSlice(x.MissingAncestors, func(item d.MissingAncestor) process.MissingAncestor {

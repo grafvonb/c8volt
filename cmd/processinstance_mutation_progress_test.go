@@ -6,10 +6,12 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
@@ -127,14 +129,193 @@ func TestCancelProcessInstanceSearchQuietAndAutomationSuppressProgress(t *testin
 	} {
 		t.Run(mode.name, func(t *testing.T) {
 			stdout, stderr := exerciseProcessInstanceMutationProgressOutput(t, "cancel", mode.setup)
-			require.NotContains(t, stdout, "scope:")
+			require.NotContains(t, stdout, "process-instance cancel scope:")
 			require.NotContains(t, stdout, "planning process-instance cancel scope")
 			require.NotContains(t, stdout, "cancelling process instances")
-			require.NotContains(t, stderr, "scope:")
+			require.NotContains(t, stderr, "process-instance cancel scope:")
 			require.NotContains(t, stderr, "planning process-instance cancel scope")
 			require.NotContains(t, stderr, "cancelling process instances")
 		})
 	}
+}
+
+// TestProcessInstanceMutationProgress_AttachedDiscoveryTenantContextPrecedesVerbosePreflight
+// verifies shared process-instance progress can render the attached discovery
+// context before verbose mutation preflight scope.
+func TestProcessInstanceMutationProgress_AttachedDiscoveryTenantContextPrecedesVerbosePreflight(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagVerbose = true
+
+	cmd := &cobra.Command{}
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	attachTenantContext(cmd, newDiscoveryTenantContext("tenant-a"))
+
+	progress := newProcessInstanceMutationProgressReporter(cmd, "cancel")
+	progress(processInstanceMutationTestPreflightEvent("cancel"))
+
+	require.Empty(t, stdout.String())
+	output := stderr.String()
+	tenantLine := "selection scope: tenant-a only\n"
+	scopeLine := "process-instance cancel scope:"
+	require.Contains(t, output, tenantLine)
+	require.Contains(t, output, scopeLine)
+	require.Less(t, strings.Index(output, tenantLine), strings.Index(output, scopeLine))
+}
+
+// TestProcessInstanceMutationProgress_RendersTenantOverrideBeforeScope verifies
+// durable PI progress includes explicit tenant broadening provenance before the
+// normal discovery scope line.
+func TestProcessInstanceMutationProgress_RendersTenantOverrideBeforeScope(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagVerbose = true
+
+	cmd := &cobra.Command{}
+	stderr := &bytes.Buffer{}
+	cmd.SetErr(stderr)
+	cmd.SetContext(tenantOverrideProvenance{
+		ConfiguredTenantID: "tenant-a",
+		ExplicitTenantID:   "",
+		Explicit:           true,
+	}.ToContext(context.Background()))
+	attachTenantContext(cmd, newDiscoveryTenantContext(""))
+
+	progress := newProcessInstanceMutationProgressReporter(cmd, "cancel")
+	progress(processInstanceMutationTestPreflightEvent("cancel"))
+
+	output := stderr.String()
+	configuredLine := "configured tenant: tenant-a\n"
+	overrideWarning := "--tenant \"\" overrides the configured tenant filter; selection is unfiltered\n"
+	tenantLine := "selection scope: unfiltered across accessible tenants\n"
+	scopeLine := "process-instance cancel scope:"
+	require.Contains(t, output, configuredLine)
+	require.Contains(t, output, overrideWarning)
+	require.Contains(t, output, tenantLine)
+	require.Less(t, strings.Index(output, configuredLine), strings.Index(output, overrideWarning))
+	require.Less(t, strings.Index(output, overrideWarning), strings.Index(output, tenantLine))
+	require.Less(t, strings.Index(output, tenantLine), strings.Index(output, scopeLine))
+}
+
+// TestProcessInstanceMutationProgress_ProtectedModesSuppressAttachedDiscoveryTenantContext
+// verifies quiet and keys-only progress modes do not leak tenant context to
+// stdout or stderr.
+func TestProcessInstanceMutationProgress_ProtectedModesSuppressAttachedDiscoveryTenantContext(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func()
+	}{
+		{name: "quiet", setup: func() { flagQuiet = true }},
+		{name: "keys only", setup: func() { flagViewKeysOnly = true }},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			prevQuiet := flagQuiet
+			prevKeysOnly := flagViewKeysOnly
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			t.Cleanup(func() {
+				flagQuiet = prevQuiet
+				flagViewKeysOnly = prevKeysOnly
+			})
+			tt.setup()
+
+			cmd := &cobra.Command{}
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			cmd.SetOut(stdout)
+			cmd.SetErr(stderr)
+			attachTenantContext(cmd, newDiscoveryTenantContext(""))
+
+			progress := newProcessInstanceMutationProgressReporter(cmd, "cancel")
+			progress(processInstanceMutationTestPreflightEvent("cancel"))
+
+			require.Empty(t, stdout.String())
+			require.NotContains(t, stderr.String(), "selection scope:")
+			require.NotContains(t, stderr.String(), "affected tenants:")
+		})
+	}
+}
+
+// TestCancelProcessInstanceSearchDryRun_RendersMergedTenantWarnings verifies
+// search dry-run summaries use aggregate page evidence for resource tenant
+// warnings instead of only the base discovery filter line.
+func TestCancelProcessInstanceSearchDryRun_RendersMergedTenantWarnings(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+	flagGetPISize = 1
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Int32("batch-size", 1000, "")
+	require.NoError(t, cmd.Flags().Set("batch-size", "1"))
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	cli := stubProcessAPI{
+		planProcessInstanceMutationPages: func(_ context.Context, _ process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, _ ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+			page := process.ProcessInstancePage{
+				Items:         []process.ProcessInstance{{Key: "401", State: process.StateActive}},
+				Request:       process.ProcessInstancePageRequest{From: 0, Size: 1},
+				OverflowState: process.ProcessInstanceOverflowStateNoMore,
+			}
+			plan := process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-401"},
+				Collected: typex.Keys{"root-401", "401", "unknown-401"},
+				TenantEvidence: process.TenantEvidence{
+					ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+					UnknownTargetCount: 1,
+					TargetCount:        3,
+				},
+				Outcome: process.TraversalOutcomeComplete,
+			}
+			action, err := visitor(process.ProcessInstanceMutationPlanStep{
+				Page:             page,
+				RequestedKeys:    []string{"401"},
+				Plan:             plan,
+				CumulativeCount:  1,
+				CumulativeImpact: 3,
+			})
+			require.NoError(t, err)
+			require.Equal(t, process.ProcessInstanceSearchPageActionStop, action)
+			return process.ProcessInstanceMutationPlanPagesResult{
+				Plans:            []process.ProcessInstanceMutationPlanStep{{Page: page, RequestedKeys: []string{"401"}, Plan: plan, CumulativeCount: 1, CumulativeImpact: 3}},
+				Pages:            1,
+				RequestedCount:   1,
+				CumulativeImpact: 3,
+				TenantEvidence: process.TenantEvidence{
+					ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+					UnknownTargetCount: 1,
+					TargetCount:        3,
+				},
+			}, nil
+		},
+		cancelProcessInstances: dryRunCancelMutationGuard(t),
+	}
+
+	results, err := cancelProcessInstanceSearchPages(cmd, cli, &config.Config{}, process.ProcessInstanceFilter{State: process.StateActive})
+	require.NoError(t, err)
+	require.Len(t, results.DryRunPreviews, 1)
+	require.NoError(t, renderProcessInstanceDryRunSummary(cmd, newProcessInstanceDryRunSummary("cancel", results.DryRunPreviews)))
+
+	output := buf.String()
+	tenantLine := "selection scope: unfiltered across accessible tenants\n"
+	resourceLine := "affected tenants: tenant-a, tenant-b\n"
+	unknownWarning := "tenant metadata is unknown for 1 target\n"
+	summaryLine := "dry run: cancel process-instance\n"
+	require.Contains(t, output, tenantLine)
+	require.Contains(t, output, resourceLine)
+	require.Contains(t, output, unknownWarning)
+	require.Contains(t, output, summaryLine)
+	require.Equal(t, 1, strings.Count(output, resourceLine))
+	require.Less(t, strings.Index(output, tenantLine), strings.Index(output, resourceLine))
+	require.Less(t, strings.Index(output, resourceLine), strings.Index(output, unknownWarning))
+	require.Less(t, strings.Index(output, unknownWarning), strings.Index(output, summaryLine))
 }
 
 // exerciseProcessInstanceMutationProgressOutput captures stdout and stderr for
@@ -159,26 +340,8 @@ func exerciseProcessInstanceMutationProgressOutput(t *testing.T, operation strin
 	cmd.SetOut(stdout)
 	cmd.SetErr(stderr)
 
-	total := int64(1)
-	pageCount := int64(1)
 	progress := newProcessInstanceMutationProgressReporter(cmd, operation)
-	progress(options.ProgressEvent{
-		Kind: options.ProgressEventKindPreflight,
-		Preflight: &options.PreflightScope{
-			CoreResource:    "process_instance",
-			SelectorSummary: operation + " process-instance",
-			Total:           &total,
-			TotalKind:       options.TotalCertaintyExact,
-			PageSize:        1,
-			PageCount:       &pageCount,
-			PageCountKind:   options.PageCountKindExact,
-			ConsequenceSummary: options.ConsequenceSummary{
-				WorkSummary: "plan process-instance " + operation + " scope",
-				RiskSummary: "destructive mutation",
-			},
-			RequiresConfirmation: true,
-		},
-	})
+	progress(processInstanceMutationTestPreflightEvent(operation))
 	progress(options.ProgressEvent{
 		Kind: options.ProgressEventKindFrozenScope,
 		FrozenScope: &options.FrozenScopeProgress{
@@ -198,6 +361,30 @@ func exerciseProcessInstanceMutationProgressOutput(t *testing.T, operation strin
 		},
 	})
 	return stdout.String(), stderr.String()
+}
+
+// processInstanceMutationTestPreflightEvent returns a reusable destructive
+// preflight event for progress renderer contract tests.
+func processInstanceMutationTestPreflightEvent(operation string) options.ProgressEvent {
+	total := int64(1)
+	pageCount := int64(1)
+	return options.ProgressEvent{
+		Kind: options.ProgressEventKindPreflight,
+		Preflight: &options.PreflightScope{
+			CoreResource:    "process_instance",
+			SelectorSummary: operation + " process-instance",
+			Total:           &total,
+			TotalKind:       options.TotalCertaintyExact,
+			PageSize:        1,
+			PageCount:       &pageCount,
+			PageCountKind:   options.PageCountKindExact,
+			ConsequenceSummary: options.ConsequenceSummary{
+				WorkSummary: "plan process-instance " + operation + " scope",
+				RiskSummary: "destructive mutation",
+			},
+			RequiresConfirmation: true,
+		},
+	}
 }
 
 // processInstanceMutationTestMutationPhase returns the service phase text the
@@ -369,10 +556,10 @@ func TestDeleteProcessInstanceSearchQuietAndAutomationSuppressProgress(t *testin
 	} {
 		t.Run(mode.name, func(t *testing.T) {
 			stdout, stderr := exerciseProcessInstanceMutationProgressOutput(t, "delete", mode.setup)
-			require.NotContains(t, stdout, "scope:")
+			require.NotContains(t, stdout, "process-instance delete scope:")
 			require.NotContains(t, stdout, "planning process-instance delete scope")
 			require.NotContains(t, stdout, "deleting process instances")
-			require.NotContains(t, stderr, "scope:")
+			require.NotContains(t, stderr, "process-instance delete scope:")
 			require.NotContains(t, stderr, "planning process-instance delete scope")
 			require.NotContains(t, stderr, "deleting process instances")
 		})

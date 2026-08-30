@@ -6,10 +6,27 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+// requireSingleJSONObjectDocument decodes one complete JSON object and rejects
+// any trailing document that would break machine-output consumers.
+func requireSingleJSONObjectDocument(t *testing.T, output string) map[string]any {
+	t.Helper()
+
+	decoder := json.NewDecoder(strings.NewReader(output))
+	var got map[string]any
+	require.NoError(t, decoder.Decode(&got))
+	var extra any
+	require.ErrorIs(t, decoder.Decode(&extra), io.EOF)
+	return got
+}
 
 func requireJSONObject(t *testing.T, value any) map[string]any {
 	t.Helper()
@@ -164,6 +181,97 @@ func TestPagedProcessInstanceJSONAndKeysOnlyOutputCleanliness(t *testing.T) {
 			tt.wantStdout(t, stdout)
 		})
 	}
+}
+
+// TestTenantContextMachineOutputCleanlinessAcrossFamilies verifies tenant
+// context keeps JSON, quiet, and key streams within their machine contracts.
+func TestTenantContextMachineOutputCleanlinessAcrossFamilies(t *testing.T) {
+	t.Run("run JSON is one document with root tenant context", func(t *testing.T) {
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodPost, r.Method)
+			require.Equal(t, "/v2/process-instances", r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processDefinitionKey":"2251799813685255","processInstanceKey":"2251799813711967","tenantId":"tenant-a","variables":{}}`))
+		}))
+		t.Cleanup(srv.Close)
+		cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+		stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--automation",
+			"--json",
+			"run", "process-instance",
+			"--pd-key", "2251799813685255",
+			"--no-wait",
+		)
+
+		require.NotContains(t, stderr, "creation target:")
+		require.NotContains(t, stdout, "creation target:")
+		envelope := requireSingleJSONObjectDocument(t, stdout)
+		tenantContext := requireJSONObject(t, envelope["tenantContext"])
+		require.Equal(t, "creation", tenantContext["mode"])
+		require.Equal(t, "not_applicable", tenantContext["filter"])
+		require.Equal(t, "tenant-a", tenantContext["targetTenantId"])
+		require.Equal(t, []any{"tenant-a"}, tenantContext["resolvedTenantIds"])
+		payload := requireJSONObject(t, envelope["payload"])
+		require.NotContains(t, payload, "tenantContext")
+		requireJSONItems(t, payload["items"], 1)
+	})
+
+	t.Run("run quiet suppresses tenant context text", func(t *testing.T) {
+		srv := newTenantContextMachineRunServer(t)
+		t.Cleanup(srv.Close)
+
+		stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+			"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+			"--quiet",
+			"run", "process-instance",
+			"--pd-key", "2251799813685255",
+			"--no-wait",
+		)
+
+		require.Contains(t, stdout, "2251799813711967")
+		require.NotContains(t, stdout, "creation target:")
+		require.NotContains(t, stderr, "creation target:")
+		require.NotContains(t, stdout, "tenantContext")
+	})
+
+	t.Run("run keys-only stdout is exact", func(t *testing.T) {
+		srv := newTenantContextMachineRunServer(t)
+		t.Cleanup(srv.Close)
+
+		stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+			"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+			"run", "process-instance",
+			"--pd-key", "2251799813685255",
+			"--no-wait",
+			"--keys-only",
+		)
+
+		require.Equal(t, "2251799813711967\n", stdout)
+		require.NotContains(t, stderr, "creation target:")
+	})
+}
+
+// newTenantContextMachineRunServer returns a minimal process-instance creation
+// endpoint for protected output-mode contract tests.
+func newTenantContextMachineRunServer(t *testing.T) *httptest.Server {
+	t.Helper()
+
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-instances", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"processDefinitionKey":"2251799813685255","processInstanceKey":"2251799813711967","tenantId":"<default>","variables":{}}`))
+	}))
 }
 
 // executeRootForJobWithSeparateOutputs runs the root command and captures stdout and stderr independently.

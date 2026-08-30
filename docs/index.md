@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.0-beta.1-dirty`, commit `0002151d`, built `2026-08-26T12:37:04Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.0-beta.1-36-gbd0ea670-dirty`, commit `bd0ea670`, built `2026-08-30T14:21:58Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -22,6 +22,12 @@ has_toc: true
 
 `c8volt` is not an official Camunda product. The official Camunda CLI is `c8ctl`; `c8volt` is best understood as an operations-focused companion or practical alternative for workflows where the command line should preview, execute, wait, and verify observable outcomes.
 
+## New in v4.3: Experimental Camunda 8.10 Support
+
+[c8volt v4.3.0](https://github.com/grafvonb/c8volt/releases/tag/v4.3.0) adds experimental Camunda 8.10 support through an isolated native API client, version-specific service adapters, and dedicated C810 process definitions for embedded and integration workflows.
+
+The release also makes Camunda 8.9 the default compatibility version, strengthens generated-client provenance and publication safeguards, and improves release-line diagnostics while preserving the established script-safe CLI contract.
+
 ## New in v4.2: C8 Ops CLI and Slow Process Analysis
 
 The v4 line introduced the C8 Ops CLI at [CamundaCon 2026](https://www.camundacon.com/). The event is done, but the idea is now the center of c8volt: low-level commands do work; `c8volt ops` gets the job done.
@@ -35,6 +41,8 @@ High-volume search, analysis, repair, purge, cancel, delete, walk, run, and smok
 During discovery, progress uses page and seen-count wording. After c8volt freezes the work set, progress switches to exact `done/total` counters for phases such as loading runtime elements, planning delete scope, repairing incidents, deleting process instances, or starting process instances. Long phases may show elapsed time, approximate throughput, and approximate remaining time only after enough samples exist.
 
 Progress never writes to result stdout. Default human mode uses terminal activity; verbose and debug modes may keep durable progress lines on stderr. JSON output remains one document, keys-only output remains one key per line, and quiet or automation-oriented runs suppress progress chatter or keep scope in structured reports. For paged commands, `--batch-size` controls each backend discovery request, while `--limit` caps the total returned, selected, frozen, or analyzed scope as documented by the command.
+
+Tenant context is reported with operation-specific meaning before tenant-sensitive work. Discovery commands show a named filter as `selection scope: tenant-a only`, or `selection scope: unfiltered across accessible tenants` when no tenant filter is configured. If an explicit `--tenant` value changes configuration, human output first reports the prior `configured tenant`; clearing a named filter with `--tenant ""` warns that selection is unfiltered, while named changes are informational. Deploy, run, and smoke-test creation steps show `creation target: tenant-a` or `creation target: default tenant`. Explicit-key mutations state that the tenant filter is not applied, then show resource tenant evidence when the frozen plan already contains it. Multi-tenant plans emit one warning-level `affected tenants: ...` summary, and unknown-metadata warnings remain non-blocking safety evidence. JSON results and JSON audit reports use one nested `tenantContext` object; quiet mode suppresses tenant lines, and keys-only output stays one key per line with no warnings on stdout.
 
 Transient Camunda GET and HEAD read failures are retried automatically when the shared request path sees temporary transport errors, throttling, or server availability responses. Retry messages stay compact and off result stdout, and c8volt still treats business outcomes such as not-found, invalid request, permission failure, and conflict as final.
 

@@ -613,6 +613,7 @@ func executeRootForJobTest(t *testing.T, args ...string) string {
 	root.SetErr(buf)
 	root.SetArgs(args)
 	resetCommandTreeFlags(root)
+	resetDeployCommandContextForTest(root)
 	resetGetJobFlagState()
 	resetUpdateJobFlagState()
 
@@ -639,6 +640,7 @@ func executeRootForJobTestWithSeparateOutputs(t *testing.T, args ...string) (str
 	root.SetErr(stderr)
 	root.SetArgs(args)
 	resetCommandTreeFlags(root)
+	resetDeployCommandContextForTest(root)
 	resetGetJobFlagState()
 	resetUpdateJobFlagState()
 

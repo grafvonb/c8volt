@@ -62,15 +62,25 @@ func TestClientPurgeOrphanProcessInstancesMapsServiceBoundary(t *testing.T) {
 					Count:  1,
 				},
 				DeletionPlan: d.DeletionPlan{
-					Status:               d.OpsWorkflowStepStatusPlanned,
-					RequestedKeys:        []string{"2251799813685249"},
-					AffectedKeys:         []string{"2251799813685249", "2251799813685250"},
-					RootKeys:             []string{"2251799813685248"},
+					Status:        d.OpsWorkflowStepStatusPlanned,
+					RequestedKeys: []string{"2251799813685249"},
+					AffectedKeys:  []string{"2251799813685249", "2251799813685250"},
+					RootKeys:      []string{"2251799813685248"},
+					TenantEvidence: d.TenantEvidence{
+						ResolvedTenantIDs: []string{"tenant-a"},
+						TargetCount:       1,
+						Targets:           []d.TenantEvidenceTarget{{Key: "2251799813685249", TenantID: "tenant-a"}},
+					},
 					RequiresConfirmation: true,
 					DryRunPreview: d.DryRunPIKeyExpansion{
 						Roots:     []string{"2251799813685248"},
 						Collected: []string{"2251799813685249", "2251799813685250"},
-						Outcome:   d.TraversalOutcomeComplete,
+						TenantEvidence: d.TenantEvidence{
+							ResolvedTenantIDs: []string{"tenant-a"},
+							TargetCount:       1,
+							Targets:           []d.TenantEvidenceTarget{{Key: "2251799813685249", TenantID: "tenant-a"}},
+						},
+						Outcome: d.TraversalOutcomeComplete,
 					},
 				},
 				Deletion: d.DeletionResult{
@@ -114,6 +124,12 @@ func TestClientPurgeOrphanProcessInstancesMapsServiceBoundary(t *testing.T) {
 	require.Equal(t, OrphanPurgeOutcomePlanned, got.Outcome)
 	require.Equal(t, []string{"2251799813685249"}, []string(got.Discovery.Keys))
 	require.Equal(t, []string{"2251799813685248"}, []string(got.DeletionPlan.RootKeys))
+	require.Equal(t, process.TenantEvidence{
+		ResolvedTenantIDs: []string{"tenant-a"},
+		TargetCount:       1,
+		Targets:           []process.TenantEvidenceTarget{{Key: "2251799813685249", TenantID: "tenant-a"}},
+	}, got.DeletionPlan.TenantEvidence)
+	require.Equal(t, got.DeletionPlan.TenantEvidence, got.DeletionPlan.DryRunPreview.TenantEvidence)
 	require.Equal(t, process.TraversalOutcomeComplete, got.DeletionPlan.DryRunPreview.Outcome)
 	require.True(t, got.DeleteRequested)
 	require.Equal(t, WorkflowStepStatusSubmitted, got.Deletion.Status)
@@ -311,6 +327,47 @@ func TestClientExecuteSmokeTestMapsProgressOption(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, foptions.ProgressEventKindFrozenScope, gotEvent.Kind)
 	require.Equal(t, &foptions.FrozenScopeProgress{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 1, Total: 2}, gotEvent.FrozenScope)
+}
+
+// TestClientExecuteSmokeTestMapsProgressTenantContext verifies preflight
+// callbacks expose the common tenant context through the public facade.
+func TestClientExecuteSmokeTestMapsProgressTenantContext(t *testing.T) {
+	t.Parallel()
+
+	domainCtx := d.TenantContext{
+		Mode:              d.TenantContextModeCreation,
+		Filter:            d.TenantContextFilterNotApplicable,
+		TargetTenantID:    "<default>",
+		ResolvedTenantIDs: []string{"<default>"},
+	}
+	var gotEvent foptions.ProgressEvent
+	api := stubOpsService{
+		smokeTest: func(_ context.Context, _ d.SmokeTestRequest, opts ...services.CallOption) (d.SmokeTestResult, error) {
+			progress := services.ApplyCallOptions(opts).Progress
+			require.NotNil(t, progress)
+			progress(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindPreflight,
+				Preflight: &d.OpsPreflightScope{
+					Phase:         "preflight",
+					TenantContext: &domainCtx,
+				},
+			})
+			return d.SmokeTestResult{Request: d.SmokeTestRequest{CommandName: "ops execute smoke-test", Count: 1}}, nil
+		},
+	}
+
+	_, err := New(api, slog.Default()).ExecuteSmokeTest(context.Background(), SmokeTestRequest{CommandName: "ops execute smoke-test", Count: 1}, foptions.WithProgress(func(event foptions.ProgressEvent) {
+		gotEvent = event
+	}))
+	require.NoError(t, err)
+	domainCtx.ResolvedTenantIDs[0] = "changed"
+
+	require.Equal(t, foptions.ProgressEventKindPreflight, gotEvent.Kind)
+	require.NotNil(t, gotEvent.Preflight.TenantContext)
+	require.Equal(t, foptions.TenantContextModeCreation, gotEvent.Preflight.TenantContext.Mode)
+	require.Equal(t, foptions.TenantContextFilterNotApplicable, gotEvent.Preflight.TenantContext.Filter)
+	require.Equal(t, "<default>", gotEvent.Preflight.TenantContext.TargetTenantID)
+	require.Equal(t, []string{"<default>"}, gotEvent.Preflight.TenantContext.ResolvedTenantIDs)
 }
 
 // TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary verifies the slow-analysis facade stays thin.

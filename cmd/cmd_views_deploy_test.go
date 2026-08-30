@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/resource"
@@ -109,4 +110,56 @@ func TestOneLinePDDeploy_UsesMutationLogGrammarWithoutPadding(t *testing.T) {
 	})
 
 	require.Equal(t, "pd 1 Short v1 <default>; deployed", line)
+}
+
+func TestListProcessDefinitionDeploymentsView_JSONEnvelopeIncludesAttachedTenantContext(t *testing.T) {
+	resetTenantContextRenderFlags(t)
+	prevNoWait := flagNoWait
+	flagNoWait = true
+	t.Cleanup(func() {
+		flagNoWait = prevNoWait
+	})
+
+	cmd := &cobra.Command{Use: "deploy"}
+	setCommandMutation(cmd, CommandMutationStateChanging)
+	setContractSupport(cmd, ContractSupportFull)
+	attachTenantContext(cmd, withTenantContextEvidence(newCreationTenantContext("tenant-a"), []string{"tenant-a"}, 0))
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	flagViewAsJson = true
+
+	err := listProcessDefinitionDeploymentsView(cmd, []resource.ProcessDefinitionDeployment{{
+		Key:               "deployment-a",
+		DefinitionKey:     "1",
+		DefinitionId:      "Short",
+		DefinitionVersion: 1,
+		ResourceName:      "processdefinitions/Short.bpmn",
+		TenantId:          "tenant-a",
+	}})
+
+	require.NoError(t, err)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &got))
+	tenantContext := requireJSONObject(t, got["tenantContext"])
+	require.Equal(t, "creation", tenantContext["mode"])
+	require.Equal(t, "tenant-a", tenantContext["targetTenantId"])
+	require.Equal(t, []any{"tenant-a"}, tenantContext["resolvedTenantIds"])
+	requireJSONItems(t, got["payload"], 1)
+}
+
+func TestListProcessDefinitionDeploymentsView_KeysOnlySuppressesTenantContext(t *testing.T) {
+	resetTenantContextRenderFlags(t)
+	cmd := &cobra.Command{Use: "deploy"}
+	attachTenantContext(cmd, newCreationTenantContext("tenant-a"))
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	flagViewKeysOnly = true
+
+	err := listProcessDefinitionDeploymentsView(cmd, []resource.ProcessDefinitionDeployment{{
+		DefinitionKey: "1",
+		TenantId:      "tenant-a",
+	}})
+
+	require.NoError(t, err)
+	require.Equal(t, "1\n", buf.String())
 }

@@ -8,9 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func TestResolveEffectiveConfig_ProfileOverlaysBaseConfigWithoutReplacingExplicitSources(t *testing.T) {
@@ -343,6 +345,132 @@ profiles:
 
 	require.Equal(t, "profile-tenant", cfg.App.Tenant)
 	require.Equal(t, "http://profile.example.test/v2", cfg.APIs.Camunda.BaseURL)
+}
+
+// TestResolveEffectiveConfig_VersionSpecificEmptyTenantSemantics documents the
+// configuration boundary between Camunda 8.7 default-only tenant normalization
+// and the unfiltered discovery semantics retained by newer runtimes.
+func TestResolveEffectiveConfig_VersionSpecificEmptyTenantSemantics(t *testing.T) {
+	tests := []struct {
+		name        string
+		appYAML     string
+		wantTenant  string
+		wantVersion toolx.CamundaVersion
+	}{
+		{
+			name: "v87 omitted tenant normalizes to default",
+			appYAML: `
+  camunda_version: "8.7"`,
+			wantTenant:  DefaultTenant,
+			wantVersion: toolx.V87,
+		},
+		{
+			name: "v87 explicit empty tenant remains empty",
+			appYAML: `
+  camunda_version: "8.7"
+  tenant: ""`,
+			wantVersion: toolx.V87,
+		},
+		{
+			name: "v88 omitted tenant remains empty",
+			appYAML: `
+  camunda_version: "8.8"`,
+			wantVersion: toolx.V88,
+		},
+		{
+			name: "v89 omitted tenant remains empty",
+			appYAML: `
+  camunda_version: "8.9"`,
+			wantVersion: toolx.V89,
+		},
+		{
+			name: "v810 alias omitted tenant remains empty",
+			appYAML: `
+  camunda_version: "810"`,
+			wantVersion: toolx.V810,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := viper.New()
+			v.SetConfigType("yaml")
+			err := v.ReadConfig(strings.NewReader(`
+app:` + tt.appYAML + `
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+`))
+			require.NoError(t, err)
+
+			cfg, err := ResolveEffectiveConfig(
+				v,
+				func(string) bool { return false },
+				func(activeProfile, key string) bool {
+					return v.InConfig("profiles." + activeProfile + "." + key)
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantVersion, cfg.App.CamundaVersion)
+			require.Equal(t, tt.wantTenant, cfg.App.Tenant)
+		})
+	}
+}
+
+func TestConfig_ToSanitizedYAMLWithTenantContextIncludesNamedContext(t *testing.T) {
+	cfg := New()
+	cfg.App.Tenant = "tenant-a"
+	cfg.Auth.Mode = ModeOAuth2
+	cfg.Auth.OAuth2.ClientID = "client-id"
+	cfg.Auth.OAuth2.ClientSecret = "super-secret"
+	cfg.APIs.Camunda.BaseURL = "https://camunda.example.test/v2"
+
+	out, err := cfg.ToSanitizedYAMLWithTenantContext(map[string]any{
+		"mode":               "configuration",
+		"filter":             "named",
+		"configuredTenantId": "tenant-a",
+		"resolvedTenantIds":  []string{},
+		"unknownTargetCount": 0,
+		"crossTenant":        false,
+	})
+	require.NoError(t, err)
+
+	var got map[string]any
+	require.NoError(t, yaml.Unmarshal([]byte(out), &got))
+	require.Equal(t, "*****", got["auth"].(map[string]any)["oauth2"].(map[string]any)["client_secret"])
+	tenantContext := got["tenantContext"].(map[string]any)
+	require.Equal(t, "configuration", tenantContext["mode"])
+	require.Equal(t, "named", tenantContext["filter"])
+	require.Equal(t, "tenant-a", tenantContext["configuredTenantId"])
+	require.Equal(t, []any{}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, 0, tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+}
+
+func TestConfig_ToSanitizedYAMLWithTenantContextKeepsEmptyTenantUnfiltered(t *testing.T) {
+	cfg := New()
+	cfg.Auth.Mode = ModeNone
+	cfg.APIs.Camunda.BaseURL = "https://camunda.example.test/v2"
+
+	out, err := cfg.ToSanitizedYAMLWithTenantContext(map[string]any{
+		"mode":               "configuration",
+		"filter":             "none",
+		"resolvedTenantIds":  []string{},
+		"unknownTargetCount": 0,
+		"crossTenant":        false,
+	})
+	require.NoError(t, err)
+
+	var got map[string]any
+	require.NoError(t, yaml.Unmarshal([]byte(out), &got))
+	require.Equal(t, "", got["app"].(map[string]any)["tenant"])
+	tenantContext := got["tenantContext"].(map[string]any)
+	require.Equal(t, "configuration", tenantContext["mode"])
+	require.Equal(t, "none", tenantContext["filter"])
+	require.NotContains(t, tenantContext, "configuredTenantId")
+	require.NotContains(t, tenantContext, "targetTenantId")
 }
 
 func TestResolveEffectiveConfig_CriticalBaselineSettingsShareOneContract(t *testing.T) {

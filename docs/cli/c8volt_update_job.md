@@ -12,6 +12,8 @@ Update a job by key
 
 Update a Camunda job by key.
 
+Tenant contract: --key is backend-authorized admin input and reports that the tenant filter is not applied. The pre-mutation plan shows the current job tenant when it is available and warns if the tenant metadata is unknown.
+
 The command supports retries, timeout updates, and worker outcome modes for Camunda 8.8 or newer. It builds a pre-mutation plan, supports --dry-run previews, and asks for confirmation before material interactive mutations. Retry updates are confirmed by reading the job by key by default; timeout updates and worker outcomes report accepted submission without deadline or outcome confirmation. JSON mutations require --dry-run, --auto-confirm, or --automation, and --json cannot be combined with --verbose. Camunda 8.7 returns an unsupported-version error before mutation.
 
 ```
@@ -22,6 +24,7 @@ c8volt update job [flags]
 
 ```
   ./c8volt update job --key <job-key> --retries 3 --dry-run
+  ./c8volt --tenant tenant-a update job --key <job-key> --retries 3 --dry-run
   ./c8volt update job --key <job-key> --retries 3 --auto-confirm
   ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
   ./c8volt update job --key <job-key> --fail --retries 0 --message "worker unavailable" --dry-run
@@ -60,7 +63,7 @@ c8volt update job [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
   -v, --verbose            show additional output
 ```
 

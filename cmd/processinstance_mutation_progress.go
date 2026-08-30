@@ -12,6 +12,7 @@ import (
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	types "github.com/grafvonb/c8volt/typex"
@@ -46,6 +47,15 @@ type processInstancePageActionResult struct {
 type processInstancePageActionResults struct {
 	Reports        []process.Reporter
 	DryRunPreviews []processInstanceDryRunPreview
+	TenantEvidence process.TenantEvidence
+}
+
+// attachProcessInstanceDiscoveryTenantContext combines search semantics with
+// tenant evidence already carried by a frozen process-instance plan.
+func attachProcessInstanceDiscoveryTenantContext(cmd *cobra.Command, base tenant.Context, evidence process.TenantEvidence) tenant.Context {
+	ctx := withTenantContextEvidence(base, evidence.ResolvedTenantIDs, evidence.UnknownTargetCount)
+	attachTenantContext(cmd, ctx)
+	return ctx
 }
 
 // processInstanceDryRunPlanResult keeps command-owned dry-run planning data
@@ -79,12 +89,32 @@ func planProcessInstanceDryRunPreviewWithOptions(cmd *cobra.Command, cli process
 	if err != nil {
 		return processInstanceDryRunPlanResult{}, fmt.Errorf("%s validation: %w", operation, err)
 	}
+	if processOptions.ApplyFacadeOptions(opts).IgnoreTenant {
+		attachProcessInstanceExplicitTenantContext(cmd, plan.TenantEvidence)
+	}
 
 	return processInstanceDryRunPlanResult{
 		Plan:    plan,
 		Impact:  processInstancePageImpact{Requested: len(keys), Affected: len(plan.Collected), Roots: len(plan.Roots)},
 		Preview: newProcessInstanceDryRunPreview(operation, keys, plan),
 	}, nil
+}
+
+// attachProcessInstanceExplicitTenantContext combines direct-key semantics with
+// tenant evidence already carried by a frozen process-instance plan.
+func attachProcessInstanceExplicitTenantContext(cmd *cobra.Command, evidence process.TenantEvidence) {
+	cfg, _ := config.FromContext(commandContextOrBackground(cmd))
+	base := newExplicitKeysTenantContext(configuredTenantID(cfg))
+	attachTenantContext(cmd, withTenantContextEvidence(base, evidence.ResolvedTenantIDs, evidence.UnknownTargetCount))
+}
+
+// commandContextOrBackground gives direct unit tests the same nil-safe context
+// fallback as command execution helpers.
+func commandContextOrBackground(cmd *cobra.Command) context.Context {
+	if cmd == nil || cmd.Context() == nil {
+		return context.Background()
+	}
+	return cmd.Context()
 }
 
 // processInstancePageActionResultFromPlan converts a service-owned mutation
@@ -177,7 +207,43 @@ func printProcessInstanceMutationPreflight(cmd *cobra.Command, scope ops.Preflig
 	if !processInstanceMutationDurableProgressAllowed(channel) {
 		return
 	}
+	printProcessInstanceMutationTenantContext(cmd, channel)
 	printOpsPreflightLines(cmd, scope)
+}
+
+// printProcessInstanceMutationTenantContext routes attached discovery context
+// through the durable progress channel before process-instance mutation scope.
+func printProcessInstanceMutationTenantContext(cmd *cobra.Command, channel ops.ProgressChannel) {
+	if !processInstanceMutationTenantContextAllowed(channel) {
+		return
+	}
+	ctx, ok := attachedTenantContext(cmd)
+	if !ok || !shouldRenderTenantContextHuman(cmd, *ctx) || tenantContextHumanRendered(cmd) {
+		return
+	}
+	markTenantContextHumanRendered(cmd)
+	for _, line := range tenantContextHumanLines(cmd, *ctx) {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), line.Text)
+	}
+}
+
+// renderProcessInstanceMutationTenantContextStderr emits search confirmation
+// context on stderr so stdout remains reserved for machine-oriented results.
+func renderProcessInstanceMutationTenantContextStderr(cmd *cobra.Command, ctx tenant.Context) {
+	if flagCmdAutomation || !shouldRenderTenantContextHuman(cmd, ctx) || tenantContextHumanRendered(cmd) {
+		return
+	}
+	markTenantContextHumanRendered(cmd)
+	for _, line := range tenantContextHumanLines(cmd, ctx) {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), line.Text)
+	}
+}
+
+// processInstanceMutationTenantContextAllowed keeps tenant preflight lines on
+// the same human stderr channel as durable process-instance progress.
+func processInstanceMutationTenantContextAllowed(channel ops.ProgressChannel) bool {
+	return channel.DurableAllowed && channel.StderrAllowed &&
+		(channel.Mode == ops.ProgressModeHuman || channel.Mode == ops.ProgressModeVerbose || channel.Mode == ops.ProgressModeDebug)
 }
 
 func printProcessInstanceMutationProgressLine(cmd *cobra.Command, line string, channel ops.ProgressChannel) {

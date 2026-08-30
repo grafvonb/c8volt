@@ -277,6 +277,80 @@ func TestPreviewDeleteProcessDefinitionsNoStateCheckUsesBatchActivity(t *testing
 	}}, sink.Starts())
 }
 
+// TestPreviewDeleteProcessDefinitionsAggregatesTenantEvidence verifies process-definition
+// impact planning preserves distinct tenant evidence from definitions and nested
+// cancellation subplans while counting unavailable tenant metadata once per target.
+func TestPreviewDeleteProcessDefinitionsAggregatesTenantEvidence(t *testing.T) {
+	pdAPI := tenantEvidenceProcessDefinitionAPI{
+		definitions: map[string]d.ProcessDefinition{
+			"pd-cross": {
+				Key:           "pd-cross",
+				TenantId:      "tenant-b",
+				Statistics:    &d.ProcessDefinitionStatistics{Active: 3},
+				BpmnProcessId: "invoice",
+			},
+			"pd-unknown": {
+				Key:           "pd-unknown",
+				Statistics:    &d.ProcessDefinitionStatistics{},
+				BpmnProcessId: "invoice",
+			},
+		},
+	}
+	piAPI := tenantEvidenceProcessInstanceAPI{}
+
+	got, err := PreviewDeleteProcessDefinitionsWithWorkers(
+		context.Background(),
+		pdAPI,
+		piAPI,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		types.Keys{"pd-cross", "pd-unknown"},
+		1,
+		services.WithForce(),
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+		UnknownTargetCount: 2,
+		TargetCount:        5,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "pd-cross", TenantID: "tenant-b"},
+			{Key: "root-a", TenantID: "tenant-a"},
+			{Key: "root-b", TenantID: "tenant-b"},
+			{Key: "root-unknown"},
+			{Key: "pd-unknown"},
+		},
+	}, got.TenantEvidence)
+}
+
+// TestProcessDefinitionPlanTenantEvidenceAggregateOnlyFallbackDoesNotDoubleCountKnownTenants
+// verifies legacy nested evidence can contribute tenant IDs without turning those IDs
+// into synthetic affected targets in the aggregate count.
+func TestProcessDefinitionPlanTenantEvidenceAggregateOnlyFallbackDoesNotDoubleCountKnownTenants(t *testing.T) {
+	t.Parallel()
+
+	got := processDefinitionPlanTenantEvidence([]d.DeleteProcessDefinitionPlanItem{
+		{
+			Key:      "pd-1",
+			TenantId: "tenant-b",
+			CancellationPlan: d.DryRunPIKeyExpansion{TenantEvidence: d.TenantEvidence{
+				ResolvedTenantIDs:  []string{"tenant-a"},
+				UnknownTargetCount: 1,
+				TargetCount:        3,
+			}},
+		},
+	})
+
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+		UnknownTargetCount: 1,
+		TargetCount:        4,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "pd-1", TenantID: "tenant-b"},
+		},
+	}, got)
+}
+
 // TestDeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError verifies a server-side request-shape mismatch is reported once instead of being repeated for every selected definition.
 func TestDeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError(t *testing.T) {
 	var calls atomic.Int64
@@ -442,6 +516,70 @@ func (s workerPreviewProcessInstanceAPI) AncestryResult(ctx context.Context, key
 // DescendantsResult delegates descendant expansion to the configured test callback.
 func (s workerPreviewProcessInstanceAPI) DescendantsResult(ctx context.Context, key string, opts ...services.CallOption) (pitraversal.Result, error) {
 	return s.descendants(ctx, key, opts...)
+}
+
+type tenantEvidenceProcessDefinitionAPI struct {
+	API
+	definitions map[string]d.ProcessDefinition
+}
+
+// GetProcessDefinition returns configured process-definition metadata for
+// tenant-evidence aggregation tests.
+func (s tenantEvidenceProcessDefinitionAPI) GetProcessDefinition(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
+	pd, ok := s.definitions[key]
+	if !ok {
+		return d.ProcessDefinition{}, fmt.Errorf("%w: process definition %s not found", d.ErrNotFound, key)
+	}
+	return pd, nil
+}
+
+type tenantEvidenceProcessInstanceAPI struct {
+	pisvc.API
+}
+
+// SearchForProcessInstancesPage returns duplicate known tenants plus one
+// unknown active process-instance tenant for one process definition.
+func (tenantEvidenceProcessInstanceAPI) SearchForProcessInstancesPage(_ context.Context, filter d.ProcessInstanceFilter, _ d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+	if filter.ProcessDefinitionKey != "pd-cross" {
+		return d.ProcessInstancePage{Items: []d.ProcessInstance{}}, nil
+	}
+	return d.ProcessInstancePage{
+		Items: []d.ProcessInstance{
+			{Key: "root-a", RootProcessInstanceKey: "root-a", TenantId: "tenant-a", State: d.StateActive},
+			{Key: "root-b", RootProcessInstanceKey: "root-b", TenantId: "tenant-b", State: d.StateActive},
+			{Key: "root-unknown", RootProcessInstanceKey: "root-unknown", State: d.StateActive},
+		},
+	}, nil
+}
+
+// AncestryResult returns one known or unknown tenant observation for the
+// requested root without making any enrichment-style lookup.
+func (tenantEvidenceProcessInstanceAPI) AncestryResult(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+	return tenantEvidenceTraversalResult(key), nil
+}
+
+// DescendantsResult mirrors ancestry evidence so duplicate traversal branches
+// must be deduplicated by the shared process-instance dry-run planner.
+func (tenantEvidenceProcessInstanceAPI) DescendantsResult(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+	return tenantEvidenceTraversalResult(key), nil
+}
+
+// tenantEvidenceTraversalResult creates a single-node traversal result with
+// deterministic tenant metadata for aggregation assertions.
+func tenantEvidenceTraversalResult(key string) pitraversal.Result {
+	tenantID := map[string]string{
+		"root-a": "tenant-a",
+		"root-b": "tenant-b",
+	}[key]
+	return pitraversal.Result{
+		StartKey: key,
+		RootKey:  key,
+		Keys:     []string{key},
+		Chain: map[string]d.ProcessInstance{
+			key: {Key: key, TenantId: tenantID, State: d.StateActive},
+		},
+		Outcome: pitraversal.OutcomeComplete,
+	}
 }
 
 // TestPreviewDeleteProcessDefinitionImpactUsesRequestedWorkers verifies delete-plan PI traversal honors APD worker settings.

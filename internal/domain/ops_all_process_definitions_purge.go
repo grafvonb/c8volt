@@ -61,6 +61,7 @@ type AllProcessDefinitionsPurgeDeletePlan struct {
 	Status                                  OpsWorkflowStepStatus
 	CandidateProcessDefinitionKeys          typex.Keys
 	Items                                   []DeleteProcessDefinitionPlanItem
+	TenantEvidence                          TenantEvidence
 	DuplicateCandidateProcessDefinitionKeys typex.Keys
 	AffectedProcessInstanceCount            int64
 	ActiveProcessInstanceCount              int64
@@ -92,6 +93,7 @@ type AllProcessDefinitionsPurgeReport struct {
 	CamundaVersion   string
 	ProfileIdentity  string
 	TenantID         string
+	TenantContext    *TenantContext
 	SelectionFilters ProcessDefinitionFilter
 	Discovery        ProcessDefinitionDiscoveryResult
 	DeletePlan       AllProcessDefinitionsPurgeDeletePlan

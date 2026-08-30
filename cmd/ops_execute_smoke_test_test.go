@@ -15,10 +15,42 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+// TestOpsExecuteSmokeTestTenantContextUsesCreationSemantics verifies smoke
+// tests report a default creation target and merge returned resource evidence.
+func TestOpsExecuteSmokeTestTenantContextUsesCreationSemantics(t *testing.T) {
+	cmd := &cobra.Command{}
+	result := ops.SmokeTestResult{
+		Deployment: ops.SmokeTestDeploymentResult{
+			TenantEvidence: process.TenantEvidence{
+				Targets: []process.TenantEvidenceTarget{{Key: "pd-smoke", TenantID: "tenant-b"}},
+			},
+		},
+		Run: ops.SmokeTestRunResult{
+			TenantEvidence: process.TenantEvidence{
+				Targets: []process.TenantEvidenceTarget{{Key: "pi-smoke", TenantID: "tenant-b"}},
+			},
+		},
+	}
+
+	got := attachOpsExecuteSmokeTestResultTenantContext(cmd, &config.Config{}, result)
+
+	require.NotNil(t, got.Report.TenantContext)
+	require.Equal(t, tenant.ContextModeCreation, got.Report.TenantContext.Mode)
+	require.Equal(t, tenant.ContextFilterNotApplicable, got.Report.TenantContext.Filter)
+	require.Equal(t, config.DefaultTenant, got.Report.TenantContext.TargetTenantID)
+	require.Equal(t, []string{"tenant-b"}, got.Report.TenantContext.ResolvedTenantIDs)
+	require.Equal(t, config.DefaultTenant, got.Report.TenantID)
+}
 
 func TestOpsExecuteSmokeTestHelpDocumentsCommand(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "ops", "execute", "--help")

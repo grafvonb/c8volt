@@ -99,3 +99,24 @@ func TestProcessDefinitionWatchSnapshotConversionPreservesPagingMetadata(t *test
 	require.NotNil(t, got.Items[0].Statistics)
 	require.True(t, got.Items[0].Statistics.IncidentCountSupported)
 }
+
+// TestDryRunPIKeyExpansionConversionCopiesTenantEvidence verifies tenant
+// evidence is mapped across the process facade without sharing mutable slices.
+func TestDryRunPIKeyExpansionConversionCopiesTenantEvidence(t *testing.T) {
+	domainTenants := []string{"tenant-b", "tenant-a"}
+	got := fromDomainDryRunPIKeyExpansion(d.DryRunPIKeyExpansion{
+		TenantEvidence: d.TenantEvidence{
+			ResolvedTenantIDs:  domainTenants,
+			UnknownTargetCount: 1,
+			TargetCount:        3,
+		},
+	})
+
+	domainTenants[0] = "changed"
+
+	require.Equal(t, TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-b", "tenant-a"},
+		UnknownTargetCount: 1,
+		TargetCount:        3,
+	}, got.TenantEvidence)
+}

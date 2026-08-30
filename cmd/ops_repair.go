@@ -9,6 +9,8 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
@@ -98,4 +100,22 @@ func opsRepairConfirmationPrompt(planned ops.RepairResult) string {
 			variableScopes,
 		)
 	}
+}
+
+// attachOpsRepairResultTenantContext freezes repair tenant context before
+// command result rendering.
+func attachOpsRepairResultTenantContext(cmd *cobra.Command, cfg *config.Config, result ops.RepairResult) ops.RepairResult {
+	ctx := attachOpsRepairTenantContext(cmd, cfg, result)
+	result.Report.TenantContext = cloneTenantContextPtr(ctx)
+	result.Report.TenantID = opsLegacyTenantIDForContext(result.Report.TenantContext)
+	return result
+}
+
+// attachOpsRepairTenantContext chooses discovery context for repair search mode
+// and explicit-key context for key or stdin repair modes.
+func attachOpsRepairTenantContext(cmd *cobra.Command, cfg *config.Config, result ops.RepairResult) tenant.Context {
+	if result.Request.DiscoveryMode == ops.RepairDiscoveryModeSearch {
+		return attachOpsDiscoveryTenantContext(cmd, cfg, result.FrozenSet.TenantEvidence)
+	}
+	return attachOpsExplicitKeysTenantContext(cmd, cfg, result.FrozenSet.TenantEvidence)
 }

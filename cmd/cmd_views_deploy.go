@@ -79,6 +79,14 @@ func mapProcessDefinitionDeploymentRows(items []resource.ProcessDefinitionDeploy
 	return rows
 }
 
+func processDefinitionDeploymentTenantIDs(items []resource.ProcessDefinitionDeployment) []string {
+	tenantIDs := make([]string, 0, len(items))
+	for _, it := range items {
+		tenantIDs = append(tenantIDs, it.TenantId)
+	}
+	return tenantIDs
+}
+
 func processDefinitionDeploymentSummarySuffix(items []resource.ProcessDefinitionDeployment) string {
 	tenant, tenantOK := commonDeploymentTenant(items)
 	deployment, deploymentOK := commonDeploymentKey(items)

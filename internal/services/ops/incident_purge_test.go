@@ -205,6 +205,59 @@ func TestPurgeProcessInstancesWithIncidentsDryRunDiscoversFrozenCandidates(t *te
 	require.Empty(t, got.Errors)
 }
 
+// TestPurgeProcessInstancesWithIncidentsAggregatesTenantEvidenceFromFrozenPlan
+// proves incident purge reuses the PI delete preview evidence for tenant context.
+func TestPurgeProcessInstancesWithIncidentsAggregatesTenantEvidenceFromFrozenPlan(t *testing.T) {
+	t.Parallel()
+
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: startKey,
+				RootKey:  startKey,
+				Keys:     []string{startKey},
+				Chain: map[string]d.ProcessInstance{
+					startKey: {Key: startKey, State: d.StateCompleted, TenantId: "tenant-a"},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeDescendants,
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{rootKey, "child-b"},
+				Chain: map[string]d.ProcessInstance{
+					rootKey:   {Key: rootKey, State: d.StateCompleted, TenantId: "tenant-a"},
+					"child-b": {Key: "child-b", State: d.StateCompleted, TenantId: "tenant-b"},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	got, err := New(piAPI, stubIncidentAPI{}).PurgeProcessInstancesWithIncidents(context.Background(), d.IncidentPurgeRequest{
+		CommandName:                            "ops purge process-instances-with-incidents",
+		DryRun:                                 true,
+		DiscoveredCandidateProcessInstanceKeys: typexKeys("root-a"),
+		DiscoveredIncidentKeys:                 typexKeys("inc-a"),
+		StartedAt:                              time.Date(2026, 5, 16, 11, 0, 0, 0, time.UTC),
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs: []string{"tenant-a", "tenant-b"},
+		TargetCount:       2,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "root-a", TenantID: "tenant-a"},
+			{Key: "child-b", TenantID: "tenant-b"},
+		},
+	}, got.DeletePlan.TenantEvidence)
+	require.Equal(t, got.DeletePlan.TenantEvidence, got.Report.DeletePlan.TenantEvidence)
+}
+
 // TestPurgeProcessInstancesWithIncidentsPagesAllCandidateIncidentsByDefault protects complete-by-default discovery.
 func TestPurgeProcessInstancesWithIncidentsPagesAllCandidateIncidentsByDefault(t *testing.T) {
 	t.Parallel()

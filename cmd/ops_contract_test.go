@@ -4,9 +4,12 @@
 package cmd
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/stretchr/testify/require"
 )
 
@@ -71,6 +74,37 @@ func TestOpsAnalyseSlowProcessInstancesMetadataRecordsReadOnlyContract(t *testin
 		Repeated:    false,
 		Description: "include runtime listener jobs under matching element timeline rows",
 	})
+}
+
+// TestOpsJSONReportContractPlacesTenantContextAtRoot verifies tenant context is
+// a shared report object and does not reshape workflow-specific fields.
+func TestOpsJSONReportContractPlacesTenantContextAtRoot(t *testing.T) {
+	ctx := withTenantContextEvidence(newDiscoveryTenantContext(""), []string{"tenant-b", "tenant-a"}, 1)
+	data, err := renderOpsPurgeOrphanProcessInstancesJSONReport(ops.OrphanPurgeReport{
+		SchemaVersion: "ops.orphan-purge.v1",
+		CommandName:   "ops purge orphan-process-instances",
+		TenantContext: &ctx,
+		DeletionPlan: ops.DeletionPlan{
+			Status: ops.WorkflowStepStatusPlanned,
+		},
+		Outcome: ops.OrphanPurgeOutcomePlanned,
+	})
+
+	require.NoError(t, err)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(data, &got))
+	require.Equal(t, "ops.orphan-purge.v1", got["schemaVersion"])
+	require.Equal(t, "ops purge orphan-process-instances", got["commandName"])
+	tenantContext := requireJSONObject(t, got["tenantContext"])
+	require.Equal(t, string(tenant.ContextModeDiscovery), tenantContext["mode"])
+	require.Equal(t, string(tenant.ContextFilterNone), tenantContext["filter"])
+	require.Equal(t, []any{"tenant-a", "tenant-b"}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, float64(1), tenantContext["unknownTargetCount"])
+	require.Equal(t, true, tenantContext["crossTenant"])
+	requireJSONItems(t, tenantContext["warnings"], 3)
+	deletionPlan := requireJSONObject(t, got["deletionPlan"])
+	require.Equal(t, string(ops.WorkflowStepStatusPlanned), deletionPlan["status"])
+	require.NotContains(t, deletionPlan, "tenantContext")
 }
 
 // opsWorkflowStatusStrings keeps test assertions focused on the stable serialized tokens.

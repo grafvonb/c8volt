@@ -37,6 +37,7 @@ func renderOpsPurgeAllProcessDefinitionsMarkdownReport(report ops.AllProcessDefi
 	writeMarkdownReportField(&out, "Camunda Version", report.CamundaVersion)
 	writeMarkdownReportField(&out, "Profile", report.ProfileIdentity)
 	writeMarkdownReportField(&out, "Tenant", report.TenantID)
+	writeMarkdownTenantContext(&out, report.TenantContext)
 	writeMarkdownReportField(&out, "Auto Confirm", fmt.Sprintf("%t", report.AutoConfirm))
 	writeMarkdownReportField(&out, "Automation", fmt.Sprintf("%t", report.Automation))
 	writeMarkdownReportField(&out, "No Wait", fmt.Sprintf("%t", report.NoWait))

@@ -3,7 +3,11 @@
 
 package ops
 
-import "time"
+import (
+	"time"
+
+	"github.com/grafvonb/c8volt/c8volt/tenant"
+)
 
 // TotalCertainty classifies whether a progress count is exact, approximate, or unavailable.
 type TotalCertainty string
@@ -103,6 +107,7 @@ type PreflightScope struct {
 	Command              string             `json:"command,omitempty"`
 	CoreResource         string             `json:"coreResource,omitempty"`
 	SelectorSummary      string             `json:"selectorSummary,omitempty"`
+	TenantContext        *tenant.Context    `json:"tenantContext,omitempty"`
 	Total                *int64             `json:"total,omitempty"`
 	TotalKind            TotalCertainty     `json:"totalKind,omitempty"`
 	PageSize             int32              `json:"pageSize,omitempty"`

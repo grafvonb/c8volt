@@ -46,3 +46,5 @@ Generated references: [get process-instance](/cli/c8volt_get_process-instance), 
 ## Output And Safety
 
 `--dry-run` shows selected process instances, discovered active incidents, and planned repair steps without mutation. Real execution skips instances with no repairable incident, deduplicates shared targets, and reports the same repair outcomes as `ops repair incident`.
+
+Selector-based repair reports discovery tenant context, using `selection scope: tenant-a only` for named discovery and `selection scope: unfiltered across accessible tenants` when discovery is unfiltered. Explicit tenant flag changes are reported before scope, and clearing a named configuration with `--tenant ""` warns that selection is unfiltered. Explicit process-instance keys report `selection scope: explicit resource keys; tenant filter not applied`, then include known process-instance or incident tenant evidence from the frozen repair plan. Multi-tenant plans emit one warning-level `affected tenants: ...` summary, and unknown-metadata warnings are non-blocking safety signals. JSON reports carry `tenantContext`; quiet and keys-only behavior remains protected for automation.

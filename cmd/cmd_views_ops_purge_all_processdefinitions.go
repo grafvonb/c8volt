@@ -23,6 +23,7 @@ func renderOpsPurgeAllProcessDefinitionsResult(cmd *cobra.Command, result ops.Al
 	} else {
 		renderHumanLine(cmd, "purge all process definitions")
 	}
+	renderAttachedTenantContext(cmd)
 	renderOpsPurgeAllProcessDefinitionsDiscovery(cmd, result)
 	renderOpsPurgeAllProcessDefinitionsPlan(cmd, result)
 	renderOpsPurgeAllProcessDefinitionsDeletion(cmd, result)

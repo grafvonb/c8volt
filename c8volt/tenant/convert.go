@@ -4,6 +4,8 @@
 package tenant
 
 import (
+	"slices"
+
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/toolx"
 )
@@ -29,4 +31,34 @@ func fromDomainTenants(xs []d.Tenant) Tenants {
 // toDomainTenantFilter converts facade filter input into the shared tenant service filter.
 func toDomainTenantFilter(x TenantFilter) d.TenantFilter {
 	return d.TenantFilter{NameContains: x.NameContains}
+}
+
+// fromDomainTenantContext converts immutable domain tenant context into the public API model.
+func fromDomainTenantContext(x d.TenantContext) Context {
+	return Context{
+		Mode:               ContextMode(x.Mode),
+		Filter:             ContextFilter(x.Filter),
+		ConfiguredTenantID: x.ConfiguredTenantID,
+		TargetTenantID:     x.TargetTenantID,
+		ResolvedTenantIDs:  slices.Clone(x.ResolvedTenantIDs),
+		UnknownTargetCount: x.UnknownTargetCount,
+		CrossTenant:        x.CrossTenant,
+		Warnings: toolx.MapSlice(x.Warnings, func(w d.TenantContextWarning) ContextWarning {
+			return ContextWarning{
+				Code:    ContextWarningCode(w.Code),
+				Message: w.Message,
+			}
+		}),
+	}
+}
+
+// toDomainTenantContext validates a public tenant context before crossing into internal services.
+func toDomainTenantContext(x Context) (d.TenantContext, error) {
+	return d.NewTenantContext(d.TenantContextMode(x.Mode), d.TenantContextInput{
+		Filter:             d.TenantContextFilter(x.Filter),
+		ConfiguredTenantID: x.ConfiguredTenantID,
+		TargetTenantID:     x.TargetTenantID,
+		ResolvedTenantIDs:  slices.Clone(x.ResolvedTenantIDs),
+		UnknownTargetCount: x.UnknownTargetCount,
+	})
 }

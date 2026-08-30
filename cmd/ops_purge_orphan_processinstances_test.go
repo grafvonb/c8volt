@@ -16,6 +16,9 @@ import (
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/testx/activitysink"
@@ -23,6 +26,29 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+// TestOpsPurgeOrphanProcessInstancesUnfilteredTenantContext verifies orphan
+// purge keeps empty discovery unfiltered and never reports it as default tenant.
+func TestOpsPurgeOrphanProcessInstancesUnfilteredTenantContext(t *testing.T) {
+	cmd := &cobra.Command{}
+	result := ops.OrphanPurgeResult{
+		DeletionPlan: ops.DeletionPlan{
+			TenantEvidence: process.TenantEvidence{
+				ResolvedTenantIDs: []string{"tenant-b"},
+				Targets:           []process.TenantEvidenceTarget{{Key: opsOrphanProcessKey, TenantID: "tenant-b"}},
+			},
+		},
+	}
+
+	got := attachOpsPurgeOrphanProcessInstancesResultTenantContext(cmd, &config.Config{}, result)
+
+	require.NotNil(t, got.Report.TenantContext)
+	require.Equal(t, tenant.ContextModeDiscovery, got.Report.TenantContext.Mode)
+	require.Equal(t, tenant.ContextFilterNone, got.Report.TenantContext.Filter)
+	require.Empty(t, got.Report.TenantContext.ConfiguredTenantID)
+	require.Equal(t, []string{"tenant-b"}, got.Report.TenantContext.ResolvedTenantIDs)
+	require.Equal(t, tenant.ContextWarningUnfilteredSelection, got.Report.TenantContext.Warnings[0].Code)
+}
 
 const (
 	opsOrphanChildKey   = "2251799813685250"
@@ -384,7 +410,7 @@ func TestOpsPurgeOrphanProcessInstancesProgressContractPendingT066(t *testing.T)
 	require.Contains(t, stderr, "deleting process instances 1/1 process instance(s)")
 	require.NotContains(t, stderr, "/v2/")
 	require.NotContains(t, stderr, "cursor")
-	require.NotContains(t, stdout, "scope:")
+	require.NotContains(t, stdout, "orphan purge scope:")
 	require.NotContains(t, stdout, "discovering orphan process-instance candidates")
 	require.Contains(t, stderr, "report: written "+reportPath)
 	require.Contains(t, stderr, "outcome: deleted")
@@ -415,12 +441,12 @@ func TestOpsPurgeOrphanProcessInstancesMachineProgressSafetyPendingT066(t *testi
 
 			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.9")}, mode.args...)
 			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
-			require.NotContains(t, stdout, "scope:")
+			require.NotContains(t, stdout, "orphan purge scope:")
 			require.NotContains(t, stdout, "discovering orphan process-instance candidates")
 			require.NotContains(t, stdout, "checking orphan process-instance parents")
 			require.NotContains(t, stdout, "planning orphan process-instance delete scope")
 			require.NotContains(t, stdout, "deleting process instances")
-			require.NotContains(t, stderr, "scope:")
+			require.NotContains(t, stderr, "orphan purge scope:")
 			require.NotContains(t, stderr, "discovering orphan process-instance candidates")
 			require.NotContains(t, stderr, "checking orphan process-instance parents")
 			require.NotContains(t, stderr, "planning orphan process-instance delete scope")
