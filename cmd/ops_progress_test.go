@@ -5,11 +5,13 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -140,8 +142,32 @@ func TestPrintOpsPreflightScopeRendersTenantContextBeforeScope(t *testing.T) {
 	require.Contains(t, got, "incident purge scope")
 	require.Less(t, strings.Index(got, "selection scope: unfiltered across accessible tenants"), strings.Index(got, "incident purge scope"))
 	require.Contains(t, got, "affected tenants: tenant-a, tenant-b")
-	require.Contains(t, got, "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b")
-	require.Contains(t, got, "WARNING: tenant metadata is unknown for 1 target")
+	require.Contains(t, got, "resources from multiple tenants will be affected: tenant-a, tenant-b")
+	require.Contains(t, got, "tenant metadata is unknown for 1 target")
+}
+
+// TestPrintOpsTenantContextUsesLoggerSeverityExactlyOnce guards against
+// embedding WARNING in a message that the logger already prefixes with WARN.
+func TestPrintOpsTenantContextUsesLoggerSeverityExactlyOnce(t *testing.T) {
+	cmd := &cobra.Command{}
+	var logBuf bytes.Buffer
+	cmd.SetContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{
+		Format: "plain-time",
+		Writer: &logBuf,
+	})))
+	ctx := withTenantContextEvidence(newDiscoveryTenantContext(""), []string{"tenant-b", "tenant-a"}, 1)
+
+	printOpsTenantContext(cmd, ctx, ops.ProgressChannel{
+		Mode:           ops.ProgressModeHuman,
+		DurableAllowed: true,
+		StderrAllowed:  true,
+	})
+
+	got := logBuf.String()
+	require.Contains(t, got, " WARN resources from multiple tenants will be affected: tenant-a, tenant-b\n")
+	require.Contains(t, got, " WARN tenant metadata is unknown for 1 target\n")
+	require.NotContains(t, got, "WARN WARNING")
+	require.NotContains(t, got, "WARNING:")
 }
 
 // TestPrintOpsPreflightScopeSuppressesTenantContextForProtectedModes verifies

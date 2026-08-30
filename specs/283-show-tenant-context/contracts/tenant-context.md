@@ -19,11 +19,11 @@ Every applicable structured surface uses this object and these field names:
       },
       {
         "code": "multiple_tenants",
-        "message": "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b"
+        "message": "resources from multiple tenants will be affected: tenant-a, tenant-b"
       },
       {
         "code": "unknown_target_tenants",
-        "message": "WARNING: tenant metadata is unknown for 1 target"
+        "message": "tenant metadata is unknown for 1 target"
       }
     ]
   }
@@ -106,11 +106,11 @@ Render the applicable semantic line before the mutation or its confirmation:
 - Explicit keys: `selection scope: explicit resource keys; tenant filter not applied`
 - One resolved tenant: `affected tenants: tenant-b`
 - Multiple resolved tenants: `affected tenants: tenant-a, tenant-b`
-- Cross-tenant warning: `WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b`
-- Unknown metadata, singular: `WARNING: tenant metadata is unknown for 1 target`
-- Unknown metadata, plural: `WARNING: tenant metadata is unknown for N targets`
+- Cross-tenant warning message: `resources from multiple tenants will be affected: tenant-a, tenant-b`
+- Unknown metadata message, singular: `tenant metadata is unknown for 1 target`
+- Unknown metadata message, plural: `tenant metadata is unknown for N targets`
 
-Tenant IDs are unique and lexically sorted. The cross-tenant warning follows the semantic/filter line and resolved tenant line, remains visible in compact confirmation text, and is followed by the unknown warning when both apply.
+Tenant IDs are unique and lexically sorted. Warning messages do not embed `WARN` or `WARNING:`; the output channel supplies severity exactly once. The cross-tenant warning follows the semantic/filter line and resolved tenant line, remains visible in compact confirmation text, and is followed by the unknown warning when both apply.
 
 ## Output-mode matrix
 

@@ -176,7 +176,7 @@ func withTenantContextWarnings(ctx tenant.Context) tenant.Context {
 	if ctx.CrossTenant {
 		ctx.Warnings = append(ctx.Warnings, tenant.ContextWarning{
 			Code:    tenant.ContextWarningMultipleTenants,
-			Message: "WARNING: resources from multiple tenants will be affected: " + strings.Join(ctx.ResolvedTenantIDs, ", "),
+			Message: "resources from multiple tenants will be affected: " + strings.Join(ctx.ResolvedTenantIDs, ", "),
 		})
 	}
 	if ctx.UnknownTargetCount > 0 {
@@ -186,7 +186,7 @@ func withTenantContextWarnings(ctx tenant.Context) tenant.Context {
 		}
 		ctx.Warnings = append(ctx.Warnings, tenant.ContextWarning{
 			Code:    tenant.ContextWarningUnknownTargetTenants,
-			Message: "WARNING: tenant metadata is unknown for " + strconv.Itoa(ctx.UnknownTargetCount) + " " + target,
+			Message: "tenant metadata is unknown for " + strconv.Itoa(ctx.UnknownTargetCount) + " " + target,
 		})
 	}
 	return ctx

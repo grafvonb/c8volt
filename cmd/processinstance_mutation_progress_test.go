@@ -272,8 +272,8 @@ func TestCancelProcessInstanceSearchDryRun_RendersMergedTenantWarnings(t *testin
 	output := buf.String()
 	tenantLine := "selection scope: unfiltered across accessible tenants\n"
 	resourceLine := "affected tenants: tenant-a, tenant-b\n"
-	crossWarning := "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b\n"
-	unknownWarning := "WARNING: tenant metadata is unknown for 1 target\n"
+	crossWarning := "resources from multiple tenants will be affected: tenant-a, tenant-b\n"
+	unknownWarning := "tenant metadata is unknown for 1 target\n"
 	summaryLine := "dry run: cancel process-instance\n"
 	require.Contains(t, output, tenantLine)
 	require.Contains(t, output, resourceLine)

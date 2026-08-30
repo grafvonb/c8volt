@@ -67,11 +67,11 @@ func TestWithTenantContextEvidence_NormalizesWarnings(t *testing.T) {
 			},
 			{
 				Code:    tenant.ContextWarningMultipleTenants,
-				Message: "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b",
+				Message: "resources from multiple tenants will be affected: tenant-a, tenant-b",
 			},
 			{
 				Code:    tenant.ContextWarningUnknownTargetTenants,
-				Message: "WARNING: tenant metadata is unknown for 1 target",
+				Message: "tenant metadata is unknown for 1 target",
 			},
 		},
 	}, got)
@@ -89,8 +89,8 @@ func TestRenderTenantContextHumanExactWordingAndOrder(t *testing.T) {
 	require.Equal(t, ""+
 		"selection scope: explicit resource keys; tenant filter not applied\n"+
 		"affected tenants: tenant-a, tenant-b\n"+
-		"WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b\n"+
-		"WARNING: tenant metadata is unknown for 2 targets\n", buf.String())
+		"resources from multiple tenants will be affected: tenant-a, tenant-b\n"+
+		"tenant metadata is unknown for 2 targets\n", buf.String())
 }
 
 // TestRenderTenantContextHumanModeLines verifies each operation mode receives

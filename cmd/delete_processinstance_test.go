@@ -246,11 +246,11 @@ func TestDeleteProcessInstanceSearch_TenantWarningsPrecedeConfirmation(t *testin
 		outputBeforePrompt := buf.String()
 		require.Contains(t, outputBeforePrompt, "selection scope: unfiltered across accessible tenants\n")
 		require.Contains(t, outputBeforePrompt, "affected tenants: tenant-a, tenant-b\n")
-		require.Contains(t, outputBeforePrompt, "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b\n")
-		require.Contains(t, outputBeforePrompt, "WARNING: tenant metadata is unknown for 1 target\n")
+		require.Contains(t, outputBeforePrompt, "resources from multiple tenants will be affected: tenant-a, tenant-b\n")
+		require.Contains(t, outputBeforePrompt, "tenant metadata is unknown for 1 target\n")
 		require.Less(t, strings.Index(outputBeforePrompt, "selection scope:"), strings.Index(outputBeforePrompt, "affected tenants:"))
-		require.Less(t, strings.Index(outputBeforePrompt, "affected tenants:"), strings.Index(outputBeforePrompt, "WARNING: resources from multiple tenants"))
-		require.Less(t, strings.Index(outputBeforePrompt, "WARNING: resources from multiple tenants"), strings.Index(outputBeforePrompt, "WARNING: tenant metadata is unknown"))
+		require.Less(t, strings.Index(outputBeforePrompt, "affected tenants:"), strings.Index(outputBeforePrompt, "resources from multiple tenants"))
+		require.Less(t, strings.Index(outputBeforePrompt, "resources from multiple tenants"), strings.Index(outputBeforePrompt, "tenant metadata is unknown"))
 		return nil
 	}
 
@@ -497,7 +497,7 @@ func TestDeleteProcessInstanceDryRun_ExplicitKeyRendersUnknownTenantEvidence(t *
 	require.NoError(t, err)
 	output := buf.String()
 	require.Contains(t, output, "selection scope: explicit resource keys; tenant filter not applied\n")
-	require.Contains(t, output, "WARNING: tenant metadata is unknown for 2 targets\n")
+	require.Contains(t, output, "tenant metadata is unknown for 2 targets\n")
 	require.NotContains(t, output, "affected tenants:")
 }
 

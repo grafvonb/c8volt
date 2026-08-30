@@ -55,7 +55,7 @@ const (
 	TenantContextWarningUnknownTargetTenants TenantContextWarningCode = "unknown_target_tenants"
 )
 
-// TenantContextWarning carries a stable warning code and human-readable message.
+// TenantContextWarning carries a stable warning code and prefix-free human-readable message.
 type TenantContextWarning struct {
 	Code    TenantContextWarningCode `json:"code" yaml:"code"`
 	Message string                   `json:"message" yaml:"message"`
@@ -223,7 +223,7 @@ func tenantContextWarnings(ctx TenantContext) []TenantContextWarning {
 	if ctx.CrossTenant {
 		warnings = append(warnings, TenantContextWarning{
 			Code:    TenantContextWarningMultipleTenants,
-			Message: "WARNING: resources from multiple tenants will be affected: " + strings.Join(ctx.ResolvedTenantIDs, ", "),
+			Message: "resources from multiple tenants will be affected: " + strings.Join(ctx.ResolvedTenantIDs, ", "),
 		})
 	}
 	if ctx.UnknownTargetCount > 0 {
@@ -233,7 +233,7 @@ func tenantContextWarnings(ctx TenantContext) []TenantContextWarning {
 		}
 		warnings = append(warnings, TenantContextWarning{
 			Code:    TenantContextWarningUnknownTargetTenants,
-			Message: "WARNING: tenant metadata is unknown for " + strconv.Itoa(ctx.UnknownTargetCount) + " " + target,
+			Message: "tenant metadata is unknown for " + strconv.Itoa(ctx.UnknownTargetCount) + " " + target,
 		})
 	}
 	if len(warnings) == 0 {

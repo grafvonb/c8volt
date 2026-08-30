@@ -168,11 +168,11 @@ func TestNewTenantContext_CopiesAndNormalizesEvidenceSlices(t *testing.T) {
 	assert.Equal(t, []TenantContextWarning{
 		{
 			Code:    TenantContextWarningMultipleTenants,
-			Message: "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b",
+			Message: "resources from multiple tenants will be affected: tenant-a, tenant-b",
 		},
 		{
 			Code:    TenantContextWarningUnknownTargetTenants,
-			Message: "WARNING: tenant metadata is unknown for 2 targets",
+			Message: "tenant metadata is unknown for 2 targets",
 		},
 	}, got.Warnings)
 }

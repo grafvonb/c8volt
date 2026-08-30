@@ -25,7 +25,7 @@
 
 ### Session 2026-08-30
 
-- Q: Which canonical grammar should tenant-context human messages use? → A: Use lower-case c8volt-style labels: `selection scope`, `creation target`, and `affected tenants`; keep `WARNING:` uppercase.
+- Q: Which canonical grammar should tenant-context human messages use? → A: Use lower-case c8volt-style labels and prefix-free warning messages; the output channel supplies warning severity exactly once.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -88,7 +88,7 @@ As an operator, I want a prominent warning when a resolved mutation plan spans t
 
 **Acceptance Scenarios**:
 
-1. **Given** a resolved mutation plan contains resources from `tenant-a` and `tenant-b`, **When** the plan is shown before execution, **Then** it states `affected tenants: tenant-a, tenant-b` and prominently states `WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b`.
+1. **Given** a resolved mutation plan contains resources from `tenant-a` and `tenant-b`, **When** the plan is shown before execution, **Then** it states `affected tenants: tenant-a, tenant-b` and the warning channel prominently states `resources from multiple tenants will be affected: tenant-a, tenant-b` without duplicating a severity marker.
 2. **Given** multiple resolved resources all belong to `tenant-a`, **When** the plan is shown, **Then** it states `affected tenants: tenant-a` and no cross-tenant warning is emitted.
 3. **Given** resolved resources contain repeated tenant values, **When** the warning is produced, **Then** each distinct known tenant appears once in a stable order.
 4. **Given** some resolved resources have unknown tenant metadata, **When** the plan is shown, **Then** a non-blocking warning states that some target tenants are unknown without inventing a tenant value.
@@ -152,7 +152,7 @@ As an operator or automation author, I want configuration diagnostics, mutation 
 - **FR-021**: User-facing help, examples, and generated documentation MUST explain operation-specific tenant meanings wherever affected command behavior is documented.
 - **FR-022**: Configuration validation and connection diagnostics MUST distinguish a named configured tenant from no configured tenant and MUST NOT describe the absence of a configured tenant as a default-tenant operation.
 - **FR-023**: A resolved mutation plan containing any target with unknown tenant metadata MUST produce a non-blocking unknown-tenant warning, and this warning MUST appear in addition to any cross-tenant warning required by the known targets.
-- **FR-024**: Human-oriented tenant context MUST follow c8volt's operational output grammar: lower-case sentence fragments for ordinary labels and uppercase `WARNING:` only for prominent safety warnings.
+- **FR-024**: Human-oriented tenant context MUST follow c8volt's operational output grammar: ordinary labels and warning messages use lower-case sentence fragments, warning messages do not embed a severity prefix, and warning-capable output channels supply warning severity exactly once.
 
 ### Key Entities *(include if feature involves data)*
 

@@ -37,7 +37,7 @@ func renderTenantContext(cmd *cobra.Command, ctx tenant.Context) {
 		if warning.Code == tenant.ContextWarningUnfilteredSelection {
 			continue
 		}
-		renderTenantContextWarningLine(cmd, warning.Message)
+		renderHumanWarningLine(cmd, "%s", warning.Message)
 	}
 }
 
@@ -76,14 +76,4 @@ func tenantContextPrimaryHumanLine(ctx tenant.Context) string {
 	default:
 		return ""
 	}
-}
-
-// renderTenantContextWarningLine preserves the feature's required WARNING:
-// prefix while still routing through the warning channel for log-backed output.
-func renderTenantContextWarningLine(cmd *cobra.Command, msg string) {
-	msg = strings.TrimSpace(msg)
-	if msg == "" {
-		return
-	}
-	renderHumanLogLine(cmd, true, "%s", msg)
 }

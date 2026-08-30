@@ -243,11 +243,11 @@ func TestCancelProcessInstanceSearch_TenantWarningsPrecedeConfirmation(t *testin
 		prompt = got
 		outputBeforePrompt := buf.String()
 		require.Contains(t, outputBeforePrompt, "affected tenants: tenant-a, tenant-b\n")
-		require.Contains(t, outputBeforePrompt, "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b\n")
-		require.Contains(t, outputBeforePrompt, "WARNING: tenant metadata is unknown for 1 target\n")
+		require.Contains(t, outputBeforePrompt, "resources from multiple tenants will be affected: tenant-a, tenant-b\n")
+		require.Contains(t, outputBeforePrompt, "tenant metadata is unknown for 1 target\n")
 		require.Less(t, strings.Index(outputBeforePrompt, "selection scope:"), strings.Index(outputBeforePrompt, "affected tenants:"))
-		require.Less(t, strings.Index(outputBeforePrompt, "affected tenants:"), strings.Index(outputBeforePrompt, "WARNING: resources from multiple tenants"))
-		require.Less(t, strings.Index(outputBeforePrompt, "WARNING: resources from multiple tenants"), strings.Index(outputBeforePrompt, "WARNING: tenant metadata is unknown"))
+		require.Less(t, strings.Index(outputBeforePrompt, "affected tenants:"), strings.Index(outputBeforePrompt, "resources from multiple tenants"))
+		require.Less(t, strings.Index(outputBeforePrompt, "resources from multiple tenants"), strings.Index(outputBeforePrompt, "tenant metadata is unknown"))
 		return nil
 	}
 

@@ -103,7 +103,7 @@ func TestFromDomainAuditReports_CopyTenantContext(t *testing.T) {
 		Warnings: []d.TenantContextWarning{
 			{
 				Code:    d.TenantContextWarningMultipleTenants,
-				Message: "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b",
+				Message: "resources from multiple tenants will be affected: tenant-a, tenant-b",
 			},
 		},
 	}
@@ -126,7 +126,7 @@ func TestFromDomainAuditReports_CopyTenantContext(t *testing.T) {
 		require.Equal(t, tenant.ContextFilterNamed, ctx.Filter)
 		require.Equal(t, "tenant-a", ctx.ConfiguredTenantID)
 		require.Equal(t, []string{"tenant-a", "tenant-b"}, ctx.ResolvedTenantIDs)
-		require.Equal(t, "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b", ctx.Warnings[0].Message)
+		require.Equal(t, "resources from multiple tenants will be affected: tenant-a, tenant-b", ctx.Warnings[0].Message)
 	}
 }
 
@@ -142,7 +142,7 @@ func TestProgressConversions_CopyTenantContext(t *testing.T) {
 		Warnings: []d.TenantContextWarning{
 			{
 				Code:    d.TenantContextWarningUnknownTargetTenants,
-				Message: "WARNING: tenant metadata is unknown for 1 target",
+				Message: "tenant metadata is unknown for 1 target",
 			},
 		},
 	}
@@ -158,7 +158,7 @@ func TestProgressConversions_CopyTenantContext(t *testing.T) {
 	domainCtx.ResolvedTenantIDs[0] = "changed"
 	domainCtx.Warnings[0].Message = "changed"
 	require.Equal(t, []string{"tenant-b"}, publicEvent.Preflight.TenantContext.ResolvedTenantIDs)
-	require.Equal(t, "WARNING: tenant metadata is unknown for 1 target", publicEvent.Preflight.TenantContext.Warnings[0].Message)
+	require.Equal(t, "tenant metadata is unknown for 1 target", publicEvent.Preflight.TenantContext.Warnings[0].Message)
 
 	publicCtx := tenant.Context{
 		Mode:              tenant.ContextModeCreation,

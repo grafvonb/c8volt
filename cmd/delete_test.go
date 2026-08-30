@@ -223,8 +223,8 @@ func TestDeleteProcessDefinitionImpact_RendersTenantWarningsBeforeImpact(t *test
 	requireLineOrder(t, output,
 		"selection scope: unfiltered across accessible tenants",
 		"affected tenants: tenant-a, tenant-b",
-		"WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b",
-		"WARNING: tenant metadata is unknown for 1 target",
+		"resources from multiple tenants will be affected: tenant-a, tenant-b",
+		"tenant metadata is unknown for 1 target",
 		"delete impact check: 1 process definition(s); 2 active process instance(s) found; no changes made yet",
 		"--force will cancel 1 root process instance(s), then delete 2 affected process instance(s), before deleting process definitions",
 	)
@@ -278,8 +278,8 @@ func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *test
 	require.NoError(t, err, string(output))
 	require.NotContains(t, string(output), "either --key")
 	require.Contains(t, string(output), "selection scope: explicit resource keys; tenant filter not applied")
-	require.Contains(t, string(output), "WARNING: tenant metadata is unknown for 1 target")
-	require.NotContains(t, string(output), "WARNING: resources from multiple tenants")
+	require.Contains(t, string(output), "tenant metadata is unknown for 1 target")
+	require.NotContains(t, string(output), "resources from multiple tenants")
 	require.Contains(t, string(output), "pd delete done; requested 1, ok 1, failed 0")
 	body := decodeSingleRequestJSON(t, deleteBodies)
 	require.Equal(t, true, body["deleteHistory"])

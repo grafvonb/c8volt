@@ -26,7 +26,7 @@ func TestContext_JSONAndYAMLTagsMatchContract(t *testing.T) {
 		Warnings: []ContextWarning{
 			{
 				Code:    ContextWarningUnknownTargetTenants,
-				Message: "WARNING: tenant metadata is unknown for 1 target",
+				Message: "tenant metadata is unknown for 1 target",
 			},
 		},
 	}
@@ -43,7 +43,7 @@ func TestContext_JSONAndYAMLTagsMatchContract(t *testing.T) {
 		"warnings": [
 			{
 				"code": "unknown_target_tenants",
-				"message": "WARNING: tenant metadata is unknown for 1 target"
+				"message": "tenant metadata is unknown for 1 target"
 			}
 		]
 	}`, string(rawJSON))
@@ -71,7 +71,7 @@ func TestFromDomainTenantContext_CopiesSlices(t *testing.T) {
 	domainWarnings := []d.TenantContextWarning{
 		{
 			Code:    d.TenantContextWarningMultipleTenants,
-			Message: "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b",
+			Message: "resources from multiple tenants will be affected: tenant-a, tenant-b",
 		},
 	}
 	domainValue := d.TenantContext{
@@ -96,7 +96,7 @@ func TestFromDomainTenantContext_CopiesSlices(t *testing.T) {
 		Warnings: []ContextWarning{
 			{
 				Code:    ContextWarningMultipleTenants,
-				Message: "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b",
+				Message: "resources from multiple tenants will be affected: tenant-a, tenant-b",
 			},
 		},
 	}, got)
