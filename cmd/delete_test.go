@@ -221,8 +221,8 @@ func TestDeleteProcessDefinitionImpact_RendersTenantWarningsBeforeImpact(t *test
 
 	output := buf.String()
 	requireLineOrder(t, output,
-		"Tenant filter: none — resources from multiple tenants may be affected",
-		"Resource tenants: tenant-a, tenant-b",
+		"selection scope: unfiltered across accessible tenants",
+		"affected tenants: tenant-a, tenant-b",
 		"WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b",
 		"WARNING: tenant metadata is unknown for 1 target",
 		"delete impact check: 1 process definition(s); 2 active process instance(s) found; no changes made yet",
@@ -277,7 +277,7 @@ func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *test
 	}, "2251799813692357\n")
 	require.NoError(t, err, string(output))
 	require.NotContains(t, string(output), "either --key")
-	require.Contains(t, string(output), "Tenant filter: not applied for explicit resource keys")
+	require.Contains(t, string(output), "selection scope: explicit resource keys; tenant filter not applied")
 	require.Contains(t, string(output), "WARNING: tenant metadata is unknown for 1 target")
 	require.NotContains(t, string(output), "WARNING: resources from multiple tenants")
 	require.Contains(t, string(output), "pd delete done; requested 1, ok 1, failed 0")
@@ -472,11 +472,11 @@ func TestDeleteProcessDefinitionCommand_KeyTenantMismatchUsesAdminScope(t *testi
 		require.NotContains(t, filter, "tenantId")
 		require.Equal(t, tenantAdminKeysProcessDefinitionKey, stringFilterEqValue(t, filter["processDefinitionKey"]))
 	}
-	require.Contains(t, output, "Tenant filter: not applied for explicit resource keys\n")
-	require.Contains(t, output, "Resource tenant: "+tenantAdminKeysReturnedTenant+"\n")
-	require.NotContains(t, output, "Tenant filter: "+tenantAdminKeysSelectedTenant)
+	require.Contains(t, output, "selection scope: explicit resource keys; tenant filter not applied\n")
+	require.Contains(t, output, "affected tenants: "+tenantAdminKeysReturnedTenant+"\n")
+	require.NotContains(t, output, "selection scope: "+tenantAdminKeysSelectedTenant)
 	require.Less(t,
-		strings.Index(output, "Tenant filter: not applied for explicit resource keys"),
+		strings.Index(output, "selection scope: explicit resource keys; tenant filter not applied"),
 		strings.Index(output, "delete impact check:"),
 	)
 	require.Contains(t, output, "tenant-b")

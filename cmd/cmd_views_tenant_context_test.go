@@ -22,7 +22,7 @@ func TestNewTenantContexts_UseOperationSpecificSemantics(t *testing.T) {
 		Warnings: []tenant.ContextWarning{
 			{
 				Code:    tenant.ContextWarningUnfilteredSelection,
-				Message: "Tenant filter: none — resources from multiple tenants may be affected",
+				Message: "selection scope: unfiltered across accessible tenants",
 			},
 		},
 	}, newDiscoveryTenantContext(""))
@@ -63,7 +63,7 @@ func TestWithTenantContextEvidence_NormalizesWarnings(t *testing.T) {
 		Warnings: []tenant.ContextWarning{
 			{
 				Code:    tenant.ContextWarningUnfilteredSelection,
-				Message: "Tenant filter: none — resources from multiple tenants may be affected",
+				Message: "selection scope: unfiltered across accessible tenants",
 			},
 			{
 				Code:    tenant.ContextWarningMultipleTenants,
@@ -87,8 +87,8 @@ func TestRenderTenantContextHumanExactWordingAndOrder(t *testing.T) {
 	renderTenantContext(cmd, ctx)
 
 	require.Equal(t, ""+
-		"Tenant filter: not applied for explicit resource keys\n"+
-		"Resource tenants: tenant-a, tenant-b\n"+
+		"selection scope: explicit resource keys; tenant filter not applied\n"+
+		"affected tenants: tenant-a, tenant-b\n"+
 		"WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b\n"+
 		"WARNING: tenant metadata is unknown for 2 targets\n", buf.String())
 }
@@ -101,10 +101,10 @@ func TestRenderTenantContextHumanModeLines(t *testing.T) {
 		ctx  tenant.Context
 		want string
 	}{
-		{name: "named discovery", ctx: newDiscoveryTenantContext("tenant-a"), want: "Tenant filter: tenant-a\n"},
-		{name: "unfiltered discovery", ctx: newDiscoveryTenantContext(""), want: "Tenant filter: none — resources from multiple tenants may be affected\n"},
-		{name: "default creation", ctx: newCreationTenantContext("<default>"), want: "Create in tenant: <default>\n"},
-		{name: "configuration none", ctx: newConfigurationTenantContext(""), want: "Tenant filter: none — resources from multiple tenants may be affected\n"},
+		{name: "named discovery", ctx: newDiscoveryTenantContext("tenant-a"), want: "selection scope: tenant-a only\n"},
+		{name: "unfiltered discovery", ctx: newDiscoveryTenantContext(""), want: "selection scope: unfiltered across accessible tenants\n"},
+		{name: "default creation", ctx: newCreationTenantContext("<default>"), want: "creation target: default tenant\n"},
+		{name: "configuration none", ctx: newConfigurationTenantContext(""), want: "selection scope: unfiltered across accessible tenants\n"},
 	}
 
 	for _, tt := range tests {

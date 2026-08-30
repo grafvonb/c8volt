@@ -161,7 +161,7 @@ apis:
 	require.Equal(t, false, tenantContext["crossTenant"])
 	require.NotContains(t, tenantContext, "targetTenantId")
 	require.NotContains(t, tenantContext, "warnings")
-	require.NotContains(t, stdout, "Tenant filter:")
+	require.NotContains(t, stdout, "selection scope:")
 	require.Contains(t, stderr, "INFO config loaded: "+cfgPath)
 }
 
@@ -239,9 +239,9 @@ apis:
 	require.NoError(t, err)
 	rendered := string(output)
 
-	require.Contains(t, rendered, "INFO Tenant filter: tenant-a")
+	require.Contains(t, rendered, "INFO selection scope: tenant-a only")
 	require.Contains(t, rendered, "INFO configuration is valid")
-	require.Less(t, strings.Index(rendered, "INFO Tenant filter: tenant-a"), strings.Index(rendered, "INFO configuration is valid"))
+	require.Less(t, strings.Index(rendered, "INFO selection scope: tenant-a only"), strings.Index(rendered, "INFO configuration is valid"))
 }
 
 func TestConfigValidateCommand_RendersEmptyConfigurationTenantContextAsUnfiltered(t *testing.T) {
@@ -259,8 +259,8 @@ apis:
 	require.NoError(t, err)
 	rendered := string(output)
 
-	require.Contains(t, rendered, "INFO Tenant filter: none — resources from multiple tenants may be affected")
-	require.NotContains(t, rendered, "Create in tenant: <default>")
+	require.Contains(t, rendered, "INFO selection scope: unfiltered across accessible tenants")
+	require.NotContains(t, rendered, "creation target: default tenant")
 }
 
 func TestConfigShowCommand_ValidatePreservesInvalidOutcome(t *testing.T) {
@@ -530,9 +530,9 @@ apis:
 	stdout, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "config", "test-connection")
 
 	require.Contains(t, stdout, "Cluster: GatewayVersion=8.8.2")
-	require.Contains(t, stderr, "INFO Tenant filter: tenant-a")
+	require.Contains(t, stderr, "INFO selection scope: tenant-a only")
 	require.Contains(t, stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2")
-	require.Less(t, strings.Index(stderr, "INFO Tenant filter: tenant-a"), strings.Index(stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2"))
+	require.Less(t, strings.Index(stderr, "INFO selection scope: tenant-a only"), strings.Index(stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2"))
 }
 
 func TestConfigTestConnectionCommand_JSONIncludesConfigurationTenantContext(t *testing.T) {
@@ -565,7 +565,7 @@ apis:
 	require.Equal(t, []any{}, tenantContext["resolvedTenantIds"])
 	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
 	require.Equal(t, false, tenantContext["crossTenant"])
-	require.NotContains(t, stderr, "Tenant filter:")
+	require.NotContains(t, stderr, "selection scope:")
 }
 
 func TestConfigTestConnectionCommand_JSONIncludesVersionMismatchWarning(t *testing.T) {

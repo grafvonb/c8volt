@@ -193,7 +193,7 @@ apis:
     base_url: ` + baseURL + `
 `
 			},
-			wantLine:   "Create in tenant: tenant-a",
+			wantLine:   "creation target: tenant-a",
 			wantTenant: "tenant-a",
 		},
 		{
@@ -208,7 +208,7 @@ apis:
     base_url: ` + baseURL + `
 `
 			},
-			wantLine:   "Create in tenant: <default>",
+			wantLine:   "creation target: default tenant",
 			wantTenant: "<default>",
 		},
 	}
@@ -297,8 +297,8 @@ apis:
 	)
 
 	require.True(t, sawDeploy)
-	require.NotContains(t, stderr, "Create in tenant:")
-	require.NotContains(t, stdout, "Create in tenant:")
+	require.NotContains(t, stderr, "creation target:")
+	require.NotContains(t, stdout, "creation target:")
 	var got map[string]any
 	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
 	require.Equal(t, string(OutcomeAccepted), got["outcome"])
@@ -344,7 +344,7 @@ func TestDeployProcessDefinitionCommand_QuietSuppressesCreationContext(t *testin
 
 	require.True(t, sawDeploy)
 	require.Empty(t, stdout)
-	require.NotContains(t, stderr, "Create in tenant:")
+	require.NotContains(t, stderr, "creation target:")
 	require.NotContains(t, stderr, "pd deploy done")
 }
 

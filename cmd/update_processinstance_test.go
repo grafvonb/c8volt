@@ -562,9 +562,9 @@ func TestUpdateProcessInstanceVariableDryRun_ExplicitKeyRendersVariableTenant(t 
 	require.NoError(t, renderUpdateProcessInstanceVariablePreview(cmd, preview))
 
 	output := buf.String()
-	require.Contains(t, output, "Tenant filter: not applied for explicit resource keys\n")
-	require.Contains(t, output, "Resource tenant: "+tenantAdminKeysReturnedTenant+"\n")
-	require.NotContains(t, output, "Tenant filter: "+tenantAdminKeysSelectedTenant)
+	require.Contains(t, output, "selection scope: explicit resource keys; tenant filter not applied\n")
+	require.Contains(t, output, "affected tenants: "+tenantAdminKeysReturnedTenant+"\n")
+	require.NotContains(t, output, "selection scope: "+tenantAdminKeysSelectedTenant)
 }
 
 func TestUpdateProcessInstanceVariableDryRun_JSONIgnoresVerboseForStableShape(t *testing.T) {

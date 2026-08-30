@@ -29,7 +29,7 @@ var runProcessInstanceCmd = &cobra.Command{
 	Short: "Start process instances and confirm creation",
 	Long: "Start process instances and confirm creation.\n\n" +
 		"Run by BPMN process ID for the latest version, or by process definition key for an exact definition.\n\n" +
-		"Tenant contract: process-instance start is a creation operation. A named tenant is reported as \"Create in tenant: <tenant>\" before creation; empty tenant configuration targets and reports \"Create in tenant: <default>\".\n\n" +
+		"Tenant contract: process-instance start is a creation operation. A named tenant is reported as \"creation target: <tenant>\" before creation; empty tenant configuration targets and reports \"creation target: default tenant\".\n\n" +
 		"When running by BPMN process ID, c8volt validates all requested process definitions before creating anything. Mixed visible and missing BPMN IDs fail as one request, so no partial process instances are started; automation-oriented modes never prompt for recovery output.\n\n" +
 		"By default c8volt waits until created instances are observable. Created instances are confirmed after Camunda observes ACTIVE, COMPLETED, CANCELED, or TERMINATED.\n\n" +
 		"Use --keys-only to pipe created process instance keys into strict lifecycle checks with expect process-instance.",

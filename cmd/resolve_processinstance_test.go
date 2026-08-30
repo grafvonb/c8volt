@@ -187,9 +187,9 @@ func TestResolveProcessInstancesWithPlan_ExplicitKeyRendersActualTenant(t *testi
 
 	require.NoError(t, err)
 	output := buf.String()
-	require.Contains(t, output, "Tenant filter: not applied for explicit resource keys\n")
-	require.Contains(t, output, "Resource tenant: "+tenantAdminKeysReturnedTenant+"\n")
-	require.NotContains(t, output, "Tenant filter: "+tenantAdminKeysSelectedTenant)
+	require.Contains(t, output, "selection scope: explicit resource keys; tenant filter not applied\n")
+	require.Contains(t, output, "affected tenants: "+tenantAdminKeysReturnedTenant+"\n")
+	require.NotContains(t, output, "selection scope: "+tenantAdminKeysSelectedTenant)
 }
 
 func TestResolveProcessInstanceCommand_ParentFamilyScopeResolvesChildIncident(t *testing.T) {

@@ -136,10 +136,10 @@ func TestPrintOpsPreflightScopeRendersTenantContextBeforeScope(t *testing.T) {
 	}, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
 
 	got := stderr.String()
-	require.Contains(t, got, "Tenant filter: none")
+	require.Contains(t, got, "selection scope: unfiltered across accessible tenants")
 	require.Contains(t, got, "incident purge scope")
-	require.Less(t, strings.Index(got, "Tenant filter: none"), strings.Index(got, "incident purge scope"))
-	require.Contains(t, got, "Resource tenants: tenant-a, tenant-b")
+	require.Less(t, strings.Index(got, "selection scope: unfiltered across accessible tenants"), strings.Index(got, "incident purge scope"))
+	require.Contains(t, got, "affected tenants: tenant-a, tenant-b")
 	require.Contains(t, got, "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b")
 	require.Contains(t, got, "WARNING: tenant metadata is unknown for 1 target")
 }

@@ -184,7 +184,7 @@ func TestCancelProcessInstanceSearch_TenantContextPrecedesConfirmation(t *testin
 	confirmCmdOrAbortFn = func(_ bool, got string) error {
 		prompt = got
 		outputBeforePrompt := buf.String()
-		require.Contains(t, outputBeforePrompt, "Tenant filter: none — resources from multiple tenants may be affected\n")
+		require.Contains(t, outputBeforePrompt, "selection scope: unfiltered across accessible tenants\n")
 		require.NotContains(t, outputBeforePrompt, "cancellation:")
 		return nil
 	}
@@ -242,11 +242,11 @@ func TestCancelProcessInstanceSearch_TenantWarningsPrecedeConfirmation(t *testin
 	confirmCmdOrAbortFn = func(_ bool, got string) error {
 		prompt = got
 		outputBeforePrompt := buf.String()
-		require.Contains(t, outputBeforePrompt, "Resource tenants: tenant-a, tenant-b\n")
+		require.Contains(t, outputBeforePrompt, "affected tenants: tenant-a, tenant-b\n")
 		require.Contains(t, outputBeforePrompt, "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b\n")
 		require.Contains(t, outputBeforePrompt, "WARNING: tenant metadata is unknown for 1 target\n")
-		require.Less(t, strings.Index(outputBeforePrompt, "Tenant filter:"), strings.Index(outputBeforePrompt, "Resource tenants:"))
-		require.Less(t, strings.Index(outputBeforePrompt, "Resource tenants:"), strings.Index(outputBeforePrompt, "WARNING: resources from multiple tenants"))
+		require.Less(t, strings.Index(outputBeforePrompt, "selection scope:"), strings.Index(outputBeforePrompt, "affected tenants:"))
+		require.Less(t, strings.Index(outputBeforePrompt, "affected tenants:"), strings.Index(outputBeforePrompt, "WARNING: resources from multiple tenants"))
 		require.Less(t, strings.Index(outputBeforePrompt, "WARNING: resources from multiple tenants"), strings.Index(outputBeforePrompt, "WARNING: tenant metadata is unknown"))
 		return nil
 	}
@@ -488,9 +488,9 @@ func TestCancelProcessInstanceDryRun_ExplicitKeyRendersActualTenantMismatch(t *t
 
 	require.NoError(t, err)
 	output := buf.String()
-	require.Contains(t, output, "Tenant filter: not applied for explicit resource keys\n")
-	require.Contains(t, output, "Resource tenant: "+tenantAdminKeysReturnedTenant+"\n")
-	require.NotContains(t, output, "Tenant filter: "+tenantAdminKeysSelectedTenant)
+	require.Contains(t, output, "selection scope: explicit resource keys; tenant filter not applied\n")
+	require.Contains(t, output, "affected tenants: "+tenantAdminKeysReturnedTenant+"\n")
+	require.NotContains(t, output, "selection scope: "+tenantAdminKeysSelectedTenant)
 }
 
 // TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedImpactCheck verifies keyed impact-check warnings are printed.

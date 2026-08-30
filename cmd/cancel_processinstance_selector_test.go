@@ -198,8 +198,8 @@ func TestCancelProcessInstanceDryRun_SearchTenantContextPrecedesPreview(t *testi
 		tenant string
 		want   string
 	}{
-		{name: "named", tenant: "tenant-a", want: "Tenant filter: tenant-a\n"},
-		{name: "empty", tenant: "", want: "Tenant filter: none — resources from multiple tenants may be affected\n"},
+		{name: "named", tenant: "tenant-a", want: "selection scope: tenant-a only\n"},
+		{name: "empty", tenant: "", want: "selection scope: unfiltered across accessible tenants\n"},
 	}
 
 	for _, tt := range tests {

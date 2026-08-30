@@ -45,11 +45,11 @@ func TestUpdateJobCommand_RetriesDryRunRendersExplicitKeyTenantContext(t *testin
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
-	require.Contains(t, output, "Tenant filter: not applied for explicit resource keys\n")
-	require.Contains(t, output, "Resource tenant: "+tenantAdminKeysReturnedTenant+"\n")
-	require.NotContains(t, output, "Tenant filter: "+tenantAdminKeysSelectedTenant)
+	require.Contains(t, output, "selection scope: explicit resource keys; tenant filter not applied\n")
+	require.Contains(t, output, "affected tenants: "+tenantAdminKeysReturnedTenant+"\n")
+	require.NotContains(t, output, "selection scope: "+tenantAdminKeysSelectedTenant)
 	require.Less(t,
-		strings.Index(output, "Tenant filter: not applied for explicit resource keys"),
+		strings.Index(output, "selection scope: explicit resource keys; tenant filter not applied"),
 		strings.Index(output, "dry run: update job"),
 	)
 }

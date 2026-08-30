@@ -14,7 +14,7 @@ Start process instances and confirm creation.
 
 Run by BPMN process ID for the latest version, or by process definition key for an exact definition.
 
-Tenant contract: process-instance start is a creation operation. A named tenant is reported as "Create in tenant: <tenant>" before creation; empty tenant configuration targets and reports "Create in tenant: <default>".
+Tenant contract: process-instance start is a creation operation. A named tenant is reported as "creation target: <tenant>" before creation; empty tenant configuration targets and reports "creation target: default tenant".
 
 When running by BPMN process ID, c8volt validates all requested process definitions before creating anything. Mixed visible and missing BPMN IDs fail as one request, so no partial process instances are started; automation-oriented modes never prompt for recovery output.
 

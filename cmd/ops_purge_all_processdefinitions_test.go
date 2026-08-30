@@ -439,7 +439,7 @@ func TestOpsPurgeAllProcessDefinitionsVerboseDiscoveryProgress(t *testing.T) {
 	require.Contains(t, stderr, "process-definition purge scope: all-process-definitions purge matched at least 2 process definitions; page size: 1; discovery pages: at least 2")
 	require.Contains(t, stderr, "discovering process definitions, page 1/~2, 1 seen")
 	require.Contains(t, stderr, "discovering process definitions, page 2/2, 2 seen")
-	require.NotContains(t, stdout, "scope:")
+	require.NotContains(t, stdout, "process-definition purge scope:")
 	require.NotContains(t, stdout, "discovering process definitions")
 	require.Contains(t, stderr, "dry run: purge all process definitions")
 	require.Contains(t, stderr, "candidate process definitions: 2")

@@ -213,8 +213,8 @@ apis:
 			"--no-wait",
 		)
 
-		require.NotContains(t, stderr, "Create in tenant:")
-		require.NotContains(t, stdout, "Create in tenant:")
+		require.NotContains(t, stderr, "creation target:")
+		require.NotContains(t, stdout, "creation target:")
 		envelope := requireSingleJSONObjectDocument(t, stdout)
 		tenantContext := requireJSONObject(t, envelope["tenantContext"])
 		require.Equal(t, "creation", tenantContext["mode"])
@@ -239,8 +239,8 @@ apis:
 		)
 
 		require.Contains(t, stdout, "2251799813711967")
-		require.NotContains(t, stdout, "Create in tenant:")
-		require.NotContains(t, stderr, "Create in tenant:")
+		require.NotContains(t, stdout, "creation target:")
+		require.NotContains(t, stderr, "creation target:")
 		require.NotContains(t, stdout, "tenantContext")
 	})
 
@@ -257,7 +257,7 @@ apis:
 		)
 
 		require.Equal(t, "2251799813711967\n", stdout)
-		require.NotContains(t, stderr, "Create in tenant:")
+		require.NotContains(t, stderr, "creation target:")
 	})
 }
 

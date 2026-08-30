@@ -25,7 +25,7 @@ func TestAuditReports_TenantContextJSONContract(t *testing.T) {
 		Warnings: []tenant.ContextWarning{
 			{
 				Code:    tenant.ContextWarningUnfilteredSelection,
-				Message: "Tenant filter: none — resources from multiple tenants may be affected",
+				Message: "selection scope: unfiltered across accessible tenants",
 			},
 		},
 	}

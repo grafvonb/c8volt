@@ -28,9 +28,9 @@ func renderTenantContext(cmd *cobra.Command, ctx tenant.Context) {
 	switch len(ctx.ResolvedTenantIDs) {
 	case 0:
 	case 1:
-		renderHumanLine(cmd, "Resource tenant: %s", ctx.ResolvedTenantIDs[0])
+		renderHumanLine(cmd, "affected tenants: %s", ctx.ResolvedTenantIDs[0])
 	default:
-		renderHumanLine(cmd, "Resource tenants: %s", strings.Join(ctx.ResolvedTenantIDs, ", "))
+		renderHumanLine(cmd, "affected tenants: %s", strings.Join(ctx.ResolvedTenantIDs, ", "))
 	}
 
 	for _, warning := range ctx.Warnings {
@@ -63,13 +63,16 @@ func shouldRenderTenantContextHuman(_ *cobra.Command, ctx tenant.Context) bool {
 func tenantContextPrimaryHumanLine(ctx tenant.Context) string {
 	switch {
 	case ctx.Mode == tenant.ContextModeCreation:
-		return "Create in tenant: " + ctx.TargetTenantID
+		if ctx.TargetTenantID == "<default>" {
+			return "creation target: default tenant"
+		}
+		return "creation target: " + ctx.TargetTenantID
 	case ctx.Filter == tenant.ContextFilterNamed:
-		return "Tenant filter: " + ctx.ConfiguredTenantID
+		return "selection scope: " + ctx.ConfiguredTenantID + " only"
 	case ctx.Filter == tenant.ContextFilterNone:
-		return "Tenant filter: none — resources from multiple tenants may be affected"
+		return "selection scope: unfiltered across accessible tenants"
 	case ctx.Filter == tenant.ContextFilterNotApplied:
-		return "Tenant filter: not applied for explicit resource keys"
+		return "selection scope: explicit resource keys; tenant filter not applied"
 	default:
 		return ""
 	}

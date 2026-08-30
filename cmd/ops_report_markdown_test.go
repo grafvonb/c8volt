@@ -52,7 +52,7 @@ func TestWriteMarkdownTenantContextUsesSharedHumanContract(t *testing.T) {
 	writeMarkdownTenantContext(&out, &ctx)
 
 	got := out.String()
-	require.Contains(t, got, "- Tenant Context: Tenant filter: not applied for explicit resource keys")
+	require.Contains(t, got, "- Tenant Context: selection scope: explicit resource keys; tenant filter not applied")
 	require.Contains(t, got, "- Resource Tenants: tenant-a, tenant-b")
 	require.Contains(t, got, "- Cross Tenant: true")
 	require.Contains(t, got, "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b")

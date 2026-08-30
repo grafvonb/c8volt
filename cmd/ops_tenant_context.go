@@ -51,9 +51,9 @@ func printOpsTenantContext(cmd *cobra.Command, ctx tenant.Context, channel ops.P
 	switch len(ctx.ResolvedTenantIDs) {
 	case 0:
 	case 1:
-		printOpsDurableLine(cmd, "Resource tenant: "+ctx.ResolvedTenantIDs[0], false)
+		printOpsDurableLine(cmd, "affected tenants: "+ctx.ResolvedTenantIDs[0], false)
 	default:
-		printOpsDurableLine(cmd, "Resource tenants: "+strings.Join(ctx.ResolvedTenantIDs, ", "), false)
+		printOpsDurableLine(cmd, "affected tenants: "+strings.Join(ctx.ResolvedTenantIDs, ", "), false)
 	}
 	for _, warning := range ctx.Warnings {
 		if warning.Code == tenant.ContextWarningUnfilteredSelection {

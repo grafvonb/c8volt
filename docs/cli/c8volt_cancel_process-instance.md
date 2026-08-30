@@ -14,7 +14,7 @@ Cancel process instances by key or search filters.
 
 By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.
 
-Tenant contract: --tenant scopes search-derived candidate discovery where supported. Empty tenant configuration leaves discovery unfiltered and is reported as "Tenant filter: none — resources from multiple tenants may be affected". Explicit --key and stdin keys are backend-authorized admin input and report that the tenant filter is not applied; existing dry-run, confirmation, force, and wait safety checks still apply.
+Tenant contract: --tenant scopes search-derived candidate discovery where supported. Empty tenant configuration leaves discovery unfiltered and is reported as "selection scope: unfiltered across accessible tenants". Explicit --key and stdin keys are backend-authorized admin input and report that the tenant filter is not applied; existing dry-run, confirmation, force, and wait safety checks still apply.
 
 Resolved plans show known resource tenants and warn when the frozen scope spans multiple tenants or includes targets with unknown tenant metadata.
 

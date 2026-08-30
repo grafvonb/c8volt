@@ -322,7 +322,7 @@ func TestProcessInstanceDryRunSummary_HumanOutputRendersAttachedDiscoveryTenantC
 	require.NoError(t, renderProcessInstanceDryRunSummary(cmd, summary))
 
 	output := buf.String()
-	tenantLine := "Tenant filter: none — resources from multiple tenants may be affected\n"
+	tenantLine := "selection scope: unfiltered across accessible tenants\n"
 	planLine := "dry run: cancel process-instance\n"
 	require.Contains(t, output, tenantLine)
 	require.Contains(t, output, planLine)
@@ -405,7 +405,7 @@ func TestProcessInstanceDryRunSummary_ProtectedModesDoNotRenderDiscoveryContext(
 
 			require.NoError(t, renderProcessInstanceDryRunSummary(cmd, summary))
 			require.Equal(t, tt.want, buf.String())
-			require.NotContains(t, buf.String(), "Tenant filter:")
+			require.NotContains(t, buf.String(), "selection scope:")
 			require.NotContains(t, buf.String(), "resources from multiple tenants")
 		})
 	}

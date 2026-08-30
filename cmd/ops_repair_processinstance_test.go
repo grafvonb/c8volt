@@ -380,7 +380,7 @@ func TestOpsRepairProcessInstanceProgressContractPendingT068(t *testing.T) {
 	require.Contains(t, stderr, "repairing incidents 1/1 incident(s)")
 	require.NotContains(t, stderr, "/v2/")
 	require.NotContains(t, stderr, "cursor")
-	require.NotContains(t, stdout, "scope:")
+	require.NotContains(t, stdout, "process-instance repair scope:")
 	require.NotContains(t, stdout, "discovering repair process instances")
 	require.NotContains(t, stdout, "planning process-instance repair scope")
 	require.Contains(t, stderr, "report: written "+reportPath)
@@ -410,7 +410,7 @@ func TestOpsRepairProcessInstanceMachineProgressSafetyPendingT068(t *testing.T) 
 			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.9")}, mode.args...)
 			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
 			for _, disallowed := range []string{
-				"scope:",
+				"process-instance repair scope:",
 				"discovering repair process instances",
 				"loading process-instance repair incidents",
 				"planning process-instance repair scope",

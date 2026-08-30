@@ -14,7 +14,7 @@ Delete process instances by key or search filters, optionally cancelling first.
 
 By default c8volt validates the complete affected tree before submitting any delete request, prompts before deletion, and waits until deletion is observed. If any affected process instance is not in a final state, the whole delete batch is refused before mutation. Use --force to cancel the affected scope first, then delete it.
 
-Tenant contract: --tenant scopes search-derived candidate discovery where supported. Empty tenant configuration leaves discovery unfiltered and is reported as "Tenant filter: none — resources from multiple tenants may be affected". Explicit --key and stdin keys are backend-authorized admin input and report that the tenant filter is not applied; existing dry-run, confirmation, force, and wait safety checks still apply.
+Tenant contract: --tenant scopes search-derived candidate discovery where supported. Empty tenant configuration leaves discovery unfiltered and is reported as "selection scope: unfiltered across accessible tenants". Explicit --key and stdin keys are backend-authorized admin input and report that the tenant filter is not applied; existing dry-run, confirmation, force, and wait safety checks still apply.
 
 Resolved delete plans show known resource tenants and warn when the frozen scope spans multiple tenants or includes targets with unknown tenant metadata.
 

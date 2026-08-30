@@ -35,7 +35,7 @@ go test ./cmd -run 'Test.*Config|Test.*TenantContext|Test.*CommandContract|Test.
 
 Expected cases:
 
-- named configuration renders `Tenant filter: tenant-a`;
+- named configuration renders `selection scope: tenant-a only`;
 - empty configuration renders no configured tenant and never calls it `<default>`;
 - `config show` remains parseable YAML with `tenantContext`;
 - `config test-connection --json` remains one parseable document;
@@ -66,7 +66,7 @@ Expected cases:
 
 - definition deletion distinguishes selector and explicit-key semantics and includes nested cancellation evidence;
 - job update reports the current job tenant without filtering a mismatched explicit key;
-- deploy/run print `Create in tenant: <default>` or the named target before the backend call;
+- deploy/run print `creation target: default tenant` or the named target before the backend call;
 - non-interactive flows gain no prompt;
 - JSON and key streams remain valid.
 

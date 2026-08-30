@@ -114,6 +114,91 @@ Started: 2026-08-29 14:20:03
 - Cancel selector tenant context must render before dry-run preview or confirmation while preserving destructive stdout cleanliness by using stderr for non-dry-run search context.
 ---
 ---
+## Iteration 28 - 2026-08-30 11:24
+**Work Unit**: Phase 9 convergence tenant-context grammar correction
+**Tasks Completed**:
+- [x] T057: Update exact tenant-context wording, ordering, warning, quiet, keys-only, JSON/YAML, and report assertions.
+- [x] T058: Replace ordinary tenant-context human labels and unfiltered messages with lower-case selection, creation, and affected-tenant grammar.
+- [x] T059: Align affected source help, README, ops docs, feature contract, quickstart, and regenerated CLI docs with the revised grammar.
+- [x] T060: Run formatting, obsolete-phrase scans, focused tests, `make vet`, and constitution-required `make test`.
+**Tasks Remaining in Work Unit**: 0; feature complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/ops/model_test.go
+- cmd/cancel_processinstance.go
+- cmd/cancel_processinstance_selector_test.go
+- cmd/cancel_processinstance_test.go
+- cmd/cmd_json_assertions_test.go
+- cmd/cmd_tenant_context.go
+- cmd/cmd_views_processinstance_dryrun_test.go
+- cmd/cmd_views_tenant_context.go
+- cmd/cmd_views_tenant_context_test.go
+- cmd/config_test.go
+- cmd/delete_processdefinition.go
+- cmd/delete_processinstance.go
+- cmd/delete_processinstance_selector_test.go
+- cmd/delete_processinstance_test.go
+- cmd/delete_test.go
+- cmd/deploy_processdefinition.go
+- cmd/deploy_test.go
+- cmd/embed_test.go
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_execute_retention_policy_test.go
+- cmd/ops_execute_smoketest.go
+- cmd/ops_progress_test.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- cmd/ops_purge_orphan_processinstances.go
+- cmd/ops_purge_orphan_processinstances_test.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- cmd/ops_repair_incident_test.go
+- cmd/ops_repair_processinstance_test.go
+- cmd/ops_report_markdown_test.go
+- cmd/ops_tenant_context.go
+- cmd/processinstance_mutation_progress.go
+- cmd/processinstance_mutation_progress_test.go
+- cmd/resolve_processinstance_test.go
+- cmd/run_processinstance.go
+- cmd/run_test.go
+- cmd/update_job_outcome_test.go
+- cmd/update_job_plan_test.go
+- cmd/update_job_test.go
+- cmd/update_processinstance_test.go
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete_process-definition.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/cli/c8volt_deploy_process-definition.md
+- docs/cli/c8volt_ops_execute_retention-policy.md
+- docs/cli/c8volt_ops_execute_smoke-test.md
+- docs/cli/c8volt_ops_purge_orphan-process-instances.md
+- docs/cli/c8volt_run_process-instance.md
+- docs/index.md
+- docs/ops/execute-retention-policy.md
+- docs/ops/execute-smoke-test.md
+- docs/ops/purge-all-process-definitions.md
+- docs/ops/purge-orphan-process-instances.md
+- docs/ops/purge-process-instances-with-incidents.md
+- docs/ops/repair-incident.md
+- docs/ops/repair-process-instance.md
+- internal/domain/tenant_context.go
+- internal/domain/tenant_context_test.go
+- specs/283-show-tenant-context/contracts/tenant-context.md
+- specs/283-show-tenant-context/quickstart.md
+- specs/283-show-tenant-context/tasks.md
+- specs/283-show-tenant-context/ralph-memory.md
+- specs/283-show-tenant-context/progress.md
+**Learnings**:
+- Clarified grammar now uses `selection scope`, `creation target`, and `affected tenants` for ordinary tenant context while keeping structured schema fields and uppercase safety warnings stable.
+- Passed: initial focused TDD check failed against old emitters as expected.
+- Passed: obsolete phrase scan for `Tenant filter:`, `Create in tenant:`, `Resource tenant`, `selection scope: none`, and `creation target: <default>` across source, tests, docs, and feature contract.
+- Passed: `make docs-content`.
+- Passed: focused quickstart tenant-context test suites.
+- Passed: `go test ./cmd -count=1` and `go test ./docsgen -count=1`.
+- Passed: command-file cohesion inventory and `git diff --check`.
+- Passed: `make vet`.
+- Passed: `make test`.
+---
+---
 ## Iteration 6 - 2026-08-29 14:52
 **Work Unit**: Phase 3 US1 delete selector tenant context
 **Tasks Completed**:

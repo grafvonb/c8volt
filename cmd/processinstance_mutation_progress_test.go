@@ -129,10 +129,10 @@ func TestCancelProcessInstanceSearchQuietAndAutomationSuppressProgress(t *testin
 	} {
 		t.Run(mode.name, func(t *testing.T) {
 			stdout, stderr := exerciseProcessInstanceMutationProgressOutput(t, "cancel", mode.setup)
-			require.NotContains(t, stdout, "scope:")
+			require.NotContains(t, stdout, "process-instance cancel scope:")
 			require.NotContains(t, stdout, "planning process-instance cancel scope")
 			require.NotContains(t, stdout, "cancelling process instances")
-			require.NotContains(t, stderr, "scope:")
+			require.NotContains(t, stderr, "process-instance cancel scope:")
 			require.NotContains(t, stderr, "planning process-instance cancel scope")
 			require.NotContains(t, stderr, "cancelling process instances")
 		})
@@ -159,7 +159,7 @@ func TestProcessInstanceMutationProgress_AttachedDiscoveryTenantContextPrecedesV
 
 	require.Empty(t, stdout.String())
 	output := stderr.String()
-	tenantLine := "Tenant filter: tenant-a\n"
+	tenantLine := "selection scope: tenant-a only\n"
 	scopeLine := "process-instance cancel scope:"
 	require.Contains(t, output, tenantLine)
 	require.Contains(t, output, scopeLine)
@@ -201,7 +201,7 @@ func TestProcessInstanceMutationProgress_ProtectedModesSuppressAttachedDiscovery
 			progress(processInstanceMutationTestPreflightEvent("cancel"))
 
 			require.Empty(t, stdout.String())
-			require.NotContains(t, stderr.String(), "Tenant filter:")
+			require.NotContains(t, stderr.String(), "selection scope:")
 			require.NotContains(t, stderr.String(), "resources from multiple tenants")
 		})
 	}
@@ -270,8 +270,8 @@ func TestCancelProcessInstanceSearchDryRun_RendersMergedTenantWarnings(t *testin
 	require.NoError(t, renderProcessInstanceDryRunSummary(cmd, newProcessInstanceDryRunSummary("cancel", results.DryRunPreviews)))
 
 	output := buf.String()
-	tenantLine := "Tenant filter: none — resources from multiple tenants may be affected\n"
-	resourceLine := "Resource tenants: tenant-a, tenant-b\n"
+	tenantLine := "selection scope: unfiltered across accessible tenants\n"
+	resourceLine := "affected tenants: tenant-a, tenant-b\n"
 	crossWarning := "WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b\n"
 	unknownWarning := "WARNING: tenant metadata is unknown for 1 target\n"
 	summaryLine := "dry run: cancel process-instance\n"
@@ -524,10 +524,10 @@ func TestDeleteProcessInstanceSearchQuietAndAutomationSuppressProgress(t *testin
 	} {
 		t.Run(mode.name, func(t *testing.T) {
 			stdout, stderr := exerciseProcessInstanceMutationProgressOutput(t, "delete", mode.setup)
-			require.NotContains(t, stdout, "scope:")
+			require.NotContains(t, stdout, "process-instance delete scope:")
 			require.NotContains(t, stdout, "planning process-instance delete scope")
 			require.NotContains(t, stdout, "deleting process instances")
-			require.NotContains(t, stderr, "scope:")
+			require.NotContains(t, stderr, "process-instance delete scope:")
 			require.NotContains(t, stderr, "planning process-instance delete scope")
 			require.NotContains(t, stderr, "deleting process instances")
 		})

@@ -46,6 +46,8 @@ Started: 2026-08-29T12:20:03Z
 - Operator-facing README and ops playbooks now explain operation-specific tenant context, non-blocking cross/unknown warnings, JSON `tenantContext`, and protected quiet/keys-only stdout behavior; generated CLI docs are intentionally left for T054.
 - Generated CLI docs now reflect the tenant-context command metadata across the T054 page set, and `docs/index.md` carries the README tenant-context guidance plus the current generated build banner.
 - T055 command cohesion audit found tenant-context production declarations concentrated in focused ownership files: `cmd/cmd_tenant_context.go`, `cmd/cmd_views_tenant_context.go`, `cmd/ops_tenant_context.go`, selector-specific search files, and existing PI progress/render files; no generated client, API mutation, versioned adapter, or tenant-selection request construction changed.
+- Tenant-context ordinary human grammar is now lower-case and contract-aligned: discovery renders `selection scope: <tenant> only` or `selection scope: unfiltered across accessible tenants`, creation renders `creation target: <tenant>` or `creation target: default tenant`, and resolved evidence renders `affected tenants: ...`; uppercase `WARNING:` messages remain unchanged.
+- Machine-output safety tests must not use generic `scope:` exclusions on JSON that can legitimately include structured `tenantContext` warning messages; guard workflow progress labels such as `retention cleanup scope:` or `process-instance cancel scope:` instead.
 
 ## Decisions
 - Phase 1 setup was treated as the first work unit because T001 was the first incomplete task and Phase 2 depends on it.
@@ -75,6 +77,7 @@ Started: 2026-08-29T12:20:03Z
 - Iteration 25 completed T054 by running `make docs-content`, reviewing the affected generated CLI pages and `docs/index.md`, and validating the docs generator plus whitespace checks.
 - Iteration 26 completed T055 as an audit-only work unit; `gofmt` over branch-touched Go files and `git diff --check` passed without producing code changes.
 - Iteration 27 completed T056 as the final validation work unit; `make vet` and constitution-required `make test` passed with no code changes required.
+- Iteration 28 completed convergence tasks T057-T060 by updating tenant-context assertions, emitters, source docs, generated docs, and validation to the clarified lower-case grammar.
 
 ## Gotchas
 - Follow `specs/ralph-implementation-rules.md` in addition to this feature's artifacts; it is binding for Ralph iterations.

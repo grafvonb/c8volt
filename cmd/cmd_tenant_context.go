@@ -170,7 +170,7 @@ func withTenantContextWarnings(ctx tenant.Context) tenant.Context {
 	if ctx.Mode == tenant.ContextModeDiscovery && ctx.Filter == tenant.ContextFilterNone {
 		ctx.Warnings = append(ctx.Warnings, tenant.ContextWarning{
 			Code:    tenant.ContextWarningUnfilteredSelection,
-			Message: "Tenant filter: none — resources from multiple tenants may be affected",
+			Message: "selection scope: unfiltered across accessible tenants",
 		})
 	}
 	if ctx.CrossTenant {

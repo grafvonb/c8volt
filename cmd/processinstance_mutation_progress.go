@@ -227,10 +227,10 @@ func printProcessInstanceMutationTenantContext(cmd *cobra.Command, channel ops.P
 	}
 	switch len(ctx.ResolvedTenantIDs) {
 	case 1:
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Resource tenant: %s\n", ctx.ResolvedTenantIDs[0])
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "affected tenants: %s\n", ctx.ResolvedTenantIDs[0])
 	case 0:
 	default:
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Resource tenants: %s\n", strings.Join(ctx.ResolvedTenantIDs, ", "))
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "affected tenants: %s\n", strings.Join(ctx.ResolvedTenantIDs, ", "))
 	}
 	for _, warning := range ctx.Warnings {
 		if warning.Code == tenant.ContextWarningUnfilteredSelection {
@@ -252,10 +252,10 @@ func renderProcessInstanceMutationTenantContextStderr(cmd *cobra.Command, ctx te
 	}
 	switch len(ctx.ResolvedTenantIDs) {
 	case 1:
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Resource tenant: %s\n", ctx.ResolvedTenantIDs[0])
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "affected tenants: %s\n", ctx.ResolvedTenantIDs[0])
 	case 0:
 	default:
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Resource tenants: %s\n", strings.Join(ctx.ResolvedTenantIDs, ", "))
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "affected tenants: %s\n", strings.Join(ctx.ResolvedTenantIDs, ", "))
 	}
 	for _, warning := range ctx.Warnings {
 		if warning.Code == tenant.ContextWarningUnfilteredSelection {

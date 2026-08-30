@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.0-beta.1-29-gc01e1411`, commit `c01e1411`, built `2026-08-29T15:54:10Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.0-beta.1-33-gee5a3b22-dirty`, commit `ee5a3b22`, built `2026-08-30T09:20:42Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -42,7 +42,7 @@ During discovery, progress uses page and seen-count wording. After c8volt freeze
 
 Progress never writes to result stdout. Default human mode uses terminal activity; verbose and debug modes may keep durable progress lines on stderr. JSON output remains one document, keys-only output remains one key per line, and quiet or automation-oriented runs suppress progress chatter or keep scope in structured reports. For paged commands, `--batch-size` controls each backend discovery request, while `--limit` caps the total returned, selected, frozen, or analyzed scope as documented by the command.
 
-Tenant context is reported with operation-specific meaning before tenant-sensitive work. Discovery commands show a named filter as `Tenant filter: tenant-a`, or `Tenant filter: none — resources from multiple tenants may be affected` when no tenant filter is configured. Deploy, run, and smoke-test creation steps show `Create in tenant: tenant-a` or `Create in tenant: <default>`. Explicit-key mutations state that the tenant filter is not applied, then show resource tenant evidence when the frozen plan already contains it. Cross-tenant and unknown-metadata warnings are non-blocking safety evidence. JSON results and JSON audit reports use one nested `tenantContext` object; quiet mode suppresses tenant lines, and keys-only output stays one key per line with no warnings on stdout.
+Tenant context is reported with operation-specific meaning before tenant-sensitive work. Discovery commands show a named filter as `selection scope: tenant-a only`, or `selection scope: unfiltered across accessible tenants` when no tenant filter is configured. Deploy, run, and smoke-test creation steps show `creation target: tenant-a` or `creation target: default tenant`. Explicit-key mutations state that the tenant filter is not applied, then show resource tenant evidence when the frozen plan already contains it. Cross-tenant and unknown-metadata warnings are non-blocking safety evidence. JSON results and JSON audit reports use one nested `tenantContext` object; quiet mode suppresses tenant lines, and keys-only output stays one key per line with no warnings on stdout.
 
 Transient Camunda GET and HEAD read failures are retried automatically when the shared request path sees temporary transport errors, throttling, or server availability responses. Retry messages stay compact and off result stdout, and c8volt still treats business outcomes such as not-found, invalid request, permission failure, and conflict as final.
 

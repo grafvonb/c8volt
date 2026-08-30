@@ -14,7 +14,7 @@ Delete process definition resources from Camunda.
 
 By default c8volt first checks delete impact without changing anything: active process instances, required cancellation roots and process-instance tree scope when --force is used, and batch-operation read access before prompting. Process-definition deletion requires the full process-definition history deletion capability, currently Camunda 8.9 or newer. With --force, it cancels the root process instances, deletes the affected process-instance history, then asks Camunda to delete the process definition and remaining associated history. If you only want to delete process instances for a definition, use `c8volt delete process-instance --bpmn-process-id <bpmn-process-id>`.
 
-Tenant contract: --tenant scopes BPMN selector discovery where supported. Empty tenant configuration leaves discovery unfiltered and is reported as "Tenant filter: none — resources from multiple tenants may be affected". Explicit --key and stdin process-definition keys are backend-authorized admin input and report that the tenant filter is not applied; existing impact, confirmation, force, and wait safety checks still apply.
+Tenant contract: --tenant scopes BPMN selector discovery where supported. Empty tenant configuration leaves discovery unfiltered and is reported as "selection scope: unfiltered across accessible tenants". Explicit --key and stdin process-definition keys are backend-authorized admin input and report that the tenant filter is not applied; existing impact, confirmation, force, and wait safety checks still apply.
 
 Resolved delete impact shows known process-definition and nested process-instance tenants and warns when the frozen scope spans multiple tenants or includes targets with unknown tenant metadata.
 

@@ -15,7 +15,7 @@ Every applicable structured surface uses this object and these field names:
     "warnings": [
       {
         "code": "unfiltered_selection",
-        "message": "Tenant filter: none — resources from multiple tenants may be affected"
+        "message": "selection scope: unfiltered across accessible tenants"
       },
       {
         "code": "multiple_tenants",
@@ -99,13 +99,13 @@ Full-contract JSON adds the optional common object without changing `payload`:
 
 Render the applicable semantic line before the mutation or its confirmation:
 
-- Named discovery: `Tenant filter: tenant-a`
-- Unfiltered discovery: `Tenant filter: none — resources from multiple tenants may be affected`
-- Named creation: `Create in tenant: tenant-a`
-- Default creation: `Create in tenant: <default>`
-- Explicit keys: `Tenant filter: not applied for explicit resource keys`
-- One resolved tenant: `Resource tenant: tenant-b`
-- Multiple resolved tenants: `Resource tenants: tenant-a, tenant-b`
+- Named discovery: `selection scope: tenant-a only`
+- Unfiltered discovery: `selection scope: unfiltered across accessible tenants`
+- Named creation: `creation target: tenant-a`
+- Default creation: `creation target: default tenant`
+- Explicit keys: `selection scope: explicit resource keys; tenant filter not applied`
+- One resolved tenant: `affected tenants: tenant-b`
+- Multiple resolved tenants: `affected tenants: tenant-a, tenant-b`
 - Cross-tenant warning: `WARNING: resources from multiple tenants will be affected: tenant-a, tenant-b`
 - Unknown metadata, singular: `WARNING: tenant metadata is unknown for 1 target`
 - Unknown metadata, plural: `WARNING: tenant metadata is unknown for N targets`

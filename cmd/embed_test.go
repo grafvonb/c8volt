@@ -212,7 +212,7 @@ func TestEmbedDeployCommand_CreationContextPrecedesDeploymentRequest(t *testing.
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true
-			require.Contains(t, stderr.String(), "Create in tenant: tenant-a")
+			require.Contains(t, stderr.String(), "creation target: tenant-a")
 			require.NoError(t, r.ParseMultipartForm(1<<20))
 			require.Equal(t, "tenant-a", r.FormValue("tenantId"))
 			w.Header().Set("Content-Type", "application/json")
@@ -248,8 +248,8 @@ apis:
 	require.NoError(t, err)
 	require.True(t, sawDeploy)
 	require.Empty(t, stdout.String())
-	require.Contains(t, stderr.String(), "Create in tenant: tenant-a")
-	require.Less(t, strings.Index(stderr.String(), "Create in tenant: tenant-a"), strings.Index(stderr.String(), "pd deploy done"))
+	require.Contains(t, stderr.String(), "creation target: tenant-a")
+	require.Less(t, strings.Index(stderr.String(), "creation target: tenant-a"), strings.Index(stderr.String(), "pd deploy done"))
 }
 
 func TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnlyHelper(t *testing.T) {
