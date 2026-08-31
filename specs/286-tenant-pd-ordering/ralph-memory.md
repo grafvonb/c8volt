@@ -39,6 +39,7 @@ Started: 2026-08-31T11:37:22Z
 - `cmd/get_processdefinition_test.go` now covers broad latest paged dispatch, `--batch-size` propagation, all-tenant filter clearing, and identical latest keys across page sizes 1, 2, and 1000.
 - `cmd/process_definition_selector_validation_test.go` now proves latest selector validation uses the paged collection request rather than the legacy latest facade call.
 - `cmd/get_processdefinition.go` and `README.md` now document the canonical process-definition collection order, exact case-sensitive tenant/BPMN comparison rules, opaque key tie-breaking, latest grouping, and the Camunda 8.7 1000 visible-definition compatibility window.
+- `make docs-content` regenerated source-derived process-definition CLI documentation; generated diffs include `docs/cli/c8volt_get_process-definition.md` plus `docs/index.md` mirroring README content and build metadata.
 
 ## Decisions
 - Treat T001 as a validation-only setup work unit; no production code changed in iteration 1.
@@ -64,6 +65,7 @@ Started: 2026-08-31T11:37:22Z
 - T028 and T036 were paired because the new v8.10 latest page regression requires tenant/process native sort order and cursor continuation metadata changes to pass.
 - T029 and T037 were paired because the new CLI latest and selector tests require broad `--latest` and selector validation to share the paged canonical facade collection path.
 - T038 was completed as source documentation only; generated CLI docs remain intentionally pending for T039.
+- T039 was completed as generated documentation only after `make docs-content` and a targeted ordering/latest wording review across README, command help source, and generated CLI docs.
 
 ## Gotchas
 - Shell wrapper note: zsh has special parameters named `status` and `commands`; use neutral variable names or run validation loops under `/bin/bash`.
@@ -83,4 +85,4 @@ Started: 2026-08-31T11:37:22Z
 - Do not use zsh variable names `status` or `commands` in validation-loop scripts.
 
 ## Current Handoff
-- Next iteration should run T039: regenerate and review process-definition CLI documentation with `make docs-content`, accepting generated changes in `docs/cli/c8volt_get_process-definition.md`.
+- Next iteration should run T040: run `gofmt` on all touched Go files and execute the focused commands from `specs/286-tenant-pd-ordering/quickstart.md`.

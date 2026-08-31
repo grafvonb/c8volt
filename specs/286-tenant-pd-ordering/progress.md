@@ -395,3 +395,19 @@ Started: 2026-08-31 13:37:23
 **Learnings**:
 - Source command help and README now state the same canonical process-definition order and latest compatibility notes; generated CLI docs remain pending for T039.
 ---
+---
+## Iteration 25 - 2026-08-31 15:18
+**Work Unit**: Phase 6 generated process-definition CLI documentation
+**Tasks Completed**:
+- [x] T039: Regenerate and review process-definition CLI documentation with `make docs-content`, accepting generated changes in `docs/cli/c8volt_get_process-definition.md`
+**Tasks Remaining in Work Unit**: 0; Phase 6 has 4 incomplete tasks remaining (T040-T043)
+**Commit**: This work-unit commit
+**Files Changed**:
+- docs/cli/c8volt_get_process-definition.md
+- docs/index.md
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- `make docs-content` propagated the process-definition ordering contract into both the generated command page and generated docs index.
+---
