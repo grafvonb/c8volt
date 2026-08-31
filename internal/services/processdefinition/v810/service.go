@@ -92,7 +92,7 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 		return nil, err
 	}
 	out := page.Items
-	d.SortByBpmnProcessIdAscThenByVersionDesc(out)
+	d.SortProcessDefinitionsCanonical(out)
 
 	common.VerboseLog(ctx, cCfg, s.log, "found process definitions", "count", len(out))
 	return out, nil
@@ -471,11 +471,19 @@ func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinition
 		asc := camundav810.ASC
 		sort = append(sort,
 			camundav810.ProcessDefinitionSearchQuerySortRequest{
+				Field: camundav810.ProcessDefinitionSearchQuerySortRequestFieldTenantId,
+				Order: &asc,
+			},
+			camundav810.ProcessDefinitionSearchQuerySortRequest{
+				Field: camundav810.ProcessDefinitionSearchQuerySortRequestFieldProcessDefinitionId,
+				Order: &asc,
+			},
+			camundav810.ProcessDefinitionSearchQuerySortRequest{
 				Field: camundav810.ProcessDefinitionSearchQuerySortRequestFieldVersion,
 				Order: &desc,
 			},
 			camundav810.ProcessDefinitionSearchQuerySortRequest{
-				Field: camundav810.ProcessDefinitionSearchQuerySortRequestFieldName,
+				Field: camundav810.ProcessDefinitionSearchQuerySortRequestFieldProcessDefinitionKey,
 				Order: &asc,
 			},
 		)

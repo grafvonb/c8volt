@@ -4,6 +4,23 @@ Feature: 286-tenant-pd-ordering
 Started: 2026-08-31 13:37:23
 
 ---
+---
+## Iteration 9 - 2026-08-31 14:10
+**Work Unit**: US1 Camunda 8.10 ordinary adapter canonical ordering
+**Tasks Completed**:
+- [x] T010: Add Camunda 8.10 ordinary request-sort and returned-order assertions to `internal/services/processdefinition/v810/service_test.go`
+- [x] T014: Encode Camunda 8.10 ordinary backend sorting as tenant ID ASC, process definition ID ASC, version DESC, and process definition key ASC, then use the domain canonical sort for returned collections in `internal/services/processdefinition/v810/service.go`
+**Tasks Remaining in Work Unit**: 0; US1 complete
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/v810/service.go
+- internal/services/processdefinition/v810/service_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- v8.10 ordinary search matches the v8.9 manually marshalled request-body path and now uses the same canonical ordinary sort tuple before final domain normalization.
+---
 ## Iteration 1 - 2026-08-31 13:39
 **Work Unit**: Setup baseline validation
 **Tasks Completed**:

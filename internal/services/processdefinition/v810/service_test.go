@@ -229,6 +229,49 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 	}
 }
 
+// TestService_SearchProcessDefinitions_RequestsCanonicalSortAndNormalizesResults
+// verifies v8.10 asks Camunda for the strongest stable order and still protects
+// callers from shuffled backend results.
+func TestService_SearchProcessDefinitions_RequestsCanonicalSortAndNormalizesResults(t *testing.T) {
+	ctx := context.Background()
+	m := &mockProcessDefinitionClient{}
+
+	resp := &camundav810.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
+		Body: []byte(`{"items":[` +
+			`{"hasStartForm":false,"name":"name-order","processDefinitionId":"order","processDefinitionKey":"202","resourceName":"order.bpmn","tenantId":"tenant-b","version":9,"versionTag":"tag"},` +
+			`{"hasStartForm":false,"name":"name-invoice","processDefinitionId":"invoice","processDefinitionKey":"10","resourceName":"invoice.bpmn","tenantId":"tenant-a","version":4,"versionTag":"tag"},` +
+			`{"hasStartForm":false,"name":"name-invoice","processDefinitionId":"invoice","processDefinitionKey":"2","resourceName":"invoice.bpmn","tenantId":"tenant-a","version":4,"versionTag":"tag"},` +
+			`{"hasStartForm":false,"name":"name-order","processDefinitionId":"order","processDefinitionKey":"111","resourceName":"order.bpmn","tenantId":"tenant-a","version":9,"versionTag":"tag"},` +
+			`{"hasStartForm":false,"name":"name-order","processDefinitionId":"order","processDefinitionKey":"112","resourceName":"order.bpmn","tenantId":"tenant-a","version":10,"versionTag":"tag"},` +
+			`{"hasStartForm":false,"name":"name-alpha","processDefinitionId":"alpha","processDefinitionKey":"301","resourceName":"alpha.bpmn","tenantId":"tenant-b","version":1,"versionTag":"tag"}` +
+			`],"page":{"hasMoreTotalItems":false,"totalItems":6}}`),
+		JSON200: &camundav810.ProcessDefinitionSearchQueryResult{},
+	}
+
+	m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).
+		Run(func(args mock.Arguments) {
+			body := decodeProcessDefinitionSearchRequest(t, args.String(2))
+			assertV810ProcessDefinitionSort(t, body.Sort, []expectedV810Sort{
+				{field: "tenantId", order: "ASC"},
+				{field: "processDefinitionId", order: "ASC"},
+				{field: "version", order: "DESC"},
+				{field: "processDefinitionKey", order: "ASC"},
+			})
+		}).
+		Return(resp, nil)
+
+	svc, err := v810.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v810.WithClientCamunda(m))
+	require.NoError(t, err)
+
+	defs, err := svc.SearchProcessDefinitions(ctx, domain.ProcessDefinitionFilter{}, 25, services.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	require.Len(t, defs, 6)
+	assert.Equal(t, []string{"10", "2", "112", "111", "301", "202"}, processDefinitionKeys(defs))
+	m.AssertExpectations(t)
+}
+
 // TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator verifies stats retrieval exposes progress activity.
 func TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator(t *testing.T) {
 	sink := &activitysink.Sink{}
@@ -709,6 +752,36 @@ func makeProcessDefinitionResult(id, key string, version int32) camundav810.Proc
 		TenantId:             "tenant",
 		VersionTag:           new("tag"),
 	}
+}
+
+type expectedV810Sort struct {
+	field string
+	order string
+}
+
+// assertV810ProcessDefinitionSort checks the exact Camunda sort tuple used to
+// stabilize v8.10 process-definition paging.
+func assertV810ProcessDefinitionSort(t *testing.T, got []struct {
+	Field string `json:"field"`
+	Order string `json:"order"`
+}, want []expectedV810Sort) {
+	t.Helper()
+
+	require.Len(t, got, len(want))
+	for i, expected := range want {
+		assert.Equal(t, expected.field, got[i].Field)
+		assert.Equal(t, expected.order, got[i].Order)
+	}
+}
+
+// processDefinitionKeys extracts keys in slice order for readable ordering
+// assertions.
+func processDefinitionKeys(defs []domain.ProcessDefinition) []string {
+	keys := make([]string, 0, len(defs))
+	for _, def := range defs {
+		keys = append(keys, def.Key)
+	}
+	return keys
 }
 
 func makeSearchProcessInstancesResponse(total int64) *camundav810.SearchProcessInstancesResponse {
