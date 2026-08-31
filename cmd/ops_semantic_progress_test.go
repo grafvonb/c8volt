@@ -176,6 +176,42 @@ func TestOpsSemanticProgressReporterInvalidatesAffectedCoverage(t *testing.T) {
 	require.NotContains(t, updates[len(updates)-1], "affected process instances")
 }
 
+// TestOpsSemanticProgressReporterIgnoresUnrelatedCompletionPhase verifies a
+// shared callback cannot advance a workflow aggregate with another phase's fact.
+func TestOpsSemanticProgressReporterIgnoresUnrelatedCompletionPhase(t *testing.T) {
+	cmd, sink, _ := newOpsSemanticProgressTestCommand(t)
+	reporter := newOpsSemanticProgressReporter(cmd, opsSemanticProgressConfig{
+		Scope: opsSemanticProgressScope{
+			Phase:                     "delete",
+			ActivityLabel:             "deleting process-instance trees",
+			CoreResource:              "process-instance tree(s)",
+			Total:                     2,
+			AffectedResource:          "affected process instances",
+			AffectedCoverageAvailable: true,
+		},
+		Policy: opsSemanticProgressOutputPolicyForChannel(ops.ProgressChannel{Mode: ops.ProgressModeHuman, TransientAllowed: true, DurableAllowed: true, StderrAllowed: true}),
+	})
+	affected := 3
+
+	reporter.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: "cancel", Identity: "root-1", Disposition: ops.CompletionDispositionConfirmed, AffectedCount: &affected}})
+
+	require.Empty(t, sink.Updates())
+	require.Equal(t, opsSemanticProgressAggregate{
+		Total:         2,
+		AffectedValid: true,
+	}, reporter.Aggregate())
+
+	reporter.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: "delete", Identity: "root-2", Disposition: ops.CompletionDispositionConfirmed, AffectedCount: &affected}})
+
+	require.Equal(t, []string{"deleting process-instance trees, 1/2 process-instance tree(s), affected process instances: 3"}, sink.Updates())
+	require.Equal(t, opsSemanticProgressAggregate{
+		Completed:     1,
+		Total:         2,
+		Affected:      3,
+		AffectedValid: true,
+	}, reporter.Aggregate())
+}
+
 // TestOpsSemanticProgressReporterCloseIsIdempotent verifies repeated cleanup
 // neither double-stops activity nor emits duplicate final records.
 func TestOpsSemanticProgressReporterCloseIsIdempotent(t *testing.T) {

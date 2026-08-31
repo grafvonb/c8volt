@@ -59,7 +59,7 @@
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Implement mutex-protected completion ingestion, monotonic completed/failed/affected aggregation, and explicit workflow activity ownership in `cmd/ops_semantic_progress.go`
+- [x] T015 [US1] Implement mutex-protected completion ingestion, monotonic completed/failed/affected aggregation, and explicit workflow activity ownership in `cmd/ops_semantic_progress.go`
 - [x] T016 [US1] Emit exactly one structured completion fact from each executed process-instance create/cancel/delete worker and disable legacy timer progress when the callback is installed in `internal/services/processinstance/bulk.go`
 - [x] T017 [US1] Route direct, stdin, and search cancel/delete mutations through the same reporter without changing planning, confirmation, result ordering, or final summaries in `cmd/processinstance_mutation_progress.go`, `cmd/cancel_processinstance.go`, `cmd/cancel_processinstance_selector.go`, `cmd/delete_processinstance.go`, and `cmd/delete_processinstance_selector.go`
 - [x] T018 [P] [US1] Emit completion facts for every basic process-definition deletion, including the serial first probe and concurrent remainder, in `internal/services/processdefinition/delete.go`

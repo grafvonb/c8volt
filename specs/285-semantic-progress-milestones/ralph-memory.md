@@ -26,6 +26,7 @@ Started: 2026-08-31T17:14:26Z
 - Smoke-test service emits high-level completion facts for `deploying smoke-test fixture`, `starting process instances`, `walking process-instance families`, `cleaning up smoke-test process instances`, and `cleaning up smoke-test process definition`; start and cleanup phases mirror nested service completion facts into smoke-test stage phases.
 - Secondary workflow assessment tests now pin bulk-start inclusion, slow-analysis discovery as transient-only, multi-key expect JSON silence, and single-key waiter polling as wait-priority rather than semantic workflow progress.
 - `run process-instance --count` uses a run-specific semantic completion reporter for process-instance creation facts; the shared explicit-large-work adapter remains frozen-scope-only for walk/search-style callers.
+- Reporter scope isolation is now pinned directly: completion events for a different phase do not advance aggregate counters or repaint the workflow activity.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -76,4 +77,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should continue User Story 1 at T015. Reporter aggregation is already covered by scaffold/concurrency tests, but T015 remains open until the implementation is reviewed against the final US1 requirements before process-definition command wiring in T019; T019, T020, T021, T022, T023, and T024 also remain open in US1.
+- Next iteration should continue User Story 1 at T019: start fresh confirmed deletion reporters for basic and all-process-definition commands while leaving discovery pages separate.

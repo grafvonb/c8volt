@@ -248,3 +248,19 @@ Started: 2026-08-31 19:14:26
 - Bulk-start completion facts now drive semantic workflow activity through a run-specific adapter, while shared explicit-work progress remains frozen-scope-only for walk/search-style callers.
 - Validation passed: `go test ./cmd ./internal/services/processinstance/waiter -run 'TestRunProcessInstanceBulkStartCompletionUsesSemanticWorkflowActivity|TestExplicitLargeWorkSharedAdapterIgnoresCompletionFacts|TestOpsAnalyseSlowProcessInstancesSearchDiscoveryStaysTransientOnly|TestExpectProcessInstanceCommand_MultiKeyStateJSONRemainsProgressFree|TestWaitForProcessInstanceState_SingleTargetPollingIsNotWorkflowProgress' -race -count=1`, `go test ./cmd -run 'RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|ExplicitLargeWork' -race -count=1`, `go test ./internal/services/processinstance/waiter -race -count=1`, `go test ./cmd -run 'Progress|Activity' -race -count=1`, and `git diff --check`.
 ---
+---
+## Iteration 12 - 2026-08-31 20:30
+**Work Unit**: User Story 1 semantic reporter completion ingestion review
+**Tasks Completed**:
+- [x] T015: Implement mutex-protected completion ingestion, monotonic completed/failed/affected aggregation, and explicit workflow activity ownership
+**Tasks Remaining in Work Unit**: T019-T024 remain in User Story 1
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_semantic_progress_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Reporter aggregation already satisfied T015; this iteration added direct scope-isolation coverage so shared callbacks cannot advance a workflow with another phase's completion fact.
+- Validation passed: `go test ./cmd -run 'TestOpsSemanticProgress' -race -count=1`, `go test ./toolx/logging -race -count=1`, `go test ./cmd -run 'Progress|Activity' -race -count=1`, and `git diff --check`.
+---
