@@ -67,3 +67,18 @@ Started: 2026-08-31 08:07:38
 **Learnings**:
 - `tenantOverrideProvenanceFromConfig` now owns the config mutation for active all-tenants; `go test ./cmd -run 'Test.*(AllTenants|TenantOverride|TenantContext)' -count=1` and `git diff --check` pass, while full `go test ./cmd -count=1` still has the pending US4 help assertion that sees inherited `--all-tenants`.
 ---
+---
+## Iteration 4 - 2026-08-31 08:26
+**Work Unit**: US1 config tenant-context output isolation
+**Tasks Completed**:
+- [x] T013: Added human, JSON, and YAML tenant-context isolation tests for active all-tenants in `cmd/config_test.go`.
+**Tasks Remaining in Work Unit**: T014, T015, and T019 remain open in US1.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/config_test.go
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- Active all-tenants config diagnostics now have focused coverage proving private override provenance stays out of YAML and JSON while the human diagnostic path emits the ordered broadening warning.
+---

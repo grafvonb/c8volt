@@ -185,6 +185,37 @@ apis:
 	require.NotContains(t, tenantContext, "targetTenantId")
 }
 
+// Verifies all-tenants affects config show YAML only through effective
+// configuration state and does not serialize command-line provenance.
+func TestConfigShowCommand_AllTenantsYAMLUsesEffectiveTenantContextWithoutProvenance(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `app:
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: https://camunda.example.test
+`)
+
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "--all-tenants", "config", "show")
+
+	var got map[string]any
+	require.NoError(t, yaml.Unmarshal([]byte(stdout), &got))
+	require.Equal(t, "", requireJSONObject(t, got["app"])["tenant"])
+	tenantContext := requireJSONObject(t, got["tenantContext"])
+	require.Equal(t, "configuration", tenantContext["mode"])
+	require.Equal(t, "none", tenantContext["filter"])
+	require.NotContains(t, tenantContext, "configuredTenantId")
+	require.NotContains(t, tenantContext, "targetTenantId")
+	require.NotContains(t, tenantContext, "warnings")
+	require.NotContains(t, stdout, "configured tenant:")
+	require.NotContains(t, stdout, "--all-tenants overrides")
+	require.NotContains(t, stdout, "selection scope:")
+	require.Contains(t, stderr, "INFO config loaded: "+cfgPath)
+	require.NotContains(t, stderr, "--all-tenants overrides")
+	require.NotContains(t, stderr, "selection scope:")
+}
+
 func TestConfigShowCommand_ValidatePreservesValidOutcome(t *testing.T) {
 	cfgPath := writeRawTestConfig(t, `app:
   tenant: tenant-a
@@ -535,6 +566,39 @@ apis:
 	require.Less(t, strings.Index(stderr, "INFO selection scope: tenant-a only"), strings.Index(stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2"))
 }
 
+// Verifies all-tenants human diagnostics report the private broadening
+// provenance before the effective unfiltered configuration scope.
+func TestConfigTestConnectionCommand_AllTenantsHumanWarnsBeforeEffectiveScope(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/topology", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, "8.8.2", 1, 1)))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "8.8"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "config", "test-connection", "--all-tenants")
+
+	require.Contains(t, stdout, "Cluster: GatewayVersion=8.8.2")
+	require.NotContains(t, stdout, "--all-tenants overrides")
+	require.Contains(t, stderr, "INFO configured tenant: tenant-a")
+	require.Contains(t, stderr, "WARN --all-tenants overrides the configured tenant filter; selection is unfiltered")
+	require.Contains(t, stderr, "INFO selection scope: unfiltered across accessible tenants")
+	require.Less(t, strings.Index(stderr, "INFO configured tenant: tenant-a"), strings.Index(stderr, "WARN --all-tenants overrides"))
+	require.Less(t, strings.Index(stderr, "WARN --all-tenants overrides"), strings.Index(stderr, "INFO selection scope: unfiltered across accessible tenants"))
+	require.Less(t, strings.Index(stderr, "INFO selection scope: unfiltered across accessible tenants"), strings.Index(stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2"))
+}
+
 func TestConfigTestConnectionCommand_JSONIncludesConfigurationTenantContext(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -566,6 +630,46 @@ apis:
 	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
 	require.Equal(t, false, tenantContext["crossTenant"])
 	require.NotContains(t, stderr, "selection scope:")
+}
+
+// Verifies all-tenants JSON diagnostics expose only the effective unfiltered
+// tenant context and keep private override provenance out of both streams.
+func TestConfigTestConnectionCommand_AllTenantsJSONUsesEffectiveTenantContextWithoutProvenance(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/topology", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, "8.8.2", 1, 1)))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "8.8"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "--all-tenants", "config", "test-connection", "--json")
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	tenantContext := requireJSONObject(t, got["tenantContext"])
+	require.Equal(t, "configuration", tenantContext["mode"])
+	require.Equal(t, "none", tenantContext["filter"])
+	require.NotContains(t, tenantContext, "configuredTenantId")
+	require.NotContains(t, tenantContext, "targetTenantId")
+	require.NotContains(t, tenantContext, "warnings")
+	require.NotContains(t, stdout, "configured tenant:")
+	require.NotContains(t, stdout, "--all-tenants overrides")
+	require.NotContains(t, stdout, "selection scope:")
+	require.NotContains(t, stderr, "configured tenant:")
+	require.NotContains(t, stderr, "--all-tenants overrides")
+	require.NotContains(t, stderr, "selection scope:")
+	require.Contains(t, stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2")
 }
 
 func TestConfigTestConnectionCommand_JSONIncludesVersionMismatchWarning(t *testing.T) {

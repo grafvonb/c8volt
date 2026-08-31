@@ -59,7 +59,7 @@ description: "Dependency-ordered implementation tasks for the all-tenants tenant
 
 - [x] T011 [P] [US1] Add failing base/profile/environment, already-empty, explicit-false, absent-flag, and Camunda 8.7 post-normalization override tests in `cmd/root_config_test.go`
 - [x] T012 [P] [US1] Add failing exact-warning, configured-tenant ordering, once-only, already-unfiltered, and existing `--tenant ""` regression tests in `cmd/cmd_views_tenant_context_test.go`
-- [ ] T013 [P] [US1] Add failing human, JSON, and YAML tenant-context isolation tests for active all-tenants in `cmd/config_test.go`
+- [x] T013 [P] [US1] Add failing human, JSON, and YAML tenant-context isolation tests for active all-tenants in `cmd/config_test.go`
 - [ ] T014 [P] [US1] Add failing representative read/search request tests across Camunda 8.7, 8.8, 8.9, and 8.10 plus quiet/total-only/keys-only assertions in `cmd/get_processinstance_test.go` and `cmd/get_test.go`
 - [ ] T015 [P] [US1] Add failing durable-progress tests proving the all-tenants warning appears once before effective scope without leaking to protected output in `cmd/processinstance_mutation_progress_test.go` and `cmd/ops_progress_test.go`
 - [x] T016 [US1] Extend private tenant override provenance with an all-tenants origin and exact broadening warning while preserving public `tenant.Context` in `cmd/cmd_tenant_context.go`
