@@ -98,3 +98,20 @@ Started: 2026-08-31 08:07:38
 **Learnings**:
 - Active all-tenants now has focused get-family request coverage proving filters omit configured tenants while protected output modes keep command-line provenance out of machine streams.
 ---
+---
+## Iteration 6 - 2026-08-31 08:36
+**Work Unit**: US1 durable progress all-tenants warning coverage
+**Tasks Completed**:
+- [x] T015: Added durable-progress tests proving the all-tenants warning appears once before effective scope without leaking to protected output in `cmd/processinstance_mutation_progress_test.go` and `cmd/ops_progress_test.go`.
+- [x] T019: Ran focused US1 tests for tenant override, tenant context, config, get, process-instance mutation progress, and ops progress coverage.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/processinstance_mutation_progress_test.go
+- cmd/ops_progress_test.go
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- US1 focused validation passes with all-tenants durable progress coverage; next work begins US2 conflict validation.
+---
