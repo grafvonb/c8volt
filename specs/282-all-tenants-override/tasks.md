@@ -158,7 +158,7 @@ description: "Dependency-ordered implementation tasks for the all-tenants tenant
 - [x] T052 Run the `vet` target in `Makefile` with `make vet` and resolve all feature-related failures in touched Go files
 - [x] T053 Run the constitution-required full race-enabled `test` target in `Makefile` with `make test`
 - [x] T054 Review `git diff --check` and the full diff to confirm no changes under `c8volt/`, `internal/services/`, or `internal/clients/`, no public tenant-context provenance, and no authorization-bypass option
-- [ ] T055 Update completed checkboxes and reusable codebase patterns in `specs/282-all-tenants-override/tasks.md` and `specs/282-all-tenants-override/progress.md`
+- [x] T055 Update completed checkboxes and reusable codebase patterns in `specs/282-all-tenants-override/tasks.md` and `specs/282-all-tenants-override/progress.md`
 
 ---
 
