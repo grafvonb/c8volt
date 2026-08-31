@@ -49,7 +49,7 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 ### Tests for User Story 1
 
 - [x] T004 [P] [US1] Add page-arrival independence and final canonical collection-order tests to `internal/services/processdefinition/search_test.go`
-- [ ] T005 [P] [US1] Add public ordinary-search and paged-search order-preservation tests to `c8volt/process/client_test.go`
+- [x] T005 [P] [US1] Add public ordinary-search and paged-search order-preservation tests to `c8volt/process/client_test.go`
 - [ ] T006 [P] [US1] Add command-level filtered and `--all-tenants` canonical ordering tests to `cmd/get_processdefinition_test.go`
 - [ ] T007 [P] [US1] Add Camunda 8.7 request-sort and returned-order assertions for tenant/BPMN/version/key to `internal/services/processdefinition/v87/service_test.go`
 - [ ] T008 [P] [US1] Add Camunda 8.8 ordinary request-sort and returned-order assertions to `internal/services/processdefinition/v88/service_test.go`

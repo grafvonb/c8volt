@@ -52,3 +52,18 @@ Started: 2026-08-31 13:37:23
 **Learnings**:
 - Final service results are canonical after traversal; visitor cumulative counts remain tied to selected page accumulation before final sorting.
 ---
+---
+## Iteration 4 - 2026-08-31 13:50
+**Work Unit**: US1 public facade order-preservation tests
+**Tasks Completed**:
+- [x] T005: Add public ordinary-search and paged-search order-preservation tests to `c8volt/process/client_test.go`
+**Tasks Remaining in Work Unit**: 0; US1 has 10 incomplete tasks remaining (T006-T014)
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/process/client_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- Facade conversion preserves service slice order for ordinary search, and paged facade results inherit final normalization from `pdsvc.SearchProcessDefinitionsPages` without reordering visitor page callbacks.
+---

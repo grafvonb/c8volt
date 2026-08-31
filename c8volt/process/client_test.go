@@ -254,6 +254,45 @@ func TestClient_SearchProcessDefinitions_MapsProcessDefinitionSelectorFilter(t *
 	assert.Equal(t, "order-process", items.Items[0].BpmnProcessId)
 }
 
+// TestClient_SearchProcessDefinitions_PreservesCanonicalServiceOrder verifies
+// ordinary facade search maps the service-owned sequence without reordering it.
+func TestClient_SearchProcessDefinitions_PreservesCanonicalServiceOrder(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	pdAPI := &stubProcessDefinitionAPI{
+		searchProcessDefinitions: func(_ context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
+			assert.Equal(t, d.ProcessDefinitionFilter{BpmnProcessId: "invoice"}, filter)
+			assert.Equal(t, pdsvc.MaxResultSize, size)
+			assert.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			return []d.ProcessDefinition{
+				processDefinitionForFacadeOrder("<default>", "invoice", 10, "default-invoice-v10"),
+				processDefinitionForFacadeOrder("Tenant-A", "invoice", 1, "tenant-cap-invoice-v1"),
+				processDefinitionForFacadeOrder("tenant-a", "Invoice", 1, "tenant-a-Invoice-v1"),
+				processDefinitionForFacadeOrder("tenant-a", "invoice", 10, "10"),
+				processDefinitionForFacadeOrder("tenant-a", "invoice", 10, "2"),
+				processDefinitionForFacadeOrder("tenant-a", "invoice", 9, "tenant-a-invoice-v9"),
+				processDefinitionForFacadeOrder("tenant-b", "payment", 1, "tenant-b-payment-v1"),
+			}, nil
+		},
+	}
+
+	cli := New(pdAPI, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
+	got, err := cli.SearchProcessDefinitions(ctx, ProcessDefinitionFilter{BpmnProcessId: "invoice"}, options.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	require.EqualValues(t, 7, got.Total)
+	require.Equal(t, []string{
+		"default-invoice-v10",
+		"tenant-cap-invoice-v1",
+		"tenant-a-Invoice-v1",
+		"10",
+		"2",
+		"tenant-a-invoice-v9",
+		"tenant-b-payment-v1",
+	}, processDefinitionFacadeKeys(got.Items))
+}
+
 // TestClient_SearchProcessDefinitionsLatest_MapsProcessDefinitionSelectorFilter
 // extends facade coverage to latest-definition searches used by BPMN starts.
 func TestClient_SearchProcessDefinitionsLatest_MapsProcessDefinitionSelectorFilter(t *testing.T) {
@@ -320,6 +359,83 @@ func TestClient_SearchProcessDefinitionsPages_MapsTraversalRequestAndVisitor(t *
 	assert.Equal(t, int64(1), steps[0].Page.ReportedTotal.Count)
 	assert.Equal(t, ProcessDefinitionReportedTotalKindExact, steps[0].Page.ReportedTotal.Kind)
 	assert.EqualValues(t, 1, steps[0].CumulativeCount)
+}
+
+// TestClient_SearchProcessDefinitionsPages_PreservesCanonicalTraversalOrder
+// verifies paged facade search returns the service-normalized collection while
+// page visitor callbacks still expose page-arrival order.
+func TestClient_SearchProcessDefinitionsPages_PreservesCanonicalTraversalOrder(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var requests []d.ProcessDefinitionPageRequest
+	pdAPI := &stubProcessDefinitionAPI{
+		searchProcessDefinitionsPage: func(_ context.Context, filter d.ProcessDefinitionFilter, page d.ProcessDefinitionPageRequest, opts ...services.CallOption) (d.ProcessDefinitionPage, error) {
+			assert.Equal(t, d.ProcessDefinitionFilter{BpmnProcessId: "invoice"}, filter)
+			assert.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			requests = append(requests, page)
+			switch len(requests) {
+			case 1:
+				assert.Equal(t, d.ProcessDefinitionPageRequest{Size: 3}, page)
+				return d.ProcessDefinitionPage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					EndCursor:     "cursor-3",
+					Items: []d.ProcessDefinition{
+						processDefinitionForFacadeOrder("tenant-b", "payment", 1, "tenant-b-payment-v1"),
+						processDefinitionForFacadeOrder("tenant-a", "invoice", 9, "tenant-a-invoice-v9"),
+						processDefinitionForFacadeOrder("tenant-a", "invoice", 10, "2"),
+					},
+				}, nil
+			case 2:
+				assert.Equal(t, "cursor-3", page.After)
+				return d.ProcessDefinitionPage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+					ReportedTotal: &d.ProcessDefinitionReportedTotal{
+						Count: 7,
+						Kind:  d.ProcessDefinitionReportedTotalKindExact,
+					},
+					Items: []d.ProcessDefinition{
+						processDefinitionForFacadeOrder("tenant-a", "Invoice", 1, "tenant-a-Invoice-v1"),
+						processDefinitionForFacadeOrder("<default>", "invoice", 10, "default-invoice-v10"),
+						processDefinitionForFacadeOrder("Tenant-A", "invoice", 1, "tenant-cap-invoice-v1"),
+						processDefinitionForFacadeOrder("tenant-a", "invoice", 10, "10"),
+					},
+				}, nil
+			default:
+				t.Fatalf("unexpected process-definition page request %d", len(requests))
+				return d.ProcessDefinitionPage{}, nil
+			}
+		},
+	}
+
+	cli := New(pdAPI, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
+	var steps []ProcessDefinitionSearchPageStep
+	got, err := cli.SearchProcessDefinitionsPages(ctx, ProcessDefinitionSearchRequest{
+		Filter: ProcessDefinitionFilter{BpmnProcessId: "invoice"},
+		Page:   ProcessDefinitionPageRequest{Size: 3},
+	}, func(step ProcessDefinitionSearchPageStep) (ProcessDefinitionSearchPageAction, error) {
+		steps = append(steps, step)
+		return ProcessDefinitionSearchPageActionContinue, nil
+	}, options.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	require.Len(t, requests, 2)
+	require.EqualValues(t, 2, got.Pages)
+	require.Equal(t, []string{
+		"default-invoice-v10",
+		"tenant-cap-invoice-v1",
+		"tenant-a-Invoice-v1",
+		"10",
+		"2",
+		"tenant-a-invoice-v9",
+		"tenant-b-payment-v1",
+	}, processDefinitionFacadeKeys(got.Items))
+	require.Len(t, steps, 2)
+	require.Equal(t, []string{"tenant-b-payment-v1", "tenant-a-invoice-v9", "2"}, processDefinitionFacadeKeys(steps[0].Page.Items))
+	require.EqualValues(t, 3, steps[0].CumulativeCount)
+	require.EqualValues(t, 7, steps[1].CumulativeCount)
 }
 
 // TestClient_CollectProcessDefinitionWatchSnapshot_DelegatesSnapshotCollection
@@ -2680,6 +2796,26 @@ func (s *stubProcessDefinitionAPI) GetProcessDefinitionXML(ctx context.Context, 
 }
 
 var _ pdsvc.API = (*stubProcessDefinitionAPI)(nil)
+
+// processDefinitionForFacadeOrder keeps canonical order fields readable in
+// process facade tests.
+func processDefinitionForFacadeOrder(tenantID, bpmnProcessID string, version int32, key string) d.ProcessDefinition {
+	return d.ProcessDefinition{
+		TenantId:       tenantID,
+		BpmnProcessId:  bpmnProcessID,
+		ProcessVersion: version,
+		Key:            key,
+	}
+}
+
+// processDefinitionFacadeKeys extracts the public facade collection identity.
+func processDefinitionFacadeKeys(definitions []ProcessDefinition) []string {
+	keys := make([]string, 0, len(definitions))
+	for _, definition := range definitions {
+		keys = append(keys, definition.Key)
+	}
+	return keys
+}
 
 type stubElementAPI struct {
 	getElement          func(context.Context, string, ...services.CallOption) (d.Element, error)
