@@ -51,13 +51,17 @@ Use capabilities for the machine-readable command contract.`,
   ./c8volt capabilities --json
   ./c8volt get --help`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if hasHelpFlag(cmd) {
+			return nil
+		}
+		if err := validateAllTenantsSelection(cmd); err != nil {
+			return silenceUsageForError(cmd, err)
+		}
+
 		v := viper.New()
 		bindings, err := initViper(v, cmd)
 		if err != nil {
 			return silenceUsageForError(cmd, bootstrapLocalPrecondition(err))
-		}
-		if hasHelpFlag(cmd) {
-			return nil
 		}
 
 		switch {
@@ -142,6 +146,16 @@ func silenceUsageForError(cmd *cobra.Command, err error) error {
 		cmd.SilenceUsage = true
 	}
 	return err
+}
+
+func validateAllTenantsSelection(cmd *cobra.Command) error {
+	if cmd == nil || !flagAllTenants {
+		return nil
+	}
+	if tenantFlag := cmd.Flags().Lookup("tenant"); tenantFlag != nil && tenantFlag.Changed {
+		return mutuallyExclusiveFlagsf("--tenant cannot be combined with --all-tenants")
+	}
+	return nil
 }
 
 func Execute() {

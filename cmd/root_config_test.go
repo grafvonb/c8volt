@@ -416,6 +416,66 @@ apis:
 	}
 }
 
+// TestRetrieveAndNormalizeConfig_AllTenantsInactivePreservesExplicitTenantPrecedence
+// verifies the new root flag does not alter existing tenant precedence when it
+// is absent or explicitly false.
+func TestRetrieveAndNormalizeConfig_AllTenantsInactivePreservesExplicitTenantPrecedence(t *testing.T) {
+	tests := []struct {
+		name           string
+		allTenantsFlag *string
+	}{
+		{
+			name: "all-tenants absent",
+		},
+		{
+			name:           "all-tenants false",
+			allTenantsFlag: stringPtr("false"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("C8VOLT_APP_TENANT", "env-tenant")
+
+			root := Root()
+			resetCommandTreeFlags(root)
+			t.Cleanup(func() {
+				resetCommandTreeFlags(root)
+			})
+
+			cfgPath := filepath.Join(t.TempDir(), "config.yaml")
+			require.NoError(t, os.WriteFile(cfgPath, []byte(`
+app:
+  tenant: base-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`), 0o600))
+			require.NoError(t, root.PersistentFlags().Set("config", cfgPath))
+			require.NoError(t, root.PersistentFlags().Set("tenant", "cli-tenant"))
+			if tt.allTenantsFlag != nil {
+				require.NoError(t, root.PersistentFlags().Set("all-tenants", *tt.allTenantsFlag))
+			}
+
+			v := viper.New()
+			bindings, err := initViper(v, root)
+			require.NoError(t, err)
+
+			cfg, err := retrieveAndNormalizeConfig(v, bindings)
+			require.NoError(t, err)
+
+			require.Equal(t, "cli-tenant", cfg.App.Tenant)
+			require.Equal(t, tenantOverrideProvenance{
+				ConfiguredTenantID: "env-tenant",
+				ExplicitTenantID:   "cli-tenant",
+				Explicit:           true,
+			}, tenantOverrideProvenanceFromConfig(v, bindings, cfg))
+		})
+	}
+}
+
 // TestAutomationModeEnabled_PrefersResolvedConfigContext ensures runtime decisions read the resolved
 // config placed on the command context, even when the raw persistent flag value says otherwise.
 func TestAutomationModeEnabled_PrefersResolvedConfigContext(t *testing.T) {

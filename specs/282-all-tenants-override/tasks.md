@@ -79,14 +79,14 @@ description: "Dependency-ordered implementation tasks for the all-tenants tenant
 
 ### Tests for User Story 2
 
-- [ ] T020 [P] [US2] Add failing named/empty explicit tenant conflict, explicit-false, absent-flag, and configured-source acceptance tests in `cmd/root_test.go`
-- [ ] T021 [P] [US2] Add failing subprocess assertions for invalid-input class, exit 2, silenced usage, and conflict precedence over missing configuration in `cmd/bootstrap_errors_test.go`
+- [x] T020 [P] [US2] Add failing named/empty explicit tenant conflict, explicit-false, absent-flag, and configured-source acceptance tests in `cmd/root_test.go`
+- [x] T021 [P] [US2] Add failing subprocess assertions for invalid-input class, exit 2, silenced usage, and conflict precedence over missing configuration in `cmd/bootstrap_errors_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T022 [US2] Add early root tenant-choice validation using `Flag.Changed`, `mutuallyExclusiveFlagsf`, and `silenceUsageForError` before configuration or service work in `cmd/root.go`
-- [ ] T023 [US2] Add regression coverage that flag state resets between in-process executions without changing existing tenant precedence in `cmd/root_test.go` and `cmd/root_config_test.go`
-- [ ] T024 [US2] Run focused US2 tests for `cmd/root_test.go`, `cmd/bootstrap_errors_test.go`, and `cmd/root_config_test.go`
+- [x] T022 [US2] Add early root tenant-choice validation using `Flag.Changed`, `mutuallyExclusiveFlagsf`, and `silenceUsageForError` before configuration or service work in `cmd/root.go`
+- [x] T023 [US2] Add regression coverage that flag state resets between in-process executions without changing existing tenant precedence in `cmd/root_test.go` and `cmd/root_config_test.go`
+- [x] T024 [US2] Run focused US2 tests for `cmd/root_test.go`, `cmd/bootstrap_errors_test.go`, and `cmd/root_config_test.go`
 
 **Checkpoint**: US2 is complete when every explicit tenant conflict fails locally and all invocations without an active conflict retain established behavior.
 

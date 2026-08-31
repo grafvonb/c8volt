@@ -115,3 +115,25 @@ Started: 2026-08-31 08:07:38
 **Learnings**:
 - US1 focused validation passes with all-tenants durable progress coverage; next work begins US2 conflict validation.
 ---
+---
+## Iteration 7 - 2026-08-31 08:43
+**Work Unit**: US2 Prevent Ambiguous Tenant Overrides
+**Tasks Completed**:
+- [x] T020: Added named/empty explicit tenant conflict, explicit-false, absent-flag, and configured-source acceptance tests in `cmd/root_test.go`.
+- [x] T021: Added subprocess assertions for invalid-input class, exit 2, silenced usage, and conflict precedence over missing configuration in `cmd/bootstrap_errors_test.go`.
+- [x] T022: Added early root tenant-choice validation using `Flag.Changed`, `mutuallyExclusiveFlagsf`, and `silenceUsageForError` before configuration or service work in `cmd/root.go`.
+- [x] T023: Added regression coverage that flag state resets between in-process executions without changing existing tenant precedence in `cmd/root_test.go` and `cmd/root_config_test.go`.
+- [x] T024: Ran focused US2 tests for `cmd/root_test.go`, `cmd/bootstrap_errors_test.go`, and `cmd/root_config_test.go`.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/root.go
+- cmd/root_test.go
+- cmd/bootstrap_errors_test.go
+- cmd/root_config_test.go
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- All-tenants/tenant conflicts now fail before config loading; subprocess coverage confirms missing configuration does not mask the invalid-input class.
+---

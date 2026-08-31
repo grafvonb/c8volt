@@ -200,6 +200,109 @@ func TestAllTenantsRootFlag_ParsesRootAndSubcommandPlacement(t *testing.T) {
 	}
 }
 
+// TestAllTenantsRootFlag_RejectsExplicitTenantChoiceConflicts proves the two
+// command-line tenant selectors are mutually exclusive, even when --tenant is
+// explicitly empty.
+func TestAllTenantsRootFlag_RejectsExplicitTenantChoiceConflicts(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "named tenant before subcommand",
+			args: []string{"--all-tenants", "--tenant", "tenant-a", "config", "show", "--template"},
+		},
+		{
+			name: "empty tenant before subcommand",
+			args: []string{"--all-tenants", "--tenant", "", "config", "show", "--template"},
+		},
+		{
+			name: "named tenant after subcommand",
+			args: []string{"config", "show", "--template", "--all-tenants", "--tenant", "tenant-a"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, err := executeRootExpectErrorForTest(t, tt.args...)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "invalid input")
+			require.Contains(t, err.Error(), "--tenant cannot be combined with --all-tenants")
+			require.NotContains(t, output, "Usage:")
+			require.NotContains(t, output, "Examples:")
+		})
+	}
+}
+
+// TestAllTenantsRootFlag_AllowsInactiveOrConfiguredTenantSources keeps existing
+// tenant behavior valid when all-tenants is false, absent, or only overriding a
+// non-command-line configured source.
+func TestAllTenantsRootFlag_AllowsInactiveOrConfiguredTenantSources(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `
+app:
+  tenant: configured-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`)
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "explicit false allows explicit tenant",
+			args: []string{"--all-tenants=false", "--tenant", "tenant-a", "config", "show", "--template"},
+		},
+		{
+			name: "absent all-tenants allows explicit tenant",
+			args: []string{"--tenant", "tenant-a", "config", "show", "--template"},
+		},
+		{
+			name: "configured source allows active all-tenants",
+			args: []string{"--config", cfgPath, "--all-tenants", "config", "show"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output := executeRootForTest(t, tt.args...)
+
+			require.NotContains(t, output, "--tenant cannot be combined with --all-tenants")
+		})
+	}
+}
+
+// TestAllTenantsRootFlag_ResetClearsConflictStateBetweenExecutions verifies
+// in-process executions do not retain a previous active all-tenants selection.
+func TestAllTenantsRootFlag_ResetClearsConflictStateBetweenExecutions(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	t.Cleanup(func() {
+		resetCommandTreeFlags(root)
+	})
+
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"--all-tenants", "--tenant", "tenant-a", "config", "show", "--template"})
+
+	_, err := root.ExecuteC()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--tenant cannot be combined with --all-tenants")
+
+	resetCommandTreeFlags(root)
+	buf.Reset()
+	root.SetArgs([]string{"--tenant", "tenant-a", "config", "show", "--template"})
+
+	_, err = root.ExecuteC()
+	require.NoError(t, err)
+	require.False(t, flagAllTenants)
+}
+
 func TestTimeoutFlag_RejectsInvalidDuration(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
