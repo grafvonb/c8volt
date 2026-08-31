@@ -130,7 +130,7 @@ description: "Dependency-ordered implementation tasks for the all-tenants tenant
 - [x] T036 [P] [US4] Add failing JSON and human capability tests for additive `allTenantsSupport` values and unchanged document version `v1` in `cmd/command_contract_test.go` and `cmd/capabilities_test.go`
 - [x] T037 [P] [US4] Add failing root, applicable-command, and four destination-command help assertions in `cmd/root_test.go`, `cmd/deploy_test.go`, `cmd/embed_test.go`, `cmd/run_test.go`, and `cmd/ops_execute_smoke_test_test.go`
 - [x] T038 [P] [US4] Add failing inherited boolean root-flag example recognition without value consumption in `integration/cli/examples_test.go`
-- [ ] T039 [P] [US4] Add failing generated-page assertions for all-tenants syntax and destination restrictions in `docsgen/main_test.go`
+- [x] T039 [P] [US4] Add failing generated-page assertions for all-tenants syntax and destination restrictions in `docsgen/main_test.go`
 
 ### Implementation for User Story 4
 

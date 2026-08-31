@@ -1002,6 +1002,78 @@ func TestGeneratedGetProcessInstanceDocsDocumentVariableSearch(t *testing.T) {
 	}
 }
 
+func TestGeneratedAllTenantsDocsDocumentSyntaxAndRestrictions(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsReferenceLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	rootDoc := readGeneratedDocForTest(t, out, "c8volt.md")
+	for _, want := range []string{
+		"./c8volt --all-tenants get process-instance --state active",
+		"--all-tenants",
+		"clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant",
+	} {
+		if !strings.Contains(rootDoc, want) {
+			t.Fatalf("expected generated root docs to contain %q, got %q", want, rootDoc)
+		}
+	}
+
+	processInstanceDoc := readGeneratedDocForTest(t, out, "c8volt_get_process-instance.md")
+	for _, want := range []string{
+		"--all-tenants",
+		"clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant",
+		"Tenant contract: --tenant scopes search/list discovery and selector validation where supported.",
+		"Explicit --key and stdin keys are backend-authorized admin input",
+	} {
+		if !strings.Contains(processInstanceDoc, want) {
+			t.Fatalf("expected generated get process-instance docs to contain %q, got %q", want, processInstanceDoc)
+		}
+	}
+
+	resourceDoc := readGeneratedDocForTest(t, out, "c8volt_get_resource.md")
+	for _, want := range []string{
+		"--all-tenants",
+		"Tenant contract: explicit --id resource targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.",
+	} {
+		if !strings.Contains(resourceDoc, want) {
+			t.Fatalf("expected generated get resource docs to contain %q, got %q", want, resourceDoc)
+		}
+	}
+
+	for _, tt := range []struct {
+		name string
+		file string
+	}{
+		{name: "deploy process-definition", file: "c8volt_deploy_process-definition.md"},
+		{name: "embed deploy", file: "c8volt_embed_deploy.md"},
+		{name: "run process-instance", file: "c8volt_run_process-instance.md"},
+		{name: "ops execute smoke-test", file: "c8volt_ops_execute_smoke-test.md"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got := readGeneratedDocForTest(t, out, tt.file)
+			for _, want := range []string{
+				"--all-tenants",
+				"This command does not accept --all-tenants because it creates resources in one concrete tenant.",
+			} {
+				if !strings.Contains(got, want) {
+					t.Fatalf("expected generated %s docs to contain %q, got %q", tt.name, want, got)
+				}
+			}
+		})
+	}
+}
+
 func TestGeneratedWalkProcessInstanceDocsDocumentListeners(t *testing.T) {
 	out := t.TempDir()
 	root := cmd.Root()

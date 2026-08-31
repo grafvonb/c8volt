@@ -229,3 +229,18 @@ Started: 2026-08-31 08:07:38
 **Learnings**:
 - Example command-path resolution strips leading inherited root flags before alias matching, so boolean inherited flags must be listed in `isRootFlag` only.
 ---
+---
+## Iteration 12 - 2026-08-31 09:07
+**Work Unit**: US4 generated CLI docs all-tenants assertions
+**Tasks Completed**:
+- [x] T039: Added generated-page assertions for all-tenants syntax, accepted discovery/direct-key docs, and concrete-destination restrictions in `docsgen/main_test.go`.
+**Tasks Remaining in Work Unit**: T044, T045, T046, T047, and T048 remain open in US4.
+**Commit**: This work-unit commit
+**Files Changed**:
+- docsgen/main_test.go
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- Generated CLI page coverage now verifies root syntax/help and all four destination restriction pages from fresh Cobra markdown output.
+---
