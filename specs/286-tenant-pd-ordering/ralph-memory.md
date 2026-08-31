@@ -9,6 +9,7 @@ Started: 2026-08-31T11:37:22Z
 - `internal/services/processdefinition.SearchProcessDefinitionsPages` now applies final canonical sorting only to the returned accumulated ordinary collection; page visitor cumulative counts and limit selection still reflect traversal order before final normalization.
 - `c8volt/process/client_test.go` now covers ordinary facade search preserving the service-provided canonical sequence and paged facade search returning the service-normalized final sequence while visitor pages remain in arrival order.
 - `internal/services/processdefinition/v87/service.go` now sends Operate sort fields `tenantId ASC`, `bpmnProcessId ASC`, `version DESC`, `key ASC` for ordinary search and normalizes `SearchProcessDefinitions` output with `domain.SortProcessDefinitionsCanonical`.
+- `internal/services/processdefinition/v88/service.go` now sends Camunda v2 ordinary sort fields `tenantId ASC`, `processDefinitionId ASC`, `version DESC`, `processDefinitionKey ASC` and normalizes `SearchProcessDefinitions` output with `domain.SortProcessDefinitionsCanonical`.
 
 ## Decisions
 - Treat T001 as a validation-only setup work unit; no production code changed in iteration 1.
@@ -17,6 +18,7 @@ Started: 2026-08-31T11:37:22Z
 - T005 was completed as a facade regression test-only work unit; no public facade implementation change was needed because conversion already preserves service slice order.
 - T006 was completed as command regression coverage for tenant-filtered and `--all-tenants` broad listing; no production command change was needed because both cases already consume the shared paged collection path.
 - T007 and T011 were paired in iteration 6 because the new v8.7 request-sort regression requires the adapter sort tuple and canonical result normalization to pass.
+- T008 and T012 were paired in iteration 7 because the new v8.8 request-sort regression requires the adapter sort tuple and canonical result normalization to pass.
 
 ## Gotchas
 - Shell wrapper note: zsh has special parameters named `status` and `commands`; use neutral variable names or run validation loops under `/bin/bash`.
@@ -36,4 +38,4 @@ Started: 2026-08-31T11:37:22Z
 - Do not use zsh variable names `status` or `commands` in validation-loop scripts.
 
 ## Current Handoff
-- Next iteration starts at T008: add Camunda 8.8 ordinary request-sort and returned-order assertions to `internal/services/processdefinition/v88/service_test.go`; pair with T012 if the regression exposes the current v8.8 adapter sort gap.
+- Next iteration starts at T009: add Camunda 8.9 ordinary request-sort and returned-order assertions to `internal/services/processdefinition/v89/service_test.go`; pair with T013 if the regression exposes the same ordinary adapter sort gap.

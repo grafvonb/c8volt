@@ -99,3 +99,20 @@ Started: 2026-08-31 13:37:23
 **Learnings**:
 - v8.7 ordinary search can use the generic Operate `Sort` model for the full canonical tuple, while final result normalization remains local through the shared domain comparator.
 ---
+---
+## Iteration 7 - 2026-08-31 14:03
+**Work Unit**: US1 Camunda 8.8 ordinary adapter canonical ordering
+**Tasks Completed**:
+- [x] T008: Add Camunda 8.8 ordinary request-sort and returned-order assertions to `internal/services/processdefinition/v88/service_test.go`
+- [x] T012: Encode Camunda 8.8 ordinary backend sorting as tenant ID ASC, process definition ID ASC, version DESC, and process definition key ASC, then use the domain canonical sort for returned collections in `internal/services/processdefinition/v88/service.go`
+**Tasks Remaining in Work Unit**: 0; US1 has 4 incomplete tasks remaining (T009-T010, T013-T014)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/v88/service.go
+- internal/services/processdefinition/v88/service_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- v8.8 ordinary search uses Camunda v2 `processDefinitionKey` as the final backend tie-breaker; native latest sorting remains intentionally unchanged for later latest tasks.
+---
