@@ -38,6 +38,7 @@ Started: 2026-08-31T11:37:22Z
 - `cmd/process_definition_selector_validation.go` now validates selectors through `SearchProcessDefinitionsPages` with `Latest` set for latest-aware checks; near-match and visible recovery listings also use the paged facade collection path.
 - `cmd/get_processdefinition_test.go` now covers broad latest paged dispatch, `--batch-size` propagation, all-tenant filter clearing, and identical latest keys across page sizes 1, 2, and 1000.
 - `cmd/process_definition_selector_validation_test.go` now proves latest selector validation uses the paged collection request rather than the legacy latest facade call.
+- `cmd/get_processdefinition.go` and `README.md` now document the canonical process-definition collection order, exact case-sensitive tenant/BPMN comparison rules, opaque key tie-breaking, latest grouping, and the Camunda 8.7 1000 visible-definition compatibility window.
 
 ## Decisions
 - Treat T001 as a validation-only setup work unit; no production code changed in iteration 1.
@@ -62,6 +63,7 @@ Started: 2026-08-31T11:37:22Z
 - T027 and T035 were paired because the new v8.9 latest page regression requires tenant/process native sort order and cursor continuation metadata changes to pass.
 - T028 and T036 were paired because the new v8.10 latest page regression requires tenant/process native sort order and cursor continuation metadata changes to pass.
 - T029 and T037 were paired because the new CLI latest and selector tests require broad `--latest` and selector validation to share the paged canonical facade collection path.
+- T038 was completed as source documentation only; generated CLI docs remain intentionally pending for T039.
 
 ## Gotchas
 - Shell wrapper note: zsh has special parameters named `status` and `commands`; use neutral variable names or run validation loops under `/bin/bash`.
@@ -81,4 +83,4 @@ Started: 2026-08-31T11:37:22Z
 - Do not use zsh variable names `status` or `commands` in validation-loop scripts.
 
 ## Current Handoff
-- US3 is complete. Next iteration should start Phase 6 at T038: update canonical-order wording, latest grouping, exact comparison rules, and the Camunda 8.7 compatibility note in `cmd/get_processdefinition.go` and `README.md`; after source wording changes, T039 should regenerate CLI docs with `make docs-content`.
+- Next iteration should run T039: regenerate and review process-definition CLI documentation with `make docs-content`, accepting generated changes in `docs/cli/c8volt_get_process-definition.md`.

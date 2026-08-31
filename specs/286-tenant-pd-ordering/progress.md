@@ -379,3 +379,19 @@ Started: 2026-08-31 13:37:23
 **Learnings**:
 - Broad `--latest` now uses the same command paged facade request as ordinary listing, so `--batch-size`, all-tenant discovery, and progress behavior remain command-owned while service traversal owns collection mechanics.
 ---
+---
+## Iteration 24 - 2026-08-31 15:15
+**Work Unit**: Phase 6 process-definition source documentation wording
+**Tasks Completed**:
+- [x] T038: Update canonical-order wording, latest grouping, exact comparison rules, and the Camunda 8.7 compatibility note in `cmd/get_processdefinition.go` and `README.md`
+**Tasks Remaining in Work Unit**: 0; Phase 6 has 5 incomplete tasks remaining (T039-T043)
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/get_processdefinition.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- Source command help and README now state the same canonical process-definition order and latest compatibility notes; generated CLI docs remain pending for T039.
+---

@@ -171,6 +171,17 @@ Then look around at the latest process definitions visible in the cluster:
 ./c8volt get process-definition --latest
 ```
 
+Process-definition collections use one stable order in human, JSON, keys-only,
+statistics, and watch output: tenant ID ascending, BPMN process ID ascending,
+version descending, then process-definition key ascending. Tenant and BPMN
+process IDs are exact, case-sensitive text; the displayed `<default>` tenant is
+ordered as ordinary text; process-definition keys are opaque text and are not
+parsed numerically. `--latest` selects one newest definition per exact tenant
+ID and BPMN process ID pair, using the lowest exact-text key when versions tie.
+Camunda 8.7 applies this latest selection within its existing 1000 visible
+definition compatibility window; Camunda 8.8 or newer uses native latest
+filtering and the same final collection order.
+
 To watch deployment visibility in a terminal, add `--watch`. The first refresh
 runs immediately, the default interval is `1s`, and `--watch-interval` accepts
 positive durations such as `2s`. Each successful refresh repaints one terminal

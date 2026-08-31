@@ -126,7 +126,7 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 
 **Purpose**: Align documentation, generated artifacts, formatting, and repository-wide validation with the completed contract.
 
-- [ ] T038 Update canonical-order wording, latest grouping, exact comparison rules, and the Camunda 8.7 compatibility note in `cmd/get_processdefinition.go` and `README.md`
+- [x] T038 Update canonical-order wording, latest grouping, exact comparison rules, and the Camunda 8.7 compatibility note in `cmd/get_processdefinition.go` and `README.md`
 - [ ] T039 Regenerate and review process-definition CLI documentation with `make docs-content`, accepting generated changes in `docs/cli/c8volt_get_process-definition.md`
 - [ ] T040 Run `gofmt` on all touched Go files and execute the focused commands from `specs/286-tenant-pd-ordering/quickstart.md`
 - [ ] T041 Run the repository static validation target `make vet` against the implementation described by `specs/286-tenant-pd-ordering/plan.md`
