@@ -33,8 +33,8 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 
 **CRITICAL**: Complete this phase before any user-story implementation.
 
-- [ ] T002 Add table-driven canonical comparator tests for `<default>` placement, case-sensitive tenant/BPMN identity, versions 9 and 10, lexical keys `10` and `2`, empty/single collections, and shuffled inputs in `internal/domain/processdefinition_test.go`
-- [ ] T003 Implement and document the reusable canonical process-definition comparator and sort function `(tenantId ASC, bpmnProcessId ASC, version DESC, key ASC)` without changing unrelated sort helpers in `internal/domain/processdefinition.go`
+- [x] T002 Add table-driven canonical comparator tests for `<default>` placement, case-sensitive tenant/BPMN identity, versions 9 and 10, lexical keys `10` and `2`, empty/single collections, and shuffled inputs in `internal/domain/processdefinition_test.go`
+- [x] T003 Implement and document the reusable canonical process-definition comparator and sort function `(tenantId ASC, bpmnProcessId ASC, version DESC, key ASC)` without changing unrelated sort helpers in `internal/domain/processdefinition.go`
 
 **Checkpoint**: The domain package has a deterministic, reusable comparator whose focused tests pass.
 

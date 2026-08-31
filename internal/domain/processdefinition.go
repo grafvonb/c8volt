@@ -160,6 +160,43 @@ func SortByVersionDesc(pds []ProcessDefinition) {
 	})
 }
 
+// CompareProcessDefinitionsCanonical compares process definitions by the
+// stable collection order: tenant ID ascending, BPMN process ID ascending,
+// process version descending, then process-definition key ascending.
+func CompareProcessDefinitionsCanonical(a, b ProcessDefinition) int {
+	if a.TenantId < b.TenantId {
+		return -1
+	}
+	if a.TenantId > b.TenantId {
+		return 1
+	}
+	if a.BpmnProcessId < b.BpmnProcessId {
+		return -1
+	}
+	if a.BpmnProcessId > b.BpmnProcessId {
+		return 1
+	}
+	switch {
+	case a.ProcessVersion > b.ProcessVersion:
+		return -1
+	case a.ProcessVersion < b.ProcessVersion:
+		return 1
+	}
+	if a.Key < b.Key {
+		return -1
+	}
+	if a.Key > b.Key {
+		return 1
+	}
+	return 0
+}
+
+// SortProcessDefinitionsCanonical applies the stable collection order used by
+// tenant-aware process-definition searches and renderers.
+func SortProcessDefinitionsCanonical(pds []ProcessDefinition) {
+	slices.SortFunc(pds, CompareProcessDefinitionsCanonical)
+}
+
 func SortByBpmnProcessIdAscThenByVersionDesc(pds []ProcessDefinition) {
 	slices.SortFunc(pds, func(a, b ProcessDefinition) int {
 		if a.BpmnProcessId < b.BpmnProcessId {
