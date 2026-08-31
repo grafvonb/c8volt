@@ -3,8 +3,6 @@
 Feature: 282-all-tenants-override
 Started: 2026-08-31 08:07:38
 
----
-
 ## Iteration 1 - 2026-08-31 08:34
 **Work Unit**: Phase 1 Setup discovery
 **Tasks Completed**:
@@ -190,4 +188,29 @@ Started: 2026-08-31 08:07:38
 - specs/282-all-tenants-override/progress.md
 **Learnings**:
 - Capability discovery now exposes `allTenantsSupport` consistently in JSON and human summaries, with accepted commands and concrete-destination rejections using the same resolver as runtime validation.
+---
+---
+## Iteration 10 - 2026-08-31 08:58
+**Work Unit**: US4 help discoverability and destination restriction text
+**Tasks Completed**:
+- [x] T037: Added root, applicable-command, and four concrete-destination help assertions in `cmd/root_test.go`, `cmd/deploy_test.go`, `cmd/embed_test.go`, `cmd/run_test.go`, and `cmd/ops_execute_smoke_test_test.go`.
+- [x] T042: Finalized root flag help/examples and concrete-destination restriction text in `cmd/root.go`, `cmd/deploy_processdefinition.go`, `cmd/embed_deploy.go`, `cmd/run_processinstance.go`, and `cmd/ops_execute_smoketest.go`.
+**Tasks Remaining in Work Unit**: T038, T039, T043, T044, T045, T046, T047, and T048 remain open in US4.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/root.go
+- cmd/root_test.go
+- cmd/deploy_processdefinition.go
+- cmd/deploy_test.go
+- cmd/embed_deploy.go
+- cmd/embed_test.go
+- cmd/run_processinstance.go
+- cmd/run_test.go
+- cmd/ops_execute_smoketest.go
+- cmd/ops_execute_smoke_test_test.go
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- Root and command help now expose the same all-tenants visibility and destination-rejection wording that runtime validation and capability metadata already enforce.
 ---

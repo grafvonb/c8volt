@@ -127,6 +127,26 @@ func TestProcessInstanceHelp_ExposesCompactGlobalFlags(t *testing.T) {
 	)
 }
 
+// TestAllTenantsHelp_DocumentsRootAndApplicableCommand keeps the inherited
+// all-tenants flag discoverable for tenant-scoped read/search commands without
+// suggesting it bypasses backend authorization.
+func TestAllTenantsHelp_DocumentsRootAndApplicableCommand(t *testing.T) {
+	rootOutput := executeRootForTest(t, "--help")
+	assertHelpOutputContainsAll(t, rootOutput,
+		"--all-tenants",
+		"clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant",
+		"./c8volt --all-tenants get process-instance --state active",
+	)
+
+	processInstanceOutput := executeRootForTest(t, "get", "process-instance", "--help")
+	assertHelpOutputContainsAll(t, processInstanceOutput,
+		"Tenant contract: --tenant scopes search/list discovery and selector validation where supported.",
+		"Explicit --key and stdin keys are backend-authorized admin input",
+		"--all-tenants",
+		"clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant",
+	)
+}
+
 // TestAllTenantsRootFlag_DefaultsFalse verifies the inherited override starts inactive
 // until explicitly selected on the command line.
 func TestAllTenantsRootFlag_DefaultsFalse(t *testing.T) {

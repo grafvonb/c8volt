@@ -75,6 +75,7 @@ func TestOpsExecuteSmokeTestHelpDocumentsCommand(t *testing.T) {
 		"--no-wait",
 		"--report-file string",
 		"--report-format string",
+		"does not accept --all-tenants because it creates resources in one concrete tenant",
 		"./c8volt ops execute smoke-test --dry-run",
 		"./c8volt ops execute smoke-test --report-file smoke-test.md",
 		"./c8volt ops execute smoke-test --count 5 --report-file smoke-test.md",

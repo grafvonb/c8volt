@@ -47,6 +47,7 @@ Use capabilities for the machine-readable command contract.`,
 	Example: `  ./c8volt config show --template
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt get cluster topology
+  ./c8volt --all-tenants get process-instance --state active
   ./c8volt embed deploy --all --run
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
   ./c8volt capabilities --json
@@ -211,7 +212,7 @@ func init() {
 	pf.Bool("log-with-source", false, "include source file and line number in logs")
 
 	pf.String("tenant", "", "tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized")
-	pf.BoolVar(&flagAllTenants, "all-tenants", false, "clear configured tenant filtering and search all tenants visible to the authenticated user")
+	pf.BoolVar(&flagAllTenants, "all-tenants", false, "clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant")
 	pf.BoolVar(&flagNoErrCodes, "no-err-codes", false, "suppress error codes in error outputs")
 
 	pf.String("camunda-version", string(toolx.CurrentCamundaVersion), fmt.Sprintf("Camunda version (%s) expected; aliases include 810, v810, and v8.10 for 8.10. Causes usage of specific API versions.", toolx.SupportedCamundaVersionsString()))

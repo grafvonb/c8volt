@@ -89,6 +89,7 @@ func TestEmbedDeployHelp_DocumentsRunWithoutExpectationFlags(t *testing.T) {
 	output := executeRootForTest(t, "embed", "deploy", "--help")
 
 	require.Contains(t, output, "Add --run to start one process instance")
+	require.Contains(t, output, "does not accept --all-tenants because it creates resources in one concrete tenant")
 	require.Contains(t, output, "--run")
 	require.NotContains(t, output, "--expected-status")
 }
