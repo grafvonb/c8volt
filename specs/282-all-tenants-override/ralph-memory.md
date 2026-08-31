@@ -25,6 +25,7 @@ Started: 2026-08-31T06:07:38Z
 - `integration/cli/examples_test.go` now recognizes `--all-tenants` and `--all-tenants=false` as inherited root flags without consuming the following command token; `rootFlagConsumesValue` remains unchanged for this boolean flag.
 - `docsgen/main_test.go:TestGeneratedAllTenantsDocsDocumentSyntaxAndRestrictions` generates temp Cobra markdown and asserts root all-tenants syntax/help, accepted discovery/direct-key generated pages, and the four concrete-destination generated pages all expose the expected restriction sentence.
 - `README.md` now has a `Tenant Scope` subsection under configuration/automation documenting supported inherited `--all-tenants` syntax, exact warning text, visibility-bounded unfiltered semantics, mutual exclusion with explicit `--tenant`, concrete-destination rejection inventory, and unchanged direct-key backend authorization.
+- `docs/ops/index.md` and the non-generated ops playbooks now document all-tenants safety: accepted discovery playbooks describe visibility-bounded unfiltered scope, exact warning text, mutual exclusion with explicit `--tenant`, and explicit-key backend authorization; `docs/ops/execute-smoke-test.md` documents rejection because smoke-test creates resources in one concrete tenant.
 - Generated CLI docs are owned by `docsgen/main.go` and regenerated with `make docs-content`; it calls Cobra markdown generation, `syncCLICommandTree`, and `syncDocsIndexFromReadme`. Do not hand-edit `docs/cli/*` or `docs/index.md`.
 
 ## Decisions
@@ -36,7 +37,6 @@ Started: 2026-08-31T06:07:38Z
 - `embed deploy` currently calls `NewCli`, `embedded.List`, validates embedded file choices, and reads from `embedded.FS` before deployment. Rejection must happen before embedded inventory/file access.
 - `run process-instance` currently calls `NewCli`, parses `--vars`, may validate process-definition selectors remotely for BPMN IDs, and builds creation data with `cfg.App.TargetTenant()`. Rejection must happen before stdin/prompt/activity/request work and before default-tenant targeting can be derived.
 - `ops execute smoke-test` validates local flags first, then calls `NewCli`, prepares report/planning state, may validate report paths, prompts, starts activity, and calls `ExecuteSmokeTest`. Rejection must happen before report, prompt, activity, dry-run plan, or remote work.
-- `go test ./cmd -count=1` currently fails at `TestGetElementHelp_DocumentsSearchAndOutputModes` because the inherited root flag added in Phase 2 contains `--all`; leave this for US4 help/discoverability work rather than editing help expectations during US1.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -53,4 +53,4 @@ Started: 2026-08-31T06:07:38Z
 - Do not implement concrete-destination rejection inside the four command runners after they have already initialized clients, inspected inputs, or built reports.
 
 ## Current Handoff
-- Continue Phase 6 / US4 at task T045: update all-tenants safety guidance in the listed `docs/ops/*.md` playbooks.
+- Continue Phase 6 / US4 at task T046: regenerate `docs/cli/` and `docs/index.md` from command metadata and `README.md` with `make docs-content`.

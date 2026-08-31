@@ -52,6 +52,8 @@ Generated references: [get process-instance](/cli/c8volt_get_process-instance), 
 
 Default human output shows each root process instance with a compact `slowest elements:` section. Use `--with-full-timeline` for chronological detail, `--json` for stable fields, and `--keys-only` when the next command should receive the selected process-instance keys.
 
+Selector-based analysis uses discovery tenant semantics. A named tenant configuration limits discovery and is reported as `selection scope: tenant-a only`; `--all-tenants` clears that configured filter for the run and reports `selection scope: unfiltered across accessible tenants`. The all-tenants scope remains bounded by authenticated Camunda visibility and does not bypass direct-key authorization. When it clears a named configured tenant, human output emits `--all-tenants overrides the configured tenant filter; selection is unfiltered`; it is mutually exclusive with any explicit `--tenant` value. Explicit process-instance keys use backend authorization for those keys rather than tenant-filtered discovery.
+
 ## Read-Only Execution
 
 This command does not submit mutations. It reads process instances, runtime elements, and optional listener jobs, then calculates durations from available timestamps. Active process instances use the command capture time as the current endpoint for duration calculation.

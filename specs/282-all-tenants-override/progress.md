@@ -259,3 +259,26 @@ Started: 2026-08-31 08:07:38
 **Learnings**:
 - README now carries the source all-tenants operator contract; generated `docs/index.md` should be refreshed later by T046 through `make docs-content`.
 ---
+---
+## Iteration 14 - 2026-08-31 09:14
+**Work Unit**: US4 operator docs all-tenants safety guidance
+**Tasks Completed**:
+- [x] T045: Updated all-tenants safety guidance in the listed `docs/ops/*.md` playbooks.
+**Tasks Remaining in Work Unit**: T046, T047, and T048 remain open in US4.
+**Commit**: This work-unit commit
+**Files Changed**:
+- docs/ops/index.md
+- docs/ops/analyse-slow-process-instances.md
+- docs/ops/execute-retention-policy.md
+- docs/ops/execute-smoke-test.md
+- docs/ops/purge-all-process-definitions.md
+- docs/ops/purge-orphan-process-instances.md
+- docs/ops/purge-process-instances-with-incidents.md
+- docs/ops/repair-incident.md
+- docs/ops/repair-process-instance.md
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- Non-generated ops guidance now distinguishes accepted discovery all-tenants scope from smoke-test concrete-destination rejection; `git diff --check` passed for the docs-only work unit.
+---
