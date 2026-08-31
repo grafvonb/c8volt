@@ -24,6 +24,7 @@ Started: 2026-08-31T06:07:38Z
 - Integration example parsing treats inherited root flags in `integration/cli/examples_test.go:isRootFlag`, with value-consuming flags separately listed in `rootFlagConsumesValue`. New boolean inherited flags belong only in `isRootFlag`.
 - `integration/cli/examples_test.go` now recognizes `--all-tenants` and `--all-tenants=false` as inherited root flags without consuming the following command token; `rootFlagConsumesValue` remains unchanged for this boolean flag.
 - `docsgen/main_test.go:TestGeneratedAllTenantsDocsDocumentSyntaxAndRestrictions` generates temp Cobra markdown and asserts root all-tenants syntax/help, accepted discovery/direct-key generated pages, and the four concrete-destination generated pages all expose the expected restriction sentence.
+- `README.md` now has a `Tenant Scope` subsection under configuration/automation documenting supported inherited `--all-tenants` syntax, exact warning text, visibility-bounded unfiltered semantics, mutual exclusion with explicit `--tenant`, concrete-destination rejection inventory, and unchanged direct-key backend authorization.
 - Generated CLI docs are owned by `docsgen/main.go` and regenerated with `make docs-content`; it calls Cobra markdown generation, `syncCLICommandTree`, and `syncDocsIndexFromReadme`. Do not hand-edit `docs/cli/*` or `docs/index.md`.
 
 ## Decisions
@@ -52,4 +53,4 @@ Started: 2026-08-31T06:07:38Z
 - Do not implement concrete-destination rejection inside the four command runners after they have already initialized clients, inspected inputs, or built reports.
 
 ## Current Handoff
-- Continue Phase 6 / US4 at task T044: add supported syntax, exact warning, visibility boundary, mutual exclusion, destination restriction, and direct-key behavior to `README.md`.
+- Continue Phase 6 / US4 at task T045: update all-tenants safety guidance in the listed `docs/ops/*.md` playbooks.

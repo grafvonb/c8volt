@@ -138,7 +138,7 @@ description: "Dependency-ordered implementation tasks for the all-tenants tenant
 - [x] T041 [US4] Include all-tenants support state in the compact human capability summary in `cmd/capabilities.go`
 - [x] T042 [US4] Finalize root flag help/examples and concrete-destination restriction text in `cmd/root.go`, `cmd/deploy_processdefinition.go`, `cmd/embed_deploy.go`, `cmd/run_processinstance.go`, and `cmd/ops_execute_smoketest.go`
 - [x] T043 [US4] Register `all-tenants` as a non-value-consuming inherited root flag in `integration/cli/examples_test.go`
-- [ ] T044 [P] [US4] Add supported syntax, exact warning, visibility boundary, mutual exclusion, destination restriction, and direct-key behavior to `README.md`
+- [x] T044 [P] [US4] Add supported syntax, exact warning, visibility boundary, mutual exclusion, destination restriction, and direct-key behavior to `README.md`
 - [ ] T045 [P] [US4] Update all-tenants safety guidance in `docs/ops/index.md`, `docs/ops/analyse-slow-process-instances.md`, `docs/ops/execute-retention-policy.md`, `docs/ops/execute-smoke-test.md`, `docs/ops/purge-all-process-definitions.md`, `docs/ops/purge-orphan-process-instances.md`, `docs/ops/purge-process-instances-with-incidents.md`, `docs/ops/repair-incident.md`, and `docs/ops/repair-process-instance.md`
 - [ ] T046 [US4] Regenerate `docs/cli/` and `docs/index.md` from command metadata and `README.md` with `make docs-content`
 - [ ] T047 [US4] Run and record the 30-second discoverability review required by SC-007, including participant count and success rate, in `specs/282-all-tenants-override/progress.md`

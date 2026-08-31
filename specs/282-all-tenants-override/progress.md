@@ -244,3 +244,18 @@ Started: 2026-08-31 08:07:38
 **Learnings**:
 - Generated CLI page coverage now verifies root syntax/help and all four destination restriction pages from fresh Cobra markdown output.
 ---
+---
+## Iteration 13 - 2026-08-31 09:10
+**Work Unit**: US4 README all-tenants tenant scope documentation
+**Tasks Completed**:
+- [x] T044: Added supported syntax, exact warning, visibility boundary, mutual exclusion, destination restriction, and direct-key behavior to `README.md`.
+**Tasks Remaining in Work Unit**: T045, T046, T047, and T048 remain open in US4.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- README now carries the source all-tenants operator contract; generated `docs/index.md` should be refreshed later by T046 through `make docs-content`.
+---
