@@ -25,6 +25,7 @@ Started: 2026-08-31T11:37:22Z
 - `internal/services/processdefinition/search.go` now treats `ProcessDefinitionSearchRequest.Latest` as a shared traversal intent: it sets `IsLatestVersion` for page adapters, traverses all available pages without applying the user limit early, reduces by exact tenant/BPMN group with version-desc/key-asc winner rules, canonically sorts, then applies the latest limit.
 - `CollectProcessDefinitionWatchSnapshot` now routes latest snapshots through `SearchProcessDefinitionsPages` with `Latest: true`, preserving direct-key snapshots and ordinary broad snapshot paging behavior.
 - `c8volt/process.ProcessDefinitionSearchRequest` and `internal/domain.ProcessDefinitionSearchRequest` now carry additive `Latest bool`; `c8volt/process/convert.go` maps it to the domain request.
+- `c8volt/process.SearchProcessDefinitionsLatest` now delegates to `pdsvc.SearchProcessDefinitionsPages` with `Latest: true`, preserving facade error conversion and returning the shared service's complete, reduced, canonically ordered result sequence.
 
 ## Decisions
 - Treat T001 as a validation-only setup work unit; no production code changed in iteration 1.
@@ -43,6 +44,7 @@ Started: 2026-08-31T11:37:22Z
 - T021 was completed as v8.9 adapter parity coverage plus an implementation comment; no behavior change was needed because enrichment mutates each definition before the final canonical sort.
 - T022 was completed as v8.10 adapter parity coverage plus an implementation comment; no behavior change was needed because enrichment mutates each definition before the final canonical sort.
 - T023, T030, and T031 were completed together because the shared service tests require an additive latest request intent and the service-owned latest traversal/reduction implementation to pass.
+- T024 and T032 were paired because the facade latest regression tests intentionally reject the old direct `SearchProcessDefinitionsLatest` service call and require the shared paged latest traversal to pass.
 
 ## Gotchas
 - Shell wrapper note: zsh has special parameters named `status` and `commands`; use neutral variable names or run validation loops under `/bin/bash`.
@@ -62,4 +64,4 @@ Started: 2026-08-31T11:37:22Z
 - Do not use zsh variable names `status` or `commands` in validation-loop scripts.
 
 ## Current Handoff
-- Next iteration starts at US3 T024: add facade tests for mapping `Latest`, complete latest results, ordered conversion, visitor behavior, and domain-error conversion in `c8volt/process/client_test.go`; T023/T030/T031 passed `go test ./internal/services/processdefinition -run 'Test(SearchProcessDefinitionsPages|CollectProcessDefinitionWatchSnapshot)' -count=1`, `go test ./c8volt/process -run 'TestProcessDefinitionSearchRequestConversionPreservesLatestIntent|TestProcessDefinitionWatchSnapshotRequestConversionPreservesSelectorFields|TestClient_SearchProcessDefinitionsPages' -count=1`, `go test ./internal/services/processdefinition -run 'Test.*(SearchProcessDefinitionsPages|WatchSnapshot|Latest|Paging|Order)' -count=1`, `go test ./c8volt/process -run 'Test(ProcessDefinition.*Conversion|Client_SearchProcessDefinitions|Client_CollectProcessDefinitionWatchSnapshot)' -count=1`, `go test ./internal/services/processdefinition -count=1`, `go test ./c8volt/process -count=1`, and `go test ./internal/domain -count=1`.
+- Next iteration remains in US3 at T025: add Camunda 8.7 tests for canonical Operate paging, tenant-aware local latest selection, lexical key ties, and the retained 1000-definition compatibility ceiling in `internal/services/processdefinition/v87/service_test.go`; T024/T032 passed `go test ./c8volt/process -run 'TestClient_SearchProcessDefinitions(Latest|Pages)' -count=1` and `go test ./c8volt/process -count=1`.

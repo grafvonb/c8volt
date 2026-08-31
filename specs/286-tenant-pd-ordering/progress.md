@@ -19,6 +19,23 @@ Started: 2026-08-31 13:37:23
 **Learnings**:
 - v8.10 ordinary search matches the v8.9 manually marshalled request-body path and now uses the same canonical ordinary sort tuple before final domain normalization.
 ---
+---
+## Iteration 18 - 2026-08-31 14:47
+**Work Unit**: US3 facade latest traversal routing
+**Tasks Completed**:
+- [x] T024: Add facade tests for mapping `Latest`, complete latest results, ordered conversion, visitor behavior, and domain-error conversion in `c8volt/process/client_test.go`
+- [x] T032: Route `SearchProcessDefinitionsLatest` through the shared paged service request with `Latest: true`, preserving facade error conversion and result order in `c8volt/process/client.go`
+**Tasks Remaining in Work Unit**: 0; US3 has 10 incomplete tasks remaining (T025-T029, T033-T037)
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/process/client.go
+- c8volt/process/client_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- Public latest facade search now uses the same paged latest traversal as watch and explicit paged searches, so the old adapter-level latest method is no longer the facade boundary for complete collection discovery.
+---
 ## Iteration 1 - 2026-08-31 13:39
 **Work Unit**: Setup baseline validation
 **Tasks Completed**:
