@@ -82,3 +82,19 @@ Started: 2026-08-31 08:07:38
 **Learnings**:
 - Active all-tenants config diagnostics now have focused coverage proving private override provenance stays out of YAML and JSON while the human diagnostic path emits the ordered broadening warning.
 ---
+---
+## Iteration 5 - 2026-08-31 08:33
+**Work Unit**: US1 representative get request and protected output coverage
+**Tasks Completed**:
+- [x] T014: Added representative read/search request tests across Camunda 8.7, 8.8, 8.9, and 8.10 plus quiet/total-only/keys-only assertions in `cmd/get_processinstance_test.go` and `cmd/get_test.go`.
+**Tasks Remaining in Work Unit**: T015 and T019 remain open in US1.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processinstance_test.go
+- cmd/get_test.go
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- Active all-tenants now has focused get-family request coverage proving filters omit configured tenants while protected output modes keep command-line provenance out of machine streams.
+---

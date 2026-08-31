@@ -3120,6 +3120,147 @@ func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.
 	require.Contains(t, output, `"tenantId": "<default>"`)
 }
 
+// TestGetProcessInstanceSearch_AllTenantsOmitsTenantFilterAcrossVersions proves
+// the root override clears configured tenants before every supported PI search
+// adapter builds its request body.
+func TestGetProcessInstanceSearch_AllTenantsOmitsTenantFilterAcrossVersions(t *testing.T) {
+	tests := []struct {
+		name       string
+		version    string
+		path       string
+		response   string
+		wantOutput string
+	}{
+		{
+			name:       "v87",
+			version:    "8.7",
+			path:       "/v1/process-instances/search",
+			response:   `{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant-visible"}]}`,
+			wantOutput: `"tenantId": "tenant-visible"`,
+		},
+		{
+			name:       "v88",
+			version:    "8.8",
+			path:       "/v2/process-instances/search",
+			response:   `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-visible"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			wantOutput: `"tenantId": "tenant-visible"`,
+		},
+		{
+			name:       "v89",
+			version:    "8.9",
+			path:       "/v2/process-instances/search",
+			response:   `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-visible"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			wantOutput: `"tenantId": "tenant-visible"`,
+		},
+		{
+			name:       "v810",
+			version:    "8.10",
+			path:       "/v2/process-instances/search",
+			response:   `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-visible"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			wantOutput: `"tenantId": "tenant-visible"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodPost, r.Method)
+				require.Equal(t, tt.path, r.URL.Path)
+
+				body, err := io.ReadAll(r.Body)
+				require.NoError(t, err)
+				requests = append(requests, string(body))
+
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(tt.response))
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "`+tt.version+`"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+			output := executeRootForProcessInstanceTest(t,
+				"--config", cfgPath,
+				"--all-tenants",
+				"--json",
+				"get", "process-instance",
+				"--state", "active",
+			)
+
+			filter := decodeCapturedPISearchFilter(t, requests)
+			require.NotContains(t, filter, "tenantId")
+			require.Equal(t, "ACTIVE", filter["state"])
+			require.Contains(t, output, tt.wantOutput)
+			require.NotContains(t, output, "--all-tenants overrides")
+		})
+	}
+}
+
+// TestGetProcessInstanceSearch_AllTenantsProtectedOutputModesStayClean keeps
+// command-line tenant provenance out of quiet, total-only, and keys-only output.
+func TestGetProcessInstanceSearch_AllTenantsProtectedOutputModesStayClean(t *testing.T) {
+	tests := []struct {
+		name       string
+		args       []string
+		response   string
+		wantStdout string
+	}{
+		{
+			name:       "quiet",
+			args:       []string{"--quiet", "get", "process-instance", "--state", "active"},
+			response:   `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-visible"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			wantStdout: "123 tenant-visible demo v3 ACTIVE",
+		},
+		{
+			name:       "total-only",
+			args:       []string{"get", "process-instance", "--state", "active", "--total"},
+			response:   `{"items":[],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			wantStdout: "1\n",
+		},
+		{
+			name:       "keys-only",
+			args:       []string{"--keys-only", "get", "process-instance", "--state", "active"},
+			response:   `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-visible"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			wantStdout: "123\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests, tt.response)
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+			args := append([]string{"--config", cfgPath, "--all-tenants"}, tt.args...)
+
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+
+			filter := decodeCapturedPISearchFilter(t, requests)
+			require.NotContains(t, filter, "tenantId")
+			require.Contains(t, stdout, tt.wantStdout)
+			require.NotContains(t, stdout, "--all-tenants overrides")
+			require.NotContains(t, stderr, "--all-tenants overrides")
+		})
+	}
+}
+
 // TestGetProcessInstanceCommand_VariableFiltersUnsupportedOnV87 verifies native variable filters fail before any 8.7 fallback path.
 func TestGetProcessInstanceCommand_VariableFiltersUnsupportedOnV87(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")

@@ -1151,6 +1151,65 @@ apis:
 	require.NotContains(t, output, "base-tenant")
 }
 
+// TestGetProcessDefinitionLatest_AllTenantsOmitsConfiguredTenantFilter verifies
+// get-family search commands consume the effective unfiltered tenant produced by
+// the root override without leaking command-line provenance to protected output.
+func TestGetProcessDefinitionLatest_AllTenantsOmitsConfiguredTenantFilter(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
+
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		requests = append(requests, string(body))
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "items": [
+    {
+      "processDefinitionId": "order-process",
+      "processDefinitionKey": "2251799813685255",
+      "tenantId": "tenant-visible",
+      "version": 7,
+      "versionTag": "stable"
+    }
+  ],
+  "page": {
+    "totalItems": 1,
+    "hasMoreTotalItems": false
+  }
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t,
+		"--config", cfgPath,
+		"--all-tenants",
+		"--json",
+		"get", "process-definition",
+		"--latest",
+	)
+
+	body := decodeSingleRequestJSON(t, requests)
+	filter := requireJSONObject(t, body["filter"])
+	require.NotContains(t, filter, "tenantId")
+	require.Equal(t, true, filter["isLatestVersion"])
+	require.Contains(t, stdout, `"tenantId": "tenant-visible"`)
+	require.NotContains(t, stdout, "--all-tenants overrides")
+	require.NotContains(t, stderr, "--all-tenants overrides")
+}
+
 func TestOneLinePD_IncidentCountRenderingByVersionBoundary(t *testing.T) {
 	t.Parallel()
 
@@ -1318,6 +1377,51 @@ func TestGetResourceCommand_KeysOnlyOutput(t *testing.T) {
 	output := executeRootForTest(t, "--config", cfgPath, "--keys-only", "get", "resource", "--id", "resource-id-123")
 
 	require.Equal(t, "resource-id-123\n", output)
+}
+
+// TestGetResourceCommand_AllTenantsKeysOnlyReadStaysOnDirectEndpoint verifies
+// direct get-family reads keep their backend-authorized endpoint and protected
+// output contract when the inherited all-tenants flag is active.
+func TestGetResourceCommand_AllTenantsKeysOnlyReadStaysOnDirectEndpoint(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "resourceId": "resource-id-123",
+  "resourceKey": "resource-key-123",
+  "resourceName": "order-process.bpmn",
+  "tenantId": "tenant-visible",
+  "version": 7,
+  "versionTag": "stable"
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t,
+		"--config", cfgPath,
+		"--all-tenants",
+		"--keys-only",
+		"get", "resource",
+		"--id", "resource-id-123",
+	)
+
+	require.Equal(t, []string{"GET /v2/resources/resource-id-123"}, requests)
+	require.Equal(t, "resource-id-123\n", stdout)
+	require.NotContains(t, stdout, "--all-tenants overrides")
+	require.NotContains(t, stderr, "--all-tenants overrides")
 }
 
 // Verifies V810 resource lookup keeps the established human, JSON, and keys-only render contracts.
