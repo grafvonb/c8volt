@@ -43,6 +43,7 @@ Started: 2026-08-31T11:37:22Z
 - `gofmt` over all Go files changed since the `#282` merge base was idempotent; the focused quickstart validation suite passed across domain, shared service, v87-v810 adapters, public process facade, and command tests.
 - Repository static validation `make vet` passed after the focused quickstart suite, running `go vet ./...` against the completed process-definition ordering implementation.
 - Repository full validation `make test` passed after T041, running `go test ./... -race -count=1` against the completed process-definition ordering implementation.
+- Final polish validation passed: `git diff --check`, feature command-file declaration ownership review, documentation wording scan, and every focused quickstart acceptance test command.
 
 ## Decisions
 - Treat T001 as a validation-only setup work unit; no production code changed in iteration 1.
@@ -72,6 +73,7 @@ Started: 2026-08-31T11:37:22Z
 - T040 was completed as a validation-only work unit because formatting produced no Go diffs and all focused quickstart commands passed.
 - T041 was completed as a validation-only work unit because `make vet` passed without source changes.
 - T042 was completed as a validation-only work unit because the required race-enabled full suite `make test` passed without source changes.
+- T043 was completed as a validation-only terminal work unit because whitespace checks, command ownership review, documentation wording checks, and focused quickstart acceptance tests passed without source changes.
 
 ## Gotchas
 - Shell wrapper note: zsh has special parameters named `status` and `commands`; use neutral variable names or run validation loops under `/bin/bash`.
@@ -91,4 +93,4 @@ Started: 2026-08-31T11:37:22Z
 - Do not use zsh variable names `status` or `commands` in validation-loop scripts.
 
 ## Current Handoff
-- Next iteration should run T043: run `git diff --check`, review command-file declaration ownership against `AGENTS.md`, and verify every acceptance item in `specs/286-tenant-pd-ordering/quickstart.md`.
+- Feature complete; no handoff required.

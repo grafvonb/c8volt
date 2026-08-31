@@ -131,7 +131,7 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 - [x] T040 Run `gofmt` on all touched Go files and execute the focused commands from `specs/286-tenant-pd-ordering/quickstart.md`
 - [x] T041 Run the repository static validation target `make vet` against the implementation described by `specs/286-tenant-pd-ordering/plan.md`
 - [x] T042 Run the required race-enabled full suite `make test` and resolve failures against `specs/286-tenant-pd-ordering/contracts/process-definition-ordering.md`
-- [ ] T043 Run `git diff --check`, review command-file declaration ownership against `AGENTS.md`, and verify every acceptance item in `specs/286-tenant-pd-ordering/quickstart.md`
+- [x] T043 Run `git diff --check`, review command-file declaration ownership against `AGENTS.md`, and verify every acceptance item in `specs/286-tenant-pd-ordering/quickstart.md`
 
 ---
 
