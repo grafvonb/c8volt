@@ -25,11 +25,11 @@ description: "Dependency-ordered implementation tasks for the all-tenants tenant
 
 **Purpose**: Reconfirm current ownership and record the implementation baseline before changing the root command.
 
-- [ ] T001 Inspect root flag declaration, configuration resolution, and private tenant provenance in `cmd/root.go`, `cmd/root_config.go`, `cmd/cmd_tenant_context.go`, and `cmd/cmd_views_tenant_context.go`
-- [ ] T002 [P] Inventory concrete tenant destination call sites and pre-run side effects in `cmd/deploy_processdefinition.go`, `cmd/embed_deploy.go`, `cmd/run_processinstance.go`, and `cmd/ops_execute_smoketest.go`
-- [ ] T003 [P] Inspect command annotation, capability serialization, and human capability rendering patterns in `cmd/command_contract.go`, `cmd/capabilities.go`, `cmd/command_contract_test.go`, and `cmd/capabilities_test.go`
-- [ ] T004 [P] Inspect inherited root-flag parsing and generated documentation ownership in `integration/cli/examples_test.go`, `docsgen/`, `README.md`, and `docs/ops/`
-- [ ] T005 Record confirmed ownership, the four-command destination inventory, and reusable #283 warning patterns in `specs/282-all-tenants-override/progress.md`
+- [x] T001 Inspect root flag declaration, configuration resolution, and private tenant provenance in `cmd/root.go`, `cmd/root_config.go`, `cmd/cmd_tenant_context.go`, and `cmd/cmd_views_tenant_context.go`
+- [x] T002 [P] Inventory concrete tenant destination call sites and pre-run side effects in `cmd/deploy_processdefinition.go`, `cmd/embed_deploy.go`, `cmd/run_processinstance.go`, and `cmd/ops_execute_smoketest.go`
+- [x] T003 [P] Inspect command annotation, capability serialization, and human capability rendering patterns in `cmd/command_contract.go`, `cmd/capabilities.go`, `cmd/command_contract_test.go`, and `cmd/capabilities_test.go`
+- [x] T004 [P] Inspect inherited root-flag parsing and generated documentation ownership in `integration/cli/examples_test.go`, `docsgen/`, `README.md`, and `docs/ops/`
+- [x] T005 Record confirmed ownership, the four-command destination inventory, and reusable #283 warning patterns in `specs/282-all-tenants-override/progress.md`
 
 ---
 
