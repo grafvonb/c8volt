@@ -149,3 +149,18 @@ Started: 2026-08-31 13:37:23
 **Learnings**:
 - v8.9 ordinary search uses a manually marshalled JSON request body, so request-sort tests decode the raw body and compare literal generated sort field values.
 ---
+---
+## Iteration 10 - 2026-08-31 14:13
+**Work Unit**: US2 facade conversion and statistics association coverage
+**Tasks Completed**:
+- [x] T016: Add facade conversion tests proving canonical slice order and per-key statistics association survive public mapping in `c8volt/process/client_test.go`
+**Tasks Remaining in Work Unit**: 0; US2 has 6 incomplete tasks remaining (T017-T022)
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/process/client_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- Existing facade conversion preserves both the service-provided key sequence and per-key statistics association for ordinary process-definition searches with `WithStat`.
+---

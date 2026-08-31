@@ -293,6 +293,80 @@ func TestClient_SearchProcessDefinitions_PreservesCanonicalServiceOrder(t *testi
 	}, processDefinitionFacadeKeys(got.Items))
 }
 
+// TestClient_SearchProcessDefinitions_PreservesOrderAndStatisticsAssociation
+// verifies facade conversion does not move rows or detach statistics from their
+// source process-definition key.
+func TestClient_SearchProcessDefinitions_PreservesOrderAndStatisticsAssociation(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	pdAPI := &stubProcessDefinitionAPI{
+		searchProcessDefinitions: func(_ context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
+			assert.Equal(t, d.ProcessDefinitionFilter{BpmnProcessId: "invoice"}, filter)
+			assert.Equal(t, pdsvc.MaxResultSize, size)
+			assert.True(t, services.ApplyCallOptions(opts).WithStat)
+			return []d.ProcessDefinition{
+				processDefinitionForFacadeOrderWithStatistics("<default>", "invoice", 10, "default-invoice-v10", 3, 0),
+				processDefinitionForFacadeOrderWithStatistics("Tenant-A", "invoice", 1, "tenant-cap-invoice-v1", 5, 1),
+				processDefinitionForFacadeOrderWithStatistics("tenant-a", "Invoice", 1, "tenant-a-Invoice-v1", 7, 2),
+				processDefinitionForFacadeOrderWithStatistics("tenant-a", "invoice", 10, "10", 11, 3),
+				processDefinitionForFacadeOrderWithStatistics("tenant-a", "invoice", 10, "2", 13, 4),
+			}, nil
+		},
+	}
+
+	cli := New(pdAPI, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
+	got, err := cli.SearchProcessDefinitions(ctx, ProcessDefinitionFilter{BpmnProcessId: "invoice"}, options.WithStat())
+
+	require.NoError(t, err)
+	require.EqualValues(t, 5, got.Total)
+	require.Equal(t, []string{
+		"default-invoice-v10",
+		"tenant-cap-invoice-v1",
+		"tenant-a-Invoice-v1",
+		"10",
+		"2",
+	}, processDefinitionFacadeKeys(got.Items))
+	require.Len(t, got.Items, 5)
+
+	wantByKey := map[string]ProcessDefinitionStatistics{
+		"default-invoice-v10": {
+			Active:                 3,
+			Completed:              30,
+			Incidents:              0,
+			IncidentCountSupported: true,
+		},
+		"tenant-cap-invoice-v1": {
+			Active:                 5,
+			Completed:              50,
+			Incidents:              1,
+			IncidentCountSupported: true,
+		},
+		"tenant-a-Invoice-v1": {
+			Active:                 7,
+			Completed:              70,
+			Incidents:              2,
+			IncidentCountSupported: true,
+		},
+		"10": {
+			Active:                 11,
+			Completed:              110,
+			Incidents:              3,
+			IncidentCountSupported: true,
+		},
+		"2": {
+			Active:                 13,
+			Completed:              130,
+			Incidents:              4,
+			IncidentCountSupported: true,
+		},
+	}
+	for _, item := range got.Items {
+		require.NotNil(t, item.Statistics, "statistics for %s", item.Key)
+		assert.Equal(t, wantByKey[item.Key], *item.Statistics)
+	}
+}
+
 // TestClient_SearchProcessDefinitionsLatest_MapsProcessDefinitionSelectorFilter
 // extends facade coverage to latest-definition searches used by BPMN starts.
 func TestClient_SearchProcessDefinitionsLatest_MapsProcessDefinitionSelectorFilter(t *testing.T) {
@@ -2806,6 +2880,17 @@ func processDefinitionForFacadeOrder(tenantID, bpmnProcessID string, version int
 		ProcessVersion: version,
 		Key:            key,
 	}
+}
+
+func processDefinitionForFacadeOrderWithStatistics(tenantID, bpmnProcessID string, version int32, key string, active, incidents int64) d.ProcessDefinition {
+	definition := processDefinitionForFacadeOrder(tenantID, bpmnProcessID, version, key)
+	definition.Statistics = &d.ProcessDefinitionStatistics{
+		Active:                 active,
+		Completed:              active * 10,
+		Incidents:              incidents,
+		IncidentCountSupported: true,
+	}
+	return definition
 }
 
 // processDefinitionFacadeKeys extracts the public facade collection identity.
