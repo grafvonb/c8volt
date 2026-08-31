@@ -46,7 +46,6 @@ Started: 2026-08-31 13:37:23
 **Learnings**:
 - Focused quickstart baseline passed for domain, shared process-definition service, v87-v810 adapters, public process facade, and command tests; the domain command currently has no matching tests to run.
 ---
----
 ## Iteration 2 - 2026-08-31 13:43
 **Work Unit**: Foundational canonical process-definition comparator
 **Tasks Completed**:
@@ -410,4 +409,18 @@ Started: 2026-08-31 13:37:23
 - specs/286-tenant-pd-ordering/progress.md
 **Learnings**:
 - `make docs-content` propagated the process-definition ordering contract into both the generated command page and generated docs index.
+---
+---
+## Iteration 26 - 2026-08-31 15:22
+**Work Unit**: Phase 6 focused formatting and validation
+**Tasks Completed**:
+- [x] T040: Run `gofmt` on all touched Go files and execute the focused commands from `specs/286-tenant-pd-ordering/quickstart.md`
+**Tasks Remaining in Work Unit**: 0; Phase 6 has 3 incomplete tasks remaining (T041-T043)
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- `gofmt` was idempotent for the feature-touched Go files, and all focused quickstart validation commands passed.
 ---

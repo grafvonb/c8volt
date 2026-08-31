@@ -40,6 +40,7 @@ Started: 2026-08-31T11:37:22Z
 - `cmd/process_definition_selector_validation_test.go` now proves latest selector validation uses the paged collection request rather than the legacy latest facade call.
 - `cmd/get_processdefinition.go` and `README.md` now document the canonical process-definition collection order, exact case-sensitive tenant/BPMN comparison rules, opaque key tie-breaking, latest grouping, and the Camunda 8.7 1000 visible-definition compatibility window.
 - `make docs-content` regenerated source-derived process-definition CLI documentation; generated diffs include `docs/cli/c8volt_get_process-definition.md` plus `docs/index.md` mirroring README content and build metadata.
+- `gofmt` over all Go files changed since the `#282` merge base was idempotent; the focused quickstart validation suite passed across domain, shared service, v87-v810 adapters, public process facade, and command tests.
 
 ## Decisions
 - Treat T001 as a validation-only setup work unit; no production code changed in iteration 1.
@@ -66,6 +67,7 @@ Started: 2026-08-31T11:37:22Z
 - T029 and T037 were paired because the new CLI latest and selector tests require broad `--latest` and selector validation to share the paged canonical facade collection path.
 - T038 was completed as source documentation only; generated CLI docs remain intentionally pending for T039.
 - T039 was completed as generated documentation only after `make docs-content` and a targeted ordering/latest wording review across README, command help source, and generated CLI docs.
+- T040 was completed as a validation-only work unit because formatting produced no Go diffs and all focused quickstart commands passed.
 
 ## Gotchas
 - Shell wrapper note: zsh has special parameters named `status` and `commands`; use neutral variable names or run validation loops under `/bin/bash`.
@@ -85,4 +87,4 @@ Started: 2026-08-31T11:37:22Z
 - Do not use zsh variable names `status` or `commands` in validation-loop scripts.
 
 ## Current Handoff
-- Next iteration should run T040: run `gofmt` on all touched Go files and execute the focused commands from `specs/286-tenant-pd-ordering/quickstart.md`.
+- Next iteration should run T041: run the repository static validation target `make vet` against the implementation described by `specs/286-tenant-pd-ordering/plan.md`.
