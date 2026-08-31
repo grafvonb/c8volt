@@ -44,6 +44,7 @@ Started: 2026-08-31T06:07:38Z
 - `embed deploy` currently calls `NewCli`, `embedded.List`, validates embedded file choices, and reads from `embedded.FS` before deployment. Rejection must happen before embedded inventory/file access.
 - `run process-instance` currently calls `NewCli`, parses `--vars`, may validate process-definition selectors remotely for BPMN IDs, and builds creation data with `cfg.App.TargetTenant()`. Rejection must happen before stdin/prompt/activity/request work and before default-tenant targeting can be derived.
 - `ops execute smoke-test` validates local flags first, then calls `NewCli`, prepares report/planning state, may validate report paths, prompts, starts activity, and calls `ExecuteSmokeTest`. Rejection must happen before report, prompt, activity, dry-run plan, or remote work.
+- Iteration 22 resolved the full-suite `./cmd` regressions from iteration 21: `TestGetElementHelp_DocumentsSearchAndOutputModes` now rejects only the obsolete `--all ` token so inherited `--all-tenants` is allowed, and `resetProcessInstanceCommandGlobals` resets root output/scope globals (`flagCmdAutomation`, `flagQuiet`, `flagNoIndicator`, `flagAllTenants`) so process-instance progress tests are isolated under package-order race runs.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -53,6 +54,8 @@ Started: 2026-08-31T06:07:38Z
 - `go test -tags integration ./integration/cli -run 'TestAllTenantsExampleRootFlagRecognition' -count=1`
 - `git diff --check`
 - `make docs-content`
+- `go test ./cmd -race -count=1`
+- `make test`
 
 ## Do Not Repeat
 - Do not bind `--all-tenants` through Viper, config files, profiles, or environment variables.
@@ -60,4 +63,4 @@ Started: 2026-08-31T06:07:38Z
 - Do not implement concrete-destination rejection inside the four command runners after they have already initialized clients, inspected inputs, or built reports.
 
 ## Current Handoff
-- Continue Phase 7 / Polish at task T053: run the constitution-required full race-enabled `make test` target.
+- Continue Phase 7 / Polish at task T054: review `git diff --check` and the full diff to confirm no changes under `c8volt/`, `internal/services/`, or `internal/clients/`, no public tenant-context provenance, and no authorization-bypass option.

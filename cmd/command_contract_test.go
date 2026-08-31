@@ -2657,7 +2657,7 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 		"--json",
 		"--keys-only",
 	}, nil)
-	require.NotContains(t, output, "--all")
+	require.NotContains(t, output, "--all ")
 }
 
 func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *testing.T) {

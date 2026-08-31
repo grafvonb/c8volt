@@ -427,3 +427,32 @@ Started: 2026-08-31 08:07:38
 **Learnings**:
 - `make vet` currently runs `go vet ./...` and passes cleanly for the all-tenants override changes.
 ---
+---
+## Iteration 21 - 2026-08-31 09:39
+**Work Unit**: Phase 7 polish full race-enabled test validation failed
+**Tasks Completed**:
+- [ ] None; `make test` failed before T053 could be validated.
+**Tasks Remaining in Work Unit**: T053 remains next in Phase 7.
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- `make test` ran `go test ./... -race -count=1` and failed in `./cmd`; durable failure details are recorded in `ralph-memory.md`.
+---
+---
+## Iteration 22 - 2026-08-31 09:49
+**Work Unit**: Phase 7 polish full race-enabled test validation
+**Tasks Completed**:
+- [x] T053: Ran the constitution-required full race-enabled `test` target in `Makefile` with `make test`.
+**Tasks Remaining in Work Unit**: T054 remains next in Phase 7.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/command_contract_test.go
+- cmd/get_processinstance_test.go
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- `make test` now passes; the command-suite failures were caused by stale help expectations and root output flag leakage in the process-instance test reset helper.
+---

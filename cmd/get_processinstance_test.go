@@ -4513,9 +4513,13 @@ func resetProcessInstanceCommandGlobals() {
 	flagWalkPIWithElements = false
 	flagWalkPIWithListeners = false
 	flagCmdAutoConfirm = false
+	flagCmdAutomation = false
 	flagVerbose = false
 	flagViewAsJson = false
 	flagViewKeysOnly = false
+	flagQuiet = false
+	flagNoIndicator = false
+	flagAllTenants = false
 	flagNoWait = false
 	flagForce = false
 	flagNoStateCheck = false
