@@ -39,7 +39,6 @@ Started: 2026-08-31 19:14:26
 **Learnings**:
 - The active branch and feature artifacts already match issue #285; foundational work begins at T002.
 ---
----
 ## Iteration 2 - 2026-08-31 19:19
 **Work Unit**: Phase 2 canonical completion fact and mapping
 **Tasks Completed**:
@@ -263,4 +262,23 @@ Started: 2026-08-31 19:14:26
 **Learnings**:
 - Reporter aggregation already satisfied T015; this iteration added direct scope-isolation coverage so shared callbacks cannot advance a workflow with another phase's completion fact.
 - Validation passed: `go test ./cmd -run 'TestOpsSemanticProgress' -race -count=1`, `go test ./toolx/logging -race -count=1`, `go test ./cmd -run 'Progress|Activity' -race -count=1`, and `git diff --check`.
+---
+---
+## Iteration 13 - 2026-08-31 20:38
+**Work Unit**: User Story 1 process-definition command deletion reporters
+**Tasks Completed**:
+- [x] T019: Start fresh confirmed deletion reporters for basic and all-process-definition commands while leaving discovery pages separate
+**Tasks Remaining in Work Unit**: T020-T024 remain in User Story 1
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/delete_processdefinition.go
+- cmd/delete_processdefinition_progress.go
+- cmd/delete_processdefinition_progress_test.go
+- cmd/ops_purge_all_processdefinitions.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Validation passed: `go test ./cmd -run 'TestProcessDefinitionDeleteSemanticProgressRoutesFacadeCompletion|TestOpsPurgeAllProcessDefinitionsProgressKeepsDiscoverySeparate' -race -count=1`, `go test ./internal/services/processdefinition ./internal/services/ops -run 'DeleteProcessDefinitionResources.*Completion|DeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError|PurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots' -race -count=1`, `go test ./cmd -run 'DeleteProcessDefinition|OpsPurgeAllProcessDefinitions|ProcessDefinitionDeleteSemanticProgress|Progress|Activity' -race -count=1`, `go test ./internal/services/processdefinition ./internal/services/ops -run 'Progress|Delete|PurgeAllProcessDefinitions' -race -count=1`, `go test ./cmd -run 'DeleteProcessDefinition|OpsPurgeAllProcessDefinitions' -race -count=1`, `go test ./internal/services/processdefinition/... ./internal/services/ops/... -race -count=1`, and `git diff --check`.
+- APD discovery page progress remains on the existing renderer; deletion completion facts start or update a separate process-definition deletion reporter.
 ---

@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -142,7 +143,12 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		if err := confirmCmdOrAbort(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		reports, err := cli.DeleteProcessDefinitions(cmd.Context(), keys, flagWorkers, callOpts...)
+		deletionProgress := newProcessDefinitionDeleteSemanticProgress(cmd, len(keys))
+		deletionProgress.Start(len(keys))
+		defer deletionProgress.Close()
+		deleteOpts := append([]foptions.FacadeOption{}, callOpts...)
+		deleteOpts = append(deleteOpts, foptions.WithProgress(deletionProgress.FacadeProgress))
+		reports, err := cli.DeleteProcessDefinitions(cmd.Context(), keys, flagWorkers, deleteOpts...)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("deleting process definition(s): %w", err))
 		}

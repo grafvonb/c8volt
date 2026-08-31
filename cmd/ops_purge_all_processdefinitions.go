@@ -74,7 +74,9 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			ReportFormat:  flagOpsPurgeAllPDReportFormat,
 			StartedAt:     time.Now().UTC(),
 		}
-		configureOpsPurgeAllProcessDefinitionsProgress(cmd, &request)
+		deletionProgress := newProcessDefinitionDeleteSemanticProgress(cmd, 0)
+		defer deletionProgress.Close()
+		configureOpsPurgeAllProcessDefinitionsProgress(cmd, &request, deletionProgress)
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
@@ -99,6 +101,9 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			}
 			request.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, planned.Discovery.CandidateProcessDefinitionKeys...)
 			request.DiscoveredScopeStatus = planned.Discovery.DiscoveryScopeStatus
+			if len(request.DiscoveredCandidateProcessDefinitionKeys) > 0 {
+				deletionProgress.Start(len(request.DiscoveredCandidateProcessDefinitionKeys))
+			}
 		}
 		result, err := purgeAllProcessDefinitionsWithCommandActivity(cmd, request, func() (ops.AllProcessDefinitionsPurgeResult, error) {
 			return cli.PurgeAllProcessDefinitions(cmd.Context(), request, collectOptions()...)
@@ -202,7 +207,7 @@ func formatOpsPurgeAllProcessDefinitionsActivity(request ops.AllProcessDefinitio
 	return "running process-definition purge workflow"
 }
 
-func configureOpsPurgeAllProcessDefinitionsProgress(cmd *cobra.Command, request *ops.AllProcessDefinitionsPurgeRequest) {
+func configureOpsPurgeAllProcessDefinitionsProgress(cmd *cobra.Command, request *ops.AllProcessDefinitionsPurgeRequest, deletionProgress *processDefinitionDeleteSemanticProgress) {
 	if request == nil {
 		return
 	}
@@ -216,6 +221,10 @@ func configureOpsPurgeAllProcessDefinitionsProgress(cmd *cobra.Command, request 
 		case ops.ProgressEventKindPage:
 			if event.Page != nil {
 				printOpsSlowProcessAnalysisProgress(cmd, formatOpsPageProgress(*event.Page, "process definition(s)"), channel)
+			}
+		case ops.ProgressEventKindCompletion:
+			if event.Completion != nil {
+				deletionProgress.Report(event)
 			}
 		}
 	}
