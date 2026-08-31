@@ -59,6 +59,8 @@ type CapabilityDocument struct {
 	Commands []CommandCapability `json:"commands"`
 }
 
+// CommandCapability describes one discoverable command, including inherited
+// flag support that may still be rejected by command-specific validation.
 type CommandCapability struct {
 	Path              string               `json:"path"`
 	Aliases           []string             `json:"aliases,omitempty"`

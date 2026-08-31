@@ -368,3 +368,19 @@ Started: 2026-08-31 08:07:38
 - SC-007 proxy review used one participant with the prompt to find and invoke all-visible-tenants discovery without using `--tenant ""`; success was 1/1 (100%) within 30 seconds, and the accepted discovery plus concrete-destination help forms parsed through the CLI.
 - Focused US4 validation passed for `./cmd`, `./integration/cli` with the integration tag, and `./docsgen`.
 ---
+---
+## Iteration 17 - 2026-08-31 09:24
+**Work Unit**: Phase 7 polish declaration inventory and formatting
+**Tasks Completed**:
+- [x] T049: Inventoried new declarations, added required intent comments, and ran `gofmt` on the feature-touched Go files.
+**Tasks Remaining in Work Unit**: T050 remains next in Phase 7.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/capabilities.go
+- cmd/command_contract.go
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- Declaration inventory confirmed the all-tenants helper/test comments were already present; only the modified capability contract type and compact human capability renderer needed additional intent comments.
+---
