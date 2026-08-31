@@ -79,7 +79,7 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 - [x] T016 [P] [US2] Add facade conversion tests proving canonical slice order and per-key statistics association survive public mapping in `c8volt/process/client_test.go`
 - [x] T017 [P] [US2] Expand the shared renderer fixture and assert identical canonical key sequences for human, JSON, keys-only, and watch rendering in `cmd/cmd_views_processdefinition_test.go`
 - [x] T018 [P] [US2] Add watch-snapshot tests proving statistics-only changes retain canonical positions and broad snapshots reuse paged collection order in `internal/services/processdefinition/search_test.go`
-- [ ] T019 [P] [US2] Add repeated-refresh command tests proving count changes do not move process-definition rows in `cmd/get_processdefinition_watch_test.go`
+- [x] T019 [P] [US2] Add repeated-refresh command tests proving count changes do not move process-definition rows in `cmd/get_processdefinition_watch_test.go`
 
 ### Implementation and Version Integration for User Story 2
 

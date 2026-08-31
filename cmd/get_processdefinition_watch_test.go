@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -103,6 +104,58 @@ func TestGetProcessDefinitionWatchRepaintsBroadRefreshes(t *testing.T) {
 	require.Contains(t, body, "2251799813685255 tenant invoice v1")
 	require.Contains(t, body, "2251799813685255 tenant invoice v2")
 	require.Equal(t, 2, strings.Count(body, "found: 1"))
+}
+
+// TestGetProcessDefinitionWatchRepeatedStatisticsRefreshesKeepRowOrder verifies
+// volatile count changes render in place across repeated command watch refreshes.
+func TestGetProcessDefinitionWatchRepeatedStatisticsRefreshesKeepRowOrder(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+	flagGetPDWithStat = true
+
+	wantKeys := []string{"10", "2", "21", "20", "30"}
+	calls := 0
+	cli := processDefinitionWatchTestAPI{
+		collect: func(_ context.Context, _ process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+			calls++
+			activeBase := int64(calls * 10)
+			return process.ProcessDefinitionWatchSnapshot{
+				Items: []process.ProcessDefinition{
+					processDefinitionForWatchOrderWithStatistics("<default>", "Order", 10, "10", activeBase+1),
+					processDefinitionForWatchOrderWithStatistics("<default>", "Order", 10, "2", activeBase+2),
+					processDefinitionForWatchOrderWithStatistics("TenantA", "Invoice", 10, "21", activeBase+3),
+					processDefinitionForWatchOrderWithStatistics("TenantA", "Invoice", 9, "20", activeBase+4),
+					processDefinitionForWatchOrderWithStatistics("tenantA", "CaseSensitiveProcess", 10, "30", activeBase+5),
+				},
+				Total: 5,
+			}, nil
+		},
+	}
+
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli:        cli,
+		filter:     process.ProcessDefinitionFilter{},
+		maxRetries: defaultBackoffMaxRetries,
+		sleep: func(context.Context, time.Duration) error {
+			if calls >= 10 {
+				return context.Canceled
+			}
+			return nil
+		},
+	})
+
+	require.NoError(t, result.err)
+	require.Equal(t, 10, calls)
+	require.Empty(t, result.stderr)
+	requireProcessDefinitionWatchRepaintCount(t, result, 10)
+	refreshes := strings.Split(result.stdout, processDefinitionWatchRepaintControlSequenceForTest)[1:]
+	require.Len(t, refreshes, 10)
+	for i, refresh := range refreshes {
+		require.Equal(t, wantKeys, processDefinitionKeysFromHumanOutput(refresh), "refresh %d key order", i+1)
+		require.Contains(t, refresh, "10 <default> Order                v10 [ac:"+strconv.Itoa((i+1)*10+1)+" cp:9 cx:2 inc:3]")
+		require.Contains(t, refresh, "30 tenantA   CaseSensitiveProcess v10 [ac:"+strconv.Itoa((i+1)*10+5)+" cp:9 cx:2 inc:3]")
+		require.Contains(t, refresh, "found: 5")
+	}
 }
 
 // TestGetProcessDefinitionWatchIntervalCadence verifies the watch runner still
@@ -889,6 +942,24 @@ func TestGetProcessDefinitionWatchTimeoutStatusUsesStderr(t *testing.T) {
 type processDefinitionWatchTestAPI struct {
 	c8volt.API
 	collect func(context.Context, process.ProcessDefinitionWatchSnapshotRequest, ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error)
+}
+
+// processDefinitionForWatchOrderWithStatistics builds rows whose volatile
+// counts can change without changing their canonical identity fields.
+func processDefinitionForWatchOrderWithStatistics(tenantID, bpmnProcessID string, version int32, key string, active int64) process.ProcessDefinition {
+	return process.ProcessDefinition{
+		Key:            key,
+		TenantId:       tenantID,
+		BpmnProcessId:  bpmnProcessID,
+		ProcessVersion: version,
+		Statistics: &process.ProcessDefinitionStatistics{
+			Active:                 active,
+			Completed:              9,
+			Canceled:               2,
+			Incidents:              3,
+			IncidentCountSupported: true,
+		},
+	}
 }
 
 func (a processDefinitionWatchTestAPI) CollectProcessDefinitionWatchSnapshot(ctx context.Context, request process.ProcessDefinitionWatchSnapshotRequest, opts ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {

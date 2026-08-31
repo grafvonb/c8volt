@@ -193,3 +193,18 @@ Started: 2026-08-31 13:37:23
 **Learnings**:
 - Broad process-definition watch snapshots already inherit canonical ordering from the service-owned paged collector; statistics-only refresh changes update per-key statistics without changing the returned key sequence.
 ---
+---
+## Iteration 13 - 2026-08-31 14:25
+**Work Unit**: US2 command watch repeated-refresh row stability coverage
+**Tasks Completed**:
+- [x] T019: Add repeated-refresh command tests proving count changes do not move process-definition rows in `cmd/get_processdefinition_watch_test.go`
+**Tasks Remaining in Work Unit**: 0; US2 has 3 incomplete tasks remaining (T020-T022)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processdefinition_watch_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- Command watch refresh bodies preserve snapshot row order across ten statistics-only refreshes; count changes render in place on the same process-definition keys.
+---
