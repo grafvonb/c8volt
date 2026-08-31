@@ -8,10 +8,12 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -223,6 +225,133 @@ func TestGetProcessDefinitionLatestSearchPreservesSelectionRequest(t *testing.T)
 	require.Equal(t, float64(3), filter["version"])
 	require.Equal(t, "stable", filter["versionTag"])
 	require.Equal(t, true, filter["isLatestVersion"])
+}
+
+// TestGetProcessDefinitionBroadLatestUsesPagedCanonicalDiscovery verifies
+// broad latest listings use the command's paged collection path with batch size.
+func TestGetProcessDefinitionBroadLatestUsesPagedCanonicalDiscovery(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+	flagGetPDLatest = true
+	flagGetPDBatchSize = 2
+
+	cmd := &cobra.Command{Use: "process-definition"}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.SetContext(context.Background())
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cli := processDefinitionPagingActivityAPI{
+		searchProcessDefinitionsPages: func(_ context.Context, request process.ProcessDefinitionSearchRequest, visitor process.ProcessDefinitionSearchPageVisitor, opts ...options.FacadeOption) (process.ProcessDefinitionSearchPagesResult, error) {
+			require.True(t, request.Latest)
+			require.Equal(t, int32(2), request.Page.Size)
+			require.Equal(t, process.ProcessDefinitionFilter{}, request.Filter)
+			require.NotNil(t, visitor)
+			action, err := visitor(process.ProcessDefinitionSearchPageStep{
+				Page: process.ProcessDefinitionPage{
+					Request: request.Page,
+					Items: []process.ProcessDefinition{
+						{Key: "tenant-a-order", TenantId: "tenant-a", BpmnProcessId: "order", ProcessVersion: 3},
+					},
+				},
+				CumulativeCount: 1,
+			})
+			require.NoError(t, err)
+			require.Equal(t, process.ProcessDefinitionSearchPageActionContinue, action)
+			return process.ProcessDefinitionSearchPagesResult{
+				Items: []process.ProcessDefinition{
+					{Key: "default-order", TenantId: "<default>", BpmnProcessId: "order", ProcessVersion: 4},
+					{Key: "tenant-a-order", TenantId: "tenant-a", BpmnProcessId: "order", ProcessVersion: 3},
+				},
+				Pages: 1,
+			}, nil
+		},
+	}
+
+	runSearchProcessDefinitions(cmd, cli, slog.Default(), true, process.ProcessDefinitionFilter{})
+
+	require.Empty(t, stderr.String())
+	require.Equal(t, []string{"default-order", "tenant-a-order"}, processDefinitionRenderedKeys(t, stdout.String()))
+	require.Contains(t, stdout.String(), "found: 2")
+}
+
+// TestGetProcessDefinitionLatestSearchPageSizeInvarianceAcrossTenants checks
+// CLI latest discovery keeps one canonical sequence across discovery page sizes.
+func TestGetProcessDefinitionLatestSearchPageSizeInvarianceAcrossTenants(t *testing.T) {
+	backendItems := []map[string]any{
+		{"processDefinitionKey": "tenant-b-invoice-v11", "processDefinitionId": "invoice", "name": "invoice", "version": 11, "tenantId": "tenant-b"},
+		{"processDefinitionKey": "2", "processDefinitionId": "invoice", "name": "invoice", "version": 10, "tenantId": "tenant-a"},
+		{"processDefinitionKey": "tenant-a-invoice-v9", "processDefinitionId": "invoice", "name": "invoice", "version": 9, "tenantId": "tenant-a"},
+		{"processDefinitionKey": "default-order-v10", "processDefinitionId": "order", "name": "order", "version": 10, "tenantId": "<default>"},
+		{"processDefinitionKey": "tenant-a-Invoice-v10", "processDefinitionId": "Invoice", "name": "Invoice", "version": 10, "tenantId": "tenant-a"},
+		{"processDefinitionKey": "10", "processDefinitionId": "invoice", "name": "invoice", "version": 10, "tenantId": "tenant-a"},
+	}
+	wantKeys := []string{
+		"default-order-v10",
+		"tenant-a-Invoice-v10",
+		"10",
+		"tenant-b-invoice-v11",
+	}
+
+	for _, pageSize := range []int{1, 2, 1000} {
+		t.Run(strconv.Itoa(pageSize), func(t *testing.T) {
+			var requests []map[string]any
+			servedItems := 0
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodPost, r.Method)
+				require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
+				var request map[string]any
+				require.NoError(t, json.NewDecoder(r.Body).Decode(&request))
+				requests = append(requests, request)
+
+				filter := requireJSONObject(t, request["filter"])
+				require.Equal(t, true, filter["isLatestVersion"])
+				require.NotContains(t, filter, "tenantId")
+				page := requireJSONObject(t, request["page"])
+				require.Equal(t, float64(pageSize), page["limit"])
+
+				start := servedItems
+				end := min(start+pageSize, len(backendItems))
+				servedItems = end
+				responsePage := map[string]any{
+					"totalItems":        len(backendItems),
+					"hasMoreTotalItems": end < len(backendItems),
+				}
+				if end < len(backendItems) {
+					responsePage["endCursor"] = strconv.Itoa(end)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+					"items": backendItems[start:end],
+					"page":  responsePage,
+				}))
+			}))
+			t.Cleanup(srv.Close)
+			cfgPath := writeRawTestConfig(t, `
+app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: "`+srv.URL+`"
+`)
+
+			stdout, stderr := executeRootForProcessDefinitionTestWithSeparateOutputs(t,
+				"--config", cfgPath,
+				"--all-tenants",
+				"--keys-only",
+				"get", "process-definition",
+				"--latest",
+				"--batch-size", strconv.Itoa(pageSize),
+			)
+
+			require.Empty(t, stderr)
+			require.Equal(t, strings.Join(wantKeys, "\n")+"\n", stdout)
+			require.Equal(t, (len(backendItems)+pageSize-1)/pageSize, len(requests))
+		})
+	}
 }
 
 func TestGetProcessDefinitionBpmnSelectorMissingFailsWithExplicitDiagnostic(t *testing.T) {

@@ -139,11 +139,7 @@ func validateProcessDefinitionSelectors(ctx context.Context, cli process.API, re
 			matches process.ProcessDefinitions
 			err     error
 		)
-		if req.Mode == processDefinitionSelectorValidationLatest {
-			matches, err = cli.SearchProcessDefinitionsLatest(ctx, filter, opts...)
-		} else {
-			matches, err = cli.SearchProcessDefinitions(ctx, filter, opts...)
-		}
+		matches, err = searchProcessDefinitionsForSelectorValidation(ctx, cli, filter, req.Mode == processDefinitionSelectorValidationLatest, opts...)
 		if err != nil {
 			return result, fmt.Errorf("validate process definition selector %q: %w", id, err)
 		}
@@ -156,7 +152,7 @@ func validateProcessDefinitionSelectors(ctx context.Context, cli process.API, re
 			continue
 		}
 		nearMatchOpts := append(append([]options.FacadeOption(nil), opts...), options.WithIgnoreTenant())
-		nearMatches, err := cli.SearchProcessDefinitions(ctx, process.ProcessDefinitionFilter{BpmnProcessId: id}, nearMatchOpts...)
+		nearMatches, err := searchProcessDefinitionsForSelectorValidation(ctx, cli, process.ProcessDefinitionFilter{BpmnProcessId: id}, false, nearMatchOpts...)
 		if err != nil {
 			return result, fmt.Errorf("validate process definition selector %q without version/tag: %w", id, err)
 		}
@@ -166,6 +162,19 @@ func validateProcessDefinitionSelectors(ctx context.Context, cli process.API, re
 	}
 
 	return result, nil
+}
+
+// searchProcessDefinitionsForSelectorValidation keeps selector existence checks
+// on the same collection path used by process-definition discovery.
+func searchProcessDefinitionsForSelectorValidation(ctx context.Context, cli process.API, filter process.ProcessDefinitionFilter, latest bool, opts ...options.FacadeOption) (process.ProcessDefinitions, error) {
+	result, err := cli.SearchProcessDefinitionsPages(ctx, process.ProcessDefinitionSearchRequest{
+		Filter: filter,
+		Latest: latest,
+	}, nil, opts...)
+	if err != nil {
+		return process.ProcessDefinitions{}, err
+	}
+	return process.ProcessDefinitions{Total: int32(len(result.Items)), Items: result.Items}, nil
 }
 
 func validateProcessDefinitionSelectorsForCommand(ctx context.Context, cmd *cobra.Command, cli process.API, req processDefinitionSelectorValidationRequest, opts ...options.FacadeOption) (processDefinitionSelectorValidationResult, error) {
@@ -267,7 +276,7 @@ func processDefinitionSelectorInteractiveTerminal() bool {
 }
 
 func visibleProcessDefinitionsForSelectorValidation(cmd *cobra.Command, cli process.API) (process.ProcessDefinitions, error) {
-	pds, err := cli.SearchProcessDefinitions(cmd.Context(), process.ProcessDefinitionFilter{}, collectOptions()...)
+	pds, err := searchProcessDefinitionsForSelectorValidation(cmd.Context(), cli, process.ProcessDefinitionFilter{}, false, collectOptions()...)
 	if err != nil {
 		return process.ProcessDefinitions{}, fmt.Errorf("search process definitions: %w", err)
 	}

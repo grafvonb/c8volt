@@ -34,6 +34,10 @@ Started: 2026-08-31T11:37:22Z
 - `internal/services/processdefinition/v89/service.go` now sends latest-page sort fields `tenantId ASC`, `processDefinitionId ASC` and classifies follow-up cursor pages from native `HasMoreTotalItems` metadata instead of offset arithmetic.
 - `internal/services/processdefinition/v810/service_test.go` now covers native `isLatestVersion`, tenant-then-process latest sort, cursor continuation requests, lower-bound/exact page totals, and multi-page latest metadata.
 - `internal/services/processdefinition/v810/service.go` now sends latest-page sort fields `tenantId ASC`, `processDefinitionId ASC` and classifies follow-up cursor pages from native `HasMoreTotalItems` metadata instead of offset arithmetic.
+- `cmd/get_processdefinition.go` now routes broad list and broad `--latest` through `SearchProcessDefinitionsPages`, preserving command page-size/progress wiring while carrying `Latest` on the facade request.
+- `cmd/process_definition_selector_validation.go` now validates selectors through `SearchProcessDefinitionsPages` with `Latest` set for latest-aware checks; near-match and visible recovery listings also use the paged facade collection path.
+- `cmd/get_processdefinition_test.go` now covers broad latest paged dispatch, `--batch-size` propagation, all-tenant filter clearing, and identical latest keys across page sizes 1, 2, and 1000.
+- `cmd/process_definition_selector_validation_test.go` now proves latest selector validation uses the paged collection request rather than the legacy latest facade call.
 
 ## Decisions
 - Treat T001 as a validation-only setup work unit; no production code changed in iteration 1.
@@ -57,6 +61,7 @@ Started: 2026-08-31T11:37:22Z
 - T026 and T034 were paired because the new v8.8 latest page regression requires tenant/process native sort order and cursor continuation metadata changes to pass.
 - T027 and T035 were paired because the new v8.9 latest page regression requires tenant/process native sort order and cursor continuation metadata changes to pass.
 - T028 and T036 were paired because the new v8.10 latest page regression requires tenant/process native sort order and cursor continuation metadata changes to pass.
+- T029 and T037 were paired because the new CLI latest and selector tests require broad `--latest` and selector validation to share the paged canonical facade collection path.
 
 ## Gotchas
 - Shell wrapper note: zsh has special parameters named `status` and `commands`; use neutral variable names or run validation loops under `/bin/bash`.
@@ -76,4 +81,4 @@ Started: 2026-08-31T11:37:22Z
 - Do not use zsh variable names `status` or `commands` in validation-loop scripts.
 
 ## Current Handoff
-- Next iteration remains in US3 at T029: add CLI tests for `--latest` across tenants, selector validation, page-size invariance, unchanged key retrieval, and unchanged XML mode in `cmd/get_processdefinition_test.go` and `cmd/process_definition_selector_validation_test.go`; expect T037 to route broad `--latest` discovery and selector validation through the canonical facade collection path while preserving direct-key, XML, progress, and watch dispatch behavior.
+- US3 is complete. Next iteration should start Phase 6 at T038: update canonical-order wording, latest grouping, exact comparison rules, and the Camunda 8.7 compatibility note in `cmd/get_processdefinition.go` and `README.md`; after source wording changes, T039 should regenerate CLI docs with `make docs-content`.

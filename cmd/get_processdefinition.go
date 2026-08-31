@@ -138,10 +138,8 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 		if len(result.Request.BpmnProcessIds) > 0 {
 			pds = result.MatchesByBpmnProcessID[result.Request.BpmnProcessIds[0]]
 		}
-	} else if !flagGetPDLatest {
-		pds, err = searchProcessDefinitionsWithPaging(cmd, cli, filter)
 	} else {
-		pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter, collectOptions()...)
+		pds, err = searchProcessDefinitionsWithPaging(cmd, cli, filter)
 	}
 	if err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("search process definitions: %w", err))
@@ -257,6 +255,7 @@ func searchProcessDefinitionsWithPaging(cmd *cobra.Command, cli c8volt.API, filt
 		Page: process.ProcessDefinitionPageRequest{
 			Size: resolveGetProcessDefinitionSearchSize(),
 		},
+		Latest: flagGetPDLatest,
 	}, func(step process.ProcessDefinitionSearchPageStep) (process.ProcessDefinitionSearchPageAction, error) {
 		page := step.Page
 		pageNumber++

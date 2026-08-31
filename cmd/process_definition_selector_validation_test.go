@@ -123,13 +123,19 @@ func TestProcessDefinitionSelectorValidation_SearchesEveryDistinctBpmnProcessID(
 	require.Contains(t, result.MatchesByBpmnProcessID, "invoice")
 }
 
-func TestProcessDefinitionSelectorValidation_UsesLatestSearchWhenRequested(t *testing.T) {
-	var latestCalls int
+// TestProcessDefinitionSelectorValidation_UsesPagedCollectionWhenLatestRequested
+// verifies latest selector checks use the canonical paged facade collection path.
+func TestProcessDefinitionSelectorValidation_UsesPagedCollectionWhenLatestRequested(t *testing.T) {
+	var pagedCalls int
 	cli := stubProcessAPI{
-		searchProcessDefinitionsLatest: func(_ context.Context, filter process.ProcessDefinitionFilter, opts ...options.FacadeOption) (process.ProcessDefinitions, error) {
-			latestCalls++
-			require.Equal(t, process.ProcessDefinitionFilter{BpmnProcessId: "order"}, filter)
-			return process.ProcessDefinitions{Total: 1}, nil
+		searchProcessDefinitionsPages: func(_ context.Context, request process.ProcessDefinitionSearchRequest, visitor process.ProcessDefinitionSearchPageVisitor, opts ...options.FacadeOption) (process.ProcessDefinitionSearchPagesResult, error) {
+			pagedCalls++
+			require.Equal(t, process.ProcessDefinitionFilter{BpmnProcessId: "order"}, request.Filter)
+			require.True(t, request.Latest)
+			require.Nil(t, visitor)
+			return process.ProcessDefinitionSearchPagesResult{
+				Items: []process.ProcessDefinition{{Key: "pd-order-latest", BpmnProcessId: "order"}},
+			}, nil
 		},
 	}
 
@@ -140,7 +146,7 @@ func TestProcessDefinitionSelectorValidation_UsesLatestSearchWhenRequested(t *te
 
 	require.NoError(t, err)
 	require.True(t, result.Valid())
-	require.Equal(t, 1, latestCalls)
+	require.Equal(t, 1, pagedCalls)
 }
 
 func TestProcessDefinitionSelectorValidationForCommand_ReturnsNoPromptErrorWhenPromptForbidden(t *testing.T) {

@@ -33,7 +33,6 @@ Started: 2026-08-31 13:37:23
 - specs/286-tenant-pd-ordering/progress.md
 **Learnings**:
 - Public latest facade search now uses the same paged latest traversal as watch and explicit paged searches, so the old adapter-level latest method is no longer the facade boundary for complete collection discovery.
----
 ## Iteration 1 - 2026-08-31 13:39
 **Work Unit**: Setup baseline validation
 **Tasks Completed**:
@@ -359,4 +358,24 @@ Started: 2026-08-31 13:37:23
 - specs/286-tenant-pd-ordering/progress.md
 **Learnings**:
 - v8.10 native latest pages now match v8.8/v8.9 by requesting tenant/process ordering and classifying cursor follow-up pages from Camunda `HasMoreTotalItems` metadata.
+---
+---
+## Iteration 23 - 2026-08-31 15:11
+**Work Unit**: US3 CLI latest and selector canonical collection routing
+**Tasks Completed**:
+- [x] T029: Add CLI tests for `--latest` across tenants, selector validation, page-size invariance, unchanged key retrieval, and unchanged XML mode in `cmd/get_processdefinition_test.go` and `cmd/process_definition_selector_validation_test.go`
+- [x] T037: Route broad `--latest` discovery and selector validation through the canonical facade collection path while preserving direct-key, XML, progress, and watch dispatch behavior in `cmd/get_processdefinition.go`, `cmd/process_definition_selector_validation.go`, and `cmd/get_processdefinition_watch.go`
+**Tasks Remaining in Work Unit**: 0; US3 complete, next incomplete task is T038 in Phase 6
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processdefinition.go
+- cmd/get_processdefinition_test.go
+- cmd/process_api_stub_test.go
+- cmd/process_definition_selector_validation.go
+- cmd/process_definition_selector_validation_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- Broad `--latest` now uses the same command paged facade request as ordinary listing, so `--batch-size`, all-tenant discovery, and progress behavior remain command-owned while service traversal owns collection mechanics.
 ---

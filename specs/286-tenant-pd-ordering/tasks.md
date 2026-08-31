@@ -105,7 +105,7 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 - [x] T026 [P] [US3] Add Camunda 8.8 tests for native `isLatestVersion`, tenant-then-process latest sort, continuation metadata, and multi-page latest requests in `internal/services/processdefinition/v88/service_test.go`
 - [x] T027 [P] [US3] Add Camunda 8.9 tests for native `isLatestVersion`, tenant-then-process latest sort, continuation metadata, and multi-page latest requests in `internal/services/processdefinition/v89/service_test.go`
 - [x] T028 [P] [US3] Add Camunda 8.10 tests for native `isLatestVersion`, tenant-then-process latest sort, continuation metadata, and multi-page latest requests in `internal/services/processdefinition/v810/service_test.go`
-- [ ] T029 [P] [US3] Add CLI tests for `--latest` across tenants, selector validation, page-size invariance, unchanged key retrieval, and unchanged XML mode in `cmd/get_processdefinition_test.go` and `cmd/process_definition_selector_validation_test.go`
+- [x] T029 [P] [US3] Add CLI tests for `--latest` across tenants, selector validation, page-size invariance, unchanged key retrieval, and unchanged XML mode in `cmd/get_processdefinition_test.go` and `cmd/process_definition_selector_validation_test.go`
 
 ### Implementation for User Story 3
 
@@ -116,7 +116,7 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 - [x] T034 [P] [US3] Make Camunda 8.8 latest pages use native filtering with tenant ID ASC then process definition ID ASC while leaving final normalization to the shared service in `internal/services/processdefinition/v88/service.go`
 - [x] T035 [P] [US3] Make Camunda 8.9 latest pages use native filtering with tenant ID ASC then process definition ID ASC while leaving final normalization to the shared service in `internal/services/processdefinition/v89/service.go`
 - [x] T036 [P] [US3] Make Camunda 8.10 latest pages use native filtering with tenant ID ASC then process definition ID ASC while leaving final normalization to the shared service in `internal/services/processdefinition/v810/service.go`
-- [ ] T037 [US3] Route broad `--latest` discovery and selector validation through the canonical facade collection path while preserving direct-key, XML, progress, and watch dispatch behavior in `cmd/get_processdefinition.go`, `cmd/process_definition_selector_validation.go`, and `cmd/get_processdefinition_watch.go`
+- [x] T037 [US3] Route broad `--latest` discovery and selector validation through the canonical facade collection path while preserving direct-key, XML, progress, and watch dispatch behavior in `cmd/get_processdefinition.go`, `cmd/process_definition_selector_validation.go`, and `cmd/get_processdefinition_watch.go`
 
 **Checkpoint**: All three user stories work independently, with complete/latest collection mechanics below `cmd` and the public facade.
 
