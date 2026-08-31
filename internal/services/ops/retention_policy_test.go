@@ -751,6 +751,81 @@ func TestExecuteRetentionPolicyDeletesResolvedRootsWithNoWait(t *testing.T) {
 	require.Equal(t, got.Deletion, got.Report.Deletion)
 }
 
+// TestExecuteRetentionPolicyPropagatesDeleteCompletionProgress verifies
+// retention execution forwards live root-tree deletion facts from the shared
+// process-instance delete path.
+func TestExecuteRetentionPolicyPropagatesDeleteCompletionProgress(t *testing.T) {
+	t.Parallel()
+
+	var events []d.OpsProgressEvent
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstance{
+					{Key: "child-1", EndDate: "2026-02-12"},
+				},
+			}, nil
+		},
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: key,
+				RootKey:  "root-1",
+				Keys:     []string{key, "root-1"},
+				Chain: map[string]d.ProcessInstance{
+					"root-1": {Key: "root-1", State: d.StateCompleted},
+					key:      {Key: key, State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "root-1", rootKey)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeDescendants,
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{"root-1", "child-1"},
+				Chain: map[string]d.ProcessInstance{
+					"root-1":  {Key: "root-1", State: d.StateCompleted},
+					"child-1": {Key: "child-1", State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			require.Equal(t, "root-1", key)
+			return d.DeleteResponse{Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+	}
+
+	got, err := New(piAPI, nil).ExecuteRetentionPolicy(context.Background(), d.RetentionPolicyRequest{
+		CommandName:            "ops execute retention-policy",
+		RetentionDays:          90,
+		DerivedEndDateBoundary: "2026-02-13",
+		StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
+		Progress: func(event d.OpsProgressEvent) {
+			events = append(events, event)
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.RetentionPolicyOutcomeDeleted, got.Outcome)
+	require.Equal(t, []d.OpsCompletionProgress{
+		{
+			Phase:            "delete",
+			CoreResource:     "process-instance tree(s)",
+			Total:            1,
+			Identity:         "root-1",
+			Disposition:      d.OpsCompletionDispositionConfirmed,
+			AffectedResource: "affected process instances",
+			AffectedCount:    opsIntPtr(2),
+		},
+	}, opsCompletionProgressByPhase(events, "delete"))
+}
+
 // receiveRetentionPolicyResult bounds tests that intentionally block retention planning workers behind a release gate.
 func receiveRetentionPolicyResult(t *testing.T, done <-chan struct {
 	result d.RetentionPolicyResult

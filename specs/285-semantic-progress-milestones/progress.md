@@ -190,3 +190,21 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./internal/services/resource/payload ./internal/services/resource/v87 ./internal/services/resource/v88 ./internal/services/resource/v89 ./internal/services/resource/v810 -run 'Deploy|Visibility|Completion' -race -count=1`, `go test ./internal/services/resource/... -race -count=1`, and `git diff --check`.
 - Deployment completion facts now use returned process-definition keys for v8.8-v8.10; v8.7 remains silent because its response cannot prove per-definition identity.
 ---
+---
+## Iteration 9 - 2026-08-31 20:10
+**Work Unit**: User Story 1 retention, orphan, and incident-selected purge completion tests
+**Tasks Completed**:
+- [x] T012: Add retention, orphan, and incident-selected purge live completion tests
+**Tasks Remaining in Work Unit**: T013-T015 and T019-T024 remain in User Story 1
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/ops/retention_policy_test.go
+- internal/services/ops/orphan_purge_test.go
+- internal/services/ops/incident_purge_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Validation passed: `go test ./internal/services/ops -run 'TestExecuteRetentionPolicyPropagatesDeleteCompletionProgress|TestPurgeOrphanProcessInstancesPropagatesDeleteCompletionProgress|TestPurgeProcessInstancesWithIncidentsPropagatesDeleteCompletionProgress' -race -count=1`, `go test ./internal/services/ops/... -run 'Progress|Purge|Retention|Orphan|Incident' -race -count=1`, and `git diff --check`.
+- The existing ops purge implementations already route request-owned progress into `pisvc.DeleteProcessInstances`; the new tests pin the live completion contract around those frozen delete scopes.
+---

@@ -261,6 +261,80 @@ func TestPurgeOrphanProcessInstancesConfirmedDeletesImmutableDiscoveredSet(t *te
 	require.Equal(t, d.OrphanPurgeOutcomeDeleted, got.Outcome)
 }
 
+// TestPurgeOrphanProcessInstancesPropagatesDeleteCompletionProgress verifies
+// orphan cleanup keeps live deletion completions attached to the frozen root
+// scope rather than discovery progress.
+func TestPurgeOrphanProcessInstancesPropagatesDeleteCompletionProgress(t *testing.T) {
+	t.Parallel()
+
+	var events []d.OpsProgressEvent
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstance{
+					{Key: "child-1", ParentKey: "missing-parent", State: d.StateTerminated},
+				},
+			}, nil
+		},
+		filterOrphans: func(_ context.Context, items []d.ProcessInstance, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			require.Len(t, items, 1)
+			return items, nil
+		},
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "child-1", key)
+			return pitraversal.Result{
+				StartKey: key,
+				RootKey:  key,
+				Keys:     []string{key},
+				Chain: map[string]d.ProcessInstance{
+					key: {Key: key, ParentKey: "missing-parent", State: d.StateTerminated},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "child-1", rootKey)
+			return pitraversal.Result{
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{rootKey},
+				Chain: map[string]d.ProcessInstance{
+					rootKey: {Key: rootKey, ParentKey: "missing-parent", State: d.StateTerminated},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			require.Equal(t, "child-1", key)
+			return d.DeleteResponse{Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+	}
+
+	got, err := New(piAPI, nil).PurgeOrphanProcessInstances(context.Background(), d.OrphanPurgeRequest{
+		CommandName: "ops purge orphan-process-instances",
+		StartedAt:   time.Date(2026, 5, 11, 12, 0, 0, 0, time.UTC),
+		Progress: func(event d.OpsProgressEvent) {
+			events = append(events, event)
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.OrphanPurgeOutcomeDeleted, got.Outcome)
+	require.Equal(t, []d.OpsCompletionProgress{
+		{
+			Phase:            "delete",
+			CoreResource:     "process-instance tree(s)",
+			Total:            1,
+			Identity:         "child-1",
+			Disposition:      d.OpsCompletionDispositionConfirmed,
+			AffectedResource: "affected process instances",
+			AffectedCount:    opsIntPtr(1),
+		},
+	}, opsCompletionProgressByPhase(events, "delete"))
+}
+
 func TestPurgeOrphanProcessInstancesSuppressesDefaultDeleteSummary(t *testing.T) {
 	t.Parallel()
 
@@ -416,4 +490,8 @@ func (s stubProcessInstanceAPI) DeleteProcessInstance(ctx context.Context, key s
 
 func typexKeys(keys ...string) typex.Keys {
 	return keys
+}
+
+func opsIntPtr(v int) *int {
+	return &v
 }

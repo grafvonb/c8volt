@@ -21,6 +21,7 @@ Started: 2026-08-31T17:14:26Z
 - All-process-definition purge now reattaches request-owned progress to the destructive delete options so APD request progress receives process-definition deletion facts through the reused delete service path.
 - Resource deployment completion facts use phase `deploy process definitions`, core resource `process definition(s)`, identity = returned process-definition key, and submitted/confirmed dispositions for no-wait acceptance versus visibility confirmation; affected counts remain unavailable.
 - v8.8, v8.9, and v8.10 deployment services report no-wait completions immediately after a valid deployment response and confirmed completions from the first successful process-definition visibility lookup without extra backend requests.
+- Retention, orphan, and incident-selected purge tests now prove their destructive execution paths forward process-instance `delete` completion facts from the shared bulk delete service after frozen planning; no new service implementation was needed for T012.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -36,6 +37,7 @@ Started: 2026-08-31T17:14:26Z
 - APD force cleanup progress includes nested process-instance cancel/delete completion facts plus process-definition deletion facts; filter by phase `delete process definitions` in APD service tests that only care about the process-definition completion scope.
 - v8.7 deployment responses do not expose process-definition keys, so resource progress tests intentionally require no completion facts rather than inventing identities from submitted filenames.
 - `resourcepayload.ReportDeploymentProcessDefinitionCompletion` carries the full deployment scope total for each visible key; do not call the slice wrapper with a singleton key when the original deployment returned multiple process definitions.
+- `internal/services/ops` test files can reuse `opsCompletionProgressByPhase` from `all_process_definitions_purge_test.go`; `opsIntPtr` is a package test helper for expected completion affected counts.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -60,4 +62,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should continue User Story 1 at T012 by adding retention, orphan, and incident-selected purge live completion tests; T019 still needs basic/APD process-definition command reporter wiring, and T020 still needs deploy command reporter wiring around the resource service facts added in iteration 8.
+- Next iteration should continue User Story 1 at T013 by adding real-time repair and smoke-test stage completion tests; T015, T019, T020, T021, T022, T023, and T024 remain open in US1.

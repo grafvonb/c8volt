@@ -710,6 +710,75 @@ func TestPurgeProcessInstancesWithIncidentsExecutesFrozenPlanRoots(t *testing.T)
 	require.Equal(t, got.Deletion, got.Report.Deletion)
 }
 
+// TestPurgeProcessInstancesWithIncidentsPropagatesDeleteCompletionProgress
+// verifies incident-selected cleanup forwards completion facts for the resolved
+// process-instance root-tree deletion scope.
+func TestPurgeProcessInstancesWithIncidentsPropagatesDeleteCompletionProgress(t *testing.T) {
+	t.Parallel()
+
+	var events []d.OpsProgressEvent
+	incAPI := stubIncidentAPI{
+		searchIncidents: func(_ context.Context, _ d.IncidentFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			return []d.ProcessInstanceIncidentDetail{{IncidentKey: "inc-1", ProcessInstanceKey: "child-1", State: "ACTIVE"}}, nil
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "child-1", startKey)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: startKey,
+				RootKey:  "root-1",
+				Keys:     []string{startKey, "root-1"},
+				Chain: map[string]d.ProcessInstance{
+					startKey: {Key: startKey, State: d.StateCompleted},
+					"root-1": {Key: "root-1", State: d.StateTerminated},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "root-1", rootKey)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeDescendants,
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{"root-1", "child-1"},
+				Chain: map[string]d.ProcessInstance{
+					"root-1":  {Key: "root-1", State: d.StateTerminated},
+					"child-1": {Key: "child-1", State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			require.Equal(t, "root-1", key)
+			return d.DeleteResponse{Ok: true, StatusCode: http.StatusNoContent, Status: "204 No Content"}, nil
+		},
+	}
+
+	got, err := New(piAPI, incAPI).PurgeProcessInstancesWithIncidents(context.Background(), d.IncidentPurgeRequest{
+		CommandName: "ops purge process-instances-with-incidents",
+		Progress: func(event d.OpsProgressEvent) {
+			events = append(events, event)
+		},
+	}, services.WithForce())
+
+	require.NoError(t, err)
+	require.Equal(t, d.IncidentPurgeOutcomeDeleted, got.Outcome)
+	require.Equal(t, []d.OpsCompletionProgress{
+		{
+			Phase:            "delete",
+			CoreResource:     "process-instance tree(s)",
+			Total:            1,
+			Identity:         "root-1",
+			Disposition:      d.OpsCompletionDispositionConfirmed,
+			AffectedResource: "affected process instances",
+			AffectedCount:    opsIntPtr(2),
+		},
+	}, opsCompletionProgressByPhase(events, "delete"))
+}
+
 // TestPurgeProcessInstancesWithIncidentsUsesFrozenCandidatesWithoutRediscovery protects confirmed command execution from scope drift.
 func TestPurgeProcessInstancesWithIncidentsUsesFrozenCandidatesWithoutRediscovery(t *testing.T) {
 	t.Parallel()
