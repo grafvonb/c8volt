@@ -18,16 +18,20 @@ Started: 2026-08-31T17:14:26Z
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
 - `c8volt/foptions` previously had no test file; `c8volt/foptions/options_test.go` now covers service-to-facade progress callback mapping.
 - `cmd/ops_analyse_slow_process_instances_progress_test.go` participates in broader `Progress|Activity` runs; apply output-mode globals after `resetOpsSlowProcessAnalysisTestFlags(t)` because that helper now clears shared mode flags for isolation.
+- `cmd/ops_semantic_progress_test.go` now asserts all 64 concurrent reporter updates produce the exact completed-count sequence under `-race`; use `requireOpsSemanticProgressCompletedSequence` for similar aggregate-sequence checks.
+- `toolx/logging/activity_test.go` has a workflow-priority regression proving lower-priority HTTP/wait updates cannot replace the visible workflow aggregate.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
 - `go test ./internal/domain ./c8volt/foptions ./c8volt/ops ./toolx/logging -race -count=1`
 - `go test ./internal/domain ./c8volt/foptions ./c8volt/ops ./internal/services -race -count=1`
 - `go test ./cmd -run 'Progress|Activity' -race -count=1`
+- `go test ./cmd -run 'TestOpsSemanticProgress' -race -count=1`
+- `go test ./toolx/logging -race -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should begin User Story 1 at T007 by adding concurrent out-of-order aggregate, affected-coverage invalidation, and workflow-priority activity tests in `cmd/ops_semantic_progress_test.go` and `toolx/logging/activity_test.go`.
+- Next iteration should continue User Story 1 at T008 by adding process-instance create/cancel/delete completion-fact tests in `internal/services/processinstance/bulk_test.go`.

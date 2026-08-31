@@ -287,6 +287,33 @@ func TestActivityWriter_WorkflowRemainsVisibleAboveWaitAndHTTP(t *testing.T) {
 	stopWorkflow()
 }
 
+func TestActivityWriter_WorkflowUpdateStaysVisibleDuringNestedUpdates(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	w := newActivityWriter(&buf, true)
+
+	stopWorkflow := w.StartActivityWithImportance("deleting process-instance trees, 0/64", ActivityImportanceWorkflow)
+	w.tick()
+	stopWait := w.StartActivityWithImportance("waiting for pi 123 state", ActivityImportanceWait)
+	stopHTTP := w.StartActivityWithImportance("loading process instance", ActivityImportanceHTTP)
+
+	w.UpdateActivityWithImportance("deleting process-instance trees, 18/64", ActivityImportanceWorkflow)
+	w.tick()
+
+	require.Equal(t, "- deleting process-instance trees, 18/64", lastActivityLine(buf.String()))
+
+	w.UpdateActivityWithImportance("loading process instance 42", ActivityImportanceHTTP)
+	w.UpdateActivityWithImportance("waiting for pi 456 state", ActivityImportanceWait)
+	w.tick()
+
+	require.Equal(t, `\ deleting process-instance trees, 18/64`, lastActivityLine(buf.String()))
+
+	stopHTTP()
+	stopWait()
+	stopWorkflow()
+}
+
 // TestActivityWriter_WaitFallsBackAboveHTTPAfterWorkflowStops verifies wait scopes outrank HTTP fallback after workflow progress ends.
 func TestActivityWriter_WaitFallsBackAboveHTTPAfterWorkflowStops(t *testing.T) {
 	t.Parallel()

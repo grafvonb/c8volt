@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -131,6 +132,9 @@ func TestOpsSemanticProgressReporterAggregatesConcurrentCompletions(t *testing.T
 	}
 	wg.Wait()
 
+	updates := sink.Updates()
+	require.Len(t, updates, 64)
+	requireOpsSemanticProgressCompletedSequence(t, updates, 64)
 	require.Equal(t, opsSemanticProgressAggregate{
 		Completed:     64,
 		Failed:        10,
@@ -138,9 +142,9 @@ func TestOpsSemanticProgressReporterAggregatesConcurrentCompletions(t *testing.T
 		Affected:      128,
 		AffectedValid: true,
 	}, reporter.Aggregate())
-	require.Contains(t, strings.Join(sink.Updates(), "\n"), "64/64 process-instance tree(s)")
-	require.Contains(t, strings.Join(sink.Updates(), "\n"), "10 failed")
-	require.Contains(t, strings.Join(sink.Updates(), "\n"), "affected process instances: 128")
+	require.Contains(t, strings.Join(updates, "\n"), "64/64 process-instance tree(s)")
+	require.Contains(t, strings.Join(updates, "\n"), "10 failed")
+	require.Contains(t, strings.Join(updates, "\n"), "affected process instances: 128")
 }
 
 // TestOpsSemanticProgressReporterInvalidatesAffectedCoverage verifies one
@@ -151,7 +155,7 @@ func TestOpsSemanticProgressReporterInvalidatesAffectedCoverage(t *testing.T) {
 		Scope: opsSemanticProgressScope{
 			ActivityLabel:             "deleting process definitions",
 			CoreResource:              "process definition(s)",
-			Total:                     2,
+			Total:                     3,
 			AffectedResource:          "affected process instances",
 			AffectedCoverageAvailable: true,
 		},
@@ -161,9 +165,12 @@ func TestOpsSemanticProgressReporterInvalidatesAffectedCoverage(t *testing.T) {
 
 	reporter.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Identity: "pd-1", Disposition: ops.CompletionDispositionConfirmed, AffectedCount: &affected}})
 	reporter.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Identity: "pd-2", Disposition: ops.CompletionDispositionConfirmed}})
+	affected = 9
+	reporter.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Identity: "pd-3", Disposition: ops.CompletionDispositionConfirmed, AffectedCount: &affected}})
 
 	got := reporter.Aggregate()
 	require.False(t, got.AffectedValid)
+	require.Equal(t, 0, got.Affected)
 	updates := sink.Updates()
 	require.NotEmpty(t, updates)
 	require.NotContains(t, updates[len(updates)-1], "affected process instances")
@@ -200,4 +207,23 @@ func newOpsSemanticProgressTestCommand(t *testing.T) (*cobra.Command, *activitys
 	cmd.SetErr(&stderr)
 	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
 	return cmd, sink, &stderr
+}
+
+func requireOpsSemanticProgressCompletedSequence(t *testing.T, updates []string, total int) {
+	t.Helper()
+	completedRe := regexp.MustCompile(`\b(\d+)/` + regexp.QuoteMeta(strconv.Itoa(total)) + `\b`)
+	seen := make(map[int]bool, total)
+	for _, update := range updates {
+		match := completedRe.FindStringSubmatch(update)
+		require.Len(t, match, 2, "update does not include completed/total count: %q", update)
+		completed, err := strconv.Atoi(match[1])
+		require.NoError(t, err)
+		require.GreaterOrEqual(t, completed, 1)
+		require.LessOrEqual(t, completed, total)
+		require.False(t, seen[completed], "duplicate completed count %d in updates %v", completed, updates)
+		seen[completed] = true
+	}
+	for completed := 1; completed <= total; completed++ {
+		require.Truef(t, seen[completed], "missing completed count %d", completed)
+	}
 }
