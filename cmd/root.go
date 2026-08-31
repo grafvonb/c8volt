@@ -25,6 +25,7 @@ var (
 	flagNoErrCodes     bool
 	flagCmdAutomation  bool
 	flagCmdAutoConfirm bool
+	flagAllTenants     bool
 	flagHTTPTimeout    = "30s"
 )
 
@@ -175,6 +176,7 @@ func init() {
 	pf.Bool("log-with-source", false, "include source file and line number in logs")
 
 	pf.String("tenant", "", "tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized")
+	pf.BoolVar(&flagAllTenants, "all-tenants", false, "clear configured tenant filtering and search all tenants visible to the authenticated user")
 	pf.BoolVar(&flagNoErrCodes, "no-err-codes", false, "suppress error codes in error outputs")
 
 	pf.String("camunda-version", string(toolx.CurrentCamundaVersion), fmt.Sprintf("Camunda version (%s) expected; aliases include 810, v810, and v8.10 for 8.10. Causes usage of specific API versions.", toolx.SupportedCamundaVersionsString()))

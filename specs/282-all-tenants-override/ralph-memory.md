@@ -5,10 +5,11 @@ Started: 2026-08-31T06:07:38Z
 
 ## Codebase Patterns
 - Root persistent flags are declared in `cmd/root.go` inside `init()` from `rootCmd.PersistentFlags()`. Config-backed flags are bound in `cmd/root_config.go:initViper`; `--all-tenants` must stay out of `initViper`, Viper defaults, environment aliases, and durable config structs.
+- `--all-tenants` is registered in `cmd/root.go` as a command-line-only root persistent BoolVar backed by `flagAllTenants`; tests in `cmd/root_test.go` cover default false, inherited placement before/after subcommands, explicit true, and explicit false.
 - Root bootstrap runs `initViper`, help bypass, log-level overrides, then `retrieveAndNormalizeConfig` before installing activity/logging context and remote services. The all-tenants override must run after `retrieveAndNormalizeConfig` and before `cfg.ToContextWithLogWriter`, `tenantOverrideProvenanceFromConfig`, validation, and `installRemoteCommandServices`.
 - Private tenant provenance lives in `cmd/cmd_tenant_context.go` as `tenantOverrideProvenance` on command context. Public `tenant.Context` remains effective-state-only and is rendered by `cmd/cmd_views_tenant_context.go`.
 - Existing #283 warning rendering is reusable: `tenantOverrideHumanLines` emits `configured tenant: <tenant>`, marks named-to-empty broadening as warning, then `tenantContextPrimaryHumanLine` emits `selection scope: unfiltered across accessible tenants`. `renderTenantContext` suppresses this in quiet/protected output via `shouldRenderTenantContextHuman`.
-- Command machine-contract metadata is annotation-backed in `cmd/command_contract.go`; setter/resolver pairs such as `setCommandMutation`/`commandMutationForCommand` and `setContractSupport`/`contractSupportForCommand` are the local pattern for adding all-tenants support. `commandCapabilityForCommand` is the serialization point. Human summary rendering is in `cmd/capabilities.go`.
+- Command machine-contract metadata is annotation-backed in `cmd/command_contract.go`; all-tenants support now has `AllTenantsSupportAccepted`, `AllTenantsSupportRejectedConcreteDestination`, `setAllTenantsSupport`, and `allTenantsSupportForCommand`, defaulting unannotated/nil commands to `accepted`. `commandCapabilityForCommand` is the later serialization point. Human summary rendering is in `cmd/capabilities.go`.
 - Integration example parsing treats inherited root flags in `integration/cli/examples_test.go:isRootFlag`, with value-consuming flags separately listed in `rootFlagConsumesValue`. New boolean inherited flags belong only in `isRootFlag`.
 - Generated CLI docs are owned by `docsgen/main.go` and regenerated with `make docs-content`; it calls Cobra markdown generation, `syncCLICommandTree`, and `syncDocsIndexFromReadme`. Do not hand-edit `docs/cli/*` or `docs/index.md`.
 
@@ -26,6 +27,7 @@ Started: 2026-08-31T06:07:38Z
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
 - `go test ./cmd -run 'Test(CommandCapabilityForCommand_DocumentsTenantContract|CommandCapabilityForCommand_IncludesInheritedAndRequiredFlags|CapabilitiesCommand_JSONOutput|RootHelp_PreservesHumanTaxonomyAndDiscoveryCommand|ProcessInstanceHelp_ExposesCompactGlobalFlags|TenantContext)' -count=1`
+- `go test ./cmd -run 'Test(CommandCapabilityForCommand_DocumentsTenantContract|CommandCapabilityForCommand_IncludesInheritedAndRequiredFlags|CapabilitiesCommand_JSONOutput|RootHelp_PreservesHumanTaxonomyAndDiscoveryCommand|ProcessInstanceHelp_ExposesCompactGlobalFlags|AllTenantsRootFlag|AllTenantsSupportForCommand)' -count=1`
 - `git diff --check`
 - `make docs-content`
 
@@ -35,4 +37,4 @@ Started: 2026-08-31T06:07:38Z
 - Do not implement concrete-destination rejection inside the four command runners after they have already initialized clients, inspected inputs, or built reports.
 
 ## Current Handoff
-- Next iteration starts at Phase 2 foundational task T006: add failing inherited `--all-tenants` root/subcommand parsing tests in `cmd/root_test.go`, then stay within Phase 2 until the root flag and support resolver compile and focused tests pass.
+- Next iteration starts at Phase 3 / US1 task T011: add failing base/profile/environment, already-empty, explicit-false, absent-flag, and Camunda 8.7 post-normalization override tests in `cmd/root_config_test.go`; the tenant override itself is not implemented yet.

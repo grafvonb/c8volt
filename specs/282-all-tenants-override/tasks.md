@@ -39,11 +39,11 @@ description: "Dependency-ordered implementation tasks for the all-tenants tenant
 
 **Critical**: No user story implementation begins until the root flag and support resolver compile and their contract tests pass.
 
-- [ ] T006 [P] Add failing tests for root and subcommand placement, boolean parsing, default false, and explicit `--all-tenants=false` in `cmd/root_test.go`
-- [ ] T007 [P] Add failing tests for default `accepted` support and explicit `rejected_concrete_destination` annotation resolution in `cmd/command_contract_test.go`
-- [ ] T008 Register the command-line-only root persistent boolean `--all-tenants` flag without a Viper/config/environment binding in `cmd/root.go`
-- [ ] T009 Add the documented all-tenants support type, annotation setter, and single defaulting resolver in `cmd/command_contract.go`
-- [ ] T010 Run the focused foundational tests covering `cmd/root_test.go` and `cmd/command_contract_test.go`
+- [x] T006 [P] Add failing tests for root and subcommand placement, boolean parsing, default false, and explicit `--all-tenants=false` in `cmd/root_test.go`
+- [x] T007 [P] Add failing tests for default `accepted` support and explicit `rejected_concrete_destination` annotation resolution in `cmd/command_contract_test.go`
+- [x] T008 Register the command-line-only root persistent boolean `--all-tenants` flag without a Viper/config/environment binding in `cmd/root.go`
+- [x] T009 Add the documented all-tenants support type, annotation setter, and single defaulting resolver in `cmd/command_contract.go`
+- [x] T010 Run the focused foundational tests covering `cmd/root_test.go` and `cmd/command_contract_test.go`
 
 **Checkpoint**: The inherited flag parses safely and one command annotation resolver can be consumed by runtime validation and capabilities; the flag does not yet alter tenant resolution.
 

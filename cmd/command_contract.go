@@ -27,6 +27,16 @@ const (
 	ContractSupportUnsupported ContractSupport = "unsupported"
 )
 
+// AllTenantsSupport describes whether a command can accept the inherited all-tenants override.
+type AllTenantsSupport string
+
+const (
+	// AllTenantsSupportAccepted allows the inherited all-tenants flag to parse for this command.
+	AllTenantsSupportAccepted AllTenantsSupport = "accepted"
+	// AllTenantsSupportRejectedConcreteDestination rejects all-tenants because the command needs one target tenant.
+	AllTenantsSupportRejectedConcreteDestination AllTenantsSupport = "rejected_concrete_destination"
+)
+
 type AutomationSupport string
 
 const (
@@ -99,6 +109,7 @@ const (
 
 	commandMutationAnnotation   = "machine-contract/mutation"
 	contractSupportAnnotation   = "machine-contract/support"
+	allTenantsSupportAnnotation = "machine-contract/all-tenants-support"
 	automationSupportAnnotation = "machine-contract/automation-support"
 	automationNotesAnnotation   = "machine-contract/automation-notes"
 	outputModesAnnotation       = "machine-contract/output-modes"
@@ -158,6 +169,22 @@ func contractSupportForCommand(cmd *cobra.Command) ContractSupport {
 		}
 	}
 	return ContractSupportUnsupported
+}
+
+// setAllTenantsSupport records whether a command accepts or rejects all-tenants.
+func setAllTenantsSupport(cmd *cobra.Command, support AllTenantsSupport) {
+	ensureCommandAnnotations(cmd)[allTenantsSupportAnnotation] = string(support)
+}
+
+// allTenantsSupportForCommand resolves the command support contract used by validation and discovery.
+func allTenantsSupportForCommand(cmd *cobra.Command) AllTenantsSupport {
+	if cmd == nil {
+		return AllTenantsSupportAccepted
+	}
+	if value := strings.TrimSpace(cmd.Annotations[allTenantsSupportAnnotation]); value != "" {
+		return AllTenantsSupport(value)
+	}
+	return AllTenantsSupportAccepted
 }
 
 // setAutomationSupport records whether a command explicitly supports the dedicated automation contract.

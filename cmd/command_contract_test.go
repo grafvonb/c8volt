@@ -951,6 +951,27 @@ func TestContractSupportForCommand_IgnoresHiddenChildren(t *testing.T) {
 	require.Equal(t, ContractSupportUnsupported, contractSupportForCommand(parent))
 }
 
+// TestAllTenantsSupportForCommand_DefaultsAccepted verifies unannotated commands
+// inherit the safe parsing contract for the root override.
+func TestAllTenantsSupportForCommand_DefaultsAccepted(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, AllTenantsSupportAccepted, allTenantsSupportForCommand(nil))
+	require.Equal(t, AllTenantsSupportAccepted, allTenantsSupportForCommand(&cobra.Command{Use: "demo"}))
+}
+
+// TestAllTenantsSupportForCommand_UsesExplicitAnnotation keeps runtime validation
+// and future capability serialization on a single command annotation resolver.
+func TestAllTenantsSupportForCommand_UsesExplicitAnnotation(t *testing.T) {
+	t.Parallel()
+
+	cmd := &cobra.Command{Use: "deploy process-definition"}
+	setAllTenantsSupport(cmd, AllTenantsSupportRejectedConcreteDestination)
+
+	require.Equal(t, AllTenantsSupportRejectedConcreteDestination, allTenantsSupportForCommand(cmd))
+	require.Equal(t, string(AllTenantsSupportRejectedConcreteDestination), cmd.Annotations[allTenantsSupportAnnotation])
+}
+
 func TestCapabilityDocumentForRoot_ExcludesHiddenAndShellInternalCommands(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)

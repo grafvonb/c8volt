@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -102,6 +103,7 @@ func TestProcessInstanceHelp_ExposesCompactGlobalFlags(t *testing.T) {
 	output := executeRootForTest(t, "get", "process-instance", "--help")
 
 	assertHelpOutputContainsAll(t, output,
+		"--all-tenants",
 		"--auto-confirm",
 		"--automation",
 		"--config",
@@ -123,6 +125,79 @@ func TestProcessInstanceHelp_ExposesCompactGlobalFlags(t *testing.T) {
 		"--log-with-source",
 		"--no-err-codes",
 	)
+}
+
+// TestAllTenantsRootFlag_DefaultsFalse verifies the inherited override starts inactive
+// until explicitly selected on the command line.
+func TestAllTenantsRootFlag_DefaultsFalse(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	t.Cleanup(func() {
+		resetCommandTreeFlags(root)
+	})
+
+	flag := root.PersistentFlags().Lookup("all-tenants")
+	require.NotNil(t, flag)
+	require.Equal(t, "bool", flag.Value.Type())
+	require.Equal(t, "false", flag.DefValue)
+	require.Equal(t, "false", flag.Value.String())
+	require.False(t, flag.Changed)
+	require.False(t, flagAllTenants)
+}
+
+// TestAllTenantsRootFlag_ParsesRootAndSubcommandPlacement proves Cobra accepts
+// the boolean override wherever inherited root flags are accepted.
+func TestAllTenantsRootFlag_ParsesRootAndSubcommandPlacement(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want bool
+	}{
+		{
+			name: "before subcommand",
+			args: []string{"--all-tenants", "get", "process-instance", "--help"},
+			want: true,
+		},
+		{
+			name: "after subcommand",
+			args: []string{"get", "process-instance", "--all-tenants", "--help"},
+			want: true,
+		},
+		{
+			name: "explicit true",
+			args: []string{"get", "process-instance", "--all-tenants=true", "--help"},
+			want: true,
+		},
+		{
+			name: "explicit false stays inactive",
+			args: []string{"get", "process-instance", "--all-tenants=false", "--help"},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := Root()
+			resetCommandTreeFlags(root)
+			t.Cleanup(func() {
+				resetCommandTreeFlags(root)
+			})
+
+			buf := &bytes.Buffer{}
+			root.SetOut(buf)
+			root.SetErr(buf)
+			root.SetArgs(tt.args)
+
+			_, err := root.ExecuteC()
+			require.NoError(t, err)
+
+			flag := root.PersistentFlags().Lookup("all-tenants")
+			require.NotNil(t, flag)
+			require.True(t, flag.Changed)
+			require.Equal(t, tt.want, flagAllTenants)
+			require.Equal(t, strconv.FormatBool(tt.want), flag.Value.String())
+		})
+	}
 }
 
 func TestTimeoutFlag_RejectsInvalidDuration(t *testing.T) {
