@@ -179,6 +179,41 @@ func newProcessInstanceMutationProgressReporterWithState(cmd *cobra.Command, ope
 	}, state
 }
 
+// newProcessInstanceMutationSemanticReporter owns the post-confirmation
+// completion scope for one process-instance cancel/delete mutation.
+func newProcessInstanceMutationSemanticReporter(cmd *cobra.Command, operation string, impact processInstancePageImpact) *opsSemanticProgressReporter {
+	channel := opsProgressChannelForMode(processInstanceMutationProgressModeForCommand(cmd))
+	return newOpsSemanticProgressReporter(cmd, opsSemanticProgressConfig{
+		Scope:  processInstanceMutationSemanticProgressScope(operation, impact.Roots, processInstanceMutationAffectedCoverageAvailable(impact)),
+		Policy: opsSemanticProgressOutputPolicyForChannel(channel),
+	})
+}
+
+func processInstanceMutationAffectedCoverageAvailable(impact processInstancePageImpact) bool {
+	return impact.Roots > 0 && impact.Affected > 0 && (impact.Roots == 1 || impact.Affected == impact.Roots)
+}
+
+func processInstanceMutationSemanticProgressCallback(reporter *opsSemanticProgressReporter) func(processOptions.ProgressEvent) {
+	return func(event processOptions.ProgressEvent) {
+		if reporter == nil || event.Kind != processOptions.ProgressEventKindCompletion || event.Completion == nil {
+			return
+		}
+		reporter.Report(ops.ProgressEvent{
+			Kind: ops.ProgressEventKindCompletion,
+			Completion: &ops.CompletionProgress{
+				Phase:            event.Completion.Phase,
+				CoreResource:     event.Completion.CoreResource,
+				Total:            event.Completion.Total,
+				Identity:         event.Completion.Identity,
+				Disposition:      ops.CompletionDisposition(event.Completion.Disposition),
+				FailureDetail:    event.Completion.FailureDetail,
+				AffectedResource: event.Completion.AffectedResource,
+				AffectedCount:    event.Completion.AffectedCount,
+			},
+		})
+	}
+}
+
 func processInstanceMutationProgressModeForCommand(cmd *cobra.Command) opsProgressModeInput {
 	input := opsProgressModeInput{
 		RenderMode: pickMode(),

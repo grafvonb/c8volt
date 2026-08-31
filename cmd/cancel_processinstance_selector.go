@@ -105,11 +105,13 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 					}
 				}
 
+				semanticReporter := newProcessInstanceMutationSemanticReporter(cmd, "cancel", impact)
 				mutationOpts := append(compactProcessInstanceMutationOptions(collectOptions()),
 					processOptions.WithAffectedProcessInstanceCount(len(step.Plan.Collected)),
-					processOptions.WithProgress(progress),
+					processOptions.WithProgress(processInstanceMutationSemanticProgressCallback(semanticReporter)),
 				)
 				reports, err := cli.CancelProcessInstances(cmd.Context(), step.Plan.Roots, flagWorkers, mutationOpts...)
+				semanticReporter.Close()
 				if err != nil {
 					return process.ProcessInstanceSearchPageActionStop, fmt.Errorf("cancel process instances: %w", err)
 				}

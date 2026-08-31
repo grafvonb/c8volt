@@ -122,3 +122,27 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./internal/services/processinstance/... -run 'Progress|Cancel|Delete|CreateNProcessInstances' -race -count=1`, `go test ./internal/services/processinstance -race -count=1`, and `git diff --check`.
 - Process-instance completion facts now distinguish submitted, confirmed, failed, nil affected counts, and trustworthy zero while preserving frozen progress and result ordering.
 ---
+---
+## Iteration 6 - 2026-08-31 19:48
+**Work Unit**: User Story 1 process-instance command semantic progress wiring
+**Tasks Completed**:
+- [x] T009: Add direct-key, stdin-key, and search-selected cancel/delete live-activity tests
+- [x] T017: Route direct, stdin, and search cancel/delete mutations through the same reporter without changing planning, confirmation, result ordering, or final summaries
+**Tasks Remaining in Work Unit**: T010-T015 and T018-T024 remain in User Story 1
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/cancel_processinstance_selector.go
+- cmd/cancel_processinstance_selector_test.go
+- cmd/delete_processinstance.go
+- cmd/delete_processinstance_selector.go
+- cmd/delete_processinstance_selector_test.go
+- cmd/processinstance_mutation_progress.go
+- cmd/processinstance_mutation_progress_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Validation passed: `go test ./cmd -run 'TestProcessInstanceMutationDirectAndStdinKeysUseSemanticCompletionActivity|TestCancelProcessInstanceSearchSelectedUsesSemanticCompletionActivity|TestDeleteProcessInstanceSearchSelectedUsesSemanticCompletionActivity' -race -count=1`, `go test ./cmd -run 'ProcessInstance.*(Progress|SearchSelected|SearchProgress|WorkflowImportance|DryRun_Search|WithPlan)|CancelProcessInstanceSearch|DeleteProcessInstanceSearch' -race -count=1`, `go test ./cmd -run 'Progress|Activity' -race -count=1`, `go test ./cmd -run 'ProcessInstance' -race -count=1`, and `git diff --check`.
+- Process-instance command mutation callbacks now consume service completion facts for live aggregate workflow activity while keeping discovery/planning progress separate.
+---

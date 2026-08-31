@@ -83,21 +83,7 @@ func TestCancelProcessInstanceSearchProgressContractPendingT064(t *testing.T) {
 			}, nil
 		},
 		cancelProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.CancelReports, error) {
-			require.Equal(t, typex.Keys{"root-401"}, keys)
-			cfg := options.ApplyFacadeOptions(opts)
-			require.Equal(t, 2, cfg.AffectedProcessInstanceCount)
-			require.NotNil(t, cfg.Progress)
-			require.True(t, cfg.SuppressWorkflowDetailLogs)
-			require.True(t, cfg.SuppressProcessInstanceDetailLogs)
-			cfg.Progress(options.ProgressEvent{
-				Kind: options.ProgressEventKindFrozenScope,
-				FrozenScope: &options.FrozenScopeProgress{
-					Phase:        "cancelling process instances",
-					CoreResource: "process instance(s)",
-					Done:         1,
-					Total:        1,
-				},
-			})
+			reportProcessInstanceMutationCompletionForTest(t, "cancel", "root-401", 2, keys, opts...)
 			return process.CancelReports{Items: []process.CancelReport{{Key: "root-401", Ok: true}}}, nil
 		},
 	}
@@ -109,7 +95,7 @@ func TestCancelProcessInstanceSearchProgressContractPendingT064(t *testing.T) {
 	require.Empty(t, stdout.String())
 	require.Contains(t, stderr.String(), "process-instance cancel scope: cancel process-instance matched at least 2 process instances; page size: 1; discovery pages: at least 2")
 	require.Contains(t, stderr.String(), "planning process-instance cancel scope 1/1 process instance(s)")
-	require.Contains(t, stderr.String(), "cancelling process instances 1/1 process instance(s)")
+	require.Contains(t, stderr.String(), "root-401 canceled (cancellation process-instance trees, 1/1 process-instance tree(s), affected process instances: 2)")
 	require.Contains(t, stderr.String(), "cancellation: canceled 1/1 process-instance tree(s); affected process instances: 2")
 	require.NotContains(t, stderr.String(), "/v2/")
 	require.NotContains(t, stderr.String(), "cursor")
@@ -527,6 +513,130 @@ func TestDeleteProcessInstanceProgressUsesWorkflowImportance(t *testing.T) {
 	}}, sink.PriorityUpdates())
 }
 
+// TestProcessInstanceMutationDirectAndStdinKeysUseSemanticCompletionActivity
+// verifies explicit key and stdin-key paths install the same post-confirmation
+// semantic reporter for process-instance cancel and delete.
+func TestProcessInstanceMutationDirectAndStdinKeysUseSemanticCompletionActivity(t *testing.T) {
+	tests := []struct {
+		name      string
+		operation string
+		inputKeys typex.Keys
+		run       func(*cobra.Command, process.API, typex.Keys) (processInstancePageActionResult, error)
+	}{
+		{
+			name:      "cancel direct key",
+			operation: "cancel",
+			inputKeys: typex.Keys{"direct-child"},
+			run:       runCancelProcessInstanceDirect,
+		},
+		{
+			name:      "cancel stdin key",
+			operation: "cancel",
+			inputKeys: typex.Keys{"stdin-child"},
+			run:       runCancelProcessInstanceDirect,
+		},
+		{
+			name:      "delete direct key",
+			operation: "delete",
+			inputKeys: typex.Keys{"direct-child"},
+			run:       runDeleteProcessInstanceDirect,
+		},
+		{
+			name:      "delete stdin key",
+			operation: "delete",
+			inputKeys: typex.Keys{"stdin-child"},
+			run:       runDeleteProcessInstanceDirect,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			flagCmdAutoConfirm = true
+
+			sink := &activitysink.Sink{}
+			cmd := &cobra.Command{}
+			cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+
+			prevConfirm := confirmCmdOrAbortFn
+			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+			confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+				require.True(t, autoConfirm)
+				require.Contains(t, prompt, tt.operation)
+				return nil
+			}
+
+			cli := stubProcessAPI{
+				dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+					require.Equal(t, tt.inputKeys, keys)
+					require.True(t, options.ApplyFacadeOptions(opts).IgnoreTenant)
+					return process.DryRunPIKeyExpansion{
+						Roots:     typex.Keys{"root-1"},
+						Collected: typex.Keys{"root-1", tt.inputKeys[0]},
+						Outcome:   process.TraversalOutcomeComplete,
+					}, nil
+				},
+				cancelProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.CancelReports, error) {
+					reportProcessInstanceMutationCompletionForTest(t, tt.operation, "root-1", 2, keys, opts...)
+					return process.CancelReports{Items: []process.CancelReport{{Key: "root-1", Ok: true}}}, nil
+				},
+				deleteProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.DeleteReports, error) {
+					reportProcessInstanceMutationCompletionForTest(t, tt.operation, "root-1", 2, keys, opts...)
+					return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-1", Ok: true}}}, nil
+				},
+			}
+
+			got, err := tt.run(cmd, cli, tt.inputKeys)
+
+			require.NoError(t, err)
+			require.Len(t, got.Reports, 1)
+			requireProcessInstanceMutationSemanticActivity(t, sink, tt.operation, "root-1")
+		})
+	}
+}
+
+func reportProcessInstanceMutationCompletionForTest(t *testing.T, operation string, expectedRoot string, affectedCount int, keys typex.Keys, opts ...options.FacadeOption) {
+	t.Helper()
+	require.Equal(t, typex.Keys{expectedRoot}, keys)
+	cfg := options.ApplyFacadeOptions(opts)
+	require.Equal(t, affectedCount, cfg.AffectedProcessInstanceCount)
+	require.NotNil(t, cfg.Progress)
+	require.True(t, cfg.SuppressWorkflowDetailLogs)
+	require.True(t, cfg.SuppressProcessInstanceDetailLogs)
+	affected := affectedCount
+	cfg.Progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindCompletion,
+		Completion: &options.CompletionProgress{
+			Phase:            operation,
+			CoreResource:     "process-instance tree(s)",
+			Total:            1,
+			Identity:         expectedRoot,
+			Disposition:      options.CompletionDispositionConfirmed,
+			AffectedResource: "affected process instances",
+			AffectedCount:    &affected,
+		},
+	})
+}
+
+func requireProcessInstanceMutationSemanticActivity(t *testing.T, sink *activitysink.Sink, operation string, identity string) {
+	t.Helper()
+	label, verb := processInstanceMutationResultWords(operation, false)
+	start := activitysink.Start{
+		Message:    label + " process-instance trees, 0/1 process-instance tree(s), affected process instances: 0",
+		Importance: logging.ActivityImportanceWorkflow,
+	}
+	update := activitysink.Update{
+		Message:    label + " process-instance trees, 1/1 process-instance tree(s), affected process instances: 2",
+		Importance: logging.ActivityImportanceWorkflow,
+	}
+	require.Contains(t, sink.Starts(), start)
+	require.Contains(t, sink.PriorityUpdates(), update)
+	require.Contains(t, update.Message, label)
+	require.NotContains(t, update.Message, identity+" "+verb)
+	require.GreaterOrEqual(t, sink.Stopped(), 1)
+}
+
 // TestDeleteProcessInstanceSearchProgressContractPendingT064 defines the shared
 // destructive progress contract for search-selected delete.
 func TestDeleteProcessInstanceSearchProgressContractPendingT064(t *testing.T) {
@@ -585,21 +695,7 @@ func TestDeleteProcessInstanceSearchProgressContractPendingT064(t *testing.T) {
 			}, nil
 		},
 		deleteProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.DeleteReports, error) {
-			require.Equal(t, typex.Keys{"root-401"}, keys)
-			cfg := options.ApplyFacadeOptions(opts)
-			require.Equal(t, 2, cfg.AffectedProcessInstanceCount)
-			require.NotNil(t, cfg.Progress)
-			require.True(t, cfg.SuppressWorkflowDetailLogs)
-			require.True(t, cfg.SuppressProcessInstanceDetailLogs)
-			cfg.Progress(options.ProgressEvent{
-				Kind: options.ProgressEventKindFrozenScope,
-				FrozenScope: &options.FrozenScopeProgress{
-					Phase:        "deleting process instances",
-					CoreResource: "process instance(s)",
-					Done:         1,
-					Total:        1,
-				},
-			})
+			reportProcessInstanceMutationCompletionForTest(t, "delete", "root-401", 2, keys, opts...)
 			return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-401", Ok: true}}}, nil
 		},
 	}
@@ -611,7 +707,7 @@ func TestDeleteProcessInstanceSearchProgressContractPendingT064(t *testing.T) {
 	require.Empty(t, stdout.String())
 	require.Contains(t, stderr.String(), "process-instance delete scope: delete process-instance matched 1 process instance; page size: 1; discovery pages: 1")
 	require.Contains(t, stderr.String(), "planning process-instance delete scope 1/1 process instance(s)")
-	require.Contains(t, stderr.String(), "deleting process instances 1/1 process instance(s)")
+	require.Contains(t, stderr.String(), "root-401 deleted (deletion process-instance trees, 1/1 process-instance tree(s), affected process instances: 2)")
 	require.Contains(t, stderr.String(), "deletion: deleted 1/1 process-instance tree(s); affected process instances: 2")
 	require.NotContains(t, stderr.String(), "/v2/")
 	require.NotContains(t, stderr.String(), "cursor")
