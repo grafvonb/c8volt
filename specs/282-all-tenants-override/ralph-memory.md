@@ -33,6 +33,7 @@ Started: 2026-08-31T06:07:38Z
 - US4 focused validation for iteration 16 passed with `go test ./cmd -run 'Test(CommandCapabilityForCommand_IncludesAllTenantsSupport|CapabilityDocumentForRoot_KeepsV1WithAllTenantsSupport|CapabilitiesCommand_JSONIncludesAllTenantsSupport|CapabilitiesCommand_DefaultOutputUsesHumanSummary|AllTenantsHelp_DocumentsRootAndApplicableCommand|DeployHelp_DocumentsWaitContractsAndFollowUp|EmbedDeployHelp_DocumentsRunWithoutExpectationFlags|RunHelp_DocumentsWaitAndVerificationRouting|OpsExecuteSmokeTestHelpDocumentsCommand|AllTenantsSupportForCommand_ConcreteDestinationInventory)$' -count=1`, `go test -tags integration ./integration/cli -run 'TestAllTenantsExampleRootFlagRecognition' -count=1`, and `go test ./docsgen -run 'TestGeneratedAllTenantsDocsDocumentSyntaxAndRestrictions' -count=1`.
 - T049 declaration/comment inventory found the new all-tenants helpers and tests already had intent comments; the only polish gaps were comments for the modified `CommandCapability` contract type and `renderCapabilitySummaryLine`. `gofmt` ran across the feature-touched Go file list, `git diff --check` passed, and focused `cmd` all-tenants/capability/tenant-context tests passed.
 - T050 targeted package validation passed with the three quickstart `./cmd` all-tenants patterns, the quickstart `./integration/cli` example/command pattern (no non-tagged tests selected), `go test -tags integration ./integration/cli -run 'TestAllTenantsExampleRootFlagRecognition' -count=1`, and `go test ./docsgen -run 'TestGeneratedAllTenantsDocsDocumentSyntaxAndRestrictions' -count=1`.
+- T052 vet validation passed with `make vet`, which ran `go vet ./...` and produced no feature-related failures.
 
 ## Decisions
 - Phase 1 confirmed this feature is CLI-only. Do not touch `c8volt/`, `internal/services/`, `internal/clients/`, generated Camunda clients, or facade options for the all-tenants override.
@@ -59,4 +60,4 @@ Started: 2026-08-31T06:07:38Z
 - Do not implement concrete-destination rejection inside the four command runners after they have already initialized clients, inspected inputs, or built reports.
 
 ## Current Handoff
-- Continue Phase 7 / Polish at task T052: run `make vet` and resolve any feature-related failures in touched Go files.
+- Continue Phase 7 / Polish at task T053: run the constitution-required full race-enabled `make test` target.

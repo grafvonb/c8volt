@@ -155,7 +155,7 @@ description: "Dependency-ordered implementation tasks for the all-tenants tenant
 - [x] T049 Inventory new declarations, add required intent comments, and run `gofmt` on touched files in `cmd/root.go`, `cmd/root_config.go`, `cmd/cmd_tenant_context.go`, `cmd/command_contract.go`, `cmd/capabilities.go`, the four destination command files, their `cmd/*_test.go` files, `integration/cli/examples_test.go`, and `docsgen/main_test.go`
 - [x] T050 Run targeted package tests for `./cmd`, `./integration/cli`, and `./docsgen` using the focused patterns from `specs/282-all-tenants-override/quickstart.md`
 - [x] T051 Run `make docs-content` and verify a second generation produces no unexplained drift in `README.md`, `docs/cli/`, `docs/index.md`, and `docs/ops/`
-- [ ] T052 Run the `vet` target in `Makefile` with `make vet` and resolve all feature-related failures in touched Go files
+- [x] T052 Run the `vet` target in `Makefile` with `make vet` and resolve all feature-related failures in touched Go files
 - [ ] T053 Run the constitution-required full race-enabled `test` target in `Makefile` with `make test`
 - [ ] T054 Review `git diff --check` and the full diff to confirm no changes under `c8volt/`, `internal/services/`, or `internal/clients/`, no public tenant-context provenance, and no authorization-bypass option
 - [ ] T055 Update completed checkboxes and reusable codebase patterns in `specs/282-all-tenants-override/tasks.md` and `specs/282-all-tenants-override/progress.md`
