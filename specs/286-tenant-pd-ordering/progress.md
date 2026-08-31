@@ -311,3 +311,20 @@ Started: 2026-08-31 13:37:23
 **Learnings**:
 - v8.7 local latest emulation now honors exact tenant/BPMN grouping and lexical key ties inside the documented 1000-definition compatibility window.
 ---
+---
+## Iteration 20 - 2026-08-31 14:55
+**Work Unit**: US3 Camunda 8.8 native latest paging and sort
+**Tasks Completed**:
+- [x] T026: Add Camunda 8.8 tests for native `isLatestVersion`, tenant-then-process latest sort, continuation metadata, and multi-page latest requests in `internal/services/processdefinition/v88/service_test.go`
+- [x] T034: Make Camunda 8.8 latest pages use native filtering with tenant ID ASC then process definition ID ASC while leaving final normalization to the shared service in `internal/services/processdefinition/v88/service.go`
+**Tasks Remaining in Work Unit**: 0; US3 has 6 incomplete tasks remaining (T027-T029, T035-T037)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/v88/service.go
+- internal/services/processdefinition/v88/service_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- v8.8 native latest pages now request tenant/process ordering and cursor follow-up pages trust Camunda `HasMoreTotalItems` instead of offset-based visible-count inference.
+---

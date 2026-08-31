@@ -383,6 +383,12 @@ func pickProcessDefinitionOverflowState(page camundav88.SearchQueryPageResponse,
 	if itemCount == 0 {
 		return d.ProcessInstanceOverflowStateNoMore
 	}
+	if req.After != "" {
+		if page.HasMoreTotalItems {
+			return d.ProcessInstanceOverflowStateHasMore
+		}
+		return d.ProcessInstanceOverflowStateNoMore
+	}
 	visibleCount := int64(req.From) + int64(itemCount)
 	if page.TotalItems > visibleCount {
 		return d.ProcessInstanceOverflowStateHasMore
@@ -431,11 +437,11 @@ func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinition
 		asc := camundav88.ASC
 		sort = append(sort,
 			camundav88.ProcessDefinitionSearchQuerySortRequest{
-				Field: camundav88.ProcessDefinitionSearchQuerySortRequestFieldProcessDefinitionId,
+				Field: camundav88.ProcessDefinitionSearchQuerySortRequestFieldTenantId,
 				Order: &asc,
 			},
 			camundav88.ProcessDefinitionSearchQuerySortRequest{
-				Field: camundav88.ProcessDefinitionSearchQuerySortRequestFieldTenantId,
+				Field: camundav88.ProcessDefinitionSearchQuerySortRequestFieldProcessDefinitionId,
 				Order: &asc,
 			},
 		)
