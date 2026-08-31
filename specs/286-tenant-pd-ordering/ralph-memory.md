@@ -30,6 +30,8 @@ Started: 2026-08-31T11:37:22Z
 - `internal/services/processdefinition/v87/service.go` now groups v8.7 local latest emulation by exact tenant ID plus BPMN process ID, resolves equal-version ties by lowest opaque key text, sorts selected rows canonically, and documents the 1000 visible-definition compatibility window.
 - `internal/services/processdefinition/v88/service_test.go` now covers native `isLatestVersion`, tenant-then-process latest sort, cursor continuation requests, lower-bound/exact page totals, and multi-page latest metadata.
 - `internal/services/processdefinition/v88/service.go` now sends latest-page sort fields `tenantId ASC`, `processDefinitionId ASC` and classifies follow-up cursor pages from native `HasMoreTotalItems` metadata instead of offset arithmetic.
+- `internal/services/processdefinition/v89/service_test.go` now covers native `isLatestVersion`, tenant-then-process latest sort, cursor continuation requests, lower-bound/exact page totals, and multi-page latest metadata.
+- `internal/services/processdefinition/v89/service.go` now sends latest-page sort fields `tenantId ASC`, `processDefinitionId ASC` and classifies follow-up cursor pages from native `HasMoreTotalItems` metadata instead of offset arithmetic.
 
 ## Decisions
 - Treat T001 as a validation-only setup work unit; no production code changed in iteration 1.
@@ -51,6 +53,7 @@ Started: 2026-08-31T11:37:22Z
 - T024 and T032 were paired because the facade latest regression tests intentionally reject the old direct `SearchProcessDefinitionsLatest` service call and require the shared paged latest traversal to pass.
 - T025 and T033 were paired because the new v8.7 latest grouping regression requires the local compatibility selector implementation to pass.
 - T026 and T034 were paired because the new v8.8 latest page regression requires tenant/process native sort order and cursor continuation metadata changes to pass.
+- T027 and T035 were paired because the new v8.9 latest page regression requires tenant/process native sort order and cursor continuation metadata changes to pass.
 
 ## Gotchas
 - Shell wrapper note: zsh has special parameters named `status` and `commands`; use neutral variable names or run validation loops under `/bin/bash`.
@@ -70,4 +73,4 @@ Started: 2026-08-31T11:37:22Z
 - Do not use zsh variable names `status` or `commands` in validation-loop scripts.
 
 ## Current Handoff
-- Next iteration remains in US3 at T027: add Camunda 8.9 tests for native `isLatestVersion`, tenant-then-process latest sort, continuation metadata, and multi-page latest requests in `internal/services/processdefinition/v89/service_test.go`; mirror the v8.8 coverage shape from `TestService_SearchProcessDefinitionsPage_LatestUsesNativeFilterSortAndCursorMetadata` and expect the matching implementation in T035 to reorder latest sort fields in `internal/services/processdefinition/v89/service.go` and fix cursor-page continuation classification if needed.
+- Next iteration remains in US3 at T028: add Camunda 8.10 tests for native `isLatestVersion`, tenant-then-process latest sort, continuation metadata, and multi-page latest requests in `internal/services/processdefinition/v810/service_test.go`; mirror the v8.8/v8.9 coverage shape from `TestService_SearchProcessDefinitionsPage_LatestUsesNativeFilterSortAndCursorMetadata` and expect the matching implementation in T036 to reorder latest sort fields in `internal/services/processdefinition/v810/service.go` and fix cursor-page continuation classification if needed.

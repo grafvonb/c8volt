@@ -18,8 +18,6 @@ Started: 2026-08-31 13:37:23
 - specs/286-tenant-pd-ordering/progress.md
 **Learnings**:
 - v8.10 ordinary search matches the v8.9 manually marshalled request-body path and now uses the same canonical ordinary sort tuple before final domain normalization.
----
----
 ## Iteration 18 - 2026-08-31 14:47
 **Work Unit**: US3 facade latest traversal routing
 **Tasks Completed**:
@@ -327,4 +325,21 @@ Started: 2026-08-31 13:37:23
 - specs/286-tenant-pd-ordering/progress.md
 **Learnings**:
 - v8.8 native latest pages now request tenant/process ordering and cursor follow-up pages trust Camunda `HasMoreTotalItems` instead of offset-based visible-count inference.
+---
+---
+## Iteration 21 - 2026-08-31 14:59
+**Work Unit**: US3 Camunda 8.9 native latest paging and sort
+**Tasks Completed**:
+- [x] T027: Add Camunda 8.9 tests for native `isLatestVersion`, tenant-then-process latest sort, continuation metadata, and multi-page latest requests in `internal/services/processdefinition/v89/service_test.go`
+- [x] T035: Make Camunda 8.9 latest pages use native filtering with tenant ID ASC then process definition ID ASC while leaving final normalization to the shared service in `internal/services/processdefinition/v89/service.go`
+**Tasks Remaining in Work Unit**: 0; US3 has 4 incomplete tasks remaining (T028-T029, T036-T037)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/v89/service.go
+- internal/services/processdefinition/v89/service_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- v8.9 native latest pages now match v8.8 by requesting tenant/process ordering and classifying cursor follow-up pages from Camunda `HasMoreTotalItems` metadata.
 ---

@@ -103,7 +103,7 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 - [x] T024 [P] [US3] Add facade tests for mapping `Latest`, complete latest results, ordered conversion, visitor behavior, and domain-error conversion in `c8volt/process/client_test.go`
 - [x] T025 [P] [US3] Add Camunda 8.7 tests for canonical Operate paging, tenant-aware local latest selection, lexical key ties, and the retained 1000-definition compatibility ceiling in `internal/services/processdefinition/v87/service_test.go`
 - [x] T026 [P] [US3] Add Camunda 8.8 tests for native `isLatestVersion`, tenant-then-process latest sort, continuation metadata, and multi-page latest requests in `internal/services/processdefinition/v88/service_test.go`
-- [ ] T027 [P] [US3] Add Camunda 8.9 tests for native `isLatestVersion`, tenant-then-process latest sort, continuation metadata, and multi-page latest requests in `internal/services/processdefinition/v89/service_test.go`
+- [x] T027 [P] [US3] Add Camunda 8.9 tests for native `isLatestVersion`, tenant-then-process latest sort, continuation metadata, and multi-page latest requests in `internal/services/processdefinition/v89/service_test.go`
 - [ ] T028 [P] [US3] Add Camunda 8.10 tests for native `isLatestVersion`, tenant-then-process latest sort, continuation metadata, and multi-page latest requests in `internal/services/processdefinition/v810/service_test.go`
 - [ ] T029 [P] [US3] Add CLI tests for `--latest` across tenants, selector validation, page-size invariance, unchanged key retrieval, and unchanged XML mode in `cmd/get_processdefinition_test.go` and `cmd/process_definition_selector_validation_test.go`
 
@@ -114,7 +114,7 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 - [x] T032 [US3] Route `SearchProcessDefinitionsLatest` through the shared paged service request with `Latest: true`, preserving facade error conversion and result order in `c8volt/process/client.go`
 - [x] T033 [P] [US3] Make the Camunda 8.7 compatibility latest wrapper group by exact tenant and BPMN IDs, resolve equal-version keys lexically, and retain its documented 1000-item bound in `internal/services/processdefinition/v87/service.go`
 - [x] T034 [P] [US3] Make Camunda 8.8 latest pages use native filtering with tenant ID ASC then process definition ID ASC while leaving final normalization to the shared service in `internal/services/processdefinition/v88/service.go`
-- [ ] T035 [P] [US3] Make Camunda 8.9 latest pages use native filtering with tenant ID ASC then process definition ID ASC while leaving final normalization to the shared service in `internal/services/processdefinition/v89/service.go`
+- [x] T035 [P] [US3] Make Camunda 8.9 latest pages use native filtering with tenant ID ASC then process definition ID ASC while leaving final normalization to the shared service in `internal/services/processdefinition/v89/service.go`
 - [ ] T036 [P] [US3] Make Camunda 8.10 latest pages use native filtering with tenant ID ASC then process definition ID ASC while leaving final normalization to the shared service in `internal/services/processdefinition/v810/service.go`
 - [ ] T037 [US3] Route broad `--latest` discovery and selector validation through the canonical facade collection path while preserving direct-key, XML, progress, and watch dispatch behavior in `cmd/get_processdefinition.go`, `cmd/process_definition_selector_validation.go`, and `cmd/get_processdefinition_watch.go`
 
