@@ -83,7 +83,7 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 
 ### Implementation and Version Integration for User Story 2
 
-- [ ] T020 [P] [US2] Add with-stat parity coverage and keep Camunda 8.8 statistics enrichment associated by slice index without reordering in `internal/services/processdefinition/v88/service_test.go` and `internal/services/processdefinition/v88/service.go`
+- [x] T020 [P] [US2] Add with-stat parity coverage and keep Camunda 8.8 statistics enrichment associated by slice index without reordering in `internal/services/processdefinition/v88/service_test.go` and `internal/services/processdefinition/v88/service.go`
 - [ ] T021 [P] [US2] Add with-stat parity coverage and keep Camunda 8.9 statistics enrichment associated by slice index without reordering in `internal/services/processdefinition/v89/service_test.go` and `internal/services/processdefinition/v89/service.go`
 - [ ] T022 [P] [US2] Add with-stat parity coverage and keep Camunda 8.10 statistics enrichment associated by slice index without reordering in `internal/services/processdefinition/v810/service_test.go` and `internal/services/processdefinition/v810/service.go`
 

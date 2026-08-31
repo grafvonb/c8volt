@@ -3,7 +3,6 @@
 Feature: 286-tenant-pd-ordering
 Started: 2026-08-31 13:37:23
 
----
 ## Iteration 9 - 2026-08-31 14:10
 **Work Unit**: US1 Camunda 8.10 ordinary adapter canonical ordering
 **Tasks Completed**:
@@ -207,4 +206,20 @@ Started: 2026-08-31 13:37:23
 - specs/286-tenant-pd-ordering/progress.md
 **Learnings**:
 - Command watch refresh bodies preserve snapshot row order across ten statistics-only refreshes; count changes render in place on the same process-definition keys.
+---
+---
+## Iteration 14 - 2026-08-31 14:29
+**Work Unit**: US2 Camunda 8.8 with-stat ordering parity
+**Tasks Completed**:
+- [x] T020: Add with-stat parity coverage and keep Camunda 8.8 statistics enrichment associated by slice index without reordering in `internal/services/processdefinition/v88/service_test.go` and `internal/services/processdefinition/v88/service.go`
+**Tasks Remaining in Work Unit**: 0; US2 has 2 incomplete tasks remaining (T021-T022)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/v88/service.go
+- internal/services/processdefinition/v88/service_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- v8.8 ordinary with-stat search preserves the same canonical key sequence as non-stat search, with counts attached to the matching process-definition keys after final sorting.
 ---
