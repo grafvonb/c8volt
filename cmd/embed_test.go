@@ -89,6 +89,7 @@ func TestEmbedDeployHelp_DocumentsRunWithoutExpectationFlags(t *testing.T) {
 	output := executeRootForTest(t, "embed", "deploy", "--help")
 
 	require.Contains(t, output, "Add --run to start one process instance")
+	require.Contains(t, output, "does not accept --all-tenants because it creates resources in one concrete tenant")
 	require.Contains(t, output, "--run")
 	require.NotContains(t, output, "--expected-status")
 }
@@ -162,6 +163,46 @@ func TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnly(t *test
 	})
 	require.NoError(t, err, string(output))
 	require.True(t, sawDeploy)
+}
+
+// TestEmbedDeployCommand_AllTenantsRejectsBeforeEmbeddedOrRequestWork proves
+// embedded deployment cannot inspect fixture selections or submit deployments
+// when all-tenants is active.
+func TestEmbedDeployCommand_AllTenantsRejectsBeforeEmbeddedOrRequestWork(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "unknown fixture",
+			args: []string{"embed", "deploy", "--all-tenants", "--file", "processdefinitions/DOES_NOT_EXIST.bpmn"},
+		},
+		{
+			name: "all with optional run",
+			args: []string{"--all-tenants", "embed", "deploy", "--all", "--run"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Append(r.Method + " " + r.URL.Path)
+				t.Fatalf("embed deploy must reject --all-tenants before request work: %s %s", r.Method, r.URL.Path)
+			}))
+			t.Cleanup(srv.Close)
+			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.9")}, tt.args...)
+
+			output, err := testx.RunCmdSubprocess(t, "TestEmbedDeployCommand_AllTenantsRejectsBeforeEmbeddedOrRequestWorkHelper", map[string]string{
+				"C8VOLT_TEST_ROOT_ARGS": marshalRootArgsForEnv(t, args),
+			})
+			assertAllTenantsConcreteDestinationSubprocessFailure(t, output, err, "embed deploy")
+			require.Empty(t, requests.Snapshot())
+			require.NotContains(t, string(output), "embedded file")
+			require.NotContains(t, string(output), "deploying embedded resource")
+			require.NotContains(t, string(output), "creation target:")
+		})
+	}
 }
 
 func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87(t *testing.T) {
@@ -300,6 +341,11 @@ func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87Helper(t *testing.T) {
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
+}
+
+// Helper-process entrypoint for all-tenants embedded deployment rejection.
+func TestEmbedDeployCommand_AllTenantsRejectsBeforeEmbeddedOrRequestWorkHelper(t *testing.T) {
+	executeRootHelperFromArgsEnv(t, "C8VOLT_TEST_ROOT_ARGS")
 }
 
 // Verifies embed export requires an explicit selection via --all or at least one --file.

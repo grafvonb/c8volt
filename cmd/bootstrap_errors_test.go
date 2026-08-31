@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
@@ -173,6 +174,46 @@ apis:
 	require.NotContains(t, string(output), "tenant: default-tenant")
 }
 
+// Verifies all-tenants and explicit tenant conflicts are invalid input before
+// missing configuration or remote bootstrap can take over the failure.
+func TestExecute_AllTenantsTenantConflictUsesInvalidInputBeforeConfig(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "named tenant",
+			args: []string{"--all-tenants", "--tenant", "tenant-a", "get", "cluster", "topology"},
+		},
+		{
+			name: "empty tenant",
+			args: []string{"--all-tenants", "--tenant", "", "get", "cluster", "topology"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			argsJSON, err := json.Marshal(tt.args)
+			require.NoError(t, err)
+
+			output, err := testx.RunCmdSubprocess(t, "TestExecute_AllTenantsTenantConflictUsesInvalidInputBeforeConfigHelper", map[string]string{
+				"C8VOLT_TEST_ARGS": string(argsJSON),
+			})
+			require.Error(t, err)
+
+			var exitErr *exec.ExitError
+			require.ErrorAs(t, err, &exitErr)
+			require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+			require.Contains(t, string(output), "invalid input")
+			require.Contains(t, string(output), "--tenant cannot be combined with --all-tenants")
+			require.NotContains(t, string(output), "local precondition failed")
+			require.NotContains(t, string(output), "Usage:")
+			require.NotContains(t, string(output), "Examples:")
+			require.NotContains(t, string(output), "Global Flags:")
+		})
+	}
+}
+
 // Verifies bootstrap normalization maps command-validation sentinels to invalid-input classification.
 func TestNormalizeBootstrapErrorMapsCommandValidationToInvalidInput(t *testing.T) {
 	err := normalizeBootstrapError(invalidFlagValuef("resource lookup requires a non-empty --id"))
@@ -308,6 +349,23 @@ func TestExecute_ConfigFlagOverridesDefaultSearchPathHelper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "config", "show"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for all-tenants/tenant conflict bootstrap coverage.
+func TestExecute_AllTenantsTenantConflictUsesInvalidInputBeforeConfigHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	var args []string
+	if err := json.Unmarshal([]byte(os.Getenv("C8VOLT_TEST_ARGS")), &args); err != nil {
+		t.Fatal(err)
+	}
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = append([]string{"c8volt"}, args...)
 
 	Execute()
 }

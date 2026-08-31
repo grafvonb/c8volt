@@ -36,7 +36,7 @@ During discovery, progress uses page and seen-count wording. After c8volt freeze
 
 Progress never writes to result stdout. Default human mode uses terminal activity; verbose and debug modes may keep durable progress lines on stderr. JSON output remains one document, keys-only output remains one key per line, and quiet or automation-oriented runs suppress progress chatter or keep scope in structured reports. For paged commands, `--batch-size` controls each backend discovery request, while `--limit` caps the total returned, selected, frozen, or analyzed scope as documented by the command.
 
-Tenant context is reported with operation-specific meaning before tenant-sensitive work. Discovery commands show a named filter as `selection scope: tenant-a only`, or `selection scope: unfiltered across accessible tenants` when no tenant filter is configured. If an explicit `--tenant` value changes configuration, human output first reports the prior `configured tenant`; clearing a named filter with `--tenant ""` warns that selection is unfiltered, while named changes are informational. Deploy, run, and smoke-test creation steps show `creation target: tenant-a` or `creation target: default tenant`. Explicit-key mutations state that the tenant filter is not applied, then show resource tenant evidence when the frozen plan already contains it. Multi-tenant plans emit one warning-level `affected tenants: ...` summary, and unknown-metadata warnings remain non-blocking safety evidence. JSON results and JSON audit reports use one nested `tenantContext` object; quiet mode suppresses tenant lines, and keys-only output stays one key per line with no warnings on stdout.
+Tenant context is reported with operation-specific meaning before tenant-sensitive work. Discovery commands show a named filter as `selection scope: tenant-a only`, or `selection scope: unfiltered across accessible tenants` when no tenant filter is configured. Use `--all-tenants` to explicitly clear a configured tenant filter for commands that can search across every tenant visible to the authenticated user. If an explicit `--tenant` value changes configuration, human output first reports the prior `configured tenant`; clearing a named filter with `--tenant ""` warns that selection is unfiltered, while named changes are informational. Clearing a named filter with `--all-tenants` emits `--all-tenants overrides the configured tenant filter; selection is unfiltered`. Deploy, run, and smoke-test creation steps show `creation target: tenant-a` or `creation target: default tenant`, and reject `--all-tenants` because they require one concrete destination tenant. Explicit-key mutations state that the tenant filter is not applied, then show resource tenant evidence when the frozen plan already contains it. Multi-tenant plans emit one warning-level `affected tenants: ...` summary, and unknown-metadata warnings remain non-blocking safety evidence. JSON results and JSON audit reports use one nested `tenantContext` object; quiet mode suppresses tenant lines, and keys-only output stays one key per line with no warnings on stdout.
 
 Transient Camunda GET and HEAD read failures are retried automatically when the shared request path sees temporary transport errors, throttling, or server availability responses. Retry messages stay compact and off result stdout, and c8volt still treats business outcomes such as not-found, invalid request, permission failure, and conflict as final.
 
@@ -325,6 +325,21 @@ Useful setup and automation commands:
 ```
 
 Generated references: [config](docs/cli/c8volt_config.md), [capabilities](docs/cli/c8volt_capabilities.md).
+
+### Tenant Scope
+
+Configure `app.tenant` when everyday discovery should stay narrowed to one tenant. Use `--all-tenants` when a single invocation should clear that configured tenant filter and search without a tenant field:
+
+```bash
+./c8volt --all-tenants get process-instance --state active --limit 10
+./c8volt get process-definition --all-tenants --latest
+```
+
+Both forms are supported because `--all-tenants` is inherited from the root command. The option is command-line-only, conflicts with any explicit `--tenant` value including `--tenant ""`, and `--all-tenants=false` is the same as not setting it.
+
+When `--all-tenants` clears a named configured tenant, ordinary human output includes the exact warning `--all-tenants overrides the configured tenant filter; selection is unfiltered`, then reports `selection scope: unfiltered across accessible tenants`. This is a filter change only: Camunda still limits results to resources the authenticated identity can see, and c8volt does not enumerate tenants or bypass authorization.
+
+Commands that create or deploy into one tenant reject `--all-tenants`: `deploy process-definition`, `embed deploy`, `run process-instance`, and `ops execute smoke-test`. Direct resource-key commands keep their existing backend authorization behavior; the flag does not grant broader direct-key access.
 
 ## Documentation
 

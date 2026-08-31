@@ -200,6 +200,42 @@ func TestProcessInstanceMutationProgress_RendersTenantOverrideBeforeScope(t *tes
 	require.Less(t, strings.Index(output, tenantLine), strings.Index(output, scopeLine))
 }
 
+// TestProcessInstanceMutationProgress_RendersAllTenantsOverrideOnceBeforeScope
+// verifies durable mutation progress reports the all-tenants broadening warning
+// once before the effective unfiltered discovery scope.
+func TestProcessInstanceMutationProgress_RendersAllTenantsOverrideOnceBeforeScope(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagVerbose = true
+
+	cmd := &cobra.Command{}
+	stderr := &bytes.Buffer{}
+	cmd.SetErr(stderr)
+	cmd.SetContext(tenantOverrideProvenance{
+		ConfiguredTenantID: "tenant-a",
+		AllTenants:         true,
+	}.ToContext(context.Background()))
+	attachTenantContext(cmd, newDiscoveryTenantContext(""))
+
+	progress := newProcessInstanceMutationProgressReporter(cmd, "cancel")
+	progress(processInstanceMutationTestPreflightEvent("cancel"))
+	progress(processInstanceMutationTestPreflightEvent("cancel"))
+
+	output := stderr.String()
+	configuredLine := "configured tenant: tenant-a\n"
+	overrideWarning := "--all-tenants overrides the configured tenant filter; selection is unfiltered\n"
+	tenantLine := "selection scope: unfiltered across accessible tenants\n"
+	scopeLine := "process-instance cancel scope:"
+	require.Contains(t, output, configuredLine)
+	require.Contains(t, output, overrideWarning)
+	require.Contains(t, output, tenantLine)
+	require.Equal(t, 1, strings.Count(output, overrideWarning))
+	require.Equal(t, 1, strings.Count(output, tenantLine))
+	require.Less(t, strings.Index(output, configuredLine), strings.Index(output, overrideWarning))
+	require.Less(t, strings.Index(output, overrideWarning), strings.Index(output, tenantLine))
+	require.Less(t, strings.Index(output, tenantLine), strings.Index(output, scopeLine))
+}
+
 // TestProcessInstanceMutationProgress_ProtectedModesSuppressAttachedDiscoveryTenantContext
 // verifies quiet and keys-only progress modes do not leak tenant context to
 // stdout or stderr.
@@ -237,6 +273,45 @@ func TestProcessInstanceMutationProgress_ProtectedModesSuppressAttachedDiscovery
 			require.Empty(t, stdout.String())
 			require.NotContains(t, stderr.String(), "selection scope:")
 			require.NotContains(t, stderr.String(), "affected tenants:")
+		})
+	}
+}
+
+// TestProcessInstanceMutationProgress_AllTenantsProtectedModesSuppressProvenance
+// verifies protected mutation-progress modes do not leak command-line
+// all-tenants provenance to stdout or stderr.
+func TestProcessInstanceMutationProgress_AllTenantsProtectedModesSuppressProvenance(t *testing.T) {
+	for _, mode := range []struct {
+		name  string
+		setup func()
+	}{
+		{name: "json", setup: func() { flagViewAsJson = true }},
+		{name: "quiet", setup: func() { flagQuiet = true }},
+		{name: "keys only", setup: func() { flagViewKeysOnly = true }},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			mode.setup()
+
+			cmd := &cobra.Command{}
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			cmd.SetOut(stdout)
+			cmd.SetErr(stderr)
+			cmd.SetContext(tenantOverrideProvenance{
+				ConfiguredTenantID: "tenant-a",
+				AllTenants:         true,
+			}.ToContext(context.Background()))
+			attachTenantContext(cmd, newDiscoveryTenantContext(""))
+
+			progress := newProcessInstanceMutationProgressReporter(cmd, "cancel")
+			progress(processInstanceMutationTestPreflightEvent("cancel"))
+
+			require.Empty(t, stdout.String())
+			require.NotContains(t, stderr.String(), "--all-tenants overrides")
+			require.NotContains(t, stderr.String(), "configured tenant:")
+			require.NotContains(t, stderr.String(), "selection scope:")
 		})
 	}
 }

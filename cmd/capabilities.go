@@ -40,6 +40,8 @@ func renderCapabilitySummary(cmd *cobra.Command, doc CapabilityDocument) {
 	}
 }
 
+// renderCapabilitySummaryLine keeps the compact human discovery view aligned
+// with the JSON capability fields that automation consumes.
 func renderCapabilitySummaryLine(cmd *cobra.Command, capability CommandCapability, depth int) {
 	indent := strings.Repeat("  ", depth)
 	modes := make([]string, 0, len(capability.OutputModes))
@@ -52,7 +54,7 @@ func renderCapabilitySummaryLine(cmd *cobra.Command, capability CommandCapabilit
 		indent,
 		capability.Path,
 		capability.Mutation,
-		fmt.Sprintf("%s, automation:%s", capability.ContractSupport, capability.AutomationSupport),
+		fmt.Sprintf("%s, automation:%s, allTenantsSupport:%s", capability.ContractSupport, capability.AutomationSupport, capability.AllTenantsSupport),
 		formatCapabilityModes(modes),
 	)
 	for _, child := range capability.Children {

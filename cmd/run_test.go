@@ -48,6 +48,7 @@ func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 	output = assertCommandHelpOutput(t, []string{"run", "process-instance"}, []string{
 		"Run by BPMN process ID",
 		"waits until created instances are observable",
+		"does not accept --all-tenants because it creates resources in one concrete tenant",
 		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2",
 		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -",
 	}, nil)
@@ -94,6 +95,50 @@ func TestRunProcessInstanceCommand_RegressionPreservesSelectorAndWorkerContract(
 		Repeated:    false,
 		Description: "return after creation is accepted",
 	})
+}
+
+// TestRunProcessInstanceCommand_AllTenantsRejectsBeforeInputValidationOrRequest
+// proves process-instance creation rejects all-tenants before variable parsing,
+// selector validation, activity, or creation requests can run.
+func TestRunProcessInstanceCommand_AllTenantsRejectsBeforeInputValidationOrRequest(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "invalid vars",
+			args: []string{"run", "process-instance", "--all-tenants", "--bpmn-process-id", "order-process", "--vars", "{"},
+		},
+		{
+			name: "bpmn selector",
+			args: []string{"--all-tenants", "run", "process-instance", "--bpmn-process-id", "order-process"},
+		},
+		{
+			name: "direct process definition key",
+			args: []string{"run", "process-instance", "--pd-key", "9001", "--all-tenants"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Append(r.Method + " " + r.URL.Path)
+				t.Fatalf("run process-instance must reject --all-tenants before request work: %s %s", r.Method, r.URL.Path)
+			}))
+			t.Cleanup(srv.Close)
+			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.9")}, tt.args...)
+
+			output, err := testx.RunCmdSubprocess(t, "TestRunProcessInstanceCommand_AllTenantsRejectsBeforeInputValidationOrRequestHelper", map[string]string{
+				"C8VOLT_TEST_ROOT_ARGS": marshalRootArgsForEnv(t, args),
+			})
+			assertAllTenantsConcreteDestinationSubprocessFailure(t, output, err, "run process-instance")
+			require.Empty(t, requests.Snapshot())
+			require.NotContains(t, string(output), "parsing --vars JSON")
+			require.NotContains(t, string(output), "creation target:")
+			require.NotContains(t, string(output), "running process instance")
+		})
+	}
 }
 
 // Verifies run commands consume the profile selected by the root flag for tenant and API URL resolution.
@@ -329,6 +374,11 @@ func TestRunProcessInstanceCommand_VarsPayloadRemainsCreationInput(t *testing.T)
 
 	require.True(t, sawRun)
 	require.Contains(t, output, "2251799813711967")
+}
+
+// Helper-process entrypoint for all-tenants process-instance run rejection.
+func TestRunProcessInstanceCommand_AllTenantsRejectsBeforeInputValidationOrRequestHelper(t *testing.T) {
+	executeRootHelperFromArgsEnv(t, "C8VOLT_TEST_ROOT_ARGS")
 }
 
 // Verifies run process-instance renders the creation tenant before the backend creation request.

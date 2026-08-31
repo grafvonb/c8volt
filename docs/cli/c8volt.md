@@ -32,6 +32,7 @@ c8volt [flags]
   ./c8volt config show --template
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt get cluster topology
+  ./c8volt --all-tenants get process-instance --state active
   ./c8volt embed deploy --all --run
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
   ./c8volt capabilities --json
@@ -41,6 +42,7 @@ c8volt [flags]
 ### Options
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file

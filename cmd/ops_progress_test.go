@@ -200,6 +200,42 @@ func TestPrintOpsTenantContextRendersTenantOverrideProvenance(t *testing.T) {
 	require.Less(t, strings.Index(got, "--tenant \"\" overrides"), strings.Index(got, "selection scope: unfiltered"))
 }
 
+// TestPrintOpsTenantContextRendersAllTenantsOverrideOnceBeforeScope verifies
+// ops durable progress reports the all-tenants broadening warning once before
+// the effective unfiltered discovery scope.
+func TestPrintOpsTenantContextRendersAllTenantsOverrideOnceBeforeScope(t *testing.T) {
+	cmd := &cobra.Command{}
+	var logBuf bytes.Buffer
+	cmd.SetContext(tenantOverrideProvenance{
+		ConfiguredTenantID: "tenant-a",
+		AllTenants:         true,
+	}.ToContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{
+		Format: "plain-time",
+		Writer: &logBuf,
+	}))))
+	ctx := newDiscoveryTenantContext("")
+
+	channel := ops.ProgressChannel{
+		Mode:           ops.ProgressModeHuman,
+		DurableAllowed: true,
+		StderrAllowed:  true,
+	}
+	printOpsTenantContext(cmd, ctx, channel)
+	printOpsTenantContext(cmd, ctx, channel)
+
+	got := logBuf.String()
+	configuredLine := " INFO configured tenant: tenant-a\n"
+	overrideWarning := " WARN --all-tenants overrides the configured tenant filter; selection is unfiltered\n"
+	tenantLine := " INFO selection scope: unfiltered across accessible tenants\n"
+	require.Contains(t, got, configuredLine)
+	require.Contains(t, got, overrideWarning)
+	require.Contains(t, got, tenantLine)
+	require.Equal(t, 1, strings.Count(got, overrideWarning))
+	require.Equal(t, 1, strings.Count(got, tenantLine))
+	require.Less(t, strings.Index(got, "configured tenant: tenant-a"), strings.Index(got, "--all-tenants overrides"))
+	require.Less(t, strings.Index(got, "--all-tenants overrides"), strings.Index(got, "selection scope: unfiltered"))
+}
+
 // TestPrintOpsPreflightScopeSuppressesTenantContextForProtectedModes verifies
 // quiet and keys-only progress channels keep stdout-safe contracts silent.
 func TestPrintOpsPreflightScopeSuppressesTenantContextForProtectedModes(t *testing.T) {
@@ -211,6 +247,33 @@ func TestPrintOpsPreflightScopeSuppressesTenantContextForProtectedModes(t *testi
 		cmd := &cobra.Command{}
 		var stderr bytes.Buffer
 		cmd.SetErr(&stderr)
+
+		printOpsPreflightScope(cmd, ops.PreflightScope{TenantContext: &ctx}, channel)
+
+		require.Empty(t, stderr.String())
+		_, ok := attachedTenantContext(cmd)
+		require.False(t, ok)
+	}
+}
+
+// TestPrintOpsPreflightScopeSuppressesAllTenantsProvenanceForProtectedModes
+// verifies protected ops progress channels do not leak command-line
+// all-tenants provenance.
+func TestPrintOpsPreflightScopeSuppressesAllTenantsProvenanceForProtectedModes(t *testing.T) {
+	ctx := newDiscoveryTenantContext("")
+	for _, channel := range []ops.ProgressChannel{
+		{Mode: ops.ProgressModeJSON},
+		{Mode: ops.ProgressModeKeysOnly},
+		{Mode: ops.ProgressModeQuiet},
+		{Mode: ops.ProgressModeAutomation, StructuredReportAllowed: true},
+	} {
+		cmd := &cobra.Command{}
+		var stderr bytes.Buffer
+		cmd.SetErr(&stderr)
+		cmd.SetContext(tenantOverrideProvenance{
+			ConfiguredTenantID: "tenant-a",
+			AllTenants:         true,
+		}.ToContext(context.Background()))
 
 		printOpsPreflightScope(cmd, ops.PreflightScope{TenantContext: &ctx}, channel)
 

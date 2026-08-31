@@ -130,6 +130,166 @@ apis:
 	}
 }
 
+// TestApplyAllTenantsOverride_ClearsConfiguredTenantSources verifies the
+// command-line-only all-tenants selection runs after normal config precedence.
+func TestApplyAllTenantsOverride_ClearsConfiguredTenantSources(t *testing.T) {
+	tests := []struct {
+		name           string
+		configYAML     string
+		envTenant      string
+		allTenantsFlag *string
+		wantTenant     string
+		wantProvenance tenantOverrideProvenance
+	}{
+		{
+			name: "base config tenant",
+			configYAML: `
+app:
+  tenant: base-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`,
+			allTenantsFlag: stringPtr("true"),
+			wantProvenance: tenantOverrideProvenance{
+				ConfiguredTenantID: "base-tenant",
+				AllTenants:         true,
+			},
+		},
+		{
+			name: "profile tenant",
+			configYAML: `
+active_profile: dev
+app:
+  tenant: base-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+profiles:
+  dev:
+    app:
+      tenant: profile-tenant
+    apis:
+      camunda_api:
+        base_url: http://profile.example.test
+`,
+			allTenantsFlag: stringPtr("true"),
+			wantProvenance: tenantOverrideProvenance{
+				ConfiguredTenantID: "profile-tenant",
+				AllTenants:         true,
+			},
+		},
+		{
+			name:      "environment tenant",
+			envTenant: "env-tenant",
+			configYAML: `
+app:
+  tenant: base-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`,
+			allTenantsFlag: stringPtr("true"),
+			wantProvenance: tenantOverrideProvenance{
+				ConfiguredTenantID: "env-tenant",
+				AllTenants:         true,
+			},
+		},
+		{
+			name: "already empty configured tenant",
+			configYAML: `
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`,
+			allTenantsFlag: stringPtr("true"),
+		},
+		{
+			name: "explicit false leaves named tenant",
+			configYAML: `
+app:
+  tenant: base-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`,
+			allTenantsFlag: stringPtr("false"),
+			wantTenant:     "base-tenant",
+		},
+		{
+			name: "absent flag leaves named tenant",
+			configYAML: `
+app:
+  tenant: base-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`,
+			wantTenant: "base-tenant",
+		},
+		{
+			name: "v87 default tenant after normalization",
+			configYAML: `
+app:
+  camunda_version: "8.7"
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`,
+			allTenantsFlag: stringPtr("true"),
+			wantProvenance: tenantOverrideProvenance{
+				ConfiguredTenantID: config.DefaultTenant,
+				AllTenants:         true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.envTenant != "" {
+				t.Setenv("C8VOLT_APP_TENANT", tt.envTenant)
+			}
+			root := Root()
+			resetCommandTreeFlags(root)
+			t.Cleanup(func() {
+				resetCommandTreeFlags(root)
+			})
+
+			cfgPath := filepath.Join(t.TempDir(), "config.yaml")
+			require.NoError(t, os.WriteFile(cfgPath, []byte(tt.configYAML), 0o600))
+			require.NoError(t, root.PersistentFlags().Set("config", cfgPath))
+			if tt.allTenantsFlag != nil {
+				require.NoError(t, root.PersistentFlags().Set("all-tenants", *tt.allTenantsFlag))
+			}
+
+			v := viper.New()
+			bindings, err := initViper(v, root)
+			require.NoError(t, err)
+
+			cfg, err := retrieveAndNormalizeConfig(v, bindings)
+			require.NoError(t, err)
+			provenance := applyAllTenantsOverride(cfg)
+
+			require.Equal(t, tt.wantTenant, cfg.App.Tenant)
+			require.Equal(t, tt.wantProvenance, provenance)
+		})
+	}
+}
+
 // TestTenantOverrideProvenanceFromConfigTracksExplicitTenantFlagTransitions
 // verifies root config setup preserves the pre-flag tenant and explicit flag
 // value without changing the resolved tenant used by commands.
@@ -252,6 +412,66 @@ apis:
 			require.NoError(t, err)
 			require.Equal(t, tt.wantTenant, cfg.App.Tenant)
 			require.Equal(t, tt.wantProvenance, tenantOverrideProvenanceFromConfig(v, bindings, cfg))
+		})
+	}
+}
+
+// TestRetrieveAndNormalizeConfig_AllTenantsInactivePreservesExplicitTenantPrecedence
+// verifies the new root flag does not alter existing tenant precedence when it
+// is absent or explicitly false.
+func TestRetrieveAndNormalizeConfig_AllTenantsInactivePreservesExplicitTenantPrecedence(t *testing.T) {
+	tests := []struct {
+		name           string
+		allTenantsFlag *string
+	}{
+		{
+			name: "all-tenants absent",
+		},
+		{
+			name:           "all-tenants false",
+			allTenantsFlag: stringPtr("false"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("C8VOLT_APP_TENANT", "env-tenant")
+
+			root := Root()
+			resetCommandTreeFlags(root)
+			t.Cleanup(func() {
+				resetCommandTreeFlags(root)
+			})
+
+			cfgPath := filepath.Join(t.TempDir(), "config.yaml")
+			require.NoError(t, os.WriteFile(cfgPath, []byte(`
+app:
+  tenant: base-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://camunda.example.test
+`), 0o600))
+			require.NoError(t, root.PersistentFlags().Set("config", cfgPath))
+			require.NoError(t, root.PersistentFlags().Set("tenant", "cli-tenant"))
+			if tt.allTenantsFlag != nil {
+				require.NoError(t, root.PersistentFlags().Set("all-tenants", *tt.allTenantsFlag))
+			}
+
+			v := viper.New()
+			bindings, err := initViper(v, root)
+			require.NoError(t, err)
+
+			cfg, err := retrieveAndNormalizeConfig(v, bindings)
+			require.NoError(t, err)
+
+			require.Equal(t, "cli-tenant", cfg.App.Tenant)
+			require.Equal(t, tenantOverrideProvenance{
+				ConfiguredTenantID: "env-tenant",
+				ExplicitTenantID:   "cli-tenant",
+				Explicit:           true,
+			}, tenantOverrideProvenanceFromConfig(v, bindings, cfg))
 		})
 	}
 }

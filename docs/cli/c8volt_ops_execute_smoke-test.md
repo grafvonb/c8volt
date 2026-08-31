@@ -11,7 +11,7 @@ Execute a cluster smoke test workflow
 
 Execute a cluster smoke test workflow.
 
-Tenant contract: smoke-test setup is a creation operation. A named tenant is reported as "creation target: <tenant>" before deployment and start; empty tenant configuration targets and reports "creation target: default tenant". The audit report carries the same context for created resources and cleanup evidence.
+Tenant contract: smoke-test setup is a creation operation. A named tenant is reported as "creation target: <tenant>" before deployment and start; empty tenant configuration targets and reports "creation target: default tenant". This command does not accept --all-tenants because it creates resources in one concrete tenant. The audit report carries the same context for created resources and cleanup evidence.
 
 The workflow validates the configured profile, selects the embedded multiple-subprocess fixture for the configured Camunda version, deploys it, creates process instances, walks their families, and cleans up resources it can safely attribute to the run unless --no-cleanup is set. Cleanup always removes created process instances. Process-definition cleanup runs only when no unrelated instances still use the deployed fixture definition; dirty clusters skip that final definition cleanup and report retained resources instead of failing the smoke proof. Use --dry-run to validate the requested plan without submitting mutation requests.
 
@@ -46,6 +46,7 @@ c8volt ops execute smoke-test [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file

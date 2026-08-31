@@ -951,6 +951,99 @@ func TestContractSupportForCommand_IgnoresHiddenChildren(t *testing.T) {
 	require.Equal(t, ContractSupportUnsupported, contractSupportForCommand(parent))
 }
 
+// TestAllTenantsSupportForCommand_DefaultsAccepted verifies unannotated commands
+// inherit the safe parsing contract for the root override.
+func TestAllTenantsSupportForCommand_DefaultsAccepted(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, AllTenantsSupportAccepted, allTenantsSupportForCommand(nil))
+	require.Equal(t, AllTenantsSupportAccepted, allTenantsSupportForCommand(&cobra.Command{Use: "demo"}))
+}
+
+// TestAllTenantsSupportForCommand_UsesExplicitAnnotation keeps runtime validation
+// and future capability serialization on a single command annotation resolver.
+func TestAllTenantsSupportForCommand_UsesExplicitAnnotation(t *testing.T) {
+	t.Parallel()
+
+	cmd := &cobra.Command{Use: "deploy process-definition"}
+	setAllTenantsSupport(cmd, AllTenantsSupportRejectedConcreteDestination)
+
+	require.Equal(t, AllTenantsSupportRejectedConcreteDestination, allTenantsSupportForCommand(cmd))
+	require.Equal(t, string(AllTenantsSupportRejectedConcreteDestination), cmd.Annotations[allTenantsSupportAnnotation])
+}
+
+// TestAllTenantsSupportForCommand_ConcreteDestinationInventory pins the
+// complete command set whose creation semantics reject all-tenants at runtime.
+func TestAllTenantsSupportForCommand_ConcreteDestinationInventory(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	tests := []struct {
+		path string
+		cmd  *cobra.Command
+	}{
+		{path: "deploy process-definition", cmd: deployProcessDefinitionCmd},
+		{path: "embed deploy", cmd: embedDeployCmd},
+		{path: "run process-instance", cmd: runProcessInstanceCmd},
+		{path: "ops execute smoke-test", cmd: opsExecuteSmokeTestCmd},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			require.Equal(t, tt.path, commandPath(tt.cmd))
+			require.Equal(t, AllTenantsSupportRejectedConcreteDestination, allTenantsSupportForCommand(tt.cmd))
+		})
+	}
+}
+
+// TestCommandCapabilityForCommand_IncludesAllTenantsSupport keeps capability
+// metadata aligned with the same resolver used by root validation.
+func TestCommandCapabilityForCommand_IncludesAllTenantsSupport(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	tests := []struct {
+		path string
+		cmd  *cobra.Command
+		want AllTenantsSupport
+	}{
+		{path: "get process-instance", cmd: getProcessInstanceCmd, want: AllTenantsSupportAccepted},
+		{path: "cancel process-instance", cmd: cancelProcessInstanceCmd, want: AllTenantsSupportAccepted},
+		{path: "get resource", cmd: getResourceCmd, want: AllTenantsSupportAccepted},
+		{path: "deploy process-definition", cmd: deployProcessDefinitionCmd, want: AllTenantsSupportRejectedConcreteDestination},
+		{path: "embed deploy", cmd: embedDeployCmd, want: AllTenantsSupportRejectedConcreteDestination},
+		{path: "run process-instance", cmd: runProcessInstanceCmd, want: AllTenantsSupportRejectedConcreteDestination},
+		{path: "ops execute smoke-test", cmd: opsExecuteSmokeTestCmd, want: AllTenantsSupportRejectedConcreteDestination},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			capability := commandCapabilityForCommand(tt.cmd)
+
+			require.Equal(t, tt.path, capability.Path)
+			require.Equal(t, tt.want, capability.AllTenantsSupport)
+			require.Equal(t, allTenantsSupportForCommand(tt.cmd), capability.AllTenantsSupport)
+		})
+	}
+}
+
+// TestCapabilityDocumentForRoot_KeepsV1WithAllTenantsSupport proves the new
+// support metadata is additive and does not require a document version bump.
+func TestCapabilityDocumentForRoot_KeepsV1WithAllTenantsSupport(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	doc := capabilityDocumentForRoot(root)
+
+	require.Equal(t, "v1", doc.Version)
+	searchCapability, ok := findCommandCapability(doc.Commands, "get process-instance")
+	require.True(t, ok)
+	require.Equal(t, AllTenantsSupportAccepted, searchCapability.AllTenantsSupport)
+	destinationCapability, ok := findCommandCapability(doc.Commands, "run process-instance")
+	require.True(t, ok)
+	require.Equal(t, AllTenantsSupportRejectedConcreteDestination, destinationCapability.AllTenantsSupport)
+}
+
 func TestCapabilityDocumentForRoot_ExcludesHiddenAndShellInternalCommands(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -2564,7 +2657,7 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 		"--json",
 		"--keys-only",
 	}, nil)
-	require.NotContains(t, output, "--all")
+	require.NotContains(t, output, "--all ")
 }
 
 func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *testing.T) {

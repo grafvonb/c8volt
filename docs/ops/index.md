@@ -60,6 +60,8 @@ wait and verify
 write audit report
 ```
 
+Tenant-aware discovery playbooks accept `--all-tenants` when the configured tenant filter should be cleared for one run. The scope is unfiltered only across tenants visible to the authenticated identity; it does not enumerate tenants or bypass backend authorization. If the option clears a named configured tenant, human output emits `--all-tenants overrides the configured tenant filter; selection is unfiltered` before the unfiltered selection scope. It is mutually exclusive with any explicit `--tenant` value. Workflows that create resources in one concrete tenant, such as `ops execute smoke-test`, reject `--all-tenants`.
+
 ## Reports And Demos
 
 Ops reports are stable structured data first, then rendered to Markdown or JSON. Demo recordings live as VHS scripts under `demos/vhs/` and show preview-first usage before deletion, cleanup, or repair execution.
