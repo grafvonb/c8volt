@@ -288,6 +288,106 @@ func TestGetProcessDefinitionBpmnSelectorVisiblePreservesListing(t *testing.T) {
 	require.Contains(t, output, "tenant order-process v3/stable")
 }
 
+// TestGetProcessDefinitionSearchRendersCanonicalOrderForTenantScopes verifies
+// tenant-filtered and all-tenant command listings preserve the service-owned
+// process-definition collection order through human rendering.
+func TestGetProcessDefinitionSearchRendersCanonicalOrderForTenantScopes(t *testing.T) {
+	tests := []struct {
+		name           string
+		configPath     func(*testing.T, string) string
+		args           func(string) []string
+		responses      []string
+		wantKeys       []string
+		assertRequests func(*testing.T, []map[string]any)
+	}{
+		{
+			name: "configured tenant filter",
+			configPath: func(t *testing.T, baseURL string) string {
+				t.Helper()
+				return writeTestConfigForVersion(t, baseURL, "8.9")
+			},
+			args: func(cfgPath string) []string {
+				return []string{"--config", cfgPath, "--tenant", "tenant-a", "get", "process-definition"}
+			},
+			responses: []string{
+				`{"items":[{"processDefinitionKey":"tenant-a-payment-v1","processDefinitionId":"payment","name":"payment","version":1,"tenantId":"tenant-a"},{"processDefinitionKey":"tenant-a-invoice-v9","processDefinitionId":"invoice","name":"invoice","version":9,"tenantId":"tenant-a"}],"page":{"totalItems":5,"hasMoreTotalItems":true,"endCursor":"pd-page-2"}}`,
+				`{"items":[{"processDefinitionKey":"2","processDefinitionId":"invoice","name":"invoice","version":10,"tenantId":"tenant-a"},{"processDefinitionKey":"tenant-a-Invoice-v1","processDefinitionId":"Invoice","name":"Invoice","version":1,"tenantId":"tenant-a"},{"processDefinitionKey":"10","processDefinitionId":"invoice","name":"invoice","version":10,"tenantId":"tenant-a"}],"page":{"totalItems":5,"hasMoreTotalItems":false}}`,
+			},
+			wantKeys: []string{
+				"tenant-a-Invoice-v1",
+				"10",
+				"2",
+				"tenant-a-invoice-v9",
+				"tenant-a-payment-v1",
+			},
+			assertRequests: func(t *testing.T, requests []map[string]any) {
+				t.Helper()
+				require.Len(t, requests, 2)
+				for _, request := range requests {
+					filter := requireJSONObject(t, request["filter"])
+					require.Equal(t, "tenant-a", filter["tenantId"])
+				}
+			},
+		},
+		{
+			name: "all tenants clears configured tenant filter",
+			configPath: func(t *testing.T, baseURL string) string {
+				t.Helper()
+				return writeRawTestConfig(t, `
+app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: "`+baseURL+`"
+`)
+			},
+			args: func(cfgPath string) []string {
+				return []string{"--config", cfgPath, "--all-tenants", "get", "process-definition"}
+			},
+			responses: []string{
+				`{"items":[{"processDefinitionKey":"tenant-b-invoice-v1","processDefinitionId":"invoice","name":"invoice","version":1,"tenantId":"tenant-b"},{"processDefinitionKey":"tenant-a-payment-v1","processDefinitionId":"payment","name":"payment","version":1,"tenantId":"tenant-a"},{"processDefinitionKey":"tenant-a-invoice-v9","processDefinitionId":"invoice","name":"invoice","version":9,"tenantId":"tenant-a"}],"page":{"totalItems":7,"hasMoreTotalItems":true,"endCursor":"pd-page-2"}}`,
+				`{"items":[{"processDefinitionKey":"2","processDefinitionId":"invoice","name":"invoice","version":10,"tenantId":"tenant-a"},{"processDefinitionKey":"default-invoice-v10","processDefinitionId":"invoice","name":"invoice","version":10,"tenantId":"<default>"},{"processDefinitionKey":"tenant-a-Invoice-v1","processDefinitionId":"Invoice","name":"Invoice","version":1,"tenantId":"tenant-a"},{"processDefinitionKey":"10","processDefinitionId":"invoice","name":"invoice","version":10,"tenantId":"tenant-a"}],"page":{"totalItems":7,"hasMoreTotalItems":false}}`,
+			},
+			wantKeys: []string{
+				"default-invoice-v10",
+				"tenant-a-Invoice-v1",
+				"10",
+				"2",
+				"tenant-a-invoice-v9",
+				"tenant-a-payment-v1",
+				"tenant-b-invoice-v1",
+			},
+			assertRequests: func(t *testing.T, requests []map[string]any) {
+				t.Helper()
+				require.Len(t, requests, 2)
+				for _, request := range requests {
+					filter := requireJSONObject(t, request["filter"])
+					require.NotContains(t, filter, "tenantId")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []map[string]any
+			srv := newProcessDefinitionSearchServerResponses(t, &requests, tt.responses...)
+			t.Cleanup(srv.Close)
+			cfgPath := tt.configPath(t, srv.URL)
+
+			stdout, stderr := executeRootForProcessDefinitionTestWithSeparateOutputs(t, tt.args(cfgPath)...)
+
+			require.Empty(t, stderr)
+			require.Equal(t, tt.wantKeys, processDefinitionRenderedKeys(t, stdout))
+			require.Contains(t, stdout, "found:")
+			tt.assertRequests(t, requests)
+		})
+	}
+}
+
 // TestGetProcessDefinitionSearchVerboseProgress defines the process-definition progress contract for broad listing.
 func TestGetProcessDefinitionSearchVerboseProgress(t *testing.T) {
 	var requests []map[string]any
@@ -534,6 +634,7 @@ func resetGetProcessDefinitionCommandGlobals() {
 	flagVerbose = false
 	flagDebug = false
 	flagCmdAutomation = false
+	flagAllTenants = false
 }
 
 // marshalStringSliceForEnv keeps subprocess argument fixtures shell-safe.
@@ -543,6 +644,24 @@ func marshalStringSliceForEnv(t *testing.T, items []string) string {
 	data, err := json.Marshal(items)
 	require.NoError(t, err)
 	return string(data)
+}
+
+// processDefinitionRenderedKeys extracts process-definition keys from compact
+// human listing output while ignoring the trailing found summary line.
+func processDefinitionRenderedKeys(t *testing.T, output string) []string {
+	t.Helper()
+
+	keys := []string{}
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "found:") {
+			continue
+		}
+		fields := strings.Fields(line)
+		require.NotEmpty(t, fields, "expected process-definition row")
+		keys = append(keys, fields[0])
+	}
+	return keys
 }
 
 func TestGetProcessDefinitionLatestSearchPreservesSelectionRequestHelper(t *testing.T) {

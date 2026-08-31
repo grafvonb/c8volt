@@ -14,6 +14,7 @@ Started: 2026-08-31T11:37:22Z
 - T002 and T003 were completed as one foundational work unit because T002's comparator tests require the T003 API to compile while quality gates require a green commit.
 - T004 and T015 were paired in iteration 3 because the new service final-order test requires the service-level final normalization to pass.
 - T005 was completed as a facade regression test-only work unit; no public facade implementation change was needed because conversion already preserves service slice order.
+- T006 was completed as command regression coverage for tenant-filtered and `--all-tenants` broad listing; no production command change was needed because both cases already consume the shared paged collection path.
 
 ## Gotchas
 - Shell wrapper note: zsh has special parameters named `status` and `commands`; use neutral variable names or run validation loops under `/bin/bash`.
@@ -33,4 +34,4 @@ Started: 2026-08-31T11:37:22Z
 - Do not use zsh variable names `status` or `commands` in validation-loop scripts.
 
 ## Current Handoff
-- Next iteration starts at T006: add command-level filtered and `--all-tenants` canonical ordering tests to `cmd/get_processdefinition_test.go`.
+- Next iteration starts at T007: add Camunda 8.7 request-sort and returned-order assertions for tenant/BPMN/version/key to `internal/services/processdefinition/v87/service_test.go`.

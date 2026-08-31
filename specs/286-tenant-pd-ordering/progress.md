@@ -67,3 +67,18 @@ Started: 2026-08-31 13:37:23
 **Learnings**:
 - Facade conversion preserves service slice order for ordinary search, and paged facade results inherit final normalization from `pdsvc.SearchProcessDefinitionsPages` without reordering visitor page callbacks.
 ---
+---
+## Iteration 5 - 2026-08-31 13:55
+**Work Unit**: US1 command-level tenant-scope ordering tests
+**Tasks Completed**:
+- [x] T006: Add command-level filtered and `--all-tenants` canonical ordering tests to `cmd/get_processdefinition_test.go`
+**Tasks Remaining in Work Unit**: 0; US1 has 9 incomplete tasks remaining (T007-T014)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processdefinition_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- Tenant-filtered and `--all-tenants` command listings already preserve the shared paged service canonical sequence; avoid setting `--batch-size` in command tests unless the test also resets Cobra changed-state for later package tests.
+---
