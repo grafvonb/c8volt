@@ -54,7 +54,7 @@
 - [x] T010 [P] [US1] Add basic and all-process-definition delete completion tests, including the serial first capability probe and force cleanup, in `internal/services/processdefinition/delete_test.go` and `internal/services/ops/all_process_definitions_purge_test.go`
 - [x] T011 [P] [US1] Add per-definition deployment visibility and no-wait acceptance progress tests in a new `internal/services/resource/payload/payload_test.go` and in `internal/services/resource/v87/service_test.go`, `internal/services/resource/v88/service_test.go`, `internal/services/resource/v89/service_test.go`, and `internal/services/resource/v810/service_test.go`
 - [x] T012 [P] [US1] Add retention, orphan, and incident-selected purge live completion tests in `internal/services/ops/retention_policy_test.go`, `internal/services/ops/orphan_purge_test.go`, and `internal/services/ops/incident_purge_test.go`
-- [ ] T013 [P] [US1] Add real-time repair and smoke-test stage completion tests in `internal/services/ops/repair_test.go` and `internal/services/ops/smoke_test_test.go`
+- [x] T013 [P] [US1] Add real-time repair and smoke-test stage completion tests in `internal/services/ops/repair_test.go` and `internal/services/ops/smoke_test_test.go`
 - [ ] T014 [P] [US1] Add justified secondary-workflow tests for bulk starts, slow analysis, and multi-key expect while pinning transient-only exclusions for plain search/watch/walk in `cmd/run_test.go`, `cmd/ops_analyse_slow_process_instances_progress_test.go`, `cmd/expect_test.go`, and `internal/services/processinstance/waiter/waiter_test.go`
 
 ### Implementation for User Story 1

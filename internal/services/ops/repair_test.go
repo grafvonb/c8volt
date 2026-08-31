@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -1181,6 +1182,107 @@ func TestRepairIncidentsKeyedBulkProgressCountersPendingT068(t *testing.T) {
 	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "repairing incidents", CoreResource: "incident(s)", Done: 0, Total: 2}, *events[0].FrozenScope)
 	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "repairing incidents", CoreResource: "incident(s)", Done: 1, Total: 2}, *events[1].FrozenScope)
 	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "repairing incidents", CoreResource: "incident(s)", Done: 2, Total: 2}, *events[2].FrozenScope)
+}
+
+// TestRepairIncidentsEmitsWorkerCompletionFactsAtReturnPoints proves completion
+// facts are emitted by each executed repair worker instead of after the whole
+// pool has drained.
+func TestRepairIncidentsEmitsWorkerCompletionFactsAtReturnPoints(t *testing.T) {
+	incidents := map[string]d.ProcessInstanceIncidentDetail{
+		"inc-fast": {IncidentKey: "inc-fast", ProcessInstanceKey: "pi-fast", State: "ACTIVE"},
+		"inc-slow": {IncidentKey: "inc-slow", ProcessInstanceKey: "pi-slow", State: "ACTIVE"},
+	}
+	slowStarted := make(chan struct{})
+	releaseSlow := make(chan struct{})
+	fastCompletion := make(chan struct{})
+	var closeFastCompletion sync.Once
+	var events testx.SafeSlice[d.OpsProgressEvent]
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
+		getIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			return incidents[key], nil
+		},
+		resolveIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			if key == "inc-slow" {
+				close(slowStarted)
+				<-releaseSlow
+			}
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: http.StatusNoContent, Status: "accepted"}, nil
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	done := make(chan struct {
+		result d.OpsRepairResult
+		err    error
+	}, 1)
+	go func() {
+		got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{
+			CommandName:   "ops repair incident",
+			DiscoveryMode: d.OpsRepairDiscoveryModeKeyed,
+			InputKeys:     typex.Keys{"inc-fast", "inc-slow"},
+			NoWait:        true,
+			Workers:       2,
+		}, services.WithProgress(func(event d.OpsProgressEvent) {
+			events.Append(event)
+			if event.Kind == d.OpsProgressEventKindCompletion && event.Completion != nil && event.Completion.Identity == "inc-fast" {
+				closeFastCompletion.Do(func() { close(fastCompletion) })
+			}
+		}))
+		done <- struct {
+			result d.OpsRepairResult
+			err    error
+		}{result: got, err: err}
+	}()
+
+	<-slowStarted
+	select {
+	case <-fastCompletion:
+	case <-time.After(time.Second):
+		require.Fail(t, "timed out waiting for fast repair completion before slow worker release")
+	}
+	close(releaseSlow)
+	out := <-done
+
+	require.NoError(t, out.err)
+	require.Equal(t, d.OpsRepairOutcomeRepaired, out.result.Outcome)
+	require.ElementsMatch(t, []d.OpsCompletionProgress{
+		{Phase: "repairing incidents", CoreResource: "incident(s)", Total: 2, Identity: "inc-fast", Disposition: d.OpsCompletionDispositionSubmitted},
+		{Phase: "repairing incidents", CoreResource: "incident(s)", Total: 2, Identity: "inc-slow", Disposition: d.OpsCompletionDispositionSubmitted},
+	}, opsCompletionProgressByPhase(events.Snapshot(), "repairing incidents"))
+}
+
+// TestRepairIncidentsCompletionFactsCaptureFailureDetail verifies failed
+// incident repair facts preserve the service error without rendered wording.
+func TestRepairIncidentsCompletionFactsCaptureFailureDetail(t *testing.T) {
+	var events []d.OpsProgressEvent
+	wantErr := errors.New("incident resolution rejected")
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
+		getIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			return d.ProcessInstanceIncidentDetail{IncidentKey: key, ProcessInstanceKey: "pi-a", State: "ACTIVE"}, nil
+		},
+		resolveIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			return d.IncidentResolutionResponse{Key: key}, wantErr
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{
+		CommandName:   "ops repair incident",
+		DiscoveryMode: d.OpsRepairDiscoveryModeKeyed,
+		InputKeys:     typex.Keys{"inc-failed"},
+		Workers:       1,
+	}, services.WithProgress(func(event d.OpsProgressEvent) {
+		events = append(events, event)
+	}))
+
+	require.ErrorIs(t, err, wantErr)
+	require.Equal(t, d.OpsRepairOutcomeFailed, got.Outcome)
+	require.Equal(t, []d.OpsCompletionProgress{{
+		Phase:         "repairing incidents",
+		CoreResource:  "incident(s)",
+		Total:         1,
+		Identity:      "inc-failed",
+		Disposition:   d.OpsCompletionDispositionFailed,
+		FailureDetail: "incident resolution rejected",
+	}}, opsCompletionProgressByPhase(events, "repairing incidents"))
 }
 
 type stubJobAPI struct {

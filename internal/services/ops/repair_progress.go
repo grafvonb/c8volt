@@ -34,6 +34,61 @@ func emitRepairFrozenScopeProgress(request d.OpsRepairRequest, phase string, res
 	emitRepairProgress(request, d.OpsProgressEvent{Kind: d.OpsProgressEventKindFrozenScope, FrozenScope: &progress})
 }
 
+// emitRepairCompletionProgress records the final lifecycle reached by one executed repair worker.
+func emitRepairCompletionProgress(request d.OpsRepairRequest, plan d.OpsRepairPlanItem, err error, total int) {
+	if request.Progress == nil || total <= 0 || plan.IncidentKey == "" {
+		return
+	}
+	completion := d.OpsCompletionProgress{
+		Phase:         "repairing incidents",
+		CoreResource:  "incident(s)",
+		Total:         total,
+		Identity:      plan.IncidentKey,
+		Disposition:   repairCompletionDisposition(plan, err, request.NoWait),
+		FailureDetail: repairCompletionFailureDetail(plan, err),
+	}
+	emitRepairProgress(request, d.OpsProgressEvent{Kind: d.OpsProgressEventKindCompletion, Completion: &completion})
+}
+
+// repairCompletionDisposition maps repair step state to wording-free completion lifecycle facts.
+func repairCompletionDisposition(plan d.OpsRepairPlanItem, err error, noWait bool) d.OpsCompletionDisposition {
+	if err != nil || repairCompletionFailed(plan) {
+		return d.OpsCompletionDispositionFailed
+	}
+	if noWait || plan.ConfirmationStatus == d.OpsWorkflowStepStatusSkipped {
+		return d.OpsCompletionDispositionSubmitted
+	}
+	return d.OpsCompletionDispositionConfirmed
+}
+
+// repairCompletionFailed detects repair outcomes that did not reach the configured completion boundary.
+func repairCompletionFailed(plan d.OpsRepairPlanItem) bool {
+	for _, status := range []d.OpsWorkflowStepStatus{
+		plan.VariableUpdateStatus,
+		plan.RetryUpdateStatus,
+		plan.TimeoutUpdateStatus,
+		plan.ResolutionStatus,
+		plan.ConfirmationStatus,
+	} {
+		switch status {
+		case d.OpsWorkflowStepStatusFailed, d.OpsWorkflowStepStatusBlocked, d.OpsWorkflowStepStatusConfirmationFailed:
+			return true
+		}
+	}
+	return false
+}
+
+// repairCompletionFailureDetail preserves the first existing repair error for immediate diagnostics.
+func repairCompletionFailureDetail(plan d.OpsRepairPlanItem, err error) string {
+	if err != nil {
+		return err.Error()
+	}
+	if len(plan.Errors) > 0 {
+		return plan.Errors[0]
+	}
+	return ""
+}
+
 // repairPlanningProgressScope selects the frozen repair population shown during dry-run planning.
 func repairPlanningProgressScope(request d.OpsRepairRequest, result d.OpsRepairResult) (string, string, int) {
 	switch request.Target {

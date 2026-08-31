@@ -6,6 +6,7 @@ package ops
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/stretchr/testify/require"
 )
@@ -779,6 +781,106 @@ func TestExecuteSmokeTestEmitsExplicitWorkProgress(t *testing.T) {
 	requireSmokeTestProgressContains(t, events, "starting process instances", 2, 2)
 	requireSmokeTestProgressContains(t, events, "walking process-instance families", 0, 2)
 	requireSmokeTestProgressContains(t, events, "walking process-instance families", 2, 2)
+}
+
+// TestExecuteSmokeTestEmitsStageCompletionFacts verifies the smoke-test
+// workflow exposes high-level deploy, start, walk, and cleanup completions.
+func TestExecuteSmokeTestEmitsStageCompletionFacts(t *testing.T) {
+	var events testx.SafeSlice[d.OpsProgressEvent]
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
+			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
+				ProcessDefinitionId:  "C88_MultipleSubProcessesParent",
+				ProcessDefinitionKey: "pd-88",
+			}}}}, nil
+		},
+		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			require.Equal(t, "pd-88", key)
+			return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			return d.ProcessInstanceCreation{Key: "pi-1", ProcessDefinitionKey: data.ProcessDefinitionSpecificId}, nil
+		},
+		familyResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{Mode: pitraversal.ModeFamily, StartKey: startKey, RootKey: startKey, Keys: []string{startKey}, Chain: map[string]d.ProcessInstance{
+				startKey: {Key: startKey, State: d.StateActive, ProcessDefinitionKey: "pd-88"},
+			}, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{Mode: pitraversal.ModeAncestry, StartKey: startKey, RootKey: startKey, Keys: []string{startKey}, Chain: map[string]d.ProcessInstance{
+				startKey: {Key: startKey, State: d.StateActive, ProcessDefinitionKey: "pd-88"},
+			}, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{Mode: pitraversal.ModeDescendants, StartKey: rootKey, RootKey: rootKey, Keys: []string{rootKey}, Chain: map[string]d.ProcessInstance{
+				rootKey: {Key: rootKey, State: d.StateActive, ProcessDefinitionKey: "pd-88"},
+			}, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			require.Equal(t, "pi-1", key)
+			return d.DeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
+		},
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			require.Equal(t, "pd-88", filter.ProcessDefinitionKey)
+			return nil, nil
+		},
+	}
+	pdAPI := stubProcessDefinitionAPI{
+		getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+			require.Equal(t, "pd-88", key)
+			if !services.ApplyCallOptions(opts).WithStat {
+				return d.ProcessDefinition{}, d.ErrNotFound
+			}
+			return d.ProcessDefinition{Key: key, BpmnProcessId: "C88_MultipleSubProcessesParent", Statistics: &d.ProcessDefinitionStatistics{}}, nil
+		},
+	}
+
+	got, err := NewWithWorkflowDependencies(nil, piAPI, nil, pdAPI, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
+		CommandName: "ops execute smoke-test",
+		Count:       1,
+		Progress:    events.Append,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.SmokeTestOutcomePassed, got.Outcome)
+	snapshot := events.Snapshot()
+	require.Equal(t, []d.OpsCompletionProgress{{
+		Phase:        "deploying smoke-test fixture",
+		CoreResource: "deployment(s)",
+		Total:        1,
+		Identity:     "pd-88",
+		Disposition:  d.OpsCompletionDispositionConfirmed,
+	}}, opsCompletionProgressByPhase(snapshot, "deploying smoke-test fixture"))
+	require.Equal(t, []d.OpsCompletionProgress{{
+		Phase:        "starting process instances",
+		CoreResource: "process instance(s)",
+		Total:        1,
+		Identity:     "pi-1",
+		Disposition:  d.OpsCompletionDispositionConfirmed,
+	}}, opsCompletionProgressByPhase(snapshot, "starting process instances"))
+	require.Equal(t, []d.OpsCompletionProgress{{
+		Phase:        "walking process-instance families",
+		CoreResource: "process instance(s)",
+		Total:        1,
+		Identity:     "pi-1",
+		Disposition:  d.OpsCompletionDispositionConfirmed,
+	}}, opsCompletionProgressByPhase(snapshot, "walking process-instance families"))
+	require.Equal(t, []d.OpsCompletionProgress{{
+		Phase:        "cleaning up smoke-test process instances",
+		CoreResource: "process-instance tree(s)",
+		Total:        1,
+		Identity:     "pi-1",
+		Disposition:  d.OpsCompletionDispositionConfirmed,
+	}}, opsCompletionProgressByPhase(snapshot, "cleaning up smoke-test process instances"))
+	require.Equal(t, []d.OpsCompletionProgress{{
+		Phase:        "cleaning up smoke-test process definition",
+		CoreResource: "process definition(s)",
+		Total:        1,
+		Identity:     "pd-88",
+		Disposition:  d.OpsCompletionDispositionConfirmed,
+	}}, opsCompletionProgressByPhase(snapshot, "cleaning up smoke-test process definition"))
 }
 
 // requireSmokeTestProgressContains asserts a stage counter appeared without depending on concurrent event ordering.

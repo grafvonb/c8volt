@@ -208,3 +208,23 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./internal/services/ops -run 'TestExecuteRetentionPolicyPropagatesDeleteCompletionProgress|TestPurgeOrphanProcessInstancesPropagatesDeleteCompletionProgress|TestPurgeProcessInstancesWithIncidentsPropagatesDeleteCompletionProgress' -race -count=1`, `go test ./internal/services/ops/... -run 'Progress|Purge|Retention|Orphan|Incident' -race -count=1`, and `git diff --check`.
 - The existing ops purge implementations already route request-owned progress into `pisvc.DeleteProcessInstances`; the new tests pin the live completion contract around those frozen delete scopes.
 ---
+---
+## Iteration 10 - 2026-08-31 20:17
+**Work Unit**: User Story 1 repair and smoke-test completion tests
+**Tasks Completed**:
+- [x] T013: Add real-time repair and smoke-test stage completion tests
+**Tasks Remaining in Work Unit**: T014-T015 and T019-T024 remain in User Story 1
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/ops/repair.go
+- internal/services/ops/repair_progress.go
+- internal/services/ops/repair_test.go
+- internal/services/ops/smoke_test_service.go
+- internal/services/ops/smoke_test_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Validation passed: `go test ./internal/services/ops -run 'TestRepairIncidentsEmitsWorkerCompletionFactsAtReturnPoints|TestRepairIncidentsCompletionFactsCaptureFailureDetail|TestExecuteSmokeTestEmitsStageCompletionFacts' -race -count=1`, `go test ./internal/services/ops/... -run 'Progress|Purge|Repair|Smoke' -race -count=1`, `go test ./internal/services/ops -race -count=1`, and `git diff --check`.
+- Repair completion facts now come from worker return points; smoke-test stage facts are available by filtering the high-level smoke-test phases from the shared progress stream.
+---
