@@ -15,6 +15,7 @@ import (
 
 	camundav87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -130,6 +131,43 @@ func TestService_Deploy(t *testing.T) {
 			tt.assertResult(t, deployment)
 		})
 	}
+}
+
+// TestService_DeployDoesNotInventCompletionFactsWithoutReturnedDefinitionKeys
+// verifies v8.7 keeps deployment progress silent because the response shape does
+// not prove per-definition keys or visibility.
+func TestService_DeployDoesNotInventCompletionFactsWithoutReturnedDefinitionKeys(t *testing.T) {
+	ctx := context.Background()
+	tenantID := "tenant"
+	resourceName := "demo.bpmn"
+	resourceData := []byte("<xml>demo</xml>")
+	var events []d.OpsProgressEvent
+	svc := newTestService(t, &mockResourceClient{
+		postDeploymentsWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostDeploymentsResponse, error) {
+			assertMultipartDeploymentRequest(t, contentType, body, tenantID, resourceName, resourceData)
+			return &camundav87.PostDeploymentsResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/deployments", http.StatusOK, "200 OK"),
+				JSON200: &camundav87.DeploymentResult{
+					TenantId: &tenantID,
+				},
+			}, nil
+		},
+		postResourcesResourceKeyDeletionWithResponseFunc: func(ctx context.Context, resourceKey string, body camundav87.PostResourcesResourceKeyDeletionJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostResourcesResourceKeyDeletionResponse, error) {
+			t.Fatalf("unexpected delete call")
+			return nil, nil
+		},
+		getResourcesResourceKeyWithResponseFunc: func(ctx context.Context, resourceKey string, reqEditors ...camundav87.RequestEditorFn) (*camundav87.GetResourcesResourceKeyResponse, error) {
+			t.Fatalf("unexpected get call")
+			return nil, nil
+		},
+	})
+
+	_, err := svc.Deploy(ctx, []d.DeploymentUnitData{{Name: resourceName, Data: resourceData}}, services.WithNoWait(), services.WithProgress(func(event d.OpsProgressEvent) {
+		events = append(events, event)
+	}))
+
+	require.NoError(t, err)
+	require.Empty(t, events)
 }
 
 // TestService_Delete documents that v8.7 has no history-safe process-definition deletion path.

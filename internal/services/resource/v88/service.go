@@ -114,23 +114,30 @@ func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts
 	if err != nil {
 		return d.Deployment{}, err
 	}
+	keys := deploymentProcessDefinitionKeys(*payload)
 	if !cCfg.NoWait {
-		if err = s.waitForDeploymentConfirmation(ctx, *payload, vtenantId, cCfg.SuppressWorkflowDetailLogs); err != nil {
+		if err = s.waitForDeploymentConfirmation(ctx, *payload, keys, vtenantId, cCfg.SuppressWorkflowDetailLogs, cCfg.Progress); err != nil {
 			return d.Deployment{}, err
 		}
-	} else if !cCfg.SuppressWorkflowDetailLogs {
-		s.log.Info(fmt.Sprintf("pd deploy submitted; count %d, tenant %s, no-wait", len(units), vtenantId))
+	} else {
+		if !cCfg.SuppressWorkflowDetailLogs {
+			s.log.Info(fmt.Sprintf("pd deploy submitted; count %d, tenant %s, no-wait", len(units), vtenantId))
+		}
+		resourcepayload.ReportDeploymentProcessDefinitionCompletions(cCfg.Progress, keys, d.OpsCompletionDispositionSubmitted)
 	}
 	return fromDeploymentResult(*payload), nil
 }
 
-func (s *Service) waitForDeploymentConfirmation(ctx context.Context, dr camundav88.DeploymentResult, vtenantId string, suppressDetailLogs bool) error {
+// waitForDeploymentConfirmation waits until returned process definitions are visible and reports each first visibility.
+func (s *Service) waitForDeploymentConfirmation(ctx context.Context, dr camundav88.DeploymentResult, keys []string, vtenantId string, suppressDetailLogs bool, progress func(d.OpsProgressEvent)) error {
 	if !suppressDetailLogs {
 		s.log.Info(fmt.Sprintf("pd deploy wait; count %d", len(dr.Deployments)))
 	}
 	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("waiting for %d deployments", len(dr.Deployments)), logging.ActivityImportanceBatch)
 	defer stopActivity()
-	poll := s.processDefinitionDeployPoller(dr)
+	poll := s.processDefinitionDeployPollerWithVisibilityCallback(keys, func(key string) {
+		resourcepayload.ReportDeploymentProcessDefinitionCompletion(progress, key, len(keys), d.OpsCompletionDispositionConfirmed)
+	})
 	if err := poller.WaitForCompletion(ctx, s.log, poller.DefaultCompletionTimeout, true, poll); err != nil {
 		return fmt.Errorf("waiting for process definition deployment confirmation failed: %w", err)
 	}
@@ -143,17 +150,26 @@ func (s *Service) waitForDeploymentConfirmation(ctx context.Context, dr camundav
 // processDefinitionDeployPoller adapts a v8.8 deployment response into the shared visibility poller.
 // It waits only for deployed process definitions; deployments containing only other resource types complete immediately.
 func (s *Service) processDefinitionDeployPoller(dr camundav88.DeploymentResult) func(ctx context.Context) (poller.JobPollStatus, error) {
-	keys := resourcepayload.DeploymentProcessDefinitionKeys(dr.Deployments, func(dep camundav88.DeploymentMetadataResult) string {
+	return s.processDefinitionDeployPollerWithVisibilityCallback(deploymentProcessDefinitionKeys(dr), nil)
+}
+
+// deploymentProcessDefinitionKeys extracts process-definition keys from v8.8 deployment metadata.
+func deploymentProcessDefinitionKeys(dr camundav88.DeploymentResult) []string {
+	return resourcepayload.DeploymentProcessDefinitionKeys(dr.Deployments, func(dep camundav88.DeploymentMetadataResult) string {
 		if dep.ProcessDefinition == nil {
 			return ""
 		}
 		return dep.ProcessDefinition.ProcessDefinitionKey
 	})
-	return resourcepayload.NewProcessDefinitionVisibilityPoller(keys, func(ctx context.Context, key string) (*http.Response, error) {
+}
+
+// processDefinitionDeployPollerWithVisibilityCallback reports first visibility without issuing extra lookup requests.
+func (s *Service) processDefinitionDeployPollerWithVisibilityCallback(keys []string, visible func(string)) func(ctx context.Context) (poller.JobPollStatus, error) {
+	return resourcepayload.NewProcessDefinitionVisibilityPollerWithCallback(keys, func(ctx context.Context, key string) (*http.Response, error) {
 		resp, err := s.pdc.GetProcessDefinitionWithResponse(ctx, key)
 		if resp == nil {
 			return nil, err
 		}
 		return resp.HTTPResponse, err
-	})
+	}, visible)
 }

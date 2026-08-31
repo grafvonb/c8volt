@@ -19,6 +19,8 @@ Started: 2026-08-31T17:14:26Z
 - Process-instance command affected-count rendering is initially enabled only for scopes that can be proven from the frozen command impact (`one root` or `affected == roots`); the reporter still permanently invalidates affected output if any completion arrives without a trustworthy delta.
 - Process-definition service deletion completion facts use phase `delete process definitions`, core resource `process definition(s)`, identity = process-definition key, and submitted/confirmed/failed disposition based on `--no-wait`, response OK, and errors; affected counts are intentionally unavailable for this scope.
 - All-process-definition purge now reattaches request-owned progress to the destructive delete options so APD request progress receives process-definition deletion facts through the reused delete service path.
+- Resource deployment completion facts use phase `deploy process definitions`, core resource `process definition(s)`, identity = returned process-definition key, and submitted/confirmed dispositions for no-wait acceptance versus visibility confirmation; affected counts remain unavailable.
+- v8.8, v8.9, and v8.10 deployment services report no-wait completions immediately after a valid deployment response and confirmed completions from the first successful process-definition visibility lookup without extra backend requests.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -32,6 +34,8 @@ Started: 2026-08-31T17:14:26Z
 - In `cmd/cancel_processinstance_selector.go`, close the per-page semantic reporter immediately after each page mutation call; using `defer` inside the visitor would keep prior page activities alive until traversal completes.
 - Process-definition deletion uses a serial first delete before the worker pool to catch Camunda delete-history request-shape errors; emit a failed completion for that first attempted key and no facts for the unscheduled remainder.
 - APD force cleanup progress includes nested process-instance cancel/delete completion facts plus process-definition deletion facts; filter by phase `delete process definitions` in APD service tests that only care about the process-definition completion scope.
+- v8.7 deployment responses do not expose process-definition keys, so resource progress tests intentionally require no completion facts rather than inventing identities from submitted filenames.
+- `resourcepayload.ReportDeploymentProcessDefinitionCompletion` carries the full deployment scope total for each visible key; do not call the slice wrapper with a singleton key when the original deployment returned multiple process definitions.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -48,10 +52,12 @@ Started: 2026-08-31T17:14:26Z
 - `go test ./internal/services/processdefinition ./internal/services/ops -run 'DeleteProcessDefinitionResources.*Completion|DeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError|PurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots' -race -count=1`
 - `go test ./internal/services/processdefinition ./internal/services/ops -run 'Progress|Delete|PurgeAllProcessDefinitions' -race -count=1`
 - `go test ./internal/services/processdefinition/... ./internal/services/ops/... -race -count=1`
+- `go test ./internal/services/resource/payload ./internal/services/resource/v87 ./internal/services/resource/v88 ./internal/services/resource/v89 ./internal/services/resource/v810 -run 'Deploy|Visibility|Completion' -race -count=1`
+- `go test ./internal/services/resource/... -race -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should continue User Story 1 at T011 by adding per-definition deployment visibility and no-wait acceptance progress tests in `internal/services/resource/payload/payload_test.go` and `internal/services/resource/v87/service_test.go`, `internal/services/resource/v88/service_test.go`, `internal/services/resource/v89/service_test.go`, and `internal/services/resource/v810/service_test.go`; T019 still needs command reporter wiring for basic/APD process-definition deletion.
+- Next iteration should continue User Story 1 at T012 by adding retention, orphan, and incident-selected purge live completion tests; T019 still needs basic/APD process-definition command reporter wiring, and T020 still needs deploy command reporter wiring around the resource service facts added in iteration 8.

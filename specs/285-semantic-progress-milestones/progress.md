@@ -166,3 +166,27 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./internal/services/processdefinition ./internal/services/ops -run 'DeleteProcessDefinitionResources.*Completion|DeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError|PurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots' -race -count=1`, `go test ./internal/services/processdefinition ./internal/services/ops -run 'Progress|Delete|PurgeAllProcessDefinitions' -race -count=1`, `go test ./internal/services/processdefinition/... ./internal/services/ops/... -race -count=1`, and `git diff --check`.
 - Process-definition deletion facts are emitted for the serial capability probe and every executed worker; APD request progress now reaches the reused destructive delete path.
 ---
+---
+## Iteration 8 - 2026-08-31 20:05
+**Work Unit**: User Story 1 deployment visibility and no-wait progress tests
+**Tasks Completed**:
+- [x] T011: Add per-definition deployment visibility and no-wait acceptance progress tests
+**Tasks Remaining in Work Unit**: T012-T015 and T019-T024 remain in User Story 1
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/resource/payload/payload.go
+- internal/services/resource/payload/payload_test.go
+- internal/services/resource/v87/service_test.go
+- internal/services/resource/v88/service.go
+- internal/services/resource/v88/service_test.go
+- internal/services/resource/v89/service.go
+- internal/services/resource/v89/service_test.go
+- internal/services/resource/v810/service.go
+- internal/services/resource/v810/service_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Validation passed: `go test ./internal/services/resource/payload ./internal/services/resource/v87 ./internal/services/resource/v88 ./internal/services/resource/v89 ./internal/services/resource/v810 -run 'Deploy|Visibility|Completion' -race -count=1`, `go test ./internal/services/resource/... -race -count=1`, and `git diff --check`.
+- Deployment completion facts now use returned process-definition keys for v8.8-v8.10; v8.7 remains silent because its response cannot prove per-definition identity.
+---
