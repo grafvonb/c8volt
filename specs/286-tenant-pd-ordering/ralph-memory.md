@@ -18,6 +18,8 @@ Started: 2026-08-31T11:37:22Z
 - `cmd/get_processdefinition_watch_test.go` now has ten-refresh command coverage proving volatile statistics count changes render in place without moving process-definition rows.
 - `internal/services/processdefinition/v88/service_test.go` now compares non-stat and with-stat ordinary search over the same shuffled collection, asserting identical canonical key order and per-key statistics association after enrichment.
 - `internal/services/processdefinition/v88/service.go` documents that statistics are attached to each definition struct before final canonical sorting, so sorted results preserve per-key association.
+- `internal/services/processdefinition/v89/service_test.go` now compares non-stat and with-stat ordinary search over the same shuffled collection, asserting identical canonical key order and per-key statistics association after enrichment.
+- `internal/services/processdefinition/v89/service.go` documents that statistics are attached to each definition struct before final canonical sorting, so sorted results preserve per-key association.
 
 ## Decisions
 - Treat T001 as a validation-only setup work unit; no production code changed in iteration 1.
@@ -33,6 +35,7 @@ Started: 2026-08-31T11:37:22Z
 - T018 was completed as a service regression test-only work unit; no production change was needed because broad watch snapshots already delegate to `SearchProcessDefinitionsPages`, whose final result is canonically sorted.
 - T019 was completed as command regression test-only work; no production command change was needed because watch rendering consumes the snapshot slice in order and updates statistics in the same rows.
 - T020 was completed as v8.8 adapter parity coverage plus an implementation comment; no behavior change was needed because enrichment mutates each definition before the final canonical sort.
+- T021 was completed as v8.9 adapter parity coverage plus an implementation comment; no behavior change was needed because enrichment mutates each definition before the final canonical sort.
 
 ## Gotchas
 - Shell wrapper note: zsh has special parameters named `status` and `commands`; use neutral variable names or run validation loops under `/bin/bash`.
@@ -52,4 +55,4 @@ Started: 2026-08-31T11:37:22Z
 - Do not use zsh variable names `status` or `commands` in validation-loop scripts.
 
 ## Current Handoff
-- Next iteration starts at US2 T021: add with-stat parity coverage and keep Camunda 8.9 statistics enrichment associated by slice index without reordering in `internal/services/processdefinition/v89/service_test.go` and `internal/services/processdefinition/v89/service.go`; T020 passed `go test ./internal/services/processdefinition/v88 -run 'TestService_SearchProcessDefinitionsWithStat_PreservesCanonicalOrderAndStatisticsByKey' -count=1` and `go test ./internal/services/processdefinition/v88 -run 'Test.*ProcessDefinition.*(Search|Latest|Order|Sort|Stat)' -count=1`.
+- Next iteration starts at US2 T022: add with-stat parity coverage and keep Camunda 8.10 statistics enrichment associated by slice index without reordering in `internal/services/processdefinition/v810/service_test.go` and `internal/services/processdefinition/v810/service.go`; T021 passed `go test ./internal/services/processdefinition/v89 -run 'TestService_SearchProcessDefinitionsWithStat_PreservesCanonicalOrderAndStatisticsByKey' -count=1` and `go test ./internal/services/processdefinition/v89 -run 'Test.*ProcessDefinition.*(Search|Latest|Order|Sort|Stat)' -count=1`.

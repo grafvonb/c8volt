@@ -223,3 +223,19 @@ Started: 2026-08-31 13:37:23
 **Learnings**:
 - v8.8 ordinary with-stat search preserves the same canonical key sequence as non-stat search, with counts attached to the matching process-definition keys after final sorting.
 ---
+---
+## Iteration 15 - 2026-08-31 14:33
+**Work Unit**: US2 Camunda 8.9 with-stat ordering parity
+**Tasks Completed**:
+- [x] T021: Add with-stat parity coverage and keep Camunda 8.9 statistics enrichment associated by slice index without reordering in `internal/services/processdefinition/v89/service_test.go` and `internal/services/processdefinition/v89/service.go`
+**Tasks Remaining in Work Unit**: 0; US2 has 1 incomplete task remaining (T022)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/v89/service.go
+- internal/services/processdefinition/v89/service_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- v8.9 ordinary with-stat search preserves the same canonical key sequence as non-stat search, with counts attached to the matching process-definition keys after final sorting.
+---

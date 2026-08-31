@@ -271,6 +271,68 @@ func TestService_SearchProcessDefinitions_RequestsCanonicalSortAndNormalizesResu
 	m.AssertExpectations(t)
 }
 
+// TestService_SearchProcessDefinitionsWithStat_PreservesCanonicalOrderAndStatisticsByKey
+// verifies v8.9 attaches statistics to the matching definitions before final
+// canonical sorting, so stats cannot reorder rows or drift across keys.
+func TestService_SearchProcessDefinitionsWithStat_PreservesCanonicalOrderAndStatisticsByKey(t *testing.T) {
+	ctx := context.Background()
+	expectedKeys := []string{"10", "2", "112", "111", "301", "202"}
+	makeResp := func() *camundav89.SearchProcessDefinitionsResponse {
+		return &camundav89.SearchProcessDefinitionsResponse{
+			HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
+			Body: []byte(`{"items":[` +
+				`{"hasStartForm":false,"name":"name-order","processDefinitionId":"order","processDefinitionKey":"202","resourceName":"order.bpmn","tenantId":"tenant-b","version":9,"versionTag":"tag"},` +
+				`{"hasStartForm":false,"name":"name-invoice","processDefinitionId":"invoice","processDefinitionKey":"10","resourceName":"invoice.bpmn","tenantId":"tenant-a","version":4,"versionTag":"tag"},` +
+				`{"hasStartForm":false,"name":"name-invoice","processDefinitionId":"invoice","processDefinitionKey":"2","resourceName":"invoice.bpmn","tenantId":"tenant-a","version":4,"versionTag":"tag"},` +
+				`{"hasStartForm":false,"name":"name-order","processDefinitionId":"order","processDefinitionKey":"111","resourceName":"order.bpmn","tenantId":"tenant-a","version":9,"versionTag":"tag"},` +
+				`{"hasStartForm":false,"name":"name-order","processDefinitionId":"order","processDefinitionKey":"112","resourceName":"order.bpmn","tenantId":"tenant-a","version":10,"versionTag":"tag"},` +
+				`{"hasStartForm":false,"name":"name-alpha","processDefinitionId":"alpha","processDefinitionKey":"301","resourceName":"alpha.bpmn","tenantId":"tenant-b","version":1,"versionTag":"tag"}` +
+				`],"page":{"hasMoreTotalItems":false,"totalItems":6}}`),
+			JSON200: &camundav89.ProcessDefinitionSearchQueryResult{},
+		}
+	}
+
+	mNoStat := &mockProcessDefinitionClient{}
+	mNoStat.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(makeResp(), nil)
+	svcNoStat, err := v89.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v89.WithClientCamunda(mNoStat))
+	require.NoError(t, err)
+
+	defsNoStat, err := svcNoStat.SearchProcessDefinitions(ctx, domain.ProcessDefinitionFilter{}, 25, services.WithIgnoreTenant())
+	require.NoError(t, err)
+	assert.Equal(t, expectedKeys, processDefinitionKeys(defsNoStat))
+	mNoStat.AssertExpectations(t)
+
+	mWithStat := &mockProcessDefinitionClient{}
+	mWithStat.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(makeResp(), nil)
+	expectedStats := map[string]expectedProcessDefinitionStats{
+		"10":  {active: 10, completed: 11, canceled: 12, incidents: 13},
+		"2":   {active: 20, completed: 21, canceled: 22, incidents: 23},
+		"112": {active: 112, completed: 113, canceled: 114, incidents: 115},
+		"111": {active: 111, completed: 112, canceled: 113, incidents: 114},
+		"301": {active: 301, completed: 302, canceled: 303, incidents: 304},
+		"202": {active: 202, completed: 203, canceled: 204, incidents: 205},
+	}
+	for key, stats := range expectedStats {
+		mockProcessDefinitionStats(mWithStat, t, key, "", stats)
+	}
+	svcWithStat, err := v89.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v89.WithClientCamunda(mWithStat))
+	require.NoError(t, err)
+
+	defsWithStat, err := svcWithStat.SearchProcessDefinitions(ctx, domain.ProcessDefinitionFilter{}, 25, services.WithIgnoreTenant(), services.WithStat())
+	require.NoError(t, err)
+	assert.Equal(t, processDefinitionKeys(defsNoStat), processDefinitionKeys(defsWithStat))
+	for _, def := range defsWithStat {
+		stats := expectedStats[def.Key]
+		require.NotNil(t, def.Statistics, "missing statistics for key %s", def.Key)
+		assert.Equal(t, stats.active, def.Statistics.Active, "active count for key %s", def.Key)
+		assert.Equal(t, stats.completed, def.Statistics.Completed, "completed count for key %s", def.Key)
+		assert.Equal(t, stats.canceled, def.Statistics.Canceled, "canceled count for key %s", def.Key)
+		assert.Equal(t, stats.incidents, def.Statistics.Incidents, "incident count for key %s", def.Key)
+		assert.True(t, def.Statistics.IncidentCountSupported, "incident support for key %s", def.Key)
+	}
+	mWithStat.AssertExpectations(t)
+}
+
 // TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator verifies stats retrieval exposes progress activity.
 func TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator(t *testing.T) {
 	sink := &activitysink.Sink{}
@@ -750,6 +812,15 @@ type expectedV89Sort struct {
 	order string
 }
 
+// expectedProcessDefinitionStats groups the four count buckets attached during
+// process-definition statistics enrichment.
+type expectedProcessDefinitionStats struct {
+	active    int64
+	completed int64
+	canceled  int64
+	incidents int64
+}
+
 // assertV89ProcessDefinitionSort checks the exact Camunda sort tuple used to
 // stabilize v8.9 process-definition paging.
 func assertV89ProcessDefinitionSort(t *testing.T, got []struct {
@@ -817,6 +888,15 @@ func mockProcessInstanceIncidentCount(m *mockProcessDefinitionClient, t *testing
 	m.On("SearchProcessInstancesWithBodyWithResponse", mock.Anything, "application/json", mock.MatchedBy(func(raw string) bool {
 		return processInstanceIncidentSearchMatches(raw, processDefinitionKey, tenantID)
 	})).Return(makeSearchProcessInstancesResponse(total), nil).Once()
+}
+
+// mockProcessDefinitionStats installs all v8.9 stats-count expectations for a
+// single process-definition key.
+func mockProcessDefinitionStats(m *mockProcessDefinitionClient, t *testing.T, processDefinitionKey, tenantID string, stats expectedProcessDefinitionStats) {
+	mockProcessInstanceStateCount(m, t, processDefinitionKey, tenantID, camundav89.ProcessInstanceStateEnumACTIVE, stats.active)
+	mockProcessInstanceStateCount(m, t, processDefinitionKey, tenantID, camundav89.ProcessInstanceStateEnumCOMPLETED, stats.completed)
+	mockProcessInstanceStateCount(m, t, processDefinitionKey, tenantID, camundav89.ProcessInstanceStateEnum(domain.StateTerminated), stats.canceled)
+	mockProcessInstanceIncidentCount(m, t, processDefinitionKey, tenantID, stats.incidents)
 }
 
 func processInstanceSearchMatches(raw string, processDefinitionKey, tenantID string, expectedState camundav89.ProcessInstanceStateEnum) bool {
