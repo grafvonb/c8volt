@@ -78,6 +78,7 @@ func toDomainProcessDefinitionSearchRequest(x ProcessDefinitionSearchRequest) d.
 		Filter: toDomainProcessDefinitionFilter(x.Filter),
 		Page:   toDomainProcessDefinitionPageRequest(x.Page),
 		Limit:  x.Limit,
+		Latest: x.Latest,
 	}
 }
 

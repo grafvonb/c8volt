@@ -5,6 +5,7 @@ package processdefinition
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -127,6 +128,122 @@ func TestSearchProcessDefinitionsPagesSortsFinalCollection(t *testing.T) {
 		"tenant-a-invoice-v9",
 		"tenant-a-payment-v1",
 		"tenant-b-invoice-v1",
+	}, processDefinitionSearchKeys(got.Items))
+}
+
+// TestSearchProcessDefinitionsPagesTraversesCursorAndOffsetPagesAcrossPageSizes
+// verifies complete ordinary traversal is exact-once and page-size independent.
+func TestSearchProcessDefinitionsPagesTraversesCursorAndOffsetPagesAcrossPageSizes(t *testing.T) {
+	t.Parallel()
+
+	source := processDefinitionSearchTraversalFixture()
+	wantKeys := []string{
+		"default-invoice-v10",
+		"tenant-a-Invoice-v1",
+		"10",
+		"2",
+		"tenant-a-invoice-v9",
+		"tenant-a-payment-v2",
+		"tenant-b-invoice-v3",
+	}
+
+	for _, tt := range []struct {
+		name      string
+		pageSize  int32
+		useCursor bool
+		wantPages int32
+	}{
+		{name: "cursor-size-1", pageSize: 1, useCursor: true, wantPages: 7},
+		{name: "cursor-size-2", pageSize: 2, useCursor: true, wantPages: 4},
+		{name: "cursor-size-1000", pageSize: 1000, useCursor: true, wantPages: 1},
+		{name: "offset-size-1", pageSize: 1, wantPages: 7},
+		{name: "offset-size-2", pageSize: 2, wantPages: 4},
+		{name: "offset-size-1000", pageSize: 1000, wantPages: 1},
+	} {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []d.ProcessDefinitionPageRequest
+			api := processDefinitionSearchAPIStub{
+				searchProcessDefinitionsPage: func(_ context.Context, filter d.ProcessDefinitionFilter, page d.ProcessDefinitionPageRequest, _ ...services.CallOption) (d.ProcessDefinitionPage, error) {
+					require.Equal(t, d.ProcessDefinitionFilter{}, filter)
+					require.Equal(t, tt.pageSize, page.Size)
+					requests = append(requests, page)
+					start := processDefinitionSearchPageStart(t, page, tt.useCursor)
+					end := start + int(page.Size)
+					if end > len(source) {
+						end = len(source)
+					}
+					out := d.ProcessDefinitionPage{
+						Request: page,
+						Items:   append([]d.ProcessDefinition(nil), source[start:end]...),
+					}
+					if end < len(source) {
+						out.OverflowState = d.ProcessInstanceOverflowStateHasMore
+						if tt.useCursor {
+							out.EndCursor = strconv.Itoa(end)
+						}
+					} else {
+						out.OverflowState = d.ProcessInstanceOverflowStateNoMore
+					}
+					return out, nil
+				},
+			}
+
+			got, err := SearchProcessDefinitionsPages(context.Background(), api, d.ProcessDefinitionSearchRequest{
+				Page: d.ProcessDefinitionPageRequest{Size: tt.pageSize},
+			}, nil)
+
+			require.NoError(t, err)
+			require.Equal(t, tt.wantPages, got.Pages)
+			require.Len(t, requests, int(tt.wantPages))
+			require.Equal(t, wantKeys, processDefinitionSearchKeys(got.Items))
+		})
+	}
+}
+
+// TestSearchProcessDefinitionsPagesLatestReducesExactGroupsBeforeLimit verifies
+// latest traversal collects all candidates before exact group reduction and limiting.
+func TestSearchProcessDefinitionsPagesLatestReducesExactGroupsBeforeLimit(t *testing.T) {
+	t.Parallel()
+
+	source := processDefinitionSearchTraversalFixture()
+	var requests []d.ProcessDefinitionPageRequest
+	api := processDefinitionSearchAPIStub{
+		searchProcessDefinitionsPage: func(_ context.Context, filter d.ProcessDefinitionFilter, page d.ProcessDefinitionPageRequest, _ ...services.CallOption) (d.ProcessDefinitionPage, error) {
+			require.Equal(t, d.ProcessDefinitionFilter{IsLatestVersion: true}, filter)
+			requests = append(requests, page)
+			start := processDefinitionSearchPageStart(t, page, true)
+			end := start + int(page.Size)
+			if end > len(source) {
+				end = len(source)
+			}
+			out := d.ProcessDefinitionPage{
+				Request: page,
+				Items:   append([]d.ProcessDefinition(nil), source[start:end]...),
+			}
+			if end < len(source) {
+				out.OverflowState = d.ProcessInstanceOverflowStateHasMore
+				out.EndCursor = strconv.Itoa(end)
+			} else {
+				out.OverflowState = d.ProcessInstanceOverflowStateNoMore
+			}
+			return out, nil
+		},
+	}
+
+	got, err := SearchProcessDefinitionsPages(context.Background(), api, d.ProcessDefinitionSearchRequest{
+		Page:   d.ProcessDefinitionPageRequest{Size: 2},
+		Limit:  3,
+		Latest: true,
+	}, nil)
+
+	require.NoError(t, err)
+	require.EqualValues(t, 4, got.Pages)
+	require.Len(t, requests, 4)
+	require.Equal(t, []string{
+		"default-invoice-v10",
+		"tenant-a-Invoice-v1",
+		"10",
 	}, processDefinitionSearchKeys(got.Items))
 }
 
@@ -305,28 +422,61 @@ func TestCollectProcessDefinitionWatchSnapshotRetainsCanonicalPositionsWhenStati
 	}, processDefinitionSearchActiveByKey(second.Items))
 }
 
-// TestCollectProcessDefinitionWatchSnapshotDispatchesLatest verifies latest
-// selectors use the existing latest service lookup instead of page traversal.
-func TestCollectProcessDefinitionWatchSnapshotDispatchesLatest(t *testing.T) {
+// TestCollectProcessDefinitionWatchSnapshotTraversesLatestPages verifies latest
+// watch snapshots use shared paged traversal and canonical latest reduction.
+func TestCollectProcessDefinitionWatchSnapshotTraversesLatestPages(t *testing.T) {
 	t.Parallel()
 
+	var requests []d.ProcessDefinitionPageRequest
 	api := processDefinitionSearchAPIStub{
-		searchProcessDefinitionsLatest: func(_ context.Context, filter d.ProcessDefinitionFilter, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
+		searchProcessDefinitionsPage: func(_ context.Context, filter d.ProcessDefinitionFilter, page d.ProcessDefinitionPageRequest, opts ...services.CallOption) (d.ProcessDefinitionPage, error) {
 			require.Equal(t, d.ProcessDefinitionFilter{BpmnProcessId: "invoice", IsLatestVersion: true}, filter)
 			require.True(t, services.ApplyCallOptions(opts).WithStat)
-			return []d.ProcessDefinition{{Key: "pd-latest", BpmnProcessId: "invoice", ProcessVersion: 4}}, nil
+			requests = append(requests, page)
+			switch len(requests) {
+			case 1:
+				return d.ProcessDefinitionPage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					ReportedTotal: &d.ProcessDefinitionReportedTotal{
+						Count: 3,
+						Kind:  d.ProcessDefinitionReportedTotalKindExact,
+					},
+					EndCursor: "cursor-2",
+					Items: []d.ProcessDefinition{
+						processDefinitionForSearchOrder("tenant-a", "invoice", 4, "2"),
+						processDefinitionForSearchOrder("tenant-a", "invoice", 4, "10"),
+					},
+				}, nil
+			case 2:
+				require.Equal(t, "cursor-2", page.After)
+				return d.ProcessDefinitionPage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+					Items: []d.ProcessDefinition{
+						processDefinitionForSearchOrder("tenant-b", "invoice", 1, "tenant-b-invoice-v1"),
+					},
+				}, nil
+			default:
+				t.Fatalf("unexpected process-definition page request %d", len(requests))
+				return d.ProcessDefinitionPage{}, nil
+			}
 		},
 	}
 
 	got, err := CollectProcessDefinitionWatchSnapshot(context.Background(), api, d.ProcessDefinitionWatchSnapshotRequest{
 		Filter: d.ProcessDefinitionFilter{BpmnProcessId: "invoice", IsLatestVersion: true},
+		Page:   d.ProcessDefinitionPageRequest{Size: 2},
 		Latest: true,
 	}, services.WithStat())
 
 	require.NoError(t, err)
-	require.EqualValues(t, 1, got.Total)
-	require.EqualValues(t, 1, got.Pages)
-	require.Equal(t, "pd-latest", got.Items[0].Key)
+	require.Len(t, requests, 2)
+	require.EqualValues(t, 2, got.Total)
+	require.EqualValues(t, 2, got.Pages)
+	require.NotNil(t, got.ReportedTotal)
+	require.EqualValues(t, 3, got.ReportedTotal.Count)
+	require.Equal(t, []string{"10", "tenant-b-invoice-v1"}, processDefinitionSearchKeys(got.Items))
 }
 
 // TestCollectProcessDefinitionWatchSnapshotDispatchesKey verifies direct key
@@ -408,6 +558,33 @@ func processDefinitionForSearchOrderWithStatistics(tenantID, bpmnProcessID strin
 		IncidentCountSupported: true,
 	}
 	return definition
+}
+
+func processDefinitionSearchTraversalFixture() []d.ProcessDefinition {
+	return []d.ProcessDefinition{
+		processDefinitionForSearchOrder("tenant-a", "payment", 2, "tenant-a-payment-v2"),
+		processDefinitionForSearchOrder("tenant-a", "invoice", 10, "2"),
+		processDefinitionForSearchOrder("tenant-a", "invoice", 9, "tenant-a-invoice-v9"),
+		processDefinitionForSearchOrder("tenant-b", "invoice", 3, "tenant-b-invoice-v3"),
+		processDefinitionForSearchOrder("<default>", "invoice", 10, "default-invoice-v10"),
+		processDefinitionForSearchOrder("tenant-a", "Invoice", 1, "tenant-a-Invoice-v1"),
+		processDefinitionForSearchOrder("tenant-a", "invoice", 10, "10"),
+	}
+}
+
+func processDefinitionSearchPageStart(t *testing.T, page d.ProcessDefinitionPageRequest, useCursor bool) int {
+	t.Helper()
+	if !useCursor {
+		require.Empty(t, page.After)
+		return int(page.From)
+	}
+	if page.After == "" {
+		require.Zero(t, page.From)
+		return 0
+	}
+	start, err := strconv.Atoi(page.After)
+	require.NoError(t, err)
+	return start
 }
 
 // processDefinitionSearchKeys extracts the returned service collection identity.

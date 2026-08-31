@@ -106,6 +106,7 @@ type ProcessDefinitionSearchRequest struct {
 	Filter ProcessDefinitionFilter
 	Page   ProcessDefinitionPageRequest
 	Limit  int32
+	Latest bool
 }
 
 // ProcessDefinitionSearchPageStep carries one selected process-definition page

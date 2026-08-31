@@ -22,6 +22,9 @@ Started: 2026-08-31T11:37:22Z
 - `internal/services/processdefinition/v89/service.go` documents that statistics are attached to each definition struct before final canonical sorting, so sorted results preserve per-key association.
 - `internal/services/processdefinition/v810/service_test.go` now compares non-stat and with-stat ordinary search over the same shuffled collection, asserting identical canonical key order and per-key statistics association after enrichment.
 - `internal/services/processdefinition/v810/service.go` documents that statistics are attached to each definition struct before final canonical sorting, so sorted results preserve per-key association.
+- `internal/services/processdefinition/search.go` now treats `ProcessDefinitionSearchRequest.Latest` as a shared traversal intent: it sets `IsLatestVersion` for page adapters, traverses all available pages without applying the user limit early, reduces by exact tenant/BPMN group with version-desc/key-asc winner rules, canonically sorts, then applies the latest limit.
+- `CollectProcessDefinitionWatchSnapshot` now routes latest snapshots through `SearchProcessDefinitionsPages` with `Latest: true`, preserving direct-key snapshots and ordinary broad snapshot paging behavior.
+- `c8volt/process.ProcessDefinitionSearchRequest` and `internal/domain.ProcessDefinitionSearchRequest` now carry additive `Latest bool`; `c8volt/process/convert.go` maps it to the domain request.
 
 ## Decisions
 - Treat T001 as a validation-only setup work unit; no production code changed in iteration 1.
@@ -39,6 +42,7 @@ Started: 2026-08-31T11:37:22Z
 - T020 was completed as v8.8 adapter parity coverage plus an implementation comment; no behavior change was needed because enrichment mutates each definition before the final canonical sort.
 - T021 was completed as v8.9 adapter parity coverage plus an implementation comment; no behavior change was needed because enrichment mutates each definition before the final canonical sort.
 - T022 was completed as v8.10 adapter parity coverage plus an implementation comment; no behavior change was needed because enrichment mutates each definition before the final canonical sort.
+- T023, T030, and T031 were completed together because the shared service tests require an additive latest request intent and the service-owned latest traversal/reduction implementation to pass.
 
 ## Gotchas
 - Shell wrapper note: zsh has special parameters named `status` and `commands`; use neutral variable names or run validation loops under `/bin/bash`.
@@ -58,4 +62,4 @@ Started: 2026-08-31T11:37:22Z
 - Do not use zsh variable names `status` or `commands` in validation-loop scripts.
 
 ## Current Handoff
-- Next iteration starts at US3 T023: add shared service coverage for complete cursor/offset traversal, page sizes 1/2/1000, exact tenant/BPMN latest grouping, tied-version lexical key choice, post-reduction limiting, and latest watch paging in `internal/services/processdefinition/search_test.go`; T022 passed `go test ./internal/services/processdefinition/v810 -run 'TestService_SearchProcessDefinitionsWithStat_PreservesCanonicalOrderAndStatisticsByKey' -count=1` and `go test ./internal/services/processdefinition/v810 -run 'Test.*ProcessDefinition.*(Search|Latest|Order|Sort|Stat)' -count=1`.
+- Next iteration starts at US3 T024: add facade tests for mapping `Latest`, complete latest results, ordered conversion, visitor behavior, and domain-error conversion in `c8volt/process/client_test.go`; T023/T030/T031 passed `go test ./internal/services/processdefinition -run 'Test(SearchProcessDefinitionsPages|CollectProcessDefinitionWatchSnapshot)' -count=1`, `go test ./c8volt/process -run 'TestProcessDefinitionSearchRequestConversionPreservesLatestIntent|TestProcessDefinitionWatchSnapshotRequestConversionPreservesSelectorFields|TestClient_SearchProcessDefinitionsPages' -count=1`, `go test ./internal/services/processdefinition -run 'Test.*(SearchProcessDefinitionsPages|WatchSnapshot|Latest|Paging|Order)' -count=1`, `go test ./c8volt/process -run 'Test(ProcessDefinition.*Conversion|Client_SearchProcessDefinitions|Client_CollectProcessDefinitionWatchSnapshot)' -count=1`, `go test ./internal/services/processdefinition -count=1`, `go test ./c8volt/process -count=1`, and `go test ./internal/domain -count=1`.

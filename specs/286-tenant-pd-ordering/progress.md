@@ -255,3 +255,25 @@ Started: 2026-08-31 13:37:23
 **Learnings**:
 - v8.10 ordinary with-stat search preserves the same canonical key sequence as non-stat search, with counts attached to the matching process-definition keys after final sorting.
 ---
+---
+## Iteration 17 - 2026-08-31 14:42
+**Work Unit**: US3 shared latest traversal and reduction
+**Tasks Completed**:
+- [x] T023: Add service tests for complete cursor/offset traversal, page sizes 1/2/1000, exact tenant/BPMN latest grouping, tied-version lexical key choice, post-reduction limiting, and latest watch paging in `internal/services/processdefinition/search_test.go`
+- [x] T030: Add the `Latest` intent to domain/public search requests and map it without changing serialized response contracts in `internal/domain/processdefinition.go`, `c8volt/process/model.go`, and `c8volt/process/convert.go`
+- [x] T031: Extend service-owned traversal to collect complete latest candidates, reduce by exact `(tenantId, bpmnProcessId)` with version/key tie rules, sort canonically, apply latest limits after reduction, and route latest watch snapshots through the same path in `internal/services/processdefinition/search.go`
+**Tasks Remaining in Work Unit**: 0; US3 has 12 incomplete tasks remaining (T024-T029, T032-T037)
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/process/convert.go
+- c8volt/process/model.go
+- c8volt/process/model_test.go
+- internal/domain/processdefinition.go
+- internal/services/processdefinition/search.go
+- internal/services/processdefinition/search_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- Shared latest traversal now uses complete page collection before exact tenant/BPMN reduction, so latest limits are applied to the canonical reduced collection rather than raw page arrivals.
+---

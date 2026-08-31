@@ -99,7 +99,7 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 
 ### Tests for User Story 3
 
-- [ ] T023 [P] [US3] Add service tests for complete cursor/offset traversal, page sizes 1/2/1000, exact tenant/BPMN latest grouping, tied-version lexical key choice, post-reduction limiting, and latest watch paging in `internal/services/processdefinition/search_test.go`
+- [x] T023 [P] [US3] Add service tests for complete cursor/offset traversal, page sizes 1/2/1000, exact tenant/BPMN latest grouping, tied-version lexical key choice, post-reduction limiting, and latest watch paging in `internal/services/processdefinition/search_test.go`
 - [ ] T024 [P] [US3] Add facade tests for mapping `Latest`, complete latest results, ordered conversion, visitor behavior, and domain-error conversion in `c8volt/process/client_test.go`
 - [ ] T025 [P] [US3] Add Camunda 8.7 tests for canonical Operate paging, tenant-aware local latest selection, lexical key ties, and the retained 1000-definition compatibility ceiling in `internal/services/processdefinition/v87/service_test.go`
 - [ ] T026 [P] [US3] Add Camunda 8.8 tests for native `isLatestVersion`, tenant-then-process latest sort, continuation metadata, and multi-page latest requests in `internal/services/processdefinition/v88/service_test.go`
@@ -109,8 +109,8 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 
 ### Implementation for User Story 3
 
-- [ ] T030 [US3] Add the `Latest` intent to domain/public search requests and map it without changing serialized response contracts in `internal/domain/processdefinition.go`, `c8volt/process/model.go`, and `c8volt/process/convert.go`
-- [ ] T031 [US3] Extend service-owned traversal to collect complete latest candidates, reduce by exact `(tenantId, bpmnProcessId)` with version/key tie rules, sort canonically, apply latest limits after reduction, and route latest watch snapshots through the same path in `internal/services/processdefinition/search.go`
+- [x] T030 [US3] Add the `Latest` intent to domain/public search requests and map it without changing serialized response contracts in `internal/domain/processdefinition.go`, `c8volt/process/model.go`, and `c8volt/process/convert.go`
+- [x] T031 [US3] Extend service-owned traversal to collect complete latest candidates, reduce by exact `(tenantId, bpmnProcessId)` with version/key tie rules, sort canonically, apply latest limits after reduction, and route latest watch snapshots through the same path in `internal/services/processdefinition/search.go`
 - [ ] T032 [US3] Route `SearchProcessDefinitionsLatest` through the shared paged service request with `Latest: true`, preserving facade error conversion and result order in `c8volt/process/client.go`
 - [ ] T033 [P] [US3] Make the Camunda 8.7 compatibility latest wrapper group by exact tenant and BPMN IDs, resolve equal-version keys lexically, and retain its documented 1000-item bound in `internal/services/processdefinition/v87/service.go`
 - [ ] T034 [P] [US3] Make Camunda 8.8 latest pages use native filtering with tenant ID ASC then process definition ID ASC while leaving final normalization to the shared service in `internal/services/processdefinition/v88/service.go`
