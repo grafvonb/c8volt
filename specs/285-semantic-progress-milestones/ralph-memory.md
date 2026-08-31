@@ -54,6 +54,8 @@ Started: 2026-08-31T17:14:26Z
 - `cmd/delete_processdefinition_progress.go` owns process-definition deletion reporter vocabulary and both facade-level and ops-level completion callback adapters; keep discovery page formatting in APD command progress, not in that helper.
 - Deployment command progress must ignore non-`deploy process definitions` completion phases before constructing the lazy reporter; otherwise v8.7 `--run` follow-up process-instance creation could open a misleading deployment activity.
 - `cmd/ops_processinstance_purge_progress.go` intentionally suppresses the shared bulk-delete frozen-scope `deleting process instances` line because retention/orphan/incident purge deletion progress is now completion-driven; discovery and planning frozen scopes still render through the existing verbose path.
+- Repair commands now use `cmd/ops_repair_progress.go` to route `repairing incidents` completion facts into a lazy semantic reporter; discovery, planning, and legacy frozen counters remain on the existing progress renderer.
+- Smoke-test commands now use `cmd/ops_execute_smoketest_progress.go` for high-level stage completion reporters covering deploy/start/walk/cleanup; nested phases such as `create`, `delete`, `delete process definitions`, and `deploy process definitions` are intentionally ignored by the smoke-test command reporter.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -81,10 +83,12 @@ Started: 2026-08-31T17:14:26Z
 - `go test ./cmd -run 'Progress|Activity' -race -count=1`
 - `go test ./cmd -run 'TestProcessDefinitionDeploySemanticProgress|TestAppendProcessDefinitionDeployProgressOptions|TestProcessDefinitionDeleteSemanticProgressRoutesFacadeCompletion|TestOpsPurgeAllProcessDefinitionsProgressKeepsDiscoverySeparate' -race -count=1`
 - `go test ./cmd -run 'Deploy|ProcessDefinitionDeploy|Progress|Activity' -race -count=1`
+- `go test ./cmd -run 'TestOpsRepairSemanticProgressRoutesCompletion|TestOpsExecuteSmokeTestSemanticProgressRoutesStageCompletions|TestExplicitLargeWorkProgressEventRespectsOutputModes|TestOpsRepairIncidentProgressContractPendingT068|TestOpsRepairProcessInstanceProgressContractPendingT068|TestOpsExecuteSmokeTestVerboseProgressRendersStageCounters' -race -count=1`
+- `go test ./cmd -run 'Repair|Smoke|Progress|Activity' -race -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should continue User Story 1 at T022: move repair progress emission to worker return points and expose smoke-test deploy/start/walk/cleanup stage facts in command progress.
+- Next iteration should continue User Story 1 at T023: add completion facts and reporter wiring for bulk starts, slow-analysis frozen work, and multi-key expect.

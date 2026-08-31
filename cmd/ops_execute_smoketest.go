@@ -62,7 +62,7 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
 			ReportFormat:  flagOpsExecuteSmokeTestReportFormat,
 			StartedAt:     time.Now().UTC(),
 		}
-		configureOpsExecuteSmokeTestProgress(cmd, &request)
+		smokeProgress := configureOpsExecuteSmokeTestProgress(cmd, &request)
 		if err := validateOpsWorkflowReportPathForPlanning(flagOpsExecuteSmokeTestReportFile, opsWorkflowReportWriteModeForConfirmedMutation(effectiveAutoConfirm && !flagDryRun)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
@@ -77,6 +77,7 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
 		result, err := executeSmokeTestWithCommandActivity(cmd, request, func() (ops.SmokeTestResult, error) {
 			return cli.ExecuteSmokeTest(cmd.Context(), request, collectOptions()...)
 		})
+		smokeProgress.Close()
 		result = attachOpsExecuteSmokeTestResultTenantContext(cmd, cfg, result)
 		if err != nil {
 			if reportErr := writeOpsExecuteSmokeTestReport(result, cfg, opsExecuteSmokeTestReportWriteMode(result)); reportErr != nil {

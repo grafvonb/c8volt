@@ -135,7 +135,7 @@ var opsRepairIncidentCmd = &cobra.Command{
 			ReportFormat:        reportFormat,
 			StartedAt:           time.Now().UTC(),
 		}
-		configureOpsRepairProgress(cmd, &request)
+		repairProgress := configureOpsRepairProgress(cmd, &request)
 		if opsRepairNeedsPreflight(cmd) {
 			planRequest := request
 			planRequest.DryRun = true
@@ -157,6 +157,7 @@ var opsRepairIncidentCmd = &cobra.Command{
 		result, err := repairIncidentWithCommandActivity(cmd, request, func() (ops.RepairResult, error) {
 			return cli.RepairIncidents(cmd.Context(), request, collectOptions()...)
 		})
+		repairProgress.Close()
 		result = attachOpsRepairResultTenantContext(cmd, cfg, result)
 		if reportErr := writeOpsRepairReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
 			if err != nil {

@@ -93,16 +93,6 @@ func printExplicitLargeWorkDurableFrozenProgress(cmd *cobra.Command, progress op
 	printOpsDurableLine(cmd, line, false)
 }
 
-// configureOpsExecuteSmokeTestProgress installs command-owned smoke-test progress rendering on the facade request.
-func configureOpsExecuteSmokeTestProgress(cmd *cobra.Command, request *ops.SmokeTestRequest) {
-	if request == nil {
-		return
-	}
-	request.Progress = func(event ops.ProgressEvent) {
-		printExplicitLargeWorkProgressEvent(cmd, event)
-	}
-}
-
 // printExplicitLargeWorkProgressEvent renders exact explicit-work counters using the shared command progress gate.
 func printExplicitLargeWorkProgressEvent(cmd *cobra.Command, event ops.ProgressEvent) {
 	if event.Kind != ops.ProgressEventKindFrozenScope || event.FrozenScope == nil {

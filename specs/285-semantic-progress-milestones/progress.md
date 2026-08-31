@@ -60,8 +60,6 @@ Started: 2026-08-31 19:14:26
 **Learnings**:
 - Completion facts now preserve lifecycle disposition and affected-count availability through the domain, service option, and public facade callback boundaries.
 - Validation passed: `go test ./internal/domain ./c8volt/foptions ./c8volt/ops ./toolx/logging ./internal/services -race -count=1`; `git diff --check`.
----
----
 ## Iteration 3 - 2026-08-31 19:28
 **Work Unit**: Phase 2 command reporter scaffold and validation
 **Tasks Completed**:
@@ -321,4 +319,27 @@ Started: 2026-08-31 19:14:26
 **Learnings**:
 - Validation passed: `go test ./cmd -run 'TestOpsExecuteRetentionPolicyProgressContractPendingT066|TestOpsExecuteRetentionPolicyMachineProgressSafetyPendingT066|TestOpsPurgeOrphanProcessInstancesProgressContractPendingT066|TestOpsPurgeOrphanProcessInstancesMachineProgressSafetyPendingT066|TestOpsPurgeProcessInstancesWithIncidentsProgressContractPendingT066|TestOpsPurgeProcessInstancesWithIncidentsMachineProgressSafetyPendingT066' -race -count=1`, `go test ./internal/services/ops -run 'TestExecuteRetentionPolicyPropagatesDeleteCompletionProgress|TestPurgeOrphanProcessInstancesPropagatesDeleteCompletionProgress|TestPurgeProcessInstancesWithIncidentsPropagatesDeleteCompletionProgress' -race -count=1`, `go test ./cmd -run 'Progress|Activity|RetentionPolicy|OrphanProcessInstances|ProcessInstancesWithIncidents' -race -count=1`, `go test ./internal/services/ops/... -run 'Progress|Purge|Retention|Orphan|Incident' -race -count=1`, `go test ./internal/services/processinstance/... -run 'Progress|Cancel|Delete' -race -count=1`, and `git diff --check`.
 - The ops purge services already forwarded request-owned progress into the shared delete service; the command adapter now consumes delete completion facts and suppresses the older bulk-delete frozen-scope line for these purge commands.
+---
+---
+## Iteration 16 - 2026-08-31 21:01
+**Work Unit**: User Story 1 repair and smoke-test semantic command progress
+**Tasks Completed**:
+- [x] T022: Move repair progress emission to worker return points and expose smoke-test deploy/start/walk/cleanup stage facts
+**Tasks Remaining in Work Unit**: T023-T024 remain in User Story 1
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_repair_progress.go
+- cmd/ops_repair_progress_test.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_processinstance.go
+- cmd/ops_execute_smoketest.go
+- cmd/ops_execute_smoketest_progress.go
+- cmd/ops_execute_smoketest_progress_test.go
+- cmd/ops_explicit_large_work_progress.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Validation passed: `go test ./cmd -run 'TestOpsRepairSemanticProgressRoutesCompletion|TestOpsExecuteSmokeTestSemanticProgressRoutesStageCompletions|TestExplicitLargeWorkProgressEventRespectsOutputModes|TestOpsRepairIncidentProgressContractPendingT068|TestOpsRepairProcessInstanceProgressContractPendingT068|TestOpsExecuteSmokeTestVerboseProgressRendersStageCounters' -race -count=1`, `go test ./internal/services/ops -run 'TestRepairIncidentsEmitsWorkerCompletionFactsAtReturnPoints|TestRepairIncidentsCompletionFactsCaptureFailureDetail|TestExecuteSmokeTestEmitsStageCompletionFacts' -race -count=1`, `go test ./cmd -run 'Repair|Smoke|Progress|Activity' -race -count=1`, `go test ./internal/services/ops/... -run 'Progress|Purge|Repair|Smoke' -race -count=1`, and `git diff --check`.
+- Repair and smoke-test commands now consume high-level completion facts through semantic workflow-priority reporters while preserving existing planning/frozen progress rendering for this US1 slice.
 ---
