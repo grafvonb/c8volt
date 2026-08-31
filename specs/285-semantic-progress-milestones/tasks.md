@@ -20,7 +20,7 @@
 
 **Purpose**: Establish persistent implementation tracking for the locked #285 feature before code changes.
 
-- [ ] T001 Create the #285 implementation log with branch, artifact links, validation commands, and the required Ralph context in `specs/285-semantic-progress-milestones/progress.md`
+- [x] T001 Create the #285 implementation log with branch, artifact links, validation commands, and the required Ralph context in `specs/285-semantic-progress-milestones/progress.md`
 
 ---
 
