@@ -64,6 +64,72 @@ func TestSearchProcessDefinitionsPagesUsesCursorTraversal(t *testing.T) {
 	require.EqualValues(t, 3, steps[1].CumulativeCount)
 }
 
+// TestSearchProcessDefinitionsPagesSortsFinalCollection verifies ordinary
+// searches normalize shuffled page arrivals into the canonical collection order.
+func TestSearchProcessDefinitionsPagesSortsFinalCollection(t *testing.T) {
+	t.Parallel()
+
+	var requests []d.ProcessDefinitionPageRequest
+	var steps []d.ProcessDefinitionSearchPageStep
+	api := processDefinitionSearchAPIStub{
+		searchProcessDefinitionsPage: func(_ context.Context, filter d.ProcessDefinitionFilter, page d.ProcessDefinitionPageRequest, _ ...services.CallOption) (d.ProcessDefinitionPage, error) {
+			require.Equal(t, d.ProcessDefinitionFilter{TenantId: "tenant-a"}, filter)
+			requests = append(requests, page)
+			switch len(requests) {
+			case 1:
+				return d.ProcessDefinitionPage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					EndCursor:     "cursor-2",
+					Items: []d.ProcessDefinition{
+						processDefinitionForSearchOrder("tenant-b", "invoice", 1, "tenant-b-invoice-v1"),
+						processDefinitionForSearchOrder("tenant-a", "payment", 1, "tenant-a-payment-v1"),
+						processDefinitionForSearchOrder("tenant-a", "invoice", 9, "tenant-a-invoice-v9"),
+					},
+				}, nil
+			case 2:
+				require.Equal(t, "cursor-2", page.After)
+				return d.ProcessDefinitionPage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+					Items: []d.ProcessDefinition{
+						processDefinitionForSearchOrder("tenant-a", "invoice", 10, "2"),
+						processDefinitionForSearchOrder("<default>", "invoice", 10, "default-invoice-v10"),
+						processDefinitionForSearchOrder("tenant-a", "Invoice", 1, "tenant-a-Invoice-v1"),
+						processDefinitionForSearchOrder("tenant-a", "invoice", 10, "10"),
+					},
+				}, nil
+			default:
+				t.Fatalf("unexpected process-definition page request %d", len(requests))
+				return d.ProcessDefinitionPage{}, nil
+			}
+		},
+	}
+
+	got, err := SearchProcessDefinitionsPages(context.Background(), api, d.ProcessDefinitionSearchRequest{
+		Filter: d.ProcessDefinitionFilter{TenantId: "tenant-a"},
+		Page:   d.ProcessDefinitionPageRequest{Size: 3},
+	}, func(step d.ProcessDefinitionSearchPageStep) (d.ProcessDefinitionSearchPageAction, error) {
+		steps = append(steps, step)
+		return d.ProcessDefinitionSearchPageActionContinue, nil
+	})
+
+	require.NoError(t, err)
+	require.Len(t, requests, 2)
+	require.EqualValues(t, 2, got.Pages)
+	require.EqualValues(t, 3, steps[0].CumulativeCount)
+	require.EqualValues(t, 7, steps[1].CumulativeCount)
+	require.Equal(t, []string{
+		"default-invoice-v10",
+		"tenant-a-Invoice-v1",
+		"10",
+		"2",
+		"tenant-a-invoice-v9",
+		"tenant-a-payment-v1",
+		"tenant-b-invoice-v1",
+	}, processDefinitionSearchKeys(got.Items))
+}
+
 // TestCollectProcessDefinitionWatchSnapshotCollectsPagedResults verifies watch
 // snapshots include every traversed process-definition page for broad searches.
 func TestCollectProcessDefinitionWatchSnapshotCollectsPagedResults(t *testing.T) {
@@ -198,4 +264,24 @@ func (s processDefinitionSearchAPIStub) GetProcessDefinition(ctx context.Context
 
 func (processDefinitionSearchAPIStub) GetProcessDefinitionXML(context.Context, string, ...services.CallOption) (string, error) {
 	panic("unexpected GetProcessDefinitionXML call")
+}
+
+// processDefinitionForSearchOrder keeps the canonical order fields readable in
+// service traversal tests.
+func processDefinitionForSearchOrder(tenantID, bpmnProcessID string, version int32, key string) d.ProcessDefinition {
+	return d.ProcessDefinition{
+		TenantId:       tenantID,
+		BpmnProcessId:  bpmnProcessID,
+		ProcessVersion: version,
+		Key:            key,
+	}
+}
+
+// processDefinitionSearchKeys extracts the returned service collection identity.
+func processDefinitionSearchKeys(definitions []d.ProcessDefinition) []string {
+	keys := make([]string, 0, len(definitions))
+	for _, definition := range definitions {
+		keys = append(keys, definition.Key)
+	}
+	return keys
 }

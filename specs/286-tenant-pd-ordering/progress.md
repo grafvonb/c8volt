@@ -35,3 +35,20 @@ Started: 2026-08-31 13:37:23
 **Learnings**:
 - Domain canonical ordering now has a reusable comparator and sort function with edge-case coverage; the focused regex was updated to include the new comparator/sort tests.
 ---
+---
+## Iteration 3 - 2026-08-31 13:46
+**Work Unit**: US1 service final canonical ordering
+**Tasks Completed**:
+- [x] T004: Add page-arrival independence and final canonical collection-order tests to `internal/services/processdefinition/search_test.go`
+- [x] T015: Canonically sort the accumulated ordinary result only after service-owned page traversal while preserving exact-once membership, visitor progress metadata, and existing ordinary limit semantics in `internal/services/processdefinition/search.go`
+**Tasks Remaining in Work Unit**: US1 has 11 incomplete tasks remaining (T005-T014)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/search.go
+- internal/services/processdefinition/search_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- Final service results are canonical after traversal; visitor cumulative counts remain tied to selected page accumulation before final sorting.
+---

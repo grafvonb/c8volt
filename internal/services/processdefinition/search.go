@@ -56,7 +56,7 @@ func SearchProcessDefinitionsPages(ctx context.Context, api API, request d.Proce
 		pageReq = nextProcessDefinitionSearchPageRequest(pageReq, page, rawCount)
 	}
 	return d.ProcessDefinitionSearchPagesResult{
-		Items: items,
+		Items: sortedProcessDefinitionSearchItems(items),
 		Limit: request.Limit,
 		Pages: pages,
 	}, nil
@@ -155,4 +155,11 @@ func nextProcessDefinitionSearchPageRequest(current d.ProcessDefinitionPageReque
 		return next
 	}
 	return next
+}
+
+// sortedProcessDefinitionSearchItems applies final version-neutral ordering
+// after traversal without changing page visitor progress or limit selection.
+func sortedProcessDefinitionSearchItems(items []d.ProcessDefinition) []d.ProcessDefinition {
+	d.SortProcessDefinitionsCanonical(items)
+	return items
 }
