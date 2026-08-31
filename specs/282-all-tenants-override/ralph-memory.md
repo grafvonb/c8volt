@@ -31,6 +31,7 @@ Started: 2026-08-31T06:07:38Z
 - SC-007 discoverability evidence was recorded in iteration 16 as a documented 1-participant proxy review: the reviewer found and invoked the supported all-visible-tenants syntax within 30 seconds without using `--tenant ""`, yielding 100% success. CLI help invocation for accepted discovery and concrete-destination help parsed successfully.
 - US4 focused validation for iteration 16 passed with `go test ./cmd -run 'Test(CommandCapabilityForCommand_IncludesAllTenantsSupport|CapabilityDocumentForRoot_KeepsV1WithAllTenantsSupport|CapabilitiesCommand_JSONIncludesAllTenantsSupport|CapabilitiesCommand_DefaultOutputUsesHumanSummary|AllTenantsHelp_DocumentsRootAndApplicableCommand|DeployHelp_DocumentsWaitContractsAndFollowUp|EmbedDeployHelp_DocumentsRunWithoutExpectationFlags|RunHelp_DocumentsWaitAndVerificationRouting|OpsExecuteSmokeTestHelpDocumentsCommand|AllTenantsSupportForCommand_ConcreteDestinationInventory)$' -count=1`, `go test -tags integration ./integration/cli -run 'TestAllTenantsExampleRootFlagRecognition' -count=1`, and `go test ./docsgen -run 'TestGeneratedAllTenantsDocsDocumentSyntaxAndRestrictions' -count=1`.
 - T049 declaration/comment inventory found the new all-tenants helpers and tests already had intent comments; the only polish gaps were comments for the modified `CommandCapability` contract type and `renderCapabilitySummaryLine`. `gofmt` ran across the feature-touched Go file list, `git diff --check` passed, and focused `cmd` all-tenants/capability/tenant-context tests passed.
+- T050 targeted package validation passed with the three quickstart `./cmd` all-tenants patterns, the quickstart `./integration/cli` example/command pattern (no non-tagged tests selected), `go test -tags integration ./integration/cli -run 'TestAllTenantsExampleRootFlagRecognition' -count=1`, and `go test ./docsgen -run 'TestGeneratedAllTenantsDocsDocumentSyntaxAndRestrictions' -count=1`.
 
 ## Decisions
 - Phase 1 confirmed this feature is CLI-only. Do not touch `c8volt/`, `internal/services/`, `internal/clients/`, generated Camunda clients, or facade options for the all-tenants override.
@@ -57,4 +58,4 @@ Started: 2026-08-31T06:07:38Z
 - Do not implement concrete-destination rejection inside the four command runners after they have already initialized clients, inspected inputs, or built reports.
 
 ## Current Handoff
-- Continue Phase 7 / Polish at task T050: run targeted package tests for `./cmd`, `./integration/cli`, and `./docsgen` using the focused patterns from `specs/282-all-tenants-override/quickstart.md`.
+- Continue Phase 7 / Polish at task T051: run `make docs-content` and verify a second generation produces no unexplained drift in `README.md`, `docs/cli/`, `docs/index.md`, and `docs/ops/`.

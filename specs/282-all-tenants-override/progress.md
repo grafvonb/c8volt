@@ -384,3 +384,17 @@ Started: 2026-08-31 08:07:38
 **Learnings**:
 - Declaration inventory confirmed the all-tenants helper/test comments were already present; only the modified capability contract type and compact human capability renderer needed additional intent comments.
 ---
+---
+## Iteration 18 - 2026-08-31 09:27
+**Work Unit**: Phase 7 polish targeted package validation
+**Tasks Completed**:
+- [x] T050: Ran targeted package tests for `./cmd`, `./integration/cli`, and `./docsgen` using the focused quickstart patterns.
+**Tasks Remaining in Work Unit**: T051 remains next in Phase 7.
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- Targeted validation passed for the three `./cmd` all-tenants patterns, the integration example parser, and the generated-docs assertion; the untagged integration quickstart pattern selected no tests in this package.
+---
