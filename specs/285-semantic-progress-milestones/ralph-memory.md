@@ -31,6 +31,8 @@ Started: 2026-08-31T17:14:26Z
 - APD command progress keeps preflight/page discovery on the existing discovery renderer and routes only `delete process definitions` completion facts into a separate deletion reporter; prompted APD deletion eagerly starts after frozen confirmation, while auto-confirmed APD starts lazily on the first deletion completion.
 - `deploy process-definition` and `embed deploy` now install a command-owned deployment reporter plus `WithSuppressWorkflowDetailLogs`; the reporter is lazy because deployment totals arrive in service completion facts after the upload response.
 - Retention, orphan, and incident-selected purge commands now keep discovery/planning progress on the existing ops renderer and route only `delete` completion facts into a lazy process-instance deletion semantic reporter; final reports/results render after the reporter closes.
+- Slow-process analysis now emits completion facts for enrichment phases `loading runtime elements` and `loading listener jobs`; search discovery/preflight remain separate and explicit-key analysis receives semantic enrichment progress without confirmation prompts.
+- Multi-key `expect process-instance` now emits `expect process instances` completion facts from the waiter bulk wrappers and routes them through `cmd/expect_processinstance_progress.go`; single-key waiter polling remains wait-priority activity unless a caller explicitly uses the bulk wrapper with a progress callback.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -56,6 +58,9 @@ Started: 2026-08-31T17:14:26Z
 - `cmd/ops_processinstance_purge_progress.go` intentionally suppresses the shared bulk-delete frozen-scope `deleting process instances` line because retention/orphan/incident purge deletion progress is now completion-driven; discovery and planning frozen scopes still render through the existing verbose path.
 - Repair commands now use `cmd/ops_repair_progress.go` to route `repairing incidents` completion facts into a lazy semantic reporter; discovery, planning, and legacy frozen counters remain on the existing progress renderer.
 - Smoke-test commands now use `cmd/ops_execute_smoketest_progress.go` for high-level stage completion reporters covering deploy/start/walk/cleanup; nested phases such as `create`, `delete`, `delete process definitions`, and `deploy process definitions` are intentionally ignored by the smoke-test command reporter.
+- `configureOpsSlowProcessAnalysisPreflight` now returns a nullable closeable progress wrapper; command code can safely `defer progress.Close()` because the receiver handles nil.
+- Slow-analysis frozen-scope tests that count raw callback events must account for both frozen-scope and completion facts, or filter by event kind.
+- Expect command progress is intentionally installed only for multi-key scopes (`len(keys) > 1`) to avoid broadening single-target wait UX during the US1 slice.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -85,10 +90,12 @@ Started: 2026-08-31T17:14:26Z
 - `go test ./cmd -run 'Deploy|ProcessDefinitionDeploy|Progress|Activity' -race -count=1`
 - `go test ./cmd -run 'TestOpsRepairSemanticProgressRoutesCompletion|TestOpsExecuteSmokeTestSemanticProgressRoutesStageCompletions|TestExplicitLargeWorkProgressEventRespectsOutputModes|TestOpsRepairIncidentProgressContractPendingT068|TestOpsRepairProcessInstanceProgressContractPendingT068|TestOpsExecuteSmokeTestVerboseProgressRendersStageCounters' -race -count=1`
 - `go test ./cmd -run 'Repair|Smoke|Progress|Activity' -race -count=1`
+- `go test ./cmd ./internal/services/processinstance/waiter ./internal/services/ops ./internal/services/processinstance -run 'RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|WaitForProcessInstances|SlowProcessAnalysis|CreateNProcessInstances' -race -count=1`
+- `go test ./cmd ./internal/services/processinstance/... ./internal/services/ops -race -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should continue User Story 1 at T023: add completion facts and reporter wiring for bulk starts, slow-analysis frozen work, and multi-key expect.
+- Next iteration should continue User Story 1 at T024: run all US1 reporter, activity, process-instance, process-definition, resource, ops, run, analysis, and expect tests with `-race` and record the exact commands/results.

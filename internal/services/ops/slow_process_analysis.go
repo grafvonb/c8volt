@@ -162,11 +162,13 @@ func slowProcessAnalysisEnrichProcessInstances(ctx context.Context, s *Service, 
 		if request.WithListeners {
 			enriched, err = pisvc.EnrichProcessInstancesWithElementListeners(ctx, s.elementAPI, s.jobAPI, []d.ProcessInstance{pi}, opts...)
 			if err != nil {
+				slowProcessAnalysisEmitCompletion(request, progress.Phase, progress.Total, pi.Key, d.OpsCompletionDispositionFailed, err.Error())
 				return d.ElementEnrichedProcessInstances{}, progress, fmt.Errorf("lookup runtime elements and listener jobs for slow analysis: %w", err)
 			}
 		} else {
 			enriched, err = pisvc.EnrichProcessInstancesWithElements(ctx, s.elementAPI, []d.ProcessInstance{pi}, opts...)
 			if err != nil {
+				slowProcessAnalysisEmitCompletion(request, progress.Phase, progress.Total, pi.Key, d.OpsCompletionDispositionFailed, err.Error())
 				return d.ElementEnrichedProcessInstances{}, progress, fmt.Errorf("lookup runtime elements for slow analysis: %w", err)
 			}
 		}
@@ -174,9 +176,25 @@ func slowProcessAnalysisEnrichProcessInstances(ctx context.Context, s *Service, 
 		progress.Done = i + 1
 		progress.Elapsed, progress.Rate, progress.ETA = slowProcessAnalysisFrozenScopeTiming(progress, startedAt, slowProcessAnalysisNow())
 		slowProcessAnalysisEmitProgress(request, slowProcessAnalysisFrozenScopeEvent(progress))
+		slowProcessAnalysisEmitCompletion(request, progress.Phase, progress.Total, pi.Key, d.OpsCompletionDispositionConfirmed, "")
 	}
 	out.Total = int32(len(out.Items))
 	return out, progress, nil
+}
+
+func slowProcessAnalysisEmitCompletion(request d.SlowProcessAnalysisRequest, phase string, total int, identity string, disposition d.OpsCompletionDisposition, failureDetail string) {
+	if request.Progress == nil || total <= 0 {
+		return
+	}
+	completion := d.OpsCompletionProgress{
+		Phase:         phase,
+		CoreResource:  "process instance(s)",
+		Total:         total,
+		Identity:      identity,
+		Disposition:   disposition,
+		FailureDetail: failureDetail,
+	}
+	slowProcessAnalysisEmitProgress(request, d.OpsProgressEvent{Kind: d.OpsProgressEventKindCompletion, Completion: &completion})
 }
 
 // slowProcessAnalysisFrozenScopeTiming derives visible elapsed, rate, and ETA facts from the shared domain sample window.

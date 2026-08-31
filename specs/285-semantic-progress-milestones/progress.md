@@ -343,3 +343,28 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./cmd -run 'TestOpsRepairSemanticProgressRoutesCompletion|TestOpsExecuteSmokeTestSemanticProgressRoutesStageCompletions|TestExplicitLargeWorkProgressEventRespectsOutputModes|TestOpsRepairIncidentProgressContractPendingT068|TestOpsRepairProcessInstanceProgressContractPendingT068|TestOpsExecuteSmokeTestVerboseProgressRendersStageCounters' -race -count=1`, `go test ./internal/services/ops -run 'TestRepairIncidentsEmitsWorkerCompletionFactsAtReturnPoints|TestRepairIncidentsCompletionFactsCaptureFailureDetail|TestExecuteSmokeTestEmitsStageCompletionFacts' -race -count=1`, `go test ./cmd -run 'Repair|Smoke|Progress|Activity' -race -count=1`, `go test ./internal/services/ops/... -run 'Progress|Purge|Repair|Smoke' -race -count=1`, and `git diff --check`.
 - Repair and smoke-test commands now consume high-level completion facts through semantic workflow-priority reporters while preserving existing planning/frozen progress rendering for this US1 slice.
 ---
+---
+## Iteration 17 - 2026-08-31 21:13
+**Work Unit**: User Story 1 secondary workflow completion facts and reporters
+**Tasks Completed**:
+- [x] T023: Add completion facts and reporter wiring for bulk starts, slow-analysis frozen work, and multi-key expect
+**Tasks Remaining in Work Unit**: T024 remains in User Story 1
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/expect_processinstance.go
+- cmd/expect_processinstance_progress.go
+- cmd/expect_processinstance_progress_test.go
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/ops_analyse_slow_process_instances_progress.go
+- cmd/ops_analyse_slow_process_instances_progress_test.go
+- internal/services/ops/slow_process_analysis.go
+- internal/services/ops/slow_process_analysis_test.go
+- internal/services/processinstance/waiter/waiter.go
+- internal/services/processinstance/waiter/waiter_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Validation passed: `go test ./cmd ./internal/services/processinstance/waiter ./internal/services/ops ./internal/services/processinstance -run 'RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|WaitForProcessInstances|SlowProcessAnalysis|CreateNProcessInstances' -race -count=1`, `go test ./cmd -run 'Progress|Activity|RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance' -race -count=1`, `go test ./internal/services/processinstance/waiter -race -count=1`, `go test ./internal/services/ops -run 'SlowProcessAnalysis|Progress' -race -count=1`, `go test ./internal/services/processinstance -run 'CreateNProcessInstances|Progress|Wait' -race -count=1`, `go test ./cmd ./internal/services/processinstance/... ./internal/services/ops -race -count=1`, and `git diff --check`.
+- Slow-analysis enrichment and multi-key expect now emit wording-free completion facts consumed by command-owned semantic reporters; discovery and single-target waiter polling exclusions remain intact.
+---

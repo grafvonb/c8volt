@@ -88,11 +88,11 @@ func TestOpsAnalyseSlowProcessInstancesPreflightUsesCommandLogger(t *testing.T) 
 	require.Contains(t, got, "WARN slow analysis is expensive: discover all matches and load runtime element timelines")
 }
 
-// TestOpsAnalyseSlowProcessInstancesConfiguresBroadPreflightOnlyForSearch verifies explicit-key mode stays concise.
+// TestOpsAnalyseSlowProcessInstancesConfiguresBroadPreflightOnlyForSearch verifies explicit-key mode keeps prompt-free progress.
 func TestOpsAnalyseSlowProcessInstancesConfiguresBroadPreflightOnlyForSearch(t *testing.T) {
 	keyRequest := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeExplicitKeys}
 	configureOpsSlowProcessAnalysisPreflight(resetOpsSlowProcessAnalysisTestFlags(t), &keyRequest)
-	require.Nil(t, keyRequest.Progress)
+	require.NotNil(t, keyRequest.Progress)
 	require.Nil(t, keyRequest.ConfirmPreflight)
 
 	searchRequest := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
@@ -288,6 +288,48 @@ func TestOpsAnalyseSlowProcessInstancesWorkflowActivityOutranksNestedRuntimeWork
 			Importance: logging.ActivityImportanceHTTP,
 		},
 	}, sink.Starts())
+}
+
+func TestOpsAnalyseSlowProcessInstancesSemanticCompletionActivity(t *testing.T) {
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	sink := &activitysink.Sink{}
+	cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	progress := configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	defer progress.Close()
+	recordHTTPFallbackActivity(cmd.Context(), "loading runtime elements from Camunda")
+	request.Progress(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindCompletion,
+		Completion: &ops.CompletionProgress{
+			Phase:        "loading runtime elements",
+			CoreResource: "process instance(s)",
+			Total:        2,
+			Identity:     "123",
+			Disposition:  ops.CompletionDispositionConfirmed,
+		},
+	})
+	request.Progress(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindCompletion,
+		Completion: &ops.CompletionProgress{
+			Phase:        "loading runtime elements",
+			CoreResource: "process instance(s)",
+			Total:        2,
+			Identity:     "124",
+			Disposition:  ops.CompletionDispositionConfirmed,
+		},
+	})
+
+	require.Equal(t, []activitysink.Update{
+		{
+			Message:    "loading runtime elements, 1/2 process instance(s)",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+		{
+			Message:    "loading runtime elements, 2/2 process instance(s)",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+	}, sink.PriorityUpdates())
 }
 
 // TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr verifies verbose mode keeps an auditable progress trail off stdout.

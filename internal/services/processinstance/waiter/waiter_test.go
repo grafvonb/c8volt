@@ -562,6 +562,96 @@ func TestWaitForProcessInstancesState_UsesAggregateCommandActivity(t *testing.T)
 	})
 }
 
+func TestWaitForProcessInstancesStateEmitsCompletionFacts(t *testing.T) {
+	t.Parallel()
+
+	waiter := stubPIWaiter{
+		getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+			if key == "124" {
+				return d.StateActive, d.ProcessInstance{Key: key, State: d.StateActive}, errors.New("still active")
+			}
+			return d.StateCompleted, d.ProcessInstance{Key: key, State: d.StateCompleted}, nil
+		},
+	}
+	var completions []d.OpsCompletionProgress
+
+	_, err := WaitForProcessInstancesState(
+		context.Background(),
+		waiter,
+		testConfig(time.Nanosecond, 1, 25*time.Millisecond),
+		testLogger(),
+		typex.Keys{"123", "124"},
+		d.States{d.StateCompleted},
+		1,
+		services.WithProgress(func(event d.OpsProgressEvent) {
+			if event.Kind == d.OpsProgressEventKindCompletion && event.Completion != nil {
+				completions = append(completions, *event.Completion)
+			}
+		}),
+	)
+
+	require.Error(t, err)
+	require.Len(t, completions, 2)
+	require.Equal(t, d.OpsCompletionProgress{
+		Phase:        "expect process instances",
+		CoreResource: "process instance(s)",
+		Total:        2,
+		Identity:     "123",
+		Disposition:  d.OpsCompletionDispositionConfirmed,
+	}, completions[0])
+	require.Equal(t, "expect process instances", completions[1].Phase)
+	require.Equal(t, "process instance(s)", completions[1].CoreResource)
+	require.Equal(t, 2, completions[1].Total)
+	require.Equal(t, "124", completions[1].Identity)
+	require.Equal(t, d.OpsCompletionDispositionFailed, completions[1].Disposition)
+	require.Contains(t, completions[1].FailureDetail, "still active")
+}
+
+func TestWaitForProcessInstancesExpectationEmitsCompletionFacts(t *testing.T) {
+	t.Parallel()
+
+	wantIncident := true
+	waiter := stubPIWaiter{
+		getProcessInstance: func(ctx context.Context, key string) (d.ProcessInstance, error) {
+			return d.ProcessInstance{Key: key, State: d.StateActive, Incident: true}, nil
+		},
+	}
+	var completions []d.OpsCompletionProgress
+
+	_, err := WaitForProcessInstancesExpectation(
+		context.Background(),
+		waiter,
+		testConfig(time.Nanosecond, 1, 25*time.Millisecond),
+		testLogger(),
+		typex.Keys{"123", "124"},
+		d.ProcessInstanceExpectationRequest{Incident: &wantIncident},
+		1,
+		services.WithProgress(func(event d.OpsProgressEvent) {
+			if event.Kind == d.OpsProgressEventKindCompletion && event.Completion != nil {
+				completions = append(completions, *event.Completion)
+			}
+		}),
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, []d.OpsCompletionProgress{
+		{
+			Phase:        "expect process instances",
+			CoreResource: "process instance(s)",
+			Total:        2,
+			Identity:     "123",
+			Disposition:  d.OpsCompletionDispositionConfirmed,
+		},
+		{
+			Phase:        "expect process instances",
+			CoreResource: "process instance(s)",
+			Total:        2,
+			Identity:     "124",
+			Disposition:  d.OpsCompletionDispositionConfirmed,
+		},
+	}, completions)
+}
+
 // TestWaitForProcessInstanceState_SingleTargetPollingIsNotWorkflowProgress
 // pins single-key waits as transient waiter activity rather than semantic
 // workflow completion progress.

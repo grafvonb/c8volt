@@ -35,6 +35,7 @@ func WaitForProcessInstancesState(ctx context.Context, s PIWaiter, cfg *config.C
 
 	rs, err := pool.ExecuteSlice[string, d.StateResponse](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (d.StateResponse, error) {
 		sr, _, werr := WaitForProcessInstanceState(ctx, s, cfg, log, key, desired, opts...)
+		reportProcessInstanceExpectationCompletion(cCfg.Progress, key, lk, sr.Ok, sr.Status, werr)
 		return sr, werr
 	})
 	r := d.StateResponses{
@@ -54,9 +55,35 @@ func WaitForProcessInstancesExpectation(ctx context.Context, s PIWaiter, cfg *co
 
 	rs, err := pool.ExecuteSlice[string, d.ProcessInstanceExpectationResponse](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (d.ProcessInstanceExpectationResponse, error) {
 		resp, _, werr := WaitForProcessInstanceExpectation(ctx, s, cfg, log, key, request, opts...)
+		reportProcessInstanceExpectationCompletion(cCfg.Progress, key, lk, resp.Ok, resp.Status, werr)
 		return resp, werr
 	})
 	return d.ProcessInstanceExpectationResponses{Items: rs}, err
+}
+
+func reportProcessInstanceExpectationCompletion(progress func(d.OpsProgressEvent), key string, total int, ok bool, status string, err error) {
+	if progress == nil || total <= 0 {
+		return
+	}
+	completion := d.OpsCompletionProgress{
+		Phase:        "expect process instances",
+		CoreResource: "process instance(s)",
+		Total:        total,
+		Identity:     key,
+		Disposition:  d.OpsCompletionDispositionConfirmed,
+	}
+	if err != nil || !ok {
+		completion.Disposition = d.OpsCompletionDispositionFailed
+		completion.FailureDetail = processInstanceExpectationFailureDetail(err, status)
+	}
+	progress(d.OpsProgressEvent{Kind: d.OpsProgressEventKindCompletion, Completion: &completion})
+}
+
+func processInstanceExpectationFailureDetail(err error, status string) string {
+	if err != nil {
+		return err.Error()
+	}
+	return strings.TrimSpace(status)
 }
 
 // WaitForProcessInstanceExpectation delegates state-only waits to the legacy path and fetches full instances only when incident state is needed.
