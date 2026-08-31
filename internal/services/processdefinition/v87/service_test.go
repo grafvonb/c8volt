@@ -234,6 +234,46 @@ func TestService_SearchProcessDefinitionsLatest_FallsBackToClientSideLatestSelec
 	m.AssertExpectations(t)
 }
 
+// TestService_SearchProcessDefinitionsLatest_SelectsLatestPerTenantProcessWithLexicalKeyTie
+// verifies v8.7 local latest emulation uses exact tenant/BPMN groups and opaque
+// key text ties within its compatibility search window.
+func TestService_SearchProcessDefinitionsLatest_SelectsLatestPerTenantProcessWithLexicalKeyTie(t *testing.T) {
+	ctx := context.Background()
+	m := &mockProcessDefinitionClient{}
+
+	resp := &operatev87.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/search", http.StatusOK, "200 OK"),
+		JSON200: &operatev87.ResultsProcessDefinition{
+			Items: &[]operatev87.ProcessDefinition{
+				makeTenantProcessDefinition(50, "tenant-b", "invoice", 10),
+				makeTenantProcessDefinition(40, "tenant-b", "invoice", 2),
+				makeTenantProcessDefinition(2, "tenant-a", "invoice", 10),
+				makeTenantProcessDefinition(10, "tenant-a", "invoice", 10),
+				makeTenantProcessDefinition(31, "tenant-a", "pay", 1),
+				makeTenantProcessDefinition(30, "tenant-a", "pay", 9),
+				makeTenantProcessDefinition(60, "tenant-b", "quote", 1),
+			},
+		},
+	}
+
+	m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			body := args.Get(1).(operatev87.SearchProcessDefinitionsJSONRequestBody)
+			require.NotNil(t, body.Size)
+			assert.Equal(t, int32(1000), *body.Size)
+		}).
+		Return(resp, nil)
+
+	svc, err := v87.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v87.WithClientOperate(m))
+	require.NoError(t, err)
+
+	defs, err := svc.SearchProcessDefinitionsLatest(ctx, domain.ProcessDefinitionFilter{}, services.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"10", "30", "50", "60"}, processDefinitionKeys(defs))
+	m.AssertExpectations(t)
+}
+
 func TestService_SearchProcessDefinitionsLatest_WithStatRemainsUnsupported(t *testing.T) {
 	ctx := context.Background()
 	m := &mockProcessDefinitionClient{}
@@ -312,6 +352,45 @@ func TestService_SearchProcessDefinitionsPage_WindowsOperateResults(t *testing.T
 	require.NotNil(t, page.ReportedTotal)
 	assert.Equal(t, int64(3), page.ReportedTotal.Count)
 	assert.Equal(t, domain.ProcessDefinitionReportedTotalKindExact, page.ReportedTotal.Kind)
+	m.AssertExpectations(t)
+}
+
+// TestService_SearchProcessDefinitionsPage_RequestsCanonicalSortAndCapsCompatibilityFetch
+// verifies v8.7 paging asks Operate for canonical order while retaining the
+// documented 1000-definition local compatibility ceiling.
+func TestService_SearchProcessDefinitionsPage_RequestsCanonicalSortAndCapsCompatibilityFetch(t *testing.T) {
+	ctx := context.Background()
+	m := &mockProcessDefinitionClient{}
+	total := int64(1200)
+	resp := &operatev87.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/search", http.StatusOK, "200 OK"),
+		JSON200: &operatev87.ResultsProcessDefinition{
+			Items: makeNumberedProcessDefinitions(1000),
+			Total: &total,
+		},
+	}
+	m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			body := args.Get(1).(operatev87.SearchProcessDefinitionsJSONRequestBody)
+			require.NotNil(t, body.Size)
+			assert.Equal(t, int32(1000), *body.Size)
+			assertV87ProcessDefinitionSort(t, body.Sort, []expectedV87Sort{
+				{field: "tenantId", order: operatev87.ASC},
+				{field: "bpmnProcessId", order: operatev87.ASC},
+				{field: "version", order: operatev87.DESC},
+				{field: "key", order: operatev87.ASC},
+			})
+		}).
+		Return(resp, nil)
+
+	svc, err := v87.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v87.WithClientOperate(m))
+	require.NoError(t, err)
+	page, err := svc.SearchProcessDefinitionsPage(ctx, domain.ProcessDefinitionFilter{}, domain.ProcessDefinitionPageRequest{From: 999, Size: 10})
+
+	require.NoError(t, err)
+	require.Len(t, page.Items, 1)
+	assert.Equal(t, "1000", page.Items[0].Key)
+	assert.Equal(t, domain.ProcessInstanceOverflowStateHasMore, page.OverflowState)
 	m.AssertExpectations(t)
 }
 
@@ -586,6 +665,16 @@ func makeTenantProcessDefinition(key int64, tenantID, id string, version int32) 
 	pd := makeProcessDefinition(key, id, version)
 	pd.TenantId = new(tenantID)
 	return pd
+}
+
+// makeNumberedProcessDefinitions creates a deterministic v8.7 compatibility
+// window fixture with sequential numeric keys.
+func makeNumberedProcessDefinitions(count int) *[]operatev87.ProcessDefinition {
+	defs := make([]operatev87.ProcessDefinition, 0, count)
+	for i := 1; i <= count; i++ {
+		defs = append(defs, makeProcessDefinition(int64(i), "proc", 1))
+	}
+	return &defs
 }
 
 type expectedV87Sort struct {

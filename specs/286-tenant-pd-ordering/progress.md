@@ -294,3 +294,20 @@ Started: 2026-08-31 13:37:23
 **Learnings**:
 - Shared latest traversal now uses complete page collection before exact tenant/BPMN reduction, so latest limits are applied to the canonical reduced collection rather than raw page arrivals.
 ---
+---
+## Iteration 19 - 2026-08-31 14:51
+**Work Unit**: US3 Camunda 8.7 latest compatibility coverage and selection
+**Tasks Completed**:
+- [x] T025: Add Camunda 8.7 tests for canonical Operate paging, tenant-aware local latest selection, lexical key ties, and the retained 1000-definition compatibility ceiling in `internal/services/processdefinition/v87/service_test.go`
+- [x] T033: Make the Camunda 8.7 compatibility latest wrapper group by exact tenant and BPMN IDs, resolve equal-version keys lexically, and retain its documented 1000-item bound in `internal/services/processdefinition/v87/service.go`
+**Tasks Remaining in Work Unit**: 0; US3 has 8 incomplete tasks remaining (T026-T029, T034-T037)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/v87/service.go
+- internal/services/processdefinition/v87/service_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- v8.7 local latest emulation now honors exact tenant/BPMN grouping and lexical key ties inside the documented 1000-definition compatibility window.
+---
