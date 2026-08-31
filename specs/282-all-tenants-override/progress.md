@@ -19,7 +19,6 @@ Started: 2026-08-31 08:07:38
 - specs/282-all-tenants-override/progress.md
 **Learnings**:
 - All implementation owners are in `cmd`; generated docs flow through `make docs-content`, and all four concrete-destination leaves must reject before their current input/client/report side effects.
----
 ## Iteration 2 - 2026-08-31 08:15
 **Work Unit**: Phase 2 Foundational inherited flag and support resolver
 **Tasks Completed**:
@@ -281,4 +280,75 @@ Started: 2026-08-31 08:07:38
 - specs/282-all-tenants-override/progress.md
 **Learnings**:
 - Non-generated ops guidance now distinguishes accepted discovery all-tenants scope from smoke-test concrete-destination rejection; `git diff --check` passed for the docs-only work unit.
+---
+---
+## Iteration 15 - 2026-08-31 09:17
+**Work Unit**: US4 generated CLI documentation refresh
+**Tasks Completed**:
+- [x] T046: Regenerated `docs/cli/` and `docs/index.md` from command metadata and `README.md` with `make docs-content`.
+**Tasks Remaining in Work Unit**: T047 and T048 remain open in US4.
+**Commit**: This work-unit commit
+**Files Changed**:
+- docs/cli/c8volt.md
+- docs/cli/c8volt_cancel.md
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_capabilities.md
+- docs/cli/c8volt_config.md
+- docs/cli/c8volt_config_show.md
+- docs/cli/c8volt_config_template.md
+- docs/cli/c8volt_config_test-connection.md
+- docs/cli/c8volt_config_validate.md
+- docs/cli/c8volt_delete.md
+- docs/cli/c8volt_delete_process-definition.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/cli/c8volt_deploy.md
+- docs/cli/c8volt_deploy_process-definition.md
+- docs/cli/c8volt_embed.md
+- docs/cli/c8volt_embed_deploy.md
+- docs/cli/c8volt_embed_export.md
+- docs/cli/c8volt_embed_list.md
+- docs/cli/c8volt_expect.md
+- docs/cli/c8volt_expect_process-instance.md
+- docs/cli/c8volt_get.md
+- docs/cli/c8volt_get_cluster.md
+- docs/cli/c8volt_get_cluster_license.md
+- docs/cli/c8volt_get_cluster_topology.md
+- docs/cli/c8volt_get_cluster_version.md
+- docs/cli/c8volt_get_element.md
+- docs/cli/c8volt_get_incident.md
+- docs/cli/c8volt_get_job.md
+- docs/cli/c8volt_get_process-definition.md
+- docs/cli/c8volt_get_process-instance.md
+- docs/cli/c8volt_get_resource.md
+- docs/cli/c8volt_get_tenant.md
+- docs/cli/c8volt_ops.md
+- docs/cli/c8volt_ops_analyse.md
+- docs/cli/c8volt_ops_analyse_slow-process-instances.md
+- docs/cli/c8volt_ops_execute.md
+- docs/cli/c8volt_ops_execute_retention-policy.md
+- docs/cli/c8volt_ops_execute_smoke-test.md
+- docs/cli/c8volt_ops_purge.md
+- docs/cli/c8volt_ops_purge_all-process-definitions.md
+- docs/cli/c8volt_ops_purge_orphan-process-instances.md
+- docs/cli/c8volt_ops_purge_process-instances-with-incidents.md
+- docs/cli/c8volt_ops_repair.md
+- docs/cli/c8volt_ops_repair_incident.md
+- docs/cli/c8volt_ops_repair_process-instance.md
+- docs/cli/c8volt_resolve.md
+- docs/cli/c8volt_resolve_incident.md
+- docs/cli/c8volt_resolve_process-instance.md
+- docs/cli/c8volt_run.md
+- docs/cli/c8volt_run_process-instance.md
+- docs/cli/c8volt_update.md
+- docs/cli/c8volt_update_job.md
+- docs/cli/c8volt_update_process-instance.md
+- docs/cli/c8volt_version.md
+- docs/cli/c8volt_walk.md
+- docs/cli/c8volt_walk_process-instance.md
+- docs/index.md
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- Generated docs now surface inherited `--all-tenants` syntax from root metadata and destination restrictions from command long help; `docsgen` coverage and `git diff --check` passed.
 ---

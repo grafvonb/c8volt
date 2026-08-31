@@ -12,7 +12,7 @@ Deploy BPMN process definition files
 
 Deploy BPMN process definition files and report the deployed definitions.
 
-Tenant contract: deployment is a creation operation. A named tenant is reported as "creation target: <tenant>" before upload; empty tenant configuration targets and reports "creation target: default tenant".
+Tenant contract: deployment is a creation operation. A named tenant is reported as "creation target: <tenant>" before upload; empty tenant configuration targets and reports "creation target: default tenant". This command does not accept --all-tenants because it creates resources in one concrete tenant.
 
 By default c8volt waits for deployment confirmation. Use --run to start one process instance for each deployed definition.
 
@@ -42,6 +42,7 @@ c8volt deploy process-definition [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file

@@ -140,7 +140,7 @@ description: "Dependency-ordered implementation tasks for the all-tenants tenant
 - [x] T043 [US4] Register `all-tenants` as a non-value-consuming inherited root flag in `integration/cli/examples_test.go`
 - [x] T044 [P] [US4] Add supported syntax, exact warning, visibility boundary, mutual exclusion, destination restriction, and direct-key behavior to `README.md`
 - [x] T045 [P] [US4] Update all-tenants safety guidance in `docs/ops/index.md`, `docs/ops/analyse-slow-process-instances.md`, `docs/ops/execute-retention-policy.md`, `docs/ops/execute-smoke-test.md`, `docs/ops/purge-all-process-definitions.md`, `docs/ops/purge-orphan-process-instances.md`, `docs/ops/purge-process-instances-with-incidents.md`, `docs/ops/repair-incident.md`, and `docs/ops/repair-process-instance.md`
-- [ ] T046 [US4] Regenerate `docs/cli/` and `docs/index.md` from command metadata and `README.md` with `make docs-content`
+- [x] T046 [US4] Regenerate `docs/cli/` and `docs/index.md` from command metadata and `README.md` with `make docs-content`
 - [ ] T047 [US4] Run and record the 30-second discoverability review required by SC-007, including participant count and success rate, in `specs/282-all-tenants-override/progress.md`
 - [ ] T048 [US4] Run focused US4 tests for `cmd/command_contract_test.go`, `cmd/capabilities_test.go`, `cmd/root_test.go`, the four destination test files, `integration/cli/examples_test.go`, and `docsgen/main_test.go`
 

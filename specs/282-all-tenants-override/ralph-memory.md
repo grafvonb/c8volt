@@ -27,6 +27,7 @@ Started: 2026-08-31T06:07:38Z
 - `README.md` now has a `Tenant Scope` subsection under configuration/automation documenting supported inherited `--all-tenants` syntax, exact warning text, visibility-bounded unfiltered semantics, mutual exclusion with explicit `--tenant`, concrete-destination rejection inventory, and unchanged direct-key backend authorization.
 - `docs/ops/index.md` and the non-generated ops playbooks now document all-tenants safety: accepted discovery playbooks describe visibility-bounded unfiltered scope, exact warning text, mutual exclusion with explicit `--tenant`, and explicit-key backend authorization; `docs/ops/execute-smoke-test.md` documents rejection because smoke-test creates resources in one concrete tenant.
 - Generated CLI docs are owned by `docsgen/main.go` and regenerated with `make docs-content`; it calls Cobra markdown generation, `syncCLICommandTree`, and `syncDocsIndexFromReadme`. Do not hand-edit `docs/cli/*` or `docs/index.md`.
+- `make docs-content` now regenerates `docs/cli/*` with inherited `--all-tenants` flag docs on all pages, concrete-destination restriction sentences on the four rejecting leaves, and `docs/index.md` from the README tenant-scope section. `docsgen/main_test.go:TestGeneratedAllTenantsDocsDocumentSyntaxAndRestrictions` validates the generated syntax and restriction coverage.
 
 ## Decisions
 - Phase 1 confirmed this feature is CLI-only. Do not touch `c8volt/`, `internal/services/`, `internal/clients/`, generated Camunda clients, or facade options for the all-tenants override.
@@ -53,4 +54,4 @@ Started: 2026-08-31T06:07:38Z
 - Do not implement concrete-destination rejection inside the four command runners after they have already initialized clients, inspected inputs, or built reports.
 
 ## Current Handoff
-- Continue Phase 6 / US4 at task T046: regenerate `docs/cli/` and `docs/index.md` from command metadata and `README.md` with `make docs-content`.
+- Continue Phase 6 / US4 at task T047: run and record the 30-second discoverability review required by SC-007, including participant count and success rate, in `specs/282-all-tenants-override/progress.md`.
