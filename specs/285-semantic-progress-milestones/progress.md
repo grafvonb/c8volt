@@ -42,3 +42,27 @@ Started: 2026-08-31 19:14:26
 **Learnings**:
 - The active branch and feature artifacts already match issue #285; foundational work begins at T002.
 ---
+---
+## Iteration 2 - 2026-08-31 19:19
+**Work Unit**: Phase 2 canonical completion fact and mapping
+**Tasks Completed**:
+- [x] T002: Add completion-kind, disposition, identity, failure-detail, and nil-versus-zero affected-count mapping tests
+- [x] T003: Implement the canonical completion fact and mechanical callback propagation
+**Tasks Remaining in Work Unit**: T004-T006 remain in Phase 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/domain/ops_progress.go
+- internal/domain/ops_progress_test.go
+- internal/services/calloption.go
+- c8volt/foptions/options.go
+- c8volt/foptions/options_test.go
+- c8volt/ops/progress_model.go
+- c8volt/ops/convert.go
+- c8volt/ops/model_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Completion facts now preserve lifecycle disposition and affected-count availability through the domain, service option, and public facade callback boundaries.
+- Validation passed: `go test ./internal/domain ./c8volt/foptions ./c8volt/ops ./toolx/logging ./internal/services -race -count=1`; `git diff --check`.
+---

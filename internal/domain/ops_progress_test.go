@@ -107,3 +107,62 @@ func TestOpsAuditReports_CarryTenantContext(t *testing.T) {
 	require.Same(t, &ctx, OpsRepairAuditReport{TenantContext: &ctx}.TenantContext)
 	require.Same(t, &ctx, SmokeTestAuditReport{TenantContext: &ctx}.TenantContext)
 }
+
+// TestOpsCompletionProgressJSONContract verifies completion facts expose
+// service-owned lifecycle data without rendered command wording.
+func TestOpsCompletionProgressJSONContract(t *testing.T) {
+	t.Parallel()
+
+	affected := 0
+	raw, err := json.Marshal(OpsProgressEvent{
+		Kind: OpsProgressEventKindCompletion,
+		Completion: &OpsCompletionProgress{
+			Phase:            "deleting process-instance trees",
+			CoreResource:     "process-instance root tree(s)",
+			Total:            4,
+			Identity:         "2251799813685251",
+			Disposition:      OpsCompletionDispositionFailed,
+			FailureDetail:    "context deadline exceeded",
+			AffectedResource: "affected process instance(s)",
+			AffectedCount:    &affected,
+		},
+	})
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"kind": "completion",
+		"completion": {
+			"phase": "deleting process-instance trees",
+			"coreResource": "process-instance root tree(s)",
+			"total": 4,
+			"identity": "2251799813685251",
+			"disposition": "failed",
+			"failureDetail": "context deadline exceeded",
+			"affectedResource": "affected process instance(s)",
+			"affectedCount": 0
+		}
+	}`, string(raw))
+}
+
+// TestOpsCompletionProgressOmitsUnknownAffectedCount verifies nil affected
+// counts stay distinct from a trustworthy zero in the wire contract.
+func TestOpsCompletionProgressOmitsUnknownAffectedCount(t *testing.T) {
+	t.Parallel()
+
+	raw, err := json.Marshal(OpsProgressEvent{
+		Kind: OpsProgressEventKindCompletion,
+		Completion: &OpsCompletionProgress{
+			Phase:            "submitting process-instance cancellation",
+			CoreResource:     "process-instance root tree(s)",
+			Identity:         "2251799813685252",
+			Disposition:      OpsCompletionDispositionSubmitted,
+			AffectedResource: "affected process instance(s)",
+		},
+	})
+	require.NoError(t, err)
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(raw, &got))
+	completion := got["completion"].(map[string]any)
+	require.Equal(t, "submitted", completion["disposition"])
+	require.NotContains(t, completion, "affectedCount")
+}

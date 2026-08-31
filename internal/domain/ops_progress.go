@@ -64,6 +64,20 @@ const (
 	OpsProgressEventKindFrozenScope OpsProgressEventKind = "frozen_scope"
 	// OpsProgressEventKindETA carries timing samples used for approximate ETA rendering.
 	OpsProgressEventKindETA OpsProgressEventKind = "eta"
+	// OpsProgressEventKindCompletion carries one wording-free item or stage completion fact.
+	OpsProgressEventKindCompletion OpsProgressEventKind = "completion"
+)
+
+// OpsCompletionDisposition identifies the lifecycle boundary reached by a completed work item.
+type OpsCompletionDisposition string
+
+const (
+	// OpsCompletionDispositionSubmitted means the request was accepted without waiting for operational confirmation.
+	OpsCompletionDispositionSubmitted OpsCompletionDisposition = "submitted"
+	// OpsCompletionDispositionConfirmed means the command's configured wait or proof contract completed.
+	OpsCompletionDispositionConfirmed OpsCompletionDisposition = "confirmed"
+	// OpsCompletionDispositionFailed means the configured completion boundary was not reached.
+	OpsCompletionDispositionFailed OpsCompletionDisposition = "failed"
 )
 
 // OpsProgressMode identifies an output context for progress-channel gating.
@@ -159,6 +173,18 @@ type OpsETASampleWindow struct {
 	Remaining         *time.Duration `json:"remaining,omitempty"`
 }
 
+// OpsCompletionProgress reports one service-owned completion fact without command-rendered wording.
+type OpsCompletionProgress struct {
+	Phase            string                   `json:"phase,omitempty"`
+	CoreResource     string                   `json:"coreResource,omitempty"`
+	Total            int                      `json:"total,omitempty"`
+	Identity         string                   `json:"identity,omitempty"`
+	Disposition      OpsCompletionDisposition `json:"disposition,omitempty"`
+	FailureDetail    string                   `json:"failureDetail,omitempty"`
+	AffectedResource string                   `json:"affectedResource,omitempty"`
+	AffectedCount    *int                     `json:"affectedCount,omitempty"`
+}
+
 // OpsProgressEvent is a typed envelope for service progress callbacks.
 type OpsProgressEvent struct {
 	Kind        OpsProgressEventKind    `json:"kind,omitempty"`
@@ -166,6 +192,7 @@ type OpsProgressEvent struct {
 	Page        *OpsPageProgress        `json:"page,omitempty"`
 	FrozenScope *OpsFrozenScopeProgress `json:"frozenScope,omitempty"`
 	ETA         *OpsETASampleWindow     `json:"eta,omitempty"`
+	Completion  *OpsCompletionProgress  `json:"completion,omitempty"`
 }
 
 // NewOpsETASampleWindow calculates approximate timing facts only from an exact frozen scope and completed samples.

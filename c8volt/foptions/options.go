@@ -108,6 +108,20 @@ const (
 	ProgressEventKindPage ProgressEventKind = "page"
 	// ProgressEventKindFrozenScope carries exact counters for a frozen work set.
 	ProgressEventKindFrozenScope ProgressEventKind = "frozen_scope"
+	// ProgressEventKindCompletion carries one wording-free item or stage completion fact.
+	ProgressEventKindCompletion ProgressEventKind = "completion"
+)
+
+// CompletionDisposition identifies the lifecycle boundary reached by a completed work item.
+type CompletionDisposition string
+
+const (
+	// CompletionDispositionSubmitted means the request was accepted without waiting for operational confirmation.
+	CompletionDispositionSubmitted CompletionDisposition = "submitted"
+	// CompletionDispositionConfirmed means the command's configured wait or proof contract completed.
+	CompletionDispositionConfirmed CompletionDisposition = "confirmed"
+	// CompletionDispositionFailed means the configured completion boundary was not reached.
+	CompletionDispositionFailed CompletionDisposition = "failed"
 )
 
 // TotalCertainty classifies whether a progress count is exact, approximate, or unavailable.
@@ -190,12 +204,25 @@ type FrozenScopeProgress struct {
 	Errors       int            `json:"errors,omitempty"`
 }
 
+// CompletionProgress reports one service-owned completion fact without command-rendered wording.
+type CompletionProgress struct {
+	Phase            string                `json:"phase,omitempty"`
+	CoreResource     string                `json:"coreResource,omitempty"`
+	Total            int                   `json:"total,omitempty"`
+	Identity         string                `json:"identity,omitempty"`
+	Disposition      CompletionDisposition `json:"disposition,omitempty"`
+	FailureDetail    string                `json:"failureDetail,omitempty"`
+	AffectedResource string                `json:"affectedResource,omitempty"`
+	AffectedCount    *int                  `json:"affectedCount,omitempty"`
+}
+
 // ProgressEvent is a typed envelope for facade progress callbacks.
 type ProgressEvent struct {
 	Kind        ProgressEventKind    `json:"kind,omitempty"`
 	Preflight   *PreflightScope      `json:"preflight,omitempty"`
 	Page        *PageProgress        `json:"page,omitempty"`
 	FrozenScope *FrozenScopeProgress `json:"frozenScope,omitempty"`
+	Completion  *CompletionProgress  `json:"completion,omitempty"`
 }
 
 // ApplyFacadeOptions folds facade options into a new configuration value.
@@ -282,6 +309,7 @@ func fromDomainProgressEvent(event d.OpsProgressEvent) ProgressEvent {
 		Preflight:   fromDomainPreflightScopePtr(event.Preflight),
 		Page:        fromDomainPageProgressPtr(event.Page),
 		FrozenScope: fromDomainFrozenScopeProgressPtr(event.FrozenScope),
+		Completion:  fromDomainCompletionProgressPtr(event.Completion),
 	}
 }
 
@@ -371,6 +399,24 @@ func fromDomainFrozenScopeProgressPtr(progress *d.OpsFrozenScopeProgress) *Froze
 		Rate:         progress.Rate,
 		ETA:          progress.ETA,
 		Errors:       progress.Errors,
+	}
+	return &out
+}
+
+// fromDomainCompletionProgressPtr maps optional completion facts while preserving nil as absent.
+func fromDomainCompletionProgressPtr(progress *d.OpsCompletionProgress) *CompletionProgress {
+	if progress == nil {
+		return nil
+	}
+	out := CompletionProgress{
+		Phase:            progress.Phase,
+		CoreResource:     progress.CoreResource,
+		Total:            progress.Total,
+		Identity:         progress.Identity,
+		Disposition:      CompletionDisposition(progress.Disposition),
+		FailureDetail:    progress.FailureDetail,
+		AffectedResource: progress.AffectedResource,
+		AffectedCount:    progress.AffectedCount,
 	}
 	return &out
 }
