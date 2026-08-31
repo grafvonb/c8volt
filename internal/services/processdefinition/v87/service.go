@@ -82,7 +82,7 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 		return nil, err
 	}
 	out := page.Items
-	d.SortByBpmnProcessIdAscThenByVersionDesc(out)
+	d.SortProcessDefinitionsCanonical(out)
 	common.VerboseLog(ctx, cCfg, s.log, "found process definitions", "count", len(out))
 	return out, nil
 }
@@ -261,7 +261,22 @@ func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinition
 			VersionTag:    toolx.PtrIf(filter.ProcessVersionTag, ""),
 		},
 		Size: &size,
+		Sort: processDefinitionCanonicalSearchSort(),
 	}
+}
+
+// processDefinitionCanonicalSearchSort requests the strongest v8.7 Operate
+// ordering that matches the version-neutral canonical comparator.
+func processDefinitionCanonicalSearchSort() *[]operatev87.Sort {
+	asc := operatev87.ASC
+	desc := operatev87.DESC
+	sort := []operatev87.Sort{
+		{Field: toolx.Ptr("tenantId"), Order: &asc},
+		{Field: toolx.Ptr("bpmnProcessId"), Order: &asc},
+		{Field: toolx.Ptr("version"), Order: &desc},
+		{Field: toolx.Ptr("key"), Order: &asc},
+	}
+	return &sort
 }
 
 func latestProcessDefinitions(pds []d.ProcessDefinition) []d.ProcessDefinition {

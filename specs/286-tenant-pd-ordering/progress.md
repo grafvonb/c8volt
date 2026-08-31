@@ -82,3 +82,20 @@ Started: 2026-08-31 13:37:23
 **Learnings**:
 - Tenant-filtered and `--all-tenants` command listings already preserve the shared paged service canonical sequence; avoid setting `--batch-size` in command tests unless the test also resets Cobra changed-state for later package tests.
 ---
+---
+## Iteration 6 - 2026-08-31 13:59
+**Work Unit**: US1 Camunda 8.7 ordinary adapter canonical ordering
+**Tasks Completed**:
+- [x] T007: Add Camunda 8.7 request-sort and returned-order assertions for tenant/BPMN/version/key to `internal/services/processdefinition/v87/service_test.go`
+- [x] T011: Encode Operate 8.7 backend sorting as tenant ID ASC, BPMN process ID ASC, version DESC, and key ASC, then use the domain canonical sort for returned collections in `internal/services/processdefinition/v87/service.go`
+**Tasks Remaining in Work Unit**: 0; US1 has 6 incomplete tasks remaining (T008-T010, T012-T014)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/v87/service.go
+- internal/services/processdefinition/v87/service_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- v8.7 ordinary search can use the generic Operate `Sort` model for the full canonical tuple, while final result normalization remains local through the shared domain comparator.
+---

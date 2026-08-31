@@ -150,6 +150,50 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 	}
 }
 
+// TestService_SearchProcessDefinitions_RequestsCanonicalSortAndNormalizesResults
+// verifies v8.7 asks Operate for the strongest stable order and still protects
+// callers from shuffled backend results.
+func TestService_SearchProcessDefinitions_RequestsCanonicalSortAndNormalizesResults(t *testing.T) {
+	ctx := context.Background()
+	m := &mockProcessDefinitionClient{}
+
+	resp := &operatev87.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/search", http.StatusOK, "200 OK"),
+		JSON200: &operatev87.ResultsProcessDefinition{
+			Items: &[]operatev87.ProcessDefinition{
+				makeTenantProcessDefinition(202, "tenant-b", "order", 9),
+				makeTenantProcessDefinition(10, "tenant-a", "invoice", 4),
+				makeTenantProcessDefinition(2, "tenant-a", "invoice", 4),
+				makeTenantProcessDefinition(111, "tenant-a", "order", 9),
+				makeTenantProcessDefinition(112, "tenant-a", "order", 10),
+				makeTenantProcessDefinition(301, "tenant-b", "alpha", 1),
+			},
+		},
+	}
+
+	m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			body := args.Get(1).(operatev87.SearchProcessDefinitionsJSONRequestBody)
+			assertV87ProcessDefinitionSort(t, body.Sort, []expectedV87Sort{
+				{field: "tenantId", order: operatev87.ASC},
+				{field: "bpmnProcessId", order: operatev87.ASC},
+				{field: "version", order: operatev87.DESC},
+				{field: "key", order: operatev87.ASC},
+			})
+		}).
+		Return(resp, nil)
+
+	svc, err := v87.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v87.WithClientOperate(m))
+	require.NoError(t, err)
+
+	defs, err := svc.SearchProcessDefinitions(ctx, domain.ProcessDefinitionFilter{}, 25, services.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	require.Len(t, defs, 6)
+	assert.Equal(t, []string{"10", "2", "112", "111", "301", "202"}, processDefinitionKeys(defs))
+	m.AssertExpectations(t)
+}
+
 func TestService_SearchProcessDefinitionsLatest_FallsBackToClientSideLatestSelection(t *testing.T) {
 	ctx := context.Background()
 	m := &mockProcessDefinitionClient{}
@@ -534,6 +578,44 @@ func makeProcessDefinition(key int64, id string, version int32) operatev87.Proce
 		Version:       new(version),
 		Name:          new("name-" + id),
 	}
+}
+
+// makeTenantProcessDefinition creates a v8.7 fixture with all canonical sort
+// fields populated.
+func makeTenantProcessDefinition(key int64, tenantID, id string, version int32) operatev87.ProcessDefinition {
+	pd := makeProcessDefinition(key, id, version)
+	pd.TenantId = new(tenantID)
+	return pd
+}
+
+type expectedV87Sort struct {
+	field string
+	order operatev87.SortOrder
+}
+
+// assertV87ProcessDefinitionSort checks the exact Operate sort tuple used to
+// stabilize v8.7 process-definition paging.
+func assertV87ProcessDefinitionSort(t *testing.T, got *[]operatev87.Sort, want []expectedV87Sort) {
+	t.Helper()
+
+	require.NotNil(t, got)
+	require.Len(t, *got, len(want))
+	for i, expected := range want {
+		require.NotNil(t, (*got)[i].Field)
+		require.NotNil(t, (*got)[i].Order)
+		assert.Equal(t, expected.field, *(*got)[i].Field)
+		assert.Equal(t, expected.order, *(*got)[i].Order)
+	}
+}
+
+// processDefinitionKeys extracts keys in slice order for readable ordering
+// assertions.
+func processDefinitionKeys(defs []domain.ProcessDefinition) []string {
+	keys := make([]string, 0, len(defs))
+	for _, def := range defs {
+		keys = append(keys, def.Key)
+	}
+	return keys
 }
 
 // newHTTPResponse builds a minimal HTTP response for v8.7 process-definition error handling tests.

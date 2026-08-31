@@ -51,14 +51,14 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 - [x] T004 [P] [US1] Add page-arrival independence and final canonical collection-order tests to `internal/services/processdefinition/search_test.go`
 - [x] T005 [P] [US1] Add public ordinary-search and paged-search order-preservation tests to `c8volt/process/client_test.go`
 - [x] T006 [P] [US1] Add command-level filtered and `--all-tenants` canonical ordering tests to `cmd/get_processdefinition_test.go`
-- [ ] T007 [P] [US1] Add Camunda 8.7 request-sort and returned-order assertions for tenant/BPMN/version/key to `internal/services/processdefinition/v87/service_test.go`
+- [x] T007 [P] [US1] Add Camunda 8.7 request-sort and returned-order assertions for tenant/BPMN/version/key to `internal/services/processdefinition/v87/service_test.go`
 - [ ] T008 [P] [US1] Add Camunda 8.8 ordinary request-sort and returned-order assertions to `internal/services/processdefinition/v88/service_test.go`
 - [ ] T009 [P] [US1] Add Camunda 8.9 ordinary request-sort and returned-order assertions to `internal/services/processdefinition/v89/service_test.go`
 - [ ] T010 [P] [US1] Add Camunda 8.10 ordinary request-sort and returned-order assertions to `internal/services/processdefinition/v810/service_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T011 [P] [US1] Encode Operate 8.7 backend sorting as tenant ID ASC, BPMN process ID ASC, version DESC, and key ASC, then use the domain canonical sort for returned collections in `internal/services/processdefinition/v87/service.go`
+- [x] T011 [P] [US1] Encode Operate 8.7 backend sorting as tenant ID ASC, BPMN process ID ASC, version DESC, and key ASC, then use the domain canonical sort for returned collections in `internal/services/processdefinition/v87/service.go`
 - [ ] T012 [P] [US1] Encode Camunda 8.8 ordinary backend sorting as tenant ID ASC, process definition ID ASC, version DESC, and process definition key ASC, then use the domain canonical sort for returned collections in `internal/services/processdefinition/v88/service.go`
 - [ ] T013 [P] [US1] Encode Camunda 8.9 ordinary backend sorting as tenant ID ASC, process definition ID ASC, version DESC, and process definition key ASC, then use the domain canonical sort for returned collections in `internal/services/processdefinition/v89/service.go`
 - [ ] T014 [P] [US1] Encode Camunda 8.10 ordinary backend sorting as tenant ID ASC, process definition ID ASC, version DESC, and process definition key ASC, then use the domain canonical sort for returned collections in `internal/services/processdefinition/v810/service.go`
