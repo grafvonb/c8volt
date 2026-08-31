@@ -23,7 +23,7 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 
 **Purpose**: Establish a clean implementation baseline without introducing new project structure or dependencies.
 
-- [ ] T001 Run the pre-change focused validation commands and record any baseline failures before editing, using `specs/286-tenant-pd-ordering/quickstart.md`
+- [x] T001 Run the pre-change focused validation commands and record any baseline failures before editing, using `specs/286-tenant-pd-ordering/quickstart.md`
 
 ---
 
