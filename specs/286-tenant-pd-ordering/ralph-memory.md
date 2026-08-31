@@ -13,6 +13,7 @@ Started: 2026-08-31T11:37:22Z
 - `internal/services/processdefinition/v89/service.go` now manually JSON-encodes Camunda v2 ordinary sort fields `tenantId ASC`, `processDefinitionId ASC`, `version DESC`, `processDefinitionKey ASC` and normalizes `SearchProcessDefinitions` output with `domain.SortProcessDefinitionsCanonical`.
 - `internal/services/processdefinition/v810/service.go` now manually JSON-encodes Camunda v2 ordinary sort fields `tenantId ASC`, `processDefinitionId ASC`, `version DESC`, `processDefinitionKey ASC` and normalizes `SearchProcessDefinitions` output with `domain.SortProcessDefinitionsCanonical`.
 - `c8volt/process/client_test.go` now includes facade coverage that `SearchProcessDefinitions` preserves the service-provided canonical key sequence while carrying each process definition's statistics through public conversion without cross-key association drift.
+- `cmd/cmd_views_processdefinition_test.go` now uses a five-row canonical renderer fixture and asserts identical process-definition key sequences across list human output, JSON envelope arrays, keys-only output, and watch refresh rendering.
 
 ## Decisions
 - Treat T001 as a validation-only setup work unit; no production code changed in iteration 1.
@@ -44,4 +45,4 @@ Started: 2026-08-31T11:37:22Z
 - Do not use zsh variable names `status` or `commands` in validation-loop scripts.
 
 ## Current Handoff
-- Next iteration starts at US2 T017: expand shared renderer fixture and assert identical canonical key sequences for human, JSON, keys-only, and watch rendering in `cmd/cmd_views_processdefinition_test.go`; T016 passed `go test ./c8volt/process -run 'TestClient_(SearchProcessDefinitions|SearchProcessDefinitionsLatest|SearchProcessDefinitionsPages|CollectProcessDefinitionWatchSnapshot)' -count=1`.
+- Next iteration starts at US2 T018: add watch-snapshot tests proving statistics-only changes retain canonical positions and broad snapshots reuse paged collection order in `internal/services/processdefinition/search_test.go`; T017 passed `go test ./cmd -run 'Test(ListProcessDefinitionsView|ProcessDefinitionView|ProcessDefinitionWatchView)' -count=1` and `go test ./cmd -run 'Test.*ProcessDefinition.*(Order|Latest|Paging|Stat|JSON|Keys|Watch|XML)|TestCommandContract' -count=1`.

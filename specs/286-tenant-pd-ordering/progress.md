@@ -164,3 +164,18 @@ Started: 2026-08-31 13:37:23
 **Learnings**:
 - Existing facade conversion preserves both the service-provided key sequence and per-key statistics association for ordinary process-definition searches with `WithStat`.
 ---
+---
+## Iteration 11 - 2026-08-31 14:17
+**Work Unit**: US2 renderer output ordering parity
+**Tasks Completed**:
+- [x] T017: Expand the shared renderer fixture and assert identical canonical key sequences for human, JSON, keys-only, and watch rendering in `cmd/cmd_views_processdefinition_test.go`
+**Tasks Remaining in Work Unit**: 0; US2 has 5 incomplete tasks remaining (T018-T022)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_processdefinition_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- Process-definition renderers consume the supplied slice order consistently across human rows, JSON envelope arrays, keys-only lines, and watch refresh bodies.
+---
