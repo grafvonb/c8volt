@@ -17,6 +17,18 @@ type opsProgressModeInput struct {
 	Debug      bool
 }
 
+// opsSemanticProgressOutputPolicy captures command-owned visibility decisions
+// for completion-driven progress without exposing renderer details to services.
+type opsSemanticProgressOutputPolicy struct {
+	Channel           ops.ProgressChannel
+	TransientActivity bool
+	PacedAggregate    bool
+	VerboseItems      bool
+	FailureWarnings   bool
+	Stdout            bool
+	Stderr            bool
+}
+
 // opsProgressModeForCommand keeps progress gating tied to existing root flags and render mode.
 func opsProgressModeForCommand(cmd *cobra.Command, mode RenderMode) opsProgressModeInput {
 	return opsProgressModeInput{
@@ -46,4 +58,27 @@ func opsProgressChannelForMode(input opsProgressModeInput) ops.ProgressChannel {
 	default:
 		return ops.ProgressChannel{Mode: ops.ProgressModeHuman, TransientAllowed: true, DurableAllowed: true, StderrAllowed: true}
 	}
+}
+
+// opsSemanticProgressOutputPolicyForChannel translates the shared channel
+// contract into semantic reporter behavior for completion facts.
+func opsSemanticProgressOutputPolicyForChannel(channel ops.ProgressChannel) opsSemanticProgressOutputPolicy {
+	policy := opsSemanticProgressOutputPolicy{
+		Channel: channel,
+		Stdout:  channel.StdoutAllowed,
+		Stderr:  channel.StderrAllowed,
+	}
+	switch channel.Mode {
+	case ops.ProgressModeHuman:
+		policy.TransientActivity = channel.TransientAllowed
+		policy.PacedAggregate = channel.DurableAllowed && channel.StderrAllowed && !channel.StdoutAllowed
+		policy.FailureWarnings = channel.StderrAllowed && !channel.StdoutAllowed
+	case ops.ProgressModeVerbose, ops.ProgressModeDebug:
+		policy.TransientActivity = channel.TransientAllowed
+		policy.VerboseItems = channel.DurableAllowed && channel.StderrAllowed && !channel.StdoutAllowed
+		policy.FailureWarnings = channel.StderrAllowed && !channel.StdoutAllowed
+	case ops.ProgressModeQuiet:
+		policy.FailureWarnings = true
+	}
+	return policy
 }

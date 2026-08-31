@@ -32,9 +32,9 @@
 
 - [x] T002 [P] Add failing completion-kind, disposition, identity, failure-detail, and nil-versus-zero affected-count mapping tests in `internal/domain/ops_progress_test.go`, `c8volt/foptions/options_test.go`, and `c8volt/ops/model_test.go`
 - [x] T003 Implement the canonical completion fact and mechanical callback propagation in `internal/domain/ops_progress.go`, `internal/services/calloption.go`, `c8volt/foptions/options.go`, `c8volt/ops/progress_model.go`, and `c8volt/ops/convert.go`
-- [ ] T004 [P] Add failing reporter-construction, output-policy, aggregate-invariant, and idempotent-close tests in a focused `cmd/ops_semantic_progress_test.go`
-- [ ] T005 Implement the focused reporter scaffold, family vocabulary, and mode-policy inputs in `cmd/ops_semantic_progress.go`, `cmd/ops_progress_mode.go`, and `cmd/ops_progress_render.go`
-- [ ] T006 Run the foundational domain, facade, and command tests with `-race` and record the results in `specs/285-semantic-progress-milestones/progress.md`
+- [x] T004 [P] Add failing reporter-construction, output-policy, aggregate-invariant, and idempotent-close tests in a focused `cmd/ops_semantic_progress_test.go`
+- [x] T005 Implement the focused reporter scaffold, family vocabulary, and mode-policy inputs in `cmd/ops_semantic_progress.go`, `cmd/ops_progress_mode.go`, and `cmd/ops_progress_render.go`
+- [x] T006 Run the foundational domain, facade, and command tests with `-race` and record the results in `specs/285-semantic-progress-milestones/progress.md`
 
 **Checkpoint**: Completion facts cross domain/facade boundaries without wording, and a command-owned reporter can safely accept facts without changing user-visible output yet.
 

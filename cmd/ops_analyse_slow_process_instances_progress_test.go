@@ -262,9 +262,9 @@ func TestOpsAnalyseSlowProcessInstancesWorkflowActivityOutranksNestedRuntimeWork
 // TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr verifies verbose mode keeps an auditable progress trail off stdout.
 func TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr(t *testing.T) {
 	previousVerbose := flagVerbose
-	flagVerbose = true
 	t.Cleanup(func() { flagVerbose = previousVerbose })
 	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	flagVerbose = true
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.SetOut(&stdout)
@@ -295,9 +295,9 @@ func TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr(t *tes
 // TestOpsAnalyseSlowProcessInstancesDebugProgressWritesDurableStderr verifies debug mode keeps detailed durable progress off stdout.
 func TestOpsAnalyseSlowProcessInstancesDebugProgressWritesDurableStderr(t *testing.T) {
 	previousDebug := flagDebug
-	flagDebug = true
 	t.Cleanup(func() { flagDebug = previousDebug })
 	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	flagDebug = true
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.SetOut(&stdout)
@@ -368,9 +368,9 @@ func TestOpsAnalyseSlowProcessInstancesDefaultMilestonesStayCompact(t *testing.T
 // TestOpsAnalyseSlowProcessInstancesJSONProgressKeepsStdoutClean verifies JSON mode suppresses transient and durable progress text.
 func TestOpsAnalyseSlowProcessInstancesJSONProgressKeepsStdoutClean(t *testing.T) {
 	previousJSON := flagViewAsJson
-	flagViewAsJson = true
 	t.Cleanup(func() { flagViewAsJson = previousJSON })
 	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	flagViewAsJson = true
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	sink := &activitysink.Sink{}
@@ -418,9 +418,9 @@ func TestOpsAnalyseSlowProcessInstancesJSONProgressKeepsStdoutClean(t *testing.T
 // TestOpsAnalyseSlowProcessInstancesKeysOnlyProgressKeepsStdoutClean verifies key pipelines never receive progress or preflight lines.
 func TestOpsAnalyseSlowProcessInstancesKeysOnlyProgressKeepsStdoutClean(t *testing.T) {
 	previousKeysOnly := flagViewKeysOnly
-	flagViewKeysOnly = true
 	t.Cleanup(func() { flagViewKeysOnly = previousKeysOnly })
 	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	flagViewKeysOnly = true
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	sink := &activitysink.Sink{}

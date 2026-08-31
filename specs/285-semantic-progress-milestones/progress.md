@@ -66,3 +66,26 @@ Started: 2026-08-31 19:14:26
 - Completion facts now preserve lifecycle disposition and affected-count availability through the domain, service option, and public facade callback boundaries.
 - Validation passed: `go test ./internal/domain ./c8volt/foptions ./c8volt/ops ./toolx/logging ./internal/services -race -count=1`; `git diff --check`.
 ---
+---
+## Iteration 3 - 2026-08-31 19:28
+**Work Unit**: Phase 2 command reporter scaffold and validation
+**Tasks Completed**:
+- [x] T004: Add reporter-construction, output-policy, aggregate-invariant, and idempotent-close tests
+- [x] T005: Implement the focused reporter scaffold, family vocabulary, and mode-policy inputs
+- [x] T006: Run foundational domain, facade, and command tests with `-race`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_semantic_progress.go
+- cmd/ops_semantic_progress_test.go
+- cmd/ops_progress_mode.go
+- cmd/ops_progress_render.go
+- cmd/ops_analyse_slow_process_instances_progress_test.go
+- cmd/ops_analyse_slow_process_instances_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Reporter validation passed with `go test ./cmd -run 'TestOpsSemanticProgress' -race -count=1`, `go test ./cmd -run 'Progress|Activity' -race -count=1`, `go test ./internal/domain ./c8volt/foptions ./c8volt/ops ./toolx/logging ./internal/services -race -count=1`, and `git diff --check`.
+- Broader command progress tests require applying output-mode globals after `resetOpsSlowProcessAnalysisTestFlags(t)` because the helper now clears shared mode flags to prevent cross-test leakage.
+---

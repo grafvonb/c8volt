@@ -369,6 +369,59 @@ func formatOpsETASampleWindow(window ops.ETASampleWindow) string {
 	return strings.Join(nonEmptyOpsProgressParts(parts), ", ")
 }
 
+// formatOpsSemanticProgressAggregate renders completion counters without
+// implying affected-count coverage when any contributing fact is unknown.
+func formatOpsSemanticProgressAggregate(scope opsSemanticProgressScope, aggregate opsSemanticProgressAggregate) string {
+	resource := strings.TrimSpace(scope.CoreResource)
+	if resource == "" {
+		resource = "resource(s)"
+	}
+	label := strings.TrimSpace(scope.ActivityLabel)
+	if label == "" {
+		label = strings.TrimSpace(scope.Phase)
+	}
+	if label == "" {
+		label = "progress"
+	}
+	parts := []string{label}
+	if aggregate.Total > 0 {
+		parts = append(parts, fmt.Sprintf("%d/%d %s", aggregate.Completed, aggregate.Total, resource))
+	} else {
+		parts = append(parts, fmt.Sprintf("%d %s completed", aggregate.Completed, resource))
+	}
+	if aggregate.Failed > 0 {
+		parts = append(parts, fmt.Sprintf("%d failed", aggregate.Failed))
+	}
+	if aggregate.AffectedValid && strings.TrimSpace(scope.AffectedResource) != "" {
+		parts = append(parts, fmt.Sprintf("%s: %d", strings.TrimSpace(scope.AffectedResource), aggregate.Affected))
+	}
+	return strings.Join(nonEmptyOpsProgressParts(parts), ", ")
+}
+
+// formatOpsSemanticProgressCompletion renders one verbose or warning
+// completion line using command-owned lifecycle wording.
+func formatOpsSemanticProgressCompletion(scope opsSemanticProgressScope, aggregate opsSemanticProgressAggregate, completion ops.CompletionProgress) string {
+	identity := strings.TrimSpace(completion.Identity)
+	if identity == "" {
+		identity = "item"
+	}
+	verb := scope.ConfirmedVerb
+	switch completion.Disposition {
+	case ops.CompletionDispositionSubmitted:
+		verb = scope.SubmittedVerb
+	case ops.CompletionDispositionFailed:
+		verb = scope.FailedVerb
+	}
+	if strings.TrimSpace(verb) == "" {
+		verb = string(completion.Disposition)
+	}
+	line := fmt.Sprintf("%s %s", identity, strings.TrimSpace(verb))
+	if detail := strings.TrimSpace(completion.FailureDetail); detail != "" && completion.Disposition == ops.CompletionDispositionFailed {
+		line += ": " + detail
+	}
+	return line + " (" + formatOpsSemanticProgressAggregate(scope, aggregate) + ")"
+}
+
 // nonEmptyOpsProgressParts trims empty formatter fragments before joining human progress text.
 func nonEmptyOpsProgressParts(parts []string) []string {
 	out := make([]string, 0, len(parts))

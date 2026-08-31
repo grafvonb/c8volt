@@ -280,6 +280,12 @@ func resetOpsSlowProcessAnalysisTestFlags(t *testing.T) *cobra.Command {
 	flagOpsAnalyseSlowProcessInstanceElementDurationLonger = ""
 	flagOpsAnalyseSlowProcessInstanceWithFullTimeline = false
 	flagOpsAnalyseSlowProcessInstanceWithListeners = false
+	flagCmdAutomation = false
+	flagVerbose = false
+	flagViewAsJson = false
+	flagViewKeysOnly = false
+	flagQuiet = false
+	flagDebug = false
 
 	cmd := &cobra.Command{Use: "slow-process-instances"}
 	cmd.SetContext(context.Background())
