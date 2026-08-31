@@ -65,6 +65,7 @@ type CommandCapability struct {
 	Summary           string               `json:"summary"`
 	Mutation          CommandMutation      `json:"mutation"`
 	ContractSupport   ContractSupport      `json:"contractSupport"`
+	AllTenantsSupport AllTenantsSupport    `json:"allTenantsSupport"`
 	AutomationSupport AutomationSupport    `json:"automationSupport"`
 	AutomationNotes   string               `json:"automationNotes,omitempty"`
 	OutputModes       []OutputModeContract `json:"outputModes"`
@@ -324,6 +325,7 @@ func commandCapabilityForCommand(cmd *cobra.Command) CommandCapability {
 		Summary:           strings.TrimSpace(cmd.Short),
 		Mutation:          commandMutationForCommand(cmd),
 		ContractSupport:   contractSupportForCommand(cmd),
+		AllTenantsSupport: allTenantsSupportForCommand(cmd),
 		AutomationSupport: automationSupportForCommand(cmd),
 		AutomationNotes:   automationNotesForCommand(cmd),
 		OutputModes:       outputModesForCommand(cmd),

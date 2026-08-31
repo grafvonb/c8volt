@@ -171,3 +171,23 @@ Started: 2026-08-31 08:07:38
 **Learnings**:
 - Concrete-destination rejection now runs in root pre-run before config loading or command-local side effects, while absent all-tenants destination behavior remains covered by existing tests.
 ---
+---
+## Iteration 9 - 2026-08-31 08:54
+**Work Unit**: US4 capability all-tenants support metadata
+**Tasks Completed**:
+- [x] T036: Added JSON and human capability tests for additive `allTenantsSupport` values and unchanged document version `v1`.
+- [x] T040: Added `AllTenantsSupport` to `CommandCapability` and populated it from the shared resolver while keeping capability version `v1`.
+- [x] T041: Included all-tenants support state in the compact human capability summary.
+**Tasks Remaining in Work Unit**: T037, T038, T039, T042, T043, T044, T045, T046, T047, and T048 remain open in US4.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/command_contract.go
+- cmd/capabilities.go
+- cmd/command_contract_test.go
+- cmd/capabilities_test.go
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- Capability discovery now exposes `allTenantsSupport` consistently in JSON and human summaries, with accepted commands and concrete-destination rejections using the same resolver as runtime validation.
+---

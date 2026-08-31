@@ -52,7 +52,7 @@ func renderCapabilitySummaryLine(cmd *cobra.Command, capability CommandCapabilit
 		indent,
 		capability.Path,
 		capability.Mutation,
-		fmt.Sprintf("%s, automation:%s", capability.ContractSupport, capability.AutomationSupport),
+		fmt.Sprintf("%s, automation:%s, allTenantsSupport:%s", capability.ContractSupport, capability.AutomationSupport, capability.AllTenantsSupport),
 		formatCapabilityModes(modes),
 	)
 	for _, child := range capability.Children {

@@ -92,6 +92,7 @@ func TestCapabilitiesCommand_JSONOutput(t *testing.T) {
 	var doc CapabilityDocument
 	require.NoError(t, json.Unmarshal([]byte(output), &doc))
 	require.Equal(t, "capabilities", doc.Command)
+	require.Equal(t, "v1", doc.Version)
 	require.NotEmpty(t, doc.Commands)
 
 	var walkCapability CommandCapability
@@ -105,6 +106,37 @@ func TestCapabilitiesCommand_JSONOutput(t *testing.T) {
 	require.Equal(t, ContractSupportLimited, walkCapability.ContractSupport)
 	require.Equal(t, CommandMutationReadOnly, walkCapability.Mutation)
 	require.Equal(t, AutomationSupportUnsupported, walkCapability.AutomationSupport)
+	require.Equal(t, AllTenantsSupportAccepted, walkCapability.AllTenantsSupport)
+}
+
+// TestCapabilitiesCommand_JSONIncludesAllTenantsSupport verifies automation can
+// distinguish accepted all-tenants commands from concrete-destination rejection.
+func TestCapabilitiesCommand_JSONIncludesAllTenantsSupport(t *testing.T) {
+	output := executeRootForTest(t, "capabilities", "--json")
+
+	var doc CapabilityDocument
+	require.NoError(t, json.Unmarshal([]byte(output), &doc))
+	require.Equal(t, "v1", doc.Version)
+
+	tests := []struct {
+		path string
+		want AllTenantsSupport
+	}{
+		{path: "get process-instance", want: AllTenantsSupportAccepted},
+		{path: "cancel process-instance", want: AllTenantsSupportAccepted},
+		{path: "deploy process-definition", want: AllTenantsSupportRejectedConcreteDestination},
+		{path: "embed deploy", want: AllTenantsSupportRejectedConcreteDestination},
+		{path: "run process-instance", want: AllTenantsSupportRejectedConcreteDestination},
+		{path: "ops execute smoke-test", want: AllTenantsSupportRejectedConcreteDestination},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			capability, ok := findCommandCapability(doc.Commands, tt.path)
+			require.True(t, ok, "expected %q in capability discovery", tt.path)
+			require.Equal(t, tt.want, capability.AllTenantsSupport)
+		})
+	}
 }
 
 func TestCapabilitiesCommand_JSONIncludesResolveMetadata(t *testing.T) {
@@ -369,9 +401,9 @@ func TestCapabilitiesCommand_DefaultOutputUsesHumanSummary(t *testing.T) {
 	require.Contains(t, output, "Machine-readable public CLI capabilities")
 	require.Contains(t, output, "Use --json for the full discovery document. Inspect automationSupport before using --automation.")
 	require.Contains(t, output, "Hidden and shell-internal commands are excluded.")
-	require.Contains(t, output, "- capabilities [read_only, limited, automation:full] modes: json, one-line")
-	require.Contains(t, output, "- get [read_only, limited, automation:unsupported] modes: one-line, json, keys-only")
-	require.Contains(t, output, "- run process-instance [state_changing, full, automation:full] modes: one-line, json, keys-only")
+	require.Contains(t, output, "- capabilities [read_only, limited, automation:full, allTenantsSupport:accepted] modes: json, one-line")
+	require.Contains(t, output, "- get [read_only, limited, automation:unsupported, allTenantsSupport:accepted] modes: one-line, json, keys-only")
+	require.Contains(t, output, "- run process-instance [state_changing, full, automation:full, allTenantsSupport:rejected_concrete_destination] modes: one-line, json, keys-only")
 	require.NotContains(t, output, "\"command\":\"capabilities\"")
 }
 
