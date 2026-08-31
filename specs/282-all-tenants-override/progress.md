@@ -41,6 +41,21 @@ Started: 2026-08-31 08:07:38
 - The new root flag is only registered in Cobra; all-tenants resolver metadata exists but is not yet used for tenant override, destination rejection, or capability serialization.
 ---
 ---
+## Iteration 19 - 2026-08-31 09:32
+**Work Unit**: Phase 7 polish docs generation idempotence
+**Tasks Completed**:
+- [x] T051: Ran `make docs-content` and verified repeat generation produced no unexplained drift in `README.md`, `docs/cli/`, `docs/index.md`, or `docs/ops/`.
+**Tasks Remaining in Work Unit**: T052 remains next in Phase 7.
+**Commit**: This work-unit commit
+**Files Changed**:
+- docs/index.md
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- Docs regeneration is semantically stable; unpinned repeat runs refresh only volatile generated build metadata because `make docs-content` embeds `git describe --dirty` and the current UTC build timestamp.
+---
+---
 ## Iteration 3 - 2026-08-31 08:22
 **Work Unit**: US1 root config override and tenant-context warning
 **Tasks Completed**:
