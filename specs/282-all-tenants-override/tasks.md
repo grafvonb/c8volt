@@ -100,20 +100,20 @@ description: "Dependency-ordered implementation tasks for the all-tenants tenant
 
 ### Tests for User Story 3
 
-- [ ] T025 [P] [US3] Add failing deployment rejection tests using nonexistent/stdin inputs and request/activity spies in `cmd/deploy_test.go`
-- [ ] T026 [P] [US3] Add failing embedded deployment and optional-run rejection tests proving no embedded file or request work in `cmd/embed_test.go`
-- [ ] T027 [P] [US3] Add failing process-instance run rejection tests proving no stdin, prompt, activity, or creation request in `cmd/run_test.go`
-- [ ] T028 [P] [US3] Add failing smoke-test normal/dry-run rejection tests proving no report, plan, prompt, activity, or request work in `cmd/ops_execute_smoke_test_test.go`
+- [x] T025 [P] [US3] Add failing deployment rejection tests using nonexistent/stdin inputs and request/activity spies in `cmd/deploy_test.go`
+- [x] T026 [P] [US3] Add failing embedded deployment and optional-run rejection tests proving no embedded file or request work in `cmd/embed_test.go`
+- [x] T027 [P] [US3] Add failing process-instance run rejection tests proving no stdin, prompt, activity, or creation request in `cmd/run_test.go`
+- [x] T028 [P] [US3] Add failing smoke-test normal/dry-run rejection tests proving no report, plan, prompt, activity, or request work in `cmd/ops_execute_smoke_test_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T029 [P] [US3] Mark `deploy process-definition` as `rejected_concrete_destination` in `cmd/deploy_processdefinition.go`
-- [ ] T030 [P] [US3] Mark `embed deploy` as `rejected_concrete_destination` in `cmd/embed_deploy.go`
-- [ ] T031 [P] [US3] Mark `run process-instance` as `rejected_concrete_destination` in `cmd/run_processinstance.go`
-- [ ] T032 [P] [US3] Mark `ops execute smoke-test` as `rejected_concrete_destination` in `cmd/ops_execute_smoketest.go`
-- [ ] T033 [US3] Extend early root validation to reject active all-tenants through the shared command support resolver before any destination work in `cmd/root.go`
-- [ ] T034 [US3] Add a future-safety inventory assertion tying all current concrete-destination leaves to rejection metadata in `cmd/command_contract_test.go`
-- [ ] T035 [US3] Run focused US3 tests for `cmd/deploy_test.go`, `cmd/embed_test.go`, `cmd/run_test.go`, `cmd/ops_execute_smoke_test_test.go`, and `cmd/command_contract_test.go`
+- [x] T029 [P] [US3] Mark `deploy process-definition` as `rejected_concrete_destination` in `cmd/deploy_processdefinition.go`
+- [x] T030 [P] [US3] Mark `embed deploy` as `rejected_concrete_destination` in `cmd/embed_deploy.go`
+- [x] T031 [P] [US3] Mark `run process-instance` as `rejected_concrete_destination` in `cmd/run_processinstance.go`
+- [x] T032 [P] [US3] Mark `ops execute smoke-test` as `rejected_concrete_destination` in `cmd/ops_execute_smoketest.go`
+- [x] T033 [US3] Extend early root validation to reject active all-tenants through the shared command support resolver before any destination work in `cmd/root.go`
+- [x] T034 [US3] Add a future-safety inventory assertion tying all current concrete-destination leaves to rejection metadata in `cmd/command_contract_test.go`
+- [x] T035 [US3] Run focused US3 tests for `cmd/deploy_test.go`, `cmd/embed_test.go`, `cmd/run_test.go`, `cmd/ops_execute_smoke_test_test.go`, and `cmd/command_contract_test.go`
 
 **Checkpoint**: US3 is complete when all four destination leaves reject before side effects and their flag-absent named/default destination behavior remains unchanged.
 

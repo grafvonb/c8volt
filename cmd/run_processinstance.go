@@ -238,4 +238,5 @@ func init() {
 	setCommandMutation(runProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(runProcessInstanceCmd, ContractSupportFull)
 	setAutomationSupport(runProcessInstanceCmd, AutomationSupportFull, "supports shared machine output and accepted results")
+	setAllTenantsSupport(runProcessInstanceCmd, AllTenantsSupportRejectedConcreteDestination)
 }

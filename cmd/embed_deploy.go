@@ -107,4 +107,6 @@ func init() {
 	embedDeployCmd.MarkFlagsMutuallyExclusive("file", "all")
 
 	fs.BoolVar(&flagEmbedDeployWithRun, "run", false, "start one process instance after deployment")
+
+	setAllTenantsSupport(embedDeployCmd, AllTenantsSupportRejectedConcreteDestination)
 }

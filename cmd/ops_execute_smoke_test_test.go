@@ -154,6 +154,52 @@ func TestOpsExecuteSmokeTestInvalidLocalFlagsHelper(t *testing.T) {
 	}
 }
 
+// TestOpsExecuteSmokeTestAllTenantsRejectsBeforePlanningOrRequest proves both
+// dry-run and normal smoke-test execution reject all-tenants before reports,
+// prompts, activity, planning, or remote preflight can run.
+func TestOpsExecuteSmokeTestAllTenantsRejectsBeforePlanningOrRequest(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "dry-run",
+			args: []string{"--all-tenants", "ops", "execute", "smoke-test", "--dry-run"},
+		},
+		{
+			name: "normal",
+			args: []string{"ops", "execute", "smoke-test", "--all-tenants"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			srv := newOpsExecuteSmokeTestDryRunServer(t, &requests)
+			t.Cleanup(srv.Close)
+			reportPath := filepath.Join(t.TempDir(), "smoke-test.md")
+			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.8")}, tt.args...)
+			args = append(args, "--report-file", reportPath)
+
+			output, err := testx.RunCmdSubprocess(t, "TestOpsExecuteSmokeTestAllTenantsRejectsBeforePlanningOrRequestHelper", map[string]string{
+				"C8VOLT_TEST_ROOT_ARGS": marshalRootArgsForEnv(t, args),
+			})
+			assertAllTenantsConcreteDestinationSubprocessFailure(t, output, err, "ops execute smoke-test")
+			require.NoFileExists(t, reportPath)
+			require.Empty(t, requests.Snapshot())
+			require.NotContains(t, string(output), "dry run: execute smoke test")
+			require.NotContains(t, string(output), "validating smoke-test plan")
+			require.NotContains(t, string(output), "running smoke-test workflow")
+			require.NotContains(t, string(output), "creation target:")
+		})
+	}
+}
+
+// Helper-process entrypoint for all-tenants smoke-test rejection.
+func TestOpsExecuteSmokeTestAllTenantsRejectsBeforePlanningOrRequestHelper(t *testing.T) {
+	executeRootHelperFromArgsEnv(t, "C8VOLT_TEST_ROOT_ARGS")
+}
+
 func TestOpsExecuteSmokeTestDryRunHumanOutputPlansWithoutMutation(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newOpsExecuteSmokeTestDryRunServer(t, &requests)

@@ -89,4 +89,5 @@ func init() {
 	setCommandMutation(deployProcessDefinitionCmd, CommandMutationStateChanging)
 	setContractSupport(deployProcessDefinitionCmd, ContractSupportFull)
 	setAutomationSupport(deployProcessDefinitionCmd, AutomationSupportFull, "supports shared machine output and accepted results")
+	setAllTenantsSupport(deployProcessDefinitionCmd, AllTenantsSupportRejectedConcreteDestination)
 }

@@ -111,6 +111,7 @@ func init() {
 	setCommandMutation(opsExecuteSmokeTestCmd, CommandMutationStateChanging)
 	setContractSupport(opsExecuteSmokeTestCmd, ContractSupportFull)
 	setAutomationSupport(opsExecuteSmokeTestCmd, AutomationSupportFull, "supports unattended dry-run previews and implicitly confirmed smoke-test cleanup with shared machine output")
+	setAllTenantsSupport(opsExecuteSmokeTestCmd, AllTenantsSupportRejectedConcreteDestination)
 }
 
 func validateOpsExecuteSmokeTestFlags(cmd *cobra.Command) error {

@@ -972,6 +972,30 @@ func TestAllTenantsSupportForCommand_UsesExplicitAnnotation(t *testing.T) {
 	require.Equal(t, string(AllTenantsSupportRejectedConcreteDestination), cmd.Annotations[allTenantsSupportAnnotation])
 }
 
+// TestAllTenantsSupportForCommand_ConcreteDestinationInventory pins the
+// complete command set whose creation semantics reject all-tenants at runtime.
+func TestAllTenantsSupportForCommand_ConcreteDestinationInventory(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	tests := []struct {
+		path string
+		cmd  *cobra.Command
+	}{
+		{path: "deploy process-definition", cmd: deployProcessDefinitionCmd},
+		{path: "embed deploy", cmd: embedDeployCmd},
+		{path: "run process-instance", cmd: runProcessInstanceCmd},
+		{path: "ops execute smoke-test", cmd: opsExecuteSmokeTestCmd},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			require.Equal(t, tt.path, commandPath(tt.cmd))
+			require.Equal(t, AllTenantsSupportRejectedConcreteDestination, allTenantsSupportForCommand(tt.cmd))
+		})
+	}
+}
+
 func TestCapabilityDocumentForRoot_ExcludesHiddenAndShellInternalCommands(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)

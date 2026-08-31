@@ -137,3 +137,37 @@ Started: 2026-08-31 08:07:38
 **Learnings**:
 - All-tenants/tenant conflicts now fail before config loading; subprocess coverage confirms missing configuration does not mask the invalid-input class.
 ---
+---
+## Iteration 8 - 2026-08-31 08:50
+**Work Unit**: US3 Protect Concrete Tenant Destinations
+**Tasks Completed**:
+- [x] T025: Added deployment rejection tests using nonexistent/stdin inputs and request/activity spies in `cmd/deploy_test.go`.
+- [x] T026: Added embedded deployment and optional-run rejection tests proving no embedded file or request work in `cmd/embed_test.go`.
+- [x] T027: Added process-instance run rejection tests proving no input validation, activity, selector validation, or creation request in `cmd/run_test.go`.
+- [x] T028: Added smoke-test normal/dry-run rejection tests proving no report, plan, prompt, activity, or request work in `cmd/ops_execute_smoke_test_test.go`.
+- [x] T029: Marked `deploy process-definition` as `rejected_concrete_destination` in `cmd/deploy_processdefinition.go`.
+- [x] T030: Marked `embed deploy` as `rejected_concrete_destination` in `cmd/embed_deploy.go`.
+- [x] T031: Marked `run process-instance` as `rejected_concrete_destination` in `cmd/run_processinstance.go`.
+- [x] T032: Marked `ops execute smoke-test` as `rejected_concrete_destination` in `cmd/ops_execute_smoketest.go`.
+- [x] T033: Extended early root validation to reject active all-tenants through the shared command support resolver before destination work.
+- [x] T034: Added a concrete-destination inventory assertion in `cmd/command_contract_test.go`.
+- [x] T035: Ran focused US3 tests for destination commands, root validation, and all-tenants support metadata.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/root.go
+- cmd/deploy_processdefinition.go
+- cmd/embed_deploy.go
+- cmd/run_processinstance.go
+- cmd/ops_execute_smoketest.go
+- cmd/deploy_test.go
+- cmd/embed_test.go
+- cmd/run_test.go
+- cmd/ops_execute_smoke_test_test.go
+- cmd/command_contract_test.go
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- Concrete-destination rejection now runs in root pre-run before config loading or command-local side effects, while absent all-tenants destination behavior remains covered by existing tests.
+---

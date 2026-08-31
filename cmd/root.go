@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/toolx"
@@ -148,6 +149,8 @@ func silenceUsageForError(cmd *cobra.Command, err error) error {
 	return err
 }
 
+// validateAllTenantsSelection rejects command-line all-tenants choices before
+// configuration loading or command execution can perform side effects.
 func validateAllTenantsSelection(cmd *cobra.Command) error {
 	if cmd == nil || !flagAllTenants {
 		return nil
@@ -155,7 +158,24 @@ func validateAllTenantsSelection(cmd *cobra.Command) error {
 	if tenantFlag := cmd.Flags().Lookup("tenant"); tenantFlag != nil && tenantFlag.Changed {
 		return mutuallyExclusiveFlagsf("--tenant cannot be combined with --all-tenants")
 	}
+	if allTenantsSupportForCommand(cmd) == AllTenantsSupportRejectedConcreteDestination {
+		return invalidFlagValuef("--all-tenants cannot be used with %s; this command requires a concrete destination tenant", validationCommandPath(cmd))
+	}
 	return nil
+}
+
+// validationCommandPath formats a command path without depending on the root
+// singleton during root command initialization.
+func validationCommandPath(cmd *cobra.Command) string {
+	if cmd == nil {
+		return ""
+	}
+	path := cmd.CommandPath()
+	root := cmd.Root()
+	if root == nil || root.Name() == "" {
+		return path
+	}
+	return strings.TrimSpace(strings.TrimPrefix(path, root.Name()))
 }
 
 func Execute() {

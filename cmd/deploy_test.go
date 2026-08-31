@@ -93,6 +93,49 @@ profiles:
 	require.True(t, sawDeploy)
 }
 
+// TestDeployProcessDefinitionCommand_AllTenantsRejectsBeforeInputOrRequest
+// proves deployment cannot use an all-tenants scope and fails before file or
+// stdin resources are inspected.
+func TestDeployProcessDefinitionCommand_AllTenantsRejectsBeforeInputOrRequest(t *testing.T) {
+	tests := []struct {
+		name  string
+		args  []string
+		stdin string
+	}{
+		{
+			name: "nonexistent file",
+			args: []string{"--all-tenants", "deploy", "process-definition", "--file", t.TempDir() + string(os.PathSeparator) + "missing.bpmn"},
+		},
+		{
+			name:  "stdin file",
+			args:  []string{"deploy", "process-definition", "--all-tenants", "--file", "-"},
+			stdin: validDeployProcessDefinitionBPMN(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Append(r.Method + " " + r.URL.Path)
+				t.Fatalf("deploy process-definition must reject --all-tenants before request work: %s %s", r.Method, r.URL.Path)
+			}))
+			t.Cleanup(srv.Close)
+			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.9")}, tt.args...)
+
+			output, err := testx.RunCmdSubprocessWithStdin(t, "TestDeployProcessDefinitionCommand_AllTenantsRejectsBeforeInputOrRequestHelper", map[string]string{
+				"C8VOLT_TEST_ROOT_ARGS": marshalRootArgsForEnv(t, args),
+			}, tt.stdin)
+			assertAllTenantsConcreteDestinationSubprocessFailure(t, output, err, "deploy process-definition")
+			require.Empty(t, requests.Snapshot())
+			require.NotContains(t, string(output), "validating files with process definition")
+			require.NotContains(t, string(output), "collecting process definition")
+			require.NotContains(t, string(output), "creation target:")
+			require.NotContains(t, string(output), "pd deploy done")
+		})
+	}
+}
+
 func TestDeployProcessDefinitionCommand_RunFallsBackToBPMNIDForV87(t *testing.T) {
 	var sawDeploy bool
 	var sawRun bool
@@ -423,6 +466,11 @@ func resetDeployCommandContextForTest(cmd *cobra.Command) {
 	}
 }
 
+// Helper-process entrypoint for all-tenants deployment rejection.
+func TestDeployProcessDefinitionCommand_AllTenantsRejectsBeforeInputOrRequestHelper(t *testing.T) {
+	executeRootHelperFromArgsEnv(t, "C8VOLT_TEST_ROOT_ARGS")
+}
+
 // Verifies deploy process-definition rejects multiple stdin markers in --file arguments.
 func TestDeployProcessDefinitionCommand_RejectsRepeatedStdinFile(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
@@ -444,6 +492,57 @@ func writeTempFile(t *testing.T, name string, data []byte) string {
 	path := t.TempDir() + string(os.PathSeparator) + name
 	require.NoError(t, os.WriteFile(path, data, 0o600))
 	return path
+}
+
+// validDeployProcessDefinitionBPMN returns stdin content that would deploy
+// successfully if all-tenants rejection failed to run first.
+func validDeployProcessDefinitionBPMN() string {
+	return `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
+  <bpmn:process id="order-process" isExecutable="true" />
+</bpmn:definitions>`
+}
+
+// marshalRootArgsForEnv serializes helper-process command arguments without
+// relying on shell quoting.
+func marshalRootArgsForEnv(t *testing.T, args []string) string {
+	t.Helper()
+	data, err := json.Marshal(args)
+	require.NoError(t, err)
+	return string(data)
+}
+
+// executeRootHelperFromArgsEnv runs the real Execute path for helper-process
+// tests so invalid-input exit codes are asserted through process status.
+func executeRootHelperFromArgsEnv(t *testing.T, envName string) {
+	t.Helper()
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	var args []string
+	if err := json.Unmarshal([]byte(os.Getenv(envName)), &args); err != nil {
+		t.Fatalf("invalid helper args: %v", err)
+	}
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = append([]string{"c8volt"}, args...)
+
+	Execute()
+}
+
+// assertAllTenantsConcreteDestinationSubprocessFailure pins the shared error
+// class and text used by all concrete-destination rejection tests.
+func assertAllTenantsConcreteDestinationSubprocessFailure(t *testing.T, output []byte, err error, commandPath string) {
+	t.Helper()
+	require.Error(t, err)
+	var exitErr *exec.ExitError
+	require.ErrorAs(t, err, &exitErr)
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+	require.Contains(t, string(output), "invalid input")
+	require.Contains(t, string(output), "--all-tenants cannot be used with "+commandPath+"; this command requires a concrete destination tenant")
+	require.NotContains(t, string(output), "Usage:")
+	require.NotContains(t, string(output), "Examples:")
 }
 
 // Helper-process entrypoint for repeated-stdin-file validation.
