@@ -562,6 +562,44 @@ func TestWaitForProcessInstancesState_UsesAggregateCommandActivity(t *testing.T)
 	})
 }
 
+// TestWaitForProcessInstanceState_SingleTargetPollingIsNotWorkflowProgress
+// pins single-key waits as transient waiter activity rather than semantic
+// workflow completion progress.
+func TestWaitForProcessInstanceState_SingleTargetPollingIsNotWorkflowProgress(t *testing.T) {
+	t.Parallel()
+
+	sink := &activitysink.Sink{}
+	attempts := 0
+	waiter := stubPIWaiter{
+		getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+			attempts++
+			if attempts == 1 {
+				return d.StateActive, d.ProcessInstance{Key: key, State: d.StateActive}, nil
+			}
+			return d.StateCompleted, d.ProcessInstance{Key: key, State: d.StateCompleted}, nil
+		},
+	}
+
+	_, _, err := WaitForProcessInstanceState(
+		logging.ToActivityContext(context.Background(), sink),
+		waiter,
+		testConfig(time.Nanosecond, 3, 25*time.Millisecond),
+		testLogger(),
+		"123",
+		d.States{d.StateCompleted},
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, []activitysink.Start{{
+		Message:    "waiting for pi 123 state",
+		Importance: logging.ActivityImportanceWait,
+	}}, sink.Starts())
+	assert.Equal(t, []activitysink.Update{{
+		Message:    "pi 123 waiting; state ACTIVE, attempt 1",
+		Importance: logging.ActivityImportanceWait,
+	}}, sink.PriorityUpdates())
+}
+
 // testConfig builds a waiter config with explicit retry timing for unit tests.
 func testConfig(initialDelay time.Duration, maxRetries int, timeout time.Duration) *config.Config {
 	return &config.Config{

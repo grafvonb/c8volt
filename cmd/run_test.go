@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -780,6 +781,126 @@ func TestRunProcessInstanceBulkProgressUsesWorkflowImportance(t *testing.T) {
 
 	require.Equal(t, []activitysink.Update{{
 		Message:    "starting process instances 2/5 process instance(s)",
+		Importance: logging.ActivityImportanceWorkflow,
+	}}, sink.PriorityUpdates())
+}
+
+// TestRunProcessInstanceBulkStartCompletionUsesSemanticWorkflowActivity verifies
+// explicit-count starts are eligible for exact semantic completion aggregation.
+func TestRunProcessInstanceBulkStartCompletionUsesSemanticWorkflowActivity(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+	reporter := newRunProcessInstanceSemanticProgressReporter(cmd, 2)
+	defer reporter.Close()
+	opts := appendRunProcessInstanceProgressOption(cmd, nil, reporter)
+	progress := options.ApplyFacadeOptions(opts).Progress
+	require.NotNil(t, progress)
+
+	recordHTTPFallbackActivity(cmd.Context(), "creating process instance request")
+	affected := 1
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindCompletion,
+		Completion: &options.CompletionProgress{
+			Phase:            "create",
+			CoreResource:     "process instance(s)",
+			Total:            2,
+			Identity:         "2251799813711967",
+			Disposition:      options.CompletionDispositionConfirmed,
+			AffectedResource: "process instances",
+			AffectedCount:    &affected,
+		},
+	})
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindFrozenScope,
+		FrozenScope: &options.FrozenScopeProgress{
+			Phase:        "starting process instances",
+			CoreResource: "process instance(s)",
+			Done:         1,
+			Total:        2,
+		},
+	})
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindCompletion,
+		Completion: &options.CompletionProgress{
+			Phase:            "create",
+			CoreResource:     "process instance(s)",
+			Total:            2,
+			Identity:         "2251799813711968",
+			Disposition:      options.CompletionDispositionConfirmed,
+			AffectedResource: "process instances",
+			AffectedCount:    &affected,
+		},
+	})
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindFrozenScope,
+		FrozenScope: &options.FrozenScopeProgress{
+			Phase:        "starting process instances",
+			CoreResource: "process instance(s)",
+			Done:         2,
+			Total:        2,
+		},
+	})
+
+	require.Equal(t, []activitysink.Update{
+		{
+			Message:    "starting process instances, 1/2 process instance(s), process instances: 1",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+		{
+			Message:    "starting process instances, 2/2 process instance(s), process instances: 2",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+	}, sink.PriorityUpdates())
+	require.Equal(t, opsSemanticProgressAggregate{
+		Completed:     2,
+		Failed:        0,
+		Total:         2,
+		Affected:      2,
+		AffectedValid: true,
+	}, reporter.Aggregate())
+}
+
+// TestExplicitLargeWorkSharedAdapterIgnoresCompletionFacts documents that
+// walk-style callers remain frozen-scope progress only until a finite semantic
+// completion boundary is explicitly added for that command family.
+func TestExplicitLargeWorkSharedAdapterIgnoresCompletionFacts(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+	opts := appendExplicitLargeWorkProgressOption(cmd, nil)
+	progress := options.ApplyFacadeOptions(opts).Progress
+	require.NotNil(t, progress)
+
+	affected := 1
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindCompletion,
+		Completion: &options.CompletionProgress{
+			Phase:         "walking process-instance family",
+			Total:         2,
+			Identity:      "child",
+			Disposition:   options.CompletionDispositionConfirmed,
+			AffectedCount: &affected,
+		},
+	})
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindFrozenScope,
+		FrozenScope: &options.FrozenScopeProgress{
+			Phase:        "walking process-instance family",
+			CoreResource: "process instance(s)",
+			Done:         2,
+			Total:        2,
+		},
+	})
+
+	require.Equal(t, []activitysink.Update{{
+		Message:    "walking process-instance family 2/2 process instance(s)",
 		Importance: logging.ActivityImportanceWorkflow,
 	}}, sink.PriorityUpdates())
 }

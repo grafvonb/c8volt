@@ -24,6 +24,8 @@ Started: 2026-08-31T17:14:26Z
 - Retention, orphan, and incident-selected purge tests now prove their destructive execution paths forward process-instance `delete` completion facts from the shared bulk delete service after frozen planning; no new service implementation was needed for T012.
 - Repair service workers now emit `repairing incidents` completion facts from `executeIncidentRepair` at worker return and frozen repair counters increment from the worker callback, not from the post-pool result assembly.
 - Smoke-test service emits high-level completion facts for `deploying smoke-test fixture`, `starting process instances`, `walking process-instance families`, `cleaning up smoke-test process instances`, and `cleaning up smoke-test process definition`; start and cleanup phases mirror nested service completion facts into smoke-test stage phases.
+- Secondary workflow assessment tests now pin bulk-start inclusion, slow-analysis discovery as transient-only, multi-key expect JSON silence, and single-key waiter polling as wait-priority rather than semantic workflow progress.
+- `run process-instance --count` uses a run-specific semantic completion reporter for process-instance creation facts; the shared explicit-large-work adapter remains frozen-scope-only for walk/search-style callers.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -41,6 +43,8 @@ Started: 2026-08-31T17:14:26Z
 - `resourcepayload.ReportDeploymentProcessDefinitionCompletion` carries the full deployment scope total for each visible key; do not call the slice wrapper with a singleton key when the original deployment returned multiple process definitions.
 - `internal/services/ops` test files can reuse `opsCompletionProgressByPhase` from `all_process_definitions_purge_test.go`; `opsIntPtr` is a package test helper for expected completion affected counts.
 - Smoke-test stage completion tests should filter by the smoke-test phase name because nested process-instance/process-definition services still forward their lower-level completion facts to request-owned progress.
+- Bulk-start services emit legacy frozen-scope updates after each completion; the run-specific command adapter keeps those frozen counters durable-only in verbose/debug so they cannot overwrite semantic workflow activity with affected counts.
+- Expect command JSON for successful state reports omits default-valued `key`, `ok`, and `total`; tests should assert the existing envelope contract without requiring those omitted fields.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -62,10 +66,14 @@ Started: 2026-08-31T17:14:26Z
 - `go test ./internal/services/ops -run 'TestRepairIncidentsEmitsWorkerCompletionFactsAtReturnPoints|TestRepairIncidentsCompletionFactsCaptureFailureDetail|TestExecuteSmokeTestEmitsStageCompletionFacts' -race -count=1`
 - `go test ./internal/services/ops/... -run 'Progress|Purge|Repair|Smoke' -race -count=1`
 - `go test ./internal/services/ops -race -count=1`
+- `go test ./cmd ./internal/services/processinstance/waiter -run 'TestRunProcessInstanceBulkStartCompletionUsesSemanticWorkflowActivity|TestExplicitLargeWorkSharedAdapterIgnoresCompletionFacts|TestOpsAnalyseSlowProcessInstancesSearchDiscoveryStaysTransientOnly|TestExpectProcessInstanceCommand_MultiKeyStateJSONRemainsProgressFree|TestWaitForProcessInstanceState_SingleTargetPollingIsNotWorkflowProgress' -race -count=1`
+- `go test ./cmd -run 'RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|ExplicitLargeWork' -race -count=1`
+- `go test ./internal/services/processinstance/waiter -race -count=1`
+- `go test ./cmd -run 'Progress|Activity' -race -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should continue User Story 1 at T014 by adding justified secondary-workflow tests for bulk starts, slow analysis, multi-key expect, and transient-only exclusions; T015, T019, T020, T021, T022, T023, and T024 remain open in US1.
+- Next iteration should continue User Story 1 at T015. Reporter aggregation is already covered by scaffold/concurrency tests, but T015 remains open until the implementation is reviewed against the final US1 requirements before process-definition command wiring in T019; T019, T020, T021, T022, T023, and T024 also remain open in US1.

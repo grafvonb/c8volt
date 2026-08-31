@@ -26,7 +26,6 @@ Started: 2026-08-31 19:14:26
 - `git diff --check`
 - `make test`
 
----
 ## Iteration 1 - 2026-08-31 19:15
 **Work Unit**: Phase 1 setup implementation log
 **Tasks Completed**:
@@ -227,4 +226,25 @@ Started: 2026-08-31 19:14:26
 **Learnings**:
 - Validation passed: `go test ./internal/services/ops -run 'TestRepairIncidentsEmitsWorkerCompletionFactsAtReturnPoints|TestRepairIncidentsCompletionFactsCaptureFailureDetail|TestExecuteSmokeTestEmitsStageCompletionFacts' -race -count=1`, `go test ./internal/services/ops/... -run 'Progress|Purge|Repair|Smoke' -race -count=1`, `go test ./internal/services/ops -race -count=1`, and `git diff --check`.
 - Repair completion facts now come from worker return points; smoke-test stage facts are available by filtering the high-level smoke-test phases from the shared progress stream.
+---
+---
+## Iteration 11 - 2026-08-31 20:26
+**Work Unit**: User Story 1 secondary workflow assessment tests
+**Tasks Completed**:
+- [x] T014: Add justified secondary-workflow tests for bulk starts, slow analysis, and multi-key expect while pinning transient-only exclusions for plain search/watch/walk
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/run_processinstance.go
+- cmd/ops_explicit_large_work_progress.go
+- cmd/run_test.go
+- cmd/ops_analyse_slow_process_instances_progress_test.go
+- cmd/expect_test.go
+- internal/services/processinstance/waiter/waiter_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Bulk-start completion facts now drive semantic workflow activity through a run-specific adapter, while shared explicit-work progress remains frozen-scope-only for walk/search-style callers.
+- Validation passed: `go test ./cmd ./internal/services/processinstance/waiter -run 'TestRunProcessInstanceBulkStartCompletionUsesSemanticWorkflowActivity|TestExplicitLargeWorkSharedAdapterIgnoresCompletionFacts|TestOpsAnalyseSlowProcessInstancesSearchDiscoveryStaysTransientOnly|TestExpectProcessInstanceCommand_MultiKeyStateJSONRemainsProgressFree|TestWaitForProcessInstanceState_SingleTargetPollingIsNotWorkflowProgress' -race -count=1`, `go test ./cmd -run 'RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|ExplicitLargeWork' -race -count=1`, `go test ./internal/services/processinstance/waiter -race -count=1`, `go test ./cmd -run 'Progress|Activity' -race -count=1`, and `git diff --check`.
 ---

@@ -160,6 +160,37 @@ func TestOpsAnalyseSlowProcessInstancesRoutesDefaultProgressToActivity(t *testin
 	}, sink.PriorityUpdates())
 }
 
+// TestOpsAnalyseSlowProcessInstancesSearchDiscoveryStaysTransientOnly documents
+// why discovery pages are excluded from semantic completion aggregation.
+func TestOpsAnalyseSlowProcessInstancesSearchDiscoveryStaysTransientOnly(t *testing.T) {
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	sink := &activitysink.Sink{}
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+		Phase:         "discovering process instances",
+		CurrentPage:   3,
+		PageCount:     ptrInt64(6),
+		PageCountKind: ops.PageCountKindExact,
+		Seen:          2400,
+		Selected:      2397,
+	}})
+
+	require.Empty(t, stdout.String())
+	require.Empty(t, stderr.String())
+	require.Equal(t, []activitysink.Update{{
+		Message:    "discovering process instances, page 3/6, 2400 seen, 2397 selected",
+		Importance: logging.ActivityImportanceWorkflow,
+	}}, sink.PriorityUpdates())
+	require.NotContains(t, sink.Updates()[0], "completed")
+}
+
 // TestOpsAnalyseSlowProcessInstancesDefaultProgressWritesPacedMilestones verifies broad human runs get sparse durable progress after confirmation.
 func TestOpsAnalyseSlowProcessInstancesDefaultProgressWritesPacedMilestones(t *testing.T) {
 	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
