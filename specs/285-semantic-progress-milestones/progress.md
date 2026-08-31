@@ -38,7 +38,6 @@ Started: 2026-08-31 19:14:26
 - specs/285-semantic-progress-milestones/progress.md
 **Learnings**:
 - The active branch and feature artifacts already match issue #285; foundational work begins at T002.
----
 ## Iteration 2 - 2026-08-31 19:19
 **Work Unit**: Phase 2 canonical completion fact and mapping
 **Tasks Completed**:
@@ -281,4 +280,23 @@ Started: 2026-08-31 19:14:26
 **Learnings**:
 - Validation passed: `go test ./cmd -run 'TestProcessDefinitionDeleteSemanticProgressRoutesFacadeCompletion|TestOpsPurgeAllProcessDefinitionsProgressKeepsDiscoverySeparate' -race -count=1`, `go test ./internal/services/processdefinition ./internal/services/ops -run 'DeleteProcessDefinitionResources.*Completion|DeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError|PurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots' -race -count=1`, `go test ./cmd -run 'DeleteProcessDefinition|OpsPurgeAllProcessDefinitions|ProcessDefinitionDeleteSemanticProgress|Progress|Activity' -race -count=1`, `go test ./internal/services/processdefinition ./internal/services/ops -run 'Progress|Delete|PurgeAllProcessDefinitions' -race -count=1`, `go test ./cmd -run 'DeleteProcessDefinition|OpsPurgeAllProcessDefinitions' -race -count=1`, `go test ./internal/services/processdefinition/... ./internal/services/ops/... -race -count=1`, and `git diff --check`.
 - APD discovery page progress remains on the existing renderer; deletion completion facts start or update a separate process-definition deletion reporter.
+---
+---
+## Iteration 14 - 2026-08-31 20:45
+**Work Unit**: User Story 1 deployment command semantic progress reporters
+**Tasks Completed**:
+- [x] T020: Track each returned process definition's first visibility without extra backend requests and emit accepted/confirmed deployment facts
+**Tasks Remaining in Work Unit**: T021-T024 remain in User Story 1
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/deploy_processdefinition.go
+- cmd/deploy_processdefinition_progress.go
+- cmd/deploy_processdefinition_progress_test.go
+- cmd/embed_deploy.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Validation passed: `go test ./cmd -run 'TestProcessDefinitionDeploySemanticProgress|TestAppendProcessDefinitionDeployProgressOptions|TestProcessDefinitionDeleteSemanticProgressRoutesFacadeCompletion|TestOpsPurgeAllProcessDefinitionsProgressKeepsDiscoverySeparate' -race -count=1`, `go test ./internal/services/resource/payload ./internal/services/resource/v87 ./internal/services/resource/v88 ./internal/services/resource/v89 ./internal/services/resource/v810 -run 'Deploy|Visibility|Completion' -race -count=1`, `go test ./cmd -run 'Deploy|ProcessDefinitionDeploy|Progress|Activity' -race -count=1`, `go test ./internal/services/resource/... -race -count=1`, and `git diff --check`.
+- Deployment command reporters are lazy and phase-isolated so v8.7 deployments without process-definition keys stay silent and later `--run` creation completions cannot open a deployment activity.
 ---

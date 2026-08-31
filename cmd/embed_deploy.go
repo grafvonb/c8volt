@@ -74,6 +74,9 @@ var embedDeployCmd = &cobra.Command{
 		tenantCtx := attachCreationTenantContext(cmd, cfg)
 		renderTenantContext(cmd, tenantCtx)
 		opts := collectOptions()
+		deployProgress := newProcessDefinitionDeploySemanticProgress(cmd)
+		defer deployProgress.Close()
+		opts = appendProcessDefinitionDeployProgressOptions(cmd, opts, deployProgress)
 		pdds, err := cli.DeployProcessDefinition(cmd.Context(), units, opts...)
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("deploying embedded resource(s): %w", err))

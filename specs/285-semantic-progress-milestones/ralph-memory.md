@@ -29,6 +29,7 @@ Started: 2026-08-31T17:14:26Z
 - Reporter scope isolation is now pinned directly: completion events for a different phase do not advance aggregate counters or repaint the workflow activity.
 - Basic `delete process-definition` now starts a command-owned semantic deletion reporter after confirmation and passes facade completion progress into `DeleteProcessDefinitions` without changing impact planning or final delete summaries.
 - APD command progress keeps preflight/page discovery on the existing discovery renderer and routes only `delete process definitions` completion facts into a separate deletion reporter; prompted APD deletion eagerly starts after frozen confirmation, while auto-confirmed APD starts lazily on the first deletion completion.
+- `deploy process-definition` and `embed deploy` now install a command-owned deployment reporter plus `WithSuppressWorkflowDetailLogs`; the reporter is lazy because deployment totals arrive in service completion facts after the upload response.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -50,6 +51,7 @@ Started: 2026-08-31T17:14:26Z
 - Expect command JSON for successful state reports omits default-valued `key`, `ok`, and `total`; tests should assert the existing envelope contract without requiring those omitted fields.
 - Process-definition deletion completion reporters intentionally omit affected counts because the service facts do not provide trustworthy per-definition affected deltas.
 - `cmd/delete_processdefinition_progress.go` owns process-definition deletion reporter vocabulary and both facade-level and ops-level completion callback adapters; keep discovery page formatting in APD command progress, not in that helper.
+- Deployment command progress must ignore non-`deploy process definitions` completion phases before constructing the lazy reporter; otherwise v8.7 `--run` follow-up process-instance creation could open a misleading deployment activity.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -75,10 +77,12 @@ Started: 2026-08-31T17:14:26Z
 - `go test ./cmd -run 'RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|ExplicitLargeWork' -race -count=1`
 - `go test ./internal/services/processinstance/waiter -race -count=1`
 - `go test ./cmd -run 'Progress|Activity' -race -count=1`
+- `go test ./cmd -run 'TestProcessDefinitionDeploySemanticProgress|TestAppendProcessDefinitionDeployProgressOptions|TestProcessDefinitionDeleteSemanticProgressRoutesFacadeCompletion|TestOpsPurgeAllProcessDefinitionsProgressKeepsDiscoverySeparate' -race -count=1`
+- `go test ./cmd -run 'Deploy|ProcessDefinitionDeploy|Progress|Activity' -race -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should continue User Story 1 at T020: track each returned process definition's first visibility without extra backend requests and emit accepted/confirmed deployment facts through the deployment command reporters.
+- Next iteration should continue User Story 1 at T021: propagate live deletion completions through retention, orphan, and incident-selected purge requests and command progress.
