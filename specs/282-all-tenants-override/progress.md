@@ -20,7 +20,6 @@ Started: 2026-08-31 08:07:38
 **Learnings**:
 - All implementation owners are in `cmd`; generated docs flow through `make docs-content`, and all four concrete-destination leaves must reject before their current input/client/report side effects.
 ---
----
 ## Iteration 2 - 2026-08-31 08:15
 **Work Unit**: Phase 2 Foundational inherited flag and support resolver
 **Tasks Completed**:
@@ -213,4 +212,20 @@ Started: 2026-08-31 08:07:38
 - specs/282-all-tenants-override/progress.md
 **Learnings**:
 - Root and command help now expose the same all-tenants visibility and destination-rejection wording that runtime validation and capability metadata already enforce.
+---
+---
+## Iteration 11 - 2026-08-31 09:02
+**Work Unit**: US4 integration example all-tenants flag recognition
+**Tasks Completed**:
+- [x] T038: Added inherited boolean root-flag example recognition coverage without value consumption in `integration/cli/examples_test.go`.
+- [x] T043: Registered `all-tenants` as a non-value-consuming inherited root flag in `integration/cli/examples_test.go`.
+**Tasks Remaining in Work Unit**: T039, T044, T045, T046, T047, and T048 remain open in US4.
+**Commit**: This work-unit commit
+**Files Changed**:
+- integration/cli/examples_test.go
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- Example command-path resolution strips leading inherited root flags before alias matching, so boolean inherited flags must be listed in `isRootFlag` only.
 ---

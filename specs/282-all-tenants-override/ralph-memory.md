@@ -22,6 +22,7 @@ Started: 2026-08-31T06:07:38Z
 - `CommandCapability` now serializes additive `allTenantsSupport` while keeping capability document version `v1`; `commandCapabilityForCommand` populates it from `allTenantsSupportForCommand`, and the human `capabilities` summary prints `allTenantsSupport:<value>` beside automation support. Tests in `cmd/command_contract_test.go` and `cmd/capabilities_test.go` cover accepted discovery/direct-key commands and the four rejecting destination leaves.
 - Help source text now documents `--all-tenants` from root and command surfaces: `cmd/root.go` includes a root example for `--all-tenants get process-instance` and the root flag description says it is mutually exclusive with `--tenant`; concrete-destination long help in `cmd/deploy_processdefinition.go`, `cmd/embed_deploy.go`, `cmd/run_processinstance.go`, and `cmd/ops_execute_smoketest.go` says the command does not accept `--all-tenants` because it creates resources in one concrete tenant. Help assertions live in `cmd/root_test.go`, `cmd/deploy_test.go`, `cmd/embed_test.go`, `cmd/run_test.go`, and `cmd/ops_execute_smoke_test_test.go`.
 - Integration example parsing treats inherited root flags in `integration/cli/examples_test.go:isRootFlag`, with value-consuming flags separately listed in `rootFlagConsumesValue`. New boolean inherited flags belong only in `isRootFlag`.
+- `integration/cli/examples_test.go` now recognizes `--all-tenants` and `--all-tenants=false` as inherited root flags without consuming the following command token; `rootFlagConsumesValue` remains unchanged for this boolean flag.
 - Generated CLI docs are owned by `docsgen/main.go` and regenerated with `make docs-content`; it calls Cobra markdown generation, `syncCLICommandTree`, and `syncDocsIndexFromReadme`. Do not hand-edit `docs/cli/*` or `docs/index.md`.
 
 ## Decisions
@@ -40,6 +41,7 @@ Started: 2026-08-31T06:07:38Z
 - `go test ./cmd -run 'Test.*(AllTenants|TenantOverride|TenantContext)' -count=1`
 - `go test ./cmd -run 'Test(CommandCapabilityForCommand_DocumentsTenantContract|CommandCapabilityForCommand_IncludesInheritedAndRequiredFlags|CapabilitiesCommand_JSONOutput|RootHelp_PreservesHumanTaxonomyAndDiscoveryCommand|ProcessInstanceHelp_ExposesCompactGlobalFlags|TenantContext)' -count=1`
 - `go test ./cmd -run 'Test(CommandCapabilityForCommand_DocumentsTenantContract|CommandCapabilityForCommand_IncludesInheritedAndRequiredFlags|CapabilitiesCommand_JSONOutput|RootHelp_PreservesHumanTaxonomyAndDiscoveryCommand|ProcessInstanceHelp_ExposesCompactGlobalFlags|AllTenantsRootFlag|AllTenantsSupportForCommand)' -count=1`
+- `go test -tags integration ./integration/cli -run 'TestAllTenantsExampleRootFlagRecognition' -count=1`
 - `git diff --check`
 - `make docs-content`
 
@@ -49,4 +51,4 @@ Started: 2026-08-31T06:07:38Z
 - Do not implement concrete-destination rejection inside the four command runners after they have already initialized clients, inspected inputs, or built reports.
 
 ## Current Handoff
-- Continue Phase 6 / US4 at task T038: register `all-tenants` as an inherited boolean root flag in `integration/cli/examples_test.go` only in `isRootFlag`, not in `rootFlagConsumesValue`.
+- Continue Phase 6 / US4 at task T039: add generated-page assertions for all-tenants syntax and destination restrictions in `docsgen/main_test.go`.
