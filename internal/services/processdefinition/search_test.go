@@ -184,6 +184,127 @@ func TestCollectProcessDefinitionWatchSnapshotCollectsPagedResults(t *testing.T)
 	require.Equal(t, []string{"pd-a", "pd-b", "pd-c"}, []string{got.Items[0].Key, got.Items[1].Key, got.Items[2].Key})
 }
 
+// TestCollectProcessDefinitionWatchSnapshotSortsBroadPagedResults verifies
+// broad watch snapshots reuse the service paged collection's canonical order.
+func TestCollectProcessDefinitionWatchSnapshotSortsBroadPagedResults(t *testing.T) {
+	t.Parallel()
+
+	var requests []d.ProcessDefinitionPageRequest
+	api := processDefinitionSearchAPIStub{
+		searchProcessDefinitionsPage: func(_ context.Context, filter d.ProcessDefinitionFilter, page d.ProcessDefinitionPageRequest, _ ...services.CallOption) (d.ProcessDefinitionPage, error) {
+			require.Equal(t, d.ProcessDefinitionFilter{}, filter)
+			requests = append(requests, page)
+			switch len(requests) {
+			case 1:
+				return d.ProcessDefinitionPage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					EndCursor:     "cursor-2",
+					Items: []d.ProcessDefinition{
+						processDefinitionForSearchOrder("tenant-b", "invoice", 1, "tenant-b-invoice-v1"),
+						processDefinitionForSearchOrder("tenant-a", "payment", 1, "tenant-a-payment-v1"),
+						processDefinitionForSearchOrder("tenant-a", "invoice", 9, "tenant-a-invoice-v9"),
+					},
+				}, nil
+			case 2:
+				require.Equal(t, "cursor-2", page.After)
+				return d.ProcessDefinitionPage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+					Items: []d.ProcessDefinition{
+						processDefinitionForSearchOrder("tenant-a", "invoice", 10, "2"),
+						processDefinitionForSearchOrder("<default>", "invoice", 10, "default-invoice-v10"),
+						processDefinitionForSearchOrder("tenant-a", "Invoice", 1, "tenant-a-Invoice-v1"),
+						processDefinitionForSearchOrder("tenant-a", "invoice", 10, "10"),
+					},
+				}, nil
+			default:
+				t.Fatalf("unexpected process-definition page request %d", len(requests))
+				return d.ProcessDefinitionPage{}, nil
+			}
+		},
+	}
+
+	got, err := CollectProcessDefinitionWatchSnapshot(context.Background(), api, d.ProcessDefinitionWatchSnapshotRequest{
+		WatchAllWhenUnselected: true,
+		Page:                   d.ProcessDefinitionPageRequest{Size: 3},
+	})
+
+	require.NoError(t, err)
+	require.Len(t, requests, 2)
+	require.EqualValues(t, 7, got.Total)
+	require.EqualValues(t, 2, got.Pages)
+	require.Equal(t, []string{
+		"default-invoice-v10",
+		"tenant-a-Invoice-v1",
+		"10",
+		"2",
+		"tenant-a-invoice-v9",
+		"tenant-a-payment-v1",
+		"tenant-b-invoice-v1",
+	}, processDefinitionSearchKeys(got.Items))
+}
+
+// TestCollectProcessDefinitionWatchSnapshotRetainsCanonicalPositionsWhenStatisticsChange
+// verifies statistics-only refresh changes update row data without affecting order.
+func TestCollectProcessDefinitionWatchSnapshotRetainsCanonicalPositionsWhenStatisticsChange(t *testing.T) {
+	t.Parallel()
+
+	refresh := 0
+	api := processDefinitionSearchAPIStub{
+		searchProcessDefinitionsPage: func(_ context.Context, filter d.ProcessDefinitionFilter, page d.ProcessDefinitionPageRequest, opts ...services.CallOption) (d.ProcessDefinitionPage, error) {
+			require.Equal(t, d.ProcessDefinitionFilter{TenantId: "tenant-a"}, filter)
+			require.True(t, services.ApplyCallOptions(opts).WithStat)
+			refresh++
+			activeBase := int64(refresh * 10)
+			return d.ProcessDefinitionPage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessDefinition{
+					processDefinitionForSearchOrderWithStatistics("tenant-a", "invoice", 10, "2", activeBase+4),
+					processDefinitionForSearchOrderWithStatistics("tenant-a", "payment", 1, "tenant-a-payment-v1", activeBase+5),
+					processDefinitionForSearchOrderWithStatistics("tenant-a", "invoice", 9, "tenant-a-invoice-v9", activeBase+3),
+					processDefinitionForSearchOrderWithStatistics("tenant-a", "Invoice", 1, "tenant-a-Invoice-v1", activeBase+1),
+					processDefinitionForSearchOrderWithStatistics("tenant-a", "invoice", 10, "10", activeBase+2),
+				},
+			}, nil
+		},
+	}
+
+	request := d.ProcessDefinitionWatchSnapshotRequest{
+		Filter: d.ProcessDefinitionFilter{TenantId: "tenant-a"},
+		Page:   d.ProcessDefinitionPageRequest{Size: 1000},
+	}
+	first, err := CollectProcessDefinitionWatchSnapshot(context.Background(), api, request, services.WithStat())
+	require.NoError(t, err)
+	second, err := CollectProcessDefinitionWatchSnapshot(context.Background(), api, request, services.WithStat())
+	require.NoError(t, err)
+
+	wantKeys := []string{
+		"tenant-a-Invoice-v1",
+		"10",
+		"2",
+		"tenant-a-invoice-v9",
+		"tenant-a-payment-v1",
+	}
+	require.Equal(t, wantKeys, processDefinitionSearchKeys(first.Items))
+	require.Equal(t, wantKeys, processDefinitionSearchKeys(second.Items))
+	require.Equal(t, map[string]int64{
+		"tenant-a-Invoice-v1": 11,
+		"10":                  12,
+		"tenant-a-invoice-v9": 13,
+		"2":                   14,
+		"tenant-a-payment-v1": 15,
+	}, processDefinitionSearchActiveByKey(first.Items))
+	require.Equal(t, map[string]int64{
+		"tenant-a-Invoice-v1": 21,
+		"10":                  22,
+		"tenant-a-invoice-v9": 23,
+		"2":                   24,
+		"tenant-a-payment-v1": 25,
+	}, processDefinitionSearchActiveByKey(second.Items))
+}
+
 // TestCollectProcessDefinitionWatchSnapshotDispatchesLatest verifies latest
 // selectors use the existing latest service lookup instead of page traversal.
 func TestCollectProcessDefinitionWatchSnapshotDispatchesLatest(t *testing.T) {
@@ -277,6 +398,18 @@ func processDefinitionForSearchOrder(tenantID, bpmnProcessID string, version int
 	}
 }
 
+// processDefinitionForSearchOrderWithStatistics adds volatile statistics to a
+// canonical-order fixture without making the statistics part of the sort key.
+func processDefinitionForSearchOrderWithStatistics(tenantID, bpmnProcessID string, version int32, key string, active int64) d.ProcessDefinition {
+	definition := processDefinitionForSearchOrder(tenantID, bpmnProcessID, version, key)
+	definition.Statistics = &d.ProcessDefinitionStatistics{
+		Active:                 active,
+		Incidents:              active + 100,
+		IncidentCountSupported: true,
+	}
+	return definition
+}
+
 // processDefinitionSearchKeys extracts the returned service collection identity.
 func processDefinitionSearchKeys(definitions []d.ProcessDefinition) []string {
 	keys := make([]string, 0, len(definitions))
@@ -284,4 +417,17 @@ func processDefinitionSearchKeys(definitions []d.ProcessDefinition) []string {
 		keys = append(keys, definition.Key)
 	}
 	return keys
+}
+
+// processDefinitionSearchActiveByKey records the active count attached to each
+// returned key so tests can assert enrichment moved with its definition.
+func processDefinitionSearchActiveByKey(definitions []d.ProcessDefinition) map[string]int64 {
+	activeByKey := make(map[string]int64, len(definitions))
+	for _, definition := range definitions {
+		if definition.Statistics == nil {
+			continue
+		}
+		activeByKey[definition.Key] = definition.Statistics.Active
+	}
+	return activeByKey
 }

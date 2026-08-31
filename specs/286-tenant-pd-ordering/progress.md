@@ -4,7 +4,6 @@ Feature: 286-tenant-pd-ordering
 Started: 2026-08-31 13:37:23
 
 ---
----
 ## Iteration 9 - 2026-08-31 14:10
 **Work Unit**: US1 Camunda 8.10 ordinary adapter canonical ordering
 **Tasks Completed**:
@@ -178,4 +177,19 @@ Started: 2026-08-31 13:37:23
 - specs/286-tenant-pd-ordering/progress.md
 **Learnings**:
 - Process-definition renderers consume the supplied slice order consistently across human rows, JSON envelope arrays, keys-only lines, and watch refresh bodies.
+---
+---
+## Iteration 12 - 2026-08-31 14:21
+**Work Unit**: US2 service watch snapshot ordering coverage
+**Tasks Completed**:
+- [x] T018: Add watch-snapshot tests proving statistics-only changes retain canonical positions and broad snapshots reuse paged collection order in `internal/services/processdefinition/search_test.go`
+**Tasks Remaining in Work Unit**: 0; US2 has 4 incomplete tasks remaining (T019-T022)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/search_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- Broad process-definition watch snapshots already inherit canonical ordering from the service-owned paged collector; statistics-only refresh changes update per-key statistics without changing the returned key sequence.
 ---

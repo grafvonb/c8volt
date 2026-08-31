@@ -14,6 +14,7 @@ Started: 2026-08-31T11:37:22Z
 - `internal/services/processdefinition/v810/service.go` now manually JSON-encodes Camunda v2 ordinary sort fields `tenantId ASC`, `processDefinitionId ASC`, `version DESC`, `processDefinitionKey ASC` and normalizes `SearchProcessDefinitions` output with `domain.SortProcessDefinitionsCanonical`.
 - `c8volt/process/client_test.go` now includes facade coverage that `SearchProcessDefinitions` preserves the service-provided canonical key sequence while carrying each process definition's statistics through public conversion without cross-key association drift.
 - `cmd/cmd_views_processdefinition_test.go` now uses a five-row canonical renderer fixture and asserts identical process-definition key sequences across list human output, JSON envelope arrays, keys-only output, and watch refresh rendering.
+- `internal/services/processdefinition/search_test.go` now has watch-snapshot service coverage proving broad snapshots reuse the paged canonical collection order and that statistics-only refresh changes retain row positions while updating per-key statistics.
 
 ## Decisions
 - Treat T001 as a validation-only setup work unit; no production code changed in iteration 1.
@@ -26,6 +27,7 @@ Started: 2026-08-31T11:37:22Z
 - T009 and T013 were paired in iteration 8 because the new v8.9 request-sort regression requires the adapter sort tuple and canonical result normalization to pass.
 - T010 and T014 were paired in iteration 9 because the new v8.10 request-sort regression requires the adapter sort tuple and canonical result normalization to pass.
 - T016 was completed as a facade regression test-only work unit; no implementation change was needed because the existing conversion maps the service slice in order and maps statistics from the same element.
+- T018 was completed as a service regression test-only work unit; no production change was needed because broad watch snapshots already delegate to `SearchProcessDefinitionsPages`, whose final result is canonically sorted.
 
 ## Gotchas
 - Shell wrapper note: zsh has special parameters named `status` and `commands`; use neutral variable names or run validation loops under `/bin/bash`.
@@ -45,4 +47,4 @@ Started: 2026-08-31T11:37:22Z
 - Do not use zsh variable names `status` or `commands` in validation-loop scripts.
 
 ## Current Handoff
-- Next iteration starts at US2 T018: add watch-snapshot tests proving statistics-only changes retain canonical positions and broad snapshots reuse paged collection order in `internal/services/processdefinition/search_test.go`; T017 passed `go test ./cmd -run 'Test(ListProcessDefinitionsView|ProcessDefinitionView|ProcessDefinitionWatchView)' -count=1` and `go test ./cmd -run 'Test.*ProcessDefinition.*(Order|Latest|Paging|Stat|JSON|Keys|Watch|XML)|TestCommandContract' -count=1`.
+- Next iteration starts at US2 T019: add repeated-refresh command tests proving count changes do not move process-definition rows in `cmd/get_processdefinition_watch_test.go`; T018 passed `go test ./internal/services/processdefinition -run 'Test.*(SearchProcessDefinitionsPages|Latest|WatchSnapshot|Order)' -count=1`.
