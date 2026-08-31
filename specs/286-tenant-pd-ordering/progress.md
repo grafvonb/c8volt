@@ -4,7 +4,6 @@ Feature: 286-tenant-pd-ordering
 Started: 2026-08-31 13:37:23
 
 ---
-
 ## Iteration 1 - 2026-08-31 13:39
 **Work Unit**: Setup baseline validation
 **Tasks Completed**:
@@ -115,4 +114,21 @@ Started: 2026-08-31 13:37:23
 - specs/286-tenant-pd-ordering/progress.md
 **Learnings**:
 - v8.8 ordinary search uses Camunda v2 `processDefinitionKey` as the final backend tie-breaker; native latest sorting remains intentionally unchanged for later latest tasks.
+---
+---
+## Iteration 8 - 2026-08-31 14:06
+**Work Unit**: US1 Camunda 8.9 ordinary adapter canonical ordering
+**Tasks Completed**:
+- [x] T009: Add Camunda 8.9 ordinary request-sort and returned-order assertions to `internal/services/processdefinition/v89/service_test.go`
+- [x] T013: Encode Camunda 8.9 ordinary backend sorting as tenant ID ASC, process definition ID ASC, version DESC, and process definition key ASC, then use the domain canonical sort for returned collections in `internal/services/processdefinition/v89/service.go`
+**Tasks Remaining in Work Unit**: 0; US1 has 2 incomplete tasks remaining (T010, T014)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/v89/service.go
+- internal/services/processdefinition/v89/service_test.go
+- specs/286-tenant-pd-ordering/tasks.md
+- specs/286-tenant-pd-ordering/ralph-memory.md
+- specs/286-tenant-pd-ordering/progress.md
+**Learnings**:
+- v8.9 ordinary search uses a manually marshalled JSON request body, so request-sort tests decode the raw body and compare literal generated sort field values.
 ---
