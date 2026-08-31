@@ -171,6 +171,31 @@ func (s testResourceDeleteAPI) Delete(ctx context.Context, key string, opts ...s
 	return s.delete(ctx, key, opts...)
 }
 
+type processDefinitionProgressEvents struct {
+	mu     sync.Mutex
+	events []d.OpsProgressEvent
+}
+
+// Append stores progress events safely from concurrent delete workers.
+func (e *processDefinitionProgressEvents) Append(event d.OpsProgressEvent) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.events = append(e.events, event)
+}
+
+// Completions returns completion facts in arrival order.
+func (e *processDefinitionProgressEvents) Completions() []d.OpsCompletionProgress {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	out := make([]d.OpsCompletionProgress, 0, len(e.events))
+	for _, event := range e.events {
+		if event.Kind == d.OpsProgressEventKindCompletion && event.Completion != nil {
+			out = append(out, *event.Completion)
+		}
+	}
+	return out
+}
+
 type unsupportedResourceDeleteAPI struct {
 	testResourceDeleteAPI
 }
@@ -354,6 +379,7 @@ func TestProcessDefinitionPlanTenantEvidenceAggregateOnlyFallbackDoesNotDoubleCo
 // TestDeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError verifies a server-side request-shape mismatch is reported once instead of being repeated for every selected definition.
 func TestDeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError(t *testing.T) {
 	var calls atomic.Int64
+	events := &processDefinitionProgressEvents{}
 	api := testResourceDeleteAPI{
 		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
 			calls.Add(1)
@@ -367,7 +393,15 @@ func TestDeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError(t
 		{Key: "pd-3"},
 	}
 
-	got, err := DeleteProcessDefinitionResources(context.Background(), api, cleanupProcessDefinitionAPI{}, slog.New(slog.NewTextHandler(io.Discard, nil)), plans, 10)
+	got, err := DeleteProcessDefinitionResources(
+		context.Background(),
+		api,
+		cleanupProcessDefinitionAPI{},
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		plans,
+		10,
+		services.WithProgress(events.Append),
+	)
 
 	require.Error(t, err)
 	require.ErrorIs(t, err, d.ErrBadRequest)
@@ -376,6 +410,105 @@ func TestDeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError(t
 	require.Equal(t, int64(1), calls.Load())
 	require.Len(t, got, 1)
 	require.Equal(t, "pd-1", got[0].Key)
+	completions := events.Completions()
+	require.Len(t, completions, 1)
+	require.Equal(t, "delete process definitions", completions[0].Phase)
+	require.Equal(t, "process definition(s)", completions[0].CoreResource)
+	require.Equal(t, 3, completions[0].Total)
+	require.Equal(t, "pd-1", completions[0].Identity)
+	require.Equal(t, d.OpsCompletionDispositionFailed, completions[0].Disposition)
+	require.Contains(t, completions[0].FailureDetail, "deleteHistory")
+	require.Empty(t, completions[0].AffectedResource)
+	require.Nil(t, completions[0].AffectedCount)
+}
+
+// TestDeleteProcessDefinitionResourcesEmitsCompletionFactsForSerialProbeAndRemainder
+// verifies basic process-definition deletion reports the serial first probe and
+// every executed remainder delete as one process-definition completion.
+func TestDeleteProcessDefinitionResourcesEmitsCompletionFactsForSerialProbeAndRemainder(t *testing.T) {
+	events := &processDefinitionProgressEvents{}
+	api := testResourceDeleteAPI{
+		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: 200, Status: "200 OK", BatchOperationKey: "batch-" + key, BatchState: "COMPLETED"}, nil
+		},
+	}
+	plans := []d.DeleteProcessDefinitionPlanItem{
+		{Key: "pd-1"},
+		{Key: "pd-2"},
+		{Key: "pd-3"},
+	}
+
+	got, err := DeleteProcessDefinitionResources(
+		context.Background(),
+		api,
+		&deleteVisibilityProcessDefinitionAPI{},
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		plans,
+		1,
+		services.WithProgress(events.Append),
+	)
+
+	require.NoError(t, err)
+	require.Len(t, got, 3)
+	require.Equal(t, []d.OpsCompletionProgress{
+		{
+			Phase:        "delete process definitions",
+			CoreResource: "process definition(s)",
+			Total:        3,
+			Identity:     "pd-1",
+			Disposition:  d.OpsCompletionDispositionConfirmed,
+		},
+		{
+			Phase:        "delete process definitions",
+			CoreResource: "process definition(s)",
+			Total:        3,
+			Identity:     "pd-2",
+			Disposition:  d.OpsCompletionDispositionConfirmed,
+		},
+		{
+			Phase:        "delete process definitions",
+			CoreResource: "process definition(s)",
+			Total:        3,
+			Identity:     "pd-3",
+			Disposition:  d.OpsCompletionDispositionConfirmed,
+		},
+	}, events.Completions())
+}
+
+// TestDeleteProcessDefinitionResourcesEmitsSubmittedCompletionFactsForNoWait
+// verifies accepted no-wait process-definition deletes are not promoted to a
+// confirmed lifecycle disposition by service progress facts.
+func TestDeleteProcessDefinitionResourcesEmitsSubmittedCompletionFactsForNoWait(t *testing.T) {
+	events := &processDefinitionProgressEvents{}
+	api := testResourceDeleteAPI{
+		delete: func(_ context.Context, key string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			require.True(t, services.ApplyCallOptions(opts).NoWait)
+			return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: 202, Status: "202 Accepted", BatchOperationKey: "batch-" + key}, nil
+		},
+	}
+
+	got, err := DeleteProcessDefinitionResources(
+		context.Background(),
+		api,
+		cleanupProcessDefinitionAPI{},
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		[]d.DeleteProcessDefinitionPlanItem{{Key: "pd-1"}, {Key: "pd-2"}},
+		1,
+		services.WithNoWait(),
+		services.WithProgress(events.Append),
+	)
+
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	completions := events.Completions()
+	require.Len(t, completions, 2)
+	for _, completion := range completions {
+		require.Equal(t, "delete process definitions", completion.Phase)
+		require.Equal(t, "process definition(s)", completion.CoreResource)
+		require.Equal(t, 2, completion.Total)
+		require.Equal(t, d.OpsCompletionDispositionSubmitted, completion.Disposition)
+		require.Empty(t, completion.FailureDetail)
+	}
 }
 
 // TestDeleteProcessDefinitionResourcesWaitsForDefinitionAbsenceAfterBatchCompletion verifies batch completion is not treated as the final visibility proof.

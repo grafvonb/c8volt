@@ -146,3 +146,23 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./cmd -run 'TestProcessInstanceMutationDirectAndStdinKeysUseSemanticCompletionActivity|TestCancelProcessInstanceSearchSelectedUsesSemanticCompletionActivity|TestDeleteProcessInstanceSearchSelectedUsesSemanticCompletionActivity' -race -count=1`, `go test ./cmd -run 'ProcessInstance.*(Progress|SearchSelected|SearchProgress|WorkflowImportance|DryRun_Search|WithPlan)|CancelProcessInstanceSearch|DeleteProcessInstanceSearch' -race -count=1`, `go test ./cmd -run 'Progress|Activity' -race -count=1`, `go test ./cmd -run 'ProcessInstance' -race -count=1`, and `git diff --check`.
 - Process-instance command mutation callbacks now consume service completion facts for live aggregate workflow activity while keeping discovery/planning progress separate.
 ---
+---
+## Iteration 7 - 2026-08-31 19:55
+**Work Unit**: User Story 1 process-definition deletion completion facts
+**Tasks Completed**:
+- [x] T010: Add basic and all-process-definition delete completion tests, including the serial first capability probe and force cleanup
+- [x] T018: Emit completion facts for every basic process-definition deletion, including the serial first probe and concurrent remainder
+**Tasks Remaining in Work Unit**: T011-T015 and T019-T024 remain in User Story 1
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/delete.go
+- internal/services/processdefinition/delete_test.go
+- internal/services/ops/all_process_definitions_purge.go
+- internal/services/ops/all_process_definitions_purge_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Validation passed: `go test ./internal/services/processdefinition ./internal/services/ops -run 'DeleteProcessDefinitionResources.*Completion|DeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError|PurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots' -race -count=1`, `go test ./internal/services/processdefinition ./internal/services/ops -run 'Progress|Delete|PurgeAllProcessDefinitions' -race -count=1`, `go test ./internal/services/processdefinition/... ./internal/services/ops/... -race -count=1`, and `git diff --check`.
+- Process-definition deletion facts are emitted for the serial capability probe and every executed worker; APD request progress now reaches the reused destructive delete path.
+---

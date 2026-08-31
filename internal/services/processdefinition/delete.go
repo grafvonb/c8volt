@@ -32,6 +32,10 @@ type ResourceDeleteCapabilityAPI interface {
 
 // DeleteProcessDefinition deletes one process definition after optional active-instance cleanup.
 func DeleteProcessDefinition(ctx context.Context, api ResourceDeleteAPI, pdApi API, piApi pisvc.API, log *slog.Logger, key string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+	return deleteProcessDefinition(ctx, api, pdApi, piApi, log, key, 1, opts...)
+}
+
+func deleteProcessDefinition(ctx context.Context, api ResourceDeleteAPI, pdApi API, piApi pisvc.API, log *slog.Logger, key string, total int, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
 	if err := requireProcessDefinitionHistoryDeletionSupport(api); err != nil {
 		return d.ResourceDeleteResponse{}, err
 	}
@@ -78,7 +82,9 @@ func DeleteProcessDefinition(ctx context.Context, api ResourceDeleteAPI, pdApi A
 			return d.ResourceDeleteResponse{}, fmt.Errorf("delete process definition process-instance history: %w", err)
 		}
 	}
-	return DeleteProcessDefinitionResourceAndWait(ctx, api, pdApi, log, plan, opts...)
+	resp, err := DeleteProcessDefinitionResourceAndWait(ctx, api, pdApi, log, plan, opts...)
+	reportProcessDefinitionDeleteCompletion(cfg.Progress, plan, resp, err, total, cfg.NoWait)
+	return resp, err
 }
 
 // logProcessDefinitionDeleteResult emits the final resource deletion lifecycle line.
@@ -241,7 +247,7 @@ func DeleteProcessDefinitions(ctx context.Context, api ResourceDeleteAPI, pdApi 
 	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("deleting %d pd", lk), logging.ActivityImportanceBatch)
 	defer stopActivity()
 	rs, err := pool.ExecuteSlice[string, d.ResourceDeleteResponse](ctx, ukeys, nw, cfg.FailFast, func(ctx context.Context, key string, _ int) (d.ResourceDeleteResponse, error) {
-		return DeleteProcessDefinition(ctx, api, pdApi, piApi, log, key, opts...)
+		return deleteProcessDefinition(ctx, api, pdApi, piApi, log, key, lk, opts...)
 	})
 	if !cfg.NoWait && !cfg.SuppressWorkflowDetailLogs {
 		total, oks, noks := resourceDeleteTotals(rs)
@@ -266,6 +272,7 @@ func DeleteProcessDefinitionResources(ctx context.Context, api ResourceDeleteAPI
 	defer stopActivity()
 
 	first, err := DeleteProcessDefinitionResourceAndWait(ctx, api, pdApi, log, plans[0], opts...)
+	reportProcessDefinitionDeleteCompletion(cfg.Progress, plans[0], first, err, lk, cfg.NoWait)
 	if err != nil {
 		if isDeleteHistoryRequestShapeError(err) {
 			return []d.ResourceDeleteResponse{first}, fmt.Errorf("process-definition history deletion is not accepted by this Camunda endpoint; first key %s failed before submitting %d remaining process-definition delete request(s): %w", plans[0].Key, lk-1, err)
@@ -283,7 +290,9 @@ func DeleteProcessDefinitionResources(ctx context.Context, api ResourceDeleteAPI
 	}
 
 	remaining, remainingErr := pool.ExecuteSlice[d.DeleteProcessDefinitionPlanItem, d.ResourceDeleteResponse](ctx, plans[1:], nw, cfg.FailFast, func(ctx context.Context, plan d.DeleteProcessDefinitionPlanItem, _ int) (d.ResourceDeleteResponse, error) {
-		return DeleteProcessDefinitionResourceAndWait(ctx, api, pdApi, log, plan, opts...)
+		resp, err := DeleteProcessDefinitionResourceAndWait(ctx, api, pdApi, log, plan, opts...)
+		reportProcessDefinitionDeleteCompletion(cfg.Progress, plan, resp, err, lk, cfg.NoWait)
+		return resp, err
 	})
 	rs := append([]d.ResourceDeleteResponse{first}, remaining...)
 	err = errors.Join(err, remainingErr)
@@ -292,6 +301,45 @@ func DeleteProcessDefinitionResources(ctx context.Context, api ResourceDeleteAPI
 		log.Info(fmt.Sprintf("pd delete done; requested %d, ok %d, failed %d", total, oks, noks))
 	}
 	return rs, err
+}
+
+func reportProcessDefinitionDeleteCompletion(progress func(d.OpsProgressEvent), plan d.DeleteProcessDefinitionPlanItem, resp d.ResourceDeleteResponse, err error, total int, noWait bool) {
+	if progress == nil || total <= 0 {
+		return
+	}
+	ok := err == nil && resp.Ok
+	completion := d.OpsCompletionProgress{
+		Phase:         "delete process definitions",
+		CoreResource:  "process definition(s)",
+		Total:         total,
+		Identity:      plan.Key,
+		Disposition:   processDefinitionDeleteCompletionDisposition(ok, noWait),
+		FailureDetail: processDefinitionDeleteCompletionFailureDetail(ok, err, resp.Status),
+	}
+	progress(d.OpsProgressEvent{
+		Kind:       d.OpsProgressEventKindCompletion,
+		Completion: &completion,
+	})
+}
+
+func processDefinitionDeleteCompletionDisposition(ok bool, noWait bool) d.OpsCompletionDisposition {
+	if !ok {
+		return d.OpsCompletionDispositionFailed
+	}
+	if noWait {
+		return d.OpsCompletionDispositionSubmitted
+	}
+	return d.OpsCompletionDispositionConfirmed
+}
+
+func processDefinitionDeleteCompletionFailureDetail(ok bool, err error, status string) string {
+	if ok {
+		return ""
+	}
+	if err != nil {
+		return err.Error()
+	}
+	return status
 }
 
 func requireProcessDefinitionHistoryDeletionSupport(api ResourceDeleteAPI) error {
