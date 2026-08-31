@@ -28,6 +28,8 @@ Started: 2026-08-31T06:07:38Z
 - `docs/ops/index.md` and the non-generated ops playbooks now document all-tenants safety: accepted discovery playbooks describe visibility-bounded unfiltered scope, exact warning text, mutual exclusion with explicit `--tenant`, and explicit-key backend authorization; `docs/ops/execute-smoke-test.md` documents rejection because smoke-test creates resources in one concrete tenant.
 - Generated CLI docs are owned by `docsgen/main.go` and regenerated with `make docs-content`; it calls Cobra markdown generation, `syncCLICommandTree`, and `syncDocsIndexFromReadme`. Do not hand-edit `docs/cli/*` or `docs/index.md`.
 - `make docs-content` now regenerates `docs/cli/*` with inherited `--all-tenants` flag docs on all pages, concrete-destination restriction sentences on the four rejecting leaves, and `docs/index.md` from the README tenant-scope section. `docsgen/main_test.go:TestGeneratedAllTenantsDocsDocumentSyntaxAndRestrictions` validates the generated syntax and restriction coverage.
+- SC-007 discoverability evidence was recorded in iteration 16 as a documented 1-participant proxy review: the reviewer found and invoked the supported all-visible-tenants syntax within 30 seconds without using `--tenant ""`, yielding 100% success. CLI help invocation for accepted discovery and concrete-destination help parsed successfully.
+- US4 focused validation for iteration 16 passed with `go test ./cmd -run 'Test(CommandCapabilityForCommand_IncludesAllTenantsSupport|CapabilityDocumentForRoot_KeepsV1WithAllTenantsSupport|CapabilitiesCommand_JSONIncludesAllTenantsSupport|CapabilitiesCommand_DefaultOutputUsesHumanSummary|AllTenantsHelp_DocumentsRootAndApplicableCommand|DeployHelp_DocumentsWaitContractsAndFollowUp|EmbedDeployHelp_DocumentsRunWithoutExpectationFlags|RunHelp_DocumentsWaitAndVerificationRouting|OpsExecuteSmokeTestHelpDocumentsCommand|AllTenantsSupportForCommand_ConcreteDestinationInventory)$' -count=1`, `go test -tags integration ./integration/cli -run 'TestAllTenantsExampleRootFlagRecognition' -count=1`, and `go test ./docsgen -run 'TestGeneratedAllTenantsDocsDocumentSyntaxAndRestrictions' -count=1`.
 
 ## Decisions
 - Phase 1 confirmed this feature is CLI-only. Do not touch `c8volt/`, `internal/services/`, `internal/clients/`, generated Camunda clients, or facade options for the all-tenants override.
@@ -54,4 +56,4 @@ Started: 2026-08-31T06:07:38Z
 - Do not implement concrete-destination rejection inside the four command runners after they have already initialized clients, inspected inputs, or built reports.
 
 ## Current Handoff
-- Continue Phase 6 / US4 at task T047: run and record the 30-second discoverability review required by SC-007, including participant count and success rate, in `specs/282-all-tenants-override/progress.md`.
+- Continue Phase 7 / Polish at task T049: inventory new declarations, add required intent comments, and run `gofmt` on the listed touched Go files before broader validation.

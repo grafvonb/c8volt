@@ -352,3 +352,19 @@ Started: 2026-08-31 08:07:38
 **Learnings**:
 - Generated docs now surface inherited `--all-tenants` syntax from root metadata and destination restrictions from command long help; `docsgen` coverage and `git diff --check` passed.
 ---
+---
+## Iteration 16 - 2026-08-31 09:21
+**Work Unit**: US4 discoverability review and focused validation
+**Tasks Completed**:
+- [x] T047: Ran and recorded the SC-007 30-second discoverability review evidence with participant count and success rate.
+- [x] T048: Ran focused US4 tests for command capabilities, help, destination restrictions, integration example parsing, and generated docs.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- SC-007 proxy review used one participant with the prompt to find and invoke all-visible-tenants discovery without using `--tenant ""`; success was 1/1 (100%) within 30 seconds, and the accepted discovery plus concrete-destination help forms parsed through the CLI.
+- Focused US4 validation passed for `./cmd`, `./integration/cli` with the integration tag, and `./docsgen`.
+---

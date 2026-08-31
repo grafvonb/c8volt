@@ -141,8 +141,8 @@ description: "Dependency-ordered implementation tasks for the all-tenants tenant
 - [x] T044 [P] [US4] Add supported syntax, exact warning, visibility boundary, mutual exclusion, destination restriction, and direct-key behavior to `README.md`
 - [x] T045 [P] [US4] Update all-tenants safety guidance in `docs/ops/index.md`, `docs/ops/analyse-slow-process-instances.md`, `docs/ops/execute-retention-policy.md`, `docs/ops/execute-smoke-test.md`, `docs/ops/purge-all-process-definitions.md`, `docs/ops/purge-orphan-process-instances.md`, `docs/ops/purge-process-instances-with-incidents.md`, `docs/ops/repair-incident.md`, and `docs/ops/repair-process-instance.md`
 - [x] T046 [US4] Regenerate `docs/cli/` and `docs/index.md` from command metadata and `README.md` with `make docs-content`
-- [ ] T047 [US4] Run and record the 30-second discoverability review required by SC-007, including participant count and success rate, in `specs/282-all-tenants-override/progress.md`
-- [ ] T048 [US4] Run focused US4 tests for `cmd/command_contract_test.go`, `cmd/capabilities_test.go`, `cmd/root_test.go`, the four destination test files, `integration/cli/examples_test.go`, and `docsgen/main_test.go`
+- [x] T047 [US4] Run and record the 30-second discoverability review required by SC-007, including participant count and success rate, in `specs/282-all-tenants-override/progress.md`
+- [x] T048 [US4] Run focused US4 tests for `cmd/command_contract_test.go`, `cmd/capabilities_test.go`, `cmd/root_test.go`, the four destination test files, `integration/cli/examples_test.go`, and `docsgen/main_test.go`
 
 **Checkpoint**: US4 is complete when executable behavior, machine capability metadata, help, generated docs, operator docs, and usability evidence all agree.
 
