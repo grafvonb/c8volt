@@ -17,10 +17,15 @@ func SearchProcessDefinitionsPages(ctx context.Context, api API, request d.Proce
 
 	pageReq := request.Page
 	batchSize := pageReq.Size
-	items := make([]d.ProcessDefinition, 0, minPositiveProcessDefinitionSearchSize(batchSize, request.Limit))
+	traversalLimit := request.Limit
+	if request.Latest {
+		traversalLimit = 0
+		request.Filter.IsLatestVersion = true
+	}
+	items := make([]d.ProcessDefinition, 0, minPositiveProcessDefinitionSearchSize(batchSize, traversalLimit))
 	pages := int32(0)
 	for {
-		if processDefinitionSearchLimitReached(len(items), request.Limit) {
+		if processDefinitionSearchLimitReached(len(items), traversalLimit) {
 			break
 		}
 		pageReq.Size = batchSize
@@ -29,11 +34,11 @@ func SearchProcessDefinitionsPages(ctx context.Context, api API, request d.Proce
 			return d.ProcessDefinitionSearchPagesResult{}, err
 		}
 		rawCount := len(page.Items)
-		page.Items = limitProcessDefinitionSearchItems(page.Items, request.Limit, int32(len(items)))
+		page.Items = limitProcessDefinitionSearchItems(page.Items, traversalLimit, int32(len(items)))
 		items = append(items, page.Items...)
 		pages++
 
-		limitReached := processDefinitionSearchLimitReached(len(items), request.Limit)
+		limitReached := processDefinitionSearchLimitReached(len(items), traversalLimit)
 		if visitor != nil {
 			action, err := visitor(d.ProcessDefinitionSearchPageStep{
 				Page:            page,
@@ -56,7 +61,7 @@ func SearchProcessDefinitionsPages(ctx context.Context, api API, request d.Proce
 		pageReq = nextProcessDefinitionSearchPageRequest(pageReq, page, rawCount)
 	}
 	return d.ProcessDefinitionSearchPagesResult{
-		Items: items,
+		Items: finalizeProcessDefinitionSearchItems(items, request),
 		Limit: request.Limit,
 		Pages: pages,
 	}, nil
@@ -73,28 +78,32 @@ func CollectProcessDefinitionWatchSnapshot(ctx context.Context, api API, request
 		}
 		return newProcessDefinitionWatchSnapshot([]d.ProcessDefinition{item}, 1, nil), nil
 	case request.Latest:
-		items, err := api.SearchProcessDefinitionsLatest(ctx, request.Filter, opts...)
-		if err != nil {
-			return d.ProcessDefinitionWatchSnapshot{}, err
-		}
-		return newProcessDefinitionWatchSnapshot(items, 1, nil), nil
-	default:
-		var reportedTotal *d.ProcessDefinitionReportedTotal
-		result, err := SearchProcessDefinitionsPages(ctx, api, d.ProcessDefinitionSearchRequest{
+		return collectProcessDefinitionPagedWatchSnapshot(ctx, api, d.ProcessDefinitionSearchRequest{
 			Filter: request.Filter,
 			Page:   request.Page,
-		}, func(step d.ProcessDefinitionSearchPageStep) (d.ProcessDefinitionSearchPageAction, error) {
-			if reportedTotal == nil && step.Page.ReportedTotal != nil {
-				copied := *step.Page.ReportedTotal
-				reportedTotal = &copied
-			}
-			return d.ProcessDefinitionSearchPageActionContinue, nil
+			Latest: true,
 		}, opts...)
-		if err != nil {
-			return d.ProcessDefinitionWatchSnapshot{}, err
-		}
-		return newProcessDefinitionWatchSnapshot(result.Items, result.Pages, reportedTotal), nil
+	default:
+		return collectProcessDefinitionPagedWatchSnapshot(ctx, api, d.ProcessDefinitionSearchRequest{
+			Filter: request.Filter,
+			Page:   request.Page,
+		}, opts...)
 	}
+}
+
+func collectProcessDefinitionPagedWatchSnapshot(ctx context.Context, api API, request d.ProcessDefinitionSearchRequest, opts ...services.CallOption) (d.ProcessDefinitionWatchSnapshot, error) {
+	var reportedTotal *d.ProcessDefinitionReportedTotal
+	result, err := SearchProcessDefinitionsPages(ctx, api, request, func(step d.ProcessDefinitionSearchPageStep) (d.ProcessDefinitionSearchPageAction, error) {
+		if reportedTotal == nil && step.Page.ReportedTotal != nil {
+			copied := *step.Page.ReportedTotal
+			reportedTotal = &copied
+		}
+		return d.ProcessDefinitionSearchPageActionContinue, nil
+	}, opts...)
+	if err != nil {
+		return d.ProcessDefinitionWatchSnapshot{}, err
+	}
+	return newProcessDefinitionWatchSnapshot(result.Items, result.Pages, reportedTotal), nil
 }
 
 // newProcessDefinitionWatchSnapshot derives count and empty metadata from the
@@ -155,4 +164,54 @@ func nextProcessDefinitionSearchPageRequest(current d.ProcessDefinitionPageReque
 		return next
 	}
 	return next
+}
+
+// sortedProcessDefinitionSearchItems applies final version-neutral ordering
+// after traversal without changing page visitor progress or limit selection.
+func sortedProcessDefinitionSearchItems(items []d.ProcessDefinition) []d.ProcessDefinition {
+	d.SortProcessDefinitionsCanonical(items)
+	return items
+}
+
+func finalizeProcessDefinitionSearchItems(items []d.ProcessDefinition, request d.ProcessDefinitionSearchRequest) []d.ProcessDefinition {
+	if request.Latest {
+		items = latestProcessDefinitionSearchItems(items)
+		items = sortedProcessDefinitionSearchItems(items)
+		return limitProcessDefinitionSearchItems(items, request.Limit, 0)
+	}
+	return sortedProcessDefinitionSearchItems(items)
+}
+
+type processDefinitionLatestGroupKey struct {
+	tenantID      string
+	bpmnProcessID string
+}
+
+func latestProcessDefinitionSearchItems(items []d.ProcessDefinition) []d.ProcessDefinition {
+	latestByGroup := make(map[processDefinitionLatestGroupKey]d.ProcessDefinition, len(items))
+	for _, item := range items {
+		group := processDefinitionLatestGroupKey{
+			tenantID:      item.TenantId,
+			bpmnProcessID: item.BpmnProcessId,
+		}
+		current, ok := latestByGroup[group]
+		if !ok || processDefinitionSearchLatestCandidateLess(item, current) {
+			latestByGroup[group] = item
+		}
+	}
+	out := make([]d.ProcessDefinition, 0, len(latestByGroup))
+	for _, item := range latestByGroup {
+		out = append(out, item)
+	}
+	return out
+}
+
+func processDefinitionSearchLatestCandidateLess(candidate, current d.ProcessDefinition) bool {
+	if candidate.ProcessVersion > current.ProcessVersion {
+		return true
+	}
+	if candidate.ProcessVersion < current.ProcessVersion {
+		return false
+	}
+	return candidate.Key < current.Key
 }

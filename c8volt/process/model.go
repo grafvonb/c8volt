@@ -81,6 +81,7 @@ type ProcessDefinitionSearchRequest struct {
 	Filter ProcessDefinitionFilter      `json:"filter,omitempty"`
 	Page   ProcessDefinitionPageRequest `json:"page,omitempty"`
 	Limit  int32                        `json:"limit,omitempty"`
+	Latest bool                         `json:"latest,omitempty"`
 }
 
 type ProcessDefinitionSearchPageStep struct {

@@ -81,7 +81,9 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 		return nil, err
 	}
 	out := page.Items
-	d.SortByBpmnProcessIdAscThenByVersionDesc(out)
+	// Stats are attached to each definition, so final canonical sorting moves
+	// the enriched definition as one value and preserves per-key association.
+	d.SortProcessDefinitionsCanonical(out)
 
 	common.VerboseLog(ctx, cCfg, s.log, "found process definitions", "count", len(out))
 	return out, nil
@@ -394,6 +396,12 @@ func pickProcessDefinitionOverflowState(page camundav89.SearchQueryPageResponse,
 	if itemCount == 0 {
 		return d.ProcessInstanceOverflowStateNoMore
 	}
+	if req.After != "" {
+		if page.HasMoreTotalItems {
+			return d.ProcessInstanceOverflowStateHasMore
+		}
+		return d.ProcessInstanceOverflowStateNoMore
+	}
 	visibleCount := int64(req.From) + int64(itemCount)
 	if page.TotalItems > visibleCount {
 		return d.ProcessInstanceOverflowStateHasMore
@@ -442,11 +450,11 @@ func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinition
 		asc := camundav89.ASC
 		sort = append(sort,
 			camundav89.ProcessDefinitionSearchQuerySortRequest{
-				Field: camundav89.ProcessDefinitionSearchQuerySortRequestFieldProcessDefinitionId,
+				Field: camundav89.ProcessDefinitionSearchQuerySortRequestFieldTenantId,
 				Order: &asc,
 			},
 			camundav89.ProcessDefinitionSearchQuerySortRequest{
-				Field: camundav89.ProcessDefinitionSearchQuerySortRequestFieldTenantId,
+				Field: camundav89.ProcessDefinitionSearchQuerySortRequestFieldProcessDefinitionId,
 				Order: &asc,
 			},
 		)
@@ -455,11 +463,19 @@ func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinition
 		asc := camundav89.ASC
 		sort = append(sort,
 			camundav89.ProcessDefinitionSearchQuerySortRequest{
+				Field: camundav89.ProcessDefinitionSearchQuerySortRequestFieldTenantId,
+				Order: &asc,
+			},
+			camundav89.ProcessDefinitionSearchQuerySortRequest{
+				Field: camundav89.ProcessDefinitionSearchQuerySortRequestFieldProcessDefinitionId,
+				Order: &asc,
+			},
+			camundav89.ProcessDefinitionSearchQuerySortRequest{
 				Field: camundav89.ProcessDefinitionSearchQuerySortRequestFieldVersion,
 				Order: &desc,
 			},
 			camundav89.ProcessDefinitionSearchQuerySortRequest{
-				Field: camundav89.ProcessDefinitionSearchQuerySortRequestFieldName,
+				Field: camundav89.ProcessDefinitionSearchQuerySortRequestFieldProcessDefinitionKey,
 				Order: &asc,
 			},
 		)

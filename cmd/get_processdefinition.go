@@ -44,6 +44,18 @@ supported. Explicit ` + "`--key`" + ` and XML key lookups are backend-authorized
 c8volt displays returned tenant metadata without rejecting solely because it differs
 from the selected tenant.
 
+Collection order is stable across list, ` + "`--latest`" + `, ` + "`--stat`" + `, JSON, keys-only,
+and watch output: tenant ID ascending, BPMN process ID ascending, version
+descending, then process-definition key ascending. Tenant IDs and BPMN process
+IDs are compared exactly and case-sensitively; ` + "`<default>`" + ` is ordinary text
+for ordering; keys are opaque text and are not parsed numerically.
+
+` + "`--latest`" + ` selects one newest definition per exact tenant ID and BPMN process
+ID pair, using the lowest exact-text process-definition key when versions tie.
+Camunda ` + "`8.7`" + ` applies this latest selection within its existing 1000 visible
+definition compatibility window; Camunda ` + "`8.8`" + ` or newer uses native latest
+filtering and the same final collection order.
+
 Watch mode repaints one terminal view, starting immediately and then waiting
 ` + "`1s`" + ` between refreshes unless ` + "`--watch-interval`" + ` is set. Each refresh body
 matches normal list output without watch-only snapshot labels. Without a selector,
@@ -138,10 +150,8 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 		if len(result.Request.BpmnProcessIds) > 0 {
 			pds = result.MatchesByBpmnProcessID[result.Request.BpmnProcessIds[0]]
 		}
-	} else if !flagGetPDLatest {
-		pds, err = searchProcessDefinitionsWithPaging(cmd, cli, filter)
 	} else {
-		pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter, collectOptions()...)
+		pds, err = searchProcessDefinitionsWithPaging(cmd, cli, filter)
 	}
 	if err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("search process definitions: %w", err))
@@ -158,7 +168,7 @@ func init() {
 	fs := getProcessDefinitionCmd.Flags()
 	fs.StringVarP(&flagGetPDKey, "key", "k", "", "process definition key to fetch")
 	fs.StringVarP(&flagGetPDBpmnProcessId, "bpmn-process-id", "b", "", "BPMN process ID to filter process instances")
-	fs.BoolVar(&flagGetPDLatest, "latest", false, "fetch the latest version(s) of the given BPMN process(s)")
+	fs.BoolVar(&flagGetPDLatest, "latest", false, "only include the latest matching process-definition version per exact tenant/BPMN process group")
 	fs.Int32Var(&flagGetPDProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics; 8.8 or newer includes incident counts, 8.7 unsupported")
@@ -257,6 +267,7 @@ func searchProcessDefinitionsWithPaging(cmd *cobra.Command, cli c8volt.API, filt
 		Page: process.ProcessDefinitionPageRequest{
 			Size: resolveGetProcessDefinitionSearchSize(),
 		},
+		Latest: flagGetPDLatest,
 	}, func(step process.ProcessDefinitionSearchPageStep) (process.ProcessDefinitionSearchPageAction, error) {
 		page := step.Page
 		pageNumber++

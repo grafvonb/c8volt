@@ -67,6 +67,32 @@ func TestProcessDefinitionWatchSnapshotRequestConversionPreservesSelectorFields(
 	}, got)
 }
 
+// TestProcessDefinitionSearchRequestConversionPreservesLatestIntent verifies
+// public paged search can select latest service traversal without schema churn.
+func TestProcessDefinitionSearchRequestConversionPreservesLatestIntent(t *testing.T) {
+	got := toDomainProcessDefinitionSearchRequest(ProcessDefinitionSearchRequest{
+		Filter: ProcessDefinitionFilter{
+			BpmnProcessId:     "invoice",
+			ProcessVersion:    4,
+			ProcessVersionTag: "stable",
+		},
+		Page:   ProcessDefinitionPageRequest{From: 5, Size: 10, After: "cursor-2"},
+		Limit:  3,
+		Latest: true,
+	})
+
+	require.Equal(t, d.ProcessDefinitionSearchRequest{
+		Filter: d.ProcessDefinitionFilter{
+			BpmnProcessId:     "invoice",
+			ProcessVersion:    4,
+			ProcessVersionTag: "stable",
+		},
+		Page:   d.ProcessDefinitionPageRequest{From: 5, Size: 10, After: "cursor-2"},
+		Limit:  3,
+		Latest: true,
+	}, got)
+}
+
 // TestProcessDefinitionWatchSnapshotConversionPreservesPagingMetadata verifies
 // service-collected snapshot counts and reported totals cross the facade boundary.
 func TestProcessDefinitionWatchSnapshotConversionPreservesPagingMetadata(t *testing.T) {

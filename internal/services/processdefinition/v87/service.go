@@ -82,7 +82,7 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 		return nil, err
 	}
 	out := page.Items
-	d.SortByBpmnProcessIdAscThenByVersionDesc(out)
+	d.SortProcessDefinitionsCanonical(out)
 	common.VerboseLog(ctx, cCfg, s.log, "found process definitions", "count", len(out))
 	return out, nil
 }
@@ -119,6 +119,8 @@ func (s *Service) SearchProcessDefinitionsPage(ctx context.Context, filter d.Pro
 	}, nil
 }
 
+// SearchProcessDefinitionsLatest emulates latest process-definition discovery
+// locally over the v8.7 Operate compatibility window of 1000 visible definitions.
 func (s *Service) SearchProcessDefinitionsLatest(ctx context.Context, filter d.ProcessDefinitionFilter, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
 	pds, err := s.SearchProcessDefinitions(ctx, filter, 1000, opts...)
 	if err != nil {
@@ -261,20 +263,58 @@ func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinition
 			VersionTag:    toolx.PtrIf(filter.ProcessVersionTag, ""),
 		},
 		Size: &size,
+		Sort: processDefinitionCanonicalSearchSort(),
 	}
 }
 
+// processDefinitionCanonicalSearchSort requests the strongest v8.7 Operate
+// ordering that matches the version-neutral canonical comparator.
+func processDefinitionCanonicalSearchSort() *[]operatev87.Sort {
+	asc := operatev87.ASC
+	desc := operatev87.DESC
+	sort := []operatev87.Sort{
+		{Field: toolx.Ptr("tenantId"), Order: &asc},
+		{Field: toolx.Ptr("bpmnProcessId"), Order: &asc},
+		{Field: toolx.Ptr("version"), Order: &desc},
+		{Field: toolx.Ptr("key"), Order: &asc},
+	}
+	return &sort
+}
+
+type processDefinitionLatestGroupKey struct {
+	tenantID      string
+	bpmnProcessID string
+}
+
+// latestProcessDefinitions selects one newest process definition per exact
+// tenant/BPMN group, using opaque key text as the deterministic equal-version tie.
 func latestProcessDefinitions(pds []d.ProcessDefinition) []d.ProcessDefinition {
-	latest := make(map[string]d.ProcessDefinition)
+	latest := make(map[processDefinitionLatestGroupKey]d.ProcessDefinition)
 	for _, pd := range pds {
-		if cur, ok := latest[pd.BpmnProcessId]; !ok || pd.ProcessVersion > cur.ProcessVersion {
-			latest[pd.BpmnProcessId] = pd
+		group := processDefinitionLatestGroupKey{
+			tenantID:      pd.TenantId,
+			bpmnProcessID: pd.BpmnProcessId,
+		}
+		if cur, ok := latest[group]; !ok || processDefinitionLatestCandidateLess(pd, cur) {
+			latest[group] = pd
 		}
 	}
 	out := make([]d.ProcessDefinition, 0, len(latest))
 	for _, pd := range latest {
 		out = append(out, pd)
 	}
-	d.SortByBpmnProcessIdAscThenByVersionDesc(out)
+	d.SortProcessDefinitionsCanonical(out)
 	return out
+}
+
+// processDefinitionLatestCandidateLess reports whether candidate wins latest
+// selection over current for the same exact tenant/BPMN group.
+func processDefinitionLatestCandidateLess(candidate, current d.ProcessDefinition) bool {
+	if candidate.ProcessVersion > current.ProcessVersion {
+		return true
+	}
+	if candidate.ProcessVersion < current.ProcessVersion {
+		return false
+	}
+	return candidate.Key < current.Key
 }

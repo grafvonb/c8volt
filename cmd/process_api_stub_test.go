@@ -170,10 +170,21 @@ func (s stubProcessAPI) SearchProcessDefinitionsLatest(ctx context.Context, filt
 }
 
 func (s stubProcessAPI) SearchProcessDefinitionsPages(ctx context.Context, request process.ProcessDefinitionSearchRequest, visitor process.ProcessDefinitionSearchPageVisitor, opts ...options.FacadeOption) (process.ProcessDefinitionSearchPagesResult, error) {
-	if s.searchProcessDefinitionsPages == nil {
-		panic("unexpected call")
+	if s.searchProcessDefinitionsPages != nil {
+		return s.searchProcessDefinitionsPages(ctx, request, visitor, opts...)
 	}
-	return s.searchProcessDefinitionsPages(ctx, request, visitor, opts...)
+	if s.searchProcessDefinitions != nil {
+		pds, err := s.searchProcessDefinitions(ctx, request.Filter, opts...)
+		if err != nil {
+			return process.ProcessDefinitionSearchPagesResult{}, err
+		}
+		items := pds.Items
+		if len(items) == 0 && pds.Total > 0 {
+			items = []process.ProcessDefinition{{}}
+		}
+		return process.ProcessDefinitionSearchPagesResult{Items: items}, nil
+	}
+	panic("unexpected call")
 }
 
 func (s stubProcessAPI) CollectProcessDefinitionWatchSnapshot(ctx context.Context, request process.ProcessDefinitionWatchSnapshotRequest, opts ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {

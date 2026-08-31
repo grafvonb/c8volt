@@ -20,6 +20,18 @@ supported. Explicit `--key` and XML key lookups are backend-authorized admin inp
 c8volt displays returned tenant metadata without rejecting solely because it differs
 from the selected tenant.
 
+Collection order is stable across list, `--latest`, `--stat`, JSON, keys-only,
+and watch output: tenant ID ascending, BPMN process ID ascending, version
+descending, then process-definition key ascending. Tenant IDs and BPMN process
+IDs are compared exactly and case-sensitively; `<default>` is ordinary text
+for ordering; keys are opaque text and are not parsed numerically.
+
+`--latest` selects one newest definition per exact tenant ID and BPMN process
+ID pair, using the lowest exact-text process-definition key when versions tie.
+Camunda `8.7` applies this latest selection within its existing 1000 visible
+definition compatibility window; Camunda `8.8` or newer uses native latest
+filtering and the same final collection order.
+
 Watch mode repaints one terminal view, starting immediately and then waiting
 `1s` between refreshes unless `--watch-interval` is set. Each refresh body
 matches normal list output without watch-only snapshot labels. Without a selector,
@@ -57,7 +69,7 @@ c8volt get process-definition [flags]
   -b, --bpmn-process-id string    BPMN process ID to filter process instances
   -h, --help                      help for process-definition
   -k, --key string                process definition key to fetch
-      --latest                    fetch the latest version(s) of the given BPMN process(s)
+      --latest                    only include the latest matching process-definition version per exact tenant/BPMN process group
       --pd-version int32          process definition version
       --pd-version-tag string     process definition version tag
       --stat                      include process definition statistics; 8.8 or newer includes incident counts, 8.7 unsupported

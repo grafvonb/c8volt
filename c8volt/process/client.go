@@ -60,12 +60,17 @@ func (c *client) SearchProcessDefinitions(ctx context.Context, filter ProcessDef
 	return fromDomainProcessDefinitions(pds), nil
 }
 
+// SearchProcessDefinitionsLatest keeps latest selection on the shared paged
+// service path so traversal, reduction, and final ordering stay consistent.
 func (c *client) SearchProcessDefinitionsLatest(ctx context.Context, filter ProcessDefinitionFilter, opts ...options.FacadeOption) (ProcessDefinitions, error) {
-	pds, err := c.pdApi.SearchProcessDefinitionsLatest(ctx, toDomainProcessDefinitionFilter(filter), options.MapFacadeOptionsToCallOptions(opts)...)
+	result, err := pdsvc.SearchProcessDefinitionsPages(ctx, c.pdApi, d.ProcessDefinitionSearchRequest{
+		Filter: toDomainProcessDefinitionFilter(filter),
+		Latest: true,
+	}, nil, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return ProcessDefinitions{}, ferr.FromDomain(err)
 	}
-	return fromDomainProcessDefinitions(pds), nil
+	return fromDomainProcessDefinitions(result.Items), nil
 }
 
 // SearchProcessDefinitionsPages delegates process-definition traversal and
