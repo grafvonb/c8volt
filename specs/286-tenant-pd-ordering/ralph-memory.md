@@ -42,6 +42,7 @@ Started: 2026-08-31T11:37:22Z
 - `make docs-content` regenerated source-derived process-definition CLI documentation; generated diffs include `docs/cli/c8volt_get_process-definition.md` plus `docs/index.md` mirroring README content and build metadata.
 - `gofmt` over all Go files changed since the `#282` merge base was idempotent; the focused quickstart validation suite passed across domain, shared service, v87-v810 adapters, public process facade, and command tests.
 - Repository static validation `make vet` passed after the focused quickstart suite, running `go vet ./...` against the completed process-definition ordering implementation.
+- Repository full validation `make test` passed after T041, running `go test ./... -race -count=1` against the completed process-definition ordering implementation.
 
 ## Decisions
 - Treat T001 as a validation-only setup work unit; no production code changed in iteration 1.
@@ -70,6 +71,7 @@ Started: 2026-08-31T11:37:22Z
 - T039 was completed as generated documentation only after `make docs-content` and a targeted ordering/latest wording review across README, command help source, and generated CLI docs.
 - T040 was completed as a validation-only work unit because formatting produced no Go diffs and all focused quickstart commands passed.
 - T041 was completed as a validation-only work unit because `make vet` passed without source changes.
+- T042 was completed as a validation-only work unit because the required race-enabled full suite `make test` passed without source changes.
 
 ## Gotchas
 - Shell wrapper note: zsh has special parameters named `status` and `commands`; use neutral variable names or run validation loops under `/bin/bash`.
@@ -89,4 +91,4 @@ Started: 2026-08-31T11:37:22Z
 - Do not use zsh variable names `status` or `commands` in validation-loop scripts.
 
 ## Current Handoff
-- Next iteration should run T042: run the required race-enabled full suite `make test` and resolve failures against `specs/286-tenant-pd-ordering/contracts/process-definition-ordering.md`.
+- Next iteration should run T043: run `git diff --check`, review command-file declaration ownership against `AGENTS.md`, and verify every acceptance item in `specs/286-tenant-pd-ordering/quickstart.md`.
