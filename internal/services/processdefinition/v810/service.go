@@ -92,6 +92,8 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 		return nil, err
 	}
 	out := page.Items
+	// Stats are attached to each definition, so final canonical sorting moves
+	// the enriched definition as one value and preserves per-key association.
 	d.SortProcessDefinitionsCanonical(out)
 
 	common.VerboseLog(ctx, cCfg, s.log, "found process definitions", "count", len(out))
