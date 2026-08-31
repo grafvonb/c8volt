@@ -3,8 +3,6 @@
 Feature: 285-semantic-progress-milestones
 Started: 2026-08-31 19:14:26
 
----
-
 ## Implementation Log
 
 **Branch**: `285-semantic-progress-milestones`
@@ -105,4 +103,22 @@ Started: 2026-08-31 19:14:26
 **Learnings**:
 - Validation passed: `go test ./cmd -run 'TestOpsSemanticProgressReporterAggregatesConcurrentCompletions|TestOpsSemanticProgressReporterInvalidatesAffectedCoverage' -race -count=1`, `go test ./toolx/logging -run 'TestActivityWriter_Workflow' -race -count=1`, `go test ./cmd -run 'TestOpsSemanticProgress' -race -count=1`, `go test ./toolx/logging -race -count=1`, and `git diff --check`.
 - Workflow activity priority now has coverage for lower-priority HTTP/wait updates arriving after the semantic aggregate update.
+---
+---
+## Iteration 5 - 2026-08-31 19:38
+**Work Unit**: User Story 1 process-instance service completion facts
+**Tasks Completed**:
+- [x] T008: Add process-instance create/cancel/delete completion-fact tests covering success, failure, fail-fast unscheduled work, and affected-count availability
+- [x] T016: Emit exactly one structured completion fact from each executed process-instance create/cancel/delete worker and disable legacy timer progress when the callback is installed
+**Tasks Remaining in Work Unit**: T009-T015 and T017-T024 remain in User Story 1
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/bulk.go
+- internal/services/processinstance/bulk_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Validation passed: `go test ./internal/services/processinstance/... -run 'Progress|Cancel|Delete|CreateNProcessInstances' -race -count=1`, `go test ./internal/services/processinstance -race -count=1`, and `git diff --check`.
+- Process-instance completion facts now distinguish submitted, confirmed, failed, nil affected counts, and trustworthy zero while preserving frozen progress and result ordering.
 ---

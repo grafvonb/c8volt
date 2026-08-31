@@ -49,7 +49,7 @@
 ### Tests for User Story 1
 
 - [x] T007 [P] [US1] Add concurrent out-of-order aggregate, affected-coverage invalidation, and workflow-priority activity tests in `cmd/ops_semantic_progress_test.go` and `toolx/logging/activity_test.go`
-- [ ] T008 [P] [US1] Add process-instance create/cancel/delete completion-fact tests covering success, failure, fail-fast unscheduled work, and affected-count availability in `internal/services/processinstance/bulk_test.go`
+- [x] T008 [P] [US1] Add process-instance create/cancel/delete completion-fact tests covering success, failure, fail-fast unscheduled work, and affected-count availability in `internal/services/processinstance/bulk_test.go`
 - [ ] T009 [P] [US1] Add direct-key, stdin-key, and search-selected cancel/delete live-activity tests in `cmd/processinstance_mutation_progress_test.go`, `cmd/cancel_processinstance_selector_test.go`, and `cmd/delete_processinstance_selector_test.go`
 - [ ] T010 [P] [US1] Add basic and all-process-definition delete completion tests, including the serial first capability probe and force cleanup, in `internal/services/processdefinition/delete_test.go` and `internal/services/ops/all_process_definitions_purge_test.go`
 - [ ] T011 [P] [US1] Add per-definition deployment visibility and no-wait acceptance progress tests in a new `internal/services/resource/payload/payload_test.go` and in `internal/services/resource/v87/service_test.go`, `internal/services/resource/v88/service_test.go`, `internal/services/resource/v89/service_test.go`, and `internal/services/resource/v810/service_test.go`
@@ -60,7 +60,7 @@
 ### Implementation for User Story 1
 
 - [ ] T015 [US1] Implement mutex-protected completion ingestion, monotonic completed/failed/affected aggregation, and explicit workflow activity ownership in `cmd/ops_semantic_progress.go`
-- [ ] T016 [US1] Emit exactly one structured completion fact from each executed process-instance create/cancel/delete worker and disable legacy timer progress when the callback is installed in `internal/services/processinstance/bulk.go`
+- [x] T016 [US1] Emit exactly one structured completion fact from each executed process-instance create/cancel/delete worker and disable legacy timer progress when the callback is installed in `internal/services/processinstance/bulk.go`
 - [ ] T017 [US1] Route direct, stdin, and search cancel/delete mutations through the same reporter without changing planning, confirmation, result ordering, or final summaries in `cmd/processinstance_mutation_progress.go`, `cmd/cancel_processinstance.go`, `cmd/cancel_processinstance_selector.go`, `cmd/delete_processinstance.go`, and `cmd/delete_processinstance_selector.go`
 - [ ] T018 [P] [US1] Emit completion facts for every basic process-definition deletion, including the serial first probe and concurrent remainder, in `internal/services/processdefinition/delete.go`
 - [ ] T019 [US1] Start fresh confirmed deletion reporters for basic and all-process-definition commands while leaving discovery pages separate in `cmd/delete_processdefinition.go`, `cmd/ops_purge_all_processdefinitions.go`, and `internal/services/ops/all_process_definitions_purge.go`
