@@ -84,7 +84,7 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 			ReportFormat:           flagOpsExecuteRetentionPolicyReportFormat,
 			StartedAt:              time.Now().UTC(),
 		}
-		configureOpsExecuteRetentionPolicyProgress(cmd, &request)
+		progress := configureOpsExecuteRetentionPolicyProgress(cmd, &request)
 		if err := validateOpsWorkflowReportPathForPlanning(flagOpsExecuteRetentionPolicyReportFile, opsWorkflowReportWriteModeForConfirmedMutation(effectiveAutoConfirm)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
@@ -115,6 +115,7 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 		result, err := executeRetentionPolicyWithCommandActivity(cmd, request, func() (ops.RetentionPolicyResult, error) {
 			return cli.ExecuteRetentionPolicy(cmd.Context(), request, collectOptions()...)
 		})
+		progress.Close()
 		result = attachOpsExecuteRetentionPolicyResultTenantContext(cmd, cfg, result)
 		if err != nil {
 			if reportErr := writeOpsExecuteRetentionPolicyReport(result, cfg, opsExecuteRetentionPolicyReportWriteMode(result)); reportErr != nil {

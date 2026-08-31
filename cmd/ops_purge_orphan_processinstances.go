@@ -70,7 +70,7 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 			ReportFormat: flagOpsPurgeOrphanReportFormat,
 			StartedAt:    time.Now().UTC(),
 		}
-		configureOpsPurgeOrphanProcessInstancesProgress(cmd, &request)
+		progress := configureOpsPurgeOrphanProcessInstancesProgress(cmd, &request)
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
@@ -98,6 +98,7 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 		result, err := purgeOrphanProcessInstancesWithCommandActivity(cmd, request, func() (ops.OrphanPurgeResult, error) {
 			return cli.PurgeOrphanProcessInstances(cmd.Context(), request, collectOptions()...)
 		})
+		progress.Close()
 		result = attachOpsPurgeOrphanProcessInstancesResultTenantContext(cmd, cfg, result)
 		if err != nil {
 			if reportErr := writeOpsPurgeOrphanProcessInstancesReport(result, cfg, opsPurgeOrphanProcessInstancesReportWriteMode(result)); reportErr != nil {

@@ -30,6 +30,7 @@ Started: 2026-08-31T17:14:26Z
 - Basic `delete process-definition` now starts a command-owned semantic deletion reporter after confirmation and passes facade completion progress into `DeleteProcessDefinitions` without changing impact planning or final delete summaries.
 - APD command progress keeps preflight/page discovery on the existing discovery renderer and routes only `delete process definitions` completion facts into a separate deletion reporter; prompted APD deletion eagerly starts after frozen confirmation, while auto-confirmed APD starts lazily on the first deletion completion.
 - `deploy process-definition` and `embed deploy` now install a command-owned deployment reporter plus `WithSuppressWorkflowDetailLogs`; the reporter is lazy because deployment totals arrive in service completion facts after the upload response.
+- Retention, orphan, and incident-selected purge commands now keep discovery/planning progress on the existing ops renderer and route only `delete` completion facts into a lazy process-instance deletion semantic reporter; final reports/results render after the reporter closes.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -52,6 +53,7 @@ Started: 2026-08-31T17:14:26Z
 - Process-definition deletion completion reporters intentionally omit affected counts because the service facts do not provide trustworthy per-definition affected deltas.
 - `cmd/delete_processdefinition_progress.go` owns process-definition deletion reporter vocabulary and both facade-level and ops-level completion callback adapters; keep discovery page formatting in APD command progress, not in that helper.
 - Deployment command progress must ignore non-`deploy process definitions` completion phases before constructing the lazy reporter; otherwise v8.7 `--run` follow-up process-instance creation could open a misleading deployment activity.
+- `cmd/ops_processinstance_purge_progress.go` intentionally suppresses the shared bulk-delete frozen-scope `deleting process instances` line because retention/orphan/incident purge deletion progress is now completion-driven; discovery and planning frozen scopes still render through the existing verbose path.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -85,4 +87,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should continue User Story 1 at T021: propagate live deletion completions through retention, orphan, and incident-selected purge requests and command progress.
+- Next iteration should continue User Story 1 at T022: move repair progress emission to worker return points and expose smoke-test deploy/start/walk/cleanup stage facts in command progress.

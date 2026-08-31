@@ -300,3 +300,25 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./cmd -run 'TestProcessDefinitionDeploySemanticProgress|TestAppendProcessDefinitionDeployProgressOptions|TestProcessDefinitionDeleteSemanticProgressRoutesFacadeCompletion|TestOpsPurgeAllProcessDefinitionsProgressKeepsDiscoverySeparate' -race -count=1`, `go test ./internal/services/resource/payload ./internal/services/resource/v87 ./internal/services/resource/v88 ./internal/services/resource/v89 ./internal/services/resource/v810 -run 'Deploy|Visibility|Completion' -race -count=1`, `go test ./cmd -run 'Deploy|ProcessDefinitionDeploy|Progress|Activity' -race -count=1`, `go test ./internal/services/resource/... -race -count=1`, and `git diff --check`.
 - Deployment command reporters are lazy and phase-isolated so v8.7 deployments without process-definition keys stay silent and later `--run` creation completions cannot open a deployment activity.
 ---
+---
+## Iteration 15 - 2026-08-31 20:51
+**Work Unit**: User Story 1 retention, orphan, and incident-selected purge deletion completion wiring
+**Tasks Completed**:
+- [x] T021: Propagate live deletion completions through retention, orphan, and incident-selected purge requests
+**Tasks Remaining in Work Unit**: T022-T024 remain in User Story 1
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_execute_retention_policy_test.go
+- cmd/ops_processinstance_purge_progress.go
+- cmd/ops_purge_orphan_processinstances.go
+- cmd/ops_purge_orphan_processinstances_test.go
+- cmd/ops_purge_processinstances_with_incidents.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Validation passed: `go test ./cmd -run 'TestOpsExecuteRetentionPolicyProgressContractPendingT066|TestOpsExecuteRetentionPolicyMachineProgressSafetyPendingT066|TestOpsPurgeOrphanProcessInstancesProgressContractPendingT066|TestOpsPurgeOrphanProcessInstancesMachineProgressSafetyPendingT066|TestOpsPurgeProcessInstancesWithIncidentsProgressContractPendingT066|TestOpsPurgeProcessInstancesWithIncidentsMachineProgressSafetyPendingT066' -race -count=1`, `go test ./internal/services/ops -run 'TestExecuteRetentionPolicyPropagatesDeleteCompletionProgress|TestPurgeOrphanProcessInstancesPropagatesDeleteCompletionProgress|TestPurgeProcessInstancesWithIncidentsPropagatesDeleteCompletionProgress' -race -count=1`, `go test ./cmd -run 'Progress|Activity|RetentionPolicy|OrphanProcessInstances|ProcessInstancesWithIncidents' -race -count=1`, `go test ./internal/services/ops/... -run 'Progress|Purge|Retention|Orphan|Incident' -race -count=1`, `go test ./internal/services/processinstance/... -run 'Progress|Cancel|Delete' -race -count=1`, and `git diff --check`.
+- The ops purge services already forwarded request-owned progress into the shared delete service; the command adapter now consumes delete completion facts and suppresses the older bulk-delete frozen-scope line for these purge commands.
+---

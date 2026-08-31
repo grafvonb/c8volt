@@ -90,7 +90,7 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 			ReportFormat:  flagOpsPurgeIncidentReportFormat,
 			StartedAt:     time.Now().UTC(),
 		}
-		configureOpsPurgeProcessInstancesWithIncidentsProgress(cmd, &request)
+		progress := configureOpsPurgeProcessInstancesWithIncidentsProgress(cmd, &request)
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
@@ -121,6 +121,7 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 		result, err := purgeProcessInstancesWithIncidentsWithCommandActivity(cmd, request, func() (ops.IncidentPurgeResult, error) {
 			return cli.PurgeProcessInstancesWithIncidents(cmd.Context(), request, collectOptions()...)
 		})
+		progress.Close()
 		result = attachOpsPurgeProcessInstancesWithIncidentsResultTenantContext(cmd, cfg, result)
 		if err != nil {
 			if reportErr := writeOpsPurgeProcessInstancesWithIncidentsReport(result, cfg, opsPurgeProcessInstancesWithIncidentsReportWriteMode(result)); reportErr != nil {
