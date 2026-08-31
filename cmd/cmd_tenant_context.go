@@ -22,6 +22,7 @@ type tenantOverrideProvenance struct {
 	ConfiguredTenantID string
 	ExplicitTenantID   string
 	Explicit           bool
+	AllTenants         bool
 }
 
 type tenantContextHumanLine struct {
@@ -32,7 +33,7 @@ type tenantContextHumanLine struct {
 // ToContext stores tenant override provenance for human renderers while
 // keeping the public tenant-context schema unchanged.
 func (p tenantOverrideProvenance) ToContext(ctx context.Context) context.Context {
-	if !p.Explicit {
+	if !p.Explicit && !p.AllTenants {
 		return ctx
 	}
 	if ctx == nil {
@@ -263,6 +264,15 @@ func tenantOverrideHumanLines(cmd *cobra.Command, ctx tenant.Context) []tenantCo
 		return nil
 	}
 	provenance := tenantOverrideProvenanceFromCommand(cmd)
+	if provenance.AllTenants {
+		if provenance.ConfiguredTenantID == "" {
+			return nil
+		}
+		return []tenantContextHumanLine{
+			{Text: "configured tenant: " + tenantOverrideConfiguredTenantLabel(provenance.ConfiguredTenantID)},
+			{Text: "--all-tenants overrides the configured tenant filter; selection is unfiltered", Warn: true},
+		}
+	}
 	if !provenance.Explicit || provenance.ConfiguredTenantID == provenance.ExplicitTenantID {
 		return nil
 	}

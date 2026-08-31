@@ -147,9 +147,26 @@ func retrieveAndNormalizeConfig(v *viper.Viper, bindings *resolverBindings) (*co
 	return cfg, nil
 }
 
-// tenantOverrideProvenanceFromConfig captures tenant flag provenance after the
-// resolved config is known without changing the effective config itself.
+// applyAllTenantsOverride clears the post-normalization tenant only when the
+// command-line all-tenants flag actively broadens a named configured filter.
+func applyAllTenantsOverride(cfg *config.Config) tenantOverrideProvenance {
+	if cfg == nil || !flagAllTenants || cfg.App.Tenant == "" {
+		return tenantOverrideProvenance{}
+	}
+	configuredTenantID := cfg.App.Tenant
+	cfg.App.Tenant = ""
+	return tenantOverrideProvenance{
+		ConfiguredTenantID: configuredTenantID,
+		AllTenants:         true,
+	}
+}
+
+// tenantOverrideProvenanceFromConfig captures command-line tenant provenance
+// after config normalization and applies any active all-tenants override.
 func tenantOverrideProvenanceFromConfig(v *viper.Viper, bindings *resolverBindings, cfg *config.Config) tenantOverrideProvenance {
+	if flagAllTenants {
+		return applyAllTenantsOverride(cfg)
+	}
 	explicitTenantID, explicit := bindings.changedFlagValue("app.tenant")
 	if !explicit {
 		return tenantOverrideProvenance{}

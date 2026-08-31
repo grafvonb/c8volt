@@ -166,6 +166,29 @@ func TestTenantContextHumanLinesClassifyTenantOverridesAndAffectedTenants(t *tes
 			},
 		},
 		{
+			name: "all tenants from named config warns before unfiltered scope",
+			provenance: tenantOverrideProvenance{
+				ConfiguredTenantID: "tenant-a",
+				AllTenants:         true,
+			},
+			ctx: newDiscoveryTenantContext(""),
+			want: []tenantContextHumanLine{
+				{Text: "configured tenant: tenant-a"},
+				{Text: "--all-tenants overrides the configured tenant filter; selection is unfiltered", Warn: true},
+				{Text: "selection scope: unfiltered across accessible tenants"},
+			},
+		},
+		{
+			name: "all tenants from already empty config has no override chatter",
+			provenance: tenantOverrideProvenance{
+				AllTenants: true,
+			},
+			ctx: newDiscoveryTenantContext(""),
+			want: []tenantContextHumanLine{
+				{Text: "selection scope: unfiltered across accessible tenants"},
+			},
+		},
+		{
 			name: "multiple tenants use one warning-level affected summary",
 			ctx:  withTenantContextEvidence(newExplicitKeysTenantContext("tenant-a"), []string{"tenant-b", "tenant-a"}, 1),
 			want: []tenantContextHumanLine{
@@ -192,6 +215,26 @@ func TestTenantContextHumanLinesClassifyTenantOverridesAndAffectedTenants(t *tes
 			require.Equal(t, tt.want, tenantContextHumanLines(cmd, tt.ctx))
 		})
 	}
+}
+
+// TestRenderTenantContext_AllTenantsWarningRendersOnce verifies the broadening
+// warning uses the shared render-once guard with the effective unfiltered scope.
+func TestRenderTenantContext_AllTenantsWarningRendersOnce(t *testing.T) {
+	resetTenantContextRenderFlags(t)
+	cmd, buf := newTenantContextRenderTestCommand()
+	cmd.SetContext(tenantOverrideProvenance{
+		ConfiguredTenantID: "tenant-a",
+		AllTenants:         true,
+	}.ToContext(context.Background()))
+	ctx := newDiscoveryTenantContext("")
+
+	renderTenantContext(cmd, ctx)
+	renderTenantContext(cmd, ctx)
+
+	require.Equal(t, ""+
+		"configured tenant: tenant-a\n"+
+		"--all-tenants overrides the configured tenant filter; selection is unfiltered\n"+
+		"selection scope: unfiltered across accessible tenants\n", buf.String())
 }
 
 // TestRenderTenantContextHumanModeLines verifies each operation mode receives
@@ -237,6 +280,10 @@ func TestRenderTenantContextProtectedModesStaySilent(t *testing.T) {
 			resetTenantContextRenderFlags(t)
 			tt.setup()
 			cmd, buf := newTenantContextRenderTestCommand()
+			cmd.SetContext(tenantOverrideProvenance{
+				ConfiguredTenantID: "tenant-a",
+				AllTenants:         true,
+			}.ToContext(context.Background()))
 
 			renderTenantContext(cmd, withTenantContextEvidence(newDiscoveryTenantContext(""), []string{"tenant-a", "tenant-b"}, 1))
 

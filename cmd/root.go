@@ -73,12 +73,13 @@ Use capabilities for the machine-readable command contract.`,
 			}
 			return silenceUsageForError(cmd, bootstrapLocalPrecondition(err))
 		}
+		tenantProvenance := tenantOverrideProvenanceFromConfig(v, bindings, cfg)
 		root := cmd.Root()
 		activityWriter := logging.NewActivityWriterEnabled(root.ErrOrStderr(), indicatorEnabled(cmd, cfg))
 		root.SetErr(activityWriter)
 		cmd.SetErr(activityWriter)
 		ctx := cfg.ToContextWithLogWriter(cmd.Context(), activityWriter)
-		ctx = tenantOverrideProvenanceFromConfig(v, bindings, cfg).ToContext(ctx)
+		ctx = tenantProvenance.ToContext(ctx)
 		ctx = logging.ToActivityContext(ctx, activityWriter)
 		log, err := logging.FromContext(ctx)
 		if err != nil {

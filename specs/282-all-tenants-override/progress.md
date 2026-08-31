@@ -44,3 +44,26 @@ Started: 2026-08-31 08:07:38
 **Learnings**:
 - The new root flag is only registered in Cobra; all-tenants resolver metadata exists but is not yet used for tenant override, destination rejection, or capability serialization.
 ---
+---
+## Iteration 3 - 2026-08-31 08:22
+**Work Unit**: US1 root config override and tenant-context warning
+**Tasks Completed**:
+- [x] T011: Added base/profile/environment, already-empty, explicit-false, absent-flag, and Camunda 8.7 post-normalization override tests in `cmd/root_config_test.go`.
+- [x] T012: Added exact all-tenants warning, configured-tenant ordering, once-only, already-unfiltered, and protected-mode tenant-context tests in `cmd/cmd_views_tenant_context_test.go`.
+- [x] T016: Extended private tenant override provenance with an all-tenants origin and exact broadening warning while preserving public `tenant.Context`.
+- [x] T017: Applied active all-tenants after `retrieveAndNormalizeConfig` by capturing the resolved configured tenant and setting the effective tenant to empty.
+- [x] T018: Invoked the post-normalization override before configuration enters command context or service installation.
+**Tasks Remaining in Work Unit**: T013, T014, T015, and T019 remain open in US1.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/root.go
+- cmd/root_config.go
+- cmd/cmd_tenant_context.go
+- cmd/root_config_test.go
+- cmd/cmd_views_tenant_context_test.go
+- specs/282-all-tenants-override/tasks.md
+- specs/282-all-tenants-override/ralph-memory.md
+- specs/282-all-tenants-override/progress.md
+**Learnings**:
+- `tenantOverrideProvenanceFromConfig` now owns the config mutation for active all-tenants; `go test ./cmd -run 'Test.*(AllTenants|TenantOverride|TenantContext)' -count=1` and `git diff --check` pass, while full `go test ./cmd -count=1` still has the pending US4 help assertion that sees inherited `--all-tenants`.
+---
