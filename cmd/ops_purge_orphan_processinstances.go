@@ -28,12 +28,13 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 	Short: "Purge orphan child process instances",
 	Long: "Purge orphan child process instances.\n\n" +
 		"Tenant contract: orphan purge uses discovery semantics. A named tenant scopes candidate discovery; empty tenant configuration leaves discovery unfiltered and is reported as \"selection scope: unfiltered across accessible tenants\". Explicit --tenant changes are reported before scope, and --tenant \"\" warns when it clears a named configured filter. Frozen plans and audit reports show one known resource tenant informationally, emit one warning-level \"affected tenants\" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.\n\n" +
-		"The workflow discovers child process instances with missing parents, freezes the discovered key set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
+		"The workflow discovers child process instances with missing parents, freezes the discovered key set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. After confirmation, default human output keeps deletion progress on one workflow activity and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-root completion line. JSON and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
 	Example: `  ./c8volt ops purge orphan-process-instances --dry-run
   ./c8volt --tenant tenant-a ops purge orphan-process-instances --dry-run
   ./c8volt --tenant "" ops purge orphan-process-instances --dry-run
   ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id <bpmn-process-id> --limit 25
   ./c8volt ops purge orphan-process-instances --state completed --limit 25
+  ./c8volt --verbose ops purge orphan-process-instances --state completed --limit 25 --auto-confirm
   ./c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md`,
 	Aliases: []string{"orphan-pi", "opi"},
 	Args:    cobra.NoArgs,

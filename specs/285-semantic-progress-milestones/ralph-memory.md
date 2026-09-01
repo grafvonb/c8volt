@@ -55,6 +55,7 @@ Started: 2026-08-31T17:14:26Z
 - Search-selected process-instance cancel/delete planning now owns a transient planning activity scope that stops before destructive or continuation prompts and resumes only when traversal continues; the mutation reporter opens a fresh workflow activity and clock around the actual facade mutation call.
 - User Story 3 validation completed in iteration 6 with lifecycle conversion, direct/stdin/search parity, mode-gate, machine-output, quiet, automation, prompt-boundary, result, report, vocabulary, and broad command-family regression tests passing under `-race`.
 - T043 command cohesion review inventoried #285-added `cmd` declarations, confirmed semantic progress lifecycle ownership stays in focused `*_progress.go` files, added missing purpose comments, and found no required file moves.
+- T044 updated source documentation only: README operator guidance plus affected Cobra help/examples now describe real completion activity, 10-second default milestones, immediate failures, verbose per-item/per-stage lines, quiet failure warnings, and machine-output silence. Generated CLI docs remain intentionally untouched for T045.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -142,4 +143,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Continue Phase 6 at T044: update README and affected command help/examples for operator-facing semantic progress behavior, then leave generated CLI docs for T045.
+- Continue Phase 6 at T045: regenerate CLI documentation with `make docs-content` and verify generated changes under `docs/cli/` and `docs/index.md`; do not hand-edit generated docs.

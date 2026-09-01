@@ -30,6 +30,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		"Tenant contract: --tenant scopes BPMN selector discovery where supported. Empty tenant configuration leaves discovery unfiltered and is reported as \"selection scope: unfiltered across accessible tenants\". Explicit --tenant changes are reported before scope, and --tenant \"\" warns when it clears a named configured filter. Explicit --key and stdin process-definition keys are backend-authorized admin input and report that the tenant filter is not applied; existing impact, confirmation, force, and wait safety checks still apply.\n\n" +
 		"Resolved delete impact shows one known process-definition or nested process-instance tenant informationally, emits one warning-level \"affected tenants\" summary when the frozen scope spans multiple tenants, and warns separately for targets with unknown tenant metadata.\n\n" +
 		"When --bpmn-process-id is set, c8volt validates visible process-definition matches before delete impact planning, confirmation, cancellation, or deletion. A missing selector fails with the shared local diagnostic.\n\n" +
+		"After confirmation, default human output keeps one workflow activity updated from real process-definition deletion completions and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-definition completion line. JSON, keys-only, and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings.\n\n" +
 		"Use --dry-run to preview process-definition delete impact without submitting deletion or cancellation requests.\n\n" +
 		"Use --auto-confirm for unattended destructive runs.",
 	Example: `  ./c8volt delete process-definition --key <process-definition-key> --auto-confirm
@@ -40,6 +41,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
   ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --force
   ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
+  ./c8volt --verbose delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --json
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --keys-only | ./c8volt delete process-definition --auto-confirm -`,
 	Aliases: []string{"pd"},

@@ -103,7 +103,6 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./cmd -run 'ProcessDefinition|Deploy|PurgeAllProcessDefinitions|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 36.355s`.
 - Validation passed: `git diff --check` -> no output.
 ---
----
 ## Iteration 5 - 2026-09-01 07:50
 **Work Unit**: User Story 3 process-instance reporter setup and prompt activity boundaries
 **Tasks Completed**:
@@ -834,5 +833,34 @@ Started: 2026-08-31 19:14:26
 - Reviewed #285-added command declarations with `git diff --unified=0 31f5b2cf^..HEAD -- 'cmd/*.go'` and a focused declaration-comment check; deletion, deployment, expect, slow-analysis, smoke-test, purge, repair, run, and process-instance mutation lifecycle code is already isolated in focused progress files.
 - Added missing purpose comments for #285-added command progress declarations and tests; no reporter lifecycle move was required by the focused-file gate.
 - Validation passed: `go test ./cmd -run 'Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 7.463s`.
+- Validation passed: `git diff --check` -> no output.
+---
+---
+## Iteration 8 - 2026-09-01 08:12
+**Work Unit**: Phase 6 operator-facing semantic progress documentation
+**Tasks Completed**:
+- [x] T044: Update operator-facing progress guidance and affected command help/examples
+**Tasks Remaining in Work Unit**: T045-T049 remain in Phase 6
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cancel_processinstance.go
+- cmd/delete_processdefinition.go
+- cmd/delete_processinstance.go
+- cmd/deploy_processdefinition.go
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_execute_smoketest.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_orphan_processinstances.go
+- cmd/ops_purge_processinstances_with_incidents.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_processinstance.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Source documentation now distinguishes discovery progress from completion-driven work progress and records the mode contract without touching generated CLI docs reserved for T045.
+- Validation passed: `go test ./cmd -run 'CommandCapability|Help|ProcessInstanceSelectorValidationHelpContract|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 7.812s`.
+- Validation passed: `go test ./docsgen -count=1` -> `ok github.com/grafvonb/c8volt/docsgen 0.746s`.
 - Validation passed: `git diff --check` -> no output.
 ---
