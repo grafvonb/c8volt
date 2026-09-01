@@ -134,7 +134,7 @@
 - [x] T046 [P] Review the implemented behavior against `specs/285-semantic-progress-milestones/quickstart.md` and `specs/285-semantic-progress-milestones/contracts/semantic-progress-contract.md`, updating those files only if implementation details changed without weakening the specification
 - [x] T047 Run targeted `-race` tests for all changed packages under `cmd/`, `c8volt/foptions/`, `c8volt/ops/`, `internal/domain/`, `internal/services/processinstance/`, `internal/services/processdefinition/`, `internal/services/resource/`, `internal/services/ops/`, and `toolx/logging/`; record commands/results in `specs/285-semantic-progress-milestones/progress.md`
 - [x] T048 Run `make test` from the repository root and record the full-suite result in `specs/285-semantic-progress-milestones/progress.md`
-- [ ] T049 Review `git diff --check`, confirm changes are scoped to issue #285, mark completed work in `specs/285-semantic-progress-milestones/tasks.md`, and finalize reusable codebase notes in `specs/285-semantic-progress-milestones/progress.md`
+- [x] T049 Review `git diff --check`, confirm changes are scoped to issue #285, mark completed work in `specs/285-semantic-progress-milestones/tasks.md`, and finalize reusable codebase notes in `specs/285-semantic-progress-milestones/progress.md`
 
 ---
 
