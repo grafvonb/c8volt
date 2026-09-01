@@ -4,8 +4,10 @@
 package ops
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"testing"
@@ -16,6 +18,7 @@ import (
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/stretchr/testify/require"
 )
 
@@ -781,6 +784,67 @@ func TestExecuteSmokeTestEmitsExplicitWorkProgress(t *testing.T) {
 	requireSmokeTestProgressContains(t, events, "starting process instances", 2, 2)
 	requireSmokeTestProgressContains(t, events, "walking process-instance families", 0, 2)
 	requireSmokeTestProgressContains(t, events, "walking process-instance families", 2, 2)
+}
+
+// TestExecuteSmokeTestSuppressesLegacyProgressLogsWithStructuredProgress
+// verifies semantic callbacks replace smoke-test stage INFO logs while callers
+// without callbacks keep the legacy diagnostics.
+func TestExecuteSmokeTestSuppressesLegacyProgressLogsWithStructuredProgress(t *testing.T) {
+	run := func(t *testing.T, withProgress bool) string {
+		t.Helper()
+		var logBuf bytes.Buffer
+		log := slog.New(logging.NewPlainHandler(&logBuf, slog.LevelInfo))
+		var events []d.OpsProgressEvent
+		resource := &stubSmokeTestResourceAPI{
+			deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
+				return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
+					ProcessDefinitionId:  "C88_MultipleSubProcessesParent",
+					ProcessDefinitionKey: "pd-88",
+				}}}}, nil
+			},
+		}
+		piAPI := stubProcessInstanceAPI{
+			createProcessInstance: func(_ context.Context, _ d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+				return d.ProcessInstanceCreation{Key: "pi-1"}, nil
+			},
+			familyResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+				return pitraversal.Result{Mode: pitraversal.ModeFamily, StartKey: key, RootKey: key, Keys: []string{key}, Chain: map[string]d.ProcessInstance{key: {Key: key}}, Outcome: pitraversal.OutcomeComplete}, nil
+			},
+		}
+		request := d.SmokeTestRequest{
+			CommandName: "ops execute smoke-test",
+			Count:       1,
+			NoCleanup:   true,
+		}
+		if withProgress {
+			request.Progress = func(event d.OpsProgressEvent) {
+				events = append(events, event)
+			}
+		}
+
+		got, err := NewWithWorkflowDependencies(nil, piAPI, nil, nil, resource, toolx.V88, log).ExecuteSmokeTest(context.Background(), request)
+
+		require.NoError(t, err)
+		require.Equal(t, d.SmokeTestOutcomePassedCleanupSkipped, got.Outcome)
+		if withProgress {
+			require.NotEmpty(t, events)
+		}
+		return logBuf.String()
+	}
+
+	legacyLog := run(t, false)
+	require.Contains(t, legacyLog, "deploy: fixture embedded/processdefinitions/C88_MultipleSubProcessesParent.bpmn")
+	require.Contains(t, legacyLog, "deploy: confirmed process definition pd-88")
+	require.Contains(t, legacyLog, "start: 1 process instance")
+	require.Contains(t, legacyLog, "start: created 1/1")
+	require.Contains(t, legacyLog, "walk: 1 process-instance family")
+	require.Contains(t, legacyLog, "cleanup: skipped (--no-cleanup)")
+
+	structuredLog := run(t, true)
+	require.NotContains(t, structuredLog, "deploy:")
+	require.NotContains(t, structuredLog, "start:")
+	require.NotContains(t, structuredLog, "walk:")
+	require.NotContains(t, structuredLog, "cleanup:")
 }
 
 // TestExecuteSmokeTestEmitsStageCompletionFacts verifies the smoke-test

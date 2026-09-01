@@ -596,3 +596,27 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./cmd -run 'Embed|Deploy|ProcessInstance|ProcessDefinition|RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|PurgeAllProcessDefinitions' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 72.798s`.
 - Validation passed: `git diff --check` -> no output.
 ---
+---
+## Iteration 28 - 2026-09-01 06:48
+**Work Unit**: User Story 2 legacy progress suppression
+**Tasks Completed**:
+- [x] T034: Suppress legacy process-instance timer and smoke-test informational progress whenever structured semantic progress is installed while retaining it for non-callback callers
+**Tasks Remaining in Work Unit**: T035 remains in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/bulk_test.go
+- internal/services/ops/smoke_test_service.go
+- internal/services/ops/smoke_test_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Process-instance bulk timer progress was already suppressed when a structured progress callback is installed; new service coverage pins that the ordinary final summary remains available for non-suppressed callers.
+- Smoke-test legacy stage INFO logs are now gated off when `SmokeTestRequest.Progress` is present, preserving the logs for non-callback callers and leaving structured progress events unchanged.
+- Validation passed: `go test ./internal/services/processinstance ./internal/services/ops -run 'TestDeleteProcessInstancesProgressCallbackSuppressesLegacyTimer|TestExecuteSmokeTestSuppressesLegacyProgressLogsWithStructuredProgress' -count=1` -> `ok` for both packages.
+- Validation passed: `go test ./internal/services/processinstance -run 'Progress|Cancel|Delete|CreateNProcessInstances|SuppressesLegacy|LogsProgress|LogsSlowRoot' -race -count=1` -> `ok github.com/grafvonb/c8volt/internal/services/processinstance 1.846s`.
+- Validation passed: `go test ./internal/services/ops -run 'Smoke|Progress' -race -count=1` -> `ok github.com/grafvonb/c8volt/internal/services/ops 1.453s`.
+- Validation passed: `go test ./internal/services/processinstance/... -run 'Progress|Cancel|Delete|CreateNProcessInstances|SuppressesLegacy|LogsProgress|LogsSlowRoot' -race -count=1` -> all processinstance packages `ok`.
+- Validation passed: `go test ./internal/services/ops/... -run 'Progress|Smoke' -race -count=1` -> `ok github.com/grafvonb/c8volt/internal/services/ops 1.754s`.
+- Validation passed: `git diff --check` -> no output.
+---

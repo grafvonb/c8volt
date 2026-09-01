@@ -44,6 +44,7 @@ Started: 2026-08-31T17:14:26Z
 - The shared `opsProgressMilestonePacer` now serializes mutable signature and timestamp state with a mutex so concurrent command progress callbacks cannot race or emit multiple durable lines for one elapsed window.
 - T032 was validated as already implemented by the US2 test-first slices: aggregate and completion formatting live in `cmd/ops_progress_render.go`, while activity-aware durable emission, immediate failure warnings, verbose replacement, and idempotent final flush live in `cmd/ops_semantic_progress.go`.
 - Semantic reporters now close immediately after their owning facade call returns, before error handling, final result/report rendering, or follow-up facade calls. Keep this explicit close-order for process-instance mutations, process-definition deletion/deployment, APD purge, bulk run, slow analysis, expect, and embedded deployment.
+- T034 pins duplicate legacy suppression in the service layer: process-instance bulk timer progress stays disabled whenever a structured progress callback is installed, while final summaries remain controlled by the existing suppression flags; smoke-test `deploy:`, `start:`, `walk:`, and `cleanup:` INFO lines now emit only for non-callback, non-dry-run, non-JSON callers.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -127,4 +128,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T034: suppress legacy process-instance timer and smoke-test informational progress whenever structured semantic progress is installed while retaining it for non-callback callers in `internal/services/processinstance/bulk.go` and `internal/services/ops/smoke_test_service.go`.
+- Next iteration should finish User Story 2 at T035: run the US2 fake-clock, activity, and required command-family milestone tests with `-race` and record exact results in `specs/285-semantic-progress-milestones/progress.md`.

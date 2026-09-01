@@ -216,7 +216,7 @@ func smokeTestProgressf(log *slog.Logger, request d.SmokeTestRequest, format str
 }
 
 func smokeTestShouldLogProgress(request d.SmokeTestRequest) bool {
-	return !request.DryRun && !strings.EqualFold(request.OutputMode, "json")
+	return !request.DryRun && request.Progress == nil && !strings.EqualFold(request.OutputMode, "json")
 }
 
 func smokeTestDeploymentIdentity(deployment d.SmokeTestDeploymentResult) string {
