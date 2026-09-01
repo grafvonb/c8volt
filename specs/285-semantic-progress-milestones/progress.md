@@ -551,3 +551,20 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./cmd -run 'TestOpsSemanticProgressReporter|TestOpsProgressDurableMilestone|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 7.219s`.
 - Validation passed: `git diff --check` -> no output.
 ---
+---
+## Iteration 26 - 2026-09-01 06:33
+**Work Unit**: User Story 2 semantic progress rendering implementation
+**Tasks Completed**:
+- [x] T032: Implement compact aggregate, per-item lifecycle, affected-count, immediate failure, and final-flush rendering on the activity-aware diagnostic path
+**Tasks Remaining in Work Unit**: T033-T035 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- The rendering paths required by T032 were already present from the preceding US2 test-first slices; this iteration validated the compact aggregate, verbose item replacement, immediate warning, affected-count gating, and final-flush behavior directly under `-race`.
+- Validation passed: `go test ./cmd -run 'TestOpsSemanticProgressReporter|TestFormatOpsSemanticProgressAggregate|TestPrintOpsDurableLineDirect|TestOpsProgressDurableMilestone' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.779s`.
+- Validation passed: `go test ./cmd -run 'TestProcessInstanceMutationSemanticProgressVerboseItemsSuppressAggregateMilestones|TestProcessInstanceMutationSemanticProgressFailureWarnsImmediatelyAndFlushes|TestDeleteProcessDefinitionSemanticProgressDefaultMilestonesAndFinalFlush|TestDeployProcessDefinitionSemanticProgressVerboseItemsReplaceMilestones|TestOpsPurgeAllProcessDefinitionsDeletionMilestonesStaySeparateFromDiscovery|TestOpsExecuteRetentionPolicyDefaultDeletionMilestonesAndFinalFlush|TestOpsPurgeOrphanProcessInstancesDefaultDeletionMilestonesOmitUnknownAffected|TestOpsPurgeProcessInstancesWithIncidentsVerboseDeletionReplacesMilestones|TestOpsRepairIncidentDefaultFailureWarnsAndFlushes|TestOpsRepairProcessInstanceQuietProgressShowsOnlyFailureWarning|TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation|TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush|TestOpsAnalyseSlowProcessInstancesSemanticCompletionMilestones|TestExpectProcessInstanceDefaultMilestonesAndFinalFlush' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 2.245s`.
+- Validation passed: `git diff --check` -> no output.
+---

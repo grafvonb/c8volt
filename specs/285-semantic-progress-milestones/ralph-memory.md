@@ -42,6 +42,7 @@ Started: 2026-08-31T17:14:26Z
 - Process-definition delete and deployment semantic progress wrappers now accept command-local clock hooks for deterministic milestone tests; production behavior still defaults to `time.Now`.
 - T029 pins basic process-definition deletion default aggregate milestone/final flush, deployment verbose per-definition replacement, and APD deletion milestones staying separate from transient discovery progress.
 - The shared `opsProgressMilestonePacer` now serializes mutable signature and timestamp state with a mutex so concurrent command progress callbacks cannot race or emit multiple durable lines for one elapsed window.
+- T032 was validated as already implemented by the US2 test-first slices: aggregate and completion formatting live in `cmd/ops_progress_render.go`, while activity-aware durable emission, immediate failure warnings, verbose replacement, and idempotent final flush live in `cmd/ops_semantic_progress.go`.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -124,4 +125,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T032: implement compact aggregate, per-item lifecycle, affected-count, immediate failure, and final-flush rendering on the activity-aware diagnostic path in `cmd/ops_progress_render.go` and `cmd/ops_semantic_progress.go`.
+- Next iteration should continue User Story 2 at T033: wire reporter finish around every eligible facade call and ensure planning scopes stop before prompts in `cmd/processinstance_mutation_progress.go`, `cmd/delete_processdefinition.go`, `cmd/deploy_processdefinition.go`, `cmd/ops_purge_all_processdefinitions.go`, `cmd/ops_processinstance_purge_progress.go`, `cmd/ops_repair_progress.go`, `cmd/ops_explicit_large_work_progress.go`, `cmd/run_processinstance.go`, `cmd/ops_analyse_slow_process_instances_progress.go`, and `cmd/expect_processinstance.go`.
