@@ -96,12 +96,12 @@ func deleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	}
 
 	semanticReporter := newProcessInstanceMutationSemanticReporter(cmd, "delete", impact)
-	defer semanticReporter.Close()
 	opts := append(compactProcessInstanceMutationOptions(collectOptions()),
 		processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)),
 		processOptions.WithProgress(processInstanceMutationSemanticProgressCallback(semanticReporter)),
 	)
 	reports, err := cli.DeleteProcessInstances(cmd.Context(), plan.Roots, flagWorkers, opts...)
+	semanticReporter.Close()
 	if err != nil {
 		return processInstancePageActionResults{}, fmt.Errorf("delete process instances: %w", err)
 	}

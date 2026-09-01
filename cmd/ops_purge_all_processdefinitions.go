@@ -75,7 +75,6 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			StartedAt:     time.Now().UTC(),
 		}
 		deletionProgress := newProcessDefinitionDeleteSemanticProgress(cmd, 0)
-		defer deletionProgress.Close()
 		configureOpsPurgeAllProcessDefinitionsProgress(cmd, &request, deletionProgress)
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
@@ -108,6 +107,7 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 		result, err := purgeAllProcessDefinitionsWithCommandActivity(cmd, request, func() (ops.AllProcessDefinitionsPurgeResult, error) {
 			return cli.PurgeAllProcessDefinitions(cmd.Context(), request, collectOptions()...)
 		})
+		deletionProgress.Close()
 		result = attachOpsPurgeAllProcessDefinitionsResultTenantContext(cmd, cfg, result)
 		if err != nil {
 			if reportErr := writeOpsPurgeAllProcessDefinitionsReport(result, cfg, opsPurgeAllProcessDefinitionsReportWriteMode(result)); reportErr != nil {

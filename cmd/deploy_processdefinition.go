@@ -47,9 +47,9 @@ var deployProcessDefinitionCmd = &cobra.Command{
 		log.Debug(fmt.Sprintf("deploying pd; tenant %s", cfg.App.ViewTenant()))
 		opts := collectOptions()
 		deployProgress := newProcessDefinitionDeploySemanticProgress(cmd)
-		defer deployProgress.Close()
 		opts = appendProcessDefinitionDeployProgressOptions(cmd, opts, deployProgress)
 		pdds, err := cli.DeployProcessDefinition(cmd.Context(), res, opts...)
+		deployProgress.Close()
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("deploying process definition(s): %w", err))
 		}

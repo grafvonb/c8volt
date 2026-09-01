@@ -134,9 +134,9 @@ var runProcessInstanceCmd = &cobra.Command{
 		}
 		fopts = append(fopts, foptions.WithSuppressWorkflowDetailLogs())
 		runProgress := newRunProcessInstanceSemanticProgressReporter(cmd, flagRunPICount)
-		defer runProgress.Close()
 		fopts = appendRunProcessInstanceProgressOption(cmd, fopts, runProgress)
 		created, err := cli.CreateNProcessInstances(cmd.Context(), datas[0], flagRunPICount, flagWorkers, fopts...)
+		runProgress.Close()
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("running %d process instances for %s: %w", flagRunPICount, contextForErr, err))
 		}

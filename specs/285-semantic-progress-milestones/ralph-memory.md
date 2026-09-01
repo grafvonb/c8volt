@@ -43,6 +43,7 @@ Started: 2026-08-31T17:14:26Z
 - T029 pins basic process-definition deletion default aggregate milestone/final flush, deployment verbose per-definition replacement, and APD deletion milestones staying separate from transient discovery progress.
 - The shared `opsProgressMilestonePacer` now serializes mutable signature and timestamp state with a mutex so concurrent command progress callbacks cannot race or emit multiple durable lines for one elapsed window.
 - T032 was validated as already implemented by the US2 test-first slices: aggregate and completion formatting live in `cmd/ops_progress_render.go`, while activity-aware durable emission, immediate failure warnings, verbose replacement, and idempotent final flush live in `cmd/ops_semantic_progress.go`.
+- Semantic reporters now close immediately after their owning facade call returns, before error handling, final result/report rendering, or follow-up facade calls. Keep this explicit close-order for process-instance mutations, process-definition deletion/deployment, APD purge, bulk run, slow analysis, expect, and embedded deployment.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -78,6 +79,7 @@ Started: 2026-08-31T17:14:26Z
 - T030 added package-level clock hooks for process-instance purge, repair, smoke-test, run, slow-analysis enrichment, and multi-key expect semantic reporters; tests that override them must not run in parallel.
 - Lazy semantic wrappers start their pacing clock on the first matching completion fact, so default milestone tests should send an initial completion before advancing the fake clock by `opsDurableMilestoneMinimumElapsed`; eager run/expect reporters start pacing at construction.
 - `newOpsProgressMilestonePacer` captures its starting timestamp at construction; fake-clock tests must construct it before advancing the clock to the first 10-second milestone.
+- Avoid command-scope `defer reporter.Close()` for semantic reporters around facade calls that may render results, write reports, run follow-up work, or call exit-style error handlers afterward; close explicitly before those branches.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -125,4 +127,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T033: wire reporter finish around every eligible facade call and ensure planning scopes stop before prompts in `cmd/processinstance_mutation_progress.go`, `cmd/delete_processdefinition.go`, `cmd/deploy_processdefinition.go`, `cmd/ops_purge_all_processdefinitions.go`, `cmd/ops_processinstance_purge_progress.go`, `cmd/ops_repair_progress.go`, `cmd/ops_explicit_large_work_progress.go`, `cmd/run_processinstance.go`, `cmd/ops_analyse_slow_process_instances_progress.go`, and `cmd/expect_processinstance.go`.
+- Next iteration should continue User Story 2 at T034: suppress legacy process-instance timer and smoke-test informational progress whenever structured semantic progress is installed while retaining it for non-callback callers in `internal/services/processinstance/bulk.go` and `internal/services/ops/smoke_test_service.go`.

@@ -145,10 +145,10 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		}
 		deletionProgress := newProcessDefinitionDeleteSemanticProgress(cmd, len(keys))
 		deletionProgress.Start(len(keys))
-		defer deletionProgress.Close()
 		deleteOpts := append([]foptions.FacadeOption{}, callOpts...)
 		deleteOpts = append(deleteOpts, foptions.WithProgress(deletionProgress.FacadeProgress))
 		reports, err := cli.DeleteProcessDefinitions(cmd.Context(), keys, flagWorkers, deleteOpts...)
+		deletionProgress.Close()
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("deleting process definition(s): %w", err))
 		}

@@ -568,3 +568,31 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./cmd -run 'TestProcessInstanceMutationSemanticProgressVerboseItemsSuppressAggregateMilestones|TestProcessInstanceMutationSemanticProgressFailureWarnsImmediatelyAndFlushes|TestDeleteProcessDefinitionSemanticProgressDefaultMilestonesAndFinalFlush|TestDeployProcessDefinitionSemanticProgressVerboseItemsReplaceMilestones|TestOpsPurgeAllProcessDefinitionsDeletionMilestonesStaySeparateFromDiscovery|TestOpsExecuteRetentionPolicyDefaultDeletionMilestonesAndFinalFlush|TestOpsPurgeOrphanProcessInstancesDefaultDeletionMilestonesOmitUnknownAffected|TestOpsPurgeProcessInstancesWithIncidentsVerboseDeletionReplacesMilestones|TestOpsRepairIncidentDefaultFailureWarnsAndFlushes|TestOpsRepairProcessInstanceQuietProgressShowsOnlyFailureWarning|TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation|TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush|TestOpsAnalyseSlowProcessInstancesSemanticCompletionMilestones|TestExpectProcessInstanceDefaultMilestonesAndFinalFlush' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 2.245s`.
 - Validation passed: `git diff --check` -> no output.
 ---
+---
+## Iteration 27 - 2026-09-01 06:42
+**Work Unit**: User Story 2 reporter finish lifecycle wiring
+**Tasks Completed**:
+- [x] T033: Wire reporter finish around every eligible facade call and ensure planning scopes stop before prompts
+**Tasks Remaining in Work Unit**: T034-T035 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/delete_processdefinition.go
+- cmd/delete_processinstance.go
+- cmd/delete_processinstance_selector.go
+- cmd/deploy_processdefinition.go
+- cmd/embed_deploy.go
+- cmd/expect_processinstance.go
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/run_processinstance.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Semantic reporter close calls now run immediately after the facade call that owns the completion stream, so final flushes happen before error handling, result/report rendering, or follow-up work.
+- Validation passed: `go test ./cmd -run 'TestProcessInstanceMutationSemanticProgressVerboseItemsSuppressAggregateMilestones|TestProcessInstanceMutationSemanticProgressFailureWarnsImmediatelyAndFlushes|TestDeleteProcessDefinitionSemanticProgressDefaultMilestonesAndFinalFlush|TestDeployProcessDefinitionSemanticProgressVerboseItemsReplaceMilestones|TestOpsPurgeAllProcessDefinitionsDeletionMilestonesStaySeparateFromDiscovery|TestOpsExecuteRetentionPolicyDefaultDeletionMilestonesAndFinalFlush|TestOpsPurgeOrphanProcessInstancesDefaultDeletionMilestonesOmitUnknownAffected|TestOpsPurgeProcessInstancesWithIncidentsVerboseDeletionReplacesMilestones|TestOpsRepairIncidentDefaultFailureWarnsAndFlushes|TestOpsRepairProcessInstanceQuietProgressShowsOnlyFailureWarning|TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation|TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush|TestOpsAnalyseSlowProcessInstancesSemanticCompletionMilestones|TestExpectProcessInstanceDefaultMilestonesAndFinalFlush' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 2.479s`.
+- Validation passed: `go test ./cmd -run 'ProcessInstance|ProcessDefinition|Deploy|PurgeAllProcessDefinitions|RetentionPolicy|OrphanProcessInstances|ProcessInstancesWithIncidents|Repair|Smoke|RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 80.283s`.
+- Validation passed: `go test ./cmd -run 'Embed|Deploy|ProcessInstance|ProcessDefinition|RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|PurgeAllProcessDefinitions' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 72.798s`.
+- Validation passed: `git diff --check` -> no output.
+---

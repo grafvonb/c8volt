@@ -91,10 +91,10 @@ var expectProcessInstanceCmd = &cobra.Command{
 		}
 		expectOpts := collectExplicitPIAdminInputOptions()
 		expectProgress := newExpectProcessInstanceSemanticProgress(cmd, len(keys))
-		defer expectProgress.Close()
 		expectOpts = appendExpectProcessInstanceProgressOption(expectOpts, expectProgress)
 		if incidentSet {
 			reports, err := cli.WaitForProcessInstancesExpectation(cmd.Context(), keys, expectation, flagWorkers, expectOpts...)
+			expectProgress.Close()
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("expecting process instance: %w", err))
 			}
@@ -113,6 +113,7 @@ var expectProcessInstanceCmd = &cobra.Command{
 			return
 		}
 		reports, err := cli.WaitForProcessInstancesState(cmd.Context(), keys, states, flagWorkers, expectOpts...)
+		expectProgress.Close()
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("expecting process instance: %w", err))
 		}
