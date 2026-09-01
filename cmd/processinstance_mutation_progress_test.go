@@ -8,6 +8,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -635,6 +636,87 @@ func requireProcessInstanceMutationSemanticActivity(t *testing.T, sink *activity
 	require.Contains(t, update.Message, label)
 	require.NotContains(t, update.Message, identity+" "+verb)
 	require.GreaterOrEqual(t, sink.Stopped(), 1)
+}
+
+// TestProcessInstanceMutationSemanticProgressVerboseItemsSuppressAggregateMilestones
+// verifies process-instance mutation adapters use verbose per-root completion
+// lines instead of paced aggregate milestone duplicates.
+func TestProcessInstanceMutationSemanticProgressVerboseItemsSuppressAggregateMilestones(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagVerbose = true
+	now := time.Date(2026, 9, 1, 6, 0, 0, 0, time.UTC)
+	processInstanceMutationSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { processInstanceMutationSemanticProgressNow = time.Now })
+
+	cmd := &cobra.Command{}
+	stderr := &bytes.Buffer{}
+	cmd.SetErr(stderr)
+	reporter := newProcessInstanceMutationSemanticReporter(cmd, "delete", processInstancePageImpact{Requested: 2, Affected: 2, Roots: 2})
+	callback := processInstanceMutationSemanticProgressCallback(reporter)
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportProcessInstanceMutationCompletionEvent(callback, "delete", "root-1", 2, options.CompletionDispositionConfirmed, "", ptrInt(1))
+	reportProcessInstanceMutationCompletionEvent(callback, "delete", "root-2", 2, options.CompletionDispositionConfirmed, "", ptrInt(1))
+	reporter.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "root-1 deleted (deletion process-instance trees, 1/2 process-instance tree(s), affected process instances: 1)")
+	require.Contains(t, output, "root-2 deleted (deletion process-instance trees, 2/2 process-instance tree(s), affected process instances: 2)")
+	require.Equal(t, 2, strings.Count(output, "deletion process-instance trees"))
+	require.NotContains(t, output, "\ndeletion process-instance trees, 1/2")
+	require.NotContains(t, output, "\ndeletion process-instance trees, 2/2")
+}
+
+// TestProcessInstanceMutationSemanticProgressFailureWarnsImmediatelyAndFlushes
+// verifies a failed process-instance completion produces an immediate warning
+// and Close records later unreported aggregate progress exactly once.
+func TestProcessInstanceMutationSemanticProgressFailureWarnsImmediatelyAndFlushes(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	now := time.Date(2026, 9, 1, 6, 0, 0, 0, time.UTC)
+	processInstanceMutationSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { processInstanceMutationSemanticProgressNow = time.Now })
+
+	cmd := &cobra.Command{}
+	stderr := &bytes.Buffer{}
+	cmd.SetErr(stderr)
+	reporter := newProcessInstanceMutationSemanticReporter(cmd, "cancel", processInstancePageImpact{Requested: 2, Affected: 2, Roots: 2})
+	callback := processInstanceMutationSemanticProgressCallback(reporter)
+
+	reportProcessInstanceMutationCompletionEvent(callback, "cancel", "root-1", 2, options.CompletionDispositionFailed, "operation timed out", ptrInt(1))
+	reportProcessInstanceMutationCompletionEvent(callback, "cancel", "root-2", 2, options.CompletionDispositionConfirmed, "", ptrInt(1))
+	reporter.Close()
+	reporter.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "root-1 failed: operation timed out (cancellation process-instance trees, 1/2 process-instance tree(s), 1 failed, affected process instances: 1)")
+	require.Equal(t, 1, strings.Count(output, "root-1 failed: operation timed out"))
+	require.Equal(t, 1, strings.Count(output, "cancellation process-instance trees, 2/2 process-instance tree(s), 1 failed, affected process instances: 2"))
+}
+
+// reportProcessInstanceMutationCompletionEvent sends one facade-level
+// completion fact through the process-instance semantic callback under test.
+func reportProcessInstanceMutationCompletionEvent(callback func(options.ProgressEvent), phase string, identity string, total int, disposition options.CompletionDisposition, detail string, affected *int) {
+	callback(options.ProgressEvent{
+		Kind: options.ProgressEventKindCompletion,
+		Completion: &options.CompletionProgress{
+			Phase:            phase,
+			CoreResource:     "process-instance tree(s)",
+			Total:            total,
+			Identity:         identity,
+			Disposition:      disposition,
+			FailureDetail:    detail,
+			AffectedResource: "affected process instances",
+			AffectedCount:    affected,
+		},
+	})
+}
+
+// ptrInt keeps process-instance progress test facts concise while preserving
+// nil-versus-zero affected-count semantics in call sites.
+func ptrInt(value int) *int {
+	return &value
 }
 
 // TestDeleteProcessInstanceSearchProgressContractPendingT064 defines the shared

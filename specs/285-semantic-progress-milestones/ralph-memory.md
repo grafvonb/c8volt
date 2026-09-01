@@ -37,6 +37,8 @@ Started: 2026-08-31T17:14:26Z
 - Semantic reporter durable output now uses the shared 10-second milestone cadence, activates durable progress on the first paced aggregate or immediate failure warning, tracks dirty aggregate state, and flushes exactly once on close only when activated progress has unreported completions.
 - Quiet-mode semantic failure warnings now bypass logger severity filtering through `printOpsDurableLineDirect`; normal durable info/warn paths continue using the attached logger when present.
 - The activity writer clears a drawn spinner before durable writes and immediately redraws the selected activity after newline-terminated output; prompt-style writes without a trailing newline stay readable without an automatic redraw.
+- Process-instance mutation semantic reporters now accept a command-local clock hook for deterministic command-path milestone tests; production behavior still defaults to `time.Now`.
+- Process-instance cancel/delete command tests now pin default 10-second aggregate milestones, verbose per-root replacement, immediate failure warnings, final flush idempotence, force/no-wait deletion scope isolation, and suppression of legacy frozen-scope timer text when semantic progress is installed.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -67,6 +69,7 @@ Started: 2026-08-31T17:14:26Z
 - Expect command progress is intentionally installed only for multi-key scopes (`len(keys) > 1`) to avoid broadening single-target wait UX during the US1 slice.
 - T025 added fake-clock reporter tests in `cmd/ops_semantic_progress_test.go`; they use direct stderr capture without a logger, so failure tests assert warning content rather than severity prefix. T026 now covers quiet warning visibility when logger severity would otherwise filter warn records.
 - `toolx/logging/activity_test.go` now stresses concurrent durable writes plus nested wait/HTTP updates under `-race`; `testx/activitysink/activity_sink_test.go` proves the shared fake sink safely records concurrent priority-aware starts, updates, and idempotent stops.
+- `processInstanceMutationSemanticProgressNow` is a package-level test hook; do not run tests that override it in parallel unless the hook is first moved behind per-command dependency injection.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -102,10 +105,12 @@ Started: 2026-08-31T17:14:26Z
 - `go test ./cmd -run 'Repair|Smoke|Progress|Activity' -race -count=1`
 - `go test ./cmd ./internal/services/processinstance/waiter ./internal/services/ops ./internal/services/processinstance -run 'RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|WaitForProcessInstances|SlowProcessAnalysis|CreateNProcessInstances' -race -count=1`
 - `go test ./cmd ./internal/services/processinstance/... ./internal/services/ops -race -count=1`
+- `go test ./cmd -run 'TestProcessInstanceMutationSemanticProgressVerboseItemsSuppressAggregateMilestones|TestProcessInstanceMutationSemanticProgressFailureWarnsImmediatelyAndFlushes|TestCancelProcessInstancesWithPlan_DefaultMilestoneFinalFlushAndNoTimerDuplicate|TestDeleteProcessInstancesWithPlan_ForceCleanupKeepsMilestonesOnDeletionScope' -race -count=1`
+- `go test ./cmd -run 'ProcessInstance|Progress|Activity' -race -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T028: add process-instance command milestone tests for default, verbose, failures, force cleanup, final flush, and no duplicate timer output in `cmd/processinstance_mutation_progress_test.go`, `cmd/cancel_processinstance_test.go`, and `cmd/delete_processinstance_test.go`.
+- Next iteration should continue User Story 2 at T029: add process-definition deletion, deployment, and all-definition purge milestone tests in `cmd/delete_test.go`, `cmd/deploy_test.go`, and `cmd/ops_purge_all_processdefinitions_test.go`.

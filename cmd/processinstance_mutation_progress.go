@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/ops"
@@ -72,6 +73,10 @@ type processInstanceMutationProgressState struct {
 	mu   sync.Mutex
 	seen bool
 }
+
+// processInstanceMutationSemanticProgressNow is overridden by command tests to
+// exercise durable milestone pacing without real sleeps.
+var processInstanceMutationSemanticProgressNow = time.Now
 
 // planProcessInstanceDryRunPreview builds the shared dry-run plan, impact
 // counts, and render payload for one direct-key process-instance batch.
@@ -186,6 +191,7 @@ func newProcessInstanceMutationSemanticReporter(cmd *cobra.Command, operation st
 	return newOpsSemanticProgressReporter(cmd, opsSemanticProgressConfig{
 		Scope:  processInstanceMutationSemanticProgressScope(operation, impact.Roots, processInstanceMutationAffectedCoverageAvailable(impact)),
 		Policy: opsSemanticProgressOutputPolicyForChannel(channel),
+		Now:    processInstanceMutationSemanticProgressNow,
 	})
 }
 

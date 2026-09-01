@@ -454,3 +454,24 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `git diff --check` -> no output.
 - New activity writer coverage proves newline-terminated durable lines clear the active spinner and redraw the selected workflow-priority scope while nested wait/HTTP updates cannot take over.
 ---
+---
+## Iteration 22 - 2026-09-01 06:02
+**Work Unit**: User Story 2 process-instance command durable milestone tests
+**Tasks Completed**:
+- [x] T028: Add process-instance command milestone tests for default, verbose, failures, force cleanup, final flush, and no duplicate timer output
+**Tasks Remaining in Work Unit**: T029-T035 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/processinstance_mutation_progress.go
+- cmd/processinstance_mutation_progress_test.go
+- cmd/cancel_processinstance_test.go
+- cmd/delete_processinstance_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Process-instance command tests now drive deterministic semantic milestones through a command-local clock hook and verify verbose replacement, immediate failure warnings, final flush idempotence, force/no-wait deletion scope isolation, and suppression of legacy frozen-scope timer output.
+- Validation passed: `go test ./cmd -run 'TestProcessInstanceMutationSemanticProgressVerboseItemsSuppressAggregateMilestones|TestProcessInstanceMutationSemanticProgressFailureWarnsImmediatelyAndFlushes|TestCancelProcessInstancesWithPlan_DefaultMilestoneFinalFlushAndNoTimerDuplicate|TestDeleteProcessInstancesWithPlan_ForceCleanupKeepsMilestonesOnDeletionScope' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.940s`.
+- Validation passed: `go test ./cmd -run 'ProcessInstance|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 44.929s`.
+- Validation passed: `git diff --check` -> no output.
+---
