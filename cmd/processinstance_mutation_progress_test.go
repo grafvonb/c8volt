@@ -597,7 +597,149 @@ func TestProcessInstanceMutationDirectAndStdinKeysUseSemanticCompletionActivity(
 	}
 }
 
+// TestProcessInstanceMutationDirectAndStdinKeysShareLifecycleWording verifies
+// direct-key and stdin-key-equivalent paths render the same submitted and
+// confirmed lifecycle semantics for cancel and delete completions.
+func TestProcessInstanceMutationDirectAndStdinKeysShareLifecycleWording(t *testing.T) {
+	tests := []struct {
+		name        string
+		operation   string
+		inputKeys   typex.Keys
+		noWait      bool
+		disposition options.CompletionDisposition
+		wantItem    string
+		wantSummary string
+		run         func(*cobra.Command, process.API, typex.Keys) (processInstancePageActionResult, error)
+	}{
+		{
+			name:        "cancel direct waited",
+			operation:   "cancel",
+			inputKeys:   typex.Keys{"direct-cancel-child"},
+			disposition: options.CompletionDispositionConfirmed,
+			wantItem:    "root-1 canceled (cancellation process-instance trees, 1/1 process-instance tree(s), affected process instances: 2)",
+			wantSummary: "cancellation: canceled 1/1 process-instance tree(s); affected process instances: 2",
+			run:         runCancelProcessInstanceDirect,
+		},
+		{
+			name:        "cancel stdin no wait",
+			operation:   "cancel",
+			inputKeys:   typex.Keys{"stdin-cancel-child"},
+			noWait:      true,
+			disposition: options.CompletionDispositionSubmitted,
+			wantItem:    "root-1 submitted (cancellation process-instance trees, 1/1 process-instance tree(s), affected process instances: 2)",
+			wantSummary: "cancellation: submitted 1/1 process-instance tree(s); affected process instances: 2",
+			run:         runCancelProcessInstanceDirect,
+		},
+		{
+			name:        "delete direct waited",
+			operation:   "delete",
+			inputKeys:   typex.Keys{"direct-delete-child"},
+			disposition: options.CompletionDispositionConfirmed,
+			wantItem:    "root-1 deleted (deletion process-instance trees, 1/1 process-instance tree(s), affected process instances: 2)",
+			wantSummary: "deletion: deleted 1/1 process-instance tree(s); affected process instances: 2",
+			run:         runDeleteProcessInstanceDirect,
+		},
+		{
+			name:        "delete stdin no wait",
+			operation:   "delete",
+			inputKeys:   typex.Keys{"stdin-delete-child"},
+			noWait:      true,
+			disposition: options.CompletionDispositionSubmitted,
+			wantItem:    "root-1 submitted (deletion process-instance trees, 1/1 process-instance tree(s), affected process instances: 2)",
+			wantSummary: "deletion: submitted 1/1 process-instance tree(s); affected process instances: 2",
+			run:         runDeleteProcessInstanceDirect,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			flagCmdAutoConfirm = true
+			flagVerbose = true
+			flagNoWait = tt.noWait
+
+			cmd := &cobra.Command{}
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			cmd.SetOut(stdout)
+			cmd.SetErr(stderr)
+
+			prevConfirm := confirmCmdOrAbortFn
+			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+			confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+				require.True(t, autoConfirm)
+				require.Contains(t, prompt, tt.operation)
+				return nil
+			}
+
+			cli := stubProcessAPI{
+				dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+					require.Equal(t, tt.inputKeys, keys)
+					require.True(t, options.ApplyFacadeOptions(opts).IgnoreTenant)
+					return process.DryRunPIKeyExpansion{
+						Roots:     typex.Keys{"root-1"},
+						Collected: typex.Keys{"root-1", tt.inputKeys[0]},
+						Outcome:   process.TraversalOutcomeComplete,
+					}, nil
+				},
+				cancelProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.CancelReports, error) {
+					reportProcessInstanceMutationCompletionForTestWithDisposition(t, tt.operation, "root-1", 2, keys, tt.disposition, ptrInt(2), opts...)
+					return process.CancelReports{Items: []process.CancelReport{{Key: "root-1", Ok: true}}}, nil
+				},
+				deleteProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.DeleteReports, error) {
+					reportProcessInstanceMutationCompletionForTestWithDisposition(t, tt.operation, "root-1", 2, keys, tt.disposition, ptrInt(2), opts...)
+					return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-1", Ok: true}}}, nil
+				},
+			}
+
+			got, err := tt.run(cmd, cli, tt.inputKeys)
+
+			require.NoError(t, err)
+			require.Len(t, got.Reports, 1)
+			require.NotContains(t, stdout.String(), "process-instance trees")
+			require.Contains(t, stderr.String(), tt.wantItem)
+			require.Contains(t, stderr.String(), tt.wantSummary)
+		})
+	}
+}
+
+// TestProcessInstanceMutationSemanticProgressFailureAndUnknownAffected verifies
+// failed process-instance mutation facts warn immediately and permanently omit
+// affected counts when the scope cannot prove per-root affected coverage.
+func TestProcessInstanceMutationSemanticProgressFailureAndUnknownAffected(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagVerbose = true
+
+	cmd := &cobra.Command{}
+	stderr := &bytes.Buffer{}
+	cmd.SetErr(stderr)
+	reporter := newProcessInstanceMutationSemanticReporter(cmd, "delete", processInstancePageImpact{Requested: 2, Affected: 3, Roots: 2})
+	callback := processInstanceMutationSemanticProgressCallback(reporter)
+
+	reportProcessInstanceMutationCompletionEvent(callback, "delete", "root-1", 2, options.CompletionDispositionFailed, "delete rejected", nil)
+	reportProcessInstanceMutationCompletionEvent(callback, "delete", "root-2", 2, options.CompletionDispositionConfirmed, "", ptrInt(1))
+	reporter.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "root-1 failed: delete rejected (deletion process-instance trees, 1/2 process-instance tree(s), 1 failed)")
+	require.Contains(t, output, "root-2 deleted (deletion process-instance trees, 2/2 process-instance tree(s), 1 failed)")
+	require.NotContains(t, output, "affected process instances:")
+}
+
+// reportProcessInstanceMutationCompletionForTest emits a confirmed completion
+// fact through the facade progress callback and checks mutation options shared
+// by direct and search command paths.
 func reportProcessInstanceMutationCompletionForTest(t *testing.T, operation string, expectedRoot string, affectedCount int, keys typex.Keys, opts ...options.FacadeOption) {
+	t.Helper()
+	reportProcessInstanceMutationCompletionForTestWithDisposition(t, operation, expectedRoot, affectedCount, keys, options.CompletionDispositionConfirmed, ptrInt(affectedCount), opts...)
+}
+
+// reportProcessInstanceMutationCompletionForTestWithDisposition keeps command
+// path tests explicit about submitted, confirmed, failed, and unknown affected
+// completion facts while preserving common option assertions.
+func reportProcessInstanceMutationCompletionForTestWithDisposition(t *testing.T, operation string, expectedRoot string, affectedCount int, keys typex.Keys, disposition options.CompletionDisposition, affected *int, opts ...options.FacadeOption) {
 	t.Helper()
 	require.Equal(t, typex.Keys{expectedRoot}, keys)
 	cfg := options.ApplyFacadeOptions(opts)
@@ -605,7 +747,6 @@ func reportProcessInstanceMutationCompletionForTest(t *testing.T, operation stri
 	require.NotNil(t, cfg.Progress)
 	require.True(t, cfg.SuppressWorkflowDetailLogs)
 	require.True(t, cfg.SuppressProcessInstanceDetailLogs)
-	affected := affectedCount
 	cfg.Progress(options.ProgressEvent{
 		Kind: options.ProgressEventKindCompletion,
 		Completion: &options.CompletionProgress{
@@ -613,13 +754,16 @@ func reportProcessInstanceMutationCompletionForTest(t *testing.T, operation stri
 			CoreResource:     "process-instance tree(s)",
 			Total:            1,
 			Identity:         expectedRoot,
-			Disposition:      options.CompletionDispositionConfirmed,
+			Disposition:      disposition,
 			AffectedResource: "affected process instances",
-			AffectedCount:    &affected,
+			AffectedCount:    affected,
 		},
 	})
 }
 
+// requireProcessInstanceMutationSemanticActivity asserts that semantic
+// completion updates own workflow-priority aggregate activity instead of
+// exposing per-key lifecycle wording in the transient message.
 func requireProcessInstanceMutationSemanticActivity(t *testing.T, sink *activitysink.Sink, operation string, identity string) {
 	t.Helper()
 	label, verb := processInstanceMutationResultWords(operation, false)

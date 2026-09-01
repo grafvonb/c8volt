@@ -199,6 +199,205 @@ func TestDeleteProcessInstanceSearchSelectedUsesSemanticCompletionActivity(t *te
 	requireProcessInstanceMutationSemanticActivity(t, sink, "delete", "root-401")
 }
 
+// TestDeleteProcessInstanceSearchSelectedSemanticLifecycleParity verifies
+// search-selected delete renders submitted, confirmed, force, failed, and
+// unknown-affected completion semantics after the final confirmation prompt.
+func TestDeleteProcessInstanceSearchSelectedSemanticLifecycleParity(t *testing.T) {
+	tests := []struct {
+		name                 string
+		noWait               bool
+		force                bool
+		roots                typex.Keys
+		collected            typex.Keys
+		requiresForce        []process.ProcessInstance
+		dispositions         []options.CompletionDisposition
+		details              []string
+		affected             []*int
+		ok                   []bool
+		wantCompletionLines  []string
+		wantSummary          string
+		wantNoAffectedOutput bool
+	}{
+		{
+			name:         "waited",
+			roots:        typex.Keys{"delete-root-1"},
+			collected:    typex.Keys{"delete-root-1", "delete-child-1"},
+			dispositions: []options.CompletionDisposition{options.CompletionDispositionConfirmed},
+			affected:     []*int{ptrInt(2)},
+			ok:           []bool{true},
+			wantCompletionLines: []string{
+				"delete-root-1 deleted (deletion process-instance trees, 1/1 process-instance tree(s), affected process instances: 2)",
+			},
+			wantSummary: "deletion: deleted 1/1 process-instance tree(s); affected process instances: 2",
+		},
+		{
+			name:         "no wait",
+			noWait:       true,
+			roots:        typex.Keys{"delete-root-1"},
+			collected:    typex.Keys{"delete-root-1", "delete-child-1"},
+			dispositions: []options.CompletionDisposition{options.CompletionDispositionSubmitted},
+			affected:     []*int{ptrInt(2)},
+			ok:           []bool{true},
+			wantCompletionLines: []string{
+				"delete-root-1 submitted (deletion process-instance trees, 1/1 process-instance tree(s), affected process instances: 2)",
+			},
+			wantSummary: "deletion: submitted 1/1 process-instance tree(s); affected process instances: 2",
+		},
+		{
+			name:   "force ignores cleanup phase",
+			noWait: true,
+			force:  true,
+			roots:  typex.Keys{"delete-root-1"},
+			collected: typex.Keys{
+				"delete-root-1",
+				"delete-child-1",
+			},
+			requiresForce: []process.ProcessInstance{{Key: "delete-child-1", State: process.StateActive}},
+			dispositions:  []options.CompletionDisposition{options.CompletionDispositionSubmitted},
+			affected:      []*int{ptrInt(2)},
+			ok:            []bool{true},
+			wantCompletionLines: []string{
+				"delete-root-1 submitted (deletion process-instance trees, 1/1 process-instance tree(s), affected process instances: 2)",
+			},
+			wantSummary: "deletion: submitted 1/1 process-instance tree(s); affected process instances: 2",
+		},
+		{
+			name:         "failed",
+			roots:        typex.Keys{"delete-root-1"},
+			collected:    typex.Keys{"delete-root-1", "delete-child-1"},
+			dispositions: []options.CompletionDisposition{options.CompletionDispositionFailed},
+			details:      []string{"delete rejected"},
+			affected:     []*int{ptrInt(2)},
+			ok:           []bool{false},
+			wantCompletionLines: []string{
+				"delete-root-1 failed: delete rejected (deletion process-instance trees, 1/1 process-instance tree(s), 1 failed, affected process instances: 2)",
+			},
+			wantSummary: "deletion: deleted 0/1 process-instance tree(s), failed 1; affected process instances: 2",
+		},
+		{
+			name:         "affected unknown",
+			roots:        typex.Keys{"delete-root-1", "delete-root-2"},
+			collected:    typex.Keys{"delete-root-1", "delete-root-2", "delete-child-2"},
+			dispositions: []options.CompletionDisposition{options.CompletionDispositionConfirmed, options.CompletionDispositionConfirmed},
+			affected:     []*int{nil, ptrInt(1)},
+			ok:           []bool{true, true},
+			wantCompletionLines: []string{
+				"delete-root-1 deleted (deletion process-instance trees, 1/2 process-instance tree(s))",
+				"delete-root-2 deleted (deletion process-instance trees, 2/2 process-instance tree(s))",
+			},
+			wantSummary:          "deletion: deleted 2/2 process-instance tree(s); affected process instances: 3",
+			wantNoAffectedOutput: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			flagCmdAutoConfirm = true
+			flagVerbose = true
+			flagNoWait = tt.noWait
+			flagForce = tt.force
+			flagGetPISize = 1
+
+			cmd := &cobra.Command{}
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			cmd.SetOut(stdout)
+			cmd.SetErr(stderr)
+			cmd.Flags().Int32("batch-size", 1000, "")
+			require.NoError(t, cmd.Flags().Set("batch-size", "1"))
+
+			prevConfirm := confirmCmdOrAbortFn
+			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+			confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+				require.True(t, autoConfirm)
+				require.Contains(t, prompt, "delete")
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "CONFIRMATION-MARKER")
+				return nil
+			}
+
+			cli := stubProcessAPI{
+				planProcessInstanceMutationPages: func(_ context.Context, _ process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, opts ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+					require.NotNil(t, options.ApplyFacadeOptions(opts).Progress)
+					page := process.ProcessInstancePage{
+						Items:         []process.ProcessInstance{{Key: "delete-child-1", State: process.StateCompleted}},
+						Request:       process.ProcessInstancePageRequest{From: 0, Size: 1},
+						OverflowState: process.ProcessInstanceOverflowStateNoMore,
+						ReportedTotal: &process.ProcessInstanceReportedTotal{Count: 1, Kind: process.ProcessInstanceReportedTotalKindExact},
+					}
+					plan := process.DryRunPIKeyExpansion{
+						Roots:                      tt.roots,
+						Collected:                  tt.collected,
+						RequiresCancelBeforeDelete: tt.requiresForce,
+						Outcome:                    process.TraversalOutcomeComplete,
+					}
+					step := process.ProcessInstanceMutationPlanStep{
+						Page:             page,
+						RequestedKeys:    []string{"delete-child-1"},
+						Plan:             plan,
+						CumulativeCount:  1,
+						CumulativeImpact: int32(len(tt.collected)),
+					}
+					action, err := visitor(step)
+					require.NoError(t, err)
+					require.Equal(t, process.ProcessInstanceSearchPageActionStop, action)
+					return process.ProcessInstanceMutationPlanPagesResult{
+						Plans:            []process.ProcessInstanceMutationPlanStep{step},
+						Pages:            1,
+						RequestedCount:   1,
+						CumulativeImpact: int32(len(tt.collected)),
+						TenantEvidence:   plan.TenantEvidence,
+					}, nil
+				},
+				deleteProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.DeleteReports, error) {
+					require.Equal(t, tt.roots, keys)
+					cfg := options.ApplyFacadeOptions(opts)
+					require.Equal(t, len(tt.collected), cfg.AffectedProcessInstanceCount)
+					require.True(t, cfg.NoWait == tt.noWait)
+					require.True(t, cfg.Force == tt.force)
+					require.NotNil(t, cfg.Progress)
+					if tt.force {
+						reportProcessInstanceMutationCompletionEvent(cfg.Progress, "cancel", tt.roots[0], 1, options.CompletionDispositionConfirmed, "", ptrInt(len(tt.collected)))
+					}
+					for i, root := range tt.roots {
+						detail := ""
+						if i < len(tt.details) {
+							detail = tt.details[i]
+						}
+						reportProcessInstanceMutationCompletionEvent(cfg.Progress, "delete", root, len(tt.roots), tt.dispositions[i], detail, tt.affected[i])
+					}
+					reports := make([]process.DeleteReport, len(tt.roots))
+					for i, root := range tt.roots {
+						reports[i] = process.DeleteReport{Key: root, Ok: tt.ok[i]}
+					}
+					return process.DeleteReports{Items: reports}, nil
+				},
+			}
+
+			got, err := deleteProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{State: process.StateCompleted})
+
+			require.NoError(t, err)
+			require.Len(t, got.Reports, len(tt.roots))
+			require.Empty(t, stdout.String())
+			output := stderr.String()
+			require.Contains(t, output, "planning process-instance delete scope 1/1 process instance(s)")
+			require.Contains(t, output, "CONFIRMATION-MARKER")
+			for _, line := range tt.wantCompletionLines {
+				require.Contains(t, output, line)
+				require.Less(t, strings.Index(output, "CONFIRMATION-MARKER"), strings.Index(output, line))
+			}
+			require.Contains(t, output, tt.wantSummary)
+			require.NotContains(t, output, "delete-root-1 canceled")
+			if tt.wantNoAffectedOutput {
+				for _, line := range tt.wantCompletionLines {
+					require.NotContains(t, line, "affected process instances:")
+				}
+			}
+		})
+	}
+}
+
 // TestDeleteProcessInstanceDryRun_SearchTenantScopedCandidatesAndDependencies
 // protects search-derived delete previews from adding unrelated tenants.
 func TestDeleteProcessInstanceDryRun_SearchTenantScopedCandidatesAndDependencies(t *testing.T) {

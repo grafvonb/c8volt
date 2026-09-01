@@ -665,3 +665,25 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./internal/domain ./c8volt/foptions ./c8volt/ops -run 'TestOpsCompletion|TestProgressCompletion|TestProgressConversions_.*Completion' -race -count=1` -> `ok` for all three packages.
 - Validation passed: `git diff --check` -> no output.
 ---
+---
+## Iteration 1 - 2026-09-01 07:16
+**Work Unit**: User Story 3 process-instance mutation parity tests
+**Tasks Completed**:
+- [x] T037: Add direct-key, stdin-key, and search parity tests for cancel/delete with waited, no-wait, force, failed, and affected-unknown scopes
+**Tasks Remaining in Work Unit**: T038-T042 remain in User Story 3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/processinstance_mutation_progress_test.go
+- cmd/cancel_processinstance_selector_test.go
+- cmd/delete_processinstance_selector_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Direct-key and stdin-key-equivalent cancel/delete paths now assert matching submitted/confirmed semantic lifecycle wording without moving service facts into command prose.
+- Search-selected cancel/delete tests now pin post-confirmation semantic output, no-wait submitted wording, force delete phase isolation, failed warnings, and omission of affected progress aggregates when per-root coverage is unknown.
+- Validation passed: `go test ./cmd -run 'TestProcessInstanceMutationDirectAndStdinKeysShareLifecycleWording|TestProcessInstanceMutationSemanticProgressFailureAndUnknownAffected|TestCancelProcessInstanceSearchSelectedSemanticLifecycleParity|TestDeleteProcessInstanceSearchSelectedSemanticLifecycleParity' -count=1` -> `ok github.com/grafvonb/c8volt/cmd 0.478s`.
+- Validation passed: `go test ./cmd -run 'TestProcessInstanceMutationDirectAndStdinKeysShareLifecycleWording|TestProcessInstanceMutationSemanticProgressFailureAndUnknownAffected|TestCancelProcessInstanceSearchSelectedSemanticLifecycleParity|TestDeleteProcessInstanceSearchSelectedSemanticLifecycleParity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.760s`.
+- Validation passed: `go test ./cmd -run 'ProcessInstance|CancelProcessInstanceSearch|DeleteProcessInstanceSearch|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 44.406s`.
+- Validation passed: `git diff --check` -> no output.
+---
