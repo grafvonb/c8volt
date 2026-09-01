@@ -35,6 +35,7 @@ Started: 2026-08-31T17:14:26Z
 - Multi-key `expect process-instance` now emits `expect process instances` completion facts from the waiter bulk wrappers and routes them through `cmd/expect_processinstance_progress.go`; single-key waiter polling remains wait-priority activity unless a caller explicitly uses the bulk wrapper with a progress callback.
 - User Story 1 validation completed in iteration 18 with reporter, activity, process-instance, process-definition, resource, ops, run, analysis, and expect tests passing under `-race`; T024 was a validation/audit-only work unit.
 - Semantic reporter durable output now uses the shared 10-second milestone cadence, activates durable progress on the first paced aggregate or immediate failure warning, tracks dirty aggregate state, and flushes exactly once on close only when activated progress has unreported completions.
+- Quiet-mode semantic failure warnings now bypass logger severity filtering through `printOpsDurableLineDirect`; normal durable info/warn paths continue using the attached logger when present.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -63,7 +64,7 @@ Started: 2026-08-31T17:14:26Z
 - `configureOpsSlowProcessAnalysisPreflight` now returns a nullable closeable progress wrapper; command code can safely `defer progress.Close()` because the receiver handles nil.
 - Slow-analysis frozen-scope tests that count raw callback events must account for both frozen-scope and completion facts, or filter by event kind.
 - Expect command progress is intentionally installed only for multi-key scopes (`len(keys) > 1`) to avoid broadening single-target wait UX during the US1 slice.
-- T025 added fake-clock reporter tests in `cmd/ops_semantic_progress_test.go`; they use direct stderr capture without a logger, so failure tests assert warning content rather than severity prefix. Quiet warning severity is still a T026 responsibility.
+- T025 added fake-clock reporter tests in `cmd/ops_semantic_progress_test.go`; they use direct stderr capture without a logger, so failure tests assert warning content rather than severity prefix. T026 now covers quiet warning visibility when logger severity would otherwise filter warn records.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -103,4 +104,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T026: add verbose identity/outcome replacement, cumulative affected/failed rendering, and quiet warning-severity tests in `cmd/ops_semantic_progress_test.go` and `cmd/ops_progress_test.go`.
+- Next iteration should continue User Story 2 at T027: add concurrent durable-write clear/redraw and nested workflow-priority arbitration tests in `toolx/logging/activity_test.go` and `testx/activitysink/activity_sink_test.go`.

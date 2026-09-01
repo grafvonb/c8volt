@@ -238,6 +238,15 @@ func printOpsDurableLine(cmd *cobra.Command, line string, warn bool) {
 	fmt.Fprintln(cmd.ErrOrStderr(), line)
 }
 
+// printOpsDurableLineDirect bypasses logger level filtering for progress
+// warnings whose mode contract requires stderr visibility.
+func printOpsDurableLineDirect(cmd *cobra.Command, line string) {
+	if cmd == nil || strings.TrimSpace(line) == "" {
+		return
+	}
+	fmt.Fprintln(cmd.ErrOrStderr(), line)
+}
+
 type opsPreflightResourceLabels struct {
 	Singular string
 	Plural   string

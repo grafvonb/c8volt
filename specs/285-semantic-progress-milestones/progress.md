@@ -410,3 +410,26 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `git diff --check` -> no output.
 - The semantic reporter now owns dirty durable state and final flushing directly; T026 still needs verbose replacement, affected/failed rendering depth, and quiet warning severity coverage.
 ---
+---
+## Iteration 20 - 2026-09-01 05:49
+**Work Unit**: User Story 2 verbose and quiet semantic progress tests
+**Tasks Completed**:
+- [x] T026: Add verbose identity/outcome replacement, cumulative affected/failed rendering, and quiet warning-severity tests
+**Tasks Remaining in Work Unit**: T027-T035 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_progress_render.go
+- cmd/ops_progress_test.go
+- cmd/ops_semantic_progress.go
+- cmd/ops_semantic_progress_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Validation passed: `go test ./cmd -run 'TestOpsSemanticProgressReporterVerboseItemsReplacePacedAggregateMilestones|TestOpsSemanticProgressReporterQuietFailureBypassesWarnFiltering|TestFormatOpsSemanticProgressAggregateRendersCumulativeAffectedAndFailed|TestPrintOpsDurableLineDirectBypassesLoggerSeverity' -count=1` -> `ok github.com/grafvonb/c8volt/cmd 0.613s`.
+- Validation passed: `go test ./cmd -run 'TestOpsSemanticProgressReporterVerboseItemsReplacePacedAggregateMilestones|TestOpsSemanticProgressReporterQuietFailureBypassesWarnFiltering|TestFormatOpsSemanticProgressAggregateRendersCumulativeAffectedAndFailed|TestPrintOpsDurableLineDirectBypassesLoggerSeverity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.758s`.
+- Validation passed: `go test ./cmd -run 'TestOpsSemanticProgressReporter|TestFormatOpsSemanticProgressAggregate|TestPrintOpsDurableLineDirect|TestOpsProgressDurableMilestone' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.557s`.
+- Validation passed: `go test ./cmd -run 'Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 7.396s`.
+- Validation passed: `git diff --check` -> no output.
+- T026 pins verbose per-item identity/outcome replacement and cumulative aggregate text; quiet semantic failures now bypass warn-level logger filtering so they remain visible under quiet/error-level logging.
+---

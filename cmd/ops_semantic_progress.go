@@ -108,13 +108,13 @@ func (r *opsSemanticProgressReporter) Report(event ops.ProgressEvent) {
 		logging.UpdateActivityWithImportance(opsSemanticProgressCommandContext(r.cmd), formatOpsSemanticProgressAggregate(r.scope, aggregate), logging.ActivityImportanceWorkflow)
 	}
 	if r.policy.VerboseItems {
-		printOpsDurableLine(r.cmd, formatOpsSemanticProgressCompletion(r.scope, aggregate, *event.Completion), r.policy.FailureWarnings && event.Completion.Disposition == ops.CompletionDispositionFailed)
+		r.printDurableLineLocked(formatOpsSemanticProgressCompletion(r.scope, aggregate, *event.Completion), r.policy.FailureWarnings && event.Completion.Disposition == ops.CompletionDispositionFailed)
 		r.durableActivated = true
 		r.dirty = false
 		return
 	}
 	if r.policy.FailureWarnings && event.Completion.Disposition == ops.CompletionDispositionFailed {
-		printOpsDurableLine(r.cmd, formatOpsSemanticProgressCompletion(r.scope, aggregate, *event.Completion), true)
+		r.printDurableLineLocked(formatOpsSemanticProgressCompletion(r.scope, aggregate, *event.Completion), true)
 		r.durableActivated = true
 		r.dirty = false
 		return
@@ -124,7 +124,7 @@ func (r *opsSemanticProgressReporter) Report(event ops.ProgressEvent) {
 		if now.Before(r.lastInformationalAt.Add(opsDurableMilestoneMinimumElapsed)) {
 			return
 		}
-		printOpsDurableLine(r.cmd, formatOpsSemanticProgressAggregate(r.scope, aggregate), false)
+		r.printDurableLineLocked(formatOpsSemanticProgressAggregate(r.scope, aggregate), false)
 		r.lastInformationalAt = now
 		r.durableActivated = true
 		r.dirty = false
@@ -167,6 +167,16 @@ func (r *opsSemanticProgressReporter) Close() {
 	if stop != nil {
 		stop()
 	}
+}
+
+// printDurableLineLocked keeps quiet-mode failure warnings visible even when
+// the attached logger is configured to filter warn records.
+func (r *opsSemanticProgressReporter) printDurableLineLocked(line string, warn bool) {
+	if r.policy.Channel.Mode == ops.ProgressModeQuiet && warn {
+		printOpsDurableLineDirect(r.cmd, line)
+		return
+	}
+	printOpsDurableLine(r.cmd, line, warn)
 }
 
 // ingestCompletionLocked applies one fact while preserving monotonic counters

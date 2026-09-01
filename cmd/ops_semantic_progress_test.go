@@ -297,6 +297,76 @@ func TestOpsSemanticProgressReporterWarnsImmediatelyForFailures(t *testing.T) {
 	require.Equal(t, 1, strings.Count(got, "root-1 failed"))
 }
 
+// TestOpsSemanticProgressReporterVerboseItemsReplacePacedAggregateMilestones
+// verifies verbose output emits one identity/outcome line per completion and
+// suppresses default aggregate pacing.
+func TestOpsSemanticProgressReporterVerboseItemsReplacePacedAggregateMilestones(t *testing.T) {
+	cmd, _, stderr := newOpsSemanticProgressTestCommand(t)
+	now := time.Date(2026, time.August, 31, 17, 0, 0, 0, time.UTC)
+	reporter := newOpsSemanticProgressReporter(cmd, opsSemanticProgressConfig{
+		Scope: opsSemanticProgressScope{
+			ActivityLabel:             "deleting process-instance trees",
+			CoreResource:              "process-instance tree(s)",
+			Total:                     3,
+			AffectedResource:          "affected process instances",
+			AffectedCoverageAvailable: true,
+			SubmittedVerb:             "submitted",
+			ConfirmedVerb:             "deleted",
+			FailedVerb:                "failed",
+		},
+		Policy: opsSemanticProgressOutputPolicyForChannel(ops.ProgressChannel{Mode: ops.ProgressModeVerbose, TransientAllowed: true, DurableAllowed: true, StderrAllowed: true}),
+		Now:    func() time.Time { return now },
+	})
+	defer reporter.Close()
+	affected := 2
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reporter.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Identity: "root-1", Disposition: ops.CompletionDispositionSubmitted, AffectedCount: &affected}})
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reporter.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Identity: "root-2", Disposition: ops.CompletionDispositionConfirmed, AffectedCount: &affected}})
+	reporter.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Identity: "root-3", Disposition: ops.CompletionDispositionFailed, FailureDetail: "boom", AffectedCount: &affected}})
+
+	lines := strings.Split(strings.TrimSpace(stderr.String()), "\n")
+	require.Equal(t, []string{
+		"root-1 submitted (deleting process-instance trees, 1/3 process-instance tree(s), affected process instances: 2)",
+		"root-2 deleted (deleting process-instance trees, 2/3 process-instance tree(s), affected process instances: 4)",
+		"root-3 failed: boom (deleting process-instance trees, 3/3 process-instance tree(s), 1 failed, affected process instances: 6)",
+	}, lines)
+	require.NotContains(t, lines, "deleting process-instance trees, 1/3 process-instance tree(s), affected process instances: 2")
+}
+
+// TestOpsSemanticProgressReporterQuietFailureBypassesWarnFiltering verifies
+// quiet-mode failures remain visible even when the command logger filters warn
+// severity records.
+func TestOpsSemanticProgressReporterQuietFailureBypassesWarnFiltering(t *testing.T) {
+	cmd, _, stderr := newOpsSemanticProgressTestCommand(t)
+	var logBuf bytes.Buffer
+	cmd.SetContext(logging.ToContext(cmd.Context(), logging.New(logging.LoggerConfig{
+		Level:  "error",
+		Format: "plain-time",
+		Writer: &logBuf,
+	})))
+	reporter := newOpsSemanticProgressReporter(cmd, opsSemanticProgressConfig{
+		Scope: opsSemanticProgressScope{
+			ActivityLabel: "deleting process-instance trees",
+			CoreResource:  "process-instance tree(s)",
+			Total:         1,
+			FailedVerb:    "failed",
+		},
+		Policy: opsSemanticProgressOutputPolicyForChannel(ops.ProgressChannel{Mode: ops.ProgressModeQuiet}),
+	})
+	defer reporter.Close()
+
+	reporter.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{
+		Identity:      "root-1",
+		Disposition:   ops.CompletionDispositionFailed,
+		FailureDetail: "boom",
+	}})
+
+	require.Empty(t, logBuf.String())
+	require.Equal(t, "root-1 failed: boom (deleting process-instance trees, 1/1 process-instance tree(s), 1 failed)\n", stderr.String())
+}
+
 // TestOpsSemanticProgressReporterCloseIsIdempotent verifies repeated cleanup
 // neither double-stops activity nor emits duplicate final records.
 func TestOpsSemanticProgressReporterCloseIsIdempotent(t *testing.T) {

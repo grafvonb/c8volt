@@ -105,6 +105,50 @@ func TestFormatOpsFrozenScopeProgressOmitsPercentForUnknownTotal(t *testing.T) {
 	}))
 }
 
+// TestFormatOpsSemanticProgressAggregateRendersCumulativeAffectedAndFailed
+// verifies durable aggregate text carries exact failed and affected totals
+// while affected output disappears when coverage becomes untrustworthy.
+func TestFormatOpsSemanticProgressAggregateRendersCumulativeAffectedAndFailed(t *testing.T) {
+	scope := opsSemanticProgressScope{
+		ActivityLabel:    "deleting process-instance trees",
+		CoreResource:     "process-instance tree(s)",
+		AffectedResource: "affected process instances",
+	}
+
+	require.Equal(t, "deleting process-instance trees, 3/4 process-instance tree(s), 1 failed, affected process instances: 12", formatOpsSemanticProgressAggregate(scope, opsSemanticProgressAggregate{
+		Completed:     3,
+		Failed:        1,
+		Total:         4,
+		Affected:      12,
+		AffectedValid: true,
+	}))
+	require.Equal(t, "deleting process-instance trees, 3/4 process-instance tree(s), 1 failed", formatOpsSemanticProgressAggregate(scope, opsSemanticProgressAggregate{
+		Completed: 3,
+		Failed:    1,
+		Total:     4,
+		Affected:  12,
+	}))
+}
+
+// TestPrintOpsDurableLineDirectBypassesLoggerSeverity verifies direct progress
+// warnings are not filtered by the command logger's configured severity.
+func TestPrintOpsDurableLineDirectBypassesLoggerSeverity(t *testing.T) {
+	cmd := &cobra.Command{}
+	var stderr bytes.Buffer
+	var logBuf bytes.Buffer
+	cmd.SetErr(&stderr)
+	cmd.SetContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{
+		Level:  "error",
+		Format: "plain-time",
+		Writer: &logBuf,
+	})))
+
+	printOpsDurableLineDirect(cmd, "root-1 failed")
+
+	require.Empty(t, logBuf.String())
+	require.Equal(t, "root-1 failed\n", stderr.String())
+}
+
 // ptrInt64 returns a stable pointer for compact progress formatter fixtures.
 func ptrInt64(value int64) *int64 {
 	return &value
