@@ -104,6 +104,29 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./cmd -run 'ProcessDefinition|Deploy|PurgeAllProcessDefinitions|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 36.355s`.
 - Validation passed: `git diff --check` -> no output.
 ---
+---
+## Iteration 29 - 2026-09-01 06:55
+**Work Unit**: User Story 2 final milestone validation
+**Tasks Completed**:
+- [x] T035: Run the US2 fake-clock, activity, and required command-family milestone tests with `-race` and record exact results
+**Tasks Remaining in Work Unit**: 0; User Story 2 complete
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_execute_smoke_test_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Initial broad command-family validation exposed stale smoke-test command assertions that still expected legacy `deploy:`, `start:`, and `walk:` lines in default output; tests now assert final summaries remain and duplicate legacy progress is absent when structured progress is installed.
+- Validation passed: `go test ./cmd -run 'TestOpsSemanticProgressReporter|TestOpsDurableMilestoneCadenceIsTenSeconds|TestOpsProgressDurableMilestone' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.745s`.
+- Validation passed: `go test ./toolx/logging ./testx/activitysink -run 'ActivityWriter|Sink' -race -count=1` -> `ok github.com/grafvonb/c8volt/toolx/logging 1.640s`; `ok github.com/grafvonb/c8volt/testx/activitysink 1.350s`.
+- Validation passed: `go test ./cmd -run 'TestProcessInstanceMutationSemanticProgressVerboseItemsSuppressAggregateMilestones|TestProcessInstanceMutationSemanticProgressFailureWarnsImmediatelyAndFlushes|TestCancelProcessInstancesWithPlan_DefaultMilestoneFinalFlushAndNoTimerDuplicate|TestDeleteProcessInstancesWithPlan_ForceCleanupKeepsMilestonesOnDeletionScope' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.676s`.
+- Validation passed: `go test ./cmd -run 'TestDeleteProcessDefinitionSemanticProgressDefaultMilestonesAndFinalFlush|TestDeployProcessDefinitionSemanticProgressVerboseItemsReplaceMilestones|TestOpsPurgeAllProcessDefinitionsDeletionMilestonesStaySeparateFromDiscovery' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.586s`.
+- Validation passed: `go test ./cmd -run 'TestOpsExecuteRetentionPolicyDefaultDeletionMilestonesAndFinalFlush|TestOpsPurgeOrphanProcessInstancesDefaultDeletionMilestonesOmitUnknownAffected|TestOpsPurgeProcessInstancesWithIncidentsVerboseDeletionReplacesMilestones|TestOpsRepairIncidentDefaultFailureWarnsAndFlushes|TestOpsRepairProcessInstanceQuietProgressShowsOnlyFailureWarning|TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation|TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush|TestOpsAnalyseSlowProcessInstancesSemanticCompletionMilestones|TestExpectProcessInstanceDefaultMilestonesAndFinalFlush' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.947s`.
+- Validation passed: `go test ./cmd -run 'TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput|TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.789s`.
+- Validation passed: `go test ./cmd -run 'ProcessInstance|ProcessDefinition|Purge|Retention|Orphan|Incident|Repair|Smoke|Deploy|Run|Analyse|Expect|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 80.899s`.
+- Validation passed: `git diff --check` -> no output.
+---
 ## Iteration 4 - 2026-08-31 19:31
 **Work Unit**: User Story 1 T007 semantic reporter and activity tests
 **Tasks Completed**:

@@ -45,6 +45,7 @@ Started: 2026-08-31T17:14:26Z
 - T032 was validated as already implemented by the US2 test-first slices: aggregate and completion formatting live in `cmd/ops_progress_render.go`, while activity-aware durable emission, immediate failure warnings, verbose replacement, and idempotent final flush live in `cmd/ops_semantic_progress.go`.
 - Semantic reporters now close immediately after their owning facade call returns, before error handling, final result/report rendering, or follow-up facade calls. Keep this explicit close-order for process-instance mutations, process-definition deletion/deployment, APD purge, bulk run, slow analysis, expect, and embedded deployment.
 - T034 pins duplicate legacy suppression in the service layer: process-instance bulk timer progress stays disabled whenever a structured progress callback is installed, while final summaries remain controlled by the existing suppression flags; smoke-test `deploy:`, `start:`, `walk:`, and `cleanup:` INFO lines now emit only for non-callback, non-dry-run, non-JSON callers.
+- User Story 2 validation completed in iteration 29 with fake-clock reporter, activity clear/redraw, focused command-family milestone, and broad command-family `-race` checks passing.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -81,6 +82,7 @@ Started: 2026-08-31T17:14:26Z
 - Lazy semantic wrappers start their pacing clock on the first matching completion fact, so default milestone tests should send an initial completion before advancing the fake clock by `opsDurableMilestoneMinimumElapsed`; eager run/expect reporters start pacing at construction.
 - `newOpsProgressMilestonePacer` captures its starting timestamp at construction; fake-clock tests must construct it before advancing the clock to the first 10-second milestone.
 - Avoid command-scope `defer reporter.Close()` for semantic reporters around facade calls that may render results, write reports, run follow-up work, or call exit-style error handlers afterward; close explicitly before those branches.
+- Smoke-test command tests must not require legacy `deploy:`, `start:`, or `walk:` INFO lines in default output once `configureOpsExecuteSmokeTestProgress` installs structured progress; assert final smoke-test summaries remain and duplicate legacy progress stays absent.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -128,4 +130,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should finish User Story 2 at T035: run the US2 fake-clock, activity, and required command-family milestone tests with `-race` and record exact results in `specs/285-semantic-progress-milestones/progress.md`.
+- Next iteration should start User Story 3 at T036: add completion disposition and conversion tests proving accepted no-wait work is `submitted`, waited work is `confirmed`, failures stay `failed`, and service facts contain no rendered command wording in `internal/domain/ops_progress_test.go`, `c8volt/foptions/options_test.go`, and `c8volt/ops/model_test.go`.

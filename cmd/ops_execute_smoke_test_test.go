@@ -514,6 +514,8 @@ func TestOpsExecuteSmokeTestAutomationJSONStdoutIsMachineOnly(t *testing.T) {
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
 }
 
+// TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput verifies the
+// final smoke-test summary remains while duplicate legacy progress is hidden.
 func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newOpsExecuteSmokeTestDeploymentServer(t, &requests)
@@ -526,19 +528,19 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 	)
 
 	require.Contains(t, output, "execute smoke test")
-	require.Contains(t, output, "deploy: fixture embedded/processdefinitions/C89_MultipleSubProcessesParent.bpmn")
-	require.Contains(t, output, "deploy: confirmed process definition pd-89")
-	require.Contains(t, output, "start: 1 process instance")
-	require.Contains(t, output, "start: created 1/1")
-	require.Contains(t, output, "walk: 1 process-instance family")
-	require.Contains(t, output, "walk: confirmed 1 process-instance family")
-	require.Contains(t, output, "cleanup: deleting created resources")
 	require.Contains(t, output, "fixture: embedded/processdefinitions/C89_MultipleSubProcessesParent.bpmn")
 	require.Contains(t, output, "deployment: confirmed")
 	require.Contains(t, output, "created process instances: 1/1")
 	require.Contains(t, output, "walk: confirmed (process instances: 1)")
 	require.Contains(t, output, "cleanup: submitted 1 process instance and fixture process definition (--no-wait)")
 	require.NotContains(t, output, "cleanup confirmation:")
+	require.NotContains(t, output, "deploy: fixture embedded/processdefinitions/C89_MultipleSubProcessesParent.bpmn")
+	require.NotContains(t, output, "deploy: confirmed process definition pd-89")
+	require.NotContains(t, output, "start: 1 process instance")
+	require.NotContains(t, output, "start: created 1/1")
+	require.NotContains(t, output, "walk: 1 process-instance family")
+	require.NotContains(t, output, "walk: confirmed 1 process-instance family")
+	require.NotContains(t, output, "cleanup: deleting created resources")
 	require.NotContains(t, output, "pi delete done")
 	require.NotContains(t, output, "delete request sent")
 	require.NotContains(t, output, "pd delete done")
@@ -572,6 +574,8 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 	}, requests.Snapshot())
 }
 
+// TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances verifies count
+// aliases drive the final summary without reintroducing legacy progress logs.
 func TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances(t *testing.T) {
 	tests := []struct {
 		name string
@@ -602,13 +606,13 @@ func TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances(t *testing.T) {
 			}, tt.args...)
 			output := executeRootForProcessInstanceTest(t, args...)
 
-			require.Contains(t, output, "start: 2 process instances")
-			require.Contains(t, output, "walk: 2 process-instance families")
 			require.Contains(t, output, "cleanup: skipped (--no-cleanup)")
 			require.Contains(t, output, "created process instances: 2/2")
 			require.Contains(t, output, "walk: confirmed (process instances: 2)")
 			require.Contains(t, output, "cleanup: skipped (--no-cleanup)")
 			require.Contains(t, output, "outcome: passed_cleanup_skipped; use --verbose to list retained resources")
+			require.NotContains(t, output, "start: 2 process instances")
+			require.NotContains(t, output, "walk: 2 process-instance families")
 			require.NotContains(t, output, "created keys: 101, 102")
 			require.NotContains(t, output, "walk 101:")
 			require.Len(t, createBodies.Snapshot(), 2)
