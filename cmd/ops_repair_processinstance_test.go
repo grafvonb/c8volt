@@ -414,6 +414,33 @@ func TestOpsRepairProcessInstanceQuietProgressShowsOnlyFailureWarning(t *testing
 	require.NotContains(t, output, "\nrepairing incidents,")
 }
 
+// TestOpsRepairProcessInstanceSemanticProgressModeGate verifies
+// process-instance-selected repair progress preserves protected output modes
+// and still surfaces quiet failure warnings.
+func TestOpsRepairProcessInstanceSemanticProgressModeGate(t *testing.T) {
+	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
+		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+			request := ops.RepairRequest{}
+			progress := configureOpsRepairProgress(cmd, &request)
+			return request.Progress, progress.Close
+		},
+		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
+			return ops.ProgressEvent{
+				Kind: ops.ProgressEventKindCompletion,
+				Completion: &ops.CompletionProgress{
+					Phase:         opsRepairCompletionPhase,
+					CoreResource:  "incident(s)",
+					Total:         1,
+					Identity:      "incident-1",
+					Disposition:   disposition,
+					FailureDetail: detail,
+				},
+			}
+		},
+		QuietWarning: "incident-1 failed: request rejected (repairing incidents, 1/1 incident(s), 1 failed)",
+	})
+}
+
 // TestOpsRepairProcessInstanceMachineProgressSafetyPendingT068 pins
 // process-instance repair progress silence for JSON, quiet, and automation
 // modes.

@@ -824,6 +824,35 @@ func TestOpsPurgeProcessInstancesWithIncidentsVerboseDeletionReplacesMilestones(
 	require.NotContains(t, output, "\ndeletion process-instance trees, 1/2")
 }
 
+// TestOpsPurgeProcessInstancesWithIncidentsSemanticProgressModeGate verifies
+// incident purge completion progress cannot corrupt machine stdout and keeps
+// automation silent.
+func TestOpsPurgeProcessInstancesWithIncidentsSemanticProgressModeGate(t *testing.T) {
+	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
+		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+			request := ops.IncidentPurgeRequest{}
+			progress := configureOpsPurgeProcessInstancesWithIncidentsProgress(cmd, &request)
+			return request.Progress, progress.Close
+		},
+		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
+			return ops.ProgressEvent{
+				Kind: ops.ProgressEventKindCompletion,
+				Completion: &ops.CompletionProgress{
+					Phase:            "delete",
+					CoreResource:     "process-instance tree(s)",
+					Total:            1,
+					Identity:         "incident-root-1",
+					Disposition:      disposition,
+					FailureDetail:    detail,
+					AffectedResource: "affected process instances",
+					AffectedCount:    ptrInt(1),
+				},
+			}
+		},
+		QuietWarning: "incident-root-1 failed: request rejected (deletion process-instance trees, 1/1 process-instance tree(s), 1 failed, affected process instances: 1)",
+	})
+}
+
 // TestOpsPurgeProcessInstancesWithIncidentsMachineProgressSafetyPendingT066 pins
 // incident purge progress silence for JSON, quiet, and automation modes.
 func TestOpsPurgeProcessInstancesWithIncidentsMachineProgressSafetyPendingT066(t *testing.T) {

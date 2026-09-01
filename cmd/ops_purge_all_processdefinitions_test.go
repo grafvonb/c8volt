@@ -106,6 +106,33 @@ func TestOpsPurgeAllProcessDefinitionsDeletionMilestonesStaySeparateFromDiscover
 	require.NotContains(t, output, "discovering process definitions, 2/2")
 }
 
+// TestOpsPurgeAllProcessDefinitionsSemanticProgressModeGate verifies APD
+// deletion completion progress remains compatible with machine and quiet modes.
+func TestOpsPurgeAllProcessDefinitionsSemanticProgressModeGate(t *testing.T) {
+	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
+		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+			deletionProgress := newProcessDefinitionDeleteSemanticProgress(cmd, 1)
+			request := ops.AllProcessDefinitionsPurgeRequest{}
+			configureOpsPurgeAllProcessDefinitionsProgress(cmd, &request, deletionProgress)
+			return request.Progress, deletionProgress.Close
+		},
+		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
+			return ops.ProgressEvent{
+				Kind: ops.ProgressEventKindCompletion,
+				Completion: &ops.CompletionProgress{
+					Phase:         processDefinitionDeleteCompletionPhase,
+					CoreResource:  "process definition(s)",
+					Total:         1,
+					Identity:      "pd-1",
+					Disposition:   disposition,
+					FailureDetail: detail,
+				},
+			}
+		},
+		QuietWarning: "pd-1 failed: request rejected (deleting process definitions, 1/1 process definition(s), 1 failed)",
+	})
+}
+
 // TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape verifies the registered command, alias, and safe examples.
 func TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape(t *testing.T) {
 	resetOpsPurgeAllProcessDefinitionsFlagState()

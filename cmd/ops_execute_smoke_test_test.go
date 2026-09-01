@@ -111,6 +111,33 @@ func TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation(t *testing.T
 	require.NotContains(t, output, "delete process-instance")
 }
 
+// TestOpsExecuteSmokeTestSemanticProgressModeGate verifies smoke-test stage
+// completion progress is silent for machine modes and only quiet failures are
+// durable.
+func TestOpsExecuteSmokeTestSemanticProgressModeGate(t *testing.T) {
+	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
+		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+			request := ops.SmokeTestRequest{}
+			progress := configureOpsExecuteSmokeTestProgress(cmd, &request)
+			return request.Progress, progress.Close
+		},
+		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
+			return ops.ProgressEvent{
+				Kind: ops.ProgressEventKindCompletion,
+				Completion: &ops.CompletionProgress{
+					Phase:         "starting process instances",
+					CoreResource:  "process instance(s)",
+					Total:         1,
+					Identity:      "pi-1",
+					Disposition:   disposition,
+					FailureDetail: detail,
+				},
+			}
+		},
+		QuietWarning: "pi-1 failed: request rejected (starting process instances, 1/1 process instance(s), 1 failed)",
+	})
+}
+
 // reportOpsSmokeTestCompletionEvent sends one high-level smoke-test completion
 // fact through the configured smoke-test command progress callback.
 func reportOpsSmokeTestCompletionEvent(progress func(ops.ProgressEvent), phase string, identity string, resource string, total int, disposition ops.CompletionDisposition, detail string) {

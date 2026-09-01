@@ -799,6 +799,82 @@ func TestOpsExecuteRetentionPolicyMachineProgressSafetyPendingT066(t *testing.T)
 	}
 }
 
+// TestOpsExecuteRetentionPolicySemanticProgressModeGate verifies retention
+// completion progress stays off stdout and follows JSON, keys-only, quiet, and
+// automation suppression rules.
+func TestOpsExecuteRetentionPolicySemanticProgressModeGate(t *testing.T) {
+	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
+		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+			request := ops.RetentionPolicyRequest{}
+			progress := configureOpsExecuteRetentionPolicyProgress(cmd, &request)
+			return request.Progress, progress.Close
+		},
+		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
+			return ops.ProgressEvent{
+				Kind: ops.ProgressEventKindCompletion,
+				Completion: &ops.CompletionProgress{
+					Phase:            "delete",
+					CoreResource:     "process-instance tree(s)",
+					Total:            1,
+					Identity:         "retention-root-1",
+					Disposition:      disposition,
+					FailureDetail:    detail,
+					AffectedResource: "affected process instances",
+					AffectedCount:    ptrInt(1),
+				},
+			}
+		},
+		QuietWarning: "retention-root-1 failed: request rejected (deletion process-instance trees, 1/1 process-instance tree(s), 1 failed, affected process instances: 1)",
+	})
+}
+
+// opsCompletionProgressModeGateCase describes one command-family progress
+// adapter and the quiet failure line expected from its vocabulary.
+type opsCompletionProgressModeGateCase struct {
+	Configure    func(*cobra.Command) (func(ops.ProgressEvent), func())
+	Event        func(ops.CompletionDisposition, string) ops.ProgressEvent
+	QuietWarning string
+}
+
+// assertOpsCompletionProgressModeGate drives one command-family progress
+// adapter through protected output modes so mode regressions stay consistent.
+func assertOpsCompletionProgressModeGate(t *testing.T, tc opsCompletionProgressModeGateCase) {
+	t.Helper()
+	for _, mode := range []struct {
+		name             string
+		setup            func()
+		disposition      ops.CompletionDisposition
+		detail           string
+		wantQuietWarning bool
+	}{
+		{name: "json failure silence", setup: func() { flagViewAsJson = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+		{name: "keys-only failure silence", setup: func() { flagViewKeysOnly = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+		{name: "quiet success silence", setup: func() { flagQuiet = true }, disposition: ops.CompletionDispositionConfirmed},
+		{name: "quiet failure warning", setup: func() { flagQuiet = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected", wantQuietWarning: true},
+		{name: "automation failure silence", setup: func() { flagCmdAutomation = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			resetSemanticProgressModeFlags(t)
+			mode.setup()
+			cmd, stderr := newSemanticProgressStderrCommand()
+			stdout := &bytes.Buffer{}
+			cmd.SetOut(stdout)
+			report, closeProgress := tc.Configure(cmd)
+			require.NotNil(t, report)
+
+			report(tc.Event(mode.disposition, mode.detail))
+			closeProgress()
+
+			require.Empty(t, stdout.String())
+			if mode.wantQuietWarning {
+				require.Equal(t, tc.QuietWarning+"\n", stderr.String())
+				return
+			}
+			require.Empty(t, strings.TrimSpace(stderr.String()))
+		})
+	}
+}
+
 // newSemanticProgressStderrCommand returns a minimal command that captures
 // semantic progress diagnostics without involving root command setup.
 func newSemanticProgressStderrCommand() (*cobra.Command, *bytes.Buffer) {

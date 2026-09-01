@@ -449,6 +449,34 @@ func TestOpsPurgeOrphanProcessInstancesDefaultDeletionMilestonesOmitUnknownAffec
 	require.NotContains(t, output, "affected process instances:")
 }
 
+// TestOpsPurgeOrphanProcessInstancesSemanticProgressModeGate verifies orphan
+// purge deletion progress keeps protected modes silent except quiet failures.
+func TestOpsPurgeOrphanProcessInstancesSemanticProgressModeGate(t *testing.T) {
+	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
+		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+			request := ops.OrphanPurgeRequest{}
+			progress := configureOpsPurgeOrphanProcessInstancesProgress(cmd, &request)
+			return request.Progress, progress.Close
+		},
+		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
+			return ops.ProgressEvent{
+				Kind: ops.ProgressEventKindCompletion,
+				Completion: &ops.CompletionProgress{
+					Phase:            "delete",
+					CoreResource:     "process-instance tree(s)",
+					Total:            1,
+					Identity:         "orphan-root-1",
+					Disposition:      disposition,
+					FailureDetail:    detail,
+					AffectedResource: "affected process instances",
+					AffectedCount:    ptrInt(1),
+				},
+			}
+		},
+		QuietWarning: "orphan-root-1 failed: request rejected (deletion process-instance trees, 1/1 process-instance tree(s), 1 failed, affected process instances: 1)",
+	})
+}
+
 // TestOpsPurgeOrphanProcessInstancesMachineProgressSafetyPendingT066 pins orphan
 // purge progress silence for JSON, quiet, and automation modes.
 func TestOpsPurgeOrphanProcessInstancesMachineProgressSafetyPendingT066(t *testing.T) {

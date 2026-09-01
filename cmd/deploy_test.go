@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
@@ -81,6 +82,31 @@ func TestDeployProcessDefinitionSemanticProgressVerboseItemsReplaceMilestones(t 
 	require.Equal(t, 2, strings.Count(output, "deploying process definitions"))
 	require.NotContains(t, output, "\ndeploying process definitions, 1/2")
 	require.NotContains(t, output, "\ndeploying process definitions, 2/2")
+}
+
+// TestDeployProcessDefinitionSemanticProgressModeGate verifies deployment
+// completion progress preserves machine stdout and quiet/automation contracts.
+func TestDeployProcessDefinitionSemanticProgressModeGate(t *testing.T) {
+	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
+		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+			progress := newProcessDefinitionDeploySemanticProgress(cmd)
+			return progress.Report, progress.Close
+		},
+		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
+			return ops.ProgressEvent{
+				Kind: ops.ProgressEventKindCompletion,
+				Completion: &ops.CompletionProgress{
+					Phase:         processDefinitionDeployCompletionPhase,
+					CoreResource:  "process definition(s)",
+					Total:         1,
+					Identity:      "pd-1",
+					Disposition:   disposition,
+					FailureDetail: detail,
+				},
+			}
+		},
+		QuietWarning: "pd-1 failed: request rejected (deploying process definitions, 1/1 process definition(s), 1 failed)",
+	})
 }
 
 func TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig(t *testing.T) {

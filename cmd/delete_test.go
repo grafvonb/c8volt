@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -124,6 +125,33 @@ func TestDeleteProcessDefinitionSemanticProgressDefaultMilestonesAndFinalFlush(t
 	require.Equal(t, 1, strings.Count(output, "deleting process definitions, 2/2 process definition(s)"))
 	require.NotContains(t, output, "pd-1 deleted")
 	require.NotContains(t, output, "pd-2 deleted")
+}
+
+// TestDeleteProcessDefinitionSemanticProgressModeGate verifies basic
+// process-definition deletion progress keeps machine modes silent while quiet
+// still reports failures on stderr.
+func TestDeleteProcessDefinitionSemanticProgressModeGate(t *testing.T) {
+	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
+		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+			progress := newProcessDefinitionDeleteSemanticProgress(cmd, 1)
+			progress.Start(1)
+			return progress.Report, progress.Close
+		},
+		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
+			return ops.ProgressEvent{
+				Kind: ops.ProgressEventKindCompletion,
+				Completion: &ops.CompletionProgress{
+					Phase:         processDefinitionDeleteCompletionPhase,
+					CoreResource:  "process definition(s)",
+					Total:         1,
+					Identity:      "pd-1",
+					Disposition:   disposition,
+					FailureDetail: detail,
+				},
+			}
+		},
+		QuietWarning: "pd-1 failed: request rejected (deleting process definitions, 1/1 process definition(s), 1 failed)",
+	})
 }
 
 // TestDeleteProcessDefinitionHelp_DocumentsTenantContract verifies destructive

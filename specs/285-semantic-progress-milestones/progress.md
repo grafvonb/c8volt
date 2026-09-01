@@ -105,6 +105,33 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `git diff --check` -> no output.
 ---
 ---
+## Iteration 2 - 2026-09-01 07:26
+**Work Unit**: User Story 3 command-family machine-output progress regression tests
+**Tasks Completed**:
+- [x] T038: Add JSON, keys-only, quiet, automation, prompt-boundary, stdout-parseability, and unchanged report/result tests for process-definition, deployment, purge, repair, and smoke commands
+**Tasks Remaining in Work Unit**: T039-T042 remain in User Story 3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/delete_test.go
+- cmd/deploy_test.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- cmd/ops_execute_retention_policy_test.go
+- cmd/ops_purge_orphan_processinstances_test.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- cmd/ops_repair_incident_test.go
+- cmd/ops_repair_processinstance_test.go
+- cmd/ops_execute_smoke_test_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Added a shared command-test mode-gate helper proving process-definition, deployment, purge, repair, and smoke semantic progress adapters leave stdout empty in JSON/keys-only/quiet/automation paths.
+- Validation passed: `go test ./cmd -run 'Test(DeleteProcessDefinition|DeployProcessDefinition|OpsPurgeAllProcessDefinitions|OpsExecuteRetentionPolicy|OpsPurgeOrphanProcessInstances|OpsPurgeProcessInstancesWithIncidents|OpsRepairIncident|OpsRepairProcessInstance|OpsExecuteSmokeTest)SemanticProgressModeGate' -count=1` -> `ok github.com/grafvonb/c8volt/cmd 0.647s`.
+- Validation passed: `go test ./cmd -run 'Test(DeleteProcessDefinition|DeployProcessDefinition|OpsPurgeAllProcessDefinitions|OpsExecuteRetentionPolicy|OpsPurgeOrphanProcessInstances|OpsPurgeProcessInstancesWithIncidents|OpsRepairIncident|OpsRepairProcessInstance|OpsExecuteSmokeTest)SemanticProgressModeGate' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.637s`.
+- Validation passed: `go test ./cmd -run 'SemanticProgressModeGate|MachineProgressSafety|AutomationJSON|JSONOutput|Quiet|ConfirmedDeletionUsesFrozen|Writes.*Report|DryRunJSON|ExistingReport|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 23.237s`.
+- Validation passed: `git diff --check` -> no output.
+---
+---
 ## Iteration 29 - 2026-09-01 06:55
 **Work Unit**: User Story 2 final milestone validation
 **Tasks Completed**:
