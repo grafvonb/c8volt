@@ -922,3 +922,22 @@ Started: 2026-08-31 19:14:26
 - Targeted changed-package validation passed without source changes; full-suite `make test` remains the next validation task.
 - Validation passed: `go test ./cmd ./c8volt/foptions ./c8volt/ops ./internal/domain ./internal/services/processinstance/... ./internal/services/processdefinition/... ./internal/services/resource/... ./internal/services/ops/... ./toolx/logging -race -count=1` -> `ok` for `cmd`, facade mirrors, domain, process-instance/process-definition/resource/ops service packages, and `toolx/logging`.
 ---
+---
+## Iteration 12 - 2026-09-01 08:31
+**Work Unit**: Phase 6 full-suite validation
+**Tasks Completed**:
+- [x] T048: Run `make test` from the repository root and record the full-suite result
+**Tasks Remaining in Work Unit**: T049 remains in Phase 6
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/process/client_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Initial `make test` failed in `c8volt/process` because bulk-start facade progress now includes completion facts in addition to frozen-scope snapshots; the stale test now filters by event kind and asserts both contracts.
+- Validation passed: `go test ./c8volt/process -run 'TestClient_CreateNProcessInstances_MapsProgress' -count=1` -> `ok github.com/grafvonb/c8volt/c8volt/process 0.461s`.
+- Validation passed: `go test ./c8volt/process -race -count=1` -> `ok github.com/grafvonb/c8volt/c8volt/process 1.395s`.
+- Validation passed: `git diff --check` -> no output.
+- Validation passed: `make test` -> `go test ./... -race -count=1` completed successfully across the repository.
+---

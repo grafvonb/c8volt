@@ -94,12 +94,14 @@ func TestClient_CreateProcessInstances_DelegatesOrderedCreation(t *testing.T) {
 	}, got)
 }
 
-// TestClient_CreateNProcessInstances_MapsProgress verifies bulk create progress crosses the public process facade.
+// TestClient_CreateNProcessInstances_MapsProgress verifies bulk create frozen
+// scope snapshots and completion facts cross the public process facade.
 func TestClient_CreateNProcessInstances_MapsProgress(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	var events []options.ProgressEvent
+	var frozenScopes []options.FrozenScopeProgress
+	var completions []options.CompletionProgress
 	piAPI := stubProcessInstanceAPI{
 		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
 			return d.ProcessInstanceCreation{Key: "created-" + data.BpmnProcessId, BpmnProcessId: data.BpmnProcessId}, nil
@@ -107,15 +109,42 @@ func TestClient_CreateNProcessInstances_MapsProgress(t *testing.T) {
 	}
 
 	got, err := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default()).CreateNProcessInstances(ctx, ProcessInstanceData{BpmnProcessId: "demo"}, 2, 1, options.WithProgress(func(event options.ProgressEvent) {
-		events = append(events, event)
+		if event.Kind == options.ProgressEventKindFrozenScope && event.FrozenScope != nil {
+			frozenScopes = append(frozenScopes, *event.FrozenScope)
+		}
+		if event.Kind == options.ProgressEventKindCompletion && event.Completion != nil {
+			completions = append(completions, *event.Completion)
+		}
 	}))
 
 	require.NoError(t, err)
 	require.Len(t, got, 2)
-	require.Len(t, events, 3)
-	require.Equal(t, options.ProgressEventKindFrozenScope, events[0].Kind)
-	require.Equal(t, &options.FrozenScopeProgress{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 0, Total: 2}, events[0].FrozenScope)
-	require.Equal(t, &options.FrozenScopeProgress{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 2, Total: 2}, events[2].FrozenScope)
+	affected := 1
+	require.Equal(t, []options.FrozenScopeProgress{
+		{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 0, Total: 2},
+		{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 1, Total: 2},
+		{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 2, Total: 2},
+	}, frozenScopes)
+	require.Equal(t, []options.CompletionProgress{
+		{
+			Phase:            "create",
+			CoreResource:     "process instance(s)",
+			Total:            2,
+			Identity:         "created-demo",
+			Disposition:      options.CompletionDispositionConfirmed,
+			AffectedResource: "process instances",
+			AffectedCount:    &affected,
+		},
+		{
+			Phase:            "create",
+			CoreResource:     "process instance(s)",
+			Total:            2,
+			Identity:         "created-demo",
+			Disposition:      options.CompletionDispositionConfirmed,
+			AffectedResource: "process instances",
+			AffectedCount:    &affected,
+		},
+	}, completions)
 }
 
 // TestClient_GetProcessDefinition_MapsIncidentCountSupportState protects the

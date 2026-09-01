@@ -59,6 +59,7 @@ Started: 2026-08-31T17:14:26Z
 - T045 regenerated CLI documentation with `make docs-content`; expected generated output is limited to semantic-progress help/example updates under `docs/cli/` plus the generated overview/build metadata in `docs/index.md`.
 - T046 reviewed `quickstart.md` and `contracts/semantic-progress-contract.md` against the implemented domain/facade completion facts, command reporter, output-mode gate, lifecycle vocabulary, and tests; no specification updates were required.
 - T047 targeted `-race` validation passed across `cmd`, `c8volt/foptions`, `c8volt/ops`, `internal/domain`, `internal/services/processinstance/...`, `internal/services/processdefinition/...`, `internal/services/resource/...`, `internal/services/ops/...`, and `toolx/logging`.
+- T048 full-suite validation passed after updating `c8volt/process` facade progress coverage to account for bulk-start completion facts alongside legacy frozen-scope events.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -97,6 +98,7 @@ Started: 2026-08-31T17:14:26Z
 - Avoid command-scope `defer reporter.Close()` for semantic reporters around facade calls that may render results, write reports, run follow-up work, or call exit-style error handlers afterward; close explicitly before those branches.
 - Smoke-test command tests must not require legacy `deploy:`, `start:`, or `walk:` INFO lines in default output once `configureOpsExecuteSmokeTestProgress` installs structured progress; assert final smoke-test summaries remain and duplicate legacy progress stays absent.
 - In process-instance search mutation tests, `requireProcessInstanceMutationPlanningStoppedBeforePrompt` asserts the planning activity is stopped before confirmation, while `requireProcessInstanceMutationSemanticActivity` continues to assert the fresh mutation activity starts and stops.
+- Public process facade progress tests that call bulk-start with `WithProgress` now receive both frozen-scope snapshots and completion facts; filter by event kind before asserting exact sequences.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -147,4 +149,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Continue Phase 6 at T048: run `make test` from the repository root and record the full-suite result in `progress.md`; leave T049 for the subsequent scope check and final notes iteration.
+- Continue Phase 6 at T049: review `git diff --check`, confirm changes are scoped to issue #285, mark completed work in `tasks.md`, and finalize reusable codebase notes in `progress.md`.
