@@ -131,6 +131,36 @@ func TestFormatOpsSemanticProgressAggregateRendersCumulativeAffectedAndFailed(t 
 	}))
 }
 
+// TestFormatOpsSemanticProgressCompletionUsesLifecycleVocabulary verifies
+// rendered item outcomes come from command-owned words with safe defaults.
+func TestFormatOpsSemanticProgressCompletionUsesLifecycleVocabulary(t *testing.T) {
+	scope := opsSemanticProgressScope{
+		ActivityLabel: "running work",
+		CoreResource:  "item(s)",
+		Total:         3,
+	}.withLifecycleWords(opsSemanticProgressLifecycleWordsFor("finished"))
+	aggregate := opsSemanticProgressAggregate{Completed: 1, Total: 3}
+
+	require.Equal(t, "item-1 submitted (running work, 1/3 item(s))", formatOpsSemanticProgressCompletion(scope, aggregate, ops.CompletionProgress{
+		Identity:    "item-1",
+		Disposition: ops.CompletionDispositionSubmitted,
+	}))
+	require.Equal(t, "item-1 finished (running work, 1/3 item(s))", formatOpsSemanticProgressCompletion(scope, aggregate, ops.CompletionProgress{
+		Identity:    "item-1",
+		Disposition: ops.CompletionDispositionConfirmed,
+	}))
+	require.Equal(t, "item-1 failed: boom (running work, 1/3 item(s))", formatOpsSemanticProgressCompletion(scope, aggregate, ops.CompletionProgress{
+		Identity:      "item-1",
+		Disposition:   ops.CompletionDispositionFailed,
+		FailureDetail: "boom",
+	}))
+
+	fallbackScope := opsSemanticProgressScope{ActivityLabel: "running work", CoreResource: "item(s)", Total: 1}
+	require.Equal(t, "item completed (running work, 1/1 item(s))", formatOpsSemanticProgressCompletion(fallbackScope, opsSemanticProgressAggregate{Completed: 1, Total: 1}, ops.CompletionProgress{
+		Disposition: ops.CompletionDispositionConfirmed,
+	}))
+}
+
 // TestPrintOpsDurableLineDirectBypassesLoggerSeverity verifies direct progress
 // warnings are not filtered by the command logger's configured severity.
 func TestPrintOpsDurableLineDirectBypassesLoggerSeverity(t *testing.T) {

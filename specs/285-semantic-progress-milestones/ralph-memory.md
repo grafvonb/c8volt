@@ -50,6 +50,7 @@ Started: 2026-08-31T17:14:26Z
 - T037 pins process-instance cancel/delete parity in `cmd`: direct-key and stdin-key-equivalent paths share submitted/confirmed lifecycle wording, search-selected cancel/delete start semantic completions after confirmation, force delete ignores nested cleanup completion phases, failed facts warn immediately, and unknown affected deltas omit affected progress aggregates.
 - T038 added shared adapter-level mode-gate coverage for process-definition delete/deploy, all-process-definition purge, retention/orphan/incident purge, incident/process-instance repair, and smoke-test stage progress: JSON, keys-only, and automation suppress semantic failures entirely; quiet suppresses successes but writes the immediate failure warning; stdout remains empty.
 - T039 makes automation, JSON, and keys-only progress modes authoritative over quiet for semantic progress routing, while quiet-only failures still use the direct stderr warning path.
+- T040 centralizes submitted/confirmed/failed lifecycle vocabulary in command-owned semantic progress helpers; process-instance cancel/delete, repair, and bulk-start adapters now consume shared wording helpers while services continue emitting only dispositions.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -128,10 +129,12 @@ Started: 2026-08-31T17:14:26Z
 - `go test ./cmd -run 'ProcessDefinition|Deploy|PurgeAllProcessDefinitions|Progress|Activity' -race -count=1`
 - `go test ./cmd -run 'TestOpsExecuteRetentionPolicyDefaultDeletionMilestonesAndFinalFlush|TestOpsPurgeOrphanProcessInstancesDefaultDeletionMilestonesOmitUnknownAffected|TestOpsPurgeProcessInstancesWithIncidentsVerboseDeletionReplacesMilestones|TestOpsRepairIncidentDefaultFailureWarnsAndFlushes|TestOpsRepairProcessInstanceQuietProgressShowsOnlyFailureWarning|TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation|TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush|TestOpsAnalyseSlowProcessInstancesSemanticCompletionMilestones|TestExpectProcessInstanceDefaultMilestonesAndFinalFlush' -race -count=1`
 - `go test ./cmd -run 'RetentionPolicy|OrphanProcessInstances|ProcessInstancesWithIncidents|Repair|Smoke|RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|Progress|Activity' -race -count=1`
+- `go test ./cmd -run 'TestFormatOpsSemanticProgressCompletionUsesLifecycleVocabulary|TestProcessInstanceMutationSemanticProgressScopeMapsLifecycleVocabulary|TestOpsRepairIncidentVerboseLifecycleVocabulary|TestRunProcessInstanceVerboseLifecycleVocabulary' -race -count=1`
+- `go test ./cmd -run 'ProcessInstance|Repair|RunProcessInstance|ExplicitLargeWork|Progress|Activity' -race -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Continue User Story 3 at T040: map submitted, confirmed operation-specific, and failed vocabulary per command family without moving wording into services. Keep T039 mode precedence intact: automation, JSON, and keys-only suppress all semantic progress even when quiet is also set, while quiet-only failure warnings remain visible through the direct stderr path.
+- Continue User Story 3 at T041: normalize direct/stdin/search reporter setup and ensure destructive planning activity stops before confirmation and mutation starts a fresh clock/activity. Keep command-owned lifecycle vocabulary helpers from T040 and T039 mode precedence intact.

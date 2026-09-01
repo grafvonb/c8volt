@@ -890,6 +890,30 @@ func TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush(t *testing.T) {
 	require.NotContains(t, output, "pi-1 started")
 }
 
+// TestRunProcessInstanceVerboseLifecycleVocabulary verifies bulk-start progress
+// maps submitted, started, and failed wording in the command layer.
+func TestRunProcessInstanceVerboseLifecycleVocabulary(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagVerbose = true
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	reporter := newRunProcessInstanceSemanticProgressReporter(cmd, 3)
+	opts := appendRunProcessInstanceProgressOption(cmd, nil, reporter)
+	progress := options.ApplyFacadeOptions(opts).Progress
+	defer reporter.Close()
+
+	reportRunProcessInstanceCompletionEvent(progress, "pi-1", 3, options.CompletionDispositionSubmitted, "", ptrInt(1))
+	reportRunProcessInstanceCompletionEvent(progress, "pi-2", 3, options.CompletionDispositionConfirmed, "", ptrInt(1))
+	reportRunProcessInstanceCompletionEvent(progress, "pi-3", 3, options.CompletionDispositionFailed, "start rejected", ptrInt(0))
+	reporter.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "pi-1 submitted (starting process instances, 1/3 process instance(s), process instances: 1)")
+	require.Contains(t, output, "pi-2 started (starting process instances, 2/3 process instance(s), process instances: 2)")
+	require.Contains(t, output, "pi-3 failed: start rejected (starting process instances, 3/3 process instance(s), 1 failed, process instances: 2)")
+}
+
 // reportRunProcessInstanceCompletionEvent sends one facade-level bulk-start
 // completion fact through the configured run command progress callback.
 func reportRunProcessInstanceCompletionEvent(progress func(options.ProgressEvent), identity string, total int, disposition options.CompletionDisposition, detail string, affected *int) {

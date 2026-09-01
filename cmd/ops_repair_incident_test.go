@@ -484,6 +484,28 @@ func TestOpsRepairIncidentDefaultFailureWarnsAndFlushes(t *testing.T) {
 	require.Equal(t, 1, strings.Count(output, "repairing incidents, 2/2 incident(s), 1 failed"))
 }
 
+// TestOpsRepairIncidentVerboseLifecycleVocabulary verifies repair progress
+// maps submitted, repaired, and failed wording in the command layer.
+func TestOpsRepairIncidentVerboseLifecycleVocabulary(t *testing.T) {
+	resetSemanticProgressModeFlags(t)
+	flagVerbose = true
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	request := ops.RepairRequest{}
+	progress := configureOpsRepairProgress(cmd, &request)
+	defer progress.Close()
+
+	reportOpsRepairCompletionEvent(request.Progress, "incident-1", 3, ops.CompletionDispositionSubmitted, "")
+	reportOpsRepairCompletionEvent(request.Progress, "incident-2", 3, ops.CompletionDispositionConfirmed, "")
+	reportOpsRepairCompletionEvent(request.Progress, "incident-3", 3, ops.CompletionDispositionFailed, "retry exhausted")
+	progress.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "incident-1 submitted (repairing incidents, 1/3 incident(s))")
+	require.Contains(t, output, "incident-2 repaired (repairing incidents, 2/3 incident(s))")
+	require.Contains(t, output, "incident-3 failed: retry exhausted (repairing incidents, 3/3 incident(s), 1 failed)")
+}
+
 // TestOpsRepairIncidentSemanticProgressModeGate verifies incident repair
 // progress is stdout-safe in machine modes and quiet reports only failures.
 func TestOpsRepairIncidentSemanticProgressModeGate(t *testing.T) {

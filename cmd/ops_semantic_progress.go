@@ -27,6 +27,14 @@ type opsSemanticProgressScope struct {
 	FailedVerb                string
 }
 
+// opsSemanticProgressLifecycleWords keeps command-family lifecycle vocabulary
+// together so services can stay limited to wording-free dispositions.
+type opsSemanticProgressLifecycleWords struct {
+	Submitted string
+	Confirmed string
+	Failed    string
+}
+
 // opsSemanticProgressConfig groups the fixed dependencies needed for one
 // semantic progress reporter lifetime.
 type opsSemanticProgressConfig struct {
@@ -219,11 +227,33 @@ func opsSemanticProgressCommandContext(cmd *cobra.Command) context.Context {
 	return cmd.Context()
 }
 
+// opsSemanticProgressLifecycleWordsFor returns the standard submitted/failed
+// wording around a command-family-specific confirmed verb.
+func opsSemanticProgressLifecycleWordsFor(confirmed string) opsSemanticProgressLifecycleWords {
+	confirmed = strings.TrimSpace(confirmed)
+	if confirmed == "" {
+		confirmed = "completed"
+	}
+	return opsSemanticProgressLifecycleWords{
+		Submitted: "submitted",
+		Confirmed: confirmed,
+		Failed:    "failed",
+	}
+}
+
+// withLifecycleWords returns scope with explicit lifecycle verbs filled from
+// command-owned vocabulary while preserving any unrelated scope metadata.
+func (s opsSemanticProgressScope) withLifecycleWords(words opsSemanticProgressLifecycleWords) opsSemanticProgressScope {
+	s.SubmittedVerb = strings.TrimSpace(words.Submitted)
+	s.ConfirmedVerb = strings.TrimSpace(words.Confirmed)
+	s.FailedVerb = strings.TrimSpace(words.Failed)
+	return s
+}
+
 // processInstanceMutationSemanticProgressScope returns the shared vocabulary
 // for process-instance cancel/delete workflow completions.
 func processInstanceMutationSemanticProgressScope(operation string, total int, affectedCoverageAvailable bool) opsSemanticProgressScope {
-	label, confirmedVerb := processInstanceMutationResultWords(operation, false)
-	_, submittedVerb := processInstanceMutationResultWords(operation, true)
+	label, words := processInstanceMutationSemanticProgressWords(operation)
 	activity := strings.TrimSpace(label)
 	if activity == "" {
 		activity = "mutation"
@@ -235,8 +265,15 @@ func processInstanceMutationSemanticProgressScope(operation string, total int, a
 		Total:                     total,
 		AffectedResource:          "affected process instances",
 		AffectedCoverageAvailable: affectedCoverageAvailable,
-		SubmittedVerb:             submittedVerb,
-		ConfirmedVerb:             confirmedVerb,
-		FailedVerb:                "failed",
-	}
+	}.withLifecycleWords(words)
+}
+
+// processInstanceMutationSemanticProgressWords maps cancel/delete lifecycle
+// wording once for every direct, stdin, and search-selected mutation path.
+func processInstanceMutationSemanticProgressWords(operation string) (string, opsSemanticProgressLifecycleWords) {
+	label, confirmedVerb := processInstanceMutationResultWords(operation, false)
+	_, submittedVerb := processInstanceMutationResultWords(operation, true)
+	words := opsSemanticProgressLifecycleWordsFor(confirmedVerb)
+	words.Submitted = submittedVerb
+	return label, words
 }

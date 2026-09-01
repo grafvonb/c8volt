@@ -414,21 +414,34 @@ func formatOpsSemanticProgressCompletion(scope opsSemanticProgressScope, aggrega
 	if identity == "" {
 		identity = "item"
 	}
-	verb := scope.ConfirmedVerb
-	switch completion.Disposition {
-	case ops.CompletionDispositionSubmitted:
-		verb = scope.SubmittedVerb
-	case ops.CompletionDispositionFailed:
-		verb = scope.FailedVerb
-	}
-	if strings.TrimSpace(verb) == "" {
-		verb = string(completion.Disposition)
-	}
+	verb := opsSemanticProgressLifecycleVerb(scope, completion.Disposition)
 	line := fmt.Sprintf("%s %s", identity, strings.TrimSpace(verb))
 	if detail := strings.TrimSpace(completion.FailureDetail); detail != "" && completion.Disposition == ops.CompletionDispositionFailed {
 		line += ": " + detail
 	}
 	return line + " (" + formatOpsSemanticProgressAggregate(scope, aggregate) + ")"
+}
+
+// opsSemanticProgressLifecycleVerb projects a wording-free disposition into
+// command-owned lifecycle wording without exposing raw confirmed fallbacks.
+func opsSemanticProgressLifecycleVerb(scope opsSemanticProgressScope, disposition ops.CompletionDisposition) string {
+	switch disposition {
+	case ops.CompletionDispositionSubmitted:
+		if verb := strings.TrimSpace(scope.SubmittedVerb); verb != "" {
+			return verb
+		}
+		return "submitted"
+	case ops.CompletionDispositionFailed:
+		if verb := strings.TrimSpace(scope.FailedVerb); verb != "" {
+			return verb
+		}
+		return "failed"
+	default:
+		if verb := strings.TrimSpace(scope.ConfirmedVerb); verb != "" {
+			return verb
+		}
+		return "completed"
+	}
 }
 
 // nonEmptyOpsProgressParts trims empty formatter fragments before joining human progress text.

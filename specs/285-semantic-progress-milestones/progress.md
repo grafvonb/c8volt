@@ -736,3 +736,29 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./cmd -run 'Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 7.552s`.
 - Validation passed: `git diff --check` -> no output.
 ---
+---
+## Iteration 4 - 2026-09-01 07:39
+**Work Unit**: User Story 3 lifecycle vocabulary mapping
+**Tasks Completed**:
+- [x] T040: Map submitted, confirmed operation-specific, and failed vocabulary per command family without moving wording into services
+**Tasks Remaining in Work Unit**: T041-T042 remain in User Story 3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_semantic_progress.go
+- cmd/ops_progress_render.go
+- cmd/ops_progress_test.go
+- cmd/ops_repair_progress.go
+- cmd/ops_repair_incident_test.go
+- cmd/ops_explicit_large_work_progress.go
+- cmd/processinstance_mutation_progress_test.go
+- cmd/run_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Lifecycle item wording now flows through command-owned helpers with submitted and failed defaults plus command-family confirmed verbs; process-instance cancel/delete, repair, and bulk-start adapters no longer repeat ad hoc lifecycle literals.
+- Validation passed: `go test ./cmd -run 'TestFormatOpsSemanticProgressCompletionUsesLifecycleVocabulary|TestProcessInstanceMutationSemanticProgressScopeMapsLifecycleVocabulary|TestOpsRepairIncidentVerboseLifecycleVocabulary|TestRunProcessInstanceVerboseLifecycleVocabulary' -count=1` -> `ok github.com/grafvonb/c8volt/cmd 0.590s`.
+- Validation passed: `go test ./cmd -run 'TestFormatOpsSemanticProgressCompletionUsesLifecycleVocabulary|TestProcessInstanceMutationSemanticProgressScopeMapsLifecycleVocabulary|TestOpsRepairIncidentVerboseLifecycleVocabulary|TestRunProcessInstanceVerboseLifecycleVocabulary' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.738s`.
+- Validation passed: `go test ./cmd -run 'ProcessInstance|Repair|RunProcessInstance|ExplicitLargeWork|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 50.614s`.
+- Validation passed: `git diff --check` -> no output.
+---

@@ -107,10 +107,7 @@ func (p *opsRepairSemanticProgress) reporterLocked(completion ops.CompletionProg
 				ActivityLabel: "repairing incidents",
 				CoreResource:  "incident(s)",
 				Total:         completion.Total,
-				SubmittedVerb: "submitted",
-				ConfirmedVerb: "repaired",
-				FailedVerb:    "failed",
-			},
+			}.withLifecycleWords(opsSemanticProgressLifecycleWordsFor("repaired")),
 			Policy: opsSemanticProgressOutputPolicyForChannel(channel),
 			Now:    opsRepairSemanticProgressNow,
 		})

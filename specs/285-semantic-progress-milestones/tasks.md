@@ -116,7 +116,7 @@
 ### Implementation for User Story 3
 
 - [x] T039 [US3] Extend output policy so quiet uses a direct activity-aware stderr path for immediate failures while automation, JSON, and keys-only suppress every human progress line in `cmd/ops_progress_mode.go`, `cmd/ops_progress_render.go`, and `cmd/ops_semantic_progress.go`
-- [ ] T040 [US3] Map submitted, confirmed operation-specific, and failed vocabulary per command family without moving wording into services in `cmd/ops_semantic_progress.go`, `cmd/processinstance_mutation_progress.go`, `cmd/ops_repair_progress.go`, and `cmd/ops_explicit_large_work_progress.go`
+- [x] T040 [US3] Map submitted, confirmed operation-specific, and failed vocabulary per command family without moving wording into services in `cmd/ops_semantic_progress.go`, `cmd/processinstance_mutation_progress.go`, `cmd/ops_repair_progress.go`, and `cmd/ops_explicit_large_work_progress.go`
 - [ ] T041 [US3] Normalize direct/stdin/search reporter setup and ensure destructive planning activity stops before confirmation and mutation starts a fresh clock/activity in `cmd/cancel_processinstance.go`, `cmd/cancel_processinstance_selector.go`, `cmd/delete_processinstance.go`, `cmd/delete_processinstance_selector.go`, `cmd/delete_processdefinition.go`, `cmd/ops_purge_all_processdefinitions.go`, `cmd/ops_repair_incident.go`, and `cmd/ops_repair_processinstance.go`
 - [ ] T042 [US3] Run US3 lifecycle, input-parity, machine-output, quiet, automation, prompt, result, and report regression tests with `-race` and record exact results in `specs/285-semantic-progress-milestones/progress.md`
 

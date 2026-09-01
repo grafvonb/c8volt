@@ -43,10 +43,7 @@ func newRunProcessInstanceSemanticProgressReporter(cmd *cobra.Command, total int
 			Total:                     total,
 			AffectedResource:          "process instances",
 			AffectedCoverageAvailable: true,
-			SubmittedVerb:             "submitted",
-			ConfirmedVerb:             "started",
-			FailedVerb:                "failed",
-		},
+		}.withLifecycleWords(opsSemanticProgressLifecycleWordsFor("started")),
 		Policy: opsSemanticProgressOutputPolicyForChannel(channel),
 		Now:    runProcessInstanceSemanticProgressNow,
 	})

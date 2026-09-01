@@ -704,6 +704,46 @@ func TestProcessInstanceMutationDirectAndStdinKeysShareLifecycleWording(t *testi
 	}
 }
 
+// TestProcessInstanceMutationSemanticProgressScopeMapsLifecycleVocabulary
+// verifies cancel/delete scopes use submitted plus operation-specific confirmed
+// wording without relying on service-layer prose.
+func TestProcessInstanceMutationSemanticProgressScopeMapsLifecycleVocabulary(t *testing.T) {
+	tests := []struct {
+		operation string
+		label     string
+		submitted string
+		confirmed string
+		failed    string
+	}{
+		{
+			operation: "cancel",
+			label:     "cancellation process-instance trees",
+			submitted: "submitted",
+			confirmed: "canceled",
+			failed:    "failed",
+		},
+		{
+			operation: "delete",
+			label:     "deletion process-instance trees",
+			submitted: "submitted",
+			confirmed: "deleted",
+			failed:    "failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.operation, func(t *testing.T) {
+			scope := processInstanceMutationSemanticProgressScope(tt.operation, 2, true)
+
+			require.Equal(t, tt.operation, scope.Phase)
+			require.Equal(t, tt.label, scope.ActivityLabel)
+			require.Equal(t, tt.submitted, scope.SubmittedVerb)
+			require.Equal(t, tt.confirmed, scope.ConfirmedVerb)
+			require.Equal(t, tt.failed, scope.FailedVerb)
+		})
+	}
+}
+
 // TestProcessInstanceMutationSemanticProgressFailureAndUnknownAffected verifies
 // failed process-instance mutation facts warn immediately and permanently omit
 // affected counts when the scope cannot prove per-root affected coverage.
