@@ -643,3 +643,25 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./internal/services/ops/... -run 'Progress|Smoke' -race -count=1` -> `ok github.com/grafvonb/c8volt/internal/services/ops 1.754s`.
 - Validation passed: `git diff --check` -> no output.
 ---
+---
+## Iteration 30 - 2026-09-01 06:59
+**Work Unit**: User Story 3 completion disposition conversion tests
+**Tasks Completed**:
+- [x] T036: Add completion disposition and conversion tests proving accepted no-wait work is `submitted`, waited work is `confirmed`, failures stay `failed`, and service facts contain no rendered command wording
+**Tasks Remaining in Work Unit**: T037-T042 remain in User Story 3
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/domain/ops_progress_test.go
+- c8volt/foptions/options_test.go
+- c8volt/ops/model_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Added explicit lifecycle disposition conversion coverage across the domain, facade option, and ops facade boundaries without implementation changes.
+- Validation passed: `go test ./internal/domain -run 'TestOpsCompletion' -count=1` -> `ok github.com/grafvonb/c8volt/internal/domain 0.453s`.
+- Validation passed: `go test ./c8volt/foptions -run 'TestProgressCompletion' -count=1` -> `ok github.com/grafvonb/c8volt/c8volt/foptions 0.828s`.
+- Validation passed: `go test ./c8volt/ops -run 'TestProgressConversions_.*Completion' -count=1` -> `ok github.com/grafvonb/c8volt/c8volt/ops 0.900s`.
+- Validation passed: `go test ./internal/domain ./c8volt/foptions ./c8volt/ops -run 'TestOpsCompletion|TestProgressCompletion|TestProgressConversions_.*Completion' -race -count=1` -> `ok` for all three packages.
+- Validation passed: `git diff --check` -> no output.
+---

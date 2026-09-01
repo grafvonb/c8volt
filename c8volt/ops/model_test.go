@@ -224,6 +224,64 @@ func TestProgressConversions_MapCompletionFact(t *testing.T) {
 	}, domainEvent.Completion)
 }
 
+// TestProgressConversions_MapCompletionDispositionLifecycle verifies ops
+// facade conversions preserve generic lifecycle state without command verbs.
+func TestProgressConversions_MapCompletionDispositionLifecycle(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		domain     d.OpsCompletionDisposition
+		public     CompletionDisposition
+		publicName string
+	}{
+		{
+			name:       "accepted no-wait work is submitted",
+			domain:     d.OpsCompletionDispositionSubmitted,
+			public:     CompletionDispositionSubmitted,
+			publicName: "submitted",
+		},
+		{
+			name:       "waited work is confirmed",
+			domain:     d.OpsCompletionDispositionConfirmed,
+			public:     CompletionDispositionConfirmed,
+			publicName: "confirmed",
+		},
+		{
+			name:       "failed work stays failed",
+			domain:     d.OpsCompletionDispositionFailed,
+			public:     CompletionDispositionFailed,
+			publicName: "failed",
+		},
+	}
+
+	renderedVerbs := []string{"cancelled", "canceled", "deleted", "deployed", "repaired", "started", "satisfied"}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			publicEvent := fromDomainProgressEvent(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindCompletion,
+				Completion: &d.OpsCompletionProgress{
+					Phase:       "delete",
+					Identity:    "2251799813685251",
+					Disposition: tt.domain,
+				},
+			})
+			require.NotNil(t, publicEvent.Completion)
+			require.Equal(t, tt.public, publicEvent.Completion.Disposition)
+			require.Equal(t, tt.publicName, string(publicEvent.Completion.Disposition))
+			for _, renderedVerb := range renderedVerbs {
+				require.NotEqual(t, renderedVerb, string(publicEvent.Completion.Disposition))
+			}
+
+			roundTrip := toDomainProgressEvent(publicEvent)
+			require.NotNil(t, roundTrip.Completion)
+			require.Equal(t, tt.domain, roundTrip.Completion.Disposition)
+		})
+	}
+}
+
 // TestProgressConversions_PreserveUnknownCompletionAffectedCount verifies nil
 // affected counts remain unavailable across both ops conversion directions.
 func TestProgressConversions_PreserveUnknownCompletionAffectedCount(t *testing.T) {

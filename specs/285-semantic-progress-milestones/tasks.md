@@ -109,7 +109,7 @@
 
 ### Tests for User Story 3
 
-- [ ] T036 [P] [US3] Add completion disposition and conversion tests proving accepted no-wait work is `submitted`, waited work is `confirmed`, failures stay `failed`, and service facts contain no rendered command wording in `internal/domain/ops_progress_test.go`, `c8volt/foptions/options_test.go`, and `c8volt/ops/model_test.go`
+- [x] T036 [P] [US3] Add completion disposition and conversion tests proving accepted no-wait work is `submitted`, waited work is `confirmed`, failures stay `failed`, and service facts contain no rendered command wording in `internal/domain/ops_progress_test.go`, `c8volt/foptions/options_test.go`, and `c8volt/ops/model_test.go`
 - [ ] T037 [P] [US3] Add direct-key, stdin-key, and search parity tests for cancel/delete with waited, no-wait, force, failed, and affected-unknown scopes in `cmd/processinstance_mutation_progress_test.go`, `cmd/cancel_processinstance_selector_test.go`, and `cmd/delete_processinstance_selector_test.go`
 - [ ] T038 [P] [US3] Add JSON, keys-only, quiet, automation, prompt-boundary, stdout-parseability, and unchanged report/result tests for process-definition, deployment, purge, repair, and smoke commands in `cmd/delete_test.go`, `cmd/deploy_test.go`, `cmd/ops_purge_all_processdefinitions_test.go`, `cmd/ops_execute_retention_policy_test.go`, `cmd/ops_purge_orphan_processinstances_test.go`, `cmd/ops_purge_processinstances_with_incidents_test.go`, `cmd/ops_repair_incident_test.go`, `cmd/ops_repair_processinstance_test.go`, and `cmd/ops_execute_smoke_test_test.go`
 

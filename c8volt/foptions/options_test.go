@@ -53,6 +53,64 @@ func TestProgressCompletionFactMapsFromServiceOptions(t *testing.T) {
 	}, events[0].Completion)
 }
 
+// TestProgressCompletionDispositionMapsFromServiceOptions verifies the facade
+// option adapter preserves service lifecycle facts without operation wording.
+func TestProgressCompletionDispositionMapsFromServiceOptions(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		in   d.OpsCompletionDisposition
+		want CompletionDisposition
+	}{
+		{
+			name: "accepted no-wait work is submitted",
+			in:   d.OpsCompletionDispositionSubmitted,
+			want: CompletionDispositionSubmitted,
+		},
+		{
+			name: "waited work is confirmed",
+			in:   d.OpsCompletionDispositionConfirmed,
+			want: CompletionDispositionConfirmed,
+		},
+		{
+			name: "failed work stays failed",
+			in:   d.OpsCompletionDispositionFailed,
+			want: CompletionDispositionFailed,
+		},
+	}
+
+	renderedVerbs := []CompletionDisposition{"cancelled", "canceled", "deleted", "deployed", "repaired", "started", "satisfied"}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var got ProgressEvent
+			cfg := services.ApplyCallOptions(MapFacadeOptionsToCallOptions([]FacadeOption{
+				WithProgress(func(event ProgressEvent) {
+					got = event
+				}),
+			}))
+
+			cfg.Progress(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindCompletion,
+				Completion: &d.OpsCompletionProgress{
+					Phase:       "delete",
+					Identity:    "2251799813685251",
+					Disposition: tt.in,
+				},
+			})
+
+			require.Equal(t, ProgressEventKindCompletion, got.Kind)
+			require.NotNil(t, got.Completion)
+			require.Equal(t, tt.want, got.Completion.Disposition)
+			for _, renderedVerb := range renderedVerbs {
+				require.NotEqual(t, renderedVerb, got.Completion.Disposition)
+			}
+		})
+	}
+}
+
 // TestProgressCompletionFactPreservesUnknownAffectedCount verifies nil remains
 // unavailable instead of being converted to a zero affected count.
 func TestProgressCompletionFactPreservesUnknownAffectedCount(t *testing.T) {

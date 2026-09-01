@@ -46,6 +46,7 @@ Started: 2026-08-31T17:14:26Z
 - Semantic reporters now close immediately after their owning facade call returns, before error handling, final result/report rendering, or follow-up facade calls. Keep this explicit close-order for process-instance mutations, process-definition deletion/deployment, APD purge, bulk run, slow analysis, expect, and embedded deployment.
 - T034 pins duplicate legacy suppression in the service layer: process-instance bulk timer progress stays disabled whenever a structured progress callback is installed, while final summaries remain controlled by the existing suppression flags; smoke-test `deploy:`, `start:`, `walk:`, and `cleanup:` INFO lines now emit only for non-callback, non-dry-run, non-JSON callers.
 - User Story 2 validation completed in iteration 29 with fake-clock reporter, activity clear/redraw, focused command-family milestone, and broad command-family `-race` checks passing.
+- T036 pins completion lifecycle conversion across `internal/domain`, `c8volt/foptions`, and `c8volt/ops`: accepted no-wait work remains `submitted`, waited work remains `confirmed`, failed work remains `failed`, and disposition values exclude command-rendered verbs.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -130,4 +131,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should start User Story 3 at T036: add completion disposition and conversion tests proving accepted no-wait work is `submitted`, waited work is `confirmed`, failures stay `failed`, and service facts contain no rendered command wording in `internal/domain/ops_progress_test.go`, `c8volt/foptions/options_test.go`, and `c8volt/ops/model_test.go`.
+- Continue User Story 3 at T037: add direct-key, stdin-key, and search parity tests for process-instance cancel/delete waited, no-wait, force, failed, and affected-unknown scopes in `cmd/processinstance_mutation_progress_test.go`, `cmd/cancel_processinstance_selector_test.go`, and `cmd/delete_processinstance_selector_test.go`.
