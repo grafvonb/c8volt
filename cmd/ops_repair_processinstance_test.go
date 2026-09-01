@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -385,6 +386,32 @@ func TestOpsRepairProcessInstanceProgressContractPendingT068(t *testing.T) {
 	require.NotContains(t, stdout, "planning process-instance repair scope")
 	require.Contains(t, stderr, "report: written "+reportPath)
 	require.Contains(t, stderr, "outcome: repaired")
+}
+
+// TestOpsRepairProcessInstanceQuietProgressShowsOnlyFailureWarning verifies
+// process-instance repair keeps quiet mode free of success chatter while still
+// exposing the immediate failure warning.
+func TestOpsRepairProcessInstanceQuietProgressShowsOnlyFailureWarning(t *testing.T) {
+	resetSemanticProgressModeFlags(t)
+	flagQuiet = true
+	now := time.Date(2026, 9, 1, 7, 4, 0, 0, time.UTC)
+	opsRepairSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { opsRepairSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	request := ops.RepairRequest{}
+	progress := configureOpsRepairProgress(cmd, &request)
+	defer progress.Close()
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsRepairCompletionEvent(request.Progress, "incident-1", 2, ops.CompletionDispositionConfirmed, "")
+	reportOpsRepairCompletionEvent(request.Progress, "incident-2", 2, ops.CompletionDispositionFailed, "retry exhausted")
+	progress.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "incident-2 failed: retry exhausted (repairing incidents, 2/2 incident(s), 1 failed)")
+	require.NotContains(t, output, "incident-1 repaired")
+	require.NotContains(t, output, "\nrepairing incidents,")
 }
 
 // TestOpsRepairProcessInstanceMachineProgressSafetyPendingT068 pins

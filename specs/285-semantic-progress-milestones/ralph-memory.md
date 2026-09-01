@@ -73,6 +73,8 @@ Started: 2026-08-31T17:14:26Z
 - `toolx/logging/activity_test.go` now stresses concurrent durable writes plus nested wait/HTTP updates under `-race`; `testx/activitysink/activity_sink_test.go` proves the shared fake sink safely records concurrent priority-aware starts, updates, and idempotent stops.
 - `processInstanceMutationSemanticProgressNow` is a package-level test hook; do not run tests that override it in parallel unless the hook is first moved behind per-command dependency injection.
 - `processDefinitionDeleteSemanticProgressNow` and `processDefinitionDeploySemanticProgressNow` are package-level test hooks; do not run tests that override them in parallel.
+- T030 added package-level clock hooks for process-instance purge, repair, smoke-test, run, slow-analysis enrichment, and multi-key expect semantic reporters; tests that override them must not run in parallel.
+- Lazy semantic wrappers start their pacing clock on the first matching completion fact, so default milestone tests should send an initial completion before advancing the fake clock by `opsDurableMilestoneMinimumElapsed`; eager run/expect reporters start pacing at construction.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -112,10 +114,12 @@ Started: 2026-08-31T17:14:26Z
 - `go test ./cmd -run 'ProcessInstance|Progress|Activity' -race -count=1`
 - `go test ./cmd -run 'TestDeleteProcessDefinitionSemanticProgressDefaultMilestonesAndFinalFlush|TestDeployProcessDefinitionSemanticProgressVerboseItemsReplaceMilestones|TestOpsPurgeAllProcessDefinitionsDeletionMilestonesStaySeparateFromDiscovery' -race -count=1`
 - `go test ./cmd -run 'ProcessDefinition|Deploy|PurgeAllProcessDefinitions|Progress|Activity' -race -count=1`
+- `go test ./cmd -run 'TestOpsExecuteRetentionPolicyDefaultDeletionMilestonesAndFinalFlush|TestOpsPurgeOrphanProcessInstancesDefaultDeletionMilestonesOmitUnknownAffected|TestOpsPurgeProcessInstancesWithIncidentsVerboseDeletionReplacesMilestones|TestOpsRepairIncidentDefaultFailureWarnsAndFlushes|TestOpsRepairProcessInstanceQuietProgressShowsOnlyFailureWarning|TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation|TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush|TestOpsAnalyseSlowProcessInstancesSemanticCompletionMilestones|TestExpectProcessInstanceDefaultMilestonesAndFinalFlush' -race -count=1`
+- `go test ./cmd -run 'RetentionPolicy|OrphanProcessInstances|ProcessInstancesWithIncidents|Repair|Smoke|RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|Progress|Activity' -race -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T030: add retention, orphan, incident purge, repair, smoke-test, run, analysis, and expect durable-behavior tests in the command test files listed in `tasks.md`.
+- Next iteration should continue User Story 2 at T031: replace the 30-second snapshot pacer with the mutex-safe completion-driven 10-second cadence, durable activation, dirty tracking, and idempotent finish in `cmd/ops_progress_milestones.go` and `cmd/ops_semantic_progress.go`.

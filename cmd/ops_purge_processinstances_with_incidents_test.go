@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/ops"
@@ -793,6 +794,34 @@ func TestOpsPurgeProcessInstancesWithIncidentsProgressContractPendingT066(t *tes
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
 	require.Equal(t, "deleted", report["outcome"])
 	require.Equal(t, true, report["deleteRequested"])
+}
+
+// TestOpsPurgeProcessInstancesWithIncidentsVerboseDeletionReplacesMilestones
+// verifies incident purge verbose progress emits per-root outcomes instead of
+// default aggregate milestone duplicates.
+func TestOpsPurgeProcessInstancesWithIncidentsVerboseDeletionReplacesMilestones(t *testing.T) {
+	resetSemanticProgressModeFlags(t)
+	flagVerbose = true
+	now := time.Date(2026, 9, 1, 7, 2, 0, 0, time.UTC)
+	opsProcessInstancePurgeSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { opsProcessInstancePurgeSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	request := ops.IncidentPurgeRequest{}
+	progress := configureOpsPurgeProcessInstancesWithIncidentsProgress(cmd, &request)
+	defer progress.Close()
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "incident-root-1", 2, ops.CompletionDispositionSubmitted, "", ptrInt(1))
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "incident-root-2", 2, ops.CompletionDispositionConfirmed, "", ptrInt(4))
+	progress.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "incident-root-1 submitted (deletion process-instance trees, 1/2 process-instance tree(s), affected process instances: 1)")
+	require.Contains(t, output, "incident-root-2 deleted (deletion process-instance trees, 2/2 process-instance tree(s), affected process instances: 5)")
+	require.Equal(t, 2, strings.Count(output, "deletion process-instance trees"))
+	require.NotContains(t, output, "\ndeletion process-instance trees, 1/2")
 }
 
 // TestOpsPurgeProcessInstancesWithIncidentsMachineProgressSafetyPendingT066 pins

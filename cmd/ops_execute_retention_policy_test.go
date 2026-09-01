@@ -735,6 +735,35 @@ func TestOpsExecuteRetentionPolicyProgressContractPendingT066(t *testing.T) {
 	require.Equal(t, true, report["deleteRequested"])
 }
 
+// TestOpsExecuteRetentionPolicyDefaultDeletionMilestonesAndFinalFlush verifies
+// retention deletion progress writes paced aggregate evidence and a final
+// completion flush from the semantic delete facts.
+func TestOpsExecuteRetentionPolicyDefaultDeletionMilestonesAndFinalFlush(t *testing.T) {
+	resetSemanticProgressModeFlags(t)
+	now := time.Date(2026, 9, 1, 7, 0, 0, 0, time.UTC)
+	opsProcessInstancePurgeSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { opsProcessInstancePurgeSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	request := ops.RetentionPolicyRequest{}
+	progress := configureOpsExecuteRetentionPolicyProgress(cmd, &request)
+	defer progress.Close()
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "retention-root-1", 3, ops.CompletionDispositionConfirmed, "", ptrInt(2))
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "retention-root-2", 3, ops.CompletionDispositionConfirmed, "", ptrInt(3))
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "retention-root-3", 3, ops.CompletionDispositionConfirmed, "", ptrInt(4))
+	progress.Close()
+	progress.Close()
+
+	output := stderr.String()
+	require.Equal(t, 1, strings.Count(output, "deletion process-instance trees, 2/3 process-instance tree(s), affected process instances: 5"))
+	require.Equal(t, 1, strings.Count(output, "deletion process-instance trees, 3/3 process-instance tree(s), affected process instances: 9"))
+	require.NotContains(t, output, "retention-root-1 deleted")
+	require.NotContains(t, output, "retention-root-2 deleted")
+}
+
 // TestOpsExecuteRetentionPolicyMachineProgressSafetyPendingT066 pins retention
 // progress silence for JSON, quiet, and automation modes.
 func TestOpsExecuteRetentionPolicyMachineProgressSafetyPendingT066(t *testing.T) {
@@ -768,6 +797,58 @@ func TestOpsExecuteRetentionPolicyMachineProgressSafetyPendingT066(t *testing.T)
 			}
 		})
 	}
+}
+
+// newSemanticProgressStderrCommand returns a minimal command that captures
+// semantic progress diagnostics without involving root command setup.
+func newSemanticProgressStderrCommand() (*cobra.Command, *bytes.Buffer) {
+	cmd := &cobra.Command{}
+	stderr := &bytes.Buffer{}
+	cmd.SetErr(stderr)
+	return cmd, stderr
+}
+
+// resetSemanticProgressModeFlags isolates tests that derive progress policy
+// from package-level render and verbosity flags.
+func resetSemanticProgressModeFlags(t *testing.T) {
+	t.Helper()
+	prevVerbose := flagVerbose
+	prevQuiet := flagQuiet
+	prevDebug := flagDebug
+	prevJSON := flagViewAsJson
+	prevKeysOnly := flagViewKeysOnly
+	prevAutomation := flagCmdAutomation
+	t.Cleanup(func() {
+		flagVerbose = prevVerbose
+		flagQuiet = prevQuiet
+		flagDebug = prevDebug
+		flagViewAsJson = prevJSON
+		flagViewKeysOnly = prevKeysOnly
+		flagCmdAutomation = prevAutomation
+	})
+	flagVerbose = false
+	flagQuiet = false
+	flagDebug = false
+	flagViewAsJson = false
+	flagViewKeysOnly = false
+	flagCmdAutomation = false
+}
+
+// reportOpsProcessInstancePurgeCompletionEvent sends one ops-level deletion
+// completion fact through the configured purge command progress callback.
+func reportOpsProcessInstancePurgeCompletionEvent(progress func(ops.ProgressEvent), identity string, total int, disposition ops.CompletionDisposition, detail string, affected *int) {
+	progress(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindCompletion,
+		Completion: &ops.CompletionProgress{
+			Phase:         "delete",
+			CoreResource:  "process-instance tree(s)",
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+			AffectedCount: affected,
+		},
+	})
 }
 
 func marshalRetentionArgsForEnv(t *testing.T, args []string) string {

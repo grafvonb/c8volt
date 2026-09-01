@@ -4,10 +4,16 @@
 package cmd
 
 import (
+	"time"
+
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/spf13/cobra"
 )
+
+// runProcessInstanceSemanticProgressNow is overridden by command tests to
+// exercise durable milestone pacing without real sleeps.
+var runProcessInstanceSemanticProgressNow = time.Now
 
 // appendExplicitLargeWorkProgressOption installs stdout-safe progress routing for explicit-count or explicit-key workflows.
 func appendExplicitLargeWorkProgressOption(cmd *cobra.Command, opts []processOptions.FacadeOption) []processOptions.FacadeOption {
@@ -42,6 +48,7 @@ func newRunProcessInstanceSemanticProgressReporter(cmd *cobra.Command, total int
 			FailedVerb:                "failed",
 		},
 		Policy: opsSemanticProgressOutputPolicyForChannel(channel),
+		Now:    runProcessInstanceSemanticProgressNow,
 	})
 }
 

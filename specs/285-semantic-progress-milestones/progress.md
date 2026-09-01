@@ -498,3 +498,37 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./cmd -run 'ProcessInstance|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 44.929s`.
 - Validation passed: `git diff --check` -> no output.
 ---
+---
+## Iteration 24 - 2026-09-01 06:24
+**Work Unit**: User Story 2 remaining command-family durable behavior tests
+**Tasks Completed**:
+- [x] T030: Add retention, orphan, incident purge, repair, smoke-test, run, analysis, and expect durable-behavior tests
+**Tasks Remaining in Work Unit**: T031-T035 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/expect_processinstance_progress.go
+- cmd/expect_test.go
+- cmd/ops_analyse_slow_process_instances_progress.go
+- cmd/ops_analyse_slow_process_instances_progress_test.go
+- cmd/ops_execute_retention_policy_test.go
+- cmd/ops_execute_smoke_test_test.go
+- cmd/ops_execute_smoketest_progress.go
+- cmd/ops_explicit_large_work_progress.go
+- cmd/ops_processinstance_purge_progress.go
+- cmd/ops_purge_orphan_processinstances_test.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- cmd/ops_repair_incident_test.go
+- cmd/ops_repair_processinstance_test.go
+- cmd/ops_repair_progress.go
+- cmd/run_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Added deterministic fake-clock coverage for retention, orphan purge, incident purge, repair, smoke-test, run, slow-analysis enrichment, and multi-key expect semantic progress.
+- Lazy command reporters start their pacing clock on the first matching completion fact; tests now open the scope first, then advance by `opsDurableMilestoneMinimumElapsed` to assert paced milestones and final flush behavior.
+- Validation passed: `go test ./cmd -run 'TestOpsExecuteRetentionPolicyDefaultDeletionMilestonesAndFinalFlush|TestOpsPurgeOrphanProcessInstancesDefaultDeletionMilestonesOmitUnknownAffected|TestOpsPurgeProcessInstancesWithIncidentsVerboseDeletionReplacesMilestones|TestOpsRepairIncidentDefaultFailureWarnsAndFlushes|TestOpsRepairProcessInstanceQuietProgressShowsOnlyFailureWarning|TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation|TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush|TestOpsAnalyseSlowProcessInstancesSemanticCompletionMilestones|TestExpectProcessInstanceDefaultMilestonesAndFinalFlush' -count=1` -> `ok github.com/grafvonb/c8volt/cmd 0.631s`.
+- Validation passed: `go test ./cmd -run 'TestOpsExecuteRetentionPolicyDefaultDeletionMilestonesAndFinalFlush|TestOpsPurgeOrphanProcessInstancesDefaultDeletionMilestonesOmitUnknownAffected|TestOpsPurgeProcessInstancesWithIncidentsVerboseDeletionReplacesMilestones|TestOpsRepairIncidentDefaultFailureWarnsAndFlushes|TestOpsRepairProcessInstanceQuietProgressShowsOnlyFailureWarning|TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation|TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush|TestOpsAnalyseSlowProcessInstancesSemanticCompletionMilestones|TestExpectProcessInstanceDefaultMilestonesAndFinalFlush' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 2.151s`.
+- Validation passed: `go test ./cmd -run 'RetentionPolicy|OrphanProcessInstances|ProcessInstancesWithIncidents|Repair|Smoke|RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 36.938s`.
+- Validation passed: `git diff --check` -> no output.
+---

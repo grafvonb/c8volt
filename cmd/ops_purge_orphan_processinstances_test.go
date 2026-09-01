@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -420,6 +421,32 @@ func TestOpsPurgeOrphanProcessInstancesProgressContractPendingT066(t *testing.T)
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
 	require.Equal(t, "deleted", report["outcome"])
 	require.Equal(t, true, report["deleteRequested"])
+}
+
+// TestOpsPurgeOrphanProcessInstancesDefaultDeletionMilestonesOmitUnknownAffected
+// verifies orphan purge milestones omit affected counts when the completion
+// scope cannot prove every per-root delta.
+func TestOpsPurgeOrphanProcessInstancesDefaultDeletionMilestonesOmitUnknownAffected(t *testing.T) {
+	resetSemanticProgressModeFlags(t)
+	now := time.Date(2026, 9, 1, 7, 1, 0, 0, time.UTC)
+	opsProcessInstancePurgeSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { opsProcessInstancePurgeSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	request := ops.OrphanPurgeRequest{}
+	progress := configureOpsPurgeOrphanProcessInstancesProgress(cmd, &request)
+	defer progress.Close()
+
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "orphan-root-1", 3, ops.CompletionDispositionConfirmed, "", nil)
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "orphan-root-2", 3, ops.CompletionDispositionConfirmed, "", nil)
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "orphan-root-3", 3, ops.CompletionDispositionConfirmed, "", nil)
+	progress.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "deletion process-instance trees, 2/3 process-instance tree(s)")
+	require.Contains(t, output, "deletion process-instance trees, 3/3 process-instance tree(s)")
+	require.NotContains(t, output, "affected process instances:")
 }
 
 // TestOpsPurgeOrphanProcessInstancesMachineProgressSafetyPendingT066 pins orphan

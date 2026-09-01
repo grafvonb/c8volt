@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -458,6 +459,45 @@ func TestOpsRepairIncidentProgressContractPendingT068(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
 	require.Equal(t, "repaired", report["outcome"])
 	require.Len(t, requireJSONObject(t, report["frozenSet"])["incidentKeys"], 2)
+}
+
+// TestOpsRepairIncidentDefaultFailureWarnsAndFlushes verifies incident repair
+// emits immediate failure evidence and one final aggregate after later progress.
+func TestOpsRepairIncidentDefaultFailureWarnsAndFlushes(t *testing.T) {
+	resetSemanticProgressModeFlags(t)
+	now := time.Date(2026, 9, 1, 7, 3, 0, 0, time.UTC)
+	opsRepairSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { opsRepairSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	request := ops.RepairRequest{}
+	progress := configureOpsRepairProgress(cmd, &request)
+	defer progress.Close()
+
+	reportOpsRepairCompletionEvent(request.Progress, "incident-1", 2, ops.CompletionDispositionFailed, "job activation timed out")
+	reportOpsRepairCompletionEvent(request.Progress, "incident-2", 2, ops.CompletionDispositionConfirmed, "")
+	progress.Close()
+	progress.Close()
+
+	output := stderr.String()
+	require.Equal(t, 1, strings.Count(output, "incident-1 failed: job activation timed out (repairing incidents, 1/2 incident(s), 1 failed)"))
+	require.Equal(t, 1, strings.Count(output, "repairing incidents, 2/2 incident(s), 1 failed"))
+}
+
+// reportOpsRepairCompletionEvent sends one repair completion fact through the
+// configured repair command progress callback.
+func reportOpsRepairCompletionEvent(progress func(ops.ProgressEvent), identity string, total int, disposition ops.CompletionDisposition, detail string) {
+	progress(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindCompletion,
+		Completion: &ops.CompletionProgress{
+			Phase:         opsRepairCompletionPhase,
+			CoreResource:  "incident(s)",
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+		},
+	})
 }
 
 // TestOpsRepairIncidentMachineProgressSafetyPendingT068 pins repair progress

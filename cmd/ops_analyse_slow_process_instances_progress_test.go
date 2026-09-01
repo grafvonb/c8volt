@@ -332,6 +332,50 @@ func TestOpsAnalyseSlowProcessInstancesSemanticCompletionActivity(t *testing.T) 
 	}, sink.PriorityUpdates())
 }
 
+// TestOpsAnalyseSlowProcessInstancesSemanticCompletionMilestones verifies
+// enrichment completion facts produce paced default milestones and one final
+// flush independent of discovery-page pacing.
+func TestOpsAnalyseSlowProcessInstancesSemanticCompletionMilestones(t *testing.T) {
+	resetSemanticProgressModeFlags(t)
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
+	now := time.Date(2026, 9, 1, 7, 7, 0, 0, time.UTC)
+	opsSlowProcessAnalysisSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { opsSlowProcessAnalysisSemanticProgressNow = time.Now })
+	request := ops.SlowProcessAnalysisRequest{}
+	progress := configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	defer progress.Close()
+
+	reportOpsSlowAnalysisCompletionEvent(request.Progress, "loading runtime elements", "pi-1", 3, ops.CompletionDispositionConfirmed, "")
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsSlowAnalysisCompletionEvent(request.Progress, "loading runtime elements", "pi-2", 3, ops.CompletionDispositionConfirmed, "")
+	reportOpsSlowAnalysisCompletionEvent(request.Progress, "loading runtime elements", "pi-3", 3, ops.CompletionDispositionConfirmed, "")
+	progress.Close()
+	progress.Close()
+
+	output := stderr.String()
+	require.Equal(t, 1, strings.Count(output, "loading runtime elements, 2/3 process instance(s)"))
+	require.Equal(t, 1, strings.Count(output, "loading runtime elements, 3/3 process instance(s)"))
+	require.NotContains(t, output, "pi-1 loaded")
+}
+
+// reportOpsSlowAnalysisCompletionEvent sends one slow-analysis enrichment
+// completion fact through the configured command progress callback.
+func reportOpsSlowAnalysisCompletionEvent(progress func(ops.ProgressEvent), phase string, identity string, total int, disposition ops.CompletionDisposition, detail string) {
+	progress(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindCompletion,
+		Completion: &ops.CompletionProgress{
+			Phase:         phase,
+			CoreResource:  "process instance(s)",
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+		},
+	})
+}
+
 // TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr verifies verbose mode keeps an auditable progress trail off stdout.
 func TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr(t *testing.T) {
 	previousVerbose := flagVerbose

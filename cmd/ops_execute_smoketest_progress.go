@@ -6,10 +6,15 @@ package cmd
 import (
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/spf13/cobra"
 )
+
+// opsSmokeTestSemanticProgressNow is overridden by command tests to exercise
+// durable milestone pacing without real sleeps.
+var opsSmokeTestSemanticProgressNow = time.Now
 
 // opsSmokeTestSemanticProgress owns command-local reporters for the finite
 // smoke-test stages that expose real completion facts.
@@ -102,6 +107,7 @@ func (p *opsSmokeTestSemanticProgress) reporterLocked(completion ops.CompletionP
 		p.reporters[scope.Phase] = newOpsSemanticProgressReporter(p.cmd, opsSemanticProgressConfig{
 			Scope:  scope,
 			Policy: opsSemanticProgressOutputPolicyForChannel(channel),
+			Now:    opsSmokeTestSemanticProgressNow,
 		})
 	}
 	return p.reporters[scope.Phase]

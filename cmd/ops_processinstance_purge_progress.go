@@ -6,11 +6,18 @@ package cmd
 import (
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/spf13/cobra"
 )
 
+// opsProcessInstancePurgeSemanticProgressNow is overridden by command tests to
+// exercise durable milestone pacing without real sleeps.
+var opsProcessInstancePurgeSemanticProgressNow = time.Now
+
+// opsProcessInstancePurgeSemanticProgress owns the lazy semantic reporter for
+// process-instance deletion facts emitted by ops purge workflows.
 type opsProcessInstancePurgeSemanticProgress struct {
 	mu       sync.Mutex
 	cmd      *cobra.Command
@@ -18,6 +25,8 @@ type opsProcessInstancePurgeSemanticProgress struct {
 	closed   bool
 }
 
+// configureOpsExecuteRetentionPolicyProgress installs command-owned retention
+// discovery and deletion progress rendering on the facade request.
 func configureOpsExecuteRetentionPolicyProgress(cmd *cobra.Command, request *ops.RetentionPolicyRequest) *opsProcessInstancePurgeSemanticProgress {
 	if request == nil {
 		return nil
@@ -30,6 +39,8 @@ func configureOpsExecuteRetentionPolicyProgress(cmd *cobra.Command, request *ops
 	return progress
 }
 
+// configureOpsPurgeOrphanProcessInstancesProgress installs command-owned orphan
+// discovery and deletion progress rendering on the facade request.
 func configureOpsPurgeOrphanProcessInstancesProgress(cmd *cobra.Command, request *ops.OrphanPurgeRequest) *opsProcessInstancePurgeSemanticProgress {
 	if request == nil {
 		return nil
@@ -42,6 +53,8 @@ func configureOpsPurgeOrphanProcessInstancesProgress(cmd *cobra.Command, request
 	return progress
 }
 
+// configureOpsPurgeProcessInstancesWithIncidentsProgress installs command-owned
+// incident purge discovery and deletion progress rendering on the facade request.
 func configureOpsPurgeProcessInstancesWithIncidentsProgress(cmd *cobra.Command, request *ops.IncidentPurgeRequest) *opsProcessInstancePurgeSemanticProgress {
 	if request == nil {
 		return nil
@@ -54,6 +67,8 @@ func configureOpsPurgeProcessInstancesWithIncidentsProgress(cmd *cobra.Command, 
 	return progress
 }
 
+// printOpsProcessInstancePurgeProgressEvent routes discovery facts to existing
+// progress rendering and deletion completion facts to the semantic reporter.
 func printOpsProcessInstancePurgeProgressEvent(cmd *cobra.Command, event ops.ProgressEvent, channel ops.ProgressChannel, progress *opsProcessInstancePurgeSemanticProgress) {
 	switch event.Kind {
 	case ops.ProgressEventKindPreflight:
@@ -75,6 +90,7 @@ func printOpsProcessInstancePurgeProgressEvent(cmd *cobra.Command, event ops.Pro
 	}
 }
 
+// Report forwards matching deletion completion facts into the lazy reporter.
 func (p *opsProcessInstancePurgeSemanticProgress) Report(event ops.ProgressEvent) {
 	if p == nil || event.Kind != ops.ProgressEventKindCompletion || event.Completion == nil {
 		return
@@ -87,6 +103,7 @@ func (p *opsProcessInstancePurgeSemanticProgress) Report(event ops.ProgressEvent
 	}
 }
 
+// Close flushes and stops the deletion reporter exactly once when it was opened.
 func (p *opsProcessInstancePurgeSemanticProgress) Close() {
 	if p == nil {
 		return
@@ -104,6 +121,8 @@ func (p *opsProcessInstancePurgeSemanticProgress) Close() {
 	}
 }
 
+// reporterLocked constructs the deletion reporter on the first real completion
+// fact so discovery-only and dry-run workflows do not open mutation activity.
 func (p *opsProcessInstancePurgeSemanticProgress) reporterLocked(completion ops.CompletionProgress) *opsSemanticProgressReporter {
 	if p == nil || p.closed || !opsProcessInstancePurgeCompletionMatches(completion) {
 		return nil
@@ -113,15 +132,20 @@ func (p *opsProcessInstancePurgeSemanticProgress) reporterLocked(completion ops.
 		p.reporter = newOpsSemanticProgressReporter(p.cmd, opsSemanticProgressConfig{
 			Scope:  processInstanceMutationSemanticProgressScope("delete", completion.Total, completion.AffectedCount != nil),
 			Policy: opsSemanticProgressOutputPolicyForChannel(channel),
+			Now:    opsProcessInstancePurgeSemanticProgressNow,
 		})
 	}
 	return p.reporter
 }
 
+// opsProcessInstancePurgeCompletionMatches accepts only shared bulk delete
+// completion facts and ignores discovery or nested non-deletion events.
 func opsProcessInstancePurgeCompletionMatches(completion ops.CompletionProgress) bool {
 	return strings.TrimSpace(completion.Phase) == "delete"
 }
 
+// opsProcessInstancePurgeCompletionFrozenScope identifies legacy bulk-delete
+// frozen counters that semantic delete progress replaces for ops purge commands.
 func opsProcessInstancePurgeCompletionFrozenScope(progress ops.FrozenScopeProgress) bool {
 	return strings.TrimSpace(progress.Phase) == "deleting process instances"
 }

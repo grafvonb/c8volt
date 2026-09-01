@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -80,6 +81,50 @@ func TestOpsExecuteSmokeTestHelpDocumentsCommand(t *testing.T) {
 		"./c8volt ops execute smoke-test --report-file smoke-test.md",
 		"./c8volt ops execute smoke-test --count 5 --report-file smoke-test.md",
 	)
+}
+
+// TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation verifies
+// smoke-test stages get semantic aggregate milestones while nested lower-level
+// phases are ignored by the command reporter.
+func TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation(t *testing.T) {
+	resetSemanticProgressModeFlags(t)
+	now := time.Date(2026, 9, 1, 7, 5, 0, 0, time.UTC)
+	opsSmokeTestSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { opsSmokeTestSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	request := ops.SmokeTestRequest{}
+	progress := configureOpsExecuteSmokeTestProgress(cmd, &request)
+	defer progress.Close()
+
+	reportOpsSmokeTestCompletionEvent(request.Progress, "deploying smoke-test fixture", "smoke-definition-1", "process definition(s)", 2, ops.CompletionDispositionConfirmed, "")
+	reportOpsSmokeTestCompletionEvent(request.Progress, "delete", "nested-root", "process-instance tree(s)", 1, ops.CompletionDispositionConfirmed, "")
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsSmokeTestCompletionEvent(request.Progress, "deploying smoke-test fixture", "smoke-definition-2", "process definition(s)", 2, ops.CompletionDispositionConfirmed, "")
+	reportOpsSmokeTestCompletionEvent(request.Progress, "cleaning up smoke-test process instances", "smoke-root", "process-instance tree(s)", 1, ops.CompletionDispositionFailed, "cleanup rejected")
+	progress.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "deploying smoke-test fixture, 2/2 process definition(s)")
+	require.Contains(t, output, "smoke-root failed: cleanup rejected (cleaning up smoke-test process instances, 1/1 process-instance tree(s), 1 failed)")
+	require.NotContains(t, output, "nested-root")
+	require.NotContains(t, output, "delete process-instance")
+}
+
+// reportOpsSmokeTestCompletionEvent sends one high-level smoke-test completion
+// fact through the configured smoke-test command progress callback.
+func reportOpsSmokeTestCompletionEvent(progress func(ops.ProgressEvent), phase string, identity string, resource string, total int, disposition ops.CompletionDisposition, detail string) {
+	progress(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindCompletion,
+		Completion: &ops.CompletionProgress{
+			Phase:         phase,
+			CoreResource:  resource,
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+		},
+	})
 }
 
 func TestOpsExecuteSmokeTestInvalidLocalFlags(t *testing.T) {

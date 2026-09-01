@@ -87,7 +87,7 @@
 - [x] T027 [P] [US2] Add concurrent durable-write clear/redraw and nested workflow-priority arbitration tests in `toolx/logging/activity_test.go` and a new `testx/activitysink/activity_sink_test.go`
 - [x] T028 [P] [US2] Add process-instance command milestone tests for default, verbose, failures, force cleanup, final flush, and no duplicate timer output in `cmd/processinstance_mutation_progress_test.go`, `cmd/cancel_processinstance_test.go`, and `cmd/delete_processinstance_test.go`
 - [x] T029 [P] [US2] Add process-definition deletion, deployment, and all-definition purge milestone tests in `cmd/delete_test.go`, `cmd/deploy_test.go`, and `cmd/ops_purge_all_processdefinitions_test.go`
-- [ ] T030 [P] [US2] Add retention, orphan, incident purge, repair, smoke-test, run, analysis, and expect durable-behavior tests in `cmd/ops_execute_retention_policy_test.go`, `cmd/ops_purge_orphan_processinstances_test.go`, `cmd/ops_purge_processinstances_with_incidents_test.go`, `cmd/ops_repair_incident_test.go`, `cmd/ops_repair_processinstance_test.go`, `cmd/ops_execute_smoke_test_test.go`, `cmd/run_test.go`, `cmd/ops_analyse_slow_process_instances_progress_test.go`, and `cmd/expect_test.go`
+- [x] T030 [P] [US2] Add retention, orphan, incident purge, repair, smoke-test, run, analysis, and expect durable-behavior tests in `cmd/ops_execute_retention_policy_test.go`, `cmd/ops_purge_orphan_processinstances_test.go`, `cmd/ops_purge_processinstances_with_incidents_test.go`, `cmd/ops_repair_incident_test.go`, `cmd/ops_repair_processinstance_test.go`, `cmd/ops_execute_smoke_test_test.go`, `cmd/run_test.go`, `cmd/ops_analyse_slow_process_instances_progress_test.go`, and `cmd/expect_test.go`
 
 ### Implementation for User Story 2
 

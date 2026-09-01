@@ -6,12 +6,17 @@ package cmd
 import (
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/spf13/cobra"
 )
 
 const opsRepairCompletionPhase = "repairing incidents"
+
+// opsRepairSemanticProgressNow is overridden by command tests to exercise
+// durable milestone pacing without real sleeps.
+var opsRepairSemanticProgressNow = time.Now
 
 // opsRepairSemanticProgress owns the command-local completion reporter for
 // incident and process-instance-selected repair work.
@@ -107,6 +112,7 @@ func (p *opsRepairSemanticProgress) reporterLocked(completion ops.CompletionProg
 				FailedVerb:    "failed",
 			},
 			Policy: opsSemanticProgressOutputPolicyForChannel(channel),
+			Now:    opsRepairSemanticProgressNow,
 		})
 	}
 	return p.reporter

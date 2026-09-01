@@ -864,6 +864,49 @@ func TestRunProcessInstanceBulkStartCompletionUsesSemanticWorkflowActivity(t *te
 	}, reporter.Aggregate())
 }
 
+// TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush verifies explicit
+// count starts use default semantic milestones and flush only once on close.
+func TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	now := time.Date(2026, 9, 1, 7, 6, 0, 0, time.UTC)
+	runProcessInstanceSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { runProcessInstanceSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	reporter := newRunProcessInstanceSemanticProgressReporter(cmd, 2)
+	opts := appendRunProcessInstanceProgressOption(cmd, nil, reporter)
+	progress := options.ApplyFacadeOptions(opts).Progress
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportRunProcessInstanceCompletionEvent(progress, "pi-1", 2, options.CompletionDispositionConfirmed, "", ptrInt(1))
+	reportRunProcessInstanceCompletionEvent(progress, "pi-2", 2, options.CompletionDispositionConfirmed, "", ptrInt(1))
+	reporter.Close()
+	reporter.Close()
+
+	output := stderr.String()
+	require.Equal(t, 1, strings.Count(output, "starting process instances, 1/2 process instance(s), process instances: 1"))
+	require.Equal(t, 1, strings.Count(output, "starting process instances, 2/2 process instance(s), process instances: 2"))
+	require.NotContains(t, output, "pi-1 started")
+}
+
+// reportRunProcessInstanceCompletionEvent sends one facade-level bulk-start
+// completion fact through the configured run command progress callback.
+func reportRunProcessInstanceCompletionEvent(progress func(options.ProgressEvent), identity string, total int, disposition options.CompletionDisposition, detail string, affected *int) {
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindCompletion,
+		Completion: &options.CompletionProgress{
+			Phase:         "create",
+			CoreResource:  "process instance(s)",
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+			AffectedCount: affected,
+		},
+	})
+}
+
 // TestExplicitLargeWorkSharedAdapterIgnoresCompletionFacts documents that
 // walk-style callers remain frozen-scope progress only until a finite semantic
 // completion boundary is explicitly added for that command family.

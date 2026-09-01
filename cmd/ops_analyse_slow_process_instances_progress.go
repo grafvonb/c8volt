@@ -6,11 +6,16 @@ package cmd
 import (
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 )
+
+// opsSlowProcessAnalysisSemanticProgressNow is overridden by command tests to
+// exercise completion-driven milestone pacing without real sleeps.
+var opsSlowProcessAnalysisSemanticProgressNow = time.Now
 
 // configureOpsSlowProcessAnalysisPreflight wires command-owned rendering and prompting into service-owned discovery.
 func configureOpsSlowProcessAnalysisPreflight(cmd *cobra.Command, request *ops.SlowProcessAnalysisRequest) *opsSlowProcessAnalysisSemanticProgress {
@@ -100,6 +105,8 @@ func (p *opsSlowProcessAnalysisSemanticProgress) Close() {
 	}
 }
 
+// reporterLocked creates one enrichment reporter per completion phase while
+// leaving discovery-page progress on the existing slow-analysis renderer.
 func (p *opsSlowProcessAnalysisSemanticProgress) reporterLocked(completion ops.CompletionProgress) *opsSemanticProgressReporter {
 	if p == nil || p.closed {
 		return nil
@@ -116,11 +123,14 @@ func (p *opsSlowProcessAnalysisSemanticProgress) reporterLocked(completion ops.C
 		p.reporters[scope.Phase] = newOpsSemanticProgressReporter(p.cmd, opsSemanticProgressConfig{
 			Scope:  scope,
 			Policy: opsSemanticProgressOutputPolicyForChannel(channel),
+			Now:    opsSlowProcessAnalysisSemanticProgressNow,
 		})
 	}
 	return p.reporters[scope.Phase]
 }
 
+// opsSlowProcessAnalysisSemanticProgressScope maps completion phases with exact
+// enrichment totals and excludes discovery-only slow-analysis work.
 func opsSlowProcessAnalysisSemanticProgressScope(completion ops.CompletionProgress) (opsSemanticProgressScope, bool) {
 	phase := strings.TrimSpace(completion.Phase)
 	switch phase {

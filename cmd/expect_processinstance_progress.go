@@ -5,14 +5,23 @@ package cmd
 
 import (
 	"strings"
+	"time"
 
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/spf13/cobra"
 )
 
+// expectProcessInstanceCompletionPhase is the shared completion scope emitted
+// by multi-key process-instance expectation waits.
 const expectProcessInstanceCompletionPhase = "expect process instances"
 
+// expectProcessInstanceSemanticProgressNow is overridden by command tests to
+// exercise durable milestone pacing without real sleeps.
+var expectProcessInstanceSemanticProgressNow = time.Now
+
+// newExpectProcessInstanceSemanticProgress returns a reporter only for multi-key
+// expectation scopes so single-target polling keeps its existing wait activity.
 func newExpectProcessInstanceSemanticProgress(cmd *cobra.Command, total int) *opsSemanticProgressReporter {
 	if total <= 1 {
 		return nil
@@ -28,9 +37,12 @@ func newExpectProcessInstanceSemanticProgress(cmd *cobra.Command, total int) *op
 			FailedVerb:    "failed",
 		},
 		Policy: opsSemanticProgressOutputPolicyForChannel(channel),
+		Now:    expectProcessInstanceSemanticProgressNow,
 	})
 }
 
+// appendExpectProcessInstanceProgressOption routes expectation completion facts
+// from the facade callback into the command-owned semantic reporter.
 func appendExpectProcessInstanceProgressOption(opts []processOptions.FacadeOption, reporter *opsSemanticProgressReporter) []processOptions.FacadeOption {
 	if reporter == nil {
 		return opts

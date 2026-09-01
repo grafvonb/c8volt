@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
@@ -45,6 +46,49 @@ func TestExpectHelp_DocumentsWaitVerificationUsage(t *testing.T) {
 	}, nil)
 	require.Contains(t, output, "--state")
 	require.Contains(t, output, "--incident")
+}
+
+// TestExpectProcessInstanceDefaultMilestonesAndFinalFlush verifies multi-key
+// expectations keep default progress aggregate-first and flush accumulated
+// progress once when the reporter closes.
+func TestExpectProcessInstanceDefaultMilestonesAndFinalFlush(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	now := time.Date(2026, 9, 1, 7, 8, 0, 0, time.UTC)
+	expectProcessInstanceSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { expectProcessInstanceSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	reporter := newExpectProcessInstanceSemanticProgress(cmd, 2)
+	opts := appendExpectProcessInstanceProgressOption(nil, reporter)
+	progress := options.ApplyFacadeOptions(opts).Progress
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportExpectProcessInstanceCompletionEvent(progress, "pi-1", 2, options.CompletionDispositionConfirmed, "")
+	reportExpectProcessInstanceCompletionEvent(progress, "pi-2", 2, options.CompletionDispositionFailed, "state remained active")
+	reporter.Close()
+	reporter.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "waiting for process-instance expectations, 1/2 process instance(s)")
+	require.Contains(t, output, "pi-2 failed: state remained active (waiting for process-instance expectations, 2/2 process instance(s), 1 failed)")
+	require.NotContains(t, output, "pi-1 satisfied")
+}
+
+// reportExpectProcessInstanceCompletionEvent sends one facade-level expectation
+// completion fact through the configured expect command progress callback.
+func reportExpectProcessInstanceCompletionEvent(progress func(options.ProgressEvent), identity string, total int, disposition options.CompletionDisposition, detail string) {
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindCompletion,
+		Completion: &options.CompletionProgress{
+			Phase:         expectProcessInstanceCompletionPhase,
+			CoreResource:  "process instance(s)",
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+		},
+	})
 }
 
 // Verifies expect process-instance rejects unsupported state values through invalid-input handling.
