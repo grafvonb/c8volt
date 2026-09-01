@@ -433,3 +433,24 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `git diff --check` -> no output.
 - T026 pins verbose per-item identity/outcome replacement and cumulative aggregate text; quiet semantic failures now bypass warn-level logger filtering so they remain visible under quiet/error-level logging.
 ---
+---
+## Iteration 21 - 2026-09-01 05:54
+**Work Unit**: User Story 2 activity durable clear/redraw and priority fixture tests
+**Tasks Completed**:
+- [x] T027: Add concurrent durable-write clear/redraw and nested workflow-priority arbitration tests
+**Tasks Remaining in Work Unit**: T028-T035 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- toolx/logging/activity.go
+- toolx/logging/activity_test.go
+- testx/activitysink/activity_sink_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Validation passed: `go test ./toolx/logging ./testx/activitysink -run 'ActivityWriter|Sink' -race -count=1` -> `ok` for `toolx/logging` and `testx/activitysink`.
+- Validation passed: `go test ./toolx/logging ./testx/activitysink -race -count=1` -> `ok` for `toolx/logging` and `testx/activitysink`.
+- Validation passed: `go test ./cmd -run 'Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 7.234s`.
+- Validation passed: `git diff --check` -> no output.
+- New activity writer coverage proves newline-terminated durable lines clear the active spinner and redraw the selected workflow-priority scope while nested wait/HTTP updates cannot take over.
+---
