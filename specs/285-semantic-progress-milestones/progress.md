@@ -103,6 +103,34 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./cmd -run 'ProcessDefinition|Deploy|PurgeAllProcessDefinitions|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 36.355s`.
 - Validation passed: `git diff --check` -> no output.
 ---
+---
+## Iteration 9 - 2026-09-01 08:15
+**Work Unit**: Phase 6 generated CLI documentation refresh
+**Tasks Completed**:
+- [x] T045: Regenerate CLI documentation with `make docs-content` and verify generated changes under `docs/cli/` and `docs/index.md`
+**Tasks Remaining in Work Unit**: T046-T049 remain in Phase 6
+**Commit**: This work-unit commit
+**Files Changed**:
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete_process-definition.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/cli/c8volt_deploy_process-definition.md
+- docs/cli/c8volt_ops_execute_retention-policy.md
+- docs/cli/c8volt_ops_execute_smoke-test.md
+- docs/cli/c8volt_ops_purge_all-process-definitions.md
+- docs/cli/c8volt_ops_purge_orphan-process-instances.md
+- docs/cli/c8volt_ops_purge_process-instances-with-incidents.md
+- docs/cli/c8volt_ops_repair_incident.md
+- docs/cli/c8volt_ops_repair_process-instance.md
+- docs/index.md
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- `make docs-content` propagated the semantic-progress help and example updates into generated CLI docs without manual edits.
+- Validation passed: `go test ./docsgen -count=1` -> `ok github.com/grafvonb/c8volt/docsgen 0.579s`.
+- Validation passed: `git diff --check` -> no output.
+---
 ## Iteration 5 - 2026-09-01 07:50
 **Work Unit**: User Story 3 process-instance reporter setup and prompt activity boundaries
 **Tasks Completed**:

@@ -22,6 +22,8 @@ When --bpmn-process-id is set, c8volt validates that the process definition is v
 
 Search mode pages through matching process instances by default. --batch-size controls each discovery page request, --limit caps the selected process-instance scope across all pages, and --workers, --fail-fast, and --no-worker-limit bound independent planning or cancellation work. Verbose paging progress is written away from stdout; JSON, quiet, and automation output remain free of prompts unless confirmation is explicitly supplied.
 
+After confirmation, default human output keeps one workflow activity updated from real cancellation completions and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-root completion line. JSON, keys-only, and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings.
+
 Use --dry-run to preview selected, in-scope, final-state, and partial-scope instances without cancelling.
 
 Use --auto-confirm for unattended destructive runs.
@@ -43,6 +45,7 @@ c8volt cancel process-instance [flags]
   ./c8volt cancel process-instance --state active --start-date-before 2026-05-31 --limit 5 --dry-run
   ./c8volt cancel process-instance --state active --start-date-newer-days 30 --limit 5 --dry-run
   ./c8volt cancel process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5 --auto-confirm
+  ./c8volt --verbose cancel process-instance --state active --limit 25 --auto-confirm
   ./c8volt expect process-instance --key <process-instance-key> --state canceled
   ./c8volt get process-instance --key <process-instance-key> --keys-only | ./c8volt cancel process-instance --auto-confirm -
 ```

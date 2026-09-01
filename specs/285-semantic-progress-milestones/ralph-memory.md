@@ -56,6 +56,7 @@ Started: 2026-08-31T17:14:26Z
 - User Story 3 validation completed in iteration 6 with lifecycle conversion, direct/stdin/search parity, mode-gate, machine-output, quiet, automation, prompt-boundary, result, report, vocabulary, and broad command-family regression tests passing under `-race`.
 - T043 command cohesion review inventoried #285-added `cmd` declarations, confirmed semantic progress lifecycle ownership stays in focused `*_progress.go` files, added missing purpose comments, and found no required file moves.
 - T044 updated source documentation only: README operator guidance plus affected Cobra help/examples now describe real completion activity, 10-second default milestones, immediate failures, verbose per-item/per-stage lines, quiet failure warnings, and machine-output silence. Generated CLI docs remain intentionally untouched for T045.
+- T045 regenerated CLI documentation with `make docs-content`; expected generated output is limited to semantic-progress help/example updates under `docs/cli/` plus the generated overview/build metadata in `docs/index.md`.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -143,4 +144,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Continue Phase 6 at T045: regenerate CLI documentation with `make docs-content` and verify generated changes under `docs/cli/` and `docs/index.md`; do not hand-edit generated docs.
+- Continue Phase 6 at T046: review the implemented behavior against `quickstart.md` and `contracts/semantic-progress-contract.md`; update those files only if implementation details changed without weakening the specification.

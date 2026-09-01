@@ -20,6 +20,8 @@ Resolved delete impact shows one known process-definition or nested process-inst
 
 When --bpmn-process-id is set, c8volt validates visible process-definition matches before delete impact planning, confirmation, cancellation, or deletion. A missing selector fails with the shared local diagnostic.
 
+After confirmation, default human output keeps one workflow activity updated from real process-definition deletion completions and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-definition completion line. JSON, keys-only, and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings.
+
 Use --dry-run to preview process-definition delete impact without submitting deletion or cancellation requests.
 
 Use --auto-confirm for unattended destructive runs.
@@ -39,6 +41,7 @@ c8volt delete process-definition [flags]
   ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --force
   ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
+  ./c8volt --verbose delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --json
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --keys-only | ./c8volt delete process-definition --auto-confirm -
 ```
