@@ -74,6 +74,15 @@ type processInstanceMutationProgressState struct {
 	seen bool
 }
 
+// processInstanceMutationPlanningActivity owns the search planning activity so
+// prompts and confirmed mutations can happen after the planning scope stops.
+type processInstanceMutationPlanningActivity struct {
+	cmd       *cobra.Command
+	operation string
+	enabled   bool
+	stop      func()
+}
+
 // processInstanceMutationSemanticProgressNow is overridden by command tests to
 // exercise durable milestone pacing without real sleeps.
 var processInstanceMutationSemanticProgressNow = time.Now
@@ -193,6 +202,52 @@ func newProcessInstanceMutationSemanticReporter(cmd *cobra.Command, operation st
 		Policy: opsSemanticProgressOutputPolicyForChannel(channel),
 		Now:    processInstanceMutationSemanticProgressNow,
 	})
+}
+
+// appendProcessInstanceMutationSemanticProgressOptions installs the shared
+// completion reporter after the command has confirmed the frozen mutation scope.
+func appendProcessInstanceMutationSemanticProgressOptions(cmd *cobra.Command, operation string, impact processInstancePageImpact, opts []processOptions.FacadeOption, affectedCount int) ([]processOptions.FacadeOption, func()) {
+	semanticReporter := newProcessInstanceMutationSemanticReporter(cmd, operation, impact)
+	mutationOpts := append(compactProcessInstanceMutationOptions(opts),
+		processOptions.WithAffectedProcessInstanceCount(affectedCount),
+		processOptions.WithProgress(processInstanceMutationSemanticProgressCallback(semanticReporter)),
+	)
+	return mutationOpts, semanticReporter.Close
+}
+
+// newProcessInstanceMutationPlanningActivity starts the search planning
+// activity only for modes that allow transient workflow progress.
+func newProcessInstanceMutationPlanningActivity(cmd *cobra.Command, operation string) *processInstanceMutationPlanningActivity {
+	channel := opsProgressChannelForMode(processInstanceMutationProgressModeForCommand(cmd))
+	progress := &processInstanceMutationPlanningActivity{
+		cmd:       cmd,
+		operation: strings.TrimSpace(operation),
+		enabled:   channel.TransientAllowed,
+	}
+	progress.Resume()
+	return progress
+}
+
+// Stop ends the current planning activity if it is active.
+func (p *processInstanceMutationPlanningActivity) Stop() {
+	if p == nil || p.stop == nil {
+		return
+	}
+	p.stop()
+	p.stop = nil
+}
+
+// Resume opens a new planning activity after a continuation prompt allows the
+// search planning traversal to continue.
+func (p *processInstanceMutationPlanningActivity) Resume() {
+	if p == nil || !p.enabled || p.stop != nil {
+		return
+	}
+	operation := p.operation
+	if operation == "" {
+		operation = "mutation"
+	}
+	p.stop = startCommandActivity(p.cmd, fmt.Sprintf("planning process-instance %s scope", operation))
 }
 
 func processInstanceMutationAffectedCoverageAvailable(impact processInstancePageImpact) bool {

@@ -822,6 +822,17 @@ func requireProcessInstanceMutationSemanticActivity(t *testing.T, sink *activity
 	require.GreaterOrEqual(t, sink.Stopped(), 1)
 }
 
+// requireProcessInstanceMutationPlanningStoppedBeforePrompt verifies search
+// planning activity is balanced before destructive confirmation can prompt.
+func requireProcessInstanceMutationPlanningStoppedBeforePrompt(t *testing.T, sink *activitysink.Sink, operation string) {
+	t.Helper()
+	require.Contains(t, sink.Starts(), activitysink.Start{
+		Message:    "planning process-instance " + operation + " scope",
+		Importance: logging.ActivityImportanceWorkflow,
+	})
+	require.Equal(t, 1, sink.Stopped())
+}
+
 // TestProcessInstanceMutationSemanticProgressVerboseItemsSuppressAggregateMilestones
 // verifies process-instance mutation adapters use verbose per-root completion
 // lines instead of paced aggregate milestone duplicates.

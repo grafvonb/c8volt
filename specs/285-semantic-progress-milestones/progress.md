@@ -105,6 +105,34 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `git diff --check` -> no output.
 ---
 ---
+## Iteration 5 - 2026-09-01 07:50
+**Work Unit**: User Story 3 process-instance reporter setup and prompt activity boundaries
+**Tasks Completed**:
+- [x] T041: Normalize direct/stdin/search reporter setup and ensure destructive planning activity stops before confirmation and mutation starts a fresh clock/activity
+**Tasks Remaining in Work Unit**: T042 remains in User Story 3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/cancel_processinstance_selector.go
+- cmd/cancel_processinstance_selector_test.go
+- cmd/delete_processinstance.go
+- cmd/delete_processinstance_selector.go
+- cmd/delete_processinstance_selector_test.go
+- cmd/processinstance_mutation_progress.go
+- cmd/processinstance_mutation_progress_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Process-instance cancel/delete direct, stdin-equivalent, and search mutation paths now share one semantic progress option helper, keeping completion reporter construction after confirmation.
+- Search-selected process-instance planning now owns a stoppable workflow activity, closes it before destructive and continuation prompts, and resumes it only when traversal continues.
+- Validation passed: `go test ./cmd -run 'TestCancelProcessInstanceSearchSelectedUsesSemanticCompletionActivity|TestDeleteProcessInstanceSearchSelectedUsesSemanticCompletionActivity|TestProcessInstanceMutationDirectAndStdinKeysShareLifecycleWording|TestCancelProcessInstanceSearchSelectedSemanticLifecycleParity|TestDeleteProcessInstanceSearchSelectedSemanticLifecycleParity' -count=1` -> `ok github.com/grafvonb/c8volt/cmd 0.597s`.
+- Validation passed: `go test ./cmd -run 'TestCancelProcessInstanceSearchSelectedUsesSemanticCompletionActivity|TestDeleteProcessInstanceSearchSelectedUsesSemanticCompletionActivity|TestProcessInstanceMutationDirectAndStdinKeysShareLifecycleWording|TestCancelProcessInstanceSearchSelectedSemanticLifecycleParity|TestDeleteProcessInstanceSearchSelectedSemanticLifecycleParity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.836s`.
+- Validation passed: `go test ./cmd -run 'ProcessInstance|CancelProcessInstanceSearch|DeleteProcessInstanceSearch|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 44.042s`.
+- Validation passed: `go test ./cmd -run 'ProcessInstance|ProcessDefinition|PurgeAllProcessDefinitions|Repair|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 79.279s`.
+- Validation passed: `git diff --check` -> no output.
+---
+---
 ## Iteration 2 - 2026-09-01 07:26
 **Work Unit**: User Story 3 command-family machine-output progress regression tests
 **Tasks Completed**:

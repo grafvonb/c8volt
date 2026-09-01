@@ -145,13 +145,9 @@ func deleteProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli 
 		}
 	}
 
-	semanticReporter := newProcessInstanceMutationSemanticReporter(cmd, "delete", impact)
-	mutationOpts := append(compactProcessInstanceMutationOptions(opts),
-		processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)),
-		processOptions.WithProgress(processInstanceMutationSemanticProgressCallback(semanticReporter)),
-	)
+	mutationOpts, closeSemanticProgress := appendProcessInstanceMutationSemanticProgressOptions(cmd, "delete", impact, opts, len(plan.Collected))
 	reports, err := cli.DeleteProcessInstances(cmd.Context(), plan.Roots, flagWorkers, mutationOpts...)
-	semanticReporter.Close()
+	closeSemanticProgress()
 	if err != nil {
 		return processInstancePageActionResult{}, fmt.Errorf("delete process instances: %w", err)
 	}

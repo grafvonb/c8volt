@@ -51,6 +51,8 @@ Started: 2026-08-31T17:14:26Z
 - T038 added shared adapter-level mode-gate coverage for process-definition delete/deploy, all-process-definition purge, retention/orphan/incident purge, incident/process-instance repair, and smoke-test stage progress: JSON, keys-only, and automation suppress semantic failures entirely; quiet suppresses successes but writes the immediate failure warning; stdout remains empty.
 - T039 makes automation, JSON, and keys-only progress modes authoritative over quiet for semantic progress routing, while quiet-only failures still use the direct stderr warning path.
 - T040 centralizes submitted/confirmed/failed lifecycle vocabulary in command-owned semantic progress helpers; process-instance cancel/delete, repair, and bulk-start adapters now consume shared wording helpers while services continue emitting only dispositions.
+- T041 centralizes process-instance cancel/delete semantic option setup in `appendProcessInstanceMutationSemanticProgressOptions`; direct, stdin-equivalent, cancel-search, and delete-search mutation paths now start the completion reporter only after the frozen scope is confirmed.
+- Search-selected process-instance cancel/delete planning now owns a transient planning activity scope that stops before destructive or continuation prompts and resumes only when traversal continues; the mutation reporter opens a fresh workflow activity and clock around the actual facade mutation call.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -88,6 +90,7 @@ Started: 2026-08-31T17:14:26Z
 - `newOpsProgressMilestonePacer` captures its starting timestamp at construction; fake-clock tests must construct it before advancing the clock to the first 10-second milestone.
 - Avoid command-scope `defer reporter.Close()` for semantic reporters around facade calls that may render results, write reports, run follow-up work, or call exit-style error handlers afterward; close explicitly before those branches.
 - Smoke-test command tests must not require legacy `deploy:`, `start:`, or `walk:` INFO lines in default output once `configureOpsExecuteSmokeTestProgress` installs structured progress; assert final smoke-test summaries remain and duplicate legacy progress stays absent.
+- In process-instance search mutation tests, `requireProcessInstanceMutationPlanningStoppedBeforePrompt` asserts the planning activity is stopped before confirmation, while `requireProcessInstanceMutationSemanticActivity` continues to assert the fresh mutation activity starts and stops.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -137,4 +140,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Continue User Story 3 at T041: normalize direct/stdin/search reporter setup and ensure destructive planning activity stops before confirmation and mutation starts a fresh clock/activity. Keep command-owned lifecycle vocabulary helpers from T040 and T039 mode precedence intact.
+- Continue User Story 3 at T042: run US3 lifecycle, input-parity, machine-output, quiet, automation, prompt, result, and report regression tests with `-race`; record exact results in `progress.md`.

@@ -151,6 +151,7 @@ func TestCancelProcessInstanceSearchSelectedUsesSemanticCompletionActivity(t *te
 	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
 		require.True(t, autoConfirm)
 		require.Contains(t, prompt, "cancel")
+		requireProcessInstanceMutationPlanningStoppedBeforePrompt(t, sink, "cancel")
 		return nil
 	}
 
