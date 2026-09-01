@@ -790,3 +790,23 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./cmd -run 'ProcessInstance|Repair|RunProcessInstance|ExplicitLargeWork|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 50.614s`.
 - Validation passed: `git diff --check` -> no output.
 ---
+---
+## Iteration 6 - 2026-09-01 07:55
+**Work Unit**: User Story 3 final regression validation
+**Tasks Completed**:
+- [x] T042: Run US3 lifecycle, input-parity, machine-output, quiet, automation, prompt, result, and report regression tests with `-race` and record exact results
+**Tasks Remaining in Work Unit**: 0; User Story 3 complete
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- User Story 3 is validated without source changes; the remaining feature work starts at Phase 6 polish task T043.
+- Validation passed: `go test ./internal/domain ./c8volt/foptions ./c8volt/ops -run 'TestOpsCompletion|TestProgressCompletion|TestProgressConversions_.*Completion' -race -count=1` -> `ok` for all three packages.
+- Validation passed: `go test ./cmd -run 'TestCancelProcessInstanceSearchSelectedUsesSemanticCompletionActivity|TestDeleteProcessInstanceSearchSelectedUsesSemanticCompletionActivity|TestProcessInstanceMutationDirectAndStdinKeysShareLifecycleWording|TestProcessInstanceMutationSemanticProgressFailureAndUnknownAffected|TestCancelProcessInstanceSearchSelectedSemanticLifecycleParity|TestDeleteProcessInstanceSearchSelectedSemanticLifecycleParity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.895s`.
+- Validation passed: `go test ./cmd -run 'Test(DeleteProcessDefinition|DeployProcessDefinition|OpsPurgeAllProcessDefinitions|OpsExecuteRetentionPolicy|OpsPurgeOrphanProcessInstances|OpsPurgeProcessInstancesWithIncidents|OpsRepairIncident|OpsRepairProcessInstance|OpsExecuteSmokeTest)SemanticProgressModeGate' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.418s`.
+- Validation passed: `go test ./cmd -run 'SemanticProgressModeGate|MachineProgressSafety|AutomationJSON|JSONOutput|Quiet|ConfirmedDeletionUsesFrozen|Writes.*Report|DryRunJSON|ExistingReport|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 22.720s`.
+- Validation passed: `go test ./cmd -run 'TestFormatOpsSemanticProgressCompletionUsesLifecycleVocabulary|TestProcessInstanceMutationSemanticProgressScopeMapsLifecycleVocabulary|TestOpsRepairIncidentVerboseLifecycleVocabulary|TestRunProcessInstanceVerboseLifecycleVocabulary' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.630s`.
+- Validation passed: `go test ./cmd -run 'ProcessInstance|ProcessDefinition|Deploy|PurgeAllProcessDefinitions|RetentionPolicy|OrphanProcessInstances|ProcessInstancesWithIncidents|Repair|Smoke|RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 82.565s`.
+---

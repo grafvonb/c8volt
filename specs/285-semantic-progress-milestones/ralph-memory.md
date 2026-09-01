@@ -53,6 +53,7 @@ Started: 2026-08-31T17:14:26Z
 - T040 centralizes submitted/confirmed/failed lifecycle vocabulary in command-owned semantic progress helpers; process-instance cancel/delete, repair, and bulk-start adapters now consume shared wording helpers while services continue emitting only dispositions.
 - T041 centralizes process-instance cancel/delete semantic option setup in `appendProcessInstanceMutationSemanticProgressOptions`; direct, stdin-equivalent, cancel-search, and delete-search mutation paths now start the completion reporter only after the frozen scope is confirmed.
 - Search-selected process-instance cancel/delete planning now owns a transient planning activity scope that stops before destructive or continuation prompts and resumes only when traversal continues; the mutation reporter opens a fresh workflow activity and clock around the actual facade mutation call.
+- User Story 3 validation completed in iteration 6 with lifecycle conversion, direct/stdin/search parity, mode-gate, machine-output, quiet, automation, prompt-boundary, result, report, vocabulary, and broad command-family regression tests passing under `-race`.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -140,4 +141,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Continue User Story 3 at T042: run US3 lifecycle, input-parity, machine-output, quiet, automation, prompt, result, and report regression tests with `-race`; record exact results in `progress.md`.
+- Continue Phase 6 at T043: inventory declarations in every touched `cmd/*.go` file, apply the focused-file cohesion gate, run `gofmt` on touched Go paths, and record the review in `progress.md`.
