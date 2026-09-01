@@ -68,7 +68,7 @@
 - [x] T021 [P] [US1] Propagate live deletion completions through retention, orphan, and incident-selected purge requests in `internal/services/ops/retention_policy.go`, `internal/services/ops/orphan_purge.go`, `internal/services/ops/incident_purge.go`, and `cmd/ops_processinstance_purge_progress.go`
 - [x] T022 [US1] Move repair progress emission to worker return points and expose smoke-test deploy/start/walk/cleanup stage facts in `internal/services/ops/repair.go`, `internal/services/ops/repair_progress.go`, `internal/services/ops/smoke_test_service.go`, `cmd/ops_repair_progress.go`, and `cmd/ops_explicit_large_work_progress.go`
 - [x] T023 [US1] Add completion facts and reporter wiring for bulk starts, slow-analysis frozen work, and multi-key expect while retaining the assessed exclusions in `internal/services/processinstance/bulk.go`, `internal/services/processinstance/waiter/waiter.go`, `internal/services/ops/slow_process_analysis.go`, `cmd/run_processinstance.go`, `cmd/ops_analyse_slow_process_instances_progress.go`, and `cmd/expect_processinstance.go`
-- [ ] T024 [US1] Run all US1 reporter, activity, process-instance, process-definition, resource, ops, run, analysis, and expect tests with `-race` and record the exact commands/results in `specs/285-semantic-progress-milestones/progress.md`
+- [x] T024 [US1] Run all US1 reporter, activity, process-instance, process-definition, resource, ops, run, analysis, and expect tests with `-race` and record the exact commands/results in `specs/285-semantic-progress-milestones/progress.md`
 
 **Checkpoint**: User Story 1 is complete when all required families expose truthful live semantic completion and one stable workflow activity without durable-line behavior being required yet.
 

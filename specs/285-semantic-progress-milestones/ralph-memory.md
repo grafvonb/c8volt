@@ -33,6 +33,7 @@ Started: 2026-08-31T17:14:26Z
 - Retention, orphan, and incident-selected purge commands now keep discovery/planning progress on the existing ops renderer and route only `delete` completion facts into a lazy process-instance deletion semantic reporter; final reports/results render after the reporter closes.
 - Slow-process analysis now emits completion facts for enrichment phases `loading runtime elements` and `loading listener jobs`; search discovery/preflight remain separate and explicit-key analysis receives semantic enrichment progress without confirmation prompts.
 - Multi-key `expect process-instance` now emits `expect process instances` completion facts from the waiter bulk wrappers and routes them through `cmd/expect_processinstance_progress.go`; single-key waiter polling remains wait-priority activity unless a caller explicitly uses the bulk wrapper with a progress callback.
+- User Story 1 validation completed in iteration 18 with reporter, activity, process-instance, process-definition, resource, ops, run, analysis, and expect tests passing under `-race`; T024 was a validation/audit-only work unit.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -86,6 +87,7 @@ Started: 2026-08-31T17:14:26Z
 - `go test ./cmd -run 'RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|ExplicitLargeWork' -race -count=1`
 - `go test ./internal/services/processinstance/waiter -race -count=1`
 - `go test ./cmd -run 'Progress|Activity' -race -count=1`
+- `go test ./cmd -run 'ProcessInstance|ProcessDefinition|Purge|Retention|Orphan|Incident|Repair|Smoke|Deploy|Run|Analyse|Expect|Progress|Activity' -race -count=1`
 - `go test ./cmd -run 'TestProcessDefinitionDeploySemanticProgress|TestAppendProcessDefinitionDeployProgressOptions|TestProcessDefinitionDeleteSemanticProgressRoutesFacadeCompletion|TestOpsPurgeAllProcessDefinitionsProgressKeepsDiscoverySeparate' -race -count=1`
 - `go test ./cmd -run 'Deploy|ProcessDefinitionDeploy|Progress|Activity' -race -count=1`
 - `go test ./cmd -run 'TestOpsRepairSemanticProgressRoutesCompletion|TestOpsExecuteSmokeTestSemanticProgressRoutesStageCompletions|TestExplicitLargeWorkProgressEventRespectsOutputModes|TestOpsRepairIncidentProgressContractPendingT068|TestOpsRepairProcessInstanceProgressContractPendingT068|TestOpsExecuteSmokeTestVerboseProgressRendersStageCounters' -race -count=1`
@@ -98,4 +100,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should continue User Story 1 at T024: run all US1 reporter, activity, process-instance, process-definition, resource, ops, run, analysis, and expect tests with `-race` and record the exact commands/results.
+- Next iteration should start User Story 2 at T025: add fake-clock tests for clean sub-10-second silence, first 10-second completion, rapid-completion suppression, durable activation, immediate failures, and exactly-once final flush in `cmd/ops_semantic_progress_test.go` and `cmd/ops_progress_test.go`.

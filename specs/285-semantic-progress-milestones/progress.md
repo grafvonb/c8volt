@@ -82,7 +82,6 @@ Started: 2026-08-31 19:14:26
 - Reporter validation passed with `go test ./cmd -run 'TestOpsSemanticProgress' -race -count=1`, `go test ./cmd -run 'Progress|Activity' -race -count=1`, `go test ./internal/domain ./c8volt/foptions ./c8volt/ops ./toolx/logging ./internal/services -race -count=1`, and `git diff --check`.
 - Broader command progress tests require applying output-mode globals after `resetOpsSlowProcessAnalysisTestFlags(t)` because the helper now clears shared mode flags to prevent cross-test leakage.
 ---
----
 ## Iteration 4 - 2026-08-31 19:31
 **Work Unit**: User Story 1 T007 semantic reporter and activity tests
 **Tasks Completed**:
@@ -367,4 +366,25 @@ Started: 2026-08-31 19:14:26
 **Learnings**:
 - Validation passed: `go test ./cmd ./internal/services/processinstance/waiter ./internal/services/ops ./internal/services/processinstance -run 'RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|WaitForProcessInstances|SlowProcessAnalysis|CreateNProcessInstances' -race -count=1`, `go test ./cmd -run 'Progress|Activity|RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance' -race -count=1`, `go test ./internal/services/processinstance/waiter -race -count=1`, `go test ./internal/services/ops -run 'SlowProcessAnalysis|Progress' -race -count=1`, `go test ./internal/services/processinstance -run 'CreateNProcessInstances|Progress|Wait' -race -count=1`, `go test ./cmd ./internal/services/processinstance/... ./internal/services/ops -race -count=1`, and `git diff --check`.
 - Slow-analysis enrichment and multi-key expect now emit wording-free completion facts consumed by command-owned semantic reporters; discovery and single-target waiter polling exclusions remain intact.
+---
+---
+## Iteration 18 - 2026-08-31 22:13
+**Work Unit**: User Story 1 validation across semantic progress families
+**Tasks Completed**:
+- [x] T024: Run all US1 reporter, activity, process-instance, process-definition, resource, ops, run, analysis, and expect tests with `-race`
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Validation passed: `go test ./cmd -run 'Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 7.509s`.
+- Validation passed: `go test ./toolx/logging -race -count=1` -> `ok github.com/grafvonb/c8volt/toolx/logging 1.350s`.
+- Validation passed: `go test ./internal/services/processinstance/... -run 'Progress|Cancel|Delete|CreateNProcessInstances' -race -count=1` -> `ok` for `internal/services/processinstance`, `traversal`, `v810`, `v87`, `v88`, `v89`, `waiter`, and `walker`.
+- Validation passed: `go test ./internal/services/processdefinition ./internal/services/ops -run 'DeleteProcessDefinitionResources.*Completion|DeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError|PurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots' -race -count=1` -> `ok` for `internal/services/processdefinition` and `internal/services/ops`.
+- Validation passed: `go test ./internal/services/resource/payload ./internal/services/resource/v87 ./internal/services/resource/v88 ./internal/services/resource/v89 ./internal/services/resource/v810 -run 'Deploy|Visibility|Completion' -race -count=1` -> `ok` for all listed resource packages.
+- Validation passed: `go test ./internal/services/ops/... -run 'Progress|Purge|Repair|Smoke|SlowProcessAnalysis' -race -count=1` -> `ok github.com/grafvonb/c8volt/internal/services/ops 1.448s`.
+- Validation passed: `go test ./cmd ./internal/services/processinstance/waiter ./internal/services/ops ./internal/services/processinstance -run 'RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|WaitForProcessInstances|SlowProcessAnalysis|CreateNProcessInstances' -race -count=1` -> `ok` for `cmd`, `internal/services/processinstance/waiter`, `internal/services/ops`, and `internal/services/processinstance`.
+- Validation passed: `go test ./cmd -run 'ProcessInstance|ProcessDefinition|Purge|Retention|Orphan|Incident|Repair|Smoke|Deploy|Run|Analyse|Expect|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 99.431s`.
 ---
