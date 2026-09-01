@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// opsRepairCompletionPhase selects repair completion facts emitted after each
+// repair worker result.
 const opsRepairCompletionPhase = "repairing incidents"
 
 // opsRepairSemanticProgressNow is overridden by command tests to exercise

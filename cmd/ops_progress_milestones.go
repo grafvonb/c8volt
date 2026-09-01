@@ -11,6 +11,8 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/ops"
 )
 
+// opsDurableMilestoneMinimumElapsed is the shared completion-driven interval
+// for durable semantic progress milestones.
 const opsDurableMilestoneMinimumElapsed = 10 * time.Second
 
 // opsProgressMilestonePacer rate-limits durable progress snapshots while
@@ -24,6 +26,8 @@ type opsProgressMilestonePacer struct {
 	hasMilestoneSignature bool
 }
 
+// opsProgressMilestoneSignature captures the event fields that must advance
+// before a paced durable milestone is useful.
 type opsProgressMilestoneSignature struct {
 	Kind             ops.ProgressEventKind
 	Phase            string
@@ -35,6 +39,8 @@ type opsProgressMilestoneSignature struct {
 	CompletedSamples int
 }
 
+// newOpsProgressMilestonePacer creates an event-driven pacer anchored to the
+// supplied clock so tests never need real sleeps.
 func newOpsProgressMilestonePacer(now func() time.Time) *opsProgressMilestonePacer {
 	if now == nil {
 		now = time.Now
@@ -72,6 +78,8 @@ func (p *opsProgressMilestonePacer) AllowDurableMilestone(event ops.ProgressEven
 	return true
 }
 
+// opsProgressMilestoneSignatureAdvanced reports whether a new event represents
+// real progress beyond the last durable line.
 func opsProgressMilestoneSignatureAdvanced(current opsProgressMilestoneSignature, previous opsProgressMilestoneSignature) bool {
 	if current.Kind != previous.Kind || current.Phase != previous.Phase {
 		return true
@@ -88,10 +96,14 @@ func opsProgressMilestoneSignatureAdvanced(current opsProgressMilestoneSignature
 	}
 }
 
+// opsProgressDurableMilestoneChannelAllowed keeps paced progress limited to
+// default human stderr so machine-oriented modes stay parseable.
 func opsProgressDurableMilestoneChannelAllowed(channel ops.ProgressChannel) bool {
 	return channel.Mode == ops.ProgressModeHuman && channel.DurableAllowed && channel.StderrAllowed && !channel.StdoutAllowed
 }
 
+// opsProgressMilestoneSignatureForEvent extracts comparable progress fields
+// from page, frozen-scope, and ETA events.
 func opsProgressMilestoneSignatureForEvent(event ops.ProgressEvent) (opsProgressMilestoneSignature, bool) {
 	switch {
 	case event.Kind == ops.ProgressEventKindPage && event.Page != nil:

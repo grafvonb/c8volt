@@ -290,6 +290,8 @@ func TestOpsAnalyseSlowProcessInstancesWorkflowActivityOutranksNestedRuntimeWork
 	}, sink.Starts())
 }
 
+// TestOpsAnalyseSlowProcessInstancesSemanticCompletionActivity verifies finite
+// enrichment completions open workflow activity separate from discovery.
 func TestOpsAnalyseSlowProcessInstancesSemanticCompletionActivity(t *testing.T) {
 	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
 	sink := &activitysink.Sink{}

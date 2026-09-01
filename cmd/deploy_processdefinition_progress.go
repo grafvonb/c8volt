@@ -13,6 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// processDefinitionDeployCompletionPhase selects deployment completion facts
+// that identify returned process definitions.
 const processDefinitionDeployCompletionPhase = "deploy process definitions"
 
 // processDefinitionDeploySemanticProgressNow is overridden by command tests to

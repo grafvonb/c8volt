@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestExpectProcessInstanceSemanticProgressRoutesMultiKeyCompletions proves
+// multi-key waits route completion facts into one workflow activity.
 func TestExpectProcessInstanceSemanticProgressRoutesMultiKeyCompletions(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)

@@ -66,6 +66,8 @@ func configureOpsSlowProcessAnalysisPreflightWithPacer(cmd *cobra.Command, reque
 	return progress
 }
 
+// opsSlowProcessAnalysisSemanticProgress owns separate semantic reporters for
+// finite enrichment phases discovered during slow-process analysis.
 type opsSlowProcessAnalysisSemanticProgress struct {
 	mu        sync.Mutex
 	cmd       *cobra.Command
@@ -73,6 +75,8 @@ type opsSlowProcessAnalysisSemanticProgress struct {
 	closed    bool
 }
 
+// Report routes matching enrichment completion facts to their phase-specific
+// semantic reporter.
 func (p *opsSlowProcessAnalysisSemanticProgress) Report(event ops.ProgressEvent) {
 	if p == nil || event.Kind != ops.ProgressEventKindCompletion || event.Completion == nil {
 		return
@@ -85,6 +89,7 @@ func (p *opsSlowProcessAnalysisSemanticProgress) Report(event ops.ProgressEvent)
 	}
 }
 
+// Close flushes and stops every enrichment reporter opened by this analysis.
 func (p *opsSlowProcessAnalysisSemanticProgress) Close() {
 	if p == nil {
 		return

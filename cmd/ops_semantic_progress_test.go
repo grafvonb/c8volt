@@ -429,6 +429,8 @@ func reportOpsSemanticProgressTestCompletion(reporter *opsSemanticProgressReport
 	})
 }
 
+// requireOpsSemanticProgressCompletedSequence asserts each transient update
+// advances completion count exactly once under concurrent reporter calls.
 func requireOpsSemanticProgressCompletedSequence(t *testing.T, updates []string, total int) {
 	t.Helper()
 	completedRe := regexp.MustCompile(`\b(\d+)/` + regexp.QuoteMeta(strconv.Itoa(total)) + `\b`)

@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// processDefinitionDeleteCompletionPhase selects completion facts emitted by
+// process-definition deletion services.
 const processDefinitionDeleteCompletionPhase = "delete process definitions"
 
 // processDefinitionDeleteSemanticProgressNow is overridden by command tests to
@@ -28,10 +30,14 @@ type processDefinitionDeleteSemanticProgress struct {
 	closed   bool
 }
 
+// newProcessDefinitionDeleteSemanticProgress returns a lazy deletion reporter
+// wrapper whose total can be supplied before or during the first completion.
 func newProcessDefinitionDeleteSemanticProgress(cmd *cobra.Command, total int) *processDefinitionDeleteSemanticProgress {
 	return &processDefinitionDeleteSemanticProgress{cmd: cmd, total: total}
 }
 
+// Start eagerly opens the deletion reporter once a confirmed frozen scope is
+// known, while still allowing lazy construction for auto-confirmed paths.
 func (p *processDefinitionDeleteSemanticProgress) Start(total int) {
 	if p == nil {
 		return
@@ -41,6 +47,7 @@ func (p *processDefinitionDeleteSemanticProgress) Start(total int) {
 	_ = p.reporterLocked(total)
 }
 
+// Close flushes and stops the process-definition deletion reporter once.
 func (p *processDefinitionDeleteSemanticProgress) Close() {
 	if p == nil {
 		return
@@ -58,6 +65,8 @@ func (p *processDefinitionDeleteSemanticProgress) Close() {
 	}
 }
 
+// FacadeProgress maps public facade deletion completion facts into the command
+// reporter without adding service-layer wording.
 func (p *processDefinitionDeleteSemanticProgress) FacadeProgress(event foptions.ProgressEvent) {
 	if event.Kind != foptions.ProgressEventKindCompletion || event.Completion == nil {
 		return
@@ -77,6 +86,8 @@ func (p *processDefinitionDeleteSemanticProgress) FacadeProgress(event foptions.
 	})
 }
 
+// Report forwards one process-definition completion fact into the lazy semantic
+// reporter after filtering out non-completion progress.
 func (p *processDefinitionDeleteSemanticProgress) Report(event ops.ProgressEvent) {
 	if p == nil || event.Kind != ops.ProgressEventKindCompletion || event.Completion == nil {
 		return
@@ -89,6 +100,8 @@ func (p *processDefinitionDeleteSemanticProgress) Report(event ops.ProgressEvent
 	}
 }
 
+// reporterLocked constructs the reporter under the wrapper mutex and keeps the
+// first trustworthy total for the command scope.
 func (p *processDefinitionDeleteSemanticProgress) reporterLocked(total int) *opsSemanticProgressReporter {
 	if p == nil || p.closed {
 		return nil

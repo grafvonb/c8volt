@@ -54,6 +54,7 @@ Started: 2026-08-31T17:14:26Z
 - T041 centralizes process-instance cancel/delete semantic option setup in `appendProcessInstanceMutationSemanticProgressOptions`; direct, stdin-equivalent, cancel-search, and delete-search mutation paths now start the completion reporter only after the frozen scope is confirmed.
 - Search-selected process-instance cancel/delete planning now owns a transient planning activity scope that stops before destructive or continuation prompts and resumes only when traversal continues; the mutation reporter opens a fresh workflow activity and clock around the actual facade mutation call.
 - User Story 3 validation completed in iteration 6 with lifecycle conversion, direct/stdin/search parity, mode-gate, machine-output, quiet, automation, prompt-boundary, result, report, vocabulary, and broad command-family regression tests passing under `-race`.
+- T043 command cohesion review inventoried #285-added `cmd` declarations, confirmed semantic progress lifecycle ownership stays in focused `*_progress.go` files, added missing purpose comments, and found no required file moves.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -141,4 +142,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Continue Phase 6 at T043: inventory declarations in every touched `cmd/*.go` file, apply the focused-file cohesion gate, run `gofmt` on touched Go paths, and record the review in `progress.md`.
+- Continue Phase 6 at T044: update README and affected command help/examples for operator-facing semantic progress behavior, then leave generated CLI docs for T045.

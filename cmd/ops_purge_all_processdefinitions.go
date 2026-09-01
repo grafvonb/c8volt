@@ -207,6 +207,8 @@ func formatOpsPurgeAllProcessDefinitionsActivity(request ops.AllProcessDefinitio
 	return "running process-definition purge workflow"
 }
 
+// configureOpsPurgeAllProcessDefinitionsProgress keeps discovery progress on
+// the APD renderer while forwarding delete completions to the deletion reporter.
 func configureOpsPurgeAllProcessDefinitionsProgress(cmd *cobra.Command, request *ops.AllProcessDefinitionsPurgeRequest, deletionProgress *processDefinitionDeleteSemanticProgress) {
 	if request == nil {
 		return

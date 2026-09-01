@@ -81,7 +81,6 @@ Started: 2026-08-31 19:14:26
 **Learnings**:
 - Reporter validation passed with `go test ./cmd -run 'TestOpsSemanticProgress' -race -count=1`, `go test ./cmd -run 'Progress|Activity' -race -count=1`, `go test ./internal/domain ./c8volt/foptions ./c8volt/ops ./toolx/logging ./internal/services -race -count=1`, and `git diff --check`.
 - Broader command progress tests require applying output-mode globals after `resetOpsSlowProcessAnalysisTestFlags(t)` because the helper now clears shared mode flags to prevent cross-test leakage.
----
 ## Iteration 23 - 2026-09-01 06:10
 **Work Unit**: User Story 2 process-definition deletion, deployment, and all-definition purge durable milestone tests
 **Tasks Completed**:
@@ -809,4 +808,31 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./cmd -run 'SemanticProgressModeGate|MachineProgressSafety|AutomationJSON|JSONOutput|Quiet|ConfirmedDeletionUsesFrozen|Writes.*Report|DryRunJSON|ExistingReport|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 22.720s`.
 - Validation passed: `go test ./cmd -run 'TestFormatOpsSemanticProgressCompletionUsesLifecycleVocabulary|TestProcessInstanceMutationSemanticProgressScopeMapsLifecycleVocabulary|TestOpsRepairIncidentVerboseLifecycleVocabulary|TestRunProcessInstanceVerboseLifecycleVocabulary' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.630s`.
 - Validation passed: `go test ./cmd -run 'ProcessInstance|ProcessDefinition|Deploy|PurgeAllProcessDefinitions|RetentionPolicy|OrphanProcessInstances|ProcessInstancesWithIncidents|Repair|Smoke|RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 82.565s`.
+---
+---
+## Iteration 7 - 2026-09-01 08:03
+**Work Unit**: Phase 6 command progress file cohesion review
+**Tasks Completed**:
+- [x] T043: Inventory declarations in every touched `cmd/*.go` file, move the reporter lifecycle into focused files where required, add mandated comments, and run `gofmt` on all touched Go paths
+**Tasks Remaining in Work Unit**: 0; next Phase 6 task is T044
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/delete_processdefinition_progress.go
+- cmd/deploy_processdefinition_progress.go
+- cmd/expect_processinstance_progress_test.go
+- cmd/ops_analyse_slow_process_instances_progress.go
+- cmd/ops_analyse_slow_process_instances_progress_test.go
+- cmd/ops_progress_milestones.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_repair_progress.go
+- cmd/ops_semantic_progress_test.go
+- cmd/processinstance_mutation_progress.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Reviewed #285-added command declarations with `git diff --unified=0 31f5b2cf^..HEAD -- 'cmd/*.go'` and a focused declaration-comment check; deletion, deployment, expect, slow-analysis, smoke-test, purge, repair, run, and process-instance mutation lifecycle code is already isolated in focused progress files.
+- Added missing purpose comments for #285-added command progress declarations and tests; no reporter lifecycle move was required by the focused-file gate.
+- Validation passed: `go test ./cmd -run 'Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 7.463s`.
+- Validation passed: `git diff --check` -> no output.
 ---
