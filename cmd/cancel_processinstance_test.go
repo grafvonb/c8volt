@@ -13,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -601,6 +602,74 @@ func TestCancelProcessInstancesWithPlan_RegressionWorkerControls(t *testing.T) {
 	require.Len(t, got.Reports, 1)
 	require.NotNil(t, got.DryRunPreview)
 	require.Equal(t, typex.Keys{"root-a"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
+}
+
+// TestCancelProcessInstancesWithPlan_DefaultMilestoneFinalFlushAndNoTimerDuplicate
+// verifies direct cancel commands emit paced aggregate semantic milestones,
+// flush once on close, and suppress legacy timer-style mutation progress.
+func TestCancelProcessInstancesWithPlan_DefaultMilestoneFinalFlushAndNoTimerDuplicate(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagCmdAutoConfirm = true
+	now := time.Date(2026, 9, 1, 6, 0, 0, 0, time.UTC)
+	processInstanceMutationSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { processInstanceMutationSemanticProgressNow = time.Now })
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		require.True(t, autoConfirm)
+		require.Contains(t, prompt, "cancel")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"root-1", "root-2"}, keys)
+			require.True(t, options.ApplyFacadeOptions(opts).IgnoreTenant)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-1", "root-2"},
+				Collected: typex.Keys{"root-1", "root-2"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}, nil
+		},
+		cancelProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.CancelReports, error) {
+			require.Equal(t, typex.Keys{"root-1", "root-2"}, keys)
+			cfg := options.ApplyFacadeOptions(opts)
+			require.NotNil(t, cfg.Progress)
+			require.True(t, cfg.SuppressWorkflowDetailLogs)
+			cfg.Progress(options.ProgressEvent{
+				Kind: options.ProgressEventKindFrozenScope,
+				FrozenScope: &options.FrozenScopeProgress{
+					Phase:        "cancelling process instances",
+					CoreResource: "process instance(s)",
+					Done:         1,
+					Total:        2,
+				},
+			})
+			now = now.Add(opsDurableMilestoneMinimumElapsed)
+			reportProcessInstanceMutationCompletionEvent(cfg.Progress, "cancel", "root-1", 2, options.CompletionDispositionConfirmed, "", ptrInt(1))
+			reportProcessInstanceMutationCompletionEvent(cfg.Progress, "cancel", "root-2", 2, options.CompletionDispositionConfirmed, "", ptrInt(1))
+			return process.CancelReports{Items: []process.CancelReport{{Key: "root-1", Ok: true}, {Key: "root-2", Ok: true}}}, nil
+		},
+	}
+
+	got, err := cancelProcessInstancesWithPlan(cmd, cli, typex.Keys{"root-1", "root-2"}, true)
+
+	require.NoError(t, err)
+	require.Len(t, got.Reports, 2)
+	output := buf.String()
+	require.Contains(t, output, "cancellation process-instance trees, 1/2 process-instance tree(s), affected process instances: 1")
+	require.Contains(t, output, "cancellation process-instance trees, 2/2 process-instance tree(s), affected process instances: 2")
+	require.Equal(t, 1, strings.Count(output, "cancellation process-instance trees, 1/2 process-instance tree(s), affected process instances: 1"))
+	require.Equal(t, 1, strings.Count(output, "cancellation process-instance trees, 2/2 process-instance tree(s), affected process instances: 2"))
+	require.Contains(t, output, "cancellation: canceled 2/2 process-instance tree(s)")
+	require.NotContains(t, output, "cancelling process instances 1/2 process instance(s)")
 }
 
 // TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging verifies direct keys do not use search paging.

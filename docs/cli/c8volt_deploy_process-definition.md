@@ -14,6 +14,8 @@ Deploy BPMN process definition files and report the deployed definitions.
 
 Tenant contract: deployment is a creation operation. A named tenant is reported as "creation target: <tenant>" before upload; empty tenant configuration targets and reports "creation target: default tenant". This command does not accept --all-tenants because it creates resources in one concrete tenant.
 
+Default human output keeps one workflow activity updated from real deployment visibility completions and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-definition completion line. JSON and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings.
+
 By default c8volt waits for deployment confirmation. Use --run to start one process instance for each deployed definition.
 
 ```
@@ -27,6 +29,7 @@ c8volt deploy process-definition [flags]
   ./c8volt deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn
   ./c8volt --tenant tenant-a deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn
   ./c8volt deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run
+  ./c8volt --verbose deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --json
 ```
 

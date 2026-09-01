@@ -95,9 +95,9 @@ func deleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 		return processInstancePageActionResults{}, err
 	}
 
-	opts := append(compactProcessInstanceMutationOptions(collectOptions()), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
-	opts = append(opts, processOptions.WithProgress(newProcessInstanceMutationProgressReporter(cmd, "delete")))
+	opts, closeSemanticProgress := appendProcessInstanceMutationSemanticProgressOptions(cmd, "delete", impact, collectOptions(), len(plan.Collected))
 	reports, err := cli.DeleteProcessInstances(cmd.Context(), plan.Roots, flagWorkers, opts...)
+	closeSemanticProgress()
 	if err != nil {
 		return processInstancePageActionResults{}, fmt.Errorf("delete process instances: %w", err)
 	}
@@ -200,6 +200,8 @@ func planDeleteProcessInstanceSearchPagesForMutation(cmd *cobra.Command, cli pro
 func planDeleteProcessInstanceSearchPagesWithPrompt(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter, aborted *bool) (processInstancePageActionResults, error) {
 	var results processInstancePageActionResults
 	progress, progressSeen := newProcessInstanceMutationProgressReporterWithState(cmd, "delete")
+	planningActivity := newProcessInstanceMutationPlanningActivity(cmd, "delete")
+	defer planningActivity.Stop()
 
 	planned, err := cli.PlanProcessInstanceMutationPages(cmd.Context(), process.ProcessInstanceMutationPlanRequest{
 		SearchRequest: newProcessInstanceSearchRequest(cmd, cfg, filter),
@@ -219,8 +221,10 @@ func planDeleteProcessInstanceSearchPagesWithPrompt(cmd *cobra.Command, cli proc
 		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop, processInstanceContinuationLimitReached:
 			return process.ProcessInstanceSearchPageActionStop, nil
 		case processInstanceContinuationAutoContinue:
+			planningActivity.Resume()
 			return process.ProcessInstanceSearchPageActionContinue, nil
 		case processInstanceContinuationPrompt:
+			planningActivity.Stop()
 			prompt := fmt.Sprintf("Checked delete impact for %d process instance(s) on this page (%s, %d including dependencies); no changes made yet. More matching process instances remain. Continue checking?", summary.CurrentPageCount, formatProcessInstancePagingProgress(step.Page, summary.CumulativeCount, "requested"), step.CumulativeImpact)
 			if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 				if isCmdAborted(err) {
@@ -238,6 +242,7 @@ func planDeleteProcessInstanceSearchPagesWithPrompt(cmd *cobra.Command, cli proc
 				}
 				return process.ProcessInstanceSearchPageActionStop, err
 			}
+			planningActivity.Resume()
 			return process.ProcessInstanceSearchPageActionContinue, nil
 		}
 		return process.ProcessInstanceSearchPageActionStop, nil

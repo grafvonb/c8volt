@@ -246,6 +246,7 @@ func fromDomainProgressEvent(x d.OpsProgressEvent) ProgressEvent {
 		Page:        fromDomainPageProgressPtr(x.Page),
 		FrozenScope: fromDomainFrozenScopeProgressPtr(x.FrozenScope),
 		ETA:         fromDomainETASampleWindowPtr(x.ETA),
+		Completion:  fromDomainCompletionProgressPtr(x.Completion),
 	}
 }
 
@@ -257,6 +258,7 @@ func toDomainProgressEvent(x ProgressEvent) d.OpsProgressEvent {
 		Page:        toDomainPageProgressPtr(x.Page),
 		FrozenScope: toDomainFrozenScopeProgressPtr(x.FrozenScope),
 		ETA:         toDomainETASampleWindowPtr(x.ETA),
+		Completion:  toDomainCompletionProgressPtr(x.Completion),
 	}
 }
 
@@ -477,6 +479,52 @@ func toDomainFrozenScopeProgress(x FrozenScopeProgress) d.OpsFrozenScopeProgress
 		Rate:         x.Rate,
 		ETA:          x.ETA,
 		Errors:       x.Errors,
+	}
+}
+
+// fromDomainCompletionProgressPtr maps optional completion facts while preserving nil as absent.
+func fromDomainCompletionProgressPtr(x *d.OpsCompletionProgress) *CompletionProgress {
+	if x == nil {
+		return nil
+	}
+	out := fromDomainCompletionProgress(*x)
+	return &out
+}
+
+// fromDomainCompletionProgress maps internal completion facts to public callback facts.
+func fromDomainCompletionProgress(x d.OpsCompletionProgress) CompletionProgress {
+	return CompletionProgress{
+		Phase:            x.Phase,
+		CoreResource:     x.CoreResource,
+		Total:            x.Total,
+		Identity:         x.Identity,
+		Disposition:      CompletionDisposition(x.Disposition),
+		FailureDetail:    x.FailureDetail,
+		AffectedResource: x.AffectedResource,
+		AffectedCount:    x.AffectedCount,
+	}
+}
+
+// toDomainCompletionProgressPtr maps optional public completion facts for callback adapters.
+func toDomainCompletionProgressPtr(x *CompletionProgress) *d.OpsCompletionProgress {
+	if x == nil {
+		return nil
+	}
+	out := toDomainCompletionProgress(*x)
+	return &out
+}
+
+// toDomainCompletionProgress maps public completion facts into the internal shape.
+func toDomainCompletionProgress(x CompletionProgress) d.OpsCompletionProgress {
+	return d.OpsCompletionProgress{
+		Phase:            x.Phase,
+		CoreResource:     x.CoreResource,
+		Total:            x.Total,
+		Identity:         x.Identity,
+		Disposition:      d.OpsCompletionDisposition(x.Disposition),
+		FailureDetail:    x.FailureDetail,
+		AffectedResource: x.AffectedResource,
+		AffectedCount:    x.AffectedCount,
 	}
 }
 

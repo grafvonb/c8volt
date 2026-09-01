@@ -846,6 +846,7 @@ func TestPurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots(
 	var cancelled []string
 	var deletedPI []string
 	var deletedPD typex.Keys
+	var events []d.OpsProgressEvent
 	getCalls := map[string]int{}
 
 	got, err := NewWithProcessDefinitionPurge(
@@ -920,7 +921,13 @@ func TestPurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots(
 				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK", DeleteHistory: true}, nil
 			},
 		},
-	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{Force: true, Workers: 1})
+	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{
+		Force:   true,
+		Workers: 1,
+		Progress: func(event d.OpsProgressEvent) {
+			events = append(events, event)
+		},
+	})
 
 	require.NoError(t, err)
 	require.Equal(t, []string{"pi-root"}, cancelled)
@@ -929,6 +936,22 @@ func TestPurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots(
 	require.EqualValues(t, 2, got.DeletePlan.ActiveProcessInstanceCount)
 	require.EqualValues(t, 3, got.DeletePlan.AffectedProcessInstanceCount)
 	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeDeleted, got.Outcome)
+	require.Equal(t, []d.OpsCompletionProgress{
+		{
+			Phase:        "delete process definitions",
+			CoreResource: "process definition(s)",
+			Total:        2,
+			Identity:     "pd-a",
+			Disposition:  d.OpsCompletionDispositionConfirmed,
+		},
+		{
+			Phase:        "delete process definitions",
+			CoreResource: "process definition(s)",
+			Total:        2,
+			Identity:     "pd-b",
+			Disposition:  d.OpsCompletionDispositionConfirmed,
+		},
+	}, opsCompletionProgressByPhase(events, "delete process definitions"))
 }
 
 // emptyStringSliceIfNil lets tests compare logical empty collections independent of nil slice representation.
@@ -948,6 +971,17 @@ func requireNoticeCodes(t *testing.T, notices []d.AllProcessDefinitionsPurgeWork
 		got = append(got, notice.Code)
 	}
 	require.Equal(t, emptyStringSliceIfNil(want), emptyStringSliceIfNil(got))
+}
+
+func opsCompletionProgressByPhase(events []d.OpsProgressEvent, phase string) []d.OpsCompletionProgress {
+	out := make([]d.OpsCompletionProgress, 0, len(events))
+	for _, event := range events {
+		if event.Kind != d.OpsProgressEventKindCompletion || event.Completion == nil || event.Completion.Phase != phase {
+			continue
+		}
+		out = append(out, *event.Completion)
+	}
+	return out
 }
 
 type stubProcessDefinitionAPI struct {

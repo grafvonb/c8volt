@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/grafvonb/c8volt/consts"
@@ -90,16 +91,17 @@ func (s *Service) repairExplicitIncidents(ctx context.Context, request d.OpsRepa
 	cfg := services.ApplyCallOptions(opts)
 	workers := toolx.DetermineNoOfWorkers(len(incidents), request.Workers, cfg.NoWorkerLimit)
 	emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", 0, len(incidents))
+	var completed int64
 	items, runErr := pool.ExecuteSlice(ctx, incidents, workers, cfg.FailFast, func(ctx context.Context, incident d.ProcessInstanceIncidentDetail, _ int) (repairIncidentExecution, error) {
-		return s.executeIncidentRepair(ctx, request, incident, variableUpdates, opts...)
+		item, err := s.executeIncidentRepair(ctx, request, incident, variableUpdates, len(incidents), opts...)
+		done := int(atomic.AddInt64(&completed, 1))
+		emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", done, len(incidents))
+		return item, err
 	})
-	completedRepairs := 0
 	for _, item := range items {
 		if item.Plan.IncidentKey == "" {
 			continue
 		}
-		completedRepairs++
-		emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", completedRepairs, len(incidents))
 		result.Plan = append(result.Plan, item.Plan)
 		result.JobApplicability = append(result.JobApplicability, item.JobApplicability)
 	}
@@ -139,16 +141,17 @@ func (s *Service) repairFilteredIncidents(ctx context.Context, request d.OpsRepa
 	cfg := services.ApplyCallOptions(opts)
 	workers := toolx.DetermineNoOfWorkers(len(incidents), request.Workers, cfg.NoWorkerLimit)
 	emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", 0, len(incidents))
+	var completed int64
 	items, runErr := pool.ExecuteSlice(ctx, incidents, workers, cfg.FailFast, func(ctx context.Context, incident d.ProcessInstanceIncidentDetail, _ int) (repairIncidentExecution, error) {
-		return s.executeIncidentRepair(ctx, request, incident, variableUpdates, opts...)
+		item, err := s.executeIncidentRepair(ctx, request, incident, variableUpdates, len(incidents), opts...)
+		done := int(atomic.AddInt64(&completed, 1))
+		emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", done, len(incidents))
+		return item, err
 	})
-	completedRepairs := 0
 	for _, item := range items {
 		if item.Plan.IncidentKey == "" {
 			continue
 		}
-		completedRepairs++
-		emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", completedRepairs, len(incidents))
 		result.Plan = append(result.Plan, item.Plan)
 		result.JobApplicability = append(result.JobApplicability, item.JobApplicability)
 	}
@@ -237,16 +240,17 @@ func (s *Service) finishProcessInstanceIncidentRepair(ctx context.Context, reque
 	cfg := services.ApplyCallOptions(opts)
 	workers := toolx.DetermineNoOfWorkers(len(incidents), request.Workers, cfg.NoWorkerLimit)
 	emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", 0, len(incidents))
+	var completed int64
 	items, runErr := pool.ExecuteSlice(ctx, incidents, workers, cfg.FailFast, func(ctx context.Context, incident d.ProcessInstanceIncidentDetail, _ int) (repairIncidentExecution, error) {
-		return s.executeIncidentRepair(ctx, request, incident, variableUpdates, opts...)
+		item, err := s.executeIncidentRepair(ctx, request, incident, variableUpdates, len(incidents), opts...)
+		done := int(atomic.AddInt64(&completed, 1))
+		emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", done, len(incidents))
+		return item, err
 	})
-	completedRepairs := 0
 	for _, item := range items {
 		if item.Plan.IncidentKey == "" {
 			continue
 		}
-		completedRepairs++
-		emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", completedRepairs, len(incidents))
 		result.Plan = append(result.Plan, item.Plan)
 		result.JobApplicability = append(result.JobApplicability, item.JobApplicability)
 	}
@@ -667,8 +671,13 @@ func repairVariableErrors(item d.ProcessInstanceVariableUpdateResult) []string {
 	return []string{item.Error}
 }
 
-func (s *Service) executeIncidentRepair(ctx context.Context, request d.OpsRepairRequest, incident d.ProcessInstanceIncidentDetail, variables map[string]d.OpsRepairVariableScopeUpdate, opts ...services.CallOption) (repairIncidentExecution, error) {
+func (s *Service) executeIncidentRepair(ctx context.Context, request d.OpsRepairRequest, incident d.ProcessInstanceIncidentDetail, variables map[string]d.OpsRepairVariableScopeUpdate, total int, opts ...services.CallOption) (out repairIncidentExecution, err error) {
 	plan, jobApplicability := newIncidentRepairPlan(request, incident)
+	defer func() {
+		if out.Plan.IncidentKey != "" {
+			emitRepairCompletionProgress(request, out.Plan, err, total)
+		}
+	}()
 	if applyRepairVariableStatus(&plan, variables[incident.ProcessInstanceKey]) && repairVariableStatusBlocksResolution(plan.VariableUpdateStatus) {
 		plan.ResolutionStatus = d.OpsWorkflowStepStatusBlocked
 		plan.ConfirmationStatus = d.OpsWorkflowStepStatusSkipped

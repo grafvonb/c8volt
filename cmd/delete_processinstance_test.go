@@ -13,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -787,6 +788,79 @@ func TestDeleteProcessInstancesWithPlan_RegressionForceNoWaitAndWorkerControls(t
 	require.Len(t, got.Reports, 1)
 	require.NotNil(t, got.DryRunPreview)
 	require.Equal(t, typex.Keys{"root-a"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
+}
+
+// TestDeleteProcessInstancesWithPlan_ForceCleanupKeepsMilestonesOnDeletionScope
+// verifies force delete commands ignore nested cleanup progress while keeping
+// no-wait delete completions on the single semantic deletion scope.
+func TestDeleteProcessInstancesWithPlan_ForceCleanupKeepsMilestonesOnDeletionScope(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagCmdAutoConfirm = true
+	flagForce = true
+	flagNoWait = true
+	now := time.Date(2026, 9, 1, 6, 0, 0, 0, time.UTC)
+	processInstanceMutationSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { processInstanceMutationSemanticProgressNow = time.Now })
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		require.True(t, autoConfirm)
+		require.Contains(t, prompt, "delete")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"child-a"}, keys)
+			require.True(t, options.ApplyFacadeOptions(opts).IgnoreTenant)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-a"},
+				Collected: typex.Keys{"root-a", "child-a", "child-b"},
+				RequiresCancelBeforeDelete: []process.ProcessInstance{
+					{Key: "child-a", State: process.StateActive},
+				},
+				Outcome: process.TraversalOutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.DeleteReports, error) {
+			require.Equal(t, typex.Keys{"root-a"}, keys)
+			cfg := options.ApplyFacadeOptions(opts)
+			require.True(t, cfg.Force)
+			require.True(t, cfg.NoWait)
+			require.NotNil(t, cfg.Progress)
+			reportProcessInstanceMutationCompletionEvent(cfg.Progress, "cancel", "root-a", 1, options.CompletionDispositionConfirmed, "", ptrInt(3))
+			cfg.Progress(options.ProgressEvent{
+				Kind: options.ProgressEventKindFrozenScope,
+				FrozenScope: &options.FrozenScopeProgress{
+					Phase:        "deleting process instances",
+					CoreResource: "process instance(s)",
+					Done:         1,
+					Total:        1,
+				},
+			})
+			now = now.Add(opsDurableMilestoneMinimumElapsed)
+			reportProcessInstanceMutationCompletionEvent(cfg.Progress, "delete", "root-a", 1, options.CompletionDispositionSubmitted, "", ptrInt(3))
+			return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-a", Ok: true}}}, nil
+		},
+	}
+
+	got, err := deleteProcessInstancesWithPlan(cmd, cli, typex.Keys{"child-a"}, true)
+
+	require.NoError(t, err)
+	require.Len(t, got.Reports, 1)
+	output := buf.String()
+	require.Contains(t, output, "deletion process-instance trees, 1/1 process-instance tree(s), affected process instances: 3")
+	require.Contains(t, output, "deletion: submitted 1/1 process-instance tree(s); affected process instances: 3")
+	require.NotContains(t, output, "cancellation process-instance trees")
+	require.NotContains(t, output, "root-a canceled")
+	require.NotContains(t, output, "deleting process instances 1/1 process instance(s)")
 }
 
 // TestDeleteProcessInstancesWithPlan_RequiresForceBeforeAnyMutation verifies

@@ -720,7 +720,7 @@ func TestOpsExecuteRetentionPolicyProgressContractPendingT066(t *testing.T) {
 	require.Contains(t, stderr, "retention cleanup scope: retention-policy matched 1 process instance; page size: 1; discovery pages: 1")
 	require.Contains(t, stderr, "discovering retention process instances, page 1/1, 1 seen")
 	require.Contains(t, stderr, "planning retention delete scope 1/1 process instance(s)")
-	require.Contains(t, stderr, "deleting process instances 1/1 process instance(s)")
+	require.Contains(t, stderr, opsRetentionPolicySeedKey+" submitted (deletion process-instance trees, 1/1 process-instance tree(s), affected process instances: 1)")
 	require.NotContains(t, stderr, "/v2/")
 	require.NotContains(t, stderr, "cursor")
 	require.NotContains(t, stdout, "retention cleanup scope:")
@@ -733,6 +733,35 @@ func TestOpsExecuteRetentionPolicyProgressContractPendingT066(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
 	require.Equal(t, "deleted", report["outcome"])
 	require.Equal(t, true, report["deleteRequested"])
+}
+
+// TestOpsExecuteRetentionPolicyDefaultDeletionMilestonesAndFinalFlush verifies
+// retention deletion progress writes paced aggregate evidence and a final
+// completion flush from the semantic delete facts.
+func TestOpsExecuteRetentionPolicyDefaultDeletionMilestonesAndFinalFlush(t *testing.T) {
+	resetSemanticProgressModeFlags(t)
+	now := time.Date(2026, 9, 1, 7, 0, 0, 0, time.UTC)
+	opsProcessInstancePurgeSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { opsProcessInstancePurgeSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	request := ops.RetentionPolicyRequest{}
+	progress := configureOpsExecuteRetentionPolicyProgress(cmd, &request)
+	defer progress.Close()
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "retention-root-1", 3, ops.CompletionDispositionConfirmed, "", ptrInt(2))
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "retention-root-2", 3, ops.CompletionDispositionConfirmed, "", ptrInt(3))
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "retention-root-3", 3, ops.CompletionDispositionConfirmed, "", ptrInt(4))
+	progress.Close()
+	progress.Close()
+
+	output := stderr.String()
+	require.Equal(t, 1, strings.Count(output, "deletion process-instance trees, 2/3 process-instance tree(s), affected process instances: 5"))
+	require.Equal(t, 1, strings.Count(output, "deletion process-instance trees, 3/3 process-instance tree(s), affected process instances: 9"))
+	require.NotContains(t, output, "retention-root-1 deleted")
+	require.NotContains(t, output, "retention-root-2 deleted")
 }
 
 // TestOpsExecuteRetentionPolicyMachineProgressSafetyPendingT066 pins retention
@@ -757,17 +786,148 @@ func TestOpsExecuteRetentionPolicyMachineProgressSafetyPendingT066(t *testing.T)
 			require.NotContains(t, stdout, "retention cleanup scope:")
 			require.NotContains(t, stdout, "discovering retention process instances")
 			require.NotContains(t, stdout, "planning retention delete scope")
-			require.NotContains(t, stdout, "deleting process instances")
+			require.NotContains(t, stdout, "deletion process-instance trees")
 			require.NotContains(t, stderr, "retention cleanup scope:")
 			require.NotContains(t, stderr, "discovering retention process instances")
 			require.NotContains(t, stderr, "planning retention delete scope")
-			require.NotContains(t, stderr, "deleting process instances")
+			require.NotContains(t, stderr, "deletion process-instance trees")
 			if mode.name == "json" {
 				var envelope map[string]any
 				require.NoError(t, json.Unmarshal([]byte(stdout), &envelope), stdout)
 			}
 		})
 	}
+}
+
+// TestOpsExecuteRetentionPolicySemanticProgressModeGate verifies retention
+// completion progress stays off stdout and follows JSON, keys-only, quiet, and
+// automation suppression rules.
+func TestOpsExecuteRetentionPolicySemanticProgressModeGate(t *testing.T) {
+	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
+		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+			request := ops.RetentionPolicyRequest{}
+			progress := configureOpsExecuteRetentionPolicyProgress(cmd, &request)
+			return request.Progress, progress.Close
+		},
+		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
+			return ops.ProgressEvent{
+				Kind: ops.ProgressEventKindCompletion,
+				Completion: &ops.CompletionProgress{
+					Phase:            "delete",
+					CoreResource:     "process-instance tree(s)",
+					Total:            1,
+					Identity:         "retention-root-1",
+					Disposition:      disposition,
+					FailureDetail:    detail,
+					AffectedResource: "affected process instances",
+					AffectedCount:    ptrInt(1),
+				},
+			}
+		},
+		QuietWarning: "retention-root-1 failed: request rejected (deletion process-instance trees, 1/1 process-instance tree(s), 1 failed, affected process instances: 1)",
+	})
+}
+
+// opsCompletionProgressModeGateCase describes one command-family progress
+// adapter and the quiet failure line expected from its vocabulary.
+type opsCompletionProgressModeGateCase struct {
+	Configure    func(*cobra.Command) (func(ops.ProgressEvent), func())
+	Event        func(ops.CompletionDisposition, string) ops.ProgressEvent
+	QuietWarning string
+}
+
+// assertOpsCompletionProgressModeGate drives one command-family progress
+// adapter through protected output modes so mode regressions stay consistent.
+func assertOpsCompletionProgressModeGate(t *testing.T, tc opsCompletionProgressModeGateCase) {
+	t.Helper()
+	for _, mode := range []struct {
+		name             string
+		setup            func()
+		disposition      ops.CompletionDisposition
+		detail           string
+		wantQuietWarning bool
+	}{
+		{name: "json failure silence", setup: func() { flagViewAsJson = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+		{name: "keys-only failure silence", setup: func() { flagViewKeysOnly = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+		{name: "quiet success silence", setup: func() { flagQuiet = true }, disposition: ops.CompletionDispositionConfirmed},
+		{name: "quiet failure warning", setup: func() { flagQuiet = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected", wantQuietWarning: true},
+		{name: "automation failure silence", setup: func() { flagCmdAutomation = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+		{name: "quiet automation failure silence", setup: func() { flagQuiet = true; flagCmdAutomation = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+		{name: "quiet json failure silence", setup: func() { flagQuiet = true; flagViewAsJson = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+		{name: "quiet keys-only failure silence", setup: func() { flagQuiet = true; flagViewKeysOnly = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			resetSemanticProgressModeFlags(t)
+			mode.setup()
+			cmd, stderr := newSemanticProgressStderrCommand()
+			stdout := &bytes.Buffer{}
+			cmd.SetOut(stdout)
+			report, closeProgress := tc.Configure(cmd)
+			require.NotNil(t, report)
+
+			report(tc.Event(mode.disposition, mode.detail))
+			closeProgress()
+
+			require.Empty(t, stdout.String())
+			if mode.wantQuietWarning {
+				require.Equal(t, tc.QuietWarning+"\n", stderr.String())
+				return
+			}
+			require.Empty(t, strings.TrimSpace(stderr.String()))
+		})
+	}
+}
+
+// newSemanticProgressStderrCommand returns a minimal command that captures
+// semantic progress diagnostics without involving root command setup.
+func newSemanticProgressStderrCommand() (*cobra.Command, *bytes.Buffer) {
+	cmd := &cobra.Command{}
+	stderr := &bytes.Buffer{}
+	cmd.SetErr(stderr)
+	return cmd, stderr
+}
+
+// resetSemanticProgressModeFlags isolates tests that derive progress policy
+// from package-level render and verbosity flags.
+func resetSemanticProgressModeFlags(t *testing.T) {
+	t.Helper()
+	prevVerbose := flagVerbose
+	prevQuiet := flagQuiet
+	prevDebug := flagDebug
+	prevJSON := flagViewAsJson
+	prevKeysOnly := flagViewKeysOnly
+	prevAutomation := flagCmdAutomation
+	t.Cleanup(func() {
+		flagVerbose = prevVerbose
+		flagQuiet = prevQuiet
+		flagDebug = prevDebug
+		flagViewAsJson = prevJSON
+		flagViewKeysOnly = prevKeysOnly
+		flagCmdAutomation = prevAutomation
+	})
+	flagVerbose = false
+	flagQuiet = false
+	flagDebug = false
+	flagViewAsJson = false
+	flagViewKeysOnly = false
+	flagCmdAutomation = false
+}
+
+// reportOpsProcessInstancePurgeCompletionEvent sends one ops-level deletion
+// completion fact through the configured purge command progress callback.
+func reportOpsProcessInstancePurgeCompletionEvent(progress func(ops.ProgressEvent), identity string, total int, disposition ops.CompletionDisposition, detail string, affected *int) {
+	progress(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindCompletion,
+		Completion: &ops.CompletionProgress{
+			Phase:         "delete",
+			CoreResource:  "process-instance tree(s)",
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+			AffectedCount: affected,
+		},
+	})
 }
 
 func marshalRetentionArgsForEnv(t *testing.T, args []string) string {

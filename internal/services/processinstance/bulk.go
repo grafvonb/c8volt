@@ -38,7 +38,7 @@ func CreateNProcessInstances(ctx context.Context, api API, log *slog.Logger, dat
 	progress := newProcessInstanceBulkProgressTracker(actionProgressPhase("create"))
 	var created atomic.Int64
 	stopProgress := func() {}
-	if !cfg.SuppressWorkflowDetailLogs {
+	if !cfg.SuppressWorkflowDetailLogs && cfg.Progress == nil {
 		stopProgress = startProcessInstanceBulkProgress(ctx, log, "create", n, 0, &completed, progress)
 	}
 	defer stopProgress()
@@ -54,6 +54,16 @@ func CreateNProcessInstances(ctx context.Context, api API, log *slog.Logger, dat
 		if err == nil {
 			created.Add(1)
 		}
+		reportProcessInstanceBulkCompletion(cfg.Progress, d.OpsCompletionProgress{
+			Phase:            "create",
+			CoreResource:     "process instance(s)",
+			Total:            n,
+			Identity:         processInstanceCreationCompletionIdentity(data, pi),
+			Disposition:      processInstanceCompletionDisposition(err == nil, cfg.NoWait),
+			FailureDetail:    processInstanceCompletionFailureDetail(err == nil, err, ""),
+			AffectedResource: "process instances",
+			AffectedCount:    processInstanceCreationAffectedCount(err),
+		})
 		return pi, err
 	})
 	if !cfg.NoWait && !cfg.SuppressWorkflowDetailLogs {
@@ -91,7 +101,7 @@ func CancelProcessInstances(ctx context.Context, api API, log *slog.Logger, keys
 	var completed atomic.Int64
 	progress := newProcessInstanceBulkProgressTracker(actionProgressPhase("cancel"))
 	stopProgress := func() {}
-	if !cfg.SuppressWorkflowDetailLogs {
+	if !cfg.SuppressWorkflowDetailLogs && cfg.Progress == nil {
 		stopProgress = startProcessInstanceBulkProgress(ctx, log, "cancel", lk, affectedCount, &completed, progress)
 	}
 	defer stopProgress()
@@ -103,7 +113,18 @@ func CancelProcessInstances(ctx context.Context, api API, log *slog.Logger, keys
 			reportProcessInstanceBulkFrozenProgress(cfg.Progress, "cancelling process instances", done, lk)
 		}()
 		defer progress.Done(work)
-		resp, _, err := api.CancelProcessInstance(ctx, key, opts...)
+		resp, affected, err := api.CancelProcessInstance(ctx, key, opts...)
+		ok := err == nil && resp.Ok
+		reportProcessInstanceBulkCompletion(cfg.Progress, d.OpsCompletionProgress{
+			Phase:            "cancel",
+			CoreResource:     "process-instance tree(s)",
+			Total:            lk,
+			Identity:         key,
+			Disposition:      processInstanceCompletionDisposition(ok, cfg.NoWait),
+			FailureDetail:    processInstanceCompletionFailureDetail(ok, err, resp.Status),
+			AffectedResource: "affected process instances",
+			AffectedCount:    processInstanceMutationAffectedCount(ok, err, lk, affectedCount, len(affected)),
+		})
 		return d.Reporter{Key: key, Ok: resp.Ok, StatusCode: resp.StatusCode, Status: resp.Status}, err
 	})
 	if !cfg.NoWait && !cfg.SuppressWorkflowDetailLogs {
@@ -132,7 +153,7 @@ func DeleteProcessInstances(ctx context.Context, api API, log *slog.Logger, keys
 	var completed atomic.Int64
 	progress := newProcessInstanceBulkProgressTracker(actionProgressPhase("delete"))
 	stopProgress := func() {}
-	if !cfg.SuppressWorkflowDetailLogs {
+	if !cfg.SuppressWorkflowDetailLogs && cfg.Progress == nil {
 		stopProgress = startProcessInstanceBulkProgress(ctx, log, "delete", lk, affectedCount, &completed, progress)
 	}
 	defer stopProgress()
@@ -145,6 +166,17 @@ func DeleteProcessInstances(ctx context.Context, api API, log *slog.Logger, keys
 		}()
 		defer progress.Done(work)
 		resp, err := api.DeleteProcessInstance(ctx, key, opts...)
+		ok := err == nil && resp.Ok
+		reportProcessInstanceBulkCompletion(cfg.Progress, d.OpsCompletionProgress{
+			Phase:            "delete",
+			CoreResource:     "process-instance tree(s)",
+			Total:            lk,
+			Identity:         key,
+			Disposition:      processInstanceCompletionDisposition(ok, cfg.NoWait),
+			FailureDetail:    processInstanceCompletionFailureDetail(ok, err, resp.Status),
+			AffectedResource: "affected process instances",
+			AffectedCount:    processInstanceMutationAffectedCount(ok, err, lk, affectedCount, 0),
+		})
 		return d.Reporter{Key: key, Ok: resp.Ok, StatusCode: resp.StatusCode, Status: resp.Status}, err
 	})
 	if !cfg.NoWait && !cfg.SuppressWorkflowDetailLogs {
@@ -181,6 +213,80 @@ func reportProcessInstanceBulkFrozenProgress(progress func(d.OpsProgressEvent), 
 			Total:        total,
 		},
 	})
+}
+
+func reportProcessInstanceBulkCompletion(progress func(d.OpsProgressEvent), completion d.OpsCompletionProgress) {
+	if progress == nil || completion.Total <= 0 {
+		return
+	}
+	progress(d.OpsProgressEvent{
+		Kind:       d.OpsProgressEventKindCompletion,
+		Completion: &completion,
+	})
+}
+
+func processInstanceCreationCompletionIdentity(data d.ProcessInstanceData, creation d.ProcessInstanceCreation) string {
+	if creation.Key != "" {
+		return creation.Key
+	}
+	if data.BpmnProcessId != "" {
+		return data.BpmnProcessId
+	}
+	return data.ProcessDefinitionSpecificId
+}
+
+func processInstanceCompletionDisposition(ok bool, noWait bool) d.OpsCompletionDisposition {
+	if !ok {
+		return d.OpsCompletionDispositionFailed
+	}
+	if noWait {
+		return d.OpsCompletionDispositionSubmitted
+	}
+	return d.OpsCompletionDispositionConfirmed
+}
+
+func processInstanceCompletionFailureDetail(ok bool, err error, status string) string {
+	if ok {
+		return ""
+	}
+	if err != nil {
+		return err.Error()
+	}
+	return status
+}
+
+func processInstanceCreationAffectedCount(err error) *int {
+	if err != nil {
+		return nil
+	}
+	affected := 1
+	return &affected
+}
+
+func processInstanceMutationAffectedCount(ok bool, err error, roots int, aggregateAffected int, returnedAffected int) *int {
+	if !ok {
+		if err != nil {
+			return nil
+		}
+		affected := 0
+		return &affected
+	}
+	if returnedAffected > 0 {
+		affected := returnedAffected
+		return &affected
+	}
+	if aggregateAffected <= 0 {
+		return nil
+	}
+	if roots == 1 {
+		affected := aggregateAffected
+		return &affected
+	}
+	if aggregateAffected == roots {
+		affected := 1
+		return &affected
+	}
+	return nil
 }
 
 func GetProcessInstances(ctx context.Context, api API, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) ([]d.ProcessInstance, error) {

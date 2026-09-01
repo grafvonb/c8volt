@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
@@ -44,6 +46,49 @@ func TestExpectHelp_DocumentsWaitVerificationUsage(t *testing.T) {
 	}, nil)
 	require.Contains(t, output, "--state")
 	require.Contains(t, output, "--incident")
+}
+
+// TestExpectProcessInstanceDefaultMilestonesAndFinalFlush verifies multi-key
+// expectations keep default progress aggregate-first and flush accumulated
+// progress once when the reporter closes.
+func TestExpectProcessInstanceDefaultMilestonesAndFinalFlush(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	now := time.Date(2026, 9, 1, 7, 8, 0, 0, time.UTC)
+	expectProcessInstanceSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { expectProcessInstanceSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	reporter := newExpectProcessInstanceSemanticProgress(cmd, 2)
+	opts := appendExpectProcessInstanceProgressOption(nil, reporter)
+	progress := options.ApplyFacadeOptions(opts).Progress
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportExpectProcessInstanceCompletionEvent(progress, "pi-1", 2, options.CompletionDispositionConfirmed, "")
+	reportExpectProcessInstanceCompletionEvent(progress, "pi-2", 2, options.CompletionDispositionFailed, "state remained active")
+	reporter.Close()
+	reporter.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "waiting for process-instance expectations, 1/2 process instance(s)")
+	require.Contains(t, output, "pi-2 failed: state remained active (waiting for process-instance expectations, 2/2 process instance(s), 1 failed)")
+	require.NotContains(t, output, "pi-1 satisfied")
+}
+
+// reportExpectProcessInstanceCompletionEvent sends one facade-level expectation
+// completion fact through the configured expect command progress callback.
+func reportExpectProcessInstanceCompletionEvent(progress func(options.ProgressEvent), identity string, total int, disposition options.CompletionDisposition, detail string) {
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindCompletion,
+		Completion: &options.CompletionProgress{
+			Phase:         expectProcessInstanceCompletionPhase,
+			CoreResource:  "process instance(s)",
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+		},
+	})
 }
 
 // Verifies expect process-instance rejects unsupported state values through invalid-input handling.
@@ -425,6 +470,61 @@ apis:
 	require.Contains(t, output, `"state": "ACTIVE"`)
 	require.Contains(t, output, `"incident": true`)
 	require.Contains(t, output, `"ok": true`)
+}
+
+// TestExpectProcessInstanceCommand_MultiKeyStateJSONRemainsProgressFree
+// records multi-key expect as an eligible finite workflow while protecting JSON
+// stdout from waiter activity and future semantic progress text.
+func TestExpectProcessInstanceCommand_MultiKeyStateJSONRemainsProgressFree(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		requests.Append(r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+		_, _ = w.Write([]byte(fmt.Sprintf(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":%q,"startDate":"2026-03-23T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}`, key)))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.8
+  backoff:
+    strategy: fixed
+    initial_delay: 1ms
+    max_retries: 3
+    timeout: 100ms
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--json",
+		"expect", "pi",
+		"--key", "123",
+		"--key", "124",
+		"--state", "completed",
+		"--workers", "1",
+	)
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	require.Equal(t, "succeeded", got["outcome"])
+	require.Equal(t, "expect process-instance", got["command"])
+	payload, ok := got["payload"].(map[string]any)
+	require.True(t, ok)
+	items, ok := payload["items"].([]any)
+	require.True(t, ok)
+	require.Len(t, items, 2)
+	require.Contains(t, stdout, "process instance 123 is already in one of the desired state(s) [COMPLETED] (current: COMPLETED)")
+	require.Contains(t, stdout, "process instance 124 is already in one of the desired state(s) [COMPLETED] (current: COMPLETED)")
+	require.NotContains(t, stdout, "waiting for 2 pi")
+	require.NotContains(t, stdout, "progress")
+	require.Empty(t, stderr)
+	require.ElementsMatch(t, []string{"/v2/process-instances/123", "/v2/process-instances/124"}, requests.Snapshot())
 }
 
 // Helper-process entrypoint for invalid expect-state validation.

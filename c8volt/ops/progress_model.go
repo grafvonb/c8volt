@@ -61,6 +61,20 @@ const (
 	ProgressEventKindFrozenScope ProgressEventKind = "frozen_scope"
 	// ProgressEventKindETA carries timing samples used for approximate ETA rendering.
 	ProgressEventKindETA ProgressEventKind = "eta"
+	// ProgressEventKindCompletion carries one wording-free item or stage completion fact.
+	ProgressEventKindCompletion ProgressEventKind = "completion"
+)
+
+// CompletionDisposition identifies the lifecycle boundary reached by a completed work item.
+type CompletionDisposition string
+
+const (
+	// CompletionDispositionSubmitted means the request was accepted without waiting for operational confirmation.
+	CompletionDispositionSubmitted CompletionDisposition = "submitted"
+	// CompletionDispositionConfirmed means the command's configured wait or proof contract completed.
+	CompletionDispositionConfirmed CompletionDisposition = "confirmed"
+	// CompletionDispositionFailed means the configured completion boundary was not reached.
+	CompletionDispositionFailed CompletionDisposition = "failed"
 )
 
 // ProgressMode identifies an output context for progress-channel gating.
@@ -156,6 +170,18 @@ type ETASampleWindow struct {
 	Remaining         *time.Duration `json:"remaining,omitempty"`
 }
 
+// CompletionProgress reports one service-owned completion fact without command-rendered wording.
+type CompletionProgress struct {
+	Phase            string                `json:"phase,omitempty"`
+	CoreResource     string                `json:"coreResource,omitempty"`
+	Total            int                   `json:"total,omitempty"`
+	Identity         string                `json:"identity,omitempty"`
+	Disposition      CompletionDisposition `json:"disposition,omitempty"`
+	FailureDetail    string                `json:"failureDetail,omitempty"`
+	AffectedResource string                `json:"affectedResource,omitempty"`
+	AffectedCount    *int                  `json:"affectedCount,omitempty"`
+}
+
 // ProgressEvent is a typed envelope for service progress callbacks.
 type ProgressEvent struct {
 	Kind        ProgressEventKind    `json:"kind,omitempty"`
@@ -163,4 +189,5 @@ type ProgressEvent struct {
 	Page        *PageProgress        `json:"page,omitempty"`
 	FrozenScope *FrozenScopeProgress `json:"frozenScope,omitempty"`
 	ETA         *ETASampleWindow     `json:"eta,omitempty"`
+	Completion  *CompletionProgress  `json:"completion,omitempty"`
 }

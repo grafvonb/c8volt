@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/ops"
@@ -775,7 +776,9 @@ func TestOpsPurgeProcessInstancesWithIncidentsProgressContractPendingT066(t *tes
 	require.Contains(t, stderr, "discovering incidents, page 1/2, 1 seen")
 	require.Contains(t, stderr, "discovering incidents, page 2/2, 2 seen")
 	require.Contains(t, stderr, "planning incident process-instance delete scope 2/2 process instance(s)")
-	require.Contains(t, stderr, "deleting process instances 2/2 process instance(s)")
+	require.Contains(t, stderr, opsIncidentPurgeRootKey+" submitted (deletion process-instance trees")
+	require.Contains(t, stderr, opsIncidentPurgeChildKey+" submitted (deletion process-instance trees")
+	require.Contains(t, stderr, "2/2 process-instance tree(s)")
 	require.NotContains(t, stderr, "/v2/")
 	require.NotContains(t, stderr, "cursor")
 	require.NotContains(t, stdout, "incident purge scope:")
@@ -791,6 +794,63 @@ func TestOpsPurgeProcessInstancesWithIncidentsProgressContractPendingT066(t *tes
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
 	require.Equal(t, "deleted", report["outcome"])
 	require.Equal(t, true, report["deleteRequested"])
+}
+
+// TestOpsPurgeProcessInstancesWithIncidentsVerboseDeletionReplacesMilestones
+// verifies incident purge verbose progress emits per-root outcomes instead of
+// default aggregate milestone duplicates.
+func TestOpsPurgeProcessInstancesWithIncidentsVerboseDeletionReplacesMilestones(t *testing.T) {
+	resetSemanticProgressModeFlags(t)
+	flagVerbose = true
+	now := time.Date(2026, 9, 1, 7, 2, 0, 0, time.UTC)
+	opsProcessInstancePurgeSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { opsProcessInstancePurgeSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	request := ops.IncidentPurgeRequest{}
+	progress := configureOpsPurgeProcessInstancesWithIncidentsProgress(cmd, &request)
+	defer progress.Close()
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "incident-root-1", 2, ops.CompletionDispositionSubmitted, "", ptrInt(1))
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "incident-root-2", 2, ops.CompletionDispositionConfirmed, "", ptrInt(4))
+	progress.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "incident-root-1 submitted (deletion process-instance trees, 1/2 process-instance tree(s), affected process instances: 1)")
+	require.Contains(t, output, "incident-root-2 deleted (deletion process-instance trees, 2/2 process-instance tree(s), affected process instances: 5)")
+	require.Equal(t, 2, strings.Count(output, "deletion process-instance trees"))
+	require.NotContains(t, output, "\ndeletion process-instance trees, 1/2")
+}
+
+// TestOpsPurgeProcessInstancesWithIncidentsSemanticProgressModeGate verifies
+// incident purge completion progress cannot corrupt machine stdout and keeps
+// automation silent.
+func TestOpsPurgeProcessInstancesWithIncidentsSemanticProgressModeGate(t *testing.T) {
+	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
+		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+			request := ops.IncidentPurgeRequest{}
+			progress := configureOpsPurgeProcessInstancesWithIncidentsProgress(cmd, &request)
+			return request.Progress, progress.Close
+		},
+		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
+			return ops.ProgressEvent{
+				Kind: ops.ProgressEventKindCompletion,
+				Completion: &ops.CompletionProgress{
+					Phase:            "delete",
+					CoreResource:     "process-instance tree(s)",
+					Total:            1,
+					Identity:         "incident-root-1",
+					Disposition:      disposition,
+					FailureDetail:    detail,
+					AffectedResource: "affected process instances",
+					AffectedCount:    ptrInt(1),
+				},
+			}
+		},
+		QuietWarning: "incident-root-1 failed: request rejected (deletion process-instance trees, 1/1 process-instance tree(s), 1 failed, affected process instances: 1)",
+	})
 }
 
 // TestOpsPurgeProcessInstancesWithIncidentsMachineProgressSafetyPendingT066 pins
@@ -822,11 +882,11 @@ func TestOpsPurgeProcessInstancesWithIncidentsMachineProgressSafetyPendingT066(t
 			require.NotContains(t, stdout, "incident purge scope:")
 			require.NotContains(t, stdout, "discovering incidents")
 			require.NotContains(t, stdout, "planning incident process-instance delete scope")
-			require.NotContains(t, stdout, "deleting process instances")
+			require.NotContains(t, stdout, "deletion process-instance trees")
 			require.NotContains(t, stderr, "incident purge scope:")
 			require.NotContains(t, stderr, "discovering incidents")
 			require.NotContains(t, stderr, "planning incident process-instance delete scope")
-			require.NotContains(t, stderr, "deleting process instances")
+			require.NotContains(t, stderr, "deletion process-instance trees")
 			if mode.name == "json" {
 				var envelope map[string]any
 				require.NoError(t, json.Unmarshal([]byte(stdout), &envelope), stdout)

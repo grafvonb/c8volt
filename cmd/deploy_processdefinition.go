@@ -20,11 +20,13 @@ var deployProcessDefinitionCmd = &cobra.Command{
 	Short: "Deploy BPMN process definition files",
 	Long: "Deploy BPMN process definition files and report the deployed definitions.\n\n" +
 		"Tenant contract: deployment is a creation operation. A named tenant is reported as \"creation target: <tenant>\" before upload; empty tenant configuration targets and reports \"creation target: default tenant\". This command does not accept --all-tenants because it creates resources in one concrete tenant.\n\n" +
+		"Default human output keeps one workflow activity updated from real deployment visibility completions and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-definition completion line. JSON and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings.\n\n" +
 		"By default c8volt waits for deployment confirmation. Use --run to start one process instance for each deployed definition.",
 	Example: `  ./c8volt embed export --file processdefinitions/<embedded-process>.bpmn --out ./fixtures
   ./c8volt deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn
   ./c8volt --tenant tenant-a deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn
   ./c8volt deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run
+  ./c8volt --verbose deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --json`,
 	Aliases: []string{"pd"},
 	Run: func(cmd *cobra.Command, args []string) {
@@ -46,7 +48,10 @@ var deployProcessDefinitionCmd = &cobra.Command{
 		renderTenantContext(cmd, tenantCtx)
 		log.Debug(fmt.Sprintf("deploying pd; tenant %s", cfg.App.ViewTenant()))
 		opts := collectOptions()
+		deployProgress := newProcessDefinitionDeploySemanticProgress(cmd)
+		opts = appendProcessDefinitionDeployProgressOptions(cmd, opts, deployProgress)
 		pdds, err := cli.DeployProcessDefinition(cmd.Context(), res, opts...)
+		deployProgress.Close()
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("deploying process definition(s): %w", err))
 		}

@@ -27,10 +27,11 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
 	Short: "Execute a cluster smoke test workflow",
 	Long: "Execute a cluster smoke test workflow.\n\n" +
 		"Tenant contract: smoke-test setup is a creation operation. A named tenant is reported as \"creation target: <tenant>\" before deployment and start; empty tenant configuration targets and reports \"creation target: default tenant\". This command does not accept --all-tenants because it creates resources in one concrete tenant. The audit report carries the same context for created resources and cleanup evidence.\n\n" +
-		"The workflow validates the configured profile, selects the embedded multiple-subprocess fixture for the configured Camunda version, deploys it, creates process instances, walks their families, and cleans up resources it can safely attribute to the run unless --no-cleanup is set. Cleanup always removes created process instances. Process-definition cleanup runs only when no unrelated instances still use the deployed fixture definition; dirty clusters skip that final definition cleanup and report retained resources instead of failing the smoke proof. Use --dry-run to validate the requested plan without submitting mutation requests.",
+		"The workflow validates the configured profile, selects the embedded multiple-subprocess fixture for the configured Camunda version, deploys it, creates process instances, walks their families, and cleans up resources it can safely attribute to the run unless --no-cleanup is set. Default human output keeps deploy, start, walk, and cleanup progress on one workflow activity and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-stage or per-item completion line. JSON and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings. Cleanup always removes created process instances. Process-definition cleanup runs only when no unrelated instances still use the deployed fixture definition; dirty clusters skip that final definition cleanup and report retained resources instead of failing the smoke proof. Use --dry-run to validate the requested plan without submitting mutation requests.",
 	Example: `  ./c8volt ops execute smoke-test --dry-run
   ./c8volt --tenant tenant-a ops execute smoke-test --dry-run
   ./c8volt ops execute smoke-test --report-file smoke-test.md
+  ./c8volt --verbose ops execute smoke-test --count 5 --auto-confirm
   ./c8volt ops execute smoke-test --count 5 --report-file smoke-test.md`,
 	Aliases: []string{"st"},
 	Args:    cobra.NoArgs,
@@ -62,7 +63,7 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
 			ReportFormat:  flagOpsExecuteSmokeTestReportFormat,
 			StartedAt:     time.Now().UTC(),
 		}
-		configureOpsExecuteSmokeTestProgress(cmd, &request)
+		smokeProgress := configureOpsExecuteSmokeTestProgress(cmd, &request)
 		if err := validateOpsWorkflowReportPathForPlanning(flagOpsExecuteSmokeTestReportFile, opsWorkflowReportWriteModeForConfirmedMutation(effectiveAutoConfirm && !flagDryRun)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
@@ -77,6 +78,7 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
 		result, err := executeSmokeTestWithCommandActivity(cmd, request, func() (ops.SmokeTestResult, error) {
 			return cli.ExecuteSmokeTest(cmd.Context(), request, collectOptions()...)
 		})
+		smokeProgress.Close()
 		result = attachOpsExecuteSmokeTestResultTenantContext(cmd, cfg, result)
 		if err != nil {
 			if reportErr := writeOpsExecuteSmokeTestReport(result, cfg, opsExecuteSmokeTestReportWriteMode(result)); reportErr != nil {

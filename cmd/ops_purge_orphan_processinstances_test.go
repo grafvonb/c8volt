@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -407,7 +408,7 @@ func TestOpsPurgeOrphanProcessInstancesProgressContractPendingT066(t *testing.T)
 	require.Contains(t, stderr, "discovering orphan process-instance candidates, page 1/1, 1 seen")
 	require.Contains(t, stderr, "checking orphan process-instance parents 1/1 process instance(s)")
 	require.Contains(t, stderr, "planning orphan process-instance delete scope 1/1 process instance(s)")
-	require.Contains(t, stderr, "deleting process instances 1/1 process instance(s)")
+	require.Contains(t, stderr, opsOrphanChildKey+" submitted (deletion process-instance trees, 1/1 process-instance tree(s), affected process instances: 1)")
 	require.NotContains(t, stderr, "/v2/")
 	require.NotContains(t, stderr, "cursor")
 	require.NotContains(t, stdout, "orphan purge scope:")
@@ -420,6 +421,60 @@ func TestOpsPurgeOrphanProcessInstancesProgressContractPendingT066(t *testing.T)
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
 	require.Equal(t, "deleted", report["outcome"])
 	require.Equal(t, true, report["deleteRequested"])
+}
+
+// TestOpsPurgeOrphanProcessInstancesDefaultDeletionMilestonesOmitUnknownAffected
+// verifies orphan purge milestones omit affected counts when the completion
+// scope cannot prove every per-root delta.
+func TestOpsPurgeOrphanProcessInstancesDefaultDeletionMilestonesOmitUnknownAffected(t *testing.T) {
+	resetSemanticProgressModeFlags(t)
+	now := time.Date(2026, 9, 1, 7, 1, 0, 0, time.UTC)
+	opsProcessInstancePurgeSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { opsProcessInstancePurgeSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	request := ops.OrphanPurgeRequest{}
+	progress := configureOpsPurgeOrphanProcessInstancesProgress(cmd, &request)
+	defer progress.Close()
+
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "orphan-root-1", 3, ops.CompletionDispositionConfirmed, "", nil)
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "orphan-root-2", 3, ops.CompletionDispositionConfirmed, "", nil)
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "orphan-root-3", 3, ops.CompletionDispositionConfirmed, "", nil)
+	progress.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "deletion process-instance trees, 2/3 process-instance tree(s)")
+	require.Contains(t, output, "deletion process-instance trees, 3/3 process-instance tree(s)")
+	require.NotContains(t, output, "affected process instances:")
+}
+
+// TestOpsPurgeOrphanProcessInstancesSemanticProgressModeGate verifies orphan
+// purge deletion progress keeps protected modes silent except quiet failures.
+func TestOpsPurgeOrphanProcessInstancesSemanticProgressModeGate(t *testing.T) {
+	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
+		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+			request := ops.OrphanPurgeRequest{}
+			progress := configureOpsPurgeOrphanProcessInstancesProgress(cmd, &request)
+			return request.Progress, progress.Close
+		},
+		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
+			return ops.ProgressEvent{
+				Kind: ops.ProgressEventKindCompletion,
+				Completion: &ops.CompletionProgress{
+					Phase:            "delete",
+					CoreResource:     "process-instance tree(s)",
+					Total:            1,
+					Identity:         "orphan-root-1",
+					Disposition:      disposition,
+					FailureDetail:    detail,
+					AffectedResource: "affected process instances",
+					AffectedCount:    ptrInt(1),
+				},
+			}
+		},
+		QuietWarning: "orphan-root-1 failed: request rejected (deletion process-instance trees, 1/1 process-instance tree(s), 1 failed, affected process instances: 1)",
+	})
 }
 
 // TestOpsPurgeOrphanProcessInstancesMachineProgressSafetyPendingT066 pins orphan
@@ -445,12 +500,12 @@ func TestOpsPurgeOrphanProcessInstancesMachineProgressSafetyPendingT066(t *testi
 			require.NotContains(t, stdout, "discovering orphan process-instance candidates")
 			require.NotContains(t, stdout, "checking orphan process-instance parents")
 			require.NotContains(t, stdout, "planning orphan process-instance delete scope")
-			require.NotContains(t, stdout, "deleting process instances")
+			require.NotContains(t, stdout, "deletion process-instance trees")
 			require.NotContains(t, stderr, "orphan purge scope:")
 			require.NotContains(t, stderr, "discovering orphan process-instance candidates")
 			require.NotContains(t, stderr, "checking orphan process-instance parents")
 			require.NotContains(t, stderr, "planning orphan process-instance delete scope")
-			require.NotContains(t, stderr, "deleting process instances")
+			require.NotContains(t, stderr, "deletion process-instance trees")
 			if mode.name == "json" {
 				var envelope map[string]any
 				require.NoError(t, json.Unmarshal([]byte(stdout), &envelope), stdout)

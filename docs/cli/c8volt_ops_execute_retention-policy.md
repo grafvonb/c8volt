@@ -13,7 +13,7 @@ Execute process-instance retention cleanup.
 
 Tenant contract: retention cleanup uses discovery semantics. A named tenant scopes candidate discovery; empty tenant configuration leaves discovery unfiltered and is reported as "selection scope: unfiltered across accessible tenants". Explicit --tenant changes are reported before scope, and --tenant "" warns when it clears a named configured filter. Frozen plans and audit reports show one known resource tenant informationally, emit one warning-level "affected tenants" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.
 
-The workflow discovers process instances older than the required retention age, freezes that candidate set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion after confirmation. Discovery pages through all matching retention candidates by default. --batch-size controls each discovery page request, --limit caps the frozen retention scope, and --workers, --fail-fast, and --no-worker-limit bound independent delete planning or deletion work. Human, JSON, and audit report output identify whether discovery completed or was user-limited. Use compatible process-instance filters to narrow discovery, --auto-confirm or --automation for unattended deletion, and --report-file to write an audit report.
+The workflow discovers process instances older than the required retention age, freezes that candidate set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion after confirmation. Discovery pages through all matching retention candidates by default. --batch-size controls each discovery page request, --limit caps the frozen retention scope, and --workers, --fail-fast, and --no-worker-limit bound independent delete planning or deletion work. Human, JSON, and audit report output identify whether discovery completed or was user-limited. After confirmation, default human output keeps deletion progress on one workflow activity and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-root completion line. JSON and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings. Use compatible process-instance filters to narrow discovery, --auto-confirm or --automation for unattended deletion, and --report-file to write an audit report.
 
 ```
 c8volt ops execute retention-policy [flags]
@@ -27,6 +27,7 @@ c8volt ops execute retention-policy [flags]
   ./c8volt --tenant "" ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --dry-run
   ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25
+  ./c8volt --verbose ops execute retention-policy --retention-days 90 --state completed --limit 25 --auto-confirm
   ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25 --report-file retention-report.md
 ```
 

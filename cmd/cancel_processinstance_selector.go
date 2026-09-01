@@ -66,6 +66,8 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	firstPage := true
 	var results processInstancePageActionResults
 	progress, progressSeen := newProcessInstanceMutationProgressReporterWithState(cmd, "cancel")
+	planningActivity := newProcessInstanceMutationPlanningActivity(cmd, "cancel")
+	defer planningActivity.Stop()
 	tenantCtx := attachDiscoveryTenantContext(cmd, cfg)
 	tenantContextRendered := false
 	renderDiscoveryTenantContext := func(evidence process.TenantEvidence) {
@@ -94,6 +96,7 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 			} else {
 				printDryRunExpansionWarning(cmd, step.Plan)
 				impact := result.Impact
+				planningActivity.Stop()
 				if firstPage {
 					affectedCount, rootCount, requestedCount := impact.Affected, impact.Roots, impact.Requested
 					prompt := fmt.Sprintf("You are about to cancel %d process instance(s). Do you want to proceed?", affectedCount)
@@ -105,11 +108,9 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 					}
 				}
 
-				mutationOpts := append(compactProcessInstanceMutationOptions(collectOptions()),
-					processOptions.WithAffectedProcessInstanceCount(len(step.Plan.Collected)),
-					processOptions.WithProgress(progress),
-				)
+				mutationOpts, closeSemanticProgress := appendProcessInstanceMutationSemanticProgressOptions(cmd, "cancel", impact, collectOptions(), len(step.Plan.Collected))
 				reports, err := cli.CancelProcessInstances(cmd.Context(), step.Plan.Roots, flagWorkers, mutationOpts...)
+				closeSemanticProgress()
 				if err != nil {
 					return process.ProcessInstanceSearchPageActionStop, fmt.Errorf("cancel process instances: %w", err)
 				}
@@ -132,8 +133,10 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 			if hasSelection {
 				firstPage = false
 			}
+			planningActivity.Resume()
 			return process.ProcessInstanceSearchPageActionContinue, nil
 		case processInstanceContinuationPrompt:
+			planningActivity.Stop()
 			if hasSelection {
 				renderDiscoveryTenantContext(step.Plan.TenantEvidence)
 			}
@@ -154,6 +157,7 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 			if hasSelection {
 				firstPage = false
 			}
+			planningActivity.Resume()
 			return process.ProcessInstanceSearchPageActionContinue, nil
 		}
 		return process.ProcessInstanceSearchPageActionStop, nil

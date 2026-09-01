@@ -98,8 +98,9 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		configureOpsSlowProcessAnalysisPreflight(cmd, &parsed.Request)
+		progress := configureOpsSlowProcessAnalysisPreflight(cmd, &parsed.Request)
 		result, err := cli.AnalyseSlowProcessInstances(cmd.Context(), parsed.Request, collectOptions()...)
+		progress.Close()
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops analyse slow-process-instances: %w", err))
 		}

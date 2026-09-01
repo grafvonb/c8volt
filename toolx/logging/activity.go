@@ -171,7 +171,11 @@ func (w *activityWriter) Write(p []byte) (int, error) {
 	defer w.mu.Unlock()
 
 	w.clearLocked()
-	return w.w.Write(p)
+	n, err := w.w.Write(p)
+	if err == nil && len(w.scopes) > 0 && len(p) > 0 && p[len(p)-1] == '\n' {
+		w.drawLocked()
+	}
+	return n, err
 }
 
 func (w *activityWriter) StartActivity(msg string) {

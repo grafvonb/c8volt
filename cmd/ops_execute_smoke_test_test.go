@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -80,6 +81,77 @@ func TestOpsExecuteSmokeTestHelpDocumentsCommand(t *testing.T) {
 		"./c8volt ops execute smoke-test --report-file smoke-test.md",
 		"./c8volt ops execute smoke-test --count 5 --report-file smoke-test.md",
 	)
+}
+
+// TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation verifies
+// smoke-test stages get semantic aggregate milestones while nested lower-level
+// phases are ignored by the command reporter.
+func TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation(t *testing.T) {
+	resetSemanticProgressModeFlags(t)
+	now := time.Date(2026, 9, 1, 7, 5, 0, 0, time.UTC)
+	opsSmokeTestSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { opsSmokeTestSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	request := ops.SmokeTestRequest{}
+	progress := configureOpsExecuteSmokeTestProgress(cmd, &request)
+	defer progress.Close()
+
+	reportOpsSmokeTestCompletionEvent(request.Progress, "deploying smoke-test fixture", "smoke-definition-1", "process definition(s)", 2, ops.CompletionDispositionConfirmed, "")
+	reportOpsSmokeTestCompletionEvent(request.Progress, "delete", "nested-root", "process-instance tree(s)", 1, ops.CompletionDispositionConfirmed, "")
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsSmokeTestCompletionEvent(request.Progress, "deploying smoke-test fixture", "smoke-definition-2", "process definition(s)", 2, ops.CompletionDispositionConfirmed, "")
+	reportOpsSmokeTestCompletionEvent(request.Progress, "cleaning up smoke-test process instances", "smoke-root", "process-instance tree(s)", 1, ops.CompletionDispositionFailed, "cleanup rejected")
+	progress.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "deploying smoke-test fixture, 2/2 process definition(s)")
+	require.Contains(t, output, "smoke-root failed: cleanup rejected (cleaning up smoke-test process instances, 1/1 process-instance tree(s), 1 failed)")
+	require.NotContains(t, output, "nested-root")
+	require.NotContains(t, output, "delete process-instance")
+}
+
+// TestOpsExecuteSmokeTestSemanticProgressModeGate verifies smoke-test stage
+// completion progress is silent for machine modes and only quiet failures are
+// durable.
+func TestOpsExecuteSmokeTestSemanticProgressModeGate(t *testing.T) {
+	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
+		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+			request := ops.SmokeTestRequest{}
+			progress := configureOpsExecuteSmokeTestProgress(cmd, &request)
+			return request.Progress, progress.Close
+		},
+		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
+			return ops.ProgressEvent{
+				Kind: ops.ProgressEventKindCompletion,
+				Completion: &ops.CompletionProgress{
+					Phase:         "starting process instances",
+					CoreResource:  "process instance(s)",
+					Total:         1,
+					Identity:      "pi-1",
+					Disposition:   disposition,
+					FailureDetail: detail,
+				},
+			}
+		},
+		QuietWarning: "pi-1 failed: request rejected (starting process instances, 1/1 process instance(s), 1 failed)",
+	})
+}
+
+// reportOpsSmokeTestCompletionEvent sends one high-level smoke-test completion
+// fact through the configured smoke-test command progress callback.
+func reportOpsSmokeTestCompletionEvent(progress func(ops.ProgressEvent), phase string, identity string, resource string, total int, disposition ops.CompletionDisposition, detail string) {
+	progress(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindCompletion,
+		Completion: &ops.CompletionProgress{
+			Phase:         phase,
+			CoreResource:  resource,
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+		},
+	})
 }
 
 func TestOpsExecuteSmokeTestInvalidLocalFlags(t *testing.T) {
@@ -469,6 +541,8 @@ func TestOpsExecuteSmokeTestAutomationJSONStdoutIsMachineOnly(t *testing.T) {
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
 }
 
+// TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput verifies the
+// final smoke-test summary remains while duplicate legacy progress is hidden.
 func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newOpsExecuteSmokeTestDeploymentServer(t, &requests)
@@ -481,19 +555,19 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 	)
 
 	require.Contains(t, output, "execute smoke test")
-	require.Contains(t, output, "deploy: fixture embedded/processdefinitions/C89_MultipleSubProcessesParent.bpmn")
-	require.Contains(t, output, "deploy: confirmed process definition pd-89")
-	require.Contains(t, output, "start: 1 process instance")
-	require.Contains(t, output, "start: created 1/1")
-	require.Contains(t, output, "walk: 1 process-instance family")
-	require.Contains(t, output, "walk: confirmed 1 process-instance family")
-	require.Contains(t, output, "cleanup: deleting created resources")
 	require.Contains(t, output, "fixture: embedded/processdefinitions/C89_MultipleSubProcessesParent.bpmn")
 	require.Contains(t, output, "deployment: confirmed")
 	require.Contains(t, output, "created process instances: 1/1")
 	require.Contains(t, output, "walk: confirmed (process instances: 1)")
 	require.Contains(t, output, "cleanup: submitted 1 process instance and fixture process definition (--no-wait)")
 	require.NotContains(t, output, "cleanup confirmation:")
+	require.NotContains(t, output, "deploy: fixture embedded/processdefinitions/C89_MultipleSubProcessesParent.bpmn")
+	require.NotContains(t, output, "deploy: confirmed process definition pd-89")
+	require.NotContains(t, output, "start: 1 process instance")
+	require.NotContains(t, output, "start: created 1/1")
+	require.NotContains(t, output, "walk: 1 process-instance family")
+	require.NotContains(t, output, "walk: confirmed 1 process-instance family")
+	require.NotContains(t, output, "cleanup: deleting created resources")
 	require.NotContains(t, output, "pi delete done")
 	require.NotContains(t, output, "delete request sent")
 	require.NotContains(t, output, "pd delete done")
@@ -527,6 +601,8 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 	}, requests.Snapshot())
 }
 
+// TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances verifies count
+// aliases drive the final summary without reintroducing legacy progress logs.
 func TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances(t *testing.T) {
 	tests := []struct {
 		name string
@@ -557,13 +633,13 @@ func TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances(t *testing.T) {
 			}, tt.args...)
 			output := executeRootForProcessInstanceTest(t, args...)
 
-			require.Contains(t, output, "start: 2 process instances")
-			require.Contains(t, output, "walk: 2 process-instance families")
 			require.Contains(t, output, "cleanup: skipped (--no-cleanup)")
 			require.Contains(t, output, "created process instances: 2/2")
 			require.Contains(t, output, "walk: confirmed (process instances: 2)")
 			require.Contains(t, output, "cleanup: skipped (--no-cleanup)")
 			require.Contains(t, output, "outcome: passed_cleanup_skipped; use --verbose to list retained resources")
+			require.NotContains(t, output, "start: 2 process instances")
+			require.NotContains(t, output, "walk: 2 process-instance families")
 			require.NotContains(t, output, "created keys: 101, 102")
 			require.NotContains(t, output, "walk 101:")
 			require.Len(t, createBodies.Snapshot(), 2)

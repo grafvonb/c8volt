@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.0-beta.1-89-ge41f3c61`, commit `e41f3c61`, built `2026-08-31T13:18:12Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.0-beta.1-134-gff451a19`, commit `ff451a19`, built `2026-09-01T06:15:09Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -38,9 +38,9 @@ The `ops` command group turns multi-command Camunda operations into audited, pre
 
 High-volume search, analysis, repair, purge, cancel, delete, walk, run, and smoke-test workflows report scope before expensive work and progress while the frozen work set is processed. Broad selectors show a preflight summary with the core resource, best available count certainty, page-size context, and the consequence of continuing. Counts are labeled as exact, lower bound, estimated, or unknown so operators can tell whether the number is a frozen scope or only the best current signal from Camunda.
 
-During discovery, progress uses page and seen-count wording. After c8volt freezes the work set, progress switches to exact `done/total` counters for phases such as loading runtime elements, planning delete scope, repairing incidents, deleting process instances, or starting process instances. Long phases may show elapsed time, approximate throughput, and approximate remaining time only after enough samples exist.
+During discovery, progress uses page and seen-count wording. After c8volt freezes the work set and starts real work, progress switches to exact completion counters for phases such as deleting process-instance trees, deleting or deploying process definitions, repairing incidents, starting process instances, analyzing enriched runtime data, waiting for multi-key expectations, or running smoke-test stages. The visible activity is updated from real completions and may include failed counts plus affected-resource totals only when every item can report a trustworthy value.
 
-Progress never writes to result stdout. Default human mode uses terminal activity; verbose and debug modes may keep durable progress lines on stderr. JSON output remains one document, keys-only output remains one key per line, and quiet or automation-oriented runs suppress progress chatter or keep scope in structured reports. For paged commands, `--batch-size` controls each backend discovery request, while `--limit` caps the total returned, selected, frozen, or analyzed scope as documented by the command.
+Progress never writes to result stdout. Default human mode uses terminal activity and, for long progressing phases, emits compact completion milestones on stderr at most once per 10-second interval plus immediate failure warnings. Clean operations that finish before the first interval stay durably silent. Verbose and debug modes replace aggregate milestones with one durable per-item or per-stage completion line. JSON output remains one document, keys-only output remains one key per line, quiet mode suppresses successful progress while retaining failure warnings, and automation-oriented runs suppress all human progress chatter or keep scope in structured reports. For paged commands, `--batch-size` controls each backend discovery request, while `--limit` caps the total returned, selected, frozen, or analyzed scope as documented by the command.
 
 Tenant context is reported with operation-specific meaning before tenant-sensitive work. Discovery commands show a named filter as `selection scope: tenant-a only`, or `selection scope: unfiltered across accessible tenants` when no tenant filter is configured. Use `--all-tenants` to explicitly clear a configured tenant filter for commands that can search across every tenant visible to the authenticated user. If an explicit `--tenant` value changes configuration, human output first reports the prior `configured tenant`; clearing a named filter with `--tenant ""` warns that selection is unfiltered, while named changes are informational. Clearing a named filter with `--all-tenants` emits `--all-tenants overrides the configured tenant filter; selection is unfiltered`. Deploy, run, and smoke-test creation steps show `creation target: tenant-a` or `creation target: default tenant`, and reject `--all-tenants` because they require one concrete destination tenant. Explicit-key mutations state that the tenant filter is not applied, then show resource tenant evidence when the frozen plan already contains it. Multi-tenant plans emit one warning-level `affected tenants: ...` summary, and unknown-metadata warnings remain non-blocking safety evidence. JSON results and JSON audit reports use one nested `tenantContext` object; quiet mode suppresses tenant lines, and keys-only output stays one key per line with no warnings on stdout.
 
@@ -321,6 +321,7 @@ Use dry-run to preview process-instance family scope before cancellation or hist
 ./c8volt cancel process-instance --key <process-instance-key> --dry-run
 ./c8volt delete process-instance --key <process-instance-key> --dry-run
 ./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state terminated --keys-only | ./c8volt delete process-instance --dry-run -
+./c8volt --verbose delete process-instance --state terminated --limit 25 --auto-confirm
 ```
 
 Generated references: [cancel process-instance](./cli/c8volt_cancel_process-instance), [delete process-instance](./cli/c8volt_delete_process-instance).

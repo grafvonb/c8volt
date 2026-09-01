@@ -26,6 +26,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		"Resolved plans show one known resource tenant informationally, emit one warning-level \"affected tenants\" summary when the frozen scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.\n\n" +
 		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, or cancellation; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no cancellation request is submitted.\n\n" +
 		"Search mode pages through matching process instances by default. --batch-size controls each discovery page request, --limit caps the selected process-instance scope across all pages, and --workers, --fail-fast, and --no-worker-limit bound independent planning or cancellation work. Verbose paging progress is written away from stdout; JSON, quiet, and automation output remain free of prompts unless confirmation is explicitly supplied.\n\n" +
+		"After confirmation, default human output keeps one workflow activity updated from real cancellation completions and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-root completion line. JSON, keys-only, and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings.\n\n" +
 		"Use --dry-run to preview selected, in-scope, final-state, and partial-scope instances without cancelling.\n\n" +
 		"Use --auto-confirm for unattended destructive runs.",
 	Example: `  ./c8volt cancel process-instance --key <process-instance-key>
@@ -38,6 +39,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
   ./c8volt cancel process-instance --state active --start-date-before 2026-05-31 --limit 5 --dry-run
   ./c8volt cancel process-instance --state active --start-date-newer-days 30 --limit 5 --dry-run
   ./c8volt cancel process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5 --auto-confirm
+  ./c8volt --verbose cancel process-instance --state active --limit 25 --auto-confirm
   ./c8volt expect process-instance --key <process-instance-key> --state canceled
   ./c8volt get process-instance --key <process-instance-key> --keys-only | ./c8volt cancel process-instance --auto-confirm -`,
 	Aliases: []string{"pi"},
@@ -146,8 +148,9 @@ func cancelProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli 
 		}
 	}
 
-	mutationOpts := append(compactProcessInstanceMutationOptions(opts), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+	mutationOpts, closeSemanticProgress := appendProcessInstanceMutationSemanticProgressOptions(cmd, "cancel", impact, opts, len(plan.Collected))
 	reports, err := cli.CancelProcessInstances(cmd.Context(), plan.Roots, flagWorkers, mutationOpts...)
+	closeSemanticProgress()
 	if err != nil {
 		return processInstancePageActionResult{}, fmt.Errorf("cancel process instances: %w", err)
 	}

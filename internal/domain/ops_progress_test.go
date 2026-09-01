@@ -107,3 +107,111 @@ func TestOpsAuditReports_CarryTenantContext(t *testing.T) {
 	require.Same(t, &ctx, OpsRepairAuditReport{TenantContext: &ctx}.TenantContext)
 	require.Same(t, &ctx, SmokeTestAuditReport{TenantContext: &ctx}.TenantContext)
 }
+
+// TestOpsCompletionProgressJSONContract verifies completion facts expose
+// service-owned lifecycle data without rendered command wording.
+func TestOpsCompletionProgressJSONContract(t *testing.T) {
+	t.Parallel()
+
+	affected := 0
+	raw, err := json.Marshal(OpsProgressEvent{
+		Kind: OpsProgressEventKindCompletion,
+		Completion: &OpsCompletionProgress{
+			Phase:            "deleting process-instance trees",
+			CoreResource:     "process-instance root tree(s)",
+			Total:            4,
+			Identity:         "2251799813685251",
+			Disposition:      OpsCompletionDispositionFailed,
+			FailureDetail:    "context deadline exceeded",
+			AffectedResource: "affected process instance(s)",
+			AffectedCount:    &affected,
+		},
+	})
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"kind": "completion",
+		"completion": {
+			"phase": "deleting process-instance trees",
+			"coreResource": "process-instance root tree(s)",
+			"total": 4,
+			"identity": "2251799813685251",
+			"disposition": "failed",
+			"failureDetail": "context deadline exceeded",
+			"affectedResource": "affected process instance(s)",
+			"affectedCount": 0
+		}
+	}`, string(raw))
+}
+
+// TestOpsCompletionDispositionJSONContract verifies lifecycle outcomes stay
+// generic so services cannot smuggle command-rendered completion verbs.
+func TestOpsCompletionDispositionJSONContract(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		disposition OpsCompletionDisposition
+		want        string
+	}{
+		{
+			name:        "accepted no-wait work is submitted",
+			disposition: OpsCompletionDispositionSubmitted,
+			want:        "submitted",
+		},
+		{
+			name:        "waited work is confirmed",
+			disposition: OpsCompletionDispositionConfirmed,
+			want:        "confirmed",
+		},
+		{
+			name:        "failed work stays failed",
+			disposition: OpsCompletionDispositionFailed,
+			want:        "failed",
+		},
+	}
+
+	renderedVerbs := []string{"cancelled", "canceled", "deleted", "deployed", "repaired", "started", "satisfied"}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			raw, err := json.Marshal(OpsCompletionProgress{
+				Phase:       "delete",
+				Identity:    "2251799813685251",
+				Disposition: tt.disposition,
+			})
+			require.NoError(t, err)
+
+			var got map[string]any
+			require.NoError(t, json.Unmarshal(raw, &got))
+			require.Equal(t, tt.want, got["disposition"])
+			for _, renderedVerb := range renderedVerbs {
+				require.NotEqual(t, renderedVerb, got["disposition"])
+			}
+		})
+	}
+}
+
+// TestOpsCompletionProgressOmitsUnknownAffectedCount verifies nil affected
+// counts stay distinct from a trustworthy zero in the wire contract.
+func TestOpsCompletionProgressOmitsUnknownAffectedCount(t *testing.T) {
+	t.Parallel()
+
+	raw, err := json.Marshal(OpsProgressEvent{
+		Kind: OpsProgressEventKindCompletion,
+		Completion: &OpsCompletionProgress{
+			Phase:            "submitting process-instance cancellation",
+			CoreResource:     "process-instance root tree(s)",
+			Identity:         "2251799813685252",
+			Disposition:      OpsCompletionDispositionSubmitted,
+			AffectedResource: "affected process instance(s)",
+		},
+	})
+	require.NoError(t, err)
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(raw, &got))
+	completion := got["completion"].(map[string]any)
+	require.Equal(t, "submitted", completion["disposition"])
+	require.NotContains(t, completion, "affectedCount")
+}

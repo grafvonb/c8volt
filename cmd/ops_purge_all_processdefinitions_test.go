@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -24,7 +26,9 @@ import (
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -55,6 +59,78 @@ func TestOpsPurgeAllProcessDefinitionsKeyTenantContextUsesExplicitSemantics(t *t
 	require.Equal(t, tenant.ContextFilterNotApplied, got.Report.TenantContext.Filter)
 	require.Equal(t, []string{"tenant-b"}, got.Report.TenantContext.ResolvedTenantIDs)
 	require.Empty(t, got.Report.TenantID)
+}
+
+// TestOpsPurgeAllProcessDefinitionsDeletionMilestonesStaySeparateFromDiscovery
+// verifies APD default milestones are driven by deletion completions while
+// discovery progress remains on the existing discovery path.
+func TestOpsPurgeAllProcessDefinitionsDeletionMilestonesStaySeparateFromDiscovery(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+	now := time.Date(2026, 9, 1, 6, 32, 0, 0, time.UTC)
+	processDefinitionDeleteSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { processDefinitionDeleteSemanticProgressNow = time.Now })
+
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	stderr := &bytes.Buffer{}
+	cmd.SetErr(stderr)
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+	deletionProgress := newProcessDefinitionDeleteSemanticProgress(cmd, 0)
+	defer deletionProgress.Close()
+
+	request := ops.AllProcessDefinitionsPurgeRequest{}
+	configureOpsPurgeAllProcessDefinitionsProgress(cmd, &request, deletionProgress)
+	request.Progress(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindPage,
+		Page: &ops.PageProgress{
+			Phase:       "discovering process definitions",
+			CurrentPage: 1,
+			Seen:        1,
+			Selected:    1,
+		},
+	})
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsPurgeAllProcessDefinitionsCompletionEvent(request.Progress, "pd-1", 2, ops.CompletionDispositionFailed, "delete rejected")
+	reportOpsPurgeAllProcessDefinitionsCompletionEvent(request.Progress, "pd-2", 2, ops.CompletionDispositionConfirmed, "")
+	deletionProgress.Close()
+
+	output := stderr.String()
+	require.Contains(t, sink.PriorityUpdates(), activitysink.Update{
+		Message:    "discovering process definitions, page 1, 1 seen",
+		Importance: logging.ActivityImportanceWorkflow,
+	})
+	require.Equal(t, 1, strings.Count(output, "pd-1 failed: delete rejected (deleting process definitions, 1/2 process definition(s), 1 failed)"))
+	require.Equal(t, 1, strings.Count(output, "deleting process definitions, 2/2 process definition(s), 1 failed"))
+	require.NotContains(t, output, "discovering process definitions, 2/2")
+}
+
+// TestOpsPurgeAllProcessDefinitionsSemanticProgressModeGate verifies APD
+// deletion completion progress remains compatible with machine and quiet modes.
+func TestOpsPurgeAllProcessDefinitionsSemanticProgressModeGate(t *testing.T) {
+	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
+		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+			deletionProgress := newProcessDefinitionDeleteSemanticProgress(cmd, 1)
+			request := ops.AllProcessDefinitionsPurgeRequest{}
+			configureOpsPurgeAllProcessDefinitionsProgress(cmd, &request, deletionProgress)
+			return request.Progress, deletionProgress.Close
+		},
+		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
+			return ops.ProgressEvent{
+				Kind: ops.ProgressEventKindCompletion,
+				Completion: &ops.CompletionProgress{
+					Phase:         processDefinitionDeleteCompletionPhase,
+					CoreResource:  "process definition(s)",
+					Total:         1,
+					Identity:      "pd-1",
+					Disposition:   disposition,
+					FailureDetail: detail,
+				},
+			}
+		},
+		QuietWarning: "pd-1 failed: request rejected (deleting process definitions, 1/1 process definition(s), 1 failed)",
+	})
 }
 
 // TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape verifies the registered command, alias, and safe examples.
@@ -838,6 +914,22 @@ func executeOpsPurgeAllProcessDefinitionsExpectError(t *testing.T, args ...strin
 		return buf.String() + err.Error(), err
 	}
 	return buf.String(), nil
+}
+
+// reportOpsPurgeAllProcessDefinitionsCompletionEvent sends one ops-level APD
+// deletion completion fact through the configured command progress callback.
+func reportOpsPurgeAllProcessDefinitionsCompletionEvent(progress func(ops.ProgressEvent), identity string, total int, disposition ops.CompletionDisposition, detail string) {
+	progress(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindCompletion,
+		Completion: &ops.CompletionProgress{
+			Phase:         processDefinitionDeleteCompletionPhase,
+			CoreResource:  "process definition(s)",
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+		},
+	})
 }
 
 // sampleAllProcessDefinitionsPurgeDeletedResult returns a successful no-wait deletion result for command rendering tests.

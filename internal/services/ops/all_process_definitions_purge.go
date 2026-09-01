@@ -84,6 +84,9 @@ func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllP
 	}
 
 	deleteOpts := compactOpsExecutionOptions(opts...)
+	if request.Progress != nil {
+		deleteOpts = append(deleteOpts, services.WithProgress(request.Progress))
+	}
 	if request.Force {
 		deleteOpts = append(deleteOpts, services.WithForce())
 	}

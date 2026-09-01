@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/ops"
@@ -72,6 +73,19 @@ type processInstanceMutationProgressState struct {
 	mu   sync.Mutex
 	seen bool
 }
+
+// processInstanceMutationPlanningActivity owns the search planning activity so
+// prompts and confirmed mutations can happen after the planning scope stops.
+type processInstanceMutationPlanningActivity struct {
+	cmd       *cobra.Command
+	operation string
+	enabled   bool
+	stop      func()
+}
+
+// processInstanceMutationSemanticProgressNow is overridden by command tests to
+// exercise durable milestone pacing without real sleeps.
+var processInstanceMutationSemanticProgressNow = time.Now
 
 // planProcessInstanceDryRunPreview builds the shared dry-run plan, impact
 // counts, and render payload for one direct-key process-instance batch.
@@ -179,6 +193,94 @@ func newProcessInstanceMutationProgressReporterWithState(cmd *cobra.Command, ope
 	}, state
 }
 
+// newProcessInstanceMutationSemanticReporter owns the post-confirmation
+// completion scope for one process-instance cancel/delete mutation.
+func newProcessInstanceMutationSemanticReporter(cmd *cobra.Command, operation string, impact processInstancePageImpact) *opsSemanticProgressReporter {
+	channel := opsProgressChannelForMode(processInstanceMutationProgressModeForCommand(cmd))
+	return newOpsSemanticProgressReporter(cmd, opsSemanticProgressConfig{
+		Scope:  processInstanceMutationSemanticProgressScope(operation, impact.Roots, processInstanceMutationAffectedCoverageAvailable(impact)),
+		Policy: opsSemanticProgressOutputPolicyForChannel(channel),
+		Now:    processInstanceMutationSemanticProgressNow,
+	})
+}
+
+// appendProcessInstanceMutationSemanticProgressOptions installs the shared
+// completion reporter after the command has confirmed the frozen mutation scope.
+func appendProcessInstanceMutationSemanticProgressOptions(cmd *cobra.Command, operation string, impact processInstancePageImpact, opts []processOptions.FacadeOption, affectedCount int) ([]processOptions.FacadeOption, func()) {
+	semanticReporter := newProcessInstanceMutationSemanticReporter(cmd, operation, impact)
+	mutationOpts := append(compactProcessInstanceMutationOptions(opts),
+		processOptions.WithAffectedProcessInstanceCount(affectedCount),
+		processOptions.WithProgress(processInstanceMutationSemanticProgressCallback(semanticReporter)),
+	)
+	return mutationOpts, semanticReporter.Close
+}
+
+// newProcessInstanceMutationPlanningActivity starts the search planning
+// activity only for modes that allow transient workflow progress.
+func newProcessInstanceMutationPlanningActivity(cmd *cobra.Command, operation string) *processInstanceMutationPlanningActivity {
+	channel := opsProgressChannelForMode(processInstanceMutationProgressModeForCommand(cmd))
+	progress := &processInstanceMutationPlanningActivity{
+		cmd:       cmd,
+		operation: strings.TrimSpace(operation),
+		enabled:   channel.TransientAllowed,
+	}
+	progress.Resume()
+	return progress
+}
+
+// Stop ends the current planning activity if it is active.
+func (p *processInstanceMutationPlanningActivity) Stop() {
+	if p == nil || p.stop == nil {
+		return
+	}
+	p.stop()
+	p.stop = nil
+}
+
+// Resume opens a new planning activity after a continuation prompt allows the
+// search planning traversal to continue.
+func (p *processInstanceMutationPlanningActivity) Resume() {
+	if p == nil || !p.enabled || p.stop != nil {
+		return
+	}
+	operation := p.operation
+	if operation == "" {
+		operation = "mutation"
+	}
+	p.stop = startCommandActivity(p.cmd, fmt.Sprintf("planning process-instance %s scope", operation))
+}
+
+// processInstanceMutationAffectedCoverageAvailable allows affected aggregates
+// only when the command can prove each root contributes a trustworthy count.
+func processInstanceMutationAffectedCoverageAvailable(impact processInstancePageImpact) bool {
+	return impact.Roots > 0 && impact.Affected > 0 && (impact.Roots == 1 || impact.Affected == impact.Roots)
+}
+
+// processInstanceMutationSemanticProgressCallback converts facade completion
+// facts into the ops reporter envelope used by command progress rendering.
+func processInstanceMutationSemanticProgressCallback(reporter *opsSemanticProgressReporter) func(processOptions.ProgressEvent) {
+	return func(event processOptions.ProgressEvent) {
+		if reporter == nil || event.Kind != processOptions.ProgressEventKindCompletion || event.Completion == nil {
+			return
+		}
+		reporter.Report(ops.ProgressEvent{
+			Kind: ops.ProgressEventKindCompletion,
+			Completion: &ops.CompletionProgress{
+				Phase:            event.Completion.Phase,
+				CoreResource:     event.Completion.CoreResource,
+				Total:            event.Completion.Total,
+				Identity:         event.Completion.Identity,
+				Disposition:      ops.CompletionDisposition(event.Completion.Disposition),
+				FailureDetail:    event.Completion.FailureDetail,
+				AffectedResource: event.Completion.AffectedResource,
+				AffectedCount:    event.Completion.AffectedCount,
+			},
+		})
+	}
+}
+
+// processInstanceMutationProgressModeForCommand derives progress routing from
+// render mode, root verbosity flags, and command automation context.
 func processInstanceMutationProgressModeForCommand(cmd *cobra.Command) opsProgressModeInput {
 	input := opsProgressModeInput{
 		RenderMode: pickMode(),
@@ -199,6 +301,8 @@ func processInstanceMutationProgressModeForCommand(cmd *cobra.Command) opsProgre
 	return input
 }
 
+// printProcessInstanceMutationPreflight updates workflow activity and emits
+// durable preflight detail only in modes where diagnostics are allowed.
 func printProcessInstanceMutationPreflight(cmd *cobra.Command, scope ops.PreflightScope, channel ops.ProgressChannel) {
 	lines := formatOpsPreflightScope(scope)
 	if channel.TransientAllowed && len(lines) > 0 {
@@ -246,6 +350,8 @@ func processInstanceMutationTenantContextAllowed(channel ops.ProgressChannel) bo
 		(channel.Mode == ops.ProgressModeHuman || channel.Mode == ops.ProgressModeVerbose || channel.Mode == ops.ProgressModeDebug)
 }
 
+// printProcessInstanceMutationProgressLine keeps discovery/planning progress on
+// stderr and transient activity without leaking text into result stdout.
 func printProcessInstanceMutationProgressLine(cmd *cobra.Command, line string, channel ops.ProgressChannel) {
 	if strings.TrimSpace(line) == "" {
 		return
@@ -259,10 +365,14 @@ func printProcessInstanceMutationProgressLine(cmd *cobra.Command, line string, c
 	printOpsDurableLine(cmd, line, false)
 }
 
+// processInstanceMutationDurableProgressAllowed limits detailed mutation
+// planning counters to verbose and debug diagnostics.
 func processInstanceMutationDurableProgressAllowed(channel ops.ProgressChannel) bool {
 	return channel.DurableAllowed && channel.StderrAllowed && (channel.Mode == ops.ProgressModeVerbose || channel.Mode == ops.ProgressModeDebug)
 }
 
+// renderProcessInstanceMutationResultSummary emits the compact final mutation
+// progress summary only when human one-line output allows it.
 func renderProcessInstanceMutationResultSummary(cmd *cobra.Command, operation string, reports []process.Reporter, impact processInstancePageImpact) {
 	if !processInstanceMutationHumanResultAllowed(cmd) || len(reports) == 0 {
 		return
@@ -282,11 +392,15 @@ func renderProcessInstanceMutationResultSummary(cmd *cobra.Command, operation st
 	printOpsDurableLine(cmd, line, false)
 }
 
+// processInstanceMutationHumanResultAllowed protects quiet, automation, and
+// machine-readable modes from human summary progress.
 func processInstanceMutationHumanResultAllowed(cmd *cobra.Command) bool {
 	input := processInstanceMutationProgressModeForCommand(cmd)
 	return !input.Quiet && !input.Automation && input.RenderMode == RenderModeOneLine
 }
 
+// processInstanceMutationResultWords chooses final summary wording that matches
+// the mutation operation and no-wait lifecycle.
 func processInstanceMutationResultWords(operation string, noWait bool) (label string, verb string) {
 	switch strings.TrimSpace(operation) {
 	case "cancel":
@@ -302,6 +416,8 @@ func processInstanceMutationResultWords(operation string, noWait bool) (label st
 	}
 }
 
+// compactProcessInstanceMutationOptions suppresses duplicate low-level service
+// detail once semantic command progress is installed.
 func compactProcessInstanceMutationOptions(opts []processOptions.FacadeOption) []processOptions.FacadeOption {
 	out := append([]processOptions.FacadeOption{}, opts...)
 	return append(out,
@@ -310,6 +426,8 @@ func compactProcessInstanceMutationOptions(opts []processOptions.FacadeOption) [
 	)
 }
 
+// formatProcessInstanceMutationFrozenProgress renders planning counters without
+// introducing completion lifecycle wording.
 func formatProcessInstanceMutationFrozenProgress(progress ops.FrozenScopeProgress) string {
 	resource := strings.TrimSpace(progress.CoreResource)
 	if resource == "" {
@@ -359,6 +477,8 @@ func printProcessInstanceMutationPlanStepFallbackProgress(cmd *cobra.Command, op
 	}), channel)
 }
 
+// processInstanceMutationStepTotal converts service page total metadata into
+// the ops progress certainty model used by preflight rendering.
 func processInstanceMutationStepTotal(step process.ProcessInstanceMutationPlanStep) (*int64, ops.TotalCertainty) {
 	if step.Page.ReportedTotal == nil {
 		return nil, ops.TotalCertaintyUnknown
@@ -374,6 +494,8 @@ func processInstanceMutationStepTotal(step process.ProcessInstanceMutationPlanSt
 	}
 }
 
+// opsPreflightScopeFromProcessOption mechanically maps process facade preflight
+// progress into the shared ops progress model.
 func opsPreflightScopeFromProcessOption(scope processOptions.PreflightScope) ops.PreflightScope {
 	return ops.PreflightScope{
 		Phase:           scope.Phase,
@@ -396,6 +518,8 @@ func opsPreflightScopeFromProcessOption(scope processOptions.PreflightScope) ops
 	}
 }
 
+// opsPageProgressFromProcessOption mechanically maps process facade page
+// progress into the shared ops progress model.
 func opsPageProgressFromProcessOption(progress processOptions.PageProgress) ops.PageProgress {
 	return ops.PageProgress{
 		Phase:            progress.Phase,
@@ -411,6 +535,8 @@ func opsPageProgressFromProcessOption(progress processOptions.PageProgress) ops.
 	}
 }
 
+// opsFrozenScopeProgressFromProcessOption mechanically maps process facade
+// frozen-scope progress into the shared ops progress model.
 func opsFrozenScopeProgressFromProcessOption(progress processOptions.FrozenScopeProgress) ops.FrozenScopeProgress {
 	return ops.FrozenScopeProgress{
 		Phase:        progress.Phase,
