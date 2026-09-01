@@ -303,6 +303,12 @@ func TestOpsProgressDurableMilestoneRequiresElapsedTimeAndPageProgress(t *testin
 	require.True(t, pacer.AllowDurableMilestone(event, channel))
 }
 
+// TestOpsDurableMilestoneCadenceIsTenSeconds verifies fake-clock tests exercise
+// the semantic progress cadence required for default durable milestones.
+func TestOpsDurableMilestoneCadenceIsTenSeconds(t *testing.T) {
+	require.Equal(t, 10*time.Second, opsDurableMilestoneMinimumElapsed)
+}
+
 // TestOpsProgressDurableMilestoneRequiresForwardProgress verifies elapsed time alone does not repeat the same milestone.
 func TestOpsProgressDurableMilestoneRequiresForwardProgress(t *testing.T) {
 	now := time.Date(2026, time.August, 4, 12, 0, 0, 0, time.UTC)

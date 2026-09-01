@@ -212,6 +212,91 @@ func TestOpsSemanticProgressReporterIgnoresUnrelatedCompletionPhase(t *testing.T
 	}, reporter.Aggregate())
 }
 
+// TestOpsSemanticProgressReporterKeepsCleanSubTenSecondRunsDurablySilent
+// verifies fast successful scopes update only transient activity.
+func TestOpsSemanticProgressReporterKeepsCleanSubTenSecondRunsDurablySilent(t *testing.T) {
+	cmd, sink, stderr := newOpsSemanticProgressTestCommand(t)
+	now := time.Date(2026, time.August, 31, 17, 0, 0, 0, time.UTC)
+	reporter := newOpsSemanticProgressReporter(cmd, opsSemanticProgressTestConfig(&now, 2))
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed - time.Nanosecond)
+	reportOpsSemanticProgressTestCompletion(reporter, "root-1", ops.CompletionDispositionConfirmed, "")
+	reporter.Close()
+
+	require.Empty(t, stderr.String())
+	require.Equal(t, []string{"deleting process-instance trees, 1/2 process-instance tree(s)"}, sink.Updates())
+	require.Equal(t, 1, sink.Stopped())
+}
+
+// TestOpsSemanticProgressReporterPrintsFirstTenSecondCompletion verifies the
+// first completion crossing the cadence writes one compact aggregate milestone.
+func TestOpsSemanticProgressReporterPrintsFirstTenSecondCompletion(t *testing.T) {
+	cmd, _, stderr := newOpsSemanticProgressTestCommand(t)
+	now := time.Date(2026, time.August, 31, 17, 0, 0, 0, time.UTC)
+	reporter := newOpsSemanticProgressReporter(cmd, opsSemanticProgressTestConfig(&now, 2))
+	defer reporter.Close()
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsSemanticProgressTestCompletion(reporter, "root-1", ops.CompletionDispositionConfirmed, "")
+
+	require.Equal(t, "deleting process-instance trees, 1/2 process-instance tree(s)\n", stderr.String())
+}
+
+// TestOpsSemanticProgressReporterSuppressesRapidCompletionDurableLines verifies
+// default output does not print one informational line for every completion.
+func TestOpsSemanticProgressReporterSuppressesRapidCompletionDurableLines(t *testing.T) {
+	cmd, _, stderr := newOpsSemanticProgressTestCommand(t)
+	now := time.Date(2026, time.August, 31, 17, 0, 0, 0, time.UTC)
+	reporter := newOpsSemanticProgressReporter(cmd, opsSemanticProgressTestConfig(&now, 4))
+	defer reporter.Close()
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsSemanticProgressTestCompletion(reporter, "root-1", ops.CompletionDispositionConfirmed, "")
+	now = now.Add(time.Second)
+	reportOpsSemanticProgressTestCompletion(reporter, "root-2", ops.CompletionDispositionConfirmed, "")
+	reportOpsSemanticProgressTestCompletion(reporter, "root-3", ops.CompletionDispositionConfirmed, "")
+
+	require.Equal(t, 1, strings.Count(stderr.String(), "deleting process-instance trees"))
+}
+
+// TestOpsSemanticProgressReporterFlushesActivatedDurableProgressOnce verifies
+// an activated scope flushes later unreported aggregate progress idempotently.
+func TestOpsSemanticProgressReporterFlushesActivatedDurableProgressOnce(t *testing.T) {
+	cmd, _, stderr := newOpsSemanticProgressTestCommand(t)
+	now := time.Date(2026, time.August, 31, 17, 0, 0, 0, time.UTC)
+	reporter := newOpsSemanticProgressReporter(cmd, opsSemanticProgressTestConfig(&now, 3))
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsSemanticProgressTestCompletion(reporter, "root-1", ops.CompletionDispositionConfirmed, "")
+	now = now.Add(time.Second)
+	reportOpsSemanticProgressTestCompletion(reporter, "root-2", ops.CompletionDispositionConfirmed, "")
+	reporter.Close()
+	reporter.Close()
+
+	require.Equal(t, strings.Join([]string{
+		"deleting process-instance trees, 1/3 process-instance tree(s)",
+		"deleting process-instance trees, 2/3 process-instance tree(s)",
+		"",
+	}, "\n"), stderr.String())
+}
+
+// TestOpsSemanticProgressReporterWarnsImmediatelyForFailures verifies failure
+// completions bypass informational pacing and activate durable output.
+func TestOpsSemanticProgressReporterWarnsImmediatelyForFailures(t *testing.T) {
+	cmd, _, stderr := newOpsSemanticProgressTestCommand(t)
+	now := time.Date(2026, time.August, 31, 17, 0, 0, 0, time.UTC)
+	reporter := newOpsSemanticProgressReporter(cmd, opsSemanticProgressTestConfig(&now, 2))
+	defer reporter.Close()
+
+	now = now.Add(time.Second)
+	reportOpsSemanticProgressTestCompletion(reporter, "root-1", ops.CompletionDispositionFailed, "boom")
+
+	got := stderr.String()
+	require.Contains(t, got, "root-1 failed: boom")
+	require.Contains(t, got, "deleting process-instance trees, 1/2 process-instance tree(s), 1 failed")
+	require.Equal(t, 1, strings.Count(got, "root-1 failed"))
+}
+
 // TestOpsSemanticProgressReporterCloseIsIdempotent verifies repeated cleanup
 // neither double-stops activity nor emits duplicate final records.
 func TestOpsSemanticProgressReporterCloseIsIdempotent(t *testing.T) {
@@ -243,6 +328,35 @@ func newOpsSemanticProgressTestCommand(t *testing.T) (*cobra.Command, *activitys
 	cmd.SetErr(&stderr)
 	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
 	return cmd, sink, &stderr
+}
+
+// opsSemanticProgressTestConfig builds a paced default-human reporter fixture
+// with deterministic time controlled by the caller.
+func opsSemanticProgressTestConfig(now *time.Time, total int) opsSemanticProgressConfig {
+	return opsSemanticProgressConfig{
+		Scope: opsSemanticProgressScope{
+			ActivityLabel: "deleting process-instance trees",
+			CoreResource:  "process-instance tree(s)",
+			Total:         total,
+			ConfirmedVerb: "deleted",
+			FailedVerb:    "failed",
+		},
+		Policy: opsSemanticProgressOutputPolicyForChannel(ops.ProgressChannel{Mode: ops.ProgressModeHuman, TransientAllowed: true, DurableAllowed: true, StderrAllowed: true}),
+		Now:    func() time.Time { return *now },
+	}
+}
+
+// reportOpsSemanticProgressTestCompletion sends one completion fact through the
+// reporter without repeating the progress event envelope in each pacing test.
+func reportOpsSemanticProgressTestCompletion(reporter *opsSemanticProgressReporter, identity string, disposition ops.CompletionDisposition, detail string) {
+	reporter.Report(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindCompletion,
+		Completion: &ops.CompletionProgress{
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+		},
+	})
 }
 
 func requireOpsSemanticProgressCompletedSequence(t *testing.T, updates []string, total int) {

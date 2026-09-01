@@ -82,7 +82,7 @@
 
 ### Tests for User Story 2
 
-- [ ] T025 [P] [US2] Add fake-clock tests for clean sub-10-second silence, the first completion at 10 seconds, rapid-completion suppression, durable activation, immediate failures, and exactly-once final flush in `cmd/ops_semantic_progress_test.go` and `cmd/ops_progress_test.go`
+- [x] T025 [P] [US2] Add fake-clock tests for clean sub-10-second silence, the first completion at 10 seconds, rapid-completion suppression, durable activation, immediate failures, and exactly-once final flush in `cmd/ops_semantic_progress_test.go` and `cmd/ops_progress_test.go`
 - [ ] T026 [P] [US2] Add verbose identity/outcome replacement, cumulative affected/failed rendering, and quiet warning-severity tests in `cmd/ops_semantic_progress_test.go` and `cmd/ops_progress_test.go`
 - [ ] T027 [P] [US2] Add concurrent durable-write clear/redraw and nested workflow-priority arbitration tests in `toolx/logging/activity_test.go` and a new `testx/activitysink/activity_sink_test.go`
 - [ ] T028 [P] [US2] Add process-instance command milestone tests for default, verbose, failures, force cleanup, final flush, and no duplicate timer output in `cmd/processinstance_mutation_progress_test.go`, `cmd/cancel_processinstance_test.go`, and `cmd/delete_processinstance_test.go`

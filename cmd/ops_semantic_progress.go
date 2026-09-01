@@ -48,15 +48,18 @@ type opsSemanticProgressAggregate struct {
 // opsSemanticProgressReporter serializes completion facts, transient activity
 // updates, and durable diagnostic output for one workflow scope.
 type opsSemanticProgressReporter struct {
-	mu        sync.Mutex
-	cmd       *cobra.Command
-	scope     opsSemanticProgressScope
-	policy    opsSemanticProgressOutputPolicy
-	now       func() time.Time
-	startedAt time.Time
-	aggregate opsSemanticProgressAggregate
-	stop      func()
-	closed    bool
+	mu                  sync.Mutex
+	cmd                 *cobra.Command
+	scope               opsSemanticProgressScope
+	policy              opsSemanticProgressOutputPolicy
+	now                 func() time.Time
+	startedAt           time.Time
+	lastInformationalAt time.Time
+	aggregate           opsSemanticProgressAggregate
+	durableActivated    bool
+	dirty               bool
+	stop                func()
+	closed              bool
 }
 
 // newOpsSemanticProgressReporter constructs one reporter and immediately owns
@@ -80,6 +83,7 @@ func newOpsSemanticProgressReporter(cmd *cobra.Command, cfg opsSemanticProgressC
 		aggregate: aggregate,
 		stop:      func() {},
 	}
+	reporter.lastInformationalAt = reporter.startedAt
 	if cmd != nil && cfg.Policy.TransientActivity {
 		reporter.stop = logging.StartActivityWithImportance(opsSemanticProgressCommandContext(cmd), formatOpsSemanticProgressAggregate(scope, aggregate), logging.ActivityImportanceWorkflow)
 	}
@@ -105,10 +109,25 @@ func (r *opsSemanticProgressReporter) Report(event ops.ProgressEvent) {
 	}
 	if r.policy.VerboseItems {
 		printOpsDurableLine(r.cmd, formatOpsSemanticProgressCompletion(r.scope, aggregate, *event.Completion), r.policy.FailureWarnings && event.Completion.Disposition == ops.CompletionDispositionFailed)
+		r.durableActivated = true
+		r.dirty = false
 		return
 	}
 	if r.policy.FailureWarnings && event.Completion.Disposition == ops.CompletionDispositionFailed {
 		printOpsDurableLine(r.cmd, formatOpsSemanticProgressCompletion(r.scope, aggregate, *event.Completion), true)
+		r.durableActivated = true
+		r.dirty = false
+		return
+	}
+	if r.policy.PacedAggregate && r.dirty {
+		now := r.now()
+		if now.Before(r.lastInformationalAt.Add(opsDurableMilestoneMinimumElapsed)) {
+			return
+		}
+		printOpsDurableLine(r.cmd, formatOpsSemanticProgressAggregate(r.scope, aggregate), false)
+		r.lastInformationalAt = now
+		r.durableActivated = true
+		r.dirty = false
 	}
 }
 
@@ -123,7 +142,8 @@ func (r *opsSemanticProgressReporter) Aggregate() opsSemanticProgressAggregate {
 	return r.aggregate
 }
 
-// Close ends the owned workflow activity exactly once.
+// Close flushes pending activated durable progress and ends the owned workflow
+// activity exactly once.
 func (r *opsSemanticProgressReporter) Close() {
 	if r == nil {
 		return
@@ -135,7 +155,15 @@ func (r *opsSemanticProgressReporter) Close() {
 	}
 	r.closed = true
 	stop := r.stop
+	var finalLine string
+	if r.policy.PacedAggregate && r.durableActivated && r.dirty {
+		finalLine = formatOpsSemanticProgressAggregate(r.scope, r.aggregate)
+		r.dirty = false
+	}
 	r.mu.Unlock()
+	if finalLine != "" {
+		printOpsDurableLine(r.cmd, finalLine, false)
+	}
 	if stop != nil {
 		stop()
 	}
@@ -151,6 +179,7 @@ func (r *opsSemanticProgressReporter) ingestCompletionLocked(completion ops.Comp
 		return
 	}
 	r.aggregate.Completed++
+	r.dirty = true
 	if completion.Disposition == ops.CompletionDispositionFailed {
 		r.aggregate.Failed++
 	}

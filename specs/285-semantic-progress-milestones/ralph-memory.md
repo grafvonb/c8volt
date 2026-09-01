@@ -34,6 +34,7 @@ Started: 2026-08-31T17:14:26Z
 - Slow-process analysis now emits completion facts for enrichment phases `loading runtime elements` and `loading listener jobs`; search discovery/preflight remain separate and explicit-key analysis receives semantic enrichment progress without confirmation prompts.
 - Multi-key `expect process-instance` now emits `expect process instances` completion facts from the waiter bulk wrappers and routes them through `cmd/expect_processinstance_progress.go`; single-key waiter polling remains wait-priority activity unless a caller explicitly uses the bulk wrapper with a progress callback.
 - User Story 1 validation completed in iteration 18 with reporter, activity, process-instance, process-definition, resource, ops, run, analysis, and expect tests passing under `-race`; T024 was a validation/audit-only work unit.
+- Semantic reporter durable output now uses the shared 10-second milestone cadence, activates durable progress on the first paced aggregate or immediate failure warning, tracks dirty aggregate state, and flushes exactly once on close only when activated progress has unreported completions.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -62,6 +63,7 @@ Started: 2026-08-31T17:14:26Z
 - `configureOpsSlowProcessAnalysisPreflight` now returns a nullable closeable progress wrapper; command code can safely `defer progress.Close()` because the receiver handles nil.
 - Slow-analysis frozen-scope tests that count raw callback events must account for both frozen-scope and completion facts, or filter by event kind.
 - Expect command progress is intentionally installed only for multi-key scopes (`len(keys) > 1`) to avoid broadening single-target wait UX during the US1 slice.
+- T025 added fake-clock reporter tests in `cmd/ops_semantic_progress_test.go`; they use direct stderr capture without a logger, so failure tests assert warning content rather than severity prefix. Quiet warning severity is still a T026 responsibility.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -87,6 +89,7 @@ Started: 2026-08-31T17:14:26Z
 - `go test ./cmd -run 'RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|ExplicitLargeWork' -race -count=1`
 - `go test ./internal/services/processinstance/waiter -race -count=1`
 - `go test ./cmd -run 'Progress|Activity' -race -count=1`
+- `go test ./cmd -run 'TestOpsSemanticProgressReporter|TestOpsDurableMilestoneCadenceIsTenSeconds|TestOpsProgressDurableMilestone' -race -count=1`
 - `go test ./cmd -run 'ProcessInstance|ProcessDefinition|Purge|Retention|Orphan|Incident|Repair|Smoke|Deploy|Run|Analyse|Expect|Progress|Activity' -race -count=1`
 - `go test ./cmd -run 'TestProcessDefinitionDeploySemanticProgress|TestAppendProcessDefinitionDeployProgressOptions|TestProcessDefinitionDeleteSemanticProgressRoutesFacadeCompletion|TestOpsPurgeAllProcessDefinitionsProgressKeepsDiscoverySeparate' -race -count=1`
 - `go test ./cmd -run 'Deploy|ProcessDefinitionDeploy|Progress|Activity' -race -count=1`
@@ -100,4 +103,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should start User Story 2 at T025: add fake-clock tests for clean sub-10-second silence, first 10-second completion, rapid-completion suppression, durable activation, immediate failures, and exactly-once final flush in `cmd/ops_semantic_progress_test.go` and `cmd/ops_progress_test.go`.
+- Next iteration should continue User Story 2 at T026: add verbose identity/outcome replacement, cumulative affected/failed rendering, and quiet warning-severity tests in `cmd/ops_semantic_progress_test.go` and `cmd/ops_progress_test.go`.

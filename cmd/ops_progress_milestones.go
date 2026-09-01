@@ -10,7 +10,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/ops"
 )
 
-const opsDurableMilestoneMinimumElapsed = 30 * time.Second
+const opsDurableMilestoneMinimumElapsed = 10 * time.Second
 
 type opsProgressMilestonePacer struct {
 	minimumElapsed        time.Duration

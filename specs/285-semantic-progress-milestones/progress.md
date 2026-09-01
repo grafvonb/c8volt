@@ -388,3 +388,25 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./cmd ./internal/services/processinstance/waiter ./internal/services/ops ./internal/services/processinstance -run 'RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|WaitForProcessInstances|SlowProcessAnalysis|CreateNProcessInstances' -race -count=1` -> `ok` for `cmd`, `internal/services/processinstance/waiter`, `internal/services/ops`, and `internal/services/processinstance`.
 - Validation passed: `go test ./cmd -run 'ProcessInstance|ProcessDefinition|Purge|Retention|Orphan|Incident|Repair|Smoke|Deploy|Run|Analyse|Expect|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 99.431s`.
 ---
+---
+## Iteration 19 - 2026-09-01 05:44
+**Work Unit**: User Story 2 fake-clock semantic progress pacing tests
+**Tasks Completed**:
+- [x] T025: Add fake-clock tests for clean sub-10-second silence, the first completion at 10 seconds, rapid-completion suppression, durable activation, immediate failures, and exactly-once final flush
+**Tasks Remaining in Work Unit**: T026-T035 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_progress_milestones.go
+- cmd/ops_progress_test.go
+- cmd/ops_semantic_progress.go
+- cmd/ops_semantic_progress_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Validation passed: `go test ./cmd -run 'TestOpsSemanticProgressReporter|TestOpsDurableMilestoneCadenceIsTenSeconds|TestOpsProgressDurableMilestone' -count=1` -> `ok github.com/grafvonb/c8volt/cmd 0.630s`.
+- Validation passed: `go test ./cmd -run 'TestOpsSemanticProgressReporter|TestOpsDurableMilestoneCadenceIsTenSeconds|TestOpsProgressDurableMilestone' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.639s`.
+- Validation passed: `go test ./cmd -run 'Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 7.482s`.
+- Validation passed: `git diff --check` -> no output.
+- The semantic reporter now owns dirty durable state and final flushing directly; T026 still needs verbose replacement, affected/failed rendering depth, and quiet warning severity coverage.
+---
