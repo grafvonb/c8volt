@@ -57,6 +57,7 @@ Started: 2026-08-31T17:14:26Z
 - T043 command cohesion review inventoried #285-added `cmd` declarations, confirmed semantic progress lifecycle ownership stays in focused `*_progress.go` files, added missing purpose comments, and found no required file moves.
 - T044 updated source documentation only: README operator guidance plus affected Cobra help/examples now describe real completion activity, 10-second default milestones, immediate failures, verbose per-item/per-stage lines, quiet failure warnings, and machine-output silence. Generated CLI docs remain intentionally untouched for T045.
 - T045 regenerated CLI documentation with `make docs-content`; expected generated output is limited to semantic-progress help/example updates under `docs/cli/` plus the generated overview/build metadata in `docs/index.md`.
+- T046 reviewed `quickstart.md` and `contracts/semantic-progress-contract.md` against the implemented domain/facade completion facts, command reporter, output-mode gate, lifecycle vocabulary, and tests; no specification updates were required.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -144,4 +145,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Continue Phase 6 at T046: review the implemented behavior against `quickstart.md` and `contracts/semantic-progress-contract.md`; update those files only if implementation details changed without weakening the specification.
+- Continue Phase 6 at T047: run targeted `-race` tests for all changed packages under `cmd/`, `c8volt/foptions/`, `c8volt/ops/`, `internal/domain/`, `internal/services/processinstance/`, `internal/services/processdefinition/`, `internal/services/resource/`, `internal/services/ops/`, and `toolx/logging/`; record commands/results in `progress.md`.
