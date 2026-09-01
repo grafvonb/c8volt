@@ -43,14 +43,14 @@ func opsProgressModeForCommand(cmd *cobra.Command, mode RenderMode) opsProgressM
 // opsProgressChannelForMode applies the shared stdout-safe progress channel contract.
 func opsProgressChannelForMode(input opsProgressModeInput) ops.ProgressChannel {
 	switch {
-	case input.Quiet:
-		return ops.ProgressChannel{Mode: ops.ProgressModeQuiet}
 	case input.Automation:
 		return ops.ProgressChannel{Mode: ops.ProgressModeAutomation, StructuredReportAllowed: true}
 	case input.RenderMode == RenderModeJSON:
 		return ops.ProgressChannel{Mode: ops.ProgressModeJSON}
 	case input.RenderMode == RenderModeKeysOnly:
 		return ops.ProgressChannel{Mode: ops.ProgressModeKeysOnly}
+	case input.Quiet:
+		return ops.ProgressChannel{Mode: ops.ProgressModeQuiet}
 	case input.Debug:
 		return ops.ProgressChannel{Mode: ops.ProgressModeDebug, TransientAllowed: true, DurableAllowed: true, StderrAllowed: true}
 	case input.Verbose:

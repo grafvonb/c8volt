@@ -852,6 +852,9 @@ func assertOpsCompletionProgressModeGate(t *testing.T, tc opsCompletionProgressM
 		{name: "quiet success silence", setup: func() { flagQuiet = true }, disposition: ops.CompletionDispositionConfirmed},
 		{name: "quiet failure warning", setup: func() { flagQuiet = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected", wantQuietWarning: true},
 		{name: "automation failure silence", setup: func() { flagCmdAutomation = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+		{name: "quiet automation failure silence", setup: func() { flagQuiet = true; flagCmdAutomation = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+		{name: "quiet json failure silence", setup: func() { flagQuiet = true; flagViewAsJson = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+		{name: "quiet keys-only failure silence", setup: func() { flagQuiet = true; flagViewKeysOnly = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
 	} {
 		t.Run(mode.name, func(t *testing.T) {
 			resetSemanticProgressModeFlags(t)

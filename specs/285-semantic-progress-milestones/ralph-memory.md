@@ -49,6 +49,7 @@ Started: 2026-08-31T17:14:26Z
 - T036 pins completion lifecycle conversion across `internal/domain`, `c8volt/foptions`, and `c8volt/ops`: accepted no-wait work remains `submitted`, waited work remains `confirmed`, failed work remains `failed`, and disposition values exclude command-rendered verbs.
 - T037 pins process-instance cancel/delete parity in `cmd`: direct-key and stdin-key-equivalent paths share submitted/confirmed lifecycle wording, search-selected cancel/delete start semantic completions after confirmation, force delete ignores nested cleanup completion phases, failed facts warn immediately, and unknown affected deltas omit affected progress aggregates.
 - T038 added shared adapter-level mode-gate coverage for process-definition delete/deploy, all-process-definition purge, retention/orphan/incident purge, incident/process-instance repair, and smoke-test stage progress: JSON, keys-only, and automation suppress semantic failures entirely; quiet suppresses successes but writes the immediate failure warning; stdout remains empty.
+- T039 makes automation, JSON, and keys-only progress modes authoritative over quiet for semantic progress routing, while quiet-only failures still use the direct stderr warning path.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -133,4 +134,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Continue User Story 3 at T039: extend output policy so quiet uses a direct activity-aware stderr path for immediate failures while automation, JSON, and keys-only suppress every human progress line. Existing T038 adapter tests already pass with the current reporter policy, so validate any implementation changes against `Test(DeleteProcessDefinition|DeployProcessDefinition|OpsPurgeAllProcessDefinitions|OpsExecuteRetentionPolicy|OpsPurgeOrphanProcessInstances|OpsPurgeProcessInstancesWithIncidents|OpsRepairIncident|OpsRepairProcessInstance|OpsExecuteSmokeTest)SemanticProgressModeGate`.
+- Continue User Story 3 at T040: map submitted, confirmed operation-specific, and failed vocabulary per command family without moving wording into services. Keep T039 mode precedence intact: automation, JSON, and keys-only suppress all semantic progress even when quiet is also set, while quiet-only failure warnings remain visible through the direct stderr path.

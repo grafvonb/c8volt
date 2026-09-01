@@ -714,3 +714,25 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./cmd -run 'ProcessInstance|CancelProcessInstanceSearch|DeleteProcessInstanceSearch|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 44.406s`.
 - Validation passed: `git diff --check` -> no output.
 ---
+---
+## Iteration 3 - 2026-09-01 07:30
+**Work Unit**: User Story 3 semantic progress output policy
+**Tasks Completed**:
+- [x] T039: Extend output policy so quiet uses a direct activity-aware stderr path for immediate failures while automation, JSON, and keys-only suppress every human progress line
+**Tasks Remaining in Work Unit**: T040-T042 remain in User Story 3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_progress_mode.go
+- cmd/ops_progress_test.go
+- cmd/ops_execute_retention_policy_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Fixed semantic progress mode precedence so automation, JSON, and keys-only remain fully silent even when quiet is also active; quiet-only failures still use the direct stderr warning path.
+- Validation passed: `go test ./cmd -run 'TestOpsProgressChannelForModeProtectsMachineOutput|TestOpsSemanticProgressOutputPolicyForChannel|TestOpsSemanticProgressReporterQuietFailureBypassesWarnFiltering' -count=1` -> `ok github.com/grafvonb/c8volt/cmd 0.555s`.
+- Validation passed: `go test ./cmd -run 'TestOpsProgressChannelForModeProtectsMachineOutput|TestOpsSemanticProgressOutputPolicyForChannel|TestOpsSemanticProgressReporterQuietFailureBypassesWarnFiltering' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.945s`.
+- Validation passed: `go test ./cmd -run 'Test(DeleteProcessDefinition|DeployProcessDefinition|OpsPurgeAllProcessDefinitions|OpsExecuteRetentionPolicy|OpsPurgeOrphanProcessInstances|OpsPurgeProcessInstancesWithIncidents|OpsRepairIncident|OpsRepairProcessInstance|OpsExecuteSmokeTest)SemanticProgressModeGate' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.513s`.
+- Validation passed: `go test ./cmd -run 'Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 7.552s`.
+- Validation passed: `git diff --check` -> no output.
+---
