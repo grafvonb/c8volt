@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"sync"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/ops"
@@ -12,6 +13,10 @@ import (
 )
 
 const processDefinitionDeleteCompletionPhase = "delete process definitions"
+
+// processDefinitionDeleteSemanticProgressNow is overridden by command tests to
+// exercise durable milestone pacing without real sleeps.
+var processDefinitionDeleteSemanticProgressNow = time.Now
 
 // processDefinitionDeleteSemanticProgress owns the command-local completion
 // reporter for process-definition deletion facts.
@@ -104,6 +109,7 @@ func (p *processDefinitionDeleteSemanticProgress) reporterLocked(total int) *ops
 				FailedVerb:    "failed",
 			},
 			Policy: opsSemanticProgressOutputPolicyForChannel(channel),
+			Now:    processDefinitionDeleteSemanticProgressNow,
 		})
 	}
 	return p.reporter

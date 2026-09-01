@@ -6,6 +6,7 @@ package cmd
 import (
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/ops"
@@ -13,6 +14,10 @@ import (
 )
 
 const processDefinitionDeployCompletionPhase = "deploy process definitions"
+
+// processDefinitionDeploySemanticProgressNow is overridden by command tests to
+// exercise durable milestone pacing without real sleeps.
+var processDefinitionDeploySemanticProgressNow = time.Now
 
 // processDefinitionDeploySemanticProgress owns the command-local completion
 // reporter for deployment facts whose total is known only after upload.
@@ -103,6 +108,7 @@ func (p *processDefinitionDeploySemanticProgress) reporterLocked(total int) *ops
 				FailedVerb:    "failed",
 			},
 			Policy: opsSemanticProgressOutputPolicyForChannel(channel),
+			Now:    processDefinitionDeploySemanticProgressNow,
 		})
 	}
 	return p.reporter

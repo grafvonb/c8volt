@@ -82,6 +82,29 @@ Started: 2026-08-31 19:14:26
 - Reporter validation passed with `go test ./cmd -run 'TestOpsSemanticProgress' -race -count=1`, `go test ./cmd -run 'Progress|Activity' -race -count=1`, `go test ./internal/domain ./c8volt/foptions ./c8volt/ops ./toolx/logging ./internal/services -race -count=1`, and `git diff --check`.
 - Broader command progress tests require applying output-mode globals after `resetOpsSlowProcessAnalysisTestFlags(t)` because the helper now clears shared mode flags to prevent cross-test leakage.
 ---
+---
+## Iteration 23 - 2026-09-01 06:10
+**Work Unit**: User Story 2 process-definition deletion, deployment, and all-definition purge durable milestone tests
+**Tasks Completed**:
+- [x] T029: Add process-definition deletion, deployment, and all-definition purge milestone tests
+**Tasks Remaining in Work Unit**: T030-T035 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/delete_processdefinition_progress.go
+- cmd/delete_test.go
+- cmd/deploy_processdefinition_progress.go
+- cmd/deploy_test.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Process-definition delete and deployment command adapters now expose package-level clock hooks so command-family milestone tests use fake time rather than real sleeps.
+- Validation passed: `go test ./cmd -run 'TestDeleteProcessDefinitionSemanticProgressDefaultMilestonesAndFinalFlush|TestDeployProcessDefinitionSemanticProgressVerboseItemsReplaceMilestones|TestOpsPurgeAllProcessDefinitionsDeletionMilestonesStaySeparateFromDiscovery' -count=1` -> `ok github.com/grafvonb/c8volt/cmd 0.463s`.
+- Validation passed: `go test ./cmd -run 'TestDeleteProcessDefinitionSemanticProgressDefaultMilestonesAndFinalFlush|TestDeployProcessDefinitionSemanticProgressVerboseItemsReplaceMilestones|TestOpsPurgeAllProcessDefinitionsDeletionMilestonesStaySeparateFromDiscovery' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.701s`.
+- Validation passed: `go test ./cmd -run 'ProcessDefinition|Deploy|PurgeAllProcessDefinitions|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 36.355s`.
+- Validation passed: `git diff --check` -> no output.
+---
 ## Iteration 4 - 2026-08-31 19:31
 **Work Unit**: User Story 1 T007 semantic reporter and activity tests
 **Tasks Completed**:

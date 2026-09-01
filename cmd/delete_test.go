@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -94,6 +95,35 @@ func TestDeleteCommands_RegressionPreservesCleanupContracts(t *testing.T) {
 		Repeated:    false,
 		Description: "force cancellation of the process instance(s), prior to deletion",
 	})
+}
+
+// TestDeleteProcessDefinitionSemanticProgressDefaultMilestonesAndFinalFlush
+// verifies basic process-definition deletion uses paced aggregate milestones
+// and a single final flush instead of per-definition default chatter.
+func TestDeleteProcessDefinitionSemanticProgressDefaultMilestonesAndFinalFlush(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	now := time.Date(2026, 9, 1, 6, 30, 0, 0, time.UTC)
+	processDefinitionDeleteSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { processDefinitionDeleteSemanticProgressNow = time.Now })
+
+	cmd := &cobra.Command{}
+	stderr := &bytes.Buffer{}
+	cmd.SetErr(stderr)
+	progress := newProcessDefinitionDeleteSemanticProgress(cmd, 2)
+	progress.Start(2)
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportProcessDefinitionDeleteCompletionEvent(progress, "pd-1", 2, foptions.CompletionDispositionConfirmed, "")
+	reportProcessDefinitionDeleteCompletionEvent(progress, "pd-2", 2, foptions.CompletionDispositionConfirmed, "")
+	progress.Close()
+	progress.Close()
+
+	output := stderr.String()
+	require.Equal(t, 1, strings.Count(output, "deleting process definitions, 1/2 process definition(s)"))
+	require.Equal(t, 1, strings.Count(output, "deleting process definitions, 2/2 process definition(s)"))
+	require.NotContains(t, output, "pd-1 deleted")
+	require.NotContains(t, output, "pd-2 deleted")
 }
 
 // TestDeleteProcessDefinitionHelp_DocumentsTenantContract verifies destructive
@@ -760,6 +790,22 @@ func executeDeleteProcessInstanceSuccessHelper(t *testing.T, helperName string, 
 		return out, err
 	}
 	return out, nil
+}
+
+// reportProcessDefinitionDeleteCompletionEvent sends one facade-level
+// process-definition delete completion fact through the command adapter.
+func reportProcessDefinitionDeleteCompletionEvent(progress *processDefinitionDeleteSemanticProgress, identity string, total int, disposition foptions.CompletionDisposition, detail string) {
+	progress.FacadeProgress(foptions.ProgressEvent{
+		Kind: foptions.ProgressEventKindCompletion,
+		Completion: &foptions.CompletionProgress{
+			Phase:         processDefinitionDeleteCompletionPhase,
+			CoreResource:  "process definition(s)",
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+		},
+	})
 }
 
 // Helper-process entrypoint for delete process-definition target-selector validation.

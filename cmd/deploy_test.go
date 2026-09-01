@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
@@ -48,6 +49,38 @@ func TestDeployHelp_DocumentsWaitContractsAndFollowUp(t *testing.T) {
 	}, nil)
 	require.Contains(t, output, "--run")
 	require.NotContains(t, output, "--expected-status")
+}
+
+// TestDeployProcessDefinitionSemanticProgressVerboseItemsReplaceMilestones
+// verifies deployment progress writes one verbose line per process definition
+// and suppresses paced aggregate duplicates.
+func TestDeployProcessDefinitionSemanticProgressVerboseItemsReplaceMilestones(t *testing.T) {
+	resetDeployCommandStateForTest()
+	t.Cleanup(resetDeployCommandStateForTest)
+	prevVerbose := flagVerbose
+	flagVerbose = true
+	t.Cleanup(func() { flagVerbose = prevVerbose })
+	now := time.Date(2026, 9, 1, 6, 31, 0, 0, time.UTC)
+	processDefinitionDeploySemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { processDefinitionDeploySemanticProgressNow = time.Now })
+
+	cmd := &cobra.Command{}
+	stderr := &bytes.Buffer{}
+	cmd.SetErr(stderr)
+	progress := newProcessDefinitionDeploySemanticProgress(cmd)
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportProcessDefinitionDeployCompletionEvent(progress, "pd-1", 2, foptions.CompletionDispositionSubmitted, "")
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportProcessDefinitionDeployCompletionEvent(progress, "pd-2", 2, foptions.CompletionDispositionConfirmed, "")
+	progress.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "pd-1 submitted (deploying process definitions, 1/2 process definition(s))")
+	require.Contains(t, output, "pd-2 deployed (deploying process definitions, 2/2 process definition(s))")
+	require.Equal(t, 2, strings.Count(output, "deploying process definitions"))
+	require.NotContains(t, output, "\ndeploying process definitions, 1/2")
+	require.NotContains(t, output, "\ndeploying process definitions, 2/2")
 }
 
 func TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig(t *testing.T) {
@@ -465,6 +498,22 @@ func resetDeployCommandContextForTest(cmd *cobra.Command) {
 	for _, child := range cmd.Commands() {
 		resetDeployCommandContextForTest(child)
 	}
+}
+
+// reportProcessDefinitionDeployCompletionEvent sends one facade-level
+// deployment completion fact through the command adapter.
+func reportProcessDefinitionDeployCompletionEvent(progress *processDefinitionDeploySemanticProgress, identity string, total int, disposition foptions.CompletionDisposition, detail string) {
+	progress.FacadeProgress(foptions.ProgressEvent{
+		Kind: foptions.ProgressEventKindCompletion,
+		Completion: &foptions.CompletionProgress{
+			Phase:         processDefinitionDeployCompletionPhase,
+			CoreResource:  "process definition(s)",
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+		},
+	})
 }
 
 // Helper-process entrypoint for all-tenants deployment rejection.
