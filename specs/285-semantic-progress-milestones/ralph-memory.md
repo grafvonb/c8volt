@@ -58,6 +58,7 @@ Started: 2026-08-31T17:14:26Z
 - T044 updated source documentation only: README operator guidance plus affected Cobra help/examples now describe real completion activity, 10-second default milestones, immediate failures, verbose per-item/per-stage lines, quiet failure warnings, and machine-output silence. Generated CLI docs remain intentionally untouched for T045.
 - T045 regenerated CLI documentation with `make docs-content`; expected generated output is limited to semantic-progress help/example updates under `docs/cli/` plus the generated overview/build metadata in `docs/index.md`.
 - T046 reviewed `quickstart.md` and `contracts/semantic-progress-contract.md` against the implemented domain/facade completion facts, command reporter, output-mode gate, lifecycle vocabulary, and tests; no specification updates were required.
+- T047 targeted `-race` validation passed across `cmd`, `c8volt/foptions`, `c8volt/ops`, `internal/domain`, `internal/services/processinstance/...`, `internal/services/processdefinition/...`, `internal/services/resource/...`, `internal/services/ops/...`, and `toolx/logging`.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -139,10 +140,11 @@ Started: 2026-08-31T17:14:26Z
 - `go test ./cmd -run 'RetentionPolicy|OrphanProcessInstances|ProcessInstancesWithIncidents|Repair|Smoke|RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|Progress|Activity' -race -count=1`
 - `go test ./cmd -run 'TestFormatOpsSemanticProgressCompletionUsesLifecycleVocabulary|TestProcessInstanceMutationSemanticProgressScopeMapsLifecycleVocabulary|TestOpsRepairIncidentVerboseLifecycleVocabulary|TestRunProcessInstanceVerboseLifecycleVocabulary' -race -count=1`
 - `go test ./cmd -run 'ProcessInstance|Repair|RunProcessInstance|ExplicitLargeWork|Progress|Activity' -race -count=1`
+- `go test ./cmd ./c8volt/foptions ./c8volt/ops ./internal/domain ./internal/services/processinstance/... ./internal/services/processdefinition/... ./internal/services/resource/... ./internal/services/ops/... ./toolx/logging -race -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Continue Phase 6 at T047: run targeted `-race` tests for all changed packages under `cmd/`, `c8volt/foptions/`, `c8volt/ops/`, `internal/domain/`, `internal/services/processinstance/`, `internal/services/processdefinition/`, `internal/services/resource/`, `internal/services/ops/`, and `toolx/logging/`; record commands/results in `progress.md`.
+- Continue Phase 6 at T048: run `make test` from the repository root and record the full-suite result in `progress.md`; leave T049 for the subsequent scope check and final notes iteration.

@@ -907,3 +907,18 @@ Started: 2026-08-31 19:14:26
 - Reviewed the quickstart and semantic progress contract against the implemented domain/facade completion fact, command reporter, 10-second completion-driven pacing, quiet/automation/machine-output gates, and command-family lifecycle tests; no quickstart or contract update was required.
 - Validation passed: `go test ./internal/domain ./c8volt/foptions ./c8volt/ops ./cmd -run 'TestOpsCompletion|TestProgressCompletion|TestProgressConversions_.*Completion|TestOpsSemanticProgressReporter|TestOpsDurableMilestoneCadenceIsTenSeconds|TestOpsProgressChannelForModeProtectsMachineOutput|Test.*SemanticProgressModeGate|TestFormatOpsSemanticProgressCompletionUsesLifecycleVocabulary' -race -count=1` -> `ok` for all four packages.
 ---
+---
+## Iteration 11 - 2026-09-01 08:23
+**Work Unit**: Phase 6 targeted changed-package race validation
+**Tasks Completed**:
+- [x] T047: Run targeted `-race` tests for all changed packages
+**Tasks Remaining in Work Unit**: T048-T049 remain in Phase 6
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- Targeted changed-package validation passed without source changes; full-suite `make test` remains the next validation task.
+- Validation passed: `go test ./cmd ./c8volt/foptions ./c8volt/ops ./internal/domain ./internal/services/processinstance/... ./internal/services/processdefinition/... ./internal/services/resource/... ./internal/services/ops/... ./toolx/logging -race -count=1` -> `ok` for `cmd`, facade mirrors, domain, process-instance/process-definition/resource/ops service packages, and `toolx/logging`.
+---
