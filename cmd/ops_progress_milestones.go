@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
@@ -12,7 +13,10 @@ import (
 
 const opsDurableMilestoneMinimumElapsed = 10 * time.Second
 
+// opsProgressMilestonePacer rate-limits durable progress snapshots while
+// allowing shared progress callbacks to invoke it concurrently.
 type opsProgressMilestonePacer struct {
+	mu                    sync.Mutex
 	minimumElapsed        time.Duration
 	now                   func() time.Time
 	lastMilestoneAt       time.Time
@@ -43,10 +47,14 @@ func newOpsProgressMilestonePacer(now func() time.Time) *opsProgressMilestonePac
 	}
 }
 
+// AllowDurableMilestone reports whether the event advanced enough to emit one
+// durable line for the current output channel and pacing window.
 func (p *opsProgressMilestonePacer) AllowDurableMilestone(event ops.ProgressEvent, channel ops.ProgressChannel) bool {
 	if p == nil || !opsProgressDurableMilestoneChannelAllowed(channel) {
 		return false
 	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	signature, ok := opsProgressMilestoneSignatureForEvent(event)
 	if !ok {
 		return false

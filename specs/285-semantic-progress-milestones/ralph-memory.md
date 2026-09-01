@@ -41,6 +41,7 @@ Started: 2026-08-31T17:14:26Z
 - Process-instance cancel/delete command tests now pin default 10-second aggregate milestones, verbose per-root replacement, immediate failure warnings, final flush idempotence, force/no-wait deletion scope isolation, and suppression of legacy frozen-scope timer text when semantic progress is installed.
 - Process-definition delete and deployment semantic progress wrappers now accept command-local clock hooks for deterministic milestone tests; production behavior still defaults to `time.Now`.
 - T029 pins basic process-definition deletion default aggregate milestone/final flush, deployment verbose per-definition replacement, and APD deletion milestones staying separate from transient discovery progress.
+- The shared `opsProgressMilestonePacer` now serializes mutable signature and timestamp state with a mutex so concurrent command progress callbacks cannot race or emit multiple durable lines for one elapsed window.
 
 ## Gotchas
 - `progress.md` and `ralph-memory.md` started untracked in this worktree; include them with the coordinated task commit.
@@ -75,6 +76,7 @@ Started: 2026-08-31T17:14:26Z
 - `processDefinitionDeleteSemanticProgressNow` and `processDefinitionDeploySemanticProgressNow` are package-level test hooks; do not run tests that override them in parallel.
 - T030 added package-level clock hooks for process-instance purge, repair, smoke-test, run, slow-analysis enrichment, and multi-key expect semantic reporters; tests that override them must not run in parallel.
 - Lazy semantic wrappers start their pacing clock on the first matching completion fact, so default milestone tests should send an initial completion before advancing the fake clock by `opsDurableMilestoneMinimumElapsed`; eager run/expect reporters start pacing at construction.
+- `newOpsProgressMilestonePacer` captures its starting timestamp at construction; fake-clock tests must construct it before advancing the clock to the first 10-second milestone.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -122,4 +124,4 @@ Started: 2026-08-31T17:14:26Z
 - Do not reintroduce semantic progress wording into services or facade converters; completion facts remain wording-free and command renderers choose verbs.
 
 ## Current Handoff
-- Next iteration should continue User Story 2 at T031: replace the 30-second snapshot pacer with the mutex-safe completion-driven 10-second cadence, durable activation, dirty tracking, and idempotent finish in `cmd/ops_progress_milestones.go` and `cmd/ops_semantic_progress.go`.
+- Next iteration should continue User Story 2 at T032: implement compact aggregate, per-item lifecycle, affected-count, immediate failure, and final-flush rendering on the activity-aware diagnostic path in `cmd/ops_progress_render.go` and `cmd/ops_semantic_progress.go`.

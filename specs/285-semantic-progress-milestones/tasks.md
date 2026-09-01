@@ -91,7 +91,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T031 [US2] Replace the 30-second snapshot pacer with a mutex-safe completion-driven 10-second cadence, durable activation, dirty tracking, and idempotent finish in `cmd/ops_progress_milestones.go` and `cmd/ops_semantic_progress.go`
+- [x] T031 [US2] Replace the 30-second snapshot pacer with a mutex-safe completion-driven 10-second cadence, durable activation, dirty tracking, and idempotent finish in `cmd/ops_progress_milestones.go` and `cmd/ops_semantic_progress.go`
 - [ ] T032 [US2] Implement compact aggregate, per-item lifecycle, affected-count, immediate failure, and final-flush rendering on the activity-aware diagnostic path in `cmd/ops_progress_render.go` and `cmd/ops_semantic_progress.go`
 - [ ] T033 [US2] Wire reporter finish around every eligible facade call and ensure planning scopes stop before prompts in `cmd/processinstance_mutation_progress.go`, `cmd/delete_processdefinition.go`, `cmd/deploy_processdefinition.go`, `cmd/ops_purge_all_processdefinitions.go`, `cmd/ops_processinstance_purge_progress.go`, `cmd/ops_repair_progress.go`, `cmd/ops_explicit_large_work_progress.go`, `cmd/run_processinstance.go`, `cmd/ops_analyse_slow_process_instances_progress.go`, and `cmd/expect_processinstance.go`
 - [ ] T034 [US2] Suppress legacy process-instance timer and smoke-test informational progress whenever structured semantic progress is installed while retaining it for non-callback callers in `internal/services/processinstance/bulk.go` and `internal/services/ops/smoke_test_service.go`

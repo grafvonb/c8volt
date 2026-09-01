@@ -82,7 +82,6 @@ Started: 2026-08-31 19:14:26
 - Reporter validation passed with `go test ./cmd -run 'TestOpsSemanticProgress' -race -count=1`, `go test ./cmd -run 'Progress|Activity' -race -count=1`, `go test ./internal/domain ./c8volt/foptions ./c8volt/ops ./toolx/logging ./internal/services -race -count=1`, and `git diff --check`.
 - Broader command progress tests require applying output-mode globals after `resetOpsSlowProcessAnalysisTestFlags(t)` because the helper now clears shared mode flags to prevent cross-test leakage.
 ---
----
 ## Iteration 23 - 2026-09-01 06:10
 **Work Unit**: User Story 2 process-definition deletion, deployment, and all-definition purge durable milestone tests
 **Tasks Completed**:
@@ -530,5 +529,25 @@ Started: 2026-08-31 19:14:26
 - Validation passed: `go test ./cmd -run 'TestOpsExecuteRetentionPolicyDefaultDeletionMilestonesAndFinalFlush|TestOpsPurgeOrphanProcessInstancesDefaultDeletionMilestonesOmitUnknownAffected|TestOpsPurgeProcessInstancesWithIncidentsVerboseDeletionReplacesMilestones|TestOpsRepairIncidentDefaultFailureWarnsAndFlushes|TestOpsRepairProcessInstanceQuietProgressShowsOnlyFailureWarning|TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation|TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush|TestOpsAnalyseSlowProcessInstancesSemanticCompletionMilestones|TestExpectProcessInstanceDefaultMilestonesAndFinalFlush' -count=1` -> `ok github.com/grafvonb/c8volt/cmd 0.631s`.
 - Validation passed: `go test ./cmd -run 'TestOpsExecuteRetentionPolicyDefaultDeletionMilestonesAndFinalFlush|TestOpsPurgeOrphanProcessInstancesDefaultDeletionMilestonesOmitUnknownAffected|TestOpsPurgeProcessInstancesWithIncidentsVerboseDeletionReplacesMilestones|TestOpsRepairIncidentDefaultFailureWarnsAndFlushes|TestOpsRepairProcessInstanceQuietProgressShowsOnlyFailureWarning|TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation|TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush|TestOpsAnalyseSlowProcessInstancesSemanticCompletionMilestones|TestExpectProcessInstanceDefaultMilestonesAndFinalFlush' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 2.151s`.
 - Validation passed: `go test ./cmd -run 'RetentionPolicy|OrphanProcessInstances|ProcessInstancesWithIncidents|Repair|Smoke|RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 36.938s`.
+- Validation passed: `git diff --check` -> no output.
+---
+---
+## Iteration 25 - 2026-09-01 06:30
+**Work Unit**: User Story 2 completion-driven milestone pacer implementation
+**Tasks Completed**:
+- [x] T031: Replace the 30-second snapshot pacer with a mutex-safe completion-driven 10-second cadence, durable activation, dirty tracking, and idempotent finish
+**Tasks Remaining in Work Unit**: T032-T035 remain in User Story 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_progress_milestones.go
+- cmd/ops_progress_test.go
+- specs/285-semantic-progress-milestones/tasks.md
+- specs/285-semantic-progress-milestones/ralph-memory.md
+- specs/285-semantic-progress-milestones/progress.md
+**Learnings**:
+- The semantic reporter already held the completion-driven dirty-state and idempotent close behavior from the US2 test slices; this iteration closed the remaining shared pacer race by serializing mutable milestone state.
+- Validation passed: `go test ./cmd -run 'TestOpsProgressDurableMilestonePacerSerializesConcurrentCallbacks|TestOpsProgressDurableMilestoneRequiresElapsedTimeAndPageProgress|TestOpsProgressDurableMilestoneRequiresForwardProgress|TestOpsProgressDurableMilestoneAllowsFrozenScopeProgress|TestOpsProgressDurableMilestoneSuppressesTimerOnlyETA|TestOpsDurableMilestoneCadenceIsTenSeconds' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.837s`.
+- Validation passed: `go test ./cmd -run 'TestOpsSemanticProgressReporterKeepsCleanSubTenSecondRunsDurablySilent|TestOpsSemanticProgressReporterPrintsFirstTenSecondCompletion|TestOpsSemanticProgressReporterSuppressesRapidCompletionDurableLines|TestOpsSemanticProgressReporterFlushesActivatedDurableProgressOnce|TestOpsSemanticProgressReporterWarnsImmediatelyForFailures|TestOpsSemanticProgressReporterCloseIsIdempotent' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 1.969s`.
+- Validation passed: `go test ./cmd -run 'TestOpsSemanticProgressReporter|TestOpsProgressDurableMilestone|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 7.219s`.
 - Validation passed: `git diff --check` -> no output.
 ---

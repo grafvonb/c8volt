@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -369,6 +370,42 @@ func TestOpsProgressDurableMilestoneRequiresForwardProgress(t *testing.T) {
 	now = now.Add(opsDurableMilestoneMinimumElapsed)
 
 	require.False(t, pacer.AllowDurableMilestone(event, channel))
+}
+
+// TestOpsProgressDurableMilestonePacerSerializesConcurrentCallbacks verifies
+// shared command progress callbacks cannot race the pacer's mutable milestone
+// state or emit more than one line for a single elapsed window.
+func TestOpsProgressDurableMilestonePacerSerializesConcurrentCallbacks(t *testing.T) {
+	startedAt := time.Date(2026, time.August, 4, 12, 0, 0, 0, time.UTC)
+	now := startedAt
+	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
+	now = startedAt.Add(opsDurableMilestoneMinimumElapsed)
+	channel := ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}
+	results := make(chan bool, 64)
+	var wg sync.WaitGroup
+
+	for i := 1; i <= cap(results); i++ {
+		i := i
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			event := ops.ProgressEvent{
+				Kind: ops.ProgressEventKindPage,
+				Page: &ops.PageProgress{Phase: "discovering process instances", CurrentPage: i, Seen: i * 100, Selected: i * 90},
+			}
+			results <- pacer.AllowDurableMilestone(event, channel)
+		}()
+	}
+	wg.Wait()
+	close(results)
+
+	allowed := 0
+	for result := range results {
+		if result {
+			allowed++
+		}
+	}
+	require.Equal(t, 1, allowed)
 }
 
 // TestOpsProgressDurableMilestoneAllowsFrozenScopeProgress verifies frozen-scope counters can drive sparse default-human milestones.
