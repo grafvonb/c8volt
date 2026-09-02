@@ -13,8 +13,8 @@
 
 **Purpose**: Capture mandatory implementation context and verify the exact repository patterns before code changes.
 
-- [ ] T001 Create `specs/289-api-latency-diagnostics/progress.md` with the Ralph context path, issue `#289`, branch, validation log, and codebase-pattern sections
-- [ ] T002 Inspect the nearest ops analyse/execute commands, facade/service seams, `toolx/pool`, SimpleUserTask fixtures, version capabilities, progress helpers, shared report helpers, command contracts, and integration suites; record only reusable findings in `specs/289-api-latency-diagnostics/progress.md`
+- [x] T001 Create `specs/289-api-latency-diagnostics/progress.md` with the Ralph context path, issue `#289`, branch, validation log, and codebase-pattern sections
+- [x] T002 Inspect the nearest ops analyse/execute commands, facade/service seams, `toolx/pool`, SimpleUserTask fixtures, version capabilities, progress helpers, shared report helpers, command contracts, and integration suites; record only reusable findings in `specs/289-api-latency-diagnostics/progress.md`
 
 ---
 
