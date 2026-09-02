@@ -4,7 +4,7 @@ Feature: 289-api-latency-diagnostics
 Started: 2026-09-02T04:58:25Z
 
 ## Codebase Patterns
-- First incomplete work now begins at US1 T023; foundational API-latency domain/service/facade contracts T003-T013 and read-only analyse implementation T014-T022 are complete.
+- First incomplete work now begins at US2 T024; foundational API-latency domain/service/facade contracts T003-T013 and read-only analyse implementation/evidence T014-T023 are complete.
 - Commands own Cobra construction, local flag validation, confirmation, activity/progress setup, report-path validation, and final rendering. Follow `cmd/ops_analyse_slow_process_instances.go` for read-only analysis wiring and `cmd/ops_execute_smoketest.go` for active ops execution wiring.
 - Public `c8volt/ops` facade methods are thin: map public request to `internal/domain`, delegate to `internal/services/ops.API`, map results back, and convert errors with `ferrors.FromDomain`.
 - `internal/services/ops.Service` is the owning layer for stage planning, remote workflow mechanics, worker scheduling, cleanup orchestration, and progress facts. `NewWithAnalysisDependencies` already carries cluster, process-instance, process-definition, resource, job, element, version, and logger dependencies for this feature.
@@ -36,7 +36,7 @@ Started: 2026-09-02T04:58:25Z
 ## Do Not Repeat
 - Do not create a new report framework, worker framework, fixture, generated client, or versioned latency adapter for this feature.
 - Do not hand-edit generated CLI docs under `docs/cli`; update command metadata and run `make docs-content` when command behavior exists.
-- `--report-file`/`--report-format` are currently validated on the read-only command, but actual report writing remains planned in US4 T048/T052/T053; do not mark T023 complete if treating the quickstart JSON/report scenario literally before report wiring exists.
+- `--report-file`/`--report-format` are currently validated on the read-only command, but actual report writing remains planned in US4 T048/T052/T053; T023 evidence intentionally covered executable read-only/default-shape, JSON stdout, invalid-budget, zero-mutation, and bounded-worker behavior without claiming report-file output is implemented.
 
 ## Current Handoff
-- Next iteration should continue US1 at T023. Run and record the implemented read-only quickstart evidence for `ops analyse api-latency`; either leave the report-file quickstart case explicitly pending until US4 report wiring or split T023 so the report-specific validation tracks T048/T052/T053.
+- Next iteration should start US2 at T024 by adding active preflight/version/dry-run service tests in `internal/services/ops/api_latency_test.go`; keep active mutation planning in `internal/services/ops` and leave report-file output evidence to US4 T048/T052/T053.

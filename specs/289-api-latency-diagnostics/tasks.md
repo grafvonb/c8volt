@@ -65,7 +65,7 @@
 - [x] T020 [US1] Implement compact read-only stage, finding, notice, limitation, and outcome rendering through existing human/JSON helpers in `cmd/cmd_views_ops_api_latency.go`
 - [x] T021 [US1] Centralize API-latency progress mode, rate-limited aggregate progress, and JSON/automation/quiet suppression in `cmd/ops_api_latency_progress.go`
 - [x] T022 [US1] Run `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1` and record US1 validation in `specs/289-api-latency-diagnostics/progress.md`
-- [ ] T023 [US1] Execute the read-only quickstart scenarios and record the zero-mutation and bounded-evidence results in `specs/289-api-latency-diagnostics/progress.md`
+- [x] T023 [US1] Execute the read-only quickstart scenarios and record the zero-mutation and bounded-evidence results in `specs/289-api-latency-diagnostics/progress.md`
 
 **Checkpoint**: User Story 1 is a complete, independently testable production-safe MVP.
 

@@ -47,7 +47,6 @@ Started: 2026-09-02 06:58:25
 - Existing version boundaries relevant to this feature: v8.7 process-instance direct lookup is unsupported; full process-definition history deletion requires v8.9 or newer; v8.8 can own created keys but cleanup-enabled active latency must block before mutation unless `--no-cleanup` is explicit.
 - Integration family coverage currently lives in `integration/cli/ops_analyse_test.go` and broader real-state/volume suites. Polish tasks must extend existing ops analyse/execute coverage and command inventory rather than adding a separate target.
 
----
 ## Iteration 1 - 2026-09-02 07:02
 **Work Unit**: Phase 1 Setup
 **Tasks Completed**:
@@ -138,4 +137,20 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - Read-only analysis now completes bounded topology/search/keyed-read stages without mutations; fake command scenarios validate human output, JSON envelope purity, tenant context, protected progress modes, and pre-client invalid-budget rejection.
 - Validation passed: `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./cmd -run 'OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `go test ./docsgen -count=1`; `make docs-content`; `git diff --check`.
+---
+---
+## Iteration 4 - 2026-09-02 07:47
+**Work Unit**: User Story 1: read-only quickstart evidence
+**Tasks Completed**:
+- [x] T023: Execute the read-only quickstart scenarios and record the zero-mutation and bounded-evidence results
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Read-only quickstart evidence was validated through fake-server command tests and service bounds tests: invalid `--count 4 --workers 4` exits before remote work, human and JSON executions make only topology/search/keyed-read requests with no deploy/create/cancel/delete calls, JSON stdout remains one envelope, default planning still allocates stages 1/2/4 as 5/6/9, and worker high-water evidence stays within bounds.
+- Report-file execution is not claimed by US1 evidence because report writing remains assigned to US4 T048/T052/T053; current read-only report flags are validated only.
+- Validation passed: `go test ./cmd -run 'TestOpsAnalyseAPILatency(Default|ReadOnlyCommandRendersHuman|JSONUsesSingleEnvelope|InvalidBudgetSkipsRemote)' -count=1`; `go test ./internal/services/ops -run 'TestAPILatency(PlanDefault|ReadOnlyUsesBoundedStageWorkers|ReadOnlyMeasuresSearchesAndDerivedReads|ReadOnlyReportsUnavailableKeyedEvidence)' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`.
 ---
