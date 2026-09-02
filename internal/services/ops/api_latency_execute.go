@@ -238,11 +238,18 @@ func (s *Service) executeAPILatencyActiveStages(ctx context.Context, result d.AP
 	ownershipRegistry := newAPILatencyOwnershipRegistry(ownership)
 	result.Ownership = ownershipRegistry.snapshot()
 	if err != nil {
+		if pdKey, keyErr := apiLatencyDeploymentProcessDefinitionKey(deployment, result.Plan.Fixture); keyErr == nil {
+			ownershipRegistry.registerProcessDefinitionKey(pdKey)
+		}
 		result.Stages = BuildAPILatencyStageResults(result.Plan, measurements)
 		result.Findings = EvaluateAPILatencyFindings(result.Topology, result.Stages)
 		result.Ownership = ownershipRegistry.snapshot()
 		result.Outcome = d.APILatencyOutcomeFailed
-		return finishAPILatencyActiveResult(result, fmt.Errorf("deploy API latency fixture: %w", err))
+		runErr := fmt.Errorf("deploy API latency fixture: %w", err)
+		if cleanupErr := s.finalizeAPILatencyCleanup(ctx, &result, opts...); cleanupErr != nil {
+			runErr = errors.Join(runErr, cleanupErr)
+		}
+		return finishAPILatencyActiveResult(result, runErr)
 	}
 	pdKey, err := apiLatencyDeploymentProcessDefinitionKey(deployment, result.Plan.Fixture)
 	if err != nil {
@@ -334,10 +341,13 @@ func (s *Service) deployAPILatencyFixture(ctx context.Context, plan d.APILatency
 	}
 	deployOpts := append([]services.CallOption{}, opts...)
 	deployOpts = append(deployOpts, services.WithNoWait())
+	var deployErr error
 	deployment, measurement := measureAPILatencyCall(ctx, 1, d.APILatencyCategoryFixtureDeploy, d.APILatencyMeasurementKindSetup, func(ctx context.Context) (d.Deployment, error) {
-		return s.resourceAPI.Deploy(ctx, units, deployOpts...)
+		deployment, err := s.resourceAPI.Deploy(ctx, units, deployOpts...)
+		deployErr = err
+		return deployment, err
 	})
-	return deployment, measurement, err
+	return deployment, measurement, deployErr
 }
 
 // apiLatencyDeploymentUnits reads the exact SimpleUserTask fixture selected during active preflight.

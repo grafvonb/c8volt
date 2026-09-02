@@ -800,6 +800,45 @@ func TestAPILatencyActiveExecutionUsesExactReturnedKeysAndCleansUp(t *testing.T)
 	}
 }
 
+// TestAPILatencyActiveDeployErrorWithReturnedKeyCleansExactDefinition verifies failed deploy responses still preserve cleanup authority.
+func TestAPILatencyActiveDeployErrorWithReturnedKeyCleansExactDefinition(t *testing.T) {
+	t.Parallel()
+
+	var cleanupTargets testx.SafeSlice[string]
+	cluster := &stubSmokeTestClusterAPI{topology: d.Topology{GatewayVersion: "8.9.4"}}
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(context.Context, []d.DeploymentUnitData, ...services.CallOption) (d.Deployment, error) {
+			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
+				ProcessDefinitionId:  "C89_SimpleUserTask",
+				ProcessDefinitionKey: "pd-deploy-failed",
+			}}}}, d.ErrGatewayTimeout
+		},
+		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			cleanupTargets.Append("pd:" + key)
+			return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: 202, Status: "accepted", DeleteHistory: true}, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(cluster, stubProcessInstanceAPI{}, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+		Count:    1,
+		Workers:  1,
+		TenantID: "tenant-a",
+		Backoff:  d.APILatencyBackoff{MaxRetries: 0},
+	})
+
+	require.ErrorIs(t, err, d.ErrGatewayTimeout)
+	require.Equal(t, d.APILatencyOutcomeFailed, got.Outcome)
+	require.NotNil(t, got.Ownership)
+	require.True(t, got.Ownership.DeploymentSubmitted)
+	require.Equal(t, "pd-deploy-failed", got.Ownership.ProcessDefinitionKey)
+	require.Equal(t, []string{"pd:pd-deploy-failed"}, cleanupTargets.Snapshot())
+	require.Len(t, got.Cleanup, 1)
+	require.Equal(t, d.APILatencyCleanupResourceProcessDefinition, got.Cleanup[0].ResourceType)
+	require.Equal(t, d.APILatencyCleanupStatusDeleted, got.Cleanup[0].Status)
+	require.Empty(t, got.Cleanup[0].RecoveryCommand)
+	requireAPILatencyCategoryClass(t, got.Stages[0], d.APILatencyCategoryFixtureDeploy, d.APILatencyClassificationTimeout)
+}
+
 // TestAPILatencyActiveExecutionBoundsWorkersAndClassifiesVisibilityErrors verifies bounded stage work and safe active evidence.
 func TestAPILatencyActiveExecutionBoundsWorkersAndClassifiesVisibilityErrors(t *testing.T) {
 	var activeCreates atomic.Int64

@@ -331,3 +331,23 @@ Started: 2026-09-02 06:58:25
 - The race gate exposed a shared test-stub race in `stubSmokeTestClusterAPI.topologyCalls`; making that counter atomic allowed `go test ./internal/services/ops ./cmd -run 'APILatency' -race -count=1` to pass.
 - Validation passed: `go test ./cmd -run 'TestOpsExecuteAPILatency(InterruptContextScopesActiveExecution|CleanupFailureUsesJSONErrorEnvelope)|TestRenderOpsExecuteAPILatencyHumanRendersRetainedAndRecoveryResources' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `go test ./internal/services/ops ./cmd -run 'APILatency' -race -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
 ---
+---
+## Iteration 14 - 2026-09-02 09:09
+**Work Unit**: User Story 3: active terminal outcome and evidence preservation
+**Tasks Completed**:
+- [x] T044: Preserve interrupted, partial, failed, and completed-retained outcomes while returning available service/facade evidence
+- [x] T046: Run cancellation/cleanup race-focused tests and record US3 validation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- `c8volt/ops/client_test.go`
+- `internal/services/ops/api_latency_execute.go`
+- `internal/services/ops/api_latency_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Deploy call errors were being classified in setup measurements but not returned from `deployAPILatencyFixture`; active execution could continue into create calls after a failed deploy.
+- Failed deploy responses that still include an exact process-definition key now preserve ownership and attempt exact cleanup while returning a failed outcome and the original deploy error.
+- Validation passed: `go test ./internal/services/ops -run 'TestAPILatencyActiveDeployErrorWithReturnedKeyCleansExactDefinition' -count=1`; `go test ./c8volt/ops -run 'TestClientExecuteAPILatencyTestPreservesTerminalOutcomeEvidence' -count=1`; `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./internal/services/ops ./cmd -run 'APILatency' -race -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
+---

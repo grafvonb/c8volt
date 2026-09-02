@@ -118,9 +118,9 @@
 - [x] T041 [US3] Extend cleanup orchestration to run on success and every incomplete terminal path with `context.WithoutCancel`, a bounded completion context, exact PI-before-PD deletion, and joined partial errors in `internal/services/ops/api_latency_cleanup.go`
 - [x] T042 [US3] Implement intentional retention, unsupported-cleanup preflight blocking, remaining-resource classification, and exact-key manual recovery guidance in `internal/services/ops/api_latency_cleanup.go`
 - [x] T043 [US3] Install scoped signal-aware cancellation for the active execution window without changing global command behavior in `cmd/ops_execute_api_latency.go`
-- [ ] T044 [US3] Preserve interrupted, partial, failed, and completed-retained outcomes while returning available service/facade evidence in `internal/services/ops/api_latency_execute.go` and `c8volt/ops/client.go`
+- [x] T044 [US3] Preserve interrupted, partial, failed, and completed-retained outcomes while returning available service/facade evidence in `internal/services/ops/api_latency_execute.go` and `c8volt/ops/client.go`
 - [x] T045 [US3] Render retained resources, cleanup attempts/results, remaining exact keys, recovery guidance, and partial/interrupted outcomes compactly in `cmd/cmd_views_ops_api_latency.go`
-- [ ] T046 [US3] Run cancellation/cleanup race-focused tests with `go test ./internal/services/ops ./cmd -run 'APILatency' -race -count=1` and record US3 validation in `specs/289-api-latency-diagnostics/progress.md`
+- [x] T046 [US3] Run cancellation/cleanup race-focused tests with `go test ./internal/services/ops ./cmd -run 'APILatency' -race -count=1` and record US3 validation in `specs/289-api-latency-diagnostics/progress.md`
 
 **Checkpoint**: User Story 3 proves that active execution cannot silently orphan or over-delete resources it owns.
 

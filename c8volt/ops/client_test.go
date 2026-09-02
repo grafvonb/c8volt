@@ -961,6 +961,113 @@ func TestClientExecuteAPILatencyTestPreservesPartialCleanupEvidence(t *testing.T
 	require.Equal(t, "c8volt delete process-definition --key 2251799813685250 --auto-confirm", got.Cleanup[2].RecoveryCommand)
 }
 
+// TestClientExecuteAPILatencyTestPreservesTerminalOutcomeEvidence verifies active terminal states keep partial service evidence.
+func TestClientExecuteAPILatencyTestPreservesTerminalOutcomeEvidence(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		outcome     d.APILatencyOutcome
+		serviceErr  error
+		wantErr     error
+		cleanupStat d.APILatencyCleanupStatus
+	}{
+		{
+			name:        "interrupted",
+			outcome:     d.APILatencyOutcomeInterrupted,
+			serviceErr:  context.Canceled,
+			wantErr:     context.Canceled,
+			cleanupStat: d.APILatencyCleanupStatusDeleted,
+		},
+		{
+			name:        "partial",
+			outcome:     d.APILatencyOutcomePartial,
+			serviceErr:  d.ErrGatewayTimeout,
+			wantErr:     ferr.ErrTimeout,
+			cleanupStat: d.APILatencyCleanupStatusUnknown,
+		},
+		{
+			name:        "failed",
+			outcome:     d.APILatencyOutcomeFailed,
+			serviceErr:  d.ErrPrecondition,
+			wantErr:     ferr.ErrLocalPrecondition,
+			cleanupStat: d.APILatencyCleanupStatusFailed,
+		},
+		{
+			name:        "completed retained",
+			outcome:     d.APILatencyOutcomeCompletedRetained,
+			cleanupStat: d.APILatencyCleanupStatusRetained,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			api := stubOpsService{
+				executeAPILatencyTest: func(_ context.Context, request d.APILatencyRequest, _ ...services.CallOption) (d.APILatencyResult, error) {
+					return d.APILatencyResult{
+						SchemaVersion: d.APILatencySchemaVersion,
+						Request:       request,
+						Plan: d.APILatencyPlan{
+							RunID: "run-terminal",
+							Mode:  d.APILatencyModeActive,
+							Cleanup: &d.APILatencyCleanupPlan{
+								Requested:         tt.cleanupStat != d.APILatencyCleanupStatusRetained,
+								Supported:         true,
+								IndependentBudget: 45 * time.Second,
+							},
+						},
+						Ownership: &d.APILatencyOwnership{
+							RunID:                "run-terminal",
+							FixtureName:          "embedded/processdefinitions/C89_SimpleUserTask.bpmn",
+							BpmnProcessID:        "C89_SimpleUserTask",
+							DeploymentSubmitted:  true,
+							ProcessDefinitionKey: "pd-terminal",
+							ProcessInstanceKeys:  []string{"pi-terminal"},
+						},
+						Visibility: []d.APILatencyVisibilityResult{{
+							ProcessInstanceKey:  "pi-terminal",
+							Attempts:            2,
+							AttemptLimit:        3,
+							FinalClassification: d.APILatencyClassificationNotFound,
+						}},
+						Cleanup: []d.APILatencyCleanupRecord{{
+							ResourceType:    d.APILatencyCleanupResourceProcessInstance,
+							Key:             "pi-terminal",
+							Status:          tt.cleanupStat,
+							Classification:  d.APILatencyClassificationTimeout,
+							RecoveryCommand: "c8volt delete process-instance --key pi-terminal --force --auto-confirm",
+						}},
+						Outcome: tt.outcome,
+					}, tt.serviceErr
+				},
+			}
+
+			got, err := New(api, slog.Default()).ExecuteAPILatencyTest(context.Background(), APILatencyRequest{
+				Mode:    APILatencyModeActive,
+				Count:   1,
+				Workers: 1,
+			})
+
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+			require.Equal(t, APILatencyOutcome(tt.outcome), got.Outcome)
+			require.Equal(t, "run-terminal", got.Plan.RunID)
+			require.Equal(t, 45*time.Second, got.Plan.Cleanup.IndependentBudget)
+			require.True(t, got.Ownership.DeploymentSubmitted)
+			require.Equal(t, "pd-terminal", got.Ownership.ProcessDefinitionKey)
+			require.Equal(t, []string{"pi-terminal"}, got.Ownership.ProcessInstanceKeys)
+			require.Equal(t, APILatencyClassificationNotFound, got.Visibility[0].FinalClassification)
+			require.Equal(t, APILatencyCleanupStatus(tt.cleanupStat), got.Cleanup[0].Status)
+			require.Equal(t, "c8volt delete process-instance --key pi-terminal --force --auto-confirm", got.Cleanup[0].RecoveryCommand)
+		})
+	}
+}
+
 // TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary verifies the slow-analysis facade stays thin.
 func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing.T) {
 	t.Parallel()
