@@ -206,18 +206,20 @@ type APILatencyBackoff struct {
 
 // APILatencyRequest captures the public input for one API latency diagnostic.
 type APILatencyRequest struct {
-	CommandName string              `json:"commandName,omitempty"`
-	Mode        APILatencyMode      `json:"mode,omitempty"`
-	Count       int                 `json:"count,omitempty"`
-	Workers     int                 `json:"workers,omitempty"`
-	DryRun      bool                `json:"dryRun,omitempty"`
-	NoCleanup   bool                `json:"noCleanup,omitempty"`
-	TenantID    string              `json:"tenantId,omitempty"`
-	HTTPTimeout time.Duration       `json:"httpTimeout,omitempty"`
-	Backoff     APILatencyBackoff   `json:"backoff,omitempty"`
-	OutputMode  string              `json:"outputMode,omitempty"`
-	StartedAt   time.Time           `json:"startedAt,omitempty"`
-	Progress    func(ProgressEvent) `json:"-"`
+	CommandName  string              `json:"commandName,omitempty"`
+	Mode         APILatencyMode      `json:"mode,omitempty"`
+	Count        int                 `json:"count,omitempty"`
+	Workers      int                 `json:"workers,omitempty"`
+	DryRun       bool                `json:"dryRun,omitempty"`
+	NoCleanup    bool                `json:"noCleanup,omitempty"`
+	TenantID     string              `json:"tenantId,omitempty"`
+	HTTPTimeout  time.Duration       `json:"httpTimeout,omitempty"`
+	Backoff      APILatencyBackoff   `json:"backoff,omitempty"`
+	OutputMode   string              `json:"outputMode,omitempty"`
+	ReportFile   string              `json:"reportFile,omitempty"`
+	ReportFormat string              `json:"reportFormat,omitempty"`
+	StartedAt    time.Time           `json:"startedAt,omitempty"`
+	Progress     func(ProgressEvent) `json:"-"`
 }
 
 // APILatencyPlan is the immutable bounded stage and derived-request plan.

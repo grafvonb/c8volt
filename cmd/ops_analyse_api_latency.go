@@ -61,8 +61,15 @@ var opsAnalyseAPILatencyCmd = &cobra.Command{
 		})
 		progress.Close()
 		result = attachOpsAPILatencyResultContext(cfg, result)
+		result = attachOpsAPILatencyReportRequest(result, flagOpsAnalyseAPILatencyReportFile, flagOpsAnalyseAPILatencyReportFormat)
 		if err != nil {
+			if reportErr := writeOpsAPILatencyReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops analyse api-latency: %w; write report: %v", err, reportErr))
+			}
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops analyse api-latency: %w", err))
+		}
+		if err := writeOpsAPILatencyReport(result, cfg, OpsWorkflowReportPreserveExisting); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("write ops analyse api-latency report: %w", err))
 		}
 		if err := renderOpsAPILatencyResult(cmd, result); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render ops analyse api-latency: %w", err))
@@ -125,15 +132,17 @@ func buildOpsAnalyseAPILatencyRequest(cmd *cobra.Command, cfg *config.Config) (o
 		return ops.APILatencyRequest{}, invalidFlagValuef("invalid HTTP timeout %q: %v", cfg.HTTP.Timeout, err)
 	}
 	return ops.APILatencyRequest{
-		CommandName: opsAnalyseAPILatencyCommandName,
-		Mode:        ops.APILatencyModeReadOnly,
-		Count:       flagOpsAnalyseAPILatencyCount,
-		Workers:     flagOpsAnalyseAPILatencyWorkers,
-		TenantID:    cfg.App.Tenant,
-		HTTPTimeout: httpTimeout,
-		Backoff:     opsAPILatencyBackoffFromConfig(cfg.App.Backoff),
-		OutputMode:  pickMode().String(),
-		StartedAt:   time.Now().UTC(),
+		CommandName:  opsAnalyseAPILatencyCommandName,
+		Mode:         ops.APILatencyModeReadOnly,
+		Count:        flagOpsAnalyseAPILatencyCount,
+		Workers:      flagOpsAnalyseAPILatencyWorkers,
+		TenantID:     cfg.App.Tenant,
+		HTTPTimeout:  httpTimeout,
+		Backoff:      opsAPILatencyBackoffFromConfig(cfg.App.Backoff),
+		OutputMode:   pickMode().String(),
+		ReportFile:   flagOpsAnalyseAPILatencyReportFile,
+		ReportFormat: flagOpsAnalyseAPILatencyReportFormat,
+		StartedAt:    time.Now().UTC(),
 	}, nil
 }
 

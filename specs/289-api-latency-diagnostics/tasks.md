@@ -135,15 +135,15 @@
 ### Tests for User Story 4
 
 - [x] T047 [P] [US4] Add failing human and JSON renderer tests for stable schema/context, ordered stages/classifications/findings, read-only omission of active fields, active ownership/visibility/cleanup fields, compact wording, and five-second in-memory render budget in `cmd/ops_analyse_api_latency_test.go` and `cmd/ops_execute_api_latency_test.go`
-- [ ] T048 [US4] Add failing report tests for Markdown/JSON inference, explicit override, dependent flags, `0600` files, missing parents, preserve/overwrite policy, raw JSON payload, Markdown parity, report-written line, and partial-result preservation in `cmd/ops_analyse_api_latency_test.go` and `cmd/ops_execute_api_latency_test.go`
+- [x] T048 [US4] Add failing report tests for Markdown/JSON inference, explicit override, dependent flags, `0600` files, missing parents, preserve/overwrite policy, raw JSON payload, Markdown parity, report-written line, and partial-result preservation in `cmd/ops_analyse_api_latency_test.go` and `cmd/ops_execute_api_latency_test.go`
 - [ ] T049 [US4] Add failing output-safety and progress tests covering tokens, authorization headers, secrets, variables, payloads, raw response bodies, unbounded errors, JSON/automation silence, quiet failures, and verbose/debug detail in `cmd/ops_analyse_api_latency_test.go` and `cmd/ops_execute_api_latency_test.go`
 - [ ] T050 [US4] Add failing subprocess tests proving completed abnormal evidence exits successfully while invalid, incomplete, report-failed, and requested-cleanup-failed runs use the established nonzero error envelope in `cmd/ops_analyse_api_latency_test.go` and `cmd/ops_execute_api_latency_test.go`
 
 ### Implementation for User Story 4
 
 - [ ] T051 [US4] Complete shared compact human and stable command-envelope JSON rendering from the one API-latency result model in `cmd/cmd_views_ops_api_latency.go`
-- [ ] T052 [US4] Implement command-specific Markdown and raw JSON report rendering by reusing `cmd/ops_report.go` and existing ops Markdown helpers from `cmd/cmd_views_ops_api_latency.go`
-- [ ] T053 [US4] Wire exact shared report flag/path/write ordering, format inference, partial report attempts, and actual-mutation write mode into `cmd/ops_analyse_api_latency.go` and `cmd/ops_execute_api_latency.go`
+- [x] T052 [US4] Implement command-specific Markdown and raw JSON report rendering by reusing `cmd/ops_report.go` and existing ops Markdown helpers from `cmd/cmd_views_ops_api_latency.go`
+- [x] T053 [US4] Wire exact shared report flag/path/write ordering, format inference, partial report attempts, and actual-mutation write mode into `cmd/ops_analyse_api_latency.go` and `cmd/ops_execute_api_latency.go`
 - [ ] T054 [US4] Attach only safe build/profile/tenant/version context and fixed limitations/notices to both results in `cmd/ops_analyse_api_latency.go`, `cmd/ops_execute_api_latency.go`, and `cmd/cmd_views_ops_api_latency.go`
 - [ ] T055 [US4] Map completed-abnormal results to success and incomplete/report/cleanup failures to existing command errors without a new partial stdout envelope in `cmd/ops_analyse_api_latency.go` and `cmd/ops_execute_api_latency.go`
 - [ ] T056 [US4] Run `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1` and record US4 validation in `specs/289-api-latency-diagnostics/progress.md`

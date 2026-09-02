@@ -80,8 +80,15 @@ var opsExecuteAPILatencyCmd = &cobra.Command{
 		})
 		progress.Close()
 		result = attachOpsAPILatencyResultContext(cfg, result)
+		result = attachOpsAPILatencyReportRequest(result, flagOpsExecuteAPILatencyReportFile, flagOpsExecuteAPILatencyReportFormat)
 		if err != nil {
+			if reportErr := writeOpsAPILatencyReport(result, cfg, opsExecuteAPILatencyReportWriteMode(result)); reportErr != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops execute api-latency-test: %w; write report: %v", err, reportErr))
+			}
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops execute api-latency-test: %w", err))
+		}
+		if err := writeOpsAPILatencyReport(result, cfg, opsExecuteAPILatencyReportWriteMode(result)); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("write ops execute api-latency-test report: %w", err))
 		}
 		if err := renderOpsAPILatencyResult(cmd, result); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render ops execute api-latency-test: %w", err))
@@ -155,17 +162,19 @@ func buildOpsExecuteAPILatencyRequest(cmd *cobra.Command, cfg *config.Config) (o
 		return ops.APILatencyRequest{}, invalidFlagValuef("invalid HTTP timeout %q: %v", cfg.HTTP.Timeout, err)
 	}
 	return ops.APILatencyRequest{
-		CommandName: opsExecuteAPILatencyCommandName,
-		Mode:        ops.APILatencyModeActive,
-		Count:       flagOpsExecuteAPILatencyCount,
-		Workers:     flagOpsExecuteAPILatencyWorkers,
-		DryRun:      flagOpsExecuteAPILatencyDryRun,
-		NoCleanup:   flagOpsExecuteAPILatencyNoCleanup,
-		TenantID:    cfg.App.Tenant,
-		HTTPTimeout: httpTimeout,
-		Backoff:     opsAPILatencyBackoffFromConfig(cfg.App.Backoff),
-		OutputMode:  pickMode().String(),
-		StartedAt:   time.Now().UTC(),
+		CommandName:  opsExecuteAPILatencyCommandName,
+		Mode:         ops.APILatencyModeActive,
+		Count:        flagOpsExecuteAPILatencyCount,
+		Workers:      flagOpsExecuteAPILatencyWorkers,
+		DryRun:       flagOpsExecuteAPILatencyDryRun,
+		NoCleanup:    flagOpsExecuteAPILatencyNoCleanup,
+		TenantID:     cfg.App.Tenant,
+		HTTPTimeout:  httpTimeout,
+		Backoff:      opsAPILatencyBackoffFromConfig(cfg.App.Backoff),
+		OutputMode:   pickMode().String(),
+		ReportFile:   flagOpsExecuteAPILatencyReportFile,
+		ReportFormat: flagOpsExecuteAPILatencyReportFormat,
+		StartedAt:    time.Now().UTC(),
 	}, nil
 }
 
@@ -204,4 +213,15 @@ func opsExecuteAPILatencyConfirmationPrompt(request ops.APILatencyRequest) strin
 		request.Count,
 		cleanup,
 	)
+}
+
+// opsExecuteAPILatencyReportWriteMode allows overwrite only after exact active ownership indicates mutation.
+func opsExecuteAPILatencyReportWriteMode(result ops.APILatencyResult) OpsWorkflowReportWriteMode {
+	confirmed := false
+	if result.Ownership != nil {
+		confirmed = result.Ownership.DeploymentSubmitted ||
+			result.Ownership.ProcessDefinitionKey != "" ||
+			len(result.Ownership.ProcessInstanceKeys) > 0
+	}
+	return opsWorkflowReportWriteModeForConfirmedMutation(confirmed)
 }

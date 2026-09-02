@@ -134,7 +134,6 @@ Started: 2026-09-02 06:58:25
 - Read-only analysis now completes bounded topology/search/keyed-read stages without mutations; fake command scenarios validate human output, JSON envelope purity, tenant context, protected progress modes, and pre-client invalid-budget rejection.
 - Validation passed: `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./cmd -run 'OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `go test ./docsgen -count=1`; `make docs-content`; `git diff --check`.
 ---
----
 ## Iteration 4 - 2026-09-02 07:47
 **Work Unit**: User Story 1: read-only quickstart evidence
 **Tasks Completed**:
@@ -367,4 +366,27 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - Existing `renderOpsAPILatencyResult` behavior already satisfied the new stable read-only/active human and JSON renderer assertions; US4 should continue with report behavior at T048.
 - Validation passed: `go test ./cmd -run 'TestRenderOps(Analyse|Execute)APILatencyStableHumanAndJSON' -count=1`; `go test ./cmd -run 'APILatency' -count=1`; `git diff --check`.
+---
+---
+## Iteration 16 - 2026-09-02 09:28
+**Work Unit**: User Story 4 partial: API latency report tests and shared report writing
+**Tasks Completed**:
+- [x] T048: Add report tests for Markdown/JSON inference, explicit override, dependent flags, `0600` files, missing parents, preserve/overwrite policy, raw JSON payload, Markdown parity, report-written line, and partial-result preservation
+- [x] T052: Implement command-specific Markdown and raw JSON report rendering by reusing `cmd/ops_report.go` and API-latency view helpers
+- [x] T053: Wire shared report flag/path/write ordering, format inference, partial report attempts, and active mutation write mode into both API-latency commands
+**Tasks Remaining in Work Unit**: 6 US4 tasks remain: T049-T051 and T054-T056
+**Commit**: This work-unit commit
+**Files Changed**:
+- `c8volt/ops/model.go`
+- `cmd/cmd_views_ops_api_latency.go`
+- `cmd/ops_analyse_api_latency.go`
+- `cmd/ops_analyse_api_latency_test.go`
+- `cmd/ops_execute_api_latency.go`
+- `cmd/ops_execute_api_latency_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- API-latency reports can use the public result as the raw JSON report payload while Markdown renders compact parity from the same model; active report overwrite must be based on returned exact ownership evidence.
+- Validation passed: `go test ./cmd -run 'TestOps(Analyse|Execute)APILatency.*Report|TestOpsExecuteAPILatencyDefaultsAndValidation' -count=1`; `go test ./cmd -run 'APILatency' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
 ---

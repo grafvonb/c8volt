@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -131,6 +132,11 @@ func TestOpsAnalyseAPILatencyInvalidBudgetSkipsRemoteHelper(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestOpsAnalyseAPILatencyRootArgsHelper runs root arguments in a subprocess for report error assertions.
+func TestOpsAnalyseAPILatencyRootArgsHelper(t *testing.T) {
+	executeRootHelperFromArgsEnv(t, "C8VOLT_TEST_ROOT_ARGS")
+}
+
 // TestOpsAnalyseAPILatencyReadOnlyCommandRendersHuman verifies terminal output and zero mutation against a fixture server.
 func TestOpsAnalyseAPILatencyReadOnlyCommandRendersHuman(t *testing.T) {
 	var requests testx.SafeSlice[string]
@@ -210,6 +216,118 @@ http:
 	requestPayload := requireJSONObject(t, payload["request"])
 	require.Equal(t, "tenant-a", requestPayload["tenantId"])
 	requireOpsAnalyseAPILatencyReadOnlyRequests(t, requests.Snapshot())
+}
+
+// TestOpsAnalyseAPILatencyWritesInferredMarkdownReport verifies read-only reports use shared path inference and permissions.
+func TestOpsAnalyseAPILatencyWritesInferredMarkdownReport(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsAnalyseAPILatencyReadOnlyServer(t, &requests)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "api-latency")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"ops", "analyse", "api-latency",
+		"--count", "1",
+		"--workers", "1",
+		"--report-file", reportPath,
+	)
+
+	require.Empty(t, stdout)
+	require.Contains(t, stderr, "report: written "+reportPath)
+	require.Less(t, strings.Index(stderr, "report: written "+reportPath), strings.Index(stderr, "outcome: completed"))
+	info, err := os.Stat(reportPath)
+	require.NoError(t, err)
+	require.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	report := readReportFile(t, reportPath)
+	require.Contains(t, report, "# Analyse API Latency Report")
+	require.Contains(t, report, "- Command: ops analyse api-latency")
+	require.Contains(t, report, "- Mode: read_only")
+	require.Contains(t, report, "- Primary Sample Limit: 1")
+	require.Contains(t, report, "- Stage 1: primary 3/3; derived 2/2; errors 0; timeouts 0; unavailable 0")
+	require.Contains(t, report, "- no_abnormal_evidence: no abnormal evidence; confidence low")
+	require.Contains(t, report, "- Outcome: completed")
+	require.NotContains(t, report, "Ownership")
+	require.NotContains(t, report, "Authorization")
+	requireOpsAnalyseAPILatencyReadOnlyRequests(t, requests.Snapshot())
+}
+
+// TestOpsAnalyseAPILatencyWritesRawJSONReportWithExplicitOverride verifies report JSON is not the stdout envelope.
+func TestOpsAnalyseAPILatencyWritesRawJSONReportWithExplicitOverride(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsAnalyseAPILatencyReadOnlyServer(t, &requests)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "api-latency.md")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"--json",
+		"ops", "analyse", "api-latency",
+		"--count", "1",
+		"--workers", "1",
+		"--report-file", reportPath,
+		"--report-format", "json",
+	)
+
+	require.Empty(t, stderr)
+	envelope := requireSingleJSONObjectDocument(t, stdout)
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, ops.APILatencySchemaVersion, report["schemaVersion"])
+	require.Equal(t, "completed", report["outcome"])
+	require.NotContains(t, report, "payload")
+	require.NotContains(t, report, "command")
+	require.Equal(t, "ops analyse api-latency", requireJSONObject(t, report["context"])["commandName"])
+	require.Equal(t, "json", requireJSONObject(t, report["request"])["reportFormat"])
+	requireOpsAnalyseAPILatencyReadOnlyRequests(t, requests.Snapshot())
+}
+
+// TestOpsAnalyseAPILatencyReportValidationAndWriteFailures verifies dependent flags, preservation, and destination errors.
+func TestOpsAnalyseAPILatencyReportValidationAndWriteFailures(t *testing.T) {
+	cmd := resetOpsAnalyseAPILatencyTestFlags(t)
+	flagOpsAnalyseAPILatencyReportFormat = "json"
+	require.ErrorContains(t, validateOpsAnalyseAPILatencyFlags(cmd), "--report-format requires --report-file")
+
+	var requests testx.SafeSlice[string]
+	srv := newOpsAnalyseAPILatencyReadOnlyServer(t, &requests)
+	t.Cleanup(srv.Close)
+	existingPath := filepath.Join(t.TempDir(), "api-latency.md")
+	const existingReport = "existing report"
+	require.NoError(t, os.WriteFile(existingPath, []byte(existingReport), 0o600))
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsAnalyseAPILatencyRootArgsHelper", map[string]string{
+		"C8VOLT_TEST_ROOT_ARGS": marshalRootArgsForEnv(t, []string{
+			"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+			"ops", "analyse", "api-latency",
+			"--count", "1",
+			"--workers", "1",
+			"--report-file", existingPath,
+		}),
+	})
+	require.Error(t, err)
+	var exitErr *exec.ExitError
+	require.ErrorAs(t, err, &exitErr)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "report file already exists: "+existingPath)
+	require.Equal(t, existingReport, readReportFile(t, existingPath))
+	require.Empty(t, requests.Snapshot())
+
+	missingParentPath := filepath.Join(t.TempDir(), "missing", "api-latency.md")
+	output, err = testx.RunCmdSubprocess(t, "TestOpsAnalyseAPILatencyRootArgsHelper", map[string]string{
+		"C8VOLT_TEST_ROOT_ARGS": marshalRootArgsForEnv(t, []string{
+			"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+			"ops", "analyse", "api-latency",
+			"--count", "1",
+			"--workers", "1",
+			"--report-file", missingParentPath,
+		}),
+	})
+	require.Error(t, err)
+	require.ErrorAs(t, err, &exitErr)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "write ops analyse api-latency report")
+	require.NoFileExists(t, missingParentPath)
 }
 
 // TestRenderOpsAnalyseAPILatencyStableHumanAndJSON pins read-only renderer ordering, safe context, and active-field omission.

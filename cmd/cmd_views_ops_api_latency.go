@@ -4,11 +4,14 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -35,12 +38,206 @@ func renderOpsAPILatencyResult(cmd *cobra.Command, result ops.APILatencyResult) 
 	}
 	renderOpsAPILatencyStringList(cmd, "notice", result.Notices)
 	renderOpsAPILatencyStringList(cmd, "limitation", result.Limitations)
+	renderOpsAPILatencyReportFile(cmd, result.Request.ReportFile)
 	renderOpsAPILatencyOutcome(cmd, result)
 	return nil
 }
 
 func opsAPILatencyResultIsActive(result ops.APILatencyResult) bool {
 	return result.Plan.Mode == ops.APILatencyModeActive || result.Request.Mode == ops.APILatencyModeActive || result.Ownership != nil
+}
+
+// attachOpsAPILatencyReportRequest records command-owned report flags on the final render payload.
+func attachOpsAPILatencyReportRequest(result ops.APILatencyResult, reportFile string, reportFormat string) ops.APILatencyResult {
+	result.Request.ReportFile = reportFile
+	result.Request.ReportFormat = reportFormat
+	return result
+}
+
+// renderOpsAPILatencyReportFile prints the compact report location after a successful write.
+func renderOpsAPILatencyReportFile(cmd *cobra.Command, path string) {
+	if path == "" {
+		return
+	}
+	renderHumanLine(cmd, "report: written %s", path)
+}
+
+// writeOpsAPILatencyReport renders and writes the requested API-latency report payload.
+func writeOpsAPILatencyReport(result ops.APILatencyResult, cfg *config.Config, mode OpsWorkflowReportWriteMode) error {
+	if result.Request.ReportFile == "" {
+		return nil
+	}
+	format, err := opsWorkflowReportFormatForPath(result.Request.ReportFile, OpsWorkflowReportFormat(result.Request.ReportFormat))
+	if err != nil {
+		return err
+	}
+	var data []byte
+	switch format {
+	case OpsWorkflowReportFormatJSON:
+		data, err = renderOpsAPILatencyJSONReport(result)
+	case OpsWorkflowReportFormatMarkdown:
+		data, err = renderOpsAPILatencyMarkdownReport(result, cfg)
+	default:
+		err = fmt.Errorf("unsupported ops workflow report format %q", format)
+	}
+	if err != nil {
+		return err
+	}
+	return writeOpsWorkflowReportFile(result.Request.ReportFile, data, mode)
+}
+
+// renderOpsAPILatencyJSONReport encodes the raw API-latency result without the command envelope.
+func renderOpsAPILatencyJSONReport(result ops.APILatencyResult) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := toolx.JSON(&buf, result); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// renderOpsAPILatencyMarkdownReport renders the API-latency result as compact shareable evidence.
+func renderOpsAPILatencyMarkdownReport(result ops.APILatencyResult, cfg *config.Config) ([]byte, error) {
+	var out strings.Builder
+	active := opsAPILatencyResultIsActive(result)
+	if active {
+		out.WriteString("# Execute API Latency Test Report\n\n")
+	} else {
+		out.WriteString("# Analyse API Latency Report\n\n")
+	}
+	writeMarkdownReportField(&out, "Schema Version", result.SchemaVersion)
+	writeMarkdownReportField(&out, "Command", result.Context.CommandName)
+	writeMarkdownReportField(&out, "Started", formatOpsPurgeReportTime(result.Context.StartedAt, cfg))
+	writeMarkdownReportField(&out, "Finished", formatOpsPurgeReportTime(result.Context.FinishedAt, cfg))
+	writeMarkdownReportField(&out, "Duration", result.Context.Duration)
+	writeMarkdownReportField(&out, "C8volt Version", result.Context.C8voltVersion)
+	writeMarkdownReportField(&out, "Camunda Version", result.Context.CamundaVersion)
+	writeMarkdownReportField(&out, "Profile", result.Context.Profile)
+	writeMarkdownReportField(&out, "Tenant", result.Context.Tenant)
+	writeMarkdownReportField(&out, "Outcome", string(result.Outcome))
+
+	out.WriteString("\n## Request\n\n")
+	writeMarkdownReportField(&out, "Mode", string(result.Request.Mode))
+	writeMarkdownReportField(&out, "Count", fmt.Sprintf("%d", result.Request.Count))
+	writeMarkdownReportField(&out, "Workers", fmt.Sprintf("%d", result.Request.Workers))
+	writeMarkdownReportField(&out, "Dry Run", fmt.Sprintf("%t", result.Request.DryRun))
+	writeMarkdownReportField(&out, "No Cleanup", fmt.Sprintf("%t", result.Request.NoCleanup))
+	writeMarkdownReportField(&out, "Tenant", result.Request.TenantID)
+	writeMarkdownReportField(&out, "HTTP Timeout", result.Request.HTTPTimeout.String())
+	writeMarkdownReportField(&out, "Output Mode", result.Request.OutputMode)
+	writeMarkdownReportField(&out, "Report File", result.Request.ReportFile)
+	writeMarkdownReportField(&out, "Report Format", result.Request.ReportFormat)
+
+	out.WriteString("\n## Plan\n\n")
+	writeMarkdownReportField(&out, "Mode", string(result.Plan.Mode))
+	writeMarkdownReportField(&out, "Run ID", result.Plan.RunID)
+	writeMarkdownReportField(&out, "Primary Sample Limit", fmt.Sprintf("%d", result.Plan.PrimarySampleLimit))
+	writeMarkdownReportField(&out, "Primary Sample Allocation", fmt.Sprintf("%d", result.Plan.PrimarySampleAllocation))
+	writeMarkdownReportField(&out, "Derived Request Limit", fmt.Sprintf("%d", result.Plan.DerivedRequestLimit))
+	writeMarkdownReportField(&out, "Visibility Attempt Limit", fmt.Sprintf("%d", result.Plan.VisibilityAttemptLimit))
+	if result.Plan.Fixture != nil {
+		writeMarkdownReportField(&out, "Fixture File", result.Plan.Fixture.File)
+		writeMarkdownReportField(&out, "BPMN Process ID", result.Plan.Fixture.BpmnProcessID)
+	}
+	if result.Plan.Cleanup != nil {
+		writeMarkdownReportField(&out, "Cleanup Requested", fmt.Sprintf("%t", result.Plan.Cleanup.Requested))
+		writeMarkdownReportField(&out, "Cleanup Supported", fmt.Sprintf("%t", result.Plan.Cleanup.Supported))
+		writeMarkdownReportField(&out, "Intentional Retention", fmt.Sprintf("%t", result.Plan.Cleanup.IntentionalRetention))
+		writeMarkdownReportField(&out, "Cleanup Block Reason", result.Plan.Cleanup.BlockReason)
+	}
+	if len(result.Plan.Stages) > 0 {
+		out.WriteString("- Stages:\n")
+		for _, stage := range result.Plan.Stages {
+			out.WriteString(fmt.Sprintf("  - stage %d: workers %d; primary samples %d; derived requests <= %d\n",
+				stage.Index,
+				stage.WorkerCount,
+				stage.PrimarySamples,
+				stage.DerivedRequestLimit,
+			))
+		}
+	}
+
+	out.WriteString("\n## Topology\n\n")
+	writeMarkdownReportField(&out, "Brokers", fmt.Sprintf("%d", result.Topology.BrokerCount))
+	writeMarkdownReportField(&out, "Partitions", fmt.Sprintf("%d", result.Topology.PartitionCount))
+	writeMarkdownReportField(&out, "Health Known", fmt.Sprintf("%t", result.Topology.HealthKnown))
+	writeMarkdownReportList(&out, "Unhealthy Partitions", opsAPILatencyIntStrings(result.Topology.UnhealthyPartitions))
+	writeMarkdownReportList(&out, "Leaderless Partitions", opsAPILatencyIntStrings(result.Topology.LeaderlessPartitions))
+
+	out.WriteString("\n## Stages\n\n")
+	for _, stage := range result.Stages {
+		out.WriteString(fmt.Sprintf("- Stage %d: %s; %s; %s\n",
+			stage.Plan.Index,
+			formatOpsAPILatencyStageAttempts(stage, result.Plan.Mode),
+			formatOpsAPILatencyStageOutcomes(stage),
+			formatOpsAPILatencyStageLatency(stage),
+		))
+		for _, category := range stage.Categories {
+			out.WriteString(fmt.Sprintf("  - %s: attempts %d; successes %d; errors %d; timeouts %d; unavailable %d; p50 %s; p95 %s; max %s\n",
+				category.Category,
+				category.Attempts,
+				category.Successes,
+				category.Errors,
+				category.Timeouts,
+				category.Unavailable,
+				formatOpsAPILatencyDuration(category.P50),
+				formatOpsAPILatencyDuration(category.P95),
+				formatOpsAPILatencyDuration(category.Max),
+			))
+		}
+	}
+
+	out.WriteString("\n## Findings\n\n")
+	for _, finding := range result.Findings {
+		out.WriteString(fmt.Sprintf("- %s: %s; confidence %s\n", finding.Code, finding.LikelyArea, finding.Confidence))
+		writeMarkdownReportList(&out, "Evidence", finding.Evidence)
+		writeMarkdownReportField(&out, "Limitation", finding.Limitation)
+		writeMarkdownReportField(&out, "Next Investigation", finding.NextInvestigation)
+	}
+
+	if active {
+		renderOpsAPILatencyMarkdownActiveEvidence(&out, result)
+	}
+	writeMarkdownReportList(&out, "Notices", result.Notices)
+	writeMarkdownReportList(&out, "Limitations", result.Limitations)
+
+	return []byte(out.String()), nil
+}
+
+// renderOpsAPILatencyMarkdownActiveEvidence writes active-only ownership, visibility, and cleanup sections.
+func renderOpsAPILatencyMarkdownActiveEvidence(out *strings.Builder, result ops.APILatencyResult) {
+	out.WriteString("\n## Ownership\n\n")
+	if result.Ownership != nil {
+		writeMarkdownReportField(out, "Run ID", result.Ownership.RunID)
+		writeMarkdownReportField(out, "Fixture", result.Ownership.FixtureName)
+		writeMarkdownReportField(out, "BPMN Process ID", result.Ownership.BpmnProcessID)
+		writeMarkdownReportField(out, "Deployment Submitted", fmt.Sprintf("%t", result.Ownership.DeploymentSubmitted))
+		writeMarkdownReportField(out, "Process Definition Key", result.Ownership.ProcessDefinitionKey)
+		writeMarkdownReportList(out, "Process Instance Keys", result.Ownership.ProcessInstanceKeys)
+	}
+	out.WriteString("\n## Visibility\n\n")
+	for _, item := range result.Visibility {
+		out.WriteString(fmt.Sprintf("- %s: visible %t; attempts %d/%d; duration %s; classification %s\n",
+			item.ProcessInstanceKey,
+			item.Visible,
+			item.Attempts,
+			item.AttemptLimit,
+			item.Duration.String(),
+			item.FinalClassification,
+		))
+	}
+	out.WriteString("\n## Cleanup\n\n")
+	for _, record := range result.Cleanup {
+		out.WriteString(fmt.Sprintf("- %s %s: %s; classification %s",
+			record.ResourceType,
+			record.Key,
+			record.Status,
+			record.Classification,
+		))
+		if record.RecoveryCommand != "" {
+			out.WriteString("; recovery: " + record.RecoveryCommand)
+		}
+		out.WriteString("\n")
+	}
 }
 
 func renderOpsAPILatencyPlan(cmd *cobra.Command, plan ops.APILatencyPlan) {
@@ -287,6 +484,15 @@ func formatOpsAPILatencyInts(values []int) string {
 		out = append(out, fmt.Sprintf("%d", value))
 	}
 	return strings.Join(out, ",")
+}
+
+// opsAPILatencyIntStrings adapts topology partition IDs to Markdown list helpers.
+func opsAPILatencyIntStrings(values []int) []string {
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		out = append(out, fmt.Sprintf("%d", value))
+	}
+	return out
 }
 
 func formatOpsAPILatencyStageAttempts(stage ops.APILatencyStageResult, mode ops.APILatencyMode) string {

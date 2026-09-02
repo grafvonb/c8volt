@@ -4,7 +4,7 @@ Feature: 289-api-latency-diagnostics
 Started: 2026-09-02T04:58:25Z
 
 ## Codebase Patterns
-- First incomplete work now begins at US4 T048; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, bounded active US2 command/service/facade/rendering work T024-T035, US3 ownership/cleanup/recovery preservation work T036-T046, and US4 renderer regression coverage T047 are complete.
+- First incomplete work now begins at US4 T049; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, bounded active US2 command/service/facade/rendering work T024-T035, US3 ownership/cleanup/recovery preservation work T036-T046, US4 renderer regression coverage T047, and US4 report coverage/rendering/wiring T048/T052/T053 are complete.
 - Commands own Cobra construction, local flag validation, confirmation, activity/progress setup, report-path validation, and final rendering. Follow `cmd/ops_analyse_slow_process_instances.go` for read-only analysis wiring and `cmd/ops_execute_smoketest.go` for active ops execution wiring.
 - Public `c8volt/ops` facade methods are thin: map public request to `internal/domain`, delegate to `internal/services/ops.API`, map results back, and convert errors with `ferrors.FromDomain`.
 - `internal/services/ops.Service` is the owning layer for stage planning, remote workflow mechanics, worker scheduling, cleanup orchestration, and progress facts. `NewWithAnalysisDependencies` already carries cluster, process-instance, process-definition, resource, job, element, version, and logger dependencies for this feature.
@@ -33,6 +33,8 @@ Started: 2026-09-02T04:58:25Z
 - Active facade terminal-state coverage now pins interrupted, partial, failed, and completed-retained results so available plan, ownership, visibility, cleanup, and outcome evidence crosses `ExecuteAPILatencyTest` even when errors are normalized.
 - `stubSmokeTestClusterAPI.topologyCalls` is atomic because API-latency read-only tests call topology concurrently under the stage worker pool; use `.Load()` for assertions.
 - US4 T047 renderer tests now directly pin stable read-only and active human/JSON output from `renderOpsAPILatencyResult`: ordered stages/categories/classifications/findings, safe context, read-only omission of ownership/visibility/cleanup, active ownership/visibility/cleanup inclusion, compact wording, and a five-second in-memory render budget. Existing renderer behavior satisfied these tests without implementation changes.
+- API-latency reports now use the public `ops.APILatencyResult` as the raw JSON payload and derive Markdown from the same model in `cmd/cmd_views_ops_api_latency.go`; commands attach report file/format to the public request mirror after facade return and write reports before human rendering so `report: written <path>` appears before `outcome`.
+- Read-only API-latency report writes always preserve existing files and preflight existing destinations before remote work. Active API-latency report writes use overwrite mode only when returned ownership shows a submitted deployment, exact process-definition key, or exact process-instance keys.
 
 ## Decisions
 - For this Ralph run, the prerequisite script selected `specs/289-api-latency-diagnostics`; the AGENTS Speckit block still names an older active plan and should not override the checked `FEATURE_DIR`.
@@ -52,8 +54,7 @@ Started: 2026-09-02T04:58:25Z
 ## Do Not Repeat
 - Do not create a new report framework, worker framework, fixture, generated client, or versioned latency adapter for this feature.
 - Do not hand-edit generated CLI docs under `docs/cli`; update command metadata and run `make docs-content` when command behavior exists.
-- `--report-file`/`--report-format` are currently validated on the read-only command, but actual report writing remains planned in US4 T048/T052/T053; T023 evidence intentionally covered executable read-only/default-shape, JSON stdout, invalid-budget, zero-mutation, and bounded-worker behavior without claiming report-file output is implemented.
-- Command report serialization remains assigned to US4 T048/T052/T053. T039 command coverage intentionally pins partial failure error-envelope behavior and report-attempt boundaries without implementing API-latency report writing.
+- Pre-US4 evidence such as T023 and T039 intentionally covered report-path validation and partial-result/error-envelope boundaries without claiming API-latency report writing; T048/T052/T053 now implement the actual read-only and active report serialization/writing path.
 
 ## Current Handoff
-- Next iteration should continue US4 at T048 by adding report tests for Markdown/JSON inference, explicit override, dependent flags, `0600` files, missing parents, preserve/overwrite policy, raw JSON payload, Markdown parity, report-written line, and partial-result preservation in `cmd/ops_analyse_api_latency_test.go` and `cmd/ops_execute_api_latency_test.go`.
+- Next iteration should continue US4 at T049 by adding output-safety and progress tests for tokens, authorization headers, secrets, variables, payloads, raw response bodies, unbounded errors, JSON/automation silence, quiet failures, and verbose/debug detail in `cmd/ops_analyse_api_latency_test.go` and `cmd/ops_execute_api_latency_test.go`.

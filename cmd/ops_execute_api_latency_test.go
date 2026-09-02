@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -104,6 +105,9 @@ func TestOpsExecuteAPILatencyDefaultsAndValidation(t *testing.T) {
 
 	flagOpsExecuteAPILatencyDryRun = true
 	require.NoError(t, validateOpsExecuteAPILatencyJSONGuardrails(cmd))
+
+	flagOpsExecuteAPILatencyReportFormat = "json"
+	require.ErrorContains(t, validateOpsExecuteAPILatencyFlags(cmd), "--report-format requires --report-file")
 }
 
 // TestOpsExecuteAPILatencyDryRunJSONPlansWithoutMutation verifies dry-run dispatch performs preflight only.
@@ -262,6 +266,101 @@ func TestOpsExecuteAPILatencyAutomationNoCleanupUsesImplicitConfirmation(t *test
 	require.Len(t, createBodies.Snapshot(), 1)
 	require.Contains(t, createBodies.Snapshot()[0], `"processDefinitionKey":"pd-88"`)
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/deletion")
+}
+
+// TestOpsExecuteAPILatencyOverwritesExistingReportAfterMutation verifies active reports use confirmed-mutation write mode.
+func TestOpsExecuteAPILatencyOverwritesExistingReportAfterMutation(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var createBodies testx.SafeSlice[string]
+	srv := newOpsExecuteAPILatencyActiveServer(t, &requests, &createBodies)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "api-latency.md")
+	require.NoError(t, os.WriteFile(reportPath, []byte("old report"), 0o600))
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"ops", "execute", "api-latency-test",
+		"--auto-confirm",
+		"--no-cleanup",
+		"--count", "1",
+		"--workers", "1",
+		"--report-file", reportPath,
+		"--report-format", "json",
+	)
+
+	require.Empty(t, stdout)
+	require.Contains(t, stderr, "report: written "+reportPath)
+	require.Less(t, strings.Index(stderr, "report: written "+reportPath), strings.Index(stderr, "outcome: completed_retained"))
+	info, err := os.Stat(reportPath)
+	require.NoError(t, err)
+	require.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	require.NotContains(t, readReportFile(t, reportPath), "old report")
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, ops.APILatencySchemaVersion, report["schemaVersion"])
+	require.Equal(t, "completed_retained", report["outcome"])
+	require.NotContains(t, report, "payload")
+	require.Equal(t, true, requireJSONObject(t, report["request"])["noCleanup"])
+	require.Equal(t, "json", requireJSONObject(t, report["request"])["reportFormat"])
+	require.Equal(t, "pd-88", requireJSONObject(t, report["ownership"])["processDefinitionKey"])
+	require.Equal(t, []any{"101"}, requireJSONObject(t, report["ownership"])["processInstanceKeys"])
+	require.Len(t, createBodies.Snapshot(), 1)
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/deletion")
+}
+
+// TestOpsExecuteAPILatencyWritesPartialReportBeforeCleanupFailure verifies raw reports preserve partial active evidence.
+func TestOpsExecuteAPILatencyWritesPartialReportBeforeCleanupFailure(t *testing.T) {
+	reportPath := filepath.Join(t.TempDir(), "api-latency.json")
+	result := ops.APILatencyResult{
+		SchemaVersion: ops.APILatencySchemaVersion,
+		Context: ops.APILatencyRunContext{
+			CommandName:    "ops execute api-latency-test",
+			SchemaVersion:  ops.APILatencySchemaVersion,
+			CamundaVersion: "8.9",
+			Profile:        "support",
+			Tenant:         "<default>",
+			Duration:       "1s",
+		},
+		Request: ops.APILatencyRequest{
+			CommandName:  "ops execute api-latency-test",
+			Mode:         ops.APILatencyModeActive,
+			Count:        1,
+			Workers:      1,
+			ReportFile:   reportPath,
+			ReportFormat: "json",
+		},
+		Plan: ops.APILatencyPlan{
+			Mode:                    ops.APILatencyModeActive,
+			RunID:                   "0123456789abcdef0123456789abcdef",
+			PrimarySampleLimit:      1,
+			PrimarySampleAllocation: 1,
+			DerivedRequestLimit:     2,
+			Stages:                  []ops.APILatencyStagePlan{{Index: 1, WorkerCount: 1, PrimarySamples: 1, DerivedRequestLimit: 2}},
+			Cleanup:                 &ops.APILatencyCleanupPlan{Requested: true, Supported: true},
+		},
+		Ownership: &ops.APILatencyOwnership{
+			RunID:                "0123456789abcdef0123456789abcdef",
+			DeploymentSubmitted:  true,
+			ProcessDefinitionKey: "pd-89",
+			ProcessInstanceKeys:  []string{"101"},
+		},
+		Cleanup: []ops.APILatencyCleanupRecord{
+			{ResourceType: ops.APILatencyCleanupResourceProcessInstance, Key: "101", Status: ops.APILatencyCleanupStatusFailed, Classification: ops.APILatencyClassificationRequestError, RecoveryCommand: "c8volt delete process-instance --key 101 --force --auto-confirm"},
+			{ResourceType: ops.APILatencyCleanupResourceProcessDefinition, Key: "pd-89", Status: ops.APILatencyCleanupStatusFailed, Classification: ops.APILatencyClassificationRequestError, RecoveryCommand: "c8volt delete process-definition --key pd-89 --auto-confirm"},
+		},
+		Outcome: ops.APILatencyOutcomePartial,
+	}
+
+	require.NoError(t, writeOpsAPILatencyReport(result, testAPILatencyConfig(), opsExecuteAPILatencyReportWriteMode(result)))
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, "partial", report["outcome"])
+	require.Equal(t, "pd-89", requireJSONObject(t, report["ownership"])["processDefinitionKey"])
+	cleanup := requireJSONItems(t, report["cleanup"], 2)
+	require.Equal(t, "failed", requireJSONObject(t, cleanup[0])["status"])
+	require.Contains(t, requireJSONObject(t, cleanup[0])["recoveryCommand"], "c8volt delete process-instance --key 101")
+	require.Equal(t, "failed", requireJSONObject(t, cleanup[1])["status"])
+	require.Contains(t, requireJSONObject(t, cleanup[1])["recoveryCommand"], "c8volt delete process-definition --key pd-89")
 }
 
 // TestOpsExecuteAPILatencyDryRunRendersActivePreview verifies human preview output is active-specific.
@@ -720,6 +819,50 @@ func newOpsExecuteAPILatencyActiveServer(t *testing.T, requests *testx.SafeSlice
 			_, _ = w.Write([]byte(apiLatencyProcessInstanceCreationJSON(fmt.Sprintf("%d", 100+created))))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			_, _ = w.Write([]byte(fmt.Sprintf(`{"items":[%s],"page":{"totalItems":1,"hasMoreTotalItems":false}}`, apiLatencyProcessInstanceJSON("101"))))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+}
+
+// newOpsExecuteAPILatencyCleanupFailureServer returns a v8.9 active run that fails exact cleanup.
+func newOpsExecuteAPILatencyCleanupFailureServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
+	t.Helper()
+
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Append(r.Method + " " + r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/topology":
+			_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, "8.9.0", 1, 1)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
+			require.Contains(t, r.Header.Get("Content-Type"), "multipart/form-data")
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.Contains(t, string(body), "C89_SimpleUserTask")
+			_, _ = w.Write([]byte(`{
+				"deploymentKey": "deployment-1",
+				"tenantId": "<default>",
+				"deployments": [{
+					"processDefinition": {
+						"processDefinitionId": "C89_SimpleUserTask",
+						"processDefinitionKey": "pd-89",
+						"processDefinitionVersion": 1,
+						"resourceName": "processdefinitions/C89_SimpleUserTask.bpmn",
+						"tenantId": "<default>"
+					}
+				}]
+			}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances":
+			_, _ = w.Write([]byte(apiLatencyProcessInstanceCreationJSONForDefinition("101", "pd-89", "C89_SimpleUserTask")))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"items":[%s],"page":{"totalItems":1,"hasMoreTotalItems":false}}`, apiLatencyProcessInstanceJSONForDefinition("101", "pd-89", "C89_SimpleUserTask"))))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/101":
+			_, _ = w.Write([]byte(apiLatencyProcessInstanceJSONForDefinition("101", "pd-89", "C89_SimpleUserTask")))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/101/deletion":
+			http.Error(w, `{"message":"delete rejected"}`, http.StatusBadRequest)
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/resources/pd-89/deletion":
+			http.Error(w, `{"message":"resource delete rejected"}`, http.StatusBadRequest)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
