@@ -146,6 +146,29 @@ func TestOpsAnalyseAPILatencyRootArgsHelper(t *testing.T) {
 	executeRootHelperFromArgsEnv(t, "C8VOLT_TEST_ROOT_ARGS")
 }
 
+// TestOpsAnalyseAPILatencyRootArgsExitHelper runs root arguments and exits after success so subprocess stdout stays command-only.
+func TestOpsAnalyseAPILatencyRootArgsExitHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	var args []string
+	require.NoError(t, json.Unmarshal([]byte(os.Getenv("C8VOLT_TEST_ROOT_ARGS")), &args))
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs(nil)
+	if os.Getenv("C8VOLT_TEST_CANCEL_CONTEXT") == "1" {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		root.SetContext(ctx)
+	}
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = append([]string{"c8volt"}, args...)
+	Execute()
+	os.Exit(0)
+}
+
 // TestOpsAnalyseAPILatencyOutputSafetyExcludesProtectedContextAndRawBodies verifies command output and reports stay sanitized.
 func TestOpsAnalyseAPILatencyOutputSafetyExcludesProtectedContextAndRawBodies(t *testing.T) {
 	var requests testx.SafeSlice[string]
@@ -198,6 +221,125 @@ func TestOpsAnalyseAPILatencyQuietFailureKeepsErrorWithoutProgress(t *testing.T)
 	text := string(output)
 	require.Contains(t, text, "count 4 is too small for worker stages 1, 2, 4")
 	require.NotContains(t, text, "measuring read-only API latency")
+}
+
+// TestOpsAnalyseAPILatencyCompletedAbnormalSubprocessExitsSuccessfully verifies abnormal evidence is still a successful completed diagnostic.
+func TestOpsAnalyseAPILatencyCompletedAbnormalSubprocessExitsSuccessfully(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var authHeaders testx.SafeSlice[string]
+	tokenSrv := newAPILatencyOAuthTokenServer(t)
+	t.Cleanup(tokenSrv.Close)
+	srv := newOpsAnalyseAPILatencyOutputSafetyServer(t, &requests, &authHeaders)
+	t.Cleanup(srv.Close)
+
+	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsAnalyseAPILatencyRootArgsExitHelper", map[string]string{
+		"C8VOLT_TEST_ROOT_ARGS": marshalRootArgsForEnv(t, []string{
+			"--config", writeAPILatencyOAuthConfig(t, srv.URL, tokenSrv.URL, "8.9"),
+			"--json",
+			"ops", "analyse", "api-latency",
+			"--count", "1",
+			"--workers", "1",
+		}),
+	})
+
+	require.NoError(t, err)
+	require.Empty(t, strings.TrimSpace(stderr))
+	envelope := requireSingleJSONObjectDocument(t, stdout)
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "completed", payload["outcome"])
+	findings := requireJSONItems(t, payload["findings"], 1)
+	require.Equal(t, "backpressure_observed", requireJSONObject(t, findings[0])["code"])
+	require.NotEmpty(t, authHeaders.Snapshot())
+	requireNoAPILatencyProtectedMarkers(t, stdout+"\n"+stderr)
+	require.Contains(t, requests.Snapshot(), "POST /v2/process-definitions/search")
+}
+
+// TestOpsAnalyseAPILatencyInvalidSubprocessUsesJSONErrorEnvelope verifies invalid local input exits nonzero with the shared envelope.
+func TestOpsAnalyseAPILatencyInvalidSubprocessUsesJSONErrorEnvelope(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsAnalyseAPILatencyReadOnlyServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsAnalyseAPILatencyRootArgsHelper", map[string]string{
+		"C8VOLT_TEST_ROOT_ARGS": marshalRootArgsForEnv(t, []string{
+			"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+			"--json",
+			"ops", "analyse", "api-latency",
+			"--count", "4",
+			"--workers", "4",
+		}),
+	})
+
+	requireAPILatencySubprocessExitCode(t, err, exitcode.InvalidArgs)
+	require.Empty(t, strings.TrimSpace(stderr))
+	envelope := requireSingleJSONObjectDocument(t, stdout)
+	require.Equal(t, string(OutcomeInvalid), envelope["outcome"])
+	require.Equal(t, "ops analyse api-latency", envelope["command"])
+	require.Nil(t, envelope["payload"])
+	detail := requireJSONObject(t, envelope["detail"])
+	require.Equal(t, "invalid_input", detail["class"])
+	require.Contains(t, detail["message"], "count 4 is too small for worker stages 1, 2, 4")
+	require.Empty(t, requests.Snapshot())
+}
+
+// TestOpsAnalyseAPILatencyIncompleteSubprocessUsesJSONErrorEnvelope verifies interrupted measurement exits nonzero without a partial stdout payload.
+func TestOpsAnalyseAPILatencyIncompleteSubprocessUsesJSONErrorEnvelope(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsAnalyseAPILatencyReadOnlyServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsAnalyseAPILatencyRootArgsExitHelper", map[string]string{
+		"C8VOLT_TEST_CANCEL_CONTEXT": "1",
+		"C8VOLT_TEST_ROOT_ARGS": marshalRootArgsForEnv(t, []string{
+			"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+			"--json",
+			"ops", "analyse", "api-latency",
+			"--count", "1",
+			"--workers", "1",
+		}),
+	})
+
+	requireAPILatencySubprocessExitCode(t, err, exitcode.Error)
+	require.Empty(t, strings.TrimSpace(stderr))
+	envelope := requireSingleJSONObjectDocument(t, stdout)
+	require.Equal(t, string(OutcomeFailed), envelope["outcome"])
+	require.Equal(t, "ops analyse api-latency", envelope["command"])
+	require.Nil(t, envelope["payload"])
+	detail := requireJSONObject(t, envelope["detail"])
+	require.Contains(t, detail["message"], "ops analyse api-latency")
+	require.Contains(t, detail["message"], "context canceled")
+	require.Empty(t, requests.Snapshot())
+}
+
+// TestOpsAnalyseAPILatencyReportFailureSubprocessUsesJSONErrorEnvelope verifies report write failures keep the shared machine error shape.
+func TestOpsAnalyseAPILatencyReportFailureSubprocessUsesJSONErrorEnvelope(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsAnalyseAPILatencyReadOnlyServer(t, &requests)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "missing", "api-latency.md")
+
+	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsAnalyseAPILatencyRootArgsHelper", map[string]string{
+		"C8VOLT_TEST_ROOT_ARGS": marshalRootArgsForEnv(t, []string{
+			"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+			"--json",
+			"ops", "analyse", "api-latency",
+			"--count", "1",
+			"--workers", "1",
+			"--report-file", reportPath,
+		}),
+	})
+
+	requireAPILatencySubprocessExitCode(t, err, exitcode.Error)
+	require.Empty(t, strings.TrimSpace(stderr))
+	envelope := requireSingleJSONObjectDocument(t, stdout)
+	require.Equal(t, string(OutcomeFailed), envelope["outcome"])
+	require.Equal(t, "ops analyse api-latency", envelope["command"])
+	require.Nil(t, envelope["payload"])
+	detail := requireJSONObject(t, envelope["detail"])
+	require.Contains(t, detail["message"], "write ops analyse api-latency report")
+	require.NoFileExists(t, reportPath)
+	requireOpsAnalyseAPILatencyReadOnlyRequests(t, requests.Snapshot())
 }
 
 // TestOpsAnalyseAPILatencyReadOnlyCommandRendersHuman verifies terminal output and zero mutation against a fixture server.
@@ -759,6 +901,15 @@ func requireNoAPILatencyProtectedMarkers(t *testing.T, output string) {
 	require.NotContains(t, output, "variables")
 	require.NotContains(t, output, "businessPayload")
 	require.NotContains(t, output, "client_secret")
+}
+
+// requireAPILatencySubprocessExitCode keeps subprocess exit assertions consistent across both API-latency leaves.
+func requireAPILatencySubprocessExitCode(t *testing.T, err error, want int) {
+	t.Helper()
+	require.Error(t, err)
+	var exitErr *exec.ExitError
+	require.ErrorAs(t, err, &exitErr)
+	require.Equal(t, want, exitErr.ExitCode())
 }
 
 func requireOpsAnalyseAPILatencyReadOnlyRequests(t *testing.T, requests []string) {

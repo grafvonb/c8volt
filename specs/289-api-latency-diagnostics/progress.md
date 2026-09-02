@@ -133,7 +133,6 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - Read-only analysis now completes bounded topology/search/keyed-read stages without mutations; fake command scenarios validate human output, JSON envelope purity, tenant context, protected progress modes, and pre-client invalid-budget rejection.
 - Validation passed: `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./cmd -run 'OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `go test ./docsgen -count=1`; `make docs-content`; `git diff --check`.
----
 ## Iteration 4 - 2026-09-02 07:47
 **Work Unit**: User Story 1: read-only quickstart evidence
 **Tasks Completed**:
@@ -406,4 +405,21 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - API-latency command tests now prove OAuth token/header/client-secret material, ignored process-variable/business-payload fields, raw upstream bodies, and long upstream detail strings do not enter completed command output or reports; active JSON automation stays silent on stderr and verbose/debug aggregate progress remains stderr-only.
 - Validation passed: `go test ./cmd -run 'TestOps(Analyse|Execute)APILatency(OutputSafety|JSONAutomationOutputSafety|ProgressModeGate|QuietFailure)' -count=1`; `go test ./cmd -run 'APILatency' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `git diff --check`.
+---
+---
+## Iteration 18 - 2026-09-02 09:52
+**Work Unit**: User Story 4 partial: API latency subprocess exit-envelope coverage
+**Tasks Completed**:
+- [x] T050: Add subprocess tests proving completed abnormal evidence exits successfully while invalid, incomplete, report-failed, and requested-cleanup-failed runs use the established nonzero error envelope
+**Tasks Remaining in Work Unit**: 4 US4 tasks remain: T051, T054, T055, and T056
+**Commit**: This work-unit commit
+**Files Changed**:
+- `cmd/ops_analyse_api_latency_test.go`
+- `cmd/ops_execute_api_latency_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- API-latency subprocess coverage now pins completed-abnormal success, invalid local input, canceled/incomplete read-only execution, report write failure, and requested active cleanup failure through real process exit behavior and shared JSON envelopes.
+- Validation passed: `go test ./cmd -run 'TestOps(AnalyseAPILatency(CompletedAbnormalSubprocessExitsSuccessfully|InvalidSubprocessUsesJSONErrorEnvelope|IncompleteSubprocessUsesJSONErrorEnvelope|ReportFailureSubprocessUsesJSONErrorEnvelope)|ExecuteAPILatencyRequestedCleanupFailureSubprocessUsesJSONErrorEnvelope)$' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `git diff --check`.
 ---

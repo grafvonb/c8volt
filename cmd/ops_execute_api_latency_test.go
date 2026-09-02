@@ -800,6 +800,45 @@ func TestOpsExecuteAPILatencyCleanupFailureUsesJSONErrorEnvelope(t *testing.T) {
 	require.Equal(t, exitcode.Error, ferrors.ResolveExitCode(false, err))
 }
 
+// TestOpsExecuteAPILatencyRequestedCleanupFailureSubprocessUsesJSONErrorEnvelope verifies exact cleanup failures exit nonzero without a partial stdout payload.
+func TestOpsExecuteAPILatencyRequestedCleanupFailureSubprocessUsesJSONErrorEnvelope(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsExecuteAPILatencyCleanupFailureServer(t, &requests)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "api-latency.json")
+
+	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsExecuteAPILatencyRootArgsHelper", map[string]string{
+		"C8VOLT_TEST_ROOT_ARGS": marshalRootArgsForEnv(t, []string{
+			"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+			"--json",
+			"ops", "execute", "api-latency-test",
+			"--auto-confirm",
+			"--count", "1",
+			"--workers", "1",
+			"--report-file", reportPath,
+			"--report-format", "json",
+		}),
+	})
+
+	requireAPILatencySubprocessExitCode(t, err, exitcode.Error)
+	require.Empty(t, strings.TrimSpace(stderr))
+	envelope := requireSingleJSONObjectDocument(t, stdout)
+	require.Equal(t, string(OutcomeFailed), envelope["outcome"])
+	require.Equal(t, "ops execute api-latency-test", envelope["command"])
+	require.Nil(t, envelope["payload"])
+	detail := requireJSONObject(t, envelope["detail"])
+	require.Contains(t, detail["message"], "ops execute api-latency-test")
+	require.Contains(t, detail["message"], "delete API latency process instance 101")
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, "partial", report["outcome"])
+	cleanup := requireJSONItems(t, report["cleanup"], 2)
+	require.Equal(t, "failed", requireJSONObject(t, cleanup[0])["status"])
+	require.Equal(t, "failed", requireJSONObject(t, cleanup[1])["status"])
+	require.Contains(t, requests.Snapshot(), "POST /v2/process-instances/101/deletion")
+	require.Contains(t, requests.Snapshot(), "POST /v2/resources/pd-89/deletion")
+}
+
 // TestOpsExecuteAPILatencyProgressModeGate verifies active aggregate progress stays out of protected modes.
 func TestOpsExecuteAPILatencyProgressModeGate(t *testing.T) {
 	for _, tc := range []struct {
@@ -977,13 +1016,19 @@ func newOpsExecuteAPILatencyCleanupFailureServer(t *testing.T, requests *testx.S
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances":
 			_, _ = w.Write([]byte(apiLatencyProcessInstanceCreationJSONForDefinition("101", "pd-89", "C89_SimpleUserTask")))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			if strings.Contains(string(body), "parentProcessInstanceKey") {
+				_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+				return
+			}
 			_, _ = w.Write([]byte(fmt.Sprintf(`{"items":[%s],"page":{"totalItems":1,"hasMoreTotalItems":false}}`, apiLatencyProcessInstanceJSONForDefinition("101", "pd-89", "C89_SimpleUserTask"))))
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/101":
 			_, _ = w.Write([]byte(apiLatencyProcessInstanceJSONForDefinition("101", "pd-89", "C89_SimpleUserTask")))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/101/deletion":
-			http.Error(w, `{"message":"delete rejected"}`, http.StatusBadRequest)
+			http.Error(w, `{"message":"delete rejected"}`, http.StatusInternalServerError)
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/resources/pd-89/deletion":
-			http.Error(w, `{"message":"resource delete rejected"}`, http.StatusBadRequest)
+			http.Error(w, `{"message":"resource delete rejected"}`, http.StatusInternalServerError)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
