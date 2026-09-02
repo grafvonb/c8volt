@@ -572,3 +572,19 @@ Started: 2026-09-02 06:58:25
 - API-latency operator guidance now has focused read-only and active playbooks covering safety, stage bounds, report behavior, active version gates, confirmation, cleanup, retention, and recovery without hand-editing generated CLI docs.
 - Validation passed: `git diff --check`.
 ---
+---
+## Iteration 27 - 2026-09-02 10:59
+**Work Unit**: Phase 7 polish: generated API latency CLI documentation
+**Tasks Completed**:
+- [x] T062: Run `make docs-content` and review generated API-latency CLI pages and docs index without hand-editing generated content
+**Tasks Remaining in Work Unit**: 3 Phase 7 tasks remain: T063-T065
+**Commit**: This work-unit commit
+**Files Changed**:
+- `docs/index.md`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- `make docs-content` left the generated API-latency leaf pages unchanged and refreshed `docs/index.md` with API-latency discovery, generated-reference links, command count 57, and active all-tenants wording.
+- Validation passed: `make docs-content`; reviewed `docs/cli/c8volt_ops_analyse_api-latency.md`, `docs/cli/c8volt_ops_execute_api-latency-test.md`, and `docs/index.md`; `git diff --check`.
+---

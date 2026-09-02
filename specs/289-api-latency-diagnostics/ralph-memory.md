@@ -4,7 +4,7 @@ Feature: 289-api-latency-diagnostics
 Started: 2026-09-02T04:58:25Z
 
 ## Codebase Patterns
-- First incomplete work now begins at Phase 7 T062; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, bounded active US2 command/service/facade/rendering work T024-T035, US3 ownership/cleanup/recovery preservation work T036-T046, all US4 reproducible evidence work T047-T056, command capability/inventory coverage T057, read-only analyse volume coverage T058, active execute volume coverage T059, README/ops-index discoverability T060, and focused operator guidance T061 are complete.
+- First incomplete work now begins at Phase 7 T063; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, bounded active US2 command/service/facade/rendering work T024-T035, US3 ownership/cleanup/recovery preservation work T036-T046, all US4 reproducible evidence work T047-T056, command capability/inventory coverage T057, read-only analyse volume coverage T058, active execute volume coverage T059, README/ops-index discoverability T060, focused operator guidance T061, and generated docs refresh/review T062 are complete.
 - Commands own Cobra construction, local flag validation, confirmation, activity/progress setup, report-path validation, and final rendering. Follow `cmd/ops_analyse_slow_process_instances.go` for read-only analysis wiring and `cmd/ops_execute_smoketest.go` for active ops execution wiring.
 - Public `c8volt/ops` facade methods are thin: map public request to `internal/domain`, delegate to `internal/services/ops.API`, map results back, and convert errors with `ferrors.FromDomain`.
 - `internal/services/ops.Service` is the owning layer for stage planning, remote workflow mechanics, worker scheduling, cleanup orchestration, and progress facts. `NewWithAnalysisDependencies` already carries cluster, process-instance, process-definition, resource, job, element, version, and logger dependencies for this feature.
@@ -46,6 +46,7 @@ Started: 2026-09-02T04:58:25Z
 - API-latency cleanup now submits exact process-instance deletes with `services.WithExactProcessInstanceDelete()` and `services.WithNoWait()` on v8.9/8.10 to avoid exporter-backed descendant prechecks and small retry-budget absent waits; if Camunda reports active-history conflict, cleanup submits exact no-state-check/no-wait cancellation and retries the exact delete. Exact process-definition cleanup retries conflict until the independent cleanup budget expires, which handles broker-side instance deletion settling.
 - Phase 7 T060 updated `README.md` and `docs/ops/index.md` to surface `ops analyse api-latency` as the read-only zero-mutation diagnostic and `ops execute api-latency-test` as the confirmed bounded active diagnostic with exact-key cleanup; examples point at existing generated CLI reference pages until focused operator guides are added in T061.
 - Phase 7 T061 added focused playbook pages at `docs/ops/analyse-api-latency.md` and `docs/ops/execute-api-latency-test.md`; `docs/ops/index.md` now points API-latency workflow rows at those playbooks while each playbook links to the generated CLI reference.
+- Phase 7 T062 ran `make docs-content`; generated API-latency leaf pages were already current, while `docs/index.md` refreshed build metadata, API-latency generated-reference links, command count 57, and active all-tenants inventory wording.
 
 ## Decisions
 - For this Ralph run, the prerequisite script selected `specs/289-api-latency-diagnostics`; the AGENTS Speckit block still names an older active plan and should not override the checked `FEATURE_DIR`.
@@ -68,4 +69,4 @@ Started: 2026-09-02T04:58:25Z
 - Pre-US4 evidence such as T023 and T039 intentionally covered report-path validation and partial-result/error-envelope boundaries without claiming API-latency report writing; T048/T052/T053 now implement the actual read-only and active report serialization/writing path.
 
 ## Current Handoff
-- Next iteration should begin Phase 7 at T062 by running `make docs-content` and reviewing generated `docs/cli/c8volt_ops_analyse_api-latency.md`, `docs/cli/c8volt_ops_execute_api-latency-test.md`, and `docs/index.md` without hand-editing generated content.
+- Next iteration should begin Phase 7 at T063 by running `go test ./integration/cli -count=1` and recording documentation example/non-tag integration results.

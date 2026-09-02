@@ -161,7 +161,7 @@
 - [x] T059 [P] Extend active dry-run selected-version coverage and disposable 8.9/8.10 confirmed-cleanup evidence in `integration/cli/volume_ops_execute_test.go`
 - [x] T060 [P] Add command discoverability, safety distinction, and representative examples to `README.md` and `docs/ops/index.md`
 - [x] T061 [P] Add focused operator guidance in `docs/ops/analyse-api-latency.md` and `docs/ops/execute-api-latency-test.md`
-- [ ] T062 Run `make docs-content` and review generated `docs/cli/c8volt_ops_analyse_api-latency.md`, `docs/cli/c8volt_ops_execute_api-latency-test.md`, and `docs/index.md` without hand-editing generated content
+- [x] T062 Run `make docs-content` and review generated `docs/cli/c8volt_ops_analyse_api-latency.md`, `docs/cli/c8volt_ops_execute_api-latency-test.md`, and `docs/index.md` without hand-editing generated content
 - [ ] T063 Verify documentation examples and non-tag integration contracts with `go test ./integration/cli -count=1`; record results in `specs/289-api-latency-diagnostics/progress.md`
 - [ ] T064 Run `gofmt` on every touched Go file, `git diff --check`, and all focused service/facade/command tests listed in `specs/289-api-latency-diagnostics/quickstart.md`; record results in `specs/289-api-latency-diagnostics/progress.md`
 - [ ] T065 Run the required race-enabled repository suite with `make test` and record final validation, known environment limits, and completion evidence in `specs/289-api-latency-diagnostics/progress.md`
