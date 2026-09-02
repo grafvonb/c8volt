@@ -94,7 +94,6 @@ Started: 2026-09-02 06:58:25
 - API-latency foundation is pure and version-neutral; remote read-only and active workflows can reuse `PlanAPILatency`, `BuildAPILatencyStageResults`, safe classification, and deterministic findings without adding command-layer backend loops.
 - Validation passed: `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./c8volt -run 'TestNew_V89WiresSupportedRuntime' -count=1`; `git diff --check`.
 ---
----
 ## Iteration 3 - 2026-09-02 07:42
 **Work Unit**: User Story 1 partial: read-only API latency analysis command
 **Tasks Completed**:
@@ -233,4 +232,24 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - Active command tests now pin the CLI safety contract and exposed one service-path correction: process-instance create latency must pass `services.WithNoWait()` internally so creation measurement does not wait for exporter visibility.
 - Validation passed: `go test ./cmd -run 'OpsExecuteAPILatency' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `go test ./docsgen -count=1`; `make docs-content`; `git diff --check`.
+---
+---
+## Iteration 9 - 2026-09-02 08:28
+**Work Unit**: User Story 2: active API latency command output and validation
+**Tasks Completed**:
+- [x] T028: Add command tests for compact active preview/result output, plan/execution count parity, run identity, fixture, visibility, findings, successful cleanup, and no low-level per-key chatter
+- [x] T033: Validate the `ops execute api-latency-test` Cobra leaf with preview, confirmation, JSON guardrails, facade dispatch, tenant context, and shared report-path planning
+- [x] T034: Extend API-latency views with active preview, write/read/visibility stages, ownership summary, successful cleanup, and outcome rendering
+- [x] T035: Run focused US2 API-latency validation and record the passing result
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- `cmd/ops_execute_api_latency_test.go`
+- `cmd/cmd_views_ops_api_latency.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Active human output now uses active-specific labels and sample math, exposes bounded plan/run/fixture/visibility/cleanup summaries, and keeps endpoint/per-key lifecycle chatter out of compact output.
+- Validation passed: `go test ./cmd -run 'TestOpsExecuteAPILatencyDryRunRendersActivePreview|TestRenderOpsExecuteAPILatencyHumanRendersActiveResult' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `git diff --check`.
 ---

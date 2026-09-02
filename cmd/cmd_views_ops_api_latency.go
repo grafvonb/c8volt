@@ -17,20 +17,55 @@ func renderOpsAPILatencyResult(cmd *cobra.Command, result ops.APILatencyResult) 
 	if commandUsesSharedEnvelope(cmd, pickMode()) {
 		return renderSucceededResult(cmd, result)
 	}
-	renderHumanLine(cmd, "analyse api latency")
+	active := opsAPILatencyResultIsActive(result)
+	if active {
+		renderHumanLine(cmd, "execute api latency test")
+	} else {
+		renderHumanLine(cmd, "analyse api latency")
+	}
 	renderAttachedTenantContext(cmd)
 	renderOpsAPILatencyPlan(cmd, result.Plan)
 	renderOpsAPILatencyTopology(cmd, result.Topology)
-	renderOpsAPILatencyStages(cmd, result.Stages)
+	renderOpsAPILatencyStages(cmd, result.Stages, result.Plan.Mode)
 	renderOpsAPILatencyFindings(cmd, result.Findings)
+	if active {
+		renderOpsAPILatencyOwnership(cmd, result.Ownership)
+		renderOpsAPILatencyVisibility(cmd, result.Visibility)
+		renderOpsAPILatencyCleanup(cmd, result.Cleanup)
+	}
 	renderOpsAPILatencyStringList(cmd, "notice", result.Notices)
 	renderOpsAPILatencyStringList(cmd, "limitation", result.Limitations)
 	renderOpsAPILatencyOutcome(cmd, result)
 	return nil
 }
 
+func opsAPILatencyResultIsActive(result ops.APILatencyResult) bool {
+	return result.Plan.Mode == ops.APILatencyModeActive || result.Request.Mode == ops.APILatencyModeActive || result.Ownership != nil
+}
+
 func renderOpsAPILatencyPlan(cmd *cobra.Command, plan ops.APILatencyPlan) {
 	if plan.PrimarySampleLimit == 0 && len(plan.Stages) == 0 {
+		return
+	}
+	if plan.Mode == ops.APILatencyModeActive {
+		renderHumanLine(cmd, "request: count %d; primary allocation %d/%d; workers %s; stages %d; derived requests <= %d",
+			plan.PrimarySampleLimit,
+			plan.PrimarySampleAllocation,
+			plan.PrimarySampleLimit,
+			formatOpsAPILatencyStageWidths(plan.Stages),
+			len(plan.Stages),
+			plan.DerivedRequestLimit,
+		)
+		if plan.RunID != "" {
+			renderHumanLine(cmd, "run: %s", plan.RunID)
+		}
+		if plan.Fixture != nil {
+			renderHumanLine(cmd, "fixture: %s (%s)", plan.Fixture.File, plan.Fixture.BpmnProcessID)
+		}
+		if plan.VisibilityAttemptLimit > 0 {
+			renderHumanLine(cmd, "visibility: attempts <= %d", plan.VisibilityAttemptLimit)
+		}
+		renderOpsAPILatencyCleanupPlan(cmd, plan.Cleanup)
 		return
 	}
 	renderHumanLine(cmd, "request: count %d; workers %s; stages %d; derived requests <= %d",
@@ -39,6 +74,25 @@ func renderOpsAPILatencyPlan(cmd *cobra.Command, plan ops.APILatencyPlan) {
 		len(plan.Stages),
 		plan.DerivedRequestLimit,
 	)
+}
+
+func renderOpsAPILatencyCleanupPlan(cmd *cobra.Command, cleanup *ops.APILatencyCleanupPlan) {
+	if cleanup == nil {
+		return
+	}
+	intent := "retained (--no-cleanup)"
+	if cleanup.Requested {
+		intent = "requested"
+	}
+	support := "unsupported"
+	if cleanup.Supported {
+		support = "supported"
+	}
+	if cleanup.BlockReason != "" {
+		renderHumanLine(cmd, "cleanup: %s; %s; blocked: %s", intent, support, cleanup.BlockReason)
+		return
+	}
+	renderHumanLine(cmd, "cleanup: %s; %s", intent, support)
 }
 
 func renderOpsAPILatencyTopology(cmd *cobra.Command, topology ops.APILatencyTopologyEvidence) {
@@ -58,12 +112,12 @@ func renderOpsAPILatencyTopology(cmd *cobra.Command, topology ops.APILatencyTopo
 	renderHumanLine(cmd, "topology: %s", strings.Join(parts, "; "))
 }
 
-func renderOpsAPILatencyStages(cmd *cobra.Command, stages []ops.APILatencyStageResult) {
+func renderOpsAPILatencyStages(cmd *cobra.Command, stages []ops.APILatencyStageResult, mode ops.APILatencyMode) {
 	for _, stage := range stages {
 		renderHumanLine(cmd, "stage %d: workers %d; %s; %s; %s",
 			stage.Plan.Index,
 			stage.Plan.WorkerCount,
-			formatOpsAPILatencyStageAttempts(stage),
+			formatOpsAPILatencyStageAttempts(stage, mode),
 			formatOpsAPILatencyStageOutcomes(stage),
 			formatOpsAPILatencyStageLatency(stage),
 		)
@@ -71,6 +125,61 @@ func renderOpsAPILatencyStages(cmd *cobra.Command, stages []ops.APILatencyStageR
 			renderOpsAPILatencyStageCategories(cmd, stage)
 		}
 	}
+}
+
+func renderOpsAPILatencyOwnership(cmd *cobra.Command, ownership *ops.APILatencyOwnership) {
+	if ownership == nil {
+		return
+	}
+	definition := "process definition not recorded"
+	if ownership.ProcessDefinitionKey != "" {
+		definition = "process definition recorded"
+	}
+	renderHumanLine(cmd, "ownership: %s; process instances %d", definition, len(ownership.ProcessInstanceKeys))
+}
+
+func renderOpsAPILatencyVisibility(cmd *cobra.Command, visibility []ops.APILatencyVisibilityResult) {
+	if len(visibility) == 0 {
+		return
+	}
+	visible := 0
+	attempts := 0
+	limit := 0
+	var maxDuration time.Duration
+	for _, item := range visibility {
+		if item.Visible {
+			visible++
+		}
+		attempts += item.Attempts
+		limit += item.AttemptLimit
+		if item.Duration > maxDuration {
+			maxDuration = item.Duration
+		}
+	}
+	renderHumanLine(cmd, "visibility: visible %d/%d; attempts %d/%d; max %s", visible, len(visibility), attempts, limit, maxDuration.String())
+}
+
+func renderOpsAPILatencyCleanup(cmd *cobra.Command, cleanup []ops.APILatencyCleanupRecord) {
+	if len(cleanup) == 0 {
+		return
+	}
+	deleted := 0
+	retained := 0
+	failed := 0
+	unknown := 0
+	for _, record := range cleanup {
+		switch record.Status {
+		case ops.APILatencyCleanupStatusDeleted:
+			deleted++
+		case ops.APILatencyCleanupStatusRetained:
+			retained++
+		case ops.APILatencyCleanupStatusFailed:
+			failed++
+		case ops.APILatencyCleanupStatusUnknown:
+			unknown++
+		}
+	}
+	renderHumanLine(cmd, "cleanup: deleted %d/%d; retained %d; failed %d; unknown %d", deleted, len(cleanup), retained, failed, unknown)
 }
 
 func renderOpsAPILatencyStageCategories(cmd *cobra.Command, stage ops.APILatencyStageResult) {
@@ -155,8 +264,11 @@ func formatOpsAPILatencyInts(values []int) string {
 	return strings.Join(out, ",")
 }
 
-func formatOpsAPILatencyStageAttempts(stage ops.APILatencyStageResult) string {
+func formatOpsAPILatencyStageAttempts(stage ops.APILatencyStageResult, mode ops.APILatencyMode) string {
 	primaryTotal := stage.Plan.PrimarySamples * 3
+	if mode == ops.APILatencyModeActive {
+		primaryTotal = stage.Plan.PrimarySamples
+	}
 	return fmt.Sprintf("primary %d/%d; derived %d/%d", stage.PrimaryAttempts, primaryTotal, stage.DerivedAttempts, stage.Plan.DerivedRequestLimit)
 }
 

@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -258,6 +260,139 @@ func TestOpsExecuteAPILatencyAutomationNoCleanupUsesImplicitConfirmation(t *test
 	require.Len(t, createBodies.Snapshot(), 1)
 	require.Contains(t, createBodies.Snapshot()[0], `"processDefinitionKey":"pd-88"`)
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/deletion")
+}
+
+// TestOpsExecuteAPILatencyDryRunRendersActivePreview verifies human preview output is active-specific.
+func TestOpsExecuteAPILatencyDryRunRendersActivePreview(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsExecuteAPILatencyDryRunServer(t, &requests, "8.9.0")
+	t.Cleanup(srv.Close)
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"ops", "execute", "api-latency-test",
+		"--dry-run",
+		"--count", "7",
+		"--workers", "4",
+	)
+
+	require.Empty(t, stdout)
+	require.Contains(t, stderr, "execute api latency test")
+	require.Contains(t, stderr, "request: count 7; primary allocation 7/7; workers 1,2,4; stages 3; derived requests <= 14")
+	require.Contains(t, stderr, "run: ")
+	require.Contains(t, stderr, "fixture: embedded/processdefinitions/C89_SimpleUserTask.bpmn (C89_SimpleUserTask)")
+	require.Contains(t, stderr, "visibility: attempts <= 1")
+	require.Contains(t, stderr, "cleanup: requested; supported")
+	require.Contains(t, stderr, "stage 1: workers 1; primary 0/1; derived 0/2")
+	require.Contains(t, stderr, "outcome: planned")
+	require.NotContains(t, stderr, "analyse api latency")
+	require.NotContains(t, stderr, "GET /v2")
+	require.Equal(t, []string{"GET /v2/topology"}, requests.Snapshot())
+}
+
+// TestRenderOpsExecuteAPILatencyHumanRendersActiveResult verifies compact active result output.
+func TestRenderOpsExecuteAPILatencyHumanRendersActiveResult(t *testing.T) {
+	resetOpsExecuteAPILatencyTestFlags(t)
+	p50 := 10 * time.Millisecond
+	p95 := 20 * time.Millisecond
+	maxLatency := 25 * time.Millisecond
+	throughput := 40.0
+	cmd := &cobra.Command{}
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	result := ops.APILatencyResult{
+		Request: ops.APILatencyRequest{
+			Mode:  ops.APILatencyModeActive,
+			Count: 1,
+		},
+		Plan: ops.APILatencyPlan{
+			Mode:                    ops.APILatencyModeActive,
+			RunID:                   "0123456789abcdef0123456789abcdef",
+			PrimarySampleLimit:      1,
+			PrimarySampleAllocation: 1,
+			DerivedRequestLimit:     2,
+			VisibilityAttemptLimit:  1,
+			Stages: []ops.APILatencyStagePlan{{
+				Index:               1,
+				WorkerCount:         1,
+				PrimarySamples:      1,
+				DerivedRequestLimit: 2,
+			}},
+			Fixture: &ops.APILatencyFixturePlan{
+				File:          "embedded/processdefinitions/C89_SimpleUserTask.bpmn",
+				BpmnProcessID: "C89_SimpleUserTask",
+			},
+			Cleanup: &ops.APILatencyCleanupPlan{
+				Requested: true,
+				Supported: true,
+			},
+		},
+		Stages: []ops.APILatencyStageResult{{
+			Plan: ops.APILatencyStagePlan{
+				Index:               1,
+				WorkerCount:         1,
+				PrimarySamples:      1,
+				DerivedRequestLimit: 2,
+			},
+			Status:          ops.APILatencyStageStatusCompleted,
+			PrimaryAttempts: 1,
+			DerivedAttempts: 2,
+			Categories: []ops.APILatencyCategorySummary{{
+				Category:            ops.APILatencyCategoryProcessInstanceCreate,
+				Attempts:            1,
+				Successes:           1,
+				ThroughputPerSecond: &throughput,
+				P50:                 &p50,
+				P95:                 &p95,
+				Max:                 &maxLatency,
+			}},
+		}},
+		Findings: []ops.APILatencyFinding{{
+			Code:              "no_abnormal_evidence",
+			LikelyArea:        "no abnormal evidence",
+			Confidence:        ops.APILatencyFindingConfidenceLow,
+			NextInvestigation: "compare with a read-only diagnostic if symptoms continue",
+		}},
+		Ownership: &ops.APILatencyOwnership{
+			RunID:                "0123456789abcdef0123456789abcdef",
+			FixtureName:          "embedded/processdefinitions/C89_SimpleUserTask.bpmn",
+			BpmnProcessID:        "C89_SimpleUserTask",
+			DeploymentSubmitted:  true,
+			ProcessDefinitionKey: "pd-89",
+			ProcessInstanceKeys:  []string{"101"},
+		},
+		Visibility: []ops.APILatencyVisibilityResult{{
+			ProcessInstanceKey:  "101",
+			Attempts:            1,
+			AttemptLimit:        1,
+			Visible:             true,
+			Duration:            750 * time.Millisecond,
+			FinalClassification: ops.APILatencyClassificationSuccess,
+		}},
+		Cleanup: []ops.APILatencyCleanupRecord{
+			{ResourceType: ops.APILatencyCleanupResourceProcessInstance, Key: "101", Status: ops.APILatencyCleanupStatusDeleted, Classification: ops.APILatencyClassificationSuccess},
+			{ResourceType: ops.APILatencyCleanupResourceProcessDefinition, Key: "pd-89", Status: ops.APILatencyCleanupStatusDeleted, Classification: ops.APILatencyClassificationSuccess},
+		},
+		Outcome: ops.APILatencyOutcomeCompleted,
+	}
+
+	require.NoError(t, renderOpsAPILatencyResult(cmd, result))
+	output := out.String()
+	require.Contains(t, output, "execute api latency test")
+	require.Contains(t, output, "request: count 1; primary allocation 1/1; workers 1; stages 1; derived requests <= 2")
+	require.Contains(t, output, "run: 0123456789abcdef0123456789abcdef")
+	require.Contains(t, output, "fixture: embedded/processdefinitions/C89_SimpleUserTask.bpmn (C89_SimpleUserTask)")
+	require.Contains(t, output, "stage 1: workers 1; primary 1/1; derived 2/2; errors 0; timeouts 0; unavailable 0")
+	require.Contains(t, output, "p95 process_instance_create 20ms")
+	require.Contains(t, output, "ownership: process definition recorded; process instances 1")
+	require.Contains(t, output, "visibility: visible 1/1; attempts 1/1; max 750ms")
+	require.Contains(t, output, "cleanup: deleted 2/2; retained 0; failed 0; unknown 0")
+	require.Contains(t, output, "finding: no_abnormal_evidence; no abnormal evidence; confidence low")
+	require.Contains(t, output, "outcome: completed")
+	require.NotContains(t, output, "GET /v2")
+	require.NotContains(t, output, "POST /v2")
+	require.NotContains(t, output, "process-instance key 101")
+	require.NotContains(t, output, "process-definition key pd-89")
 }
 
 // TestOpsExecuteAPILatencyRootArgsHelper runs root arguments in a subprocess for exit-code assertions.

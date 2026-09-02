@@ -4,7 +4,7 @@ Feature: 289-api-latency-diagnostics
 Started: 2026-09-02T04:58:25Z
 
 ## Codebase Patterns
-- First incomplete work now begins at US2 T028; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, active preflight/planning T024/T029, active service execution tests T025, bounded stage mechanics T030, successful-path cleanup T031, active facade conversion/tests T026/T032, and active command contract tests T027 are complete.
+- First incomplete work now begins at US3 T036; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, and all bounded active US2 command/service/facade/rendering work T024-T035 are complete.
 - Commands own Cobra construction, local flag validation, confirmation, activity/progress setup, report-path validation, and final rendering. Follow `cmd/ops_analyse_slow_process_instances.go` for read-only analysis wiring and `cmd/ops_execute_smoketest.go` for active ops execution wiring.
 - Public `c8volt/ops` facade methods are thin: map public request to `internal/domain`, delegate to `internal/services/ops.API`, map results back, and convert errors with `ferrors.FromDomain`.
 - `internal/services/ops.Service` is the owning layer for stage planning, remote workflow mechanics, worker scheduling, cleanup orchestration, and progress facts. `NewWithAnalysisDependencies` already carries cluster, process-instance, process-definition, resource, job, element, version, and logger dependencies for this feature.
@@ -23,7 +23,7 @@ Started: 2026-09-02T04:58:25Z
 - `internal/services/ops/api_latency_cleanup.go` owns active successful-path cleanup records: exact process-instance keys are deleted before the exact process-definition key through the existing process-instance/resource services; explicit `--no-cleanup` records retained resources with recovery commands.
 - Active facade coverage in `c8volt/ops/client_test.go` now proves active plan/fixture/cleanup plan fields, ownership keys, visibility durations/classifications, cleanup records/recovery commands, progress callback mapping, partial-result error conversion, and defensive copying across the public boundary. Public cleanup statuses in `c8volt/ops/model.go` now mirror all domain statuses (`pending`, `submitted`, `deleted`, `retained`, `failed`, `unknown`).
 - `cmd/ops_execute_api_latency.go` now registers `ops execute api-latency-test` with active flags, state-changing/full/automation metadata, concrete-destination all-tenants rejection, local count/worker/keys-only/report validation, JSON mutation guardrails, active facade dispatch, aggregate progress routing, default low-level log suppression, and confirmation including `--no-cleanup`. Report-file path preflight is implemented, but actual report writing remains assigned to US4.
-- Active command output still uses the shared API-latency renderer with limited active-specific wording; T028/T034 must add compact active preview/result rendering for run identity, fixture, visibility, ownership, cleanup, and no per-key chatter.
+- Active command output now branches in `cmd/cmd_views_ops_api_latency.go`: human preview/result labels the active command, reports plan allocation parity, run ID, fixture, visibility attempt ceiling, cleanup intent/support, active primary create counts, ownership summary, visibility summary, cleanup summary, findings, and outcome without endpoint or per-key lifecycle chatter.
 
 ## Decisions
 - For this Ralph run, the prerequisite script selected `specs/289-api-latency-diagnostics`; the AGENTS Speckit block still names an older active plan and should not override the checked `FEATURE_DIR`.
@@ -46,4 +46,4 @@ Started: 2026-09-02T04:58:25Z
 - Active cleanup after cancellation, timeout, visibility exhaustion, and cleanup failure is still assigned to US3 T036-T046; do not treat the current successful-path cleanup helper as complete recovery behavior.
 
 ## Current Handoff
-- Next iteration should continue US2 at T028 by adding command output tests in `cmd/ops_execute_api_latency_test.go` for compact active preview/result output, plan/execution count parity, run identity, fixture, visibility, findings, successful cleanup, and absence of low-level per-key chatter; then implement the corresponding active rendering in T034 without starting US3.
+- Next iteration should start US3 at T036 by adding cleanup ownership service tests for concurrency-safe immediate ownership registration, stable key ordering/deduplication, exact-key-only cleanup authority, PI-before-PD order, and absence of BPMN-ID or tenant-wide cleanup discovery in `internal/services/ops/api_latency_test.go`.

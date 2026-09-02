@@ -83,7 +83,7 @@
 - [x] T025 [US2] Add failing service tests for exact deployed-key creation with no visibility wait, immediate returned-key recording, stage concurrency/count bounds, overlapping-read evidence, bounded exact-key visibility polling, backpressure/timeout classification, active findings, and successful-path cleanup in `internal/services/ops/api_latency_test.go`
 - [x] T026 [P] [US2] Add failing facade tests for active plan, ownership, visibility, cleanup, progress, and partial-result conversion in `c8volt/ops/client_test.go`
 - [x] T027 [P] [US2] Add failing command tests for active flags/defaults, concrete-tenant enforcement, state-changing/full/automation metadata, dry-run preview, confirmation including `--no-cleanup`, automation/auto-confirm, JSON confirmation guardrails, and report-path preflight in `cmd/ops_execute_api_latency_test.go`
-- [ ] T028 [US2] Add failing command tests for compact active preview/result output, plan/execution count parity, run identity, fixture, visibility, findings, successful cleanup, and no low-level per-key chatter in `cmd/ops_execute_api_latency_test.go`
+- [x] T028 [US2] Add failing command tests for compact active preview/result output, plan/execution count parity, run identity, fixture, visibility, findings, successful cleanup, and no low-level per-key chatter in `cmd/ops_execute_api_latency_test.go`
 
 ### Implementation for User Story 2
 
@@ -91,9 +91,9 @@
 - [x] T030 [US2] Implement bounded active stages with `toolx/pool`, exact deployed-definition creation without exporter wait, overlapping read probes, bounded exact-key visibility polling, and actual-limit accounting in `internal/services/ops/api_latency_execute.go`
 - [x] T031 [US2] Implement successful-path exact-key process-instance then process-definition cleanup through existing owning services in `internal/services/ops/api_latency_cleanup.go`
 - [x] T032 [US2] Complete active-only ownership, visibility, cleanup, and outcome conversions in `c8volt/ops/convert.go`
-- [ ] T033 [US2] Add the `ops execute api-latency-test` Cobra leaf with preview, confirmation, JSON guardrails, signal-ready facade dispatch, tenant context, and shared report-path planning in `cmd/ops_execute_api_latency.go`
-- [ ] T034 [US2] Extend API-latency views with active preview, write/read/visibility stages, ownership summary, successful cleanup, and outcome rendering in `cmd/cmd_views_ops_api_latency.go`
-- [ ] T035 [US2] Run `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1` and record US2 validation in `specs/289-api-latency-diagnostics/progress.md`
+- [x] T033 [US2] Add the `ops execute api-latency-test` Cobra leaf with preview, confirmation, JSON guardrails, signal-ready facade dispatch, tenant context, and shared report-path planning in `cmd/ops_execute_api_latency.go`
+- [x] T034 [US2] Extend API-latency views with active preview, write/read/visibility stages, ownership summary, successful cleanup, and outcome rendering in `cmd/cmd_views_ops_api_latency.go`
+- [x] T035 [US2] Run `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1` and record US2 validation in `specs/289-api-latency-diagnostics/progress.md`
 
 **Checkpoint**: User Story 2 can run and clean a bounded active diagnostic on cleanup-capable clusters without depending on reporting polish.
 
