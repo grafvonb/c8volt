@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -838,9 +839,9 @@ func TestOpsExecuteAPILatencyRequestedCleanupFailureSubprocessUsesJSONErrorEnvel
 	require.Equal(t, "partial", report["outcome"])
 	cleanup := requireJSONItems(t, report["cleanup"], 2)
 	require.Equal(t, "failed", requireJSONObject(t, cleanup[0])["status"])
-	require.Equal(t, "failed", requireJSONObject(t, cleanup[1])["status"])
+	require.Equal(t, "unknown", requireJSONObject(t, cleanup[1])["status"])
 	require.Contains(t, requests.Snapshot(), "POST /v2/process-instances/101/deletion")
-	require.Contains(t, requests.Snapshot(), "POST /v2/resources/pd-89/deletion")
+	require.NotContains(t, requests.Snapshot(), "POST /v2/resources/pd-89/deletion")
 }
 
 // TestOpsExecuteAPILatencyProgressModeGate verifies active aggregate progress stays out of protected modes.
@@ -993,6 +994,7 @@ func newOpsExecuteAPILatencyOutputSafetyServer(t *testing.T, requests *testx.Saf
 func newOpsExecuteAPILatencyCleanupFailureServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
+	var canceled atomic.Bool
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -1028,7 +1030,15 @@ func newOpsExecuteAPILatencyCleanupFailureServer(t *testing.T, requests *testx.S
 			}
 			_, _ = w.Write([]byte(fmt.Sprintf(`{"items":[%s],"page":{"totalItems":1,"hasMoreTotalItems":false}}`, apiLatencyProcessInstanceJSONForDefinition("101", "pd-89", "C89_SimpleUserTask"))))
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/101":
-			_, _ = w.Write([]byte(apiLatencyProcessInstanceJSONForDefinition("101", "pd-89", "C89_SimpleUserTask")))
+			state := "ACTIVE"
+			if canceled.Load() {
+				state = "CANCELED"
+			}
+			_, _ = w.Write([]byte(apiLatencyProcessInstanceJSONForDefinitionState("101", "pd-89", "C89_SimpleUserTask", state)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/101/cancellation":
+			canceled.Store(true)
+			w.WriteHeader(http.StatusAccepted)
+			_, _ = w.Write([]byte(`{}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/101/deletion":
 			http.Error(w, `{"message":"delete rejected"}`, http.StatusInternalServerError)
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/resources/pd-89/deletion":
@@ -1060,6 +1070,11 @@ func apiLatencyProcessInstanceJSON(key string) string {
 
 // apiLatencyProcessInstanceJSONForDefinition builds search responses for version-specific active fixtures.
 func apiLatencyProcessInstanceJSONForDefinition(key string, processDefinitionKey string, bpmnProcessID string) string {
+	return apiLatencyProcessInstanceJSONForDefinitionState(key, processDefinitionKey, bpmnProcessID, "ACTIVE")
+}
+
+// apiLatencyProcessInstanceJSONForDefinitionState builds a process-instance response with a caller-selected lifecycle state.
+func apiLatencyProcessInstanceJSONForDefinitionState(key string, processDefinitionKey string, bpmnProcessID string, state string) string {
 	return fmt.Sprintf(`{
 		"hasIncident": false,
 		"processDefinitionId": %q,
@@ -1068,9 +1083,9 @@ func apiLatencyProcessInstanceJSONForDefinition(key string, processDefinitionKey
 		"processDefinitionVersion": 1,
 		"processInstanceKey": %q,
 		"startDate": "2026-09-02T08:00:00Z",
-		"state": "ACTIVE",
+		"state": %q,
 		"tenantId": "<default>"
-	}`, bpmnProcessID, processDefinitionKey, bpmnProcessID, key)
+	}`, bpmnProcessID, processDefinitionKey, bpmnProcessID, key, state)
 }
 
 func resetOpsExecuteAPILatencyTestFlags(t *testing.T) *cobra.Command {

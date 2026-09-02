@@ -399,6 +399,7 @@ type stubProcessInstanceAPI struct {
 	familyResult          func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
 	cancelProcessInstance func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
 	deleteProcessInstance func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error)
+	waitProcessInstance   func(context.Context, string, d.States, ...services.CallOption) (d.StateResponse, d.ProcessInstance, error)
 }
 
 func (s stubProcessInstanceAPI) CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error) {
@@ -484,7 +485,7 @@ func (s stubProcessInstanceAPI) FamilyResult(ctx context.Context, startKey strin
 
 func (s stubProcessInstanceAPI) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
 	if s.cancelProcessInstance == nil {
-		panic("unexpected cancel")
+		return d.CancelResponse{Ok: true, StatusCode: 202, Status: "accepted"}, nil, nil
 	}
 	return s.cancelProcessInstance(ctx, key, opts...)
 }
@@ -494,6 +495,18 @@ func (s stubProcessInstanceAPI) DeleteProcessInstance(ctx context.Context, key s
 		panic("unexpected delete")
 	}
 	return s.deleteProcessInstance(ctx, key, opts...)
+}
+
+// WaitForProcessInstanceState delegates wait-state cleanup assertions to the configured test callback.
+func (s stubProcessInstanceAPI) WaitForProcessInstanceState(ctx context.Context, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
+	if s.waitProcessInstance == nil {
+		state := d.StateUnknown
+		if len(desired) > 0 {
+			state = desired[0]
+		}
+		return d.StateResponse{Ok: true, State: state, Status: state.String()}, d.ProcessInstance{Key: key, State: state}, nil
+	}
+	return s.waitProcessInstance(ctx, key, desired, opts...)
 }
 
 func typexKeys(keys ...string) typex.Keys {
