@@ -145,8 +145,8 @@
 - [x] T052 [US4] Implement command-specific Markdown and raw JSON report rendering by reusing `cmd/ops_report.go` and existing ops Markdown helpers from `cmd/cmd_views_ops_api_latency.go`
 - [x] T053 [US4] Wire exact shared report flag/path/write ordering, format inference, partial report attempts, and actual-mutation write mode into `cmd/ops_analyse_api_latency.go` and `cmd/ops_execute_api_latency.go`
 - [x] T054 [US4] Attach only safe build/profile/tenant/version context and fixed limitations/notices to both results in `cmd/ops_analyse_api_latency.go`, `cmd/ops_execute_api_latency.go`, and `cmd/cmd_views_ops_api_latency.go`
-- [ ] T055 [US4] Map completed-abnormal results to success and incomplete/report/cleanup failures to existing command errors without a new partial stdout envelope in `cmd/ops_analyse_api_latency.go` and `cmd/ops_execute_api_latency.go`
-- [ ] T056 [US4] Run `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1` and record US4 validation in `specs/289-api-latency-diagnostics/progress.md`
+- [x] T055 [US4] Map completed-abnormal results to success and incomplete/report/cleanup failures to existing command errors without a new partial stdout envelope in `cmd/ops_analyse_api_latency.go` and `cmd/ops_execute_api_latency.go`
+- [x] T056 [US4] Run `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1` and record US4 validation in `specs/289-api-latency-diagnostics/progress.md`
 
 **Checkpoint**: User Story 4 provides safe, reproducible evidence through existing output and report contracts.
 

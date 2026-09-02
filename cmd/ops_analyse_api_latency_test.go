@@ -36,6 +36,27 @@ const (
 	apiLatencyProtectedRawBody             = "raw-response-body-secret"
 )
 
+// TestOpsAPILatencyCommandErrorMapsOutcomes verifies completed diagnostics exit successfully while incomplete outcomes use the existing error path.
+func TestOpsAPILatencyCommandErrorMapsOutcomes(t *testing.T) {
+	for _, outcome := range []ops.APILatencyOutcome{
+		ops.APILatencyOutcomePlanned,
+		ops.APILatencyOutcomeCompleted,
+		ops.APILatencyOutcomeCompletedRetained,
+	} {
+		require.NoError(t, opsAPILatencyCommandError("ops analyse api-latency", ops.APILatencyResult{Outcome: outcome}, context.Canceled))
+	}
+
+	err := opsAPILatencyCommandError("ops analyse api-latency", ops.APILatencyResult{Outcome: ops.APILatencyOutcomeInterrupted}, context.Canceled)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "ops analyse api-latency")
+	require.Contains(t, err.Error(), "context canceled")
+
+	err = opsAPILatencyCommandError("ops execute api-latency-test", ops.APILatencyResult{Outcome: ops.APILatencyOutcomePartial}, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "ops execute api-latency-test")
+	require.Contains(t, err.Error(), "partial")
+}
+
 // TestOpsAnalyseAPILatencyHelpDocumentsReadOnlySurface verifies the diagnostic command is discoverable.
 func TestOpsAnalyseAPILatencyHelpDocumentsReadOnlySurface(t *testing.T) {
 	output := executeRootForTest(t, "ops", "analyse", "api-latency", "--help")

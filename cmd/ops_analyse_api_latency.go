@@ -62,11 +62,11 @@ var opsAnalyseAPILatencyCmd = &cobra.Command{
 		progress.Close()
 		result = attachOpsAPILatencyResultContext(cfg, result, opsAnalyseAPILatencyCommandName)
 		result = attachOpsAPILatencyReportRequest(result, flagOpsAnalyseAPILatencyReportFile, flagOpsAnalyseAPILatencyReportFormat)
-		if err != nil {
+		if commandErr := opsAPILatencyCommandError(opsAnalyseAPILatencyCommandName, result, err); commandErr != nil {
 			if reportErr := writeOpsAPILatencyReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops analyse api-latency: %w; write report: %v", err, reportErr))
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("%w; write report: %v", commandErr, reportErr))
 			}
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops analyse api-latency: %w", err))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, commandErr)
 		}
 		if err := writeOpsAPILatencyReport(result, cfg, OpsWorkflowReportPreserveExisting); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("write ops analyse api-latency report: %w", err))

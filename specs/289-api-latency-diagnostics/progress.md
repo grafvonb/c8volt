@@ -458,3 +458,23 @@ Started: 2026-09-02 06:58:25
 - API-latency commands now use one shared enrichment hook to backfill safe schema/build/profile/tenant/version context and carry plan notices/limitations into the final stdout/report payload without duplication.
 - Validation passed: `go test ./cmd -run 'TestAttachOpsAPILatencyResultContextPreservesSafeEvidence|TestRenderOps(Analyse|Execute)APILatencyStableHumanAndJSON' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
 ---
+---
+## Iteration 21 - 2026-09-02 10:08
+**Work Unit**: User Story 4: API latency exit mapping and validation
+**Tasks Completed**:
+- [x] T055: Map completed-abnormal results to success and incomplete/report/cleanup failures to existing command errors without a new partial stdout envelope
+- [x] T056: Run the focused US4 command validation and record results
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- `cmd/ops_api_latency_exit.go`
+- `cmd/ops_analyse_api_latency.go`
+- `cmd/ops_execute_api_latency.go`
+- `cmd/ops_analyse_api_latency_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- API-latency command exits now key off terminal result outcomes: planned/completed/completed-retained render as successes, and incomplete outcomes continue through the established command error envelope with reports written first when requested.
+- Validation passed: `go test ./cmd -run 'TestOpsAPILatencyCommandErrorMapsOutcomes|TestOpsAnalyseAPILatency(CompletedAbnormalSubprocessExitsSuccessfully|IncompleteSubprocessUsesJSONErrorEnvelope|ReportFailureSubprocessUsesJSONErrorEnvelope)|TestOpsExecuteAPILatencyRequestedCleanupFailureSubprocessUsesJSONErrorEnvelope' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
+---
