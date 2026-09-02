@@ -21,6 +21,8 @@ import (
 
 type API interface {
 	ExecuteSmokeTest(ctx context.Context, request d.SmokeTestRequest, opts ...services.CallOption) (d.SmokeTestResult, error)
+	AnalyseAPILatency(ctx context.Context, request d.APILatencyRequest, opts ...services.CallOption) (d.APILatencyResult, error)
+	ExecuteAPILatencyTest(ctx context.Context, request d.APILatencyRequest, opts ...services.CallOption) (d.APILatencyResult, error)
 	PurgeOrphanProcessInstances(ctx context.Context, request d.OrphanPurgeRequest, opts ...services.CallOption) (d.OrphanPurgeResult, error)
 	ExecuteRetentionPolicy(ctx context.Context, request d.RetentionPolicyRequest, opts ...services.CallOption) (d.RetentionPolicyResult, error)
 	PurgeProcessInstancesWithIncidents(ctx context.Context, request d.IncidentPurgeRequest, opts ...services.CallOption) (d.IncidentPurgeResult, error)

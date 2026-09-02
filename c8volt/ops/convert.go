@@ -79,6 +79,273 @@ func fromDomainWorkflowStepResult(x d.WorkflowStepResult) WorkflowStepResult {
 	}
 }
 
+// toDomainAPILatencyRequest maps public API-latency input to the service request without workflow logic.
+func toDomainAPILatencyRequest(x APILatencyRequest) d.APILatencyRequest {
+	return d.APILatencyRequest{
+		CommandName: x.CommandName,
+		Mode:        d.APILatencyMode(x.Mode),
+		Count:       x.Count,
+		Workers:     x.Workers,
+		DryRun:      x.DryRun,
+		NoCleanup:   x.NoCleanup,
+		TenantID:    x.TenantID,
+		HTTPTimeout: x.HTTPTimeout,
+		Backoff: d.APILatencyBackoff{
+			Strategy:     d.APILatencyBackoffStrategy(x.Backoff.Strategy),
+			InitialDelay: x.Backoff.InitialDelay,
+			MaxDelay:     x.Backoff.MaxDelay,
+			Multiplier:   x.Backoff.Multiplier,
+			Timeout:      x.Backoff.Timeout,
+			MaxRetries:   x.Backoff.MaxRetries,
+		},
+		OutputMode: x.OutputMode,
+		StartedAt:  x.StartedAt,
+		Progress:   toDomainProgressFunc(x.Progress),
+	}
+}
+
+// fromDomainAPILatencyRequest maps the service request back to the public result contract.
+func fromDomainAPILatencyRequest(x d.APILatencyRequest) APILatencyRequest {
+	return APILatencyRequest{
+		CommandName: x.CommandName,
+		Mode:        APILatencyMode(x.Mode),
+		Count:       x.Count,
+		Workers:     x.Workers,
+		DryRun:      x.DryRun,
+		NoCleanup:   x.NoCleanup,
+		TenantID:    x.TenantID,
+		HTTPTimeout: x.HTTPTimeout,
+		Backoff: APILatencyBackoff{
+			Strategy:     APILatencyBackoffStrategy(x.Backoff.Strategy),
+			InitialDelay: x.Backoff.InitialDelay,
+			MaxDelay:     x.Backoff.MaxDelay,
+			Multiplier:   x.Backoff.Multiplier,
+			Timeout:      x.Backoff.Timeout,
+			MaxRetries:   x.Backoff.MaxRetries,
+		},
+		OutputMode: x.OutputMode,
+		StartedAt:  x.StartedAt,
+		Progress:   fromDomainProgressFunc(x.Progress),
+	}
+}
+
+// fromDomainAPILatencyResult copies the complete service payload into public API types.
+func fromDomainAPILatencyResult(x d.APILatencyResult) APILatencyResult {
+	return APILatencyResult{
+		SchemaVersion: x.SchemaVersion,
+		Context:       fromDomainAPILatencyRunContext(x.Context),
+		Request:       fromDomainAPILatencyRequest(x.Request),
+		Plan:          fromDomainAPILatencyPlan(x.Plan),
+		Topology:      fromDomainAPILatencyTopologyEvidence(x.Topology),
+		Stages:        toolx.MapSlice(x.Stages, fromDomainAPILatencyStageResult),
+		Findings:      toolx.MapSlice(x.Findings, fromDomainAPILatencyFinding),
+		Notices:       append([]string(nil), x.Notices...),
+		Limitations:   append([]string(nil), x.Limitations...),
+		Ownership:     fromDomainAPILatencyOwnershipPtr(x.Ownership),
+		Visibility:    toolx.MapSlice(x.Visibility, fromDomainAPILatencyVisibilityResult),
+		Cleanup:       toolx.MapSlice(x.Cleanup, fromDomainAPILatencyCleanupRecord),
+		Outcome:       APILatencyOutcome(x.Outcome),
+	}
+}
+
+// fromDomainAPILatencyPlan maps immutable plan data while copying collections.
+func fromDomainAPILatencyPlan(x d.APILatencyPlan) APILatencyPlan {
+	return APILatencyPlan{
+		RunID:                   x.RunID,
+		Mode:                    APILatencyMode(x.Mode),
+		Stages:                  toolx.MapSlice(x.Stages, fromDomainAPILatencyStagePlan),
+		PrimarySampleLimit:      x.PrimarySampleLimit,
+		PrimarySampleAllocation: x.PrimarySampleAllocation,
+		DerivedRequestLimit:     x.DerivedRequestLimit,
+		VisibilityAttemptLimit:  x.VisibilityAttemptLimit,
+		SetupOperations:         append([]string(nil), x.SetupOperations...),
+		Fixture:                 fromDomainAPILatencyFixturePlanPtr(x.Fixture),
+		Cleanup:                 fromDomainAPILatencyCleanupPlanPtr(x.Cleanup),
+		Notices:                 append([]string(nil), x.Notices...),
+		Limitations:             append([]string(nil), x.Limitations...),
+	}
+}
+
+// fromDomainAPILatencyStagePlan maps a deterministic stage plan.
+func fromDomainAPILatencyStagePlan(x d.APILatencyStagePlan) APILatencyStagePlan {
+	return APILatencyStagePlan{
+		Index:               x.Index,
+		WorkerCount:         x.WorkerCount,
+		PrimarySamples:      x.PrimarySamples,
+		DerivedRequestLimit: x.DerivedRequestLimit,
+	}
+}
+
+// fromDomainAPILatencyFixturePlanPtr preserves nil for read-only plans.
+func fromDomainAPILatencyFixturePlanPtr(x *d.APILatencyFixturePlan) *APILatencyFixturePlan {
+	if x == nil {
+		return nil
+	}
+	out := APILatencyFixturePlan{
+		CamundaVersion: x.CamundaVersion,
+		File:           x.File,
+		BpmnProcessID:  x.BpmnProcessID,
+		Available:      x.Available,
+	}
+	return &out
+}
+
+// fromDomainAPILatencyCleanupPlanPtr preserves nil for read-only plans.
+func fromDomainAPILatencyCleanupPlanPtr(x *d.APILatencyCleanupPlan) *APILatencyCleanupPlan {
+	if x == nil {
+		return nil
+	}
+	out := APILatencyCleanupPlan{
+		Requested:            x.Requested,
+		Supported:            x.Supported,
+		IntentionalRetention: x.IntentionalRetention,
+		IndependentBudget:    x.IndependentBudget,
+		BlockReason:          x.BlockReason,
+	}
+	return &out
+}
+
+// fromDomainAPILatencyRunContext copies safe reportable context fields.
+func fromDomainAPILatencyRunContext(x d.APILatencyRunContext) APILatencyRunContext {
+	return APILatencyRunContext{
+		CommandName:    x.CommandName,
+		SchemaVersion:  x.SchemaVersion,
+		C8voltVersion:  x.C8voltVersion,
+		CamundaVersion: x.CamundaVersion,
+		Profile:        x.Profile,
+		Tenant:         x.Tenant,
+		StartedAt:      x.StartedAt,
+		FinishedAt:     x.FinishedAt,
+		Duration:       x.Duration,
+	}
+}
+
+// fromDomainAPILatencyTopologyEvidence copies topology partition lists.
+func fromDomainAPILatencyTopologyEvidence(x d.APILatencyTopologyEvidence) APILatencyTopologyEvidence {
+	return APILatencyTopologyEvidence{
+		BrokerCount:          x.BrokerCount,
+		PartitionCount:       x.PartitionCount,
+		UnhealthyPartitions:  slices.Clone(x.UnhealthyPartitions),
+		LeaderlessPartitions: slices.Clone(x.LeaderlessPartitions),
+		HealthKnown:          x.HealthKnown,
+	}
+}
+
+// fromDomainAPILatencyStageResult maps aggregate stage evidence and nested deltas.
+func fromDomainAPILatencyStageResult(x d.APILatencyStageResult) APILatencyStageResult {
+	return APILatencyStageResult{
+		Plan:                 fromDomainAPILatencyStagePlan(x.Plan),
+		Status:               APILatencyStageStatus(x.Status),
+		StartedAt:            x.StartedAt,
+		FinishedAt:           x.FinishedAt,
+		ActualMaxConcurrency: x.ActualMaxConcurrency,
+		PrimaryAttempts:      x.PrimaryAttempts,
+		DerivedAttempts:      x.DerivedAttempts,
+		Categories:           toolx.MapSlice(x.Categories, fromDomainAPILatencyCategorySummary),
+		Classifications:      toolx.MapSlice(x.Classifications, fromDomainAPILatencyClassificationCount),
+		Comparison:           fromDomainAPILatencyStageComparisonPtr(x.Comparison),
+	}
+}
+
+// fromDomainAPILatencyCategorySummary maps one ordered category aggregate.
+func fromDomainAPILatencyCategorySummary(x d.APILatencyCategorySummary) APILatencyCategorySummary {
+	return APILatencyCategorySummary{
+		Category:            APILatencyMeasurementCategory(x.Category),
+		Attempts:            x.Attempts,
+		Successes:           x.Successes,
+		Errors:              x.Errors,
+		Timeouts:            x.Timeouts,
+		Unavailable:         x.Unavailable,
+		ThroughputPerSecond: toolx.CopyPtr(x.ThroughputPerSecond),
+		P50:                 toolx.CopyPtr(x.P50),
+		P95:                 toolx.CopyPtr(x.P95),
+		Max:                 toolx.CopyPtr(x.Max),
+	}
+}
+
+// fromDomainAPILatencyClassificationCount maps one ordered classification frequency.
+func fromDomainAPILatencyClassificationCount(x d.APILatencyClassificationCount) APILatencyClassificationCount {
+	return APILatencyClassificationCount{
+		Classification: APILatencyClassification(x.Classification),
+		Count:          x.Count,
+	}
+}
+
+// fromDomainAPILatencyStageComparisonPtr preserves nil when there is no prior stage.
+func fromDomainAPILatencyStageComparisonPtr(x *d.APILatencyStageComparison) *APILatencyStageComparison {
+	if x == nil {
+		return nil
+	}
+	out := APILatencyStageComparison{
+		Categories: toolx.MapSlice(x.Categories, fromDomainAPILatencyCategoryComparison),
+	}
+	return &out
+}
+
+// fromDomainAPILatencyCategoryComparison maps one prior-stage delta set.
+func fromDomainAPILatencyCategoryComparison(x d.APILatencyCategoryComparison) APILatencyCategoryComparison {
+	return APILatencyCategoryComparison{
+		Category:                 APILatencyMeasurementCategory(x.Category),
+		P50Delta:                 toolx.CopyPtr(x.P50Delta),
+		P50DeltaPercent:          toolx.CopyPtr(x.P50DeltaPercent),
+		ThroughputDelta:          toolx.CopyPtr(x.ThroughputDelta),
+		ThroughputDeltaPercent:   toolx.CopyPtr(x.ThroughputDeltaPercent),
+		ComparisonSampleCount:    x.ComparisonSampleCount,
+		PreviousStageUnavailable: x.PreviousStageUnavailable,
+	}
+}
+
+// fromDomainAPILatencyFinding maps deterministic finding content while copying evidence.
+func fromDomainAPILatencyFinding(x d.APILatencyFinding) APILatencyFinding {
+	return APILatencyFinding{
+		Code:              x.Code,
+		Evidence:          append([]string(nil), x.Evidence...),
+		LikelyArea:        x.LikelyArea,
+		Confidence:        APILatencyFindingConfidence(x.Confidence),
+		Limitation:        x.Limitation,
+		NextInvestigation: x.NextInvestigation,
+	}
+}
+
+// fromDomainAPILatencyOwnershipPtr preserves nil and copies exact owned key lists.
+func fromDomainAPILatencyOwnershipPtr(x *d.APILatencyOwnership) *APILatencyOwnership {
+	if x == nil {
+		return nil
+	}
+	out := APILatencyOwnership{
+		RunID:                x.RunID,
+		FixtureName:          x.FixtureName,
+		BpmnProcessID:        x.BpmnProcessID,
+		DeploymentSubmitted:  x.DeploymentSubmitted,
+		ProcessDefinitionKey: x.ProcessDefinitionKey,
+		ProcessInstanceKeys:  append([]string(nil), x.ProcessInstanceKeys...),
+	}
+	return &out
+}
+
+// fromDomainAPILatencyVisibilityResult maps exact-key visibility evidence.
+func fromDomainAPILatencyVisibilityResult(x d.APILatencyVisibilityResult) APILatencyVisibilityResult {
+	return APILatencyVisibilityResult{
+		ProcessInstanceKey:  x.ProcessInstanceKey,
+		Attempts:            x.Attempts,
+		AttemptLimit:        x.AttemptLimit,
+		Visible:             x.Visible,
+		Duration:            x.Duration,
+		FinalClassification: APILatencyClassification(x.FinalClassification),
+	}
+}
+
+// fromDomainAPILatencyCleanupRecord maps exact-key cleanup evidence.
+func fromDomainAPILatencyCleanupRecord(x d.APILatencyCleanupRecord) APILatencyCleanupRecord {
+	return APILatencyCleanupRecord{
+		ResourceType:    APILatencyCleanupResourceType(x.ResourceType),
+		Key:             x.Key,
+		Status:          APILatencyCleanupStatus(x.Status),
+		Classification:  APILatencyClassification(x.Classification),
+		RecoveryCommand: x.RecoveryCommand,
+	}
+}
+
 // fromDomainDiscoveryScopeStatus maps shared discovery completeness metadata to public output.
 func fromDomainDiscoveryScopeStatus(x d.DiscoveryScopeStatus) DiscoveryScopeStatus {
 	return DiscoveryScopeStatus{

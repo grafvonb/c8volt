@@ -370,6 +370,192 @@ func TestClientExecuteSmokeTestMapsProgressTenantContext(t *testing.T) {
 	require.Equal(t, []string{"<default>"}, gotEvent.Preflight.TenantContext.ResolvedTenantIDs)
 }
 
+// TestClientAnalyseAPILatencyMapsServiceBoundary verifies API-latency analysis stays a thin facade conversion.
+func TestClientAnalyseAPILatencyMapsServiceBoundary(t *testing.T) {
+	t.Parallel()
+
+	started := time.Date(2026, 9, 2, 8, 0, 0, 0, time.UTC)
+	finished := started.Add(2 * time.Second)
+	stagePlans := []d.APILatencyStagePlan{{Index: 1, WorkerCount: 1, PrimarySamples: 3, DerivedRequestLimit: 6}}
+	unhealthy := []int{2}
+	leaderless := []int{3}
+	notices := []string{"notice-a"}
+	limitations := []string{"limit-a"}
+	api := stubOpsService{
+		analyseAPILatency: func(_ context.Context, request d.APILatencyRequest, opts ...services.CallOption) (d.APILatencyResult, error) {
+			require.Equal(t, "ops analyse api-latency", request.CommandName)
+			require.Equal(t, d.APILatencyModeReadOnly, request.Mode)
+			require.Equal(t, 7, request.Count)
+			require.Equal(t, 4, request.Workers)
+			require.Equal(t, "tenant-a", request.TenantID)
+			require.Equal(t, 15*time.Second, request.HTTPTimeout)
+			require.Equal(t, d.APILatencyBackoffExponential, request.Backoff.Strategy)
+			require.Equal(t, "json", request.OutputMode)
+			require.Equal(t, started, request.StartedAt)
+			require.NotNil(t, request.Progress)
+			require.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.APILatencyResult{
+				SchemaVersion: d.APILatencySchemaVersion,
+				Context: d.APILatencyRunContext{
+					CommandName:    request.CommandName,
+					SchemaVersion:  d.APILatencySchemaVersion,
+					CamundaVersion: "8.9",
+					Profile:        "profile-a",
+					Tenant:         "tenant-a",
+					StartedAt:      started,
+					FinishedAt:     finished,
+					Duration:       "2s",
+				},
+				Request: request,
+				Plan: d.APILatencyPlan{
+					Mode:                    request.Mode,
+					Stages:                  stagePlans,
+					PrimarySampleLimit:      7,
+					PrimarySampleAllocation: 7,
+					DerivedRequestLimit:     14,
+					Notices:                 notices,
+					Limitations:             limitations,
+				},
+				Topology: d.APILatencyTopologyEvidence{
+					BrokerCount:          1,
+					PartitionCount:       3,
+					UnhealthyPartitions:  unhealthy,
+					LeaderlessPartitions: leaderless,
+					HealthKnown:          true,
+				},
+				Stages: []d.APILatencyStageResult{{
+					Plan:                 stagePlans[0],
+					Status:               d.APILatencyStageStatusCompleted,
+					ActualMaxConcurrency: 1,
+					PrimaryAttempts:      3,
+					Categories: []d.APILatencyCategorySummary{{
+						Category:  d.APILatencyCategoryTopologyRead,
+						Attempts:  3,
+						Successes: 3,
+					}},
+				}},
+				Findings: []d.APILatencyFinding{{
+					Code:              "no_abnormal_evidence",
+					Evidence:          []string{"bounded sample complete"},
+					LikelyArea:        "no abnormal evidence",
+					Confidence:        d.APILatencyFindingConfidenceLow,
+					Limitation:        "bounded",
+					NextInvestigation: "rerun later",
+				}},
+				Notices:     notices,
+				Limitations: limitations,
+				Outcome:     d.APILatencyOutcomeCompleted,
+			}, nil
+		},
+	}
+	var publicEvent ProgressEvent
+
+	got, err := New(api, slog.Default()).AnalyseAPILatency(context.Background(), APILatencyRequest{
+		CommandName: "ops analyse api-latency",
+		Mode:        APILatencyModeReadOnly,
+		Count:       7,
+		Workers:     4,
+		TenantID:    "tenant-a",
+		HTTPTimeout: 15 * time.Second,
+		Backoff: APILatencyBackoff{
+			Strategy:     APILatencyBackoffExponential,
+			InitialDelay: 100 * time.Millisecond,
+			MaxDelay:     time.Second,
+			Multiplier:   2,
+			Timeout:      5 * time.Second,
+			MaxRetries:   3,
+		},
+		OutputMode: "json",
+		StartedAt:  started,
+		Progress: func(event ProgressEvent) {
+			publicEvent = event
+		},
+	}, foptions.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, APILatencyOutcomeCompleted, got.Outcome)
+	require.Equal(t, APILatencyModeReadOnly, got.Plan.Mode)
+	require.Equal(t, []APILatencyStagePlan{{Index: 1, WorkerCount: 1, PrimarySamples: 3, DerivedRequestLimit: 6}}, got.Plan.Stages)
+	require.Equal(t, []int{2}, got.Topology.UnhealthyPartitions)
+	require.Equal(t, []int{3}, got.Topology.LeaderlessPartitions)
+	require.Equal(t, []string{"notice-a"}, got.Notices)
+	require.Equal(t, []string{"bounded sample complete"}, got.Findings[0].Evidence)
+	stagePlans[0].WorkerCount = 99
+	unhealthy[0] = 99
+	leaderless[0] = 99
+	notices[0] = "mutated"
+	limitations[0] = "mutated"
+	require.Equal(t, 1, got.Plan.Stages[0].WorkerCount)
+	require.Equal(t, []int{2}, got.Topology.UnhealthyPartitions)
+	require.Equal(t, []int{3}, got.Topology.LeaderlessPartitions)
+	require.Equal(t, []string{"notice-a"}, got.Notices)
+	require.Equal(t, []string{"limit-a"}, got.Limitations)
+	require.Zero(t, publicEvent)
+}
+
+// TestClientExecuteAPILatencyTestMapsPartialErrors verifies partial active evidence survives domain error conversion.
+func TestClientExecuteAPILatencyTestMapsPartialErrors(t *testing.T) {
+	t.Parallel()
+
+	api := stubOpsService{
+		executeAPILatencyTest: func(_ context.Context, request d.APILatencyRequest, opts ...services.CallOption) (d.APILatencyResult, error) {
+			require.Equal(t, d.APILatencyModeActive, request.Mode)
+			require.True(t, request.DryRun)
+			require.True(t, services.ApplyCallOptions(opts).DryRun)
+			return d.APILatencyResult{
+				SchemaVersion: d.APILatencySchemaVersion,
+				Request:       request,
+				Plan: d.APILatencyPlan{
+					RunID:                   "run-a",
+					Mode:                    d.APILatencyModeActive,
+					PrimarySampleLimit:      7,
+					PrimarySampleAllocation: 7,
+					DerivedRequestLimit:     28,
+					VisibilityAttemptLimit:  3,
+					SetupOperations:         []string{"preflight"},
+					Cleanup:                 &d.APILatencyCleanupPlan{Requested: true, Supported: false, BlockReason: "complete cleanup unsupported"},
+				},
+				Ownership: &d.APILatencyOwnership{
+					RunID:               "run-a",
+					FixtureName:         "C89_SimpleUserTask.bpmn",
+					BpmnProcessID:       "C89_SimpleUserTask",
+					DeploymentSubmitted: false,
+					ProcessInstanceKeys: []string{"pi-a"},
+				},
+				Visibility: []d.APILatencyVisibilityResult{{
+					ProcessInstanceKey:  "pi-a",
+					Attempts:            2,
+					AttemptLimit:        3,
+					Visible:             false,
+					FinalClassification: d.APILatencyClassificationNotFound,
+				}},
+				Cleanup: []d.APILatencyCleanupRecord{{
+					ResourceType:   d.APILatencyCleanupResourceProcessInstance,
+					Key:            "pi-a",
+					Status:         d.APILatencyCleanupStatusRetained,
+					Classification: d.APILatencyClassificationUnavailable,
+				}},
+				Outcome: d.APILatencyOutcomePartial,
+			}, d.ErrValidation
+		},
+	}
+
+	got, err := New(api, slog.Default()).ExecuteAPILatencyTest(context.Background(), APILatencyRequest{
+		Mode:    APILatencyModeActive,
+		Count:   7,
+		Workers: 4,
+		DryRun:  true,
+	}, foptions.WithDryRun())
+
+	require.ErrorIs(t, err, ferr.ErrInvalidInput)
+	require.Equal(t, APILatencyOutcomePartial, got.Outcome)
+	require.Equal(t, "run-a", got.Plan.RunID)
+	require.Equal(t, "complete cleanup unsupported", got.Plan.Cleanup.BlockReason)
+	require.Equal(t, []string{"pi-a"}, got.Ownership.ProcessInstanceKeys)
+	require.Equal(t, APILatencyClassificationNotFound, got.Visibility[0].FinalClassification)
+	require.Equal(t, APILatencyCleanupStatusRetained, got.Cleanup[0].Status)
+}
+
 // TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary verifies the slow-analysis facade stays thin.
 func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing.T) {
 	t.Parallel()
@@ -1238,6 +1424,8 @@ func TestClientRepairIncidentsMapsServiceErrors(t *testing.T) {
 
 type stubOpsService struct {
 	smokeTest                  func(context.Context, d.SmokeTestRequest, ...services.CallOption) (d.SmokeTestResult, error)
+	analyseAPILatency          func(context.Context, d.APILatencyRequest, ...services.CallOption) (d.APILatencyResult, error)
+	executeAPILatencyTest      func(context.Context, d.APILatencyRequest, ...services.CallOption) (d.APILatencyResult, error)
 	purge                      func(context.Context, d.OrphanPurgeRequest, ...services.CallOption) (d.OrphanPurgeResult, error)
 	retention                  func(context.Context, d.RetentionPolicyRequest, ...services.CallOption) (d.RetentionPolicyResult, error)
 	incidentPurge              func(context.Context, d.IncidentPurgeRequest, ...services.CallOption) (d.IncidentPurgeResult, error)
@@ -1252,6 +1440,20 @@ func (s stubOpsService) ExecuteSmokeTest(ctx context.Context, request d.SmokeTes
 		panic("unexpected call")
 	}
 	return s.smokeTest(ctx, request, opts...)
+}
+
+func (s stubOpsService) AnalyseAPILatency(ctx context.Context, request d.APILatencyRequest, opts ...services.CallOption) (d.APILatencyResult, error) {
+	if s.analyseAPILatency == nil {
+		panic("unexpected call")
+	}
+	return s.analyseAPILatency(ctx, request, opts...)
+}
+
+func (s stubOpsService) ExecuteAPILatencyTest(ctx context.Context, request d.APILatencyRequest, opts ...services.CallOption) (d.APILatencyResult, error) {
+	if s.executeAPILatencyTest == nil {
+		panic("unexpected call")
+	}
+	return s.executeAPILatencyTest(ctx, request, opts...)
 }
 
 func (s stubOpsService) PurgeOrphanProcessInstances(ctx context.Context, request d.OrphanPurgeRequest, opts ...services.CallOption) (d.OrphanPurgeResult, error) {

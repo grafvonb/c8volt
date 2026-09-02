@@ -64,3 +64,38 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - Durable setup patterns were recorded in progress and compacted into Ralph memory; no production code was changed in this iteration.
 ---
+---
+## Iteration 2 - 2026-09-02 07:17
+**Work Unit**: Phase 2 Foundational
+**Tasks Completed**:
+- [x] T003: Add failing tests for stage ramps, minimum sample budgets, deterministic allocation, derived limits, nearest-rank percentiles, throughput, zero-baseline deltas, safe classifications, and finding order in `internal/services/ops/api_latency_test.go`
+- [x] T004: Add failing facade contract tests for API-latency request/result conversion, defensive slice copying, partial-result mapping, and domain error conversion in `c8volt/ops/client_test.go`
+- [x] T005: Define version-neutral request, plan, measurement, stage, finding, topology, ownership, visibility, cleanup, context, and result types with stable enums in `internal/domain/ops_api_latency.go`
+- [x] T006: Extend the existing ops service interface with `AnalyseAPILatency` and `ExecuteAPILatencyTest` contracts in `internal/services/ops/api.go`
+- [x] T007: Implement deterministic stage planning, normalized-backoff visibility attempt bounding, closed-loop accounting, safe error classification, statistics, comparisons, and finding evaluation in `internal/services/ops/api_latency.go`
+- [x] T008: Define the matching public API-latency request/result models and intentional JSON tags in `c8volt/ops/model.go`
+- [x] T009: Extend the public ops API with the two API-latency methods in `c8volt/ops/api.go`
+- [x] T010: Implement mechanical domain/public conversions with defensive collection copying in `c8volt/ops/convert.go`
+- [x] T011: Implement thin facade delegation, partial-result mapping, option propagation, and `ferrors.FromDomain` conversion in `c8volt/ops/client.go`
+- [x] T012: Verify the existing `NewWithAnalysisDependencies` construction supplies all required services without new client wiring and add a regression assertion in `c8volt/client_test.go`
+- [x] T013: Run `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1` and record the passing foundational validation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- `internal/domain/ops_api_latency.go`
+- `internal/services/ops/api.go`
+- `internal/services/ops/api_latency.go`
+- `internal/services/ops/api_latency_test.go`
+- `c8volt/ops/api.go`
+- `c8volt/ops/client.go`
+- `c8volt/ops/model.go`
+- `c8volt/ops/convert.go`
+- `c8volt/ops/client_test.go`
+- `c8volt/client_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- API-latency foundation is pure and version-neutral; remote read-only and active workflows can reuse `PlanAPILatency`, `BuildAPILatencyStageResults`, safe classification, and deterministic findings without adding command-layer backend loops.
+- Validation passed: `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./c8volt -run 'TestNew_V89WiresSupportedRuntime' -count=1`; `git diff --check`.
+---

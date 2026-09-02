@@ -26,20 +26,20 @@
 
 ### Tests for Foundational Behavior
 
-- [ ] T003 [P] Add failing tests for stage ramps, minimum sample budgets, deterministic allocation, derived limits, nearest-rank percentiles, throughput, zero-baseline deltas, safe classifications, and finding order in `internal/services/ops/api_latency_test.go`
-- [ ] T004 [P] Add failing facade contract tests for API-latency request/result conversion, defensive slice copying, partial-result mapping, and domain error conversion in `c8volt/ops/client_test.go`
+- [x] T003 [P] Add failing tests for stage ramps, minimum sample budgets, deterministic allocation, derived limits, nearest-rank percentiles, throughput, zero-baseline deltas, safe classifications, and finding order in `internal/services/ops/api_latency_test.go`
+- [x] T004 [P] Add failing facade contract tests for API-latency request/result conversion, defensive slice copying, partial-result mapping, and domain error conversion in `c8volt/ops/client_test.go`
 
 ### Implementation for Foundational Behavior
 
-- [ ] T005 Define version-neutral request, plan, measurement, stage, finding, topology, ownership, visibility, cleanup, context, and result types with stable enums in `internal/domain/ops_api_latency.go`
-- [ ] T006 Extend the existing ops service interface with `AnalyseAPILatency` and `ExecuteAPILatencyTest` contracts in `internal/services/ops/api.go`
-- [ ] T007 Implement deterministic stage planning, normalized-backoff visibility attempt bounding, closed-loop accounting, safe error classification, statistics, comparisons, and finding evaluation in `internal/services/ops/api_latency.go`
-- [ ] T008 Define the matching public API-latency request/result models and intentional JSON tags in `c8volt/ops/model.go`
-- [ ] T009 Extend the public ops API with the two API-latency methods in `c8volt/ops/api.go`
-- [ ] T010 Implement mechanical domain/public conversions with defensive collection copying in `c8volt/ops/convert.go`
-- [ ] T011 Implement thin facade delegation, partial-result mapping, option propagation, and `ferrors.FromDomain` conversion in `c8volt/ops/client.go`
-- [ ] T012 Verify the existing `NewWithAnalysisDependencies` construction supplies all required services without new client wiring and add a regression assertion in `c8volt/client_test.go`
-- [ ] T013 Run `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1` and record the passing foundational validation in `specs/289-api-latency-diagnostics/progress.md`
+- [x] T005 Define version-neutral request, plan, measurement, stage, finding, topology, ownership, visibility, cleanup, context, and result types with stable enums in `internal/domain/ops_api_latency.go`
+- [x] T006 Extend the existing ops service interface with `AnalyseAPILatency` and `ExecuteAPILatencyTest` contracts in `internal/services/ops/api.go`
+- [x] T007 Implement deterministic stage planning, normalized-backoff visibility attempt bounding, closed-loop accounting, safe error classification, statistics, comparisons, and finding evaluation in `internal/services/ops/api_latency.go`
+- [x] T008 Define the matching public API-latency request/result models and intentional JSON tags in `c8volt/ops/model.go`
+- [x] T009 Extend the public ops API with the two API-latency methods in `c8volt/ops/api.go`
+- [x] T010 Implement mechanical domain/public conversions with defensive collection copying in `c8volt/ops/convert.go`
+- [x] T011 Implement thin facade delegation, partial-result mapping, option propagation, and `ferrors.FromDomain` conversion in `c8volt/ops/client.go`
+- [x] T012 Verify the existing `NewWithAnalysisDependencies` construction supplies all required services without new client wiring and add a regression assertion in `c8volt/client_test.go`
+- [x] T013 Run `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1` and record the passing foundational validation in `specs/289-api-latency-diagnostics/progress.md`
 
 **Checkpoint**: Shared API-latency planning, models, service contracts, and facade seams are available without adding a report, worker, fixture, generated-client, or version-adapter abstraction.
 

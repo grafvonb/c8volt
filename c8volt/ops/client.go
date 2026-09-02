@@ -30,6 +30,26 @@ func (c *client) ExecuteSmokeTest(ctx context.Context, request SmokeTestRequest,
 	return out, nil
 }
 
+// AnalyseAPILatency delegates read-only API latency diagnostics to the internal ops service.
+func (c *client) AnalyseAPILatency(ctx context.Context, request APILatencyRequest, opts ...options.FacadeOption) (APILatencyResult, error) {
+	result, err := c.api.AnalyseAPILatency(ctx, toDomainAPILatencyRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainAPILatencyResult(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
+}
+
+// ExecuteAPILatencyTest delegates active API latency diagnostics to the internal ops service.
+func (c *client) ExecuteAPILatencyTest(ctx context.Context, request APILatencyRequest, opts ...options.FacadeOption) (APILatencyResult, error) {
+	result, err := c.api.ExecuteAPILatencyTest(ctx, toDomainAPILatencyRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainAPILatencyResult(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
+}
+
 // AnalyseSlowProcessInstances delegates slow analysis orchestration to the internal ops service.
 func (c *client) AnalyseSlowProcessInstances(ctx context.Context, request SlowProcessAnalysisRequest, opts ...options.FacadeOption) (SlowProcessAnalysisResult, error) {
 	result, err := c.api.AnalyseSlowProcessInstances(ctx, toDomainSlowProcessAnalysisRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)

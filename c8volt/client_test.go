@@ -74,6 +74,29 @@ func TestNew_V89WiresSupportedRuntime(t *testing.T) {
 	require.Error(t, err)
 	require.NotErrorIs(t, err, ferrors.ErrUnsupported)
 	require.Equal(t, "ops purge orphan-process-instances", gotPurge.Request.CommandName)
+
+	gotLatency, err := cli.AnalyseAPILatency(context.Background(), ops.APILatencyRequest{
+		CommandName: "ops analyse api-latency",
+		Count:       7,
+		Workers:     4,
+	})
+	require.NoError(t, err)
+	require.Equal(t, ops.APILatencyOutcomeCompleted, gotLatency.Outcome)
+	require.Equal(t, []ops.APILatencyStagePlan{
+		{Index: 1, WorkerCount: 1, PrimarySamples: 1, DerivedRequestLimit: 2},
+		{Index: 2, WorkerCount: 2, PrimarySamples: 2, DerivedRequestLimit: 4},
+		{Index: 3, WorkerCount: 4, PrimarySamples: 4, DerivedRequestLimit: 8},
+	}, gotLatency.Plan.Stages)
+
+	gotActiveLatency, err := cli.ExecuteAPILatencyTest(context.Background(), ops.APILatencyRequest{
+		CommandName: "ops execute api-latency-test",
+		Count:       7,
+		Workers:     4,
+		DryRun:      true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, ops.APILatencyOutcomePlanned, gotActiveLatency.Outcome)
+	require.NotNil(t, gotActiveLatency.Plan.Cleanup)
 }
 
 // TestNew_V810WiresCompleteNativeRuntime proves the top-level facade can
