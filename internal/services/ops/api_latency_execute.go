@@ -7,18 +7,23 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/grafvonb/c8volt/embedded"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/pool"
 )
 
-// ExecuteAPILatencyTest performs active diagnostic preflight and returns an immutable dry-run plan.
+// ExecuteAPILatencyTest performs active diagnostic preflight and bounded mutation stages.
 func (s *Service) ExecuteAPILatencyTest(ctx context.Context, request d.APILatencyRequest, opts ...services.CallOption) (d.APILatencyResult, error) {
 	cfg := services.ApplyCallOptions(opts)
 	if request.Progress == nil {
@@ -37,10 +42,7 @@ func (s *Service) ExecuteAPILatencyTest(ctx context.Context, request d.APILatenc
 	if request.DryRun {
 		return result, nil
 	}
-	result.Outcome = d.APILatencyOutcomePartial
-	result.Context.FinishedAt = apiLatencyNow()
-	result.Context.Duration = result.Context.FinishedAt.Sub(started).String()
-	return result, fmt.Errorf("%w: active API latency execution stages are not implemented yet", d.ErrPrecondition)
+	return s.executeAPILatencyActiveStages(ctx, result, opts...)
 }
 
 // preflightAPILatencyActive validates active-version capabilities before any deployment or process creation.
@@ -214,6 +216,274 @@ func finishAPILatencyActivePreflight(result d.APILatencyResult, err error) (d.AP
 	result.Limitations = append([]string(nil), result.Plan.Limitations...)
 	if err != nil {
 		result.Outcome = d.APILatencyOutcomeFailed
+	}
+	return result, err
+}
+
+type apiLatencyActiveCycle struct {
+	measurements []d.APILatencyMeasurement
+	visibility   *d.APILatencyVisibilityResult
+}
+
+// executeAPILatencyActiveStages runs the mutation-bearing active diagnostic after a successful immutable preflight.
+func (s *Service) executeAPILatencyActiveStages(ctx context.Context, result d.APILatencyResult, opts ...services.CallOption) (d.APILatencyResult, error) {
+	if err := s.requireAPILatencyActiveDependencies(); err != nil {
+		result.Outcome = d.APILatencyOutcomeFailed
+		return finishAPILatencyActiveResult(result, err)
+	}
+	deployment, deploymentMeasurement, err := s.deployAPILatencyFixture(ctx, result.Plan, opts...)
+	measurements := []d.APILatencyMeasurement{deploymentMeasurement}
+	ownership := newAPILatencyOwnership(result.Plan)
+	ownership.DeploymentSubmitted = true
+	result.Ownership = ownership
+	if err != nil {
+		result.Stages = BuildAPILatencyStageResults(result.Plan, measurements)
+		result.Findings = EvaluateAPILatencyFindings(result.Topology, result.Stages)
+		result.Outcome = d.APILatencyOutcomeFailed
+		return finishAPILatencyActiveResult(result, fmt.Errorf("deploy API latency fixture: %w", err))
+	}
+	pdKey, err := apiLatencyDeploymentProcessDefinitionKey(deployment, result.Plan.Fixture)
+	if err != nil {
+		result.Stages = BuildAPILatencyStageResults(result.Plan, measurements)
+		result.Findings = EvaluateAPILatencyFindings(result.Topology, result.Stages)
+		result.Outcome = d.APILatencyOutcomeFailed
+		return finishAPILatencyActiveResult(result, err)
+	}
+	ownership.ProcessDefinitionKey = pdKey
+
+	cfg := services.ApplyCallOptions(opts)
+	var mu sync.Mutex
+	var inFlightWrites int64
+	registerKey := func(key string) {
+		if key == "" {
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		for _, existing := range ownership.ProcessInstanceKeys {
+			if existing == key {
+				return
+			}
+		}
+		ownership.ProcessInstanceKeys = append(ownership.ProcessInstanceKeys, key)
+	}
+	recordVisibility := func(item d.APILatencyVisibilityResult) {
+		mu.Lock()
+		result.Visibility = append(result.Visibility, item)
+		mu.Unlock()
+	}
+
+	for _, stage := range result.Plan.Stages {
+		reportAPILatencyStageProgress(result.Request.Progress, "executing active API latency test", stage, 0, 0)
+		cycles, stageErr := pool.ExecuteNTimes(ctx, stage.PrimarySamples, stage.WorkerCount, cfg.FailFast, func(ctx context.Context, _ int) (apiLatencyActiveCycle, error) {
+			return s.measureAPILatencyActiveCycle(ctx, stage.Index, result.Request, pdKey, &inFlightWrites, registerKey, opts...)
+		})
+		done := 0
+		failed := 0
+		for _, cycle := range cycles {
+			if len(cycle.measurements) == 0 {
+				failed++
+				continue
+			}
+			done++
+			measurements = append(measurements, cycle.measurements...)
+			if cycle.visibility != nil {
+				recordVisibility(*cycle.visibility)
+			}
+		}
+		reportAPILatencyStageProgress(result.Request.Progress, "executing active API latency test", stage, done, failed)
+		if stageErr == nil && done < stage.PrimarySamples && ctx.Err() != nil {
+			stageErr = ctx.Err()
+		}
+		if stageErr != nil {
+			result.Stages = BuildAPILatencyStageResults(result.Plan, measurements)
+			result.Findings = EvaluateAPILatencyFindings(result.Topology, result.Stages)
+			result.Outcome = apiLatencyInterruptedOrPartialOutcome(ctx)
+			cleanupErr := s.finalizeAPILatencyCleanup(ctx, &result, opts...)
+			if cleanupErr != nil {
+				stageErr = errors.Join(stageErr, cleanupErr)
+			}
+			return finishAPILatencyActiveResult(result, stageErr)
+		}
+	}
+
+	result.Stages = BuildAPILatencyStageResults(result.Plan, measurements)
+	result.Findings = EvaluateAPILatencyFindings(result.Topology, result.Stages)
+	if cleanupErr := s.finalizeAPILatencyCleanup(ctx, &result, opts...); cleanupErr != nil {
+		result.Outcome = d.APILatencyOutcomePartial
+		return finishAPILatencyActiveResult(result, cleanupErr)
+	}
+	if result.Request.NoCleanup {
+		result.Outcome = d.APILatencyOutcomeCompletedRetained
+	} else {
+		result.Outcome = d.APILatencyOutcomeCompleted
+	}
+	return finishAPILatencyActiveResult(result, nil)
+}
+
+// requireAPILatencyActiveDependencies fails before mutation when required active services are absent.
+func (s *Service) requireAPILatencyActiveDependencies() error {
+	switch {
+	case s.resourceAPI == nil:
+		return fmt.Errorf("%w: active API latency test requires resource service", d.ErrPrecondition)
+	case s.piAPI == nil:
+		return fmt.Errorf("%w: active API latency test requires process-instance service", d.ErrPrecondition)
+	default:
+		return nil
+	}
+}
+
+// deployAPILatencyFixture submits the selected fixture without waiting for exporter visibility.
+func (s *Service) deployAPILatencyFixture(ctx context.Context, plan d.APILatencyPlan, opts ...services.CallOption) (d.Deployment, d.APILatencyMeasurement, error) {
+	units, err := apiLatencyDeploymentUnits(plan.Fixture)
+	if err != nil {
+		return d.Deployment{}, newAPILatencyUnavailableMeasurement(1, d.APILatencyCategoryFixtureDeploy, d.APILatencyClassificationUnavailable), err
+	}
+	deployOpts := append([]services.CallOption{}, opts...)
+	deployOpts = append(deployOpts, services.WithNoWait())
+	deployment, measurement := measureAPILatencyCall(ctx, 1, d.APILatencyCategoryFixtureDeploy, d.APILatencyMeasurementKindSetup, func(ctx context.Context) (d.Deployment, error) {
+		return s.resourceAPI.Deploy(ctx, units, deployOpts...)
+	})
+	return deployment, measurement, err
+}
+
+// apiLatencyDeploymentUnits reads the exact SimpleUserTask fixture selected during active preflight.
+func apiLatencyDeploymentUnits(fixture *d.APILatencyFixturePlan) ([]d.DeploymentUnitData, error) {
+	if fixture == nil || strings.TrimSpace(fixture.File) == "" {
+		return nil, fmt.Errorf("%w: active API latency fixture is not planned", d.ErrPrecondition)
+	}
+	fsPath := strings.TrimPrefix(fixture.File, "embedded/")
+	data, err := fs.ReadFile(embedded.FS, fsPath)
+	if err != nil {
+		return nil, fmt.Errorf("%w: read active API latency fixture %s: %v", d.ErrPrecondition, fixture.File, err)
+	}
+	return []d.DeploymentUnitData{{
+		Name:        fsPath,
+		ContentType: "application/xml",
+		Data:        data,
+	}}, nil
+}
+
+// apiLatencyDeploymentProcessDefinitionKey extracts the exact definition key returned for the selected fixture.
+func apiLatencyDeploymentProcessDefinitionKey(deployment d.Deployment, fixture *d.APILatencyFixturePlan) (string, error) {
+	if fixture == nil {
+		return "", fmt.Errorf("%w: active API latency fixture is not planned", d.ErrPrecondition)
+	}
+	var first string
+	for _, unit := range deployment.Units {
+		pd := unit.ProcessDefinition
+		if pd.ProcessDefinitionKey == "" {
+			continue
+		}
+		if first == "" {
+			first = pd.ProcessDefinitionKey
+		}
+		if pd.ProcessDefinitionId == fixture.BpmnProcessID || pd.ResourceName == strings.TrimPrefix(fixture.File, "embedded/") {
+			return pd.ProcessDefinitionKey, nil
+		}
+	}
+	if first != "" {
+		return first, nil
+	}
+	return "", fmt.Errorf("%w: active API latency deployment did not return an exact process-definition key", d.ErrPrecondition)
+}
+
+// newAPILatencyOwnership initializes the active run registry from the immutable plan.
+func newAPILatencyOwnership(plan d.APILatencyPlan) *d.APILatencyOwnership {
+	ownership := &d.APILatencyOwnership{RunID: plan.RunID}
+	if plan.Fixture != nil {
+		ownership.FixtureName = plan.Fixture.File
+		ownership.BpmnProcessID = plan.Fixture.BpmnProcessID
+	}
+	return ownership
+}
+
+// measureAPILatencyActiveCycle creates one instance, probes reads, and polls exact-key visibility within the stage worker.
+func (s *Service) measureAPILatencyActiveCycle(ctx context.Context, stageIndex int, request d.APILatencyRequest, pdKey string, inFlightWrites *int64, registerKey func(string), opts ...services.CallOption) (apiLatencyActiveCycle, error) {
+	measurements := make([]d.APILatencyMeasurement, 0, 2+request.Backoff.MaxRetries+1)
+	if err := ctx.Err(); err != nil {
+		return apiLatencyActiveCycle{measurements: measurements}, err
+	}
+	data := d.ProcessInstanceData{ProcessDefinitionSpecificId: pdKey, TenantId: request.TenantID}
+	created, createMeasurement := measureAPILatencyCall(ctx, stageIndex, d.APILatencyCategoryProcessInstanceCreate, d.APILatencyMeasurementKindPrimary, func(ctx context.Context) (d.ProcessInstanceCreation, error) {
+		atomic.AddInt64(inFlightWrites, 1)
+		defer atomic.AddInt64(inFlightWrites, -1)
+		return s.piAPI.CreateProcessInstance(ctx, data, opts...)
+	})
+	measurements = append(measurements, createMeasurement)
+	registerKey(created.Key)
+
+	overlapped := atomic.LoadInt64(inFlightWrites) > 0
+	_, readMeasurement := measureAPILatencyCall(ctx, stageIndex, d.APILatencyCategoryConcurrentRead, d.APILatencyMeasurementKindDerived, func(ctx context.Context) ([]d.ProcessInstance, error) {
+		return s.piAPI.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{ProcessDefinitionKey: pdKey}, 1, opts...)
+	})
+	readMeasurement.OverlappedWrite = overlapped
+	measurements = append(measurements, readMeasurement)
+
+	visibility, visibilityMeasurements := s.measureAPILatencyVisibility(ctx, stageIndex, created.Key, pdKey, request.Backoff, opts...)
+	measurements = append(measurements, visibilityMeasurements...)
+	return apiLatencyActiveCycle{measurements: measurements, visibility: &visibility}, ctx.Err()
+}
+
+// measureAPILatencyVisibility polls exact-key search visibility within the previewed attempt ceiling.
+func (s *Service) measureAPILatencyVisibility(ctx context.Context, stageIndex int, key string, pdKey string, backoff d.APILatencyBackoff, opts ...services.CallOption) (d.APILatencyVisibilityResult, []d.APILatencyMeasurement) {
+	limit := APILatencyVisibilityAttemptLimit(backoff)
+	result := d.APILatencyVisibilityResult{ProcessInstanceKey: key, AttemptLimit: limit}
+	if key == "" {
+		result.FinalClassification = d.APILatencyClassificationUnavailable
+		return result, []d.APILatencyMeasurement{newAPILatencyUnavailableMeasurement(stageIndex, d.APILatencyCategorySearchVisibility, d.APILatencyClassificationUnavailable)}
+	}
+	started := apiLatencyNow()
+	measurements := make([]d.APILatencyMeasurement, 0, limit)
+	delay := backoff.InitialDelay
+	for attempt := 1; attempt <= limit; attempt++ {
+		items, measurement := measureAPILatencyCall(ctx, stageIndex, d.APILatencyCategorySearchVisibility, d.APILatencyMeasurementKindDerived, func(ctx context.Context) ([]d.ProcessInstance, error) {
+			return s.piAPI.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{Key: key, ProcessDefinitionKey: pdKey}, 1, opts...)
+		})
+		if measurement.Classification == d.APILatencyClassificationSuccess && !apiLatencyProcessInstanceVisible(items, key) {
+			measurement.Outcome = d.APILatencyMeasurementUnavailable
+			measurement.Classification = d.APILatencyClassificationNotFound
+		}
+		measurements = append(measurements, measurement)
+		result.Attempts = attempt
+		result.FinalClassification = measurement.Classification
+		if measurement.Classification == d.APILatencyClassificationSuccess {
+			result.Visible = true
+			result.Duration = apiLatencyNow().Sub(started)
+			return result, measurements
+		}
+		if attempt < limit && delay > 0 {
+			timer := time.NewTimer(delay)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				result.Duration = apiLatencyNow().Sub(started)
+				return result, measurements
+			case <-timer.C:
+			}
+			delay = apiLatencyNextBackoffDelay(backoff, delay)
+		}
+	}
+	result.Duration = apiLatencyNow().Sub(started)
+	return result, measurements
+}
+
+// apiLatencyProcessInstanceVisible requires the exact created key to appear in search results.
+func apiLatencyProcessInstanceVisible(items []d.ProcessInstance, key string) bool {
+	for _, item := range items {
+		if item.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
+// finishAPILatencyActiveResult stamps terminal timing after mutation-bearing execution.
+func finishAPILatencyActiveResult(result d.APILatencyResult, err error) (d.APILatencyResult, error) {
+	finished := apiLatencyNow()
+	result.Context.FinishedAt = finished
+	if !result.Context.StartedAt.IsZero() {
+		result.Context.Duration = finished.Sub(result.Context.StartedAt).String()
 	}
 	return result, err
 }

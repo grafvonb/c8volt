@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -683,6 +684,220 @@ func TestAPILatencyActivePreflightVersionEligibility(t *testing.T) {
 	}
 }
 
+// TestAPILatencyActiveExecutionUsesExactReturnedKeysAndCleansUp verifies active stages use only returned ownership keys.
+func TestAPILatencyActiveExecutionUsesExactReturnedKeysAndCleansUp(t *testing.T) {
+	t.Parallel()
+
+	var mu sync.Mutex
+	var createRequests []d.ProcessInstanceData
+	var visibilityFilters []d.ProcessInstanceFilter
+	var deletedProcessInstances []string
+	var deletedProcessDefinitions []string
+	cluster := &stubSmokeTestClusterAPI{topology: d.Topology{GatewayVersion: "8.9.4", ClusterSize: 1, PartitionsCount: 1}}
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(_ context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error) {
+			require.True(t, services.ApplyCallOptions(opts).NoWait)
+			require.Len(t, units, 1)
+			require.Equal(t, "processdefinitions/C89_SimpleUserTask.bpmn", units[0].Name)
+			return d.Deployment{Key: "deployment-1", TenantId: "tenant-a", Units: []d.DeploymentUnit{{
+				ProcessDefinition: d.ProcessDefinitionDeployment{
+					ProcessDefinitionId:      "C89_SimpleUserTask",
+					ProcessDefinitionKey:     "pd-active",
+					ProcessDefinitionVersion: 3,
+					ResourceName:             units[0].Name,
+					TenantId:                 "tenant-a",
+				},
+			}}}, nil
+		},
+		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			mu.Lock()
+			deletedProcessDefinitions = append(deletedProcessDefinitions, key)
+			mu.Unlock()
+			return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: 202, Status: "accepted", DeleteHistory: true}, nil
+		},
+	}
+	var created atomic.Int64
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			key := fmt.Sprintf("pi-%d", created.Add(1))
+			mu.Lock()
+			createRequests = append(createRequests, data)
+			mu.Unlock()
+			return d.ProcessInstanceCreation{
+				Key:                  key,
+				BpmnProcessId:        "C89_SimpleUserTask",
+				ProcessDefinitionKey: data.ProcessDefinitionSpecificId,
+				TenantId:             data.TenantId,
+			}, nil
+		},
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			require.Equal(t, int32(1), size)
+			mu.Lock()
+			visibilityFilters = append(visibilityFilters, filter)
+			mu.Unlock()
+			if filter.Key != "" {
+				return []d.ProcessInstance{{Key: filter.Key, ProcessDefinitionKey: filter.ProcessDefinitionKey, TenantId: "tenant-a"}}, nil
+			}
+			return []d.ProcessInstance{{Key: "read-probe", ProcessDefinitionKey: filter.ProcessDefinitionKey, TenantId: "tenant-a"}}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			mu.Lock()
+			deletedProcessInstances = append(deletedProcessInstances, key)
+			mu.Unlock()
+			return d.DeleteResponse{Ok: true, StatusCode: 202, Status: "accepted"}, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+		CommandName: "ops execute api-latency-test",
+		Count:       3,
+		Workers:     1,
+		TenantID:    "tenant-a",
+		Backoff:     d.APILatencyBackoff{MaxRetries: 0},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.APILatencyOutcomeCompleted, got.Outcome)
+	require.Equal(t, 1, cluster.topologyCalls)
+	require.Equal(t, 1, resource.deployCalls)
+	require.Equal(t, 1, resource.deleteCalls)
+	require.NotNil(t, got.Ownership)
+	requireAPILatencyRunID(t, got.Ownership.RunID)
+	require.Equal(t, got.Plan.RunID, got.Ownership.RunID)
+	require.True(t, got.Ownership.DeploymentSubmitted)
+	require.Equal(t, "C89_SimpleUserTask", got.Ownership.BpmnProcessID)
+	require.Equal(t, "pd-active", got.Ownership.ProcessDefinitionKey)
+	require.Equal(t, []string{"pi-1", "pi-2", "pi-3"}, got.Ownership.ProcessInstanceKeys)
+	require.Equal(t, []string{"pi-1", "pi-2", "pi-3"}, deletedProcessInstances)
+	require.Equal(t, []string{"pd-active"}, deletedProcessDefinitions)
+	require.Len(t, got.Visibility, 3)
+	for _, item := range got.Visibility {
+		require.True(t, item.Visible)
+		require.Equal(t, 1, item.Attempts)
+		require.Equal(t, 1, item.AttemptLimit)
+		require.Equal(t, d.APILatencyClassificationSuccess, item.FinalClassification)
+	}
+	require.Len(t, got.Cleanup, 4)
+	require.Equal(t, d.APILatencyCleanupResourceProcessInstance, got.Cleanup[0].ResourceType)
+	require.Equal(t, d.APILatencyCleanupResourceProcessDefinition, got.Cleanup[3].ResourceType)
+	require.Empty(t, got.Cleanup[3].RecoveryCommand)
+	require.Len(t, got.Stages, 1)
+	require.Equal(t, 3, got.Stages[0].PrimaryAttempts)
+	require.Equal(t, 6, got.Stages[0].DerivedAttempts)
+	requireAPILatencyCategory(t, got.Stages[0], d.APILatencyCategoryFixtureDeploy, 1, 1, 0, 0, 0)
+	requireAPILatencyCategory(t, got.Stages[0], d.APILatencyCategoryProcessInstanceCreate, 3, 3, 0, 0, 0)
+	requireAPILatencyCategory(t, got.Stages[0], d.APILatencyCategoryConcurrentRead, 3, 3, 0, 0, 0)
+	requireAPILatencyCategory(t, got.Stages[0], d.APILatencyCategorySearchVisibility, 3, 3, 0, 0, 0)
+	require.Equal(t, []d.ProcessInstanceData{
+		{ProcessDefinitionSpecificId: "pd-active", TenantId: "tenant-a"},
+		{ProcessDefinitionSpecificId: "pd-active", TenantId: "tenant-a"},
+		{ProcessDefinitionSpecificId: "pd-active", TenantId: "tenant-a"},
+	}, createRequests)
+	for _, filter := range visibilityFilters {
+		require.NotEqual(t, "C89_SimpleUserTask", filter.BpmnProcessId)
+		require.Equal(t, "pd-active", filter.ProcessDefinitionKey)
+	}
+}
+
+// TestAPILatencyActiveExecutionBoundsWorkersAndClassifiesVisibilityErrors verifies bounded stage work and safe active evidence.
+func TestAPILatencyActiveExecutionBoundsWorkersAndClassifiesVisibilityErrors(t *testing.T) {
+	var activeCreates atomic.Int64
+	var maxActiveCreates atomic.Int64
+	var createCalls atomic.Int64
+	var visibilityAttempts atomic.Int64
+	release := make(chan struct{})
+	t.Cleanup(func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	})
+	cluster := &stubSmokeTestClusterAPI{topology: d.Topology{GatewayVersion: "8.9.0"}}
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(context.Context, []d.DeploymentUnitData, ...services.CallOption) (d.Deployment, error) {
+			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
+				ProcessDefinitionId:  "C89_SimpleUserTask",
+				ProcessDefinitionKey: "pd-active",
+			}}}}, nil
+		},
+		delete: func(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			return d.ResourceDeleteResponse{Ok: true}, nil
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(ctx context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			call := createCalls.Add(1)
+			now := activeCreates.Add(1)
+			for {
+				seen := maxActiveCreates.Load()
+				if now <= seen || maxActiveCreates.CompareAndSwap(seen, now) {
+					break
+				}
+			}
+			defer activeCreates.Add(-1)
+			if call > 1 {
+				select {
+				case <-ctx.Done():
+					return d.ProcessInstanceCreation{}, ctx.Err()
+				case <-release:
+				}
+			}
+			return d.ProcessInstanceCreation{Key: fmt.Sprintf("pi-%d", call), ProcessDefinitionKey: data.ProcessDefinitionSpecificId}, nil
+		},
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			if filter.Key == "pi-2" {
+				visibilityAttempts.Add(1)
+				return nil, d.ErrRateLimited
+			}
+			if filter.Key != "" {
+				visibilityAttempts.Add(1)
+				return []d.ProcessInstance{{Key: filter.Key, ProcessDefinitionKey: filter.ProcessDefinitionKey}}, nil
+			}
+			return []d.ProcessInstance{{Key: "read-probe", ProcessDefinitionKey: filter.ProcessDefinitionKey}}, nil
+		},
+		deleteProcessInstance: func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error) {
+			return d.DeleteResponse{Ok: true}, nil
+		},
+	}
+	done := make(chan struct {
+		result d.APILatencyResult
+		err    error
+	}, 1)
+
+	go func() {
+		got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+			Count:    3,
+			Workers:  2,
+			TenantID: "tenant-a",
+			Backoff:  d.APILatencyBackoff{MaxRetries: 0},
+		})
+		done <- struct {
+			result d.APILatencyResult
+			err    error
+		}{result: got, err: err}
+	}()
+
+	require.Eventually(t, func() bool { return maxActiveCreates.Load() == 2 }, time.Second, 10*time.Millisecond)
+	require.Never(t, func() bool { return maxActiveCreates.Load() > 2 }, 25*time.Millisecond, 5*time.Millisecond)
+	close(release)
+	finished := <-done
+
+	require.NoError(t, finished.err)
+	require.Equal(t, d.APILatencyOutcomeCompleted, finished.result.Outcome)
+	require.Equal(t, int64(3), createCalls.Load())
+	require.Equal(t, int64(3), visibilityAttempts.Load())
+	require.Len(t, finished.result.Stages, 2)
+	require.LessOrEqual(t, finished.result.Stages[0].ActualMaxConcurrency, 1)
+	require.LessOrEqual(t, finished.result.Stages[1].ActualMaxConcurrency, 2)
+	requireAPILatencyCategoryClass(t, finished.result.Stages[1], d.APILatencyCategorySearchVisibility, d.APILatencyClassificationBackpressure)
+	require.Equal(t, "backpressure_observed", finished.result.Findings[0].Code)
+	require.Len(t, finished.result.Visibility, 3)
+	backpressureVisibility := requireAPILatencyVisibility(t, finished.result.Visibility, "pi-2")
+	require.False(t, backpressureVisibility.Visible)
+	require.Equal(t, d.APILatencyClassificationBackpressure, backpressureVisibility.FinalClassification)
+}
+
 // requireAPILatencyRunID verifies the active run identity is a nonzero 128-bit hex string.
 func requireAPILatencyRunID(t *testing.T, runID string) {
 	t.Helper()
@@ -724,4 +939,16 @@ func requireAPILatencyCategoryClass(t *testing.T, stage d.APILatencyStageResult,
 		t.Fatalf("missing classification %s for API latency category %s", class, category)
 	}
 	t.Fatalf("missing API latency category %s", category)
+}
+
+// requireAPILatencyVisibility finds visibility evidence for one exact process-instance key.
+func requireAPILatencyVisibility(t *testing.T, items []d.APILatencyVisibilityResult, key string) d.APILatencyVisibilityResult {
+	t.Helper()
+	for _, item := range items {
+		if item.ProcessInstanceKey == key {
+			return item
+		}
+	}
+	t.Fatalf("missing API latency visibility evidence for %s", key)
+	return d.APILatencyVisibilityResult{}
 }

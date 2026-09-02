@@ -61,7 +61,6 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - Durable setup patterns were recorded in progress and compacted into Ralph memory; no production code was changed in this iteration.
 ---
----
 ## Iteration 2 - 2026-09-02 07:17
 **Work Unit**: Phase 2 Foundational
 **Tasks Completed**:
@@ -172,4 +171,24 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - Active preflight now returns zero-mutation dry-run plans with 128-bit hex run IDs, version-matched SimpleUserTask fixtures, topology-observed version checks, and explicit cleanup/retention capability gates; non-dry execution remains blocked until the bounded active stages and cleanup tasks are implemented.
 - Validation passed: `go test ./internal/services/ops -run 'APILatencyActive' -count=1`; `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
+---
+---
+## Iteration 6 - 2026-09-02 08:04
+**Work Unit**: User Story 2 partial: active API latency service execution and successful cleanup
+**Tasks Completed**:
+- [x] T025: Add service tests for exact deployed-key creation, bounded active stages, overlapping-read evidence, exact-key visibility polling, backpressure classification, active findings, and successful-path cleanup
+- [x] T030: Implement bounded active stages with `toolx/pool`, exact deployed-definition creation without exporter wait, overlapping read probes, bounded exact-key visibility polling, and actual-limit accounting
+- [x] T031: Implement successful-path exact-key process-instance then process-definition cleanup through existing owning services
+**Tasks Remaining in Work Unit**: 6 tasks remain in US2: T026-T028 and T032-T035
+**Commit**: This work-unit commit
+**Files Changed**:
+- `internal/services/ops/api_latency_test.go`
+- `internal/services/ops/api_latency_execute.go`
+- `internal/services/ops/api_latency_cleanup.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Active non-dry service execution now uses no-wait fixture deployment, exact returned process-definition and process-instance keys, bounded stage workers, exact-key visibility evidence, safe backpressure findings, and PI-before-PD successful cleanup.
+- Validation passed: `go test ./internal/services/ops -run 'TestAPILatencyActiveExecution' -count=1`; `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./internal/services/ops -run 'APILatencyActive|APILatencyPlanDerivesVisibilityBound' -count=1`; `go test ./internal/services/ops -run 'TestAPILatencyActiveExecutionBoundsWorkersAndClassifiesVisibilityErrors' -race -count=1`; `git diff --check`.
 ---
