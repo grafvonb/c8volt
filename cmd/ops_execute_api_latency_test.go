@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
@@ -395,6 +397,89 @@ func TestRenderOpsExecuteAPILatencyHumanRendersActiveResult(t *testing.T) {
 	require.NotContains(t, output, "process-definition key pd-89")
 }
 
+// TestOpsExecuteAPILatencyInterruptContextScopesActiveExecution verifies signal cancellation is active only during the mutation window.
+func TestOpsExecuteAPILatencyInterruptContextScopesActiveExecution(t *testing.T) {
+	cmd := resetOpsExecuteAPILatencyTestFlags(t)
+	parent := cmd.Context()
+	var stopCalled bool
+	prevContext := newOpsExecuteAPILatencyInterruptContext
+	newOpsExecuteAPILatencyInterruptContext = func(parent context.Context) (context.Context, context.CancelFunc) {
+		ctx, cancel := context.WithCancel(parent)
+		cancel()
+		return ctx, func() { stopCalled = true }
+	}
+	t.Cleanup(func() { newOpsExecuteAPILatencyInterruptContext = prevContext })
+
+	_, err := withOpsExecuteAPILatencyInterruptContext(cmd, ops.APILatencyRequest{Mode: ops.APILatencyModeActive}, func() (ops.APILatencyResult, error) {
+		require.ErrorIs(t, cmd.Context().Err(), context.Canceled)
+		return ops.APILatencyResult{}, cmd.Context().Err()
+	})
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.True(t, stopCalled)
+	require.Same(t, parent, cmd.Context())
+}
+
+// TestRenderOpsExecuteAPILatencyHumanRendersRetainedAndRecoveryResources verifies compact output keeps exact recovery evidence.
+func TestRenderOpsExecuteAPILatencyHumanRendersRetainedAndRecoveryResources(t *testing.T) {
+	resetOpsExecuteAPILatencyTestFlags(t)
+	cmd := &cobra.Command{}
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	result := ops.APILatencyResult{
+		Request: ops.APILatencyRequest{
+			Mode:      ops.APILatencyModeActive,
+			Count:     1,
+			NoCleanup: true,
+		},
+		Plan: ops.APILatencyPlan{
+			Mode:                    ops.APILatencyModeActive,
+			RunID:                   "0123456789abcdef0123456789abcdef",
+			PrimarySampleLimit:      1,
+			PrimarySampleAllocation: 1,
+			DerivedRequestLimit:     2,
+			Stages: []ops.APILatencyStagePlan{{
+				Index:               1,
+				WorkerCount:         1,
+				PrimarySamples:      1,
+				DerivedRequestLimit: 2,
+			}},
+			Cleanup: &ops.APILatencyCleanupPlan{IntentionalRetention: true},
+		},
+		Ownership: &ops.APILatencyOwnership{
+			RunID:                "0123456789abcdef0123456789abcdef",
+			ProcessDefinitionKey: "pd-88",
+			ProcessInstanceKeys:  []string{"101", "102"},
+		},
+		Cleanup: []ops.APILatencyCleanupRecord{
+			{ResourceType: ops.APILatencyCleanupResourceProcessInstance, Key: "101", Status: ops.APILatencyCleanupStatusRetained, RecoveryCommand: "c8volt delete process-instance --key 101 --force --auto-confirm"},
+			{ResourceType: ops.APILatencyCleanupResourceProcessInstance, Key: "102", Status: ops.APILatencyCleanupStatusUnknown, Classification: ops.APILatencyClassificationTimeout, RecoveryCommand: "c8volt delete process-instance --key 102 --force --auto-confirm"},
+			{ResourceType: ops.APILatencyCleanupResourceProcessDefinition, Key: "pd-88", Status: ops.APILatencyCleanupStatusFailed, Classification: ops.APILatencyClassificationRequestError},
+		},
+		Outcome: ops.APILatencyOutcomePartial,
+	}
+
+	require.NoError(t, renderOpsAPILatencyResult(cmd, result))
+	output := out.String()
+	require.Contains(t, output, "cleanup: deleted 0/3; retained 1; failed 1; unknown 1")
+	require.Contains(t, output, "cleanup resource: process_instance 101; retained; recovery: c8volt delete process-instance --key 101 --force --auto-confirm")
+	require.Contains(t, output, "cleanup resource: process_instance 102; unknown; recovery: c8volt delete process-instance --key 102 --force --auto-confirm")
+	require.Contains(t, output, "cleanup resource: process_definition pd-88; failed")
+	require.Contains(t, output, "outcome: partial")
+}
+
+// TestOpsExecuteAPILatencyCleanupFailureUsesJSONErrorEnvelope verifies partial active failures keep the established machine error shape.
+func TestOpsExecuteAPILatencyCleanupFailureUsesJSONErrorEnvelope(t *testing.T) {
+	err := fmt.Errorf("ops execute api-latency-test: %w", context.Canceled)
+
+	envelope := resultEnvelopeForError(opsExecuteAPILatencyCmd, err)
+	require.Equal(t, OutcomeFailed, envelope.Outcome)
+	require.Equal(t, "ops execute api-latency-test", envelope.Command)
+	require.Nil(t, envelope.Payload)
+	require.Contains(t, envelope.Detail.Message, "ops execute api-latency-test")
+	require.Equal(t, exitcode.Error, ferrors.ResolveExitCode(false, err))
+}
+
 // TestOpsExecuteAPILatencyRootArgsHelper runs root arguments in a subprocess for exit-code assertions.
 func TestOpsExecuteAPILatencyRootArgsHelper(t *testing.T) {
 	executeRootHelperFromArgsEnv(t, "C8VOLT_TEST_ROOT_ARGS")
@@ -460,27 +545,37 @@ func newOpsExecuteAPILatencyActiveServer(t *testing.T, requests *testx.SafeSlice
 }
 
 func apiLatencyProcessInstanceCreationJSON(key string) string {
+	return apiLatencyProcessInstanceCreationJSONForDefinition(key, "pd-88", "C88_SimpleUserTask")
+}
+
+// apiLatencyProcessInstanceCreationJSONForDefinition builds create responses for version-specific active fixtures.
+func apiLatencyProcessInstanceCreationJSONForDefinition(key string, processDefinitionKey string, bpmnProcessID string) string {
 	return fmt.Sprintf(`{
 		"processInstanceKey": %q,
-		"processDefinitionId": "C88_SimpleUserTask",
-		"processDefinitionKey": "pd-88",
+		"processDefinitionId": %q,
+		"processDefinitionKey": %q,
 		"processDefinitionVersion": 1,
 		"tenantId": "<default>"
-	}`, key)
+	}`, key, bpmnProcessID, processDefinitionKey)
 }
 
 func apiLatencyProcessInstanceJSON(key string) string {
+	return apiLatencyProcessInstanceJSONForDefinition(key, "pd-88", "C88_SimpleUserTask")
+}
+
+// apiLatencyProcessInstanceJSONForDefinition builds search responses for version-specific active fixtures.
+func apiLatencyProcessInstanceJSONForDefinition(key string, processDefinitionKey string, bpmnProcessID string) string {
 	return fmt.Sprintf(`{
 		"hasIncident": false,
-		"processDefinitionId": "C88_SimpleUserTask",
-		"processDefinitionKey": "pd-88",
-		"processDefinitionName": "C88_SimpleUserTask",
+		"processDefinitionId": %q,
+		"processDefinitionKey": %q,
+		"processDefinitionName": %q,
 		"processDefinitionVersion": 1,
 		"processInstanceKey": %q,
 		"startDate": "2026-09-02T08:00:00Z",
 		"state": "ACTIVE",
 		"tenantId": "<default>"
-	}`, key)
+	}`, bpmnProcessID, processDefinitionKey, bpmnProcessID, key)
 }
 
 func resetOpsExecuteAPILatencyTestFlags(t *testing.T) *cobra.Command {

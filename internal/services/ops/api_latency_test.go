@@ -543,7 +543,7 @@ func TestAPILatencyActiveDryRunPlansRunIdentityFixtureAndVersion(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, 1, cluster.topologyCalls)
+	require.Equal(t, int64(1), cluster.topologyCalls.Load())
 	require.Zero(t, resource.deployCalls)
 	require.Zero(t, resource.deleteCalls)
 	requireAPILatencyRunID(t, got.Plan.RunID)
@@ -583,7 +583,7 @@ func TestAPILatencyActiveDryRunRejectsObservedVersionMismatch(t *testing.T) {
 
 	require.ErrorIs(t, err, d.ErrPrecondition)
 	require.Contains(t, err.Error(), "configured Camunda 8.9 does not match observed gateway 8.8.9")
-	require.Equal(t, 1, cluster.topologyCalls)
+	require.Equal(t, int64(1), cluster.topologyCalls.Load())
 	require.Zero(t, resource.deployCalls)
 	require.Equal(t, d.APILatencyOutcomeFailed, got.Outcome)
 	require.NotNil(t, got.Plan.Cleanup)
@@ -759,7 +759,7 @@ func TestAPILatencyActiveExecutionUsesExactReturnedKeysAndCleansUp(t *testing.T)
 
 	require.NoError(t, err)
 	require.Equal(t, d.APILatencyOutcomeCompleted, got.Outcome)
-	require.Equal(t, 1, cluster.topologyCalls)
+	require.Equal(t, int64(1), cluster.topologyCalls.Load())
 	require.Equal(t, 1, resource.deployCalls)
 	require.Equal(t, 1, resource.deleteCalls)
 	require.NotNil(t, got.Ownership)

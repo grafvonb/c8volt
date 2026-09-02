@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -143,7 +144,7 @@ func TestExecuteSmokeTestDryRunPlansReadOnlyWorkflow(t *testing.T) {
 	got, err := NewWithWorkflowDependencies(cluster, nil, nil, nil, nil, toolx.V88).ExecuteSmokeTest(context.Background(), request)
 
 	require.NoError(t, err)
-	require.Equal(t, 1, cluster.topologyCalls)
+	require.Equal(t, int64(1), cluster.topologyCalls.Load())
 	require.Equal(t, d.SmokeTestOutcomePlanned, got.Outcome)
 	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Plan.Status)
 	require.Equal(t, "8.8", got.Plan.CamundaVersion)
@@ -334,7 +335,7 @@ func TestExecuteSmokeTestDeploysSelectedFixtureThroughResourceAPI(t *testing.T) 
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, 1, cluster.topologyCalls)
+	require.Equal(t, int64(1), cluster.topologyCalls.Load())
 	require.Equal(t, 1, resource.deployCalls)
 	require.Equal(t, d.SmokeTestOutcomePassedCleanupSkipped, got.Outcome)
 	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Deployment.Status)
@@ -974,7 +975,7 @@ func TestExecuteSmokeTestDryRunConnectivityFailureDoesNotPlanMutation(t *testing
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "smoke-test connectivity validation")
-	require.Equal(t, 1, cluster.topologyCalls)
+	require.Equal(t, int64(1), cluster.topologyCalls.Load())
 	require.Equal(t, d.SmokeTestOutcomeFailed, got.Outcome)
 	require.Equal(t, d.OpsWorkflowStepStatusFailed, got.Plan.Status)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deployment.Status)
@@ -988,11 +989,11 @@ func TestExecuteSmokeTestDryRunConnectivityFailureDoesNotPlanMutation(t *testing
 type stubSmokeTestClusterAPI struct {
 	topology      d.Topology
 	err           error
-	topologyCalls int
+	topologyCalls atomic.Int64
 }
 
 func (s *stubSmokeTestClusterAPI) GetClusterTopology(context.Context, ...services.CallOption) (d.Topology, error) {
-	s.topologyCalls++
+	s.topologyCalls.Add(1)
 	if s.err != nil {
 		return d.Topology{}, s.err
 	}

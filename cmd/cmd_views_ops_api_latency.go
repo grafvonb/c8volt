@@ -180,6 +180,31 @@ func renderOpsAPILatencyCleanup(cmd *cobra.Command, cleanup []ops.APILatencyClea
 		}
 	}
 	renderHumanLine(cmd, "cleanup: deleted %d/%d; retained %d; failed %d; unknown %d", deleted, len(cleanup), retained, failed, unknown)
+	renderOpsAPILatencyCleanupRecovery(cmd, cleanup)
+}
+
+// renderOpsAPILatencyCleanupRecovery lists only retained or unresolved exact resources.
+func renderOpsAPILatencyCleanupRecovery(cmd *cobra.Command, cleanup []ops.APILatencyCleanupRecord) {
+	for _, record := range cleanup {
+		if !opsAPILatencyCleanupNeedsRecoveryLine(record) {
+			continue
+		}
+		line := fmt.Sprintf("cleanup resource: %s %s; %s", record.ResourceType, record.Key, record.Status)
+		if record.RecoveryCommand != "" {
+			line += "; recovery: " + record.RecoveryCommand
+		}
+		renderHumanLine(cmd, "%s", line)
+	}
+}
+
+// opsAPILatencyCleanupNeedsRecoveryLine keeps successful cleanup compact while surfacing resources that may remain.
+func opsAPILatencyCleanupNeedsRecoveryLine(record ops.APILatencyCleanupRecord) bool {
+	switch record.Status {
+	case ops.APILatencyCleanupStatusRetained, ops.APILatencyCleanupStatusFailed, ops.APILatencyCleanupStatusUnknown:
+		return record.Key != ""
+	default:
+		return false
+	}
 }
 
 func renderOpsAPILatencyStageCategories(cmd *cobra.Command, stage ops.APILatencyStageResult) {

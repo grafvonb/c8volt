@@ -93,7 +93,6 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - API-latency foundation is pure and version-neutral; remote read-only and active workflows can reuse `PlanAPILatency`, `BuildAPILatencyStageResults`, safe classification, and deterministic findings without adding command-layer backend loops.
 - Validation passed: `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./c8volt -run 'TestNew_V89WiresSupportedRuntime' -count=1`; `git diff --check`.
----
 ## Iteration 3 - 2026-09-02 07:42
 **Work Unit**: User Story 1 partial: read-only API latency analysis command
 **Tasks Completed**:
@@ -307,4 +306,28 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - Active facade regression coverage now proves timeout-normalized partial execution still returns exact ownership plus deleted, unknown, and failed cleanup records with safe classifications and manual recovery commands.
 - Validation passed: `go test ./c8volt/ops -run 'TestClientExecuteAPILatencyTestPreservesPartialCleanupEvidence' -count=1`; `go test ./c8volt/ops -run 'APILatency' -count=1`; `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
+---
+---
+## Iteration 13 - 2026-09-02 09:02
+**Work Unit**: User Story 3 partial: active command cancellation and cleanup recovery output
+**Tasks Completed**:
+- [x] T039: Add command tests for scoped interrupt cancellation, retained cleanup output, exact recovery guidance, established nonzero error envelope, and no-cleanup confirmation coverage
+- [x] T043: Install scoped signal-aware cancellation for the active execution window
+- [x] T045: Render retained resources, cleanup attempts/results, remaining exact keys, recovery guidance, and partial/interrupted outcomes compactly
+**Tasks Remaining in Work Unit**: 2 US3 tasks remain: T044 service/facade outcome preservation and T046 final race validation record
+**Commit**: This work-unit commit
+**Files Changed**:
+- `cmd/ops_execute_api_latency_test.go`
+- `cmd/ops_execute_api_latency.go`
+- `cmd/ops_execute_api_latency_signal.go`
+- `cmd/cmd_views_ops_api_latency.go`
+- `internal/services/ops/api_latency_test.go`
+- `internal/services/ops/smoke_test_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Active command cancellation is now scoped to the mutation window and exact cleanup recovery output remains compact by listing only retained, failed, and unknown resources.
+- The race gate exposed a shared test-stub race in `stubSmokeTestClusterAPI.topologyCalls`; making that counter atomic allowed `go test ./internal/services/ops ./cmd -run 'APILatency' -race -count=1` to pass.
+- Validation passed: `go test ./cmd -run 'TestOpsExecuteAPILatency(InterruptContextScopesActiveExecution|CleanupFailureUsesJSONErrorEnvelope)|TestRenderOpsExecuteAPILatencyHumanRendersRetainedAndRecoveryResources' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `go test ./internal/services/ops ./cmd -run 'APILatency' -race -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
 ---

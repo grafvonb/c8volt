@@ -74,7 +74,9 @@ var opsExecuteAPILatencyCmd = &cobra.Command{
 		}
 		progress := configureOpsAPILatencyProgress(cmd, &request)
 		result, err := executeAPILatencyWithCommandActivity(cmd, request, func() (ops.APILatencyResult, error) {
-			return cli.ExecuteAPILatencyTest(cmd.Context(), request, collectOpsExecuteAPILatencyOptions()...)
+			return withOpsExecuteAPILatencyInterruptContext(cmd, request, func() (ops.APILatencyResult, error) {
+				return cli.ExecuteAPILatencyTest(cmd.Context(), request, collectOpsExecuteAPILatencyOptions()...)
+			})
 		})
 		progress.Close()
 		result = attachOpsAPILatencyResultContext(cfg, result)

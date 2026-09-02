@@ -4,7 +4,7 @@ Feature: 289-api-latency-diagnostics
 Started: 2026-09-02T04:58:25Z
 
 ## Codebase Patterns
-- First incomplete work now begins at US3 T039; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, bounded active US2 command/service/facade/rendering work T024-T035, US3 service cleanup/ownership work T036/T037/T040-T042, and US3 facade partial cleanup evidence coverage T038 are complete.
+- First incomplete work now begins at US3 T044; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, bounded active US2 command/service/facade/rendering work T024-T035, US3 service cleanup/ownership work T036/T037/T040-T042, US3 facade partial cleanup evidence coverage T038, and US3 command cancellation/recovery rendering work T039/T043/T045 are complete.
 - Commands own Cobra construction, local flag validation, confirmation, activity/progress setup, report-path validation, and final rendering. Follow `cmd/ops_analyse_slow_process_instances.go` for read-only analysis wiring and `cmd/ops_execute_smoketest.go` for active ops execution wiring.
 - Public `c8volt/ops` facade methods are thin: map public request to `internal/domain`, delegate to `internal/services/ops.API`, map results back, and convert errors with `ferrors.FromDomain`.
 - `internal/services/ops.Service` is the owning layer for stage planning, remote workflow mechanics, worker scheduling, cleanup orchestration, and progress facts. `NewWithAnalysisDependencies` already carries cluster, process-instance, process-definition, resource, job, element, version, and logger dependencies for this feature.
@@ -27,6 +27,9 @@ Started: 2026-09-02T04:58:25Z
 - US3 facade coverage now specifically pins cleanup-failure partial evidence through `ExecuteAPILatencyTest`: `ErrGatewayTimeout` normalizes to `ferrors.ErrTimeout` while exact ownership, deleted/unknown/failed cleanup records, classifications, and recovery commands remain available to callers.
 - `cmd/ops_execute_api_latency.go` now registers `ops execute api-latency-test` with active flags, state-changing/full/automation metadata, concrete-destination all-tenants rejection, local count/worker/keys-only/report validation, JSON mutation guardrails, active facade dispatch, aggregate progress routing, default low-level log suppression, and confirmation including `--no-cleanup`. Report-file path preflight is implemented, but actual report writing remains assigned to US4.
 - Active command output now branches in `cmd/cmd_views_ops_api_latency.go`: human preview/result labels the active command, reports plan allocation parity, run ID, fixture, visibility attempt ceiling, cleanup intent/support, active primary create counts, ownership summary, visibility summary, cleanup summary, findings, and outcome without endpoint or per-key lifecycle chatter.
+- Active execution now scopes `os.Interrupt` cancellation to the confirmed mutation window through `cmd/ops_execute_api_latency_signal.go`, restores the original Cobra context after the facade call, and leaves dry-run/global command behavior unchanged.
+- Active cleanup human output remains aggregate-first but now lists exact retained, failed, and unknown cleanup resources with service-provided recovery commands; successful deletions stay summarized.
+- `stubSmokeTestClusterAPI.topologyCalls` is atomic because API-latency read-only tests call topology concurrently under the stage worker pool; use `.Load()` for assertions.
 
 ## Decisions
 - For this Ralph run, the prerequisite script selected `specs/289-api-latency-diagnostics`; the AGENTS Speckit block still names an older active plan and should not override the checked `FEATURE_DIR`.
@@ -46,7 +49,7 @@ Started: 2026-09-02T04:58:25Z
 - Do not create a new report framework, worker framework, fixture, generated client, or versioned latency adapter for this feature.
 - Do not hand-edit generated CLI docs under `docs/cli`; update command metadata and run `make docs-content` when command behavior exists.
 - `--report-file`/`--report-format` are currently validated on the read-only command, but actual report writing remains planned in US4 T048/T052/T053; T023 evidence intentionally covered executable read-only/default-shape, JSON stdout, invalid-budget, zero-mutation, and bounded-worker behavior without claiming report-file output is implemented.
-- Command preservation/rendering of partial cleanup evidence remains assigned to US3 T039/T043-T046; do not treat the service/facade cleanup work as completing user-visible recovery output.
+- Command report serialization remains assigned to US4 T048/T052/T053. T039 command coverage intentionally pins partial failure error-envelope behavior and report-attempt boundaries without implementing API-latency report writing.
 
 ## Current Handoff
-- Next iteration should continue US3 at T039 by adding command tests in `cmd/ops_execute_api_latency_test.go` for scoped interrupt cancellation, cleanup continuation, retained output, partial report attempts, exact recovery guidance, established nonzero error envelope, and no-cleanup confirmation.
+- Next iteration should continue US3 at T044 by confirming or completing service/facade preservation of interrupted, partial, failed, and completed-retained outcomes in `internal/services/ops/api_latency_execute.go` and `c8volt/ops/client.go`; after that, run and record T046 race validation.
