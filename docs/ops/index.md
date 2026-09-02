@@ -16,8 +16,8 @@ The ops command group is the operator-facing layer for predefined Camunda playbo
 
 | Workflow | Command | Use when |
 | --- | --- | --- |
-| [Analyse API Latency](/cli/c8volt_ops_analyse_api-latency) | `c8volt ops analyse api-latency` | You need bounded read-path latency evidence without changing cluster state. |
-| [Execute API Latency Test](/cli/c8volt_ops_execute_api-latency-test) | `c8volt ops execute api-latency-test` | You need confirmed active write/read/visibility latency evidence with exact-key cleanup. |
+| [Analyse API Latency](./analyse-api-latency/) | `c8volt ops analyse api-latency` | You need bounded read-path latency evidence without changing cluster state. |
+| [Execute API Latency Test](./execute-api-latency-test/) | `c8volt ops execute api-latency-test` | You need confirmed active write/read/visibility latency evidence with exact-key cleanup. |
 | [Analyse Slow Process Instances](./analyse-slow-process-instances/) | `c8volt ops analyse slow-process-instances` | You need to find slow runtime work and explain it with element timing and listener context. |
 | [Execute Retention Policy](./execute-retention-policy/) | `c8volt ops execute retention-policy` | You need an auditable cleanup of old finished process instances. |
 | [Purge Process Instances With Incidents](./purge-process-instances-with-incidents/) | `c8volt ops purge process-instances-with-incidents` | You need to delete process-instance families selected from incident filters. |

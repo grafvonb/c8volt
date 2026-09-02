@@ -554,3 +554,21 @@ Started: 2026-09-02 06:58:25
 - API-latency docs discoverability now distinguishes read-only zero-mutation analysis from confirmed active testing with cleanup; focused operator guide pages remain the next docs task.
 - Validation passed: `git diff --check`; generated reference targets for both API-latency commands exist.
 ---
+---
+## Iteration 26 - 2026-09-02 10:56
+**Work Unit**: Phase 7 polish: API latency operator guidance
+**Tasks Completed**:
+- [x] T061: Add focused operator guidance in `docs/ops/analyse-api-latency.md` and `docs/ops/execute-api-latency-test.md`
+**Tasks Remaining in Work Unit**: 4 Phase 7 tasks remain: T062-T065
+**Commit**: This work-unit commit
+**Files Changed**:
+- `docs/ops/analyse-api-latency.md`
+- `docs/ops/execute-api-latency-test.md`
+- `docs/ops/index.md`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- API-latency operator guidance now has focused read-only and active playbooks covering safety, stage bounds, report behavior, active version gates, confirmation, cleanup, retention, and recovery without hand-editing generated CLI docs.
+- Validation passed: `git diff --check`.
+---
