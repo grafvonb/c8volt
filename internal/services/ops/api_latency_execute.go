@@ -235,10 +235,12 @@ func (s *Service) executeAPILatencyActiveStages(ctx context.Context, result d.AP
 	measurements := []d.APILatencyMeasurement{deploymentMeasurement}
 	ownership := newAPILatencyOwnership(result.Plan)
 	ownership.DeploymentSubmitted = true
-	result.Ownership = ownership
+	ownershipRegistry := newAPILatencyOwnershipRegistry(ownership)
+	result.Ownership = ownershipRegistry.snapshot()
 	if err != nil {
 		result.Stages = BuildAPILatencyStageResults(result.Plan, measurements)
 		result.Findings = EvaluateAPILatencyFindings(result.Topology, result.Stages)
+		result.Ownership = ownershipRegistry.snapshot()
 		result.Outcome = d.APILatencyOutcomeFailed
 		return finishAPILatencyActiveResult(result, fmt.Errorf("deploy API latency fixture: %w", err))
 	}
@@ -246,27 +248,16 @@ func (s *Service) executeAPILatencyActiveStages(ctx context.Context, result d.AP
 	if err != nil {
 		result.Stages = BuildAPILatencyStageResults(result.Plan, measurements)
 		result.Findings = EvaluateAPILatencyFindings(result.Topology, result.Stages)
+		result.Ownership = ownershipRegistry.snapshot()
 		result.Outcome = d.APILatencyOutcomeFailed
 		return finishAPILatencyActiveResult(result, err)
 	}
-	ownership.ProcessDefinitionKey = pdKey
+	ownershipRegistry.registerProcessDefinitionKey(pdKey)
+	result.Ownership = ownershipRegistry.snapshot()
 
 	cfg := services.ApplyCallOptions(opts)
 	var mu sync.Mutex
 	var inFlightWrites int64
-	registerKey := func(key string) {
-		if key == "" {
-			return
-		}
-		mu.Lock()
-		defer mu.Unlock()
-		for _, existing := range ownership.ProcessInstanceKeys {
-			if existing == key {
-				return
-			}
-		}
-		ownership.ProcessInstanceKeys = append(ownership.ProcessInstanceKeys, key)
-	}
 	recordVisibility := func(item d.APILatencyVisibilityResult) {
 		mu.Lock()
 		result.Visibility = append(result.Visibility, item)
@@ -276,7 +267,7 @@ func (s *Service) executeAPILatencyActiveStages(ctx context.Context, result d.AP
 	for _, stage := range result.Plan.Stages {
 		reportAPILatencyStageProgress(result.Request.Progress, "executing active API latency test", stage, 0, 0)
 		cycles, stageErr := pool.ExecuteNTimes(ctx, stage.PrimarySamples, stage.WorkerCount, cfg.FailFast, func(ctx context.Context, _ int) (apiLatencyActiveCycle, error) {
-			return s.measureAPILatencyActiveCycle(ctx, stage.Index, result.Request, pdKey, &inFlightWrites, registerKey, opts...)
+			return s.measureAPILatencyActiveCycle(ctx, stage.Index, result.Request, pdKey, &inFlightWrites, ownershipRegistry.registerProcessInstanceKey, opts...)
 		})
 		done := 0
 		failed := 0
@@ -298,6 +289,7 @@ func (s *Service) executeAPILatencyActiveStages(ctx context.Context, result d.AP
 		if stageErr != nil {
 			result.Stages = BuildAPILatencyStageResults(result.Plan, measurements)
 			result.Findings = EvaluateAPILatencyFindings(result.Topology, result.Stages)
+			result.Ownership = ownershipRegistry.snapshot()
 			result.Outcome = apiLatencyInterruptedOrPartialOutcome(ctx)
 			cleanupErr := s.finalizeAPILatencyCleanup(ctx, &result, opts...)
 			if cleanupErr != nil {
@@ -309,6 +301,7 @@ func (s *Service) executeAPILatencyActiveStages(ctx context.Context, result d.AP
 
 	result.Stages = BuildAPILatencyStageResults(result.Plan, measurements)
 	result.Findings = EvaluateAPILatencyFindings(result.Topology, result.Stages)
+	result.Ownership = ownershipRegistry.snapshot()
 	if cleanupErr := s.finalizeAPILatencyCleanup(ctx, &result, opts...); cleanupErr != nil {
 		result.Outcome = d.APILatencyOutcomePartial
 		return finishAPILatencyActiveResult(result, cleanupErr)

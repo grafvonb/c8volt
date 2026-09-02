@@ -253,3 +253,22 @@ Started: 2026-09-02 06:58:25
 - Active human output now uses active-specific labels and sample math, exposes bounded plan/run/fixture/visibility/cleanup summaries, and keeps endpoint/per-key lifecycle chatter out of compact output.
 - Validation passed: `go test ./cmd -run 'TestOpsExecuteAPILatencyDryRunRendersActivePreview|TestRenderOpsExecuteAPILatencyHumanRendersActiveResult' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `git diff --check`.
 ---
+---
+## Iteration 10 - 2026-09-02 08:35
+**Work Unit**: User Story 3 partial: exact-key ownership registry and cleanup ordering
+**Tasks Completed**:
+- [x] T036: Add service tests for concurrency-safe immediate ownership registration, stable key ordering/deduplication, exact-key-only cleanup authority, PI-before-PD order, and absence of BPMN-ID or tenant-wide cleanup discovery
+- [x] T040: Implement the concurrency-safe exact-key ownership registry and terminal cleanup-record accounting
+**Tasks Remaining in Work Unit**: 9 US3 tasks remain: T037-T039 and T041-T046
+**Commit**: This work-unit commit
+**Files Changed**:
+- `internal/services/ops/api_latency_cleanup.go`
+- `internal/services/ops/api_latency_execute.go`
+- `internal/services/ops/api_latency_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Active ownership registration is now service-owned through a mutex-protected registry that immediately records returned keys, deduplicates them, snapshots deterministic exact-key evidence, and keeps cleanup PI-before-PD without BPMN-ID or tenant-wide cleanup discovery.
+- Validation passed: `go test ./internal/services/ops -run 'TestAPILatencyActiveOwnershipRegistryDeduplicatesAndCleansExactKeys' -count=1`; `go test ./internal/services/ops -run 'TestAPILatencyActiveOwnershipRegistryDeduplicatesAndCleansExactKeys' -race -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./internal/services/ops -run 'APILatencyActive' -race -count=1`; `git diff --check`.
+---

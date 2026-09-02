@@ -15,6 +15,7 @@ import (
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/stretchr/testify/require"
 )
@@ -896,6 +897,66 @@ func TestAPILatencyActiveExecutionBoundsWorkersAndClassifiesVisibilityErrors(t *
 	backpressureVisibility := requireAPILatencyVisibility(t, finished.result.Visibility, "pi-2")
 	require.False(t, backpressureVisibility.Visible)
 	require.Equal(t, d.APILatencyClassificationBackpressure, backpressureVisibility.FinalClassification)
+}
+
+// TestAPILatencyActiveOwnershipRegistryDeduplicatesAndCleansExactKeys verifies concurrent ownership snapshots are stable cleanup authority.
+func TestAPILatencyActiveOwnershipRegistryDeduplicatesAndCleansExactKeys(t *testing.T) {
+	var createCalls atomic.Int64
+	var searchFilters testx.SafeSlice[d.ProcessInstanceFilter]
+	var cleanupTargets testx.SafeSlice[string]
+	returnedKeys := []string{"pi-z", "pi-a", "pi-z", "pi-m", "pi-a", "pi-b", "pi-c"}
+	cluster := &stubSmokeTestClusterAPI{topology: d.Topology{GatewayVersion: "8.9.0"}}
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(context.Context, []d.DeploymentUnitData, ...services.CallOption) (d.Deployment, error) {
+			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
+				ProcessDefinitionId:  "C89_SimpleUserTask",
+				ProcessDefinitionKey: "pd-active",
+			}}}}, nil
+		},
+		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			cleanupTargets.Append("pd:" + key)
+			return d.ResourceDeleteResponse{Ok: true}, nil
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			call := int(createCalls.Add(1))
+			return d.ProcessInstanceCreation{Key: returnedKeys[call-1], ProcessDefinitionKey: data.ProcessDefinitionSpecificId}, nil
+		},
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			require.Equal(t, int32(1), size)
+			require.Empty(t, filter.BpmnProcessId)
+			require.NotEmpty(t, filter.ProcessDefinitionKey)
+			searchFilters.Append(filter)
+			if filter.Key == "" {
+				return []d.ProcessInstance{{Key: "read-probe", ProcessDefinitionKey: filter.ProcessDefinitionKey}}, nil
+			}
+			return []d.ProcessInstance{{Key: filter.Key, ProcessDefinitionKey: filter.ProcessDefinitionKey}}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			cleanupTargets.Append("pi:" + key)
+			return d.DeleteResponse{Ok: true}, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+		Count:    len(returnedKeys),
+		Workers:  4,
+		TenantID: "tenant-a",
+		Backoff:  d.APILatencyBackoff{MaxRetries: 0},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, got.Ownership)
+	require.Equal(t, []string{"pi-a", "pi-b", "pi-c", "pi-m", "pi-z"}, got.Ownership.ProcessInstanceKeys)
+	require.Equal(t, []string{"pi:pi-a", "pi:pi-b", "pi:pi-c", "pi:pi-m", "pi:pi-z", "pd:pd-active"}, cleanupTargets.Snapshot())
+	require.Len(t, got.Cleanup, 6)
+	require.Equal(t, d.APILatencyCleanupResourceProcessInstance, got.Cleanup[0].ResourceType)
+	require.Equal(t, d.APILatencyCleanupResourceProcessDefinition, got.Cleanup[5].ResourceType)
+	for _, filter := range searchFilters.Snapshot() {
+		require.NotEqual(t, "C89_SimpleUserTask", filter.BpmnProcessId)
+		require.Equal(t, "pd-active", filter.ProcessDefinitionKey)
+	}
 }
 
 // requireAPILatencyRunID verifies the active run identity is a nonzero 128-bit hex string.

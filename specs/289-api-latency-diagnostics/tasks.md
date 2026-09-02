@@ -107,14 +107,14 @@
 
 ### Tests for User Story 3
 
-- [ ] T036 [P] [US3] Add failing service tests for concurrency-safe immediate ownership registration, stable key ordering/deduplication, exact-key-only cleanup authority, PI-before-PD order, and absence of BPMN-ID or tenant-wide cleanup discovery in `internal/services/ops/api_latency_test.go`
+- [x] T036 [P] [US3] Add failing service tests for concurrency-safe immediate ownership registration, stable key ordering/deduplication, exact-key-only cleanup authority, PI-before-PD order, and absence of BPMN-ID or tenant-wide cleanup discovery in `internal/services/ops/api_latency_test.go`
 - [ ] T037 [US3] Add failing service tests for cleanup after stage failure, request timeout, visibility exhaustion, and canceled caller; independent cleanup timeout; partial cleanup; every remainder/recovery command; 8.8 retention; and no-cleanup distinction in `internal/services/ops/api_latency_test.go`
 - [ ] T038 [P] [US3] Add failing facade tests proving partial ownership/cleanup results survive domain error conversion in `c8volt/ops/client_test.go`
 - [ ] T039 [P] [US3] Add failing command tests for scoped interrupt cancellation, cleanup continuation, retained output, partial report attempts, exact recovery guidance, established nonzero error envelope, and no-cleanup confirmation in `cmd/ops_execute_api_latency_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T040 [US3] Implement the concurrency-safe exact-key ownership registry and terminal cleanup-record accounting in `internal/services/ops/api_latency_cleanup.go`
+- [x] T040 [US3] Implement the concurrency-safe exact-key ownership registry and terminal cleanup-record accounting in `internal/services/ops/api_latency_cleanup.go`
 - [ ] T041 [US3] Extend cleanup orchestration to run on success and every incomplete terminal path with `context.WithoutCancel`, a bounded completion context, exact PI-before-PD deletion, and joined partial errors in `internal/services/ops/api_latency_cleanup.go`
 - [ ] T042 [US3] Implement intentional retention, unsupported-cleanup preflight blocking, remaining-resource classification, and exact-key manual recovery guidance in `internal/services/ops/api_latency_cleanup.go`
 - [ ] T043 [US3] Install scoped signal-aware cancellation for the active execution window without changing global command behavior in `cmd/ops_execute_api_latency.go`
