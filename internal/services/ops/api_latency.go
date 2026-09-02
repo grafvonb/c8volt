@@ -48,33 +48,6 @@ func (s *Service) AnalyseAPILatency(ctx context.Context, request d.APILatencyReq
 	return s.analyseAPILatencyReadOnly(ctx, request, opts...)
 }
 
-// ExecuteAPILatencyTest validates and plans an active API latency diagnostic for the service workflow.
-func (s *Service) ExecuteAPILatencyTest(ctx context.Context, request d.APILatencyRequest, opts ...services.CallOption) (d.APILatencyResult, error) {
-	_ = ctx
-	_ = opts
-	request.Mode = d.APILatencyModeActive
-	plan, err := PlanAPILatency(request)
-	outcome := d.APILatencyOutcomeCompleted
-	if request.DryRun {
-		outcome = d.APILatencyOutcomePlanned
-	} else if request.NoCleanup {
-		outcome = d.APILatencyOutcomeCompletedRetained
-	}
-	result := d.APILatencyResult{
-		SchemaVersion: d.APILatencySchemaVersion,
-		Request:       request,
-		Plan:          plan,
-		Notices:       append([]string(nil), plan.Notices...),
-		Limitations:   append([]string(nil), plan.Limitations...),
-		Outcome:       outcome,
-	}
-	if err != nil {
-		result.Outcome = d.APILatencyOutcomeFailed
-		return result, err
-	}
-	return result, nil
-}
-
 // PlanAPILatency builds the deterministic stage and request-ceiling plan shared by both diagnostic modes.
 func PlanAPILatency(request d.APILatencyRequest) (d.APILatencyPlan, error) {
 	plan := d.APILatencyPlan{

@@ -79,7 +79,7 @@
 
 ### Tests for User Story 2
 
-- [ ] T024 [P] [US2] Add failing service tests for run-ID generation, fixture selection, configured/observed version checks, dry-run zero mutation, active 8.7 rejection, cleanup-enabled 8.8 rejection, 8.8 no-cleanup eligibility, and 8.9/8.10 cleanup eligibility in `internal/services/ops/api_latency_test.go`
+- [x] T024 [P] [US2] Add failing service tests for run-ID generation, fixture selection, configured/observed version checks, dry-run zero mutation, active 8.7 rejection, cleanup-enabled 8.8 rejection, 8.8 no-cleanup eligibility, and 8.9/8.10 cleanup eligibility in `internal/services/ops/api_latency_test.go`
 - [ ] T025 [US2] Add failing service tests for exact deployed-key creation with no visibility wait, immediate returned-key recording, stage concurrency/count bounds, overlapping-read evidence, bounded exact-key visibility polling, backpressure/timeout classification, active findings, and successful-path cleanup in `internal/services/ops/api_latency_test.go`
 - [ ] T026 [P] [US2] Add failing facade tests for active plan, ownership, visibility, cleanup, progress, and partial-result conversion in `c8volt/ops/client_test.go`
 - [ ] T027 [P] [US2] Add failing command tests for active flags/defaults, concrete-tenant enforcement, state-changing/full/automation metadata, dry-run preview, confirmation including `--no-cleanup`, automation/auto-confirm, JSON confirmation guardrails, and report-path preflight in `cmd/ops_execute_api_latency_test.go`
@@ -87,7 +87,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T029 [US2] Implement active preflight, cryptographic run-ID generation, version capability matrix, existing SimpleUserTask fixture selection, and immutable execution planning in `internal/services/ops/api_latency_execute.go`
+- [x] T029 [US2] Implement active preflight, cryptographic run-ID generation, version capability matrix, existing SimpleUserTask fixture selection, and immutable execution planning in `internal/services/ops/api_latency_execute.go`
 - [ ] T030 [US2] Implement bounded active stages with `toolx/pool`, exact deployed-definition creation without exporter wait, overlapping read probes, bounded exact-key visibility polling, and actual-limit accounting in `internal/services/ops/api_latency_execute.go`
 - [ ] T031 [US2] Implement successful-path exact-key process-instance then process-definition cleanup through existing owning services in `internal/services/ops/api_latency_cleanup.go`
 - [ ] T032 [US2] Complete active-only ownership, visibility, cleanup, and outcome conversions in `c8volt/ops/convert.go`

@@ -154,3 +154,22 @@ Started: 2026-09-02 06:58:25
 - Report-file execution is not claimed by US1 evidence because report writing remains assigned to US4 T048/T052/T053; current read-only report flags are validated only.
 - Validation passed: `go test ./cmd -run 'TestOpsAnalyseAPILatency(Default|ReadOnlyCommandRendersHuman|JSONUsesSingleEnvelope|InvalidBudgetSkipsRemote)' -count=1`; `go test ./internal/services/ops -run 'TestAPILatency(PlanDefault|ReadOnlyUsesBoundedStageWorkers|ReadOnlyMeasuresSearchesAndDerivedReads|ReadOnlyReportsUnavailableKeyedEvidence)' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`.
 ---
+---
+## Iteration 5 - 2026-09-02 07:54
+**Work Unit**: User Story 2 partial: active API latency preflight and dry-run planning
+**Tasks Completed**:
+- [x] T024: Add service tests for run-ID generation, fixture selection, configured/observed version checks, dry-run zero mutation, active 8.7 rejection, cleanup-enabled 8.8 rejection, 8.8 no-cleanup eligibility, and 8.9/8.10 cleanup eligibility
+- [x] T029: Implement active preflight, cryptographic run-ID generation, version capability matrix, existing SimpleUserTask fixture selection, and immutable execution planning
+**Tasks Remaining in Work Unit**: 9 tasks remain in US2: T025-T028 and T030-T035
+**Commit**: This work-unit commit
+**Files Changed**:
+- `internal/services/ops/api_latency.go`
+- `internal/services/ops/api_latency_execute.go`
+- `internal/services/ops/api_latency_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Active preflight now returns zero-mutation dry-run plans with 128-bit hex run IDs, version-matched SimpleUserTask fixtures, topology-observed version checks, and explicit cleanup/retention capability gates; non-dry execution remains blocked until the bounded active stages and cleanup tasks are implemented.
+- Validation passed: `go test ./internal/services/ops -run 'APILatencyActive' -count=1`; `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
+---

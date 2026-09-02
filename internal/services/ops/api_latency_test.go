@@ -5,6 +5,7 @@ package ops
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sync/atomic"
@@ -495,6 +496,201 @@ func TestAPILatencyReadOnlyCancellationReturnsInterruptedPartialResult(t *testin
 	require.Equal(t, d.APILatencyOutcomeInterrupted, got.Outcome)
 	require.Len(t, got.Stages, 1)
 	require.Equal(t, d.APILatencyStageStatusPlanned, got.Stages[0].Status)
+}
+
+// TestAPILatencyActiveDryRunPlansRunIdentityFixtureAndVersion verifies active preflight produces an immutable zero-mutation preview.
+func TestAPILatencyActiveDryRunPlansRunIdentityFixtureAndVersion(t *testing.T) {
+	t.Parallel()
+
+	cluster := &stubSmokeTestClusterAPI{topology: d.Topology{
+		GatewayVersion:    "8.9.2",
+		ClusterSize:       1,
+		PartitionsCount:   1,
+		ReplicationFactor: 1,
+		Brokers: []d.Broker{{
+			Partitions: []d.Partition{{PartitionId: 1, Health: d.PartitionHealth("HEALTHY"), Role: d.PartitionRole("LEADER")}},
+		}},
+	}}
+	resource := &stubSmokeTestResourceAPI{}
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			return d.ProcessInstanceCreation{}, errors.New("unexpected active dry-run create")
+		},
+		deleteProcessInstance: func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error) {
+			return d.DeleteResponse{}, errors.New("unexpected active dry-run delete")
+		},
+	}
+	pdAPI := stubProcessDefinitionAPI{
+		searchProcessDefinitions: func(context.Context, d.ProcessDefinitionFilter, int32, ...services.CallOption) ([]d.ProcessDefinition, error) {
+			return nil, errors.New("unexpected active dry-run search")
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, pdAPI, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+		CommandName: "ops execute api-latency-test",
+		Count:       3,
+		Workers:     1,
+		DryRun:      true,
+		TenantID:    "tenant-a",
+		Backoff: d.APILatencyBackoff{
+			Strategy:     d.APILatencyBackoffFixed,
+			InitialDelay: 100 * time.Millisecond,
+			Timeout:      time.Second,
+			MaxRetries:   2,
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 1, cluster.topologyCalls)
+	require.Zero(t, resource.deployCalls)
+	require.Zero(t, resource.deleteCalls)
+	requireAPILatencyRunID(t, got.Plan.RunID)
+	require.Equal(t, d.APILatencyOutcomePlanned, got.Outcome)
+	require.Equal(t, d.APILatencyModeActive, got.Request.Mode)
+	require.Equal(t, d.APILatencyModeActive, got.Plan.Mode)
+	require.Equal(t, "8.9", got.Context.CamundaVersion)
+	require.Equal(t, "tenant-a", got.Context.Tenant)
+	require.Equal(t, 1, got.Topology.PartitionCount)
+	require.NotNil(t, got.Plan.Fixture)
+	require.Equal(t, "8.9", got.Plan.Fixture.CamundaVersion)
+	require.Equal(t, "embedded/processdefinitions/C89_SimpleUserTask.bpmn", got.Plan.Fixture.File)
+	require.Equal(t, "C89_SimpleUserTask", got.Plan.Fixture.BpmnProcessID)
+	require.True(t, got.Plan.Fixture.Available)
+	require.NotNil(t, got.Plan.Cleanup)
+	require.True(t, got.Plan.Cleanup.Requested)
+	require.True(t, got.Plan.Cleanup.Supported)
+	require.False(t, got.Plan.Cleanup.IntentionalRetention)
+	require.Empty(t, got.Plan.Cleanup.BlockReason)
+	require.Equal(t, []string{"preflight", "deploy fixture"}, got.Plan.SetupOperations)
+	require.Contains(t, got.Notices, "configured Camunda 8.9 matches observed gateway 8.9.2")
+}
+
+// TestAPILatencyActiveDryRunRejectsObservedVersionMismatch protects preflight from planning mutation for a different gateway line.
+func TestAPILatencyActiveDryRunRejectsObservedVersionMismatch(t *testing.T) {
+	t.Parallel()
+
+	cluster := &stubSmokeTestClusterAPI{topology: d.Topology{GatewayVersion: "8.8.9"}}
+	resource := &stubSmokeTestResourceAPI{}
+
+	got, err := NewWithAnalysisDependencies(cluster, stubProcessInstanceAPI{}, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+		Count:    1,
+		Workers:  1,
+		DryRun:   true,
+		TenantID: "tenant-a",
+	})
+
+	require.ErrorIs(t, err, d.ErrPrecondition)
+	require.Contains(t, err.Error(), "configured Camunda 8.9 does not match observed gateway 8.8.9")
+	require.Equal(t, 1, cluster.topologyCalls)
+	require.Zero(t, resource.deployCalls)
+	require.Equal(t, d.APILatencyOutcomeFailed, got.Outcome)
+	require.NotNil(t, got.Plan.Cleanup)
+	require.NotEmpty(t, got.Plan.Cleanup.BlockReason)
+}
+
+// TestAPILatencyActivePreflightVersionEligibility verifies exact-key ownership and cleanup capability gates before mutation.
+func TestAPILatencyActivePreflightVersionEligibility(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name              string
+		version           toolx.CamundaVersion
+		noCleanup         bool
+		wantErr           error
+		wantFixture       string
+		wantCleanup       bool
+		wantSupported     bool
+		wantRetention     bool
+		wantBlockContains string
+	}{
+		{
+			name:              "8.7 rejected even with retention",
+			version:           toolx.V87,
+			noCleanup:         true,
+			wantErr:           d.ErrUnsupported,
+			wantFixture:       "embedded/processdefinitions/C87_SimpleUserTask.bpmn",
+			wantRetention:     true,
+			wantBlockContains: "Camunda 8.7 cannot guarantee exact active latency ownership keys",
+		},
+		{
+			name:              "8.8 cleanup enabled rejected",
+			version:           toolx.V88,
+			wantErr:           d.ErrUnsupported,
+			wantFixture:       "embedded/processdefinitions/C88_SimpleUserTask.bpmn",
+			wantCleanup:       true,
+			wantBlockContains: "Camunda 8.8 cannot completely clean up active latency process-definition history",
+		},
+		{
+			name:          "8.8 retained eligible",
+			version:       toolx.V88,
+			noCleanup:     true,
+			wantFixture:   "embedded/processdefinitions/C88_SimpleUserTask.bpmn",
+			wantSupported: false,
+			wantRetention: true,
+		},
+		{
+			name:          "8.9 cleanup eligible",
+			version:       toolx.V89,
+			wantFixture:   "embedded/processdefinitions/C89_SimpleUserTask.bpmn",
+			wantCleanup:   true,
+			wantSupported: true,
+		},
+		{
+			name:          "8.10 cleanup eligible",
+			version:       toolx.V810,
+			wantFixture:   "embedded/processdefinitions/C810_SimpleUserTask.bpmn",
+			wantCleanup:   true,
+			wantSupported: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			resource := &stubSmokeTestResourceAPI{}
+			got, err := NewWithAnalysisDependencies(&stubSmokeTestClusterAPI{
+				topology: d.Topology{GatewayVersion: tt.version.String() + ".1"},
+			}, stubProcessInstanceAPI{}, nil, stubProcessDefinitionAPI{}, resource, nil, nil, tt.version).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+				Count:     1,
+				Workers:   1,
+				DryRun:    true,
+				NoCleanup: tt.noCleanup,
+				TenantID:  "tenant-a",
+			})
+
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				require.Equal(t, d.APILatencyOutcomeFailed, got.Outcome)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, d.APILatencyOutcomePlanned, got.Outcome)
+			}
+			require.Zero(t, resource.deployCalls)
+			require.NotNil(t, got.Plan.Fixture)
+			require.Equal(t, tt.wantFixture, got.Plan.Fixture.File)
+			require.NotNil(t, got.Plan.Cleanup)
+			require.Equal(t, tt.wantCleanup, got.Plan.Cleanup.Requested)
+			require.Equal(t, tt.wantSupported, got.Plan.Cleanup.Supported)
+			require.Equal(t, tt.wantRetention, got.Plan.Cleanup.IntentionalRetention)
+			if tt.wantBlockContains == "" {
+				require.Empty(t, got.Plan.Cleanup.BlockReason)
+			} else {
+				require.Contains(t, got.Plan.Cleanup.BlockReason, tt.wantBlockContains)
+				require.Contains(t, err.Error(), tt.wantBlockContains)
+			}
+		})
+	}
+}
+
+// requireAPILatencyRunID verifies the active run identity is a nonzero 128-bit hex string.
+func requireAPILatencyRunID(t *testing.T, runID string) {
+	t.Helper()
+	require.Len(t, runID, 32)
+	decoded, err := hex.DecodeString(runID)
+	require.NoError(t, err)
+	require.Len(t, decoded, 16)
+	require.NotEqual(t, make([]byte, 16), decoded)
 }
 
 // requireAPILatencyCategory finds a stage category and checks its aggregate counts.
