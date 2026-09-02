@@ -268,6 +268,45 @@ func TestOpsExecuteAPILatencyAutomationNoCleanupUsesImplicitConfirmation(t *test
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/deletion")
 }
 
+// TestOpsExecuteAPILatencyJSONAutomationOutputSafetyExcludesProtectedValues verifies active machine output and reports stay sanitized.
+func TestOpsExecuteAPILatencyJSONAutomationOutputSafetyExcludesProtectedValues(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var createBodies testx.SafeSlice[string]
+	var authHeaders testx.SafeSlice[string]
+	tokenSrv := newAPILatencyOAuthTokenServer(t)
+	t.Cleanup(tokenSrv.Close)
+	srv := newOpsExecuteAPILatencyOutputSafetyServer(t, &requests, &createBodies, &authHeaders)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "api-latency.md")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeAPILatencyOAuthConfig(t, srv.URL, tokenSrv.URL, "8.8"),
+		"--json",
+		"ops", "execute", "api-latency-test",
+		"--automation",
+		"--no-cleanup",
+		"--count", "1",
+		"--workers", "1",
+		"--report-file", reportPath,
+	)
+
+	require.Empty(t, strings.TrimSpace(stderr))
+	envelope := requireSingleJSONObjectDocument(t, stdout)
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "completed_retained", payload["outcome"])
+	report := readReportFile(t, reportPath)
+	require.Contains(t, report, "# Execute API Latency Test Report")
+	require.Contains(t, report, "- Outcome: completed_retained")
+	requireNoAPILatencyProtectedMarkers(t, stdout+"\n"+stderr+"\n"+report)
+	require.Len(t, createBodies.Snapshot(), 1)
+	requireNoAPILatencyProtectedMarkers(t, createBodies.Snapshot()[0])
+	require.NotEmpty(t, authHeaders.Snapshot())
+	for _, header := range authHeaders.Snapshot() {
+		require.Equal(t, "Bearer "+apiLatencyProtectedAccessToken, header)
+	}
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/deletion")
+}
+
 // TestOpsExecuteAPILatencyOverwritesExistingReportAfterMutation verifies active reports use confirmed-mutation write mode.
 func TestOpsExecuteAPILatencyOverwritesExistingReportAfterMutation(t *testing.T) {
 	var requests testx.SafeSlice[string]
@@ -761,6 +800,45 @@ func TestOpsExecuteAPILatencyCleanupFailureUsesJSONErrorEnvelope(t *testing.T) {
 	require.Equal(t, exitcode.Error, ferrors.ResolveExitCode(false, err))
 }
 
+// TestOpsExecuteAPILatencyProgressModeGate verifies active aggregate progress stays out of protected modes.
+func TestOpsExecuteAPILatencyProgressModeGate(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		setup      func()
+		wantStderr string
+	}{
+		{name: "human", setup: func() {}, wantStderr: ""},
+		{name: "json", setup: func() { flagViewAsJson = true }, wantStderr: ""},
+		{name: "quiet", setup: func() { flagQuiet = true }, wantStderr: ""},
+		{name: "automation", setup: func() { flagCmdAutomation = true }, wantStderr: ""},
+		{name: "verbose", setup: func() { flagVerbose = true }, wantStderr: "running active API latency test, 1/2 process-instance create(s)"},
+		{name: "debug", setup: func() { flagDebug = true }, wantStderr: "running active API latency test, 1/2 process-instance create(s)"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resetOpsExecuteAPILatencyTestFlags(t)
+			tc.setup()
+			cmd, stderr := newSemanticProgressStderrCommand()
+			request := ops.APILatencyRequest{}
+			progress := configureOpsAPILatencyProgress(cmd, &request)
+			defer progress.Close()
+
+			request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+				Phase:        "running active API latency test",
+				CoreResource: "process-instance create(s)",
+				Done:         1,
+				Total:        2,
+			}})
+
+			if tc.wantStderr == "" {
+				require.Empty(t, stderr.String())
+				return
+			}
+			require.Contains(t, stderr.String(), tc.wantStderr)
+			require.NotContains(t, stderr.String(), apiLatencyProtectedAuthorizationHeader)
+		})
+	}
+}
+
 // TestOpsExecuteAPILatencyRootArgsHelper runs root arguments in a subprocess for exit-code assertions.
 func TestOpsExecuteAPILatencyRootArgsHelper(t *testing.T) {
 	executeRootHelperFromArgsEnv(t, "C8VOLT_TEST_ROOT_ARGS")
@@ -819,6 +897,49 @@ func newOpsExecuteAPILatencyActiveServer(t *testing.T, requests *testx.SafeSlice
 			_, _ = w.Write([]byte(apiLatencyProcessInstanceCreationJSON(fmt.Sprintf("%d", 100+created))))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			_, _ = w.Write([]byte(fmt.Sprintf(`{"items":[%s],"page":{"totalItems":1,"hasMoreTotalItems":false}}`, apiLatencyProcessInstanceJSON("101"))))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+}
+
+// newOpsExecuteAPILatencyOutputSafetyServer returns active responses with ignored protected payload fields.
+func newOpsExecuteAPILatencyOutputSafetyServer(t *testing.T, requests *testx.SafeSlice[string], createBodies *testx.SafeSlice[string], authHeaders *testx.SafeSlice[string]) *httptest.Server {
+	t.Helper()
+
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Append(r.Method + " " + r.URL.Path)
+		authHeaders.Append(r.Header.Get("Authorization"))
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/topology":
+			_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, "8.8.0", 1, 1)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
+			require.Contains(t, r.Header.Get("Content-Type"), "multipart/form-data")
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requireNoAPILatencyProtectedMarkers(t, string(body))
+			require.Contains(t, string(body), "C88_SimpleUserTask")
+			_, _ = w.Write([]byte(`{
+				"deploymentKey": "deployment-1",
+				"tenantId": "<default>",
+				"deployments": [{
+					"processDefinition": {
+						"processDefinitionId": "C88_SimpleUserTask",
+						"processDefinitionKey": "pd-88",
+						"processDefinitionVersion": 1,
+						"resourceName": "processdefinitions/C88_SimpleUserTask.bpmn",
+						"tenantId": "<default>"
+					}
+				}]
+			}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			createBodies.Append(string(body))
+			_, _ = w.Write([]byte(apiLatencyProcessInstanceCreationJSON("101")))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			_, _ = w.Write([]byte(`{"items":[{"hasIncident":false,"processDefinitionId":"C88_SimpleUserTask","processDefinitionKey":"pd-88","processDefinitionName":"C88_SimpleUserTask","processDefinitionVersion":1,"processInstanceKey":"101","startDate":"2026-09-02T08:00:00Z","state":"ACTIVE","tenantId":"<default>","variables":{"token":"` + apiLatencyProtectedVariable + `"},"businessPayload":"` + apiLatencyProtectedPayload + `"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}

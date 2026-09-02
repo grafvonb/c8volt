@@ -27,6 +27,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	apiLatencyProtectedAccessToken         = "api-latency-access-token-secret"
+	apiLatencyProtectedClientSecret        = "api-latency-client-secret-value"
+	apiLatencyProtectedVariable            = "variable-password-value"
+	apiLatencyProtectedPayload             = "business-payload-value"
+	apiLatencyProtectedAuthorizationHeader = "Authorization: Bearer " + apiLatencyProtectedAccessToken
+	apiLatencyProtectedRawBody             = "raw-response-body-secret"
+)
+
 // TestOpsAnalyseAPILatencyHelpDocumentsReadOnlySurface verifies the diagnostic command is discoverable.
 func TestOpsAnalyseAPILatencyHelpDocumentsReadOnlySurface(t *testing.T) {
 	output := executeRootForTest(t, "ops", "analyse", "api-latency", "--help")
@@ -135,6 +144,60 @@ func TestOpsAnalyseAPILatencyInvalidBudgetSkipsRemoteHelper(t *testing.T) {
 // TestOpsAnalyseAPILatencyRootArgsHelper runs root arguments in a subprocess for report error assertions.
 func TestOpsAnalyseAPILatencyRootArgsHelper(t *testing.T) {
 	executeRootHelperFromArgsEnv(t, "C8VOLT_TEST_ROOT_ARGS")
+}
+
+// TestOpsAnalyseAPILatencyOutputSafetyExcludesProtectedContextAndRawBodies verifies command output and reports stay sanitized.
+func TestOpsAnalyseAPILatencyOutputSafetyExcludesProtectedContextAndRawBodies(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var authHeaders testx.SafeSlice[string]
+	tokenSrv := newAPILatencyOAuthTokenServer(t)
+	t.Cleanup(tokenSrv.Close)
+	srv := newOpsAnalyseAPILatencyOutputSafetyServer(t, &requests, &authHeaders)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "api-latency.json")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeAPILatencyOAuthConfig(t, srv.URL, tokenSrv.URL, "8.9"),
+		"ops", "analyse", "api-latency",
+		"--count", "1",
+		"--workers", "1",
+		"--report-file", reportPath,
+		"--report-format", "json",
+	)
+
+	require.Empty(t, stdout)
+	require.Contains(t, stderr, "finding: backpressure_observed")
+	report := readReportFile(t, reportPath)
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal([]byte(report), &payload))
+	require.Equal(t, "completed", payload["outcome"])
+	requireNoAPILatencyProtectedMarkers(t, stderr+"\n"+report)
+	require.NotContains(t, report, strings.Repeat("raw-upstream-detail-", 16))
+	require.Contains(t, requests.Snapshot(), "POST /v2/process-definitions/search")
+	require.NotEmpty(t, authHeaders.Snapshot())
+	for _, header := range authHeaders.Snapshot() {
+		require.Equal(t, "Bearer "+apiLatencyProtectedAccessToken, header)
+	}
+}
+
+// TestOpsAnalyseAPILatencyQuietFailureKeepsErrorWithoutProgress verifies quiet mode suppresses progress but not failures.
+func TestOpsAnalyseAPILatencyQuietFailureKeepsErrorWithoutProgress(t *testing.T) {
+	output, err := testx.RunCmdSubprocess(t, "TestOpsAnalyseAPILatencyRootArgsHelper", map[string]string{
+		"C8VOLT_TEST_ROOT_ARGS": marshalRootArgsForEnv(t, []string{
+			"--quiet",
+			"ops", "analyse", "api-latency",
+			"--count", "4",
+			"--workers", "4",
+		}),
+	})
+
+	require.Error(t, err)
+	var exitErr *exec.ExitError
+	require.ErrorAs(t, err, &exitErr)
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+	text := string(output)
+	require.Contains(t, text, "count 4 is too small for worker stages 1, 2, 4")
+	require.NotContains(t, text, "measuring read-only API latency")
 }
 
 // TestOpsAnalyseAPILatencyReadOnlyCommandRendersHuman verifies terminal output and zero mutation against a fixture server.
@@ -599,6 +662,32 @@ func newOpsAnalyseAPILatencyReadOnlyServer(t *testing.T, requests *testx.SafeSli
 	}))
 }
 
+// newOpsAnalyseAPILatencyOutputSafetyServer injects protected markers into ignored or classified response data.
+func newOpsAnalyseAPILatencyOutputSafetyServer(t *testing.T, requests *testx.SafeSlice[string], authHeaders *testx.SafeSlice[string]) *httptest.Server {
+	t.Helper()
+
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Append(r.Method + " " + r.URL.Path)
+		authHeaders.Append(r.Header.Get("Authorization"))
+		w.Header().Set("Content-Type", "application/json")
+
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/topology":
+			_, _ = w.Write([]byte(singleBrokerClusterTopologyFixtureJSON()))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			requireOpsAnalyseAPILatencySearchBody(t, r)
+			http.Error(w, apiLatencyRawProtectedFailureBody(), http.StatusServiceUnavailable)
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			requireOpsAnalyseAPILatencySearchBody(t, r)
+			_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"1001","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant","variables":{"apiToken":"` + apiLatencyProtectedVariable + `"},"businessPayload":"` + apiLatencyProtectedPayload + `"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/1001":
+			_, _ = w.Write([]byte(`{"processInstanceKey":"1001","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant","variables":{"secret":"` + apiLatencyProtectedVariable + `"},"businessPayload":"` + apiLatencyProtectedPayload + `"}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+}
+
 func requireOpsAnalyseAPILatencySearchBody(t *testing.T, r *http.Request) {
 	t.Helper()
 
@@ -608,6 +697,68 @@ func requireOpsAnalyseAPILatencySearchBody(t *testing.T, r *http.Request) {
 	require.NoError(t, json.Unmarshal(body, &payload))
 	page := requireJSONObject(t, payload["page"])
 	require.Equal(t, float64(1), page["limit"])
+}
+
+// newAPILatencyOAuthTokenServer proves the command can authenticate without leaking token material.
+func newAPILatencyOAuthTokenServer(t *testing.T) *httptest.Server {
+	t.Helper()
+
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.NoError(t, r.ParseForm())
+		require.Equal(t, "client_credentials", r.Form.Get("grant_type"))
+		require.Equal(t, apiLatencyProtectedClientSecret, r.Form.Get("client_secret"))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"` + apiLatencyProtectedAccessToken + `","token_type":"Bearer"}`))
+	}))
+}
+
+// writeAPILatencyOAuthConfig builds an authenticated test profile containing protected config values.
+func writeAPILatencyOAuthConfig(t *testing.T, apiURL string, tokenURL string, camundaVersion string) string {
+	t.Helper()
+	return writeRawTestConfig(t, `
+app:
+  camunda_version: "`+camundaVersion+`"
+  tenant: "tenant-a"
+auth:
+  mode: oauth2
+  oauth2:
+    token_url: "`+tokenURL+`"
+    client_id: api-latency-client
+    client_secret: `+apiLatencyProtectedClientSecret+`
+    scopes:
+      camunda_api: api-latency
+apis:
+  camunda_api:
+    base_url: "`+apiURL+`"
+    require_scope: true
+http:
+  timeout: "10s"
+`)
+}
+
+// apiLatencyRawProtectedFailureBody simulates an upstream body that must be reduced to safe classifications.
+func apiLatencyRawProtectedFailureBody() string {
+	return `{"error":"RESOURCE_EXHAUSTED","message":"` + apiLatencyProtectedAuthorizationHeader + ` ` + apiLatencyProtectedClientSecret + ` ` + apiLatencyProtectedVariable + ` ` + apiLatencyProtectedPayload + ` ` + apiLatencyProtectedRawBody + ` ` + strings.Repeat("raw-upstream-detail-", 64) + `"}`
+}
+
+// requireNoAPILatencyProtectedMarkers centralizes the API-latency output safety assertions.
+func requireNoAPILatencyProtectedMarkers(t *testing.T, output string) {
+	t.Helper()
+
+	for _, marker := range []string{
+		apiLatencyProtectedAccessToken,
+		apiLatencyProtectedClientSecret,
+		apiLatencyProtectedVariable,
+		apiLatencyProtectedPayload,
+		apiLatencyProtectedAuthorizationHeader,
+		apiLatencyProtectedRawBody,
+	} {
+		require.NotContains(t, output, marker)
+	}
+	require.NotContains(t, output, "variables")
+	require.NotContains(t, output, "businessPayload")
+	require.NotContains(t, output, "client_secret")
 }
 
 func requireOpsAnalyseAPILatencyReadOnlyRequests(t *testing.T, requests []string) {

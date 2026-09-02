@@ -390,3 +390,20 @@ Started: 2026-09-02 06:58:25
 - API-latency reports can use the public result as the raw JSON report payload while Markdown renders compact parity from the same model; active report overwrite must be based on returned exact ownership evidence.
 - Validation passed: `go test ./cmd -run 'TestOps(Analyse|Execute)APILatency.*Report|TestOpsExecuteAPILatencyDefaultsAndValidation' -count=1`; `go test ./cmd -run 'APILatency' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
 ---
+---
+## Iteration 17 - 2026-09-02 09:37
+**Work Unit**: User Story 4 partial: API latency output safety and progress coverage
+**Tasks Completed**:
+- [x] T049: Add output-safety and progress tests covering tokens, authorization headers, secrets, variables, payloads, raw response bodies, unbounded errors, JSON/automation silence, quiet failures, and verbose/debug detail
+**Tasks Remaining in Work Unit**: 5 US4 tasks remain: T050, T051, and T054-T056
+**Commit**: This work-unit commit
+**Files Changed**:
+- `cmd/ops_analyse_api_latency_test.go`
+- `cmd/ops_execute_api_latency_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- API-latency command tests now prove OAuth token/header/client-secret material, ignored process-variable/business-payload fields, raw upstream bodies, and long upstream detail strings do not enter completed command output or reports; active JSON automation stays silent on stderr and verbose/debug aggregate progress remains stderr-only.
+- Validation passed: `go test ./cmd -run 'TestOps(Analyse|Execute)APILatency(OutputSafety|JSONAutomationOutputSafety|ProgressModeGate|QuietFailure)' -count=1`; `go test ./cmd -run 'APILatency' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `git diff --check`.
+---
