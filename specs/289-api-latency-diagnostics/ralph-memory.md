@@ -4,7 +4,7 @@ Feature: 289-api-latency-diagnostics
 Started: 2026-09-02T04:58:25Z
 
 ## Codebase Patterns
-- First incomplete work now begins at Phase 7 T058; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, bounded active US2 command/service/facade/rendering work T024-T035, US3 ownership/cleanup/recovery preservation work T036-T046, all US4 reproducible evidence work T047-T056, and command capability/inventory coverage T057 are complete.
+- First incomplete work now begins at Phase 7 T059; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, bounded active US2 command/service/facade/rendering work T024-T035, US3 ownership/cleanup/recovery preservation work T036-T046, all US4 reproducible evidence work T047-T056, command capability/inventory coverage T057, and read-only analyse volume coverage T058 are complete.
 - Commands own Cobra construction, local flag validation, confirmation, activity/progress setup, report-path validation, and final rendering. Follow `cmd/ops_analyse_slow_process_instances.go` for read-only analysis wiring and `cmd/ops_execute_smoketest.go` for active ops execution wiring.
 - Public `c8volt/ops` facade methods are thin: map public request to `internal/domain`, delegate to `internal/services/ops.API`, map results back, and convert errors with `ferrors.FromDomain`.
 - `internal/services/ops.Service` is the owning layer for stage planning, remote workflow mechanics, worker scheduling, cleanup orchestration, and progress facts. `NewWithAnalysisDependencies` already carries cluster, process-instance, process-definition, resource, job, element, version, and logger dependencies for this feature.
@@ -41,6 +41,7 @@ Started: 2026-09-02T04:58:25Z
 - US4 T054 now enriches both command results with safe schema/build/profile/tenant/Camunda context, fills missing command names from the command leaf, merges plan notices/limitations into final results without duplication, and renders a compact human `context:` line before plan evidence.
 - US4 T055 now routes both API-latency command leaves through `cmd/ops_api_latency_exit.go`: `planned`, `completed`, and `completed_retained` outcomes render successfully even if abnormal evidence exists, while `partial`, `failed`, and `interrupted` outcomes use the existing command error envelope and report-before-error path without adding a partial stdout payload.
 - Phase 7 T057 updated command capability tests, ops family discovery assertions, the all-tenants concrete-destination inventory, and the integration command coverage manifest for `ops analyse api-latency` and `ops execute api-latency-test`; current inventory count is 57. While validating the manifest, existing live drift also required adding the global `all-tenants` flag on `capabilities` and `batch-size`/`watch`/`watch-interval` plus `one-line`/`keys-only` modes on `get process-definition`.
+- Phase 7 T058 extended `integration/cli/volume_ops_analyse_test.go` with live read-only `ops analyse api-latency` scenarios: compact human output plus Markdown report on seeded dirty state, automation JSON plus raw JSON report parity, read-only active-field omission, deterministic `count=3/workers=2` stage plan bounds, derived-request ceilings, actual concurrency ceilings, required read categories, findings, and limitations. `writeVolumeOpsReportEvidence` now records ops-analyse scenario evidence instead of an empty report list.
 
 ## Decisions
 - For this Ralph run, the prerequisite script selected `specs/289-api-latency-diagnostics`; the AGENTS Speckit block still names an older active plan and should not override the checked `FEATURE_DIR`.
@@ -63,4 +64,4 @@ Started: 2026-09-02T04:58:25Z
 - Pre-US4 evidence such as T023 and T039 intentionally covered report-path validation and partial-result/error-envelope boundaries without claiming API-latency report writing; T048/T052/T053 now implement the actual read-only and active report serialization/writing path.
 
 ## Current Handoff
-- Next iteration should begin Phase 7 at T058 by extending read-only human, JSON, report, bounds, and seeded dirty-state coverage in `integration/cli/volume_ops_analyse_test.go`; do not start T059 in the same iteration.
+- Next iteration should begin Phase 7 at T059 by extending active dry-run selected-version coverage and disposable 8.9/8.10 confirmed-cleanup evidence in `integration/cli/volume_ops_execute_test.go`; do not start T060 in the same iteration.

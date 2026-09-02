@@ -496,3 +496,19 @@ Started: 2026-09-02 06:58:25
 - API-latency command discovery is now pinned in command capability tests, ops family assertions, all-tenants metadata, and the integration command coverage manifest at an inventory count of 57.
 - Validation passed: `go test ./cmd -run 'TestCommandCapabilityForCommand_Ops(Analyse|Execute)APILatencyContract|TestCapabilitiesCommand_JSONIncludes(AllTenantsSupport|OpsRootMetadata)|TestAllTenantsSupportForCommand_ConcreteDestinationInventory|TestCommandCapabilityForCommand_IncludesAllTenantsSupport|TestCapabilityDocumentForRoot_CoversCLIDebtAssessment' -count=1`; `go test -tags integration ./integration/cli -run 'TestCommandInventory' -count=1`; `go test ./cmd -run 'CommandCapability|CapabilityDocument|CapabilitiesCommand' -count=1`; `git diff --check`.
 ---
+---
+## Iteration 23 - 2026-09-02 10:22
+**Work Unit**: Phase 7 polish: read-only API latency volume coverage
+**Tasks Completed**:
+- [x] T058: Extend read-only human, JSON, report, bounds, and seeded dirty-state coverage
+**Tasks Remaining in Work Unit**: 7 Phase 7 tasks remain: T059-T065
+**Commit**: This work-unit commit
+**Files Changed**:
+- `integration/cli/volume_ops_analyse_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Read-only API-latency volume coverage now runs against seeded dirty-state data, validates compact human output plus Markdown reporting, and validates JSON/report parity with deterministic stage and derived-request bounds.
+- Validation passed: `go test -tags integration ./integration/cli -run 'TestVolumeOpsAnalyseFamily|TestVolumeOwnershipClassification|TestProposal' -count=1`; `go test -tags integration ./integration/cli -run 'TestVolumeOpsAnalyseFamily|TestCommandInventory' -count=1`; `git diff --check`.
+---
