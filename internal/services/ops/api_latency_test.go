@@ -959,6 +959,267 @@ func TestAPILatencyActiveOwnershipRegistryDeduplicatesAndCleansExactKeys(t *test
 	}
 }
 
+// TestAPILatencyActiveCleanupAfterCanceledCallerUsesIndependentContext verifies interruption still gets a bounded cleanup opportunity.
+func TestAPILatencyActiveCleanupAfterCanceledCallerUsesIndependentContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	var cleanupTargets testx.SafeSlice[string]
+	cluster := &stubSmokeTestClusterAPI{topology: d.Topology{GatewayVersion: "8.9.0"}}
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(context.Context, []d.DeploymentUnitData, ...services.CallOption) (d.Deployment, error) {
+			cancel()
+			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
+				ProcessDefinitionId:  "C89_SimpleUserTask",
+				ProcessDefinitionKey: "pd-active",
+			}}}}, nil
+		},
+		delete: func(ctx context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			if err := ctx.Err(); err != nil {
+				return d.ResourceDeleteResponse{}, fmt.Errorf("cleanup used canceled caller context: %w", err)
+			}
+			if _, ok := ctx.Deadline(); !ok {
+				return d.ResourceDeleteResponse{}, errors.New("cleanup context has no deadline")
+			}
+			cleanupTargets.Append("pd:" + key)
+			return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: 202, Status: "accepted", DeleteHistory: true}, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(cluster, stubProcessInstanceAPI{}, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(ctx, d.APILatencyRequest{
+		Count:    1,
+		Workers:  1,
+		TenantID: "tenant-a",
+		Backoff:  d.APILatencyBackoff{MaxRetries: 0},
+	})
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, d.APILatencyOutcomeInterrupted, got.Outcome)
+	require.Equal(t, []string{"pd:pd-active"}, cleanupTargets.Snapshot())
+	require.Len(t, got.Cleanup, 1)
+	require.Equal(t, d.APILatencyCleanupResourceProcessDefinition, got.Cleanup[0].ResourceType)
+	require.Equal(t, d.APILatencyCleanupStatusDeleted, got.Cleanup[0].Status)
+	require.Empty(t, got.Cleanup[0].RecoveryCommand)
+}
+
+// TestAPILatencyActiveCleanupTimeoutMarksRemainingResourcesUnknown verifies cleanup budgets produce exact recovery records.
+func TestAPILatencyActiveCleanupTimeoutMarksRemainingResourcesUnknown(t *testing.T) {
+	cluster := &stubSmokeTestClusterAPI{topology: d.Topology{GatewayVersion: "8.9.0"}}
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(context.Context, []d.DeploymentUnitData, ...services.CallOption) (d.Deployment, error) {
+			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
+				ProcessDefinitionId:  "C89_SimpleUserTask",
+				ProcessDefinitionKey: "pd-active",
+			}}}}, nil
+		},
+		delete: func(ctx context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			if deadline, ok := ctx.Deadline(); !ok || time.Until(deadline) > time.Second {
+				return d.ResourceDeleteResponse{}, errors.New("cleanup context did not use the planned short budget")
+			}
+			return d.ResourceDeleteResponse{}, ctx.Err()
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			return d.ProcessInstanceCreation{Key: "pi-timeout", ProcessDefinitionKey: data.ProcessDefinitionSpecificId}, nil
+		},
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			if filter.Key != "" {
+				return []d.ProcessInstance{{Key: filter.Key, ProcessDefinitionKey: filter.ProcessDefinitionKey}}, nil
+			}
+			return []d.ProcessInstance{{Key: "read-probe", ProcessDefinitionKey: filter.ProcessDefinitionKey}}, nil
+		},
+		deleteProcessInstance: func(ctx context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			if deadline, ok := ctx.Deadline(); !ok || time.Until(deadline) > time.Second {
+				return d.DeleteResponse{}, errors.New("cleanup context did not use the planned short budget")
+			}
+			return d.DeleteResponse{}, ctx.Err()
+		},
+	}
+	svc := NewWithAnalysisDependencies(cluster, piAPI, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).(*Service)
+	result, err := svc.preflightAPILatencyActive(context.Background(), d.APILatencyRequest{
+		Count:    1,
+		Workers:  1,
+		TenantID: "tenant-a",
+		Backoff:  d.APILatencyBackoff{MaxRetries: 0},
+	})
+	require.NoError(t, err)
+	result.Plan.Cleanup.IndependentBudget = time.Nanosecond
+
+	got, err := svc.executeAPILatencyActiveStages(context.Background(), result)
+
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Equal(t, d.APILatencyOutcomePartial, got.Outcome)
+	require.Len(t, got.Cleanup, 2)
+	for _, record := range got.Cleanup {
+		require.Equal(t, d.APILatencyCleanupStatusUnknown, record.Status)
+		require.Equal(t, d.APILatencyClassificationTimeout, record.Classification)
+		require.NotEmpty(t, record.RecoveryCommand)
+	}
+	require.Equal(t, d.APILatencyCleanupResourceProcessInstance, got.Cleanup[0].ResourceType)
+	require.Equal(t, d.APILatencyCleanupResourceProcessDefinition, got.Cleanup[1].ResourceType)
+}
+
+// TestAPILatencyActiveCleanupReportsPartialFailuresAndRecoveryCommands verifies failed deletes keep exact-key guidance.
+func TestAPILatencyActiveCleanupReportsPartialFailuresAndRecoveryCommands(t *testing.T) {
+	var createCalls atomic.Int64
+	cluster := &stubSmokeTestClusterAPI{topology: d.Topology{GatewayVersion: "8.9.0"}}
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(context.Context, []d.DeploymentUnitData, ...services.CallOption) (d.Deployment, error) {
+			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
+				ProcessDefinitionId:  "C89_SimpleUserTask",
+				ProcessDefinitionKey: "pd-active",
+			}}}}, nil
+		},
+		delete: func(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			return d.ResourceDeleteResponse{}, context.DeadlineExceeded
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			return d.ProcessInstanceCreation{Key: fmt.Sprintf("pi-%d", createCalls.Add(1)), ProcessDefinitionKey: data.ProcessDefinitionSpecificId}, nil
+		},
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			if filter.Key != "" {
+				return []d.ProcessInstance{{Key: filter.Key, ProcessDefinitionKey: filter.ProcessDefinitionKey}}, nil
+			}
+			return []d.ProcessInstance{{Key: "read-probe", ProcessDefinitionKey: filter.ProcessDefinitionKey}}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			if key == "pi-2" {
+				return d.DeleteResponse{}, d.ErrRateLimited
+			}
+			return d.DeleteResponse{Ok: true, StatusCode: 202, Status: "accepted"}, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+		Count:    2,
+		Workers:  1,
+		TenantID: "tenant-a",
+		Backoff:  d.APILatencyBackoff{MaxRetries: 0},
+	})
+
+	require.ErrorIs(t, err, d.ErrRateLimited)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Equal(t, d.APILatencyOutcomePartial, got.Outcome)
+	require.Len(t, got.Cleanup, 3)
+	require.Equal(t, d.APILatencyCleanupStatusDeleted, got.Cleanup[0].Status)
+	require.Empty(t, got.Cleanup[0].RecoveryCommand)
+	require.Equal(t, d.APILatencyCleanupStatusFailed, got.Cleanup[1].Status)
+	require.Equal(t, d.APILatencyClassificationBackpressure, got.Cleanup[1].Classification)
+	require.Equal(t, "c8volt delete process-instance --key pi-2 --force --auto-confirm", got.Cleanup[1].RecoveryCommand)
+	require.Equal(t, d.APILatencyCleanupStatusUnknown, got.Cleanup[2].Status)
+	require.Equal(t, d.APILatencyClassificationTimeout, got.Cleanup[2].Classification)
+	require.Equal(t, "c8volt delete process-definition --key pd-active --auto-confirm", got.Cleanup[2].RecoveryCommand)
+}
+
+// TestAPILatencyActiveTimeoutAndVisibilityExhaustionStillCleanup verifies abnormal measurements do not skip cleanup.
+func TestAPILatencyActiveTimeoutAndVisibilityExhaustionStillCleanup(t *testing.T) {
+	var createCalls atomic.Int64
+	var cleanupTargets testx.SafeSlice[string]
+	cluster := &stubSmokeTestClusterAPI{topology: d.Topology{GatewayVersion: "8.9.0"}}
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(context.Context, []d.DeploymentUnitData, ...services.CallOption) (d.Deployment, error) {
+			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
+				ProcessDefinitionId:  "C89_SimpleUserTask",
+				ProcessDefinitionKey: "pd-active",
+			}}}}, nil
+		},
+		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			cleanupTargets.Append("pd:" + key)
+			return d.ResourceDeleteResponse{Ok: true}, nil
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			call := createCalls.Add(1)
+			if call == 1 {
+				return d.ProcessInstanceCreation{Key: "pi-timeout", ProcessDefinitionKey: data.ProcessDefinitionSpecificId}, context.DeadlineExceeded
+			}
+			return d.ProcessInstanceCreation{Key: "pi-invisible", ProcessDefinitionKey: data.ProcessDefinitionSpecificId}, nil
+		},
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			if filter.Key != "" {
+				return nil, nil
+			}
+			return []d.ProcessInstance{{Key: "read-probe", ProcessDefinitionKey: filter.ProcessDefinitionKey}}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			cleanupTargets.Append("pi:" + key)
+			return d.DeleteResponse{Ok: true}, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+		Count:    2,
+		Workers:  1,
+		TenantID: "tenant-a",
+		Backoff:  d.APILatencyBackoff{MaxRetries: 1},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.APILatencyOutcomeCompleted, got.Outcome)
+	require.Equal(t, []string{"pi:pi-invisible", "pi:pi-timeout", "pd:pd-active"}, cleanupTargets.Snapshot())
+	require.Len(t, got.Cleanup, 3)
+	requireAPILatencyCategoryClass(t, got.Stages[0], d.APILatencyCategoryProcessInstanceCreate, d.APILatencyClassificationTimeout)
+	for _, visibility := range got.Visibility {
+		require.False(t, visibility.Visible)
+		require.Equal(t, 2, visibility.Attempts)
+		require.Equal(t, d.APILatencyClassificationNotFound, visibility.FinalClassification)
+	}
+}
+
+// TestAPILatencyActiveNoCleanupRetentionDistinguishesUnsupportedDefinitionRecovery verifies explicit 8.8 retention is not cleanup failure.
+func TestAPILatencyActiveNoCleanupRetentionDistinguishesUnsupportedDefinitionRecovery(t *testing.T) {
+	cluster := &stubSmokeTestClusterAPI{topology: d.Topology{GatewayVersion: "8.8.0"}}
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(context.Context, []d.DeploymentUnitData, ...services.CallOption) (d.Deployment, error) {
+			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
+				ProcessDefinitionId:  "C88_SimpleUserTask",
+				ProcessDefinitionKey: "pd-retained",
+			}}}}, nil
+		},
+		delete: func(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			return d.ResourceDeleteResponse{}, errors.New("cleanup should not run for explicit retention")
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			return d.ProcessInstanceCreation{Key: "pi-retained", ProcessDefinitionKey: data.ProcessDefinitionSpecificId}, nil
+		},
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			if filter.Key != "" {
+				return []d.ProcessInstance{{Key: filter.Key, ProcessDefinitionKey: filter.ProcessDefinitionKey}}, nil
+			}
+			return []d.ProcessInstance{{Key: "read-probe", ProcessDefinitionKey: filter.ProcessDefinitionKey}}, nil
+		},
+		deleteProcessInstance: func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error) {
+			return d.DeleteResponse{}, errors.New("cleanup should not run for explicit retention")
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V88).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+		Count:     1,
+		Workers:   1,
+		NoCleanup: true,
+		TenantID:  "tenant-a",
+		Backoff:   d.APILatencyBackoff{MaxRetries: 0},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.APILatencyOutcomeCompletedRetained, got.Outcome)
+	require.NotNil(t, got.Plan.Cleanup)
+	require.False(t, got.Plan.Cleanup.Supported)
+	require.True(t, got.Plan.Cleanup.IntentionalRetention)
+	require.Len(t, got.Cleanup, 2)
+	require.Equal(t, d.APILatencyCleanupStatusRetained, got.Cleanup[0].Status)
+	require.Equal(t, "c8volt delete process-instance --key pi-retained --force --auto-confirm", got.Cleanup[0].RecoveryCommand)
+	require.Equal(t, d.APILatencyCleanupStatusRetained, got.Cleanup[1].Status)
+	require.Equal(t, d.APILatencyCleanupResourceProcessDefinition, got.Cleanup[1].ResourceType)
+	require.Empty(t, got.Cleanup[1].RecoveryCommand)
+}
+
 // requireAPILatencyRunID verifies the active run identity is a nonzero 128-bit hex string.
 func requireAPILatencyRunID(t *testing.T, runID string) {
 	t.Helper()

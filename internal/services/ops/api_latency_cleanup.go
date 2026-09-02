@@ -9,10 +9,15 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/toolx/poller"
 )
+
+// apiLatencyCleanupCompletionBudget is the bounded independent cleanup opportunity after active execution stops.
+var apiLatencyCleanupCompletionBudget = poller.DefaultCompletionTimeout
 
 type apiLatencyOwnershipRegistry struct {
 	mu        sync.Mutex
@@ -79,39 +84,55 @@ func (s *Service) finalizeAPILatencyCleanup(ctx context.Context, result *d.APILa
 	if result == nil || result.Ownership == nil {
 		return nil
 	}
+	if result.Plan.Cleanup != nil && result.Plan.Cleanup.IndependentBudget <= 0 {
+		result.Plan.Cleanup.IndependentBudget = apiLatencyCleanupCompletionBudget
+	}
 	if result.Request.NoCleanup {
-		result.Cleanup = retainedAPILatencyCleanupRecords(result.Ownership)
+		result.Cleanup = retainedAPILatencyCleanupRecords(result.Ownership, result.Plan.Cleanup)
 		return nil
 	}
+	cleanupCtx, cancel := apiLatencyCleanupContext(ctx, result)
+	defer cancel()
+
 	var cleanupErr error
 	for _, key := range apiLatencySortedUniqueKeys(result.Ownership.ProcessInstanceKeys) {
+		if err := cleanupCtx.Err(); err != nil {
+			result.Cleanup = append(result.Cleanup, unknownAPILatencyCleanupRecord(d.APILatencyCleanupResourceProcessInstance, key, result.Plan.Cleanup, err))
+			cleanupErr = errors.Join(cleanupErr, fmt.Errorf("cleanup API latency process instance %s: %w", key, err))
+			continue
+		}
 		record := d.APILatencyCleanupRecord{
 			ResourceType:   d.APILatencyCleanupResourceProcessInstance,
 			Key:            key,
 			Status:         d.APILatencyCleanupStatusDeleted,
 			Classification: d.APILatencyClassificationSuccess,
 		}
-		_, err := s.piAPI.DeleteProcessInstance(ctx, key, opts...)
+		_, err := s.piAPI.DeleteProcessInstance(cleanupCtx, key, opts...)
 		if err != nil {
-			record.Status = d.APILatencyCleanupStatusFailed
+			record.Status = failedAPILatencyCleanupStatus(err)
 			record.Classification = ClassifyAPILatencyError(err)
-			record.RecoveryCommand = fmt.Sprintf("c8volt delete process-instance --key %s --force --auto-confirm", key)
+			record.RecoveryCommand = apiLatencyCleanupRecoveryCommand(d.APILatencyCleanupResourceProcessInstance, key, result.Plan.Cleanup)
 			cleanupErr = errors.Join(cleanupErr, fmt.Errorf("delete API latency process instance %s: %w", key, err))
 		}
 		result.Cleanup = append(result.Cleanup, record)
 	}
 	if result.Ownership.ProcessDefinitionKey != "" {
+		if err := cleanupCtx.Err(); err != nil {
+			result.Cleanup = append(result.Cleanup, unknownAPILatencyCleanupRecord(d.APILatencyCleanupResourceProcessDefinition, result.Ownership.ProcessDefinitionKey, result.Plan.Cleanup, err))
+			cleanupErr = errors.Join(cleanupErr, fmt.Errorf("cleanup API latency process definition %s: %w", result.Ownership.ProcessDefinitionKey, err))
+			return cleanupErr
+		}
 		record := d.APILatencyCleanupRecord{
 			ResourceType:   d.APILatencyCleanupResourceProcessDefinition,
 			Key:            result.Ownership.ProcessDefinitionKey,
 			Status:         d.APILatencyCleanupStatusDeleted,
 			Classification: d.APILatencyClassificationSuccess,
 		}
-		_, err := s.resourceAPI.Delete(ctx, result.Ownership.ProcessDefinitionKey, opts...)
+		_, err := s.resourceAPI.Delete(cleanupCtx, result.Ownership.ProcessDefinitionKey, opts...)
 		if err != nil {
-			record.Status = d.APILatencyCleanupStatusFailed
+			record.Status = failedAPILatencyCleanupStatus(err)
 			record.Classification = ClassifyAPILatencyError(err)
-			record.RecoveryCommand = fmt.Sprintf("c8volt delete process-definition --key %s --auto-confirm", result.Ownership.ProcessDefinitionKey)
+			record.RecoveryCommand = apiLatencyCleanupRecoveryCommand(d.APILatencyCleanupResourceProcessDefinition, result.Ownership.ProcessDefinitionKey, result.Plan.Cleanup)
 			cleanupErr = errors.Join(cleanupErr, fmt.Errorf("delete API latency process definition %s: %w", result.Ownership.ProcessDefinitionKey, err))
 		}
 		result.Cleanup = append(result.Cleanup, record)
@@ -119,8 +140,41 @@ func (s *Service) finalizeAPILatencyCleanup(ctx context.Context, result *d.APILa
 	return cleanupErr
 }
 
+// apiLatencyCleanupContext detaches cleanup from caller cancellation while preserving values and enforcing a finite budget.
+func apiLatencyCleanupContext(ctx context.Context, result *d.APILatencyResult) (context.Context, context.CancelFunc) {
+	budget := apiLatencyCleanupBudget(result)
+	return context.WithTimeout(context.WithoutCancel(ctx), budget)
+}
+
+// apiLatencyCleanupBudget returns the planned cleanup budget or the repository default when planning omitted it.
+func apiLatencyCleanupBudget(result *d.APILatencyResult) time.Duration {
+	if result != nil && result.Plan.Cleanup != nil && result.Plan.Cleanup.IndependentBudget > 0 {
+		return result.Plan.Cleanup.IndependentBudget
+	}
+	return apiLatencyCleanupCompletionBudget
+}
+
+// failedAPILatencyCleanupStatus treats cleanup context termination as unknown final ownership state.
+func failedAPILatencyCleanupStatus(err error) d.APILatencyCleanupStatus {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return d.APILatencyCleanupStatusUnknown
+	}
+	return d.APILatencyCleanupStatusFailed
+}
+
+// unknownAPILatencyCleanupRecord records resources left unattempted after the cleanup budget is exhausted.
+func unknownAPILatencyCleanupRecord(resourceType d.APILatencyCleanupResourceType, key string, plan *d.APILatencyCleanupPlan, err error) d.APILatencyCleanupRecord {
+	return d.APILatencyCleanupRecord{
+		ResourceType:    resourceType,
+		Key:             key,
+		Status:          d.APILatencyCleanupStatusUnknown,
+		Classification:  ClassifyAPILatencyError(err),
+		RecoveryCommand: apiLatencyCleanupRecoveryCommand(resourceType, key, plan),
+	}
+}
+
 // retainedAPILatencyCleanupRecords records explicit no-cleanup resources without treating retention as failure.
-func retainedAPILatencyCleanupRecords(ownership *d.APILatencyOwnership) []d.APILatencyCleanupRecord {
+func retainedAPILatencyCleanupRecords(ownership *d.APILatencyOwnership, plan *d.APILatencyCleanupPlan) []d.APILatencyCleanupRecord {
 	if ownership == nil {
 		return nil
 	}
@@ -132,7 +186,7 @@ func retainedAPILatencyCleanupRecords(ownership *d.APILatencyOwnership) []d.APIL
 			Key:             key,
 			Status:          d.APILatencyCleanupStatusRetained,
 			Classification:  d.APILatencyClassificationUnavailable,
-			RecoveryCommand: fmt.Sprintf("c8volt delete process-instance --key %s --force --auto-confirm", key),
+			RecoveryCommand: apiLatencyCleanupRecoveryCommand(d.APILatencyCleanupResourceProcessInstance, key, plan),
 		})
 	}
 	if ownership.ProcessDefinitionKey != "" {
@@ -141,10 +195,25 @@ func retainedAPILatencyCleanupRecords(ownership *d.APILatencyOwnership) []d.APIL
 			Key:             ownership.ProcessDefinitionKey,
 			Status:          d.APILatencyCleanupStatusRetained,
 			Classification:  d.APILatencyClassificationUnavailable,
-			RecoveryCommand: fmt.Sprintf("c8volt delete process-definition --key %s --auto-confirm", ownership.ProcessDefinitionKey),
+			RecoveryCommand: apiLatencyCleanupRecoveryCommand(d.APILatencyCleanupResourceProcessDefinition, ownership.ProcessDefinitionKey, plan),
 		})
 	}
 	return out
+}
+
+// apiLatencyCleanupRecoveryCommand formats exact-key recovery commands only when the command is capability-safe.
+func apiLatencyCleanupRecoveryCommand(resourceType d.APILatencyCleanupResourceType, key string, plan *d.APILatencyCleanupPlan) string {
+	switch resourceType {
+	case d.APILatencyCleanupResourceProcessInstance:
+		return fmt.Sprintf("c8volt delete process-instance --key %s --force --auto-confirm", key)
+	case d.APILatencyCleanupResourceProcessDefinition:
+		if plan != nil && !plan.Supported {
+			return ""
+		}
+		return fmt.Sprintf("c8volt delete process-definition --key %s --auto-confirm", key)
+	default:
+		return ""
+	}
 }
 
 // apiLatencySortedUniqueKeys returns stable exact-key ordering for ownership, retention, and cleanup evidence.

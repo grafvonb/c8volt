@@ -272,3 +272,23 @@ Started: 2026-09-02 06:58:25
 - Active ownership registration is now service-owned through a mutex-protected registry that immediately records returned keys, deduplicates them, snapshots deterministic exact-key evidence, and keeps cleanup PI-before-PD without BPMN-ID or tenant-wide cleanup discovery.
 - Validation passed: `go test ./internal/services/ops -run 'TestAPILatencyActiveOwnershipRegistryDeduplicatesAndCleansExactKeys' -count=1`; `go test ./internal/services/ops -run 'TestAPILatencyActiveOwnershipRegistryDeduplicatesAndCleansExactKeys' -race -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./internal/services/ops -run 'APILatencyActive' -race -count=1`; `git diff --check`.
 ---
+---
+## Iteration 11 - 2026-09-02 08:44
+**Work Unit**: User Story 3 partial: cleanup after incomplete active runs
+**Tasks Completed**:
+- [x] T037: Add service tests for cleanup after stage failure, request timeout, visibility exhaustion, canceled caller, independent cleanup timeout, partial cleanup, recovery commands, 8.8 retention, and no-cleanup distinction
+- [x] T041: Extend cleanup orchestration with `context.WithoutCancel`, a bounded completion context, exact PI-before-PD deletion, and joined partial errors
+- [x] T042: Implement intentional retention, remaining-resource classification, and exact-key manual recovery guidance
+**Tasks Remaining in Work Unit**: 6 US3 tasks remain: T038, T039, and T043-T046
+**Commit**: This work-unit commit
+**Files Changed**:
+- `internal/services/ops/api_latency.go`
+- `internal/services/ops/api_latency_cleanup.go`
+- `internal/services/ops/api_latency_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Active cleanup now receives an independent bounded context after caller cancellation, records timeout remainders as `unknown`, joins cleanup errors with execution errors, and omits unsupported process-definition recovery commands for explicit Camunda 8.8 retention.
+- Validation passed: `go test ./internal/services/ops -run 'APILatencyActiveCleanup|APILatencyActiveTimeoutAndVisibility|APILatencyActiveNoCleanup' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./internal/services/ops -run 'APILatencyActive' -race -count=1`; `git diff --check`.
+---

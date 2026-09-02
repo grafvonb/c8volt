@@ -81,6 +81,7 @@ func PlanAPILatency(request d.APILatencyRequest) (d.APILatencyPlan, error) {
 		plan.Cleanup = &d.APILatencyCleanupPlan{
 			Requested:            !request.NoCleanup,
 			IntentionalRetention: request.NoCleanup,
+			IndependentBudget:    apiLatencyCleanupCompletionBudget,
 		}
 	default:
 		return plan, fmt.Errorf("%w: api latency mode must be read_only or active", d.ErrValidation)
