@@ -56,6 +56,7 @@ c8volt ops execute [flags]
 ### SEE ALSO
 
 * [c8volt ops]({{ "/cli/c8volt_ops" | relative_url }})	 - Discover high-level operational workflows
+* [c8volt ops execute api-latency-test]({{ "/cli/c8volt_ops_execute_api-latency-test" | relative_url }})	 - Execute a bounded active API latency test
 * [c8volt ops execute retention-policy]({{ "/cli/c8volt_ops_execute_retention-policy" | relative_url }})	 - Execute process-instance retention cleanup
 * [c8volt ops execute smoke-test]({{ "/cli/c8volt_ops_execute_smoke-test" | relative_url }})	 - Execute a cluster smoke test workflow
 

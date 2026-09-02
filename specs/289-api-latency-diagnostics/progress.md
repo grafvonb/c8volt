@@ -209,3 +209,28 @@ Started: 2026-09-02 06:58:25
 - Active facade tests now pin active plan/fixture/cleanup, ownership, visibility, cleanup, progress, partial-result, and defensive-copy behavior; the only implementation gap found was missing public cleanup status constants for submitted, failed, unknown, and pending states.
 - Validation passed: `go test ./c8volt/ops -run 'TestClientExecuteAPILatencyTest' -count=1`; `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
 ---
+---
+## Iteration 8 - 2026-09-02 08:21
+**Work Unit**: User Story 2 partial: active API latency command contract tests
+**Tasks Completed**:
+- [x] T027: Add command tests for active flags/defaults, concrete-tenant enforcement, state-changing/full/automation metadata, dry-run preview, confirmation including `--no-cleanup`, automation/auto-confirm, JSON confirmation guardrails, and report-path preflight
+**Tasks Remaining in Work Unit**: 4 US2 tasks remain: T028 active output tests, T033 remaining command leaf completion, T034 active rendering, and T035 US2 validation
+**Commit**: This work-unit commit
+**Files Changed**:
+- `cmd/ops_execute_api_latency_test.go`
+- `cmd/ops_execute_api_latency.go`
+- `cmd/command_contract_test.go`
+- `internal/services/ops/api_latency_execute.go`
+- `docs/cli/c8volt_ops_execute.md`
+- `docs/cli/c8volt_ops_execute_api-latency-test.md`
+- `docs/cli/command-tree.md`
+- `docs/index.md`
+- `docsgen/main_test.go`
+- `specs/254-cli-debt-refactor/assessment.md`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Active command tests now pin the CLI safety contract and exposed one service-path correction: process-instance create latency must pass `services.WithNoWait()` internally so creation measurement does not wait for exporter visibility.
+- Validation passed: `go test ./cmd -run 'OpsExecuteAPILatency' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `go test ./docsgen -count=1`; `make docs-content`; `git diff --check`.
+---

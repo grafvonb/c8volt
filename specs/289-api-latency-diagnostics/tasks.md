@@ -82,7 +82,7 @@
 - [x] T024 [P] [US2] Add failing service tests for run-ID generation, fixture selection, configured/observed version checks, dry-run zero mutation, active 8.7 rejection, cleanup-enabled 8.8 rejection, 8.8 no-cleanup eligibility, and 8.9/8.10 cleanup eligibility in `internal/services/ops/api_latency_test.go`
 - [x] T025 [US2] Add failing service tests for exact deployed-key creation with no visibility wait, immediate returned-key recording, stage concurrency/count bounds, overlapping-read evidence, bounded exact-key visibility polling, backpressure/timeout classification, active findings, and successful-path cleanup in `internal/services/ops/api_latency_test.go`
 - [x] T026 [P] [US2] Add failing facade tests for active plan, ownership, visibility, cleanup, progress, and partial-result conversion in `c8volt/ops/client_test.go`
-- [ ] T027 [P] [US2] Add failing command tests for active flags/defaults, concrete-tenant enforcement, state-changing/full/automation metadata, dry-run preview, confirmation including `--no-cleanup`, automation/auto-confirm, JSON confirmation guardrails, and report-path preflight in `cmd/ops_execute_api_latency_test.go`
+- [x] T027 [P] [US2] Add failing command tests for active flags/defaults, concrete-tenant enforcement, state-changing/full/automation metadata, dry-run preview, confirmation including `--no-cleanup`, automation/auto-confirm, JSON confirmation guardrails, and report-path preflight in `cmd/ops_execute_api_latency_test.go`
 - [ ] T028 [US2] Add failing command tests for compact active preview/result output, plan/execution count parity, run identity, fixture, visibility, findings, successful cleanup, and no low-level per-key chatter in `cmd/ops_execute_api_latency_test.go`
 
 ### Implementation for User Story 2

@@ -1127,10 +1127,10 @@ func TestCapabilityDocumentForRoot_CoversCLIDebtAssessment(t *testing.T) {
 
 	doc := capabilityDocumentForRoot(root)
 	paths := commandCapabilityPaths(doc.Commands)
-	require.Len(t, paths, 56)
+	require.Len(t, paths, 57)
 
 	assessmentPaths := readCLIDebtAssessmentCommandPaths(t)
-	require.Len(t, assessmentPaths, 56)
+	require.Len(t, assessmentPaths, 57)
 	require.ElementsMatch(t, paths, assessmentPaths)
 }
 

@@ -405,10 +405,12 @@ func (s *Service) measureAPILatencyActiveCycle(ctx context.Context, stageIndex i
 		return apiLatencyActiveCycle{measurements: measurements}, err
 	}
 	data := d.ProcessInstanceData{ProcessDefinitionSpecificId: pdKey, TenantId: request.TenantID}
+	createOpts := append([]services.CallOption{}, opts...)
+	createOpts = append(createOpts, services.WithNoWait())
 	created, createMeasurement := measureAPILatencyCall(ctx, stageIndex, d.APILatencyCategoryProcessInstanceCreate, d.APILatencyMeasurementKindPrimary, func(ctx context.Context) (d.ProcessInstanceCreation, error) {
 		atomic.AddInt64(inFlightWrites, 1)
 		defer atomic.AddInt64(inFlightWrites, -1)
-		return s.piAPI.CreateProcessInstance(ctx, data, opts...)
+		return s.piAPI.CreateProcessInstance(ctx, data, createOpts...)
 	})
 	measurements = append(measurements, createMeasurement)
 	registerKey(created.Key)

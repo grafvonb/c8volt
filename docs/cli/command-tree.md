@@ -48,6 +48,7 @@ This generated tree lists the root reference plus the 56 available c8volt comman
       - [`c8volt ops analyse api-latency`]({{ "/cli/c8volt_ops_analyse_api-latency" | relative_url }}) - Analyse API latency without changing cluster state
       - [`c8volt ops analyse slow-process-instances`]({{ "/cli/c8volt_ops_analyse_slow-process-instances" | relative_url }}) - Analyse slow process-instance timings
     - [`c8volt ops execute`]({{ "/cli/c8volt_ops_execute" | relative_url }}) - Discover predefined operational playbooks
+      - [`c8volt ops execute api-latency-test`]({{ "/cli/c8volt_ops_execute_api-latency-test" | relative_url }}) - Execute a bounded active API latency test
       - [`c8volt ops execute retention-policy`]({{ "/cli/c8volt_ops_execute_retention-policy" | relative_url }}) - Execute process-instance retention cleanup
       - [`c8volt ops execute smoke-test`]({{ "/cli/c8volt_ops_execute_smoke-test" | relative_url }}) - Execute a cluster smoke test workflow
     - [`c8volt ops purge`]({{ "/cli/c8volt_ops_purge" | relative_url }}) - Discover destructive operational cleanup workflows
