@@ -4,7 +4,7 @@ Feature: 289-api-latency-diagnostics
 Started: 2026-09-02T04:58:25Z
 
 ## Codebase Patterns
-- First incomplete work now begins at Phase 7 T065; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, bounded active US2 command/service/facade/rendering work T024-T035, US3 ownership/cleanup/recovery preservation work T036-T046, all US4 reproducible evidence work T047-T056, command capability/inventory coverage T057, read-only analyse volume coverage T058, active execute volume coverage T059, README/ops-index discoverability T060, focused operator guidance T061, generated docs refresh/review T062, documentation example/non-tag integration verification T063, and focused formatting/quickstart validation T064 are complete.
+- All planned API-latency diagnostic tasks T001-T065 are complete. Final validation passed with `make test` after aligning the top-level V89 construction regression test with the active dry-run topology preflight contract.
 - Commands own Cobra construction, local flag validation, confirmation, activity/progress setup, report-path validation, and final rendering. Follow `cmd/ops_analyse_slow_process_instances.go` for read-only analysis wiring and `cmd/ops_execute_smoketest.go` for active ops execution wiring.
 - Public `c8volt/ops` facade methods are thin: map public request to `internal/domain`, delegate to `internal/services/ops.API`, map results back, and convert errors with `ferrors.FromDomain`.
 - `internal/services/ops.Service` is the owning layer for stage planning, remote workflow mechanics, worker scheduling, cleanup orchestration, and progress facts. `NewWithAnalysisDependencies` already carries cluster, process-instance, process-definition, resource, job, element, version, and logger dependencies for this feature.
@@ -47,6 +47,7 @@ Started: 2026-09-02T04:58:25Z
 - Phase 7 T060 updated `README.md` and `docs/ops/index.md` to surface `ops analyse api-latency` as the read-only zero-mutation diagnostic and `ops execute api-latency-test` as the confirmed bounded active diagnostic with exact-key cleanup; examples point at existing generated CLI reference pages until focused operator guides are added in T061.
 - Phase 7 T061 added focused playbook pages at `docs/ops/analyse-api-latency.md` and `docs/ops/execute-api-latency-test.md`; `docs/ops/index.md` now points API-latency workflow rows at those playbooks while each playbook links to the generated CLI reference.
 - Phase 7 T062 ran `make docs-content`; generated API-latency leaf pages were already current, while `docs/index.md` refreshed build metadata, API-latency generated-reference links, command count 57, and active all-tenants inventory wording.
+- Phase 7 T065 ran the required full repository race suite with `make test`; the initial run exposed a stale top-level V89 construction assertion that expected active dry-run success despite the required topology preflight, and the corrected test now asserts a non-unsupported preflight error with failed outcome evidence.
 
 ## Decisions
 - For this Ralph run, the prerequisite script selected `specs/289-api-latency-diagnostics`; the AGENTS Speckit block still names an older active plan and should not override the checked `FEATURE_DIR`.
@@ -55,6 +56,7 @@ Started: 2026-09-02T04:58:25Z
 - Task file requires commit subjects for this feature to be Conventional Commits ending in `#289`; the current branch prefix also supports issue auto-inference.
 - Avoid command-local worker pools, page traversal, or backend loops. Those are completion-blocking layering shortcuts under `specs/ralph-implementation-rules.md`.
 - A command progress helper crossing three mode/lifecycle declarations needs a focused file such as `cmd/ops_api_latency_progress.go`.
+- Active API-latency dry-run performs topology preflight; blocked transport in top-level construction tests should assert a non-unsupported runtime/preflight error, not a planned success.
 
 ## Reusable Commands
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -62,6 +64,7 @@ Started: 2026-09-02T04:58:25Z
 - `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`
 - `go test ./internal/services/ops ./cmd -run 'APILatency' -race -count=1`
 - `git diff --check`
+- `make test`
 
 ## Do Not Repeat
 - Do not create a new report framework, worker framework, fixture, generated client, or versioned latency adapter for this feature.
@@ -69,4 +72,4 @@ Started: 2026-09-02T04:58:25Z
 - Pre-US4 evidence such as T023 and T039 intentionally covered report-path validation and partial-result/error-envelope boundaries without claiming API-latency report writing; T048/T052/T053 now implement the actual read-only and active report serialization/writing path.
 
 ## Current Handoff
-- Next iteration should complete Phase 7 at T065 by running the required race-enabled repository suite with `make test`, recording final validation/known environment limits/completion evidence, and setting the terminal handoff only if all tasks are complete.
+- Feature complete; no handoff required.

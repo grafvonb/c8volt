@@ -29,7 +29,9 @@ func (f clientTestRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, e
 // TestNew_V89WiresSupportedRuntime ensures the top-level client factory wires
 // every facade for the newest supported runtime. The calls intentionally fail
 // through a local transport, but reaching those methods proves the v8.9
-// services were constructed instead of rejected as unsupported.
+// services were constructed instead of rejected as unsupported. Active latency
+// dry-run still performs a topology preflight, so the blocked transport should
+// surface as a non-unsupported runtime error.
 func TestNew_V89WiresSupportedRuntime(t *testing.T) {
 	t.Parallel()
 
@@ -94,8 +96,9 @@ func TestNew_V89WiresSupportedRuntime(t *testing.T) {
 		Workers:     4,
 		DryRun:      true,
 	})
-	require.NoError(t, err)
-	require.Equal(t, ops.APILatencyOutcomePlanned, gotActiveLatency.Outcome)
+	require.Error(t, err)
+	require.NotErrorIs(t, err, ferrors.ErrUnsupported)
+	require.Equal(t, ops.APILatencyOutcomeFailed, gotActiveLatency.Outcome)
 	require.NotNil(t, gotActiveLatency.Plan.Cleanup)
 }
 

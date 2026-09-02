@@ -616,3 +616,19 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - Validation passed: `gofmt` on every Go file touched by the feature branch, `git diff --check`, `go test ./internal/services/ops -run 'APILatency' -count=1`, `go test ./c8volt/ops -run 'APILatency' -count=1`, and `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`.
 ---
+---
+## Iteration 30 - 2026-09-02 11:13
+**Work Unit**: Phase 7 polish: final race-enabled repository validation
+**Tasks Completed**:
+- [x] T065: Run the required race-enabled repository suite with `make test` and record final validation, known environment limits, and completion evidence
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- `c8volt/client_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Initial `make test` failed only because `TestNew_V89WiresSupportedRuntime` still expected active API-latency dry-run to succeed under a blocked transport; active dry-run intentionally performs topology preflight, so the test now asserts a non-unsupported failed preflight result.
+- Validation passed: `go test ./c8volt -run 'TestNew_V89WiresSupportedRuntime' -race -count=1`; `make test`.
+---
