@@ -183,7 +183,6 @@ Started: 2026-09-02 06:58:25
 - Active non-dry service execution now uses no-wait fixture deployment, exact returned process-definition and process-instance keys, bounded stage workers, exact-key visibility evidence, safe backpressure findings, and PI-before-PD successful cleanup.
 - Validation passed: `go test ./internal/services/ops -run 'TestAPILatencyActiveExecution' -count=1`; `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./internal/services/ops -run 'APILatencyActive|APILatencyPlanDerivesVisibilityBound' -count=1`; `go test ./internal/services/ops -run 'TestAPILatencyActiveExecutionBoundsWorkersAndClassifiesVisibilityErrors' -race -count=1`; `git diff --check`.
 ---
----
 ## Iteration 7 - 2026-09-02 08:09
 **Work Unit**: User Story 2 partial: active API latency facade conversion
 **Tasks Completed**:
@@ -672,4 +671,19 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - Live T068 absence checks exposed that successful PD history-delete batch completion was not enough to prove direct lookup absence; API-latency cleanup now waits for the exact PD key to disappear and cleanup PI waiters ignore visibility `max_retries` while remaining bounded by the independent cleanup context.
 - Validation passed: `go test ./internal/services/processinstance/waiter -run 'TestWaitForProcessInstanceState' -count=1`; `go test ./internal/services/ops -run 'APILatency' -count=1`; `go test ./cmd -run 'TestOpsExecuteAPILatencyProgressModeGate' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test -tags integration ./integration/cli -run 'TestVolumeOpsExecuteFamily' -count=1`; `git diff --check`.
+---
+---
+## Iteration 3 - 2026-09-02 16:56
+**Work Unit**: Phase 8 US3 final validation: deterministic active API latency cleanup
+**Tasks Completed**:
+- [x] T069: Run focused API-latency service/command tests, the live cleanup-capable C8.9 scenario, `git diff --check`, and `make test`; record the regression cause and validation evidence
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Regression cause: active cleanup needed to cancel and wait active fixture instances before exact deletion, then verify direct process-definition absence rather than trusting history-delete batch completion alone.
+- Validation passed: `go test ./internal/services/ops ./cmd -run 'APILatency' -count=1`; `C8VOLT_IT_AUTOMATION=1 make integration-cli-ops-execute-volume C8VOLT_IT_GO_TEST_FLAGS=-v`; `git diff --check`; `make test`.
 ---

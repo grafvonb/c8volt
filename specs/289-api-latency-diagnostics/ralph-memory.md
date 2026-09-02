@@ -4,7 +4,7 @@ Feature: 289-api-latency-diagnostics
 Started: 2026-09-02T04:58:25Z
 
 ## Codebase Patterns
-- All planned API-latency diagnostic tasks T001-T065 are complete. Final validation passed with `make test` after aligning the top-level V89 construction regression test with the active dry-run topology preflight contract.
+- All planned API-latency diagnostic tasks T001-T069 are complete. Final validation passed with focused API-latency service/command tests, the live cleanup-capable C8.9 volume scenario, `git diff --check`, and `make test`.
 - Commands own Cobra construction, local flag validation, confirmation, activity/progress setup, report-path validation, and final rendering. Follow `cmd/ops_analyse_slow_process_instances.go` for read-only analysis wiring and `cmd/ops_execute_smoketest.go` for active ops execution wiring.
 - Public `c8volt/ops` facade methods are thin: map public request to `internal/domain`, delegate to `internal/services/ops.API`, map results back, and convert errors with `ferrors.FromDomain`.
 - `internal/services/ops.Service` is the owning layer for stage planning, remote workflow mechanics, worker scheduling, cleanup orchestration, and progress facts. `NewWithAnalysisDependencies` already carries cluster, process-instance, process-definition, resource, job, element, version, and logger dependencies for this feature.
@@ -46,6 +46,7 @@ Started: 2026-09-02T04:58:25Z
 - API-latency cleanup now cancels exact owned process instances first with `services.WithNoStateCheck()` and `services.WithNoWait()`, waits for terminal state through the existing process-instance wait API, submits exact no-wait deletion, confirms `ABSENT`, then deletes the exact process-definition key only if every PI cleanup reached deleted status. This avoids the observed active-instance delete-before-cancel `404` path and prevents definition cleanup from spending the full retry budget after PI cleanup failure.
 - Active cleanup emits aggregate frozen-scope progress with phase `cleaning up active API latency resources` and core resource `owned resource(s)`; the existing command progress adapter consumes this without per-key lifecycle chatter.
 - Phase 8 T068 strengthened active cleanup verification: command progress tests now assert cleanup stays aggregate-only, integration confirmed cleanup queries every returned PI key and the returned PD key for direct absence, cleanup waits use `services.WithUnlimitedWaitRetries()` so the independent cleanup context rather than visibility `max_retries` bounds terminal polling, and PD cleanup now waits until direct process-definition lookup stops returning the exact key after the resource history-delete batch succeeds.
+- Phase 8 T069 final validation confirmed the regression cause was active cleanup attempting exact deletion before canceling active fixture instances and treating process-definition batch completion as sufficient without direct absence evidence; the fixed flow now cancels, waits, deletes, confirms PI absence, and confirms PD lookup absence on C8.9.
 - Phase 7 T060 updated `README.md` and `docs/ops/index.md` to surface `ops analyse api-latency` as the read-only zero-mutation diagnostic and `ops execute api-latency-test` as the confirmed bounded active diagnostic with exact-key cleanup; examples point at existing generated CLI reference pages until focused operator guides are added in T061.
 - Phase 7 T061 added focused playbook pages at `docs/ops/analyse-api-latency.md` and `docs/ops/execute-api-latency-test.md`; `docs/ops/index.md` now points API-latency workflow rows at those playbooks while each playbook links to the generated CLI reference.
 - Phase 7 T062 ran `make docs-content`; generated API-latency leaf pages were already current, while `docs/index.md` refreshed build metadata, API-latency generated-reference links, command count 57, and active all-tenants inventory wording.
@@ -75,4 +76,4 @@ Started: 2026-09-02T04:58:25Z
 - Pre-US4 evidence such as T023 and T039 intentionally covered report-path validation and partial-result/error-envelope boundaries without claiming API-latency report writing; T048/T052/T053 now implement the actual read-only and active report serialization/writing path.
 
 ## Current Handoff
-- Continue Phase 8 US3 at T069: run focused API-latency service/command tests, the live cleanup-capable C8.9 scenario, `git diff --check`, and `make test`; record the regression cause and validation evidence before marking the feature complete.
+- Feature complete; no handoff required.

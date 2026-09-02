@@ -177,7 +177,7 @@
 - [x] T066 [US3] Add failing service regressions for the observed active-instance delete `404` behavior and prove exact-key cleanup orders cancel submission, terminal-state wait, exact deletion, absence confirmation, and process-definition cleanup without retrying the definition for the full budget after an instance cleanup failure in `internal/services/ops/api_latency_test.go`
 - [x] T067 [US3] Make active API-latency cleanup deterministic by composing the existing process-instance cancel, state-wait, and exact-delete APIs; preserve PI-before-PD ownership boundaries and emit aggregate cleanup progress through the existing frozen-scope progress event in `internal/services/ops/api_latency_cleanup.go` and existing API-latency progress helpers
 - [x] T068 [US3] Strengthen command and disposable Camunda 8.9/8.10 coverage so cleanup progress remains compact and the confirmed integration scenario queries every returned process-instance and process-definition key to prove absence instead of trusting report status alone in `cmd/ops_execute_api_latency_test.go` and `integration/cli/volume_ops_execute_test.go`
-- [ ] T069 Run focused API-latency service/command tests, the live cleanup-capable C8.9 scenario, `git diff --check`, and `make test`; record the regression cause and validation evidence in `specs/289-api-latency-diagnostics/progress.md`
+- [x] T069 Run focused API-latency service/command tests, the live cleanup-capable C8.9 scenario, `git diff --check`, and `make test`; record the regression cause and validation evidence in `specs/289-api-latency-diagnostics/progress.md`
 
 **Checkpoint**: A confirmed active run reaches a truthful terminal result promptly and leaves no exact run-owned resource behind on cleanup-capable versions.
 
