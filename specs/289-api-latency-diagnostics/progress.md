@@ -351,3 +351,20 @@ Started: 2026-09-02 06:58:25
 - Failed deploy responses that still include an exact process-definition key now preserve ownership and attempt exact cleanup while returning a failed outcome and the original deploy error.
 - Validation passed: `go test ./internal/services/ops -run 'TestAPILatencyActiveDeployErrorWithReturnedKeyCleansExactDefinition' -count=1`; `go test ./c8volt/ops -run 'TestClientExecuteAPILatencyTestPreservesTerminalOutcomeEvidence' -count=1`; `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./internal/services/ops ./cmd -run 'APILatency' -race -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
 ---
+---
+## Iteration 15 - 2026-09-02 09:14
+**Work Unit**: User Story 4 partial: API latency renderer regression coverage
+**Tasks Completed**:
+- [x] T047: Add human and JSON renderer tests for stable schema/context, ordered stages/classifications/findings, read-only active-field omission, active evidence fields, compact wording, and the five-second render budget
+**Tasks Remaining in Work Unit**: 9 US4 tasks remain: T048-T056
+**Commit**: This work-unit commit
+**Files Changed**:
+- `cmd/ops_analyse_api_latency_test.go`
+- `cmd/ops_execute_api_latency_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Existing `renderOpsAPILatencyResult` behavior already satisfied the new stable read-only/active human and JSON renderer assertions; US4 should continue with report behavior at T048.
+- Validation passed: `go test ./cmd -run 'TestRenderOps(Analyse|Execute)APILatencyStableHumanAndJSON' -count=1`; `go test ./cmd -run 'APILatency' -count=1`; `git diff --check`.
+---

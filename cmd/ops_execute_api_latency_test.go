@@ -397,6 +397,188 @@ func TestRenderOpsExecuteAPILatencyHumanRendersActiveResult(t *testing.T) {
 	require.NotContains(t, output, "process-definition key pd-89")
 }
 
+// TestRenderOpsExecuteAPILatencyStableHumanAndJSON pins active renderer ordering, safe context, and active evidence fields.
+func TestRenderOpsExecuteAPILatencyStableHumanAndJSON(t *testing.T) {
+	resetOpsExecuteAPILatencyTestFlags(t)
+	p50 := 11 * time.Millisecond
+	p95 := 29 * time.Millisecond
+	maxLatency := 31 * time.Millisecond
+	visibilityP95 := 1400 * time.Millisecond
+	throughput := 33.25
+	result := ops.APILatencyResult{
+		SchemaVersion: ops.APILatencySchemaVersion,
+		Context: ops.APILatencyRunContext{
+			CommandName:    "ops execute api-latency-test",
+			SchemaVersion:  ops.APILatencySchemaVersion,
+			C8voltVersion:  "dev-test",
+			CamundaVersion: "8.9",
+			Profile:        "support",
+			Tenant:         "<default>",
+			Duration:       "2s",
+		},
+		Request: ops.APILatencyRequest{
+			CommandName: "ops execute api-latency-test",
+			Mode:        ops.APILatencyModeActive,
+			Count:       3,
+			Workers:     2,
+			TenantID:    "<default>",
+			OutputMode:  "one-line",
+		},
+		Plan: ops.APILatencyPlan{
+			Mode:                    ops.APILatencyModeActive,
+			RunID:                   "0123456789abcdef0123456789abcdef",
+			PrimarySampleLimit:      3,
+			PrimarySampleAllocation: 3,
+			DerivedRequestLimit:     9,
+			VisibilityAttemptLimit:  2,
+			Stages: []ops.APILatencyStagePlan{
+				{Index: 1, WorkerCount: 1, PrimarySamples: 1, DerivedRequestLimit: 3},
+				{Index: 2, WorkerCount: 2, PrimarySamples: 2, DerivedRequestLimit: 6},
+			},
+			Fixture: &ops.APILatencyFixturePlan{
+				CamundaVersion: "8.9",
+				File:           "embedded/processdefinitions/C89_SimpleUserTask.bpmn",
+				BpmnProcessID:  "C89_SimpleUserTask",
+				Available:      true,
+			},
+			Cleanup: &ops.APILatencyCleanupPlan{
+				Requested:         true,
+				Supported:         true,
+				IndependentBudget: 5 * time.Minute,
+			},
+		},
+		Topology: ops.APILatencyTopologyEvidence{BrokerCount: 1, PartitionCount: 1, HealthKnown: true},
+		Stages: []ops.APILatencyStageResult{
+			{
+				Plan:                 ops.APILatencyStagePlan{Index: 1, WorkerCount: 1, PrimarySamples: 1, DerivedRequestLimit: 3},
+				Status:               ops.APILatencyStageStatusCompleted,
+				ActualMaxConcurrency: 1,
+				PrimaryAttempts:      1,
+				DerivedAttempts:      3,
+				Categories: []ops.APILatencyCategorySummary{
+					{Category: ops.APILatencyCategoryProcessInstanceCreate, Attempts: 1, Successes: 1, ThroughputPerSecond: &throughput, P50: &p50, P95: &p95, Max: &maxLatency},
+					{Category: ops.APILatencyCategoryConcurrentRead, Attempts: 1, Successes: 1, ThroughputPerSecond: &throughput, P50: &p50, P95: &p95, Max: &maxLatency},
+					{Category: ops.APILatencyCategorySearchVisibility, Attempts: 2, Successes: 1, Timeouts: 1, P95: &visibilityP95, Max: &visibilityP95},
+				},
+				Classifications: []ops.APILatencyClassificationCount{
+					{Classification: ops.APILatencyClassificationSuccess, Count: 2},
+					{Classification: ops.APILatencyClassificationBackpressure, Count: 1},
+					{Classification: ops.APILatencyClassificationTimeout, Count: 1},
+				},
+			},
+			{
+				Plan:                 ops.APILatencyStagePlan{Index: 2, WorkerCount: 2, PrimarySamples: 2, DerivedRequestLimit: 6},
+				Status:               ops.APILatencyStageStatusCompleted,
+				ActualMaxConcurrency: 2,
+				PrimaryAttempts:      2,
+				DerivedAttempts:      6,
+				Categories: []ops.APILatencyCategorySummary{
+					{Category: ops.APILatencyCategoryProcessInstanceCreate, Attempts: 2, Successes: 2, ThroughputPerSecond: &throughput, P50: &p50, P95: &p95, Max: &maxLatency},
+					{Category: ops.APILatencyCategorySearchVisibility, Attempts: 4, Successes: 4, P95: &visibilityP95, Max: &visibilityP95},
+				},
+				Classifications: []ops.APILatencyClassificationCount{
+					{Classification: ops.APILatencyClassificationSuccess, Count: 6},
+				},
+			},
+		},
+		Findings: []ops.APILatencyFinding{
+			{Code: "backpressure_evidence", LikelyArea: "cluster pressure", Confidence: ops.APILatencyFindingConfidenceHigh, NextInvestigation: "inspect broker resource usage"},
+			{Code: "delayed_visibility", LikelyArea: "exporter visibility", Confidence: ops.APILatencyFindingConfidenceMedium, NextInvestigation: "compare exporter lag"},
+		},
+		Ownership: &ops.APILatencyOwnership{
+			RunID:                "0123456789abcdef0123456789abcdef",
+			FixtureName:          "embedded/processdefinitions/C89_SimpleUserTask.bpmn",
+			BpmnProcessID:        "C89_SimpleUserTask",
+			DeploymentSubmitted:  true,
+			ProcessDefinitionKey: "pd-89",
+			ProcessInstanceKeys:  []string{"101", "102", "103"},
+		},
+		Visibility: []ops.APILatencyVisibilityResult{
+			{ProcessInstanceKey: "101", Attempts: 1, AttemptLimit: 2, Visible: true, Duration: 700 * time.Millisecond, FinalClassification: ops.APILatencyClassificationSuccess},
+			{ProcessInstanceKey: "102", Attempts: 2, AttemptLimit: 2, Visible: false, Duration: 1500 * time.Millisecond, FinalClassification: ops.APILatencyClassificationTimeout},
+		},
+		Cleanup: []ops.APILatencyCleanupRecord{
+			{ResourceType: ops.APILatencyCleanupResourceProcessInstance, Key: "101", Status: ops.APILatencyCleanupStatusDeleted, Classification: ops.APILatencyClassificationSuccess},
+			{ResourceType: ops.APILatencyCleanupResourceProcessInstance, Key: "102", Status: ops.APILatencyCleanupStatusFailed, Classification: ops.APILatencyClassificationBackpressure, RecoveryCommand: "c8volt delete process-instance --key 102 --force --auto-confirm"},
+			{ResourceType: ops.APILatencyCleanupResourceProcessDefinition, Key: "pd-89", Status: ops.APILatencyCleanupStatusUnknown, Classification: ops.APILatencyClassificationTimeout, RecoveryCommand: "c8volt delete process-definition --key pd-89 --auto-confirm"},
+		},
+		Notices:     []string{"fixture deployment and cleanup are reported outside primary samples"},
+		Limitations: []string{"bounded evidence does not prove capacity"},
+		Outcome:     ops.APILatencyOutcomePartial,
+	}
+
+	humanCmd := &cobra.Command{}
+	var humanOut bytes.Buffer
+	humanCmd.SetOut(&humanOut)
+	started := time.Now()
+	require.NoError(t, renderOpsAPILatencyResult(humanCmd, result))
+	require.Less(t, time.Since(started), 5*time.Second)
+	human := humanOut.String()
+	require.Contains(t, human, "execute api latency test")
+	require.Contains(t, human, "request: count 3; primary allocation 3/3; workers 1,2; stages 2; derived requests <= 9")
+	require.Contains(t, human, "run: 0123456789abcdef0123456789abcdef")
+	require.Contains(t, human, "fixture: embedded/processdefinitions/C89_SimpleUserTask.bpmn (C89_SimpleUserTask)")
+	require.Contains(t, human, "visibility: attempts <= 2")
+	require.Contains(t, human, "cleanup: requested; supported")
+	require.Contains(t, human, "stage 1: workers 1; primary 1/1; derived 3/3; errors 0; timeouts 1; unavailable 0; p95 process_instance_create 29ms; throughput 33.2/s")
+	require.Contains(t, human, "stage 2: workers 2; primary 2/2; derived 6/6; errors 0; timeouts 0; unavailable 0; p95 process_instance_create 29ms; throughput 33.2/s")
+	require.Less(t, strings.Index(human, "stage 1:"), strings.Index(human, "stage 2:"))
+	require.Less(t, strings.Index(human, "finding: backpressure_evidence"), strings.Index(human, "finding: delayed_visibility"))
+	require.Contains(t, human, "ownership: process definition recorded; process instances 3")
+	require.Contains(t, human, "visibility: visible 1/2; attempts 3/4; max 1.5s")
+	require.Contains(t, human, "cleanup: deleted 1/3; retained 0; failed 1; unknown 1")
+	require.Contains(t, human, "cleanup resource: process_instance 102; failed; recovery: c8volt delete process-instance --key 102 --force --auto-confirm")
+	require.Contains(t, human, "cleanup resource: process_definition pd-89; unknown; recovery: c8volt delete process-definition --key pd-89 --auto-confirm")
+	require.Contains(t, human, "outcome: partial; elapsed 2s")
+	require.NotContains(t, human, "GET /v2")
+	require.NotContains(t, human, "Authorization")
+	require.NotContains(t, human, "process-instance key 101")
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	jsonCmd, _, err := root.Find([]string{"ops", "execute", "api-latency-test"})
+	require.NoError(t, err)
+	var jsonOut bytes.Buffer
+	jsonCmd.SetOut(&jsonOut)
+	flagViewAsJson = true
+	started = time.Now()
+	require.NoError(t, renderOpsAPILatencyResult(jsonCmd, result))
+	require.Less(t, time.Since(started), 5*time.Second)
+	payload := requireJSONObject(t, requireSingleJSONObjectDocument(t, jsonOut.String())["payload"])
+	require.Equal(t, ops.APILatencySchemaVersion, payload["schemaVersion"])
+	contextPayload := requireJSONObject(t, payload["context"])
+	require.Equal(t, "ops execute api-latency-test", contextPayload["commandName"])
+	require.Equal(t, "<default>", contextPayload["tenant"])
+	plan := requireJSONObject(t, payload["plan"])
+	require.Equal(t, "active", plan["mode"])
+	require.Equal(t, float64(2), plan["visibilityAttemptLimit"])
+	require.Equal(t, "embedded/processdefinitions/C89_SimpleUserTask.bpmn", requireJSONObject(t, plan["fixture"])["file"])
+	require.Equal(t, true, requireJSONObject(t, plan["cleanup"])["requested"])
+	stages := requireJSONItems(t, payload["stages"], 2)
+	firstStage := requireJSONObject(t, stages[0])
+	classifications := requireJSONItems(t, firstStage["classifications"], 3)
+	require.Equal(t, "success", requireJSONObject(t, classifications[0])["classification"])
+	require.Equal(t, "backpressure", requireJSONObject(t, classifications[1])["classification"])
+	require.Equal(t, "timeout", requireJSONObject(t, classifications[2])["classification"])
+	categories := requireJSONItems(t, firstStage["categories"], 3)
+	require.Equal(t, "process_instance_create", requireJSONObject(t, categories[0])["category"])
+	require.Equal(t, "concurrent_read", requireJSONObject(t, categories[1])["category"])
+	require.Equal(t, "search_visibility", requireJSONObject(t, categories[2])["category"])
+	findings := requireJSONItems(t, payload["findings"], 2)
+	require.Equal(t, "backpressure_evidence", requireJSONObject(t, findings[0])["code"])
+	require.Equal(t, "delayed_visibility", requireJSONObject(t, findings[1])["code"])
+	ownership := requireJSONObject(t, payload["ownership"])
+	require.Equal(t, "pd-89", ownership["processDefinitionKey"])
+	require.Equal(t, []any{"101", "102", "103"}, ownership["processInstanceKeys"])
+	visibility := requireJSONItems(t, payload["visibility"], 2)
+	require.Equal(t, "101", requireJSONObject(t, visibility[0])["processInstanceKey"])
+	require.Equal(t, "102", requireJSONObject(t, visibility[1])["processInstanceKey"])
+	cleanup := requireJSONItems(t, payload["cleanup"], 3)
+	require.Equal(t, "deleted", requireJSONObject(t, cleanup[0])["status"])
+	require.Equal(t, "failed", requireJSONObject(t, cleanup[1])["status"])
+	require.Equal(t, "unknown", requireJSONObject(t, cleanup[2])["status"])
+}
+
 // TestOpsExecuteAPILatencyInterruptContextScopesActiveExecution verifies signal cancellation is active only during the mutation window.
 func TestOpsExecuteAPILatencyInterruptContextScopesActiveExecution(t *testing.T) {
 	cmd := resetOpsExecuteAPILatencyTestFlags(t)

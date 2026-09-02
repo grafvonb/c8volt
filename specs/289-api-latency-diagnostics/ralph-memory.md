@@ -4,7 +4,7 @@ Feature: 289-api-latency-diagnostics
 Started: 2026-09-02T04:58:25Z
 
 ## Codebase Patterns
-- First incomplete work now begins at US4 T047; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, bounded active US2 command/service/facade/rendering work T024-T035, and US3 ownership/cleanup/recovery preservation work T036-T046 are complete.
+- First incomplete work now begins at US4 T048; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, bounded active US2 command/service/facade/rendering work T024-T035, US3 ownership/cleanup/recovery preservation work T036-T046, and US4 renderer regression coverage T047 are complete.
 - Commands own Cobra construction, local flag validation, confirmation, activity/progress setup, report-path validation, and final rendering. Follow `cmd/ops_analyse_slow_process_instances.go` for read-only analysis wiring and `cmd/ops_execute_smoketest.go` for active ops execution wiring.
 - Public `c8volt/ops` facade methods are thin: map public request to `internal/domain`, delegate to `internal/services/ops.API`, map results back, and convert errors with `ferrors.FromDomain`.
 - `internal/services/ops.Service` is the owning layer for stage planning, remote workflow mechanics, worker scheduling, cleanup orchestration, and progress facts. `NewWithAnalysisDependencies` already carries cluster, process-instance, process-definition, resource, job, element, version, and logger dependencies for this feature.
@@ -32,6 +32,7 @@ Started: 2026-09-02T04:58:25Z
 - Active deploy call errors are now returned to the execution path instead of only being classified as measurements; when a failed deploy response includes an exact process-definition key, service ownership records it and attempts exact cleanup while preserving the failed outcome.
 - Active facade terminal-state coverage now pins interrupted, partial, failed, and completed-retained results so available plan, ownership, visibility, cleanup, and outcome evidence crosses `ExecuteAPILatencyTest` even when errors are normalized.
 - `stubSmokeTestClusterAPI.topologyCalls` is atomic because API-latency read-only tests call topology concurrently under the stage worker pool; use `.Load()` for assertions.
+- US4 T047 renderer tests now directly pin stable read-only and active human/JSON output from `renderOpsAPILatencyResult`: ordered stages/categories/classifications/findings, safe context, read-only omission of ownership/visibility/cleanup, active ownership/visibility/cleanup inclusion, compact wording, and a five-second in-memory render budget. Existing renderer behavior satisfied these tests without implementation changes.
 
 ## Decisions
 - For this Ralph run, the prerequisite script selected `specs/289-api-latency-diagnostics`; the AGENTS Speckit block still names an older active plan and should not override the checked `FEATURE_DIR`.
@@ -55,4 +56,4 @@ Started: 2026-09-02T04:58:25Z
 - Command report serialization remains assigned to US4 T048/T052/T053. T039 command coverage intentionally pins partial failure error-envelope behavior and report-attempt boundaries without implementing API-latency report writing.
 
 ## Current Handoff
-- Next iteration should start US4 at T047 by adding renderer tests for stable human/JSON API-latency output in `cmd/ops_analyse_api_latency_test.go` and `cmd/ops_execute_api_latency_test.go`; report writing remains assigned to later US4 tasks T048/T052/T053.
+- Next iteration should continue US4 at T048 by adding report tests for Markdown/JSON inference, explicit override, dependent flags, `0600` files, missing parents, preserve/overwrite policy, raw JSON payload, Markdown parity, report-written line, and partial-result preservation in `cmd/ops_analyse_api_latency_test.go` and `cmd/ops_execute_api_latency_test.go`.

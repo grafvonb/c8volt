@@ -134,7 +134,7 @@
 
 ### Tests for User Story 4
 
-- [ ] T047 [P] [US4] Add failing human and JSON renderer tests for stable schema/context, ordered stages/classifications/findings, read-only omission of active fields, active ownership/visibility/cleanup fields, compact wording, and five-second in-memory render budget in `cmd/ops_analyse_api_latency_test.go` and `cmd/ops_execute_api_latency_test.go`
+- [x] T047 [P] [US4] Add failing human and JSON renderer tests for stable schema/context, ordered stages/classifications/findings, read-only omission of active fields, active ownership/visibility/cleanup fields, compact wording, and five-second in-memory render budget in `cmd/ops_analyse_api_latency_test.go` and `cmd/ops_execute_api_latency_test.go`
 - [ ] T048 [US4] Add failing report tests for Markdown/JSON inference, explicit override, dependent flags, `0600` files, missing parents, preserve/overwrite policy, raw JSON payload, Markdown parity, report-written line, and partial-result preservation in `cmd/ops_analyse_api_latency_test.go` and `cmd/ops_execute_api_latency_test.go`
 - [ ] T049 [US4] Add failing output-safety and progress tests covering tokens, authorization headers, secrets, variables, payloads, raw response bodies, unbounded errors, JSON/automation silence, quiet failures, and verbose/debug detail in `cmd/ops_analyse_api_latency_test.go` and `cmd/ops_execute_api_latency_test.go`
 - [ ] T050 [US4] Add failing subprocess tests proving completed abnormal evidence exits successfully while invalid, incomplete, report-failed, and requested-cleanup-failed runs use the established nonzero error envelope in `cmd/ops_analyse_api_latency_test.go` and `cmd/ops_execute_api_latency_test.go`

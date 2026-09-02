@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/config"
@@ -209,6 +210,163 @@ http:
 	requestPayload := requireJSONObject(t, payload["request"])
 	require.Equal(t, "tenant-a", requestPayload["tenantId"])
 	requireOpsAnalyseAPILatencyReadOnlyRequests(t, requests.Snapshot())
+}
+
+// TestRenderOpsAnalyseAPILatencyStableHumanAndJSON pins read-only renderer ordering, safe context, and active-field omission.
+func TestRenderOpsAnalyseAPILatencyStableHumanAndJSON(t *testing.T) {
+	resetOpsAnalyseAPILatencyTestFlags(t)
+	p50 := 8 * time.Millisecond
+	p95 := 15 * time.Millisecond
+	maxLatency := 22 * time.Millisecond
+	nextP95 := 45 * time.Millisecond
+	throughput := 27.5
+	p50Delta := 4 * time.Millisecond
+	throughputDelta := -3.25
+	throughputDeltaPercent := -11.8
+	result := ops.APILatencyResult{
+		SchemaVersion: ops.APILatencySchemaVersion,
+		Context: ops.APILatencyRunContext{
+			CommandName:    "ops analyse api-latency",
+			SchemaVersion:  ops.APILatencySchemaVersion,
+			C8voltVersion:  "dev-test",
+			CamundaVersion: "8.9",
+			Profile:        "support",
+			Tenant:         "tenant-a",
+			Duration:       "125ms",
+		},
+		Request: ops.APILatencyRequest{
+			CommandName: "ops analyse api-latency",
+			Mode:        ops.APILatencyModeReadOnly,
+			Count:       7,
+			Workers:     4,
+			TenantID:    "tenant-a",
+			OutputMode:  "one-line",
+		},
+		Plan: ops.APILatencyPlan{
+			Mode:                    ops.APILatencyModeReadOnly,
+			PrimarySampleLimit:      7,
+			PrimarySampleAllocation: 7,
+			DerivedRequestLimit:     14,
+			Stages: []ops.APILatencyStagePlan{
+				{Index: 1, WorkerCount: 1, PrimarySamples: 1, DerivedRequestLimit: 2},
+				{Index: 2, WorkerCount: 2, PrimarySamples: 2, DerivedRequestLimit: 4},
+				{Index: 3, WorkerCount: 4, PrimarySamples: 4, DerivedRequestLimit: 8},
+			},
+		},
+		Topology: ops.APILatencyTopologyEvidence{
+			BrokerCount:          2,
+			PartitionCount:       3,
+			UnhealthyPartitions:  []int{2},
+			LeaderlessPartitions: []int{3},
+			HealthKnown:          true,
+		},
+		Stages: []ops.APILatencyStageResult{
+			{
+				Plan:                 ops.APILatencyStagePlan{Index: 1, WorkerCount: 1, PrimarySamples: 1, DerivedRequestLimit: 2},
+				Status:               ops.APILatencyStageStatusCompleted,
+				ActualMaxConcurrency: 1,
+				PrimaryAttempts:      3,
+				DerivedAttempts:      2,
+				Categories: []ops.APILatencyCategorySummary{
+					{Category: ops.APILatencyCategoryTopologyRead, Attempts: 1, Successes: 1, ThroughputPerSecond: &throughput, P50: &p50, P95: &p95, Max: &maxLatency},
+					{Category: ops.APILatencyCategoryProcessDefinitionSearch, Attempts: 1, Successes: 0, Timeouts: 1},
+				},
+				Classifications: []ops.APILatencyClassificationCount{
+					{Classification: ops.APILatencyClassificationSuccess, Count: 1},
+					{Classification: ops.APILatencyClassificationTimeout, Count: 1},
+				},
+			},
+			{
+				Plan:                 ops.APILatencyStagePlan{Index: 2, WorkerCount: 2, PrimarySamples: 2, DerivedRequestLimit: 4},
+				Status:               ops.APILatencyStageStatusCompleted,
+				ActualMaxConcurrency: 2,
+				PrimaryAttempts:      6,
+				DerivedAttempts:      4,
+				Categories: []ops.APILatencyCategorySummary{
+					{Category: ops.APILatencyCategoryTopologyRead, Attempts: 2, Successes: 2, ThroughputPerSecond: &throughput, P50: &p50, P95: &nextP95, Max: &nextP95},
+					{Category: ops.APILatencyCategoryProcessInstanceRead, Attempts: 2, Successes: 0, Unavailable: 2},
+				},
+				Classifications: []ops.APILatencyClassificationCount{
+					{Classification: ops.APILatencyClassificationSuccess, Count: 2},
+					{Classification: ops.APILatencyClassificationUnavailable, Count: 2},
+				},
+				Comparison: &ops.APILatencyStageComparison{Categories: []ops.APILatencyCategoryComparison{{
+					Category:               ops.APILatencyCategoryTopologyRead,
+					P50Delta:               &p50Delta,
+					ThroughputDelta:        &throughputDelta,
+					ThroughputDeltaPercent: &throughputDeltaPercent,
+					ComparisonSampleCount:  2,
+				}}},
+			},
+		},
+		Findings: []ops.APILatencyFinding{
+			{Code: "timeout_evidence", LikelyArea: "gateway/connectivity/authentication", Confidence: ops.APILatencyFindingConfidenceHigh, NextInvestigation: "inspect gateway timeout logs"},
+			{Code: "no_abnormal_evidence", LikelyArea: "no abnormal evidence", Confidence: ops.APILatencyFindingConfidenceLow, NextInvestigation: "rerun with active test if write symptoms continue"},
+		},
+		Notices:     []string{"logical samples include existing client retry behavior"},
+		Limitations: []string{"read-only evidence cannot prove write-path health"},
+		Outcome:     ops.APILatencyOutcomeCompleted,
+	}
+
+	humanCmd := &cobra.Command{}
+	var humanOut bytes.Buffer
+	humanCmd.SetOut(&humanOut)
+	started := time.Now()
+	require.NoError(t, renderOpsAPILatencyResult(humanCmd, result))
+	require.Less(t, time.Since(started), 5*time.Second)
+	human := humanOut.String()
+	require.Contains(t, human, "analyse api latency")
+	require.Contains(t, human, "request: count 7; workers 1,2,4; stages 3; derived requests <= 14")
+	require.Contains(t, human, "topology: brokers 2; partitions 3; unhealthy 2; leaderless 3")
+	require.Contains(t, human, "stage 1: workers 1; primary 3/3; derived 2/2; errors 0; timeouts 1; unavailable 0; p95 topology_read 15ms; throughput 27.5/s")
+	require.Contains(t, human, "stage 2: workers 2; primary 6/6; derived 4/4; errors 0; timeouts 0; unavailable 2; p95 topology_read 45ms; throughput 27.5/s")
+	require.Less(t, strings.Index(human, "stage 1:"), strings.Index(human, "stage 2:"))
+	require.Less(t, strings.Index(human, "finding: timeout_evidence"), strings.Index(human, "finding: no_abnormal_evidence"))
+	require.Contains(t, human, "notice: logical samples include existing client retry behavior")
+	require.Contains(t, human, "limitation: read-only evidence cannot prove write-path health")
+	require.Contains(t, human, "outcome: completed; elapsed 125ms")
+	require.NotContains(t, human, "ownership:")
+	require.NotContains(t, human, "visibility:")
+	require.NotContains(t, human, "cleanup:")
+	require.NotContains(t, human, "GET /v2")
+	require.NotContains(t, human, "Authorization")
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	jsonCmd, _, err := root.Find([]string{"ops", "analyse", "api-latency"})
+	require.NoError(t, err)
+	var jsonOut bytes.Buffer
+	jsonCmd.SetOut(&jsonOut)
+	flagViewAsJson = true
+	started = time.Now()
+	require.NoError(t, renderOpsAPILatencyResult(jsonCmd, result))
+	require.Less(t, time.Since(started), 5*time.Second)
+	payload := requireJSONObject(t, requireSingleJSONObjectDocument(t, jsonOut.String())["payload"])
+	require.Equal(t, ops.APILatencySchemaVersion, payload["schemaVersion"])
+	require.NotContains(t, payload, "ownership")
+	require.NotContains(t, payload, "visibility")
+	require.NotContains(t, payload, "cleanup")
+	contextPayload := requireJSONObject(t, payload["context"])
+	require.Equal(t, "ops analyse api-latency", contextPayload["commandName"])
+	require.Equal(t, "dev-test", contextPayload["c8voltVersion"])
+	require.Equal(t, "tenant-a", contextPayload["tenant"])
+	plan := requireJSONObject(t, payload["plan"])
+	plannedStages := requireJSONItems(t, plan["stages"], 3)
+	require.Equal(t, float64(1), requireJSONObject(t, plannedStages[0])["workerCount"])
+	require.Equal(t, float64(2), requireJSONObject(t, plannedStages[1])["workerCount"])
+	require.Equal(t, float64(4), requireJSONObject(t, plannedStages[2])["workerCount"])
+	stages := requireJSONItems(t, payload["stages"], 2)
+	firstStage := requireJSONObject(t, stages[0])
+	require.Equal(t, "completed", firstStage["status"])
+	classifications := requireJSONItems(t, firstStage["classifications"], 2)
+	require.Equal(t, "success", requireJSONObject(t, classifications[0])["classification"])
+	require.Equal(t, "timeout", requireJSONObject(t, classifications[1])["classification"])
+	categories := requireJSONItems(t, firstStage["categories"], 2)
+	require.Equal(t, "topology_read", requireJSONObject(t, categories[0])["category"])
+	require.Equal(t, "process_definition_search", requireJSONObject(t, categories[1])["category"])
+	findings := requireJSONItems(t, payload["findings"], 2)
+	require.Equal(t, "timeout_evidence", requireJSONObject(t, findings[0])["code"])
+	require.Equal(t, "no_abnormal_evidence", requireJSONObject(t, findings[1])["code"])
 }
 
 // TestOpsAnalyseAPILatencyProgressModeGate verifies aggregate progress stays out of protected modes.
