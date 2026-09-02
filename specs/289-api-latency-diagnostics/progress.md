@@ -602,3 +602,17 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - Non-tag integration CLI contracts and documentation examples passed without code or docs changes: `go test ./integration/cli -count=1`.
 ---
+---
+## Iteration 29 - 2026-09-02 11:05
+**Work Unit**: Phase 7 polish: focused formatting and quickstart validation
+**Tasks Completed**:
+- [x] T064: Run `gofmt` on every touched Go file, `git diff --check`, and focused service/facade/command tests
+**Tasks Remaining in Work Unit**: 1 Phase 7 task remains: T065
+**Commit**: This work-unit commit
+**Files Changed**:
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Validation passed: `gofmt` on every Go file touched by the feature branch, `git diff --check`, `go test ./internal/services/ops -run 'APILatency' -count=1`, `go test ./c8volt/ops -run 'APILatency' -count=1`, and `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`.
+---
