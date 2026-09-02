@@ -141,7 +141,7 @@
 
 ### Implementation for User Story 4
 
-- [ ] T051 [US4] Complete shared compact human and stable command-envelope JSON rendering from the one API-latency result model in `cmd/cmd_views_ops_api_latency.go`
+- [x] T051 [US4] Complete shared compact human and stable command-envelope JSON rendering from the one API-latency result model in `cmd/cmd_views_ops_api_latency.go`
 - [x] T052 [US4] Implement command-specific Markdown and raw JSON report rendering by reusing `cmd/ops_report.go` and existing ops Markdown helpers from `cmd/cmd_views_ops_api_latency.go`
 - [x] T053 [US4] Wire exact shared report flag/path/write ordering, format inference, partial report attempts, and actual-mutation write mode into `cmd/ops_analyse_api_latency.go` and `cmd/ops_execute_api_latency.go`
 - [ ] T054 [US4] Attach only safe build/profile/tenant/version context and fixed limitations/notices to both results in `cmd/ops_analyse_api_latency.go`, `cmd/ops_execute_api_latency.go`, and `cmd/cmd_views_ops_api_latency.go`

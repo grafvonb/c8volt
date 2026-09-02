@@ -518,9 +518,14 @@ func formatOpsAPILatencyStageOutcomes(stage ops.APILatencyStageResult) string {
 func formatOpsAPILatencyStageLatency(stage ops.APILatencyStageResult) string {
 	category, ok := firstOpsAPILatencyLatencyCategory(stage.Categories)
 	if !ok {
-		return "p95 -"
+		return "p95 -" + formatOpsAPILatencyStageComparison(stage, "")
 	}
-	return fmt.Sprintf("p95 %s %s; throughput %s", category.Category, formatOpsAPILatencyDuration(category.P95), formatOpsAPILatencyThroughput(category.ThroughputPerSecond))
+	return fmt.Sprintf("p95 %s %s; throughput %s%s",
+		category.Category,
+		formatOpsAPILatencyDuration(category.P95),
+		formatOpsAPILatencyThroughput(category.ThroughputPerSecond),
+		formatOpsAPILatencyStageComparison(stage, category.Category),
+	)
 }
 
 func firstOpsAPILatencyLatencyCategory(categories []ops.APILatencyCategorySummary) (ops.APILatencyCategorySummary, bool) {
@@ -535,9 +540,48 @@ func firstOpsAPILatencyLatencyCategory(categories []ops.APILatencyCategorySummar
 	return categories[0], true
 }
 
+// formatOpsAPILatencyStageComparison keeps compact stage rows honest about prior-stage deltas.
+func formatOpsAPILatencyStageComparison(stage ops.APILatencyStageResult, category ops.APILatencyMeasurementCategory) string {
+	if stage.Plan.Index <= 1 && stage.Comparison == nil {
+		return ""
+	}
+	comparison, ok := opsAPILatencyCategoryComparison(stage.Comparison, category)
+	if !ok {
+		return "; p50 delta -; throughput delta -"
+	}
+	return fmt.Sprintf("; p50 delta %s; throughput delta %s",
+		formatOpsAPILatencySignedDuration(comparison.P50Delta),
+		formatOpsAPILatencySignedThroughput(comparison.ThroughputDelta, comparison.ThroughputDeltaPercent),
+	)
+}
+
+// opsAPILatencyCategoryComparison selects the comparison for the latency category used in the stage row.
+func opsAPILatencyCategoryComparison(comparison *ops.APILatencyStageComparison, category ops.APILatencyMeasurementCategory) (ops.APILatencyCategoryComparison, bool) {
+	if comparison == nil {
+		return ops.APILatencyCategoryComparison{}, false
+	}
+	for _, item := range comparison.Categories {
+		if item.Category == category {
+			return item, true
+		}
+	}
+	return ops.APILatencyCategoryComparison{}, false
+}
+
 func formatOpsAPILatencyDuration(value *time.Duration) string {
 	if value == nil {
 		return "-"
+	}
+	return value.String()
+}
+
+// formatOpsAPILatencySignedDuration prefixes positive deltas so regressions and improvements scan distinctly.
+func formatOpsAPILatencySignedDuration(value *time.Duration) string {
+	if value == nil {
+		return "-"
+	}
+	if *value > 0 {
+		return "+" + value.String()
 	}
 	return value.String()
 }
@@ -547,4 +591,16 @@ func formatOpsAPILatencyThroughput(value *float64) string {
 		return "-"
 	}
 	return fmt.Sprintf("%.1f/s", *value)
+}
+
+// formatOpsAPILatencySignedThroughput pairs absolute throughput deltas with percent deltas when both are known.
+func formatOpsAPILatencySignedThroughput(value *float64, percent *float64) string {
+	if value == nil {
+		return "-"
+	}
+	out := fmt.Sprintf("%+.1f/s", *value)
+	if percent != nil {
+		out += fmt.Sprintf(" (%+.1f%%)", *percent)
+	}
+	return out
 }

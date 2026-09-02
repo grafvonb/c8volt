@@ -147,8 +147,6 @@ Started: 2026-09-02 06:58:25
 - Read-only quickstart evidence was validated through fake-server command tests and service bounds tests: invalid `--count 4 --workers 4` exits before remote work, human and JSON executions make only topology/search/keyed-read requests with no deploy/create/cancel/delete calls, JSON stdout remains one envelope, default planning still allocates stages 1/2/4 as 5/6/9, and worker high-water evidence stays within bounds.
 - Report-file execution is not claimed by US1 evidence because report writing remains assigned to US4 T048/T052/T053; current read-only report flags are validated only.
 - Validation passed: `go test ./cmd -run 'TestOpsAnalyseAPILatency(Default|ReadOnlyCommandRendersHuman|JSONUsesSingleEnvelope|InvalidBudgetSkipsRemote)' -count=1`; `go test ./internal/services/ops -run 'TestAPILatency(PlanDefault|ReadOnlyUsesBoundedStageWorkers|ReadOnlyMeasuresSearchesAndDerivedReads|ReadOnlyReportsUnavailableKeyedEvidence)' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`.
----
----
 ## Iteration 5 - 2026-09-02 07:54
 **Work Unit**: User Story 2 partial: active API latency preflight and dry-run planning
 **Tasks Completed**:
@@ -422,4 +420,22 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - API-latency subprocess coverage now pins completed-abnormal success, invalid local input, canceled/incomplete read-only execution, report write failure, and requested active cleanup failure through real process exit behavior and shared JSON envelopes.
 - Validation passed: `go test ./cmd -run 'TestOps(AnalyseAPILatency(CompletedAbnormalSubprocessExitsSuccessfully|InvalidSubprocessUsesJSONErrorEnvelope|IncompleteSubprocessUsesJSONErrorEnvelope|ReportFailureSubprocessUsesJSONErrorEnvelope)|ExecuteAPILatencyRequestedCleanupFailureSubprocessUsesJSONErrorEnvelope)$' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `git diff --check`.
+---
+---
+## Iteration 19 - 2026-09-02 09:57
+**Work Unit**: User Story 4 partial: shared API latency renderer completion
+**Tasks Completed**:
+- [x] T051: Complete shared compact human and stable command-envelope JSON rendering from the one API-latency result model
+**Tasks Remaining in Work Unit**: 3 US4 tasks remain: T054 safe context/limitations/notices, T055 exit mapping, and T056 US4 validation
+**Commit**: This work-unit commit
+**Files Changed**:
+- `cmd/cmd_views_ops_api_latency.go`
+- `cmd/ops_analyse_api_latency_test.go`
+- `cmd/ops_execute_api_latency_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Compact API-latency stage rows now show prior-stage p50 and throughput deltas from the shared result model, while JSON rendering is pinned to the existing shared success envelope for both command leaves.
+- Validation passed: `go test ./cmd -run 'TestRenderOps(Analyse|Execute)APILatencyStableHumanAndJSON' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
 ---
