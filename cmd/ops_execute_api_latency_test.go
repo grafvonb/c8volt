@@ -653,6 +653,7 @@ func TestRenderOpsExecuteAPILatencyStableHumanAndJSON(t *testing.T) {
 	require.Less(t, time.Since(started), 5*time.Second)
 	human := humanOut.String()
 	require.Contains(t, human, "execute api latency test")
+	require.Contains(t, human, "context: c8volt dev-test; profile support; tenant <default>; camunda 8.9")
 	require.Contains(t, human, "request: count 3; primary allocation 3/3; workers 1,2; stages 2; derived requests <= 9")
 	require.Contains(t, human, "run: 0123456789abcdef0123456789abcdef")
 	require.Contains(t, human, "fixture: embedded/processdefinitions/C89_SimpleUserTask.bpmn (C89_SimpleUserTask)")

@@ -60,7 +60,7 @@ var opsAnalyseAPILatencyCmd = &cobra.Command{
 			return cli.AnalyseAPILatency(cmd.Context(), request, collectOptions()...)
 		})
 		progress.Close()
-		result = attachOpsAPILatencyResultContext(cfg, result)
+		result = attachOpsAPILatencyResultContext(cfg, result, opsAnalyseAPILatencyCommandName)
 		result = attachOpsAPILatencyReportRequest(result, flagOpsAnalyseAPILatencyReportFile, flagOpsAnalyseAPILatencyReportFormat)
 		if err != nil {
 			if reportErr := writeOpsAPILatencyReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
@@ -171,7 +171,16 @@ func opsAPILatencyBackoffFromConfig(backoff config.BackoffConfig) ops.APILatency
 }
 
 // attachOpsAPILatencyResultContext fills command-owned safe context fields.
-func attachOpsAPILatencyResultContext(cfg *config.Config, result ops.APILatencyResult) ops.APILatencyResult {
+func attachOpsAPILatencyResultContext(cfg *config.Config, result ops.APILatencyResult, commandName string) ops.APILatencyResult {
+	if result.SchemaVersion == "" {
+		result.SchemaVersion = ops.APILatencySchemaVersion
+	}
+	if result.Context.CommandName == "" {
+		result.Context.CommandName = result.Request.CommandName
+	}
+	if result.Context.CommandName == "" {
+		result.Context.CommandName = commandName
+	}
 	if result.Context.SchemaVersion == "" {
 		result.Context.SchemaVersion = ops.APILatencySchemaVersion
 	}
@@ -187,7 +196,29 @@ func attachOpsAPILatencyResultContext(cfg *config.Config, result ops.APILatencyR
 	if result.Context.Tenant == "" && cfg != nil {
 		result.Context.Tenant = cfg.App.Tenant
 	}
+	result.Notices = appendMissingAPILatencyStrings(result.Notices, result.Plan.Notices...)
+	result.Limitations = appendMissingAPILatencyStrings(result.Limitations, result.Plan.Limitations...)
 	return result
+}
+
+// appendMissingAPILatencyStrings merges fixed notices and limitations without reordering existing entries.
+func appendMissingAPILatencyStrings(values []string, candidates ...string) []string {
+	for _, candidate := range candidates {
+		if candidate == "" {
+			continue
+		}
+		exists := false
+		for _, value := range values {
+			if value == candidate {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			values = append(values, candidate)
+		}
+	}
+	return values
 }
 
 // opsAnalyseAPILatencyStageWidths mirrors the command-local flag validation contract.

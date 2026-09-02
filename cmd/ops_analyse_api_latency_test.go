@@ -423,6 +423,57 @@ http:
 	requireOpsAnalyseAPILatencyReadOnlyRequests(t, requests.Snapshot())
 }
 
+// TestAttachOpsAPILatencyResultContextPreservesSafeEvidence verifies command-owned context enrichment stays bounded.
+func TestAttachOpsAPILatencyResultContextPreservesSafeEvidence(t *testing.T) {
+	cfg := testAPILatencyConfig()
+	cfg.ActiveProfile = "support"
+	cfg.App.Tenant = "tenant-a"
+	cfg.App.CamundaVersion = "8.9"
+	result := ops.APILatencyResult{
+		Request: ops.APILatencyRequest{
+			CommandName: "ops analyse api-latency",
+			Mode:        ops.APILatencyModeReadOnly,
+		},
+		Plan: ops.APILatencyPlan{
+			Mode:        ops.APILatencyModeReadOnly,
+			Notices:     []string{"direct keyed reads reuse keys returned by measured searches when available and supported"},
+			Limitations: []string{"read-only evidence cannot prove write-path health"},
+		},
+		Notices:     []string{"direct keyed reads reuse keys returned by measured searches when available and supported"},
+		Limitations: []string{"a bounded sample cannot prove overall cluster health or capacity"},
+	}
+
+	got := attachOpsAPILatencyResultContext(cfg, result, opsAnalyseAPILatencyCommandName)
+
+	require.Equal(t, ops.APILatencySchemaVersion, got.SchemaVersion)
+	require.Equal(t, ops.APILatencySchemaVersion, got.Context.SchemaVersion)
+	require.Equal(t, "ops analyse api-latency", got.Context.CommandName)
+	require.Equal(t, CurrentBuildInfo().Version, got.Context.C8voltVersion)
+	require.Equal(t, "8.9", got.Context.CamundaVersion)
+	require.Equal(t, "support", got.Context.Profile)
+	require.Equal(t, "tenant-a", got.Context.Tenant)
+	require.Equal(t, []string{"direct keyed reads reuse keys returned by measured searches when available and supported"}, got.Notices)
+	require.Equal(t, []string{
+		"a bounded sample cannot prove overall cluster health or capacity",
+		"read-only evidence cannot prove write-path health",
+	}, got.Limitations)
+
+	active := ops.APILatencyResult{
+		Request: ops.APILatencyRequest{Mode: ops.APILatencyModeActive},
+		Plan: ops.APILatencyPlan{
+			Mode:        ops.APILatencyModeActive,
+			Notices:     []string{"primary samples bound process-instance creates; derived reads and visibility checks are disclosed separately"},
+			Limitations: []string{"active evidence is bounded by the previewed worker, primary-sample, and visibility-attempt ceilings"},
+		},
+	}
+
+	got = attachOpsAPILatencyResultContext(cfg, active, opsExecuteAPILatencyCommandName)
+
+	require.Equal(t, "ops execute api-latency-test", got.Context.CommandName)
+	require.Equal(t, []string{"primary samples bound process-instance creates; derived reads and visibility checks are disclosed separately"}, got.Notices)
+	require.Equal(t, []string{"active evidence is bounded by the previewed worker, primary-sample, and visibility-attempt ceilings"}, got.Limitations)
+}
+
 // TestOpsAnalyseAPILatencyWritesInferredMarkdownReport verifies read-only reports use shared path inference and permissions.
 func TestOpsAnalyseAPILatencyWritesInferredMarkdownReport(t *testing.T) {
 	var requests testx.SafeSlice[string]
@@ -639,6 +690,7 @@ func TestRenderOpsAnalyseAPILatencyStableHumanAndJSON(t *testing.T) {
 	require.Less(t, time.Since(started), 5*time.Second)
 	human := humanOut.String()
 	require.Contains(t, human, "analyse api latency")
+	require.Contains(t, human, "context: c8volt dev-test; profile support; tenant tenant-a; camunda 8.9")
 	require.Contains(t, human, "request: count 7; workers 1,2,4; stages 3; derived requests <= 14")
 	require.Contains(t, human, "topology: brokers 2; partitions 3; unhealthy 2; leaderless 3")
 	require.Contains(t, human, "stage 1: workers 1; primary 3/3; derived 2/2; errors 0; timeouts 1; unavailable 0; p95 topology_read 15ms; throughput 27.5/s")

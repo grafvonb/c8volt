@@ -165,7 +165,6 @@ Started: 2026-09-02 06:58:25
 - Active preflight now returns zero-mutation dry-run plans with 128-bit hex run IDs, version-matched SimpleUserTask fixtures, topology-observed version checks, and explicit cleanup/retention capability gates; non-dry execution remains blocked until the bounded active stages and cleanup tasks are implemented.
 - Validation passed: `go test ./internal/services/ops -run 'APILatencyActive' -count=1`; `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
 ---
----
 ## Iteration 6 - 2026-09-02 08:04
 **Work Unit**: User Story 2 partial: active API latency service execution and successful cleanup
 **Tasks Completed**:
@@ -438,4 +437,24 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - Compact API-latency stage rows now show prior-stage p50 and throughput deltas from the shared result model, while JSON rendering is pinned to the existing shared success envelope for both command leaves.
 - Validation passed: `go test ./cmd -run 'TestRenderOps(Analyse|Execute)APILatencyStableHumanAndJSON' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
+---
+---
+## Iteration 20 - 2026-09-02 10:03
+**Work Unit**: User Story 4 partial: safe API latency context, notices, and limitations
+**Tasks Completed**:
+- [x] T054: Attach safe build/profile/tenant/version context and fixed limitations/notices to both API-latency command results and views
+**Tasks Remaining in Work Unit**: 2 US4 tasks remain: T055 exit mapping and T056 US4 validation
+**Commit**: This work-unit commit
+**Files Changed**:
+- `cmd/ops_analyse_api_latency.go`
+- `cmd/ops_execute_api_latency.go`
+- `cmd/cmd_views_ops_api_latency.go`
+- `cmd/ops_analyse_api_latency_test.go`
+- `cmd/ops_execute_api_latency_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- API-latency commands now use one shared enrichment hook to backfill safe schema/build/profile/tenant/version context and carry plan notices/limitations into the final stdout/report payload without duplication.
+- Validation passed: `go test ./cmd -run 'TestAttachOpsAPILatencyResultContextPreservesSafeEvidence|TestRenderOps(Analyse|Execute)APILatencyStableHumanAndJSON' -count=1`; `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
 ---

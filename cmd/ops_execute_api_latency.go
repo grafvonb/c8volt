@@ -79,7 +79,7 @@ var opsExecuteAPILatencyCmd = &cobra.Command{
 			})
 		})
 		progress.Close()
-		result = attachOpsAPILatencyResultContext(cfg, result)
+		result = attachOpsAPILatencyResultContext(cfg, result, opsExecuteAPILatencyCommandName)
 		result = attachOpsAPILatencyReportRequest(result, flagOpsExecuteAPILatencyReportFile, flagOpsExecuteAPILatencyReportFormat)
 		if err != nil {
 			if reportErr := writeOpsAPILatencyReport(result, cfg, opsExecuteAPILatencyReportWriteMode(result)); reportErr != nil {

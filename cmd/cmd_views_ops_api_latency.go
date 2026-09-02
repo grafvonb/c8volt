@@ -27,6 +27,7 @@ func renderOpsAPILatencyResult(cmd *cobra.Command, result ops.APILatencyResult) 
 		renderHumanLine(cmd, "analyse api latency")
 	}
 	renderAttachedTenantContext(cmd)
+	renderOpsAPILatencyContext(cmd, result.Context)
 	renderOpsAPILatencyPlan(cmd, result.Plan)
 	renderOpsAPILatencyTopology(cmd, result.Topology)
 	renderOpsAPILatencyStages(cmd, result.Stages, result.Plan.Mode)
@@ -45,6 +46,27 @@ func renderOpsAPILatencyResult(cmd *cobra.Command, result ops.APILatencyResult) 
 
 func opsAPILatencyResultIsActive(result ops.APILatencyResult) bool {
 	return result.Plan.Mode == ops.APILatencyModeActive || result.Request.Mode == ops.APILatencyModeActive || result.Ownership != nil
+}
+
+// renderOpsAPILatencyContext prints only safe invocation identity fields.
+func renderOpsAPILatencyContext(cmd *cobra.Command, context ops.APILatencyRunContext) {
+	parts := []string{}
+	if context.C8voltVersion != "" {
+		parts = append(parts, "c8volt "+context.C8voltVersion)
+	}
+	if context.Profile != "" {
+		parts = append(parts, "profile "+context.Profile)
+	}
+	if context.Tenant != "" {
+		parts = append(parts, "tenant "+context.Tenant)
+	}
+	if context.CamundaVersion != "" {
+		parts = append(parts, "camunda "+context.CamundaVersion)
+	}
+	if len(parts) == 0 {
+		return
+	}
+	renderHumanLine(cmd, "context: %s", strings.Join(parts, "; "))
 }
 
 // attachOpsAPILatencyReportRequest records command-owned report flags on the final render payload.
