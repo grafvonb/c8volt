@@ -844,6 +844,29 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
+	t.Run("ExactDeleteBypassesDescendantLookup", func(t *testing.T) {
+		var deleted []string
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+			searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+			deleteProcessInstanceWithResponse: func(ctx context.Context, key camundav810.ProcessInstanceKey, body camundav810.DeleteProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.DeleteProcessInstanceResponse, error) {
+				deleted = append(deleted, key)
+				return &camundav810.DeleteProcessInstanceResponse{
+					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+				}, nil
+			},
+		})
+
+		resp, err := svc.DeleteProcessInstance(ctx, "123", services.WithExactProcessInstanceDelete(), services.WithNoWait())
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"123"}, deleted)
+		assert.True(t, resp.Ok)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
 	t.Run("DeleteWaitsForAbsentState", func(t *testing.T) {
 		getCalls := 0
 		svc := newTestService(t, waitTestConfig(), &mockCamundaClient{

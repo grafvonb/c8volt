@@ -116,6 +116,30 @@ func runVolumeOpsExecuteScenarios(t *testing.T, profile integrationProfile, data
 	}
 	records = append(records, retentionConfirmedRecord)
 
+	apiLatencyDryRunReport := volumeOpsExecuteReportPath(t, "volume-ops-execute-api-latency-dry-run-selected-version", profile, "json")
+	apiLatencyDryRunResult := runC8VoltForProfile(t, profile.Name, "volume-ops-execute-api-latency-dry-run-selected-version", "--automation", "--json", "--backoff-timeout", "10s", "--backoff-max-retries", "2", "ops", "execute", "api-latency-test", "--dry-run", "--count", "3", "--workers", "2", "--report-file", apiLatencyDryRunReport, "--report-format", "json")
+	apiLatencyDryRunRecord := volumeOpsExecuteAPILatencyRecord(profile, dataset, apiLatencyDryRunResult, "volume-ops-execute-api-latency-dry-run-selected-version", "json", []string{"automation", "json", "backoff-timeout", "backoff-max-retries", "dry-run", "count", "workers", "report-file", "report-format"}, true, false)
+	if err := validateVolumeOpsExecuteAPILatencyDryRun(apiLatencyDryRunResult, apiLatencyDryRunReport, profile); err != nil {
+		apiLatencyDryRunRecord.Outcome = volumeOutcomeFail
+		apiLatencyDryRunRecord.FailureClass = volumeFailureProduct
+		failures = append(failures, fmt.Sprintf("volume-ops-execute-api-latency-dry-run-selected-version: %v", err))
+	}
+	records = append(records, apiLatencyDryRunRecord)
+
+	if volumeOpsExecuteAPILatencyCleanupCapable(profile) {
+		apiLatencyConfirmedReport := volumeOpsExecuteReportPath(t, "volume-ops-execute-api-latency-confirmed-cleanup", profile, "json")
+		apiLatencyConfirmedResult := runC8VoltForProfile(t, profile.Name, "volume-ops-execute-api-latency-confirmed-cleanup", "--automation", "--json", "--backoff-timeout", "10s", "--backoff-max-retries", "2", "ops", "execute", "api-latency-test", "--count", "1", "--workers", "1", "--report-file", apiLatencyConfirmedReport, "--report-format", "json")
+		apiLatencyConfirmedRecord := volumeOpsExecuteAPILatencyRecord(profile, dataset, apiLatencyConfirmedResult, "volume-ops-execute-api-latency-confirmed-cleanup", "json", []string{"automation", "json", "backoff-timeout", "backoff-max-retries", "count", "workers", "report-file", "report-format"}, false, true)
+		if err := validateVolumeOpsExecuteAPILatencyConfirmed(apiLatencyConfirmedResult, apiLatencyConfirmedReport, profile); err != nil {
+			apiLatencyConfirmedRecord.Outcome = volumeOutcomeFail
+			apiLatencyConfirmedRecord.FailureClass = volumeFailureProduct
+			failures = append(failures, fmt.Sprintf("volume-ops-execute-api-latency-confirmed-cleanup: %v", err))
+		}
+		records = append(records, apiLatencyConfirmedRecord)
+	} else {
+		records = append(records, volumeOpsExecuteAPILatencyConfirmedSkippedRecord(profile))
+	}
+
 	if len(failures) > 0 {
 		return records, errors.New(strings.Join(failures, "\n"))
 	}
@@ -133,6 +157,30 @@ func volumeOpsExecuteRecord(profile integrationProfile, dataset volumeDataset, r
 	record.DataOwnership = []string{volumeDataSeeded, volumeDataPreexisting, "mutated", "retained"}
 	record.ResourceKeys = append([]string(nil), dataset.allProcessInstanceKeys()...)
 	return record
+}
+
+func volumeOpsExecuteAPILatencyRecord(profile integrationProfile, dataset volumeDataset, result commandResult, scenarioName string, outputMode string, flags []string, preview bool, confirmed bool) evidenceRecord {
+	record := volumeOpsExecuteRecord(profile, dataset, result, "ops execute api-latency-test", scenarioName, outputMode, flags, preview, confirmed)
+	record.VersionBehavior = "active-version-gated"
+	return record
+}
+
+func volumeOpsExecuteAPILatencyConfirmedSkippedRecord(profile integrationProfile) evidenceRecord {
+	return evidenceRecord{
+		CommandPath:       "ops execute api-latency-test",
+		ScenarioName:      "volume-ops-execute-api-latency-confirmed-cleanup",
+		Profile:           profile.Name,
+		CamundaVersion:    profile.ExpectedVersion,
+		DataOwnership:     []string{volumeDataPreexisting},
+		CoveredFlags:      []string{"automation", "json", "count", "workers", "report-file", "report-format"},
+		OutputMode:        "json",
+		Behavior:          "confirmed-cleanup-skipped",
+		VersionBehavior:   "8.9-and-8.10-cleanup-capable",
+		Preview:           false,
+		ConfirmedMutation: false,
+		SkipReason:        "selected profile is not Camunda 8.9 or 8.10 cleanup-capable",
+		Outcome:           realStateOutcomeSkippedPrereq,
+	}
 }
 
 func volumeOpsExecuteReportPath(t *testing.T, scenarioName string, profile integrationProfile, ext string) string {
@@ -215,6 +263,93 @@ func validateVolumeOpsExecuteRetentionDryRun(result commandResult, reportPath st
 	return nil
 }
 
+func validateVolumeOpsExecuteAPILatencyDryRun(result commandResult, reportPath string, profile integrationProfile) error {
+	if volumeOpsExecuteAPILatencyCleanupCapable(profile) {
+		if err := requireVolumeCommandSuccess(result, "ops execute api-latency-test dry-run volume"); err != nil {
+			return err
+		}
+		if err := requireVolumeJSON(result.Stdout); err != nil {
+			return err
+		}
+		if err := requireMachineStdoutClean(result.Stdout); err != nil {
+			return err
+		}
+		if err := requireVolumeEnvelopeOutcome(result.Stdout, "succeeded"); err != nil {
+			return err
+		}
+		var stdoutPayload volumeOpsExecuteAPILatencyPayload
+		if err := decodeCommandPayload(result.Stdout, &stdoutPayload); err != nil {
+			return fmt.Errorf("decode api-latency dry-run stdout payload: %w", err)
+		}
+		reportPayload, reportRaw, err := readVolumeOpsExecuteAPILatencyJSONReport(reportPath)
+		if err != nil {
+			return err
+		}
+		if err := validateVolumeOpsExecuteAPILatencyPlanPayload(stdoutPayload, nil, profile, 3, 2, "planned", true); err != nil {
+			return err
+		}
+		if err := validateVolumeOpsExecuteAPILatencyPlanPayload(reportPayload, reportRaw, profile, 3, 2, "planned", true); err != nil {
+			return fmt.Errorf("report payload mismatch: %w", err)
+		}
+		if reportPayload.Plan.RunID != stdoutPayload.Plan.RunID || reportPayload.Plan.DerivedRequestLimit != stdoutPayload.Plan.DerivedRequestLimit {
+			return fmt.Errorf("api-latency dry-run stdout/report parity mismatch: run %q/%q derived %d/%d", stdoutPayload.Plan.RunID, reportPayload.Plan.RunID, stdoutPayload.Plan.DerivedRequestLimit, reportPayload.Plan.DerivedRequestLimit)
+		}
+		return nil
+	}
+
+	if result.Err == nil {
+		return fmt.Errorf("ops execute api-latency-test dry-run unexpectedly succeeded on Camunda %s", profile.ExpectedVersion)
+	}
+	reportPayload, reportRaw, err := readVolumeOpsExecuteAPILatencyJSONReport(reportPath)
+	if err != nil {
+		return err
+	}
+	if err := validateVolumeOpsExecuteAPILatencyPlanPayload(reportPayload, reportRaw, profile, 3, 2, "failed", true); err != nil {
+		return err
+	}
+	if reportPayload.Plan.Cleanup == nil || reportPayload.Plan.Cleanup.BlockReason == "" {
+		return fmt.Errorf("api-latency unsupported dry-run report missing cleanup block reason: %+v", reportPayload.Plan.Cleanup)
+	}
+	if reportPayload.Ownership != nil || len(reportPayload.Cleanup) > 0 {
+		return fmt.Errorf("api-latency unsupported dry-run reported mutation evidence: ownership=%+v cleanup=%+v", reportPayload.Ownership, reportPayload.Cleanup)
+	}
+	return nil
+}
+
+func validateVolumeOpsExecuteAPILatencyConfirmed(result commandResult, reportPath string, profile integrationProfile) error {
+	if err := requireVolumeCommandSuccess(result, "ops execute api-latency-test confirmed volume"); err != nil {
+		return err
+	}
+	if err := requireVolumeJSON(result.Stdout); err != nil {
+		return err
+	}
+	if err := requireMachineStdoutClean(result.Stdout); err != nil {
+		return err
+	}
+	if err := requireVolumeEnvelopeOutcome(result.Stdout, "succeeded"); err != nil {
+		return err
+	}
+
+	var stdoutPayload volumeOpsExecuteAPILatencyPayload
+	if err := decodeCommandPayload(result.Stdout, &stdoutPayload); err != nil {
+		return fmt.Errorf("decode api-latency confirmed stdout payload: %w", err)
+	}
+	reportPayload, reportRaw, err := readVolumeOpsExecuteAPILatencyJSONReport(reportPath)
+	if err != nil {
+		return err
+	}
+	if err := validateVolumeOpsExecuteAPILatencyExecutionPayload(stdoutPayload, nil, profile); err != nil {
+		return err
+	}
+	if err := validateVolumeOpsExecuteAPILatencyExecutionPayload(reportPayload, reportRaw, profile); err != nil {
+		return fmt.Errorf("report payload mismatch: %w", err)
+	}
+	if reportPayload.Outcome != stdoutPayload.Outcome || reportPayload.Ownership.ProcessDefinitionKey != stdoutPayload.Ownership.ProcessDefinitionKey {
+		return fmt.Errorf("api-latency confirmed stdout/report parity mismatch: outcome %q/%q processDefinitionKey %q/%q", stdoutPayload.Outcome, reportPayload.Outcome, stdoutPayload.Ownership.ProcessDefinitionKey, reportPayload.Ownership.ProcessDefinitionKey)
+	}
+	return nil
+}
+
 func validateVolumeOpsExecuteRetentionConfirmed(result commandResult, reportPath string) error {
 	if err := requireVolumeCommandSuccess(result, "ops execute retention-policy confirmed volume"); err != nil {
 		return err
@@ -257,6 +392,149 @@ func validateVolumeOpsExecuteRetentionConfirmed(result commandResult, reportPath
 	return nil
 }
 
+func validateVolumeOpsExecuteAPILatencyPlanPayload(payload volumeOpsExecuteAPILatencyPayload, raw map[string]json.RawMessage, profile integrationProfile, count int, workers int, outcome string, dryRun bool) error {
+	if payload.SchemaVersion != "ops.api-latency.v1" {
+		return fmt.Errorf("api-latency schemaVersion = %q, want ops.api-latency.v1", payload.SchemaVersion)
+	}
+	if payload.Context.CommandName != "ops execute api-latency-test" {
+		return fmt.Errorf("api-latency commandName = %q, want ops execute api-latency-test", payload.Context.CommandName)
+	}
+	if payload.Request.Mode != "active" || payload.Request.Count != count || payload.Request.Workers != workers || payload.Request.DryRun != dryRun {
+		return fmt.Errorf("api-latency request = mode %q count %d workers %d dryRun %t, want active/%d/%d/%t", payload.Request.Mode, payload.Request.Count, payload.Request.Workers, payload.Request.DryRun, count, workers, dryRun)
+	}
+	if payload.Plan.Mode != "active" || payload.Plan.PrimarySampleLimit != count || payload.Plan.PrimarySampleAllocation != count {
+		return fmt.Errorf("api-latency plan = mode %q limit %d allocation %d, want active/%d/%d", payload.Plan.Mode, payload.Plan.PrimarySampleLimit, payload.Plan.PrimarySampleAllocation, count, count)
+	}
+	if len(payload.Plan.Stages) == 0 {
+		return fmt.Errorf("api-latency plan has no stages")
+	}
+	if payload.Plan.Stages[len(payload.Plan.Stages)-1].WorkerCount != workers {
+		return fmt.Errorf("api-latency final stage worker count = %d, want %d", payload.Plan.Stages[len(payload.Plan.Stages)-1].WorkerCount, workers)
+	}
+	if payload.Plan.DerivedRequestLimit <= 0 {
+		return fmt.Errorf("api-latency derivedRequestLimit = %d, want positive", payload.Plan.DerivedRequestLimit)
+	}
+	if payload.Plan.VisibilityAttemptLimit <= 0 {
+		return fmt.Errorf("api-latency visibilityAttemptLimit = %d, want positive", payload.Plan.VisibilityAttemptLimit)
+	}
+	if payload.Plan.RunID == "" || len(payload.Plan.RunID) != 32 {
+		return fmt.Errorf("api-latency runId = %q, want 128-bit hex", payload.Plan.RunID)
+	}
+	if payload.Plan.Fixture == nil || !payload.Plan.Fixture.Available {
+		return fmt.Errorf("api-latency fixture unavailable: %+v", payload.Plan.Fixture)
+	}
+	if payload.Plan.Fixture.CamundaVersion != profile.ExpectedVersion {
+		return fmt.Errorf("api-latency fixture Camunda version = %q, want %q", payload.Plan.Fixture.CamundaVersion, profile.ExpectedVersion)
+	}
+	if !strings.Contains(payload.Plan.Fixture.File, apiLatencyFixtureNameForVersion(profile.ExpectedVersion)) {
+		return fmt.Errorf("api-latency fixture file = %q, want %s", payload.Plan.Fixture.File, apiLatencyFixtureNameForVersion(profile.ExpectedVersion))
+	}
+	if payload.Plan.Cleanup == nil {
+		return fmt.Errorf("api-latency plan missing cleanup")
+	}
+	if payload.Outcome != outcome {
+		return fmt.Errorf("api-latency outcome = %q, want %q", payload.Outcome, outcome)
+	}
+	if raw != nil && dryRun {
+		if _, ok := raw["ownership"]; ok {
+			return fmt.Errorf("api-latency dry-run report contains ownership")
+		}
+		if _, ok := raw["cleanup"]; ok {
+			return fmt.Errorf("api-latency dry-run report contains cleanup records")
+		}
+	}
+	return nil
+}
+
+func validateVolumeOpsExecuteAPILatencyExecutionPayload(payload volumeOpsExecuteAPILatencyPayload, raw map[string]json.RawMessage, profile integrationProfile) error {
+	if err := validateVolumeOpsExecuteAPILatencyPlanPayload(payload, raw, profile, 1, 1, "completed", false); err != nil {
+		return err
+	}
+	if payload.Ownership == nil {
+		return fmt.Errorf("api-latency confirmed payload missing ownership")
+	}
+	if payload.Ownership.RunID != payload.Plan.RunID {
+		return fmt.Errorf("api-latency ownership runId = %q, want plan runId %q", payload.Ownership.RunID, payload.Plan.RunID)
+	}
+	if !payload.Ownership.DeploymentSubmitted || payload.Ownership.ProcessDefinitionKey == "" || len(payload.Ownership.ProcessInstanceKeys) != 1 {
+		return fmt.Errorf("api-latency ownership missing exact submitted resources: %+v", payload.Ownership)
+	}
+	if !strings.Contains(payload.Ownership.FixtureName, apiLatencyFixtureNameForVersion(profile.ExpectedVersion)) {
+		return fmt.Errorf("api-latency ownership fixtureName = %q, want %s", payload.Ownership.FixtureName, apiLatencyFixtureNameForVersion(profile.ExpectedVersion))
+	}
+	if len(payload.Stages) != 1 {
+		return fmt.Errorf("api-latency stage count = %d, want 1", len(payload.Stages))
+	}
+	stage := payload.Stages[0]
+	if stage.Status != "completed" || stage.ActualMaxConcurrency > 1 || stage.PrimaryAttempts != 1 || stage.DerivedAttempts > payload.Plan.DerivedRequestLimit {
+		return fmt.Errorf("api-latency confirmed stage summary = %+v, derived limit %d", stage, payload.Plan.DerivedRequestLimit)
+	}
+	if !stage.hasCategories("process_instance_create", "concurrent_read", "search_visibility") {
+		return fmt.Errorf("api-latency confirmed stage missing active categories: %+v", stage.Categories)
+	}
+	if len(payload.Visibility) != 1 {
+		return fmt.Errorf("api-latency visibility count = %d, want 1", len(payload.Visibility))
+	}
+	visibility := payload.Visibility[0]
+	if visibility.ProcessInstanceKey != payload.Ownership.ProcessInstanceKeys[0] || visibility.Attempts < 1 || visibility.Attempts > visibility.AttemptLimit || !visibility.Visible {
+		return fmt.Errorf("api-latency visibility evidence invalid: %+v ownership=%+v", visibility, payload.Ownership)
+	}
+	if len(payload.Cleanup) < 2 {
+		return fmt.Errorf("api-latency cleanup count = %d, want at least process instance and process definition", len(payload.Cleanup))
+	}
+	if !volumeOpsExecuteAPILatencyCleanupDeleted(payload.Cleanup, "process_instance", payload.Ownership.ProcessInstanceKeys[0]) {
+		return fmt.Errorf("api-latency cleanup missing deleted process instance %q: %+v", payload.Ownership.ProcessInstanceKeys[0], payload.Cleanup)
+	}
+	if !volumeOpsExecuteAPILatencyCleanupDeleted(payload.Cleanup, "process_definition", payload.Ownership.ProcessDefinitionKey) {
+		return fmt.Errorf("api-latency cleanup missing deleted process definition %q: %+v", payload.Ownership.ProcessDefinitionKey, payload.Cleanup)
+	}
+	if len(payload.Findings) == 0 {
+		return fmt.Errorf("api-latency findings are empty")
+	}
+	if raw != nil {
+		if _, ok := raw["ownership"]; !ok {
+			return fmt.Errorf("api-latency raw report missing ownership")
+		}
+		if _, ok := raw["cleanup"]; !ok {
+			return fmt.Errorf("api-latency raw report missing cleanup")
+		}
+	}
+	return nil
+}
+
+func volumeOpsExecuteAPILatencyCleanupDeleted(records []volumeOpsAPILatencyCleanupRecord, resourceType string, key string) bool {
+	for _, record := range records {
+		if record.ResourceType == resourceType && record.Key == key && record.Status == "deleted" {
+			return true
+		}
+	}
+	return false
+}
+
+func volumeOpsExecuteAPILatencyCleanupCapable(profile integrationProfile) bool {
+	switch strings.TrimSpace(profile.ExpectedVersion) {
+	case "8.9", "8.10":
+		return true
+	default:
+		return false
+	}
+}
+
+func apiLatencyFixtureNameForVersion(version string) string {
+	switch strings.TrimSpace(version) {
+	case "8.7":
+		return "C87_SimpleUserTask.bpmn"
+	case "8.8":
+		return "C88_SimpleUserTask.bpmn"
+	case "8.9":
+		return "C89_SimpleUserTask.bpmn"
+	case "8.10":
+		return "C810_SimpleUserTask.bpmn"
+	default:
+		return "SimpleUserTask.bpmn"
+	}
+}
+
 func readVolumeOpsExecuteSmokeJSONReport(path string) (volumeOpsExecuteSmokeReport, error) {
 	var report volumeOpsExecuteSmokeReport
 	if err := readVolumeOpsExecuteJSONReport(path, &report); err != nil {
@@ -284,6 +562,22 @@ func readVolumeOpsExecuteJSONReport(path string, value any) error {
 	return nil
 }
 
+func readVolumeOpsExecuteAPILatencyJSONReport(path string) (volumeOpsExecuteAPILatencyPayload, map[string]json.RawMessage, error) {
+	var payload volumeOpsExecuteAPILatencyPayload
+	var raw map[string]json.RawMessage
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return payload, raw, fmt.Errorf("read api-latency JSON report: %w", err)
+	}
+	if err := json.Unmarshal(content, &payload); err != nil {
+		return payload, raw, fmt.Errorf("decode api-latency JSON report %s: %w; content: %q", path, err, compactLogSnippet(string(content), 300))
+	}
+	if err := json.Unmarshal(content, &raw); err != nil {
+		return payload, raw, fmt.Errorf("decode api-latency raw JSON report %s: %w", path, err)
+	}
+	return payload, raw, nil
+}
+
 type volumeOpsExecuteSmokeReport struct {
 	DryRun  bool   `json:"dryRun"`
 	Outcome string `json:"outcome"`
@@ -305,6 +599,62 @@ type volumeOpsExecuteRetentionReport struct {
 	Deletion      struct {
 		Submitted bool `json:"submitted"`
 	} `json:"deletion"`
+}
+
+type volumeOpsExecuteAPILatencyPayload struct {
+	SchemaVersion string `json:"schemaVersion"`
+	Context       struct {
+		CommandName string `json:"commandName"`
+	} `json:"context"`
+	Request struct {
+		Mode      string `json:"mode"`
+		Count     int    `json:"count"`
+		Workers   int    `json:"workers"`
+		DryRun    bool   `json:"dryRun"`
+		NoCleanup bool   `json:"noCleanup"`
+	} `json:"request"`
+	Plan struct {
+		RunID                   string                         `json:"runId"`
+		Mode                    string                         `json:"mode"`
+		Stages                  []volumeOpsAPILatencyStagePlan `json:"stages"`
+		PrimarySampleLimit      int                            `json:"primarySampleLimit"`
+		PrimarySampleAllocation int                            `json:"primarySampleAllocation"`
+		DerivedRequestLimit     int                            `json:"derivedRequestLimit"`
+		VisibilityAttemptLimit  int                            `json:"visibilityAttemptLimit"`
+		Fixture                 *struct {
+			CamundaVersion string `json:"camundaVersion"`
+			File           string `json:"file"`
+			Available      bool   `json:"available"`
+		} `json:"fixture"`
+		Cleanup *struct {
+			Requested   bool   `json:"requested"`
+			Supported   bool   `json:"supported"`
+			BlockReason string `json:"blockReason"`
+		} `json:"cleanup"`
+	} `json:"plan"`
+	Stages    []volumeOpsAPILatencyStageResult `json:"stages"`
+	Findings  []struct{ Code string }          `json:"findings"`
+	Ownership *struct {
+		RunID                string   `json:"runId"`
+		FixtureName          string   `json:"fixtureName"`
+		DeploymentSubmitted  bool     `json:"deploymentSubmitted"`
+		ProcessDefinitionKey string   `json:"processDefinitionKey"`
+		ProcessInstanceKeys  []string `json:"processInstanceKeys"`
+	} `json:"ownership"`
+	Visibility []struct {
+		ProcessInstanceKey string `json:"processInstanceKey"`
+		Attempts           int    `json:"attempts"`
+		AttemptLimit       int    `json:"attemptLimit"`
+		Visible            bool   `json:"visible"`
+	} `json:"visibility"`
+	Cleanup []volumeOpsAPILatencyCleanupRecord `json:"cleanup"`
+	Outcome string                             `json:"outcome"`
+}
+
+type volumeOpsAPILatencyCleanupRecord struct {
+	ResourceType string `json:"resourceType"`
+	Key          string `json:"key"`
+	Status       string `json:"status"`
 }
 
 func requireHumanContains(output string, values ...string) error {

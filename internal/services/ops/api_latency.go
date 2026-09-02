@@ -81,7 +81,7 @@ func PlanAPILatency(request d.APILatencyRequest) (d.APILatencyPlan, error) {
 		plan.Cleanup = &d.APILatencyCleanupPlan{
 			Requested:            !request.NoCleanup,
 			IntentionalRetention: request.NoCleanup,
-			IndependentBudget:    apiLatencyCleanupCompletionBudget,
+			IndependentBudget:    apiLatencyCleanupPlanBudget(request),
 		}
 	default:
 		return plan, fmt.Errorf("%w: api latency mode must be read_only or active", d.ErrValidation)
@@ -100,6 +100,14 @@ func PlanAPILatency(request d.APILatencyRequest) (d.APILatencyPlan, error) {
 		plan.Limitations = append(plan.Limitations, "active evidence is bounded by the previewed worker, primary-sample, and visibility-attempt ceilings")
 	}
 	return plan, nil
+}
+
+// apiLatencyCleanupPlanBudget keeps active cleanup bounded by caller retry configuration when present.
+func apiLatencyCleanupPlanBudget(request d.APILatencyRequest) time.Duration {
+	if request.Backoff.Timeout > 0 {
+		return request.Backoff.Timeout
+	}
+	return apiLatencyCleanupCompletionBudget
 }
 
 // APILatencyVisibilityAttemptLimit derives the finite exact-key search-attempt ceiling from normalized backoff settings.

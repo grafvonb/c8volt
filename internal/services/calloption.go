@@ -15,6 +15,12 @@ func WithDryRun() CallOption        { return func(c *CallCfg) { c.DryRun = true 
 func WithVerbose() CallOption       { return func(c *CallCfg) { c.Verbose = true } }
 func WithNoWorkerLimit() CallOption { return func(c *CallCfg) { c.NoWorkerLimit = true } }
 func WithIgnoreTenant() CallOption  { return func(c *CallCfg) { c.IgnoreTenant = true } }
+
+// WithExactProcessInstanceDelete submits deletion for one exact owned process-instance key without family expansion.
+func WithExactProcessInstanceDelete() CallOption {
+	return func(c *CallCfg) { c.ExactProcessInstanceDelete = true }
+}
+
 func WithSuppressWorkflowDetailLogs() CallOption {
 	return func(c *CallCfg) { c.SuppressWorkflowDetailLogs = true }
 }
@@ -52,6 +58,7 @@ type CallCfg struct {
 	Verbose                           bool
 	NoWorkerLimit                     bool
 	IgnoreTenant                      bool
+	ExactProcessInstanceDelete        bool
 	SuppressWorkflowDetailLogs        bool
 	SuppressProcessInstanceDetailLogs bool
 	IncidentState                     string

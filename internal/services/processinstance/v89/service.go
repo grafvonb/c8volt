@@ -554,6 +554,10 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 	cCfg := services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("deleting pi %s", key))
 
+	if cCfg.ExactProcessInstanceDelete {
+		return s.deleteExactProcessInstance(ctx, key, cCfg, opts...)
+	}
+
 	s.log.Debug(fmt.Sprintf("pi %s delete precheck; loading children", key))
 	scope, edges, chain, err := s.Descendants(ctx, key, opts...)
 	if err != nil {
@@ -609,6 +613,35 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 			logging.InfoIfVerbose(fmt.Sprintf("pi %s delete blocked; state not terminal, use --force", key), s.log, cCfg.Verbose)
 			return d.DeleteResponse{StatusCode: http.StatusConflict}, nil
 		}
+	}
+	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		return d.DeleteResponse{}, err
+	}
+	if !cCfg.NoWait {
+		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s delete", key))
+		states := []d.State{d.StateAbsent}
+		if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
+			return d.DeleteResponse{}, fmt.Errorf("delete wait absent: %w", err)
+		}
+	}
+	s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s deleted", key))
+	return d.DeleteResponse{
+		Ok:         true,
+		StatusCode: resp.StatusCode(),
+	}, nil
+}
+
+// deleteExactProcessInstance submits direct deletion for a service-owned key without exporter-backed family traversal.
+func (s *Service) deleteExactProcessInstance(ctx context.Context, key string, cCfg *services.CallCfg, opts ...services.CallOption) (d.DeleteResponse, error) {
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "delete exact pi", func(ctx context.Context) (*camundav89.DeleteProcessInstanceResponse, *http.Response, []byte, error) {
+		resp, err := s.cc.DeleteProcessInstanceWithResponse(ctx, key, camundav89.DeleteProcessInstanceJSONRequestBody{})
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
+	if err != nil {
+		return d.DeleteResponse{}, err
 	}
 	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
 		return d.DeleteResponse{}, err

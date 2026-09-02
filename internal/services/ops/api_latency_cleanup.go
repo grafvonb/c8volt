@@ -19,6 +19,9 @@ import (
 // apiLatencyCleanupCompletionBudget is the bounded independent cleanup opportunity after active execution stops.
 var apiLatencyCleanupCompletionBudget = poller.DefaultCompletionTimeout
 
+// apiLatencyCleanupRetryDelay spaces exact cleanup retries within the independent cleanup budget.
+var apiLatencyCleanupRetryDelay = 250 * time.Millisecond
+
 type apiLatencyOwnershipRegistry struct {
 	mu        sync.Mutex
 	ownership *d.APILatencyOwnership
@@ -101,17 +104,8 @@ func (s *Service) finalizeAPILatencyCleanup(ctx context.Context, result *d.APILa
 			cleanupErr = errors.Join(cleanupErr, fmt.Errorf("cleanup API latency process instance %s: %w", key, err))
 			continue
 		}
-		record := d.APILatencyCleanupRecord{
-			ResourceType:   d.APILatencyCleanupResourceProcessInstance,
-			Key:            key,
-			Status:         d.APILatencyCleanupStatusDeleted,
-			Classification: d.APILatencyClassificationSuccess,
-		}
-		_, err := s.piAPI.DeleteProcessInstance(cleanupCtx, key, opts...)
+		record, err := s.deleteAPILatencyProcessInstance(cleanupCtx, key, result.Plan.Cleanup, opts...)
 		if err != nil {
-			record.Status = failedAPILatencyCleanupStatus(err)
-			record.Classification = ClassifyAPILatencyError(err)
-			record.RecoveryCommand = apiLatencyCleanupRecoveryCommand(d.APILatencyCleanupResourceProcessInstance, key, result.Plan.Cleanup)
 			cleanupErr = errors.Join(cleanupErr, fmt.Errorf("delete API latency process instance %s: %w", key, err))
 		}
 		result.Cleanup = append(result.Cleanup, record)
@@ -122,22 +116,101 @@ func (s *Service) finalizeAPILatencyCleanup(ctx context.Context, result *d.APILa
 			cleanupErr = errors.Join(cleanupErr, fmt.Errorf("cleanup API latency process definition %s: %w", result.Ownership.ProcessDefinitionKey, err))
 			return cleanupErr
 		}
-		record := d.APILatencyCleanupRecord{
-			ResourceType:   d.APILatencyCleanupResourceProcessDefinition,
-			Key:            result.Ownership.ProcessDefinitionKey,
-			Status:         d.APILatencyCleanupStatusDeleted,
-			Classification: d.APILatencyClassificationSuccess,
-		}
-		_, err := s.resourceAPI.Delete(cleanupCtx, result.Ownership.ProcessDefinitionKey, opts...)
+		record, err := s.deleteAPILatencyProcessDefinition(cleanupCtx, result.Ownership.ProcessDefinitionKey, result.Plan.Cleanup, opts...)
 		if err != nil {
-			record.Status = failedAPILatencyCleanupStatus(err)
-			record.Classification = ClassifyAPILatencyError(err)
-			record.RecoveryCommand = apiLatencyCleanupRecoveryCommand(d.APILatencyCleanupResourceProcessDefinition, result.Ownership.ProcessDefinitionKey, result.Plan.Cleanup)
 			cleanupErr = errors.Join(cleanupErr, fmt.Errorf("delete API latency process definition %s: %w", result.Ownership.ProcessDefinitionKey, err))
 		}
 		result.Cleanup = append(result.Cleanup, record)
 	}
 	return cleanupErr
+}
+
+// deleteAPILatencyProcessInstance cancels an exact active fixture instance when deletion reports active history.
+func (s *Service) deleteAPILatencyProcessInstance(ctx context.Context, key string, plan *d.APILatencyCleanupPlan, opts ...services.CallOption) (d.APILatencyCleanupRecord, error) {
+	record := d.APILatencyCleanupRecord{
+		ResourceType:   d.APILatencyCleanupResourceProcessInstance,
+		Key:            key,
+		Status:         d.APILatencyCleanupStatusDeleted,
+		Classification: d.APILatencyClassificationSuccess,
+	}
+	deleteOpts := append([]services.CallOption{}, opts...)
+	deleteOpts = append(deleteOpts, services.WithExactProcessInstanceDelete(), services.WithNoWait())
+	cancelSubmitted := false
+	for {
+		_, err := s.piAPI.DeleteProcessInstance(ctx, key, deleteOpts...)
+		if err == nil {
+			return record, nil
+		}
+		if !errors.Is(err, d.ErrConflict) {
+			record.Status = failedAPILatencyCleanupStatus(err)
+			record.Classification = ClassifyAPILatencyError(err)
+			record.RecoveryCommand = apiLatencyCleanupRecoveryCommand(d.APILatencyCleanupResourceProcessInstance, key, plan)
+			return record, err
+		}
+		if !cancelSubmitted {
+			cancelOpts := append([]services.CallOption{}, opts...)
+			cancelOpts = append(cancelOpts, services.WithNoStateCheck(), services.WithNoWait())
+			if _, _, cancelErr := s.piAPI.CancelProcessInstance(ctx, key, cancelOpts...); cancelErr != nil {
+				record.Status = failedAPILatencyCleanupStatus(cancelErr)
+				record.Classification = ClassifyAPILatencyError(cancelErr)
+				record.RecoveryCommand = apiLatencyCleanupRecoveryCommand(d.APILatencyCleanupResourceProcessInstance, key, plan)
+				return record, cancelErr
+			}
+			cancelSubmitted = true
+		}
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			record.Status = failedAPILatencyCleanupStatus(ctxErr)
+			record.Classification = ClassifyAPILatencyError(ctxErr)
+			record.RecoveryCommand = apiLatencyCleanupRecoveryCommand(d.APILatencyCleanupResourceProcessInstance, key, plan)
+			return record, ctxErr
+		}
+		select {
+		case <-ctx.Done():
+			err := ctx.Err()
+			record.Status = failedAPILatencyCleanupStatus(err)
+			record.Classification = ClassifyAPILatencyError(err)
+			record.RecoveryCommand = apiLatencyCleanupRecoveryCommand(d.APILatencyCleanupResourceProcessInstance, key, plan)
+			return record, err
+		case <-time.After(apiLatencyCleanupRetryDelay):
+		}
+	}
+}
+
+// deleteAPILatencyProcessDefinition retries exact definition cleanup while broker-side instance deletion settles.
+func (s *Service) deleteAPILatencyProcessDefinition(ctx context.Context, key string, plan *d.APILatencyCleanupPlan, opts ...services.CallOption) (d.APILatencyCleanupRecord, error) {
+	record := d.APILatencyCleanupRecord{
+		ResourceType:   d.APILatencyCleanupResourceProcessDefinition,
+		Key:            key,
+		Status:         d.APILatencyCleanupStatusDeleted,
+		Classification: d.APILatencyClassificationSuccess,
+	}
+	for {
+		_, err := s.resourceAPI.Delete(ctx, key, opts...)
+		if err == nil {
+			return record, nil
+		}
+		if !errors.Is(err, d.ErrConflict) {
+			record.Status = failedAPILatencyCleanupStatus(err)
+			record.Classification = ClassifyAPILatencyError(err)
+			record.RecoveryCommand = apiLatencyCleanupRecoveryCommand(d.APILatencyCleanupResourceProcessDefinition, key, plan)
+			return record, err
+		}
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			record.Status = failedAPILatencyCleanupStatus(ctxErr)
+			record.Classification = ClassifyAPILatencyError(ctxErr)
+			record.RecoveryCommand = apiLatencyCleanupRecoveryCommand(d.APILatencyCleanupResourceProcessDefinition, key, plan)
+			return record, ctxErr
+		}
+		select {
+		case <-ctx.Done():
+			err := ctx.Err()
+			record.Status = failedAPILatencyCleanupStatus(err)
+			record.Classification = ClassifyAPILatencyError(err)
+			record.RecoveryCommand = apiLatencyCleanupRecoveryCommand(d.APILatencyCleanupResourceProcessDefinition, key, plan)
+			return record, err
+		case <-time.After(apiLatencyCleanupRetryDelay):
+		}
+	}
 }
 
 // apiLatencyCleanupContext detaches cleanup from caller cancellation while preserving values and enforcing a finite budget.

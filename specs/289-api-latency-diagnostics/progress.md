@@ -512,3 +512,28 @@ Started: 2026-09-02 06:58:25
 - Read-only API-latency volume coverage now runs against seeded dirty-state data, validates compact human output plus Markdown reporting, and validates JSON/report parity with deterministic stage and derived-request bounds.
 - Validation passed: `go test -tags integration ./integration/cli -run 'TestVolumeOpsAnalyseFamily|TestVolumeOwnershipClassification|TestProposal' -count=1`; `go test -tags integration ./integration/cli -run 'TestVolumeOpsAnalyseFamily|TestCommandInventory' -count=1`; `git diff --check`.
 ---
+---
+## Iteration 24 - 2026-09-02 10:46
+**Work Unit**: Phase 7 polish: active API latency volume coverage
+**Tasks Completed**:
+- [x] T059: Extend active dry-run selected-version coverage and disposable 8.9/8.10 confirmed-cleanup evidence
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- `integration/cli/volume_ops_execute_test.go`
+- `internal/services/calloption.go`
+- `internal/services/ops/api_latency.go`
+- `internal/services/ops/api_latency_cleanup.go`
+- `internal/services/ops/api_latency_test.go`
+- `internal/services/processinstance/v89/service.go`
+- `internal/services/processinstance/v89/service_test.go`
+- `internal/services/processinstance/v810/service.go`
+- `internal/services/processinstance/v810/service_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Active API-latency integration now proves selected-version dry-run planning and cleanup-capable confirmed execution with exact ownership, visibility, and JSON/report parity.
+- Live C89 cleanup exposed exporter-lag-sensitive descendant prechecks, active-history delete conflicts, and short absent-wait exhaustion; API-latency cleanup now submits exact no-wait PI deletes, cancels exact active fixture instances on conflict, and retries exact PD deletion on transient conflicts.
+- Validation passed: `go test ./internal/services/ops -run 'TestAPILatencyActive(PlanDerivesVisibilityBound|ExecutionUsesExactReturnedKeysAndCleansUp|InstanceCleanupCancelsActiveHistoryConflict|DefinitionCleanupRetriesConflict)' -count=1`; `go test ./internal/services/processinstance/v89 ./internal/services/processinstance/v810 -run 'TestService_CancelAndDeleteProcessInstance/ExactDeleteBypassesDescendantLookup' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./internal/services/ops ./cmd -run 'APILatency' -race -count=1`; `go test -tags integration ./integration/cli -run 'TestVolumeOpsExecuteFamily|TestCommandInventory' -count=1`; `git diff --check`.
+---

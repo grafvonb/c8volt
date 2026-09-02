@@ -158,7 +158,7 @@
 
 - [x] T057 Update command capability/family assertions and the expected inventory from 55 to 57 in `cmd/command_contract_test.go`, `cmd/capabilities_test.go`, and `integration/cli/all_commands_test.go`
 - [x] T058 [P] Extend read-only human, JSON, report, bounds, and seeded dirty-state coverage in `integration/cli/volume_ops_analyse_test.go`
-- [ ] T059 [P] Extend active dry-run selected-version coverage and disposable 8.9/8.10 confirmed-cleanup evidence in `integration/cli/volume_ops_execute_test.go`
+- [x] T059 [P] Extend active dry-run selected-version coverage and disposable 8.9/8.10 confirmed-cleanup evidence in `integration/cli/volume_ops_execute_test.go`
 - [ ] T060 [P] Add command discoverability, safety distinction, and representative examples to `README.md` and `docs/ops/index.md`
 - [ ] T061 [P] Add focused operator guidance in `docs/ops/analyse-api-latency.md` and `docs/ops/execute-api-latency-test.md`
 - [ ] T062 Run `make docs-content` and review generated `docs/cli/c8volt_ops_analyse_api-latency.md`, `docs/cli/c8volt_ops_execute_api-latency-test.md`, and `docs/index.md` without hand-editing generated content
