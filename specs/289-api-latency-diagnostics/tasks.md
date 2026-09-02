@@ -109,7 +109,7 @@
 
 - [x] T036 [P] [US3] Add failing service tests for concurrency-safe immediate ownership registration, stable key ordering/deduplication, exact-key-only cleanup authority, PI-before-PD order, and absence of BPMN-ID or tenant-wide cleanup discovery in `internal/services/ops/api_latency_test.go`
 - [x] T037 [US3] Add failing service tests for cleanup after stage failure, request timeout, visibility exhaustion, and canceled caller; independent cleanup timeout; partial cleanup; every remainder/recovery command; 8.8 retention; and no-cleanup distinction in `internal/services/ops/api_latency_test.go`
-- [ ] T038 [P] [US3] Add failing facade tests proving partial ownership/cleanup results survive domain error conversion in `c8volt/ops/client_test.go`
+- [x] T038 [P] [US3] Add failing facade tests proving partial ownership/cleanup results survive domain error conversion in `c8volt/ops/client_test.go`
 - [ ] T039 [P] [US3] Add failing command tests for scoped interrupt cancellation, cleanup continuation, retained output, partial report attempts, exact recovery guidance, established nonzero error envelope, and no-cleanup confirmation in `cmd/ops_execute_api_latency_test.go`
 
 ### Implementation for User Story 3

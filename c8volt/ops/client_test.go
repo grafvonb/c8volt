@@ -881,6 +881,86 @@ func TestClientExecuteAPILatencyTestMapsPartialErrors(t *testing.T) {
 	require.Equal(t, APILatencyCleanupStatusRetained, got.Cleanup[0].Status)
 }
 
+// TestClientExecuteAPILatencyTestPreservesPartialCleanupEvidence verifies cleanup remainders survive facade error conversion.
+func TestClientExecuteAPILatencyTestPreservesPartialCleanupEvidence(t *testing.T) {
+	t.Parallel()
+
+	api := stubOpsService{
+		executeAPILatencyTest: func(_ context.Context, request d.APILatencyRequest, _ ...services.CallOption) (d.APILatencyResult, error) {
+			require.Equal(t, d.APILatencyModeActive, request.Mode)
+			return d.APILatencyResult{
+				SchemaVersion: d.APILatencySchemaVersion,
+				Request:       request,
+				Plan: d.APILatencyPlan{
+					RunID: "run-cleanup",
+					Mode:  d.APILatencyModeActive,
+					Cleanup: &d.APILatencyCleanupPlan{
+						Requested:         true,
+						Supported:         true,
+						IndependentBudget: 30 * time.Second,
+					},
+				},
+				Ownership: &d.APILatencyOwnership{
+					RunID:                "run-cleanup",
+					FixtureName:          "C89_SimpleUserTask.bpmn",
+					BpmnProcessID:        "C89_SimpleUserTask",
+					DeploymentSubmitted:  true,
+					ProcessDefinitionKey: "2251799813685250",
+					ProcessInstanceKeys:  []string{"2251799813685248", "2251799813685249"},
+				},
+				Cleanup: []d.APILatencyCleanupRecord{
+					{
+						ResourceType:   d.APILatencyCleanupResourceProcessInstance,
+						Key:            "2251799813685248",
+						Status:         d.APILatencyCleanupStatusDeleted,
+						Classification: d.APILatencyClassificationSuccess,
+					},
+					{
+						ResourceType:    d.APILatencyCleanupResourceProcessInstance,
+						Key:             "2251799813685249",
+						Status:          d.APILatencyCleanupStatusUnknown,
+						Classification:  d.APILatencyClassificationTimeout,
+						RecoveryCommand: "c8volt delete process-instance --key 2251799813685249 --force --auto-confirm",
+					},
+					{
+						ResourceType:    d.APILatencyCleanupResourceProcessDefinition,
+						Key:             "2251799813685250",
+						Status:          d.APILatencyCleanupStatusFailed,
+						Classification:  d.APILatencyClassificationBackpressure,
+						RecoveryCommand: "c8volt delete process-definition --key 2251799813685250 --auto-confirm",
+					},
+				},
+				Outcome: d.APILatencyOutcomePartial,
+			}, d.ErrGatewayTimeout
+		},
+	}
+
+	got, err := New(api, slog.Default()).ExecuteAPILatencyTest(context.Background(), APILatencyRequest{
+		Mode:    APILatencyModeActive,
+		Count:   7,
+		Workers: 4,
+	})
+
+	require.ErrorIs(t, err, ferr.ErrTimeout)
+	require.Equal(t, APILatencyOutcomePartial, got.Outcome)
+	require.Equal(t, "run-cleanup", got.Plan.RunID)
+	require.Equal(t, 30*time.Second, got.Plan.Cleanup.IndependentBudget)
+	require.True(t, got.Ownership.DeploymentSubmitted)
+	require.Equal(t, "2251799813685250", got.Ownership.ProcessDefinitionKey)
+	require.Equal(t, []string{"2251799813685248", "2251799813685249"}, got.Ownership.ProcessInstanceKeys)
+	require.Len(t, got.Cleanup, 3)
+	require.Equal(t, APILatencyCleanupStatusDeleted, got.Cleanup[0].Status)
+	require.Empty(t, got.Cleanup[0].RecoveryCommand)
+	require.Equal(t, APILatencyCleanupResourceProcessInstance, got.Cleanup[1].ResourceType)
+	require.Equal(t, APILatencyCleanupStatusUnknown, got.Cleanup[1].Status)
+	require.Equal(t, APILatencyClassificationTimeout, got.Cleanup[1].Classification)
+	require.Equal(t, "c8volt delete process-instance --key 2251799813685249 --force --auto-confirm", got.Cleanup[1].RecoveryCommand)
+	require.Equal(t, APILatencyCleanupResourceProcessDefinition, got.Cleanup[2].ResourceType)
+	require.Equal(t, APILatencyCleanupStatusFailed, got.Cleanup[2].Status)
+	require.Equal(t, APILatencyClassificationBackpressure, got.Cleanup[2].Classification)
+	require.Equal(t, "c8volt delete process-definition --key 2251799813685250 --auto-confirm", got.Cleanup[2].RecoveryCommand)
+}
+
 // TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary verifies the slow-analysis facade stays thin.
 func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing.T) {
 	t.Parallel()

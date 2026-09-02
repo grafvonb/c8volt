@@ -292,3 +292,19 @@ Started: 2026-09-02 06:58:25
 - Active cleanup now receives an independent bounded context after caller cancellation, records timeout remainders as `unknown`, joins cleanup errors with execution errors, and omits unsupported process-definition recovery commands for explicit Camunda 8.8 retention.
 - Validation passed: `go test ./internal/services/ops -run 'APILatencyActiveCleanup|APILatencyActiveTimeoutAndVisibility|APILatencyActiveNoCleanup' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./internal/services/ops -run 'APILatencyActive' -race -count=1`; `git diff --check`.
 ---
+---
+## Iteration 12 - 2026-09-02 08:48
+**Work Unit**: User Story 3 partial: facade preservation of partial cleanup evidence
+**Tasks Completed**:
+- [x] T038: Add facade tests proving partial ownership/cleanup results survive domain error conversion
+**Tasks Remaining in Work Unit**: 5 US3 tasks remain: T039 and T043-T046
+**Commit**: This work-unit commit
+**Files Changed**:
+- `c8volt/ops/client_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Active facade regression coverage now proves timeout-normalized partial execution still returns exact ownership plus deleted, unknown, and failed cleanup records with safe classifications and manual recovery commands.
+- Validation passed: `go test ./c8volt/ops -run 'TestClientExecuteAPILatencyTestPreservesPartialCleanupEvidence' -count=1`; `go test ./c8volt/ops -run 'APILatency' -count=1`; `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
+---
