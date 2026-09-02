@@ -53,18 +53,18 @@
 
 ### Tests for User Story 1
 
-- [ ] T014 [P] [US1] Add failing service tests for topology/PD/PI measurement, measured-key reuse, Camunda 8.7 PI-keyed-read unavailability, empty/disappearing keys, bounded workers/counts, completed abnormal samples, cancellation, and zero mutation calls in `internal/services/ops/api_latency_test.go`
-- [ ] T015 [P] [US1] Add failing facade tests for read-only progress, result, unavailable measurement, partial error, and collection conversion in `c8volt/ops/client_test.go`
-- [ ] T016 [P] [US1] Add failing command tests for registration, help/examples, defaults `--count 20 --workers 4`, `-n/-w`, invalid stage budgets, keys-only rejection, read-only/full/automation metadata, tenant behavior, and no remote work after local validation in `cmd/ops_analyse_api_latency_test.go`
-- [ ] T017 [US1] Add failing command tests for compact human output, one-document JSON, quiet/verbose/debug/automation progress behavior, stable stage order, findings, and mandatory read-only limitations in `cmd/ops_analyse_api_latency_test.go`
+- [x] T014 [P] [US1] Add failing service tests for topology/PD/PI measurement, measured-key reuse, Camunda 8.7 PI-keyed-read unavailability, empty/disappearing keys, bounded workers/counts, completed abnormal samples, cancellation, and zero mutation calls in `internal/services/ops/api_latency_test.go`
+- [x] T015 [P] [US1] Add failing facade tests for read-only progress, result, unavailable measurement, partial error, and collection conversion in `c8volt/ops/client_test.go`
+- [x] T016 [P] [US1] Add failing command tests for registration, help/examples, defaults `--count 20 --workers 4`, `-n/-w`, invalid stage budgets, keys-only rejection, read-only/full/automation metadata, tenant behavior, and no remote work after local validation in `cmd/ops_analyse_api_latency_test.go`
+- [x] T017 [US1] Add failing command tests for compact human output, one-document JSON, quiet/verbose/debug/automation progress behavior, stable stage order, findings, and mandatory read-only limitations in `cmd/ops_analyse_api_latency_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] Implement the read-only closed-loop service workflow using existing cluster, process-definition, process-instance, and `toolx/pool` APIs in `internal/services/ops/api_latency_analysis.go`
-- [ ] T019 [US1] Add the `ops analyse api-latency` Cobra leaf with local validation, inherited contracts, facade dispatch, and semantic activity setup in `cmd/ops_analyse_api_latency.go`
-- [ ] T020 [US1] Implement compact read-only stage, finding, notice, limitation, and outcome rendering through existing human/JSON helpers in `cmd/cmd_views_ops_api_latency.go`
-- [ ] T021 [US1] Centralize API-latency progress mode, rate-limited aggregate progress, and JSON/automation/quiet suppression in `cmd/ops_api_latency_progress.go`
-- [ ] T022 [US1] Run `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1` and record US1 validation in `specs/289-api-latency-diagnostics/progress.md`
+- [x] T018 [US1] Implement the read-only closed-loop service workflow using existing cluster, process-definition, process-instance, and `toolx/pool` APIs in `internal/services/ops/api_latency_analysis.go`
+- [x] T019 [US1] Add the `ops analyse api-latency` Cobra leaf with local validation, inherited contracts, facade dispatch, and semantic activity setup in `cmd/ops_analyse_api_latency.go`
+- [x] T020 [US1] Implement compact read-only stage, finding, notice, limitation, and outcome rendering through existing human/JSON helpers in `cmd/cmd_views_ops_api_latency.go`
+- [x] T021 [US1] Centralize API-latency progress mode, rate-limited aggregate progress, and JSON/automation/quiet suppression in `cmd/ops_api_latency_progress.go`
+- [x] T022 [US1] Run `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1` and record US1 validation in `specs/289-api-latency-diagnostics/progress.md`
 - [ ] T023 [US1] Execute the read-only quickstart scenarios and record the zero-mutation and bounded-evidence results in `specs/289-api-latency-diagnostics/progress.md`
 
 **Checkpoint**: User Story 1 is a complete, independently testable production-safe MVP.

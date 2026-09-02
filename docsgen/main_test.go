@@ -174,8 +174,8 @@ func TestCLICommandTreeDocumentsGeneratedCommandSurface(t *testing.T) {
 		}
 	}
 
-	if got := strings.Count(tree, "- [`") - 1; got != 55 {
-		t.Fatalf("expected command tree to contain 55 non-root commands, got %d", got)
+	if got := strings.Count(tree, "- [`") - 1; got != 56 {
+		t.Fatalf("expected command tree to contain 56 non-root commands, got %d", got)
 	}
 }
 
@@ -216,8 +216,8 @@ func TestCLIDebtRefactorAssessmentArtifactDocumentsBaseline(t *testing.T) {
 		}
 	}
 
-	if got := strings.Count(body, "\n| `"); got != 55 {
-		t.Fatalf("expected assessment artifact to contain 55 command-node rows, got %d", got)
+	if got := strings.Count(body, "\n| `"); got != 56 {
+		t.Fatalf("expected assessment artifact to contain 56 command-node rows, got %d", got)
 	}
 }
 

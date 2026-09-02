@@ -387,6 +387,7 @@ func TestPurgeOrphanProcessInstancesSuppressesDefaultDeleteSummary(t *testing.T)
 type stubProcessInstanceAPI struct {
 	pisvc.API
 	createProcessInstance func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)
+	getProcessInstance    func(context.Context, string, ...services.CallOption) (d.ProcessInstance, error)
 	getProcessInstances   func(context.Context, typex.Keys, int, ...services.CallOption) ([]d.ProcessInstance, error)
 	searchVariables       func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceVariable, error)
 	updateVariables       func(context.Context, string, map[string]any, ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error)
@@ -405,6 +406,13 @@ func (s stubProcessInstanceAPI) CreateProcessInstance(ctx context.Context, data 
 		panic("unexpected create")
 	}
 	return s.createProcessInstance(ctx, data, opts...)
+}
+
+func (s stubProcessInstanceAPI) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
+	if s.getProcessInstance == nil {
+		panic("unexpected get process instance")
+	}
+	return s.getProcessInstance(ctx, key, opts...)
 }
 
 func (s stubProcessInstanceAPI) GetProcessInstances(ctx context.Context, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) ([]d.ProcessInstance, error) {

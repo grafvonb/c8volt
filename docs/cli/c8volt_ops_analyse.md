@@ -52,5 +52,6 @@ c8volt ops analyse [flags]
 ### SEE ALSO
 
 * [c8volt ops]({{ "/cli/c8volt_ops" | relative_url }})	 - Discover high-level operational workflows
+* [c8volt ops analyse api-latency]({{ "/cli/c8volt_ops_analyse_api-latency" | relative_url }})	 - Analyse API latency without changing cluster state
 * [c8volt ops analyse slow-process-instances]({{ "/cli/c8volt_ops_analyse_slow-process-instances" | relative_url }})	 - Analyse slow process-instance timings
 

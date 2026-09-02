@@ -14,6 +14,11 @@ import (
 	"github.com/grafvonb/c8volt/typex"
 )
 
+const (
+	// APILatencySchemaVersion is the stable public command/report payload schema for API latency diagnostics.
+	APILatencySchemaVersion = "ops.api-latency.v1"
+)
+
 type WorkflowStepStatus string
 
 const (
@@ -357,8 +362,14 @@ type APILatencyStageStatus string
 const (
 	// APILatencyStageStatusPlanned means work was previewed but not run.
 	APILatencyStageStatusPlanned APILatencyStageStatus = "planned"
+	// APILatencyStageStatusRunning means a stage is currently active.
+	APILatencyStageStatusRunning APILatencyStageStatus = "running"
 	// APILatencyStageStatusCompleted means all planned work for the stage was attempted.
 	APILatencyStageStatusCompleted APILatencyStageStatus = "completed"
+	// APILatencyStageStatusIncomplete means execution stopped before all planned work completed.
+	APILatencyStageStatusIncomplete APILatencyStageStatus = "incomplete"
+	// APILatencyStageStatusSkipped means the stage was intentionally not run.
+	APILatencyStageStatusSkipped APILatencyStageStatus = "skipped"
 )
 
 // APILatencyStageResult aggregates completed measurements for one stage.

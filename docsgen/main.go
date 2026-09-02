@@ -110,7 +110,7 @@ has_toc: true
 
 # CLI Command Tree
 
-This generated tree lists the root reference plus the 55 available c8volt commands. Each entry links to the generated reference page for the same command metadata used by the binary.
+This generated tree lists the root reference plus the 56 available c8volt commands. Each entry links to the generated reference page for the same command metadata used by the binary.
 
 `)
 	body.WriteString(commandTreeMarkdown(root, 0))

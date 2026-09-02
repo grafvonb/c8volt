@@ -7,10 +7,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -251,4 +254,278 @@ func TestAPILatencyFindingsFallbackAvoidsHealthClaims(t *testing.T) {
 	require.Equal(t, "no_abnormal_evidence", got[0].Code)
 	require.Equal(t, d.APILatencyFindingConfidenceLow, got[0].Confidence)
 	require.Contains(t, got[0].Limitation, "cannot prove overall health")
+}
+
+// TestAPILatencyReadOnlyMeasuresSearchesAndDerivedReads verifies US1 read-only measurements reuse discovered keys without mutation calls.
+func TestAPILatencyReadOnlyMeasuresSearchesAndDerivedReads(t *testing.T) {
+	t.Parallel()
+
+	var createCalls atomic.Int64
+	var deleteCalls atomic.Int64
+	var pdGetKeys []string
+	var piGetKeys []string
+	clusterAPI := &stubSmokeTestClusterAPI{topology: d.Topology{
+		ClusterSize:     1,
+		PartitionsCount: 2,
+		Brokers: []d.Broker{{
+			Partitions: []d.Partition{
+				{PartitionId: 1, Health: d.PartitionHealth("HEALTHY"), Role: d.PartitionRole("LEADER")},
+				{PartitionId: 2, Health: d.PartitionHealth("UNHEALTHY"), Role: d.PartitionRole("FOLLOWER")},
+			},
+		}},
+	}}
+	pdAPI := stubProcessDefinitionAPI{
+		searchProcessDefinitions: func(context.Context, d.ProcessDefinitionFilter, int32, ...services.CallOption) ([]d.ProcessDefinition, error) {
+			return []d.ProcessDefinition{{Key: "pd-1", BpmnProcessId: "Process"}}, nil
+		},
+		getProcessDefinition: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
+			pdGetKeys = append(pdGetKeys, key)
+			return d.ProcessDefinition{Key: key}, nil
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			createCalls.Add(1)
+			return d.ProcessInstanceCreation{}, errors.New("unexpected create")
+		},
+		search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+			return []d.ProcessInstance{{Key: "pi-1", ProcessDefinitionKey: "pd-1"}}, nil
+		},
+		getProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessInstance, error) {
+			piGetKeys = append(piGetKeys, key)
+			return d.ProcessInstance{Key: key}, nil
+		},
+		deleteProcessInstance: func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error) {
+			deleteCalls.Add(1)
+			return d.DeleteResponse{}, errors.New("unexpected delete")
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(clusterAPI, piAPI, nil, pdAPI, nil, nil, nil, toolx.V89).AnalyseAPILatency(context.Background(), d.APILatencyRequest{
+		CommandName: "ops analyse api-latency",
+		Count:       3,
+		Workers:     1,
+		TenantID:    "tenant-a",
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.APILatencyOutcomeCompleted, got.Outcome)
+	require.Equal(t, d.APILatencyModeReadOnly, got.Plan.Mode)
+	require.Equal(t, 6, got.Plan.DerivedRequestLimit)
+	require.Equal(t, 1, got.Topology.BrokerCount)
+	require.Equal(t, 2, got.Topology.PartitionCount)
+	require.Equal(t, []int{2}, got.Topology.UnhealthyPartitions)
+	require.Equal(t, []int{2}, got.Topology.LeaderlessPartitions)
+	require.Equal(t, []string{"pd-1", "pd-1", "pd-1"}, pdGetKeys)
+	require.Equal(t, []string{"pi-1", "pi-1", "pi-1"}, piGetKeys)
+	require.Zero(t, createCalls.Load())
+	require.Zero(t, deleteCalls.Load())
+	require.Len(t, got.Stages, 1)
+	require.Equal(t, 9, got.Stages[0].PrimaryAttempts)
+	require.Equal(t, 6, got.Stages[0].DerivedAttempts)
+	requireAPILatencyCategory(t, got.Stages[0], d.APILatencyCategoryTopologyRead, 3, 3, 0, 0, 0)
+	requireAPILatencyCategory(t, got.Stages[0], d.APILatencyCategoryProcessDefinitionSearch, 3, 3, 0, 0, 0)
+	requireAPILatencyCategory(t, got.Stages[0], d.APILatencyCategoryProcessInstanceSearch, 3, 3, 0, 0, 0)
+	requireAPILatencyCategory(t, got.Stages[0], d.APILatencyCategoryProcessDefinitionRead, 3, 3, 0, 0, 0)
+	requireAPILatencyCategory(t, got.Stages[0], d.APILatencyCategoryProcessInstanceRead, 3, 3, 0, 0, 0)
+}
+
+// TestAPILatencyReadOnlyReportsUnavailableKeyedEvidence verifies missing and unsupported derived reads are measured, not fabricated.
+func TestAPILatencyReadOnlyReportsUnavailableKeyedEvidence(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		version toolx.CamundaVersion
+		pdItems []d.ProcessDefinition
+		piItems []d.ProcessInstance
+		piGet   func(context.Context, string, ...services.CallOption) (d.ProcessInstance, error)
+		wantPD  d.APILatencyClassification
+		wantPI  d.APILatencyClassification
+	}{
+		{
+			name:    "empty searches",
+			version: toolx.V89,
+			wantPD:  d.APILatencyClassificationUnavailable,
+			wantPI:  d.APILatencyClassificationUnavailable,
+		},
+		{
+			name:    "process instance keyed read unsupported",
+			version: toolx.V87,
+			pdItems: []d.ProcessDefinition{{Key: "pd-1"}},
+			piItems: []d.ProcessInstance{{Key: "pi-1"}},
+			wantPD:  d.APILatencyClassificationSuccess,
+			wantPI:  d.APILatencyClassificationUnsupported,
+		},
+		{
+			name:    "process instance disappears",
+			version: toolx.V89,
+			pdItems: []d.ProcessDefinition{{Key: "pd-1"}},
+			piItems: []d.ProcessInstance{{Key: "pi-1"}},
+			piGet: func(context.Context, string, ...services.CallOption) (d.ProcessInstance, error) {
+				return d.ProcessInstance{}, d.ErrNotFound
+			},
+			wantPD: d.APILatencyClassificationSuccess,
+			wantPI: d.APILatencyClassificationNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			pdAPI := stubProcessDefinitionAPI{
+				searchProcessDefinitions: func(context.Context, d.ProcessDefinitionFilter, int32, ...services.CallOption) ([]d.ProcessDefinition, error) {
+					return tt.pdItems, nil
+				},
+				getProcessDefinition: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
+					return d.ProcessDefinition{Key: key}, nil
+				},
+			}
+			piAPI := stubProcessInstanceAPI{
+				search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+					return tt.piItems, nil
+				},
+				getProcessInstance: tt.piGet,
+			}
+			if piAPI.getProcessInstance == nil {
+				piAPI.getProcessInstance = func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessInstance, error) {
+					return d.ProcessInstance{Key: key}, nil
+				}
+			}
+
+			got, err := NewWithAnalysisDependencies(&stubSmokeTestClusterAPI{}, piAPI, nil, pdAPI, nil, nil, nil, tt.version).AnalyseAPILatency(context.Background(), d.APILatencyRequest{Count: 1, Workers: 1})
+
+			require.NoError(t, err)
+			requireAPILatencyCategoryClass(t, got.Stages[0], d.APILatencyCategoryProcessDefinitionRead, tt.wantPD)
+			requireAPILatencyCategoryClass(t, got.Stages[0], d.APILatencyCategoryProcessInstanceRead, tt.wantPI)
+		})
+	}
+}
+
+// TestAPILatencyReadOnlyCompletesWithAbnormalSamples verifies request failures become completed diagnostic evidence.
+func TestAPILatencyReadOnlyCompletesWithAbnormalSamples(t *testing.T) {
+	t.Parallel()
+
+	pdAPI := stubProcessDefinitionAPI{
+		searchProcessDefinitions: func(context.Context, d.ProcessDefinitionFilter, int32, ...services.CallOption) ([]d.ProcessDefinition, error) {
+			return nil, d.ErrRateLimited
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+			return nil, nil
+		},
+	}
+
+	got, err := NewWithAnalysisDependencies(&stubSmokeTestClusterAPI{}, piAPI, nil, pdAPI, nil, nil, nil, toolx.V89).AnalyseAPILatency(context.Background(), d.APILatencyRequest{Count: 1, Workers: 1})
+
+	require.NoError(t, err)
+	require.Equal(t, d.APILatencyOutcomeCompleted, got.Outcome)
+	requireAPILatencyCategory(t, got.Stages[0], d.APILatencyCategoryProcessDefinitionSearch, 1, 0, 1, 0, 0)
+	requireAPILatencyCategoryClass(t, got.Stages[0], d.APILatencyCategoryProcessDefinitionSearch, d.APILatencyClassificationBackpressure)
+	require.Equal(t, "backpressure_observed", got.Findings[0].Code)
+}
+
+// TestAPILatencyReadOnlyUsesBoundedStageWorkers verifies the service never exceeds the planned worker ceiling.
+func TestAPILatencyReadOnlyUsesBoundedStageWorkers(t *testing.T) {
+	var active atomic.Int64
+	var maxActive atomic.Int64
+	var searchCalls atomic.Int64
+	release := make(chan struct{})
+	t.Cleanup(func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	})
+	pdAPI := stubProcessDefinitionAPI{
+		searchProcessDefinitions: func(ctx context.Context, _ d.ProcessDefinitionFilter, _ int32, _ ...services.CallOption) ([]d.ProcessDefinition, error) {
+			call := searchCalls.Add(1)
+			if call > 1 {
+				now := active.Add(1)
+				for {
+					seen := maxActive.Load()
+					if now <= seen || maxActive.CompareAndSwap(seen, now) {
+						break
+					}
+				}
+				defer active.Add(-1)
+				select {
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				case <-release:
+				}
+			}
+			return []d.ProcessDefinition{{Key: "pd-1"}}, nil
+		},
+		getProcessDefinition: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
+			return d.ProcessDefinition{Key: key}, nil
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+			return nil, nil
+		},
+	}
+	done := make(chan error, 1)
+
+	go func() {
+		_, err := NewWithAnalysisDependencies(&stubSmokeTestClusterAPI{}, piAPI, nil, pdAPI, nil, nil, nil, toolx.V89).AnalyseAPILatency(context.Background(), d.APILatencyRequest{Count: 3, Workers: 2})
+		done <- err
+	}()
+
+	require.Eventually(t, func() bool { return maxActive.Load() == 2 }, time.Second, 10*time.Millisecond)
+	require.Never(t, func() bool { return maxActive.Load() > 2 }, 25*time.Millisecond, 5*time.Millisecond)
+	close(release)
+	require.NoError(t, <-done)
+}
+
+// TestAPILatencyReadOnlyCancellationReturnsInterruptedPartialResult verifies caller cancellation stops measurement scheduling.
+func TestAPILatencyReadOnlyCancellationReturnsInterruptedPartialResult(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	got, err := NewWithAnalysisDependencies(&stubSmokeTestClusterAPI{}, stubProcessInstanceAPI{}, nil, stubProcessDefinitionAPI{}, nil, nil, nil, toolx.V89).AnalyseAPILatency(ctx, d.APILatencyRequest{Count: 1, Workers: 1})
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, d.APILatencyOutcomeInterrupted, got.Outcome)
+	require.Len(t, got.Stages, 1)
+	require.Equal(t, d.APILatencyStageStatusPlanned, got.Stages[0].Status)
+}
+
+// requireAPILatencyCategory finds a stage category and checks its aggregate counts.
+func requireAPILatencyCategory(t *testing.T, stage d.APILatencyStageResult, category d.APILatencyMeasurementCategory, attempts int, successes int, errors int, timeouts int, unavailable int) {
+	t.Helper()
+	for _, summary := range stage.Categories {
+		if summary.Category == category {
+			require.Equal(t, attempts, summary.Attempts)
+			require.Equal(t, successes, summary.Successes)
+			require.Equal(t, errors, summary.Errors)
+			require.Equal(t, timeouts, summary.Timeouts)
+			require.Equal(t, unavailable, summary.Unavailable)
+			return
+		}
+	}
+	t.Fatalf("missing API latency category %s", category)
+}
+
+// requireAPILatencyCategoryClass finds a stage category and verifies its classification is present.
+func requireAPILatencyCategoryClass(t *testing.T, stage d.APILatencyStageResult, category d.APILatencyMeasurementCategory, class d.APILatencyClassification) {
+	t.Helper()
+	for _, summary := range stage.Categories {
+		if summary.Category != category {
+			continue
+		}
+		for _, count := range stage.Classifications {
+			if count.Classification == class && count.Count > 0 {
+				return
+			}
+		}
+		t.Fatalf("missing classification %s for API latency category %s", class, category)
+	}
+	t.Fatalf("missing API latency category %s", category)
 }

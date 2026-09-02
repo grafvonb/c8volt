@@ -3,8 +3,6 @@
 Feature: 289-api-latency-diagnostics
 Started: 2026-09-02 06:58:25
 
----
-
 ## Setup Context
 
 - Ralph context path: `specs/ralph-implementation-rules.md`
@@ -98,4 +96,46 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - API-latency foundation is pure and version-neutral; remote read-only and active workflows can reuse `PlanAPILatency`, `BuildAPILatencyStageResults`, safe classification, and deterministic findings without adding command-layer backend loops.
 - Validation passed: `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./c8volt -run 'TestNew_V89WiresSupportedRuntime' -count=1`; `git diff --check`.
+---
+---
+## Iteration 3 - 2026-09-02 07:42
+**Work Unit**: User Story 1 partial: read-only API latency analysis command
+**Tasks Completed**:
+- [x] T014: Add service tests for topology/PD/PI measurement, measured-key reuse, Camunda 8.7 PI-keyed-read unavailability, empty/disappearing keys, bounded workers/counts, completed abnormal samples, cancellation, and zero mutation calls
+- [x] T015: Add facade tests for read-only progress, result, unavailable measurement, partial error, and collection conversion
+- [x] T016: Add command tests for registration, help/examples, defaults, aliases, invalid budgets, keys-only rejection, metadata, tenant behavior, and pre-client validation
+- [x] T017: Add command tests for compact human output, one-document JSON, progress modes, stable findings, and read-only limitations
+- [x] T018: Implement the read-only closed-loop service workflow using existing APIs and `toolx/pool`
+- [x] T019: Add the `ops analyse api-latency` Cobra leaf with local validation, inherited contracts, facade dispatch, and semantic activity setup
+- [x] T020: Implement compact read-only stage, finding, notice, limitation, and outcome rendering
+- [x] T021: Centralize API-latency aggregate progress routing and JSON/automation/quiet suppression
+- [x] T022: Run `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1` and record US1 validation
+**Tasks Remaining in Work Unit**: 1 task remains in US1: T023 read-only quickstart scenario evidence
+**Commit**: This work-unit commit
+**Files Changed**:
+- `README.md`
+- `c8volt/ops/client_test.go`
+- `c8volt/ops/model.go`
+- `cmd/cmd_views_ops_api_latency.go`
+- `cmd/command_contract_test.go`
+- `cmd/ops_analyse_api_latency.go`
+- `cmd/ops_analyse_api_latency_test.go`
+- `cmd/ops_api_latency_progress.go`
+- `docs/cli/c8volt_ops_analyse.md`
+- `docs/cli/c8volt_ops_analyse_api-latency.md`
+- `docs/cli/command-tree.md`
+- `docs/index.md`
+- `docsgen/main.go`
+- `docsgen/main_test.go`
+- `internal/services/ops/api_latency.go`
+- `internal/services/ops/api_latency_analysis.go`
+- `internal/services/ops/api_latency_test.go`
+- `internal/services/ops/orphan_purge_test.go`
+- `specs/254-cli-debt-refactor/assessment.md`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Read-only analysis now completes bounded topology/search/keyed-read stages without mutations; fake command scenarios validate human output, JSON envelope purity, tenant context, protected progress modes, and pre-client invalid-budget rejection.
+- Validation passed: `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./cmd -run 'OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`; `go test ./docsgen -count=1`; `make docs-content`; `git diff --check`.
 ---

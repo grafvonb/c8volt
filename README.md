@@ -95,9 +95,9 @@ It is built for operators, developers, support engineers, CI pipelines, and agen
 
 That is the gap `c8volt` closes.
 
-## 55 Commands, One Operator Model
+## 56 Commands, One Operator Model
 
-`c8volt` currently exposes 55 commands for Camunda 8 operators, developers, CI pipelines, and agents. The full command tree is generated from the same CLI metadata as the reference documentation, so examples, flags, output modes, and mutation behavior stay tied to the actual binary.
+`c8volt` currently exposes 56 commands for Camunda 8 operators, developers, CI pipelines, and agents. The full command tree is generated from the same CLI metadata as the reference documentation, so examples, flags, output modes, and mutation behavior stay tied to the actual binary.
 
 Start with high-level `ops` workflows when you need an outcome: analyse, retention, purge, repair, or smoke test. Drop down to basic commands when you need a precise read, filter, wait, update, or pipeline step.
 

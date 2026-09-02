@@ -493,6 +493,96 @@ func TestClientAnalyseAPILatencyMapsServiceBoundary(t *testing.T) {
 	require.Zero(t, publicEvent)
 }
 
+// TestClientAnalyseAPILatencyMapsProgressOption verifies read-only progress options cross the facade boundary.
+func TestClientAnalyseAPILatencyMapsProgressOption(t *testing.T) {
+	t.Parallel()
+
+	var gotEvent ProgressEvent
+	api := stubOpsService{
+		analyseAPILatency: func(_ context.Context, _ d.APILatencyRequest, opts ...services.CallOption) (d.APILatencyResult, error) {
+			progress := services.ApplyCallOptions(opts).Progress
+			require.NotNil(t, progress)
+			progress(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindFrozenScope,
+				FrozenScope: &d.OpsFrozenScopeProgress{
+					Phase:        "measuring read-only API latency",
+					CoreResource: "stage 1 sample cycle(s)",
+					Done:         1,
+					Total:        3,
+				},
+			})
+			return d.APILatencyResult{SchemaVersion: d.APILatencySchemaVersion, Outcome: d.APILatencyOutcomeCompleted}, nil
+		},
+	}
+
+	_, err := New(api, slog.Default()).AnalyseAPILatency(context.Background(), APILatencyRequest{Count: 3, Workers: 1}, foptions.WithProgress(func(event foptions.ProgressEvent) {
+		gotEvent = ProgressEvent{
+			Kind:        ProgressEventKind(event.Kind),
+			FrozenScope: (*FrozenScopeProgress)(event.FrozenScope),
+		}
+	}))
+
+	require.NoError(t, err)
+	require.Equal(t, ProgressEventKindFrozenScope, gotEvent.Kind)
+	require.NotNil(t, gotEvent.FrozenScope)
+	require.Equal(t, "measuring read-only API latency", gotEvent.FrozenScope.Phase)
+	require.Equal(t, 1, gotEvent.FrozenScope.Done)
+	require.Equal(t, 3, gotEvent.FrozenScope.Total)
+}
+
+// TestClientAnalyseAPILatencyPreservesPartialUnavailableResults verifies partial read-only evidence survives error conversion.
+func TestClientAnalyseAPILatencyPreservesPartialUnavailableResults(t *testing.T) {
+	t.Parallel()
+
+	api := stubOpsService{
+		analyseAPILatency: func(_ context.Context, request d.APILatencyRequest, _ ...services.CallOption) (d.APILatencyResult, error) {
+			return d.APILatencyResult{
+				SchemaVersion: d.APILatencySchemaVersion,
+				Request:       request,
+				Plan: d.APILatencyPlan{
+					Mode:                    d.APILatencyModeReadOnly,
+					Stages:                  []d.APILatencyStagePlan{{Index: 1, WorkerCount: 1, PrimarySamples: 1, DerivedRequestLimit: 2}},
+					PrimarySampleLimit:      1,
+					PrimarySampleAllocation: 1,
+					DerivedRequestLimit:     2,
+				},
+				Stages: []d.APILatencyStageResult{{
+					Plan:            d.APILatencyStagePlan{Index: 1, WorkerCount: 1, PrimarySamples: 1, DerivedRequestLimit: 2},
+					Status:          d.APILatencyStageStatusIncomplete,
+					PrimaryAttempts: 2,
+					DerivedAttempts: 1,
+					Categories: []d.APILatencyCategorySummary{{
+						Category:    d.APILatencyCategoryProcessInstanceRead,
+						Attempts:    1,
+						Unavailable: 1,
+					}},
+					Classifications: []d.APILatencyClassificationCount{{Classification: d.APILatencyClassificationUnsupported, Count: 1}},
+				}},
+				Findings: []d.APILatencyFinding{{
+					Code:              "timeouts_observed",
+					Evidence:          []string{"bounded partial evidence"},
+					LikelyArea:        "gateway/connectivity/authentication",
+					Confidence:        d.APILatencyFindingConfidenceMedium,
+					Limitation:        "partial",
+					NextInvestigation: "retry read-only analysis",
+				}},
+				Limitations: []string{"read-only evidence cannot prove write-path health"},
+				Outcome:     d.APILatencyOutcomePartial,
+			}, d.ErrUnavailable
+		},
+	}
+
+	got, err := New(api, slog.Default()).AnalyseAPILatency(context.Background(), APILatencyRequest{Count: 1, Workers: 1})
+
+	require.ErrorIs(t, err, ferr.ErrUnavailable)
+	require.Equal(t, APILatencyOutcomePartial, got.Outcome)
+	require.Equal(t, APILatencyStageStatusIncomplete, got.Stages[0].Status)
+	require.Equal(t, APILatencyCategoryProcessInstanceRead, got.Stages[0].Categories[0].Category)
+	require.Equal(t, APILatencyClassificationUnsupported, got.Stages[0].Classifications[0].Classification)
+	require.Equal(t, []string{"bounded partial evidence"}, got.Findings[0].Evidence)
+	require.Equal(t, []string{"read-only evidence cannot prove write-path health"}, got.Limitations)
+}
+
 // TestClientExecuteAPILatencyTestMapsPartialErrors verifies partial active evidence survives domain error conversion.
 func TestClientExecuteAPILatencyTestMapsPartialErrors(t *testing.T) {
 	t.Parallel()

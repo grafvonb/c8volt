@@ -9,7 +9,7 @@ has_toc: true
 
 # CLI Command Tree
 
-This generated tree lists the root reference plus the 55 available c8volt commands. Each entry links to the generated reference page for the same command metadata used by the binary.
+This generated tree lists the root reference plus the 56 available c8volt commands. Each entry links to the generated reference page for the same command metadata used by the binary.
 
 - [`c8volt`]({{ "/cli/c8volt/" | relative_url }}) - Operate Camunda 8 workflows from the command line
   - [`c8volt cancel`]({{ "/cli/c8volt_cancel" | relative_url }}) - Cancel running process instances
@@ -45,6 +45,7 @@ This generated tree lists the root reference plus the 55 available c8volt comman
     - [`c8volt get tenant`]({{ "/cli/c8volt_get_tenant" | relative_url }}) - List tenants
   - [`c8volt ops`]({{ "/cli/c8volt_ops" | relative_url }}) - Discover high-level operational workflows
     - [`c8volt ops analyse`]({{ "/cli/c8volt_ops_analyse" | relative_url }}) - Discover read-only operational analyses
+      - [`c8volt ops analyse api-latency`]({{ "/cli/c8volt_ops_analyse_api-latency" | relative_url }}) - Analyse API latency without changing cluster state
       - [`c8volt ops analyse slow-process-instances`]({{ "/cli/c8volt_ops_analyse_slow-process-instances" | relative_url }}) - Analyse slow process-instance timings
     - [`c8volt ops execute`]({{ "/cli/c8volt_ops_execute" | relative_url }}) - Discover predefined operational playbooks
       - [`c8volt ops execute retention-policy`]({{ "/cli/c8volt_ops_execute_retention-policy" | relative_url }}) - Execute process-instance retention cleanup

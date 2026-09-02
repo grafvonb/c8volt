@@ -45,23 +45,7 @@ var apiLatencyClassificationOrder = []d.APILatencyClassification{
 
 // AnalyseAPILatency validates and plans a read-only API latency diagnostic for the service workflow.
 func (s *Service) AnalyseAPILatency(ctx context.Context, request d.APILatencyRequest, opts ...services.CallOption) (d.APILatencyResult, error) {
-	_ = ctx
-	_ = opts
-	request.Mode = d.APILatencyModeReadOnly
-	plan, err := PlanAPILatency(request)
-	result := d.APILatencyResult{
-		SchemaVersion: d.APILatencySchemaVersion,
-		Request:       request,
-		Plan:          plan,
-		Limitations:   apiLatencyReadOnlyLimitations(),
-		Outcome:       d.APILatencyOutcomeCompleted,
-	}
-	if err != nil {
-		result.Outcome = d.APILatencyOutcomeFailed
-		return result, err
-	}
-	result.Notices = append([]string(nil), plan.Notices...)
-	return result, nil
+	return s.analyseAPILatencyReadOnly(ctx, request, opts...)
 }
 
 // ExecuteAPILatencyTest validates and plans an active API latency diagnostic for the service workflow.

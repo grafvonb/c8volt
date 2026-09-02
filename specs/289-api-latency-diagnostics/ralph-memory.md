@@ -4,7 +4,7 @@ Feature: 289-api-latency-diagnostics
 Started: 2026-09-02T04:58:25Z
 
 ## Codebase Patterns
-- First incomplete work now begins at US1 tests T014-T017; foundational API-latency domain/service/facade contracts T003-T013 are complete.
+- First incomplete work now begins at US1 T023; foundational API-latency domain/service/facade contracts T003-T013 and read-only analyse implementation T014-T022 are complete.
 - Commands own Cobra construction, local flag validation, confirmation, activity/progress setup, report-path validation, and final rendering. Follow `cmd/ops_analyse_slow_process_instances.go` for read-only analysis wiring and `cmd/ops_execute_smoketest.go` for active ops execution wiring.
 - Public `c8volt/ops` facade methods are thin: map public request to `internal/domain`, delegate to `internal/services/ops.API`, map results back, and convert errors with `ferrors.FromDomain`.
 - `internal/services/ops.Service` is the owning layer for stage planning, remote workflow mechanics, worker scheduling, cleanup orchestration, and progress facts. `NewWithAnalysisDependencies` already carries cluster, process-instance, process-definition, resource, job, element, version, and logger dependencies for this feature.
@@ -15,7 +15,9 @@ Started: 2026-09-02T04:58:25Z
 - Version capability boundaries to preserve: v8.7 process-instance direct lookup is unsupported; full process-definition history deletion is currently supported on v8.9 or newer; v8.8 active latency cleanup must be blocked unless `--no-cleanup` is explicit.
 - Foundational API-latency types live in `internal/domain/ops_api_latency.go`; public mirrors live in `c8volt/ops/model.go` and conversions in `c8volt/ops/convert.go`.
 - `internal/services/ops/api_latency.go` now owns deterministic stage planning, read-only/active derived bounds, normalized-backoff visibility-attempt bounding, safe error classification, aggregate statistics, zero-baseline-safe comparisons, and deterministic finding ordering.
-- `PlanAPILatency`, `BuildAPILatencyStageResults`, `ClassifyAPILatencyError`, and `EvaluateAPILatencyFindings` are pure foundation helpers; US1 should reuse them while adding remote read-only measurement workflow in `internal/services/ops/api_latency_analysis.go`.
+- `internal/services/ops/api_latency_analysis.go` owns the read-only remote workflow: topology, process-definition search, and process-instance search are primary sample calls; process-definition and process-instance keyed reads are derived calls using keys from the measured searches when available and supported.
+- Read-only API-latency measurements classify per-call errors into result evidence instead of failing completed runs. Caller cancellation returns an interrupted/partial result plus the context error; unavailable keys and unsupported v8.7 process-instance keyed reads produce unavailable derived measurements.
+- `cmd/ops_analyse_api_latency.go`, `cmd/cmd_views_ops_api_latency.go`, and `cmd/ops_api_latency_progress.go` implement the read-only command leaf, compact human/JSON rendering, command metadata, local validation, semantic activity, and aggregate progress-mode suppression.
 
 ## Decisions
 - For this Ralph run, the prerequisite script selected `specs/289-api-latency-diagnostics`; the AGENTS Speckit block still names an older active plan and should not override the checked `FEATURE_DIR`.
@@ -34,6 +36,7 @@ Started: 2026-09-02T04:58:25Z
 ## Do Not Repeat
 - Do not create a new report framework, worker framework, fixture, generated client, or versioned latency adapter for this feature.
 - Do not hand-edit generated CLI docs under `docs/cli`; update command metadata and run `make docs-content` when command behavior exists.
+- `--report-file`/`--report-format` are currently validated on the read-only command, but actual report writing remains planned in US4 T048/T052/T053; do not mark T023 complete if treating the quickstart JSON/report scenario literally before report wiring exists.
 
 ## Current Handoff
-- Next iteration should start at US1 T014-T017. Add read-only service/facade/command tests first for topology/PD/PI measurement, zero mutation, bounded workers/counts, unavailable keyed evidence, command defaults/validation, compact output, and progress modes before implementing the `ops analyse api-latency` workflow.
+- Next iteration should continue US1 at T023. Run and record the implemented read-only quickstart evidence for `ops analyse api-latency`; either leave the report-file quickstart case explicitly pending until US4 report wiring or split T023 so the report-specific validation tracks T048/T052/T053.
