@@ -583,6 +583,241 @@ func TestClientAnalyseAPILatencyPreservesPartialUnavailableResults(t *testing.T)
 	require.Equal(t, []string{"read-only evidence cannot prove write-path health"}, got.Limitations)
 }
 
+// TestClientExecuteAPILatencyTestMapsActiveServiceBoundary verifies active API-latency evidence stays a thin facade conversion.
+func TestClientExecuteAPILatencyTestMapsActiveServiceBoundary(t *testing.T) {
+	t.Parallel()
+
+	started := time.Date(2026, 9, 2, 8, 20, 0, 0, time.UTC)
+	finished := started.Add(4 * time.Second)
+	stagePlans := []d.APILatencyStagePlan{{Index: 1, WorkerCount: 1, PrimarySamples: 3, DerivedRequestLimit: 12}}
+	setupOps := []string{"topology preflight", "fixture deploy"}
+	planNotices := []string{"cleanup supported"}
+	planLimitations := []string{"bounded active sample"}
+	unhealthy := []int{4}
+	leaderless := []int{5}
+	ownerKeys := []string{"pi-a", "pi-b"}
+	findingEvidence := []string{"visibility p95 increased"}
+	visibility := []d.APILatencyVisibilityResult{{
+		ProcessInstanceKey:  "pi-a",
+		Attempts:            2,
+		AttemptLimit:        5,
+		Visible:             true,
+		Duration:            750 * time.Millisecond,
+		FinalClassification: d.APILatencyClassificationSuccess,
+	}}
+	cleanup := []d.APILatencyCleanupRecord{
+		{ResourceType: d.APILatencyCleanupResourceProcessInstance, Key: "pi-a", Status: d.APILatencyCleanupStatusSubmitted, Classification: d.APILatencyClassificationSuccess},
+		{ResourceType: d.APILatencyCleanupResourceProcessInstance, Key: "pi-b", Status: d.APILatencyCleanupStatusFailed, Classification: d.APILatencyClassificationBackpressure, RecoveryCommand: "c8volt delete process-instance --key pi-b --force --auto-confirm"},
+		{ResourceType: d.APILatencyCleanupResourceProcessDefinition, Key: "pd-a", Status: d.APILatencyCleanupStatusUnknown, Classification: d.APILatencyClassificationUnavailable, RecoveryCommand: "c8volt delete process-definition --key pd-a --auto-confirm"},
+	}
+	api := stubOpsService{
+		executeAPILatencyTest: func(_ context.Context, request d.APILatencyRequest, opts ...services.CallOption) (d.APILatencyResult, error) {
+			require.Equal(t, "ops execute api-latency-test", request.CommandName)
+			require.Equal(t, d.APILatencyModeActive, request.Mode)
+			require.Equal(t, 7, request.Count)
+			require.Equal(t, 4, request.Workers)
+			require.False(t, request.DryRun)
+			require.True(t, request.NoCleanup)
+			require.Equal(t, "tenant-a", request.TenantID)
+			require.Equal(t, 15*time.Second, request.HTTPTimeout)
+			require.Equal(t, d.APILatencyBackoffFixed, request.Backoff.Strategy)
+			require.Equal(t, 250*time.Millisecond, request.Backoff.InitialDelay)
+			require.Equal(t, "human", request.OutputMode)
+			require.Equal(t, started, request.StartedAt)
+			require.NotNil(t, request.Progress)
+			cfg := services.ApplyCallOptions(opts)
+			require.True(t, cfg.Verbose)
+			require.True(t, cfg.NoWorkerLimit)
+			return d.APILatencyResult{
+				SchemaVersion: d.APILatencySchemaVersion,
+				Context: d.APILatencyRunContext{
+					CommandName:    request.CommandName,
+					SchemaVersion:  d.APILatencySchemaVersion,
+					CamundaVersion: "8.9",
+					Profile:        "profile-a",
+					Tenant:         "tenant-a",
+					StartedAt:      started,
+					FinishedAt:     finished,
+					Duration:       "4s",
+				},
+				Request: request,
+				Plan: d.APILatencyPlan{
+					RunID:                   "run-a",
+					Mode:                    request.Mode,
+					Stages:                  stagePlans,
+					PrimarySampleLimit:      7,
+					PrimarySampleAllocation: 7,
+					DerivedRequestLimit:     42,
+					VisibilityAttemptLimit:  5,
+					SetupOperations:         setupOps,
+					Fixture: &d.APILatencyFixturePlan{
+						CamundaVersion: "8.9",
+						File:           "embedded/processdefinitions/C89_SimpleUserTask.bpmn",
+						BpmnProcessID:  "C89_SimpleUserTask",
+						Available:      true,
+					},
+					Cleanup: &d.APILatencyCleanupPlan{
+						Requested:            true,
+						Supported:            true,
+						IntentionalRetention: true,
+						IndependentBudget:    30 * time.Second,
+					},
+					Notices:     planNotices,
+					Limitations: planLimitations,
+				},
+				Topology: d.APILatencyTopologyEvidence{
+					BrokerCount:          2,
+					PartitionCount:       6,
+					UnhealthyPartitions:  unhealthy,
+					LeaderlessPartitions: leaderless,
+					HealthKnown:          true,
+				},
+				Stages: []d.APILatencyStageResult{{
+					Plan:                 stagePlans[0],
+					Status:               d.APILatencyStageStatusCompleted,
+					ActualMaxConcurrency: 1,
+					PrimaryAttempts:      3,
+					DerivedAttempts:      6,
+					Categories: []d.APILatencyCategorySummary{
+						{Category: d.APILatencyCategoryProcessInstanceCreate, Attempts: 3, Successes: 3},
+						{Category: d.APILatencyCategoryConcurrentRead, Attempts: 3, Successes: 2, Errors: 1},
+						{Category: d.APILatencyCategorySearchVisibility, Attempts: 6, Successes: 5, Timeouts: 1},
+					},
+					Classifications: []d.APILatencyClassificationCount{{Classification: d.APILatencyClassificationBackpressure, Count: 1}},
+				}},
+				Findings: []d.APILatencyFinding{{
+					Code:              "delayed_visibility",
+					Evidence:          findingEvidence,
+					LikelyArea:        "exporter visibility",
+					Confidence:        d.APILatencyFindingConfidenceMedium,
+					Limitation:        "bounded active sample",
+					NextInvestigation: "compare exporter lag",
+				}},
+				Notices:     []string{"active notice"},
+				Limitations: []string{"active limitation"},
+				Ownership: &d.APILatencyOwnership{
+					RunID:                "run-a",
+					FixtureName:          "C89_SimpleUserTask.bpmn",
+					BpmnProcessID:        "C89_SimpleUserTask",
+					DeploymentSubmitted:  true,
+					ProcessDefinitionKey: "pd-a",
+					ProcessInstanceKeys:  ownerKeys,
+				},
+				Visibility: visibility,
+				Cleanup:    cleanup,
+				Outcome:    d.APILatencyOutcomeCompletedRetained,
+			}, nil
+		},
+	}
+
+	var publicEvent ProgressEvent
+	got, err := New(api, slog.Default()).ExecuteAPILatencyTest(context.Background(), APILatencyRequest{
+		CommandName: "ops execute api-latency-test",
+		Mode:        APILatencyModeActive,
+		Count:       7,
+		Workers:     4,
+		NoCleanup:   true,
+		TenantID:    "tenant-a",
+		HTTPTimeout: 15 * time.Second,
+		Backoff: APILatencyBackoff{
+			Strategy:     APILatencyBackoffFixed,
+			InitialDelay: 250 * time.Millisecond,
+			MaxDelay:     time.Second,
+			Multiplier:   1,
+			Timeout:      5 * time.Second,
+			MaxRetries:   4,
+		},
+		OutputMode: "human",
+		StartedAt:  started,
+		Progress: func(event ProgressEvent) {
+			publicEvent = event
+		},
+	}, foptions.WithVerbose(), foptions.WithNoWorkerLimit())
+
+	require.NoError(t, err)
+	require.Equal(t, APILatencyOutcomeCompletedRetained, got.Outcome)
+	require.Equal(t, APILatencyModeActive, got.Plan.Mode)
+	require.Equal(t, "run-a", got.Plan.RunID)
+	require.Equal(t, 42, got.Plan.DerivedRequestLimit)
+	require.Equal(t, 5, got.Plan.VisibilityAttemptLimit)
+	require.Equal(t, []APILatencyStagePlan{{Index: 1, WorkerCount: 1, PrimarySamples: 3, DerivedRequestLimit: 12}}, got.Plan.Stages)
+	require.Equal(t, []string{"topology preflight", "fixture deploy"}, got.Plan.SetupOperations)
+	require.Equal(t, "C89_SimpleUserTask", got.Plan.Fixture.BpmnProcessID)
+	require.True(t, got.Plan.Cleanup.IntentionalRetention)
+	require.Equal(t, []int{4}, got.Topology.UnhealthyPartitions)
+	require.Equal(t, []int{5}, got.Topology.LeaderlessPartitions)
+	require.Equal(t, APILatencyCategoryProcessInstanceCreate, got.Stages[0].Categories[0].Category)
+	require.Equal(t, APILatencyCategoryConcurrentRead, got.Stages[0].Categories[1].Category)
+	require.Equal(t, APILatencyCategorySearchVisibility, got.Stages[0].Categories[2].Category)
+	require.Equal(t, []string{"visibility p95 increased"}, got.Findings[0].Evidence)
+	require.Equal(t, "pd-a", got.Ownership.ProcessDefinitionKey)
+	require.Equal(t, []string{"pi-a", "pi-b"}, got.Ownership.ProcessInstanceKeys)
+	require.Equal(t, 750*time.Millisecond, got.Visibility[0].Duration)
+	require.Equal(t, APILatencyClassificationSuccess, got.Visibility[0].FinalClassification)
+	require.Equal(t, APILatencyCleanupStatusSubmitted, got.Cleanup[0].Status)
+	require.Equal(t, APILatencyCleanupStatusFailed, got.Cleanup[1].Status)
+	require.Equal(t, APILatencyCleanupStatusUnknown, got.Cleanup[2].Status)
+	require.Equal(t, "c8volt delete process-definition --key pd-a --auto-confirm", got.Cleanup[2].RecoveryCommand)
+	require.Zero(t, publicEvent)
+
+	stagePlans[0].WorkerCount = 99
+	setupOps[0] = "mutated"
+	planNotices[0] = "mutated"
+	planLimitations[0] = "mutated"
+	unhealthy[0] = 99
+	leaderless[0] = 99
+	ownerKeys[0] = "mutated"
+	findingEvidence[0] = "mutated"
+	visibility[0].ProcessInstanceKey = "mutated"
+	cleanup[0].Key = "mutated"
+	require.Equal(t, 1, got.Plan.Stages[0].WorkerCount)
+	require.Equal(t, []string{"topology preflight", "fixture deploy"}, got.Plan.SetupOperations)
+	require.Equal(t, []string{"cleanup supported"}, got.Plan.Notices)
+	require.Equal(t, []string{"bounded active sample"}, got.Plan.Limitations)
+	require.Equal(t, []int{4}, got.Topology.UnhealthyPartitions)
+	require.Equal(t, []int{5}, got.Topology.LeaderlessPartitions)
+	require.Equal(t, []string{"pi-a", "pi-b"}, got.Ownership.ProcessInstanceKeys)
+	require.Equal(t, []string{"visibility p95 increased"}, got.Findings[0].Evidence)
+	require.Equal(t, "pi-a", got.Visibility[0].ProcessInstanceKey)
+	require.Equal(t, "pi-a", got.Cleanup[0].Key)
+}
+
+// TestClientExecuteAPILatencyTestMapsProgressOption verifies active progress options cross the facade boundary.
+func TestClientExecuteAPILatencyTestMapsProgressOption(t *testing.T) {
+	t.Parallel()
+
+	var gotEvent foptions.ProgressEvent
+	api := stubOpsService{
+		executeAPILatencyTest: func(_ context.Context, _ d.APILatencyRequest, opts ...services.CallOption) (d.APILatencyResult, error) {
+			progress := services.ApplyCallOptions(opts).Progress
+			require.NotNil(t, progress)
+			progress(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindFrozenScope,
+				FrozenScope: &d.OpsFrozenScopeProgress{
+					Phase:        "executing active API latency test",
+					CoreResource: "stage 1 sample cycle(s)",
+					Done:         2,
+					Total:        7,
+					Errors:       1,
+				},
+			})
+			return d.APILatencyResult{SchemaVersion: d.APILatencySchemaVersion, Outcome: d.APILatencyOutcomeCompleted}, nil
+		},
+	}
+
+	_, err := New(api, slog.Default()).ExecuteAPILatencyTest(context.Background(), APILatencyRequest{Count: 7, Workers: 4}, foptions.WithProgress(func(event foptions.ProgressEvent) {
+		gotEvent = event
+	}))
+
+	require.NoError(t, err)
+	require.Equal(t, foptions.ProgressEventKindFrozenScope, gotEvent.Kind)
+	require.NotNil(t, gotEvent.FrozenScope)
+	require.Equal(t, "executing active API latency test", gotEvent.FrozenScope.Phase)
+	require.Equal(t, 2, gotEvent.FrozenScope.Done)
+	require.Equal(t, 7, gotEvent.FrozenScope.Total)
+	require.Equal(t, 1, gotEvent.FrozenScope.Errors)
+}
+
 // TestClientExecuteAPILatencyTestMapsPartialErrors verifies partial active evidence survives domain error conversion.
 func TestClientExecuteAPILatencyTestMapsPartialErrors(t *testing.T) {
 	t.Parallel()

@@ -60,7 +60,6 @@ Started: 2026-09-02 06:58:25
 - `specs/289-api-latency-diagnostics/progress.md`
 **Learnings**:
 - Durable setup patterns were recorded in progress and compacted into Ralph memory; no production code was changed in this iteration.
----
 ## Iteration 2 - 2026-09-02 07:17
 **Work Unit**: Phase 2 Foundational
 **Tasks Completed**:
@@ -191,4 +190,22 @@ Started: 2026-09-02 06:58:25
 **Learnings**:
 - Active non-dry service execution now uses no-wait fixture deployment, exact returned process-definition and process-instance keys, bounded stage workers, exact-key visibility evidence, safe backpressure findings, and PI-before-PD successful cleanup.
 - Validation passed: `go test ./internal/services/ops -run 'TestAPILatencyActiveExecution' -count=1`; `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./internal/services/ops -run 'APILatencyActive|APILatencyPlanDerivesVisibilityBound' -count=1`; `go test ./internal/services/ops -run 'TestAPILatencyActiveExecutionBoundsWorkersAndClassifiesVisibilityErrors' -race -count=1`; `git diff --check`.
+---
+---
+## Iteration 7 - 2026-09-02 08:09
+**Work Unit**: User Story 2 partial: active API latency facade conversion
+**Tasks Completed**:
+- [x] T026: Add facade tests for active plan, ownership, visibility, cleanup, progress, and partial-result conversion
+- [x] T032: Complete active-only ownership, visibility, cleanup, and outcome conversions
+**Tasks Remaining in Work Unit**: 5 tasks remain in US2: T027, T028, T033, T034, and T035
+**Commit**: This work-unit commit
+**Files Changed**:
+- `c8volt/ops/client_test.go`
+- `c8volt/ops/model.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Active facade tests now pin active plan/fixture/cleanup, ownership, visibility, cleanup, progress, partial-result, and defensive-copy behavior; the only implementation gap found was missing public cleanup status constants for submitted, failed, unknown, and pending states.
+- Validation passed: `go test ./c8volt/ops -run 'TestClientExecuteAPILatencyTest' -count=1`; `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `git diff --check`.
 ---

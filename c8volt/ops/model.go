@@ -473,10 +473,18 @@ const (
 type APILatencyCleanupStatus string
 
 const (
+	// APILatencyCleanupStatusPending means cleanup has not started.
+	APILatencyCleanupStatusPending APILatencyCleanupStatus = "pending"
+	// APILatencyCleanupStatusSubmitted means deletion was submitted but not confirmed.
+	APILatencyCleanupStatusSubmitted APILatencyCleanupStatus = "submitted"
 	// APILatencyCleanupStatusDeleted means the exact resource was deleted.
 	APILatencyCleanupStatusDeleted APILatencyCleanupStatus = "deleted"
 	// APILatencyCleanupStatusRetained means explicit no-cleanup retained the resource.
 	APILatencyCleanupStatusRetained APILatencyCleanupStatus = "retained"
+	// APILatencyCleanupStatusFailed means cleanup failed for the exact resource.
+	APILatencyCleanupStatusFailed APILatencyCleanupStatus = "failed"
+	// APILatencyCleanupStatusUnknown means terminal ownership state could not be proven.
+	APILatencyCleanupStatusUnknown APILatencyCleanupStatus = "unknown"
 )
 
 // APILatencyCleanupRecord records cleanup evidence and exact-key recovery guidance.

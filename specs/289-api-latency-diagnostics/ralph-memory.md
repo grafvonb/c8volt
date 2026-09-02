@@ -4,7 +4,7 @@ Feature: 289-api-latency-diagnostics
 Started: 2026-09-02T04:58:25Z
 
 ## Codebase Patterns
-- First incomplete work now begins at US2 T026; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, active preflight/planning T024/T029, active service execution tests T025, bounded stage mechanics T030, and successful-path cleanup T031 are complete.
+- First incomplete work now begins at US2 T027; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, active preflight/planning T024/T029, active service execution tests T025, bounded stage mechanics T030, successful-path cleanup T031, and active facade conversion/tests T026/T032 are complete.
 - Commands own Cobra construction, local flag validation, confirmation, activity/progress setup, report-path validation, and final rendering. Follow `cmd/ops_analyse_slow_process_instances.go` for read-only analysis wiring and `cmd/ops_execute_smoketest.go` for active ops execution wiring.
 - Public `c8volt/ops` facade methods are thin: map public request to `internal/domain`, delegate to `internal/services/ops.API`, map results back, and convert errors with `ferrors.FromDomain`.
 - `internal/services/ops.Service` is the owning layer for stage planning, remote workflow mechanics, worker scheduling, cleanup orchestration, and progress facts. `NewWithAnalysisDependencies` already carries cluster, process-instance, process-definition, resource, job, element, version, and logger dependencies for this feature.
@@ -21,6 +21,7 @@ Started: 2026-09-02T04:58:25Z
 - `internal/services/ops/api_latency_execute.go` now owns active API-latency preflight and immutable planning: 128-bit hex run IDs, version-matched SimpleUserTask fixture selection, topology connectivity/observed-version checks, version capability gating, zero-mutation dry-run results, and cleanup/retention block reasons.
 - Active non-dry execution now deploys the selected SimpleUserTask fixture via `resourceAPI.Deploy` with `services.WithNoWait()`, extracts only the returned process-definition key, runs bounded closed-loop create/read/visibility stages through `toolx/pool.ExecuteNTimes`, records returned process-instance keys immediately, and classifies visibility/backpressure evidence into stage findings.
 - `internal/services/ops/api_latency_cleanup.go` owns active successful-path cleanup records: exact process-instance keys are deleted before the exact process-definition key through the existing process-instance/resource services; explicit `--no-cleanup` records retained resources with recovery commands.
+- Active facade coverage in `c8volt/ops/client_test.go` now proves active plan/fixture/cleanup plan fields, ownership keys, visibility durations/classifications, cleanup records/recovery commands, progress callback mapping, partial-result error conversion, and defensive copying across the public boundary. Public cleanup statuses in `c8volt/ops/model.go` now mirror all domain statuses (`pending`, `submitted`, `deleted`, `retained`, `failed`, `unknown`).
 
 ## Decisions
 - For this Ralph run, the prerequisite script selected `specs/289-api-latency-diagnostics`; the AGENTS Speckit block still names an older active plan and should not override the checked `FEATURE_DIR`.
@@ -43,4 +44,4 @@ Started: 2026-09-02T04:58:25Z
 - Active cleanup after cancellation, timeout, visibility exhaustion, and cleanup failure is still assigned to US3 T036-T046; do not treat the current successful-path cleanup helper as complete recovery behavior.
 
 ## Current Handoff
-- Next iteration should continue US2 at T026 by adding facade tests for active plan, ownership, visibility, cleanup, progress, and partial-result conversion in `c8volt/ops/client_test.go`, then completing only the matching US2 facade conversion work before command tasks.
+- Next iteration should continue US2 at T027 by adding active command tests in `cmd/ops_execute_api_latency_test.go` for flags/defaults, tenant enforcement, metadata, dry-run preview, confirmation/no-cleanup, automation/auto-confirm, JSON guardrails, and report-path preflight before implementing the command leaf.
