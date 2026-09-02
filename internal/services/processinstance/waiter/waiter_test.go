@@ -371,6 +371,37 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 		assert.Equal(t, d.ProcessInstance{}, pi)
 	})
 
+	t.Run("can let the context deadline bound polling instead of max retries", func(t *testing.T) {
+		t.Parallel()
+
+		attempts := 0
+		waiter := stubPIWaiter{
+			getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+				attempts++
+				if attempts == 3 {
+					return d.StateCompleted, d.ProcessInstance{Key: key, State: d.StateCompleted}, nil
+				}
+				return d.StateActive, d.ProcessInstance{Key: key, State: d.StateActive}, nil
+			},
+		}
+
+		got, pi, err := WaitForProcessInstanceState(
+			context.Background(),
+			waiter,
+			testConfig(time.Millisecond, 1, 100*time.Millisecond),
+			testLogger(),
+			"123",
+			d.States{d.StateCompleted},
+			services.WithUnlimitedWaitRetries(),
+		)
+
+		require.NoError(t, err)
+		assert.Equal(t, 3, attempts)
+		assert.True(t, got.Ok)
+		assert.Equal(t, d.StateCompleted, got.State)
+		assert.Equal(t, d.ProcessInstance{Key: "123", State: d.StateCompleted}, pi)
+	})
+
 	t.Run("honors context cancellation before polling starts", func(t *testing.T) {
 		t.Parallel()
 

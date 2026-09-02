@@ -844,19 +844,25 @@ func TestOpsExecuteAPILatencyRequestedCleanupFailureSubprocessUsesJSONErrorEnvel
 	require.NotContains(t, requests.Snapshot(), "POST /v2/resources/pd-89/deletion")
 }
 
-// TestOpsExecuteAPILatencyProgressModeGate verifies active aggregate progress stays out of protected modes.
+// TestOpsExecuteAPILatencyProgressModeGate verifies active and cleanup aggregate progress stays out of protected modes.
 func TestOpsExecuteAPILatencyProgressModeGate(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
 		setup      func()
-		wantStderr string
+		wantStderr []string
 	}{
-		{name: "human", setup: func() {}, wantStderr: ""},
-		{name: "json", setup: func() { flagViewAsJson = true }, wantStderr: ""},
-		{name: "quiet", setup: func() { flagQuiet = true }, wantStderr: ""},
-		{name: "automation", setup: func() { flagCmdAutomation = true }, wantStderr: ""},
-		{name: "verbose", setup: func() { flagVerbose = true }, wantStderr: "running active API latency test, 1/2 process-instance create(s)"},
-		{name: "debug", setup: func() { flagDebug = true }, wantStderr: "running active API latency test, 1/2 process-instance create(s)"},
+		{name: "human", setup: func() {}, wantStderr: nil},
+		{name: "json", setup: func() { flagViewAsJson = true }, wantStderr: nil},
+		{name: "quiet", setup: func() { flagQuiet = true }, wantStderr: nil},
+		{name: "automation", setup: func() { flagCmdAutomation = true }, wantStderr: nil},
+		{name: "verbose", setup: func() { flagVerbose = true }, wantStderr: []string{
+			"running active API latency test, 1/2 process-instance create(s)",
+			"cleaning up active API latency resources, 1/2 owned resource(s)",
+		}},
+		{name: "debug", setup: func() { flagDebug = true }, wantStderr: []string{
+			"running active API latency test, 1/2 process-instance create(s)",
+			"cleaning up active API latency resources, 1/2 owned resource(s)",
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			resetOpsExecuteAPILatencyTestFlags(t)
@@ -872,13 +878,23 @@ func TestOpsExecuteAPILatencyProgressModeGate(t *testing.T) {
 				Done:         1,
 				Total:        2,
 			}})
+			request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindFrozenScope, FrozenScope: &ops.FrozenScopeProgress{
+				Phase:        "cleaning up active API latency resources",
+				CoreResource: "owned resource(s)",
+				Done:         1,
+				Total:        2,
+			}})
 
-			if tc.wantStderr == "" {
+			if len(tc.wantStderr) == 0 {
 				require.Empty(t, stderr.String())
 				return
 			}
-			require.Contains(t, stderr.String(), tc.wantStderr)
+			for _, want := range tc.wantStderr {
+				require.Contains(t, stderr.String(), want)
+			}
 			require.NotContains(t, stderr.String(), apiLatencyProtectedAuthorizationHeader)
+			require.NotContains(t, stderr.String(), "process-instance key")
+			require.NotContains(t, stderr.String(), "process-definition key")
 		})
 	}
 }

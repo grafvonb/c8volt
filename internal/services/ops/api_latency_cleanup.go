@@ -166,7 +166,9 @@ func (s *Service) deleteAPILatencyProcessInstance(ctx context.Context, key strin
 		return failedAPILatencyProcessInstanceCleanupRecord(key, plan, err), err
 	}
 	waitStates := d.States{d.StateCanceled, d.StateTerminated, d.StateCompleted}
-	if _, _, err := s.piAPI.WaitForProcessInstanceState(ctx, key, waitStates, opts...); err != nil && !errors.Is(err, d.ErrNotFound) {
+	waitOpts := append([]services.CallOption{}, opts...)
+	waitOpts = append(waitOpts, services.WithUnlimitedWaitRetries())
+	if _, _, err := s.piAPI.WaitForProcessInstanceState(ctx, key, waitStates, waitOpts...); err != nil && !errors.Is(err, d.ErrNotFound) {
 		return failedAPILatencyProcessInstanceCleanupRecord(key, plan, err), err
 	}
 	deleteOpts := append([]services.CallOption{}, opts...)
@@ -186,7 +188,7 @@ func (s *Service) deleteAPILatencyProcessInstance(ctx context.Context, key strin
 		}
 		break
 	}
-	if _, _, err := s.piAPI.WaitForProcessInstanceState(ctx, key, d.States{d.StateAbsent}, opts...); err != nil {
+	if _, _, err := s.piAPI.WaitForProcessInstanceState(ctx, key, d.States{d.StateAbsent}, waitOpts...); err != nil {
 		return failedAPILatencyProcessInstanceCleanupRecord(key, plan, err), err
 	}
 	return record, nil
@@ -203,6 +205,12 @@ func (s *Service) deleteAPILatencyProcessDefinition(ctx context.Context, key str
 	for {
 		_, err := s.resourceAPI.Delete(ctx, key, opts...)
 		if err == nil {
+			if waitErr := s.waitForAPILatencyProcessDefinitionAbsent(ctx, key, opts...); waitErr != nil {
+				record.Status = failedAPILatencyCleanupStatus(waitErr)
+				record.Classification = ClassifyAPILatencyError(waitErr)
+				record.RecoveryCommand = apiLatencyCleanupRecoveryCommand(d.APILatencyCleanupResourceProcessDefinition, key, plan)
+				return record, waitErr
+			}
 			return record, nil
 		}
 		if !errors.Is(err, d.ErrConflict) {
@@ -224,6 +232,24 @@ func (s *Service) deleteAPILatencyProcessDefinition(ctx context.Context, key str
 			return record, waitErr
 		}
 	}
+}
+
+// waitForAPILatencyProcessDefinitionAbsent confirms the exact deployed definition is no longer directly visible.
+func (s *Service) waitForAPILatencyProcessDefinitionAbsent(ctx context.Context, key string, opts ...services.CallOption) error {
+	poll := func(ctx context.Context) (poller.JobPollStatus, error) {
+		_, err := s.pdAPI.GetProcessDefinition(ctx, key, opts...)
+		if errors.Is(err, d.ErrNotFound) {
+			return poller.JobPollStatus{Success: true, Message: fmt.Sprintf("API latency process definition %s no longer visible", key)}, nil
+		}
+		if err != nil {
+			return poller.JobPollStatus{}, err
+		}
+		return poller.JobPollStatus{Success: false, Message: fmt.Sprintf("API latency process definition %s still visible", key)}, nil
+	}
+	if err := poller.WaitForCompletion(ctx, s.log, poller.DefaultCompletionTimeout, true, poll); err != nil {
+		return fmt.Errorf("wait for API latency process definition %s absence: %w", key, err)
+	}
+	return nil
 }
 
 // apiLatencyWaitForCleanupRetry waits between exact cleanup retries while honoring the cleanup context.

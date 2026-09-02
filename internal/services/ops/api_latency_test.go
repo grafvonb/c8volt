@@ -753,7 +753,7 @@ func TestAPILatencyActiveExecutionUsesExactReturnedKeysAndCleansUp(t *testing.T)
 		},
 	}
 
-	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, deletedAPILatencyProcessDefinitionAPI(), resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
 		CommandName: "ops execute api-latency-test",
 		Count:       3,
 		Workers:     1,
@@ -823,7 +823,7 @@ func TestAPILatencyActiveDeployErrorWithReturnedKeyCleansExactDefinition(t *test
 		},
 	}
 
-	got, err := NewWithAnalysisDependencies(cluster, stubProcessInstanceAPI{}, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+	got, err := NewWithAnalysisDependencies(cluster, stubProcessInstanceAPI{}, nil, deletedAPILatencyProcessDefinitionAPI(), resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
 		Count:    1,
 		Workers:  1,
 		TenantID: "tenant-a",
@@ -910,7 +910,7 @@ func TestAPILatencyActiveExecutionBoundsWorkersAndClassifiesVisibilityErrors(t *
 	}, 1)
 
 	go func() {
-		got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+		got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, deletedAPILatencyProcessDefinitionAPI(), resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
 			Count:    3,
 			Workers:  2,
 			TenantID: "tenant-a",
@@ -982,7 +982,7 @@ func TestAPILatencyActiveOwnershipRegistryDeduplicatesAndCleansExactKeys(t *test
 		},
 	}
 
-	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, deletedAPILatencyProcessDefinitionAPI(), resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
 		Count:    len(returnedKeys),
 		Workers:  4,
 		TenantID: "tenant-a",
@@ -1029,7 +1029,7 @@ func TestAPILatencyActiveCleanupAfterCanceledCallerUsesIndependentContext(t *tes
 		},
 	}
 
-	got, err := NewWithAnalysisDependencies(cluster, stubProcessInstanceAPI{}, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(ctx, d.APILatencyRequest{
+	got, err := NewWithAnalysisDependencies(cluster, stubProcessInstanceAPI{}, nil, deletedAPILatencyProcessDefinitionAPI(), resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(ctx, d.APILatencyRequest{
 		Count:    1,
 		Workers:  1,
 		TenantID: "tenant-a",
@@ -1154,7 +1154,7 @@ func TestAPILatencyActiveInstanceCleanupCancelsActiveHistoryConflict(t *testing.
 		},
 	}
 
-	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, deletedAPILatencyProcessDefinitionAPI(), resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
 		Count:    1,
 		Workers:  1,
 		TenantID: "tenant-a",
@@ -1216,7 +1216,7 @@ func TestAPILatencyActiveDefinitionCleanupRetriesConflict(t *testing.T) {
 		},
 	}
 
-	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, deletedAPILatencyProcessDefinitionAPI(), resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
 		Count:    1,
 		Workers:  1,
 		TenantID: "tenant-a",
@@ -1272,7 +1272,9 @@ func TestAPILatencyActiveCleanupCancelsWaitsDeletesAndConfirmsAbsence(t *testing
 		},
 		waitProcessInstance: func(_ context.Context, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
 			require.Equal(t, "pi-active", key)
-			require.False(t, services.ApplyCallOptions(opts).NoWait)
+			cfg := services.ApplyCallOptions(opts)
+			require.False(t, cfg.NoWait)
+			require.True(t, cfg.UnlimitedWaitRetries)
 			switch {
 			case desired.Contains(d.StateCanceled) && desired.Contains(d.StateTerminated):
 				sequence.Append("wait-terminal:" + key)
@@ -1297,7 +1299,7 @@ func TestAPILatencyActiveCleanupCancelsWaitsDeletesAndConfirmsAbsence(t *testing
 		},
 	}
 
-	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, deletedAPILatencyProcessDefinitionAPI(), resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
 		Count:    1,
 		Workers:  1,
 		TenantID: "tenant-a",
@@ -1376,7 +1378,7 @@ func TestAPILatencyActiveCleanupSkipsDefinitionWhenInstanceCleanupFails(t *testi
 		},
 	}
 
-	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, deletedAPILatencyProcessDefinitionAPI(), resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
 		Count:    1,
 		Workers:  1,
 		TenantID: "tenant-a",
@@ -1426,7 +1428,7 @@ func TestAPILatencyActiveCleanupReportsPartialFailuresAndRecoveryCommands(t *tes
 		},
 	}
 
-	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, deletedAPILatencyProcessDefinitionAPI(), resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
 		Count:    2,
 		Workers:  1,
 		TenantID: "tenant-a",
@@ -1483,7 +1485,7 @@ func TestAPILatencyActiveTimeoutAndVisibilityExhaustionStillCleanup(t *testing.T
 		},
 	}
 
-	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, stubProcessDefinitionAPI{}, resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
+	got, err := NewWithAnalysisDependencies(cluster, piAPI, nil, deletedAPILatencyProcessDefinitionAPI(), resource, nil, nil, toolx.V89).ExecuteAPILatencyTest(context.Background(), d.APILatencyRequest{
 		Count:    2,
 		Workers:  1,
 		TenantID: "tenant-a",
@@ -1560,6 +1562,15 @@ func requireAPILatencyRunID(t *testing.T, runID string) {
 	require.NoError(t, err)
 	require.Len(t, decoded, 16)
 	require.NotEqual(t, make([]byte, 16), decoded)
+}
+
+// deletedAPILatencyProcessDefinitionAPI confirms successful active cleanup waits for direct lookup absence.
+func deletedAPILatencyProcessDefinitionAPI() stubProcessDefinitionAPI {
+	return stubProcessDefinitionAPI{
+		getProcessDefinition: func(context.Context, string, ...services.CallOption) (d.ProcessDefinition, error) {
+			return d.ProcessDefinition{}, d.ErrNotFound
+		},
+	}
 }
 
 // requireAPILatencyCategory finds a stage category and checks its aggregate counts.

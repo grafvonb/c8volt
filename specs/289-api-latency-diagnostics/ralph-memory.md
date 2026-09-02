@@ -45,6 +45,7 @@ Started: 2026-09-02T04:58:25Z
 - Phase 7 T059 extended `integration/cli/volume_ops_execute_test.go` with active `ops execute api-latency-test` volume coverage: selected-version dry-run JSON/report parity, unsupported-version pre-mutation cleanup block evidence, cleanup-capable confirmed 8.9/8.10 JSON/report parity, exact ownership, visibility, and deleted PI/PD cleanup records. Confirmed volume runs pass hidden shared backoff bounds to keep cleanup evidence inside the integration command timeout.
 - API-latency cleanup now cancels exact owned process instances first with `services.WithNoStateCheck()` and `services.WithNoWait()`, waits for terminal state through the existing process-instance wait API, submits exact no-wait deletion, confirms `ABSENT`, then deletes the exact process-definition key only if every PI cleanup reached deleted status. This avoids the observed active-instance delete-before-cancel `404` path and prevents definition cleanup from spending the full retry budget after PI cleanup failure.
 - Active cleanup emits aggregate frozen-scope progress with phase `cleaning up active API latency resources` and core resource `owned resource(s)`; the existing command progress adapter consumes this without per-key lifecycle chatter.
+- Phase 8 T068 strengthened active cleanup verification: command progress tests now assert cleanup stays aggregate-only, integration confirmed cleanup queries every returned PI key and the returned PD key for direct absence, cleanup waits use `services.WithUnlimitedWaitRetries()` so the independent cleanup context rather than visibility `max_retries` bounds terminal polling, and PD cleanup now waits until direct process-definition lookup stops returning the exact key after the resource history-delete batch succeeds.
 - Phase 7 T060 updated `README.md` and `docs/ops/index.md` to surface `ops analyse api-latency` as the read-only zero-mutation diagnostic and `ops execute api-latency-test` as the confirmed bounded active diagnostic with exact-key cleanup; examples point at existing generated CLI reference pages until focused operator guides are added in T061.
 - Phase 7 T061 added focused playbook pages at `docs/ops/analyse-api-latency.md` and `docs/ops/execute-api-latency-test.md`; `docs/ops/index.md` now points API-latency workflow rows at those playbooks while each playbook links to the generated CLI reference.
 - Phase 7 T062 ran `make docs-content`; generated API-latency leaf pages were already current, while `docs/index.md` refreshed build metadata, API-latency generated-reference links, command count 57, and active all-tenants inventory wording.
@@ -64,6 +65,7 @@ Started: 2026-09-02T04:58:25Z
 - `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`
 - `go test ./cmd -run 'APILatency|OpsWorkflowReport|CommandCapability|CapabilityDocument' -count=1`
 - `go test ./internal/services/ops ./cmd -run 'APILatency' -race -count=1`
+- `go test -tags integration ./integration/cli -run 'TestVolumeOpsExecuteFamily' -count=1`
 - `git diff --check`
 - `make test`
 
@@ -73,4 +75,4 @@ Started: 2026-09-02T04:58:25Z
 - Pre-US4 evidence such as T023 and T039 intentionally covered report-path validation and partial-result/error-envelope boundaries without claiming API-latency report writing; T048/T052/T053 now implement the actual read-only and active report serialization/writing path.
 
 ## Current Handoff
-- Continue Phase 8 US3 at T068: strengthen command and disposable Camunda 8.9/8.10 coverage so confirmed integration checks query every returned PI/PD key for absence instead of trusting cleanup report status alone; T069 full validation remains open after that.
+- Continue Phase 8 US3 at T069: run focused API-latency service/command tests, the live cleanup-capable C8.9 scenario, `git diff --check`, and `make test`; record the regression cause and validation evidence before marking the feature complete.

@@ -21,6 +21,11 @@ func WithExactProcessInstanceDelete() CallOption {
 	return func(c *CallCfg) { c.ExactProcessInstanceDelete = true }
 }
 
+// WithUnlimitedWaitRetries lets context deadlines, rather than backoff max_retries, bound waiter polling.
+func WithUnlimitedWaitRetries() CallOption {
+	return func(c *CallCfg) { c.UnlimitedWaitRetries = true }
+}
+
 func WithSuppressWorkflowDetailLogs() CallOption {
 	return func(c *CallCfg) { c.SuppressWorkflowDetailLogs = true }
 }
@@ -59,6 +64,7 @@ type CallCfg struct {
 	NoWorkerLimit                     bool
 	IgnoreTenant                      bool
 	ExactProcessInstanceDelete        bool
+	UnlimitedWaitRetries              bool
 	SuppressWorkflowDetailLogs        bool
 	SuppressProcessInstanceDetailLogs bool
 	IncidentState                     string

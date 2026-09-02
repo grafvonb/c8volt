@@ -128,9 +128,9 @@ func runVolumeOpsExecuteScenarios(t *testing.T, profile integrationProfile, data
 
 	if volumeOpsExecuteAPILatencyCleanupCapable(profile) {
 		apiLatencyConfirmedReport := volumeOpsExecuteReportPath(t, "volume-ops-execute-api-latency-confirmed-cleanup", profile, "json")
-		apiLatencyConfirmedResult := runC8VoltForProfile(t, profile.Name, "volume-ops-execute-api-latency-confirmed-cleanup", "--automation", "--json", "--backoff-timeout", "10s", "--backoff-max-retries", "2", "ops", "execute", "api-latency-test", "--count", "1", "--workers", "1", "--report-file", apiLatencyConfirmedReport, "--report-format", "json")
+		apiLatencyConfirmedResult := runC8VoltForProfile(t, profile.Name, "volume-ops-execute-api-latency-confirmed-cleanup", "--automation", "--json", "--backoff-timeout", "30s", "--backoff-max-retries", "2", "ops", "execute", "api-latency-test", "--count", "1", "--workers", "1", "--report-file", apiLatencyConfirmedReport, "--report-format", "json")
 		apiLatencyConfirmedRecord := volumeOpsExecuteAPILatencyRecord(profile, dataset, apiLatencyConfirmedResult, "volume-ops-execute-api-latency-confirmed-cleanup", "json", []string{"automation", "json", "backoff-timeout", "backoff-max-retries", "count", "workers", "report-file", "report-format"}, false, true)
-		if err := validateVolumeOpsExecuteAPILatencyConfirmed(apiLatencyConfirmedResult, apiLatencyConfirmedReport, profile); err != nil {
+		if err := validateVolumeOpsExecuteAPILatencyConfirmed(t, apiLatencyConfirmedResult, apiLatencyConfirmedReport, profile); err != nil {
 			apiLatencyConfirmedRecord.Outcome = volumeOutcomeFail
 			apiLatencyConfirmedRecord.FailureClass = volumeFailureProduct
 			failures = append(failures, fmt.Sprintf("volume-ops-execute-api-latency-confirmed-cleanup: %v", err))
@@ -316,7 +316,8 @@ func validateVolumeOpsExecuteAPILatencyDryRun(result commandResult, reportPath s
 	return nil
 }
 
-func validateVolumeOpsExecuteAPILatencyConfirmed(result commandResult, reportPath string, profile integrationProfile) error {
+func validateVolumeOpsExecuteAPILatencyConfirmed(t *testing.T, result commandResult, reportPath string, profile integrationProfile) error {
+	t.Helper()
 	if err := requireVolumeCommandSuccess(result, "ops execute api-latency-test confirmed volume"); err != nil {
 		return err
 	}
@@ -344,8 +345,11 @@ func validateVolumeOpsExecuteAPILatencyConfirmed(result commandResult, reportPat
 	if err := validateVolumeOpsExecuteAPILatencyExecutionPayload(reportPayload, reportRaw, profile); err != nil {
 		return fmt.Errorf("report payload mismatch: %w", err)
 	}
-	if reportPayload.Outcome != stdoutPayload.Outcome || reportPayload.Ownership.ProcessDefinitionKey != stdoutPayload.Ownership.ProcessDefinitionKey {
-		return fmt.Errorf("api-latency confirmed stdout/report parity mismatch: outcome %q/%q processDefinitionKey %q/%q", stdoutPayload.Outcome, reportPayload.Outcome, stdoutPayload.Ownership.ProcessDefinitionKey, reportPayload.Ownership.ProcessDefinitionKey)
+	if reportPayload.Outcome != stdoutPayload.Outcome || reportPayload.Ownership.ProcessDefinitionKey != stdoutPayload.Ownership.ProcessDefinitionKey || strings.Join(reportPayload.Ownership.ProcessInstanceKeys, ",") != strings.Join(stdoutPayload.Ownership.ProcessInstanceKeys, ",") {
+		return fmt.Errorf("api-latency confirmed stdout/report parity mismatch: outcome %q/%q processDefinitionKey %q/%q processInstanceKeys %v/%v", stdoutPayload.Outcome, reportPayload.Outcome, stdoutPayload.Ownership.ProcessDefinitionKey, reportPayload.Ownership.ProcessDefinitionKey, stdoutPayload.Ownership.ProcessInstanceKeys, reportPayload.Ownership.ProcessInstanceKeys)
+	}
+	if err := validateVolumeOpsExecuteAPILatencyOwnedResourcesAbsent(t, profile, stdoutPayload); err != nil {
+		return err
 	}
 	return nil
 }
@@ -498,6 +502,27 @@ func validateVolumeOpsExecuteAPILatencyExecutionPayload(payload volumeOpsExecute
 		if _, ok := raw["cleanup"]; !ok {
 			return fmt.Errorf("api-latency raw report missing cleanup")
 		}
+	}
+	return nil
+}
+
+// validateVolumeOpsExecuteAPILatencyOwnedResourcesAbsent queries every exact key
+// returned by the active diagnostic instead of relying on cleanup status fields.
+func validateVolumeOpsExecuteAPILatencyOwnedResourcesAbsent(t *testing.T, profile integrationProfile, payload volumeOpsExecuteAPILatencyPayload) error {
+	t.Helper()
+	if payload.Ownership == nil {
+		return fmt.Errorf("api-latency confirmed payload missing ownership for absence verification")
+	}
+	for _, key := range payload.Ownership.ProcessInstanceKeys {
+		if err := requireProcessInstanceAbsent(t, profile, key); err != nil {
+			return fmt.Errorf("api-latency owned process instance %s still present after cleanup: %w", key, err)
+		}
+	}
+	if payload.Ownership.ProcessDefinitionKey == "" {
+		return fmt.Errorf("api-latency confirmed payload missing process-definition key for absence verification")
+	}
+	if err := requireProcessDefinitionAbsent(t, profile, payload.Ownership.ProcessDefinitionKey); err != nil {
+		return fmt.Errorf("api-latency owned process definition %s still present after cleanup: %w", payload.Ownership.ProcessDefinitionKey, err)
 	}
 	return nil
 }

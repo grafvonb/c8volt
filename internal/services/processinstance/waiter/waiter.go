@@ -156,7 +156,7 @@ func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *con
 			logging.UpdateActivityWithImportance(ctx, waitMsg, logging.ActivityImportanceWait)
 			logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
 		}
-		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
+		if !cCfg.UnlimitedWaitRetries && backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
 			elapsed := time.Since(start)
 			status := fmt.Sprintf("exceeded max_retries (%d) waiting for expectation(s) of process instance %s after %d attempts in %s", backoff.MaxRetries, key, attempts, elapsed)
 			log.Debug(status)
@@ -236,7 +236,7 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 				return d.StateResponse{Ok: false, State: got, Status: status}, d.ProcessInstance{}, fmt.Errorf("%w: %s", errInDelay, status)
 			}
 		}
-		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
+		if !cCfg.UnlimitedWaitRetries && backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
 			elapsed := time.Since(start)
 			status := fmt.Sprintf("exceeded max_retries (%d) waiting for state %q of process instance %s after %d attempts in %s", backoff.MaxRetries, desired, key, attempts, elapsed)
 			log.Debug(status)

@@ -651,3 +651,25 @@ Started: 2026-09-02 06:58:25
 - Active API-latency cleanup now avoids delete-before-cancel active-instance failures, confirms absence before process-definition cleanup, and marks the owned process definition unknown when a PI cleanup failure blocks safe definition deletion.
 - Validation passed: `go test ./internal/services/ops -run 'TestAPILatencyActiveCleanup(CancelsWaitsDeletesAndConfirmsAbsence|SkipsDefinitionWhenInstanceCleanupFails)' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./internal/services/ops -run 'APILatency' -race -count=1`; `git diff --check`.
 ---
+---
+## Iteration 2 - 2026-09-02 16:48
+**Work Unit**: Phase 8 US3 partial: cleanup absence coverage and confirmation
+**Tasks Completed**:
+- [x] T068: Strengthen command and disposable Camunda 8.9/8.10 coverage so cleanup progress remains compact and confirmed integration checks query every returned PI/PD key for absence
+**Tasks Remaining in Work Unit**: 1 Phase 8 US3 task remains: T069 focused/live/full validation
+**Commit**: This work-unit commit
+**Files Changed**:
+- `cmd/ops_execute_api_latency_test.go`
+- `integration/cli/volume_ops_execute_test.go`
+- `internal/services/calloption.go`
+- `internal/services/ops/api_latency_cleanup.go`
+- `internal/services/ops/api_latency_test.go`
+- `internal/services/processinstance/waiter/waiter.go`
+- `internal/services/processinstance/waiter/waiter_test.go`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Live T068 absence checks exposed that successful PD history-delete batch completion was not enough to prove direct lookup absence; API-latency cleanup now waits for the exact PD key to disappear and cleanup PI waiters ignore visibility `max_retries` while remaining bounded by the independent cleanup context.
+- Validation passed: `go test ./internal/services/processinstance/waiter -run 'TestWaitForProcessInstanceState' -count=1`; `go test ./internal/services/ops -run 'APILatency' -count=1`; `go test ./cmd -run 'TestOpsExecuteAPILatencyProgressModeGate' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test -tags integration ./integration/cli -run 'TestVolumeOpsExecuteFamily' -count=1`; `git diff --check`.
+---
