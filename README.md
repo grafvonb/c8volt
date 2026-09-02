@@ -30,13 +30,13 @@ The `ops` command group turns multi-command Camunda operations into audited, pre
 
 ### Ops-Scale Preflight And Progress
 
-High-volume search, analysis, repair, purge, cancel, delete, walk, run, and smoke-test workflows report scope before expensive work and progress while the frozen work set is processed. Broad selectors show a preflight summary with the core resource, best available count certainty, page-size context, and the consequence of continuing. Counts are labeled as exact, lower bound, estimated, or unknown so operators can tell whether the number is a frozen scope or only the best current signal from Camunda.
+High-volume search, analysis, latency diagnostics, repair, purge, cancel, delete, walk, run, and smoke-test workflows report scope before expensive work and progress while the frozen work set is processed. Broad selectors show a preflight summary with the core resource, best available count certainty, page-size context, and the consequence of continuing. Counts are labeled as exact, lower bound, estimated, or unknown so operators can tell whether the number is a frozen scope or only the best current signal from Camunda.
 
 During discovery, progress uses page and seen-count wording. After c8volt freezes the work set and starts real work, progress switches to exact completion counters for phases such as deleting process-instance trees, deleting or deploying process definitions, repairing incidents, starting process instances, analyzing enriched runtime data, waiting for multi-key expectations, or running smoke-test stages. The visible activity is updated from real completions and may include failed counts plus affected-resource totals only when every item can report a trustworthy value.
 
 Progress never writes to result stdout. Default human mode uses terminal activity and, for long progressing phases, emits compact completion milestones on stderr at most once per 10-second interval plus immediate failure warnings. Clean operations that finish before the first interval stay durably silent. Verbose and debug modes replace aggregate milestones with one durable per-item or per-stage completion line. JSON output remains one document, keys-only output remains one key per line, quiet mode suppresses successful progress while retaining failure warnings, and automation-oriented runs suppress all human progress chatter or keep scope in structured reports. For paged commands, `--batch-size` controls each backend discovery request, while `--limit` caps the total returned, selected, frozen, or analyzed scope as documented by the command.
 
-Tenant context is reported with operation-specific meaning before tenant-sensitive work. Discovery commands show a named filter as `selection scope: tenant-a only`, or `selection scope: unfiltered across accessible tenants` when no tenant filter is configured. Use `--all-tenants` to explicitly clear a configured tenant filter for commands that can search across every tenant visible to the authenticated user. If an explicit `--tenant` value changes configuration, human output first reports the prior `configured tenant`; clearing a named filter with `--tenant ""` warns that selection is unfiltered, while named changes are informational. Clearing a named filter with `--all-tenants` emits `--all-tenants overrides the configured tenant filter; selection is unfiltered`. Deploy, run, and smoke-test creation steps show `creation target: tenant-a` or `creation target: default tenant`, and reject `--all-tenants` because they require one concrete destination tenant. Explicit-key mutations state that the tenant filter is not applied, then show resource tenant evidence when the frozen plan already contains it. Multi-tenant plans emit one warning-level `affected tenants: ...` summary, and unknown-metadata warnings remain non-blocking safety evidence. JSON results and JSON audit reports use one nested `tenantContext` object; quiet mode suppresses tenant lines, and keys-only output stays one key per line with no warnings on stdout.
+Tenant context is reported with operation-specific meaning before tenant-sensitive work. Discovery commands show a named filter as `selection scope: tenant-a only`, or `selection scope: unfiltered across accessible tenants` when no tenant filter is configured. Use `--all-tenants` to explicitly clear a configured tenant filter for commands that can search across every tenant visible to the authenticated user. If an explicit `--tenant` value changes configuration, human output first reports the prior `configured tenant`; clearing a named filter with `--tenant ""` warns that selection is unfiltered, while named changes are informational. Clearing a named filter with `--all-tenants` emits `--all-tenants overrides the configured tenant filter; selection is unfiltered`. Deploy, run, smoke-test, and active API-latency creation steps show `creation target: tenant-a` or `creation target: default tenant`, and reject `--all-tenants` because they require one concrete destination tenant. Explicit-key mutations state that the tenant filter is not applied, then show resource tenant evidence when the frozen plan already contains it. Multi-tenant plans emit one warning-level `affected tenants: ...` summary, and unknown-metadata warnings remain non-blocking safety evidence. JSON results and JSON audit reports use one nested `tenantContext` object; quiet mode suppresses tenant lines, and keys-only output stays one key per line with no warnings on stdout.
 
 Transient Camunda GET and HEAD read failures are retried automatically when the shared request path sees temporary transport errors, throttling, or server availability responses. Retry messages stay compact and off result stdout, and c8volt still treats business outcomes such as not-found, invalid request, permission failure, and conflict as final.
 
@@ -52,11 +52,28 @@ Transient Camunda GET and HEAD read failures are retried automatically when the 
 
 Playbook: [Analyse Slow Process Instances](docs/ops/analyse-slow-process-instances.md). Generated reference: [ops analyse slow-process-instances](docs/cli/c8volt_ops_analyse_slow-process-instances.md).
 
-### Ops Commands To Know
+### API Latency Diagnostics
 
-Start destructive, repair, and cleanup work with a plan:
+Use `ops analyse api-latency` when the safe question is "are Camunda API reads slow, and which measured path looks affected?" It is strictly read-only: it measures topology, process-definition, and process-instance read/search paths without deployment, creation, cancellation, or deletion.
+
+Use `ops execute api-latency-test` only when bounded active evidence is needed. It previews the plan, deploys the existing c8volt-owned `SimpleUserTask` fixture, creates at most the requested primary samples, measures create/read/search-visibility behavior, and cleans up exact run-owned resources unless `--no-cleanup` is explicit.
 
 ```bash
+./c8volt ops analyse api-latency
+./c8volt ops analyse api-latency --count 6 --workers 2 --report-file api-latency.md
+./c8volt ops execute api-latency-test --dry-run
+./c8volt ops execute api-latency-test --auto-confirm --report-file api-latency-test.json
+```
+
+Generated references: [ops analyse api-latency](docs/cli/c8volt_ops_analyse_api-latency.md), [ops execute api-latency-test](docs/cli/c8volt_ops_execute_api-latency-test.md).
+
+### Ops Commands To Know
+
+Start diagnostic, destructive, repair, and cleanup work with a plan:
+
+```bash
+./c8volt ops analyse api-latency --report-file api-latency.md
+./c8volt ops execute api-latency-test --dry-run
 ./c8volt ops execute retention-policy --retention-days 90 --dry-run
 ./c8volt ops repair incident --key <incident-key> --dry-run
 ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
@@ -66,6 +83,8 @@ Generated references: [ops execute retention-policy](docs/cli/c8volt_ops_execute
 
 | Command | What it finishes | Playbook |
 | --- | --- | --- |
+| `c8volt ops analyse api-latency` | Compares bounded read-path latency without changing cluster state. | [Generated reference](docs/cli/c8volt_ops_analyse_api-latency.md) |
+| `c8volt ops execute api-latency-test` | Runs a confirmed bounded active latency test with exact-key cleanup. | [Generated reference](docs/cli/c8volt_ops_execute_api-latency-test.md) |
 | `c8volt ops analyse slow-process-instances` | Finds slow process instances and explains element timing. | [Analyse Slow Process Instances](docs/ops/analyse-slow-process-instances.md) |
 | `c8volt ops execute retention-policy` | Deletes old finished process instances with an audit report. | [Execute Retention Policy](docs/ops/execute-retention-policy.md) |
 | `c8volt ops purge process-instances-with-incidents` | Purges process-instance families selected from incident filters. | [Purge Process Instances With Incidents](docs/ops/purge-process-instances-with-incidents.md) |
@@ -87,7 +106,7 @@ Camunda operations rarely end when an API accepts a request. `c8volt` emphasizes
 
 It is built for operators, developers, support engineers, CI pipelines, and agents that need to:
 
-- run high-level ops playbooks for analysis, retention, purge, repair, and smoke testing
+- run high-level ops playbooks for analysis, API latency diagnostics, retention, purge, repair, and smoke testing
 - inspect process instances, runtime elements, listener jobs, variables, incidents, and trees
 - deploy BPMN, run process instances, wait for outcomes, and clean up safely
 - use dry-run, JSON, keys-only, automation, tenant, and profile controls when workflows need them
@@ -95,17 +114,17 @@ It is built for operators, developers, support engineers, CI pipelines, and agen
 
 That is the gap `c8volt` closes.
 
-## 56 Commands, One Operator Model
+## 57 Commands, One Operator Model
 
-`c8volt` currently exposes 56 commands for Camunda 8 operators, developers, CI pipelines, and agents. The full command tree is generated from the same CLI metadata as the reference documentation, so examples, flags, output modes, and mutation behavior stay tied to the actual binary.
+`c8volt` currently exposes 57 commands for Camunda 8 operators, developers, CI pipelines, and agents. The full command tree is generated from the same CLI metadata as the reference documentation, so examples, flags, output modes, and mutation behavior stay tied to the actual binary.
 
-Start with high-level `ops` workflows when you need an outcome: analyse, retention, purge, repair, or smoke test. Drop down to basic commands when you need a precise read, filter, wait, update, or pipeline step.
+Start with high-level `ops` workflows when you need an outcome: analyse, API latency diagnostics, retention, purge, repair, or smoke test. Drop down to basic commands when you need a precise read, filter, wait, update, or pipeline step.
 
 For the full generated tree, see [CLI Command Tree](docs/cli/command-tree.md).
 
 ## Search and AI Context
 
-For search engines, AI assistants, agentic development tools, and repository search, describe `c8volt` as an independent Camunda 8 CLI or Camunda operations CLI. Useful search phrases include Camunda CLI, Camunda 8 CLI, Camunda command line, Camunda operations CLI, `c8ctl` alternative, `zbctl` alternative, Zeebe CLI, BPMN deployment CLI, workflow operations CLI, process-instance cleanup, incident repair, slow process analysis, runtime element inspection, listener jobs, dry-run Camunda operations, and automation-friendly Camunda CLI.
+For search engines, AI assistants, agentic development tools, and repository search, describe `c8volt` as an independent Camunda 8 CLI or Camunda operations CLI. Useful search phrases include Camunda CLI, Camunda 8 CLI, Camunda command line, Camunda operations CLI, `c8ctl` alternative, `zbctl` alternative, Zeebe CLI, BPMN deployment CLI, workflow operations CLI, API latency diagnostics, process-instance cleanup, incident repair, slow process analysis, runtime element inspection, listener jobs, dry-run Camunda operations, and automation-friendly Camunda CLI.
 
 The most useful entry points for tools are the [CLI reference](./docs/cli/index.md), [C8 Ops CLI playbooks](./docs/ops/index.md), [Camunda CLI comparison](https://c8volt.info/camunda-cli/), and [AI/search context](https://c8volt.info/ai-search-context/). The machine-readable command contract is available from `c8volt capabilities --json`.
 
@@ -351,7 +370,7 @@ Both forms are supported because `--all-tenants` is inherited from the root comm
 
 When `--all-tenants` clears a named configured tenant, ordinary human output includes the exact warning `--all-tenants overrides the configured tenant filter; selection is unfiltered`, then reports `selection scope: unfiltered across accessible tenants`. This is a filter change only: Camunda still limits results to resources the authenticated identity can see, and c8volt does not enumerate tenants or bypass authorization.
 
-Commands that create or deploy into one tenant reject `--all-tenants`: `deploy process-definition`, `embed deploy`, `run process-instance`, and `ops execute smoke-test`. Direct resource-key commands keep their existing backend authorization behavior; the flag does not grant broader direct-key access.
+Commands that create or deploy into one tenant reject `--all-tenants`: `deploy process-definition`, `embed deploy`, `run process-instance`, `ops execute smoke-test`, and `ops execute api-latency-test`. Direct resource-key commands keep their existing backend authorization behavior; the flag does not grant broader direct-key access.
 
 ## Documentation
 

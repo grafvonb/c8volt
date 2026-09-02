@@ -10,12 +10,14 @@ has_toc: true
 
 Low-level commands do work. `c8volt ops` finishes workflows.
 
-The ops command group is the operator-facing layer for predefined Camunda playbooks. Each command composes lower-level c8volt behavior such as discovery, runtime element inspection, tree traversal, delete planning, incident lookup, confirmation, waiting, JSON output, and report writing.
+The ops command group is the operator-facing layer for predefined Camunda playbooks. Each command composes lower-level c8volt behavior such as discovery, API latency measurement, runtime element inspection, tree traversal, delete planning, incident lookup, confirmation, waiting, JSON output, and report writing.
 
 ## Playbook Index
 
 | Workflow | Command | Use when |
 | --- | --- | --- |
+| [Analyse API Latency](/cli/c8volt_ops_analyse_api-latency) | `c8volt ops analyse api-latency` | You need bounded read-path latency evidence without changing cluster state. |
+| [Execute API Latency Test](/cli/c8volt_ops_execute_api-latency-test) | `c8volt ops execute api-latency-test` | You need confirmed active write/read/visibility latency evidence with exact-key cleanup. |
 | [Analyse Slow Process Instances](./analyse-slow-process-instances/) | `c8volt ops analyse slow-process-instances` | You need to find slow runtime work and explain it with element timing and listener context. |
 | [Execute Retention Policy](./execute-retention-policy/) | `c8volt ops execute retention-policy` | You need an auditable cleanup of old finished process instances. |
 | [Purge Process Instances With Incidents](./purge-process-instances-with-incidents/) | `c8volt ops purge process-instances-with-incidents` | You need to delete process-instance families selected from incident filters. |
@@ -28,6 +30,24 @@ The ops command group is the operator-facing layer for predefined Camunda playbo
 ## Shared Shape
 
 Every ops playbook page keeps the same compact structure: purpose, use when, basic usage, best variants, lower-level commands, output/report behavior, and safety notes. Generated reference pages remain the exact flag contract.
+
+## API Latency Diagnostics
+
+Use the read-only analysis first when production safety is the priority:
+
+```bash
+c8volt ops analyse api-latency
+c8volt ops analyse api-latency --count 6 --workers 2 --report-file api-latency.md
+```
+
+Use the active test only when write and search-visibility evidence is needed. Preview the plan with `--dry-run`; real execution deploys a c8volt-owned fixture, creates a bounded number of process instances, and cleans up exact run-owned resources unless `--no-cleanup` is explicit.
+
+```bash
+c8volt ops execute api-latency-test --dry-run
+c8volt ops execute api-latency-test --auto-confirm --report-file api-latency-test.json
+```
+
+Both commands support compact human output, one-document JSON output, and shared Markdown or JSON reports. `ops analyse api-latency` performs no mutation; `ops execute api-latency-test` requires one concrete tenant and rejects `--all-tenants`.
 
 ## Safety Model
 
@@ -60,7 +80,7 @@ wait and verify
 write audit report
 ```
 
-Tenant-aware discovery playbooks accept `--all-tenants` when the configured tenant filter should be cleared for one run. The scope is unfiltered only across tenants visible to the authenticated identity; it does not enumerate tenants or bypass backend authorization. If the option clears a named configured tenant, human output emits `--all-tenants overrides the configured tenant filter; selection is unfiltered` before the unfiltered selection scope. It is mutually exclusive with any explicit `--tenant` value. Workflows that create resources in one concrete tenant, such as `ops execute smoke-test`, reject `--all-tenants`.
+Tenant-aware discovery playbooks accept `--all-tenants` when the configured tenant filter should be cleared for one run. The scope is unfiltered only across tenants visible to the authenticated identity; it does not enumerate tenants or bypass backend authorization. If the option clears a named configured tenant, human output emits `--all-tenants overrides the configured tenant filter; selection is unfiltered` before the unfiltered selection scope. It is mutually exclusive with any explicit `--tenant` value. Workflows that create resources in one concrete tenant, such as `ops execute smoke-test` and `ops execute api-latency-test`, reject `--all-tenants`.
 
 ## Reports And Demos
 

@@ -537,3 +537,20 @@ Started: 2026-09-02 06:58:25
 - Live C89 cleanup exposed exporter-lag-sensitive descendant prechecks, active-history delete conflicts, and short absent-wait exhaustion; API-latency cleanup now submits exact no-wait PI deletes, cancels exact active fixture instances on conflict, and retries exact PD deletion on transient conflicts.
 - Validation passed: `go test ./internal/services/ops -run 'TestAPILatencyActive(PlanDerivesVisibilityBound|ExecutionUsesExactReturnedKeysAndCleansUp|InstanceCleanupCancelsActiveHistoryConflict|DefinitionCleanupRetriesConflict)' -count=1`; `go test ./internal/services/processinstance/v89 ./internal/services/processinstance/v810 -run 'TestService_CancelAndDeleteProcessInstance/ExactDeleteBypassesDescendantLookup' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./internal/services/ops ./cmd -run 'APILatency' -race -count=1`; `go test -tags integration ./integration/cli -run 'TestVolumeOpsExecuteFamily|TestCommandInventory' -count=1`; `git diff --check`.
 ---
+---
+## Iteration 25 - 2026-09-02 10:51
+**Work Unit**: Phase 7 polish: API latency README and ops-index discoverability
+**Tasks Completed**:
+- [x] T060: Add command discoverability, safety distinction, and representative examples to `README.md` and `docs/ops/index.md`
+**Tasks Remaining in Work Unit**: 5 Phase 7 tasks remain: T061-T065
+**Commit**: This work-unit commit
+**Files Changed**:
+- `README.md`
+- `docs/ops/index.md`
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- API-latency docs discoverability now distinguishes read-only zero-mutation analysis from confirmed active testing with cleanup; focused operator guide pages remain the next docs task.
+- Validation passed: `git diff --check`; generated reference targets for both API-latency commands exist.
+---
