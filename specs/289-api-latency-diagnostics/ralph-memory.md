@@ -4,7 +4,7 @@ Feature: 289-api-latency-diagnostics
 Started: 2026-09-02T04:58:25Z
 
 ## Codebase Patterns
-- First incomplete work now begins at Phase 7 T063; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, bounded active US2 command/service/facade/rendering work T024-T035, US3 ownership/cleanup/recovery preservation work T036-T046, all US4 reproducible evidence work T047-T056, command capability/inventory coverage T057, read-only analyse volume coverage T058, active execute volume coverage T059, README/ops-index discoverability T060, focused operator guidance T061, and generated docs refresh/review T062 are complete.
+- First incomplete work now begins at Phase 7 T064; foundational API-latency domain/service/facade contracts T003-T013, read-only analyse implementation/evidence T014-T023, bounded active US2 command/service/facade/rendering work T024-T035, US3 ownership/cleanup/recovery preservation work T036-T046, all US4 reproducible evidence work T047-T056, command capability/inventory coverage T057, read-only analyse volume coverage T058, active execute volume coverage T059, README/ops-index discoverability T060, focused operator guidance T061, generated docs refresh/review T062, and documentation example/non-tag integration verification T063 are complete.
 - Commands own Cobra construction, local flag validation, confirmation, activity/progress setup, report-path validation, and final rendering. Follow `cmd/ops_analyse_slow_process_instances.go` for read-only analysis wiring and `cmd/ops_execute_smoketest.go` for active ops execution wiring.
 - Public `c8volt/ops` facade methods are thin: map public request to `internal/domain`, delegate to `internal/services/ops.API`, map results back, and convert errors with `ferrors.FromDomain`.
 - `internal/services/ops.Service` is the owning layer for stage planning, remote workflow mechanics, worker scheduling, cleanup orchestration, and progress facts. `NewWithAnalysisDependencies` already carries cluster, process-instance, process-definition, resource, job, element, version, and logger dependencies for this feature.
@@ -69,4 +69,4 @@ Started: 2026-09-02T04:58:25Z
 - Pre-US4 evidence such as T023 and T039 intentionally covered report-path validation and partial-result/error-envelope boundaries without claiming API-latency report writing; T048/T052/T053 now implement the actual read-only and active report serialization/writing path.
 
 ## Current Handoff
-- Next iteration should begin Phase 7 at T063 by running `go test ./integration/cli -count=1` and recording documentation example/non-tag integration results.
+- Next iteration should begin Phase 7 at T064 by running `gofmt` on touched Go files, `git diff --check`, and focused service/facade/command tests from `specs/289-api-latency-diagnostics/quickstart.md`, then recording the validation results.

@@ -588,3 +588,17 @@ Started: 2026-09-02 06:58:25
 - `make docs-content` left the generated API-latency leaf pages unchanged and refreshed `docs/index.md` with API-latency discovery, generated-reference links, command count 57, and active all-tenants wording.
 - Validation passed: `make docs-content`; reviewed `docs/cli/c8volt_ops_analyse_api-latency.md`, `docs/cli/c8volt_ops_execute_api-latency-test.md`, and `docs/index.md`; `git diff --check`.
 ---
+---
+## Iteration 28 - 2026-09-02 11:02
+**Work Unit**: Phase 7 polish: documentation examples and non-tag integration contracts
+**Tasks Completed**:
+- [x] T063: Verify documentation examples and non-tag integration contracts with `go test ./integration/cli -count=1`; record results
+**Tasks Remaining in Work Unit**: 2 Phase 7 tasks remain: T064-T065
+**Commit**: This work-unit commit
+**Files Changed**:
+- `specs/289-api-latency-diagnostics/tasks.md`
+- `specs/289-api-latency-diagnostics/ralph-memory.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Non-tag integration CLI contracts and documentation examples passed without code or docs changes: `go test ./integration/cli -count=1`.
+---
