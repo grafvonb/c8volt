@@ -156,7 +156,7 @@
 
 **Purpose**: Integrate the two leaves with repository inventories, real-state suites, documentation, formatting, and full validation.
 
-- [ ] T057 Update command capability/family assertions and the expected inventory from 55 to 57 in `cmd/command_contract_test.go`, `cmd/capabilities_test.go`, and `integration/cli/all_commands_test.go`
+- [x] T057 Update command capability/family assertions and the expected inventory from 55 to 57 in `cmd/command_contract_test.go`, `cmd/capabilities_test.go`, and `integration/cli/all_commands_test.go`
 - [ ] T058 [P] Extend read-only human, JSON, report, bounds, and seeded dirty-state coverage in `integration/cli/volume_ops_analyse_test.go`
 - [ ] T059 [P] Extend active dry-run selected-version coverage and disposable 8.9/8.10 confirmed-cleanup evidence in `integration/cli/volume_ops_execute_test.go`
 - [ ] T060 [P] Add command discoverability, safety distinction, and representative examples to `README.md` and `docs/ops/index.md`

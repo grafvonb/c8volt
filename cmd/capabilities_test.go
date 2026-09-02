@@ -128,6 +128,7 @@ func TestCapabilitiesCommand_JSONIncludesAllTenantsSupport(t *testing.T) {
 		{path: "embed deploy", want: AllTenantsSupportRejectedConcreteDestination},
 		{path: "run process-instance", want: AllTenantsSupportRejectedConcreteDestination},
 		{path: "ops execute smoke-test", want: AllTenantsSupportRejectedConcreteDestination},
+		{path: "ops execute api-latency-test", want: AllTenantsSupportRejectedConcreteDestination},
 	}
 
 	for _, tt := range tests {
@@ -199,6 +200,16 @@ func TestCapabilitiesCommand_JSONIncludesOpsRootMetadata(t *testing.T) {
 	require.Equal(t, AutomationSupportUnsupported, ops.AutomationSupport)
 	require.Contains(t, ops.Aliases, "operations")
 	require.Contains(t, ops.Summary, "Discover high-level operational workflows")
+	analyse, ok := findCommandCapability(ops.Children, "ops analyse")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationReadOnly, analyse.Mutation)
+	require.Equal(t, ContractSupportLimited, analyse.ContractSupport)
+	require.Equal(t, AutomationSupportUnsupported, analyse.AutomationSupport)
+	apiLatencyAnalyse, ok := findCommandCapability(analyse.Children, "ops analyse api-latency")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationReadOnly, apiLatencyAnalyse.Mutation)
+	require.Equal(t, ContractSupportFull, apiLatencyAnalyse.ContractSupport)
+	require.Equal(t, AutomationSupportFull, apiLatencyAnalyse.AutomationSupport)
 	execute, ok := findCommandCapability(ops.Children, "ops execute")
 	require.True(t, ok)
 	require.Equal(t, CommandMutationStateChanging, execute.Mutation)
@@ -210,6 +221,12 @@ func TestCapabilitiesCommand_JSONIncludesOpsRootMetadata(t *testing.T) {
 	require.Equal(t, CommandMutationStateChanging, retentionPolicy.Mutation)
 	require.Equal(t, ContractSupportFull, retentionPolicy.ContractSupport)
 	require.Equal(t, AutomationSupportFull, retentionPolicy.AutomationSupport)
+	apiLatencyTest, ok := findCommandCapability(execute.Children, "ops execute api-latency-test")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, apiLatencyTest.Mutation)
+	require.Equal(t, ContractSupportFull, apiLatencyTest.ContractSupport)
+	require.Equal(t, AutomationSupportFull, apiLatencyTest.AutomationSupport)
+	require.Equal(t, AllTenantsSupportRejectedConcreteDestination, apiLatencyTest.AllTenantsSupport)
 	repair, ok := findCommandCapability(ops.Children, "ops repair")
 	require.True(t, ok)
 	require.Equal(t, CommandMutationStateChanging, repair.Mutation)

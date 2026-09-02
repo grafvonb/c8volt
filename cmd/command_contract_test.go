@@ -662,6 +662,133 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 	require.False(t, hasFlagContractNamed(capability.Flags, "incidents-only"))
 }
 
+// TestCommandCapabilityForCommand_OpsAnalyseAPILatencyContract captures the read-only API latency diagnostic machine contract.
+func TestCommandCapabilityForCommand_OpsAnalyseAPILatencyContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(opsAnalyseAPILatencyCmd)
+
+	require.Equal(t, "ops analyse api-latency", capability.Path)
+	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.AutomationNotes, "read-only bounded diagnostics")
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:             "json",
+		Supported:        true,
+		MachinePreferred: true,
+		Notes:            "stdout remains one JSON document; progress is suppressed",
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:      "keys-only",
+		Supported: false,
+		Notes:     "latency diagnostics do not produce key lists",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "count",
+		Shorthand:   "n",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "primary sample cycles to measure across all read-only stages",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "workers",
+		Shorthand:   "w",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum closed-loop workers and final stage width",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "report-file",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "write an API latency report to the given path",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "report-format",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "API latency report format: markdown, json (default inferred from report-file extension)",
+	})
+}
+
+// TestCommandCapabilityForCommand_OpsExecuteAPILatencyContract captures the active API latency diagnostic machine contract.
+func TestCommandCapabilityForCommand_OpsExecuteAPILatencyContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(opsExecuteAPILatencyCmd)
+
+	require.Equal(t, "ops execute api-latency-test", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Equal(t, AllTenantsSupportRejectedConcreteDestination, capability.AllTenantsSupport)
+	require.Contains(t, capability.AutomationNotes, "implicitly confirmed active API latency diagnostics")
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:             "json",
+		Supported:        true,
+		MachinePreferred: true,
+		Notes:            "stdout remains one JSON document; active execution requires dry-run; auto-confirm; or automation",
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:      "keys-only",
+		Supported: false,
+		Notes:     "latency diagnostics do not produce key lists",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "count",
+		Shorthand:   "n",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "primary process-instance create samples across active stages",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "workers",
+		Shorthand:   "w",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum closed-loop workers and final active stage width",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "validate and preview the active API latency plan without mutation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-cleanup",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "retain active API latency resources after execution",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "report-file",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "write an API latency test report to the given path",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "report-format",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "API latency test report format: markdown, json (default inferred from report-file extension)",
+	})
+}
+
 // TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts verifies discovery flags describe page size and explicit caps distinctly.
 func TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts(t *testing.T) {
 	root := Root()
@@ -986,6 +1113,7 @@ func TestAllTenantsSupportForCommand_ConcreteDestinationInventory(t *testing.T) 
 		{path: "embed deploy", cmd: embedDeployCmd},
 		{path: "run process-instance", cmd: runProcessInstanceCmd},
 		{path: "ops execute smoke-test", cmd: opsExecuteSmokeTestCmd},
+		{path: "ops execute api-latency-test", cmd: opsExecuteAPILatencyCmd},
 	}
 
 	for _, tt := range tests {
@@ -1014,6 +1142,7 @@ func TestCommandCapabilityForCommand_IncludesAllTenantsSupport(t *testing.T) {
 		{path: "embed deploy", cmd: embedDeployCmd, want: AllTenantsSupportRejectedConcreteDestination},
 		{path: "run process-instance", cmd: runProcessInstanceCmd, want: AllTenantsSupportRejectedConcreteDestination},
 		{path: "ops execute smoke-test", cmd: opsExecuteSmokeTestCmd, want: AllTenantsSupportRejectedConcreteDestination},
+		{path: "ops execute api-latency-test", cmd: opsExecuteAPILatencyCmd, want: AllTenantsSupportRejectedConcreteDestination},
 	}
 
 	for _, tt := range tests {
