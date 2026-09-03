@@ -237,6 +237,23 @@ func TestRenderTenantContext_AllTenantsWarningRendersOnce(t *testing.T) {
 		"selection scope: unfiltered across accessible tenants\n", buf.String())
 }
 
+// TestAttachTenantContextStartsANewRenderCycle verifies repeated executions of
+// a shared Cobra command do not inherit the previous invocation's render guard.
+func TestAttachTenantContextStartsANewRenderCycle(t *testing.T) {
+	resetTenantContextRenderFlags(t)
+	cmd, buf := newTenantContextRenderTestCommand()
+	ctx := newDiscoveryTenantContext("")
+
+	attachTenantContext(cmd, ctx)
+	renderAttachedTenantContext(cmd)
+	attachTenantContext(cmd, ctx)
+	renderAttachedTenantContext(cmd)
+
+	require.Equal(t, ""+
+		"selection scope: unfiltered across accessible tenants\n"+
+		"selection scope: unfiltered across accessible tenants\n", buf.String())
+}
+
 // TestRenderTenantContextHumanModeLines verifies each operation mode receives
 // its distinct label instead of reusing the default-tenant display.
 func TestRenderTenantContextHumanModeLines(t *testing.T) {

@@ -183,6 +183,7 @@ Started: 2026-09-02 06:58:25
 - Active non-dry service execution now uses no-wait fixture deployment, exact returned process-definition and process-instance keys, bounded stage workers, exact-key visibility evidence, safe backpressure findings, and PI-before-PD successful cleanup.
 - Validation passed: `go test ./internal/services/ops -run 'TestAPILatencyActiveExecution' -count=1`; `go test ./internal/services/ops ./c8volt/ops -run 'APILatency' -count=1`; `go test ./internal/services/ops ./c8volt/ops ./cmd -run 'APILatency' -count=1`; `go test ./internal/services/ops -run 'APILatencyActive|APILatencyPlanDerivesVisibilityBound' -count=1`; `go test ./internal/services/ops -run 'TestAPILatencyActiveExecutionBoundsWorkersAndClassifiesVisibilityErrors' -race -count=1`; `git diff --check`.
 ---
+
 ## Iteration 7 - 2026-09-02 08:09
 **Work Unit**: User Story 2 partial: active API latency facade conversion
 **Tasks Completed**:
@@ -795,4 +796,21 @@ Started: 2026-09-02 06:58:25
 - The quiet invalid-budget subprocess test omitted `--config`, so a developer machine with an installed config reached command validation while a clean GitHub runner failed during root configuration bootstrap first. The resulting exit codes were 2 locally and 1 in CI.
 - The test now supplies its own valid configuration and asserts that invalid command input performs no remote request.
 - Validation passed: ten covered/race-enabled repetitions with empty HOME and XDG config directories; full covered/race-enabled `cmd` tests; exact CI `make cover`; `git diff --check`.
+---
+
+## Post-completion correction - 2026-09-03
+**Work Unit**: Remove race-prone command test state
+**Files Changed**:
+- `cmd/cmd_tenant_context.go`
+- `cmd/cmd_views_tenant_context_test.go`
+- `cmd/get_processinstance_paging_test.go`
+- `cmd/ops_execute_api_latency_test.go`
+- `cmd/ops_execute_smoke_test_test.go`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Concurrent process-instance detail requests appended to an ordinary slice in the total-output fixture; request capture now uses `testx.SafeSlice` and snapshots only after command completion.
+- Active API-latency and smoke-test fixture servers also assigned process-instance keys through unsynchronized counters; both now use `testx.AtomicCounter`.
+- Reusing a Cobra command retained the previous invocation's tenant-context render marker. Attaching a new tenant context now starts a fresh render cycle, preventing intermittent missing scope lines.
+- Dry-run ceiling assertions now match complete numeric fields instead of allowing `14` and `1` to pass as prefixes of `140` and `19`.
+- Validation passed: twenty race-enabled repetitions of the affected worker and render tests; exact race-enabled `make cover`; `git diff --check`.
 ---

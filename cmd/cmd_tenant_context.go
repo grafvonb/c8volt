@@ -62,6 +62,7 @@ func attachTenantContext(cmd *cobra.Command, ctx tenant.Context) {
 	if parent == nil {
 		parent = context.Background()
 	}
+	parent = context.WithValue(parent, tenantContextHumanRenderedKey{}, false)
 	cmd.SetContext(context.WithValue(parent, tenantContextKey{}, cloneTenantContext(ctx)))
 }
 

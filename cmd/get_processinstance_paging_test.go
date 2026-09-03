@@ -14,6 +14,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -108,9 +109,9 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				var requests []string
+				var requests testx.SafeSlice[string]
 				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					requests = append(requests, r.Method+" "+r.URL.Path)
+					requests.Append(r.Method + " " + r.URL.Path)
 					w.Header().Set("Content-Type", "application/json")
 					switch r.URL.Path {
 					case "/v2/process-instances/search":
@@ -139,7 +140,7 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 					"POST /v2/process-instances/search",
 					"POST /v2/process-instances/123/incidents/search",
 					"POST /v2/process-instances/124/incidents/search",
-				}, requests)
+				}, requests.Snapshot())
 				require.Equal(t, "1\n", stdout)
 				require.Empty(t, stderr)
 			})

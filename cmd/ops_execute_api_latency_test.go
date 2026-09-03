@@ -427,12 +427,12 @@ func TestOpsExecuteAPILatencyDryRunRendersActivePreview(t *testing.T) {
 	require.Empty(t, stdout)
 	require.Contains(t, stderr, "dry run: execute api latency test")
 	require.Contains(t, stderr, "creation target: default tenant")
-	require.Contains(t, stderr, "request: count 7; primary allocation 7/7; workers 1,2,4; stages 3; derived requests <= 14")
+	require.Contains(t, stderr, "request: count 7; primary allocation 7/7; workers 1,2,4; stages 3; derived requests <= 140\n")
 	require.Contains(t, stderr, "run: ")
 	require.Contains(t, stderr, "fixture: embedded/processdefinitions/C89_SimpleUserTask.bpmn (C89_SimpleUserTask)")
-	require.Contains(t, stderr, "visibility: attempts <= 1")
+	require.Contains(t, stderr, "visibility: attempts <= 19\n")
 	require.Contains(t, stderr, "cleanup: requested; supported")
-	require.Contains(t, stderr, "stage 1: workers 1; primary 0/1; derived 0/2")
+	require.Contains(t, stderr, "stage 1: workers 1; primary 0/1; derived 0/20;")
 	require.Contains(t, stderr, "outcome: planned")
 	require.NotContains(t, stderr, "analyse api latency")
 	require.NotContains(t, stderr, "GET /v2")
@@ -957,7 +957,7 @@ func newOpsExecuteAPILatencyDryRunServer(t *testing.T, requests *testx.SafeSlice
 func newOpsExecuteAPILatencyActiveServer(t *testing.T, requests *testx.SafeSlice[string], createBodies *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
-	var created int
+	var created testx.AtomicCounter
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -988,8 +988,8 @@ func newOpsExecuteAPILatencyActiveServer(t *testing.T, requests *testx.SafeSlice
 			if createBodies != nil {
 				createBodies.Append(string(body))
 			}
-			created++
-			_, _ = w.Write([]byte(apiLatencyProcessInstanceCreationJSON(fmt.Sprintf("%d", 100+created))))
+			createdCount := created.Inc()
+			_, _ = w.Write([]byte(apiLatencyProcessInstanceCreationJSON(fmt.Sprintf("%d", 100+createdCount))))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			_, _ = w.Write([]byte(fmt.Sprintf(`{"items":[%s],"page":{"totalItems":1,"hasMoreTotalItems":false}}`, apiLatencyProcessInstanceJSON("101"))))
 		default:

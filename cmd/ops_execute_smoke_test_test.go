@@ -840,7 +840,7 @@ func newOpsExecuteSmokeTestRunWalkServer(t *testing.T, requests *testx.SafeSlice
 func newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t *testing.T, requests *testx.SafeSlice[string], createBodies *testx.SafeSlice[string], cleanupBlocker string) *httptest.Server {
 	t.Helper()
 
-	var created int
+	var created testx.AtomicCounter
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/topology":
@@ -917,8 +917,8 @@ func newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t *testing.T, request
 			if createBodies != nil {
 				createBodies.Append(string(body))
 			}
-			created++
-			key := fmt.Sprintf("%d", 100+created)
+			createdCount := created.Inc()
+			key := fmt.Sprintf("%d", 100+createdCount)
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(processInstanceCreationJSON(key)))
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
