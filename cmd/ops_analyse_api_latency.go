@@ -55,6 +55,7 @@ var opsAnalyseAPILatencyCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
+		attachDiscoveryTenantContext(cmd, cfg)
 		progress := configureOpsAPILatencyProgress(cmd, &request)
 		result, err := analyseAPILatencyWithCommandActivity(cmd, request, func() (ops.APILatencyResult, error) {
 			return cli.AnalyseAPILatency(cmd.Context(), request, collectOptions()...)

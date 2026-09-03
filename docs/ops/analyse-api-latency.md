@@ -47,13 +47,13 @@ Missing keys, disappearing resources, and unsupported keyed reads are reported a
 
 ## Output And Reports
 
-Default output shows the read-only scope, request failures, slowest path, load effect, findings, next investigation, and outcome. Latency is written in plain language, such as "95% completed within".
+Default output shows the tenant and read-only scope, request failures, topology problems, slowest path, load effect, findings, next investigation, and outcome. Healthy topology counts and latency metadata are omitted. Latency is written in plain language, such as "95% completed within".
 
-Use `--verbose` for the stage plan and detailed measurements.
+Use `--verbose` for version and profile context, healthy topology counts, the stage plan, and detailed measurements.
 
 Use `--json` for machine-readable output. Use `--report-file` to save a Markdown or JSON report; the filename extension selects the format unless `--report-format` is set.
 
-Reports and standard output include safe profile, tenant, Camunda version, stage, finding, and limitation evidence. They exclude endpoints, access tokens, authorization headers, client secrets, variables, payloads, raw response bodies, and unbounded upstream error strings.
+JSON output and reports include safe profile, tenant, Camunda version, stage, finding, and limitation evidence. They exclude endpoints, access tokens, authorization headers, client secrets, variables, payloads, raw response bodies, and unbounded upstream error strings.
 
 ## Read-Only Limits
 

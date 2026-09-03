@@ -21,7 +21,9 @@ func renderOpsAPILatencyResult(cmd *cobra.Command, result ops.APILatencyResult) 
 		return renderSucceededResult(cmd, result)
 	}
 	active := opsAPILatencyResultIsActive(result)
-	if active {
+	if active && result.Request.DryRun {
+		renderHumanLine(cmd, "dry run: execute api latency test")
+	} else if active {
 		renderHumanLine(cmd, "execute api latency test")
 	} else {
 		renderHumanLine(cmd, "analyse api latency")
@@ -59,17 +61,17 @@ func opsAPILatencyResultIsActive(result ops.APILatencyResult) bool {
 	return result.Plan.Mode == ops.APILatencyModeActive || result.Request.Mode == ops.APILatencyModeActive || result.Ownership != nil
 }
 
-// renderOpsAPILatencyContext prints only safe invocation identity fields.
+// renderOpsAPILatencyContext prints safe invocation identity fields in verbose output.
 func renderOpsAPILatencyContext(cmd *cobra.Command, context ops.APILatencyRunContext) {
+	if !flagVerbose {
+		return
+	}
 	parts := []string{}
 	if context.C8voltVersion != "" {
 		parts = append(parts, "c8volt "+context.C8voltVersion)
 	}
 	if context.Profile != "" {
 		parts = append(parts, "profile "+context.Profile)
-	}
-	if context.Tenant != "" {
-		parts = append(parts, "tenant "+context.Tenant)
 	}
 	if context.CamundaVersion != "" {
 		parts = append(parts, "camunda "+context.CamundaVersion)
@@ -329,6 +331,9 @@ func renderOpsAPILatencyTopology(cmd *cobra.Command, topology ops.APILatencyTopo
 	if !topology.HealthKnown {
 		return
 	}
+	if !flagVerbose && len(topology.UnhealthyPartitions) == 0 && len(topology.LeaderlessPartitions) == 0 {
+		return
+	}
 	parts := []string{
 		fmt.Sprintf("brokers %d", topology.BrokerCount),
 		fmt.Sprintf("partitions %d", topology.PartitionCount),
@@ -500,14 +505,14 @@ func renderOpsAPILatencyOutcome(cmd *cobra.Command, result ops.APILatencyResult)
 	if result.Outcome == "" {
 		return
 	}
-	detail := ""
+	parts := []string{string(result.Outcome)}
 	if findings := countOpsAPILatencyActionableFindings(result.Findings); findings > 0 {
-		detail = fmt.Sprintf(" with %d %s", findings, opsAPILatencyCountedNoun(findings, "finding", "findings"))
+		parts = append(parts, fmt.Sprintf("findings %d", findings))
 	}
 	if result.Context.Duration != "" {
-		detail += "; elapsed " + result.Context.Duration
+		parts = append(parts, "elapsed "+result.Context.Duration)
 	}
-	renderHumanLine(cmd, "outcome: %s%s", result.Outcome, detail)
+	renderHumanLine(cmd, "outcome: %s", strings.Join(parts, "; "))
 }
 
 func formatOpsAPILatencyStageWidths(stages []ops.APILatencyStagePlan) string {

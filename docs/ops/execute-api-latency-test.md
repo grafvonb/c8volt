@@ -78,8 +78,8 @@ An explicit `--no-cleanup` run can finish as `completed_retained`. Requested cle
 
 ## Output And Reports
 
-Default output shows the active scope, request failures, create latency, load effect, search visibility, findings, next investigation, cleanup, and outcome.
+Default output shows the creation target and active scope, request failures, topology problems, create latency, load effect, search visibility, findings, next investigation, cleanup, and outcome. Healthy topology counts and latency metadata are omitted.
 
-Use `--verbose` for the full plan and detailed measurements. Resources that were retained or could not be cleaned up remain visible because they require operator action. Dry-run output shows the complete plan before mutation.
+Use `--verbose` for version and profile context, healthy topology counts, the full plan, and detailed measurements. Resources that were retained or could not be cleaned up remain visible because they require operator action. Dry-run output starts with `dry run: execute api latency test` and shows the complete plan before mutation.
 
 Use `--report-file` to write a Markdown or JSON report. Confirmed mutation uses the established overwrite policy only after a deployment is submitted or exact ownership keys are recorded. Reports and JSON output exclude endpoints, credentials, authorization headers, client secrets, variables, payloads, raw upstream bodies, and unbounded error strings.

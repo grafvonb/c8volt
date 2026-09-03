@@ -166,15 +166,16 @@ The process-definition command is supplied only on versions that support complet
 
 Default output is compact and scan-friendly:
 
-1. context and operator-readable scope with the tested load range;
+1. the shared operator-readable tenant context and scope with the tested load range;
 2. request-error and timeout totals;
-3. the slowest read path or active create latency expressed as "95% completed within", plus median load effect when comparable;
-4. plain-language findings followed by the next investigation;
-5. active-only eventual search visibility and cleanup summary;
-6. final outcome, including the number of actionable findings;
-7. `report: written <path>` when applicable.
+3. topology health problems when present;
+4. the slowest read path or active create latency expressed as "95% completed within", plus median load effect when comparable;
+5. plain-language findings followed by the next investigation;
+6. active-only eventual search visibility and cleanup summary;
+7. final outcome with semicolon-delimited actionable-finding and elapsed-time details;
+8. `report: written <path>` when applicable.
 
-Default output omits stage allocation, theoretical request ceilings, statistical abbreviations, run metadata, notices, limitations, endpoints, cursors, raw errors, request bodies, per-key lifecycle chatter, and individual samples. Retained or unresolved cleanup resources and their recovery commands remain visible because they require operator action. `--verbose` adds the full plan, stage metrics, metadata, notices, and limitations. Dry-run continues to display the complete plan before mutation. Quiet suppresses successful progress and retains failures. Automation and JSON remain free of human progress.
+Default output omits version/profile metadata, healthy topology counts, stage allocation, theoretical request ceilings, statistical abbreviations, run metadata, notices, limitations, endpoints, cursors, raw errors, request bodies, per-key lifecycle chatter, and individual samples. Retained or unresolved cleanup resources and their recovery commands remain visible because they require operator action. `--verbose` adds the full context, healthy topology counts, plan, stage metrics, metadata, notices, and limitations. Active dry-run uses the shared `dry run: <operation>` heading and continues to display the complete plan before mutation. Quiet suppresses successful progress and retains failures. Automation and JSON remain free of human progress.
 
 ## JSON Output Contract
 

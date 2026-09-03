@@ -381,6 +381,7 @@ func TestOpsAnalyseAPILatencyReadOnlyCommandRendersHuman(t *testing.T) {
 	)
 
 	require.Empty(t, stdout)
+	require.Contains(t, stderr, "selection scope: unfiltered across accessible tenants")
 	assertOpsAnalyseAPILatencyHumanOutput(t, stderr)
 	requireOpsAnalyseAPILatencyReadOnlyRequests(t, requests.Snapshot())
 }
@@ -611,7 +612,7 @@ func TestOpsAnalyseAPILatencyReportValidationAndWriteFailures(t *testing.T) {
 	require.NoFileExists(t, missingParentPath)
 }
 
-// TestRenderOpsAnalyseAPILatencyStableHumanAndJSON pins read-only renderer ordering, safe context, and active-field omission.
+// TestRenderOpsAnalyseAPILatencyStableHumanAndJSON pins read-only renderer ordering, context gating, and active-field omission.
 func TestRenderOpsAnalyseAPILatencyStableHumanAndJSON(t *testing.T) {
 	resetOpsAnalyseAPILatencyTestFlags(t)
 	p50 := 8 * time.Millisecond
@@ -715,7 +716,7 @@ func TestRenderOpsAnalyseAPILatencyStableHumanAndJSON(t *testing.T) {
 	require.Less(t, time.Since(started), 5*time.Second)
 	human := humanOut.String()
 	require.Contains(t, human, "analyse api latency")
-	require.Contains(t, human, "context: c8volt dev-test; profile support; tenant tenant-a; camunda 8.9")
+	require.NotContains(t, human, "context:")
 	require.Contains(t, human, "scope: read only; 7 measurement cycles; load increased from 1 to 4 workers")
 	require.Contains(t, human, "topology: brokers 2; partitions 3; unhealthy 2; leaderless 3")
 	require.Contains(t, human, "result: API measurements completed; request errors 0; timeouts 1")
@@ -723,7 +724,7 @@ func TestRenderOpsAnalyseAPILatencyStableHumanAndJSON(t *testing.T) {
 	require.Contains(t, human, "load effect: median topology read was unchanged from 1 to 2 workers")
 	require.Less(t, strings.Index(human, "finding: timeout evidence"), strings.Index(human, "finding: no abnormal evidence found"))
 	require.Contains(t, human, "next: inspect gateway timeout logs")
-	require.Contains(t, human, "outcome: completed with 1 finding; elapsed 125ms")
+	require.Contains(t, human, "outcome: completed; findings 1; elapsed 125ms")
 	require.NotContains(t, human, "request: count")
 	require.NotContains(t, human, "stage 1:")
 	require.NotContains(t, human, "p50")
@@ -741,6 +742,8 @@ func TestRenderOpsAnalyseAPILatencyStableHumanAndJSON(t *testing.T) {
 	var verboseOut bytes.Buffer
 	verboseCmd.SetOut(&verboseOut)
 	require.NoError(t, renderOpsAPILatencyResult(verboseCmd, result))
+	require.Contains(t, verboseOut.String(), "context: c8volt dev-test; profile support; camunda 8.9")
+	require.NotContains(t, verboseOut.String(), "tenant tenant-a")
 	require.Contains(t, verboseOut.String(), "request: count 7; workers 1,2,4; stages 3; derived requests <= 14")
 	require.Contains(t, verboseOut.String(), "stage 1: workers 1; primary 3/3; derived 2/2")
 	require.Contains(t, verboseOut.String(), "finding detail: likely area gateway/connectivity/authentication; confidence high")
@@ -861,7 +864,7 @@ func assertOpsAnalyseAPILatencyHumanOutput(t *testing.T, output string) {
 
 	require.Contains(t, output, "analyse api latency")
 	require.Contains(t, output, "scope: read only; 1 measurement cycle; load 1 worker")
-	require.Contains(t, output, "topology: brokers 1; partitions 1")
+	require.NotContains(t, output, "topology:")
 	require.Contains(t, output, "result: API measurements completed; request errors 0; timeouts 0")
 	require.Contains(t, output, "latency:")
 	require.Contains(t, output, "95% completed within")

@@ -425,7 +425,8 @@ func TestOpsExecuteAPILatencyDryRunRendersActivePreview(t *testing.T) {
 	)
 
 	require.Empty(t, stdout)
-	require.Contains(t, stderr, "execute api latency test")
+	require.Contains(t, stderr, "dry run: execute api latency test")
+	require.Contains(t, stderr, "creation target: default tenant")
 	require.Contains(t, stderr, "request: count 7; primary allocation 7/7; workers 1,2,4; stages 3; derived requests <= 14")
 	require.Contains(t, stderr, "run: ")
 	require.Contains(t, stderr, "fixture: embedded/processdefinitions/C89_SimpleUserTask.bpmn (C89_SimpleUserTask)")
@@ -548,7 +549,7 @@ func TestRenderOpsExecuteAPILatencyHumanRendersActiveResult(t *testing.T) {
 	require.NotContains(t, output, "process-definition key pd-89")
 }
 
-// TestRenderOpsExecuteAPILatencyStableHumanAndJSON pins active renderer ordering, safe context, and active evidence fields.
+// TestRenderOpsExecuteAPILatencyStableHumanAndJSON pins active renderer ordering, context gating, and active evidence fields.
 func TestRenderOpsExecuteAPILatencyStableHumanAndJSON(t *testing.T) {
 	resetOpsExecuteAPILatencyTestFlags(t)
 	p50 := 11 * time.Millisecond
@@ -666,8 +667,9 @@ func TestRenderOpsExecuteAPILatencyStableHumanAndJSON(t *testing.T) {
 	require.Less(t, time.Since(started), 5*time.Second)
 	human := humanOut.String()
 	require.Contains(t, human, "execute api latency test")
-	require.Contains(t, human, "context: c8volt dev-test; profile support; tenant <default>; camunda 8.9")
+	require.NotContains(t, human, "context:")
 	require.Contains(t, human, "scope: 3 test process instances; load increased from 1 to 2 workers")
+	require.NotContains(t, human, "topology:")
 	require.Contains(t, human, "result: API measurements completed; request errors 0; timeouts 1")
 	require.Contains(t, human, "create latency: 95% completed within 29ms at 2 workers")
 	require.Contains(t, human, "load effect: median create response was unchanged from 1 to 2 workers")
@@ -678,7 +680,7 @@ func TestRenderOpsExecuteAPILatencyStableHumanAndJSON(t *testing.T) {
 	require.Contains(t, human, "cleanup: deleted 1/3; retained 0; failed 1; unknown 1")
 	require.Contains(t, human, "cleanup resource: process_instance 102; failed; recovery: c8volt delete process-instance --key 102 --force --auto-confirm")
 	require.Contains(t, human, "cleanup resource: process_definition pd-89; unknown; recovery: c8volt delete process-definition --key pd-89 --auto-confirm")
-	require.Contains(t, human, "outcome: partial with 2 findings; elapsed 2s")
+	require.Contains(t, human, "outcome: partial; findings 2; elapsed 2s")
 	require.NotContains(t, human, "request: count")
 	require.NotContains(t, human, "stage 1:")
 	require.NotContains(t, human, "p50")
@@ -695,6 +697,9 @@ func TestRenderOpsExecuteAPILatencyStableHumanAndJSON(t *testing.T) {
 	var verboseOut bytes.Buffer
 	verboseCmd.SetOut(&verboseOut)
 	require.NoError(t, renderOpsAPILatencyResult(verboseCmd, result))
+	require.Contains(t, verboseOut.String(), "context: c8volt dev-test; profile support; camunda 8.9")
+	require.NotContains(t, verboseOut.String(), "tenant <default>")
+	require.Contains(t, verboseOut.String(), "topology: brokers 1; partitions 1")
 	require.Contains(t, verboseOut.String(), "request: count 3; primary allocation 3/3; workers 1,2; stages 2; derived requests <= 9")
 	require.Contains(t, verboseOut.String(), "run: 0123456789abcdef0123456789abcdef")
 	require.Contains(t, verboseOut.String(), "fixture: embedded/processdefinitions/C89_SimpleUserTask.bpmn (C89_SimpleUserTask)")

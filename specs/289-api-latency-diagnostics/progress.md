@@ -767,3 +767,21 @@ Started: 2026-09-02 06:58:25
 - Unsupported `--keys-only` validation and capability metadata remain unchanged. Cobra's standard inherited-options list remains consistent with other commands.
 - Validation passed: focused help and command-contract tests; broader API-latency and capability tests; `go test ./docsgen -count=1`; `make docs-content`; `git diff --check`.
 ---
+
+## Post-completion correction - 2026-09-03
+**Work Unit**: Align API latency result grammar with shared ops output
+**Files Changed**:
+- `cmd/cmd_views_ops_api_latency.go`
+- `cmd/ops_analyse_api_latency.go`
+- `cmd/ops_analyse_api_latency_test.go`
+- `cmd/ops_execute_api_latency_test.go`
+- `docs/ops/analyse-api-latency.md`
+- `docs/ops/execute-api-latency-test.md`
+- `specs/289-api-latency-diagnostics/contracts/api-latency-cli.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Normal output now uses the shared tenant-context grammar, hides full version/profile context and healthy topology counts, and keeps abnormal topology visible.
+- Active preview uses the shared `dry run: <operation>` heading. Outcome details use semicolon-delimited fields (`outcome`, `findings`, `elapsed`) like other ops workflows.
+- The read-only command now attaches discovery tenant context explicitly, preventing removal of its custom context line from also removing operator-visible tenant scope.
+- Validation passed: focused API-latency and capability tests; full `go test ./cmd -count=1`; `go test ./docsgen -count=1`; `git diff --check`; full race-enabled `make test`.
+---
