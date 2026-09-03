@@ -230,8 +230,16 @@ func TestOpsAnalyseAPILatencyOutputSafetyExcludesProtectedContextAndRawBodies(t 
 
 // TestOpsAnalyseAPILatencyQuietFailureKeepsErrorWithoutProgress verifies quiet mode suppresses progress but not failures.
 func TestOpsAnalyseAPILatencyQuietFailureKeepsErrorWithoutProgress(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Append(r.Method + " " + r.URL.Path)
+		http.Error(w, `{"message":"unexpected request"}`, http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+
 	output, err := testx.RunCmdSubprocess(t, "TestOpsAnalyseAPILatencyRootArgsHelper", map[string]string{
 		"C8VOLT_TEST_ROOT_ARGS": marshalRootArgsForEnv(t, []string{
+			"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
 			"--quiet",
 			"ops", "analyse", "api-latency",
 			"--count", "4",
@@ -246,6 +254,7 @@ func TestOpsAnalyseAPILatencyQuietFailureKeepsErrorWithoutProgress(t *testing.T)
 	text := string(output)
 	require.Contains(t, text, "count 4 is too small for worker stages 1, 2, 4")
 	require.NotContains(t, text, "measuring read-only API latency")
+	require.Empty(t, requests.Snapshot())
 }
 
 // TestOpsAnalyseAPILatencyCompletedAbnormalSubprocessExitsSuccessfully verifies abnormal evidence is still a successful completed diagnostic.

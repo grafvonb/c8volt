@@ -785,3 +785,14 @@ Started: 2026-09-02 06:58:25
 - The read-only command now attaches discovery tenant context explicitly, preventing removal of its custom context line from also removing operator-visible tenant scope.
 - Validation passed: focused API-latency and capability tests; full `go test ./cmd -count=1`; `go test ./docsgen -count=1`; `git diff --check`; full race-enabled `make test`.
 ---
+
+## Post-completion correction - 2026-09-03
+**Work Unit**: Isolate quiet invalid-input coverage test from host configuration
+**Files Changed**:
+- `cmd/ops_analyse_api_latency_test.go`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- The quiet invalid-budget subprocess test omitted `--config`, so a developer machine with an installed config reached command validation while a clean GitHub runner failed during root configuration bootstrap first. The resulting exit codes were 2 locally and 1 in CI.
+- The test now supplies its own valid configuration and asserts that invalid command input performs no remote request.
+- Validation passed: ten covered/race-enabled repetitions with empty HOME and XDG config directories; full covered/race-enabled `cmd` tests; exact CI `make cover`; `git diff --check`.
+---
