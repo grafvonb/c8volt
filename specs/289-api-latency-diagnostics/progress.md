@@ -747,3 +747,23 @@ Started: 2026-09-02 06:58:25
 - Command help, generated CLI references, the human-output contract, and quickstart now describe the operator summary, plain-language percentile wording, `--verbose` detail, and unchanged complete dry-run preview consistently.
 - `make docs-content` regenerated the CLI references from command metadata; focused help, capability, API-latency, and documentation validation passed.
 ---
+
+## Post-completion correction - 2026-09-03
+**Work Unit**: Concise API latency help grammar
+**Files Changed**:
+- `cmd/ops_analyse_api_latency.go`
+- `cmd/ops_execute_api_latency.go`
+- `cmd/ops_analyse_api_latency_test.go`
+- `cmd/ops_execute_api_latency_test.go`
+- `docs/cli/c8volt_ops_analyse_api-latency.md`
+- `docs/cli/c8volt_ops_execute_api-latency-test.md`
+- `docs/index.md`
+- `docs/ops/analyse-api-latency.md`
+- `docs/ops/execute-api-latency-test.md`
+- `specs/289-api-latency-diagnostics/contracts/api-latency-cli.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- API latency help now follows the direct grammar used by operator commands: purpose, operational behavior, safety-relevant modes, and examples. Output-framework terminology and explanations of rejected inherited modes were removed from user-facing prose.
+- Unsupported `--keys-only` validation and capability metadata remain unchanged. Cobra's standard inherited-options list remains consistent with other commands.
+- Validation passed: focused help and command-contract tests; broader API-latency and capability tests; `go test ./docsgen -count=1`; `make docs-content`; `git diff --check`.
+---

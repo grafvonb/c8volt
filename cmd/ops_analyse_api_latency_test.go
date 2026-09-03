@@ -64,13 +64,11 @@ func TestOpsAnalyseAPILatencyHelpDocumentsReadOnlySurface(t *testing.T) {
 	assertHelpOutputContainsAll(t, output,
 		"Analyse API latency without changing cluster state",
 		"The command is read-only.",
-		"--count is the total primary sample-cycle budget",
-		"--workers is the maximum closed-loop worker count",
-		"Default output summarizes the read-only scope",
-		"slowest measured API path",
-		"Use --verbose for the stage plan",
-		"JSON output uses the shared command envelope",
-		"Keys-only output is not meaningful",
+		"read paths under bounded load",
+		"--count sets the total sample budget",
+		"--workers sets the maximum concurrency",
+		"Use --verbose for stage details",
+		"--report-file to save a Markdown or JSON report",
 		"-n, --count int",
 		"-w, --workers int",
 		"--report-file string",
@@ -79,6 +77,8 @@ func TestOpsAnalyseAPILatencyHelpDocumentsReadOnlySurface(t *testing.T) {
 		"./c8volt ops analyse api-latency -n 6 -w 2",
 		"./c8volt --verbose ops analyse api-latency",
 	)
+	require.NotContains(t, output, "Keys-only output")
+	require.NotContains(t, output, "shared command envelope")
 }
 
 // TestCommandContractOpsAnalyseAPILatency captures the read-only API latency machine contract.

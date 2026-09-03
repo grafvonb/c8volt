@@ -11,13 +11,9 @@ Execute a bounded active API latency test
 
 Execute a bounded active API latency test.
 
-The command deploys the existing version-matched SimpleUserTask fixture, creates a bounded number of process instances, measures create response, concurrent read, and search visibility evidence, then cleans up exact run-owned resources unless --no-cleanup is set.
+The command deploys the version-matched SimpleUserTask fixture, creates process instances, measures create, read, and search-visibility latency under bounded load, then cleans up exact run-owned resources.
 
-It requires one concrete tenant because the workflow creates and cleans resources in a single destination. --dry-run validates and previews the active plan without mutation. --no-cleanup explicitly retains run-owned resources and still requires confirmation for a real run.
-
-Default result output summarizes the active scope, request errors and timeouts, create latency, load effect, search visibility, findings with next investigation, and cleanup in operator language. Use --verbose for the stage plan, run and fixture metadata, detailed statistics, notices, and limitations.
-
---count is the total primary process-instance create sample budget across all stages. --workers is the maximum closed-loop worker count and final stage width. JSON active execution requires --dry-run, --auto-confirm, or --automation so stdout remains one document. Keys-only output is not meaningful for this diagnostic and is rejected.
+One concrete tenant is required. Use --dry-run to preview the plan without mutation and --no-cleanup to retain created resources. --count sets the total sample budget and --workers sets the maximum concurrency. Use --verbose for stage details and --report-file to save a Markdown or JSON report.
 
 ```
 c8volt ops execute api-latency-test [flags]

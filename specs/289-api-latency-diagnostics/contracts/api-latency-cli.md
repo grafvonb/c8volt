@@ -18,7 +18,7 @@ c8volt ops execute api-latency-test [flags]
 | `ops analyse api-latency` | Read-only | Full | Full | Existing analysis tenant behavior |
 | `ops execute api-latency-test` | State-changing | Full | Full | Rejected; requires a concrete destination tenant |
 
-Both commands support human one-line/section output and JSON. Both explicitly reject inherited `--keys-only` as invalid for this diagnostic.
+Both commands support human one-line/section output and JSON.
 
 ## Command Flags
 
@@ -36,8 +36,7 @@ The command rejects:
 - count or workers less than 1;
 - workers greater than count;
 - count below the sum of deterministic stage widths;
-- invalid report format/dependency/path under shared ops validation;
-- keys-only output.
+- invalid report format/dependency/path under shared ops validation.
 
 For example, workers 4 requires at least 7 samples for stages 1, 2, and 4. The default plan allocates 20 samples as 5, 6, and 9.
 

@@ -34,14 +34,14 @@ func TestOpsExecuteAPILatencyHelpDocumentsActiveSurface(t *testing.T) {
 
 	assertHelpOutputContainsAll(t, output,
 		"Execute a bounded active API latency test",
-		"deploys the existing version-matched SimpleUserTask fixture",
-		"requires one concrete tenant",
-		"--dry-run validates and previews the active plan without mutation",
-		"--no-cleanup explicitly retains run-owned resources",
-		"Default result output summarizes the active scope",
-		"search visibility, findings with next investigation, and cleanup",
-		"Use --verbose for the stage plan",
-		"JSON active execution requires --dry-run, --auto-confirm, or --automation",
+		"deploys the version-matched SimpleUserTask fixture",
+		"One concrete tenant is required",
+		"--dry-run to preview the plan without mutation",
+		"--no-cleanup to retain created resources",
+		"--count sets the total sample budget",
+		"--workers sets the maximum concurrency",
+		"Use --verbose for stage details",
+		"--report-file to save a Markdown or JSON report",
 		"-n, --count int",
 		"-w, --workers int",
 		"--dry-run",
@@ -52,6 +52,8 @@ func TestOpsExecuteAPILatencyHelpDocumentsActiveSurface(t *testing.T) {
 		"./c8volt ops execute api-latency-test --count 20 --workers 4 --auto-confirm",
 		"./c8volt --verbose ops execute api-latency-test --auto-confirm",
 	)
+	require.NotContains(t, output, "Keys-only output")
+	require.NotContains(t, output, "JSON active execution requires")
 }
 
 // TestCommandContractOpsExecuteAPILatency captures the active API latency machine contract.
