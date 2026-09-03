@@ -13,7 +13,9 @@ import (
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/poller"
+	"github.com/grafvonb/c8volt/toolx/pool"
 )
 
 // apiLatencyCleanupCompletionBudget is the bounded independent cleanup opportunity after active execution stops.
@@ -106,24 +108,11 @@ func (s *Service) finalizeAPILatencyCleanup(ctx context.Context, result *d.APILa
 	done := 0
 	failed := 0
 	reportAPILatencyCleanupProgress(result.Request.Progress, done, total, failed)
-	for _, key := range piKeys {
-		if err := cleanupCtx.Err(); err != nil {
-			result.Cleanup = append(result.Cleanup, unknownAPILatencyCleanupRecord(d.APILatencyCleanupResourceProcessInstance, key, result.Plan.Cleanup, err))
-			cleanupErr = errors.Join(cleanupErr, fmt.Errorf("cleanup API latency process instance %s: %w", key, err))
-			done++
-			failed++
-			reportAPILatencyCleanupProgress(result.Request.Progress, done, total, failed)
-			continue
-		}
-		record, err := s.deleteAPILatencyProcessInstance(cleanupCtx, key, result.Plan.Cleanup, opts...)
-		if err != nil {
-			cleanupErr = errors.Join(cleanupErr, fmt.Errorf("delete API latency process instance %s: %w", key, err))
-			failed++
-		}
-		result.Cleanup = append(result.Cleanup, record)
-		done++
-		reportAPILatencyCleanupProgress(result.Request.Progress, done, total, failed)
-	}
+	piCleanup, piCleanupErr, piFailed := s.cleanupAPILatencyProcessInstances(cleanupCtx, piKeys, result.Request.Workers, total, result.Request.Progress, result.Plan.Cleanup, opts...)
+	result.Cleanup = append(result.Cleanup, piCleanup...)
+	cleanupErr = errors.Join(cleanupErr, piCleanupErr)
+	done += len(piKeys)
+	failed += piFailed
 	if result.Ownership.ProcessDefinitionKey != "" {
 		if cleanupErr != nil {
 			result.Cleanup = append(result.Cleanup, unknownAPILatencyCleanupRecord(d.APILatencyCleanupResourceProcessDefinition, result.Ownership.ProcessDefinitionKey, result.Plan.Cleanup, cleanupErr))
@@ -150,6 +139,53 @@ func (s *Service) finalizeAPILatencyCleanup(ctx context.Context, result *d.APILa
 		reportAPILatencyCleanupProgress(result.Request.Progress, done, total, failed)
 	}
 	return cleanupErr
+}
+
+// cleanupAPILatencyProcessInstances runs independent exact-key cleanup lifecycles with the standard worker ceiling.
+func (s *Service) cleanupAPILatencyProcessInstances(
+	ctx context.Context,
+	keys []string,
+	wantedWorkers int,
+	total int,
+	progress func(d.OpsProgressEvent),
+	plan *d.APILatencyCleanupPlan,
+	opts ...services.CallOption,
+) ([]d.APILatencyCleanupRecord, error, int) {
+	cfg := services.ApplyCallOptions(opts)
+	workers := toolx.DetermineNoOfWorkers(len(keys), wantedWorkers, cfg.NoWorkerLimit)
+	var progressMu sync.Mutex
+	done := 0
+	failed := 0
+	reportCompletion := func(err error) {
+		progressMu.Lock()
+		defer progressMu.Unlock()
+		done++
+		if err != nil {
+			failed++
+		}
+		reportAPILatencyCleanupProgress(progress, done, total, failed)
+	}
+	records, cleanupErr := pool.ExecuteSlice[string, d.APILatencyCleanupRecord](ctx, keys, workers, false, func(ctx context.Context, key string, _ int) (d.APILatencyCleanupRecord, error) {
+		record, err := s.deleteAPILatencyProcessInstance(ctx, key, plan, opts...)
+		reportCompletion(err)
+		if err != nil {
+			return record, fmt.Errorf("delete API latency process instance %s: %w", key, err)
+		}
+		return record, nil
+	})
+	for i, key := range keys {
+		if records[i].Key != "" {
+			continue
+		}
+		err := ctx.Err()
+		if err == nil {
+			err = errors.New("cleanup work did not execute")
+		}
+		records[i] = unknownAPILatencyCleanupRecord(d.APILatencyCleanupResourceProcessInstance, key, plan, err)
+		cleanupErr = errors.Join(cleanupErr, fmt.Errorf("cleanup API latency process instance %s: %w", key, err))
+		reportCompletion(err)
+	}
+	return records, cleanupErr, failed
 }
 
 // deleteAPILatencyProcessInstance cancels and confirms one exact active fixture instance before deletion.

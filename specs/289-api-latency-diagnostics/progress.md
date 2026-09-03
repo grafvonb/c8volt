@@ -701,3 +701,15 @@ Started: 2026-09-02 06:58:25
 - Live C8.9 validation with the corrected attempt plan observed the created instance on attempt 3 after about 3.1 seconds and then confirmed deletion of the exact process-instance and process-definition keys.
 - Validation passed: focused API-latency tests; race-enabled service/facade/command API-latency tests; count-1 live C8.9 active execution; `git diff --check`; `make test`.
 ---
+
+## Post-completion correction - 2026-09-03
+**Work Unit**: Bounded parallel active cleanup
+**Files Changed**:
+- `internal/services/ops/api_latency_cleanup.go`
+- `internal/services/ops/api_latency_test.go`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Exact process-instance cleanup was serialized even when the active diagnostic already had a requested worker ceiling, so exporter waits accumulated once per owned instance.
+- Cleanup now uses the standard `toolx.DetermineNoOfWorkers` and `toolx/pool.ExecuteSlice` primitives to run complete exact-key cancel/wait/delete/absence lifecycles concurrently; result records remain deterministically ordered and process-definition deletion remains last.
+- Validation passed: focused cleanup tests; race-enabled cleanup tests; full `make test`; live C8.9 active execution with count 7 and workers 4, which completed all exact PI/PD cleanup successfully in a 37.2-second total run.
+---

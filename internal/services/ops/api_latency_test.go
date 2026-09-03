@@ -1054,7 +1054,9 @@ func TestAPILatencyActiveOwnershipRegistryDeduplicatesAndCleansExactKeys(t *test
 	require.NoError(t, err)
 	require.NotNil(t, got.Ownership)
 	require.Equal(t, []string{"pi-a", "pi-b", "pi-c", "pi-m", "pi-z"}, got.Ownership.ProcessInstanceKeys)
-	require.Equal(t, []string{"pi:pi-a", "pi:pi-b", "pi:pi-c", "pi:pi-m", "pi:pi-z", "pd:pd-active"}, cleanupTargets.Snapshot())
+	targets := cleanupTargets.Snapshot()
+	require.Equal(t, "pd:pd-active", targets[len(targets)-1])
+	require.ElementsMatch(t, []string{"pi:pi-a", "pi:pi-b", "pi:pi-c", "pi:pi-m", "pi:pi-z"}, targets[:len(targets)-1])
 	require.Len(t, got.Cleanup, 6)
 	require.Equal(t, d.APILatencyCleanupResourceProcessInstance, got.Cleanup[0].ResourceType)
 	require.Equal(t, d.APILatencyCleanupResourceProcessDefinition, got.Cleanup[5].ResourceType)
@@ -1394,6 +1396,87 @@ func TestAPILatencyActiveCleanupCancelsWaitsDeletesAndConfirmsAbsence(t *testing
 		"owned resource(s):1/2:0",
 		"owned resource(s):2/2:0",
 	}, progressEvents.Snapshot())
+}
+
+// TestAPILatencyActiveCleanupUsesBoundedWorkers verifies exact-key lifecycles reuse the requested worker ceiling before definition cleanup.
+func TestAPILatencyActiveCleanupUsesBoundedWorkers(t *testing.T) {
+	var active atomic.Int64
+	var maxActive atomic.Int64
+	var completed atomic.Int64
+	started := make(chan struct{}, 4)
+	release := make(chan struct{})
+	t.Cleanup(func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	})
+
+	piAPI := stubProcessInstanceAPI{
+		cancelProcessInstance: func(ctx context.Context, _ string, _ ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+			now := active.Add(1)
+			for {
+				seen := maxActive.Load()
+				if now <= seen || maxActive.CompareAndSwap(seen, now) {
+					break
+				}
+			}
+			started <- struct{}{}
+			select {
+			case <-ctx.Done():
+				active.Add(-1)
+				return d.CancelResponse{}, nil, ctx.Err()
+			case <-release:
+				active.Add(-1)
+				return d.CancelResponse{Ok: true}, nil, nil
+			}
+		},
+		waitProcessInstance: func(_ context.Context, key string, desired d.States, _ ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
+			if desired.Contains(d.StateAbsent) {
+				completed.Add(1)
+				return d.StateResponse{Ok: true, State: d.StateAbsent}, d.ProcessInstance{Key: key, State: d.StateAbsent}, nil
+			}
+			return d.StateResponse{Ok: true, State: d.StateCanceled}, d.ProcessInstance{Key: key, State: d.StateCanceled}, nil
+		},
+		deleteProcessInstance: func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error) {
+			return d.DeleteResponse{Ok: true}, nil
+		},
+	}
+	resource := &stubSmokeTestResourceAPI{delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+		require.Equal(t, int64(4), completed.Load())
+		return d.ResourceDeleteResponse{Key: key, Ok: true}, nil
+	}}
+	svc := NewWithAnalysisDependencies(&stubSmokeTestClusterAPI{}, piAPI, nil, deletedAPILatencyProcessDefinitionAPI(), resource, nil, nil, toolx.V89).(*Service)
+	result := d.APILatencyResult{
+		Request: d.APILatencyRequest{Workers: 3},
+		Plan:    d.APILatencyPlan{Cleanup: &d.APILatencyCleanupPlan{IndependentBudget: 5 * time.Second}},
+		Ownership: &d.APILatencyOwnership{
+			ProcessDefinitionKey: "pd-active",
+			ProcessInstanceKeys:  []string{"pi-4", "pi-2", "pi-1", "pi-3"},
+		},
+	}
+	done := make(chan error, 1)
+	go func() { done <- svc.finalizeAPILatencyCleanup(context.Background(), &result) }()
+
+	for range 3 {
+		select {
+		case <-started:
+		case <-time.After(time.Second):
+			close(release)
+			require.FailNow(t, "cleanup did not start three workers")
+		}
+	}
+	select {
+	case <-started:
+		close(release)
+		require.FailNow(t, "cleanup exceeded the requested worker ceiling")
+	case <-time.After(25 * time.Millisecond):
+	}
+	close(release)
+	require.NoError(t, <-done)
+	require.Equal(t, int64(3), maxActive.Load())
+	require.Equal(t, []string{"pi-1", "pi-2", "pi-3", "pi-4", "pd-active"}, toolx.MapSlice(result.Cleanup, func(record d.APILatencyCleanupRecord) string { return record.Key }))
 }
 
 // TestAPILatencyActiveCleanupSkipsDefinitionWhenInstanceCleanupFails verifies PI failures do not spend the cleanup budget on PD retries.
