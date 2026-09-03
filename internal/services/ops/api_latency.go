@@ -112,24 +112,23 @@ func apiLatencyCleanupPlanBudget(request d.APILatencyRequest) time.Duration {
 
 // APILatencyVisibilityAttemptLimit derives the finite exact-key search-attempt ceiling from normalized backoff settings.
 func APILatencyVisibilityAttemptLimit(backoff d.APILatencyBackoff) int {
-	retryCeiling := backoff.MaxRetries + 1
 	if backoff.MaxRetries < 0 {
-		retryCeiling = 1
-	}
-	if retryCeiling < 1 {
-		retryCeiling = 1
+		return 1
 	}
 	if backoff.Timeout <= 0 || backoff.InitialDelay <= 0 {
-		return retryCeiling
+		if backoff.MaxRetries > 0 {
+			return backoff.MaxRetries + 1
+		}
+		return 1
 	}
 	attempts := 1
 	elapsed := time.Duration(0)
 	delay := backoff.InitialDelay
-	for attempts < retryCeiling {
-		elapsed += delay
-		if elapsed > backoff.Timeout {
+	for backoff.MaxRetries == 0 || attempts < backoff.MaxRetries+1 {
+		if delay <= 0 || delay > backoff.Timeout-elapsed {
 			break
 		}
+		elapsed += delay
 		attempts++
 		delay = apiLatencyNextBackoffDelay(backoff, delay)
 	}
@@ -224,6 +223,16 @@ func EvaluateAPILatencyFindings(topology d.APILatencyTopologyEvidence, stages []
 			NextInvestigation: "compare c8volt request timing with gateway and broker logs",
 		})
 	}
+	if apiLatencySearchVisibilityDelayed(stages) {
+		findings = append(findings, d.APILatencyFinding{
+			Code:              "delayed_visibility",
+			Evidence:          []string{"one or more search visibility attempts did not observe a created process instance"},
+			LikelyArea:        "exporter visibility",
+			Confidence:        d.APILatencyFindingConfidenceMedium,
+			Limitation:        "bounded search visibility evidence does not prove the exporter or secondary storage is the root cause",
+			NextInvestigation: "compare exporter lag and secondary-storage health during the captured window",
+		})
+	}
 	if apiLatencyQueryCategoriesSlower(stages) {
 		findings = append(findings, d.APILatencyFinding{
 			Code:              "query_path_degradation",
@@ -245,6 +254,21 @@ func EvaluateAPILatencyFindings(topology d.APILatencyTopologyEvidence, stages []
 		})
 	}
 	return findings
+}
+
+// apiLatencySearchVisibilityDelayed detects exact-key searches that missed a created instance before visibility or budget exhaustion.
+func apiLatencySearchVisibilityDelayed(stages []d.APILatencyStageResult) bool {
+	for _, stage := range stages {
+		for _, category := range stage.Categories {
+			if category.Category != d.APILatencyCategorySearchVisibility {
+				continue
+			}
+			if category.Unavailable > 0 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // apiLatencyStageWidths returns the deterministic worker ramp for a requested maximum.

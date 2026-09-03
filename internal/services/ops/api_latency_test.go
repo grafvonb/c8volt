@@ -125,6 +125,29 @@ func TestAPILatencyActivePlanDerivesVisibilityBound(t *testing.T) {
 	require.Equal(t, 250*time.Millisecond, got.Cleanup.IndependentBudget)
 }
 
+// TestAPILatencyActivePlanUsesTimeoutForUnlimitedVisibilityRetries verifies zero max retries follows the repository's unlimited convention.
+func TestAPILatencyActivePlanUsesTimeoutForUnlimitedVisibilityRetries(t *testing.T) {
+	t.Parallel()
+
+	got, err := PlanAPILatency(d.APILatencyRequest{
+		Mode:    d.APILatencyModeActive,
+		Count:   20,
+		Workers: 4,
+		Backoff: d.APILatencyBackoff{
+			Strategy:     d.APILatencyBackoffExponential,
+			InitialDelay: time.Second,
+			MaxDelay:     8 * time.Second,
+			MaxRetries:   0,
+			Multiplier:   2,
+			Timeout:      30 * time.Minute,
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 228, got.VisibilityAttemptLimit)
+	require.Equal(t, 4580, got.DerivedRequestLimit)
+}
+
 // TestAPILatencyStageResultsAggregateStatistics verifies nearest-rank latency, throughput, and classification order.
 func TestAPILatencyStageResultsAggregateStatistics(t *testing.T) {
 	t.Parallel()
@@ -258,6 +281,45 @@ func TestAPILatencyFindingsFallbackAvoidsHealthClaims(t *testing.T) {
 	require.Equal(t, "no_abnormal_evidence", got[0].Code)
 	require.Equal(t, d.APILatencyFindingConfidenceLow, got[0].Confidence)
 	require.Contains(t, got[0].Limitation, "cannot prove overall health")
+}
+
+// TestAPILatencyFindingsReportDelayedVisibility verifies active retries and exhaustion cannot be called normal evidence.
+func TestAPILatencyFindingsReportDelayedVisibility(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name     string
+		category d.APILatencyCategorySummary
+	}{
+		{
+			name: "eventually visible after retries",
+			category: d.APILatencyCategorySummary{
+				Category:    d.APILatencyCategorySearchVisibility,
+				Attempts:    3,
+				Successes:   1,
+				Unavailable: 2,
+			},
+		},
+		{
+			name: "visibility budget exhausted",
+			category: d.APILatencyCategorySummary{
+				Category:    d.APILatencyCategorySearchVisibility,
+				Attempts:    20,
+				Unavailable: 20,
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := EvaluateAPILatencyFindings(d.APILatencyTopologyEvidence{HealthKnown: true}, []d.APILatencyStageResult{{Categories: []d.APILatencyCategorySummary{tc.category}}})
+
+			require.Len(t, got, 1)
+			require.Equal(t, "delayed_visibility", got[0].Code)
+			require.Equal(t, "exporter visibility", got[0].LikelyArea)
+			require.Equal(t, d.APILatencyFindingConfidenceMedium, got[0].Confidence)
+			require.NotEqual(t, "no_abnormal_evidence", got[0].Code)
+		})
+	}
 }
 
 // TestAPILatencyReadOnlyMeasuresSearchesAndDerivedReads verifies US1 read-only measurements reuse discovered keys without mutation calls.

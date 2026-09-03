@@ -687,3 +687,17 @@ Started: 2026-09-02 06:58:25
 - Regression cause: active cleanup needed to cancel and wait active fixture instances before exact deletion, then verify direct process-definition absence rather than trusting history-delete batch completion alone.
 - Validation passed: `go test ./internal/services/ops ./cmd -run 'APILatency' -count=1`; `C8VOLT_IT_AUTOMATION=1 make integration-cli-ops-execute-volume C8VOLT_IT_GO_TEST_FLAGS=-v`; `git diff --check`; `make test`.
 ---
+
+## Post-completion correction - 2026-09-03
+**Work Unit**: Active search-visibility retry semantics and findings
+**Files Changed**:
+- `internal/services/ops/api_latency.go`
+- `internal/services/ops/api_latency_test.go`
+- `cmd/ops_execute_api_latency_test.go`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- `app.backoff.max_retries: 0` is the repository-wide unlimited-retry convention, bounded by the configured timeout; API-latency planning incorrectly converted it to one visibility attempt, causing every created instance to be reported unavailable before immediate cleanup.
+- Exact-key visibility misses must produce `delayed_visibility` evidence both when a later retry succeeds and when the visibility budget is exhausted; they must not fall through to `no_abnormal_evidence`.
+- Live C8.9 validation with the corrected attempt plan observed the created instance on attempt 3 after about 3.1 seconds and then confirmed deletion of the exact process-instance and process-definition keys.
+- Validation passed: focused API-latency tests; race-enabled service/facade/command API-latency tests; count-1 live C8.9 active execution; `git diff --check`; `make test`.
+---
