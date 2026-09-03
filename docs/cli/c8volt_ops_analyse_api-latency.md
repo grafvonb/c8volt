@@ -15,7 +15,9 @@ The command is read-only. It measures cluster topology, process-definition searc
 
 --count is the total primary sample-cycle budget across all stages. --workers is the maximum closed-loop worker count and final stage width. The count must be large enough to exercise every stage width.
 
-Default output is compact stage evidence with findings, notices, limitations, and outcome. JSON output uses the shared command envelope. Keys-only output is not meaningful for this diagnostic and is rejected.
+Default output summarizes the read-only scope, request errors and timeouts, the slowest measured API path, load effect, findings, and next investigation in operator language. Use --verbose for the stage plan, sample allocation, detailed statistics, notices, and limitations.
+
+JSON output uses the shared command envelope. Keys-only output is not meaningful for this diagnostic and is rejected.
 
 ```
 c8volt ops analyse api-latency [flags]
@@ -27,6 +29,7 @@ c8volt ops analyse api-latency [flags]
   ./c8volt ops analyse api-latency
   ./c8volt ops analyse api-latency --count 20 --workers 4
   ./c8volt ops analyse api-latency -n 6 -w 2
+  ./c8volt --verbose ops analyse api-latency
   ./c8volt ops analyse api-latency --json
 ```
 

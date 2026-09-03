@@ -66,6 +66,9 @@ func TestOpsAnalyseAPILatencyHelpDocumentsReadOnlySurface(t *testing.T) {
 		"The command is read-only.",
 		"--count is the total primary sample-cycle budget",
 		"--workers is the maximum closed-loop worker count",
+		"Default output summarizes the read-only scope",
+		"slowest measured API path",
+		"Use --verbose for the stage plan",
 		"JSON output uses the shared command envelope",
 		"Keys-only output is not meaningful",
 		"-n, --count int",
@@ -74,6 +77,7 @@ func TestOpsAnalyseAPILatencyHelpDocumentsReadOnlySurface(t *testing.T) {
 		"--report-format string",
 		"./c8volt ops analyse api-latency --count 20 --workers 4",
 		"./c8volt ops analyse api-latency -n 6 -w 2",
+		"./c8volt --verbose ops analyse api-latency",
 	)
 }
 

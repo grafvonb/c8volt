@@ -729,3 +729,21 @@ Started: 2026-09-02 06:58:25
 - Internal allocation, theoretical ceilings, run metadata, statistical abbreviations, notices, and limitations remain available through `--verbose`, JSON, and report files; dry-run continues to show the complete pre-mutation plan.
 - Live C8.9 validation produced concise read-only and active summaries; the active count-7/worker-4 run reported zero request failures, all seven instances searchable after 14 earlier misses, complete cleanup, and one delayed-search-visibility finding with a next action.
 ---
+
+## Post-completion correction - 2026-09-03
+**Work Unit**: Latency help and documentation alignment
+**Files Changed**:
+- `cmd/ops_analyse_api_latency.go`
+- `cmd/ops_execute_api_latency.go`
+- `cmd/ops_analyse_api_latency_test.go`
+- `cmd/ops_execute_api_latency_test.go`
+- `docs/cli/c8volt_ops_analyse_api-latency.md`
+- `docs/cli/c8volt_ops_execute_api-latency-test.md`
+- `docs/index.md`
+- `specs/289-api-latency-diagnostics/contracts/api-latency-cli.md`
+- `specs/289-api-latency-diagnostics/quickstart.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Command help, generated CLI references, the human-output contract, and quickstart now describe the operator summary, plain-language percentile wording, `--verbose` detail, and unchanged complete dry-run preview consistently.
+- `make docs-content` regenerated the CLI references from command metadata; focused help, capability, API-latency, and documentation validation passed.
+---

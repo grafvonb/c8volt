@@ -34,10 +34,12 @@ var opsExecuteAPILatencyCmd = &cobra.Command{
 	Long: "Execute a bounded active API latency test.\n\n" +
 		"The command deploys the existing version-matched SimpleUserTask fixture, creates a bounded number of process instances, measures create response, concurrent read, and search visibility evidence, then cleans up exact run-owned resources unless --no-cleanup is set.\n\n" +
 		"It requires one concrete tenant because the workflow creates and cleans resources in a single destination. --dry-run validates and previews the active plan without mutation. --no-cleanup explicitly retains run-owned resources and still requires confirmation for a real run.\n\n" +
+		"Default result output summarizes the active scope, request errors and timeouts, create latency, load effect, search visibility, findings with next investigation, and cleanup in operator language. Use --verbose for the stage plan, run and fixture metadata, detailed statistics, notices, and limitations.\n\n" +
 		"--count is the total primary process-instance create sample budget across all stages. --workers is the maximum closed-loop worker count and final stage width. JSON active execution requires --dry-run, --auto-confirm, or --automation so stdout remains one document. Keys-only output is not meaningful for this diagnostic and is rejected.",
 	Example: `  ./c8volt ops execute api-latency-test --dry-run
   ./c8volt ops execute api-latency-test --count 20 --workers 4 --auto-confirm
   ./c8volt ops execute api-latency-test -n 7 -w 4 --dry-run
+  ./c8volt --verbose ops execute api-latency-test --auto-confirm
   ./c8volt ops execute api-latency-test --no-cleanup --auto-confirm`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {

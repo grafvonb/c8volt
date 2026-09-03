@@ -167,15 +167,15 @@ The process-definition command is supplied only on versions that support complet
 
 Default output is compact and scan-friendly:
 
-1. one request/plan summary;
-2. one row per stage with worker count, primary attempts/successes, errors/timeouts, throughput, p50/p95/max, and prior-stage deltas;
-3. a small findings section with confidence and next investigation;
-4. active-only ownership/visibility/cleanup summary;
-5. notices and limitations;
-6. final outcome;
+1. context and operator-readable scope with the tested load range;
+2. request-error and timeout totals;
+3. the slowest read path or active create latency expressed as "95% completed within", plus median load effect when comparable;
+4. plain-language findings followed by the next investigation;
+5. active-only eventual search visibility and cleanup summary;
+6. final outcome, including the number of actionable findings;
 7. `report: written <path>` when applicable.
 
-Default output omits endpoints, cursors, raw errors, request bodies, per-key lifecycle chatter, and individual samples. Verbose/debug use established durable progress/detail behavior on stderr. Quiet suppresses successful progress and retains failures. Automation and JSON remain free of human progress.
+Default output omits stage allocation, theoretical request ceilings, statistical abbreviations, run metadata, notices, limitations, endpoints, cursors, raw errors, request bodies, per-key lifecycle chatter, and individual samples. Retained or unresolved cleanup resources and their recovery commands remain visible because they require operator action. `--verbose` adds the full plan, stage metrics, metadata, notices, and limitations. Dry-run continues to display the complete plan before mutation. Quiet suppresses successful progress and retains failures. Automation and JSON remain free of human progress.
 
 ## JSON Output Contract
 

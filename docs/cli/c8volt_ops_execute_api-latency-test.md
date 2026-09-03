@@ -15,6 +15,8 @@ The command deploys the existing version-matched SimpleUserTask fixture, creates
 
 It requires one concrete tenant because the workflow creates and cleans resources in a single destination. --dry-run validates and previews the active plan without mutation. --no-cleanup explicitly retains run-owned resources and still requires confirmation for a real run.
 
+Default result output summarizes the active scope, request errors and timeouts, create latency, load effect, search visibility, findings with next investigation, and cleanup in operator language. Use --verbose for the stage plan, run and fixture metadata, detailed statistics, notices, and limitations.
+
 --count is the total primary process-instance create sample budget across all stages. --workers is the maximum closed-loop worker count and final stage width. JSON active execution requires --dry-run, --auto-confirm, or --automation so stdout remains one document. Keys-only output is not meaningful for this diagnostic and is rejected.
 
 ```
@@ -27,6 +29,7 @@ c8volt ops execute api-latency-test [flags]
   ./c8volt ops execute api-latency-test --dry-run
   ./c8volt ops execute api-latency-test --count 20 --workers 4 --auto-confirm
   ./c8volt ops execute api-latency-test -n 7 -w 4 --dry-run
+  ./c8volt --verbose ops execute api-latency-test --auto-confirm
   ./c8volt ops execute api-latency-test --no-cleanup --auto-confirm
 ```
 

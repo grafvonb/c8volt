@@ -37,8 +37,8 @@ Expected:
 
 - stages 1, 2, and 4 with sample allocations 5, 6, and 9;
 - no deployment, creation, cancellation, or deletion;
-- compact stage metrics and findings;
-- read-only limitations shown;
+- default output states the read-only scope and load range, request errors and timeouts, slowest measured API path, load effect, plain-language findings, and next investigation;
+- detailed stage metrics, notices, and read-only limitations remain available with `--verbose` and in reports;
 - success exit when all stages complete, including when measurements contain abnormal evidence.
 
 ### 2. Read-only JSON and report
@@ -96,6 +96,7 @@ Expected:
 - actual concurrency never above 4;
 - exact PD/PI keys recorded immediately;
 - create, overlapping-read, and visibility evidence separated;
+- default output states create latency, load effect, eventual search visibility, plain-language findings with next investigation, and cleanup outcome;
 - exact-key cleanup attempted for every owned resource;
 - successful cleanup leaves no run-owned resource behind.
 

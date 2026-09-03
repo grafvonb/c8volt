@@ -38,6 +38,9 @@ func TestOpsExecuteAPILatencyHelpDocumentsActiveSurface(t *testing.T) {
 		"requires one concrete tenant",
 		"--dry-run validates and previews the active plan without mutation",
 		"--no-cleanup explicitly retains run-owned resources",
+		"Default result output summarizes the active scope",
+		"search visibility, findings with next investigation, and cleanup",
+		"Use --verbose for the stage plan",
 		"JSON active execution requires --dry-run, --auto-confirm, or --automation",
 		"-n, --count int",
 		"-w, --workers int",
@@ -47,6 +50,7 @@ func TestOpsExecuteAPILatencyHelpDocumentsActiveSurface(t *testing.T) {
 		"--report-format string",
 		"./c8volt ops execute api-latency-test --dry-run",
 		"./c8volt ops execute api-latency-test --count 20 --workers 4 --auto-confirm",
+		"./c8volt --verbose ops execute api-latency-test --auto-confirm",
 	)
 }
 
