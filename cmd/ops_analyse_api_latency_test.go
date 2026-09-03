@@ -210,7 +210,7 @@ func TestOpsAnalyseAPILatencyOutputSafetyExcludesProtectedContextAndRawBodies(t 
 	)
 
 	require.Empty(t, stdout)
-	require.Contains(t, stderr, "finding: backpressure_observed")
+	require.Contains(t, stderr, "finding: backpressure observed")
 	report := readReportFile(t, reportPath)
 	var payload map[string]any
 	require.NoError(t, json.Unmarshal([]byte(report), &payload))
@@ -712,20 +712,37 @@ func TestRenderOpsAnalyseAPILatencyStableHumanAndJSON(t *testing.T) {
 	human := humanOut.String()
 	require.Contains(t, human, "analyse api latency")
 	require.Contains(t, human, "context: c8volt dev-test; profile support; tenant tenant-a; camunda 8.9")
-	require.Contains(t, human, "request: count 7; workers 1,2,4; stages 3; derived requests <= 14")
+	require.Contains(t, human, "scope: read only; 7 measurement cycles; load increased from 1 to 4 workers")
 	require.Contains(t, human, "topology: brokers 2; partitions 3; unhealthy 2; leaderless 3")
-	require.Contains(t, human, "stage 1: workers 1; primary 3/3; derived 2/2; errors 0; timeouts 1; unavailable 0; p95 topology_read 15ms; throughput 27.5/s")
-	require.Contains(t, human, "stage 2: workers 2; primary 6/6; derived 4/4; errors 0; timeouts 0; unavailable 2; p95 topology_read 45ms; throughput 27.5/s; p50 delta +4ms; throughput delta -3.2/s (-11.8%)")
-	require.Less(t, strings.Index(human, "stage 1:"), strings.Index(human, "stage 2:"))
-	require.Less(t, strings.Index(human, "finding: timeout_evidence"), strings.Index(human, "finding: no_abnormal_evidence"))
-	require.Contains(t, human, "notice: logical samples include existing client retry behavior")
-	require.Contains(t, human, "limitation: read-only evidence cannot prove write-path health")
-	require.Contains(t, human, "outcome: completed; elapsed 125ms")
+	require.Contains(t, human, "result: API measurements completed; request errors 0; timeouts 1")
+	require.Contains(t, human, "latency: topology read was slowest; 95% completed within 45ms at 2 workers")
+	require.Contains(t, human, "load effect: median topology read was unchanged from 1 to 2 workers")
+	require.Less(t, strings.Index(human, "finding: timeout evidence"), strings.Index(human, "finding: no abnormal evidence found"))
+	require.Contains(t, human, "next: inspect gateway timeout logs")
+	require.Contains(t, human, "outcome: completed with 1 finding; elapsed 125ms")
+	require.NotContains(t, human, "request: count")
+	require.NotContains(t, human, "stage 1:")
+	require.NotContains(t, human, "p50")
+	require.NotContains(t, human, "p95")
+	require.NotContains(t, human, "notice:")
+	require.NotContains(t, human, "limitation:")
 	require.NotContains(t, human, "ownership:")
 	require.NotContains(t, human, "visibility:")
 	require.NotContains(t, human, "cleanup:")
 	require.NotContains(t, human, "GET /v2")
 	require.NotContains(t, human, "Authorization")
+
+	flagVerbose = true
+	verboseCmd := &cobra.Command{}
+	var verboseOut bytes.Buffer
+	verboseCmd.SetOut(&verboseOut)
+	require.NoError(t, renderOpsAPILatencyResult(verboseCmd, result))
+	require.Contains(t, verboseOut.String(), "request: count 7; workers 1,2,4; stages 3; derived requests <= 14")
+	require.Contains(t, verboseOut.String(), "stage 1: workers 1; primary 3/3; derived 2/2")
+	require.Contains(t, verboseOut.String(), "finding detail: likely area gateway/connectivity/authentication; confidence high")
+	require.Contains(t, verboseOut.String(), "notice: logical samples include existing client retry behavior")
+	require.Contains(t, verboseOut.String(), "limitation: read-only evidence cannot prove write-path health")
+	flagVerbose = false
 
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -839,16 +856,26 @@ func assertOpsAnalyseAPILatencyHumanOutput(t *testing.T, output string) {
 	t.Helper()
 
 	require.Contains(t, output, "analyse api latency")
-	require.Contains(t, output, "request: count 1; workers 1; stages 1; derived requests <= 2")
+	require.Contains(t, output, "scope: read only; 1 measurement cycle; load 1 worker")
 	require.Contains(t, output, "topology: brokers 1; partitions 1")
-	require.Contains(t, output, "stage 1: workers 1; primary 3/3; derived 2/2; errors 0; timeouts 0; unavailable 0")
-	require.Contains(t, output, "finding: no_abnormal_evidence; no abnormal evidence; confidence low")
-	require.Contains(t, output, "limitation: read-only evidence cannot prove write-path health")
-	require.Contains(t, output, "limitation: read-only evidence cannot prove exporter health or end-to-end process execution health")
+	require.Contains(t, output, "result: API measurements completed; request errors 0; timeouts 0")
+	require.Contains(t, output, "latency:")
+	require.Contains(t, output, "95% completed within")
+	require.Contains(t, output, "finding: no abnormal evidence found")
 	require.Contains(t, output, "outcome: completed")
+	require.NotContains(t, output, "request: count")
+	require.NotContains(t, output, "stage 1:")
+	require.NotContains(t, output, "p50")
+	require.NotContains(t, output, "p95")
+	require.NotContains(t, output, "limitation:")
 	require.NotContains(t, output, "GET /v2")
 	require.NotContains(t, output, "process-definition-key")
 	require.NotContains(t, output, "process-instance-key")
+}
+
+func TestFormatOpsAPILatencyOperatorDurationUsesReadablePrecision(t *testing.T) {
+	require.Equal(t, "14ms", formatOpsAPILatencyOperatorDuration(13*time.Millisecond+889*time.Microsecond))
+	require.Equal(t, "3.1s", formatOpsAPILatencyOperatorDuration(3*time.Second+83*time.Millisecond))
 }
 
 func newOpsAnalyseAPILatencyReadOnlyServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {

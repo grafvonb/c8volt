@@ -28,17 +28,28 @@ func renderOpsAPILatencyResult(cmd *cobra.Command, result ops.APILatencyResult) 
 	}
 	renderAttachedTenantContext(cmd)
 	renderOpsAPILatencyContext(cmd, result.Context)
-	renderOpsAPILatencyPlan(cmd, result.Plan)
-	renderOpsAPILatencyTopology(cmd, result.Topology)
-	renderOpsAPILatencyStages(cmd, result.Stages, result.Plan.Mode)
-	renderOpsAPILatencyFindings(cmd, result.Findings)
-	if active {
-		renderOpsAPILatencyOwnership(cmd, result.Ownership)
-		renderOpsAPILatencyVisibility(cmd, result.Visibility)
-		renderOpsAPILatencyCleanup(cmd, result.Cleanup)
+	if result.Request.DryRun {
+		renderOpsAPILatencyPlan(cmd, result.Plan)
+		renderOpsAPILatencyTopology(cmd, result.Topology)
+		renderOpsAPILatencyStages(cmd, result.Stages, result.Plan.Mode)
+		renderOpsAPILatencyFindings(cmd, result.Findings)
+		renderOpsAPILatencyStringList(cmd, "notice", result.Notices)
+		renderOpsAPILatencyStringList(cmd, "limitation", result.Limitations)
+	} else {
+		renderOpsAPILatencyOperatorSummary(cmd, result, active)
+		if active {
+			renderOpsAPILatencyCleanup(cmd, result.Cleanup)
+		}
+		if flagVerbose {
+			renderOpsAPILatencyPlan(cmd, result.Plan)
+			renderOpsAPILatencyStages(cmd, result.Stages, result.Plan.Mode)
+			if active {
+				renderOpsAPILatencyOwnership(cmd, result.Ownership)
+			}
+			renderOpsAPILatencyStringList(cmd, "notice", result.Notices)
+			renderOpsAPILatencyStringList(cmd, "limitation", result.Limitations)
+		}
 	}
-	renderOpsAPILatencyStringList(cmd, "notice", result.Notices)
-	renderOpsAPILatencyStringList(cmd, "limitation", result.Limitations)
 	renderOpsAPILatencyReportFile(cmd, result.Request.ReportFile)
 	renderOpsAPILatencyOutcome(cmd, result)
 	return nil
@@ -398,6 +409,10 @@ func renderOpsAPILatencyCleanup(cmd *cobra.Command, cleanup []ops.APILatencyClea
 			unknown++
 		}
 	}
+	if deleted == len(cleanup) {
+		renderHumanLine(cmd, "cleanup: deleted all %d run-owned resources (%s)", deleted, formatOpsAPILatencyDeletedResources(cleanup))
+		return
+	}
 	renderHumanLine(cmd, "cleanup: deleted %d/%d; retained %d; failed %d; unknown %d", deleted, len(cleanup), retained, failed, unknown)
 	renderOpsAPILatencyCleanupRecovery(cmd, cleanup)
 }
@@ -448,21 +463,24 @@ func renderOpsAPILatencyFindings(cmd *cobra.Command, findings []ops.APILatencyFi
 		return
 	}
 	for _, finding := range findings {
-		parts := []string{finding.Code}
-		if finding.LikelyArea != "" {
-			parts = append(parts, string(finding.LikelyArea))
+		renderHumanLine(cmd, "finding: %s", formatOpsAPILatencyFinding(finding.Code))
+		if finding.NextInvestigation != "" {
+			renderHumanLine(cmd, "next: %s", finding.NextInvestigation)
 		}
-		if finding.Confidence != "" {
-			parts = append(parts, "confidence "+string(finding.Confidence))
-		}
-		renderHumanLine(cmd, "finding: %s", strings.Join(parts, "; "))
 		if flagVerbose {
+			if finding.LikelyArea != "" || finding.Confidence != "" {
+				parts := []string{}
+				if finding.LikelyArea != "" {
+					parts = append(parts, "likely area "+string(finding.LikelyArea))
+				}
+				if finding.Confidence != "" {
+					parts = append(parts, "confidence "+string(finding.Confidence))
+				}
+				renderHumanLine(cmd, "finding detail: %s", strings.Join(parts, "; "))
+			}
 			renderOpsAPILatencyStringList(cmd, "evidence", finding.Evidence)
 			if finding.Limitation != "" {
 				renderHumanLine(cmd, "limitation: %s", finding.Limitation)
-			}
-			if finding.NextInvestigation != "" {
-				renderHumanLine(cmd, "next: %s", finding.NextInvestigation)
 			}
 		}
 	}
@@ -482,11 +500,14 @@ func renderOpsAPILatencyOutcome(cmd *cobra.Command, result ops.APILatencyResult)
 	if result.Outcome == "" {
 		return
 	}
-	elapsed := ""
-	if result.Context.Duration != "" {
-		elapsed = "; elapsed " + result.Context.Duration
+	detail := ""
+	if findings := countOpsAPILatencyActionableFindings(result.Findings); findings > 0 {
+		detail = fmt.Sprintf(" with %d %s", findings, opsAPILatencyCountedNoun(findings, "finding", "findings"))
 	}
-	renderHumanLine(cmd, "outcome: %s%s", result.Outcome, elapsed)
+	if result.Context.Duration != "" {
+		detail += "; elapsed " + result.Context.Duration
+	}
+	renderHumanLine(cmd, "outcome: %s%s", result.Outcome, detail)
 }
 
 func formatOpsAPILatencyStageWidths(stages []ops.APILatencyStagePlan) string {

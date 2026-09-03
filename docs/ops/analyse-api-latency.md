@@ -47,7 +47,9 @@ Missing keys, disappearing resources, and unsupported keyed reads are reported a
 
 ## Output And Reports
 
-Default output shows the stage plan, compact stage metrics, findings, notices, limitations, and outcome. Stage rows include attempts, successes, errors, timeouts, throughput, p50, p95, maximum latency, and prior-stage deltas when available.
+Default output is an operator summary: read-only scope, load range, request errors and timeouts, the slowest measured API path, its latency under maximum observed load, load effect, findings, next investigation, and outcome. It spells out percentile meaning as "95% completed within" and keeps internal sample allocation and statistical abbreviations out of the normal view.
+
+Use `--verbose` to include the stage plan, sample allocation, per-stage statistics, notices, and limitations. Dry-run-style planning details and structured report evidence retain their complete bounds and measurements.
 
 Use `--json` for the shared command envelope. Use `--report-file` for a raw diagnostic report; `.json` writes JSON, while `.md`, `.markdown`, no extension, and unknown extensions write Markdown unless `--report-format` is set.
 

@@ -78,6 +78,8 @@ An explicit `--no-cleanup` run can finish as `completed_retained`. Requested cle
 
 ## Output And Reports
 
-Default output shows the active plan, stage metrics, findings, ownership summary, visibility summary, cleanup summary, notices, limitations, and outcome without per-key lifecycle chatter. Retained, failed, and unknown resources are listed because they require operator attention.
+Default output is an operator summary: active scope, load range, request errors and timeouts, create latency under maximum observed load, load effect, plain-language search visibility, findings, next investigation, cleanup, and outcome. Internal stage allocation, theoretical request ceilings, run metadata, statistical abbreviations, notices, and limitations stay out of the normal result.
+
+Use `--verbose` to include the full plan, stage metrics, run and fixture metadata, ownership summary, notices, and limitations. Retained, failed, and unknown resources remain visible by default because they require operator action. Dry-run output continues to show the complete plan before mutation.
 
 Use `--report-file` to write a Markdown or JSON report. Confirmed mutation uses the established overwrite policy only after a deployment is submitted or exact ownership keys are recorded. Reports and JSON output exclude endpoints, credentials, authorization headers, client secrets, variables, payloads, raw upstream bodies, and unbounded error strings.

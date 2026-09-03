@@ -713,3 +713,19 @@ Started: 2026-09-02 06:58:25
 - Cleanup now uses the standard `toolx.DetermineNoOfWorkers` and `toolx/pool.ExecuteSlice` primitives to run complete exact-key cancel/wait/delete/absence lifecycles concurrently; result records remain deterministically ordered and process-definition deletion remains last.
 - Validation passed: focused cleanup tests; race-enabled cleanup tests; full `make test`; live C8.9 active execution with count 7 and workers 4, which completed all exact PI/PD cleanup successfully in a 37.2-second total run.
 ---
+
+## Post-completion correction - 2026-09-03
+**Work Unit**: Operator-facing latency outcome summaries
+**Files Changed**:
+- `cmd/cmd_views_ops_api_latency.go`
+- `cmd/cmd_views_ops_api_latency_summary.go`
+- `cmd/ops_analyse_api_latency_test.go`
+- `cmd/ops_execute_api_latency_test.go`
+- `docs/ops/analyse-api-latency.md`
+- `docs/ops/execute-api-latency-test.md`
+- `specs/289-api-latency-diagnostics/progress.md`
+**Learnings**:
+- Default human results now answer the operational questions directly: scope and load, request errors and timeouts, slowest or create-path latency, load effect, eventual search visibility, findings with next investigation, cleanup, and outcome.
+- Internal allocation, theoretical ceilings, run metadata, statistical abbreviations, notices, and limitations remain available through `--verbose`, JSON, and report files; dry-run continues to show the complete pre-mutation plan.
+- Live C8.9 validation produced concise read-only and active summaries; the active count-7/worker-4 run reported zero request failures, all seven instances searchable after 14 earlier misses, complete cleanup, and one delayed-search-visibility finding with a next action.
+---
