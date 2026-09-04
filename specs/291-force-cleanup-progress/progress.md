@@ -3,7 +3,6 @@
 Feature: 291-force-cleanup-progress
 Started: 2026-09-04 12:01:50
 
----
 ## Iteration 3 - 2026-09-04 12:17
 **Work Unit**: Partial US1 service stage entries
 **Tasks Completed**:
@@ -269,4 +268,24 @@ Started: 2026-09-04 12:01:50
 - PASS: `go test ./internal/services/ops/... -run 'TestPurgeAllProcessDefinitions' -count=1`.
 - PASS: `git diff --check`.
 - APD facade stage forwarding is request-callback based; `foptions.WithProgress(nil)` leaves no service option callback installed.
+---
+---
+## Iteration 12 - 2026-09-04 13:28
+**Work Unit**: Complete US3 compatibility verification
+**Tasks Completed**:
+- [x] T026: Verify the US3 matrix, confirm no progress-specific regression at the coordinator, APD command wiring, or ops conversion boundary, and record compatibility evidence.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- PASS: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter' -count=1 -timeout 90s`.
+- PASS: `go test ./c8volt/ops -run 'TestProgressConversions|TestClientPurgeAllProcessDefinitions' -count=1`.
+- PASS: `go test ./internal/services/processdefinition/... -run 'Test.*(DeleteProcessDefinition|CleanupProcessDefinition)' -count=1`.
+- PASS: `go test ./internal/services/ops/... -run 'TestPurgeAllProcessDefinitions' -count=1`.
+- PASS: `go test ./cmd ./internal/services/processdefinition/... ./internal/services/ops/... -race -run 'Test.*(PurgeAllProcessDefinitions|SemanticProgress|CleanupProcessDefinition|DeleteProcessDefinition)' -count=1 -timeout 120s`.
+- PASS: `git diff --check`.
+- No production code repair was needed; the next work unit moves to Phase 6 polish/documentation.
 ---

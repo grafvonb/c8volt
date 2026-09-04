@@ -32,6 +32,7 @@ Started: 2026-09-04T10:01:49Z
 - Process-definition service US3 failure coverage now asserts cleanup stops at the last entered stage for cancellation failure, drain backend error, drain deadline/cancellation interruption, and history failure; nested PI calls preserve caller `NoWait`/`FailFast` plus APD-added affected count and suppression options.
 - `DeleteProcessDefinitionResources` US3 coverage now asserts the definition stage entry precedes the first serial request, Camunda `deleteHistory` request-shape rejection submits only the first definition, and fail-fast after the serial probe emits no completion for unscheduled definitions while still returning the pool-sized result slice with zero-value unscheduled entries.
 - APD facade boundary coverage in `c8volt/ops/client_test.go` now proves request-level stage progress forwards through `PurgeAllProcessDefinitions`, nil request/options callbacks stay nil, frozen keys/options/tenant evidence/report mapping remain intact, and domain validation errors normalize through `ferrors`.
+- US3 compatibility verification passed without production repair: command/facade/service focused suites and race-enabled command/service matrix all accept the current progress coordinator, APD wiring, and ops conversion boundaries.
 
 ## Decisions
 - Iteration 1 was setup/evidence only. No production code or generated docs changed.
@@ -40,6 +41,7 @@ Started: 2026-09-04T10:01:49Z
 - Iteration 6 completed US1 stage visibility end to end: real nested command callbacks now show cancellation, drain, history deletion, and definition deletion through the APD coordinator.
 - Iteration 7 completed the coordinator-owned US2 timing/final-record slice. Nested command output tests and the full US2 validation record remain open.
 - Iteration 8 completed US2 command-level output evidence and validation: default cancel/history/definition failures warn once with owning-stage aggregates; verbose/debug output emits one item outcome per nested stage completion for submitted and confirmed paths with no duplicate aggregate lines.
+- Iteration 12 completed US3 verification and compatibility evidence. No progress-specific regression was exposed, so no code repair was needed in the coordinator, APD command wiring, or ops conversion boundary.
 - Actual checkout is `develop`; `.specify/feature.json` still points at `specs/291-force-cleanup-progress`; `AGENTS.md` still points at `specs/291-force-cleanup-progress/plan.md`.
 
 ## Gotchas
@@ -62,4 +64,4 @@ Started: 2026-09-04T10:01:49Z
 - Do not reroute the ordinary non-force worker path through `DeleteProcessDefinitionResources`; the plan requires a private once-only entry hook in the existing `deleteProcessDefinition` path.
 
 ## Current Handoff
-- Continue US3 with T026: run the US3 matrix and repair any exposed progress-specific regression at its owning boundary (`cmd/ops_purge_all_processdefinitions_progress.go`, `cmd/ops_purge_all_processdefinitions.go`, or `c8volt/ops/convert.go`); leave backend operations and final renderers unchanged, then record compatibility evidence.
+- Start Phase 6 polish with T027: update `README.md` and `docs/ops/purge-all-process-definitions.md` for the implemented four-stage force-cleanup progress behavior; do not edit generated CLI docs until T029.
