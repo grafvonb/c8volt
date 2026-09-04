@@ -14,6 +14,8 @@ Started: 2026-09-04T10:01:49Z
 - `internal/services/processdefinition/delete.go` now emits typed stage entries at service-owned boundaries: cancel with unique-root total and trustworthy planned affected scope, drain without totals, PI history delete with unique-root total, and definition delete before the first preplanned resource request.
 - Ordinary non-force `DeleteProcessDefinitions` still uses the existing worker path and now passes a private `sync.Once` hook into `deleteProcessDefinition`, reporting one definition stage after item validation and immediately before the first resource delete.
 - `internal/services/ops/all_process_definitions_purge_test.go` now asserts the APD service mutation sequence by filtering stage/completion events away from discovery and nested FrozenScope facts; force cleanup expects cancel -> drain -> PI history delete -> PD delete, with unique-root totals and planned affected scope.
+- `cmd/ops_purge_all_processdefinitions_progress.go` now owns a dormant APD stage coordinator for real execution: `Start` opens one generic workflow activity, stage entries update the current activity, cancellation/history/definition aggregates remain stage-local, draining has no denominator, unentered/unknown/empty completion phases are ignored, and concurrent callbacks are serialized through the T007 reducer.
+- APD coordinator rendering keeps planned affected scope separate as `affected scope: N process instance(s)` and only shows completed affected totals after trusted completion counts arrive; known zero is preserved while nil is omitted.
 
 ## Decisions
 - Iteration 1 was setup/evidence only. No production code or generated docs changed.
@@ -41,4 +43,4 @@ Started: 2026-09-04T10:01:49Z
 - Do not reroute the ordinary non-force worker path through `DeleteProcessDefinitionResources`; the plan requires a private once-only entry hook in the existing `deleteProcessDefinition` path.
 
 ## Current Handoff
-- Next iteration continues US1 with T011: create `cmd/ops_purge_all_processdefinitions_progress_test.go` for the focused coordinator, covering zero-at-entry totals, stage-local counters, planned versus completed affected counts, nil/zero coverage, waiting without counts, rejected unrelated/unentered phases, late historical completions, concurrent completions, and idempotent cleanup.
+- Next iteration continues US1 with T012: add the real nested command acceptance test in `cmd/ops_purge_all_processdefinitions_test.go` using existing CLI fake-server/activity facilities. After T012 is validated, T016 should wire the dormant APD coordinator into the command and remove the old eager definition-only real-execution activity owner.

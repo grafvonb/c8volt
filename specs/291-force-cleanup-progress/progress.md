@@ -124,3 +124,24 @@ Started: 2026-09-04 12:01:50
 - PASS: `go test ./internal/services/ops/... -run 'TestPurgeAllProcessDefinitions' -count=1`.
 - APD service progress assertions should filter discovery progress out of mutation sequence checks and assert nested `FrozenScope` facts separately so they cannot double count as root completions.
 ---
+---
+## Iteration 5 - 2026-09-04 12:30
+**Work Unit**: Partial US1 APD progress coordinator
+**Tasks Completed**:
+- [x] T011: Add focused APD coordinator tests for stage entry, stage-local counters, planned/completed affected counts, nil/zero coverage, waiting without counts, exact phase rejection, historical completions, concurrent completions, idempotent cleanup, and preserved definition milestones.
+- [x] T015: Implement the dormant APD progress coordinator with one generic real-execution activity, explicit current stage, at most three mutation aggregates, separate planned affected scope, exact phase routing, serialized callback handling, and shared semantic aggregate reduction.
+**Tasks Remaining in Work Unit**: 3 US1 tasks remain: T012, T016, and T017.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_purge_all_processdefinitions_progress.go
+- cmd/ops_purge_all_processdefinitions_progress_test.go
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- PASS: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitionsProgress' -count=1`.
+- PASS: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter' -count=1`.
+- PASS: `go test ./cmd -race -run 'TestOpsPurgeAllProcessDefinitionsProgress|TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter' -count=1`.
+- PASS: `git diff --check`.
+- The coordinator remains dormant and is not wired into APD execution yet; T016 owns replacing the old definition-only wrapper and real-execution activity lifecycle after the T012 real nested command acceptance test.
+---
