@@ -19,8 +19,8 @@ Implementation must read `AGENTS.md`, `.specify/memory/constitution.md`, and `sp
 
 **Purpose**: Establish the existing behavior and an implementation evidence log.
 
-- [ ] T001 Read the feature artifacts and repository rules, confirm the actual checkout and clean ownership boundaries, and create `specs/291-force-cleanup-progress/progress.md` recording the service callback chain, affected files, and planned validation; preserve the feature selection in `.specify/feature.json` and the active-plan reference in `AGENTS.md`.
-- [ ] T002 Run the existing focused APD command, semantic reporter, facade conversion, and process-definition service checks listed in `specs/291-force-cleanup-progress/quickstart.md`; record baseline results and any pre-existing failures in `specs/291-force-cleanup-progress/progress.md` without changing unrelated code.
+- [x] T001 Read the feature artifacts and repository rules, confirm the actual checkout and clean ownership boundaries, and create `specs/291-force-cleanup-progress/progress.md` recording the service callback chain, affected files, and planned validation; preserve the feature selection in `.specify/feature.json` and the active-plan reference in `AGENTS.md`.
+- [x] T002 Run the existing focused APD command, semantic reporter, facade conversion, and process-definition service checks listed in `specs/291-force-cleanup-progress/quickstart.md`; record baseline results and any pre-existing failures in `specs/291-force-cleanup-progress/progress.md` without changing unrelated code.
 
 **Checkpoint**: Baseline behavior and implementation scope are recorded; no backend mutation is needed.
 
