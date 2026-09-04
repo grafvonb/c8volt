@@ -359,3 +359,26 @@ Started: 2026-09-04 12:01:50
 - PASS: `git diff --check`.
 - Review found the APD coordinator, shared reducer, stage payload mapping, and service stage emission remain in their intended owner layers with bounded coordinator state and no new backend mechanics in command or facade code.
 ---
+---
+## Iteration 17 - 2026-09-04 13:45
+**Work Unit**: Partial Phase 6 focused validation and race checks
+**Tasks Completed**:
+- [x] T031: Execute the quickstart focused command, callback conversion, service invariant, and concurrent race checks; confirm the command test pattern includes the real nested APD tests.
+**Tasks Remaining in Work Unit**: 1 Phase 6 task remains: T032.
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- PASS: `go test ./cmd -list 'TestOpsPurgeAllProcessDefinitions'`; matched real nested APD cases including `ForceCleanupActivityFollowsNestedStages`, default warning, verbose/debug outcome, machine-mode, quiet failure, declined confirmation, and empty-selection compatibility tests.
+- PASS: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter' -count=1`.
+- PASS: `go test ./internal/domain -run 'Test.*Progress' -count=1`.
+- PASS: `go test ./c8volt/ops -run 'TestProgressConversions|TestClientPurgeAllProcessDefinitions' -count=1`.
+- PASS: `go test ./c8volt/foptions -run 'Test.*Progress' -count=1`.
+- PASS: `go test ./internal/services/processdefinition/... -run 'Test.*(DeleteProcessDefinition|CleanupProcessDefinition)' -count=1`.
+- PASS: `go test ./internal/services/ops/... -run 'TestPurgeAllProcessDefinitions' -count=1`.
+- PASS: `go test ./internal/services/processinstance/... -run 'Test.*(Progress|Completion|CancelProcessInstances|DeleteProcessInstances)' -count=1`.
+- PASS: `go test ./cmd ./internal/services/processdefinition/... ./internal/services/ops/... -race -run 'Test.*(PurgeAllProcessDefinitions|SemanticProgress|CleanupProcessDefinition|DeleteProcessDefinition)' -count=1`.
+- T032 still owns full `make test`, `git diff --check`, FR/SC evidence verification, and terminal handoff.
+---
