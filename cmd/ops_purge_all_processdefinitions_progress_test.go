@@ -222,6 +222,151 @@ func TestOpsPurgeAllProcessDefinitionsProgressPreservesDefinitionMilestones(t *t
 	require.Equal(t, "deleting process definitions, 1/2 process definition(s)\n", stderr.String())
 }
 
+// TestOpsPurgeAllProcessDefinitionsProgressPacesFromFirstStage verifies
+// generic workflow setup and stage transitions do not reset the durable clock.
+func TestOpsPurgeAllProcessDefinitionsProgressPacesFromFirstStage(t *testing.T) {
+	now := time.Date(2026, time.September, 4, 12, 45, 0, 0, time.UTC)
+	progress, _, stderr := newOpsPurgeAllProcessDefinitionsProgressTestWithClock(t, ops.ProgressModeHuman, func() time.Time { return now })
+	totalRoots := 2
+
+	progress.Start()
+	now = now.Add(time.Minute)
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindStage, Stage: &ops.StageProgress{Phase: opsPurgeAllProcessDefinitionsCancelPhase, Total: &totalRoots}})
+	now = now.Add(opsDurableMilestoneMinimumElapsed - time.Nanosecond)
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: opsPurgeAllProcessDefinitionsCancelPhase, Identity: "root-1", Disposition: ops.CompletionDispositionConfirmed}})
+	require.Empty(t, stderr.String())
+
+	now = now.Add(time.Nanosecond)
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: opsPurgeAllProcessDefinitionsCancelPhase, Identity: "root-2", Disposition: ops.CompletionDispositionConfirmed}})
+	require.Equal(t, "cancelling process-instance root trees, 2/2 process-instance tree(s)\n", stderr.String())
+
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindStage, Stage: &ops.StageProgress{Phase: opsPurgeAllProcessDefinitionsDrainPhase}})
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	require.Equal(t, 1, strings.Count(stderr.String(), "\n"))
+
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindStage, Stage: &ops.StageProgress{Phase: opsPurgeAllProcessDefinitionsHistoryDeletePhase, Total: &totalRoots}})
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: opsPurgeAllProcessDefinitionsHistoryDeletePhase, Identity: "root-1", Disposition: ops.CompletionDispositionConfirmed}})
+	require.Equal(t, strings.Join([]string{
+		"cancelling process-instance root trees, 2/2 process-instance tree(s)",
+		"deleting process-instance histories, 1/2 process-instance tree(s)",
+		"",
+	}, "\n"), stderr.String())
+}
+
+// TestOpsPurgeAllProcessDefinitionsProgressWarningDoesNotResetClock verifies
+// immediate failure evidence leaves the workflow-wide informational cadence intact.
+func TestOpsPurgeAllProcessDefinitionsProgressWarningDoesNotResetClock(t *testing.T) {
+	now := time.Date(2026, time.September, 4, 12, 50, 0, 0, time.UTC)
+	progress, _, stderr := newOpsPurgeAllProcessDefinitionsProgressTestWithClock(t, ops.ProgressModeHuman, func() time.Time { return now })
+	totalRoots := 3
+
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindStage, Stage: &ops.StageProgress{Phase: opsPurgeAllProcessDefinitionsCancelPhase, Total: &totalRoots}})
+	now = now.Add(4 * time.Second)
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{
+		Phase:         opsPurgeAllProcessDefinitionsCancelPhase,
+		Identity:      "root-1",
+		Disposition:   ops.CompletionDispositionFailed,
+		FailureDetail: "boom",
+	}})
+	require.Contains(t, stderr.String(), "root-1 failed: boom")
+
+	now = now.Add(6 * time.Second)
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: opsPurgeAllProcessDefinitionsCancelPhase, Identity: "root-2", Disposition: ops.CompletionDispositionConfirmed}})
+
+	require.Contains(t, stderr.String(), "cancelling process-instance root trees, 2/3 process-instance tree(s), 1 failed")
+	require.Equal(t, 1, strings.Count(stderr.String(), "root-1 failed"))
+}
+
+// TestOpsPurgeAllProcessDefinitionsProgressCloseFlushesDirtyStagesOnce verifies
+// activated default progress retains one historical record across mutation stages.
+func TestOpsPurgeAllProcessDefinitionsProgressCloseFlushesDirtyStagesOnce(t *testing.T) {
+	now := time.Date(2026, time.September, 4, 12, 55, 0, 0, time.UTC)
+	progress, sink, stderr := newOpsPurgeAllProcessDefinitionsProgressTestWithClock(t, ops.ProgressModeHuman, func() time.Time { return now })
+	totalRoots := 2
+	totalDefinitions := 3
+
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindStage, Stage: &ops.StageProgress{Phase: opsPurgeAllProcessDefinitionsCancelPhase, Total: &totalRoots}})
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: opsPurgeAllProcessDefinitionsCancelPhase, Identity: "root-1", Disposition: ops.CompletionDispositionConfirmed}})
+	now = now.Add(time.Second)
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: opsPurgeAllProcessDefinitionsCancelPhase, Identity: "root-2", Disposition: ops.CompletionDispositionConfirmed}})
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindStage, Stage: &ops.StageProgress{Phase: opsPurgeAllProcessDefinitionsHistoryDeletePhase, Total: &totalRoots}})
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: opsPurgeAllProcessDefinitionsHistoryDeletePhase, Identity: "root-1", Disposition: ops.CompletionDispositionConfirmed}})
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindStage, Stage: &ops.StageProgress{Phase: processDefinitionDeleteCompletionPhase, Total: &totalDefinitions}})
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: processDefinitionDeleteCompletionPhase, Identity: "pd-1", Disposition: ops.CompletionDispositionConfirmed}})
+
+	progress.Close()
+	progress.Close()
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: processDefinitionDeleteCompletionPhase, Identity: "pd-2", Disposition: ops.CompletionDispositionConfirmed}})
+
+	require.Equal(t, strings.Join([]string{
+		"cancelling process-instance root trees, 1/2 process-instance tree(s)",
+		"stage progress: cancelling process-instance root trees, 2/2 process-instance tree(s); deleting process-instance histories, 1/2 process-instance tree(s); deleting process definitions, 1/3 process definition(s)",
+		"",
+	}, "\n"), stderr.String())
+	require.Equal(t, 1, sink.Stopped())
+}
+
+// TestOpsPurgeAllProcessDefinitionsProgressCloseKeepsSingleStageFormat
+// verifies a one-stage close flush retains the ordinary aggregate wording.
+func TestOpsPurgeAllProcessDefinitionsProgressCloseKeepsSingleStageFormat(t *testing.T) {
+	now := time.Date(2026, time.September, 4, 12, 58, 0, 0, time.UTC)
+	progress, _, stderr := newOpsPurgeAllProcessDefinitionsProgressTestWithClock(t, ops.ProgressModeHuman, func() time.Time { return now })
+	totalDefinitions := 3
+
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindStage, Stage: &ops.StageProgress{Phase: processDefinitionDeleteCompletionPhase, Total: &totalDefinitions}})
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: processDefinitionDeleteCompletionPhase, Identity: "pd-1", Disposition: ops.CompletionDispositionConfirmed}})
+	now = now.Add(time.Second)
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: processDefinitionDeleteCompletionPhase, Identity: "pd-2", Disposition: ops.CompletionDispositionConfirmed}})
+
+	progress.Close()
+
+	require.Equal(t, strings.Join([]string{
+		"deleting process definitions, 1/3 process definition(s)",
+		"deleting process definitions, 2/3 process definition(s)",
+		"",
+	}, "\n"), stderr.String())
+}
+
+// TestOpsPurgeAllProcessDefinitionsProgressCleanShortRunStaysSilent verifies
+// close does not invent durable evidence for unactivated fast workflows.
+func TestOpsPurgeAllProcessDefinitionsProgressCleanShortRunStaysSilent(t *testing.T) {
+	now := time.Date(2026, time.September, 4, 13, 0, 0, 0, time.UTC)
+	progress, sink, stderr := newOpsPurgeAllProcessDefinitionsProgressTestWithClock(t, ops.ProgressModeHuman, func() time.Time { return now })
+	totalDefinitions := 1
+
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindStage, Stage: &ops.StageProgress{Phase: processDefinitionDeleteCompletionPhase, Total: &totalDefinitions}})
+	now = now.Add(opsDurableMilestoneMinimumElapsed - time.Nanosecond)
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: processDefinitionDeleteCompletionPhase, Identity: "pd-1", Disposition: ops.CompletionDispositionConfirmed}})
+	progress.Close()
+	progress.Close()
+
+	require.Empty(t, stderr.String())
+	require.Equal(t, 1, sink.Stopped())
+}
+
+// TestOpsPurgeAllProcessDefinitionsProgressVerboseItemsSuppressMilestones
+// verifies verbose stage completions replace paced aggregate milestones.
+func TestOpsPurgeAllProcessDefinitionsProgressVerboseItemsSuppressMilestones(t *testing.T) {
+	now := time.Date(2026, time.September, 4, 13, 5, 0, 0, time.UTC)
+	progress, _, stderr := newOpsPurgeAllProcessDefinitionsProgressTestWithClock(t, ops.ProgressModeVerbose, func() time.Time { return now })
+	totalRoots := 2
+
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindStage, Stage: &ops.StageProgress{Phase: opsPurgeAllProcessDefinitionsHistoryDeletePhase, Total: &totalRoots}})
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: opsPurgeAllProcessDefinitionsHistoryDeletePhase, Identity: "root-1", Disposition: ops.CompletionDispositionSubmitted}})
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: opsPurgeAllProcessDefinitionsHistoryDeletePhase, Identity: "root-2", Disposition: ops.CompletionDispositionConfirmed}})
+	progress.Close()
+
+	require.Equal(t, strings.Join([]string{
+		"root-1 submitted (deleting process-instance histories, 1/2 process-instance tree(s))",
+		"root-2 deleted (deleting process-instance histories, 2/2 process-instance tree(s))",
+		"",
+	}, "\n"), stderr.String())
+}
+
 // newOpsPurgeAllProcessDefinitionsProgressTest returns a coordinator fixture
 // with activity and stderr capture using command progress plumbing.
 func newOpsPurgeAllProcessDefinitionsProgressTest(t *testing.T, mode ops.ProgressMode) (*opsPurgeAllProcessDefinitionsProgress, *activitysink.Sink, *bytes.Buffer) {

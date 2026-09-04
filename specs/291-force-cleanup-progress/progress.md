@@ -171,3 +171,26 @@ Started: 2026-09-04 12:01:50
 - PASS: `git diff --check`.
 - The real command acceptance fixture must install services with an activity sink in context because root bootstrap owns the terminal activity writer.
 ---
+
+---
+## Iteration 7 - 2026-09-04 12:54
+**Work Unit**: Partial US2 coordinator pacing and final progress records
+**Tasks Completed**:
+- [x] T018: Add deterministic APD coordinator pacing and closure tests for 9.999s/10s boundaries, first-stage clock anchoring, transition/drain silence, warning timing, single- and multi-stage final records, clean short-run silence, and repeated close/post-close callbacks.
+- [x] T020: Complete workflow-wide APD coordinator durable dispatch with a first-stage clock, completion-driven milestones, warning behavior that does not reset the clock, and verbose/debug item outcomes replacing aggregate milestones.
+- [x] T021: Implement the APD final historical-progress record for activated default mode, preserving ordinary single-stage output and joining dirty mutation stages in execution order.
+**Tasks Remaining in Work Unit**: 2 US2 tasks remain: T019 nested default/verbose/debug command output tests and T022 US2 validation record.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_purge_all_processdefinitions_progress.go
+- cmd/ops_purge_all_processdefinitions_progress_test.go
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- PASS: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitionsProgress' -count=1`.
+- PASS: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter' -count=1`.
+- PASS: `go test ./cmd -race -run 'TestOpsPurgeAllProcessDefinitionsProgress|TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter' -count=1`.
+- PASS: `git diff --check`.
+- Generic real-execution activity ownership must not anchor durable mutation pacing; first recognized stage entry is the durable clock boundary.
+---

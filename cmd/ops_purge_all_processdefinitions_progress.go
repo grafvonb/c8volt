@@ -38,19 +38,20 @@ type opsPurgeAllProcessDefinitionsProgressConfig struct {
 // opsPurgeAllProcessDefinitionsProgress coordinates nested purge stage facts
 // into one workflow activity without changing backend execution.
 type opsPurgeAllProcessDefinitionsProgress struct {
-	mu                  sync.Mutex
-	cmd                 *cobra.Command
-	policy              opsSemanticProgressOutputPolicy
-	now                 func() time.Time
-	startedAt           time.Time
-	lastInformationalAt time.Time
-	activityStarted     bool
-	stop                func()
-	currentPhase        string
-	stages              []opsPurgeAllProcessDefinitionsStageRecord
-	stageIndexes        map[string]int
-	durableActivated    bool
-	closed              bool
+	mu                   sync.Mutex
+	cmd                  *cobra.Command
+	policy               opsSemanticProgressOutputPolicy
+	now                  func() time.Time
+	startedAt            time.Time
+	lastInformationalAt  time.Time
+	activityStarted      bool
+	mutationClockStarted bool
+	stop                 func()
+	currentPhase         string
+	stages               []opsPurgeAllProcessDefinitionsStageRecord
+	stageIndexes         map[string]int
+	durableActivated     bool
+	closed               bool
 }
 
 // opsPurgeAllProcessDefinitionsStageRecord stores one mutation phase aggregate
@@ -174,7 +175,7 @@ func (p *opsPurgeAllProcessDefinitionsProgress) Aggregate(phase string) (opsSema
 }
 
 // Close ends the real-execution activity once and preserves the existing
-// single-stage final flush behavior until cross-stage flushing is implemented.
+// single-stage final flush behavior while joining cross-stage dirty history.
 func (p *opsPurgeAllProcessDefinitionsProgress) Close() {
 	if p == nil {
 		return
@@ -188,19 +189,9 @@ func (p *opsPurgeAllProcessDefinitionsProgress) Close() {
 	stop := p.stop
 	var finalLine string
 	if p.policy.PacedAggregate && p.durableActivated {
-		var dirty *opsPurgeAllProcessDefinitionsStageRecord
+		finalLine = formatOpsPurgeAllProcessDefinitionsFinalAggregate(p.stages)
 		for i := range p.stages {
-			if p.stages[i].Dirty {
-				if dirty != nil {
-					dirty = nil
-					break
-				}
-				dirty = &p.stages[i]
-			}
-		}
-		if dirty != nil {
-			finalLine = formatOpsPurgeAllProcessDefinitionsStageAggregate(*dirty)
-			dirty.Dirty = false
+			p.stages[i].Dirty = false
 		}
 	}
 	p.mu.Unlock()
@@ -219,12 +210,21 @@ func (p *opsPurgeAllProcessDefinitionsProgress) startLocked() {
 		return
 	}
 	p.activityStarted = true
-	p.startedAt = p.now()
-	p.lastInformationalAt = p.startedAt
 	p.stop = func() {}
 	if p.cmd != nil && p.policy.TransientActivity {
 		p.stop = logging.StartActivityWithImportance(opsPurgeAllProcessDefinitionsProgressCommandContext(p.cmd), opsPurgeAllProcessDefinitionsGenericActivity, logging.ActivityImportanceWorkflow)
 	}
+}
+
+// startMutationClockLocked anchors durable pacing to the first actual stage
+// entry, not to discovery or generic workflow activity setup.
+func (p *opsPurgeAllProcessDefinitionsProgress) startMutationClockLocked() {
+	if p == nil || p.mutationClockStarted {
+		return
+	}
+	p.mutationClockStarted = true
+	p.startedAt = p.now()
+	p.lastInformationalAt = p.startedAt
 }
 
 // enterStageLocked records a service-owned stage entry before the first
@@ -236,6 +236,7 @@ func (p *opsPurgeAllProcessDefinitionsProgress) enterStageLocked(stage ops.Stage
 		return
 	}
 	p.startLocked()
+	p.startMutationClockLocked()
 	p.currentPhase = phase
 	if waitingLabel != "" {
 		p.updateActivityLocked(waitingLabel)
@@ -299,6 +300,7 @@ func (p *opsPurgeAllProcessDefinitionsProgress) ingestCompletionLocked(completio
 		return
 	}
 	if p.policy.PacedAggregate && record.Dirty {
+		p.startMutationClockLocked()
 		now := p.now()
 		if now.Before(p.lastInformationalAt.Add(opsDurableMilestoneMinimumElapsed)) {
 			return
@@ -403,6 +405,26 @@ func formatOpsPurgeAllProcessDefinitionsStageAggregate(record opsPurgeAllProcess
 		parts = append(parts, fmt.Sprintf("affected scope: %d %s", *record.PlannedAffectedCount, opsPurgeAllProcessDefinitionsPlannedAffectedResource))
 	}
 	return strings.Join(nonEmptyOpsProgressParts(parts), ", ")
+}
+
+// formatOpsPurgeAllProcessDefinitionsFinalAggregate renders one close-time
+// historical record for every dirty mutation stage in execution order.
+func formatOpsPurgeAllProcessDefinitionsFinalAggregate(records []opsPurgeAllProcessDefinitionsStageRecord) string {
+	lines := make([]string, 0, len(records))
+	for _, record := range records {
+		if !record.Dirty {
+			continue
+		}
+		lines = append(lines, formatOpsPurgeAllProcessDefinitionsStageAggregate(record))
+	}
+	switch len(lines) {
+	case 0:
+		return ""
+	case 1:
+		return lines[0]
+	default:
+		return "stage progress: " + strings.Join(lines, "; ")
+	}
 }
 
 // formatOpsPurgeAllProcessDefinitionsStageCompletion renders the APD-specific
