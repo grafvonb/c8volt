@@ -38,6 +38,7 @@ Started: 2026-09-04T10:01:49Z
 - `make docs-content` regenerated the APD CLI page and docs index from the command metadata/README; generated docs now carry the forced-cleanup stage sequence, root-tree versus definition counts, planned affected-scope distinction, and updated build stamp.
 - T030 cohesion review found no required source changes: APD progress lifecycle declarations remain isolated in `cmd/ops_purge_all_processdefinitions_progress.go`; `cmd/ops_purge_all_processdefinitions.go` only wires command flow/activity lifetime/final rendering; `cmd/ops_semantic_progress.go` owns the reusable completion reducer; domain/facade files only expose and mechanically copy stage payloads; process-definition services emit stage facts at service-owned cleanup/resource-delete boundaries.
 - T031 validation passed the quickstart focused command pattern, domain/ops/foptions callback mapping suites, process-definition/APD/process-instance service checks, and race-enabled command/service matrix; `go test ./cmd -list 'TestOpsPurgeAllProcessDefinitions'` confirms the command pattern includes the real nested APD stage and compatibility tests.
+- T032 terminal validation passed `make test` (`go test ./... -race -count=1`) and `git diff --check`; every FR/SC row in `tasks.md` is covered by completed task evidence from T003-T032 and the final full-suite gate.
 
 ## Decisions
 - Iteration 1 was setup/evidence only. No production code or generated docs changed.
@@ -52,6 +53,7 @@ Started: 2026-09-04T10:01:49Z
 - Iteration 15 completed T029 generated CLI documentation refresh. Cohesion review, focused/race validation, full `make test`, `git diff --check`, and terminal handoff remain open.
 - Iteration 16 completed T030 cohesion review without source edits. Focused/race validation, full `make test`, `git diff --check`, and terminal handoff remain open.
 - Iteration 17 completed T031 focused and race validation without source edits. Full `make test`, `git diff --check`, FR/SC evidence verification, task finalization, and terminal handoff remain open under T032.
+- Iteration 18 completed T032 terminal validation and feature bookkeeping without production changes.
 - Actual checkout is `develop`; `.specify/feature.json` still points at `specs/291-force-cleanup-progress`; `AGENTS.md` still points at `specs/291-force-cleanup-progress/plan.md`.
 
 ## Gotchas
@@ -74,4 +76,4 @@ Started: 2026-09-04T10:01:49Z
 - Do not reroute the ordinary non-force worker path through `DeleteProcessDefinitionResources`; the plan requires a private once-only entry hook in the existing `deleteProcessDefinition` path.
 
 ## Current Handoff
-- Continue Phase 6 with T032: run `make test` and `git diff --check`, verify every FR/SC mapping has passing evidence, update `progress.md` and `tasks.md` with actual completion status, and set the terminal handoff only if all tasks are complete and the worktree is clean after the coordinated commit.
+- Feature complete; no handoff required.

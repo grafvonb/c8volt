@@ -382,3 +382,20 @@ Started: 2026-09-04 12:01:50
 - PASS: `go test ./cmd ./internal/services/processdefinition/... ./internal/services/ops/... -race -run 'Test.*(PurgeAllProcessDefinitions|SemanticProgress|CleanupProcessDefinition|DeleteProcessDefinition)' -count=1`.
 - T032 still owns full `make test`, `git diff --check`, FR/SC evidence verification, and terminal handoff.
 ---
+---
+## Iteration 18 - 2026-09-04 13:50
+**Work Unit**: Complete Phase 6 terminal validation and bookkeeping
+**Tasks Completed**:
+- [x] T032: Run `make test` and `git diff --check`, verify every FR/SC mapping has passing evidence, and update feature progress/tasks with actual completion status.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- PASS: `make test` (`go test ./... -race -count=1`); command package passed in 131.130s and the full repository suite completed without failures.
+- PASS: `git diff --check`.
+- FR-001-FR-015 and SC-001-SC-006 have passing evidence through completed tasks T003-T032: stage event/mapping/reducer coverage, real nested command/service/facade tests, pacing/mode/failure compatibility tests, documentation regeneration, focused/race checks, and the final full-suite gate.
+- All tasks are complete; terminal handoff is `- Feature complete; no handoff required.`
+---
