@@ -21,7 +21,6 @@ Started: 2026-09-04 12:01:50
 - Red check failed only on the newly added missing stage-entry expectations before service emission; after implementation the process-definition service, APD command regression, ops service, and process-instance progress checks passed.
 - Definition stage emission belongs before the serial preplanned resource request and behind a `sync.Once` hook in the ordinary worker path; no routing through `DeleteProcessDefinitionResources` is needed for non-force deletion.
 ---
-
 ## Setup Baseline - 2026-09-04 12:03
 
 **Checkout and ownership**:
@@ -288,4 +287,21 @@ Started: 2026-09-04 12:01:50
 - PASS: `go test ./cmd ./internal/services/processdefinition/... ./internal/services/ops/... -race -run 'Test.*(PurgeAllProcessDefinitions|SemanticProgress|CleanupProcessDefinition|DeleteProcessDefinition)' -count=1 -timeout 120s`.
 - PASS: `git diff --check`.
 - No production code repair was needed; the next work unit moves to Phase 6 polish/documentation.
+---
+---
+## Iteration 13 - 2026-09-04 13:31
+**Work Unit**: Partial Phase 6 authored progress documentation
+**Tasks Completed**:
+- [x] T027: Update `README.md` and `docs/ops/purge-all-process-definitions.md` with the implemented force-cleanup progress behavior.
+**Tasks Remaining in Work Unit**: 5 Phase 6 tasks remain: T028, T029, T030, T031, and T032.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- docs/ops/purge-all-process-definitions.md
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- PASS: `git diff --check -- README.md docs/ops/purge-all-process-definitions.md`.
+- T027 is authored documentation only; generated CLI docs are intentionally unchanged until T029, after T028 command help metadata is updated.
 ---
