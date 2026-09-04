@@ -35,6 +35,7 @@ Started: 2026-09-04T10:01:49Z
 - US3 compatibility verification passed without production repair: command/facade/service focused suites and race-enabled command/service matrix all accept the current progress coordinator, APD wiring, and ops conversion boundaries.
 - Authored APD documentation now describes the four forced cleanup stages, root-tree versus definition counts, planned affected scope, completion-driven/default pacing, verbose item outcomes, quiet/machine suppression, and discovery-only `--batch-size`. Generated CLI docs remain untouched until T029.
 - APD command help now matches implemented force-cleanup progress: it names cancellation, draining, history deletion, and definition deletion stages; distinguishes root-tree counts from process-definition counts; keeps `--batch-size` discovery-only; and pins the wording in `TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape`.
+- `make docs-content` regenerated the APD CLI page and docs index from the command metadata/README; generated docs now carry the forced-cleanup stage sequence, root-tree versus definition counts, planned affected-scope distinction, and updated build stamp.
 
 ## Decisions
 - Iteration 1 was setup/evidence only. No production code or generated docs changed.
@@ -46,6 +47,7 @@ Started: 2026-09-04T10:01:49Z
 - Iteration 12 completed US3 verification and compatibility evidence. No progress-specific regression was exposed, so no code repair was needed in the coordinator, APD command wiring, or ops conversion boundary.
 - Iteration 13 completed T027 authored documentation only. Command metadata/help, generated CLI docs, cohesion review, focused/full validation, and terminal handoff remain open.
 - Iteration 14 completed T028 command metadata/help only. Generated CLI docs remain untouched until T029.
+- Iteration 15 completed T029 generated CLI documentation refresh. Cohesion review, focused/race validation, full `make test`, `git diff --check`, and terminal handoff remain open.
 - Actual checkout is `develop`; `.specify/feature.json` still points at `specs/291-force-cleanup-progress`; `AGENTS.md` still points at `specs/291-force-cleanup-progress/plan.md`.
 
 ## Gotchas
@@ -68,4 +70,4 @@ Started: 2026-09-04T10:01:49Z
 - Do not reroute the ordinary non-force worker path through `DeleteProcessDefinitionResources`; the plan requires a private once-only entry hook in the existing `deleteProcessDefinition` path.
 
 ## Current Handoff
-- Continue Phase 6 polish with T029: run `make docs-content`, review generated `docs/cli/c8volt_ops_purge_all-process-definitions.md` and `docs/index.md`, then rerun `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape' -count=1`.
+- Continue Phase 6 polish with T030: review touched declarations in `cmd/ops_purge_all_processdefinitions.go`, `cmd/ops_purge_all_processdefinitions_progress.go`, `cmd/ops_semantic_progress.go`, and service/facade counterparts for ownership, comments, bounded state, and dependencies; run targeted `gofmt` if edits are needed.

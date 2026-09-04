@@ -324,3 +324,21 @@ Started: 2026-09-04 12:01:50
 - PASS: `git diff --check`.
 - Command help metadata now names the four actual forced cleanup stages and stage-specific root versus definition completion units; generated CLI docs are intentionally left for T029.
 ---
+---
+## Iteration 15 - 2026-09-04 13:37
+**Work Unit**: Partial Phase 6 generated CLI documentation refresh
+**Tasks Completed**:
+- [x] T029: Run `make docs-content`, review generated APD CLI/index documentation changes, and rerun the APD help test.
+**Tasks Remaining in Work Unit**: 3 Phase 6 tasks remain: T030, T031, and T032.
+**Commit**: This work-unit commit
+**Files Changed**:
+- docs/cli/c8volt_ops_purge_all-process-definitions.md
+- docs/index.md
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- PASS: `make docs-content`.
+- PASS: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape' -count=1`.
+- Generated documentation changes are scoped to the APD CLI page and the generated index progress wording/build stamp.
+---
