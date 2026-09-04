@@ -16,11 +16,17 @@ Started: 2026-09-04T10:01:49Z
 - `internal/services/ops/all_process_definitions_purge_test.go` now asserts the APD service mutation sequence by filtering stage/completion events away from discovery and nested FrozenScope facts; force cleanup expects cancel -> drain -> PI history delete -> PD delete, with unique-root totals and planned affected scope.
 - `cmd/ops_purge_all_processdefinitions_progress.go` now owns a dormant APD stage coordinator for real execution: `Start` opens one generic workflow activity, stage entries update the current activity, cancellation/history/definition aggregates remain stage-local, draining has no denominator, unentered/unknown/empty completion phases are ignored, and concurrent callbacks are serialized through the T007 reducer.
 - APD coordinator rendering keeps planned affected scope separate as `affected scope: N process instance(s)` and only shows completed affected totals after trusted completion counts arrive; known zero is preserved while nil is omitted.
+- Real APD execution now uses `opsPurgeAllProcessDefinitionsProgress` as the sole workflow activity owner. Preview/dry-run still uses the legacy outer activity wrapper; real execution starts the coordinator, routes stage/completion callbacks through it, and closes it before final rendering.
+- Real command acceptance coverage can install services manually with an activity sink in context, then run the Cobra command path through the actual facade and services. Root bootstrap replaces the terminal activity writer, so assertions must observe the sink-backed command context used for the installed service factory.
+- Fake nested APD command servers must distinguish process-definition stat active searches (`sort` by `processInstanceKey`) from active-instance list searches (`sort` by `processDefinitionName`/`version`); confusing them prevents the drain loop from reaching zero.
+- APD stage completions are ignored until an explicit stage entry has been observed. Tests that assert definition milestones must enter the definition stage before sending completion callbacks.
+- First-root cancellation activity can be asserted through activity sink history; drain synchronization still needs a blocking active-stat response so the wait-stage activity can be observed before release.
 
 ## Decisions
 - Iteration 1 was setup/evidence only. No production code or generated docs changed.
 - Iteration 2 completed Phase 2 foundational event, mapping, and reducer work. No service emission, APD coordinator, user-facing command output, docs, or generated docs changed yet.
 - Iteration 3 completed the service stage-entry slice for US1. The APD command still ignores stage entries until the coordinator/wiring tasks are implemented.
+- Iteration 6 completed US1 stage visibility end to end: real nested command callbacks now show cancellation, drain, history deletion, and definition deletion through the APD coordinator.
 - Actual checkout is `develop`; `.specify/feature.json` still points at `specs/291-force-cleanup-progress`; `AGENTS.md` still points at `specs/291-force-cleanup-progress/plan.md`.
 
 ## Gotchas
@@ -43,4 +49,4 @@ Started: 2026-09-04T10:01:49Z
 - Do not reroute the ordinary non-force worker path through `DeleteProcessDefinitionResources`; the plan requires a private once-only entry hook in the existing `deleteProcessDefinition` path.
 
 ## Current Handoff
-- Next iteration continues US1 with T012: add the real nested command acceptance test in `cmd/ops_purge_all_processdefinitions_test.go` using existing CLI fake-server/activity facilities. After T012 is validated, T016 should wire the dormant APD coordinator into the command and remove the old eager definition-only real-execution activity owner.
+- Next iteration starts US2 with T018: add deterministic pacing and closure tests in `cmd/ops_purge_all_processdefinitions_progress_test.go`; T019 may follow in the same US2 story after T018 if validation permits.

@@ -75,8 +75,8 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			ReportFormat:  flagOpsPurgeAllPDReportFormat,
 			StartedAt:     time.Now().UTC(),
 		}
-		deletionProgress := newProcessDefinitionDeleteSemanticProgress(cmd, 0)
-		configureOpsPurgeAllProcessDefinitionsProgress(cmd, &request, deletionProgress)
+		executionProgress := newOpsPurgeAllProcessDefinitionsProgressForCommand(cmd)
+		configureOpsPurgeAllProcessDefinitionsProgress(cmd, &request, executionProgress)
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
@@ -101,14 +101,11 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			}
 			request.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, planned.Discovery.CandidateProcessDefinitionKeys...)
 			request.DiscoveredScopeStatus = planned.Discovery.DiscoveryScopeStatus
-			if len(request.DiscoveredCandidateProcessDefinitionKeys) > 0 {
-				deletionProgress.Start(len(request.DiscoveredCandidateProcessDefinitionKeys))
-			}
 		}
-		result, err := purgeAllProcessDefinitionsWithCommandActivity(cmd, request, func() (ops.AllProcessDefinitionsPurgeResult, error) {
+		result, err := runOpsPurgeAllProcessDefinitionsWithCommandProgress(cmd, request, executionProgress, func() (ops.AllProcessDefinitionsPurgeResult, error) {
 			return cli.PurgeAllProcessDefinitions(cmd.Context(), request, collectOptions()...)
 		})
-		deletionProgress.Close()
+		executionProgress.Close()
 		result = attachOpsPurgeAllProcessDefinitionsResultTenantContext(cmd, cfg, result)
 		if err != nil {
 			if reportErr := writeOpsPurgeAllProcessDefinitionsReport(result, cfg, opsPurgeAllProcessDefinitionsReportWriteMode(result)); reportErr != nil {
@@ -200,37 +197,12 @@ func purgeAllProcessDefinitionsWithCommandActivity(cmd *cobra.Command, request o
 
 func formatOpsPurgeAllProcessDefinitionsActivity(request ops.AllProcessDefinitionsPurgeRequest) string {
 	if request.DiscoveredCandidateProcessDefinitionKeys != nil {
-		return "deleting process definitions"
+		return "running process-definition purge workflow"
 	}
 	if request.DryRun {
 		return "checking process-definition delete impact"
 	}
 	return "running process-definition purge workflow"
-}
-
-// configureOpsPurgeAllProcessDefinitionsProgress keeps discovery progress on
-// the APD renderer while forwarding delete completions to the deletion reporter.
-func configureOpsPurgeAllProcessDefinitionsProgress(cmd *cobra.Command, request *ops.AllProcessDefinitionsPurgeRequest, deletionProgress *processDefinitionDeleteSemanticProgress) {
-	if request == nil {
-		return
-	}
-	channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
-	request.Progress = func(event ops.ProgressEvent) {
-		switch event.Kind {
-		case ops.ProgressEventKindPreflight:
-			if event.Preflight != nil {
-				printOpsPreflightScope(cmd, *event.Preflight, channel)
-			}
-		case ops.ProgressEventKindPage:
-			if event.Page != nil {
-				printOpsSlowProcessAnalysisProgress(cmd, formatOpsPageProgress(*event.Page, "process definition(s)"), channel)
-			}
-		case ops.ProgressEventKindCompletion:
-			if event.Completion != nil {
-				deletionProgress.Report(event)
-			}
-		}
-	}
 }
 
 // rejectOpsPurgeAllProcessDefinitionsPlanRequiringForce blocks mutation before prompting when active process instances are affected.

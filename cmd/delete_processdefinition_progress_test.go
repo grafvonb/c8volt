@@ -57,7 +57,7 @@ func TestOpsPurgeAllProcessDefinitionsProgressKeepsDiscoverySeparate(t *testing.
 	sink := &activitysink.Sink{}
 	cmd := newHTTPFallbackActivityCommand(sink)
 	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
-	deletionProgress := newProcessDefinitionDeleteSemanticProgress(cmd, 0)
+	deletionProgress := newOpsPurgeAllProcessDefinitionsProgressForCommand(cmd)
 	defer deletionProgress.Close()
 
 	request := ops.AllProcessDefinitionsPurgeRequest{}
@@ -72,6 +72,15 @@ func TestOpsPurgeAllProcessDefinitionsProgressKeepsDiscoverySeparate(t *testing.
 			PageSize:    1,
 			Seen:        1,
 			Selected:    1,
+		},
+	})
+	totalDefinitions := 2
+	request.Progress(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindStage,
+		Stage: &ops.StageProgress{
+			Phase:        processDefinitionDeleteCompletionPhase,
+			CoreResource: "process definition(s)",
+			Total:        &totalDefinitions,
 		},
 	})
 	request.Progress(ops.ProgressEvent{
@@ -89,6 +98,10 @@ func TestOpsPurgeAllProcessDefinitionsProgressKeepsDiscoverySeparate(t *testing.
 		Importance: logging.ActivityImportanceWorkflow,
 	})
 	require.Contains(t, sink.Starts(), activitysink.Start{
+		Message:    opsPurgeAllProcessDefinitionsGenericActivity,
+		Importance: logging.ActivityImportanceWorkflow,
+	})
+	require.Contains(t, sink.PriorityUpdates(), activitysink.Update{
 		Message:    "deleting process definitions, 0/2 process definition(s)",
 		Importance: logging.ActivityImportanceWorkflow,
 	})

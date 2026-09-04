@@ -145,3 +145,29 @@ Started: 2026-09-04 12:01:50
 - PASS: `git diff --check`.
 - The coordinator remains dormant and is not wired into APD execution yet; T016 owns replacing the old definition-only wrapper and real-execution activity lifecycle after the T012 real nested command acceptance test.
 ---
+---
+## Iteration 6 - 2026-09-04 12:47
+**Work Unit**: Complete US1 real nested command stage visibility
+**Tasks Completed**:
+- [x] T012: Add a real nested command acceptance test in `cmd/ops_purge_all_processdefinitions_test.go` using real command/facade/service execution, fake Camunda backend, `testx/activitysink`, and drain synchronization.
+- [x] T016: Wire the APD coordinator into real execution, move progress callback routing into `cmd/ops_purge_all_processdefinitions_progress.go`, remove eager definition-only startup, and close the coordinator before final rendering.
+- [x] T017: Run the US1 command, coordinator, process-definition service, APD service, ordinary semantic reporter, race, and diff hygiene checks.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/delete_processdefinition_progress_test.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions_progress.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- PASS: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitionsForceCleanupActivityFollowsNestedStages' -count=1 -timeout 20s`.
+- PASS: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter|TestProcessDefinitionDeleteSemanticProgress|TestDeleteProcessDefinitionProgress' -count=1`.
+- PASS: `go test ./internal/services/processdefinition/... -run 'Test.*(DeleteProcessDefinition|CleanupProcessDefinition)' -count=1`.
+- PASS: `go test ./internal/services/ops/... -run 'TestPurgeAllProcessDefinitions' -count=1`.
+- PASS: `go test ./cmd -race -run 'TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter|TestProcessDefinitionDeleteSemanticProgress|TestDeleteProcessDefinitionProgress' -count=1`.
+- PASS: `git diff --check`.
+- The real command acceptance fixture must install services with an activity sink in context because root bootstrap owns the terminal activity writer.
+---

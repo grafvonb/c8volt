@@ -24,6 +24,10 @@ const (
 	opsPurgeAllProcessDefinitionsGenericActivity         = "running process-definition purge workflow"
 )
 
+// opsPurgeAllProcessDefinitionsProgressNow is overridden by command tests to
+// exercise milestone timing without sleeping.
+var opsPurgeAllProcessDefinitionsProgressNow = time.Now
+
 // opsPurgeAllProcessDefinitionsProgressConfig groups the command-owned
 // dependencies needed for one all-process-definitions purge progress lifetime.
 type opsPurgeAllProcessDefinitionsProgressConfig struct {
@@ -72,6 +76,53 @@ func newOpsPurgeAllProcessDefinitionsProgress(cmd *cobra.Command, cfg opsPurgeAl
 		stop:         func() {},
 		stageIndexes: make(map[string]int),
 	}
+}
+
+// newOpsPurgeAllProcessDefinitionsProgressForCommand derives the current
+// output policy for the APD command's real-execution progress coordinator.
+func newOpsPurgeAllProcessDefinitionsProgressForCommand(cmd *cobra.Command) *opsPurgeAllProcessDefinitionsProgress {
+	channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
+	return newOpsPurgeAllProcessDefinitionsProgress(cmd, opsPurgeAllProcessDefinitionsProgressConfig{
+		Policy: opsSemanticProgressOutputPolicyForChannel(channel),
+		Now:    opsPurgeAllProcessDefinitionsProgressNow,
+	})
+}
+
+// configureOpsPurgeAllProcessDefinitionsProgress keeps discovery progress on
+// the APD renderer while forwarding entered mutation stages to the coordinator.
+func configureOpsPurgeAllProcessDefinitionsProgress(cmd *cobra.Command, request *ops.AllProcessDefinitionsPurgeRequest, progress *opsPurgeAllProcessDefinitionsProgress) {
+	if request == nil {
+		return
+	}
+	channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
+	request.Progress = func(event ops.ProgressEvent) {
+		switch event.Kind {
+		case ops.ProgressEventKindPreflight:
+			if event.Preflight != nil {
+				printOpsPreflightScope(cmd, *event.Preflight, channel)
+			}
+		case ops.ProgressEventKindPage:
+			if event.Page != nil {
+				printOpsSlowProcessAnalysisProgress(cmd, formatOpsPageProgress(*event.Page, "process definition(s)"), channel)
+			}
+		case ops.ProgressEventKindStage, ops.ProgressEventKindCompletion:
+			if progress != nil {
+				progress.Report(event)
+			}
+		}
+	}
+}
+
+// runOpsPurgeAllProcessDefinitionsWithCommandProgress preserves the legacy
+// preview activity while making real execution use one coordinator-owned scope.
+func runOpsPurgeAllProcessDefinitionsWithCommandProgress(cmd *cobra.Command, request ops.AllProcessDefinitionsPurgeRequest, progress *opsPurgeAllProcessDefinitionsProgress, run func() (ops.AllProcessDefinitionsPurgeResult, error)) (ops.AllProcessDefinitionsPurgeResult, error) {
+	if request.DryRun {
+		return purgeAllProcessDefinitionsWithCommandActivity(cmd, request, run)
+	}
+	if progress != nil {
+		progress.Start()
+	}
+	return run()
 }
 
 // Start opens the generic real-execution activity once so nested lower-level

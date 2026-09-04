@@ -15,6 +15,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -68,15 +70,15 @@ func TestOpsPurgeAllProcessDefinitionsDeletionMilestonesStaySeparateFromDiscover
 	resetOpsPurgeAllProcessDefinitionsFlagState()
 	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
 	now := time.Date(2026, 9, 1, 6, 32, 0, 0, time.UTC)
-	processDefinitionDeleteSemanticProgressNow = func() time.Time { return now }
-	t.Cleanup(func() { processDefinitionDeleteSemanticProgressNow = time.Now })
+	opsPurgeAllProcessDefinitionsProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { opsPurgeAllProcessDefinitionsProgressNow = time.Now })
 
 	sink := &activitysink.Sink{}
 	cmd := &cobra.Command{}
 	stderr := &bytes.Buffer{}
 	cmd.SetErr(stderr)
 	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
-	deletionProgress := newProcessDefinitionDeleteSemanticProgress(cmd, 0)
+	deletionProgress := newOpsPurgeAllProcessDefinitionsProgressForCommand(cmd)
 	defer deletionProgress.Close()
 
 	request := ops.AllProcessDefinitionsPurgeRequest{}
@@ -91,6 +93,15 @@ func TestOpsPurgeAllProcessDefinitionsDeletionMilestonesStaySeparateFromDiscover
 		},
 	})
 
+	totalDefinitions := 2
+	request.Progress(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindStage,
+		Stage: &ops.StageProgress{
+			Phase:        processDefinitionDeleteCompletionPhase,
+			CoreResource: "process definition(s)",
+			Total:        &totalDefinitions,
+		},
+	})
 	now = now.Add(opsDurableMilestoneMinimumElapsed)
 	reportOpsPurgeAllProcessDefinitionsCompletionEvent(request.Progress, "pd-1", 2, ops.CompletionDispositionFailed, "delete rejected")
 	reportOpsPurgeAllProcessDefinitionsCompletionEvent(request.Progress, "pd-2", 2, ops.CompletionDispositionConfirmed, "")
@@ -111,9 +122,18 @@ func TestOpsPurgeAllProcessDefinitionsDeletionMilestonesStaySeparateFromDiscover
 func TestOpsPurgeAllProcessDefinitionsSemanticProgressModeGate(t *testing.T) {
 	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
 		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
-			deletionProgress := newProcessDefinitionDeleteSemanticProgress(cmd, 1)
+			deletionProgress := newOpsPurgeAllProcessDefinitionsProgressForCommand(cmd)
 			request := ops.AllProcessDefinitionsPurgeRequest{}
 			configureOpsPurgeAllProcessDefinitionsProgress(cmd, &request, deletionProgress)
+			totalDefinitions := 1
+			request.Progress(ops.ProgressEvent{
+				Kind: ops.ProgressEventKindStage,
+				Stage: &ops.StageProgress{
+					Phase:        processDefinitionDeleteCompletionPhase,
+					CoreResource: "process definition(s)",
+					Total:        &totalDefinitions,
+				},
+			})
 			return request.Progress, deletionProgress.Close
 		},
 		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
@@ -612,6 +632,83 @@ func TestOpsPurgeAllProcessDefinitionsAutomationJSONExecutesWithoutAutoConfirm(t
 	}, deleted.Snapshot())
 }
 
+// TestOpsPurgeAllProcessDefinitionsForceCleanupActivityFollowsNestedStages
+// exercises the real command, facade, and service chain while paused inside
+// nested cleanup so old definition-only progress wiring cannot satisfy it.
+func TestOpsPurgeAllProcessDefinitionsForceCleanupActivityFollowsNestedStages(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+
+	state := newOpsPurgeAllProcessDefinitionsNestedState()
+	var requests testx.SafeSlice[string]
+	srv := newOpsPurgeAllProcessDefinitionsNestedServer(t, state, &requests)
+	t.Cleanup(srv.Close)
+	t.Cleanup(func() {
+		state.releaseCancel.Do(func() { close(state.cancelRelease) })
+		state.releaseDrain.Do(func() { close(state.drainRelease) })
+	})
+
+	sink := &activitysink.Sink{}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd := opsPurgeAllProcessDefinitionsCmd
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetContext(newOpsPurgeAllProcessDefinitionsActivityCommandContext(t, srv.URL, sink, &stderr))
+	flagCmdAutoConfirm = true
+	flagForce = true
+	flagNoWait = true
+	flagWorkers = 1
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		cmd.Run(cmd, nil)
+	}()
+
+	requireOpsPurgeAllProcessDefinitionsSignal(t, state.cancelStarted)
+	requireOpsPurgeAllProcessDefinitionsActivityContains(t, sink, "cancelling process-instance root trees, 0/3 process-instance tree(s), affected scope: 3 process instance(s)")
+	state.releaseCancel.Do(func() { close(state.cancelRelease) })
+
+	require.Eventually(t, func() bool {
+		select {
+		case <-state.drainPolled:
+			return true
+		default:
+			return false
+		}
+	}, 5*time.Second, 10*time.Millisecond, "requests: %v stderr: %s", requests.Snapshot(), stderr.String())
+	requireOpsPurgeAllProcessDefinitionsActivityContains(t, sink, "waiting for active process instances to drain")
+	state.releaseDrain.Do(func() { close(state.drainRelease) })
+
+	require.Eventually(t, func() bool {
+		select {
+		case <-done:
+			return true
+		default:
+			return false
+		}
+	}, 5*time.Second, 10*time.Millisecond)
+
+	requireOpsPurgeAllProcessDefinitionsActivityContains(t, sink, "deleting process-instance histories, 0/3 process-instance tree(s)")
+	requireOpsPurgeAllProcessDefinitionsActivityContains(t, sink, "deleting process definitions, 0/2 process definition(s)")
+	require.ElementsMatch(t, []string{
+		"/v2/process-instances/" + opsAllProcessDefinitionsPurgeRootA + "/cancellation",
+		"/v2/process-instances/" + opsAllProcessDefinitionsPurgeRootShared + "/cancellation",
+		"/v2/process-instances/" + opsAllProcessDefinitionsPurgeRootB + "/cancellation",
+	}, state.cancelled.Snapshot())
+	require.ElementsMatch(t, []string{
+		"/v2/process-instances/" + opsAllProcessDefinitionsPurgeRootA + "/deletion",
+		"/v2/process-instances/" + opsAllProcessDefinitionsPurgeRootShared + "/deletion",
+		"/v2/process-instances/" + opsAllProcessDefinitionsPurgeRootB + "/deletion",
+	}, state.deletedPI.Snapshot())
+	require.ElementsMatch(t, []string{
+		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyA + "/deletion",
+		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyB + "/deletion",
+	}, state.deletedPD.Snapshot())
+	require.NotEmpty(t, requests.Snapshot())
+}
+
 // TestOpsPurgeAllProcessDefinitionsBlocksActiveInstancesBeforeMutation verifies post-planning blockers keep local-precondition exit behavior.
 func TestOpsPurgeAllProcessDefinitionsBlocksActiveInstancesBeforeMutation(t *testing.T) {
 	var requests testx.SafeSlice[string]
@@ -1069,9 +1166,90 @@ func resetOpsPurgeAllProcessDefinitionsFlagState() {
 }
 
 const (
-	opsAllProcessDefinitionsPurgePDKeyA = "2251799813685255"
-	opsAllProcessDefinitionsPurgePDKeyB = "2251799813685256"
+	opsAllProcessDefinitionsPurgePDKeyA     = "2251799813685255"
+	opsAllProcessDefinitionsPurgePDKeyB     = "2251799813685256"
+	opsAllProcessDefinitionsPurgeRootA      = "2251799813686201"
+	opsAllProcessDefinitionsPurgeRootShared = "2251799813686202"
+	opsAllProcessDefinitionsPurgeRootB      = "2251799813686203"
 )
+
+// opsPurgeAllProcessDefinitionsNestedState coordinates a fake force-cleanup
+// backend with command activity assertions.
+type opsPurgeAllProcessDefinitionsNestedState struct {
+	cancelStarted chan struct{}
+	cancelRelease chan struct{}
+	drainPolled   chan struct{}
+	drainRelease  chan struct{}
+	releaseCancel sync.Once
+	releaseDrain  sync.Once
+	cancelOnce    sync.Once
+	drainOnce     sync.Once
+	cancelled     testx.SafeSlice[string]
+	deletedPI     testx.SafeSlice[string]
+	deletedPD     testx.SafeSlice[string]
+	cancelCount   atomic.Int64
+}
+
+// newOpsPurgeAllProcessDefinitionsNestedState returns synchronization gates
+// used to inspect first-root cancellation and drain activity before release.
+func newOpsPurgeAllProcessDefinitionsNestedState() *opsPurgeAllProcessDefinitionsNestedState {
+	return &opsPurgeAllProcessDefinitionsNestedState{
+		cancelStarted: make(chan struct{}),
+		cancelRelease: make(chan struct{}),
+		drainPolled:   make(chan struct{}),
+		drainRelease:  make(chan struct{}),
+	}
+}
+
+// newOpsPurgeAllProcessDefinitionsActivityCommandContext installs real remote
+// services while leaving command activity routed to the test sink.
+func newOpsPurgeAllProcessDefinitionsActivityCommandContext(t *testing.T, baseURL string, sink *activitysink.Sink, stderr io.Writer) context.Context {
+	t.Helper()
+
+	cfg := config.New()
+	cfg.App.CamundaVersion = toolx.V89
+	cfg.Auth.Mode = config.ModeNone
+	cfg.APIs.Camunda.BaseURL = baseURL
+	require.NoError(t, cfg.Normalize())
+	require.NoError(t, cfg.Validate())
+	ctx := cfg.ToContextWithLogWriter(context.Background(), stderr)
+	ctx = logging.ToActivityContext(ctx, sink)
+	log, err := logging.FromContext(ctx)
+	require.NoError(t, err)
+	ctx, err = installRemoteCommandServices(ctx, cfg, log)
+	require.NoError(t, err)
+	return logging.ToActivityContext(ctx, sink)
+}
+
+// requireOpsPurgeAllProcessDefinitionsSignal waits for a synchronized fake
+// backend checkpoint so assertions do not race command execution.
+func requireOpsPurgeAllProcessDefinitionsSignal(t *testing.T, ch <-chan struct{}) {
+	t.Helper()
+
+	require.Eventually(t, func() bool {
+		select {
+		case <-ch:
+			return true
+		default:
+			return false
+		}
+	}, 5*time.Second, 10*time.Millisecond)
+}
+
+// requireOpsPurgeAllProcessDefinitionsActivityContains asserts the command
+// workflow activity eventually contains a specific stage snapshot.
+func requireOpsPurgeAllProcessDefinitionsActivityContains(t *testing.T, sink *activitysink.Sink, want string) {
+	t.Helper()
+
+	require.Eventually(t, func() bool {
+		for _, update := range sink.PriorityUpdates() {
+			if update.Message == want && update.Importance == logging.ActivityImportanceWorkflow {
+				return true
+			}
+		}
+		return false
+	}, 5*time.Second, 10*time.Millisecond, "activity updates: %v", sink.PriorityUpdates())
+}
 
 func newOpsPurgeAllProcessDefinitionsServer(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string], activeCount int64) *httptest.Server {
 	t.Helper()
@@ -1112,6 +1290,101 @@ func newOpsPurgeAllProcessDefinitionsServer(t *testing.T, requests *testx.SafeSl
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 	}))
+}
+
+// newOpsPurgeAllProcessDefinitionsNestedServer handles the real force-cleanup
+// command path with shared roots and blocking cleanup checkpoints.
+func newOpsPurgeAllProcessDefinitionsNestedServer(t *testing.T, state *opsPurgeAllProcessDefinitionsNestedState, requests *testx.SafeSlice[string]) *httptest.Server {
+	t.Helper()
+
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			payload := string(body)
+			requests.Append(r.Method + " " + r.URL.Path + " " + payload)
+			_, _ = w.Write([]byte(`{"items":[` +
+				opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyA, "invoice", 2) + `,` +
+				opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyB, "payment", 1) +
+				`],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-definitions/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-definitions/")
+			requests.Append(r.Method + " " + r.URL.Path)
+			id := "invoice"
+			if key == opsAllProcessDefinitionsPurgePDKeyB {
+				id = "payment"
+			}
+			_, _ = w.Write([]byte(opsAllProcessDefinitionsPurgeDefinitionJSON(key, id, 1)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			payload := string(body)
+			requests.Append(r.Method + " " + r.URL.Path + " " + payload)
+			_, _ = w.Write([]byte(opsAllProcessDefinitionsPurgeNestedProcessInstanceSearchResponse(state, payload)))
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			requests.Append(r.Method + " " + r.URL.Path)
+			_, _ = w.Write([]byte(opsAllProcessDefinitionsPurgeProcessInstanceJSON(key, key, opsAllProcessDefinitionsPurgePDKeyA, "ACTIVE")))
+		case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v2/process-instances/") && strings.HasSuffix(r.URL.Path, "/cancellation"):
+			state.cancelOnce.Do(func() { close(state.cancelStarted) })
+			state.cancelled.Append(r.URL.Path)
+			state.cancelCount.Add(1)
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.WriteHeader(http.StatusAccepted)
+			_, _ = w.Write([]byte(`{}`))
+		case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v2/process-instances/") && strings.HasSuffix(r.URL.Path, "/deletion"):
+			state.deletedPI.Append(r.URL.Path)
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{}`))
+		case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v2/resources/") && strings.HasSuffix(r.URL.Path, "/deletion"):
+			state.deletedPD.Append(r.URL.Path)
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
+			key := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v2/resources/"), "/deletion")
+			_, _ = w.Write([]byte(`{"resourceKey":"` + key + `","batchOperation":{"batchOperationKey":"batch-` + key + `","batchOperationType":"DELETE_PROCESS_DEFINITION"}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+}
+
+// opsAllProcessDefinitionsPurgeNestedProcessInstanceSearchResponse returns
+// active planning rows, descendant rows, or drain/stat counts for the test API.
+func opsAllProcessDefinitionsPurgeNestedProcessInstanceSearchResponse(state *opsPurgeAllProcessDefinitionsNestedState, payload string) string {
+	if strings.Contains(payload, `"parentProcessInstanceKey"`) {
+		return `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`
+	}
+	if strings.Contains(payload, `"processDefinitionKey"`) && strings.Contains(payload, "ACTIVE") && strings.Contains(payload, `"processDefinitionName"`) {
+		if strings.Contains(payload, opsAllProcessDefinitionsPurgePDKeyA) {
+			return `{"items":[` +
+				opsAllProcessDefinitionsPurgeProcessInstanceJSON(opsAllProcessDefinitionsPurgeRootA, opsAllProcessDefinitionsPurgeRootA, opsAllProcessDefinitionsPurgePDKeyA, "ACTIVE") + `,` +
+				opsAllProcessDefinitionsPurgeProcessInstanceJSON(opsAllProcessDefinitionsPurgeRootShared, opsAllProcessDefinitionsPurgeRootShared, opsAllProcessDefinitionsPurgePDKeyA, "ACTIVE") +
+				`],"page":{"totalItems":2,"hasMoreTotalItems":false}}`
+		}
+		return `{"items":[` +
+			opsAllProcessDefinitionsPurgeProcessInstanceJSON(opsAllProcessDefinitionsPurgeRootShared, opsAllProcessDefinitionsPurgeRootShared, opsAllProcessDefinitionsPurgePDKeyB, "ACTIVE") + `,` +
+			opsAllProcessDefinitionsPurgeProcessInstanceJSON(opsAllProcessDefinitionsPurgeRootB, opsAllProcessDefinitionsPurgeRootB, opsAllProcessDefinitionsPurgePDKeyB, "ACTIVE") +
+			`],"page":{"totalItems":2,"hasMoreTotalItems":false}}`
+	}
+	if strings.Contains(payload, `"processDefinitionKey"`) && strings.Contains(payload, "ACTIVE") {
+		if state.cancelCount.Load() >= 3 {
+			state.drainOnce.Do(func() { close(state.drainPolled) })
+			<-state.drainRelease
+			return `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`
+		}
+		return `{"items":[],"page":{"totalItems":2,"hasMoreTotalItems":false}}`
+	}
+	return `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`
+}
+
+// opsAllProcessDefinitionsPurgeProcessInstanceJSON renders the generated v8.9
+// process-instance result shape used by real service converters.
+func opsAllProcessDefinitionsPurgeProcessInstanceJSON(key string, root string, pdKey string, state string) string {
+	return fmt.Sprintf(`{"processInstanceKey":"%s","processDefinitionId":"invoice","processDefinitionKey":"%s","processDefinitionVersion":1,"state":"%s","tenantId":"tenant","rootProcessInstanceKey":"%s"}`, key, pdKey, state, root)
 }
 
 // opsAllProcessDefinitionsPurgeSearchResponse returns one or two APD discovery pages based on the request page size.
