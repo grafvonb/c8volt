@@ -25,6 +25,10 @@ Started: 2026-09-04T10:01:49Z
 - First-root cancellation activity can be asserted through activity sink history; drain synchronization still needs a blocking active-stat response so the wait-stage activity can be observed before release.
 - Nested APD command tests can reuse `newOpsPurgeAllProcessDefinitionsNestedServer` for output assertions by closing `state.drainRelease` before subprocess execution; failure switches on the shared state now produce deterministic cancel/history/definition HTTP 500 responses for default warning coverage.
 - In verbose/debug command output, APD human results and semantic progress both route to stderr; stdout stays empty for one-line diagnostic-mode subprocess assertions. `--no-wait` keeps nested cancel/history/definition item outcomes as `submitted`; waited execution renders cancel as `cancelled` and history/definition deletion as `deleted`.
+- US3 command compatibility coverage now exercises the real nested force-cleanup server in JSON, JSON+verbose, and automation+JSON+verbose modes; nested stage text must stay out of stdout/stderr while the final JSON deletion envelope remains unchanged.
+- Quiet nested force-cleanup failure coverage expects the immediate failed-item warning to remain visible, while no later unentered drain/history/definition stage progress or final `stage progress:` line appears.
+- `TestOpsPurgeAllProcessDefinitionsCommandHelper` supports `C8VOLT_TEST_ALL_PD_PURGE_DECLINE=1` to write the captured prompt and then abort confirmation before mutation.
+- Empty APD command coverage uses `newOpsPurgeAllProcessDefinitionsEmptyServer`, which returns zero definitions and fails on mutation requests; human dry-run output may route through stderr in subprocess logger context.
 
 ## Decisions
 - Iteration 1 was setup/evidence only. No production code or generated docs changed.
@@ -55,4 +59,4 @@ Started: 2026-09-04T10:01:49Z
 - Do not reroute the ordinary non-force worker path through `DeleteProcessDefinitionResources`; the plan requires a private once-only entry hook in the existing `deleteProcessDefinition` path.
 
 ## Current Handoff
-- Next iteration starts US3 with T023: extend `cmd/ops_purge_all_processdefinitions_test.go` for mode/compatibility coverage, especially JSON, automation, quiet, verbose combinations, confirmation/dry-run/no-wait paths, and unchanged final output contracts.
+- Continue US3 with T024: extend `internal/services/processdefinition/delete_test.go` for cancellation failure, drain failure/timeout/interruption, history failure, first definition request-shape rejection, and fail-fast cases while preserving request shape, preview rechecks, worker settings, serial-probe behavior, and wait/confirmation semantics.

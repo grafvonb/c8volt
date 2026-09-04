@@ -4,8 +4,6 @@ Feature: 291-force-cleanup-progress
 Started: 2026-09-04 12:01:50
 
 ---
-
----
 ## Iteration 3 - 2026-09-04 12:17
 **Work Unit**: Partial US1 service stage entries
 **Tasks Completed**:
@@ -215,4 +213,23 @@ Started: 2026-09-04 12:01:50
 - PASS: `go test ./cmd -race -run 'TestOpsPurgeAllProcessDefinitionsProgress|TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter' -count=1`.
 - PASS: `git diff --check`.
 - Default failures can still emit one close-time `stage progress:` line for prior dirty stage evidence; the no-duplicate aggregate assertion belongs to verbose/debug output where item outcomes replace aggregate milestones. The nested fake now supports waited confirmation through canceled/absent process-instance lookups and completed batch-operation polling.
+---
+---
+## Iteration 9 - 2026-09-04 13:12
+**Work Unit**: Partial US3 command compatibility coverage
+**Tasks Completed**:
+- [x] T023: Extend APD command compatibility tests for real nested JSON, JSON+verbose, automation+JSON+verbose, quiet failure, declined confirmation, empty selection, final envelope stability, activity cleanup, and machine-mode progress suppression while retaining existing no-wait, dry-run, confirmation, non-force/no-cleanup, error, and keys-only policy coverage.
+**Tasks Remaining in Work Unit**: 3 US3 tasks remain: T024, T025, and T026.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_purge_all_processdefinitions_test.go
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- PASS: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions(ForceCleanupActivityFollowsNestedStages|ForceCleanupMachineModeCompatibility|QuietForceCleanupFailureCompatibility|DeclinedConfirmationCompatibility|EmptySelectionCompatibility)' -count=1 -timeout 30s`.
+- PASS: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter' -count=1 -timeout 60s`.
+- PASS: `go test ./cmd -race -run 'TestOpsPurgeAllProcessDefinitionsProgress|TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter' -count=1 -timeout 90s`.
+- PASS: `git diff --check`.
+- JSON and automation+JSON verbose combinations can run the real nested force-cleanup path without emitting nested stage progress outside the final JSON envelope.
 ---
