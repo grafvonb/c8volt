@@ -342,3 +342,20 @@ Started: 2026-09-04 12:01:50
 - PASS: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape' -count=1`.
 - Generated documentation changes are scoped to the APD CLI page and the generated index progress wording/build stamp.
 ---
+---
+## Iteration 16 - 2026-09-04 13:41
+**Work Unit**: Partial Phase 6 cohesion review
+**Tasks Completed**:
+- [x] T030: Review touched APD progress declarations and service/facade counterparts for ownership, comments, bounded state, and dependency/backend-mechanics boundaries.
+**Tasks Remaining in Work Unit**: 2 Phase 6 tasks remain: T031 and T032.
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- PASS: `gofmt -w cmd/ops_purge_all_processdefinitions.go cmd/ops_purge_all_processdefinitions_progress.go cmd/ops_semantic_progress.go internal/domain/ops_progress.go c8volt/ops/progress_model.go c8volt/ops/convert.go c8volt/foptions/options.go internal/services/processdefinition/delete.go internal/services/ops/all_process_definitions_purge.go`.
+- PASS: `go test ./cmd ./c8volt/ops ./c8volt/foptions ./internal/domain ./internal/services/processdefinition/... ./internal/services/ops/... -run '^$' -count=1`.
+- PASS: `git diff --check`.
+- Review found the APD coordinator, shared reducer, stage payload mapping, and service stage emission remain in their intended owner layers with bounded coordinator state and no new backend mechanics in command or facade code.
+---
