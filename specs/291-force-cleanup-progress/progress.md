@@ -251,3 +251,22 @@ Started: 2026-09-04 12:01:50
 - PASS: `git diff --check`.
 - New service regressions cover cleanup stop boundaries and option propagation without production changes.
 ---
+---
+## Iteration 11 - 2026-09-04 13:25
+**Work Unit**: Partial US3 APD facade boundary compatibility coverage
+**Tasks Completed**:
+- [x] T025: Extend `c8volt/ops/client_test.go` to prove APD stage forwarding preserves frozen keys, tenant scope, force/dry-run/no-wait/worker/fail-fast options, result/report mapping, error conversion, nil callbacks, and untouched APD service sequence assertions.
+**Tasks Remaining in Work Unit**: 1 US3 task remains: T026.
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/ops/client_test.go
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- PASS: `go test ./c8volt/ops -run 'TestClientPurgeAllProcessDefinitions' -count=1`.
+- PASS: `go test ./c8volt/ops -run 'TestProgressConversions|TestClientPurgeAllProcessDefinitions' -count=1`.
+- PASS: `go test ./internal/services/ops/... -run 'TestPurgeAllProcessDefinitions' -count=1`.
+- PASS: `git diff --check`.
+- APD facade stage forwarding is request-callback based; `foptions.WithProgress(nil)` leaves no service option callback installed.
+---
