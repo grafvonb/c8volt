@@ -709,6 +709,134 @@ func TestOpsPurgeAllProcessDefinitionsForceCleanupActivityFollowsNestedStages(t 
 	require.NotEmpty(t, requests.Snapshot())
 }
 
+// TestOpsPurgeAllProcessDefinitionsForceCleanupDefaultWarningsUseEnteredStages
+// verifies nested force-cleanup failures produce one immediate warning with the
+// stage aggregate that owns the failed item.
+func TestOpsPurgeAllProcessDefinitionsForceCleanupDefaultWarningsUseEnteredStages(t *testing.T) {
+	tests := []struct {
+		name       string
+		configure  func(*opsPurgeAllProcessDefinitionsNestedState)
+		wantFailed string
+		wantStage  string
+	}{
+		{
+			name: "cancellation",
+			configure: func(state *opsPurgeAllProcessDefinitionsNestedState) {
+				state.failCancelKey = opsAllProcessDefinitionsPurgeRootA
+			},
+			wantFailed: opsAllProcessDefinitionsPurgeRootA + " failed:",
+			wantStage:  "cancelling process-instance root trees, 1/3 process-instance tree(s), 1 failed",
+		},
+		{
+			name: "history",
+			configure: func(state *opsPurgeAllProcessDefinitionsNestedState) {
+				state.failHistoryKey = opsAllProcessDefinitionsPurgeRootA
+			},
+			wantFailed: opsAllProcessDefinitionsPurgeRootA + " failed:",
+			wantStage:  "deleting process-instance histories, 1/3 process-instance tree(s), 1 failed",
+		},
+		{
+			name: "definition",
+			configure: func(state *opsPurgeAllProcessDefinitionsNestedState) {
+				state.failDefinitionKey = opsAllProcessDefinitionsPurgePDKeyA
+			},
+			wantFailed: opsAllProcessDefinitionsPurgePDKeyA + " failed:",
+			wantStage:  "deleting process definitions, 1/2 process definition(s), 1 failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			state := newOpsPurgeAllProcessDefinitionsNestedState()
+			tt.configure(state)
+			state.releaseDrain.Do(func() { close(state.drainRelease) })
+			var requests testx.SafeSlice[string]
+			srv := newOpsPurgeAllProcessDefinitionsNestedServer(t, state, &requests)
+			t.Cleanup(srv.Close)
+
+			_, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
+				"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+				"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, []string{
+					"ops", "purge", "all-process-definitions",
+					"--auto-confirm",
+					"--force",
+					"--no-wait",
+					"--workers", "1",
+				}),
+			})
+			require.Error(t, err, stderr)
+			require.Equal(t, 1, strings.Count(stderr, tt.wantFailed), stderr)
+			require.Contains(t, stderr, tt.wantStage)
+		})
+	}
+}
+
+// TestOpsPurgeAllProcessDefinitionsForceCleanupVerboseAndDebugPrintOneOutcome
+// verifies diagnostic modes replace aggregate milestones with one item outcome
+// for each nested stage completion and preserve no-wait wording.
+func TestOpsPurgeAllProcessDefinitionsForceCleanupVerboseAndDebugPrintOneOutcome(t *testing.T) {
+	tests := []struct {
+		name           string
+		flag           string
+		noWait         bool
+		cancelVerb     string
+		mutationVerb   string
+		deletionOutput string
+	}{
+		{name: "verbose no-wait", flag: "--verbose", noWait: true, cancelVerb: "submitted", mutationVerb: "submitted", deletionOutput: "deletion: submitted 2 process definitions (--no-wait)"},
+		{name: "debug no-wait", flag: "--debug", noWait: true, cancelVerb: "submitted", mutationVerb: "submitted", deletionOutput: "deletion: submitted 2 process definitions (--no-wait)"},
+		{name: "verbose confirmed", flag: "--verbose", cancelVerb: "cancelled", mutationVerb: "deleted", deletionOutput: "deletion: removed 2 process definitions"},
+		{name: "debug confirmed", flag: "--debug", cancelVerb: "cancelled", mutationVerb: "deleted", deletionOutput: "deletion: removed 2 process definitions"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			state := newOpsPurgeAllProcessDefinitionsNestedState()
+			state.releaseDrain.Do(func() { close(state.drainRelease) })
+			var requests testx.SafeSlice[string]
+			srv := newOpsPurgeAllProcessDefinitionsNestedServer(t, state, &requests)
+			t.Cleanup(srv.Close)
+
+			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
+				"C8VOLT_TEST_CONFIG":            writeTestConfigForVersion(t, srv.URL, "8.9"),
+				"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, opsPurgeAllProcessDefinitionsNestedDiagnosticArgs(tt.flag, tt.noWait)),
+			})
+			require.NoError(t, err, stderr)
+
+			require.Empty(t, stdout)
+			require.Contains(t, stderr, tt.deletionOutput)
+			requireOpsPurgeAllProcessDefinitionsOutcomeCount(t, stderr, opsAllProcessDefinitionsPurgeRootA+" "+tt.cancelVerb+" (cancelling process-instance root trees", 1)
+			requireOpsPurgeAllProcessDefinitionsOutcomeCount(t, stderr, opsAllProcessDefinitionsPurgeRootShared+" "+tt.cancelVerb+" (cancelling process-instance root trees", 1)
+			requireOpsPurgeAllProcessDefinitionsOutcomeCount(t, stderr, opsAllProcessDefinitionsPurgeRootB+" "+tt.cancelVerb+" (cancelling process-instance root trees", 1)
+			requireOpsPurgeAllProcessDefinitionsOutcomeCount(t, stderr, opsAllProcessDefinitionsPurgeRootA+" "+tt.mutationVerb+" (deleting process-instance histories", 1)
+			requireOpsPurgeAllProcessDefinitionsOutcomeCount(t, stderr, opsAllProcessDefinitionsPurgeRootShared+" "+tt.mutationVerb+" (deleting process-instance histories", 1)
+			requireOpsPurgeAllProcessDefinitionsOutcomeCount(t, stderr, opsAllProcessDefinitionsPurgeRootB+" "+tt.mutationVerb+" (deleting process-instance histories", 1)
+			requireOpsPurgeAllProcessDefinitionsOutcomeCount(t, stderr, opsAllProcessDefinitionsPurgePDKeyA+" "+tt.mutationVerb+" (deleting process definitions", 1)
+			requireOpsPurgeAllProcessDefinitionsOutcomeCount(t, stderr, opsAllProcessDefinitionsPurgePDKeyB+" "+tt.mutationVerb+" (deleting process definitions", 1)
+			require.NotContains(t, stderr, "stage progress:")
+			require.NotContains(t, stderr, "cancelling process-instance root trees, 3/3 process-instance tree(s)\n")
+			require.NotContains(t, stderr, "deleting process-instance histories, 3/3 process-instance tree(s)\n")
+			require.NotContains(t, stderr, "deleting process definitions, 2/2 process definition(s)\n")
+		})
+	}
+}
+
+// opsPurgeAllProcessDefinitionsNestedDiagnosticArgs builds the root/command
+// argument order needed for diagnostic progress mode assertions.
+func opsPurgeAllProcessDefinitionsNestedDiagnosticArgs(modeFlag string, noWait bool) []string {
+	args := []string{
+		modeFlag,
+		"ops", "purge", "all-process-definitions",
+		"--auto-confirm",
+		"--force",
+		"--workers", "1",
+	}
+	if noWait {
+		args = append(args, "--no-wait")
+	}
+	return args
+}
+
 // TestOpsPurgeAllProcessDefinitionsBlocksActiveInstancesBeforeMutation verifies post-planning blockers keep local-precondition exit behavior.
 func TestOpsPurgeAllProcessDefinitionsBlocksActiveInstancesBeforeMutation(t *testing.T) {
 	var requests testx.SafeSlice[string]
@@ -1176,18 +1304,21 @@ const (
 // opsPurgeAllProcessDefinitionsNestedState coordinates a fake force-cleanup
 // backend with command activity assertions.
 type opsPurgeAllProcessDefinitionsNestedState struct {
-	cancelStarted chan struct{}
-	cancelRelease chan struct{}
-	drainPolled   chan struct{}
-	drainRelease  chan struct{}
-	releaseCancel sync.Once
-	releaseDrain  sync.Once
-	cancelOnce    sync.Once
-	drainOnce     sync.Once
-	cancelled     testx.SafeSlice[string]
-	deletedPI     testx.SafeSlice[string]
-	deletedPD     testx.SafeSlice[string]
-	cancelCount   atomic.Int64
+	cancelStarted     chan struct{}
+	cancelRelease     chan struct{}
+	drainPolled       chan struct{}
+	drainRelease      chan struct{}
+	releaseCancel     sync.Once
+	releaseDrain      sync.Once
+	cancelOnce        sync.Once
+	drainOnce         sync.Once
+	cancelled         testx.SafeSlice[string]
+	deletedPI         testx.SafeSlice[string]
+	deletedPD         testx.SafeSlice[string]
+	cancelCount       atomic.Int64
+	failCancelKey     string
+	failHistoryKey    string
+	failDefinitionKey string
 }
 
 // newOpsPurgeAllProcessDefinitionsNestedState returns synchronization gates
@@ -1312,6 +1443,10 @@ func newOpsPurgeAllProcessDefinitionsNestedServer(t *testing.T, state *opsPurgeA
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-definitions/"):
 			key := strings.TrimPrefix(r.URL.Path, "/v2/process-definitions/")
 			requests.Append(r.Method + " " + r.URL.Path)
+			if opsPurgeAllProcessDefinitionsPathSeen(state.deletedPD.Snapshot(), "/v2/resources/"+key+"/deletion") {
+				http.NotFound(w, r)
+				return
+			}
 			id := "invoice"
 			if key == opsAllProcessDefinitionsPurgePDKeyB {
 				id = "payment"
@@ -1326,17 +1461,37 @@ func newOpsPurgeAllProcessDefinitionsNestedServer(t *testing.T, state *opsPurgeA
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
 			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
 			requests.Append(r.Method + " " + r.URL.Path)
-			_, _ = w.Write([]byte(opsAllProcessDefinitionsPurgeProcessInstanceJSON(key, key, opsAllProcessDefinitionsPurgePDKeyA, "ACTIVE")))
+			if opsPurgeAllProcessDefinitionsPathSeen(state.deletedPI.Snapshot(), "/v2/process-instances/"+key+"/deletion") {
+				http.NotFound(w, r)
+				return
+			}
+			instanceState := "ACTIVE"
+			if opsPurgeAllProcessDefinitionsPathSeen(state.cancelled.Snapshot(), "/v2/process-instances/"+key+"/cancellation") {
+				instanceState = "CANCELED"
+			}
+			_, _ = w.Write([]byte(opsAllProcessDefinitionsPurgeProcessInstanceJSON(key, key, opsAllProcessDefinitionsPurgePDKeyA, instanceState)))
 		case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v2/process-instances/") && strings.HasSuffix(r.URL.Path, "/cancellation"):
+			key := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v2/process-instances/"), "/cancellation")
 			state.cancelOnce.Do(func() { close(state.cancelStarted) })
 			state.cancelled.Append(r.URL.Path)
 			state.cancelCount.Add(1)
 			requests.Append(r.Method + " " + r.URL.Path)
+			if key == state.failCancelKey {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(`{"message":"cancel rejected"}`))
+				return
+			}
 			w.WriteHeader(http.StatusAccepted)
 			_, _ = w.Write([]byte(`{}`))
 		case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v2/process-instances/") && strings.HasSuffix(r.URL.Path, "/deletion"):
+			key := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v2/process-instances/"), "/deletion")
 			state.deletedPI.Append(r.URL.Path)
 			requests.Append(r.Method + " " + r.URL.Path)
+			if key == state.failHistoryKey {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(`{"message":"history delete rejected"}`))
+				return
+			}
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{}`))
 		case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v2/resources/") && strings.HasSuffix(r.URL.Path, "/deletion"):
@@ -1345,7 +1500,16 @@ func newOpsPurgeAllProcessDefinitionsNestedServer(t *testing.T, state *opsPurgeA
 			require.NoError(t, err)
 			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
 			key := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v2/resources/"), "/deletion")
+			if key == state.failDefinitionKey {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(`{"message":"definition delete rejected"}`))
+				return
+			}
 			_, _ = w.Write([]byte(`{"resourceKey":"` + key + `","batchOperation":{"batchOperationKey":"batch-` + key + `","batchOperationType":"DELETE_PROCESS_DEFINITION"}}`))
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/batch-operations/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/batch-operations/")
+			requests.Append(r.Method + " " + r.URL.Path)
+			_, _ = w.Write([]byte(`{"batchOperationKey":"` + key + `","batchOperationType":"DELETE_PROCESS_DEFINITION","state":"COMPLETED","operationsTotalCount":1,"operationsCompletedCount":1,"operationsFailedCount":0}`))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
@@ -1440,4 +1604,23 @@ func countOpsPurgeAllProcessDefinitionsRequests(items []string, prefix string) i
 		}
 	}
 	return count
+}
+
+// opsPurgeAllProcessDefinitionsPathSeen reports whether a fake backend
+// mutation path has already been captured.
+func opsPurgeAllProcessDefinitionsPathSeen(items []string, path string) bool {
+	for _, item := range items {
+		if item == path {
+			return true
+		}
+	}
+	return false
+}
+
+// requireOpsPurgeAllProcessDefinitionsOutcomeCount asserts diagnostic
+// completion lines are neither missing nor duplicated.
+func requireOpsPurgeAllProcessDefinitionsOutcomeCount(t *testing.T, output string, want string, count int) {
+	t.Helper()
+
+	require.Equal(t, count, strings.Count(output, want), output)
 }

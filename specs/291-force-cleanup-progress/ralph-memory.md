@@ -23,6 +23,8 @@ Started: 2026-09-04T10:01:49Z
 - Fake nested APD command servers must distinguish process-definition stat active searches (`sort` by `processInstanceKey`) from active-instance list searches (`sort` by `processDefinitionName`/`version`); confusing them prevents the drain loop from reaching zero.
 - APD stage completions are ignored until an explicit stage entry has been observed. Tests that assert definition milestones must enter the definition stage before sending completion callbacks.
 - First-root cancellation activity can be asserted through activity sink history; drain synchronization still needs a blocking active-stat response so the wait-stage activity can be observed before release.
+- Nested APD command tests can reuse `newOpsPurgeAllProcessDefinitionsNestedServer` for output assertions by closing `state.drainRelease` before subprocess execution; failure switches on the shared state now produce deterministic cancel/history/definition HTTP 500 responses for default warning coverage.
+- In verbose/debug command output, APD human results and semantic progress both route to stderr; stdout stays empty for one-line diagnostic-mode subprocess assertions. `--no-wait` keeps nested cancel/history/definition item outcomes as `submitted`; waited execution renders cancel as `cancelled` and history/definition deletion as `deleted`.
 
 ## Decisions
 - Iteration 1 was setup/evidence only. No production code or generated docs changed.
@@ -30,6 +32,7 @@ Started: 2026-09-04T10:01:49Z
 - Iteration 3 completed the service stage-entry slice for US1. The APD command still ignores stage entries until the coordinator/wiring tasks are implemented.
 - Iteration 6 completed US1 stage visibility end to end: real nested command callbacks now show cancellation, drain, history deletion, and definition deletion through the APD coordinator.
 - Iteration 7 completed the coordinator-owned US2 timing/final-record slice. Nested command output tests and the full US2 validation record remain open.
+- Iteration 8 completed US2 command-level output evidence and validation: default cancel/history/definition failures warn once with owning-stage aggregates; verbose/debug output emits one item outcome per nested stage completion for submitted and confirmed paths with no duplicate aggregate lines.
 - Actual checkout is `develop`; `.specify/feature.json` still points at `specs/291-force-cleanup-progress`; `AGENTS.md` still points at `specs/291-force-cleanup-progress/plan.md`.
 
 ## Gotchas
@@ -52,4 +55,4 @@ Started: 2026-09-04T10:01:49Z
 - Do not reroute the ordinary non-force worker path through `DeleteProcessDefinitionResources`; the plan requires a private once-only entry hook in the existing `deleteProcessDefinition` path.
 
 ## Current Handoff
-- Next iteration remains in US2 with T019: add nested default/verbose/debug command tests in `cmd/ops_purge_all_processdefinitions_test.go`, then run T022 once the US2 command-output evidence passes.
+- Next iteration starts US3 with T023: extend `cmd/ops_purge_all_processdefinitions_test.go` for mode/compatibility coverage, especially JSON, automation, quiet, verbose combinations, confirmation/dry-run/no-wait paths, and unchanged final output contracts.

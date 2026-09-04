@@ -4,6 +4,7 @@ Feature: 291-force-cleanup-progress
 Started: 2026-09-04 12:01:50
 
 ---
+
 ---
 ## Iteration 3 - 2026-09-04 12:17
 **Work Unit**: Partial US1 service stage entries
@@ -193,4 +194,25 @@ Started: 2026-09-04 12:01:50
 - PASS: `go test ./cmd -race -run 'TestOpsPurgeAllProcessDefinitionsProgress|TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter' -count=1`.
 - PASS: `git diff --check`.
 - Generic real-execution activity ownership must not anchor durable mutation pacing; first recognized stage entry is the durable clock boundary.
+---
+
+---
+## Iteration 8 - 2026-09-04 13:01
+**Work Unit**: Complete US2 command output evidence and validation
+**Tasks Completed**:
+- [x] T019: Add nested default/verbose/debug command tests proving immediate cancellation/history/definition failure warnings, one semantic outcome per item per stage in diagnostic modes, no-wait submitted wording, waited confirmed wording, and no duplicate verbose/debug aggregate lines.
+- [x] T022: Run US2 fake-clock, nested command output, ordinary semantic-reporter, race, and diff hygiene checks.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_purge_all_processdefinitions_test.go
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- PASS: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitionsForceCleanup(DefaultWarningsUseEnteredStages|VerboseAndDebugPrintOneOutcome)' -count=1`.
+- PASS: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter' -count=1`.
+- PASS: `go test ./cmd -race -run 'TestOpsPurgeAllProcessDefinitionsProgress|TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter' -count=1`.
+- PASS: `git diff --check`.
+- Default failures can still emit one close-time `stage progress:` line for prior dirty stage evidence; the no-duplicate aggregate assertion belongs to verbose/debug output where item outcomes replace aggregate milestones. The nested fake now supports waited confirmation through canceled/absent process-instance lookups and completed batch-operation polling.
 ---

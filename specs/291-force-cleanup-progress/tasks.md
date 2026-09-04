@@ -69,13 +69,13 @@ Implementation must read `AGENTS.md`, `.specify/memory/constitution.md`, and `sp
 ### Tests for User Story 2
 
 - [x] T018 [P] [US2] Add deterministic pacing and closure tests in `cmd/ops_purge_all_processdefinitions_progress_test.go` covering 9.999s/10s boundaries, clock start at first actual stage, no clock reset or flush on transitions, no timer-only drain lines, warning activation without clock reset, per-stage dirty retention, single- and multi-stage final records, clean short-run silence, and repeated close/post-close callbacks.
-- [ ] T019 [P] [US2] Add nested default/verbose/debug command tests in `cmd/ops_purge_all_processdefinitions_test.go` proving immediate cancellation/history/definition failures, exact one semantic outcome per item per stage, submitted versus confirmed wording with existing no-wait behavior, and no duplicate aggregate informational lines in verbose/debug output.
+- [x] T019 [P] [US2] Add nested default/verbose/debug command tests in `cmd/ops_purge_all_processdefinitions_test.go` proving immediate cancellation/history/definition failures, exact one semantic outcome per item per stage, submitted versus confirmed wording with existing no-wait behavior, and no duplicate aggregate informational lines in verbose/debug output.
 
 ### Implementation for User Story 2
 
 - [x] T020 [US2] Complete workflow-wide durable dispatch in `cmd/ops_purge_all_processdefinitions_progress.go`: one clock anchored to first stage entry, completion-driven 10-second milestones, immediate warnings that do not reset that clock, stage-local dirty clearing, and verbose/debug item outcomes replacing paced lines; reuse `cmd/ops_progress_mode.go`, `cmd/ops_progress_render.go`, and `cmd/ops_progress_milestones.go` without changing other command policies.
 - [x] T021 [US2] Implement the final historical-progress record in `cmd/ops_purge_all_processdefinitions_progress.go` so activated default mode emits at most one line joining only dirty entered mutation-stage aggregates in execution order, retains the ordinary format for a single stage, excludes waiting and already-reported work, never repaints an old activity or claims success, and stops activity exactly once.
-- [ ] T022 [US2] Run US2 fake-clock, nested output, and ordinary semantic-reporter regressions with race detection where callbacks are concurrent; record the contract timeline, warning behavior, final-record results, and absence of new timers in `specs/291-force-cleanup-progress/progress.md` using the commands in `specs/291-force-cleanup-progress/quickstart.md`.
+- [x] T022 [US2] Run US2 fake-clock, nested output, and ordinary semantic-reporter regressions with race detection where callbacks are concurrent; record the contract timeline, warning behavior, final-record results, and absence of new timers in `specs/291-force-cleanup-progress/progress.md` using the commands in `specs/291-force-cleanup-progress/quickstart.md`.
 
 **Checkpoint**: Durable evidence covers nested work without stage-transition noise, stale activity, duplicate item outcomes, or lost earlier-stage counts.
 
