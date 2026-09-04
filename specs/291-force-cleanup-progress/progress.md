@@ -60,3 +60,32 @@ Started: 2026-09-04 12:01:50
 **Learnings**:
 - Baseline progress callbacks expose completion facts but not stage entries; the next work unit starts with domain contract tests for the additive stage event.
 ---
+---
+## Iteration 2 - 2026-09-04 12:10
+**Work Unit**: Phase 2 Foundational Shared Progress Facts and Reduction
+**Tasks Completed**:
+- [x] T003: Add stage-envelope contract tests for phase/resource fields, optional total and planned affected scope, nil versus known zero, and unchanged completion serialization.
+- [x] T004: Add the internal stage event kind, payload, and optional envelope field with nil-count and nonnegative-count invariants documented.
+- [x] T005: Expose and map the public ops stage kind/payload with nil/zero preservation and independent optional-count pointers.
+- [x] T006: Expose and map the foptions stage payload through service callback options with nil/zero preservation and pointer copies.
+- [x] T007: Extract completion aggregate reduction into a pure shared helper while preserving reporter output behavior.
+- [x] T008: Run focused foundational validation and format touched Go files.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/domain/ops_progress.go
+- internal/domain/ops_progress_test.go
+- c8volt/ops/progress_model.go
+- c8volt/ops/convert.go
+- c8volt/ops/model_test.go
+- c8volt/foptions/options.go
+- c8volt/foptions/options_test.go
+- cmd/ops_semantic_progress.go
+- cmd/ops_semantic_progress_test.go
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- Stage entries are now additive callback facts through internal, ops, and foptions models; no service emits them yet.
+- Passing checks: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter' -count=1`; `go test ./internal/domain -run 'Test.*Progress' -count=1`; `go test ./c8volt/ops -run 'TestProgressConversions|TestClientPurgeAllProcessDefinitions' -count=1`; `go test ./c8volt/foptions -run 'Test.*Progress' -count=1`.
+---

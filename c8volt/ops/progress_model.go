@@ -61,6 +61,8 @@ const (
 	ProgressEventKindFrozenScope ProgressEventKind = "frozen_scope"
 	// ProgressEventKindETA carries timing samples used for approximate ETA rendering.
 	ProgressEventKindETA ProgressEventKind = "eta"
+	// ProgressEventKindStage carries a service-owned stage entry before mutation work begins.
+	ProgressEventKindStage ProgressEventKind = "stage"
 	// ProgressEventKindCompletion carries one wording-free item or stage completion fact.
 	ProgressEventKindCompletion ProgressEventKind = "completion"
 )
@@ -158,6 +160,16 @@ type FrozenScopeProgress struct {
 	Errors       int            `json:"errors,omitempty"`
 }
 
+// StageProgress reports that a service workflow entered a stage. Optional
+// counts are nil when unavailable; non-nil counts must be nonnegative, and zero
+// represents a known empty scope rather than unknown work.
+type StageProgress struct {
+	Phase                string `json:"phase,omitempty"`
+	CoreResource         string `json:"coreResource,omitempty"`
+	Total                *int   `json:"total,omitempty"`
+	PlannedAffectedCount *int   `json:"plannedAffectedCount,omitempty"`
+}
+
 // ETASampleWindow carries enough timing data for command formatters to decide whether ETA is useful.
 type ETASampleWindow struct {
 	Phase             string         `json:"phase,omitempty"`
@@ -189,5 +201,6 @@ type ProgressEvent struct {
 	Page        *PageProgress        `json:"page,omitempty"`
 	FrozenScope *FrozenScopeProgress `json:"frozenScope,omitempty"`
 	ETA         *ETASampleWindow     `json:"eta,omitempty"`
+	Stage       *StageProgress       `json:"stage,omitempty"`
 	Completion  *CompletionProgress  `json:"completion,omitempty"`
 }

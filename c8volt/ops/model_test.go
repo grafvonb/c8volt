@@ -224,6 +224,57 @@ func TestProgressConversions_MapCompletionFact(t *testing.T) {
 	}, domainEvent.Completion)
 }
 
+// TestProgressConversions_MapStageFact verifies stage entries cross the ops
+// facade boundary with nil and known-zero counts preserved as distinct facts.
+func TestProgressConversions_MapStageFact(t *testing.T) {
+	t.Parallel()
+
+	total := 0
+	plannedAffected := 7
+	publicEvent := fromDomainProgressEvent(d.OpsProgressEvent{
+		Kind: d.OpsProgressEventKindStage,
+		Stage: &d.OpsStageProgress{
+			Phase:                "cancel",
+			CoreResource:         "process-instance tree(s)",
+			Total:                &total,
+			PlannedAffectedCount: &plannedAffected,
+		},
+	})
+
+	require.Equal(t, ProgressEventKindStage, publicEvent.Kind)
+	require.Equal(t, &StageProgress{
+		Phase:                "cancel",
+		CoreResource:         "process-instance tree(s)",
+		Total:                &total,
+		PlannedAffectedCount: &plannedAffected,
+	}, publicEvent.Stage)
+	require.NotSame(t, &total, publicEvent.Stage.Total)
+	require.NotSame(t, &plannedAffected, publicEvent.Stage.PlannedAffectedCount)
+
+	*publicEvent.Stage.Total = 3
+	*publicEvent.Stage.PlannedAffectedCount = 9
+	domainEvent := toDomainProgressEvent(publicEvent)
+	require.Equal(t, d.OpsProgressEventKindStage, domainEvent.Kind)
+	require.Equal(t, &d.OpsStageProgress{
+		Phase:                "cancel",
+		CoreResource:         "process-instance tree(s)",
+		Total:                publicEvent.Stage.Total,
+		PlannedAffectedCount: publicEvent.Stage.PlannedAffectedCount,
+	}, domainEvent.Stage)
+	require.NotSame(t, publicEvent.Stage.Total, domainEvent.Stage.Total)
+	require.NotSame(t, publicEvent.Stage.PlannedAffectedCount, domainEvent.Stage.PlannedAffectedCount)
+
+	nilCounts := toDomainProgressEvent(ProgressEvent{
+		Kind: ProgressEventKindStage,
+		Stage: &StageProgress{
+			Phase: "drain process instances",
+		},
+	})
+	require.NotNil(t, nilCounts.Stage)
+	require.Nil(t, nilCounts.Stage.Total)
+	require.Nil(t, nilCounts.Stage.PlannedAffectedCount)
+}
+
 // TestProgressConversions_MapCompletionDispositionLifecycle verifies ops
 // facade conversions preserve generic lifecycle state without command verbs.
 func TestProgressConversions_MapCompletionDispositionLifecycle(t *testing.T) {

@@ -143,6 +143,56 @@ func TestOpsCompletionProgressJSONContract(t *testing.T) {
 	}`, string(raw))
 }
 
+// TestOpsStageProgressJSONContract verifies stage-entry facts expose
+// service-owned phase, resource, total, and planned affected scope fields.
+func TestOpsStageProgressJSONContract(t *testing.T) {
+	t.Parallel()
+
+	total := 2
+	plannedAffected := 7
+	raw, err := json.Marshal(OpsProgressEvent{
+		Kind: OpsProgressEventKindStage,
+		Stage: &OpsStageProgress{
+			Phase:                "cancel",
+			CoreResource:         "process-instance tree(s)",
+			Total:                &total,
+			PlannedAffectedCount: &plannedAffected,
+		},
+	})
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"kind": "stage",
+		"stage": {
+			"phase": "cancel",
+			"coreResource": "process-instance tree(s)",
+			"total": 2,
+			"plannedAffectedCount": 7
+		}
+	}`, string(raw))
+}
+
+// TestOpsStageProgressOmitsUnavailableCounts verifies nil stage totals remain
+// absent while known zero counts survive JSON serialization.
+func TestOpsStageProgressOmitsUnavailableCounts(t *testing.T) {
+	t.Parallel()
+
+	zero := 0
+	raw, err := json.Marshal(OpsProgressEvent{
+		Kind: OpsProgressEventKindStage,
+		Stage: &OpsStageProgress{
+			Phase:                "drain process instances",
+			PlannedAffectedCount: &zero,
+		},
+	})
+	require.NoError(t, err)
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(raw, &got))
+	stage := got["stage"].(map[string]any)
+	require.NotContains(t, stage, "total")
+	require.Equal(t, float64(0), stage["plannedAffectedCount"])
+}
+
 // TestOpsCompletionDispositionJSONContract verifies lifecycle outcomes stay
 // generic so services cannot smuggle command-rendered completion verbs.
 func TestOpsCompletionDispositionJSONContract(t *testing.T) {

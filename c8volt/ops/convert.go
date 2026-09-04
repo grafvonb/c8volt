@@ -246,6 +246,7 @@ func fromDomainProgressEvent(x d.OpsProgressEvent) ProgressEvent {
 		Page:        fromDomainPageProgressPtr(x.Page),
 		FrozenScope: fromDomainFrozenScopeProgressPtr(x.FrozenScope),
 		ETA:         fromDomainETASampleWindowPtr(x.ETA),
+		Stage:       fromDomainStageProgressPtr(x.Stage),
 		Completion:  fromDomainCompletionProgressPtr(x.Completion),
 	}
 }
@@ -258,6 +259,7 @@ func toDomainProgressEvent(x ProgressEvent) d.OpsProgressEvent {
 		Page:        toDomainPageProgressPtr(x.Page),
 		FrozenScope: toDomainFrozenScopeProgressPtr(x.FrozenScope),
 		ETA:         toDomainETASampleWindowPtr(x.ETA),
+		Stage:       toDomainStageProgressPtr(x.Stage),
 		Completion:  toDomainCompletionProgressPtr(x.Completion),
 	}
 }
@@ -479,6 +481,44 @@ func toDomainFrozenScopeProgress(x FrozenScopeProgress) d.OpsFrozenScopeProgress
 		Rate:         x.Rate,
 		ETA:          x.ETA,
 		Errors:       x.Errors,
+	}
+}
+
+// fromDomainStageProgressPtr maps optional stage-entry progress while preserving nil as absent.
+func fromDomainStageProgressPtr(x *d.OpsStageProgress) *StageProgress {
+	if x == nil {
+		return nil
+	}
+	out := fromDomainStageProgress(*x)
+	return &out
+}
+
+// fromDomainStageProgress maps internal stage-entry progress to public callback facts.
+func fromDomainStageProgress(x d.OpsStageProgress) StageProgress {
+	return StageProgress{
+		Phase:                x.Phase,
+		CoreResource:         x.CoreResource,
+		Total:                toolx.CopyPtr(x.Total),
+		PlannedAffectedCount: toolx.CopyPtr(x.PlannedAffectedCount),
+	}
+}
+
+// toDomainStageProgressPtr maps optional public stage-entry progress for callback adapters.
+func toDomainStageProgressPtr(x *StageProgress) *d.OpsStageProgress {
+	if x == nil {
+		return nil
+	}
+	out := toDomainStageProgress(*x)
+	return &out
+}
+
+// toDomainStageProgress maps public stage-entry progress into the internal shape.
+func toDomainStageProgress(x StageProgress) d.OpsStageProgress {
+	return d.OpsStageProgress{
+		Phase:                x.Phase,
+		CoreResource:         x.CoreResource,
+		Total:                toolx.CopyPtr(x.Total),
+		PlannedAffectedCount: toolx.CopyPtr(x.PlannedAffectedCount),
 	}
 }
 

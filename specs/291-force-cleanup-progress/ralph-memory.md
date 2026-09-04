@@ -8,9 +8,13 @@ Started: 2026-09-04T10:01:49Z
 - Current APD progress callback handles preflight/page facts locally and forwards only completion facts into `processDefinitionDeleteSemanticProgress`; that reporter is fixed to `delete process definitions` and starts eagerly after confirmation when frozen keys exist.
 - Service callback chain for real deletion is command `request.Progress` -> public facade conversion (`c8volt/ops/convert.go` and `c8volt/foptions/options.go`) -> `internal/services/ops.PurgeAllProcessDefinitions` -> `pdsvc.DeleteProcessDefinitions` -> PI cancel/delete completion callbacks and PD resource delete completion callbacks.
 - Existing force cleanup path in `internal/services/processdefinition/delete.go`: preview with workers, `cleanupProcessDefinitionDeletePlanForceScope`, `pisvc.CancelProcessInstances`, `waitForProcessDefinitionDeletePlanActiveInstancesDrained`, `pisvc.DeleteProcessInstances`, then `DeleteProcessDefinitionResources`.
+- Foundation now exposes `OpsProgressEventKindStage` / `OpsStageProgress` in `internal/domain`, mirrored as public `StageProgress` in both `c8volt/ops` and `c8volt/foptions`; optional `Total` and `PlannedAffectedCount` use `*int`, where nil means unavailable and known zero is preserved.
+- `c8volt/ops` converts stage events both directions and copies optional count pointers with `toolx.CopyPtr`; `c8volt/foptions` maps service stage events one-way into public callbacks with explicit pointer copies.
+- `cmd/ops_semantic_progress.go` now has pure reducer `applyOpsSemanticCompletionToAggregate`, preserving the old reporter rules for total adoption/bounds, failure counts, dirty acceptance, and affected coverage invalidation.
 
 ## Decisions
 - Iteration 1 was setup/evidence only. No production code or generated docs changed.
+- Iteration 2 completed Phase 2 foundational event, mapping, and reducer work. No service emission, APD coordinator, user-facing command output, docs, or generated docs changed yet.
 - Actual checkout is `develop`; `.specify/feature.json` still points at `specs/291-force-cleanup-progress`; `AGENTS.md` still points at `specs/291-force-cleanup-progress/plan.md`.
 
 ## Gotchas
@@ -33,4 +37,4 @@ Started: 2026-09-04T10:01:49Z
 - Do not reroute the ordinary non-force worker path through `DeleteProcessDefinitionResources`; the plan requires a private once-only entry hook in the existing `deleteProcessDefinition` path.
 
 ## Current Handoff
-- Next iteration starts Phase 2 with T003: add stage-envelope contract tests in `internal/domain/ops_progress_test.go` before implementing the additive stage event.
+- Next iteration starts US1 with T009: add service stage-entry tests in `internal/services/processdefinition/delete_test.go` for force cleanup stage entries, skipped empty cleanup, and ordinary non-force once-only definition entry before implementing service emission.

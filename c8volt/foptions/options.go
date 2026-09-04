@@ -108,6 +108,8 @@ const (
 	ProgressEventKindPage ProgressEventKind = "page"
 	// ProgressEventKindFrozenScope carries exact counters for a frozen work set.
 	ProgressEventKindFrozenScope ProgressEventKind = "frozen_scope"
+	// ProgressEventKindStage carries a service-owned stage entry before mutation work begins.
+	ProgressEventKindStage ProgressEventKind = "stage"
 	// ProgressEventKindCompletion carries one wording-free item or stage completion fact.
 	ProgressEventKindCompletion ProgressEventKind = "completion"
 )
@@ -204,6 +206,16 @@ type FrozenScopeProgress struct {
 	Errors       int            `json:"errors,omitempty"`
 }
 
+// StageProgress reports that a service workflow entered a stage. Optional
+// counts are nil when unavailable; non-nil counts must be nonnegative, and zero
+// represents a known empty scope rather than unknown work.
+type StageProgress struct {
+	Phase                string `json:"phase,omitempty"`
+	CoreResource         string `json:"coreResource,omitempty"`
+	Total                *int   `json:"total,omitempty"`
+	PlannedAffectedCount *int   `json:"plannedAffectedCount,omitempty"`
+}
+
 // CompletionProgress reports one service-owned completion fact without command-rendered wording.
 type CompletionProgress struct {
 	Phase            string                `json:"phase,omitempty"`
@@ -222,6 +234,7 @@ type ProgressEvent struct {
 	Preflight   *PreflightScope      `json:"preflight,omitempty"`
 	Page        *PageProgress        `json:"page,omitempty"`
 	FrozenScope *FrozenScopeProgress `json:"frozenScope,omitempty"`
+	Stage       *StageProgress       `json:"stage,omitempty"`
 	Completion  *CompletionProgress  `json:"completion,omitempty"`
 }
 
@@ -309,6 +322,7 @@ func fromDomainProgressEvent(event d.OpsProgressEvent) ProgressEvent {
 		Preflight:   fromDomainPreflightScopePtr(event.Preflight),
 		Page:        fromDomainPageProgressPtr(event.Page),
 		FrozenScope: fromDomainFrozenScopeProgressPtr(event.FrozenScope),
+		Stage:       fromDomainStageProgressPtr(event.Stage),
 		Completion:  fromDomainCompletionProgressPtr(event.Completion),
 	}
 }
@@ -399,6 +413,27 @@ func fromDomainFrozenScopeProgressPtr(progress *d.OpsFrozenScopeProgress) *Froze
 		Rate:         progress.Rate,
 		ETA:          progress.ETA,
 		Errors:       progress.Errors,
+	}
+	return &out
+}
+
+// fromDomainStageProgressPtr maps optional stage-entry progress while
+// preserving nil counts and copying known optional values.
+func fromDomainStageProgressPtr(progress *d.OpsStageProgress) *StageProgress {
+	if progress == nil {
+		return nil
+	}
+	out := StageProgress{
+		Phase:        progress.Phase,
+		CoreResource: progress.CoreResource,
+	}
+	if progress.Total != nil {
+		total := *progress.Total
+		out.Total = &total
+	}
+	if progress.PlannedAffectedCount != nil {
+		plannedAffected := *progress.PlannedAffectedCount
+		out.PlannedAffectedCount = &plannedAffected
 	}
 	return &out
 }
