@@ -305,3 +305,22 @@ Started: 2026-09-04 12:01:50
 - PASS: `git diff --check -- README.md docs/ops/purge-all-process-definitions.md`.
 - T027 is authored documentation only; generated CLI docs are intentionally unchanged until T029, after T028 command help metadata is updated.
 ---
+---
+## Iteration 14 - 2026-09-04 13:35
+**Work Unit**: Partial Phase 6 APD command help metadata
+**Tasks Completed**:
+- [x] T028: Update APD command metadata/help and help assertions to match the implemented forced cleanup stage behavior while preserving flags, aliases, capability notes, and safe examples.
+**Tasks Remaining in Work Unit**: 4 Phase 6 tasks remain: T029, T030, T031, and T032.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- PASS: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape' -count=1`.
+- PASS: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter' -count=1 -timeout 90s`.
+- PASS: `git diff --check`.
+- Command help metadata now names the four actual forced cleanup stages and stage-specific root versus definition completion units; generated CLI docs are intentionally left for T029.
+---

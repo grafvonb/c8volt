@@ -162,6 +162,12 @@ func TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape(t *testing.T) {
 
 	assertHelpOutputContainsAll(t, output,
 		"Purge all selected process definitions",
+		"Forced cleanup enters the actual stages as needed",
+		"cancelling process-instance root trees",
+		"waiting for active process instances to drain",
+		"deleting process-instance histories",
+		"Cancellation and history deletion count unique root trees; definition deletion counts process definitions.",
+		"one completion line per root or definition in the current stage",
 		"Aliases:",
 		"all-pds",
 		"--key string",
