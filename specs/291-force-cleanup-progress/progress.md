@@ -108,3 +108,19 @@ Started: 2026-09-04 12:01:50
 - Stage entries are now additive callback facts through internal, ops, and foptions models; no service emits them yet.
 - Passing checks: `go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions|TestOpsSemanticProgressReporter|TestNewOpsSemanticProgressReporter' -count=1`; `go test ./internal/domain -run 'Test.*Progress' -count=1`; `go test ./c8volt/ops -run 'TestProgressConversions|TestClientPurgeAllProcessDefinitions' -count=1`; `go test ./c8volt/foptions -run 'Test.*Progress' -count=1`.
 ---
+---
+## Iteration 4 - 2026-09-04 12:22
+**Work Unit**: Partial US1 ops service progress sequence tests
+**Tasks Completed**:
+- [x] T010: Extend APD ops service tests to assert the full mutation stage/completion sequence, unique-root totals, planned affected scope, cancellation/history/definition completion phases, ignored FrozenScope counting, plus no-cleanup and non-force definition-only sequence cases.
+**Tasks Remaining in Work Unit**: 5 US1 tasks remain: T011, T012, T015, T016, and T017.
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/ops/all_process_definitions_purge_test.go
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- PASS: `go test ./internal/services/ops/... -run 'TestPurgeAllProcessDefinitions' -count=1`.
+- APD service progress assertions should filter discovery progress out of mutation sequence checks and assert nested `FrozenScope` facts separately so they cannot double count as root completions.
+---

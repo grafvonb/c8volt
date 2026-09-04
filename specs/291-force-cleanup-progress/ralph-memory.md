@@ -13,6 +13,7 @@ Started: 2026-09-04T10:01:49Z
 - `cmd/ops_semantic_progress.go` now has pure reducer `applyOpsSemanticCompletionToAggregate`, preserving the old reporter rules for total adoption/bounds, failure counts, dirty acceptance, and affected coverage invalidation.
 - `internal/services/processdefinition/delete.go` now emits typed stage entries at service-owned boundaries: cancel with unique-root total and trustworthy planned affected scope, drain without totals, PI history delete with unique-root total, and definition delete before the first preplanned resource request.
 - Ordinary non-force `DeleteProcessDefinitions` still uses the existing worker path and now passes a private `sync.Once` hook into `deleteProcessDefinition`, reporting one definition stage after item validation and immediately before the first resource delete.
+- `internal/services/ops/all_process_definitions_purge_test.go` now asserts the APD service mutation sequence by filtering stage/completion events away from discovery and nested FrozenScope facts; force cleanup expects cancel -> drain -> PI history delete -> PD delete, with unique-root totals and planned affected scope.
 
 ## Decisions
 - Iteration 1 was setup/evidence only. No production code or generated docs changed.
@@ -40,4 +41,4 @@ Started: 2026-09-04T10:01:49Z
 - Do not reroute the ordinary non-force worker path through `DeleteProcessDefinitionResources`; the plan requires a private once-only entry hook in the existing `deleteProcessDefinition` path.
 
 ## Current Handoff
-- Next iteration continues US1 with T010: extend `internal/services/ops/all_process_definitions_purge_test.go` to assert the full nested sequence, unique-root totals, planned affected scope, cancellation/history/definition completion phases, and no FrozenScope double counting.
+- Next iteration continues US1 with T011: create `cmd/ops_purge_all_processdefinitions_progress_test.go` for the focused coordinator, covering zero-at-entry totals, stage-local counters, planned versus completed affected counts, nil/zero coverage, waiting without counts, rejected unrelated/unentered phases, late historical completions, concurrent completions, and idempotent cleanup.
