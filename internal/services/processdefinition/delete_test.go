@@ -6,6 +6,7 @@ package processdefinition
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -228,6 +229,26 @@ func (s *processDefinitionStageSequence) Items() []string {
 	return append([]string(nil), s.items...)
 }
 
+type processDefinitionCallOptionSnapshots struct {
+	mu    sync.Mutex
+	items []services.CallCfg
+}
+
+// Append captures the effective call options observed by a fake backend call.
+func (s *processDefinitionCallOptionSnapshots) Append(opts []services.CallOption) {
+	cfg := services.ApplyCallOptions(opts)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.items = append(s.items, *cfg)
+}
+
+// Items returns the captured call-option snapshots in arrival order.
+func (s *processDefinitionCallOptionSnapshots) Items() []services.CallCfg {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]services.CallCfg(nil), s.items...)
+}
+
 type unsupportedResourceDeleteAPI struct {
 	testResourceDeleteAPI
 }
@@ -412,9 +433,17 @@ func TestProcessDefinitionPlanTenantEvidenceAggregateOnlyFallbackDoesNotDoubleCo
 func TestDeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError(t *testing.T) {
 	var calls atomic.Int64
 	events := &processDefinitionProgressEvents{}
+	sequence := &processDefinitionStageSequence{}
+	progress := func(event d.OpsProgressEvent) {
+		if event.Kind == d.OpsProgressEventKindStage && event.Stage != nil {
+			sequence.Append("stage:" + event.Stage.Phase)
+		}
+		events.Append(event)
+	}
 	api := testResourceDeleteAPI{
 		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
 			calls.Add(1)
+			sequence.Append("delete:" + key)
 			require.Equal(t, "pd-1", key)
 			return d.ResourceDeleteResponse{Key: key}, fmt.Errorf("%w: 400 POST /v2/resources/%s/deletion (Request property [deleteHistory] cannot be parsed)", d.ErrBadRequest, key)
 		},
@@ -432,7 +461,7 @@ func TestDeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError(t
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 		plans,
 		10,
-		services.WithProgress(events.Append),
+		services.WithProgress(progress),
 	)
 
 	require.Error(t, err)
@@ -452,6 +481,16 @@ func TestDeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError(t
 	require.Contains(t, completions[0].FailureDetail, "deleteHistory")
 	require.Empty(t, completions[0].AffectedResource)
 	require.Nil(t, completions[0].AffectedCount)
+	total := 3
+	require.Equal(t, []d.OpsStageProgress{{
+		Phase:        "delete process definitions",
+		CoreResource: "process definition(s)",
+		Total:        &total,
+	}}, events.Stages())
+	require.Equal(t, []string{
+		"stage:delete process definitions",
+		"delete:pd-1",
+	}, sequence.Items())
 }
 
 // TestDeleteProcessDefinitionResourcesEmitsCompletionFactsForSerialProbeAndRemainder
@@ -541,6 +580,77 @@ func TestDeleteProcessDefinitionResourcesEmitsSubmittedCompletionFactsForNoWait(
 		require.Equal(t, d.OpsCompletionDispositionSubmitted, completion.Disposition)
 		require.Empty(t, completion.FailureDetail)
 	}
+}
+
+// TestDeleteProcessDefinitionResourcesFailFastOmitsUnscheduledCompletionFacts
+// verifies fail-fast still preserves the first serial request probe, then stops
+// worker scheduling without inventing progress for definitions never submitted.
+func TestDeleteProcessDefinitionResourcesFailFastOmitsUnscheduledCompletionFacts(t *testing.T) {
+	wantErr := errors.New("resource delete failed")
+	events := &processDefinitionProgressEvents{}
+	sequence := &processDefinitionStageSequence{}
+	progress := func(event d.OpsProgressEvent) {
+		if event.Kind == d.OpsProgressEventKindStage && event.Stage != nil {
+			sequence.Append("stage:" + event.Stage.Phase)
+		}
+		events.Append(event)
+	}
+	api := testResourceDeleteAPI{
+		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			sequence.Append("delete:" + key)
+			if key == "pd-2" {
+				return d.ResourceDeleteResponse{Key: key, Status: "500 Internal Server Error"}, wantErr
+			}
+			return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: 200, Status: "200 OK", BatchOperationKey: "batch-" + key, BatchState: "COMPLETED"}, nil
+		},
+	}
+	pdAPI := &deleteVisibilityProcessDefinitionAPI{}
+
+	got, err := DeleteProcessDefinitionResources(
+		context.Background(),
+		api,
+		pdAPI,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		[]d.DeleteProcessDefinitionPlanItem{{Key: "pd-1"}, {Key: "pd-2"}, {Key: "pd-3"}},
+		1,
+		services.WithFailFast(),
+		services.WithProgress(progress),
+	)
+
+	require.ErrorIs(t, err, wantErr)
+	require.Len(t, got, 3)
+	require.Equal(t, "pd-1", got[0].Key)
+	require.Equal(t, "pd-2", got[1].Key)
+	require.Empty(t, got[2].Key)
+	require.Equal(t, int64(1), pdAPI.calls.Load())
+	total := 3
+	require.Equal(t, []d.OpsStageProgress{{
+		Phase:        "delete process definitions",
+		CoreResource: "process definition(s)",
+		Total:        &total,
+	}}, events.Stages())
+	require.Equal(t, []d.OpsCompletionProgress{
+		{
+			Phase:        "delete process definitions",
+			CoreResource: "process definition(s)",
+			Total:        3,
+			Identity:     "pd-1",
+			Disposition:  d.OpsCompletionDispositionConfirmed,
+		},
+		{
+			Phase:         "delete process definitions",
+			CoreResource:  "process definition(s)",
+			Total:         3,
+			Identity:      "pd-2",
+			Disposition:   d.OpsCompletionDispositionFailed,
+			FailureDetail: "resource delete failed",
+		},
+	}, events.Completions())
+	require.Equal(t, []string{
+		"stage:delete process definitions",
+		"delete:pd-1",
+		"delete:pd-2",
+	}, sequence.Items())
 }
 
 // TestDeleteProcessDefinitionResourcesWaitsForDefinitionAbsenceAfterBatchCompletion verifies batch completion is not treated as the final visibility proof.
@@ -687,6 +797,33 @@ func (s sequenceProcessDefinitionAPI) GetProcessDefinition(_ context.Context, ke
 	return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{Active: s.active}}, nil
 }
 
+type controlledProcessDefinitionAPI struct {
+	API
+	sequence *processDefinitionStageSequence
+	options  *processDefinitionCallOptionSnapshots
+	active   int64
+	err      error
+	afterGet func()
+}
+
+// GetProcessDefinition records drain polling and returns configured active
+// statistics or an injected error for failure-boundary tests.
+func (s controlledProcessDefinitionAPI) GetProcessDefinition(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+	if s.sequence != nil {
+		s.sequence.Append("get:" + key)
+	}
+	if s.options != nil {
+		s.options.Append(opts)
+	}
+	if s.afterGet != nil {
+		s.afterGet()
+	}
+	if s.err != nil {
+		return d.ProcessDefinition{}, s.err
+	}
+	return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{Active: s.active}}, nil
+}
+
 // TestCleanupProcessDefinitionDeletePlanForceScopeEmitsStageEntriesBeforeOperations
 // verifies force cleanup enters cancellation, drain, and history stages before
 // their backing service operations while keeping waiting unquantified.
@@ -769,6 +906,282 @@ func TestCleanupProcessDefinitionDeletePlanForceScopeEmitsStageEntriesBeforeOper
 		"delete:root-shared",
 		"delete:root-2",
 	}, sequence.Items())
+}
+
+// TestCleanupProcessDefinitionDeletePlanForceScopeStopsAfterCancellationFailure
+// verifies a failed root cancellation reports only the entered cancel stage and
+// preserves caller options while suppressing nested detail logs.
+func TestCleanupProcessDefinitionDeletePlanForceScopeStopsAfterCancellationFailure(t *testing.T) {
+	wantErr := errors.New("cancel failed")
+	events := &processDefinitionProgressEvents{}
+	sequence := &processDefinitionStageSequence{}
+	cancelOptions := &processDefinitionCallOptionSnapshots{}
+	var deleteAttempts atomic.Int64
+	progress := func(event d.OpsProgressEvent) {
+		if event.Kind == d.OpsProgressEventKindStage && event.Stage != nil {
+			sequence.Append("stage:" + event.Stage.Phase)
+		}
+		events.Append(event)
+	}
+	piAPI := cleanupProcessInstanceAPI{
+		cancel: func(_ context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+			sequence.Append("cancel:" + key)
+			cancelOptions.Append(opts)
+			return d.CancelResponse{Status: "500 Internal Server Error"}, nil, wantErr
+		},
+		delete: func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error) {
+			deleteAttempts.Add(1)
+			return d.DeleteResponse{}, nil
+		},
+	}
+	plans := []d.DeleteProcessDefinitionPlanItem{{
+		Key: "pd-1",
+		CancellationPlan: d.DryRunPIKeyExpansion{
+			Roots:     []string{"root-1", "root-2"},
+			Collected: []string{"root-1", "root-2", "child-1"},
+		},
+	}}
+
+	err := cleanupProcessDefinitionDeletePlanForceScope(
+		context.Background(),
+		cleanupProcessDefinitionAPI{},
+		piAPI,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		plans,
+		1,
+		services.WithNoWait(),
+		services.WithFailFast(),
+		services.WithProgress(progress),
+	)
+
+	require.ErrorIs(t, err, wantErr)
+	totalRoots := 2
+	plannedAffected := 3
+	require.Equal(t, []d.OpsStageProgress{{
+		Phase:                "cancel",
+		CoreResource:         "process-instance tree(s)",
+		Total:                &totalRoots,
+		PlannedAffectedCount: &plannedAffected,
+	}}, events.Stages())
+	require.Equal(t, []d.OpsCompletionProgress{{
+		Phase:            "cancel",
+		CoreResource:     "process-instance tree(s)",
+		Total:            2,
+		Identity:         "root-1",
+		Disposition:      d.OpsCompletionDispositionFailed,
+		FailureDetail:    "cancel failed",
+		AffectedResource: "affected process instances",
+	}}, events.Completions())
+	require.Equal(t, []string{
+		"stage:cancel",
+		"cancel:root-1",
+	}, sequence.Items())
+	require.Equal(t, int64(0), deleteAttempts.Load())
+	require.Len(t, cancelOptions.Items(), 1)
+	cfg := cancelOptions.Items()[0]
+	require.True(t, cfg.NoWait)
+	require.True(t, cfg.FailFast)
+	require.True(t, cfg.SuppressWorkflowDetailLogs)
+	require.True(t, cfg.SuppressProcessInstanceDetailLogs)
+	require.Equal(t, 3, cfg.AffectedProcessInstanceCount)
+}
+
+// TestCleanupProcessDefinitionDeletePlanForceScopeStopsAfterDrainFailure
+// verifies drain errors and interruptions never advance to history deletion.
+func TestCleanupProcessDefinitionDeletePlanForceScopeStopsAfterDrainFailure(t *testing.T) {
+	tests := []struct {
+		name        string
+		configurePD func(*testing.T, *processDefinitionStageSequence) (context.Context, API, error)
+	}{
+		{
+			name: "backend error",
+			configurePD: func(t *testing.T, sequence *processDefinitionStageSequence) (context.Context, API, error) {
+				t.Helper()
+				wantErr := errors.New("active count failed")
+				return context.Background(), controlledProcessDefinitionAPI{
+					sequence: sequence,
+					err:      wantErr,
+				}, wantErr
+			},
+		},
+		{
+			name: "deadline exceeded",
+			configurePD: func(t *testing.T, sequence *processDefinitionStageSequence) (context.Context, API, error) {
+				t.Helper()
+				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+				t.Cleanup(cancel)
+				return ctx, controlledProcessDefinitionAPI{
+					sequence: sequence,
+					active:   1,
+				}, context.DeadlineExceeded
+			},
+		},
+		{
+			name: "context canceled",
+			configurePD: func(t *testing.T, sequence *processDefinitionStageSequence) (context.Context, API, error) {
+				t.Helper()
+				ctx, cancel := context.WithCancel(context.Background())
+				t.Cleanup(cancel)
+				return ctx, controlledProcessDefinitionAPI{
+					sequence: sequence,
+					active:   1,
+					afterGet: cancel,
+				}, context.Canceled
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			events := &processDefinitionProgressEvents{}
+			sequence := &processDefinitionStageSequence{}
+			progress := func(event d.OpsProgressEvent) {
+				if event.Kind == d.OpsProgressEventKindStage && event.Stage != nil {
+					sequence.Append("stage:" + event.Stage.Phase)
+				}
+				events.Append(event)
+			}
+			ctx, pdAPI, wantErr := tt.configurePD(t, sequence)
+			var deleteAttempts atomic.Int64
+			piAPI := cleanupProcessInstanceAPI{
+				cancel: func(_ context.Context, key string, _ ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+					sequence.Append("cancel:" + key)
+					return d.CancelResponse{Ok: true, StatusCode: 200, Status: "200 OK"}, []d.ProcessInstance{{Key: key}}, nil
+				},
+				delete: func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error) {
+					deleteAttempts.Add(1)
+					return d.DeleteResponse{}, nil
+				},
+			}
+
+			err := cleanupProcessDefinitionDeletePlanForceScope(
+				ctx,
+				pdAPI,
+				piAPI,
+				slog.New(slog.NewTextHandler(io.Discard, nil)),
+				[]d.DeleteProcessDefinitionPlanItem{{
+					Key: "pd-1",
+					CancellationPlan: d.DryRunPIKeyExpansion{
+						Roots:     []string{"root-1"},
+						Collected: []string{"root-1"},
+					},
+				}},
+				1,
+				services.WithProgress(progress),
+			)
+
+			require.ErrorIs(t, err, wantErr)
+			totalRoots := 1
+			plannedAffected := 1
+			require.Equal(t, []d.OpsStageProgress{
+				{
+					Phase:                "cancel",
+					CoreResource:         "process-instance tree(s)",
+					Total:                &totalRoots,
+					PlannedAffectedCount: &plannedAffected,
+				},
+				{
+					Phase:        "drain process instances",
+					CoreResource: "",
+				},
+			}, events.Stages())
+			require.Equal(t, []string{
+				"stage:cancel",
+				"cancel:root-1",
+				"stage:drain process instances",
+				"get:pd-1",
+			}, sequence.Items())
+			require.Equal(t, int64(0), deleteAttempts.Load())
+		})
+	}
+}
+
+// TestCleanupProcessDefinitionDeletePlanForceScopeStopsAfterHistoryFailure
+// verifies history-delete failures retain the delete stage without announcing
+// any process-definition resource deletion.
+func TestCleanupProcessDefinitionDeletePlanForceScopeStopsAfterHistoryFailure(t *testing.T) {
+	wantErr := errors.New("history delete failed")
+	events := &processDefinitionProgressEvents{}
+	sequence := &processDefinitionStageSequence{}
+	deleteOptions := &processDefinitionCallOptionSnapshots{}
+	progress := func(event d.OpsProgressEvent) {
+		if event.Kind == d.OpsProgressEventKindStage && event.Stage != nil {
+			sequence.Append("stage:" + event.Stage.Phase)
+		}
+		events.Append(event)
+	}
+	piAPI := cleanupProcessInstanceAPI{
+		cancel: func(_ context.Context, key string, _ ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+			sequence.Append("cancel:" + key)
+			return d.CancelResponse{Ok: true, StatusCode: 200, Status: "200 OK"}, []d.ProcessInstance{{Key: key}}, nil
+		},
+		delete: func(_ context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+			sequence.Append("delete:" + key)
+			deleteOptions.Append(opts)
+			return d.DeleteResponse{Status: "500 Internal Server Error"}, wantErr
+		},
+	}
+
+	err := cleanupProcessDefinitionDeletePlanForceScope(
+		context.Background(),
+		controlledProcessDefinitionAPI{sequence: sequence},
+		piAPI,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		[]d.DeleteProcessDefinitionPlanItem{{
+			Key: "pd-1",
+			CancellationPlan: d.DryRunPIKeyExpansion{
+				Roots:     []string{"root-1"},
+				Collected: []string{"root-1", "child-1"},
+			},
+		}},
+		1,
+		services.WithNoWait(),
+		services.WithFailFast(),
+		services.WithProgress(progress),
+	)
+
+	require.ErrorIs(t, err, wantErr)
+	totalRoots := 1
+	plannedAffected := 2
+	require.Equal(t, []d.OpsStageProgress{
+		{
+			Phase:                "cancel",
+			CoreResource:         "process-instance tree(s)",
+			Total:                &totalRoots,
+			PlannedAffectedCount: &plannedAffected,
+		},
+		{
+			Phase:        "drain process instances",
+			CoreResource: "",
+		},
+		{
+			Phase:        "delete",
+			CoreResource: "process-instance tree(s)",
+			Total:        &totalRoots,
+		},
+	}, events.Stages())
+	require.Equal(t, []string{
+		"stage:cancel",
+		"cancel:root-1",
+		"stage:drain process instances",
+		"get:pd-1",
+		"stage:delete",
+		"delete:root-1",
+	}, sequence.Items())
+	completions := events.Completions()
+	require.Len(t, completions, 2)
+	require.Equal(t, d.OpsCompletionDispositionSubmitted, completions[0].Disposition)
+	require.Equal(t, "cancel", completions[0].Phase)
+	require.Equal(t, d.OpsCompletionDispositionFailed, completions[1].Disposition)
+	require.Equal(t, "delete", completions[1].Phase)
+	require.Equal(t, "history delete failed", completions[1].FailureDetail)
+	require.Len(t, deleteOptions.Items(), 1)
+	cfg := deleteOptions.Items()[0]
+	require.True(t, cfg.NoWait)
+	require.True(t, cfg.FailFast)
+	require.True(t, cfg.SuppressWorkflowDetailLogs)
+	require.True(t, cfg.SuppressProcessInstanceDetailLogs)
+	require.Equal(t, 2, cfg.AffectedProcessInstanceCount)
 }
 
 // TestCleanupProcessDefinitionDeletePlanForceScopeSkipsEmptyCleanupStages

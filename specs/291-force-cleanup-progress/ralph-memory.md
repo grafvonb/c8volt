@@ -29,6 +29,8 @@ Started: 2026-09-04T10:01:49Z
 - Quiet nested force-cleanup failure coverage expects the immediate failed-item warning to remain visible, while no later unentered drain/history/definition stage progress or final `stage progress:` line appears.
 - `TestOpsPurgeAllProcessDefinitionsCommandHelper` supports `C8VOLT_TEST_ALL_PD_PURGE_DECLINE=1` to write the captured prompt and then abort confirmation before mutation.
 - Empty APD command coverage uses `newOpsPurgeAllProcessDefinitionsEmptyServer`, which returns zero definitions and fails on mutation requests; human dry-run output may route through stderr in subprocess logger context.
+- Process-definition service US3 failure coverage now asserts cleanup stops at the last entered stage for cancellation failure, drain backend error, drain deadline/cancellation interruption, and history failure; nested PI calls preserve caller `NoWait`/`FailFast` plus APD-added affected count and suppression options.
+- `DeleteProcessDefinitionResources` US3 coverage now asserts the definition stage entry precedes the first serial request, Camunda `deleteHistory` request-shape rejection submits only the first definition, and fail-fast after the serial probe emits no completion for unscheduled definitions while still returning the pool-sized result slice with zero-value unscheduled entries.
 
 ## Decisions
 - Iteration 1 was setup/evidence only. No production code or generated docs changed.
@@ -59,4 +61,4 @@ Started: 2026-09-04T10:01:49Z
 - Do not reroute the ordinary non-force worker path through `DeleteProcessDefinitionResources`; the plan requires a private once-only entry hook in the existing `deleteProcessDefinition` path.
 
 ## Current Handoff
-- Continue US3 with T024: extend `internal/services/processdefinition/delete_test.go` for cancellation failure, drain failure/timeout/interruption, history failure, first definition request-shape rejection, and fail-fast cases while preserving request shape, preview rechecks, worker settings, serial-probe behavior, and wait/confirmation semantics.
+- Continue US3 with T025: extend the APD facade/service-boundary regression in `c8volt/ops/client_test.go` to prove stage forwarding leaves frozen keys, tenant scope, force/dry-run/no-wait/worker/fail-fast options, result/report mapping, and error conversion unchanged. Do not change `internal/services/ops/all_process_definitions_purge_test.go` in T025.

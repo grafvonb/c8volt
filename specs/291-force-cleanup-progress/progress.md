@@ -233,3 +233,21 @@ Started: 2026-09-04 12:01:50
 - PASS: `git diff --check`.
 - JSON and automation+JSON verbose combinations can run the real nested force-cleanup path without emitting nested stage progress outside the final JSON envelope.
 ---
+---
+## Iteration 10 - 2026-09-04 13:19
+**Work Unit**: Partial US3 service failure compatibility coverage
+**Tasks Completed**:
+- [x] T024: Extend `internal/services/processdefinition/delete_test.go` with cancellation failure, drain failure/timeout/interruption, history failure, first definition request-shape rejection, and fail-fast cases.
+**Tasks Remaining in Work Unit**: 2 US3 tasks remain: T025 and T026.
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/delete_test.go
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- PASS: `go test ./internal/services/processdefinition/... -run 'Test.*(DeleteProcessDefinition|CleanupProcessDefinition)' -count=1`.
+- PASS: `go test ./internal/services/processdefinition/... -race -run 'Test.*(DeleteProcessDefinition|CleanupProcessDefinition)' -count=1`.
+- PASS: `git diff --check`.
+- New service regressions cover cleanup stop boundaries and option propagation without production changes.
+---
