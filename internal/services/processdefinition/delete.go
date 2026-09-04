@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
@@ -32,10 +33,12 @@ type ResourceDeleteCapabilityAPI interface {
 
 // DeleteProcessDefinition deletes one process definition after optional active-instance cleanup.
 func DeleteProcessDefinition(ctx context.Context, api ResourceDeleteAPI, pdApi API, piApi pisvc.API, log *slog.Logger, key string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
-	return deleteProcessDefinition(ctx, api, pdApi, piApi, log, key, 1, opts...)
+	return deleteProcessDefinition(ctx, api, pdApi, piApi, log, key, 1, nil, opts...)
 }
 
-func deleteProcessDefinition(ctx context.Context, api ResourceDeleteAPI, pdApi API, piApi pisvc.API, log *slog.Logger, key string, total int, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+// deleteProcessDefinition validates one process definition and invokes the
+// optional per-run stage hook immediately before the resource delete request.
+func deleteProcessDefinition(ctx context.Context, api ResourceDeleteAPI, pdApi API, piApi pisvc.API, log *slog.Logger, key string, total int, reportDefinitionStageEntry func(), opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
 	if err := requireProcessDefinitionHistoryDeletionSupport(api); err != nil {
 		return d.ResourceDeleteResponse{}, err
 	}
@@ -81,6 +84,11 @@ func deleteProcessDefinition(ctx context.Context, api ResourceDeleteAPI, pdApi A
 		if err := deleteProcessDefinitionProcessInstances(ctx, piApi, log, plan, 0, opts...); err != nil {
 			return d.ResourceDeleteResponse{}, fmt.Errorf("delete process definition process-instance history: %w", err)
 		}
+	}
+	if reportDefinitionStageEntry != nil {
+		reportDefinitionStageEntry()
+	} else {
+		reportProcessDefinitionDeleteStage(cfg.Progress, "delete process definitions", "process definition(s)", &total, nil)
 	}
 	resp, err := DeleteProcessDefinitionResourceAndWait(ctx, api, pdApi, log, plan, opts...)
 	reportProcessDefinitionDeleteCompletion(cfg.Progress, plan, resp, err, total, cfg.NoWait)
@@ -246,8 +254,14 @@ func DeleteProcessDefinitions(ctx context.Context, api ResourceDeleteAPI, pdApi 
 	logging.InfoIfVerbose(fmt.Sprintf("deleting pd: requested %d, workers %d", lk, nw), log, cfg.Verbose)
 	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("deleting %d pd", lk), logging.ActivityImportanceBatch)
 	defer stopActivity()
+	var stageOnce sync.Once
+	reportDefinitionStageEntry := func() {
+		stageOnce.Do(func() {
+			reportProcessDefinitionDeleteStage(cfg.Progress, "delete process definitions", "process definition(s)", &lk, nil)
+		})
+	}
 	rs, err := pool.ExecuteSlice[string, d.ResourceDeleteResponse](ctx, ukeys, nw, cfg.FailFast, func(ctx context.Context, key string, _ int) (d.ResourceDeleteResponse, error) {
-		return deleteProcessDefinition(ctx, api, pdApi, piApi, log, key, lk, opts...)
+		return deleteProcessDefinition(ctx, api, pdApi, piApi, log, key, lk, reportDefinitionStageEntry, opts...)
 	})
 	if !cfg.NoWait && !cfg.SuppressWorkflowDetailLogs {
 		total, oks, noks := resourceDeleteTotals(rs)
@@ -270,6 +284,7 @@ func DeleteProcessDefinitionResources(ctx context.Context, api ResourceDeleteAPI
 	logging.InfoIfVerbose(fmt.Sprintf("deleting pd: requested %d, workers %d", lk, nw), log, cfg.Verbose)
 	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("deleting %d pd", lk), logging.ActivityImportanceBatch)
 	defer stopActivity()
+	reportProcessDefinitionDeleteStage(cfg.Progress, "delete process definitions", "process definition(s)", &lk, nil)
 
 	first, err := DeleteProcessDefinitionResourceAndWait(ctx, api, pdApi, log, plans[0], opts...)
 	reportProcessDefinitionDeleteCompletion(cfg.Progress, plans[0], first, err, lk, cfg.NoWait)
@@ -319,6 +334,24 @@ func reportProcessDefinitionDeleteCompletion(progress func(d.OpsProgressEvent), 
 	progress(d.OpsProgressEvent{
 		Kind:       d.OpsProgressEventKindCompletion,
 		Completion: &completion,
+	})
+}
+
+// reportProcessDefinitionDeleteStage emits a service-owned stage entry without
+// implying any item completion.
+func reportProcessDefinitionDeleteStage(progress func(d.OpsProgressEvent), phase string, coreResource string, total *int, plannedAffectedCount *int) {
+	if progress == nil {
+		return
+	}
+	stage := d.OpsStageProgress{
+		Phase:                phase,
+		CoreResource:         coreResource,
+		Total:                total,
+		PlannedAffectedCount: plannedAffectedCount,
+	}
+	progress(d.OpsProgressEvent{
+		Kind:  d.OpsProgressEventKindStage,
+		Stage: &stage,
 	})
 }
 
@@ -588,6 +621,13 @@ func cleanupProcessDefinitionDeletePlanForceScope(ctx context.Context, pdApi API
 	if !cfg.SuppressWorkflowDetailLogs {
 		log.Info(fmt.Sprintf("pd delete; force cancel active pi; roots %d, affected %d", len(scope.Roots), affected))
 	}
+	rootTotal := len(scope.Roots)
+	var plannedAffectedCount *int
+	if len(scope.Affected) > 0 {
+		plannedAffected := len(scope.Affected)
+		plannedAffectedCount = &plannedAffected
+	}
+	reportProcessDefinitionDeleteStage(cfg.Progress, "cancel", "process-instance tree(s)", &rootTotal, plannedAffectedCount)
 	cancelOpts := append([]services.CallOption{}, opts...)
 	cancelOpts = append(cancelOpts,
 		services.WithAffectedProcessInstanceCount(affected),
@@ -602,12 +642,14 @@ func cleanupProcessDefinitionDeletePlanForceScope(ctx context.Context, pdApi API
 	if failed > 0 {
 		return fmt.Errorf("cancelling root process instances for process-definition delete scope failed for %d root request(s)", failed)
 	}
+	reportProcessDefinitionDeleteStage(cfg.Progress, "drain process instances", "", nil, nil)
 	if err := waitForProcessDefinitionDeletePlanActiveInstancesDrained(ctx, pdApi, log, items, opts...); err != nil {
 		return err
 	}
 	if !cfg.SuppressWorkflowDetailLogs {
 		log.Info(fmt.Sprintf("pd delete; delete pi history; affected %d, roots %d", affected, len(scope.Roots)))
 	}
+	reportProcessDefinitionDeleteStage(cfg.Progress, "delete", "process-instance tree(s)", &rootTotal, nil)
 	deleteOpts := append([]services.CallOption{}, opts...)
 	deleteOpts = append(deleteOpts,
 		services.WithAffectedProcessInstanceCount(affected),

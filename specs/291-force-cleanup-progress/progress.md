@@ -4,6 +4,25 @@ Feature: 291-force-cleanup-progress
 Started: 2026-09-04 12:01:50
 
 ---
+---
+## Iteration 3 - 2026-09-04 12:17
+**Work Unit**: Partial US1 service stage entries
+**Tasks Completed**:
+- [x] T009: Add process-definition service stage-entry tests for force cleanup boundaries, skipped empty cleanup, preplanned definition deletion, and ordinary non-force once-only definition entry.
+- [x] T013: Emit service stage entries for force cleanup cancellation, draining, history deletion, and preplanned definition deletion.
+- [x] T014: Emit ordinary non-force definition deletion stage entry through a private per-run synchronized hook before the first validated resource deletion.
+**Tasks Remaining in Work Unit**: 6 US1 tasks remain: T010, T011, T012, T015, T016, and T017.
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/delete.go
+- internal/services/processdefinition/delete_test.go
+- specs/291-force-cleanup-progress/tasks.md
+- specs/291-force-cleanup-progress/ralph-memory.md
+- specs/291-force-cleanup-progress/progress.md
+**Learnings**:
+- Red check failed only on the newly added missing stage-entry expectations before service emission; after implementation the process-definition service, APD command regression, ops service, and process-instance progress checks passed.
+- Definition stage emission belongs before the serial preplanned resource request and behind a `sync.Once` hook in the ordinary worker path; no routing through `DeleteProcessDefinitionResources` is needed for non-force deletion.
+---
 
 ## Setup Baseline - 2026-09-04 12:03
 

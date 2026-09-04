@@ -196,6 +196,38 @@ func (e *processDefinitionProgressEvents) Completions() []d.OpsCompletionProgres
 	return out
 }
 
+// Stages returns stage-entry facts in arrival order.
+func (e *processDefinitionProgressEvents) Stages() []d.OpsStageProgress {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	out := make([]d.OpsStageProgress, 0, len(e.events))
+	for _, event := range e.events {
+		if event.Kind == d.OpsProgressEventKindStage && event.Stage != nil {
+			out = append(out, *event.Stage)
+		}
+	}
+	return out
+}
+
+type processDefinitionStageSequence struct {
+	mu    sync.Mutex
+	items []string
+}
+
+// Append records the observable ordering between stage events and backend operations.
+func (s *processDefinitionStageSequence) Append(item string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.items = append(s.items, item)
+}
+
+// Items returns the observed stage and operation sequence.
+func (s *processDefinitionStageSequence) Items() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.items...)
+}
+
 type unsupportedResourceDeleteAPI struct {
 	testResourceDeleteAPI
 }
@@ -537,9 +569,235 @@ func TestDeleteProcessDefinitionResourcesWaitsForDefinitionAbsenceAfterBatchComp
 	require.Equal(t, int64(1), pdAPI.calls.Load())
 }
 
+// TestDeleteProcessDefinitionResourcesEmitsStageEntryBeforeSerialProbe verifies
+// preplanned definition deletion announces the exact definition total before the
+// first serial resource request.
+func TestDeleteProcessDefinitionResourcesEmitsStageEntryBeforeSerialProbe(t *testing.T) {
+	events := &processDefinitionProgressEvents{}
+	sequence := &processDefinitionStageSequence{}
+	progress := func(event d.OpsProgressEvent) {
+		if event.Kind == d.OpsProgressEventKindStage && event.Stage != nil {
+			sequence.Append("stage:" + event.Stage.Phase)
+		}
+		events.Append(event)
+	}
+	api := testResourceDeleteAPI{
+		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			sequence.Append("delete:" + key)
+			return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: 202, Status: "202 Accepted", BatchOperationKey: "batch-" + key}, nil
+		},
+	}
+
+	got, err := DeleteProcessDefinitionResources(
+		context.Background(),
+		api,
+		cleanupProcessDefinitionAPI{},
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		[]d.DeleteProcessDefinitionPlanItem{{Key: "pd-1"}, {Key: "pd-2"}},
+		4,
+		services.WithNoWait(),
+		services.WithProgress(progress),
+	)
+
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	total := 2
+	require.Equal(t, []d.OpsStageProgress{{
+		Phase:        "delete process definitions",
+		CoreResource: "process definition(s)",
+		Total:        &total,
+	}}, events.Stages())
+	require.Equal(t, []string{
+		"stage:delete process definitions",
+		"delete:pd-1",
+		"delete:pd-2",
+	}, sequence.Items())
+}
+
+type staticProcessDefinitionAPI struct {
+	API
+}
+
+// GetProcessDefinition returns inactive process-definition statistics for
+// ordinary worker-path delete validation.
+func (staticProcessDefinitionAPI) GetProcessDefinition(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
+	return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+}
+
+// TestDeleteProcessDefinitionsNonForceEmitsOneDefinitionStageAfterValidation
+// verifies the ordinary worker path emits one exact definition-entry event only
+// after a validated item reaches resource deletion.
+func TestDeleteProcessDefinitionsNonForceEmitsOneDefinitionStageAfterValidation(t *testing.T) {
+	events := &processDefinitionProgressEvents{}
+	sequence := &processDefinitionStageSequence{}
+	progress := func(event d.OpsProgressEvent) {
+		if event.Kind == d.OpsProgressEventKindStage && event.Stage != nil {
+			sequence.Append("stage:" + event.Stage.Phase)
+		}
+		events.Append(event)
+	}
+	api := testResourceDeleteAPI{
+		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			sequence.Append("delete:" + key)
+			return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: 202, Status: "202 Accepted", BatchOperationKey: "batch-" + key}, nil
+		},
+	}
+
+	got, err := DeleteProcessDefinitions(
+		context.Background(),
+		api,
+		staticProcessDefinitionAPI{},
+		cleanupProcessInstanceAPI{},
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		types.Keys{"pd-1", "pd-1", "pd-2"},
+		1,
+		services.WithNoWait(),
+		services.WithProgress(progress),
+	)
+
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	total := 2
+	require.Equal(t, []d.OpsStageProgress{{
+		Phase:        "delete process definitions",
+		CoreResource: "process definition(s)",
+		Total:        &total,
+	}}, events.Stages())
+	require.Equal(t, []string{
+		"stage:delete process definitions",
+		"delete:pd-1",
+		"delete:pd-2",
+	}, sequence.Items())
+}
+
 // GetProcessDefinition returns inactive statistics so force cleanup can proceed after cancellation.
 func (cleanupProcessDefinitionAPI) GetProcessDefinition(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
 	return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+}
+
+type sequenceProcessDefinitionAPI struct {
+	API
+	sequence *processDefinitionStageSequence
+	active   int64
+}
+
+// GetProcessDefinition records drain polling while returning configured active statistics.
+func (s sequenceProcessDefinitionAPI) GetProcessDefinition(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
+	s.sequence.Append("get:" + key)
+	return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{Active: s.active}}, nil
+}
+
+// TestCleanupProcessDefinitionDeletePlanForceScopeEmitsStageEntriesBeforeOperations
+// verifies force cleanup enters cancellation, drain, and history stages before
+// their backing service operations while keeping waiting unquantified.
+func TestCleanupProcessDefinitionDeletePlanForceScopeEmitsStageEntriesBeforeOperations(t *testing.T) {
+	events := &processDefinitionProgressEvents{}
+	sequence := &processDefinitionStageSequence{}
+	progress := func(event d.OpsProgressEvent) {
+		if event.Kind == d.OpsProgressEventKindStage && event.Stage != nil {
+			sequence.Append("stage:" + event.Stage.Phase)
+		}
+		events.Append(event)
+	}
+	piAPI := cleanupProcessInstanceAPI{
+		cancel: func(_ context.Context, key string, _ ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+			sequence.Append("cancel:" + key)
+			return d.CancelResponse{Ok: true, StatusCode: 200, Status: "200 OK"}, []d.ProcessInstance{{Key: key}}, nil
+		},
+		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			sequence.Append("delete:" + key)
+			return d.DeleteResponse{Ok: true, StatusCode: 200, Status: "200 OK"}, nil
+		},
+	}
+	plans := []d.DeleteProcessDefinitionPlanItem{
+		{
+			Key: "pd-1",
+			CancellationPlan: d.DryRunPIKeyExpansion{
+				Roots:     []string{"root-1", "root-shared"},
+				Collected: []string{"root-1", "child-1", "root-shared"},
+			},
+		},
+		{
+			Key: "pd-2",
+			CancellationPlan: d.DryRunPIKeyExpansion{
+				Roots:     []string{"root-shared", "root-2"},
+				Collected: []string{"root-shared", "child-2", "root-2"},
+			},
+		},
+	}
+
+	err := cleanupProcessDefinitionDeletePlanForceScope(
+		context.Background(),
+		sequenceProcessDefinitionAPI{sequence: sequence},
+		piAPI,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		plans,
+		1,
+		services.WithProgress(progress),
+	)
+
+	require.NoError(t, err)
+	totalRoots := 3
+	plannedAffected := 5
+	require.Equal(t, []d.OpsStageProgress{
+		{
+			Phase:                "cancel",
+			CoreResource:         "process-instance tree(s)",
+			Total:                &totalRoots,
+			PlannedAffectedCount: &plannedAffected,
+		},
+		{
+			Phase:        "drain process instances",
+			CoreResource: "",
+		},
+		{
+			Phase:        "delete",
+			CoreResource: "process-instance tree(s)",
+			Total:        &totalRoots,
+		},
+	}, events.Stages())
+	require.Equal(t, []string{
+		"stage:cancel",
+		"cancel:root-1",
+		"cancel:root-shared",
+		"cancel:root-2",
+		"stage:drain process instances",
+		"get:pd-1",
+		"get:pd-2",
+		"stage:delete",
+		"delete:root-1",
+		"delete:root-shared",
+		"delete:root-2",
+	}, sequence.Items())
+}
+
+// TestCleanupProcessDefinitionDeletePlanForceScopeSkipsEmptyCleanupStages
+// verifies no stage entry is invented when a bulk plan has no cleanup work.
+func TestCleanupProcessDefinitionDeletePlanForceScopeSkipsEmptyCleanupStages(t *testing.T) {
+	events := &processDefinitionProgressEvents{}
+	piAPI := cleanupProcessInstanceAPI{
+		cancel: func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+			t.Fatal("process-instance cancellation must not be called")
+			return d.CancelResponse{}, nil, nil
+		},
+		delete: func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error) {
+			t.Fatal("process-instance deletion must not be called")
+			return d.DeleteResponse{}, nil
+		},
+	}
+
+	err := cleanupProcessDefinitionDeletePlanForceScope(
+		context.Background(),
+		cleanupProcessDefinitionAPI{},
+		piAPI,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		[]d.DeleteProcessDefinitionPlanItem{{Key: "pd-1"}},
+		1,
+		services.WithProgress(events.Append),
+	)
+
+	require.NoError(t, err)
+	require.Empty(t, events.Stages())
 }
 
 // TestCleanupProcessDefinitionDeletePlanForceScopeUsesRequestedWorkers verifies APD worker settings reach nested PI cleanup.
