@@ -81,6 +81,7 @@ func (s *Service) repairExplicitIncidents(ctx context.Context, request d.OpsRepa
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
 	}
 	result.FrozenSet = freezeExplicitIncidentSet(request, incidents)
+	emitOpsTenantScope(request.Progress, result.FrozenSet.TenantEvidence)
 	if request.DryRun {
 		return s.finishDryRunIncidentRepair(request, result, incidents)
 	}
@@ -121,6 +122,7 @@ func (s *Service) repairFilteredIncidents(ctx context.Context, request d.OpsRepa
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
 	}
 	result.FrozenSet = frozen
+	emitOpsTenantScope(request.Progress, result.FrozenSet.TenantEvidence)
 	incidents := frozen.OriginalIncidents
 	if len(incidents) == 0 {
 		result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
@@ -221,6 +223,7 @@ func (s *Service) repairFilteredProcessInstances(ctx context.Context, request d.
 
 // finishProcessInstanceIncidentRepair routes process-instance selected incidents through the shared incident execution rules.
 func (s *Service) finishProcessInstanceIncidentRepair(ctx context.Context, request d.OpsRepairRequest, result d.OpsRepairResult, incidents []d.ProcessInstanceIncidentDetail, opts ...services.CallOption) (d.OpsRepairResult, error) {
+	emitOpsTenantScope(request.Progress, result.FrozenSet.TenantEvidence)
 	if len(incidents) == 0 {
 		result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
 		result.Notices = append(result.Notices, d.OpsRepairWorkflowNotice{

@@ -11,6 +11,7 @@ Started: 2026-09-10T15:15:43Z
 - Selection and affected lines are partitioned semantically by `tenantContextSelectionHumanLines` and `tenantContextAffectedHumanLines`; permitted empty affected scope marks completion without output.
 - `emitOpsTenantScope` owns synchronous snapshot delivery for validated service plans; emit empty evidence on successful empty scopes, emit after execution blockers, and never emit after planning failures.
 - Orphan purge and retention policy publish after their existing destructive force blockers but before dry-run/no-work returns or the first root deletion; their expanded plan evidence requires no additional ancestry, descendant, or discovery calls.
+- Repair incident paths emit immediately after freezing explicit/search incidents; process-instance paths emit once in `finishProcessInstanceIncidentRepair`. This places the callback before empty/dry-run returns and before variable updates, while discovery failures emit nothing.
 
 ## Decisions
 - Preserve existing discovery, frozen-scope, mutation, output-mode, and audit behavior; the feature adds a synchronous typed progress event and two command-local rendering stages.
@@ -29,4 +30,4 @@ Started: 2026-09-10T15:15:43Z
 - Do not add discovery or metadata retrieval for reporting, infer unknown tenants from configuration, or strip attached evidence to deduplicate human output.
 
 ## Current Handoff
-- Continue US1 with T010: add repair tenant-scope notification tests, then implement T017 emission from explicit/search incident repair and process-instance repair before dry-run return or variable updates, preserving frozen-scope and failure behavior.
+- Continue US1 with T011: add purge/retention real-command auto-confirm timing regressions before wiring their progress callbacks and staged selection in T018-T019. Do not begin US2.

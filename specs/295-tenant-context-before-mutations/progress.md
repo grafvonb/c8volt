@@ -107,3 +107,21 @@ Started: 2026-09-10 17:15:43
 - Existing orphan and retention plans already contain dependency-expanded tenant evidence; one synchronous snapshot can be emitted after validation and force blockers without another discovery or traversal request.
 - Passed focused tenant-scope regressions, the relevant ops service suite, the full ops package, `make test` (`go test ./... -race -count=1`), and `git diff --check`.
 ---
+---
+## Iteration 6 - 2026-09-10 18:21
+**Work Unit**: US1 repair tenant-scope emission (partial)
+**Tasks Completed**:
+- [x] T010: Add repair tenant-scope notification and ordering regressions
+- [x] T017: Emit frozen repair tenant evidence before dry-run, no-work, and mutation boundaries
+**Tasks Remaining in Work Unit**: 6 (T011-T012, T018-T021)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/ops/repair.go
+- internal/services/ops/repair_test.go
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- Explicit and search repair paths can publish complete frozen evidence without additional retrieval; the process-instance finish boundary naturally covers keyed/search and successful empty scopes.
+- Passed focused repair tenant-scope tests, the relevant ops service suite, the full ops package, `make test` (`go test ./... -race -count=1`), and `git diff --check`.
+---
