@@ -87,3 +87,23 @@ Started: 2026-09-10 17:15:43
 - Validated tenant evidence can be emitted from existing APD and incident delete plans with copied slices and no additional backend retrieval; successful empty frozen scopes publish one explicit empty event, while failed planning and execution blockers publish none.
 - Passed the focused ordering regressions, the complete relevant ops service suite, `make test` (`go test ./... -race -count=1`), and `git diff --check`.
 ---
+---
+## Iteration 5 - 2026-09-10 18:10
+**Work Unit**: US1 orphan-purge and retention-policy tenant-scope emission (partial)
+**Tasks Completed**:
+- [x] T009: Add orphan-purge and retention-policy service ordering and no-extra-request regressions
+- [x] T016: Emit validated orphan-purge and retention-policy tenant evidence before mutation
+**Tasks Remaining in Work Unit**: 8 (T010-T012, T017-T021)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/ops/orphan_purge.go
+- internal/services/ops/orphan_purge_test.go
+- internal/services/ops/retention_policy.go
+- internal/services/ops/retention_policy_test.go
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- Existing orphan and retention plans already contain dependency-expanded tenant evidence; one synchronous snapshot can be emitted after validation and force blockers without another discovery or traversal request.
+- Passed focused tenant-scope regressions, the relevant ops service suite, the full ops package, `make test` (`go test ./... -race -count=1`), and `git diff --check`.
+---
