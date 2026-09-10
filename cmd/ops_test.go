@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -155,4 +156,28 @@ func TestOpsRepairCommandReturnsHelpForGroupingInvocation(t *testing.T) {
 func TestOpsRepairCommandDefinesNoTopLevelKeyFlag(t *testing.T) {
 	require.Nil(t, opsRepairCmd.Flags().Lookup("key"))
 	require.Nil(t, opsRepairCmd.PersistentFlags().Lookup("key"))
+}
+
+// TestOpsMutationHelpDocumentsTenantContextOrder verifies every affected workflow explains pre-mutation reporting and auto-confirm semantics.
+func TestOpsMutationHelpDocumentsTenantContextOrder(t *testing.T) {
+	tests := []struct {
+		name    string
+		command *cobra.Command
+	}{
+		{name: "all process definitions purge", command: opsPurgeAllProcessDefinitionsCmd},
+		{name: "orphan process instances purge", command: opsPurgeOrphanProcessInstancesCmd},
+		{name: "incident process instances purge", command: opsPurgeProcessInstancesWithIncidentsCmd},
+		{name: "retention policy", command: opsExecuteRetentionPolicyCmd},
+		{name: "incident repair", command: opsRepairIncidentCmd},
+		{name: "process instance repair", command: opsRepairProcessInstanceCmd},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Contains(t, tt.command.Long, "Selection context appears before discovery")
+			require.Contains(t, tt.command.Long, "validated affected tenants appear before the confirmation question and the first mutation")
+			require.Contains(t, tt.command.Long, "--auto-confirm skips only the question")
+			require.Contains(t, tt.command.Long, "does not suppress tenant context permitted by the selected output mode")
+		})
+	}
 }

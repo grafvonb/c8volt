@@ -344,3 +344,34 @@ Started: 2026-09-10 17:15:43
 - Real handlers retain complete applicable audit tenant context for all six workflows, including explicit-key and unfiltered discovery semantics, default-tenant evidence, empty validated scope, force/impact blocking, and post-scope mutation failure.
 - All six result/report attachment paths reconstruct normalized context from frozen plan evidence and derive legacy tenant identifiers from effective discovery semantics. Invalid incident-purge input keeps its invalid-arguments exit contract, preserves an existing report byte-for-byte, and performs no backend requests. Focused lifecycle tests, the broader command suite, `make test` (`go test ./... -race -count=1`), `gofmt`, and `git diff --check` passed without production changes.
 ---
+---
+## Iteration 18 - 2026-09-10 20:34
+**Work Unit**: US3 operator guidance and complete validation
+**Tasks Completed**:
+- [x] T034: Update README and all six command help sources, then regenerate CLI documentation
+- [x] T035: Run protected-mode, audit, failure, and help regressions and review guidance consistency
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_orphan_processinstances.go
+- cmd/ops_purge_processinstances_with_incidents.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_processinstance.go
+- cmd/ops_test.go
+- docs/cli/c8volt_ops_execute_retention-policy.md
+- docs/cli/c8volt_ops_purge_all-process-definitions.md
+- docs/cli/c8volt_ops_purge_orphan-process-instances.md
+- docs/cli/c8volt_ops_purge_process-instances-with-incidents.md
+- docs/cli/c8volt_ops_repair_incident.md
+- docs/cli/c8volt_ops_repair_process-instance.md
+- docs/index.md
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- README, command help sources, and generated references consistently state that selection precedes discovery or explicit-key resolution, affected tenants precede confirmation and mutation, and auto-confirm skips only the question.
+- The exact quickstart service, facade, and command regressions passed; the command selection includes all-six protected-mode, audit/failure, and deterministic help-source coverage. `make docs-content`, `make test` (`go test ./... -race -count=1`), `gofmt`, declaration ownership review, and `git diff --check` also passed.
+---
