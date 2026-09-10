@@ -114,7 +114,7 @@ description: "Implementation tasks for issue #294"
 
 - [x] T028 [P] [US3] Extend the existing strict state-mismatch command regression in `cmd/expect_test.go` for completed/absent versus canceled/terminated and verify existing output/error envelopes and exit behavior through command execution; run `go test ./cmd -run TestExpect -count=1`. Keep `cmd/expect_processinstance.go` matching and command semantics unchanged.
 
-- [ ] T029 [P] [US3] Review and extend only missing relevant assertions in `cmd/cancel_processinstance_test.go` for unchanged human/JSON/supported machine output, prompts, dry-run, inherited opt-out flags, and activity. Reuse existing fixtures and renderer assertions; run `go test ./cmd -run TestCancel -count=1`. Corrected terminal no-op success values are expected; no runtime wording or public-field additions are permitted.
+- [x] T029 [P] [US3] Review and extend only missing relevant assertions in `cmd/cancel_processinstance_test.go` for unchanged human/JSON/supported machine output, prompts, dry-run, inherited opt-out flags, and activity. Reuse existing fixtures and renderer assertions; run `go test ./cmd -run TestCancel -count=1`. Corrected terminal no-op success values are expected; no runtime wording or public-field additions are permitted.
 
 
 ### Integration validation for User Story 3

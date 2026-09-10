@@ -18,6 +18,7 @@ Started: 2026-09-10T06:42:27Z
 - v8.10 contract F–H coverage uses `TestService_WaitForProcessInstanceExpectation` for direct-get explicit state matching plus combined lifecycle cancellation subtests for opt-out read/discovery counts and submission/error boundaries; `TestService_SearchAndLookup/GetProcessInstanceTreatsNotFoundAsNotFound` remains the strict getter control.
 - Shared waiter compatibility coverage uses `TestWaitForProcessInstanceExpectation_ExplicitCanceledCompatibility` to keep canceled/terminated equivalence separate from terminal cleanup acceptance while requiring incident and state to match on the same present instance.
 - Command compatibility coverage uses `TestExpectProcessInstanceCommand_StateMismatchRemainsStrict` to exercise explicit canceled expectations against all four terminal observations in human and JSON subprocess modes; successful helpers exit explicitly so Go test output cannot contaminate the JSON envelope.
+- Cancellation command compatibility coverage uses `TestCancelProcessInstancesWithPlan_TerminalNoOpPreservesCommandContracts` to preserve terminal no-op report fields, human/JSON outcomes, prompt and activity behavior, and all combinations of inherited no-wait/no-state-check options.
 
 ## Decisions
 
@@ -41,9 +42,9 @@ Started: 2026-09-10T06:42:27Z
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
 - Targeted baseline commands are recorded in `quickstart.md`.
 - `make test` is the required pre-commit gate and passed for iterations 1, 3, 4, 5, 6, 8, 9, 10, and 12.
-- `make test` passed for iterations 13–18 after the v8.7, v8.8, v8.9, v8.10, shared-waiter, and command-level contract F–H compatibility additions.
+- `make test` passed for iterations 13–19 after the v8.7, v8.8, v8.9, v8.10, shared-waiter, and command-level contract F–H compatibility additions.
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Continue US3 with T029: review and extend only missing cancellation command contract assertions without changing runtime output or public fields.
+- Continue US3 with T030: run the integrated service/command validation and record the actual runnable prefixes and outcomes in `quickstart.md`.

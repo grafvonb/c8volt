@@ -302,3 +302,18 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - Human and JSON command executions preserve canceled/terminated success and completed/absent failure with the established exit codes and envelope shapes.
 ---
+---
+## Iteration 19 - 2026-09-10 11:31
+**Work Unit**: US3 cancellation command compatibility coverage (partial)
+**Tasks Completed**:
+- [x] T029: Preserve terminal no-op report fields, command output, prompts, opt-out flags, and activity
+**Tasks Remaining in Work Unit**: 1
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_processinstance_test.go
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- Existing dry-run, prompt, activity, quiet, and automation coverage needed only one focused terminal no-op regression to lock down corrected report fields and inherited opt-out behavior across human and JSON modes.
+---
