@@ -21,3 +21,24 @@ Started: 2026-09-10 17:15:43
 - Baseline passed: `go test ./internal/services/ops -run 'Test.*(Purge|Retention|Repair|Tenant|Progress)' -count=1` (`ok`, 85 matching tests); `go test ./c8volt/ops -run 'Test.*(Progress|Tenant|Purge|Retention|Repair)' -count=1` (`ok`, 20 matching tests); `go test ./cmd -run 'Test.*(TenantContext|OpsPurgeAllProcessDefinitions|OpsPurgeOrphanProcessInstances|OpsPurgeProcessInstancesWithIncidents|OpsExecuteRetentionPolicy|OpsRepairIncident|OpsRepairProcessInstance|OpsAuditReport|MarkdownTenantContext)' -count=1` (`ok`, 202 matching tests).
 - Pre-commit repository gate passed: `make test` (`go test ./... -race -count=1`).
 ---
+---
+## Iteration 2 - 2026-09-10 17:31
+**Work Unit**: Phase 2 Foundational progress contract (partial)
+**Tasks Completed**:
+- [x] T002: Add tenant-scope progress conversion contract tests
+- [x] T004: Add the tenant-scope progress kind and typed payload
+- [x] T005: Map tenant-scope payloads in both facade directions with copy isolation
+**Tasks Remaining in Work Unit**: 3 (T003, T006, T007)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/domain/ops_progress.go
+- c8volt/ops/progress_model.go
+- c8volt/ops/convert.go
+- c8volt/ops/client_test.go
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- The ops request callback is the facade path used by the affected commands; tenant evidence can cross it without extending report schemas or adding workflow logic.
+- Passed focused tenant-scope tests, `go test ./internal/domain -count=1`, the quickstart facade suite, `make test`, and `git diff --check`.
+---

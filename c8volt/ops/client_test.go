@@ -1144,6 +1144,117 @@ func TestClientPurgeAllProcessDefinitionsLeavesNilCallbacksUnset(t *testing.T) {
 	require.Equal(t, AllProcessDefinitionsPurgeOutcomePlanned, got.Outcome)
 }
 
+// TestClientPurgeAllProcessDefinitionsMapsTenantScopeProgress verifies a
+// callback consumer cannot mutate the service-owned delete-plan evidence.
+func TestClientPurgeAllProcessDefinitionsMapsTenantScopeProgress(t *testing.T) {
+	t.Parallel()
+
+	serviceEvidence := d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+		UnknownTargetCount: 1,
+		TargetCount:        3,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "pi-a", TenantID: "tenant-a"},
+			{Key: "pi-b", TenantID: "tenant-b"},
+			{Key: "pi-c"},
+		},
+	}
+	api := stubOpsService{
+		allProcessDefinitionsPurge: func(_ context.Context, request d.AllProcessDefinitionsPurgeRequest, _ ...services.CallOption) (d.AllProcessDefinitionsPurgeResult, error) {
+			require.NotNil(t, request.Progress)
+			request.Progress(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindTenantScope,
+				TenantScope: &d.OpsTenantScopeProgress{
+					Evidence: serviceEvidence,
+				},
+			})
+			require.Equal(t, []string{"tenant-a", "tenant-b"}, serviceEvidence.ResolvedTenantIDs)
+			require.Equal(t, "pi-a", serviceEvidence.Targets[0].Key)
+			return d.AllProcessDefinitionsPurgeResult{Outcome: d.AllProcessDefinitionsPurgeOutcomePlanned}, nil
+		},
+	}
+
+	var got ProgressEvent
+	_, err := New(api, slog.Default()).PurgeAllProcessDefinitions(context.Background(), AllProcessDefinitionsPurgeRequest{
+		Progress: func(event ProgressEvent) {
+			got = event
+			event.TenantScope.Evidence.ResolvedTenantIDs[0] = "changed"
+			event.TenantScope.Evidence.Targets[0].Key = "changed"
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, ProgressEventKindTenantScope, got.Kind)
+	require.NotNil(t, got.TenantScope)
+	require.Nil(t, got.Preflight)
+	require.Nil(t, got.Page)
+	require.Nil(t, got.FrozenScope)
+	require.Nil(t, got.ETA)
+	require.Nil(t, got.Stage)
+	require.Nil(t, got.Completion)
+}
+
+// TestTenantScopeProgressConversionsPreservePresence verifies absent payloads
+// remain nil while a present payload with empty evidence remains nonnil.
+func TestTenantScopeProgressConversionsPreservePresence(t *testing.T) {
+	t.Parallel()
+
+	publicAbsent := fromDomainProgressEvent(d.OpsProgressEvent{Kind: d.OpsProgressEventKindTenantScope})
+	require.Equal(t, ProgressEventKindTenantScope, publicAbsent.Kind)
+	require.Nil(t, publicAbsent.TenantScope)
+
+	publicEmpty := fromDomainProgressEvent(d.OpsProgressEvent{
+		Kind:        d.OpsProgressEventKindTenantScope,
+		TenantScope: &d.OpsTenantScopeProgress{},
+	})
+	require.NotNil(t, publicEmpty.TenantScope)
+	require.Empty(t, publicEmpty.TenantScope.Evidence.ResolvedTenantIDs)
+	require.Empty(t, publicEmpty.TenantScope.Evidence.Targets)
+
+	domainAbsent := toDomainProgressEvent(ProgressEvent{Kind: ProgressEventKindTenantScope})
+	require.Equal(t, d.OpsProgressEventKindTenantScope, domainAbsent.Kind)
+	require.Nil(t, domainAbsent.TenantScope)
+
+	domainEmpty := toDomainProgressEvent(ProgressEvent{
+		Kind:        ProgressEventKindTenantScope,
+		TenantScope: &TenantScopeProgress{},
+	})
+	require.NotNil(t, domainEmpty.TenantScope)
+	require.Empty(t, domainEmpty.TenantScope.Evidence.ResolvedTenantIDs)
+	require.Empty(t, domainEmpty.TenantScope.Evidence.Targets)
+}
+
+// TestTenantScopeProgressConversionCopiesPublicEvidence verifies public slices
+// and target entries do not alias the mapped internal callback payload.
+func TestTenantScopeProgressConversionCopiesPublicEvidence(t *testing.T) {
+	t.Parallel()
+
+	publicEvent := ProgressEvent{
+		Kind: ProgressEventKindTenantScope,
+		TenantScope: &TenantScopeProgress{Evidence: process.TenantEvidence{
+			ResolvedTenantIDs:  []string{"tenant-a"},
+			UnknownTargetCount: 1,
+			TargetCount:        2,
+			Targets: []process.TenantEvidenceTarget{
+				{Key: "pi-a", TenantID: "tenant-a"},
+				{Key: "pi-b"},
+			},
+		}},
+	}
+
+	domainEvent := toDomainProgressEvent(publicEvent)
+	publicEvent.TenantScope.Evidence.ResolvedTenantIDs[0] = "changed"
+	publicEvent.TenantScope.Evidence.Targets[0].Key = "changed"
+
+	require.Equal(t, d.OpsProgressEventKindTenantScope, domainEvent.Kind)
+	require.NotNil(t, domainEvent.TenantScope)
+	require.Equal(t, []string{"tenant-a"}, domainEvent.TenantScope.Evidence.ResolvedTenantIDs)
+	require.Equal(t, []d.TenantEvidenceTarget{
+		{Key: "pi-a", TenantID: "tenant-a"},
+		{Key: "pi-b"},
+	}, domainEvent.TenantScope.Evidence.Targets)
+}
+
 // TestClientPurgeAllProcessDefinitionsNormalizesValidationErrors verifies APD
 // partial results return with facade-normalized domain errors.
 func TestClientPurgeAllProcessDefinitionsNormalizesValidationErrors(t *testing.T) {

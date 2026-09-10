@@ -6,6 +6,7 @@ Started: 2026-09-10T15:15:43Z
 ## Codebase Patterns
 - Tenant progress facts originate in `internal/domain` and internal ops services, cross the thin `c8volt/ops` facade by mechanical conversion, and are rendered/policy-gated in `cmd`.
 - Human tenant lifecycle state belongs in focused command support/progress files; final formatting remains in `cmd/cmd_views_tenant_context.go`.
+- Ops request callbacks use `c8volt/ops.ProgressEvent`; `fromDomainOpsTenantEvidence` and its inverse copy both resolved-ID and target slices at that boundary.
 
 ## Decisions
 - Preserve existing discovery, frozen-scope, mutation, output-mode, and audit behavior; the feature adds a synchronous typed progress event and two command-local rendering stages.
@@ -24,4 +25,4 @@ Started: 2026-09-10T15:15:43Z
 - Do not add discovery or metadata retrieval for reporting, infer unknown tenants from configuration, or strip attached evidence to deduplicate human output.
 
 ## Current Handoff
-- Continue with T002 in Phase 2: add facade progress-conversion contract tests in `c8volt/ops/client_test.go`; do not start a user story before foundational tasks T002-T007 are complete.
+- Continue with T003 in Phase 2: add staged-renderer regressions before implementing T006; T007 remains the foundational validation checkpoint, so do not start US1 yet.
