@@ -24,7 +24,7 @@ Read `specs/ralph-implementation-rules.md` before implementing. Any Ralph launch
 
 **Purpose**: Confirm the existing project context and establish implementation evidence; no new project scaffolding or dependencies are required.
 
-- [ ] T001 Read `AGENTS.md`, `specs/ralph-implementation-rules.md`, and all feature artifacts; create `specs/295-tenant-context-before-mutations/progress.md` recording the current branch, owner-layer map, baseline targeted test results from `quickstart.md`, and any blockers. Preserve existing uncommitted work and do not change branches.
+- [x] T001 Read `AGENTS.md`, `specs/ralph-implementation-rules.md`, and all feature artifacts; create `specs/295-tenant-context-before-mutations/progress.md` recording the current branch, owner-layer map, baseline targeted test results from `quickstart.md`, and any blockers. Preserve existing uncommitted work and do not change branches.
 
 ---
 
