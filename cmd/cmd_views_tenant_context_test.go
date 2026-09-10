@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -290,6 +291,139 @@ func TestRenderTenantContextProtectedModesStaySilent(t *testing.T) {
 			require.Empty(t, buf.String())
 		})
 	}
+}
+
+// TestStagedTenantContextSelectionThenAffectedRendersOnce verifies separate
+// callbacks cannot repeat either semantic stage or the final attached view.
+func TestStagedTenantContextSelectionThenAffectedRendersOnce(t *testing.T) {
+	resetTenantContextRenderFlags(t)
+	cmd, buf := newTenantContextRenderTestCommand()
+	initializeTenantContextHumanRenderStages(cmd)
+	channel := ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}
+	selection := newDiscoveryTenantContext("tenant-a")
+	affected := withTenantContextEvidence(selection, []string{"tenant-b", "tenant-a"}, 1)
+
+	attachTenantContext(cmd, selection)
+	printOpsTenantSelectionContext(cmd, selection, channel)
+	attachTenantContext(cmd, affected)
+	printOpsTenantAffectedContext(cmd, affected, channel)
+	printOpsTenantAffectedContext(cmd, affected, channel)
+	renderAttachedTenantContext(cmd)
+
+	require.Equal(t, ""+
+		"selection scope: tenant-a only\n"+
+		"affected tenants: tenant-a, tenant-b\n"+
+		"tenant metadata is unknown for 1 target\n", buf.String())
+	state, ok := tenantContextHumanRenderStages(cmd)
+	require.True(t, ok)
+	require.True(t, state.selectionRendered)
+	require.True(t, state.affectedRendered)
+}
+
+// TestStagedTenantContextEmptyAffectedScopeCompletesSilently verifies a
+// validated empty scope is not mistaken for missing evidence at final output.
+func TestStagedTenantContextEmptyAffectedScopeCompletesSilently(t *testing.T) {
+	resetTenantContextRenderFlags(t)
+	cmd, buf := newTenantContextRenderTestCommand()
+	initializeTenantContextHumanRenderStages(cmd)
+	channel := ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}
+	ctx := newDiscoveryTenantContext("tenant-a")
+	attachTenantContext(cmd, ctx)
+
+	printOpsTenantSelectionContext(cmd, ctx, channel)
+	printOpsTenantAffectedContext(cmd, ctx, channel)
+	renderAttachedTenantContext(cmd)
+
+	require.Equal(t, "selection scope: tenant-a only\n", buf.String())
+	state, ok := tenantContextHumanRenderStages(cmd)
+	require.True(t, ok)
+	require.True(t, state.selectionRendered)
+	require.True(t, state.affectedRendered)
+}
+
+// TestRenderAttachedTenantContextCompletesOnlyMissingStages verifies final
+// rendering fills a partial staged view while a complete view stays silent.
+func TestRenderAttachedTenantContextCompletesOnlyMissingStages(t *testing.T) {
+	resetTenantContextRenderFlags(t)
+	channel := ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}
+	ctx := withTenantContextEvidence(newExplicitKeysTenantContext("tenant-a"), []string{"tenant-b"}, 0)
+
+	t.Run("partial", func(t *testing.T) {
+		cmd, buf := newTenantContextRenderTestCommand()
+		initializeTenantContextHumanRenderStages(cmd)
+		attachTenantContext(cmd, ctx)
+		printOpsTenantSelectionContext(cmd, ctx, channel)
+
+		renderAttachedTenantContext(cmd)
+
+		require.Equal(t, ""+
+			"selection scope: explicit resource keys; tenant filter not applied\n"+
+			"affected tenants: tenant-b\n", buf.String())
+	})
+
+	t.Run("complete", func(t *testing.T) {
+		cmd, buf := newTenantContextRenderTestCommand()
+		initializeTenantContextHumanRenderStages(cmd)
+		attachTenantContext(cmd, ctx)
+		printOpsTenantSelectionContext(cmd, ctx, channel)
+		printOpsTenantAffectedContext(cmd, ctx, channel)
+		beforeFinal := buf.String()
+
+		renderAttachedTenantContext(cmd)
+
+		require.Equal(t, beforeFinal, buf.String())
+	})
+}
+
+// TestStagedTenantContextProtectedChannelsDoNotMarkRendered verifies a
+// suppressed stage remains available to a later permitted final renderer.
+func TestStagedTenantContextProtectedChannelsDoNotMarkRendered(t *testing.T) {
+	resetTenantContextRenderFlags(t)
+	cmd, buf := newTenantContextRenderTestCommand()
+	initializeTenantContextHumanRenderStages(cmd)
+	ctx := withTenantContextEvidence(newDiscoveryTenantContext("tenant-a"), []string{"tenant-a"}, 0)
+	attachTenantContext(cmd, ctx)
+
+	printOpsTenantSelectionContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeJSON})
+	printOpsTenantAffectedContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeQuiet})
+
+	state, ok := tenantContextHumanRenderStages(cmd)
+	require.True(t, ok)
+	require.False(t, state.selectionRendered)
+	require.False(t, state.affectedRendered)
+	require.Empty(t, buf.String())
+
+	renderAttachedTenantContext(cmd)
+	require.Equal(t, "selection scope: tenant-a only\naffected tenants: tenant-a\n", buf.String())
+}
+
+// TestInitializeTenantContextHumanRenderStagesResetsCommandExecution verifies
+// reused Cobra commands receive fresh suppression state for every execution.
+func TestInitializeTenantContextHumanRenderStagesResetsCommandExecution(t *testing.T) {
+	resetTenantContextRenderFlags(t)
+	cmd, buf := newTenantContextRenderTestCommand()
+	channel := ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}
+	ctx := newDiscoveryTenantContext("tenant-a")
+
+	initializeTenantContextHumanRenderStages(cmd)
+	printOpsTenantSelectionContext(cmd, ctx, channel)
+	initializeTenantContextHumanRenderStages(cmd)
+	printOpsTenantSelectionContext(cmd, ctx, channel)
+
+	require.Equal(t, "selection scope: tenant-a only\nselection scope: tenant-a only\n", buf.String())
+}
+
+// TestRenderTenantContextLegacyCreationStillRendersFullContext verifies staged
+// ops support does not change unrelated creation-mode rendering.
+func TestRenderTenantContextLegacyCreationStillRendersFullContext(t *testing.T) {
+	resetTenantContextRenderFlags(t)
+	cmd, buf := newTenantContextRenderTestCommand()
+	ctx := withTenantContextEvidence(newCreationTenantContext("<default>"), []string{"<default>"}, 0)
+
+	renderTenantContext(cmd, ctx)
+	renderTenantContext(cmd, ctx)
+
+	require.Equal(t, "creation target: default tenant\naffected tenants: <default>\n", buf.String())
 }
 
 // newTenantContextRenderTestCommand captures tenant-context renderer output

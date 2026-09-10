@@ -41,6 +41,11 @@ func attachOpsCreationTenantContext(cmd *cobra.Command, cfg *config.Config, evid
 // printOpsTenantContext writes tenant semantics on the ops durable progress
 // channel so preflight and confirmation boundaries do not contaminate stdout.
 func printOpsTenantContext(cmd *cobra.Command, ctx tenant.Context, channel ops.ProgressChannel) {
+	if _, staged := tenantContextHumanRenderStages(cmd); staged {
+		printOpsTenantSelectionContext(cmd, ctx, channel)
+		printOpsTenantAffectedContext(cmd, ctx, channel)
+		return
+	}
 	if cmd == nil || tenantContextIsZero(ctx) || !channel.DurableAllowed || !channel.StderrAllowed || tenantContextHumanRendered(cmd) {
 		return
 	}
@@ -48,6 +53,38 @@ func printOpsTenantContext(cmd *cobra.Command, ctx tenant.Context, channel ops.P
 	for _, line := range tenantContextHumanLines(cmd, ctx) {
 		printOpsDurableLine(cmd, line.Text, line.Warn)
 	}
+}
+
+// printOpsTenantSelectionContext emits only selection semantics at the early
+// command boundary and suppresses duplicate callbacks within the execution.
+func printOpsTenantSelectionContext(cmd *cobra.Command, ctx tenant.Context, channel ops.ProgressChannel) {
+	state, staged := tenantContextHumanRenderStages(cmd)
+	if !staged || state.selectionRendered || !opsTenantContextHumanAllowed(cmd, ctx, channel) {
+		return
+	}
+	for _, line := range tenantContextSelectionHumanLines(cmd, ctx) {
+		printOpsDurableLine(cmd, line.Text, line.Warn)
+	}
+	markTenantContextSelectionRendered(cmd)
+}
+
+// printOpsTenantAffectedContext emits validated affected-scope facts once and
+// treats a permitted empty scope as a completed stage without fabricating text.
+func printOpsTenantAffectedContext(cmd *cobra.Command, ctx tenant.Context, channel ops.ProgressChannel) {
+	state, staged := tenantContextHumanRenderStages(cmd)
+	if !staged || state.affectedRendered || !opsTenantContextHumanAllowed(cmd, ctx, channel) {
+		return
+	}
+	for _, line := range tenantContextAffectedHumanLines(ctx) {
+		printOpsDurableLine(cmd, line.Text, line.Warn)
+	}
+	markTenantContextAffectedRendered(cmd)
+}
+
+// opsTenantContextHumanAllowed applies the shared durable stderr policy while
+// keeping context attachment independent from whether text can be emitted.
+func opsTenantContextHumanAllowed(cmd *cobra.Command, ctx tenant.Context, channel ops.ProgressChannel) bool {
+	return cmd != nil && !tenantContextIsZero(ctx) && channel.DurableAllowed && channel.StderrAllowed
 }
 
 // opsTenantContextWithEvidence merges a command-owned base context with

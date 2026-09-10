@@ -14,12 +14,47 @@ func renderTenantContext(cmd *cobra.Command, ctx tenant.Context) {
 	if !shouldRenderTenantContextHuman(cmd, ctx) {
 		return
 	}
+	if state, staged := tenantContextHumanRenderStages(cmd); staged {
+		renderStagedTenantContext(cmd, ctx, state)
+		return
+	}
 	if tenantContextHumanRendered(cmd) {
 		return
 	}
 	markTenantContextHumanRendered(cmd)
 
 	for _, line := range tenantContextHumanLines(cmd, ctx) {
+		if line.Warn {
+			renderHumanWarningLine(cmd, "%s", line.Text)
+			continue
+		}
+		renderHumanLine(cmd, "%s", line.Text)
+	}
+}
+
+// renderStagedTenantContext fills only applicable stages not already emitted
+// on the ops durable channel, preserving final-render fallback behavior.
+func renderStagedTenantContext(cmd *cobra.Command, ctx tenant.Context, state tenantContextHumanRenderState) {
+	if !state.selectionRendered {
+		lines := tenantContextSelectionHumanLines(cmd, ctx)
+		renderTenantContextHumanLines(cmd, lines)
+		if len(lines) > 0 {
+			markTenantContextSelectionRendered(cmd)
+		}
+	}
+	if !state.affectedRendered {
+		lines := tenantContextAffectedHumanLines(ctx)
+		renderTenantContextHumanLines(cmd, lines)
+		if len(lines) > 0 {
+			markTenantContextAffectedRendered(cmd)
+		}
+	}
+}
+
+// renderTenantContextHumanLines preserves the existing human warning styling
+// for a semantically selected subset of tenant-context lines.
+func renderTenantContextHumanLines(cmd *cobra.Command, lines []tenantContextHumanLine) {
+	for _, line := range lines {
 		if line.Warn {
 			renderHumanWarningLine(cmd, "%s", line.Text)
 			continue
