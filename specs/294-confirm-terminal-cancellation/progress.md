@@ -317,3 +317,18 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - Existing dry-run, prompt, activity, quiet, and automation coverage needed only one focused terminal no-op regression to lock down corrected report fields and inherited opt-out behavior across human and JSON modes.
 ---
+---
+## Iteration 20 - 2026-09-10 11:39
+**Work Unit**: US3 integrated compatibility validation
+**Tasks Completed**:
+- [x] T030: Run and record the complete service and command compatibility matrix
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/quickstart.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- Full-package validation plus the coverage-safe lifecycle/expectation filter proves every adapter's F–H regressions run; version-specific getter controls remain covered by the unfiltered package gate.
+---

@@ -121,7 +121,7 @@ description: "Implementation tasks for issue #294"
 
 No new production interface is needed; compatibility failures must be resolved within the bounded adapter changes rather than by weakening expectations.
 
-- [ ] T030 [US3] Run `go test ./internal/services/processinstance/... -count=1` and `go test ./cmd -run "Test(Cancel|Expect)" -count=1`; verify every version has F–H coverage and update actual runnable prefixes and outcomes in `specs/294-confirm-terminal-cancellation/quickstart.md` so no added test is omitted by a filter.
+- [x] T030 [US3] Run `go test ./internal/services/processinstance/... -count=1` and `go test ./cmd -run "Test(Cancel|Expect)" -count=1`; verify every version has F–H coverage and update actual runnable prefixes and outcomes in `specs/294-confirm-terminal-cancellation/quickstart.md` so no added test is omitted by a filter.
 
 
 **Checkpoint**: All three stories meet their independent acceptance criteria.

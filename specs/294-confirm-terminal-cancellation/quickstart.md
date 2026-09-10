@@ -155,3 +155,19 @@ go test ./internal/services/processinstance/v87 ./internal/services/processinsta
 - Temporarily restoring only the old v8.8 cancellation-family state list made the focused regression fail on descendant `456` after two attempts waiting for `CANCELED, TERMINATED`; restoring the four-state list made it pass.
 - Existing cancellation, drain, and history failure controls remain selected by `TestCleanupProcessDefinitionDeletePlanForceScope...` and pass without production changes to `internal/services/processdefinition/delete.go`.
 - The coverage-safe four-version command and `go test ./internal/services/processdefinition -run 'Test(CleanupProcessDefinitionDeletePlanForceScope|DeleteProcessDefinitions)' -count=1` passed. `git diff --check` and `make test` (`go test ./... -race -count=1`) also passed.
+
+## US3 compatibility matrix — Iteration 20 (2026-09-10)
+
+The runnable service prefixes covering contract rows F–H are:
+
+| Version | Explicit canceled expectation (F) | Opt-outs and error boundaries (G–H) | Strict not-found control (H) |
+| --- | --- | --- | --- |
+| 8.7 | `TestService_WaitForProcessInstanceExpectation` | `TestService_CancelProcessInstance`, `TestService_DeleteProcessInstance` | `TestService_GetProcessInstanceStateByKey` |
+| 8.8 | `TestService_WaitForProcessInstanceExpectation` | `TestService_CancelProcessInstance`, `TestService_DeleteProcessInstance` | `TestService_GetProcessInstance`, `TestService_GetProcessInstanceStateByKey` |
+| 8.9 | `TestService_WaitForProcessInstanceExpectation` | `TestService_CancelAndDeleteProcessInstance` | `TestService_SearchAndLookup` |
+| 8.10 | `TestService_WaitForProcessInstanceExpectation` | `TestService_CancelAndDeleteProcessInstance` | `TestService_SearchAndLookup` |
+
+- `go test ./internal/services/processinstance/... -count=1` passed all process-instance packages, so the strict getter controls are included without relying on a narrower lifecycle filter.
+- The coverage-safe focused command `go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 ./internal/services/processinstance/v810 -run 'TestService_(CancelProcessInstance|DeleteProcessInstance|CancelAndDeleteProcessInstance|WaitForProcessInstanceExpectation)$' -count=1` passed in all four version packages and selects every added F–H adapter regression.
+- Shared matching is covered by `TestWaitForProcessInstanceExpectation_ExplicitCanceledCompatibility`; command behavior is covered by `TestExpectProcessInstanceCommand_StateMismatchRemainsStrict` and `TestCancelProcessInstancesWithPlan_TerminalNoOpPreservesCommandContracts`.
+- `go test ./cmd -run 'Test(Cancel|Expect)' -count=1` passed and selects both added command regressions together with the surrounding cancellation and expectation compatibility suite.
