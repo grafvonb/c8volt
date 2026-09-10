@@ -16,6 +16,7 @@ Started: 2026-09-10T15:15:43Z
 - Real-command timing tests use a synchronized output writer plus a reverse-proxy observer to snapshot output at the first backend request and first mutation without racing command output.
 - Repair commands derive staged selection directly from the resolved `RepairDiscoveryMode`: search uses discovery semantics, while keyed and stdin modes use explicit-key/not-applied semantics; initialize before configuring progress or starting activity.
 - Interactive command tests can snapshot durable stderr at the exact prompt boundary by wrapping the helper subprocess writer with `io.MultiWriter`; accepted planning/execution naturally exercises duplicate tenant-scope callbacks, while combined stdout/stderr occurrence counts also cover final-render suppression.
+- Accepted interactive repair executes a dry-run preflight followed by a frozen-key execution: top-level filtered discovery remains single-pass, while explicit target and incident lookups repeat as part of the established two-phase repair workflow; declined runs stop after preflight with no mutation requests.
 
 ## Decisions
 - Preserve existing discovery, frozen-scope, mutation, output-mode, and audit behavior; the feature adds a synchronous typed progress event and two command-local rendering stages.
@@ -34,4 +35,4 @@ Started: 2026-09-10T15:15:43Z
 - Do not add discovery or metadata retrieval for reporting, infer unknown tenants from configuration, or strip attached evidence to deduplicate human output.
 
 ## Current Handoff
-- Continue US2 with T023: add interactive keyed/search acceptance coverage for both repair commands; remain within US2 for the next iteration.
+- Continue US2 with T024: expand tenant-context renderer and policy coverage across evidence combinations and override transitions; remain within US2 for the next iteration.

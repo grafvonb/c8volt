@@ -196,3 +196,20 @@ Started: 2026-09-10 17:15:43
 - Prompt-time stderr snapshots prove selection and affected context are visible before both acceptance and decline; accepted two-call workflows and final rendering emit each tenant line exactly once, while declined paths submit no deletion.
 - Frozen APD, incident, orphan, and retention targets remain reused without a second top-level discovery; focused command regressions, `make test` (`go test ./... -race -count=1`), and `git diff --check` passed.
 ---
+---
+## Iteration 10 - 2026-09-10 19:10
+**Work Unit**: US2 interactive repair tenant-context coverage (partial)
+**Tasks Completed**:
+- [x] T023: Add interactive keyed/search acceptance tests for both repair commands
+**Tasks Remaining in Work Unit**: 5 (T024-T028)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_repair_incident_test.go
+- cmd/ops_repair_processinstance_test.go
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- Keyed and search repair prompts now have real-command accept/decline coverage proving complete context precedes confirmation, broadening warnings and tenant summaries render once, and declines submit no mutations.
+- Accepted interactive repair preserves one top-level search while repeating frozen explicit-target lookups in the existing preflight/execution lifecycle; focused command regressions, `make test` (`go test ./... -race -count=1`), and `git diff --check` passed.
+---

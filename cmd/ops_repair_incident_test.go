@@ -4,7 +4,10 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -421,6 +424,132 @@ func TestOpsRepairIncidentAutoConfirmReportsTenantScopeBeforeWork(t *testing.T) 
 	}
 }
 
+// TestOpsRepairIncidentInteractiveTenantContext verifies keyed and search
+// plans expose complete tenant context at confirmation, suppress repeated
+// warning/context output, preserve repair counts, and never mutate on decline.
+func TestOpsRepairIncidentInteractiveTenantContext(t *testing.T) {
+	for _, tt := range []struct {
+		name                  string
+		args                  []string
+		selection             string
+		warning               string
+		decline               bool
+		wantSearchRequests    int
+		wantIncidentGets      int
+		wantVariableMutations int
+		wantResolutions       int
+	}{
+		{
+			name: "keyed accepted",
+			args: []string{
+				"ops", "repair", "incident",
+				"--key", "2251799813685249",
+				"--vars", `{"approved":true}`,
+				"--no-wait",
+			},
+			selection:             "selection scope: explicit resource keys; tenant filter not applied",
+			wantIncidentGets:      2,
+			wantVariableMutations: 1,
+			wantResolutions:       1,
+		},
+		{
+			name: "keyed declined",
+			args: []string{
+				"ops", "repair", "incident",
+				"--key", "2251799813685249",
+				"--vars", `{"approved":true}`,
+				"--no-wait",
+			},
+			selection:        "selection scope: explicit resource keys; tenant filter not applied",
+			decline:          true,
+			wantIncidentGets: 1,
+		},
+		{
+			name: "search accepted",
+			args: []string{
+				"--tenant", "",
+				"ops", "repair", "incident",
+				"--state", "active",
+				"--limit", "2",
+				"--vars", `{"approved":true}`,
+				"--no-wait",
+			},
+			selection:             "selection scope: unfiltered across accessible tenants",
+			warning:               `--tenant "" overrides the configured tenant filter; selection is unfiltered`,
+			wantSearchRequests:    1,
+			wantIncidentGets:      2,
+			wantVariableMutations: 2,
+			wantResolutions:       2,
+		},
+		{
+			name: "search declined",
+			args: []string{
+				"--tenant", "",
+				"ops", "repair", "incident",
+				"--state", "active",
+				"--limit", "2",
+				"--vars", `{"approved":true}`,
+				"--no-wait",
+			},
+			selection:          "selection scope: unfiltered across accessible tenants",
+			warning:            `--tenant "" overrides the configured tenant filter; selection is unfiltered`,
+			decline:            true,
+			wantSearchRequests: 1,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			srv := newOpsRepairIncidentServer(t, &requests)
+			t.Cleanup(srv.Close)
+			promptPath := filepath.Join(t.TempDir(), "prompt.txt")
+			promptOutputPath := filepath.Join(t.TempDir(), "prompt-output.txt")
+			cfgPath := writeRawTestConfig(t, fmt.Sprintf(`app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: %s
+`, srv.URL))
+			env := map[string]string{
+				"C8VOLT_TEST_CONFIG":                    cfgPath,
+				"C8VOLT_TEST_OPS_REPAIR_INC_PROMPT":     promptPath,
+				"C8VOLT_TEST_OPS_REPAIR_INC_PROMPT_OUT": promptOutputPath,
+				"C8VOLT_TEST_OPS_REPAIR_INC_ARGS":       marshalOpsRepairIncidentArgsForEnv(t, tt.args),
+			}
+			if tt.decline {
+				env["C8VOLT_TEST_OPS_REPAIR_INC_DECLINE"] = "1"
+			}
+
+			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsRepairIncidentCommandHelper", env)
+			if tt.decline {
+				require.Error(t, err, stderr)
+			} else {
+				require.NoError(t, err, stderr)
+			}
+			promptOutput := readReportFile(t, promptOutputPath)
+			require.Contains(t, readReportFile(t, promptPath), "incident repair:")
+			require.Contains(t, promptOutput, tt.selection)
+			require.Contains(t, promptOutput, "affected tenants: <default>")
+			require.Less(t, strings.Index(promptOutput, tt.selection), strings.Index(promptOutput, "affected tenants: <default>"))
+			combined := stdout + stderr
+			require.Equal(t, 1, strings.Count(combined, tt.selection), combined)
+			require.Equal(t, 1, strings.Count(combined, "affected tenants: <default>"), combined)
+			if tt.warning != "" {
+				require.Contains(t, promptOutput, tt.warning)
+				require.Less(t, strings.Index(promptOutput, tt.warning), strings.Index(promptOutput, tt.selection))
+				require.Equal(t, 1, strings.Count(combined, tt.warning), combined)
+			}
+			snapshot := requests.Snapshot()
+			requireRequestCount(t, snapshot, "POST /v2/incidents/search", tt.wantSearchRequests)
+			requireRequestCount(t, snapshot, "GET /v2/incidents/", tt.wantIncidentGets)
+			requireRequestCount(t, snapshot, "PUT /v2/element-instances/", tt.wantVariableMutations)
+			requireRequestCount(t, snapshot, "/resolution", tt.wantResolutions)
+		})
+	}
+}
+
 // TestOpsRepairIncidentRejectsKeyedSearchMode verifies mixed key and filter selection fails before remote mutation.
 func TestOpsRepairIncidentRejectsKeyedSearchMode(t *testing.T) {
 	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairIncidentCommandHelper", map[string]string{
@@ -676,9 +805,35 @@ func TestOpsRepairIncidentCommandHelper(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
 	resetOpsRepairIncidentFlagState()
+	var promptOutput bytes.Buffer
+	errWriter := io.Writer(os.Stderr)
+	if os.Getenv("C8VOLT_TEST_OPS_REPAIR_INC_PROMPT_OUT") != "" {
+		errWriter = io.MultiWriter(os.Stderr, &promptOutput)
+	}
+	if promptPath := os.Getenv("C8VOLT_TEST_OPS_REPAIR_INC_PROMPT"); promptPath != "" {
+		prevConfirm := confirmCmdOrAbortFn
+		defer func() { confirmCmdOrAbortFn = prevConfirm }()
+		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			if autoConfirm {
+				return fmt.Errorf("unexpected auto-confirm prompt")
+			}
+			if err := os.WriteFile(promptPath, []byte(prompt), 0o600); err != nil {
+				return err
+			}
+			if outputPath := os.Getenv("C8VOLT_TEST_OPS_REPAIR_INC_PROMPT_OUT"); outputPath != "" {
+				if err := os.WriteFile(outputPath, promptOutput.Bytes(), 0o600); err != nil {
+					return err
+				}
+			}
+			if os.Getenv("C8VOLT_TEST_OPS_REPAIR_INC_DECLINE") == "1" {
+				return fmt.Errorf("confirmation declined")
+			}
+			return nil
+		}
+	}
 	root.SetArgs(append([]string{"--config", cfgPath}, args...))
 	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
+	root.SetErr(errWriter)
 	if err := root.Execute(); err != nil {
 		handleBootstrapError(root, err)
 	}
