@@ -75,6 +75,7 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			ReportFormat:  flagOpsPurgeAllPDReportFormat,
 			StartedAt:     time.Now().UTC(),
 		}
+		initializeOpsTenantContextHumanReporting(cmd, cfg, request.Selection.Key != "")
 		executionProgress := newOpsPurgeAllProcessDefinitionsProgressForCommand(cmd)
 		configureOpsPurgeAllProcessDefinitionsProgress(cmd, &request, executionProgress)
 		if !flagDryRun && !effectiveAutoConfirm {

@@ -71,6 +71,7 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 			ReportFormat: flagOpsPurgeOrphanReportFormat,
 			StartedAt:    time.Now().UTC(),
 		}
+		initializeOpsTenantContextHumanReporting(cmd, cfg, false)
 		progress := configureOpsPurgeOrphanProcessInstancesProgress(cmd, &request)
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request

@@ -38,6 +38,34 @@ func attachOpsCreationTenantContext(cmd *cobra.Command, cfg *config.Config, evid
 	return ctx
 }
 
+// initializeOpsTenantContextHumanReporting starts a fresh two-stage reporting
+// lifetime and emits selection semantics before any backend work begins.
+func initializeOpsTenantContextHumanReporting(cmd *cobra.Command, cfg *config.Config, explicitKeys bool) {
+	initializeTenantContextHumanRenderStages(cmd)
+	ctx := newDiscoveryTenantContext(configuredTenantID(cfg))
+	if explicitKeys {
+		ctx = newExplicitKeysTenantContext(configuredTenantID(cfg))
+	}
+	attachTenantContext(cmd, ctx)
+	channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
+	printOpsTenantSelectionContext(cmd, ctx, channel)
+}
+
+// handleOpsTenantScopeProgressEvent attaches the service-owned evidence before
+// rendering its affected stage; other progress events remain untouched.
+func handleOpsTenantScopeProgressEvent(cmd *cobra.Command, event ops.ProgressEvent, channel ops.ProgressChannel) {
+	if event.Kind != ops.ProgressEventKindTenantScope || event.TenantScope == nil {
+		return
+	}
+	base, ok := attachedTenantContext(cmd)
+	if !ok {
+		return
+	}
+	ctx := opsTenantContextWithEvidence(*base, event.TenantScope.Evidence)
+	attachTenantContext(cmd, ctx)
+	printOpsTenantAffectedContext(cmd, ctx, channel)
+}
+
 // printOpsTenantContext writes tenant semantics on the ops durable progress
 // channel so preflight and confirmation boundaries do not contaminate stdout.
 func printOpsTenantContext(cmd *cobra.Command, ctx tenant.Context, channel ops.ProgressChannel) {

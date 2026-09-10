@@ -301,6 +301,42 @@ func TestOpsExecuteRetentionPolicyConfirmedDeletionUsesFrozenPlanRoots(t *testin
 	require.NotContains(t, strings.Join(deleted.Snapshot(), "\n"), opsRetentionPolicyChangedSeedKey)
 }
 
+// TestOpsExecuteRetentionPolicyAutoConfirmReportsTenantScopeBeforeWork verifies
+// named retention selection precedes discovery and affected evidence precedes
+// the unchanged first deletion target without invoking confirmation.
+func TestOpsExecuteRetentionPolicyAutoConfirmReportsTenantScopeBeforeWork(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	backend := newOpsRetentionPolicyServerWithSeed(t, &requests, &deleted)
+	t.Cleanup(backend.Close)
+	output := &opsTenantTimingOutput{}
+	proxy, observations := newOpsTenantTimingProxy(t, backend.URL, output, func(r *http.Request) bool {
+		return (r.Method == http.MethodPost || r.Method == http.MethodDelete) && strings.HasSuffix(r.URL.Path, "/deletion")
+	})
+	t.Cleanup(proxy.Close)
+	reset := func() {
+		resetProcessInstanceCommandGlobals()
+		flagOpsExecuteRetentionPolicyReportFile = ""
+		flagOpsExecuteRetentionPolicyReportFormat = ""
+	}
+
+	promptCount, err := executeRootForOpsTenantTiming(t, output, reset,
+		"--config", writeTestConfigForVersion(t, proxy.URL, "8.9"),
+		"--tenant", "tenant-a",
+		"ops", "execute", "retention-policy",
+		"--retention-days", "90",
+		"--auto-confirm",
+		"--no-wait",
+	)
+	require.NoError(t, err, output.String())
+	firstRequest, firstMutation := observations.snapshot()
+	require.Contains(t, firstRequest, "selection scope: tenant-a only")
+	require.Contains(t, firstMutation, "affected tenants: tenant")
+	require.Zero(t, promptCount)
+	require.Equal(t, 3, countRequestPrefixes(requests.Snapshot(), "POST /v2/process-instances/search "))
+	require.Equal(t, []string{"/v2/process-instances/" + opsRetentionPolicySeedKey + "/deletion"}, deleted.Snapshot())
+}
+
 func TestOpsExecuteRetentionPolicyAutomationJSONExecutesWithoutAutoConfirm(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]

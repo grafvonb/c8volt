@@ -484,6 +484,42 @@ func TestOpsPurgeAllProcessDefinitionsConfirmedDeletionUsesFrozenCandidates(t *t
 	require.Equal(t, 1, countOpsPurgeAllProcessDefinitionsRequests(requests.Snapshot(), "POST /v2/process-definitions/search "))
 }
 
+// TestOpsPurgeAllProcessDefinitionsAutoConfirmReportsTenantScopeBeforeWork
+// verifies the apd alias reports named selection before discovery and frozen
+// tenant evidence before the first deletion without changing request targets.
+func TestOpsPurgeAllProcessDefinitionsAutoConfirmReportsTenantScopeBeforeWork(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	backend := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	t.Cleanup(backend.Close)
+	output := &opsTenantTimingOutput{}
+	proxy, observations := newOpsTenantTimingProxy(t, backend.URL, output, func(r *http.Request) bool {
+		return r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v2/resources/") && strings.HasSuffix(r.URL.Path, "/deletion")
+	})
+	t.Cleanup(proxy.Close)
+
+	promptCount, err := executeRootForOpsTenantTiming(t, output, resetOpsPurgeAllProcessDefinitionsFlagState,
+		"--config", writeTestConfigForVersion(t, proxy.URL, "8.9"),
+		"--tenant", "tenant-a",
+		"ops", "purge", "apd",
+		"--auto-confirm",
+		"--no-wait",
+	)
+	require.NoError(t, err, output.String())
+	firstRequest, firstMutation := observations.snapshot()
+	require.Contains(t, firstRequest, "selection scope: tenant-a only")
+	require.Contains(t, firstMutation, "affected tenants: tenant")
+	require.Zero(t, promptCount)
+	require.Equal(t, 1, countOpsPurgeAllProcessDefinitionsRequests(requests.Snapshot(), "POST /v2/process-definitions/search "))
+	require.ElementsMatch(t, []string{
+		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyA + "/deletion",
+		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyB + "/deletion",
+	}, deleted.Snapshot())
+}
+
 // TestOpsPurgeAllProcessDefinitionsPagedConfirmationReusesFrozenCandidates verifies confirmed APD mutation does not rediscover.
 func TestOpsPurgeAllProcessDefinitionsPagedConfirmationReusesFrozenCandidates(t *testing.T) {
 	resetOpsPurgeAllProcessDefinitionsFlagState()

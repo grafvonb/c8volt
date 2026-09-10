@@ -44,6 +44,7 @@ func configureOpsRepairProgress(cmd *cobra.Command, request *ops.RepairRequest) 
 
 // printOpsRepairProgressEvent routes repair preflight and counters without writing to result stdout.
 func printOpsRepairProgressEvent(cmd *cobra.Command, event ops.ProgressEvent, channel ops.ProgressChannel, progress *opsRepairSemanticProgress) {
+	handleOpsTenantScopeProgressEvent(cmd, event, channel)
 	switch event.Kind {
 	case ops.ProgressEventKindPreflight:
 		if event.Preflight != nil {

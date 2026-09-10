@@ -641,6 +641,42 @@ func TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionReusesMultiPageFr
 	require.Equal(t, 2, countOpsIncidentPurgeRequests(requests.Snapshot(), "POST /v2/incidents/search "))
 }
 
+// TestOpsPurgeProcessInstancesWithIncidentsAutoConfirmReportsTenantScopeBeforeWork
+// verifies direct incident keys announce tenant-filter bypass before resolution
+// and actual frozen evidence before the unchanged root deletion target.
+func TestOpsPurgeProcessInstancesWithIncidentsAutoConfirmReportsTenantScopeBeforeWork(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	backend := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+	t.Cleanup(backend.Close)
+	output := &opsTenantTimingOutput{}
+	proxy, observations := newOpsTenantTimingProxy(t, backend.URL, output, func(r *http.Request) bool {
+		return r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/deletion")
+	})
+	t.Cleanup(proxy.Close)
+	reset := func() {
+		resetProcessInstanceCommandGlobals()
+		resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	}
+
+	promptCount, err := executeRootForOpsTenantTiming(t, output, reset,
+		"--config", writeTestConfigForVersion(t, proxy.URL, "8.9"),
+		"--tenant", "tenant-a",
+		"ops", "purge", "process-instances-with-incidents",
+		"--inc-key", "2251799813685299",
+		"--auto-confirm",
+		"--no-wait",
+	)
+	require.NoError(t, err, output.String())
+	firstRequest, firstMutation := observations.snapshot()
+	require.Contains(t, firstRequest, "selection scope: explicit resource keys; tenant filter not applied")
+	require.NotContains(t, firstRequest, "selection scope: tenant-a only")
+	require.Contains(t, firstMutation, "affected tenants: tenant")
+	require.Zero(t, promptCount)
+	require.Equal(t, 1, countOpsIncidentPurgeRequests(requests.Snapshot(), "POST /v2/incidents/search "))
+	require.Equal(t, []string{"/v2/process-instances/" + opsIncidentPurgeRootKey + "/deletion"}, deleted.Snapshot())
+}
+
 // TestOpsPurgeProcessInstancesWithIncidentsAutomationJSONExecutesWithoutAutoConfirm verifies automation mode confirms the supported purge path.
 func TestOpsPurgeProcessInstancesWithIncidentsAutomationJSONExecutesWithoutAutoConfirm(t *testing.T) {
 	resetOpsPurgeProcessInstancesWithIncidentsFlagState()

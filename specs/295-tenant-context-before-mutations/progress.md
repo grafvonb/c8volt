@@ -125,3 +125,33 @@ Started: 2026-09-10 17:15:43
 - Explicit and search repair paths can publish complete frozen evidence without additional retrieval; the process-instance finish boundary naturally covers keyed/search and successful empty scopes.
 - Passed focused repair tenant-scope tests, the relevant ops service suite, the full ops package, `make test` (`go test ./... -race -count=1`), and `git diff --check`.
 ---
+---
+## Iteration 7 - 2026-09-10 18:36
+**Work Unit**: US1 purge and retention command timing (partial)
+**Tasks Completed**:
+- [x] T011: Add purge and retention real-command auto-confirm timing regressions
+- [x] T018: Compose tenant-scope handling with existing ops progress callbacks
+- [x] T019: Initialize staged selection context for purge and retention commands
+**Tasks Remaining in Work Unit**: 3 (T012, T020, T021)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_execute_retention_policy_test.go
+- cmd/ops_processinstance_purge_progress.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions_progress.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- cmd/ops_purge_orphan_processinstances.go
+- cmd/ops_purge_orphan_processinstances_test.go
+- cmd/ops_purge_processinstances_with_incidents.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- cmd/ops_repair_progress.go
+- cmd/ops_tenant_context.go
+- cmd/ops_tenant_context_timing_test.go
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- Real command handlers now expose selection before their first backend request and validated affected tenants before deletion while preserving APD, orphan, incident, and retention request counts and targets.
+- Passed the four focused timing regressions, the complete relevant command suite, `make test` (`go test ./... -race -count=1`), declaration ownership review, and `git diff --check`.
+---

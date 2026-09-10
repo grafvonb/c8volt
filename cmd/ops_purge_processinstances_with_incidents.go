@@ -91,6 +91,7 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 			ReportFormat:  flagOpsPurgeIncidentReportFormat,
 			StartedAt:     time.Now().UTC(),
 		}
+		initializeOpsTenantContextHumanReporting(cmd, cfg, len(request.Selection.Keys) > 0)
 		progress := configureOpsPurgeProcessInstancesWithIncidentsProgress(cmd, &request)
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
