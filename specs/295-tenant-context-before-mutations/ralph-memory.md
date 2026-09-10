@@ -20,6 +20,8 @@ Started: 2026-09-10T15:15:43Z
 - Ops tenant evidence prefers keyed target observations when present, ignores empty target keys, and deduplicates by first key observation; aggregate resolved IDs and unknown counts are used only when no targets are supplied, then normalized by the shared tenant-context rules.
 - All six interactive ops workflows route pre-prompt fallback reporting through `printOpsTenantContextForCommand`, which derives the same mode-gated durable channel as early selection and progress callbacks; protected modes neither emit nor mark staged output as rendered.
 - Repeated preview/execution tenant-scope events may refresh the complete attached evidence, while `selectionRendered` and `affectedRendered` suppress only duplicate human lines and final-view repetitions; explicit-key selection remains independent of tenant override provenance.
+- Automation still selects the one-line renderer, so final tenant-context suppression must check `automationModeEnabled(cmd)` in addition to render mode and quiet state; structured JSON must retain serialized warning messages even though stderr has no tenant chatter.
+- Declare output modes explicitly for ops workflows when inherited root flags would advertise an unsupported renderer; orphan purge is the only affected workflow with a real keys-only result path.
 
 ## Decisions
 - Preserve existing discovery, frozen-scope, mutation, output-mode, and audit behavior; the feature adds a synchronous typed progress event and two command-local rendering stages.
@@ -38,4 +40,4 @@ Started: 2026-09-10T15:15:43Z
 - Do not add discovery or metadata retrieval for reporting, infer unknown tenants from configuration, or strip attached evidence to deduplicate human output.
 
 ## Current Handoff
-- Begin US3 with T029: add all-six-command protected-mode regressions in `cmd/ops_contract_test.go`; keep tenant evidence attachment independent from human output suppression.
+- Continue US3 with T030: extend JSON and Markdown report regressions while keeping serialized tenant evidence independent from human emission state.

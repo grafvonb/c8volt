@@ -73,8 +73,8 @@ func renderAttachedTenantContext(cmd *cobra.Command) {
 
 // shouldRenderTenantContextHuman keeps tenant context out of protected output
 // modes and absent contexts.
-func shouldRenderTenantContextHuman(_ *cobra.Command, ctx tenant.Context) bool {
-	if tenantContextIsZero(ctx) || flagQuiet {
+func shouldRenderTenantContextHuman(cmd *cobra.Command, ctx tenant.Context) bool {
+	if tenantContextIsZero(ctx) || flagQuiet || automationModeEnabled(cmd) {
 		return false
 	}
 	return pickMode() == RenderModeOneLine

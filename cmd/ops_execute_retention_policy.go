@@ -164,6 +164,10 @@ func init() {
 	setCommandMutation(opsExecuteRetentionPolicyCmd, CommandMutationStateChanging)
 	setContractSupport(opsExecuteRetentionPolicyCmd, ContractSupportFull)
 	setAutomationSupport(opsExecuteRetentionPolicyCmd, AutomationSupportFull, "supports unattended dry-run previews and implicitly confirmed retention cleanup with shared machine output")
+	setOutputModes(opsExecuteRetentionPolicyCmd,
+		OutputModeContract{Name: RenderModeOneLine.String(), Supported: true},
+		OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
+	)
 	setFlagContractRequired(opsExecuteRetentionPolicyCmd, "retention-days")
 }
 

@@ -285,3 +285,23 @@ Started: 2026-09-10 17:15:43
 - The repeated-lifecycle regression proves duplicate preview/execution scope events and repeated final renders emit the explicit-key selection, cross-tenant warning, and unknown-tenant warning exactly once while retaining normalized known IDs, unknown count, cross-tenant state, and warnings in the attached context.
 - The targeted command suite passed its prompt-time snapshots, single-occurrence assertions, and decline paths with zero mutations. Exact quickstart commands passed for `internal/services/ops`, `c8volt/ops`, and `cmd`; `make test` (`go test ./... -race -count=1`), `gofmt`, declaration ownership review, and `git diff --check` also passed.
 ---
+---
+## Iteration 15 - 2026-09-10 20:09
+**Work Unit**: US3 protected output modes and automation tenant suppression (partial)
+**Tasks Completed**:
+- [x] T029: Add all-six-command protected-mode regressions using actual handlers
+- [x] T032: Correct final tenant-context automation bypass and output-mode metadata
+**Tasks Remaining in Work Unit**: 4 (T030-T031, T033-T035)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_tenant_context.go
+- cmd/ops_contract_test.go
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_purge_orphan_processinstances.go
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- Real-handler coverage found that automation suppressed early staged output but the final one-line renderer could still repeat tenant context; the final human gate now excludes automation without pruning attached evidence.
+- All six handlers passed one-line, verbose, debug, JSON, quiet, and automation coverage; automation retained implicit mutation, JSON envelopes remained parseable, and orphan keys-only output stayed one numeric key per line. Focused command tests, docs regeneration review, `make test` (`go test ./... -race -count=1`), declaration ownership review, and `git diff --check` passed.
+---

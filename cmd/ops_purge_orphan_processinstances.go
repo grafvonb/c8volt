@@ -171,6 +171,11 @@ func init() {
 	setCommandMutation(opsPurgeOrphanProcessInstancesCmd, CommandMutationStateChanging)
 	setContractSupport(opsPurgeOrphanProcessInstancesCmd, ContractSupportFull)
 	setAutomationSupport(opsPurgeOrphanProcessInstancesCmd, AutomationSupportFull, "supports unattended dry-run previews and implicitly confirmed purges with shared machine output")
+	setOutputModes(opsPurgeOrphanProcessInstancesCmd,
+		OutputModeContract{Name: RenderModeOneLine.String(), Supported: true},
+		OutputModeContract{Name: RenderModeKeysOnly.String(), Supported: true},
+		OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
+	)
 }
 
 func validateOpsPurgeOrphanProcessInstancesReportFlags() error {
