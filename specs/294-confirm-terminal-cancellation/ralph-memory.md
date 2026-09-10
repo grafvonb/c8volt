@@ -11,6 +11,7 @@ Started: 2026-09-10T06:42:27Z
 - v8.7 cancellation family discovery must call `walker.Family` through the existing `traversalAdapter`; the public `GetProcessInstance` remains intentionally unsupported because direct Operate lookup is not tenant-safe.
 - v8.8 cancellation regressions can use one file-local Camunda double for direct state reads, parent-filter searches, and cancellation requests; the Operate client remains strict and unused.
 - v8.9 and v8.10 cancellation regressions fit their combined cancellation/deletion suites and can reuse strict body-based search doubles with per-key observation sequences.
+- Bulk no-op propagation is covered through `stubBulkProcessInstanceAPI`; `reporterTotals` directly verifies terminal and absent results contribute to success totals without changing `bulk.go`.
 
 ## Decisions
 
@@ -33,4 +34,4 @@ Started: 2026-09-10T06:42:27Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Continue US1 with T011/T012: cover bulk propagation of terminal/absent no-op success, then run and record the four-version cancellation matrix.
+- Begin US2 with T013/T017: add the v8.7 forced-delete recovery regressions for completed and absent cancellation-confirmation observations, then extend only that recovery wait's desired states.

@@ -106,3 +106,20 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - The v8.10 body-based search path mirrors v8.9 for deterministic A–E coverage; the production correction remains limited to the cancellation precheck and family wait.
 ---
+---
+## Iteration 7 - 2026-09-10 09:43
+**Work Unit**: US1 bulk no-op propagation and cancellation matrix
+**Tasks Completed**:
+- [x] T011: Verify terminal and absent no-op success propagation through bulk reports and totals
+- [x] T012: Run and record the four-version cancellation matrix
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/bulk_test.go
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/quickstart.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- The existing bulk adapter already preserves service response fields; focused coverage now proves completed and absent no-ops count as successful, and the full contract A–E matrix passes across all four supported versions.
+---

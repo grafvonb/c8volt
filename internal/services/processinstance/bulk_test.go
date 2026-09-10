@@ -301,6 +301,41 @@ func TestCancelProcessInstancesEmitsCompletionFacts(t *testing.T) {
 	}, completions[1])
 }
 
+// TestCancelProcessInstancesPropagatesTerminalNoOpSuccess verifies terminal
+// and absent cancellation no-ops remain successful in bulk reports and totals.
+func TestCancelProcessInstancesPropagatesTerminalNoOpSuccess(t *testing.T) {
+	statuses := map[string]string{
+		"terminal-root": "process instance with key terminal-root is already in state COMPLETED, no need to cancel",
+		"absent-root":   "process instance with key absent-root is already in state ABSENT, no need to cancel",
+	}
+	api := stubBulkProcessInstanceAPI{
+		cancel: func(_ context.Context, key string, _ ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+			status, ok := statuses[key]
+			require.True(t, ok, "unexpected key %s", key)
+			return d.CancelResponse{Ok: true, StatusCode: 200, Status: status}, nil, nil
+		},
+	}
+
+	got, err := CancelProcessInstances(
+		context.Background(),
+		api,
+		slog.Default(),
+		typex.Keys{"terminal-root", "absent-root"},
+		1,
+		2,
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, []d.Reporter{
+		{Key: "terminal-root", Ok: true, StatusCode: 200, Status: statuses["terminal-root"]},
+		{Key: "absent-root", Ok: true, StatusCode: 200, Status: statuses["absent-root"]},
+	}, got)
+	total, oks, noks := reporterTotals(got)
+	require.Equal(t, 2, total)
+	require.Equal(t, 2, oks)
+	require.Zero(t, noks)
+}
+
 // TestDeleteProcessInstancesEmitsCompletionFactsWithUnknownExpandedAffectedCount
 // verifies deletion avoids estimating per-root affected counts when only an
 // aggregate expanded scope is available.

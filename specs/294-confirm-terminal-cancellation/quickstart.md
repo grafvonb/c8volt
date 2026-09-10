@@ -112,3 +112,10 @@ go test ./internal/services/processinstance/v87 ./internal/services/processinsta
 - T010 accepts COMPLETED/CANCELED/TERMINATED/ABSENT during cancellation-family confirmation, locally maps only wrapped `ErrNotFound` to ABSENT inside the guarded precheck, and returns the existing no-op response with `Ok=true`; the separate forced-delete recovery wait remains unchanged for US2.
 - The combined cancellation/deletion prefix now passes all v8.10 contract A–E cases, including active/unknown timeout controls, context interruption, and four zero-submission terminal-root no-ops.
 - `go test ./internal/services/processinstance/v810 -count=1` and `git diff --check` passed after the correction; the iteration-wide race suite result is recorded in the progress report.
+
+## US1 bulk and four-version matrix — Iteration 7 (2026-09-10)
+
+- `TestCancelProcessInstancesPropagatesTerminalNoOpSuccess` proves completed and absent root no-op responses preserve `Ok=true`, HTTP 200, and the existing status text through bulk reports; reporter totals count both results as successful with zero failures.
+- `go test ./internal/services/processinstance -run 'Test.*Cancel' -count=1` passed the focused bulk cancellation suite.
+- `go test ./internal/services/processinstance/... -run 'Test.*Cancel' -count=1` passed cancellation tests for v8.7, v8.8, v8.9, and v8.10. The traversal, waiter, and walker packages reported no matching tests, while the process-instance root and all four version packages ran matching cancellation coverage successfully.
+- All original contract A–E regression cases now pass across the four supported adapters, including terminal and absent no-op success propagation through bulk reporting.
