@@ -23,6 +23,7 @@ Started: 2026-09-10T15:15:43Z
 - Automation still selects the one-line renderer, so final tenant-context suppression must check `automationModeEnabled(cmd)` in addition to render mode and quiet state; structured JSON must retain serialized warning messages even though stderr has no tenant chatter.
 - Declare output modes explicitly for ops workflows when inherited root flags would advertise an unsupported renderer; orphan purge is the only affected workflow with a real keys-only result path.
 - Audit JSON and Markdown derive a normalized tenant-context snapshot from frozen report evidence; staged human render flags and later command-context replacement do not prune serialized IDs, unknown counts, cross-tenant state, or warning messages.
+- All six real command audit paths preserve applicable tenant mode, filter, resolved IDs, unknown count, cross-tenant state, and warnings across dry-run, empty, blocked, and mutation-failure outcomes; local invalid input preserves an existing report without backend requests.
 
 ## Decisions
 - Preserve existing discovery, frozen-scope, mutation, output-mode, and audit behavior; the feature adds a synchronous typed progress event and two command-local rendering stages.
@@ -41,4 +42,4 @@ Started: 2026-09-10T15:15:43Z
 - Do not add discovery or metadata retrieval for reporting, infer unknown tenants from configuration, or strip attached evidence to deduplicate human output.
 
 ## Current Handoff
-- Continue US3 with T031: add all-six-command audit-file and failure-path regressions, distributing lifecycle failures while requiring complete applicable tenant evidence.
+- Continue US3 with T034: update README and all six command help/source descriptions for the reporting order and auto-confirm semantics, then regenerate CLI documentation with `make docs-content`.

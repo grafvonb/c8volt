@@ -131,15 +131,20 @@ func TestOpsPurgeOrphanProcessInstancesDryRunVerboseReportsCandidateKeys(t *test
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/deletion")
 }
 
+// TestOpsPurgeOrphanProcessInstancesDryRunNoTargetsReportsNoOp verifies an
+// empty validated scope remains explicit in audit data without invented tenants.
 func TestOpsPurgeOrphanProcessInstancesDryRunNoTargetsReportsNoOp(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newOpsOrphanPurgeServer(t, &requests, false)
 	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "orphan-purge-empty.json")
 
 	output := executeRootForProcessInstanceTest(t,
 		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
 		"ops", "purge", "orphan-process-instances",
 		"--dry-run",
+		"--report-file", reportPath,
+		"--report-format", "json",
 	)
 
 	require.Contains(t, output, "candidate orphan process instances: 0")
@@ -149,6 +154,16 @@ func TestOpsPurgeOrphanProcessInstancesDryRunNoTargetsReportsNoOp(t *testing.T) 
 	snapshot := requests.Snapshot()
 	require.Len(t, snapshot, 1)
 	require.True(t, strings.HasPrefix(snapshot[0], "POST /v2/process-instances/search "))
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, "planned", report["outcome"])
+	tenantContext := requireJSONObject(t, report["tenantContext"])
+	require.Equal(t, "discovery", tenantContext["mode"])
+	require.Equal(t, "none", tenantContext["filter"])
+	require.Equal(t, []any{}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+	require.Equal(t, "unfiltered_selection", requireJSONObject(t, requireJSONItems(t, tenantContext["warnings"], 1)[0])["code"])
 }
 
 func TestOpsPurgeOrphanProcessInstancesDryRunAppliesCompatibleFilters(t *testing.T) {
@@ -384,6 +399,8 @@ func TestOpsPurgeOrphanProcessInstancesWritesMarkdownReport(t *testing.T) {
 	require.Contains(t, report, "  - "+opsOrphanChildKey)
 }
 
+// TestOpsPurgeOrphanProcessInstancesWritesJSONReport verifies submitted audit
+// output retains the complete unfiltered tenant scope and frozen target facts.
 func TestOpsPurgeOrphanProcessInstancesWritesJSONReport(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
@@ -414,6 +431,14 @@ func TestOpsPurgeOrphanProcessInstancesWritesJSONReport(t *testing.T) {
 	require.Equal(t, true, report["noWait"])
 	require.NotContains(t, report, "dryRun")
 	require.Equal(t, "8.9", report["camundaVersion"])
+	require.NotContains(t, report, "tenantId")
+	tenantContext := requireJSONObject(t, report["tenantContext"])
+	require.Equal(t, "discovery", tenantContext["mode"])
+	require.Equal(t, "none", tenantContext["filter"])
+	require.Equal(t, []any{"tenant"}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+	require.Equal(t, "unfiltered_selection", requireJSONObject(t, requireJSONItems(t, tenantContext["warnings"], 1)[0])["code"])
 	discovery := requireJSONObject(t, report["discovery"])
 	require.Equal(t, float64(1), discovery["count"])
 	keys := discovery["keys"].([]any)

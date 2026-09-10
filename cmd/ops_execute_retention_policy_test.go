@@ -561,6 +561,8 @@ func TestOpsExecuteRetentionPolicyExistingReportFailsBeforePreflight(t *testing.
 	}
 }
 
+// TestOpsExecuteRetentionPolicyWritesReportAfterPostDiscoveryFailure verifies
+// force-blocked audit output retains the complete validated tenant scope.
 func TestOpsExecuteRetentionPolicyWritesReportAfterPostDiscoveryFailure(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
@@ -589,6 +591,14 @@ func TestOpsExecuteRetentionPolicyWritesReportAfterPostDiscoveryFailure(t *testi
 	var report map[string]any
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
 	require.Equal(t, "failed", report["outcome"])
+	require.NotContains(t, report, "tenantId")
+	tenantContext := requireJSONObject(t, report["tenantContext"])
+	require.Equal(t, "discovery", tenantContext["mode"])
+	require.Equal(t, "none", tenantContext["filter"])
+	require.Equal(t, []any{"tenant"}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+	require.Equal(t, "unfiltered_selection", requireJSONObject(t, requireJSONItems(t, tenantContext["warnings"], 1)[0])["code"])
 	discovery := requireJSONObject(t, report["discovery"])
 	require.Equal(t, float64(1), discovery["count"])
 	deletion := requireJSONObject(t, report["deletion"])

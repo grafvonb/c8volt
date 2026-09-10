@@ -322,3 +322,25 @@ Started: 2026-09-10 17:15:43
 - JSON and Markdown reports retain named, unfiltered, explicit-key, multiple-tenant, and unknown-tenant evidence after both human stages render; warning fields and truthful legacy tenant identifiers remain independent from command render state and human-only override provenance.
 - Focused report and tenant-context tests, the broader command report suite, `make test` (`go test ./... -race -count=1`), `gofmt`, and `git diff --check` passed without production changes.
 ---
+---
+## Iteration 17 - 2026-09-10 20:25
+**Work Unit**: US3 real-command audit coverage and attachment verification (partial)
+**Tasks Completed**:
+- [x] T031: Add all-six-command audit-file and failure-path regressions
+- [x] T033: Verify complete audit serialization and legacy tenant semantics across all attachment paths
+**Tasks Remaining in Work Unit**: 2 (T034-T035)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_execute_retention_policy_test.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- cmd/ops_purge_orphan_processinstances_test.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- cmd/ops_repair_incident_test.go
+- cmd/ops_repair_processinstance_test.go
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- Real handlers retain complete applicable audit tenant context for all six workflows, including explicit-key and unfiltered discovery semantics, default-tenant evidence, empty validated scope, force/impact blocking, and post-scope mutation failure.
+- All six result/report attachment paths reconstruct normalized context from frozen plan evidence and derive legacy tenant identifiers from effective discovery semantics. Invalid incident-purge input keeps its invalid-arguments exit contract, preserves an existing report byte-for-byte, and performs no backend requests. Focused lifecycle tests, the broader command suite, `make test` (`go test ./... -race -count=1`), `gofmt`, and `git diff --check` passed without production changes.
+---

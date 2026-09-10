@@ -502,6 +502,14 @@ func TestOpsPurgeProcessInstancesWithIncidentsWritesJSONReport(t *testing.T) {
 	require.Equal(t, "deleted", report["outcome"])
 	require.Equal(t, true, report["noWait"])
 	require.Equal(t, "8.9", report["camundaVersion"])
+	require.NotContains(t, report, "tenantId")
+	tenantContext := requireJSONObject(t, report["tenantContext"])
+	require.Equal(t, "discovery", tenantContext["mode"])
+	require.Equal(t, "none", tenantContext["filter"])
+	require.Equal(t, []any{"tenant"}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+	require.Equal(t, "unfiltered_selection", requireJSONObject(t, requireJSONItems(t, tenantContext["warnings"], 1)[0])["code"])
 	discovery := requireJSONObject(t, report["discovery"])
 	require.Equal(t, true, discovery["complete"])
 	require.Equal(t, float64(1000), discovery["batchSize"])
@@ -524,16 +532,25 @@ func TestOpsPurgeProcessInstancesWithIncidentsExistingReportPreservation(t *test
 		withActiveChild bool
 		want            string
 		wantRequests    bool
+		wantExitCode    int
 	}{
 		{
-			name: "dry run",
-			args: []string{"ops", "purge", "process-instances-with-incidents", "--dry-run"},
-			want: "report file already exists:",
+			name:         "dry run",
+			args:         []string{"ops", "purge", "process-instances-with-incidents", "--dry-run"},
+			want:         "report file already exists:",
+			wantExitCode: exitcode.Error,
 		},
 		{
-			name: "unconfirmed",
-			args: []string{"ops", "purge", "process-instances-with-incidents"},
-			want: "report file already exists:",
+			name:         "invalid input",
+			args:         []string{"ops", "purge", "process-instances-with-incidents", "--limit", "0"},
+			want:         "--limit must be positive integer",
+			wantExitCode: exitcode.InvalidArgs,
+		},
+		{
+			name:         "unconfirmed",
+			args:         []string{"ops", "purge", "process-instances-with-incidents"},
+			want:         "report file already exists:",
+			wantExitCode: exitcode.Error,
 		},
 		{
 			name:            "locally blocked",
@@ -541,6 +558,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsExistingReportPreservation(t *test
 			withActiveChild: true,
 			want:            "write audit report: report file already exists:",
 			wantRequests:    true,
+			wantExitCode:    exitcode.Error,
 		},
 	}
 
@@ -564,7 +582,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsExistingReportPreservation(t *test
 
 			exitErr, ok := err.(*exec.ExitError)
 			require.True(t, ok)
-			require.Equal(t, exitcode.Error, exitErr.ExitCode())
+			require.Equal(t, tt.wantExitCode, exitErr.ExitCode())
 			require.Contains(t, string(output), tt.want)
 			require.Equal(t, existingReport, readReportFile(t, reportPath))
 			require.Empty(t, deleted.Snapshot())

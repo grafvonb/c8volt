@@ -1115,11 +1115,15 @@ func TestOpsPurgeAllProcessDefinitionsBlocksActiveInstancesBeforeMutation(t *tes
 	var deleted testx.SafeSlice[string]
 	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 3)
 	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "all-pd-purge-blocked.json")
 
 	output, err := testx.RunCmdSubprocess(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
 		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
 		"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, []string{
 			"ops", "purge", "all-process-definitions",
+			"--auto-confirm",
+			"--report-file", reportPath,
+			"--report-format", "json",
 		}),
 	})
 	require.Error(t, err)
@@ -1131,6 +1135,16 @@ func TestOpsPurgeAllProcessDefinitionsBlocksActiveInstancesBeforeMutation(t *tes
 	require.Contains(t, string(output), "refusing to delete all-process-definitions purge scope")
 	require.Contains(t, string(output), "active process instance")
 	require.Empty(t, deleted.Snapshot())
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, "failed", report["outcome"])
+	tenantContext := requireJSONObject(t, report["tenantContext"])
+	require.Equal(t, "discovery", tenantContext["mode"])
+	require.Equal(t, "none", tenantContext["filter"])
+	require.Equal(t, []any{"tenant"}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+	require.Equal(t, "unfiltered_selection", requireJSONObject(t, requireJSONItems(t, tenantContext["warnings"], 1)[0])["code"])
 }
 
 // TestOpsPurgeAllProcessDefinitionsDeletionOutput verifies compact execution rendering.
@@ -1182,6 +1196,11 @@ func TestOpsPurgeAllProcessDefinitionsWritesMarkdownReport(t *testing.T) {
 	require.Contains(t, report, "- Dry Run: true")
 	require.Contains(t, report, "- Camunda Version: 8.9")
 	require.Contains(t, report, "- Profile: default")
+	require.Contains(t, report, "- Tenant: -")
+	require.Contains(t, report, "- Tenant Context: selection scope: unfiltered across accessible tenants")
+	require.Contains(t, report, "- Resource Tenant: tenant")
+	require.Contains(t, report, "- Unknown Target Tenants: 0")
+	require.Contains(t, report, "- Cross Tenant: false")
 	require.Contains(t, report, "- Outcome: planned")
 	require.Contains(t, report, "## Discovery")
 	require.Contains(t, report, "- Completeness: discovery complete")
@@ -1227,6 +1246,14 @@ func TestOpsPurgeAllProcessDefinitionsWritesJSONReport(t *testing.T) {
 	require.Equal(t, "deleted", report["outcome"])
 	require.Equal(t, true, report["noWait"])
 	require.Equal(t, "8.9", report["camundaVersion"])
+	require.NotContains(t, report, "tenantId")
+	tenantContext := requireJSONObject(t, report["tenantContext"])
+	require.Equal(t, "discovery", tenantContext["mode"])
+	require.Equal(t, "none", tenantContext["filter"])
+	require.Equal(t, []any{"tenant"}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+	require.Equal(t, "unfiltered_selection", requireJSONObject(t, requireJSONItems(t, tenantContext["warnings"], 1)[0])["code"])
 	discovery := requireJSONObject(t, report["discovery"])
 	require.Equal(t, float64(2), discovery["candidateProcessDefinitionCount"])
 	require.Len(t, discovery["candidateProcessDefinitionKeys"], 2)
