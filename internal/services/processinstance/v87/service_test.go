@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sync"
 	"testing"
 	"time"
 
@@ -806,30 +807,267 @@ func TestService_V87SearchBackedChildrenRemainSupported(t *testing.T) {
 	assert.Equal(t, "123", children[0].ParentKey)
 }
 
+// TestService_CancelProcessInstance verifies v8.7 cancellation accepts terminal family outcomes without weakening failure controls.
 func TestService_CancelProcessInstance(t *testing.T) {
 	ctx := context.Background()
-	var cancelled string
 
-	svc := newTestService(t, testConfig(), &mockCamundaClient{
-		postProcessInstancesWithResponse: func(ctx context.Context, body camundav87.PostProcessInstancesJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostProcessInstancesResponse, error) {
-			t.Fatalf("unexpected create call")
-			return nil, nil
-		},
-		postProcessInstancesProcessInstanceKeyCancellationWithResponse: func(ctx context.Context, processInstanceKey string, body camundav87.PostProcessInstancesProcessInstanceKeyCancellationJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostProcessInstancesProcessInstanceKeyCancellationResponse, error) {
-			cancelled = processInstanceKey
-			return &camundav87.PostProcessInstancesProcessInstanceKeyCancellationResponse{
-				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/123/cancellation", http.StatusAccepted, "202 Accepted"),
-			}, nil
-		},
-	}, newStrictOperateClient(t))
+	t.Run("SubmitsWithoutStateCheckOrWait", func(t *testing.T) {
+		fixture := newCancellationFixture(t, map[string][]string{}, nil)
+		svc := fixture.service(t)
 
-	resp, instances, err := svc.CancelProcessInstance(ctx, "123", services.WithNoStateCheck(), services.WithNoWait())
+		resp, instances, err := svc.CancelProcessInstance(ctx, "123", services.WithNoStateCheck(), services.WithNoWait())
 
-	require.NoError(t, err)
-	assert.Equal(t, "123", cancelled)
-	assert.True(t, resp.Ok)
-	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
-	assert.Empty(t, instances)
+		require.NoError(t, err)
+		assert.Equal(t, 1, fixture.cancellationCount())
+		assert.True(t, resp.Ok)
+		assert.Equal(t, http.StatusAccepted, resp.StatusCode)
+		assert.Empty(t, instances)
+	})
+
+	t.Run("AcceptsCompletedDescendant", func(t *testing.T) {
+		fixture := newCancellationFixture(t, map[string][]string{
+			"123": {"ACTIVE", "ACTIVE", "ACTIVE", "CANCELED"},
+			"456": {"COMPLETED"},
+		}, map[string][]cancellationChild{
+			"123": {{key: "456", state: "COMPLETED"}},
+		})
+
+		resp, _, err := fixture.service(t).CancelProcessInstance(ctx, "123")
+
+		require.NoError(t, err)
+		assert.True(t, resp.Ok)
+		assert.Equal(t, 1, fixture.cancellationCount())
+	})
+
+	t.Run("AcceptsNaturalCompletionDuringPolling", func(t *testing.T) {
+		fixture := newCancellationFixture(t, map[string][]string{
+			"123": {"ACTIVE", "ACTIVE", "ACTIVE", "CANCELED"},
+			"456": {"ACTIVE", "COMPLETED"},
+		}, map[string][]cancellationChild{
+			"123": {{key: "456", state: "ACTIVE"}},
+		})
+
+		resp, _, err := fixture.service(t).CancelProcessInstance(ctx, "123")
+
+		require.NoError(t, err)
+		assert.True(t, resp.Ok)
+		assert.Equal(t, 2, fixture.readCount("456"))
+	})
+
+	t.Run("AcceptsDisappearanceAfterDiscovery", func(t *testing.T) {
+		fixture := newCancellationFixture(t, map[string][]string{
+			"123": {"ACTIVE", "ACTIVE", "ACTIVE", "TERMINATED"},
+			"456": {""},
+		}, map[string][]cancellationChild{
+			"123": {{key: "456", state: "ACTIVE"}},
+		})
+
+		resp, _, err := fixture.service(t).CancelProcessInstance(ctx, "123")
+
+		require.NoError(t, err)
+		assert.True(t, resp.Ok)
+		assert.Equal(t, 1, fixture.readCount("456"))
+	})
+
+	t.Run("AcceptsMixedTerminalFamily", func(t *testing.T) {
+		fixture := newCancellationFixture(t, map[string][]string{
+			"123": {"ACTIVE", "ACTIVE", "ACTIVE", "CANCELED"},
+			"201": {"COMPLETED"},
+			"202": {"CANCELED"},
+			"203": {"TERMINATED"},
+			"204": {""},
+		}, map[string][]cancellationChild{
+			"123": {
+				{key: "201", state: "COMPLETED"},
+				{key: "202", state: "CANCELED"},
+				{key: "203", state: "TERMINATED"},
+				{key: "204", state: "ACTIVE"},
+			},
+		})
+
+		resp, _, err := fixture.service(t).CancelProcessInstance(ctx, "123")
+
+		require.NoError(t, err)
+		assert.True(t, resp.Ok)
+		assert.Equal(t, 1, fixture.cancellationCount())
+	})
+
+	t.Run("RootCompletionDoesNotHideActiveDescendant", func(t *testing.T) {
+		fixture := newCancellationFixture(t, map[string][]string{
+			"123": {"ACTIVE", "ACTIVE", "ACTIVE", "COMPLETED"},
+			"456": {"ACTIVE"},
+		}, map[string][]cancellationChild{
+			"123": {{key: "456", state: "ACTIVE"}},
+		})
+
+		resp, _, err := fixture.service(t).CancelProcessInstance(ctx, "123")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "exceeded max_retries")
+		assert.False(t, resp.Ok)
+		assert.Equal(t, 2, fixture.readCount("456"))
+	})
+
+	for _, state := range []string{"ACTIVE", "UNKNOWN"} {
+		t.Run(state+"RemainsUnsatisfied", func(t *testing.T) {
+			fixture := newCancellationFixture(t, map[string][]string{
+				"123": {"ACTIVE", "ACTIVE", "ACTIVE", state},
+			}, nil)
+
+			resp, _, err := fixture.service(t).CancelProcessInstance(ctx, "123")
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "exceeded max_retries")
+			assert.False(t, resp.Ok)
+			assert.Equal(t, 5, fixture.readCount("123"))
+			assert.Equal(t, 1, fixture.cancellationCount())
+		})
+	}
+
+	t.Run("ContextInterruptionRemainsAnError", func(t *testing.T) {
+		waitCtx, cancel := context.WithCancel(ctx)
+		fixture := newCancellationFixture(t, map[string][]string{
+			"123": {"ACTIVE"},
+		}, nil)
+		fixture.cancelOnRead("123", 4, cancel)
+
+		resp, _, err := fixture.service(t).CancelProcessInstance(waitCtx, "123")
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, context.Canceled)
+		assert.False(t, resp.Ok)
+	})
+
+	for _, state := range []string{"COMPLETED", "CANCELED", "TERMINATED"} {
+		t.Run("TerminalRootNoOp"+state, func(t *testing.T) {
+			fixture := newCancellationFixture(t, map[string][]string{"123": {state}}, nil)
+
+			resp, instances, err := fixture.service(t).CancelProcessInstance(ctx, "123")
+
+			require.NoError(t, err)
+			assert.Equal(t, d.CancelResponse{
+				Ok:         true,
+				StatusCode: http.StatusOK,
+				Status:     fmt.Sprintf("process instance with key 123 is already in state %s, no need to cancel", state),
+			}, resp)
+			assert.Empty(t, instances)
+			assert.Zero(t, fixture.cancellationCount())
+		})
+	}
+
+	t.Run("AbsentRootNoOp", func(t *testing.T) {
+		fixture := newCancellationFixture(t, map[string][]string{"123": {""}}, nil)
+
+		resp, instances, err := fixture.service(t).CancelProcessInstance(ctx, "123")
+
+		require.NoError(t, err)
+		assert.Equal(t, d.CancelResponse{
+			Ok:         true,
+			StatusCode: http.StatusOK,
+			Status:     "process instance with key 123 is already in state ABSENT, no need to cancel",
+		}, resp)
+		assert.Empty(t, instances)
+		assert.Zero(t, fixture.cancellationCount())
+	})
+}
+
+// cancellationChild describes one discovered family edge and its discovery-time state.
+type cancellationChild struct {
+	key   string
+	state string
+}
+
+// cancellationFixture models family discovery and state observations independently for cancellation regressions.
+type cancellationFixture struct {
+	mu             sync.Mutex
+	states         map[string][]string
+	children       map[string][]cancellationChild
+	reads          map[string]int
+	cancellations  int
+	cancelReadKey  string
+	cancelReadAt   int
+	cancelReadFunc context.CancelFunc
+}
+
+// newCancellationFixture creates a strict v8.7 backend fixture with deterministic per-key observations.
+func newCancellationFixture(t *testing.T, states map[string][]string, children map[string][]cancellationChild) *cancellationFixture {
+	t.Helper()
+	return &cancellationFixture{
+		states:   states,
+		children: children,
+		reads:    make(map[string]int),
+	}
+}
+
+// service creates the real v8.7 service wired to controlled cancellation and Operate clients.
+func (f *cancellationFixture) service(t *testing.T) *v87.Service {
+	t.Helper()
+	camunda := newStrictCamundaClient(t)
+	camunda.postProcessInstancesProcessInstanceKeyCancellationWithResponse = func(ctx context.Context, processInstanceKey string, body camundav87.PostProcessInstancesProcessInstanceKeyCancellationJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostProcessInstancesProcessInstanceKeyCancellationResponse, error) {
+		f.mu.Lock()
+		f.cancellations++
+		f.mu.Unlock()
+		return &camundav87.PostProcessInstancesProcessInstanceKeyCancellationResponse{
+			HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/"+processInstanceKey+"/cancellation", http.StatusAccepted, "202 Accepted"),
+		}, nil
+	}
+	operate := newStrictOperateClient(t)
+	operate.searchProcessInstancesWithResponse = func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		require.NotNil(t, body.Filter)
+		var items []operatev87.ProcessInstance
+		switch {
+		case body.Filter.Key != nil:
+			key := fmt.Sprintf("%d", *body.Filter.Key)
+			states, ok := f.states[key]
+			require.True(t, ok, "unexpected state lookup for key %s", key)
+			read := f.reads[key]
+			f.reads[key]++
+			if key == f.cancelReadKey && f.reads[key] == f.cancelReadAt && f.cancelReadFunc != nil {
+				f.cancelReadFunc()
+			}
+			state := states[min(read, len(states)-1)]
+			if state != "" {
+				items = append(items, *makeProcessInstanceResponse(*body.Filter.Key, state, ""))
+			}
+		case body.Filter.ParentKey != nil:
+			parentKey := fmt.Sprintf("%d", *body.Filter.ParentKey)
+			for _, child := range f.children[parentKey] {
+				childKey, err := toolx.StringToInt64(child.key)
+				require.NoError(t, err)
+				items = append(items, *makeProcessInstanceResponse(childKey, child.state, parentKey))
+			}
+		default:
+			t.Fatalf("unexpected unfiltered process-instance search")
+		}
+		return &operatev87.SearchProcessInstancesResponse{
+			HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
+			JSON200:      &operatev87.ResultsProcessInstance{Items: &items},
+		}, nil
+	}
+	return newTestService(t, waitTestConfig(), camunda, operate)
+}
+
+// cancellationCount returns the synchronized cancellation request count.
+func (f *cancellationFixture) cancellationCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.cancellations
+}
+
+// readCount returns the synchronized state-read count for a process-instance key.
+func (f *cancellationFixture) readCount(key string) int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.reads[key]
+}
+
+// cancelOnRead interrupts the supplied context at the selected state observation.
+func (f *cancellationFixture) cancelOnRead(key string, read int, cancel context.CancelFunc) {
+	f.cancelReadKey = key
+	f.cancelReadAt = read
+	f.cancelReadFunc = cancel
 }
 
 func TestService_DeleteProcessInstance(t *testing.T) {

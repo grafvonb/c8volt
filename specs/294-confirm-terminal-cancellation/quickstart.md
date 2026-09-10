@@ -84,3 +84,10 @@ Prefix inventory was verified with `go test -list`: the original `TestService_(C
 ```sh
 go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 ./internal/services/processinstance/v810 -run 'TestService_(CancelProcessInstance|DeleteProcessInstance|CancelAndDeleteProcessInstance)$' -count=1
 ```
+
+## US1 v8.7 proof — Iteration 3 (2026-09-10)
+
+- Before T007, `go test ./internal/services/processinstance/v87 -run TestService_CancelProcessInstance -count=1` failed the new terminal-root checks because `Ok` was false and the absent precheck propagated `ErrNotFound`. The first family cases also exposed that v8.7 cancellation routed its existing family walk through the intentionally unsupported public direct getter.
+- T007 now uses the existing tenant-safe traversal adapter for that same family walk, accepts COMPLETED/CANCELED/TERMINATED/ABSENT during cancellation confirmation, locally maps only wrapped `ErrNotFound` to ABSENT in the guarded precheck, and returns the existing no-op response with `Ok=true`.
+- The focused cancellation command passes all contract A–E cases, including completed and disappearing descendants, active-to-completed polling, a mixed terminal family, active/unknown timeout controls, context interruption, and all four terminal-root no-ops with zero cancellation submissions.
+- `go test ./internal/services/processinstance/v87 -count=1`, `git diff --check`, and `make test` (`go test ./... -race -count=1`) passed after the correction.
