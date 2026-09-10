@@ -93,7 +93,7 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			}
 			if len(planned.DeletePlan.CandidateProcessDefinitionKeys) > 0 {
 				ctx := attachOpsPurgeAllProcessDefinitionsTenantContext(cmd, cfg, planned)
-				printOpsTenantContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
+				printOpsTenantContextForCommand(cmd, ctx)
 				prompt := opsPurgeAllProcessDefinitionsConfirmationPrompt(planned)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsPurgeAllProcessDefinitionsAfterReport(cmd, log, cfg, markOpsPurgeAllProcessDefinitionsLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)

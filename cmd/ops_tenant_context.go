@@ -83,6 +83,13 @@ func printOpsTenantContext(cmd *cobra.Command, ctx tenant.Context, channel ops.P
 	}
 }
 
+// printOpsTenantContextForCommand derives the durable channel from the active
+// command mode before reporting pre-prompt tenant context.
+func printOpsTenantContextForCommand(cmd *cobra.Command, ctx tenant.Context) {
+	channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
+	printOpsTenantContext(cmd, ctx, channel)
+}
+
 // printOpsTenantSelectionContext emits only selection semantics at the early
 // command boundary and suppresses duplicate callbacks within the execution.
 func printOpsTenantSelectionContext(cmd *cobra.Command, ctx tenant.Context, channel ops.ProgressChannel) {

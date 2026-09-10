@@ -108,7 +108,7 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 			}
 			if len(planned.DeletePlan.ResolvedRootKeys) > 0 {
 				ctx := attachOpsPurgeProcessInstancesWithIncidentsTenantContext(cmd, cfg, planned)
-				printOpsTenantContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
+				printOpsTenantContextForCommand(cmd, ctx)
 				prompt := opsPurgeProcessInstancesWithIncidentsConfirmationPrompt(planned)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsPurgeProcessInstancesWithIncidentsAfterReport(cmd, log, cfg, markOpsPurgeProcessInstancesWithIncidentsLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)

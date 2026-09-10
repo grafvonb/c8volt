@@ -230,3 +230,24 @@ Started: 2026-09-10 17:15:43
 - Renderer and ops-policy matrices now prove target evidence remains authoritative across known, unknown, default, duplicate, and empty scopes; configured selection does not fill missing metadata.
 - Focused tests, the complete relevant command suite, `make test` (`go test ./... -race -count=1`), and `git diff --check` passed without requiring production changes.
 ---
+---
+## Iteration 12 - 2026-09-10 19:28
+**Work Unit**: US2 mode-derived purge and retention confirmation reporting (partial)
+**Tasks Completed**:
+- [x] T025: Replace hardcoded human-channel confirmation printing with idempotent staged reporting for purge and retention commands
+**Tasks Remaining in Work Unit**: 3 (T026-T028)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_orphan_processinstances.go
+- cmd/ops_purge_processinstances_with_incidents.go
+- cmd/ops_tenant_context.go
+- cmd/ops_tenant_context_test.go
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- A focused command-derived fallback helper lets interactive planning retain full attached evidence and idempotent stages while applying the same JSON, quiet, automation, verbose, debug, and human channel policy as early reporting.
+- Passed the focused four-command interactive and helper regressions, the complete relevant command suite, `make test` (`go test ./... -race -count=1`), declaration ownership review, and `git diff --check`.
+---

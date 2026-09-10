@@ -18,6 +18,7 @@ Started: 2026-09-10T15:15:43Z
 - Interactive command tests can snapshot durable stderr at the exact prompt boundary by wrapping the helper subprocess writer with `io.MultiWriter`; accepted planning/execution naturally exercises duplicate tenant-scope callbacks, while combined stdout/stderr occurrence counts also cover final-render suppression.
 - Accepted interactive repair executes a dry-run preflight followed by a frozen-key execution: top-level filtered discovery remains single-pass, while explicit target and incident lookups repeat as part of the established two-phase repair workflow; declined runs stop after preflight with no mutation requests.
 - Ops tenant evidence prefers keyed target observations when present, ignores empty target keys, and deduplicates by first key observation; aggregate resolved IDs and unknown counts are used only when no targets are supplied, then normalized by the shared tenant-context rules.
+- Pre-prompt fallback reporting uses `printOpsTenantContextForCommand`, which derives the same mode-gated durable channel as early selection and progress callbacks; protected modes neither emit nor mark staged output as rendered.
 
 ## Decisions
 - Preserve existing discovery, frozen-scope, mutation, output-mode, and audit behavior; the feature adds a synchronous typed progress event and two command-local rendering stages.
@@ -36,4 +37,4 @@ Started: 2026-09-10T15:15:43Z
 - Do not add discovery or metadata retrieval for reporting, infer unknown tenants from configuration, or strip attached evidence to deduplicate human output.
 
 ## Current Handoff
-- Continue US2 with T025: replace hardcoded confirmation-channel tenant printing with idempotent staged reporting in purge and retention commands; remain within US2 for the next iteration.
+- Continue US2 with T026: integrate mode-derived idempotent pre-prompt reporting in both repair commands while preserving their preflight and frozen-request behavior; remain within US2 for the next iteration.

@@ -179,3 +179,41 @@ func TestInitializeOpsTenantContextHumanReportingStartsFreshInvocation(t *testin
 	require.True(t, state.selectionRendered)
 	require.False(t, state.affectedRendered)
 }
+
+// TestPrintOpsTenantContextForCommandUsesModeDerivedChannel verifies
+// confirmation fallback reporting cannot bypass JSON or quiet protections.
+func TestPrintOpsTenantContextForCommandUsesModeDerivedChannel(t *testing.T) {
+	tests := []struct {
+		name       string
+		setup      func()
+		wantOutput string
+		wantMarked bool
+	}{
+		{
+			name:       "human",
+			setup:      func() {},
+			wantOutput: "selection scope: tenant-a only\naffected tenants: tenant-b\n",
+			wantMarked: true,
+		},
+		{name: "json", setup: func() { flagViewAsJson = true }},
+		{name: "quiet", setup: func() { flagQuiet = true }},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetTenantContextRenderFlags(t)
+			tt.setup()
+			cmd, buf := newTenantContextRenderTestCommand()
+			initializeTenantContextHumanRenderStages(cmd)
+			ctx := withTenantContextEvidence(newDiscoveryTenantContext("tenant-a"), []string{"tenant-b"}, 0)
+
+			printOpsTenantContextForCommand(cmd, ctx)
+
+			require.Equal(t, tt.wantOutput, buf.String())
+			state, staged := tenantContextHumanRenderStages(cmd)
+			require.True(t, staged)
+			require.Equal(t, tt.wantMarked, state.selectionRendered)
+			require.Equal(t, tt.wantMarked, state.affectedRendered)
+		})
+	}
+}

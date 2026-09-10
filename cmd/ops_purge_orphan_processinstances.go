@@ -88,7 +88,7 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 			}
 			if planned.Discovery.Count > 0 {
 				ctx := attachOpsDiscoveryTenantContext(cmd, cfg, planned.DeletionPlan.TenantEvidence)
-				printOpsTenantContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
+				printOpsTenantContextForCommand(cmd, ctx)
 				prompt := opsPurgeOrphanProcessInstancesConfirmationPrompt(planned)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsPurgeOrphanProcessInstancesAfterReport(cmd, log, cfg, markOpsPurgeOrphanProcessInstancesLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)

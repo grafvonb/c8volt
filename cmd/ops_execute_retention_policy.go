@@ -105,7 +105,7 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 			}
 			if len(planned.DeletePlan.ResolvedRootKeys) > 0 {
 				ctx := attachOpsDiscoveryTenantContext(cmd, cfg, planned.DeletePlan.TenantEvidence)
-				printOpsTenantContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
+				printOpsTenantContextForCommand(cmd, ctx)
 				prompt := opsExecuteRetentionPolicyConfirmationPrompt(planned)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsExecuteRetentionPolicyAfterReport(cmd, log, cfg, markOpsExecuteRetentionPolicyLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
