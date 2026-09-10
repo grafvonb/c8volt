@@ -141,3 +141,21 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - The v8.7 delete path needed the same tenant-safe traversal adapter already used by cancellation; once reachable, the old two-state recovery wait failed only on completed/absent outcomes and the four-state correction preserved final deletion authority.
 ---
+---
+## Iteration 9 - 2026-09-10 10:02
+**Work Unit**: US2 v8.8 forced-delete recovery (partial)
+**Tasks Completed**:
+- [x] T014: Add v8.8 completed/absent forced-delete recovery regressions and preserve final verification/failure controls
+- [x] T018: Accept all terminal outcomes in the v8.8 forced-delete recovery wait
+**Tasks Remaining in Work Unit**: 6
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/v88/service.go
+- internal/services/processinstance/v88/service_test.go
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/quickstart.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- The existing v8.8 cancellation fixture can also drive strict Operate delete responses, proving recovery polling, retry, and final absence verification without a separate test framework.
+---
