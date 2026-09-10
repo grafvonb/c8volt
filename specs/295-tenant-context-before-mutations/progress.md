@@ -251,3 +251,20 @@ Started: 2026-09-10 17:15:43
 - A focused command-derived fallback helper lets interactive planning retain full attached evidence and idempotent stages while applying the same JSON, quiet, automation, verbose, debug, and human channel policy as early reporting.
 - Passed the focused four-command interactive and helper regressions, the complete relevant command suite, `make test` (`go test ./... -race -count=1`), declaration ownership review, and `git diff --check`.
 ---
+---
+## Iteration 13 - 2026-09-10 19:49
+**Work Unit**: US2 mode-derived repair confirmation reporting (partial)
+**Tasks Completed**:
+- [x] T026: Integrate idempotent mode-derived pre-prompt reporting for both repair commands
+**Tasks Remaining in Work Unit**: 2 (T027-T028)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_processinstance.go
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- Both repair preflight fallbacks now use the shared command-derived durable channel, preserving human prompt context while preventing hardcoded visibility from bypassing protected output policy.
+- Passed focused interactive repair and mode-policy regressions, the complete relevant command suite, `make test` (`go test ./... -race -count=1`), `gofmt`, and `git diff --check`.
+---

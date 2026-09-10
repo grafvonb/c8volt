@@ -146,7 +146,7 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 			}
 			if opsRepairPlanHasRepairTargets(planned) {
 				ctx := attachOpsRepairTenantContext(cmd, cfg, planned)
-				printOpsTenantContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
+				printOpsTenantContextForCommand(cmd, ctx)
 				if err := confirmCmdOrAbortFn(false, opsRepairConfirmationPrompt(planned)); err != nil {
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}
