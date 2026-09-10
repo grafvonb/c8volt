@@ -366,3 +366,17 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - Every required gate passed; the coverage-safe adapter filter remains necessary because the guide's original lifecycle filter selects no v8.9/v8.10 tests.
 ---
+---
+## Iteration 23 - 2026-09-10 11:54
+**Work Unit**: Final requirements and evidence reconciliation
+**Tasks Completed**:
+- [x] T033: Reconcile FR-001–FR-010 and SC-001–SC-005, task state, and final runnable test names
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- The requirement map is fully supported by the recorded four-adapter, forced-cleanup, strict-expectation, operator-contract, documentation, and race-suite evidence; the final runnable prefixes remain accurate.
+---
