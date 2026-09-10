@@ -610,6 +610,61 @@ func TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionUsesFrozenPlanRoo
 	require.Equal(t, 1, countOpsIncidentPurgeRequests(requests.Snapshot(), "POST /v2/incidents/search "))
 }
 
+// TestOpsPurgeProcessInstancesWithIncidentsInteractiveTenantContext verifies
+// complete prompt-time context, duplicate callback suppression, frozen
+// discovery reuse, and the no-mutation decline path.
+func TestOpsPurgeProcessInstancesWithIncidentsInteractiveTenantContext(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		decline bool
+	}{
+		{name: "accepted"},
+		{name: "declined", decline: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			var deleted testx.SafeSlice[string]
+			srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+			t.Cleanup(srv.Close)
+			promptPath := filepath.Join(t.TempDir(), "prompt.txt")
+			promptOutputPath := filepath.Join(t.TempDir(), "prompt-output.txt")
+			env := map[string]string{
+				"C8VOLT_TEST_CONFIG":                            writeTestConfigForVersion(t, srv.URL, "8.9"),
+				"C8VOLT_TEST_INCIDENT_PURGE_PROMPT_FILE":        promptPath,
+				"C8VOLT_TEST_INCIDENT_PURGE_PROMPT_OUTPUT_FILE": promptOutputPath,
+				"C8VOLT_TEST_INCIDENT_PURGE_ARGS": marshalOpsPurgeProcessInstancesWithIncidentsArgsForEnv(t, []string{
+					"ops", "purge", "process-instances-with-incidents",
+					"--no-wait",
+				}),
+			}
+			if tt.decline {
+				env["C8VOLT_TEST_INCIDENT_PURGE_DECLINE"] = "1"
+			}
+
+			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeProcessInstancesWithIncidentsCommandHelper", env)
+			if tt.decline {
+				require.Error(t, err, stderr)
+			} else {
+				require.NoError(t, err, stderr)
+			}
+			promptOutput := readReportFile(t, promptOutputPath)
+			require.Contains(t, readReportFile(t, promptPath), "incident purge: 1 candidate incident(s)")
+			require.Contains(t, promptOutput, "selection scope: unfiltered across accessible tenants")
+			require.Contains(t, promptOutput, "affected tenants: tenant")
+			require.Less(t, strings.Index(promptOutput, "selection scope: unfiltered across accessible tenants"), strings.Index(promptOutput, "affected tenants: tenant"))
+			combined := stdout + stderr
+			require.Equal(t, 1, strings.Count(combined, "selection scope: unfiltered across accessible tenants"), combined)
+			require.Equal(t, 1, strings.Count(combined, "affected tenants: tenant"), combined)
+			require.Equal(t, 1, countOpsIncidentPurgeRequests(requests.Snapshot(), "POST /v2/incidents/search "))
+			if tt.decline {
+				require.Empty(t, deleted.Snapshot())
+				return
+			}
+			require.Equal(t, []string{"/v2/process-instances/" + opsIncidentPurgeRootKey + "/deletion"}, deleted.Snapshot())
+		})
+	}
+}
+
 // TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionReusesMultiPageFrozenScope verifies confirmation does not trigger a second incident discovery pass.
 func TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionReusesMultiPageFrozenScope(t *testing.T) {
 	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
@@ -946,6 +1001,11 @@ func TestOpsPurgeProcessInstancesWithIncidentsCommandHelper(t *testing.T) {
 	resetCommandTreeFlags(root)
 	resetProcessInstanceCommandGlobals()
 	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	var promptOutput bytes.Buffer
+	errWriter := io.Writer(os.Stderr)
+	if os.Getenv("C8VOLT_TEST_INCIDENT_PURGE_PROMPT_OUTPUT_FILE") != "" {
+		errWriter = io.MultiWriter(os.Stderr, &promptOutput)
+	}
 	if promptPath := os.Getenv("C8VOLT_TEST_INCIDENT_PURGE_PROMPT_FILE"); promptPath != "" {
 		prevConfirm := confirmCmdOrAbortFn
 		defer func() { confirmCmdOrAbortFn = prevConfirm }()
@@ -953,12 +1013,23 @@ func TestOpsPurgeProcessInstancesWithIncidentsCommandHelper(t *testing.T) {
 			if autoConfirm {
 				return fmt.Errorf("unexpected auto-confirm prompt")
 			}
-			return os.WriteFile(promptPath, []byte(prompt), 0o600)
+			if err := os.WriteFile(promptPath, []byte(prompt), 0o600); err != nil {
+				return err
+			}
+			if outputPath := os.Getenv("C8VOLT_TEST_INCIDENT_PURGE_PROMPT_OUTPUT_FILE"); outputPath != "" {
+				if err := os.WriteFile(outputPath, promptOutput.Bytes(), 0o600); err != nil {
+					return err
+				}
+			}
+			if os.Getenv("C8VOLT_TEST_INCIDENT_PURGE_DECLINE") == "1" {
+				return localPreconditionError(ErrCmdAborted)
+			}
+			return nil
 		}
 	}
 	root.SetArgs(append([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG")}, args...))
 	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
+	root.SetErr(errWriter)
 	if err := root.Execute(); err != nil {
 		handleBootstrapError(root, err)
 	}

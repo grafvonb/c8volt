@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -299,6 +300,57 @@ func TestOpsExecuteRetentionPolicyConfirmedDeletionUsesFrozenPlanRoots(t *testin
 	require.Contains(t, output, "elapsed:")
 	require.Equal(t, []string{"/v1/process-instances/" + opsRetentionPolicySeedKey}, deleted.Snapshot())
 	require.NotContains(t, strings.Join(deleted.Snapshot(), "\n"), opsRetentionPolicyChangedSeedKey)
+}
+
+// TestOpsExecuteRetentionPolicyInteractiveTenantContext verifies accepted and
+// declined retention plans show complete context at the prompt, suppress
+// repeated callbacks/final summaries, and retain frozen-seed reuse.
+func TestOpsExecuteRetentionPolicyInteractiveTenantContext(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		decline bool
+	}{
+		{name: "accepted"},
+		{name: "declined", decline: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			var deleted testx.SafeSlice[string]
+			srv := newOpsRetentionPolicyChangingSeedServer(t, &requests, &deleted)
+			t.Cleanup(srv.Close)
+			promptPath := filepath.Join(t.TempDir(), "prompt.txt")
+			promptOutputPath := filepath.Join(t.TempDir(), "prompt-output.txt")
+			env := map[string]string{
+				"C8VOLT_TEST_CONFIG":                  writeTestConfigForVersion(t, srv.URL, "8.9"),
+				"C8VOLT_TEST_RETENTION_PROMPT":        promptPath,
+				"C8VOLT_TEST_RETENTION_PROMPT_OUTPUT": promptOutputPath,
+			}
+			if tt.decline {
+				env["C8VOLT_TEST_RETENTION_DECLINE"] = "1"
+			}
+
+			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsExecuteRetentionPolicyInteractiveHelper", env)
+			if tt.decline {
+				require.Error(t, err, stderr)
+			} else {
+				require.NoError(t, err, stderr)
+			}
+			promptOutput := readReportFile(t, promptOutputPath)
+			require.Contains(t, readReportFile(t, promptPath), "retention cleanup: 1 retention candidate(s)")
+			require.Contains(t, promptOutput, "selection scope: tenant-a only")
+			require.Contains(t, promptOutput, "affected tenants: tenant")
+			require.Less(t, strings.Index(promptOutput, "selection scope: tenant-a only"), strings.Index(promptOutput, "affected tenants: tenant"))
+			combined := stdout + stderr
+			require.Equal(t, 1, strings.Count(combined, "selection scope: tenant-a only"), combined)
+			require.Equal(t, 1, strings.Count(combined, "affected tenants: tenant"), combined)
+			if tt.decline {
+				require.Empty(t, deleted.Snapshot())
+				return
+			}
+			require.Equal(t, []string{"/v2/process-instances/" + opsRetentionPolicySeedKey + "/deletion"}, deleted.Snapshot())
+			require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), opsRetentionPolicyChangedSeedKey)
+		})
+	}
 }
 
 // TestOpsExecuteRetentionPolicyAutoConfirmReportsTenantScopeBeforeWork verifies
@@ -601,6 +653,41 @@ func TestOpsExecuteRetentionPolicyBlocksNonFinalScopeBeforeMutationHelper(t *tes
 	if err := root.Execute(); err != nil {
 		handleBootstrapError(root, err)
 	}
+}
+
+func TestOpsExecuteRetentionPolicyInteractiveHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	var promptOutput bytes.Buffer
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		if autoConfirm {
+			return fmt.Errorf("unexpected auto-confirm prompt")
+		}
+		if err := os.WriteFile(os.Getenv("C8VOLT_TEST_RETENTION_PROMPT"), []byte(prompt), 0o600); err != nil {
+			return err
+		}
+		if err := os.WriteFile(os.Getenv("C8VOLT_TEST_RETENTION_PROMPT_OUTPUT"), promptOutput.Bytes(), 0o600); err != nil {
+			return err
+		}
+		if os.Getenv("C8VOLT_TEST_RETENTION_DECLINE") == "1" {
+			return localPreconditionError(ErrCmdAborted)
+		}
+		return nil
+	}
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"--tenant", "tenant-a",
+		"ops", "execute", "retention-policy",
+		"--retention-days", "90",
+		"--no-wait",
+	})
+	root.SetOut(os.Stdout)
+	root.SetErr(io.MultiWriter(os.Stderr, &promptOutput))
+	_ = root.Execute()
 }
 
 func TestOpsExecuteRetentionPolicyDryRunDiscoveryOutput(t *testing.T) {

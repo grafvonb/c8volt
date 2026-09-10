@@ -484,6 +484,65 @@ func TestOpsPurgeAllProcessDefinitionsConfirmedDeletionUsesFrozenCandidates(t *t
 	require.Equal(t, 1, countOpsPurgeAllProcessDefinitionsRequests(requests.Snapshot(), "POST /v2/process-definitions/search "))
 }
 
+// TestOpsPurgeAllProcessDefinitionsInteractiveTenantContext verifies accepted
+// and declined plans expose complete tenant context at the prompt while
+// repeated planning/execution callbacks and final rendering stay idempotent.
+func TestOpsPurgeAllProcessDefinitionsInteractiveTenantContext(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		decline bool
+	}{
+		{name: "accepted"},
+		{name: "declined", decline: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			var deleted testx.SafeSlice[string]
+			srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+			t.Cleanup(srv.Close)
+			promptPath := filepath.Join(t.TempDir(), "prompt.txt")
+			promptOutputPath := filepath.Join(t.TempDir(), "prompt-output.txt")
+			env := map[string]string{
+				"C8VOLT_TEST_CONFIG":                     writeTestConfigForVersion(t, srv.URL, "8.9"),
+				"C8VOLT_TEST_ALL_PD_PURGE_PROMPT":        promptPath,
+				"C8VOLT_TEST_ALL_PD_PURGE_PROMPT_OUTPUT": promptOutputPath,
+				"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, []string{
+					"--tenant", "tenant-a",
+					"ops", "purge", "all-process-definitions",
+					"--no-wait",
+				}),
+			}
+			if tt.decline {
+				env["C8VOLT_TEST_ALL_PD_PURGE_DECLINE"] = "1"
+			}
+
+			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", env)
+			if tt.decline {
+				require.Error(t, err, stderr)
+			} else {
+				require.NoError(t, err, stderr)
+			}
+			promptOutput := readReportFile(t, promptOutputPath)
+			require.Contains(t, readReportFile(t, promptPath), "process-definition purge: 2 candidate process definition(s)")
+			require.Contains(t, promptOutput, "selection scope: tenant-a only")
+			require.Contains(t, promptOutput, "affected tenants: tenant")
+			require.Less(t, strings.Index(promptOutput, "selection scope: tenant-a only"), strings.Index(promptOutput, "affected tenants: tenant"))
+			combined := stdout + stderr
+			require.Equal(t, 1, strings.Count(combined, "selection scope: tenant-a only"), combined)
+			require.Equal(t, 1, strings.Count(combined, "affected tenants: tenant"), combined)
+			require.Equal(t, 1, countOpsPurgeAllProcessDefinitionsRequests(requests.Snapshot(), "POST /v2/process-definitions/search "))
+			if tt.decline {
+				require.Empty(t, deleted.Snapshot())
+				return
+			}
+			require.ElementsMatch(t, []string{
+				"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyA + "/deletion",
+				"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyB + "/deletion",
+			}, deleted.Snapshot())
+		})
+	}
+}
+
 // TestOpsPurgeAllProcessDefinitionsAutoConfirmReportsTenantScopeBeforeWork
 // verifies the apd alias reports named selection before discovery and frozen
 // tenant evidence before the first deletion without changing request targets.
@@ -1313,6 +1372,11 @@ func TestOpsPurgeAllProcessDefinitionsCommandHelper(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
 	resetOpsPurgeAllProcessDefinitionsFlagState()
+	var promptOutput bytes.Buffer
+	errWriter := io.Writer(os.Stderr)
+	if os.Getenv("C8VOLT_TEST_ALL_PD_PURGE_PROMPT_OUTPUT") != "" {
+		errWriter = io.MultiWriter(os.Stderr, &promptOutput)
+	}
 	if promptPath := os.Getenv("C8VOLT_TEST_ALL_PD_PURGE_PROMPT"); promptPath != "" {
 		prevConfirm := confirmCmdOrAbortFn
 		defer func() { confirmCmdOrAbortFn = prevConfirm }()
@@ -1323,6 +1387,11 @@ func TestOpsPurgeAllProcessDefinitionsCommandHelper(t *testing.T) {
 			if err := os.WriteFile(promptPath, []byte(prompt), 0o600); err != nil {
 				return err
 			}
+			if outputPath := os.Getenv("C8VOLT_TEST_ALL_PD_PURGE_PROMPT_OUTPUT"); outputPath != "" {
+				if err := os.WriteFile(outputPath, promptOutput.Bytes(), 0o600); err != nil {
+					return err
+				}
+			}
 			if os.Getenv("C8VOLT_TEST_ALL_PD_PURGE_DECLINE") == "1" {
 				return fmt.Errorf("confirmation declined")
 			}
@@ -1331,7 +1400,7 @@ func TestOpsPurgeAllProcessDefinitionsCommandHelper(t *testing.T) {
 	}
 	root.SetArgs(append([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG")}, args...))
 	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
+	root.SetErr(errWriter)
 	if err := root.Execute(); err != nil {
 		handleBootstrapError(root, err)
 	}

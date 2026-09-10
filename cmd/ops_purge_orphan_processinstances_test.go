@@ -4,8 +4,10 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -197,6 +199,63 @@ func TestOpsPurgeOrphanProcessInstancesAutoConfirmDeletesCandidateKeys(t *testin
 	require.Contains(t, output, "elapsed:")
 	require.Equal(t, []string{"/v2/process-instances/" + opsOrphanChildKey + "/deletion"}, deleted.Snapshot())
 	require.NotContains(t, strings.Join(deleted.Snapshot(), "\n"), opsOrphanParentKey)
+}
+
+// TestOpsPurgeOrphanProcessInstancesInteractiveTenantContext verifies complete
+// tenant context is visible at acceptance or decline, duplicate scope events
+// stay silent, and the planned orphan key is reused for confirmed deletion.
+func TestOpsPurgeOrphanProcessInstancesInteractiveTenantContext(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		decline bool
+	}{
+		{name: "accepted"},
+		{name: "declined", decline: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			var deleted testx.SafeSlice[string]
+			srv := newOpsOrphanPurgeServerWithState(t, &requests, &deleted, true, "TERMINATED")
+			t.Cleanup(srv.Close)
+			promptPath := filepath.Join(t.TempDir(), "prompt.txt")
+			promptOutputPath := filepath.Join(t.TempDir(), "prompt-output.txt")
+			env := map[string]string{
+				"C8VOLT_TEST_CONFIG":                     writeTestConfigForVersion(t, srv.URL, "8.9"),
+				"C8VOLT_TEST_ORPHAN_PURGE_PROMPT":        promptPath,
+				"C8VOLT_TEST_ORPHAN_PURGE_PROMPT_OUTPUT": promptOutputPath,
+			}
+			if tt.decline {
+				env["C8VOLT_TEST_ORPHAN_PURGE_DECLINE"] = "1"
+			}
+
+			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeOrphanProcessInstancesInteractiveHelper", env)
+			if tt.decline {
+				require.Error(t, err, stderr)
+			} else {
+				require.NoError(t, err, stderr)
+			}
+			promptOutput := readReportFile(t, promptOutputPath)
+			require.Contains(t, readReportFile(t, promptPath), "orphan purge: 1 orphan candidate(s)")
+			require.Contains(t, promptOutput, "selection scope: unfiltered across accessible tenants")
+			require.Contains(t, promptOutput, "affected tenants: tenant")
+			require.Less(t, strings.Index(promptOutput, "selection scope: unfiltered across accessible tenants"), strings.Index(promptOutput, "affected tenants: tenant"))
+			combined := stdout + stderr
+			require.Equal(t, 1, strings.Count(combined, "selection scope: unfiltered across accessible tenants"), combined)
+			require.Equal(t, 1, strings.Count(combined, "affected tenants: tenant"), combined)
+			wantSearchRequests := 4
+			if tt.decline {
+				wantSearchRequests = 2
+			}
+			snapshot := requests.Snapshot()
+			require.Equal(t, wantSearchRequests, countRequestPrefixes(snapshot, "POST /v2/process-instances/search "), snapshot)
+			require.Equal(t, 1, strings.Count(strings.Join(snapshot, "\n"), `"$exists":true`), snapshot)
+			if tt.decline {
+				require.Empty(t, deleted.Snapshot())
+				return
+			}
+			require.Equal(t, []string{"/v2/process-instances/" + opsOrphanChildKey + "/deletion"}, deleted.Snapshot())
+		})
+	}
 }
 
 // TestOpsPurgeOrphanProcessInstancesAutoConfirmReportsTenantScopeBeforeWork
@@ -584,6 +643,39 @@ func TestOpsPurgeOrphanProcessInstancesAbortPreservesExistingReportHelper(t *tes
 	})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestOpsPurgeOrphanProcessInstancesInteractiveHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	var promptOutput bytes.Buffer
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		if autoConfirm {
+			return fmt.Errorf("unexpected auto-confirm prompt")
+		}
+		if err := os.WriteFile(os.Getenv("C8VOLT_TEST_ORPHAN_PURGE_PROMPT"), []byte(prompt), 0o600); err != nil {
+			return err
+		}
+		if err := os.WriteFile(os.Getenv("C8VOLT_TEST_ORPHAN_PURGE_PROMPT_OUTPUT"), promptOutput.Bytes(), 0o600); err != nil {
+			return err
+		}
+		if os.Getenv("C8VOLT_TEST_ORPHAN_PURGE_DECLINE") == "1" {
+			return localPreconditionError(ErrCmdAborted)
+		}
+		return nil
+	}
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"ops", "purge", "orphan-process-instances",
+		"--no-wait",
+	})
+	root.SetOut(os.Stdout)
+	root.SetErr(io.MultiWriter(os.Stderr, &promptOutput))
 	_ = root.Execute()
 }
 

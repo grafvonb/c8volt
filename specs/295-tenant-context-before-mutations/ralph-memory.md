@@ -15,6 +15,7 @@ Started: 2026-09-10T15:15:43Z
 - A command opts into early reporting by initializing a fresh staged base context after local/report validation; tenant-scope events then merge evidence into that attached base and emit the affected stage before existing generic progress handling.
 - Real-command timing tests use a synchronized output writer plus a reverse-proxy observer to snapshot output at the first backend request and first mutation without racing command output.
 - Repair commands derive staged selection directly from the resolved `RepairDiscoveryMode`: search uses discovery semantics, while keyed and stdin modes use explicit-key/not-applied semantics; initialize before configuring progress or starting activity.
+- Interactive command tests can snapshot durable stderr at the exact prompt boundary by wrapping the helper subprocess writer with `io.MultiWriter`; accepted planning/execution naturally exercises duplicate tenant-scope callbacks, while combined stdout/stderr occurrence counts also cover final-render suppression.
 
 ## Decisions
 - Preserve existing discovery, frozen-scope, mutation, output-mode, and audit behavior; the feature adds a synchronous typed progress event and two command-local rendering stages.
@@ -33,4 +34,4 @@ Started: 2026-09-10T15:15:43Z
 - Do not add discovery or metadata retrieval for reporting, infer unknown tenants from configuration, or strip attached evidence to deduplicate human output.
 
 ## Current Handoff
-- Begin US2 with T022: add interactive accept/decline ordering and duplicate-callback coverage for purge and retention commands; remain within US2 for the next iteration.
+- Continue US2 with T023: add interactive keyed/search acceptance coverage for both repair commands; remain within US2 for the next iteration.

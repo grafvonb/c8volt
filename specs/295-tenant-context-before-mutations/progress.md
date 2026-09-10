@@ -177,3 +177,22 @@ Started: 2026-09-10 17:15:43
 - The four new real-handler cases observed selection at the first backend request and `affected tenants: <default>` before the first variable PUT. Incident keyed/search retained 0/1 search calls, 1/0 keyed GETs, 1/2 variable updates, and 1/2 resolutions; process-instance keyed/search retained 0/1 process-instance searches, 1/0 keyed GETs, one incident search, one variable update, and one resolution. All auto-confirm cases invoked zero prompts.
 - Passed the focused four-case timing test, all three targeted quickstart suites, `make test` (`go test ./... -race -count=1`), command declaration ownership review, and `git diff --check`.
 ---
+---
+## Iteration 9 - 2026-09-10 18:58
+**Work Unit**: US2 interactive purge and retention tenant-context coverage (partial)
+**Tasks Completed**:
+- [x] T022: Add interactive accept/decline ordering and duplicate-callback tests for purge and retention commands
+**Tasks Remaining in Work Unit**: 6 (T023-T028)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_execute_retention_policy_test.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- cmd/ops_purge_orphan_processinstances_test.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- Prompt-time stderr snapshots prove selection and affected context are visible before both acceptance and decline; accepted two-call workflows and final rendering emit each tenant line exactly once, while declined paths submit no deletion.
+- Frozen APD, incident, orphan, and retention targets remain reused without a second top-level discovery; focused command regressions, `make test` (`go test ./... -race -count=1`), and `git diff --check` passed.
+---
