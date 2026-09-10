@@ -268,3 +268,20 @@ Started: 2026-09-10 17:15:43
 - Both repair preflight fallbacks now use the shared command-derived durable channel, preserving human prompt context while preventing hardcoded visibility from bypassing protected output policy.
 - Passed focused interactive repair and mode-policy regressions, the complete relevant command suite, `make test` (`go test ./... -race -count=1`), `gofmt`, and `git diff --check`.
 ---
+---
+## Iteration 14 - 2026-09-10 19:59
+**Work Unit**: US2 stage-aware final suppression and complete validation
+**Tasks Completed**:
+- [x] T027: Complete stage-aware final suppression with preserved attached evidence
+- [x] T028: Run and record the US2 interactive, renderer, and US1 timing regressions
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_tenant_context_test.go
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- The repeated-lifecycle regression proves duplicate preview/execution scope events and repeated final renders emit the explicit-key selection, cross-tenant warning, and unknown-tenant warning exactly once while retaining normalized known IDs, unknown count, cross-tenant state, and warnings in the attached context.
+- The targeted command suite passed its prompt-time snapshots, single-occurrence assertions, and decline paths with zero mutations. Exact quickstart commands passed for `internal/services/ops`, `c8volt/ops`, and `cmd`; `make test` (`go test ./... -race -count=1`), `gofmt`, declaration ownership review, and `git diff --check` also passed.
+---

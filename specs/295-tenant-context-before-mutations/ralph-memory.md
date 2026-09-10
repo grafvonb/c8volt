@@ -19,6 +19,7 @@ Started: 2026-09-10T15:15:43Z
 - Accepted interactive repair executes a dry-run preflight followed by a frozen-key execution: top-level filtered discovery remains single-pass, while explicit target and incident lookups repeat as part of the established two-phase repair workflow; declined runs stop after preflight with no mutation requests.
 - Ops tenant evidence prefers keyed target observations when present, ignores empty target keys, and deduplicates by first key observation; aggregate resolved IDs and unknown counts are used only when no targets are supplied, then normalized by the shared tenant-context rules.
 - All six interactive ops workflows route pre-prompt fallback reporting through `printOpsTenantContextForCommand`, which derives the same mode-gated durable channel as early selection and progress callbacks; protected modes neither emit nor mark staged output as rendered.
+- Repeated preview/execution tenant-scope events may refresh the complete attached evidence, while `selectionRendered` and `affectedRendered` suppress only duplicate human lines and final-view repetitions; explicit-key selection remains independent of tenant override provenance.
 
 ## Decisions
 - Preserve existing discovery, frozen-scope, mutation, output-mode, and audit behavior; the feature adds a synchronous typed progress event and two command-local rendering stages.
@@ -37,4 +38,4 @@ Started: 2026-09-10T15:15:43Z
 - Do not add discovery or metadata retrieval for reporting, infer unknown tenants from configuration, or strip attached evidence to deduplicate human output.
 
 ## Current Handoff
-- Continue US2 with T027: complete stage-aware final suppression in the shared tenant-context renderer and ops support, preserving attached evidence and existing severity; remain within US2 for the next iteration.
+- Begin US3 with T029: add all-six-command protected-mode regressions in `cmd/ops_contract_test.go`; keep tenant evidence attachment independent from human output suppression.

@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"context"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
@@ -216,4 +217,50 @@ func TestPrintOpsTenantContextForCommandUsesModeDerivedChannel(t *testing.T) {
 			require.Equal(t, tt.wantMarked, state.affectedRendered)
 		})
 	}
+}
+
+// TestOpsTenantContextRepeatedLifecyclePreservesEvidenceAndSuppressesFinalOutput
+// verifies preview and execution notifications can refresh attached evidence
+// without repeating explicit-key context or warning-level affected summaries.
+func TestOpsTenantContextRepeatedLifecyclePreservesEvidenceAndSuppressesFinalOutput(t *testing.T) {
+	resetTenantContextRenderFlags(t)
+	cmd, buf := newTenantContextRenderTestCommand()
+	cmd.SetContext(tenantOverrideProvenance{
+		ConfiguredTenantID: "tenant-a",
+		ExplicitTenantID:   "tenant-a",
+		Explicit:           true,
+	}.ToContext(context.Background()))
+	initializeTenantContextHumanRenderStages(cmd)
+	base := newExplicitKeysTenantContext("tenant-a")
+	attachTenantContext(cmd, base)
+	channel := ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}
+	event := ops.ProgressEvent{
+		Kind: ops.ProgressEventKindTenantScope,
+		TenantScope: &ops.TenantScopeProgress{Evidence: process.TenantEvidence{Targets: []process.TenantEvidenceTarget{
+			{Key: "1", TenantID: "tenant-b"},
+			{Key: "2", TenantID: "tenant-a"},
+			{Key: "3"},
+		}}},
+	}
+
+	printOpsTenantSelectionContext(cmd, base, channel)
+	handleOpsTenantScopeProgressEvent(cmd, event, channel)
+	handleOpsTenantScopeProgressEvent(cmd, event, channel)
+	renderAttachedTenantContext(cmd)
+	renderAttachedTenantContext(cmd)
+
+	require.Equal(t, ""+
+		"selection scope: explicit resource keys; tenant filter not applied\n"+
+		"affected tenants: tenant-a, tenant-b\n"+
+		"tenant metadata is unknown for 1 target\n", buf.String())
+	attached, ok := attachedTenantContext(cmd)
+	require.True(t, ok)
+	require.Equal(t, []string{"tenant-a", "tenant-b"}, attached.ResolvedTenantIDs)
+	require.Equal(t, 1, attached.UnknownTargetCount)
+	require.True(t, attached.CrossTenant)
+	require.Len(t, attached.Warnings, 2)
+	state, staged := tenantContextHumanRenderStages(cmd)
+	require.True(t, staged)
+	require.True(t, state.selectionRendered)
+	require.True(t, state.affectedRendered)
 }
