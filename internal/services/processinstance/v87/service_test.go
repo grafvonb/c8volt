@@ -984,6 +984,8 @@ type cancellationFixture struct {
 	children       map[string][]cancellationChild
 	reads          map[string]int
 	cancellations  int
+	deleteResponse func(call int) *operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse
+	deletions      int
 	cancelReadKey  string
 	cancelReadAt   int
 	cancelReadFunc context.CancelFunc
@@ -1012,6 +1014,14 @@ func (f *cancellationFixture) service(t *testing.T) *v87.Service {
 		}, nil
 	}
 	operate := newStrictOperateClient(t)
+	if f.deleteResponse != nil {
+		operate.deleteProcessInstanceAndAllDependantDataByKeyWithResp = func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
+			f.mu.Lock()
+			defer f.mu.Unlock()
+			f.deletions++
+			return f.deleteResponse(f.deletions), nil
+		}
+	}
 	operate.searchProcessInstancesWithResponse = func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
@@ -1056,6 +1066,13 @@ func (f *cancellationFixture) cancellationCount() int {
 	return f.cancellations
 }
 
+// deletionCount returns the synchronized history-deletion request count.
+func (f *cancellationFixture) deletionCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.deletions
+}
+
 // readCount returns the synchronized state-read count for a process-instance key.
 func (f *cancellationFixture) readCount(key string) int {
 	f.mu.Lock()
@@ -1070,76 +1087,142 @@ func (f *cancellationFixture) cancelOnRead(key string, read int, cancel context.
 	f.cancelReadFunc = cancel
 }
 
+// TestService_DeleteProcessInstance verifies v8.7 deletion preserves forced-cancellation recovery and final verification.
 func TestService_DeleteProcessInstance(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("SuccessNoWait", func(t *testing.T) {
-		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), &mockOperateClient{
-			searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
-				items := []operatev87.ProcessInstance{}
-				return &operatev87.SearchProcessInstancesResponse{
-					HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
-					JSON200: &operatev87.ResultsProcessInstance{
-						Items: &items,
-					},
-				}, nil
-			},
-			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
-				t.Fatalf("unexpected delete call")
-				return nil, nil
-			},
-		})
+	for _, tc := range []struct {
+		name             string
+		recoveryState    string
+		wantRecoveryRead int
+	}{
+		{name: "ForceRecoveryAcceptsCompletedWithNoWait", recoveryState: "COMPLETED", wantRecoveryRead: 2},
+		{name: "ForceRecoveryAcceptsAbsentWithNoWait", recoveryState: "", wantRecoveryRead: 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := newCancellationFixture(t, map[string][]string{
+				"123": {"ACTIVE", tc.recoveryState},
+			}, nil)
+			fixture.deleteResponse = func(call int) *operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse {
+				if call == 1 {
+					return &operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
+						HTTPResponse:              newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusBadRequest, "400 Bad Request"),
+						ApplicationproblemJSON400: &operatev87.Error{Message: new(wrongStateMessage())},
+					}
+				}
+				return &operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
+					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
+					JSON200:      &operatev87.ChangeStatus{},
+				}
+			}
 
-		_, err := svc.DeleteProcessInstance(ctx, "123", services.WithNoWait())
+			resp, err := fixture.service(t).DeleteProcessInstance(ctx, "123", services.WithForce(), services.WithNoStateCheck(), services.WithNoWait())
+
+			require.NoError(t, err)
+			assert.True(t, resp.Ok)
+			assert.Equal(t, 1, fixture.cancellationCount())
+			assert.Equal(t, 2, fixture.deletionCount())
+			assert.Equal(t, tc.wantRecoveryRead, fixture.readCount("123"))
+		})
+	}
+
+	t.Run("ForceRecoveryRetainsFinalAbsenceVerification", func(t *testing.T) {
+		fixture := newCancellationFixture(t, map[string][]string{
+			"123": {"ACTIVE", "ACTIVE", "ACTIVE", "CANCELED", "COMPLETED", ""},
+		}, nil)
+		fixture.deleteResponse = func(call int) *operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse {
+			if call == 1 {
+				return &operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
+					HTTPResponse:              newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusBadRequest, "400 Bad Request"),
+					ApplicationproblemJSON400: &operatev87.Error{Message: new(wrongStateMessage())},
+				}
+			}
+			return &operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
+				HTTPResponse: newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
+				JSON200:      &operatev87.ChangeStatus{},
+			}
+		}
+
+		resp, err := fixture.service(t).DeleteProcessInstance(ctx, "123", services.WithForce(), services.WithNoStateCheck())
+
+		require.NoError(t, err)
+		assert.True(t, resp.Ok)
+		assert.Equal(t, 2, fixture.deletionCount())
+		assert.Equal(t, 6, fixture.readCount("123"))
+	})
+
+	t.Run("ForceRecoveryPreservesRetryDeleteFailure", func(t *testing.T) {
+		fixture := newCancellationFixture(t, map[string][]string{
+			"123": {"ACTIVE", "COMPLETED"},
+		}, nil)
+		fixture.deleteResponse = func(call int) *operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse {
+			if call == 1 {
+				return &operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
+					HTTPResponse:              newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusBadRequest, "400 Bad Request"),
+					ApplicationproblemJSON400: &operatev87.Error{Message: new(wrongStateMessage())},
+				}
+			}
+			return &operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
+				Body:         []byte(`{"message":"forbidden"}`),
+				HTTPResponse: newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusForbidden, "403 Forbidden"),
+			}
+		}
+
+		resp, err := fixture.service(t).DeleteProcessInstance(ctx, "123", services.WithForce(), services.WithNoStateCheck(), services.WithNoWait())
 
 		require.Error(t, err)
-		assert.ErrorIs(t, err, d.ErrUnsupported)
+		assert.False(t, resp.Ok)
+		assert.Equal(t, 2, fixture.deletionCount())
+		assert.Equal(t, 2, fixture.readCount("123"))
+	})
+
+	t.Run("SuccessNoWait", func(t *testing.T) {
+		fixture := newCancellationFixture(t, map[string][]string{"123": {"COMPLETED"}}, nil)
+		fixture.deleteResponse = func(int) *operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse {
+			return &operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
+				HTTPResponse: newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
+				JSON200:      &operatev87.ChangeStatus{},
+			}
+		}
+
+		resp, err := fixture.service(t).DeleteProcessInstance(ctx, "123", services.WithNoWait())
+
+		require.NoError(t, err)
+		assert.True(t, resp.Ok)
+		assert.Equal(t, 1, fixture.deletionCount())
 	})
 
 	t.Run("WrongStateWithoutForceReturnsConflict", func(t *testing.T) {
-		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), &mockOperateClient{
-			searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
-				items := []operatev87.ProcessInstance{}
-				return &operatev87.SearchProcessInstancesResponse{
-					HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
-					JSON200: &operatev87.ResultsProcessInstance{
-						Items: &items,
-					},
-				}, nil
-			},
-			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
-				t.Fatalf("unexpected delete call")
-				return nil, nil
-			},
-		})
+		fixture := newCancellationFixture(t, map[string][]string{"123": {"CANCELED"}}, nil)
+		fixture.deleteResponse = func(int) *operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse {
+			return &operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
+				HTTPResponse:              newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusBadRequest, "400 Bad Request"),
+				ApplicationproblemJSON400: &operatev87.Error{Message: new(wrongStateMessage())},
+			}
+		}
 
-		_, err := svc.DeleteProcessInstance(ctx, "123", services.WithNoWait())
+		resp, err := fixture.service(t).DeleteProcessInstance(ctx, "123", services.WithNoWait())
 
-		require.Error(t, err)
-		assert.ErrorIs(t, err, d.ErrUnsupported)
+		require.NoError(t, err)
+		assert.False(t, resp.Ok)
+		assert.Equal(t, http.StatusConflict, resp.StatusCode)
+		assert.Equal(t, 1, fixture.deletionCount())
 	})
 
 	t.Run("SuccessWaitsForAbsentState", func(t *testing.T) {
-		svc := newTestService(t, waitTestConfig(), newStrictCamundaClient(t), &mockOperateClient{
-			searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
-				items := []operatev87.ProcessInstance{}
-				return &operatev87.SearchProcessInstancesResponse{
-					HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
-					JSON200: &operatev87.ResultsProcessInstance{
-						Items: &items,
-					},
-				}, nil
-			},
-			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
-				t.Fatalf("unexpected delete call")
-				return nil, nil
-			},
-		})
+		fixture := newCancellationFixture(t, map[string][]string{"123": {"COMPLETED", ""}}, nil)
+		fixture.deleteResponse = func(int) *operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse {
+			return &operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
+				HTTPResponse: newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
+				JSON200:      &operatev87.ChangeStatus{},
+			}
+		}
 
-		_, err := svc.DeleteProcessInstance(ctx, "123")
+		resp, err := fixture.service(t).DeleteProcessInstance(ctx, "123")
 
-		require.Error(t, err)
-		assert.ErrorIs(t, err, d.ErrUnsupported)
+		require.NoError(t, err)
+		assert.True(t, resp.Ok)
+		assert.Equal(t, 2, fixture.readCount("123"))
 	})
 }
 

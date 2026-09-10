@@ -123,3 +123,21 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - The existing bulk adapter already preserves service response fields; focused coverage now proves completed and absent no-ops count as successful, and the full contract A–E matrix passes across all four supported versions.
 ---
+---
+## Iteration 8 - 2026-09-10 09:54
+**Work Unit**: US2 v8.7 forced-delete recovery (partial)
+**Tasks Completed**:
+- [x] T013: Add v8.7 completed/absent forced-delete recovery regressions and preserve final verification/failure controls
+- [x] T017: Accept all terminal outcomes in the v8.7 forced-delete recovery wait
+**Tasks Remaining in Work Unit**: 8
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/v87/service.go
+- internal/services/processinstance/v87/service_test.go
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/quickstart.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- The v8.7 delete path needed the same tenant-safe traversal adapter already used by cancellation; once reachable, the old two-state recovery wait failed only on completed/absent outcomes and the four-state correction preserved final deletion authority.
+---

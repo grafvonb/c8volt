@@ -119,3 +119,10 @@ go test ./internal/services/processinstance/v87 ./internal/services/processinsta
 - `go test ./internal/services/processinstance -run 'Test.*Cancel' -count=1` passed the focused bulk cancellation suite.
 - `go test ./internal/services/processinstance/... -run 'Test.*Cancel' -count=1` passed cancellation tests for v8.7, v8.8, v8.9, and v8.10. The traversal, waiter, and walker packages reported no matching tests, while the process-instance root and all four version packages ran matching cancellation coverage successfully.
 - All original contract A–E regression cases now pass across the four supported adapters, including terminal and absent no-op success propagation through bulk reporting.
+
+## US2 v8.7 forced-delete recovery — Iteration 8 (2026-09-10)
+
+- The first T013 run exposed stale direct-get wiring in v8.7 deletion scope discovery. Routing only that internal walk through the existing tenant-safe traversal adapter then isolated the intended regression: the old CANCELED/TERMINATED recovery wait timed out for both completed and absent observations.
+- T017 now accepts COMPLETED/CANCELED/TERMINATED/ABSENT in the forced-delete recovery wait. The recovery wait remains unconditional under `WithNoWait`, the delete mutation is retried, and the ordinary path still performs its final absent-only verification.
+- A controlled forbidden response after successful cancellation confirmation remains a deletion failure; terminal cancellation does not fabricate overall delete success.
+- `go test ./internal/services/processinstance/v87 -run TestService_DeleteProcessInstance -count=1`, the full v8.7 package, `git diff --check`, and `make test` (`go test ./... -race -count=1`) passed after the correction.

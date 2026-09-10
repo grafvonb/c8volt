@@ -453,7 +453,7 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 	}
 
 	s.log.Debug(fmt.Sprintf("pi %s delete precheck; loading children", key))
-	scope, edges, chain, err := s.Descendants(ctx, key, opts...)
+	scope, edges, chain, err := traversalAdapter{s}.Descendants(ctx, key, opts...)
 	if err != nil {
 		return d.DeleteResponse{}, err
 	}
@@ -495,7 +495,7 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 				return d.DeleteResponse{}, fmt.Errorf("delete cancel: %w", err)
 			}
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
-			states := []d.State{d.StateCanceled, d.StateTerminated}
+			states := []d.State{d.StateCompleted, d.StateCanceled, d.StateTerminated, d.StateAbsent}
 			if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
 				return d.DeleteResponse{}, fmt.Errorf("delete wait canceled: %w", err)
 			}

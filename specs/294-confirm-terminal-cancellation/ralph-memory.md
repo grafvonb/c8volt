@@ -22,6 +22,7 @@ Started: 2026-09-10T06:42:27Z
 - The original versioned filter selects no tests in v89/v810; use the coverage-safe command recorded in `quickstart.md` until test names change.
 - The callback-only cleanup process-instance double cannot reproduce row A; the cleanup regression must delegate to a real v88 cancellation service through a small file-local adapter/client double.
 - The initial v8.7 regression run reached the expected no-op failures and also exposed the stale direct-get family wiring; do not restore `walker.Family(ctx, s, ...)` in the v8.7 service.
+- The v8.7 forced-delete regression exposed the same stale direct-get wiring in deletion scope discovery; keep that internal walk on `traversalAdapter{s}` while the public getter remains intentionally unsupported.
 - The v8.8 old-state regression failed only on the intended A–D acceptance cases; its active/unknown and interruption controls already preserved existing failure behavior.
 - The v8.9 old-state regression failed only on completed/disappeared family outcomes, terminal-root `Ok`, and absent-root mapping; its failure controls remained strict.
 
@@ -29,9 +30,9 @@ Started: 2026-09-10T06:42:27Z
 
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
 - Targeted baseline commands are recorded in `quickstart.md`.
-- `make test` is the required pre-commit gate and passed for iterations 1, 3, 4, 5, and 6.
+- `make test` is the required pre-commit gate and passed for iterations 1, 3, 4, 5, 6, and 8.
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Begin US2 with T013/T017: add the v8.7 forced-delete recovery regressions for completed and absent cancellation-confirmation observations, then extend only that recovery wait's desired states.
+- Continue US2 with T014/T018: add the v8.8 forced-delete recovery regressions for completed and absent cancellation-confirmation observations, then extend only that recovery wait's desired states.

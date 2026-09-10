@@ -69,7 +69,7 @@ description: "Implementation tasks for issue #294"
 
 ### Tests for User Story 2
 
-- [ ] T013 [P] [US2] Extend `internal/services/processinstance/v87/service_test.go` under `TestService_DeleteProcessInstance` for wrong-state force recovery with completed and absent cancellation-confirmation observations (contract I). Ensure the follow-up wait is actually exercised, assert delete retry and final absence verification, preserve its existing unconditional recovery wait with NoWait, and retain later deletion-failure outcomes. Run matching tests and demonstrate the old two-state follow-up wait fails before the paired production edit.
+- [x] T013 [P] [US2] Extend `internal/services/processinstance/v87/service_test.go` under `TestService_DeleteProcessInstance` for wrong-state force recovery with completed and absent cancellation-confirmation observations (contract I). Ensure the follow-up wait is actually exercised, assert delete retry and final absence verification, preserve its existing unconditional recovery wait with NoWait, and retain later deletion-failure outcomes. Run matching tests and demonstrate the old two-state follow-up wait fails before the paired production edit.
 
 - [ ] T014 [P] [US2] Extend `internal/services/processinstance/v88/service_test.go` under `TestService_DeleteProcessInstance` for wrong-state force recovery with completed and absent cancellation-confirmation observations (contract I). Ensure the follow-up wait is actually exercised, assert delete retry and final absence verification, preserve its existing unconditional recovery wait with NoWait, and retain later deletion-failure outcomes. Run matching tests and demonstrate the old two-state follow-up wait fails before the paired production edit.
 
@@ -80,7 +80,7 @@ description: "Implementation tasks for issue #294"
 
 ### Implementation for User Story 2
 
-- [ ] T017 [P] [US2] Extend only the forced-delete recovery cancellation desired-state list in `internal/services/processinstance/v87/service.go` to COMPLETED, CANCELED, TERMINATED, ABSENT. Preserve the unconditional intermediate wait, final absent-only deletion wait and its existing NoWait guard, mutation retries, and failure propagation; run gofmt and this package with `-run TestService_DeleteProcessInstance -count=1` after its paired regression task.
+- [x] T017 [P] [US2] Extend only the forced-delete recovery cancellation desired-state list in `internal/services/processinstance/v87/service.go` to COMPLETED, CANCELED, TERMINATED, ABSENT. Preserve the unconditional intermediate wait, final absent-only deletion wait and its existing NoWait guard, mutation retries, and failure propagation; run gofmt and this package with `-run TestService_DeleteProcessInstance -count=1` after its paired regression task.
 
 - [ ] T018 [P] [US2] Extend only the forced-delete recovery cancellation desired-state list in `internal/services/processinstance/v88/service.go` to COMPLETED, CANCELED, TERMINATED, ABSENT. Preserve the unconditional intermediate wait, final absent-only deletion wait and its existing NoWait guard, mutation retries, and failure propagation; run gofmt and this package with `-run TestService_DeleteProcessInstance -count=1` after its paired regression task.
 
