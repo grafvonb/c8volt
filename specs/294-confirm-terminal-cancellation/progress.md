@@ -70,3 +70,21 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - The v8.8 direct v2 getter and search client cleanly reproduce all A–E paths without the v8.7 traversal exception; only the cancellation boundary needed production changes.
 ---
+---
+## Iteration 5 - 2026-09-10 09:26
+**Work Unit**: US1 v8.9 cancellation confirmation (partial)
+**Tasks Completed**:
+- [x] T005: Add v8.9 contract A–E cancellation regressions and capture the original failures
+- [x] T009: Accept terminal cancellation outcomes and successful terminal-root no-ops in v8.9
+**Tasks Remaining in Work Unit**: 4
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/v89/service.go
+- internal/services/processinstance/v89/service_test.go
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/quickstart.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- The v8.9 body-based search path supports the same deterministic A–E fixture as v8.8; the production change remains confined to the cancellation precheck and family wait.
+---

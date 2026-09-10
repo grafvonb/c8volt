@@ -10,6 +10,7 @@ Started: 2026-09-10T06:42:27Z
 - Every versioned suite has `waitTestConfig`: fixed backoff, 1ms initial delay, 2 retries, and 25ms timeout.
 - v8.7 cancellation family discovery must call `walker.Family` through the existing `traversalAdapter`; the public `GetProcessInstance` remains intentionally unsupported because direct Operate lookup is not tenant-safe.
 - v8.8 cancellation regressions can use one file-local Camunda double for direct state reads, parent-filter searches, and cancellation requests; the Operate client remains strict and unused.
+- v8.9 cancellation regressions fit the combined cancellation/deletion suite and can reuse its strict body-based search double with per-key observation sequences.
 
 ## Decisions
 
@@ -21,6 +22,7 @@ Started: 2026-09-10T06:42:27Z
 - The callback-only cleanup process-instance double cannot reproduce row A; the cleanup regression must delegate to a real v88 cancellation service through a small file-local adapter/client double.
 - The initial v8.7 regression run reached the expected no-op failures and also exposed the stale direct-get family wiring; do not restore `walker.Family(ctx, s, ...)` in the v8.7 service.
 - The v8.8 old-state regression failed only on the intended A–D acceptance cases; its active/unknown and interruption controls already preserved existing failure behavior.
+- The v8.9 old-state regression failed only on completed/disappeared family outcomes, terminal-root `Ok`, and absent-root mapping; its failure controls remained strict.
 
 ## Reusable Commands
 
@@ -31,4 +33,4 @@ Started: 2026-09-10T06:42:27Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Continue US1 with T005/T009: add the v8.9 contract A–E regressions under its combined test prefix, capture the old failures, apply the paired cancellation fix, and validate the package.
+- Continue US1 with T006/T010: add the v8.10 contract A–E regressions under its combined test prefix, capture the old failures, apply the paired cancellation fix, and validate the package.
