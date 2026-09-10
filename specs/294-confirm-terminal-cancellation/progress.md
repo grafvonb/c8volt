@@ -287,3 +287,18 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - Shared waiter coverage now proves canceled/terminated equivalence remains strict against completed/absent observations and cannot bypass a requested incident match.
 ---
+---
+## Iteration 18 - 2026-09-10 11:21
+**Work Unit**: US3 command expectation compatibility coverage (partial)
+**Tasks Completed**:
+- [x] T028: Preserve explicit canceled expectations, command output/error envelopes, and exit behavior
+**Tasks Remaining in Work Unit**: 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/expect_test.go
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- Human and JSON command executions preserve canceled/terminated success and completed/absent failure with the established exit codes and envelope shapes.
+---
