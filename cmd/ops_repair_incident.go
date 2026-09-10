@@ -136,6 +136,7 @@ var opsRepairIncidentCmd = &cobra.Command{
 			ReportFormat:        reportFormat,
 			StartedAt:           time.Now().UTC(),
 		}
+		initializeOpsTenantContextHumanReporting(cmd, cfg, mode != ops.RepairDiscoveryModeSearch)
 		repairProgress := configureOpsRepairProgress(cmd, &request)
 		if opsRepairNeedsPreflight(cmd) {
 			planRequest := request

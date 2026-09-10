@@ -155,3 +155,25 @@ Started: 2026-09-10 17:15:43
 - Real command handlers now expose selection before their first backend request and validated affected tenants before deletion while preserving APD, orphan, incident, and retention request counts and targets.
 - Passed the four focused timing regressions, the complete relevant command suite, `make test` (`go test ./... -race -count=1`), declaration ownership review, and `git diff --check`.
 ---
+---
+## Iteration 8 - 2026-09-10 18:45
+**Work Unit**: US1 repair command timing and complete validation
+**Tasks Completed**:
+- [x] T012: Add keyed/search repair real-command auto-confirm timing regressions
+- [x] T020: Initialize staged repair selection context before discovery and activity
+- [x] T021: Run and record complete US1 service, facade, and six-command validation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_incident_test.go
+- cmd/ops_repair_processinstance.go
+- cmd/ops_repair_processinstance_test.go
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- Keyed and stdin repair modes share explicit-key tenant semantics, while search mode retains named or unfiltered discovery semantics; both commands can initialize the staged base context immediately after the request mode is resolved.
+- The four new real-handler cases observed selection at the first backend request and `affected tenants: <default>` before the first variable PUT. Incident keyed/search retained 0/1 search calls, 1/0 keyed GETs, 1/2 variable updates, and 1/2 resolutions; process-instance keyed/search retained 0/1 process-instance searches, 1/0 keyed GETs, one incident search, one variable update, and one resolution. All auto-confirm cases invoked zero prompts.
+- Passed the focused four-case timing test, all three targeted quickstart suites, `make test` (`go test ./... -race -count=1`), command declaration ownership review, and `git diff --check`.
+---

@@ -246,6 +246,80 @@ func TestOpsRepairProcessInstanceSearchPreflightsBeforeMutation(t *testing.T) {
 	requireRequestBefore(t, requests.Snapshot(), "GET /v2/process-instances/2251799813685251", "PATCH /v2/jobs/2251799813685252")
 }
 
+// TestOpsRepairProcessInstanceAutoConfirmReportsTenantScopeBeforeWork verifies
+// keyed and search paths report selection and affected evidence before the
+// first variable update while preserving target discovery and prompt behavior.
+func TestOpsRepairProcessInstanceAutoConfirmReportsTenantScopeBeforeWork(t *testing.T) {
+	tests := []struct {
+		name               string
+		args               []string
+		selection          string
+		notSelection       string
+		wantSearchRequests int
+		wantProcessGets    int
+	}{
+		{
+			name: "keyed tenant filter not applied",
+			args: []string{
+				"--tenant", "tenant-a",
+				"ops", "repair", "process-instance",
+				"--key", "2251799813685251",
+				"--vars", `{"approved":true}`,
+				"--auto-confirm",
+				"--no-wait",
+			},
+			selection:       "selection scope: explicit resource keys; tenant filter not applied",
+			notSelection:    "selection scope: tenant-a only",
+			wantProcessGets: 1,
+		},
+		{
+			name: "unfiltered search",
+			args: []string{
+				"ops", "repair", "process-instance",
+				"--state", "active",
+				"--vars", `{"approved":true}`,
+				"--auto-confirm",
+				"--no-wait",
+			},
+			selection:          "selection scope: unfiltered across accessible tenants",
+			wantSearchRequests: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetOpsRepairProcessInstanceFlagState()
+			t.Cleanup(resetOpsRepairProcessInstanceFlagState)
+
+			var requests testx.SafeSlice[string]
+			backend := newOpsRepairProcessInstanceServer(t, &requests)
+			t.Cleanup(backend.Close)
+			output := &opsTenantTimingOutput{}
+			proxy, observations := newOpsTenantTimingProxy(t, backend.URL, output, func(r *http.Request) bool {
+				return r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "/variables")
+			})
+			t.Cleanup(proxy.Close)
+
+			args := append([]string{"--config", writeTestConfigForVersion(t, proxy.URL, "8.9")}, tt.args...)
+			promptCount, err := executeRootForOpsTenantTiming(t, output, resetOpsRepairProcessInstanceFlagState, args...)
+			require.NoError(t, err, output.String())
+			firstRequest, firstMutation := observations.snapshot()
+			require.Contains(t, firstRequest, tt.selection)
+			if tt.notSelection != "" {
+				require.NotContains(t, firstRequest, tt.notSelection)
+			}
+			require.Contains(t, firstMutation, "affected tenants: <default>")
+			require.Zero(t, promptCount)
+			snapshot := requests.Snapshot()
+			requireRequestCount(t, snapshot, "POST /v2/process-instances/search", tt.wantSearchRequests)
+			requireRequestCount(t, snapshot, "GET /v2/process-instances/", tt.wantProcessGets)
+			requireRequestCount(t, snapshot, "/incidents/search", 1)
+			requireRequestCount(t, snapshot, "PUT /v2/element-instances/2251799813685251/variables", 1)
+			requireRequestCount(t, snapshot, "/resolution", 1)
+		})
+	}
+}
+
 // TestOpsRepairProcessInstanceBareDryRunSearchesIncidents verifies no explicit selector means the default incident-bearing search.
 func TestOpsRepairProcessInstanceBareDryRunSearchesIncidents(t *testing.T) {
 	resetOpsRepairProcessInstanceFlagState()
@@ -532,6 +606,9 @@ func newOpsRepairProcessInstanceServer(t *testing.T, requests *testx.SafeSlice[s
 			_, _ = w.Write([]byte(`{"items":[` + opsRepairProcessInstanceJSON("2251799813685251") + `],"page":{"totalItems":1}}`))
 		case "/v2/jobs/2251799813685252":
 			require.Equal(t, http.MethodPatch, r.Method)
+			w.WriteHeader(http.StatusNoContent)
+		case "/v2/element-instances/2251799813685251/variables":
+			require.Equal(t, http.MethodPut, r.Method)
 			w.WriteHeader(http.StatusNoContent)
 		case "/v2/incidents/2251799813685249/resolution":
 			require.Equal(t, http.MethodPost, r.Method)

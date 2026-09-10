@@ -340,6 +340,87 @@ func TestOpsRepairIncidentSearchPreflightsBeforeMutation(t *testing.T) {
 	requireRequestBefore(t, requests.Snapshot(), "GET /v2/incidents/2251799813685249", "POST /v2/incidents/2251799813685249/resolution")
 }
 
+// TestOpsRepairIncidentAutoConfirmReportsTenantScopeBeforeWork verifies keyed
+// and search repairs publish selection and frozen evidence before variable
+// updates without prompting or changing the selected backend targets.
+func TestOpsRepairIncidentAutoConfirmReportsTenantScopeBeforeWork(t *testing.T) {
+	tests := []struct {
+		name                  string
+		args                  []string
+		selection             string
+		notSelection          string
+		wantSearchRequests    int
+		wantIncidentGets      int
+		wantVariableMutations int
+		wantResolutions       int
+	}{
+		{
+			name: "keyed tenant filter not applied",
+			args: []string{
+				"--tenant", "tenant-a",
+				"ops", "repair", "incident",
+				"--key", "2251799813685249",
+				"--vars", `{"approved":true}`,
+				"--auto-confirm",
+				"--no-wait",
+			},
+			selection:             "selection scope: explicit resource keys; tenant filter not applied",
+			notSelection:          "selection scope: tenant-a only",
+			wantIncidentGets:      1,
+			wantVariableMutations: 1,
+			wantResolutions:       1,
+		},
+		{
+			name: "named search",
+			args: []string{
+				"--tenant", "tenant-a",
+				"ops", "repair", "incident",
+				"--state", "active",
+				"--limit", "2",
+				"--vars", `{"approved":true}`,
+				"--auto-confirm",
+				"--no-wait",
+			},
+			selection:             "selection scope: tenant-a only",
+			wantSearchRequests:    1,
+			wantVariableMutations: 2,
+			wantResolutions:       2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetOpsRepairIncidentFlagState()
+			t.Cleanup(resetOpsRepairIncidentFlagState)
+
+			var requests testx.SafeSlice[string]
+			backend := newOpsRepairIncidentServer(t, &requests)
+			t.Cleanup(backend.Close)
+			output := &opsTenantTimingOutput{}
+			proxy, observations := newOpsTenantTimingProxy(t, backend.URL, output, func(r *http.Request) bool {
+				return r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "/variables")
+			})
+			t.Cleanup(proxy.Close)
+
+			args := append([]string{"--config", writeTestConfigForVersion(t, proxy.URL, "8.9")}, tt.args...)
+			promptCount, err := executeRootForOpsTenantTiming(t, output, resetOpsRepairIncidentFlagState, args...)
+			require.NoError(t, err, output.String())
+			firstRequest, firstMutation := observations.snapshot()
+			require.Contains(t, firstRequest, tt.selection)
+			if tt.notSelection != "" {
+				require.NotContains(t, firstRequest, tt.notSelection)
+			}
+			require.Contains(t, firstMutation, "affected tenants: <default>")
+			require.Zero(t, promptCount)
+			snapshot := requests.Snapshot()
+			requireRequestCount(t, snapshot, "POST /v2/incidents/search", tt.wantSearchRequests)
+			requireRequestCount(t, snapshot, "GET /v2/incidents/", tt.wantIncidentGets)
+			requireRequestCount(t, snapshot, "PUT /v2/element-instances/", tt.wantVariableMutations)
+			requireRequestCount(t, snapshot, "/resolution", tt.wantResolutions)
+		})
+	}
+}
+
 // TestOpsRepairIncidentRejectsKeyedSearchMode verifies mixed key and filter selection fails before remote mutation.
 func TestOpsRepairIncidentRejectsKeyedSearchMode(t *testing.T) {
 	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairIncidentCommandHelper", map[string]string{
@@ -618,6 +699,9 @@ func newOpsRepairIncidentServer(t *testing.T, requests *testx.SafeSlice[string])
 			_, _ = w.Write([]byte(opsRepairIncidentJSON("2251799813685250", "2251799813685253", "", "ACTIVE")))
 		case "/v2/jobs/2251799813685252":
 			require.Equal(t, http.MethodPatch, r.Method)
+			w.WriteHeader(http.StatusNoContent)
+		case "/v2/element-instances/2251799813685251/variables", "/v2/element-instances/2251799813685253/variables":
+			require.Equal(t, http.MethodPut, r.Method)
 			w.WriteHeader(http.StatusNoContent)
 		case "/v2/incidents/2251799813685249/resolution", "/v2/incidents/2251799813685250/resolution":
 			require.Equal(t, http.MethodPost, r.Method)
