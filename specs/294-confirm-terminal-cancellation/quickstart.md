@@ -37,3 +37,15 @@ make test
 ```
 
 Run `gofmt -w` on each touched Go file before these checks. Inspect generated documentation changes for only the intended clarification and any known generator effects. Do not hand-edit generated CLI references. The full test target runs `go test ./... -race -count=1` and must pass before implementation commit/merge. Record any unavailable validation explicitly.
+
+## Baseline — Iteration 1 (2026-09-10)
+
+- Environment verified: `go.mod` requires Go 1.26 and selects toolchain go1.26.2; `go version` reported `go1.26.2 darwin/arm64`.
+- Active feature verified: `.specify/feature.json` selects `specs/294-confirm-terminal-cancellation`.
+- Repository guidance verified from `AGENTS.md` and `specs/ralph-implementation-rules.md`; branch remained `develop` and dependencies were unchanged.
+- Versioned cancellation/deletion command passed for v87, v88, v89, and v810. The current filter selected no tests in v89 and v810, which is baseline evidence only and must be addressed by the later test-mapping task.
+- Waiter cancellation-state command passed.
+- Process-instance bulk cancellation command passed.
+- Process-definition cleanup/deletion command passed.
+- Command cancellation/expectation command passed.
+- Full repository gate `make test` (`go test ./... -race -count=1`) passed before the coordinated setup commit.

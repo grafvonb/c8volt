@@ -17,7 +17,7 @@ description: "Implementation tasks for issue #294"
 
 **Purpose**: Verify the existing environment without scaffolding a new project.
 
-- [ ] T001 Verify the Go/toolchain requirements in `go.mod`, active feature in `.specify/feature.json`, and repository guidance in `AGENTS.md`; run the existing targeted checks from `specs/294-confirm-terminal-cancellation/quickstart.md` and record baseline outcomes there. Keep the current branch and dependencies unchanged.
+- [x] T001 Verify the Go/toolchain requirements in `go.mod`, active feature in `.specify/feature.json`, and repository guidance in `AGENTS.md`; run the existing targeted checks from `specs/294-confirm-terminal-cancellation/quickstart.md` and record baseline outcomes there. Keep the current branch and dependencies unchanged.
 
 
 ## Phase 2: Foundational (Blocking Prerequisites)
