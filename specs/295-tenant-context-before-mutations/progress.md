@@ -407,3 +407,38 @@ Started: 2026-09-10 17:15:43
 - `go test ./cmd -run 'Test.*(TenantContext|OpsPurgeAllProcessDefinitions|OpsPurgeOrphanProcessInstances|OpsPurgeProcessInstancesWithIncidents|OpsExecuteRetentionPolicy|OpsRepairIncident|OpsRepairProcessInstance|OpsAuditReport|MarkdownTenantContext)' -count=1` passed (`ok`, 2.816s); its pattern selects 230 tests.
 - `make test` passed the full `go test ./... -race -count=1` repository suite, including `cmd` in 147.067s; `git diff --check` passed with no whitespace errors.
 ---
+---
+## Iteration 21 - 2026-09-10 20:51
+**Work Unit**: Phase 6 requirement and success-criteria traceability
+**Tasks Completed**:
+- [x] T038: Review FR-001–FR-014 and SC-001–SC-007 against the tenant-reporting coverage matrix
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- FR-001 passed: the six `TestOps*AutoConfirmReportsTenantScopeBeforeWork` tests exercise every affected command, including the `apd` alias and both keyed/search repair subtests; `TestOpsMutationCommandsPreserveTenantProtectedModes` independently exercises all six real handlers.
+- FR-002 passed: the six `TestOps*AutoConfirmReportsTenantScopeBeforeWork` tests assert selection in the first discovery/request snapshot before activity or resolution.
+- FR-003 passed: `TestTenantContextHumanLinesClassifyTenantOverridesAndAffectedTenants`, `TestOpsTenantContextEvidenceMatrix`, and the keyed/search auto-confirm subtests pass named, unfiltered, changed/empty/all-tenants, absent/equal, and explicit-key semantics.
+- FR-004 passed: `TestPurgeAllProcessDefinitionsEmitsTenantScopeBeforeDeletion`, `TestPurgeProcessInstancesWithIncidentsEmitsTenantScopeBeforeDeletion`, `TestPurgeOrphanProcessInstancesEmitsExpandedTenantScopeBeforeDeletion`, `TestExecuteRetentionPolicyEmitsExpandedTenantScopeBeforeDeletion`, and `TestRepairWorkflowsEmitTenantScopeBeforeFirstMutation` pass service ordering; all six auto-confirm tests pass command-boundary snapshots.
+- FR-005 passed: `TestTenantContextEvidenceRenderingMatrix` and `TestOpsTenantContextEvidenceMatrix` pass single, multiple, default, unknown-only, known-plus-unknown, multiple-plus-unknown, duplicate, empty, and normalized-negative-unknown cases with deterministic warning severity.
+- FR-006 passed: all six `TestOps*InteractiveTenantContext` tests and all six auto-confirm tests pass the shared order; `TestOpsMutationCommandsPreserveTenantProtectedModes` passes automation mutation without a prompt.
+- FR-007 passed: `TestOpsTenantContextRepeatedLifecyclePreservesEvidenceAndSuppressesFinalOutput` and all six interactive tests pass single-occurrence checks across preview, execution, confirmation, and final rendering.
+- FR-008 passed: `TestOpsAuditReportJSONPreservesTenantEvidenceAfterEarlyHumanRendering`, `TestOpsRepairAuditReportJSONKeepsExplicitKeySemantics`, `TestOpsAuditReportMarkdownPreservesTenantEvidenceAfterEarlyHumanRendering`, and `TestFromDomainAuditReports_CopyTenantContext` retain complete independent evidence and truthful legacy tenant IDs.
+- FR-009 passed: `TestOpsMutationCommandsPreserveTenantProtectedModes` passes one-line, verbose, debug, JSON, quiet, automation, and supported keys-only behavior for all six handlers; `TestOpsMutationCommandOutputModeContracts` passes supported/unsupported mode declarations.
+- FR-010 passed: the five named service ordering tests use existing frozen evidence, while the six auto-confirm tests pass unchanged discovery/request counters and mutation-target assertions; `TestTenantScopeProgressConversionCopiesPublicEvidence` passes snapshot isolation.
+- FR-011 passed: `TestPurgeAllProcessDefinitionsTenantScopeRequiresAValidatedPlan`, `TestPurgeProcessInstancesWithIncidentsTenantScopeRequiresAValidatedPlan`, `TestPurgeOrphanProcessInstancesTenantScopeRespectsPlanningGates`, `TestExecuteRetentionPolicyTenantScopeRespectsPlanningGates`, and `TestRepairTenantScopeEmptyFailureAndNilCallbackBoundaries` pass failed-plan, force, preview, empty, discovery-failure, and nil-callback cases; command tests for empty scope, invalid variables, and force blocking also pass.
+- FR-012 passed: the named six-command auto-confirm, six-command interactive, protected-mode, evidence-matrix, facade-copy, service-boundary, and six real report-path tests all pass; both repair keyed/search paths and acceptance-matrix evidence combinations are selected.
+- FR-013 passed: `TestOpsMutationHelpDocumentsTenantContextOrder` passes all six command sources; `make docs-content` plus direct inspection confirms the same order in README and all six generated CLI references, with no substantive generated drift.
+- FR-014 passed: the service ordering/plan-gate tests and six auto-confirm request/target assertions pass unchanged planning and mutation mechanics; the full race-enabled repository suite passes.
+- SC-001 passed: all six `TestOps*AutoConfirmReportsTenantScopeBeforeWork` tests observe selection before first discovery/request and affected context before first mutation.
+- SC-002 passed: all six `TestOps*InteractiveTenantContext` tests pass accepted/declined prompt snapshots with complete context before the question and zero decline mutations.
+- SC-003 passed: `TestOpsTenantContextRepeatedLifecyclePreservesEvidenceAndSuppressesFinalOutput` and the interactive occurrence-count assertions pass exactly-once rendering.
+- SC-004 passed: both evidence matrices pass multiple/unknown warning combinations and empty-scope silence; service empty-boundary and command no-target tests pass without invented tenants.
+- SC-005 passed: `TestOpsMutationCommandsPreserveTenantProtectedModes` passes every supported protected scenario, and the JSON/Markdown plus six real-handler report tests retain applicable evidence.
+- SC-006 passed: service boundary tests and all six auto-confirm tests pass unchanged discovery counts, frozen target sets, variable-first repair mutations, and outcomes.
+- SC-007 passed: `TestOpsMutationHelpDocumentsTenantContextOrder`, README inspection, regenerated six-command reference inspection, and `git diff --check` find no contradictory guidance.
+- Validation outcome: focused service (`ok`, 0.804s), facade (`ok`, 0.420s), and command (`ok`, 2.130s) traceability suites passed; `make test` passed `go test ./... -race -count=1` with `cmd` in 147.534s; documentation regeneration/inspection and `git diff --check` passed.
+---
