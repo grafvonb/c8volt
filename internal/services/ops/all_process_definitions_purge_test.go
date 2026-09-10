@@ -463,7 +463,7 @@ func TestPurgeAllProcessDefinitionsDiscoveryEmitsProgress(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomePlanned, got.Outcome)
 	require.Len(t, requests, 2)
-	require.Len(t, events, 3)
+	require.Len(t, events, 4)
 	require.Equal(t, d.OpsProgressEventKindPreflight, events[0].Kind)
 	require.NotNil(t, events[0].Preflight)
 	require.Equal(t, "preflight", events[0].Preflight.Phase)
@@ -496,6 +496,10 @@ func TestPurgeAllProcessDefinitionsDiscoveryEmitsProgress(t *testing.T) {
 	require.Equal(t, d.OpsPageCountKindExact, events[2].Page.PageCountKind)
 	require.Equal(t, 2, events[2].Page.Seen)
 	require.Equal(t, 2, events[2].Page.Selected)
+
+	require.Equal(t, d.OpsProgressEventKindTenantScope, events[3].Kind)
+	require.NotNil(t, events[3].TenantScope)
+	require.Equal(t, 2, events[3].TenantScope.Evidence.TargetCount)
 }
 
 // TestPurgeAllProcessDefinitionsLimitStopsAfterFrozenScopeCap keeps --batch-size distinct from the total cap.
@@ -674,6 +678,117 @@ func TestPurgeAllProcessDefinitionsAggregatesTenantEvidenceFromFrozenPreview(t *
 		},
 	}, got.DeletePlan.TenantEvidence)
 	require.Equal(t, got.DeletePlan.TenantEvidence, got.Report.DeletePlan.TenantEvidence)
+}
+
+// TestPurgeAllProcessDefinitionsEmitsTenantScopeBeforeDeletion verifies the
+// validated scope is delivered once before mutation without exposing plan slices.
+func TestPurgeAllProcessDefinitionsEmitsTenantScopeBeforeDeletion(t *testing.T) {
+	t.Parallel()
+
+	var events []d.OpsProgressEvent
+	deleted := false
+	planningGets := 0
+	got, err := NewWithProcessDefinitionPurge(
+		stubProcessInstanceAPI{},
+		nil,
+		stubProcessDefinitionAPI{
+			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+				if services.ApplyCallOptions(opts).WithStat {
+					if deleted {
+						return d.ProcessDefinition{}, d.ErrNotFound
+					}
+					planningGets++
+					return d.ProcessDefinition{Key: key, TenantId: "tenant-a", Statistics: &d.ProcessDefinitionStatistics{}}, nil
+				}
+				require.True(t, deleted, "operational confirmation must follow deletion")
+				return d.ProcessDefinition{}, d.ErrNotFound
+			},
+		},
+		stubResourceAPI{
+			delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+				require.Equal(t, "pd-a", key)
+				require.Len(t, events, 1, "tenant scope must precede the first deletion")
+				require.Equal(t, d.OpsProgressEventKindTenantScope, events[0].Kind)
+				deleted = true
+				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusNoContent, Status: "204 No Content", DeleteHistory: true}, nil
+			},
+		},
+	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{
+		Workers:                                  1,
+		DiscoveredCandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
+		Progress: func(event d.OpsProgressEvent) {
+			if event.Kind != d.OpsProgressEventKindTenantScope {
+				return
+			}
+			events = append(events, event)
+			event.TenantScope.Evidence.ResolvedTenantIDs[0] = "mutated"
+			event.TenantScope.Evidence.Targets[0].TenantID = "mutated"
+		},
+	})
+
+	require.NoError(t, err)
+	require.True(t, deleted)
+	require.Equal(t, 2, planningGets)
+	require.Len(t, events, 1)
+	require.Equal(t, []string{"pd-a"}, []string(got.Deletion.SubmittedProcessDefinitionKeys))
+	require.Equal(t, []string{"tenant-a"}, got.DeletePlan.TenantEvidence.ResolvedTenantIDs)
+	require.Equal(t, "tenant-a", got.DeletePlan.TenantEvidence.Targets[0].TenantID)
+}
+
+// TestPurgeAllProcessDefinitionsTenantScopeRequiresAValidatedPlan verifies
+// failed planning publishes no partial evidence while an empty scope publishes once.
+func TestPurgeAllProcessDefinitionsTenantScopeRequiresAValidatedPlan(t *testing.T) {
+	t.Parallel()
+
+	t.Run("failed planning", func(t *testing.T) {
+		t.Parallel()
+
+		tenantEvents := 0
+		got, err := NewWithProcessDefinitionPurge(
+			stubProcessInstanceAPI{},
+			nil,
+			stubProcessDefinitionAPI{
+				getProcessDefinition: func(context.Context, string, ...services.CallOption) (d.ProcessDefinition, error) {
+					return d.ProcessDefinition{}, errors.New("preview failed")
+				},
+			},
+			stubResourceAPI{},
+		).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{
+			DryRun:                                   true,
+			DiscoveredCandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
+			Progress: func(event d.OpsProgressEvent) {
+				if event.Kind == d.OpsProgressEventKindTenantScope {
+					tenantEvents++
+				}
+			},
+		})
+
+		require.Error(t, err)
+		require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeFailed, got.Outcome)
+		require.Zero(t, tenantEvents)
+	})
+
+	t.Run("empty frozen scope", func(t *testing.T) {
+		t.Parallel()
+
+		var scopes []d.TenantEvidence
+		got, err := NewWithProcessDefinitionPurge(
+			stubProcessInstanceAPI{}, nil, stubProcessDefinitionAPI{}, stubResourceAPI{},
+		).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{
+			DryRun:                                   true,
+			DiscoveredCandidateProcessDefinitionKeys: typex.Keys{},
+			Progress: func(event d.OpsProgressEvent) {
+				if event.Kind == d.OpsProgressEventKindTenantScope {
+					scopes = append(scopes, event.TenantScope.Evidence)
+				}
+			},
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, d.AllProcessDefinitionsPurgeOutcomePlanned, got.Outcome)
+		require.Equal(t, []d.TenantEvidence{{}}, scopes)
+		require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+	})
 }
 
 // TestOpsMergeTenantEvidencePreservesAggregateOnlyFallback verifies legacy

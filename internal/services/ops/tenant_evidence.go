@@ -10,6 +10,24 @@ import (
 	"github.com/grafvonb/c8volt/typex"
 )
 
+// emitOpsTenantScope publishes an owned evidence snapshot synchronously so a
+// callback cannot mutate the service's validated plan.
+func emitOpsTenantScope(progress func(d.OpsProgressEvent), evidence d.TenantEvidence) {
+	if progress == nil {
+		return
+	}
+	snapshot := d.TenantEvidence{
+		ResolvedTenantIDs:  append([]string(nil), evidence.ResolvedTenantIDs...),
+		UnknownTargetCount: evidence.UnknownTargetCount,
+		TargetCount:        evidence.TargetCount,
+		Targets:            append([]d.TenantEvidenceTarget(nil), evidence.Targets...),
+	}
+	progress(d.OpsProgressEvent{
+		Kind:        d.OpsProgressEventKindTenantScope,
+		TenantScope: &d.OpsTenantScopeProgress{Evidence: snapshot},
+	})
+}
+
 // opsTenantEvidenceFromTraversalResults records affected process-instance
 // tenant metadata from traversal chains that were already loaded for planning.
 func opsTenantEvidenceFromTraversalResults(keys typex.Keys, results ...[]pitraversal.Result) d.TenantEvidence {

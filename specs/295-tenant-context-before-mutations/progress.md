@@ -64,3 +64,26 @@ Started: 2026-09-10 17:15:43
 - Passed `go test ./internal/services/ops -run 'Test.*(Purge|Retention|Repair|Tenant|Progress)' -count=1`, `go test ./c8volt/ops -run 'Test.*(Progress|Tenant|Purge|Retention|Repair)' -count=1`, and `go test ./cmd -run 'Test.*(TenantContext|OpsPurgeAllProcessDefinitions|OpsPurgeOrphanProcessInstances|OpsPurgeProcessInstancesWithIncidents|OpsExecuteRetentionPolicy|OpsRepairIncident|OpsRepairProcessInstance|OpsAuditReport|MarkdownTenantContext)' -count=1`.
 - Passed focused staged-renderer tests, `make test` (`go test ./... -race -count=1`), declaration ownership review, and `git diff --check`.
 ---
+---
+## Iteration 4 - 2026-09-10 17:55
+**Work Unit**: US1 APD and incident-purge tenant-scope emission (partial)
+**Tasks Completed**:
+- [x] T008: Add APD and incident-purge service ordering regressions
+- [x] T013: Add the shared synchronous tenant-scope emission helper
+- [x] T014: Emit validated APD delete-plan tenant evidence
+- [x] T015: Emit validated incident-purge delete-plan tenant evidence
+**Tasks Remaining in Work Unit**: 10 (T009-T012, T016-T021)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/ops/all_process_definitions_purge.go
+- internal/services/ops/all_process_definitions_purge_test.go
+- internal/services/ops/incident_purge.go
+- internal/services/ops/incident_purge_test.go
+- internal/services/ops/tenant_evidence.go
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- Validated tenant evidence can be emitted from existing APD and incident delete plans with copied slices and no additional backend retrieval; successful empty frozen scopes publish one explicit empty event, while failed planning and execution blockers publish none.
+- Passed the focused ordering regressions, the complete relevant ops service suite, `make test` (`go test ./... -race -count=1`), and `git diff --check`.
+---

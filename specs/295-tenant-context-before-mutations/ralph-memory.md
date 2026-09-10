@@ -9,6 +9,7 @@ Started: 2026-09-10T15:15:43Z
 - Ops request callbacks use `c8volt/ops.ProgressEvent`; `fromDomainOpsTenantEvidence` and its inverse copy both resolved-ID and target slices at that boundary.
 - Staged ops rendering is opt-in per command execution through `initializeTenantContextHumanRenderStages`; commands without that state retain the legacy full-context render-once path.
 - Selection and affected lines are partitioned semantically by `tenantContextSelectionHumanLines` and `tenantContextAffectedHumanLines`; permitted empty affected scope marks completion without output.
+- `emitOpsTenantScope` owns synchronous snapshot delivery for validated service plans; emit empty evidence on successful empty scopes, emit after execution blockers, and never emit after planning failures.
 
 ## Decisions
 - Preserve existing discovery, frozen-scope, mutation, output-mode, and audit behavior; the feature adds a synchronous typed progress event and two command-local rendering stages.
@@ -27,4 +28,4 @@ Started: 2026-09-10T15:15:43Z
 - Do not add discovery or metadata retrieval for reporting, infer unknown tenants from configuration, or strip attached evidence to deduplicate human output.
 
 ## Current Handoff
-- Start US1 with T008: add all-process-definition and incident-purge service ordering regressions; remain within US1 through T021 and preserve the established foundational event and staged-renderer contracts.
+- Continue US1 with T009: add orphan-purge and retention-policy service ordering regressions, then wire their validated plan evidence through T016 using `emitOpsTenantScope` without changing discovery, expansion, force, preview, or mutation behavior.

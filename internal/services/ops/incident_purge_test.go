@@ -14,6 +14,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
+	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
 )
 
@@ -256,6 +257,112 @@ func TestPurgeProcessInstancesWithIncidentsAggregatesTenantEvidenceFromFrozenPla
 		},
 	}, got.DeletePlan.TenantEvidence)
 	require.Equal(t, got.DeletePlan.TenantEvidence, got.Report.DeletePlan.TenantEvidence)
+}
+
+// TestPurgeProcessInstancesWithIncidentsEmitsTenantScopeBeforeDeletion verifies
+// the validated expanded scope is delivered once before the first mutation.
+func TestPurgeProcessInstancesWithIncidentsEmitsTenantScopeBeforeDeletion(t *testing.T) {
+	t.Parallel()
+
+	var events []d.OpsProgressEvent
+	ancestryCalls := 0
+	deleted := false
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			ancestryCalls++
+			return pitraversal.Result{
+				Mode: pitraversal.ModeAncestry, StartKey: key, RootKey: key, Keys: []string{key},
+				Chain:   map[string]d.ProcessInstance{key: {Key: key, State: d.StateCompleted, TenantId: "tenant-a"}},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode: pitraversal.ModeDescendants, StartKey: key, RootKey: key, Keys: []string{key},
+				Chain:   map[string]d.ProcessInstance{key: {Key: key, State: d.StateCompleted, TenantId: "tenant-a"}},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			require.Equal(t, "pi-a", key)
+			require.Len(t, events, 1, "tenant scope must precede the first deletion")
+			require.Equal(t, d.OpsProgressEventKindTenantScope, events[0].Kind)
+			deleted = true
+			return d.DeleteResponse{Ok: true, StatusCode: http.StatusNoContent, Status: "204 No Content"}, nil
+		},
+	}
+
+	got, err := New(piAPI, stubIncidentAPI{}).PurgeProcessInstancesWithIncidents(context.Background(), d.IncidentPurgeRequest{
+		Workers:                                1,
+		DiscoveredCandidateProcessInstanceKeys: typexKeys("pi-a"),
+		DiscoveredIncidentKeys:                 typexKeys("inc-a"),
+		Progress: func(event d.OpsProgressEvent) {
+			if event.Kind != d.OpsProgressEventKindTenantScope {
+				return
+			}
+			events = append(events, event)
+			event.TenantScope.Evidence.ResolvedTenantIDs[0] = "mutated"
+			event.TenantScope.Evidence.Targets[0].TenantID = "mutated"
+		},
+	}, services.WithForce())
+
+	require.NoError(t, err)
+	require.True(t, deleted)
+	require.Equal(t, 1, ancestryCalls)
+	require.Len(t, events, 1)
+	require.Equal(t, []string{"pi-a"}, []string(got.Deletion.SubmittedRootKeys))
+	require.Equal(t, []string{"tenant-a"}, got.DeletePlan.TenantEvidence.ResolvedTenantIDs)
+	require.Equal(t, "tenant-a", got.DeletePlan.TenantEvidence.Targets[0].TenantID)
+}
+
+// TestPurgeProcessInstancesWithIncidentsTenantScopeRequiresAValidatedPlan
+// verifies failed expansion emits nothing while an empty frozen scope emits once.
+func TestPurgeProcessInstancesWithIncidentsTenantScopeRequiresAValidatedPlan(t *testing.T) {
+	t.Parallel()
+
+	t.Run("failed planning", func(t *testing.T) {
+		t.Parallel()
+
+		tenantEvents := 0
+		piAPI := stubProcessInstanceAPI{
+			ancestryResult: func(context.Context, string, ...services.CallOption) (pitraversal.Result, error) {
+				return pitraversal.Result{}, errors.New("expansion failed")
+			},
+		}
+		got, err := New(piAPI, stubIncidentAPI{}).PurgeProcessInstancesWithIncidents(context.Background(), d.IncidentPurgeRequest{
+			DryRun:                                 true,
+			DiscoveredCandidateProcessInstanceKeys: typexKeys("pi-a"),
+			Progress: func(event d.OpsProgressEvent) {
+				if event.Kind == d.OpsProgressEventKindTenantScope {
+					tenantEvents++
+				}
+			},
+		})
+
+		require.Error(t, err)
+		require.Equal(t, d.IncidentPurgeOutcomeFailed, got.Outcome)
+		require.Zero(t, tenantEvents)
+	})
+
+	t.Run("empty frozen scope", func(t *testing.T) {
+		t.Parallel()
+
+		var scopes []d.TenantEvidence
+		got, err := New(stubProcessInstanceAPI{}, stubIncidentAPI{}).PurgeProcessInstancesWithIncidents(context.Background(), d.IncidentPurgeRequest{
+			DryRun:                                 true,
+			DiscoveredCandidateProcessInstanceKeys: typex.Keys{},
+			Progress: func(event d.OpsProgressEvent) {
+				if event.Kind == d.OpsProgressEventKindTenantScope {
+					scopes = append(scopes, event.TenantScope.Evidence)
+				}
+			},
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, d.IncidentPurgeOutcomePlanned, got.Outcome)
+		require.Equal(t, []d.TenantEvidence{{}}, scopes)
+		require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+	})
 }
 
 // TestPurgeProcessInstancesWithIncidentsPagesAllCandidateIncidentsByDefault protects complete-by-default discovery.
