@@ -91,3 +91,10 @@ go test ./internal/services/processinstance/v87 ./internal/services/processinsta
 - T007 now uses the existing tenant-safe traversal adapter for that same family walk, accepts COMPLETED/CANCELED/TERMINATED/ABSENT during cancellation confirmation, locally maps only wrapped `ErrNotFound` to ABSENT in the guarded precheck, and returns the existing no-op response with `Ok=true`.
 - The focused cancellation command passes all contract A–E cases, including completed and disappearing descendants, active-to-completed polling, a mixed terminal family, active/unknown timeout controls, context interruption, and all four terminal-root no-ops with zero cancellation submissions.
 - `go test ./internal/services/processinstance/v87 -count=1`, `git diff --check`, and `make test` (`go test ./... -race -count=1`) passed after the correction.
+
+## US1 v8.8 proof — Iteration 4 (2026-09-10)
+
+- Before T008, `go test ./internal/services/processinstance/v88 -run TestService_CancelProcessInstance -count=1` failed the completed, naturally completed, disappeared, and mixed-terminal family cases against the old CANCELED/TERMINATED list; terminal-root responses had `Ok=false`, and the absent-root precheck propagated wrapped `ErrNotFound`.
+- T008 accepts COMPLETED/CANCELED/TERMINATED/ABSENT during cancellation-family confirmation, locally maps only wrapped `ErrNotFound` to ABSENT inside the guarded precheck, and returns the existing no-op response with `Ok=true`; the separate forced-delete recovery wait remains unchanged for US2.
+- The focused cancellation command now passes all v8.8 contract A–E cases, including active/unknown timeout controls, context interruption, and four zero-submission terminal-root no-ops.
+- `go test ./internal/services/processinstance/v88 -count=1`, `git diff --check`, and `make test` (`go test ./... -race -count=1`) passed after the correction.
