@@ -305,3 +305,20 @@ Started: 2026-09-10 17:15:43
 - Real-handler coverage found that automation suppressed early staged output but the final one-line renderer could still repeat tenant context; the final human gate now excludes automation without pruning attached evidence.
 - All six handlers passed one-line, verbose, debug, JSON, quiet, and automation coverage; automation retained implicit mutation, JSON envelopes remained parseable, and orphan keys-only output stayed one numeric key per line. Focused command tests, docs regeneration review, `make test` (`go test ./... -race -count=1`), declaration ownership review, and `git diff --check` passed.
 ---
+---
+## Iteration 16 - 2026-09-10 20:16
+**Work Unit**: US3 audit serialization regressions (partial)
+**Tasks Completed**:
+- [x] T030: Extend JSON and Markdown report regressions after early tenant rendering
+**Tasks Remaining in Work Unit**: 4 (T031, T033-T035)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/ops_report_json_test.go
+- cmd/ops_report_markdown_test.go
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- JSON and Markdown reports retain named, unfiltered, explicit-key, multiple-tenant, and unknown-tenant evidence after both human stages render; warning fields and truthful legacy tenant identifiers remain independent from command render state and human-only override provenance.
+- Focused report and tenant-context tests, the broader command report suite, `make test` (`go test ./... -race -count=1`), `gofmt`, and `git diff --check` passed without production changes.
+---

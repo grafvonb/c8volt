@@ -22,6 +22,7 @@ Started: 2026-09-10T15:15:43Z
 - Repeated preview/execution tenant-scope events may refresh the complete attached evidence, while `selectionRendered` and `affectedRendered` suppress only duplicate human lines and final-view repetitions; explicit-key selection remains independent of tenant override provenance.
 - Automation still selects the one-line renderer, so final tenant-context suppression must check `automationModeEnabled(cmd)` in addition to render mode and quiet state; structured JSON must retain serialized warning messages even though stderr has no tenant chatter.
 - Declare output modes explicitly for ops workflows when inherited root flags would advertise an unsupported renderer; orphan purge is the only affected workflow with a real keys-only result path.
+- Audit JSON and Markdown derive a normalized tenant-context snapshot from frozen report evidence; staged human render flags and later command-context replacement do not prune serialized IDs, unknown counts, cross-tenant state, or warning messages.
 
 ## Decisions
 - Preserve existing discovery, frozen-scope, mutation, output-mode, and audit behavior; the feature adds a synchronous typed progress event and two command-local rendering stages.
@@ -40,4 +41,4 @@ Started: 2026-09-10T15:15:43Z
 - Do not add discovery or metadata retrieval for reporting, infer unknown tenants from configuration, or strip attached evidence to deduplicate human output.
 
 ## Current Handoff
-- Continue US3 with T030: extend JSON and Markdown report regressions while keeping serialized tenant evidence independent from human emission state.
+- Continue US3 with T031: add all-six-command audit-file and failure-path regressions, distributing lifecycle failures while requiring complete applicable tenant evidence.
