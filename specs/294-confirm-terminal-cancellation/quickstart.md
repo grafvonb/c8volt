@@ -171,3 +171,11 @@ The runnable service prefixes covering contract rows F–H are:
 - The coverage-safe focused command `go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 ./internal/services/processinstance/v810 -run 'TestService_(CancelProcessInstance|DeleteProcessInstance|CancelAndDeleteProcessInstance|WaitForProcessInstanceExpectation)$' -count=1` passed in all four version packages and selects every added F–H adapter regression.
 - Shared matching is covered by `TestWaitForProcessInstanceExpectation_ExplicitCanceledCompatibility`; command behavior is covered by `TestExpectProcessInstanceCommand_StateMismatchRemainsStrict` and `TestCancelProcessInstancesWithPlan_TerminalNoOpPreservesCommandContracts`.
 - `go test ./cmd -run 'Test(Cancel|Expect)' -count=1` passed and selects both added command regressions together with the surrounding cancellation and expectation compatibility suite.
+
+## Final validation — Iteration 22 (2026-09-10)
+
+- All five targeted guide commands passed. The original versioned lifecycle filter again reported `[no tests to run]` for v8.9 and v8.10; the coverage-safe four-adapter lifecycle/expectation command passed and selected tests in every version package.
+- `make docs-content` passed. Its only new generated change was the expected `docs/index.md` build banner refresh from the prior dirty build metadata to commit `beefa29f`; cancellation help content remained stable.
+- Source inspection confirmed two cancellation-specific four-state lists in each supported adapter (eight total) and one guarded terminal/absent precheck with `Ok=true` in each adapter (four total).
+- The feature-wide diff from planning commit `75823846` changes no generated Camunda client, public facade model, dependency file, retry implementation, `internal/services/processinstance/waiter/waiter.go`, or `internal/domain/state.go`.
+- `git diff --check` passed. `make test` passed the full `go test ./... -race -count=1` repository suite; no required check was skipped or unavailable.

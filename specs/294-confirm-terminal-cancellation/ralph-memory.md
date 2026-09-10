@@ -45,8 +45,9 @@ Started: 2026-09-10T06:42:27Z
 - Targeted baseline commands are recorded in `quickstart.md`.
 - `make test` is the required pre-commit gate and passed for iterations 1, 3, 4, 5, 6, 8, 9, 10, and 12.
 - `make test` passed for iterations 13–20 after the v8.7, v8.8, v8.9, v8.10, shared-waiter, command-level, and integrated contract F–H compatibility additions.
+- Final validation in iteration 22 passed all targeted guide commands, the coverage-safe four-adapter command, `make docs-content`, `git diff --check`, and `make test`.
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Start T032: run and record the final validation guide, repository diff checks, and full race-enabled test suite.
+- Start T033: reconcile FR-001–FR-010 and SC-001–SC-005 against the recorded evidence, verify final test names and task state, then complete the terminal handoff if all checks remain satisfied.

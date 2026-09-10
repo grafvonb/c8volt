@@ -350,3 +350,19 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - Documentation now distinguishes goal-based family cancellation confirmation from strict explicit canceled-state expectations; generated changes were limited to the matching CLI reference and README-derived index content plus its build banner.
 ---
+---
+## Iteration 22 - 2026-09-10 11:48
+**Work Unit**: Final terminal cancellation validation (partial)
+**Tasks Completed**:
+- [x] T032: Execute and record the final validation guide, repository diff checks, and full race-enabled test suite
+**Tasks Remaining in Work Unit**: T033
+**Commit**: This work-unit commit
+**Files Changed**:
+- docs/index.md
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/quickstart.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- Every required gate passed; the coverage-safe adapter filter remains necessary because the guide's original lifecycle filter selects no v8.9/v8.10 tests.
+---
