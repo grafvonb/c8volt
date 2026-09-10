@@ -159,3 +159,21 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - The existing v8.8 cancellation fixture can also drive strict Operate delete responses, proving recovery polling, retry, and final absence verification without a separate test framework.
 ---
+---
+## Iteration 10 - 2026-09-10 10:11
+**Work Unit**: US2 v8.9 forced-delete recovery (partial)
+**Tasks Completed**:
+- [x] T015: Add v8.9 completed/absent forced-delete recovery regressions and preserve final verification/failure controls
+- [x] T019: Accept all terminal outcomes in the v8.9 forced-delete recovery wait
+**Tasks Remaining in Work Unit**: 4
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/v89/service.go
+- internal/services/processinstance/v89/service_test.go
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/quickstart.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- The v8.9 Camunda-only fixture can observe recovery polling, delete retry, final absence verification, and later delete failure while keeping the production change to one cancellation-specific state list.
+---

@@ -26,14 +26,15 @@ Started: 2026-09-10T06:42:27Z
 - The v8.8 old-state regression failed only on the intended A–D acceptance cases; its active/unknown and interruption controls already preserved existing failure behavior.
 - The v8.9 old-state regression failed only on completed/disappeared family outcomes, terminal-root `Ok`, and absent-root mapping; its failure controls remained strict.
 - The v8.8 forced-delete recovery fixture can extend the existing cancellation double with a strict Operate delete-response sequence; this keeps recovery waits, delete retries, and final absence reads observable in one real service path.
+- The v8.9 cancellation fixture can drive strict Camunda delete-response sequences; `WithNoWait` isolates the unconditional recovery wait, while the ordinary path needs the existing cancellation-family reads before final absence verification.
 
 ## Reusable Commands
 
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
 - Targeted baseline commands are recorded in `quickstart.md`.
-- `make test` is the required pre-commit gate and passed for iterations 1, 3, 4, 5, 6, and 8.
+- `make test` is the required pre-commit gate and passed for iterations 1, 3, 4, 5, 6, 8, 9, and 10.
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Continue US2 with T015/T019: add the v8.9 forced-delete recovery regressions for completed and absent cancellation-confirmation observations, then extend only that recovery wait's desired states.
+- Continue US2 with T016/T020: add the v8.10 forced-delete recovery regressions for completed and absent cancellation-confirmation observations, then extend only that recovery wait's desired states.

@@ -133,3 +133,10 @@ go test ./internal/services/processinstance/v87 ./internal/services/processinsta
 - T018 now accepts COMPLETED/CANCELED/TERMINATED/ABSENT in the forced-delete recovery wait. The recovery wait remains unconditional under `WithNoWait`, the delete mutation is retried, and the ordinary path still performs its final absent-only verification.
 - A controlled forbidden response after successful cancellation confirmation remains a deletion failure; terminal cancellation does not fabricate overall delete success.
 - The focused deletion command, full v8.8 package, `git diff --check`, and `make test` (`go test ./... -race -count=1`) passed after the correction.
+
+## US2 v8.9 forced-delete recovery — Iteration 10 (2026-09-10)
+
+- Before T019, `go test ./internal/services/processinstance/v89 -run TestService_CancelAndDeleteProcessInstance -count=1` failed the new completed and absent recovery cases against the old CANCELED/TERMINATED list.
+- T019 now accepts COMPLETED/CANCELED/TERMINATED/ABSENT in the forced-delete recovery wait. The recovery wait remains unconditional under `WithNoWait`, the delete mutation is retried, and the ordinary path still performs its final absent-only verification.
+- A controlled forbidden response after successful cancellation confirmation remains a deletion failure; terminal cancellation does not fabricate overall delete success.
+- The focused combined lifecycle command, full v8.9 package, `git diff --check`, and `make test` (`go test ./... -race -count=1`) passed after the correction.
