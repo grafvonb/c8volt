@@ -147,3 +147,11 @@ go test ./internal/services/processinstance/v87 ./internal/services/processinsta
 - T020 now accepts COMPLETED/CANCELED/TERMINATED/ABSENT in the forced-delete recovery wait. The recovery wait remains unconditional under `WithNoWait`, the delete mutation is retried, and the ordinary path still performs its final absent-only verification.
 - A controlled forbidden response after successful cancellation confirmation remains a deletion failure; terminal cancellation does not fabricate overall delete success.
 - The focused combined lifecycle command, full v8.10 package, `git diff --check`, and `make test` (`go test ./... -race -count=1`) passed after the correction.
+
+## US2 real cleanup proof and matrix — Iteration 12 (2026-09-10)
+
+- `TestDeleteProcessDefinitionsAcceptsCompletedDescendantDuringRealCancellation` enters `DeleteProcessDefinitions` with force enabled and delegates cancellation and history deletion to a real v8.8 process-instance service backed by controlled generated-client doubles.
+- The run proves an active root with a completed descendant proceeds through real cancellation confirmation, drained process-definition statistics, child/root history deletion, process-definition resource deletion, and final definition absence verification in order.
+- Temporarily restoring only the old v8.8 cancellation-family state list made the focused regression fail on descendant `456` after two attempts waiting for `CANCELED, TERMINATED`; restoring the four-state list made it pass.
+- Existing cancellation, drain, and history failure controls remain selected by `TestCleanupProcessDefinitionDeletePlanForceScope...` and pass without production changes to `internal/services/processdefinition/delete.go`.
+- The coverage-safe four-version command and `go test ./internal/services/processdefinition -run 'Test(CleanupProcessDefinitionDeletePlanForceScope|DeleteProcessDefinitions)' -count=1` passed. `git diff --check` and `make test` (`go test ./... -race -count=1`) also passed.

@@ -6,20 +6,27 @@ package processdefinition
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/config"
+	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
+	operatev88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/operate"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
+	piv88 "github.com/grafvonb/c8volt/internal/services/processinstance/v88"
 	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	types "github.com/grafvonb/c8volt/typex"
@@ -804,6 +811,233 @@ type controlledProcessDefinitionAPI struct {
 	active   int64
 	err      error
 	afterGet func()
+}
+
+type terminalCancellationProcessDefinitionAPI struct {
+	API
+	sequence *processDefinitionStageSequence
+	calls    atomic.Int64
+}
+
+// GetProcessDefinition exposes active planning, drained cleanup, and final
+// absence in the order exercised by the complete definition-delete workflow.
+func (s *terminalCancellationProcessDefinitionAPI) GetProcessDefinition(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
+	switch s.calls.Add(1) {
+	case 1:
+		return d.ProcessDefinition{Key: key, BpmnProcessId: "demo", TenantId: "tenant", Statistics: &d.ProcessDefinitionStatistics{Active: 1}}, nil
+	case 2:
+		s.sequence.Append("drain:" + key)
+		return d.ProcessDefinition{Key: key, BpmnProcessId: "demo", TenantId: "tenant", Statistics: &d.ProcessDefinitionStatistics{}}, nil
+	default:
+		s.sequence.Append("verify-definition:" + key)
+		return d.ProcessDefinition{}, fmt.Errorf("%w: process definition %s not found", d.ErrNotFound, key)
+	}
+}
+
+type terminalCancellationCamundaClient struct {
+	sequence *processDefinitionStageSequence
+	mu       sync.Mutex
+	canceled bool
+	deleted  map[string]bool
+}
+
+// CreateProcessInstanceWithResponse rejects creation outside the cleanup regression contract.
+func (c *terminalCancellationCamundaClient) CreateProcessInstanceWithResponse(context.Context, camundav88.CreateProcessInstanceJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.CreateProcessInstanceResponse, error) {
+	return nil, errors.New("unexpected process-instance creation")
+}
+
+// GetProcessInstanceWithResponse returns controlled root and descendant states
+// while preserving real v8.8 service conversion and waiter behavior.
+func (c *terminalCancellationCamundaClient) GetProcessInstanceWithResponse(_ context.Context, key string, _ ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.deleted[key] {
+		return terminalCancellationGetResponse(key, http.StatusNotFound, "", ""), nil
+	}
+	switch key {
+	case "123":
+		state := "ACTIVE"
+		if c.canceled {
+			state = "CANCELED"
+		}
+		return terminalCancellationGetResponse(key, http.StatusOK, state, ""), nil
+	case "456":
+		return terminalCancellationGetResponse(key, http.StatusOK, "COMPLETED", "123"), nil
+	default:
+		return nil, fmt.Errorf("unexpected process-instance lookup for key %s", key)
+	}
+}
+
+// SearchProcessInstancesWithResponse supplies the active root during planning
+// and the completed descendant during each real family traversal.
+func (c *terminalCancellationCamundaClient) SearchProcessInstancesWithResponse(_ context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("marshal process-instance search: %w", err)
+	}
+	raw := string(payload)
+	var items []camundav88.ProcessInstanceResult
+	switch {
+	case strings.Contains(raw, `"processDefinitionKey":"pd-1"`) && strings.Contains(raw, `"state":"ACTIVE"`):
+		items = append(items, *terminalCancellationProcessInstance("123", "ACTIVE", ""))
+	case strings.Contains(raw, `"parentProcessInstanceKey":"123"`):
+		items = append(items, *terminalCancellationProcessInstance("456", "COMPLETED", "123"))
+	case strings.Contains(raw, `"parentProcessInstanceKey":"456"`):
+	default:
+		return nil, fmt.Errorf("unexpected process-instance search: %s", raw)
+	}
+	return &camundav88.SearchProcessInstancesResponse{
+		HTTPResponse: terminalCancellationHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/search", http.StatusOK),
+		JSON200: &camundav88.ProcessInstanceSearchQueryResult{
+			Items: items,
+			Page:  camundav88.SearchQueryPageResponse{TotalItems: int64(len(items))},
+		},
+	}, nil
+}
+
+// CancelProcessInstanceWithResponse records the real service submission and
+// transitions the root before its family confirmation reads.
+func (c *terminalCancellationCamundaClient) CancelProcessInstanceWithResponse(_ context.Context, key string, _ camundav88.CancelProcessInstanceJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.CancelProcessInstanceResponse, error) {
+	c.mu.Lock()
+	c.canceled = true
+	c.mu.Unlock()
+	c.sequence.Append("cancel:" + key)
+	return &camundav88.CancelProcessInstanceResponse{
+		HTTPResponse: terminalCancellationHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/"+key+"/cancellation", http.StatusAccepted),
+	}, nil
+}
+
+type terminalCancellationOperateClient struct {
+	camunda  *terminalCancellationCamundaClient
+	sequence *processDefinitionStageSequence
+}
+
+// DeleteProcessInstanceAndAllDependantDataByKeyWithResponse records successful
+// history deletion and makes the deleted key absent for real final waits.
+func (c terminalCancellationOperateClient) DeleteProcessInstanceAndAllDependantDataByKeyWithResponse(_ context.Context, key int64, _ ...operatev88.RequestEditorFn) (*operatev88.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
+	rawKey := strconv.FormatInt(key, 10)
+	c.sequence.Append("delete-history:" + rawKey)
+	c.camunda.mu.Lock()
+	c.camunda.deleted[rawKey] = true
+	c.camunda.mu.Unlock()
+	return &operatev88.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
+		HTTPResponse: terminalCancellationHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/"+rawKey, http.StatusOK),
+		JSON200:      &operatev88.ChangeStatus{},
+	}, nil
+}
+
+// terminalCancellationProcessInstance builds the generated v8.8 result used by controlled reads and searches.
+func terminalCancellationProcessInstance(key string, state string, parentKey string) *camundav88.ProcessInstanceResult {
+	item := &camundav88.ProcessInstanceResult{
+		ProcessDefinitionId:      "demo",
+		ProcessDefinitionKey:     "pd-1",
+		ProcessDefinitionVersion: 1,
+		ProcessInstanceKey:       key,
+		StartDate:                time.Date(2026, time.September, 10, 8, 0, 0, 0, time.UTC),
+		State:                    camundav88.ProcessInstanceStateEnum(state),
+		TenantId:                 "tenant",
+	}
+	if parentKey != "" {
+		item.ParentProcessInstanceKey = &parentKey
+	}
+	return item
+}
+
+// terminalCancellationGetResponse wraps controlled state observations in generated v8.8 responses.
+func terminalCancellationGetResponse(key string, status int, state string, parentKey string) *camundav88.GetProcessInstanceResponse {
+	resp := &camundav88.GetProcessInstanceResponse{
+		HTTPResponse: terminalCancellationHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/"+key, status),
+	}
+	if status == http.StatusOK {
+		resp.JSON200 = terminalCancellationProcessInstance(key, state, parentKey)
+	} else {
+		resp.Body = []byte(`{"message":"not found"}`)
+	}
+	return resp
+}
+
+// terminalCancellationHTTPResponse constructs generated-client response metadata for the controlled backend.
+func terminalCancellationHTTPResponse(method string, rawURL string, status int) *http.Response {
+	req, _ := http.NewRequest(method, rawURL, nil)
+	return &http.Response{StatusCode: status, Status: fmt.Sprintf("%d %s", status, http.StatusText(status)), Request: req}
+}
+
+// TestDeleteProcessDefinitionsAcceptsCompletedDescendantDuringRealCancellation
+// proves force cleanup reaches verified definition deletion when the real v8.8
+// cancellation waiter observes a completed descendant.
+func TestDeleteProcessDefinitionsAcceptsCompletedDescendantDuringRealCancellation(t *testing.T) {
+	sequence := &processDefinitionStageSequence{}
+	progress := func(event d.OpsProgressEvent) {
+		if event.Kind == d.OpsProgressEventKindStage && event.Stage != nil {
+			sequence.Append("stage:" + event.Stage.Phase)
+		}
+	}
+	camunda := &terminalCancellationCamundaClient{
+		sequence: sequence,
+		deleted:  make(map[string]bool),
+	}
+	cfg := &config.Config{
+		App: config.App{
+			Tenant: "tenant",
+			Backoff: config.BackoffConfig{
+				Strategy:     config.BackoffFixed,
+				InitialDelay: time.Millisecond,
+				MaxRetries:   2,
+				Timeout:      25 * time.Millisecond,
+			},
+		},
+		APIs: config.APIs{
+			Camunda: config.API{BaseURL: "https://camunda.local/v2"},
+			Operate: config.API{BaseURL: "https://operate.local"},
+		},
+	}
+	piAPI, err := piv88.New(
+		cfg,
+		&http.Client{},
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		piv88.WithClientCamunda(camunda),
+		piv88.WithClientOperate(terminalCancellationOperateClient{camunda: camunda, sequence: sequence}),
+	)
+	require.NoError(t, err)
+	pdAPI := &terminalCancellationProcessDefinitionAPI{sequence: sequence}
+	resourceAPI := testResourceDeleteAPI{
+		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			sequence.Append("delete-definition:" + key)
+			return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
+		},
+	}
+
+	got, err := DeleteProcessDefinitions(
+		context.Background(),
+		resourceAPI,
+		pdAPI,
+		piAPI,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		types.Keys{"pd-1"},
+		1,
+		services.WithForce(),
+		services.WithProgress(progress),
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, []d.ResourceDeleteResponse{{
+		Key:        "pd-1",
+		Ok:         true,
+		StatusCode: http.StatusOK,
+		Status:     "200 OK",
+	}}, got)
+	require.Equal(t, []string{
+		"stage:cancel",
+		"cancel:123",
+		"stage:drain process instances",
+		"drain:pd-1",
+		"stage:delete",
+		"delete-history:456",
+		"delete-history:123",
+		"stage:delete process definitions",
+		"delete-definition:pd-1",
+		"verify-definition:pd-1",
+	}, sequence.Items())
 }
 
 // GetProcessDefinition records drain polling and returns configured active

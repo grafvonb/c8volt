@@ -28,14 +28,15 @@ Started: 2026-09-10T06:42:27Z
 - The v8.8 forced-delete recovery fixture can extend the existing cancellation double with a strict Operate delete-response sequence; this keeps recovery waits, delete retries, and final absence reads observable in one real service path.
 - The v8.9 cancellation fixture can drive strict Camunda delete-response sequences; `WithNoWait` isolates the unconditional recovery wait, while the ordinary path needs the existing cancellation-family reads before final absence verification.
 - The v8.10 cancellation fixture supports the same strict delete-response sequence as v8.9, including recovery polling, retry, final absence verification, and later delete failure.
+- A process-definition cleanup regression can wire a file-local Camunda/Operate double into the real v8.8 process-instance service while retaining the existing process-definition stage sequence and downstream failure controls.
 
 ## Reusable Commands
 
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
 - Targeted baseline commands are recorded in `quickstart.md`.
-- `make test` is the required pre-commit gate and passed for iterations 1, 3, 4, 5, 6, 8, 9, and 10.
+- `make test` is the required pre-commit gate and passed for iterations 1, 3, 4, 5, 6, 8, 9, 10, and 12.
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Continue US2 with T021: add the focused process-definition cleanup regression using the real v8.8 cancellation service, including the deliberate old-state-list failure proof before restoring the correction.
+- Begin US3 with T023: extend or confirm v8.7 contract F-H compatibility coverage without changing production matching or flag behavior.

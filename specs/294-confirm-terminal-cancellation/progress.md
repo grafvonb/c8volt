@@ -195,3 +195,20 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - The v8.10 Camunda-only fixture can exercise recovery polling, delete retry, final absence verification, and later delete failure without broadening the production change beyond the recovery state list.
 ---
+---
+## Iteration 12 - 2026-09-10 10:32
+**Work Unit**: US2 real process-definition cleanup proof and validation
+**Tasks Completed**:
+- [x] T021: Prove completed-descendant cleanup through real v8.8 cancellation and verified definition deletion
+- [x] T022: Run and record the four-version forced-cleanup matrix and downstream failure controls
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processdefinition/delete_test.go
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/quickstart.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- A file-local generated-client double can exercise the real v8.8 cancellation waiter inside complete process-definition deletion; the old two-state list fails specifically on the completed descendant before any downstream cleanup can proceed.
+---
