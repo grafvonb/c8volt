@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -678,6 +679,37 @@ func TestElementInstanceVariablesUpdate_UsesProcessInstanceKeyAsElementInstanceK
 func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 	ctx := context.Background()
 
+	t.Run("CancelPreservesOptOutReadAndSubmissionBoundaries", func(t *testing.T) {
+		tests := []struct {
+			name          string
+			opts          []services.CallOption
+			states        []string
+			wantReads     int
+			wantDiscovery int
+		}{
+			{name: "NoWait", opts: []services.CallOption{services.WithNoWait()}, states: []string{"ACTIVE"}, wantReads: 1},
+			{name: "NoStateCheck", opts: []services.CallOption{services.WithNoStateCheck()}, states: []string{"ACTIVE", "ACTIVE", "CANCELED"}, wantReads: 3, wantDiscovery: 1},
+			{name: "NoWaitAndNoStateCheck", opts: []services.CallOption{services.WithNoWait(), services.WithNoStateCheck()}, states: nil},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				fixture := newCancellationFixture(t, map[string][]string{"123": tt.states}, nil)
+
+				resp, instances, err := fixture.service(t).CancelProcessInstance(ctx, "123", tt.opts...)
+
+				require.NoError(t, err)
+				assert.True(t, resp.Ok)
+				assert.Equal(t, 1, fixture.cancellationCount())
+				assert.Equal(t, tt.wantReads, fixture.readCount("123"))
+				assert.Equal(t, tt.wantDiscovery, fixture.discoveryCount())
+				if len(tt.opts) == 2 {
+					assert.Empty(t, instances)
+				}
+			})
+		}
+	})
+
 	t.Run("CancelNoWait", func(t *testing.T) {
 		var cancelled string
 		svc := newTestService(t, testConfig(), &mockCamundaClient{
@@ -700,6 +732,113 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 		assert.True(t, resp.Ok)
 		assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 		assert.Empty(t, items)
+	})
+
+	t.Run("CancelPropagatesUnrelatedPrecheckReadError", func(t *testing.T) {
+		cancellations := 0
+		camunda := newStrictCamundaClient(t)
+		camunda.getProcessInstanceWithResponse = func(ctx context.Context, key camundav810.ProcessInstanceKey, reqEditors ...camundav810.RequestEditorFn) (*camundav810.GetProcessInstanceResponse, error) {
+			return &camundav810.GetProcessInstanceResponse{
+				Body:         []byte(`{"message":"backend unavailable"}`),
+				HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusInternalServerError, "500 Internal Server Error"),
+			}, nil
+		}
+		camunda.cancelProcessInstanceWithResponse = func(ctx context.Context, key string, body camundav810.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CancelProcessInstanceResponse, error) {
+			cancellations++
+			return nil, errors.New("unexpected cancellation submission")
+		}
+
+		resp, instances, err := newTestService(t, waitTestConfig(), camunda).CancelProcessInstance(ctx, "123")
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, d.ErrInternal)
+		assert.False(t, resp.Ok)
+		assert.Empty(t, instances)
+		assert.Zero(t, cancellations)
+	})
+
+	t.Run("CancelRetriesTransientSubmissionAndPreservesPermanentError", func(t *testing.T) {
+		t.Run("RetriesRateLimit", func(t *testing.T) {
+			calls := 0
+			camunda := newStrictCamundaClient(t)
+			camunda.cancelProcessInstanceWithResponse = func(ctx context.Context, key string, body camundav810.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CancelProcessInstanceResponse, error) {
+				calls++
+				if calls == 1 {
+					httpResp := newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/123/cancellation", http.StatusTooManyRequests, "429 Too Many Requests")
+					httpResp.Header = http.Header{"Retry-After": []string{"0"}}
+					return &camundav810.CancelProcessInstanceResponse{
+						Body:         []byte(`{"message":"rate limited"}`),
+						HTTPResponse: httpResp,
+					}, nil
+				}
+				return &camundav810.CancelProcessInstanceResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/123/cancellation", http.StatusAccepted, "202 Accepted"),
+				}, nil
+			}
+
+			resp, _, err := newTestService(t, waitTestConfig(), camunda).CancelProcessInstance(ctx, "123", services.WithNoStateCheck(), services.WithNoWait())
+
+			require.NoError(t, err)
+			assert.True(t, resp.Ok)
+			assert.Equal(t, 2, calls)
+		})
+
+		t.Run("ReturnsPermanentSubmissionError", func(t *testing.T) {
+			calls := 0
+			camunda := newStrictCamundaClient(t)
+			camunda.cancelProcessInstanceWithResponse = func(ctx context.Context, key string, body camundav810.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CancelProcessInstanceResponse, error) {
+				calls++
+				return &camundav810.CancelProcessInstanceResponse{
+					Body:         []byte(`{"message":"forbidden"}`),
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/123/cancellation", http.StatusForbidden, "403 Forbidden"),
+				}, nil
+			}
+
+			resp, instances, err := newTestService(t, waitTestConfig(), camunda).CancelProcessInstance(ctx, "123", services.WithNoStateCheck(), services.WithNoWait())
+
+			require.Error(t, err)
+			assert.ErrorIs(t, err, d.ErrForbidden)
+			assert.False(t, resp.Ok)
+			assert.Empty(t, instances)
+			assert.Equal(t, 1, calls)
+		})
+	})
+
+	t.Run("CancelFamilyDiscoveryErrorStopsBeforePolling", func(t *testing.T) {
+		cancellations := 0
+		keyReads := 0
+		discoveryReads := 0
+		camunda := newStrictCamundaClient(t)
+		camunda.getProcessInstanceWithResponse = func(ctx context.Context, key camundav810.ProcessInstanceKey, reqEditors ...camundav810.RequestEditorFn) (*camundav810.GetProcessInstanceResponse, error) {
+			keyReads++
+			return &camundav810.GetProcessInstanceResponse{
+				HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+				JSON200:      new(makeProcessInstanceResult("123", "ACTIVE", "")),
+			}, nil
+		}
+		camunda.searchProcessInstancesWithResp = func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchProcessInstancesResponse, error) {
+			discoveryReads++
+			return &camundav810.SearchProcessInstancesResponse{
+				Body:         []byte(`{"message":"discovery failed"}`),
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/search", http.StatusInternalServerError, "500 Internal Server Error"),
+			}, nil
+		}
+		camunda.cancelProcessInstanceWithResponse = func(ctx context.Context, key string, body camundav810.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CancelProcessInstanceResponse, error) {
+			cancellations++
+			return &camundav810.CancelProcessInstanceResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/123/cancellation", http.StatusAccepted, "202 Accepted"),
+			}, nil
+		}
+
+		resp, _, err := newTestService(t, waitTestConfig(), camunda).CancelProcessInstance(ctx, "123")
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, d.ErrInternal)
+		assert.Contains(t, err.Error(), "cancel family")
+		assert.False(t, resp.Ok)
+		assert.Equal(t, 1, cancellations)
+		assert.Equal(t, 3, keyReads, "precheck and family traversal reads must finish before polling")
+		assert.Equal(t, 1, discoveryReads)
 	})
 
 	t.Run("CancelAcceptsCompletedDescendant", func(t *testing.T) {
@@ -1192,6 +1331,46 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 	})
 }
 
+// TestService_WaitForProcessInstanceExpectation verifies the real v8.10 service keeps explicit canceled matching strict.
+func TestService_WaitForProcessInstanceExpectation(t *testing.T) {
+	ctx := context.Background()
+
+	for _, tc := range []struct {
+		state   string
+		wantOK  bool
+		wantErr bool
+		reads   int
+	}{
+		{state: "CANCELED", wantOK: true, reads: 1},
+		{state: "TERMINATED", wantOK: true, reads: 1},
+		{state: "COMPLETED", wantErr: true, reads: 2},
+		{state: "", wantErr: true, reads: 2},
+	} {
+		name := tc.state
+		if name == "" {
+			name = "ABSENT"
+		}
+		t.Run(name, func(t *testing.T) {
+			fixture := newCancellationFixture(t, map[string][]string{"123": {tc.state}}, nil)
+
+			resp, pi, err := fixture.service(t).WaitForProcessInstanceExpectation(ctx, "123", d.ProcessInstanceExpectationRequest{States: d.States{d.StateCanceled}})
+
+			if tc.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "exceeded max_retries")
+				assert.False(t, resp.Ok)
+				assert.Empty(t, pi)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.wantOK, resp.Ok)
+				assert.Equal(t, d.State(tc.state), resp.State)
+				assert.Equal(t, d.State(tc.state), pi.State)
+			}
+			assert.Equal(t, tc.reads, fixture.readCount("123"))
+		})
+	}
+}
+
 func TestService_WithClientAndLoggerOptions(t *testing.T) {
 	camundaClient := newStrictCamundaClient(t)
 	svc, err := v810.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -1293,6 +1472,7 @@ type cancellationFixture struct {
 	states         map[string][]string
 	children       map[string][]cancellationChild
 	reads          map[string]int
+	discoveries    int
 	cancellations  int
 	deleteResponse func(call int) *camundav810.DeleteProcessInstanceResponse
 	deletions      int
@@ -1349,6 +1529,7 @@ func (f *cancellationFixture) service(t *testing.T) *v810.Service {
 	camunda.searchProcessInstancesWithResp = func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchProcessInstancesResponse, error) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
+		f.discoveries++
 		payload := readBody(t, body)
 		var items []camundav810.ProcessInstanceResult
 		for parentKey, children := range f.children {
@@ -1374,6 +1555,13 @@ func (f *cancellationFixture) service(t *testing.T) *v810.Service {
 		}
 	}
 	return newTestService(t, waitTestConfig(), camunda)
+}
+
+// discoveryCount returns the synchronized child-discovery request count.
+func (f *cancellationFixture) discoveryCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.discoveries
 }
 
 // cancellationCount returns the synchronized cancellation request count.

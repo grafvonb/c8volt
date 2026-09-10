@@ -257,3 +257,18 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - The v8.9 direct-get service path preserves canceled/terminated equivalence while rejecting completed/absent; strict request and discovery counters lock down opt-outs, retry behavior, and discovery/read failures without production changes.
 ---
+---
+## Iteration 16 - 2026-09-10 11:07
+**Work Unit**: US3 v8.10 operator compatibility coverage (partial)
+**Tasks Completed**:
+- [x] T026: Preserve v8.10 explicit canceled expectations, opt-out boundaries, and read/submission error behavior
+**Tasks Remaining in Work Unit**: 4
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/v810/service_test.go
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- The v8.10 direct-get service path preserves canceled/terminated equivalence while rejecting completed/absent; strict request and discovery counters lock down opt-outs, retry behavior, and discovery/read failures without production changes.
+---
