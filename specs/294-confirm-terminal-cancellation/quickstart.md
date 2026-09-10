@@ -105,3 +105,10 @@ go test ./internal/services/processinstance/v87 ./internal/services/processinsta
 - T009 accepts COMPLETED/CANCELED/TERMINATED/ABSENT during cancellation-family confirmation, locally maps only wrapped `ErrNotFound` to ABSENT inside the guarded precheck, and returns the existing no-op response with `Ok=true`; the separate forced-delete recovery wait remains unchanged for US2.
 - The combined cancellation/deletion prefix now passes all v8.9 contract A–E cases, including active/unknown timeout controls, context interruption, and four zero-submission terminal-root no-ops.
 - `go test ./internal/services/processinstance/v89 -count=1`, `git diff --check`, and `make test` (`go test ./... -race -count=1`) passed after the correction.
+
+## US1 v8.10 proof — Iteration 6 (2026-09-10)
+
+- Before T010, `go test ./internal/services/processinstance/v810 -run TestService_CancelAndDeleteProcessInstance -count=1` failed completed, naturally completed, disappeared, and mixed-terminal family cases against the old CANCELED/TERMINATED list; terminal-root responses had `Ok=false`, and the absent-root precheck propagated wrapped `ErrNotFound`.
+- T010 accepts COMPLETED/CANCELED/TERMINATED/ABSENT during cancellation-family confirmation, locally maps only wrapped `ErrNotFound` to ABSENT inside the guarded precheck, and returns the existing no-op response with `Ok=true`; the separate forced-delete recovery wait remains unchanged for US2.
+- The combined cancellation/deletion prefix now passes all v8.10 contract A–E cases, including active/unknown timeout controls, context interruption, and four zero-submission terminal-root no-ops.
+- `go test ./internal/services/processinstance/v810 -count=1` and `git diff --check` passed after the correction; the iteration-wide race suite result is recorded in the progress report.

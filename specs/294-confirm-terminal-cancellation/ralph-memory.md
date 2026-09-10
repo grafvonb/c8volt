@@ -10,7 +10,7 @@ Started: 2026-09-10T06:42:27Z
 - Every versioned suite has `waitTestConfig`: fixed backoff, 1ms initial delay, 2 retries, and 25ms timeout.
 - v8.7 cancellation family discovery must call `walker.Family` through the existing `traversalAdapter`; the public `GetProcessInstance` remains intentionally unsupported because direct Operate lookup is not tenant-safe.
 - v8.8 cancellation regressions can use one file-local Camunda double for direct state reads, parent-filter searches, and cancellation requests; the Operate client remains strict and unused.
-- v8.9 cancellation regressions fit the combined cancellation/deletion suite and can reuse its strict body-based search double with per-key observation sequences.
+- v8.9 and v8.10 cancellation regressions fit their combined cancellation/deletion suites and can reuse strict body-based search doubles with per-key observation sequences.
 
 ## Decisions
 
@@ -28,9 +28,9 @@ Started: 2026-09-10T06:42:27Z
 
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
 - Targeted baseline commands are recorded in `quickstart.md`.
-- `make test` is the required pre-commit gate and passed for iterations 1, 3, and 4.
+- `make test` is the required pre-commit gate and passed for iterations 1, 3, 4, 5, and 6.
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Continue US1 with T006/T010: add the v8.10 contract A–E regressions under its combined test prefix, capture the old failures, apply the paired cancellation fix, and validate the package.
+- Continue US1 with T011/T012: cover bulk propagation of terminal/absent no-op success, then run and record the four-version cancellation matrix.

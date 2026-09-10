@@ -88,3 +88,21 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - The v8.9 body-based search path supports the same deterministic A–E fixture as v8.8; the production change remains confined to the cancellation precheck and family wait.
 ---
+---
+## Iteration 6 - 2026-09-10 09:35
+**Work Unit**: US1 v8.10 cancellation confirmation (partial)
+**Tasks Completed**:
+- [x] T006: Add v8.10 contract A–E cancellation regressions and capture the original failures
+- [x] T010: Accept terminal cancellation outcomes and successful terminal-root no-ops in v8.10
+**Tasks Remaining in Work Unit**: 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/v810/service.go
+- internal/services/processinstance/v810/service_test.go
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/quickstart.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- The v8.10 body-based search path mirrors v8.9 for deterministic A–E coverage; the production correction remains limited to the cancellation precheck and family wait.
+---
