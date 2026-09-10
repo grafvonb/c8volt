@@ -213,3 +213,20 @@ Started: 2026-09-10 17:15:43
 - Keyed and search repair prompts now have real-command accept/decline coverage proving complete context precedes confirmation, broadening warnings and tenant summaries render once, and declines submit no mutations.
 - Accepted interactive repair preserves one top-level search while repeating frozen explicit-target lookups in the existing preflight/execution lifecycle; focused command regressions, `make test` (`go test ./... -race -count=1`), and `git diff --check` passed.
 ---
+---
+## Iteration 11 - 2026-09-10 19:20
+**Work Unit**: US2 tenant-context renderer and policy coverage (partial)
+**Tasks Completed**:
+- [x] T024: Extend tenant-context renderer and ops policy coverage across evidence combinations and override transitions
+**Tasks Remaining in Work Unit**: 4 (T025-T028)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_tenant_context_test.go
+- cmd/ops_tenant_context_test.go
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- Renderer and ops-policy matrices now prove target evidence remains authoritative across known, unknown, default, duplicate, and empty scopes; configured selection does not fill missing metadata.
+- Focused tests, the complete relevant command suite, `make test` (`go test ./... -race -count=1`), and `git diff --check` passed without requiring production changes.
+---

@@ -125,6 +125,16 @@ func TestTenantContextHumanLinesClassifyTenantOverridesAndAffectedTenants(t *tes
 			},
 		},
 		{
+			name: "equal explicit empty flag stays silent",
+			provenance: tenantOverrideProvenance{
+				Explicit: true,
+			},
+			ctx: newDiscoveryTenantContext(""),
+			want: []tenantContextHumanLine{
+				{Text: "selection scope: unfiltered across accessible tenants"},
+			},
+		},
+		{
 			name: "named to empty warns about unfiltered selection",
 			provenance: tenantOverrideProvenance{
 				ConfiguredTenantID: "tenant-a",
@@ -206,6 +216,18 @@ func TestTenantContextHumanLinesClassifyTenantOverridesAndAffectedTenants(t *tes
 				{Text: "affected tenants: tenant-b"},
 			},
 		},
+		{
+			name: "explicit keys ignore discovery override provenance",
+			provenance: tenantOverrideProvenance{
+				ConfiguredTenantID: "tenant-a",
+				ExplicitTenantID:   "tenant-b",
+				Explicit:           true,
+			},
+			ctx: newExplicitKeysTenantContext("tenant-b"),
+			want: []tenantContextHumanLine{
+				{Text: "selection scope: explicit resource keys; tenant filter not applied"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -214,6 +236,117 @@ func TestTenantContextHumanLinesClassifyTenantOverridesAndAffectedTenants(t *tes
 			cmd.SetContext(tt.provenance.ToContext(context.Background()))
 
 			require.Equal(t, tt.want, tenantContextHumanLines(cmd, tt.ctx))
+		})
+	}
+}
+
+// TestTenantContextEvidenceRenderingMatrix verifies actual evidence, rather
+// than configured selection, determines affected summaries and warnings.
+func TestTenantContextEvidenceRenderingMatrix(t *testing.T) {
+	tests := []struct {
+		name          string
+		configured    string
+		resolved      []string
+		unknown       int
+		wantResolved  []string
+		wantUnknown   int
+		wantCross     bool
+		wantSelection []tenantContextHumanLine
+		wantAffected  []tenantContextHumanLine
+	}{
+		{
+			name:          "single",
+			configured:    "tenant-configured",
+			resolved:      []string{"tenant-a"},
+			wantResolved:  []string{"tenant-a"},
+			wantSelection: []tenantContextHumanLine{{Text: "selection scope: tenant-configured only"}},
+			wantAffected:  []tenantContextHumanLine{{Text: "affected tenants: tenant-a"}},
+		},
+		{
+			name:          "multiple",
+			resolved:      []string{"tenant-b", "tenant-a"},
+			wantResolved:  []string{"tenant-a", "tenant-b"},
+			wantCross:     true,
+			wantSelection: []tenantContextHumanLine{{Text: "selection scope: unfiltered across accessible tenants"}},
+			wantAffected:  []tenantContextHumanLine{{Text: "affected tenants: tenant-a, tenant-b", Warn: true}},
+		},
+		{
+			name:          "actual default tenant",
+			resolved:      []string{"<default>"},
+			wantResolved:  []string{"<default>"},
+			wantSelection: []tenantContextHumanLine{{Text: "selection scope: unfiltered across accessible tenants"}},
+			wantAffected:  []tenantContextHumanLine{{Text: "affected tenants: <default>"}},
+		},
+		{
+			name:          "unknown only does not infer configured tenant",
+			configured:    "tenant-configured",
+			unknown:       2,
+			wantResolved:  []string{},
+			wantUnknown:   2,
+			wantSelection: []tenantContextHumanLine{{Text: "selection scope: tenant-configured only"}},
+			wantAffected:  []tenantContextHumanLine{{Text: "tenant metadata is unknown for 2 targets", Warn: true}},
+		},
+		{
+			name:          "known plus unknown",
+			resolved:      []string{"tenant-a"},
+			unknown:       1,
+			wantResolved:  []string{"tenant-a"},
+			wantUnknown:   1,
+			wantSelection: []tenantContextHumanLine{{Text: "selection scope: unfiltered across accessible tenants"}},
+			wantAffected: []tenantContextHumanLine{
+				{Text: "affected tenants: tenant-a"},
+				{Text: "tenant metadata is unknown for 1 target", Warn: true},
+			},
+		},
+		{
+			name:          "multiple plus unknown",
+			resolved:      []string{"tenant-b", "tenant-a"},
+			unknown:       1,
+			wantResolved:  []string{"tenant-a", "tenant-b"},
+			wantUnknown:   1,
+			wantCross:     true,
+			wantSelection: []tenantContextHumanLine{{Text: "selection scope: unfiltered across accessible tenants"}},
+			wantAffected: []tenantContextHumanLine{
+				{Text: "affected tenants: tenant-a, tenant-b", Warn: true},
+				{Text: "tenant metadata is unknown for 1 target", Warn: true},
+			},
+		},
+		{
+			name:          "duplicates and missing IDs normalize",
+			resolved:      []string{"tenant-b", "", "tenant-a", "tenant-b", "tenant-a"},
+			wantResolved:  []string{"tenant-a", "tenant-b"},
+			wantCross:     true,
+			wantSelection: []tenantContextHumanLine{{Text: "selection scope: unfiltered across accessible tenants"}},
+			wantAffected:  []tenantContextHumanLine{{Text: "affected tenants: tenant-a, tenant-b", Warn: true}},
+		},
+		{
+			name:          "empty validated evidence",
+			configured:    "tenant-configured",
+			resolved:      []string{},
+			wantResolved:  []string{},
+			wantSelection: []tenantContextHumanLine{{Text: "selection scope: tenant-configured only"}},
+			wantAffected:  nil,
+		},
+		{
+			name:          "negative unknown count normalizes",
+			configured:    "tenant-configured",
+			unknown:       -3,
+			wantResolved:  []string{},
+			wantSelection: []tenantContextHumanLine{{Text: "selection scope: tenant-configured only"}},
+			wantAffected:  nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd, _ := newTenantContextRenderTestCommand()
+			ctx := withTenantContextEvidence(newDiscoveryTenantContext(tt.configured), tt.resolved, tt.unknown)
+
+			require.Equal(t, tt.wantResolved, ctx.ResolvedTenantIDs)
+			require.Equal(t, tt.wantUnknown, ctx.UnknownTargetCount)
+			require.Equal(t, tt.wantCross, ctx.CrossTenant)
+			require.Equal(t, tt.wantSelection, tenantContextSelectionHumanLines(cmd, ctx))
+			require.Equal(t, tt.wantAffected, tenantContextAffectedHumanLines(ctx))
 		})
 	}
 }
@@ -372,6 +505,17 @@ func TestRenderAttachedTenantContextCompletesOnlyMissingStages(t *testing.T) {
 		renderAttachedTenantContext(cmd)
 
 		require.Equal(t, beforeFinal, buf.String())
+	})
+
+	t.Run("affected only", func(t *testing.T) {
+		cmd, buf := newTenantContextRenderTestCommand()
+		initializeTenantContextHumanRenderStages(cmd)
+		attachTenantContext(cmd, ctx)
+		printOpsTenantAffectedContext(cmd, ctx, channel)
+
+		renderAttachedTenantContext(cmd)
+
+		require.Equal(t, "affected tenants: tenant-b\nselection scope: explicit resource keys; tenant filter not applied\n", buf.String())
 	})
 }
 
