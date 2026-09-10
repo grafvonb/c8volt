@@ -1064,6 +1064,83 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 		assert.Equal(t, 1, getCalls)
 	})
 
+	for _, tc := range []struct {
+		name          string
+		recoveryState string
+	}{
+		{name: "ForceRecoveryAcceptsCompletedWithNoWait", recoveryState: "COMPLETED"},
+		{name: "ForceRecoveryAcceptsAbsentWithNoWait", recoveryState: ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := newCancellationFixture(t, map[string][]string{
+				"123": {"ACTIVE", tc.recoveryState},
+			}, nil)
+			fixture.deleteResponse = func(call int) *camundav810.DeleteProcessInstanceResponse {
+				status := http.StatusOK
+				if call == 1 {
+					status = http.StatusConflict
+				}
+				return &camundav810.DeleteProcessInstanceResponse{
+					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://camunda.local/v2/process-instances/123", status, http.StatusText(status)),
+				}
+			}
+
+			resp, err := fixture.service(t).DeleteProcessInstance(ctx, "123", services.WithForce(), services.WithNoStateCheck(), services.WithNoWait())
+
+			require.NoError(t, err)
+			assert.True(t, resp.Ok)
+			assert.Equal(t, 1, fixture.cancellationCount())
+			assert.Equal(t, 2, fixture.deletionCount())
+			assert.Equal(t, 2, fixture.readCount("123"))
+		})
+	}
+
+	t.Run("ForceRecoveryRetainsFinalAbsenceVerification", func(t *testing.T) {
+		fixture := newCancellationFixture(t, map[string][]string{
+			"123": {"ACTIVE", "ACTIVE", "ACTIVE", "CANCELED", "COMPLETED", ""},
+		}, nil)
+		fixture.deleteResponse = func(call int) *camundav810.DeleteProcessInstanceResponse {
+			status := http.StatusOK
+			if call == 1 {
+				status = http.StatusConflict
+			}
+			return &camundav810.DeleteProcessInstanceResponse{
+				HTTPResponse: newHTTPResponse(http.MethodDelete, "https://camunda.local/v2/process-instances/123", status, http.StatusText(status)),
+			}
+		}
+
+		resp, err := fixture.service(t).DeleteProcessInstance(ctx, "123", services.WithForce(), services.WithNoStateCheck())
+
+		require.NoError(t, err)
+		assert.True(t, resp.Ok)
+		assert.Equal(t, 2, fixture.deletionCount())
+		assert.Equal(t, 6, fixture.readCount("123"))
+	})
+
+	t.Run("ForceRecoveryPreservesRetryDeleteFailure", func(t *testing.T) {
+		fixture := newCancellationFixture(t, map[string][]string{
+			"123": {"ACTIVE", "COMPLETED"},
+		}, nil)
+		fixture.deleteResponse = func(call int) *camundav810.DeleteProcessInstanceResponse {
+			if call == 1 {
+				return &camundav810.DeleteProcessInstanceResponse{
+					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://camunda.local/v2/process-instances/123", http.StatusConflict, "409 Conflict"),
+				}
+			}
+			return &camundav810.DeleteProcessInstanceResponse{
+				Body:         []byte(`{"message":"forbidden"}`),
+				HTTPResponse: newHTTPResponse(http.MethodDelete, "https://camunda.local/v2/process-instances/123", http.StatusForbidden, "403 Forbidden"),
+			}
+		}
+
+		resp, err := fixture.service(t).DeleteProcessInstance(ctx, "123", services.WithForce(), services.WithNoStateCheck(), services.WithNoWait())
+
+		require.Error(t, err)
+		assert.False(t, resp.Ok)
+		assert.Equal(t, 2, fixture.deletionCount())
+		assert.Equal(t, 2, fixture.readCount("123"))
+	})
+
 	t.Run("DeleteWrongStateLogsOnlyWhenVerbose", func(t *testing.T) {
 		runDeleteWrongStateLogTest := func(t *testing.T, verbose bool) string {
 			t.Helper()
@@ -1217,6 +1294,8 @@ type cancellationFixture struct {
 	children       map[string][]cancellationChild
 	reads          map[string]int
 	cancellations  int
+	deleteResponse func(call int) *camundav810.DeleteProcessInstanceResponse
+	deletions      int
 	cancelReadKey  string
 	cancelReadAt   int
 	cancelReadFunc context.CancelFunc
@@ -1286,6 +1365,14 @@ func (f *cancellationFixture) service(t *testing.T) *v810.Service {
 			Page:  camundav810.SearchQueryPageResponse{TotalItems: int64(len(items))},
 		}), nil
 	}
+	if f.deleteResponse != nil {
+		camunda.deleteProcessInstanceWithResponse = func(ctx context.Context, key camundav810.ProcessInstanceKey, body camundav810.DeleteProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.DeleteProcessInstanceResponse, error) {
+			f.mu.Lock()
+			defer f.mu.Unlock()
+			f.deletions++
+			return f.deleteResponse(f.deletions), nil
+		}
+	}
 	return newTestService(t, waitTestConfig(), camunda)
 }
 
@@ -1294,6 +1381,13 @@ func (f *cancellationFixture) cancellationCount() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.cancellations
+}
+
+// deletionCount returns the synchronized deletion request count.
+func (f *cancellationFixture) deletionCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.deletions
 }
 
 // readCount returns the synchronized state-read count for a process-instance key.

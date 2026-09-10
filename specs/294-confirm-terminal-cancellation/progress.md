@@ -177,3 +177,21 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - The v8.9 Camunda-only fixture can observe recovery polling, delete retry, final absence verification, and later delete failure while keeping the production change to one cancellation-specific state list.
 ---
+---
+## Iteration 11 - 2026-09-10 10:21
+**Work Unit**: US2 v8.10 forced-delete recovery (partial)
+**Tasks Completed**:
+- [x] T016: Add v8.10 completed/absent forced-delete recovery regressions and preserve final verification/failure controls
+- [x] T020: Accept all terminal outcomes in the v8.10 forced-delete recovery wait
+**Tasks Remaining in Work Unit**: 2
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/v810/service.go
+- internal/services/processinstance/v810/service_test.go
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/quickstart.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- The v8.10 Camunda-only fixture can exercise recovery polling, delete retry, final absence verification, and later delete failure without broadening the production change beyond the recovery state list.
+---
