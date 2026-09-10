@@ -24,7 +24,7 @@ description: "Implementation tasks for issue #294"
 
 **Purpose**: Establish the acceptance matrix and existing test seams; no production infrastructure is needed.
 
-- [ ] T002 Map contract rows A–I to the four versioned service suites and the focused cleanup test in `specs/294-confirm-terminal-cancellation/quickstart.md`; inspect existing strict clients in `internal/services/processinstance/v88/service_test.go`, shared waiter semantics in `internal/services/processinstance/waiter/waiter.go`, and cleanup seams in `internal/services/processdefinition/delete_test.go`. Record actual test prefixes and bounded polling configuration for deterministic tests; reuse local fixtures without a general test framework.
+- [x] T002 Map contract rows A–I to the four versioned service suites and the focused cleanup test in `specs/294-confirm-terminal-cancellation/quickstart.md`; inspect existing strict clients in `internal/services/processinstance/v88/service_test.go`, shared waiter semantics in `internal/services/processinstance/waiter/waiter.go`, and cleanup seams in `internal/services/processdefinition/delete_test.go`. Record actual test prefixes and bounded polling configuration for deterministic tests; reuse local fixtures without a general test framework.
 
 
 **Checkpoint**: Baseline and test seams are understood; all story work depends on T002.

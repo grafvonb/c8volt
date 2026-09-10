@@ -6,12 +6,15 @@ Started: 2026-09-10T06:42:27Z
 ## Codebase Patterns
 
 - Baseline validation uses the five targeted commands in `quickstart.md`; passing output alone is insufficient when a package reports `[no tests to run]`.
+- Cancellation/deletion test prefixes are `TestService_CancelProcessInstance` and `TestService_DeleteProcessInstance` in v87/v88, but the combined `TestService_CancelAndDeleteProcessInstance` in v89/v810.
+- Every versioned suite has `waitTestConfig`: fixed backoff, 1ms initial delay, 2 retries, and 25ms timeout.
 
 ## Decisions
 
 ## Gotchas
 
-- The current versioned test filter selects no tests in v89 and v810; T002 must record the actual runnable prefixes before story tests are added.
+- The original versioned filter selects no tests in v89/v810; use the coverage-safe command recorded in `quickstart.md` until test names change.
+- The callback-only cleanup process-instance double cannot reproduce row A; the cleanup regression must delegate to a real v88 cancellation service through a small file-local adapter/client double.
 
 ## Reusable Commands
 
@@ -22,4 +25,4 @@ Started: 2026-09-10T06:42:27Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Complete T002 by mapping contract rows A–I to existing versioned and cleanup test seams, including actual runnable prefixes and bounded polling configuration.
+- Start US1 with T003: add v87 contract A–E cancellation regressions and demonstrate the expected failures before T007.

@@ -49,3 +49,38 @@ Run `gofmt -w` on each touched Go file before these checks. Inspect generated do
 - Process-definition cleanup/deletion command passed.
 - Command cancellation/expectation command passed.
 - Full repository gate `make test` (`go test ./... -race -count=1`) passed before the coordinated setup commit.
+
+## Acceptance and test-seam map — Iteration 2 (2026-09-10)
+
+The versioned cancellation tests do not share one top-level name. Use these actual runnable prefixes when adding contract cases:
+
+| Version | Cancellation cases | Forced-delete cases | Local fixture seam |
+| --- | --- | --- | --- |
+| 8.7 | `TestService_CancelProcessInstance` | `TestService_DeleteProcessInstance` | `newTestService` with strict Camunda/Operate clients; override only expected generated-client calls |
+| 8.8 | `TestService_CancelProcessInstance` | `TestService_DeleteProcessInstance` | `newTestService`, `newStrictCamundaClient`, and `newStrictOperateClient`; unexpected calls fail immediately |
+| 8.9 | `TestService_CancelAndDeleteProcessInstance` | `TestService_CancelAndDeleteProcessInstance` | `newTestService` with a strict version-local Camunda client; cancellation and deletion are subtests of the combined prefix |
+| 8.10 | `TestService_CancelAndDeleteProcessInstance` | `TestService_CancelAndDeleteProcessInstance` | `newTestService` with a strict version-local Camunda client; cancellation and deletion are subtests of the combined prefix |
+
+The contract rows map to those suites as follows:
+
+| Contract row | Four-version service coverage | Additional focused seam |
+| --- | --- | --- |
+| A — completed descendant | Cancellation prefix in every version; model the existing family search/get sequence and assert every discovered key is confirmed | Real 8.8 cancellation is reused by the process-definition cleanup proof |
+| B — active becomes completed | Cancellation prefix in every version; return ACTIVE on the first state read and COMPLETED on the second | Shared waiter already supports repeated state reads without changing equivalence rules |
+| C — known member disappears | Cancellation prefix in every version; discover the member first, then return the adapter's established not-found response during confirmation | `TestWaitForProcessInstanceState` owns generic absent-during-wait behavior |
+| D — terminal/absent root no-op | Cancellation prefix in every version; use strict cancellation counters to prove zero submissions and assert `Ok`, code, and status | `TestCancelProcessInstancesEmitsCompletionFacts` in `bulk_test.go` is the report-propagation seam |
+| E — active/unknown remains | Cancellation prefix in every version; exhaust bounded retries and separately interrupt context | `TestWaitForProcessInstanceState` owns timeout and context controls |
+| F — explicit canceled expectation | Add adapter-backed cases under each version's actual cancellation/deletion prefix, then retain shared waiter and command strictness tests | `TestWaitForProcessInstanceExpectation_StateAndIncidentCompatibility`, `TestWaitForProcessInstanceState`, and `TestExpectProcessInstanceCommand_StateMismatchRemainsStrict` |
+| G — no-wait/no-state-check | Cancellation and forced-delete prefixes in every version; assert reads, submission, discovery, and wait counts separately and combined | Existing `CancelNoWait` cases are controls, including subtests under the combined 8.9/8.10 prefix |
+| H — unrelated read/submission errors | Cancellation prefix in every version, with strict unexpected-call failures and request counters preserving retry/error boundaries | Existing strict getters and command error-envelope tests remain controls |
+| I — forced-delete recovery | Forced-delete prefix in every version; exercise the intermediate cancellation wait, delete retry, and final absence verification | Add a `TestDeleteProcessDefinitions...` case in `internal/services/processdefinition/delete_test.go` that enters `cleanupProcessDefinitionDeletePlanForceScope` with a real 8.8 cancellation service; retain `TestCleanupProcessDefinitionDeletePlanForceScopeStopsAfterCancellationFailure`, `...StopsAfterDrainFailure`, and `...StopsAfterHistoryFailure` as downstream boundaries |
+
+All four versioned suites already expose `waitTestConfig`, configured with fixed backoff, `InitialDelay: 1ms`, `MaxRetries: 2`, and `Timeout: 25ms`. Use it for deterministic state transitions and retry exhaustion. Use an already-canceled context or a test-owned cancellation callback for interruption cases instead of lengthening the timeout. The cleanup test can return drained statistics immediately; its real cancellation service should use the same bounded configuration.
+
+The shared waiter intentionally remains unchanged: it fans family waits across unique keys and requires every scheduled key to return success; only its existing not-found detection maps an observation to ABSENT; and state equivalence remains limited to CANCELED/TERMINATED. In `delete_test.go`, the existing callback-only `cleanupProcessInstanceAPI` is suitable for downstream failure controls but cannot prove row A. The focused cleanup regression therefore needs a small file-local adapter/client double that delegates cancellation to the real 8.8 service while reusing `processDefinitionStageSequence`, `controlledProcessDefinitionAPI`, and the current force-cleanup entry point. Do not introduce a shared test framework.
+
+Prefix inventory was verified with `go test -list`: the original `TestService_(CancelProcessInstance|DeleteProcessInstance)` filter selects 8.7/8.8 only, while 8.9/8.10 require `TestService_CancelAndDeleteProcessInstance`. Until the later suites are renamed, use this coverage-safe command:
+
+```sh
+go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 ./internal/services/processinstance/v810 -run 'TestService_(CancelProcessInstance|DeleteProcessInstance|CancelAndDeleteProcessInstance)$' -count=1
+```
