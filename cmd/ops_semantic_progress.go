@@ -190,25 +190,35 @@ func (r *opsSemanticProgressReporter) printDurableLineLocked(line string, warn b
 // ingestCompletionLocked applies one fact while preserving monotonic counters
 // and permanently invalidating affected output on unknown or invalid deltas.
 func (r *opsSemanticProgressReporter) ingestCompletionLocked(completion ops.CompletionProgress) {
-	if r.aggregate.Total <= 0 && completion.Total > 0 {
-		r.aggregate.Total = completion.Total
+	aggregate, dirty := applyOpsSemanticCompletionToAggregate(r.aggregate, completion)
+	r.aggregate = aggregate
+	if dirty {
+		r.dirty = true
 	}
-	if r.aggregate.Total > 0 && r.aggregate.Completed >= r.aggregate.Total {
-		return
+}
+
+// applyOpsSemanticCompletionToAggregate reduces one completion fact into a
+// bounded aggregate without touching reporter output, clocks, or activity state.
+func applyOpsSemanticCompletionToAggregate(aggregate opsSemanticProgressAggregate, completion ops.CompletionProgress) (opsSemanticProgressAggregate, bool) {
+	if aggregate.Total <= 0 && completion.Total > 0 {
+		aggregate.Total = completion.Total
 	}
-	r.aggregate.Completed++
-	r.dirty = true
+	if aggregate.Total > 0 && aggregate.Completed >= aggregate.Total {
+		return aggregate, false
+	}
+	aggregate.Completed++
 	if completion.Disposition == ops.CompletionDispositionFailed {
-		r.aggregate.Failed++
+		aggregate.Failed++
 	}
-	if !r.aggregate.AffectedValid {
-		return
+	if !aggregate.AffectedValid {
+		return aggregate, true
 	}
 	if completion.AffectedCount == nil || *completion.AffectedCount < 0 {
-		r.aggregate.AffectedValid = false
-		return
+		aggregate.AffectedValid = false
+		return aggregate, true
 	}
-	r.aggregate.Affected += *completion.AffectedCount
+	aggregate.Affected += *completion.AffectedCount
+	return aggregate, true
 }
 
 // completionMatchesScope avoids mixing unrelated completion phases when a

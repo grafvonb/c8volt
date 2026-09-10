@@ -604,6 +604,131 @@ func TestCancelProcessInstancesWithPlan_RegressionWorkerControls(t *testing.T) {
 	require.Equal(t, typex.Keys{"root-a"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
 }
 
+// TestCancelProcessInstancesWithPlan_TerminalNoOpPreservesCommandContracts
+// verifies corrected terminal no-op reports retain their public fields while
+// command-owned prompts, activity, and inherited opt-out options stay stable.
+func TestCancelProcessInstancesWithPlan_TerminalNoOpPreservesCommandContracts(t *testing.T) {
+	const terminalStatus = "process instance with key root-terminal is already in state COMPLETED, no need to cancel"
+
+	for _, tt := range []struct {
+		name         string
+		json         bool
+		noWait       bool
+		noStateCheck bool
+		wantOutcome  Outcome
+	}{
+		{name: "human", wantOutcome: OutcomeSucceeded},
+		{name: "json", json: true, wantOutcome: OutcomeSucceeded},
+		{name: "json no-wait", json: true, noWait: true, wantOutcome: OutcomeAccepted},
+		{name: "json no-state-check", json: true, noStateCheck: true, wantOutcome: OutcomeSucceeded},
+		{name: "json combined opt-outs", json: true, noWait: true, noStateCheck: true, wantOutcome: OutcomeAccepted},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			flagCmdAutoConfirm = true
+			flagViewAsJson = tt.json
+			flagNoWait = tt.noWait
+			flagNoStateCheck = tt.noStateCheck
+
+			root := &cobra.Command{Use: "c8volt"}
+			cancel := &cobra.Command{Use: "cancel"}
+			cmd := &cobra.Command{Use: "process-instance"}
+			root.AddCommand(cancel)
+			cancel.AddCommand(cmd)
+			setCommandMutation(cmd, CommandMutationStateChanging)
+			setContractSupport(cmd, ContractSupportFull)
+
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			cmd.SetOut(stdout)
+			cmd.SetErr(stderr)
+			sink := &activitysink.Sink{}
+			cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+
+			promptCount := 0
+			prevConfirm := confirmCmdOrAbortFn
+			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+			confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+				promptCount++
+				require.True(t, autoConfirm)
+				require.Equal(t, "You are about to cancel 1 process instance(s). Do you want to proceed?", prompt)
+				return nil
+			}
+
+			assertOptions := func(opts []options.FacadeOption) {
+				cfg := options.ApplyFacadeOptions(opts)
+				require.True(t, cfg.IgnoreTenant)
+				require.Equal(t, tt.noWait, cfg.NoWait)
+				require.Equal(t, tt.noStateCheck, cfg.NoStateCheck)
+			}
+			cli := stubProcessAPI{
+				dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+					require.Equal(t, typex.Keys{"root-terminal"}, keys)
+					assertOptions(opts)
+					return process.DryRunPIKeyExpansion{
+						Roots:     typex.Keys{"root-terminal"},
+						Collected: typex.Keys{"root-terminal"},
+						Outcome:   process.TraversalOutcomeComplete,
+					}, nil
+				},
+				cancelProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.CancelReports, error) {
+					require.Equal(t, typex.Keys{"root-terminal"}, keys)
+					assertOptions(opts)
+					cfg := options.ApplyFacadeOptions(opts)
+					require.True(t, cfg.SuppressWorkflowDetailLogs)
+					require.True(t, cfg.SuppressProcessInstanceDetailLogs)
+					return process.CancelReports{Items: []process.CancelReport{{
+						Key:        "root-terminal",
+						Ok:         true,
+						StatusCode: http.StatusOK,
+						Status:     terminalStatus,
+					}}}, nil
+				},
+			}
+
+			result, err := cancelProcessInstancesWithPlan(cmd, cli, typex.Keys{"root-terminal"}, true)
+
+			require.NoError(t, err)
+			require.Equal(t, 1, promptCount)
+			require.Equal(t, []process.Reporter{{
+				Key:        "root-terminal",
+				Ok:         true,
+				StatusCode: http.StatusOK,
+				Status:     terminalStatus,
+			}}, result.Reports)
+			started, stopped, messages := sink.Snapshot()
+			if tt.json {
+				require.Equal(t, 1, started)
+				require.Equal(t, 1, stopped)
+				require.Equal(t, []string{"preparing cancel dry-run scope for 1 process instance(s)"}, messages)
+			} else {
+				require.Equal(t, 2, started)
+				require.Equal(t, 2, stopped)
+				require.Equal(t, []string{
+					"preparing cancel dry-run scope for 1 process instance(s)",
+					"cancellation process-instance trees, 0/1 process-instance tree(s), affected process instances: 0",
+				}, messages)
+			}
+
+			payload := process.CancelReports{Items: []process.CancelReport{process.CancelReport(result.Reports[0])}}
+			require.NoError(t, renderCommandResult(cmd, payload))
+			if !tt.json {
+				require.Equal(t, "selection scope: explicit resource keys; tenant filter not applied\n", stdout.String())
+				require.Contains(t, stderr.String(), "cancellation: canceled 1/1 process-instance tree(s)")
+				return
+			}
+
+			require.Empty(t, stderr.String())
+			var envelope ResultEnvelope[process.CancelReports]
+			require.NoError(t, json.Unmarshal(stdout.Bytes(), &envelope))
+			require.Equal(t, tt.wantOutcome, envelope.Outcome)
+			require.Equal(t, "cancel process-instance", envelope.Command)
+			require.Equal(t, payload, envelope.Payload)
+		})
+	}
+}
+
 // TestCancelProcessInstancesWithPlan_DefaultMilestoneFinalFlushAndNoTimerDuplicate
 // verifies direct cancel commands emit paced aggregate semantic milestones,
 // flush once on close, and suppress legacy timer-style mutation progress.

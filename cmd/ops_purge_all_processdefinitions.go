@@ -35,7 +35,7 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 	Short: "Purge all selected process definitions",
 	Long: "Purge all selected process definitions.\n\n" +
 		"Tenant contract: selector mode uses discovery semantics, where a named tenant scopes candidate discovery and empty tenant configuration leaves discovery unfiltered. Explicit --tenant changes are reported before scope, and --tenant \"\" warns when it clears a named configured filter. Direct --key input uses explicit-key semantics and reports that the tenant filter is not applied. Frozen plans and audit reports show one known process-definition or nested process-instance tenant informationally, emit one warning-level \"affected tenants\" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.\n\n" +
-		"The workflow discovers candidate process-definition versions using the same filters as `get process-definition`, freezes the candidate keys, validates the existing delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Discovery pages through all matching process definitions by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. After confirmation, default human output keeps deletion progress on one workflow activity and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-definition completion line. JSON and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings. This purge requires the full process-definition history deletion capability, currently Camunda 8.9 or newer. Preview with --dry-run before confirmed deletion. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
+		"The workflow discovers candidate process-definition versions using the same filters as `get process-definition`, freezes the candidate keys, validates the existing delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Discovery pages through all matching process definitions by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. After confirmation, default human output keeps deletion progress on one workflow activity and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Forced cleanup enters the actual stages as needed: cancelling process-instance root trees, waiting for active process instances to drain, deleting process-instance histories, and deleting process definitions. Cancellation and history deletion count unique root trees; definition deletion counts process definitions. Verbose and debug output replace aggregate milestones with one completion line per root or definition in the current stage. JSON and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings. This purge requires the full process-definition history deletion capability, currently Camunda 8.9 or newer. Preview with --dry-run before confirmed deletion. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
 	Example: `  ./c8volt ops purge all-process-definitions --dry-run
   ./c8volt --tenant tenant-a ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt --tenant "" ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
@@ -75,8 +75,8 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			ReportFormat:  flagOpsPurgeAllPDReportFormat,
 			StartedAt:     time.Now().UTC(),
 		}
-		deletionProgress := newProcessDefinitionDeleteSemanticProgress(cmd, 0)
-		configureOpsPurgeAllProcessDefinitionsProgress(cmd, &request, deletionProgress)
+		executionProgress := newOpsPurgeAllProcessDefinitionsProgressForCommand(cmd)
+		configureOpsPurgeAllProcessDefinitionsProgress(cmd, &request, executionProgress)
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
@@ -101,14 +101,11 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			}
 			request.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, planned.Discovery.CandidateProcessDefinitionKeys...)
 			request.DiscoveredScopeStatus = planned.Discovery.DiscoveryScopeStatus
-			if len(request.DiscoveredCandidateProcessDefinitionKeys) > 0 {
-				deletionProgress.Start(len(request.DiscoveredCandidateProcessDefinitionKeys))
-			}
 		}
-		result, err := purgeAllProcessDefinitionsWithCommandActivity(cmd, request, func() (ops.AllProcessDefinitionsPurgeResult, error) {
+		result, err := runOpsPurgeAllProcessDefinitionsWithCommandProgress(cmd, request, executionProgress, func() (ops.AllProcessDefinitionsPurgeResult, error) {
 			return cli.PurgeAllProcessDefinitions(cmd.Context(), request, collectOptions()...)
 		})
-		deletionProgress.Close()
+		executionProgress.Close()
 		result = attachOpsPurgeAllProcessDefinitionsResultTenantContext(cmd, cfg, result)
 		if err != nil {
 			if reportErr := writeOpsPurgeAllProcessDefinitionsReport(result, cfg, opsPurgeAllProcessDefinitionsReportWriteMode(result)); reportErr != nil {
@@ -200,37 +197,12 @@ func purgeAllProcessDefinitionsWithCommandActivity(cmd *cobra.Command, request o
 
 func formatOpsPurgeAllProcessDefinitionsActivity(request ops.AllProcessDefinitionsPurgeRequest) string {
 	if request.DiscoveredCandidateProcessDefinitionKeys != nil {
-		return "deleting process definitions"
+		return "running process-definition purge workflow"
 	}
 	if request.DryRun {
 		return "checking process-definition delete impact"
 	}
 	return "running process-definition purge workflow"
-}
-
-// configureOpsPurgeAllProcessDefinitionsProgress keeps discovery progress on
-// the APD renderer while forwarding delete completions to the deletion reporter.
-func configureOpsPurgeAllProcessDefinitionsProgress(cmd *cobra.Command, request *ops.AllProcessDefinitionsPurgeRequest, deletionProgress *processDefinitionDeleteSemanticProgress) {
-	if request == nil {
-		return
-	}
-	channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
-	request.Progress = func(event ops.ProgressEvent) {
-		switch event.Kind {
-		case ops.ProgressEventKindPreflight:
-			if event.Preflight != nil {
-				printOpsPreflightScope(cmd, *event.Preflight, channel)
-			}
-		case ops.ProgressEventKindPage:
-			if event.Page != nil {
-				printOpsSlowProcessAnalysisProgress(cmd, formatOpsPageProgress(*event.Page, "process definition(s)"), channel)
-			}
-		case ops.ProgressEventKindCompletion:
-			if event.Completion != nil {
-				deletionProgress.Report(event)
-			}
-		}
-	}
 }
 
 // rejectOpsPurgeAllProcessDefinitionsPlanRequiringForce blocks mutation before prompting when active process instances are affected.

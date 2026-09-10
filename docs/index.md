@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.0-beta.1-134-gff451a19`, commit `ff451a19`, built `2026-09-01T06:15:09Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.0-beta.1-181-gbeefa29f`, commit `beefa29f`, built `2026-09-10T09:45:30Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -38,7 +38,7 @@ The `ops` command group turns multi-command Camunda operations into audited, pre
 
 High-volume search, analysis, repair, purge, cancel, delete, walk, run, and smoke-test workflows report scope before expensive work and progress while the frozen work set is processed. Broad selectors show a preflight summary with the core resource, best available count certainty, page-size context, and the consequence of continuing. Counts are labeled as exact, lower bound, estimated, or unknown so operators can tell whether the number is a frozen scope or only the best current signal from Camunda.
 
-During discovery, progress uses page and seen-count wording. After c8volt freezes the work set and starts real work, progress switches to exact completion counters for phases such as deleting process-instance trees, deleting or deploying process definitions, repairing incidents, starting process instances, analyzing enriched runtime data, waiting for multi-key expectations, or running smoke-test stages. The visible activity is updated from real completions and may include failed counts plus affected-resource totals only when every item can report a trustworthy value.
+During discovery, progress uses page and seen-count wording. After c8volt freezes the work set and starts real work, progress switches to exact completion counters for phases such as deleting process-instance trees, deleting or deploying process definitions, repairing incidents, starting process instances, analyzing enriched runtime data, waiting for multi-key expectations, or running smoke-test stages. Forced all-process-definitions purge reports the actual cleanup sequence: cancelling process-instance root trees, waiting for active process instances to drain, deleting process-instance histories, then deleting process definitions. Root-tree cleanup counts are separate from definition counts, and any displayed affected scope is planned cleanup scope rather than completed work. The visible activity is updated from real completions and may include failed counts plus affected-resource totals only when every item can report a trustworthy value.
 
 Progress never writes to result stdout. Default human mode uses terminal activity and, for long progressing phases, emits compact completion milestones on stderr at most once per 10-second interval plus immediate failure warnings. Clean operations that finish before the first interval stay durably silent. Verbose and debug modes replace aggregate milestones with one durable per-item or per-stage completion line. JSON output remains one document, keys-only output remains one key per line, quiet mode suppresses successful progress while retaining failure warnings, and automation-oriented runs suppress all human progress chatter or keep scope in structured reports. For paged commands, `--batch-size` controls each backend discovery request, while `--limit` caps the total returned, selected, frozen, or analyzed scope as documented by the command.
 
@@ -316,6 +316,8 @@ Generated references: [update process-instance](./cli/c8volt_update_process-inst
 ### Cancel And Delete Safely
 
 Use dry-run to preview process-instance family scope before cancellation or historical deletion.
+
+Cancellation confirmation succeeds when every affected family member is completed, canceled, terminated, or no longer present. This terminal cleanup rule does not broaden explicit state checks: `expect process-instance --state canceled` continues to match only canceled or terminated instances, not completed or absent ones.
 
 ```bash
 ./c8volt cancel process-instance --key <process-instance-key> --dry-run

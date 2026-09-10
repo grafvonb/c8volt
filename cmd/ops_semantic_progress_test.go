@@ -367,6 +367,75 @@ func TestOpsSemanticProgressReporterQuietFailureBypassesWarnFiltering(t *testing
 	require.Equal(t, "root-1 failed: boom (deleting process-instance trees, 1/1 process-instance tree(s), 1 failed)\n", stderr.String())
 }
 
+// TestApplyOpsSemanticCompletionToAggregatePreservesReporterReductionRules
+// verifies the shared pure reducer keeps total bounds, failed counts, and
+// affected-count validity semantics independent from reporter output state.
+func TestApplyOpsSemanticCompletionToAggregatePreservesReporterReductionRules(t *testing.T) {
+	affected := 4
+	aggregate, dirty := applyOpsSemanticCompletionToAggregate(opsSemanticProgressAggregate{
+		AffectedValid: true,
+	}, ops.CompletionProgress{
+		Total:         2,
+		Disposition:   ops.CompletionDispositionFailed,
+		AffectedCount: &affected,
+	})
+
+	require.True(t, dirty)
+	require.Equal(t, opsSemanticProgressAggregate{
+		Completed:     1,
+		Failed:        1,
+		Total:         2,
+		Affected:      4,
+		AffectedValid: true,
+	}, aggregate)
+
+	aggregate, dirty = applyOpsSemanticCompletionToAggregate(aggregate, ops.CompletionProgress{
+		Disposition: ops.CompletionDispositionConfirmed,
+	})
+	require.True(t, dirty)
+	require.Equal(t, opsSemanticProgressAggregate{
+		Completed:     2,
+		Failed:        1,
+		Total:         2,
+		Affected:      4,
+		AffectedValid: false,
+	}, aggregate)
+
+	affected = 10
+	aggregate, dirty = applyOpsSemanticCompletionToAggregate(aggregate, ops.CompletionProgress{
+		Disposition:   ops.CompletionDispositionConfirmed,
+		AffectedCount: &affected,
+	})
+	require.False(t, dirty)
+	require.Equal(t, opsSemanticProgressAggregate{
+		Completed:     2,
+		Failed:        1,
+		Total:         2,
+		Affected:      4,
+		AffectedValid: false,
+	}, aggregate)
+}
+
+// TestApplyOpsSemanticCompletionToAggregatePreservesKnownZeroAffected verifies
+// zero affected counts stay valid and distinct from unavailable counts.
+func TestApplyOpsSemanticCompletionToAggregatePreservesKnownZeroAffected(t *testing.T) {
+	affected := 0
+	aggregate, dirty := applyOpsSemanticCompletionToAggregate(opsSemanticProgressAggregate{
+		Total:         1,
+		AffectedValid: true,
+	}, ops.CompletionProgress{
+		Disposition:   ops.CompletionDispositionConfirmed,
+		AffectedCount: &affected,
+	})
+
+	require.True(t, dirty)
+	require.Equal(t, opsSemanticProgressAggregate{
+		Completed:     1,
+		Total:         1,
+		AffectedValid: true,
+	}, aggregate)
+}
+
 // TestOpsSemanticProgressReporterCloseIsIdempotent verifies repeated cleanup
 // neither double-stops activity nor emits duplicate final records.
 func TestOpsSemanticProgressReporterCloseIsIdempotent(t *testing.T) {

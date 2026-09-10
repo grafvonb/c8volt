@@ -53,6 +53,54 @@ func TestProgressCompletionFactMapsFromServiceOptions(t *testing.T) {
 	}, events[0].Completion)
 }
 
+// TestProgressStageFactMapsFromServiceOptions verifies stage-entry facts reach
+// facade-option callbacks while preserving nil, known zero, and pointer copies.
+func TestProgressStageFactMapsFromServiceOptions(t *testing.T) {
+	t.Parallel()
+
+	var events []ProgressEvent
+	cfg := services.ApplyCallOptions(MapFacadeOptionsToCallOptions([]FacadeOption{
+		WithProgress(func(event ProgressEvent) {
+			events = append(events, event)
+		}),
+	}))
+	require.NotNil(t, cfg.Progress)
+
+	total := 0
+	plannedAffected := 5
+	cfg.Progress(d.OpsProgressEvent{
+		Kind: d.OpsProgressEventKindStage,
+		Stage: &d.OpsStageProgress{
+			Phase:                "cancel",
+			CoreResource:         "process-instance tree(s)",
+			Total:                &total,
+			PlannedAffectedCount: &plannedAffected,
+		},
+	})
+	cfg.Progress(d.OpsProgressEvent{
+		Kind: d.OpsProgressEventKindStage,
+		Stage: &d.OpsStageProgress{
+			Phase: "drain process instances",
+		},
+	})
+
+	require.Len(t, events, 2)
+	require.Equal(t, ProgressEventKindStage, events[0].Kind)
+	require.Equal(t, &StageProgress{
+		Phase:                "cancel",
+		CoreResource:         "process-instance tree(s)",
+		Total:                &total,
+		PlannedAffectedCount: &plannedAffected,
+	}, events[0].Stage)
+	require.NotSame(t, &total, events[0].Stage.Total)
+	require.NotSame(t, &plannedAffected, events[0].Stage.PlannedAffectedCount)
+
+	require.Equal(t, ProgressEventKindStage, events[1].Kind)
+	require.NotNil(t, events[1].Stage)
+	require.Nil(t, events[1].Stage.Total)
+	require.Nil(t, events[1].Stage.PlannedAffectedCount)
+}
+
 // TestProgressCompletionDispositionMapsFromServiceOptions verifies the facade
 // option adapter preserves service lifecycle facts without operation wording.
 func TestProgressCompletionDispositionMapsFromServiceOptions(t *testing.T) {

@@ -258,20 +258,29 @@ apis:
 	require.Contains(t, string(output), "2251799813685255")
 }
 
-// Strict state expectations must not inherit run confirmation's broader observable-state success set.
+// Strict canceled expectations accept only canceled-equivalent states across
+// human and JSON command contracts, not every terminal cleanup state.
 func TestExpectProcessInstanceCommand_StateMismatchRemainsStrict(t *testing.T) {
-	var attempts atomic.Int32
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/v2/process-instances/2251799813685255", r.URL.Path)
+	for _, state := range []string{"COMPLETED", "ABSENT", "CANCELED", "TERMINATED"} {
+		for _, mode := range []string{"human", "json"} {
+			t.Run(strings.ToLower(state)+"/"+mode, func(t *testing.T) {
+				var attempts atomic.Int32
+				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					require.Equal(t, http.MethodGet, r.Method)
+					require.Equal(t, "/v2/process-instances/2251799813685255", r.URL.Path)
 
-		attempts.Add(1)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813685255","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
-	}))
-	t.Cleanup(srv.Close)
+					attempts.Add(1)
+					w.Header().Set("Content-Type", "application/json")
+					if state == "ABSENT" {
+						w.WriteHeader(http.StatusNotFound)
+						_, _ = w.Write([]byte(`{"title":"Not Found","status":404,"detail":"resource not found"}`))
+						return
+					}
+					_, _ = w.Write([]byte(fmt.Sprintf(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813685255","startDate":"2026-03-23T18:00:00Z","state":%q,"tenantId":"tenant"}`, state)))
+				}))
+				t.Cleanup(srv.Close)
 
-	cfgPath := writeRawTestConfig(t, `app:
+				cfgPath := writeRawTestConfig(t, `app:
   camunda_version: 8.8
   backoff:
     strategy: fixed
@@ -285,18 +294,48 @@ apis:
     base_url: `+srv.URL+`
 `)
 
-	output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperExpectProcessInstanceCommand_StateMismatchRemainsStrict", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	}, "2251799813685255\n")
-	require.Error(t, err)
+				output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperExpectProcessInstanceCommand_StateMismatchRemainsStrict", map[string]string{
+					"C8VOLT_TEST_CONFIG":      cfgPath,
+					"C8VOLT_TEST_RENDER_MODE": mode,
+				}, "2251799813685255\n")
+				matchesCanceled := state == "CANCELED" || state == "TERMINATED"
+				if matchesCanceled {
+					require.NoError(t, err)
+					require.Equal(t, int32(1), attempts.Load())
+				} else {
+					require.Error(t, err)
+					exitErr, ok := err.(*exec.ExitError)
+					require.True(t, ok)
+					require.Equal(t, exitcode.Error, exitErr.ExitCode())
+					require.GreaterOrEqual(t, attempts.Load(), int32(2))
+				}
 
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.GreaterOrEqual(t, attempts.Load(), int32(2))
-	require.Contains(t, string(output), "expecting process instance")
-	require.Contains(t, string(output), "state")
-	require.Contains(t, string(output), "COMPLETED")
+				if mode == "json" {
+					var envelope map[string]any
+					require.NoError(t, json.Unmarshal(output, &envelope))
+					require.Equal(t, "expect process-instance", envelope["command"])
+					if matchesCanceled {
+						require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+						require.NotNil(t, envelope["payload"])
+						require.Nil(t, envelope["detail"])
+					} else {
+						require.Equal(t, string(OutcomeFailed), envelope["outcome"])
+						require.NotNil(t, envelope["detail"])
+						require.Nil(t, envelope["payload"])
+					}
+					return
+				}
+
+				if matchesCanceled {
+					require.Contains(t, string(output), "1 pi reached states")
+				} else {
+					require.Contains(t, string(output), "expecting process instance")
+					require.Contains(t, string(output), "state")
+					require.Contains(t, string(output), "CANCELED")
+				}
+			})
+		}
+	}
 }
 
 // Incident waits must poll the full process instance until the marker changes, not only inspect state.
@@ -642,8 +681,14 @@ func TestHelperExpectProcessInstanceCommand_StateMismatchRemainsStrict(t *testin
 	root := Root()
 	resetCommandTreeFlags(root)
 	resetProcessInstanceCommandGlobals()
-	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "expect", "process-instance", "--state", "completed", "-"})
+	args := []string{"--config", os.Getenv("C8VOLT_TEST_CONFIG")}
+	if os.Getenv("C8VOLT_TEST_RENDER_MODE") == "json" {
+		args = append(args, "--json")
+	}
+	args = append(args, "expect", "process-instance", "--state", "canceled", "-")
+	root.SetArgs(args)
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
+	os.Exit(0)
 }
