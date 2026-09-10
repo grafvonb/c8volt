@@ -20,6 +20,7 @@ Started: 2026-09-10T06:42:27Z
 - Command compatibility coverage uses `TestExpectProcessInstanceCommand_StateMismatchRemainsStrict` to exercise explicit canceled expectations against all four terminal observations in human and JSON subprocess modes; successful helpers exit explicitly so Go test output cannot contaminate the JSON envelope.
 - Cancellation command compatibility coverage uses `TestCancelProcessInstancesWithPlan_TerminalNoOpPreservesCommandContracts` to preserve terminal no-op report fields, human/JSON outcomes, prompt and activity behavior, and all combinations of inherited no-wait/no-state-check options.
 - Coverage-safe US3 adapter validation uses `TestService_(CancelProcessInstance|DeleteProcessInstance|CancelAndDeleteProcessInstance|WaitForProcessInstanceExpectation)$`; the full process-instance package run additionally includes version-specific strict not-found getter controls.
+- `make docs-content` propagates README changes to `docs/index.md`, refreshes its generated build banner, and renders cancellation long help into `docs/cli/c8volt_cancel_process-instance.md`.
 
 ## Decisions
 
@@ -48,4 +49,4 @@ Started: 2026-09-10T06:42:27Z
 ## Do Not Repeat
 
 ## Current Handoff
-- Start T031: clarify terminal cancellation acceptance in README and command long help, then regenerate and inspect CLI docs.
+- Start T032: run and record the final validation guide, repository diff checks, and full race-enabled test suite.

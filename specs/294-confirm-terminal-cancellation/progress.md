@@ -332,3 +332,21 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - Full-package validation plus the coverage-safe lifecycle/expectation filter proves every adapter's F–H regressions run; version-specific getter controls remain covered by the unfiltered package gate.
 ---
+---
+## Iteration 21 - 2026-09-10 11:42
+**Work Unit**: Polish terminal cancellation documentation (partial)
+**Tasks Completed**:
+- [x] T031: Clarify terminal cancellation acceptance versus explicit canceled expectations and regenerate CLI documentation
+**Tasks Remaining in Work Unit**: T032 and T033
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cancel_processinstance.go
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/index.md
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- Documentation now distinguishes goal-based family cancellation confirmation from strict explicit canceled-state expectations; generated changes were limited to the matching CLI reference and README-derived index content plus its build banner.
+---

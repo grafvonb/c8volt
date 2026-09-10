@@ -130,7 +130,7 @@ No new production interface is needed; compatibility failures must be resolved w
 
 **Purpose**: Explain the correction and complete repository validation.
 
-- [ ] T031 Clarify terminal cancellation acceptance versus explicit canceled expectations in `README.md` and the existing long-help metadata in `cmd/cancel_processinstance.go`; preserve flags, examples, and runtime rendering. Run gofmt on touched Go files and `make docs-content` to regenerate `docs/cli/c8volt_cancel_process-instance.md` and other generator-owned outputs; inspect the diff and never hand-edit generated references.
+- [x] T031 Clarify terminal cancellation acceptance versus explicit canceled expectations in `README.md` and the existing long-help metadata in `cmd/cancel_processinstance.go`; preserve flags, examples, and runtime rendering. Run gofmt on touched Go files and `make docs-content` to regenerate `docs/cli/c8volt_cancel_process-instance.md` and other generator-owned outputs; inspect the diff and never hand-edit generated references.
 
 - [ ] T032 Execute the final validation guide in `specs/294-confirm-terminal-cancellation/quickstart.md`, run `git diff --check` and the full `make test` target from `Makefile` (`go test ./... -race -count=1`), and record exact outcomes or unavailable checks in the guide. Confirm eight cancellation lists and four prechecks/no-op responses are covered and no generated clients, public models, retries, or generic matcher changed. Do not consider implementation complete if required validation is failing or skipped.
 

@@ -311,6 +311,8 @@ Generated references: [update process-instance](docs/cli/c8volt_update_process-i
 
 Use dry-run to preview process-instance family scope before cancellation or historical deletion.
 
+Cancellation confirmation succeeds when every affected family member is completed, canceled, terminated, or no longer present. This terminal cleanup rule does not broaden explicit state checks: `expect process-instance --state canceled` continues to match only canceled or terminated instances, not completed or absent ones.
+
 ```bash
 ./c8volt cancel process-instance --key <process-instance-key> --dry-run
 ./c8volt delete process-instance --key <process-instance-key> --dry-run
