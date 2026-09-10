@@ -212,3 +212,18 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - A file-local generated-client double can exercise the real v8.8 cancellation waiter inside complete process-definition deletion; the old two-state list fails specifically on the completed descendant before any downstream cleanup can proceed.
 ---
+---
+## Iteration 13 - 2026-09-10 10:43
+**Work Unit**: US3 v8.7 operator compatibility coverage (partial)
+**Tasks Completed**:
+- [x] T023: Preserve v8.7 explicit canceled expectations, opt-out boundaries, and read/submission error behavior
+**Tasks Remaining in Work Unit**: 7
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/v87/service_test.go
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- The v8.7 search-backed service path preserves canceled/terminated equivalence while rejecting completed/absent; explicit request and discovery counters lock down opt-outs and failure boundaries without production changes.
+---
