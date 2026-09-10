@@ -16,6 +16,7 @@ Started: 2026-09-10T06:42:27Z
 - v8.8 contract F–H coverage uses `TestService_WaitForProcessInstanceExpectation` for direct-get explicit state matching plus cancellation subtests for opt-out read/discovery counts and submission/error boundaries; the existing `TestService_GetProcessInstance` and `TestService_GetProcessInstanceStateByKey` not-found cases remain strict getter controls.
 - v8.9 contract F–H coverage uses `TestService_WaitForProcessInstanceExpectation` for direct-get explicit state matching plus combined lifecycle cancellation subtests for opt-out read/discovery counts and submission/error boundaries; `TestService_SearchAndLookup/GetProcessInstanceTreatsNotFoundAsNotFound` remains the strict getter control.
 - v8.10 contract F–H coverage uses `TestService_WaitForProcessInstanceExpectation` for direct-get explicit state matching plus combined lifecycle cancellation subtests for opt-out read/discovery counts and submission/error boundaries; `TestService_SearchAndLookup/GetProcessInstanceTreatsNotFoundAsNotFound` remains the strict getter control.
+- Shared waiter compatibility coverage uses `TestWaitForProcessInstanceExpectation_ExplicitCanceledCompatibility` to keep canceled/terminated equivalence separate from terminal cleanup acceptance while requiring incident and state to match on the same present instance.
 
 ## Decisions
 
@@ -39,9 +40,9 @@ Started: 2026-09-10T06:42:27Z
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
 - Targeted baseline commands are recorded in `quickstart.md`.
 - `make test` is the required pre-commit gate and passed for iterations 1, 3, 4, 5, 6, 8, 9, 10, and 12.
-- `make test` passed for iterations 13–16 after the v8.7, v8.8, v8.9, and v8.10 contract F–H compatibility additions.
+- `make test` passed for iterations 13–17 after the v8.7, v8.8, v8.9, v8.10, and shared-waiter contract F–H compatibility additions.
 
 ## Do Not Repeat
 
 ## Current Handoff
-- Continue US3 with T027: add shared waiter state/incident compatibility coverage without changing production matching.
+- Continue US3 with T028: extend command-level explicit canceled expectation compatibility coverage without changing command matching.

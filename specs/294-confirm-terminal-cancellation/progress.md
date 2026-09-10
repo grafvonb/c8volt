@@ -272,3 +272,18 @@ Started: 2026-09-10 08:42:27
 **Learnings**:
 - The v8.10 direct-get service path preserves canceled/terminated equivalence while rejecting completed/absent; strict request and discovery counters lock down opt-outs, retry behavior, and discovery/read failures without production changes.
 ---
+---
+## Iteration 17 - 2026-09-10 11:13
+**Work Unit**: US3 shared waiter compatibility coverage (partial)
+**Tasks Completed**:
+- [x] T027: Preserve explicit canceled state matching and incident requirements in the shared waiter
+**Tasks Remaining in Work Unit**: 3
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/waiter/waiter_test.go
+- specs/294-confirm-terminal-cancellation/tasks.md
+- specs/294-confirm-terminal-cancellation/ralph-memory.md
+- specs/294-confirm-terminal-cancellation/progress.md
+**Learnings**:
+- Shared waiter coverage now proves canceled/terminated equivalence remains strict against completed/absent observations and cannot bypass a requested incident match.
+---
