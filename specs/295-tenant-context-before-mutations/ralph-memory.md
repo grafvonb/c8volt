@@ -26,6 +26,7 @@ Started: 2026-09-10T15:15:43Z
 - All six real command audit paths preserve applicable tenant mode, filter, resolved IDs, unknown count, cross-tenant state, and warnings across dry-run, empty, blocked, and mutation-failure outcomes; local invalid input preserves an existing report without backend requests.
 - README and all six command `Long` descriptions use one consistent operator contract: selection precedes discovery or explicit-key resolution, validated affected tenants precede confirmation and mutation, and auto-confirm skips only the question. `make docs-content` propagates this wording to the six CLI references and `docs/index.md`.
 - The Phase 6 ownership audit found no forbidden command/facade dependencies or added retrieval: ordinary command files only initialize or invoke reporting, lifecycle state stays in tenant/progress support files, facade changes only copy/map the typed payload, and internal ops services only emit snapshots around existing validated plans and mutation gates.
+- The complete quickstart validation selects nonempty service, facade, and command suites (95, 23, and 230 tests respectively); all targeted suites, the full race-enabled repository suite, and whitespace validation pass together.
 
 ## Decisions
 - Preserve existing discovery, frozen-scope, mutation, output-mode, and audit behavior; the feature adds a synchronous typed progress event and two command-local rendering stages.
@@ -44,4 +45,4 @@ Started: 2026-09-10T15:15:43Z
 - Do not add discovery or metadata retrieval for reporting, infer unknown tenants from configuration, or strip attached evidence to deduplicate human output.
 
 ## Current Handoff
-- Continue Phase 6 with T037: execute and record the complete quickstart validation guide, including all targeted suites, `make test`, and `git diff --check`.
+- Continue Phase 6 with T038: review FR-001–FR-014 and SC-001–SC-007 against the contract coverage matrix, recording concrete test names and outcomes while leaving unresolved work unchecked.

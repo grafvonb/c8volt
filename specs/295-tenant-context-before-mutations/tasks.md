@@ -115,7 +115,7 @@ Read `specs/ralph-implementation-rules.md` before implementing. Any Ralph launch
 **Purpose**: Complete the feature-level validation and repository governance checks.
 
 - [x] T036 Audit changed files against layer and command-cohesion rules in `AGENTS.md` and `specs/ralph-implementation-rules.md`; ensure reporting lifecycle stays in focused support/progress files, facades only map, and no command/service changes add retrieval or alter mutation mechanics. Apply `gofmt` to touched Go files and record the review in `specs/295-tenant-context-before-mutations/progress.md`.
-- [ ] T037 Execute the complete guide in `specs/295-tenant-context-before-mutations/quickstart.md`, including targeted packages followed by `make test` (`go test ./... -race -count=1`) and `git diff --check`; resolve failures and record exact commands/results in `specs/295-tenant-context-before-mutations/progress.md`. Do not claim completion or commit with failing required checks.
+- [x] T037 Execute the complete guide in `specs/295-tenant-context-before-mutations/quickstart.md`, including targeted packages followed by `make test` (`go test ./... -race -count=1`) and `git diff --check`; resolve failures and record exact commands/results in `specs/295-tenant-context-before-mutations/progress.md`. Do not claim completion or commit with failing required checks.
 - [ ] T038 Review every FR-001–FR-014 and SC-001–SC-007 against the coverage matrix in `specs/295-tenant-context-before-mutations/contracts/tenant-reporting.md`; record concrete test names and outcomes in `specs/295-tenant-context-before-mutations/progress.md`, update `specs/295-tenant-context-before-mutations/tasks.md` only for verified work, and leave unresolved work unchecked.
 
 ---

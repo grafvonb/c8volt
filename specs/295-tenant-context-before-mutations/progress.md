@@ -390,3 +390,20 @@ Started: 2026-09-10 17:15:43
 - The feature preserves repository ownership: typed facts originate in the domain and internal ops services, the public facade only copies/maps them, reporting lifecycle remains in focused tenant/progress support files, and ordinary command files only initialize or invoke that reporting.
 - Diff review found no new production discovery or metadata calls and no mutation-mechanics changes; service edits synchronously emit copied evidence around existing validated-plan, force, dry-run, empty-scope, and mutation boundaries. `gofmt` changed no files, `make test` (`go test ./... -race -count=1`) passed, and `git diff --check` passed.
 ---
+---
+## Iteration 20 - 2026-09-10 20:44
+**Work Unit**: Phase 6 complete quickstart validation (partial)
+**Tasks Completed**:
+- [x] T037: Execute the complete quickstart validation guide
+**Tasks Remaining in Work Unit**: 1 (T038)
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- `go test ./internal/services/ops -run 'Test.*(Purge|Retention|Repair|Tenant|Progress)' -count=1` passed (`ok`, 0.618s); its pattern selects 95 tests.
+- `go test ./c8volt/ops -run 'Test.*(Progress|Tenant|Purge|Retention|Repair)' -count=1` passed (`ok`, 0.414s); its pattern selects 23 tests.
+- `go test ./cmd -run 'Test.*(TenantContext|OpsPurgeAllProcessDefinitions|OpsPurgeOrphanProcessInstances|OpsPurgeProcessInstancesWithIncidents|OpsExecuteRetentionPolicy|OpsRepairIncident|OpsRepairProcessInstance|OpsAuditReport|MarkdownTenantContext)' -count=1` passed (`ok`, 2.816s); its pattern selects 230 tests.
+- `make test` passed the full `go test ./... -race -count=1` repository suite, including `cmd` in 147.067s; `git diff --check` passed with no whitespace errors.
+---
