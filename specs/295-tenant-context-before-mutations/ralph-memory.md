@@ -25,6 +25,7 @@ Started: 2026-09-10T15:15:43Z
 - Audit JSON and Markdown derive a normalized tenant-context snapshot from frozen report evidence; staged human render flags and later command-context replacement do not prune serialized IDs, unknown counts, cross-tenant state, or warning messages.
 - All six real command audit paths preserve applicable tenant mode, filter, resolved IDs, unknown count, cross-tenant state, and warnings across dry-run, empty, blocked, and mutation-failure outcomes; local invalid input preserves an existing report without backend requests.
 - README and all six command `Long` descriptions use one consistent operator contract: selection precedes discovery or explicit-key resolution, validated affected tenants precede confirmation and mutation, and auto-confirm skips only the question. `make docs-content` propagates this wording to the six CLI references and `docs/index.md`.
+- The Phase 6 ownership audit found no forbidden command/facade dependencies or added retrieval: ordinary command files only initialize or invoke reporting, lifecycle state stays in tenant/progress support files, facade changes only copy/map the typed payload, and internal ops services only emit snapshots around existing validated plans and mutation gates.
 
 ## Decisions
 - Preserve existing discovery, frozen-scope, mutation, output-mode, and audit behavior; the feature adds a synchronous typed progress event and two command-local rendering stages.
@@ -43,4 +44,4 @@ Started: 2026-09-10T15:15:43Z
 - Do not add discovery or metadata retrieval for reporting, infer unknown tenants from configuration, or strip attached evidence to deduplicate human output.
 
 ## Current Handoff
-- Begin Phase 6 with T036: audit changed files against layering and command-cohesion rules, apply formatting, and record the review before the final validation tasks.
+- Continue Phase 6 with T037: execute and record the complete quickstart validation guide, including all targeted suites, `make test`, and `git diff --check`.

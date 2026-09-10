@@ -375,3 +375,18 @@ Started: 2026-09-10 17:15:43
 - README, command help sources, and generated references consistently state that selection precedes discovery or explicit-key resolution, affected tenants precede confirmation and mutation, and auto-confirm skips only the question.
 - The exact quickstart service, facade, and command regressions passed; the command selection includes all-six protected-mode, audit/failure, and deterministic help-source coverage. `make docs-content`, `make test` (`go test ./... -race -count=1`), `gofmt`, declaration ownership review, and `git diff --check` also passed.
 ---
+---
+## Iteration 19 - 2026-09-10 20:39
+**Work Unit**: Phase 6 architecture and command-cohesion audit (partial)
+**Tasks Completed**:
+- [x] T036: Audit changed files against layering and command-cohesion rules and apply Go formatting
+**Tasks Remaining in Work Unit**: 2 (T037-T038)
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/295-tenant-context-before-mutations/tasks.md
+- specs/295-tenant-context-before-mutations/ralph-memory.md
+- specs/295-tenant-context-before-mutations/progress.md
+**Learnings**:
+- The feature preserves repository ownership: typed facts originate in the domain and internal ops services, the public facade only copies/maps them, reporting lifecycle remains in focused tenant/progress support files, and ordinary command files only initialize or invoke that reporting.
+- Diff review found no new production discovery or metadata calls and no mutation-mechanics changes; service edits synchronously emit copied evidence around existing validated-plan, force, dry-run, empty-scope, and mutation boundaries. `gofmt` changed no files, `make test` (`go test ./... -race -count=1`) passed, and `git diff --check` passed.
+---
