@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -706,25 +707,32 @@ func TestDeleteProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.
 // preserve machine contracts and human or quiet output across execution controls.
 func TestDeleteProcessInstanceEmptySelectorOutput(t *testing.T) {
 	tests := []struct {
-		name   string
-		flags  []string
-		dryRun bool
-		mode   RenderMode
-		quiet  bool
+		name    string
+		flags   []string
+		dryRun  bool
+		mode    RenderMode
+		quiet   bool
+		verbose bool
 	}{
 		{name: "json", flags: []string{"--json"}, mode: RenderModeJSON},
 		{name: "dry run json", flags: []string{"--json", "--dry-run"}, dryRun: true, mode: RenderModeJSON},
 		{name: "keys only", flags: []string{"--keys-only"}, mode: RenderModeKeysOnly},
 		{name: "dry run keys only", flags: []string{"--keys-only", "--dry-run"}, dryRun: true, mode: RenderModeKeysOnly},
 		{name: "auto confirm json", flags: []string{"--json", "--auto-confirm"}, mode: RenderModeJSON},
+		{name: "auto confirm human", flags: []string{"--auto-confirm"}, mode: RenderModeOneLine},
 		{name: "automation json", flags: []string{"--json", "--automation"}, mode: RenderModeJSON},
+		{name: "automation human", flags: []string{"--automation"}, mode: RenderModeOneLine},
 		{name: "automation keys only", flags: []string{"--keys-only", "--automation"}, mode: RenderModeKeysOnly},
 		{name: "no wait json", flags: []string{"--json", "--no-wait"}, mode: RenderModeJSON},
+		{name: "no wait keys only", flags: []string{"--keys-only", "--no-wait"}, mode: RenderModeKeysOnly},
 		{name: "human", mode: RenderModeOneLine},
+		{name: "verbose human", flags: []string{"--verbose"}, mode: RenderModeOneLine, verbose: true},
 		{name: "dry run human", flags: []string{"--dry-run"}, dryRun: true, mode: RenderModeOneLine},
+		{name: "verbose dry run human", flags: []string{"--verbose", "--dry-run"}, dryRun: true, mode: RenderModeOneLine, verbose: true},
 		{name: "quiet human", flags: []string{"--quiet"}, mode: RenderModeOneLine, quiet: true},
 		{name: "dry run quiet human", flags: []string{"--dry-run", "--quiet"}, dryRun: true, mode: RenderModeOneLine, quiet: true},
 		{name: "quiet json", flags: []string{"--json", "--quiet"}, mode: RenderModeJSON, quiet: true},
+		{name: "quiet no wait json", flags: []string{"--json", "--quiet", "--no-wait"}, mode: RenderModeJSON, quiet: true},
 		{name: "dry run quiet json", flags: []string{"--json", "--dry-run", "--quiet"}, dryRun: true, mode: RenderModeJSON, quiet: true},
 		{name: "quiet keys only", flags: []string{"--keys-only", "--quiet"}, mode: RenderModeKeysOnly, quiet: true},
 		{name: "dry run quiet keys only", flags: []string{"--keys-only", "--dry-run", "--quiet"}, dryRun: true, mode: RenderModeKeysOnly, quiet: true},
@@ -756,6 +764,21 @@ func TestDeleteProcessInstanceEmptySelectorOutput(t *testing.T) {
 					return
 				}
 				require.Equal(t, "found: 0\n", stdout)
+				if tt.verbose {
+					normalized := regexp.MustCompile(`(?m)^\d{2}:\d{2}:\d{2}\.\d{3} (INFO|WARN) `).ReplaceAllString(stderr, `$1 `)
+					want := "INFO process-instance delete scope: delete process-instance matched no process instances; page size: 1000; discovery pages: 1\n" +
+						"WARN process-instance delete is destructive: plan process-instance mutation scope\n" +
+						"INFO discovering process instances, page 1/1\n" +
+						"page size: 1000, current page: 0, total so far: 0, more matches: no, next step: complete, detail: no additional matching process instances remain\n"
+					if !tt.dryRun {
+						want = "INFO selection scope: unfiltered across accessible tenants\n" + want
+					}
+					if start := strings.Index(normalized, "INFO selection scope:"); start >= 0 && !tt.dryRun {
+						normalized = normalized[start:]
+					}
+					require.Equal(t, want, normalized)
+					return
+				}
 				require.Empty(t, stderr)
 				return
 			}

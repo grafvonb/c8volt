@@ -84,3 +84,19 @@ Started: 2026-09-11 18:49:29
 **Learnings**:
 - Existing cancel regressions already cover sparse pages, explicit keys, aborts, failures, and empty-scope prompt/mutation suppression; the missing evidence was attached-logger stream routing, strict envelope termination, and call-count invariance.
 ---
+---
+## Iteration 6 - 2026-09-11 19:18
+**Work Unit**: US3 Preserve Command Output and Execution Behavior (partial: delete coverage)
+**Tasks Completed**:
+- [x] T009: Extend delete execution and selector regressions with attached logging, independent streams, strict JSON EOF, mode combinations, and unchanged planning/deletion counts.
+**Tasks Remaining in Work Unit**: 2 (T010-T011)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/delete_processinstance_test.go
+- cmd/delete_processinstance_selector_test.go
+- specs/303-standard-tenant-logging/tasks.md
+- specs/303-standard-tenant-logging/ralph-memory.md
+- specs/303-standard-tenant-logging/progress.md
+**Learnings**:
+- Existing delete regressions already retain sparse pages, explicit keys, aborts, failures, and empty-scope request suppression; attached-logger stream routing and strict positive/empty result contracts now match cancel coverage.
+---
