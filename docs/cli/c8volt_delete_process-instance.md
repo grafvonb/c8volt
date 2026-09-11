@@ -20,6 +20,8 @@ Resolved delete plans show one known resource tenant informationally, emit one w
 
 When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, cancellation, or deletion; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no deletion request is submitted.
 
+When a selector search succeeds with no matching instances, deletion completes as a successful no-op without confirmation or mutation. Human output is exactly "found: 0"; --quiet suppresses that summary, --keys-only writes zero bytes, and --json writes one succeeded result envelope with an empty deletion payload. The same output rules apply to --dry-run, whose JSON preview reports mutationSubmitted: false.
+
 Search mode pages through matching process instances by default and freezes every selected page-level delete plan before one confirmation and mutation. --batch-size controls each discovery page request, --limit caps the frozen delete scope across all pages, and --workers, --fail-fast, and --no-worker-limit bound independent planning, cancellation, or deletion work. Verbose paging progress is written away from stdout; JSON, quiet, and automation output remain free of prompts unless confirmation is explicitly supplied.
 
 After confirmation, default human output keeps one workflow activity updated from real deletion completions and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-root completion line. JSON, keys-only, and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings.
@@ -41,6 +43,8 @@ c8volt delete process-instance [flags]
   ./c8volt --tenant tenant-a delete process-instance --state terminated --limit 5 --dry-run
   ./c8volt --tenant "" delete process-instance --state terminated --limit 5 --dry-run
   ./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run
+  ./c8volt delete process-instance --state terminated --json --dry-run
+  ./c8volt delete process-instance --state terminated --keys-only
   ./c8volt delete process-instance --state terminated --end-date-after 2026-05-01 --end-date-before 2026-05-31 --limit 5 --dry-run
   ./c8volt delete process-instance --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run
   ./c8volt --verbose delete process-instance --state terminated --limit 25 --auto-confirm

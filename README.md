@@ -327,9 +327,13 @@ Use dry-run to preview process-instance family scope before cancellation or hist
 
 Cancellation confirmation succeeds when every affected family member is completed, canceled, terminated, or no longer present. This terminal cleanup rule does not broaden explicit state checks: `expect process-instance --state canceled` continues to match only canceled or terminated instances, not completed or absent ones.
 
+When selectors match no process instances, cancel and delete complete as successful no-ops without confirmation or mutation. Ordinary output remains exactly `found: 0`; `--quiet` suppresses that summary, `--keys-only` writes zero bytes, and `--json` writes one shared result envelope with outcome `succeeded` and an empty operation-specific payload. The same rules apply to `--dry-run`: JSON describes an empty preview with `mutationSubmitted: false`, while human, quiet, and keys-only output keep their normal empty-result behavior.
+
 ```bash
 ./c8volt cancel process-instance --key <process-instance-key> --dry-run
 ./c8volt delete process-instance --key <process-instance-key> --dry-run
+./c8volt cancel process-instance --state active --dry-run --json
+./c8volt delete process-instance --state terminated --keys-only
 ./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state terminated --keys-only | ./c8volt delete process-instance --dry-run -
 ./c8volt --verbose delete process-instance --state terminated --limit 25 --auto-confirm
 ```

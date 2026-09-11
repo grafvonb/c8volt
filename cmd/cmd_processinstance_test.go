@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -13,11 +14,56 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
 const testRelativeDayNowEnv = "C8VOLT_TEST_RELATIVE_DAY_NOW"
+
+// requireEmptyProcessInstanceSelectorOutput verifies the shared no-op contract
+// without accepting trailing JSON values or cross-stream human summaries.
+func requireEmptyProcessInstanceSelectorOutput(t *testing.T, stdout, stderr, command, operation string, dryRun bool, mode RenderMode) {
+	t.Helper()
+	require.NotContains(t, stdout, "found: 0")
+	require.NotContains(t, stderr, "found: 0")
+
+	if mode == RenderModeKeysOnly {
+		require.Empty(t, stdout)
+		return
+	}
+
+	require.Equal(t, RenderModeJSON, mode)
+	decoder := json.NewDecoder(bytes.NewBufferString(stdout))
+	var envelope ResultEnvelope[json.RawMessage]
+	require.NoError(t, decoder.Decode(&envelope))
+	var trailing any
+	require.ErrorIs(t, decoder.Decode(&trailing), io.EOF)
+	require.Equal(t, OutcomeSucceeded, envelope.Outcome)
+	require.Equal(t, command, envelope.Command)
+	require.Empty(t, envelope.Class)
+	require.Empty(t, envelope.Detail)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(envelope.Payload, &payload))
+	if !dryRun {
+		require.Empty(t, payload)
+		return
+	}
+
+	require.Equal(t, operation, payload["operation"])
+	for _, field := range []string{"requestedCount", "resolvedRootCount", "affectedCount", "selectedFinalStateCount", "requiresCancelBeforeDeleteCount"} {
+		require.EqualValues(t, 0, payload[field], field)
+	}
+	for _, field := range []string{"selectedFinalState", "requiresCancelBeforeDelete", "missingAncestors", "previews"} {
+		require.Contains(t, payload, field)
+		require.Nil(t, payload[field], field)
+	}
+	require.Equal(t, string(process.TraversalOutcomeComplete), payload["traversalOutcome"])
+	require.Equal(t, true, payload["scopeComplete"])
+	require.Equal(t, "", payload["warning"])
+	require.Equal(t, false, payload["mutationSubmitted"])
+}
 
 func applyRelativeDayNowOverrideFromEnv(t *testing.T) {
 	t.Helper()
@@ -292,6 +338,28 @@ func TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode(t *testing.T)
 	require.Contains(t, deleteOutput, "preview delete scope without submitting deletion or cancel-before-delete requests")
 	require.Contains(t, deleteOutput, "./c8volt delete process-instance --key <process-instance-key> --dry-run")
 	require.Contains(t, deleteOutput, "./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run")
+}
+
+// TestProcessInstanceDestructiveHelp_DocumentsEmptySelectorOutput verifies
+// cancel and delete help document the successful no-op output contract.
+func TestProcessInstanceDestructiveHelp_DocumentsEmptySelectorOutput(t *testing.T) {
+	for _, testCase := range []struct {
+		operation string
+		state     string
+	}{
+		{operation: "cancel", state: "active"},
+		{operation: "delete", state: "terminated"},
+	} {
+		output := executeRootForProcessInstanceTest(t, testCase.operation, "process-instance", "--help")
+		require.Contains(t, output, "successful no-op")
+		require.Contains(t, output, "found: 0")
+		require.Contains(t, output, "--quiet suppresses that summary")
+		require.Contains(t, output, "--keys-only writes zero bytes")
+		require.Contains(t, output, "--json writes one succeeded result envelope")
+		require.Contains(t, output, "mutationSubmitted: false")
+		require.Contains(t, output, "--state "+testCase.state+" --json --dry-run")
+		require.Contains(t, output, "--state "+testCase.state+" --keys-only")
+	}
 }
 
 // TestProcessInstanceHelp_DocumentsTenantContract verifies command help names
