@@ -15,6 +15,7 @@ Started: 2026-09-11T16:49:28Z
 - Real-terminal process-instance coverage uses the root command with `--no-indicator` and a stub HTTP server. It exercises cancel/delete across plain/JSON logging, configured/inherited root stderr, acceptance/abort, exact multiline prompts, stdout isolation, and mutation-call presence or absence. Existing terminal fixtures retain prompt-free empty scopes and one-key-per-line paging.
 - The README tenant-context paragraph now states that eligible selector-based delete/cancel diagnostics use standard INFO/WARN logging, honor configured log format/level, retain existing mode eligibility, and remain separate from JSON command results.
 - Cancel/delete command `Long` descriptions now repeat that concise logging contract; `TestProcessInstanceHelp_DocumentsTenantContract` locks the shared wording for both commands before docs regeneration.
+- `make docs-content` regenerates the two process-instance command pages plus README-derived `docs/index.md`; the only content change is the tenant-logging clarification, while the homepage build line receives the generator's expected current commit metadata.
 
 ## Decisions
 
@@ -39,4 +40,4 @@ Started: 2026-09-11T16:49:28Z
 - Do not treat a passing pre-change baseline as proof of the new logger behavior.
 
 ## Current Handoff
-- Continue with T014 in the polish phase: run `make docs-content`, then inspect generated documentation for only the intended tenant-logging clarification.
+- Continue with T015: gofmt all touched Go files, run the three targeted validation commands and `git diff --check`, then run `make test` and record actual outcomes in `quickstart.md`.

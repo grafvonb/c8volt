@@ -149,3 +149,20 @@ Started: 2026-09-11 18:49:29
 **Learnings**:
 - One shared help paragraph can document standard severity, format/level filtering, mode eligibility, and result-stream separation without changing command behavior.
 ---
+---
+## Iteration 10 - 2026-09-11 19:32
+**Work Unit**: T014 Regenerate and inspect CLI documentation
+**Tasks Completed**:
+- [x] T014: Regenerate CLI and README-derived documentation and verify the diff contains only the intended tenant-logging clarification plus expected build metadata.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/index.md
+- specs/303-standard-tenant-logging/tasks.md
+- specs/303-standard-tenant-logging/ralph-memory.md
+- specs/303-standard-tenant-logging/progress.md
+**Learnings**:
+- Documentation regeneration is idempotent and limits content changes to the two command references and the README-synced homepage.
+---

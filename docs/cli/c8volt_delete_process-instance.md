@@ -18,6 +18,8 @@ Tenant contract: --tenant scopes search-derived candidate discovery where suppor
 
 Resolved delete plans show one known resource tenant informationally, emit one warning-level "affected tenants" summary when the frozen scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.
 
+Eligible selector-based tenant diagnostics use standard INFO and WARN logging and honor the configured log format and level; their existing output-mode eligibility remains unchanged. JSON-formatted diagnostic logs are separate from JSON command results and stay off result stdout.
+
 When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, cancellation, or deletion; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no deletion request is submitted.
 
 When a selector search succeeds with no matching instances, deletion completes as a successful no-op without confirmation or mutation. Human output is exactly "found: 0"; --quiet suppresses that summary, --keys-only writes zero bytes, and --json writes one succeeded result envelope with an empty deletion payload. The same output rules apply to --dry-run, whose JSON preview reports mutationSubmitted: false.
