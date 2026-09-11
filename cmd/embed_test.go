@@ -19,11 +19,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestEmbedListHelp_DocumentsReadOnlyDiscoveryExamples verifies examples and the execution-error boundary.
 func TestEmbedListHelp_DocumentsReadOnlyDiscoveryExamples(t *testing.T) {
 	output := executeRootForTest(t, "embed", "list", "--help")
 
 	require.Contains(t, output, "List bundled BPMN fixture files")
 	require.Contains(t, output, "Shows files for the configured Camunda version")
+	require.Contains(t, output, "With --json, validation and runtime failures during command execution use one shared error envelope")
+	require.Contains(t, output, "Without --json, the diagnostic is written to stderr")
+	require.Contains(t, output, "--no-err-codes changes only the process exit status")
+	require.Contains(t, output, "Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics")
 	require.Contains(t, output, "./c8volt embed list --details")
 	require.Contains(t, output, "./c8volt --json embed list")
 }

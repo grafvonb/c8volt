@@ -147,3 +147,26 @@ Started: 2026-09-11 15:45:51
 **Learnings**:
 - The existing scripts/CI section is the narrowest place to explain error-envelope eligibility, stderr diagnostics, exit suppression, and the bootstrap/parsing boundary without implying broader command support.
 ---
+---
+## Iteration 8 - 2026-09-11 16:53
+**Work Unit**: Phase 6 Polish (partial: command help guidance)
+**Tasks Completed**:
+- [x] T023: Document the execution-error envelope boundary in affected command help and add the missing cluster-version JSON example
+**Tasks Remaining in Work Unit**: T024-T026
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- cmd/embed_list.go
+- cmd/embed_test.go
+- cmd/get_cluster_license.go
+- cmd/get_cluster_topology.go
+- cmd/get_cluster_version.go
+- cmd/get_processdefinition.go
+- cmd/get_test.go
+- specs/301-preserve-json-errors/tasks.md
+- specs/301-preserve-json-errors/ralph-memory.md
+- specs/301-preserve-json-errors/progress.md
+**Learnings**:
+- The affected command descriptions can share the README boundary verbatim without changing contract metadata; their existing JSON examples were sufficient except for cluster version.
+---

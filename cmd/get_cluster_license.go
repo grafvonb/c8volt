@@ -14,7 +14,8 @@ var getClusterLicenseCmd = &cobra.Command{
 	Aliases: []string{"licence"},
 	Short:   "Show connected cluster license",
 	Long: "Show connected cluster license.\n\n" +
-		"This command prints flat fields returned by the configured Camunda cluster. Use --json for the structured license payload.",
+		"This command prints flat fields returned by the configured Camunda cluster. Use --json for the structured license payload.\n\n" +
+		"With --json, validation and runtime failures during command execution use one shared error envelope. Without --json, the diagnostic is written to stderr. --no-err-codes changes only the process exit status; the reported failure and immediate termination are unchanged. Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics.",
 	Example: `  ./c8volt get cluster license
   ./c8volt get cluster license --json
   ./c8volt get cluster licence`,

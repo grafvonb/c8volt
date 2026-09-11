@@ -16,6 +16,7 @@ Started: 2026-09-11T13:45:51Z
 - US1 retains every stdin caller's existing `.Unique()` placement and changes only command context/error dispatch.
 - The final production audit uses commit `6afb3cbe` as the pre-feature baseline; the contract schema, renderer, error normalization/classification, capability metadata, and exit policy are unchanged from that baseline.
 - README machine-contract guidance belongs beside the scripts/CI JSON example and scopes error envelopes to execution-time failures of commands advertising full support; `capabilities --json` remains the discovery mechanism.
+- Affected command help uses one consistent execution-error boundary: JSON envelopes cover validation/runtime failures during command execution, human diagnostics stay on stderr, `--no-err-codes` changes only status, and bootstrap/pre-execution parsing retains established diagnostics. Existing stdin help needed no change.
 
 ## Gotchas
 
@@ -38,4 +39,4 @@ Started: 2026-09-11T13:45:51Z
 - Do not use a production `ResultEnvelope` to decode or construct expected regression results.
 
 ## Current Handoff
-- Continue with T023 in Phase 6: update only relevant command help descriptions/examples and affected assertions, preserving command metadata.
+- Continue with T024 in Phase 6: regenerate CLI references with `make docs-content`, then inspect generated CLI pages and the homepage for accuracy and unrelated churn.
