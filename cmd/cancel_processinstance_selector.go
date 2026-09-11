@@ -176,7 +176,9 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 		})
 	}
 	if planned.RequestedCount == 0 {
-		renderOutputLine(cmd, "found: %d", 0)
+		if err := renderEmptyProcessInstanceSelectorResult(cmd, "cancel", flagDryRun); err != nil {
+			return processInstancePageActionResults{}, fmt.Errorf("render empty cancel result: %w", err)
+		}
 	}
 	return results, nil
 }

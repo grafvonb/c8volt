@@ -37,6 +37,30 @@ func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances)
 	}, func(it process.ProcessInstance) string { return it.Key })
 }
 
+// renderEmptyProcessInstanceSelectorResult preserves the selected output mode
+// for a successfully planned selector operation with no requested instances.
+func renderEmptyProcessInstanceSelectorResult(cmd *cobra.Command, operation string, dryRun bool) error {
+	switch pickMode() {
+	case RenderModeJSON:
+		if dryRun {
+			return renderProcessInstanceDryRunResult(cmd, newProcessInstanceDryRunSummary(operation, nil))
+		}
+		switch operation {
+		case "delete":
+			return renderSucceededResult(cmd, process.DeleteReports{})
+		case "cancel":
+			return renderSucceededResult(cmd, process.CancelReports{})
+		default:
+			return fmt.Errorf("unsupported empty process-instance operation %q", operation)
+		}
+	case RenderModeKeysOnly:
+		return nil
+	default:
+		renderOutputLine(cmd, "found: %d", 0)
+		return nil
+	}
+}
+
 // renderProcessInstanceFlatRows shares aligned process-instance rows between collected lists and incremental search pages.
 func renderProcessInstanceFlatRows(cmd *cobra.Command, items []process.ProcessInstance) error {
 	for _, line := range formatProcessInstanceFlatRowsWithTimezone(items, commandShowTimezoneOffset(cmd)) {

@@ -702,6 +702,49 @@ func TestDeleteProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.
 	require.Equal(t, "found: 0\n", output)
 }
 
+// TestDeleteProcessInstanceEmptySelectorOutput verifies empty selector deletes
+// preserve JSON and keys-only contracts across execution controls.
+func TestDeleteProcessInstanceEmptySelectorOutput(t *testing.T) {
+	tests := []struct {
+		name   string
+		flags  []string
+		dryRun bool
+		mode   RenderMode
+	}{
+		{name: "json", flags: []string{"--json"}, mode: RenderModeJSON},
+		{name: "dry run json", flags: []string{"--json", "--dry-run"}, dryRun: true, mode: RenderModeJSON},
+		{name: "keys only", flags: []string{"--keys-only"}, mode: RenderModeKeysOnly},
+		{name: "dry run keys only", flags: []string{"--keys-only", "--dry-run"}, dryRun: true, mode: RenderModeKeysOnly},
+		{name: "auto confirm json", flags: []string{"--json", "--auto-confirm"}, mode: RenderModeJSON},
+		{name: "automation json", flags: []string{"--json", "--automation"}, mode: RenderModeJSON},
+		{name: "automation keys only", flags: []string{"--keys-only", "--automation"}, mode: RenderModeKeysOnly},
+		{name: "no wait json", flags: []string{"--json", "--no-wait"}, mode: RenderModeJSON},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newProcessInstanceSearchCaptureServer(t, &requests)
+			t.Cleanup(srv.Close)
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+			prevConfirm := confirmCmdOrAbortFn
+			confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
+				t.Fatal("unexpected confirmation for empty delete selector")
+				return nil
+			}
+			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+			args := []string{"--config", cfgPath, "delete", "process-instance", "--state", "completed"}
+			args = append(args, tt.flags...)
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+
+			require.Len(t, requests, 1)
+			requireEmptyProcessInstanceSelectorOutput(t, stdout, stderr, "delete process-instance", "delete", tt.dryRun, tt.mode)
+		})
+	}
+}
+
 // Verifies reversed date ranges are rejected when the after-bound is later than the before-bound.
 func TestDeleteProcessInstanceCommand_RejectsInvalidDateFilter(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")

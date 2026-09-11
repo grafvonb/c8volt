@@ -172,7 +172,9 @@ func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, c
 	}
 	results.TenantEvidence = planned.TenantEvidence
 	if planned.RequestedCount == 0 {
-		renderOutputLine(cmd, "found: %d", 0)
+		if err := renderEmptyProcessInstanceSelectorResult(cmd, "delete", flagDryRun); err != nil {
+			return processInstancePageActionResults{}, fmt.Errorf("render empty delete result: %w", err)
+		}
 	}
 	return results, nil
 }
@@ -252,7 +254,9 @@ func planDeleteProcessInstanceSearchPagesWithPrompt(cmd *cobra.Command, cli proc
 	}
 	results.TenantEvidence = planned.TenantEvidence
 	if planned.RequestedCount == 0 {
-		renderOutputLine(cmd, "found: %d", 0)
+		if err := renderEmptyProcessInstanceSelectorResult(cmd, "delete", flagDryRun); err != nil {
+			return processInstancePageActionResults{}, fmt.Errorf("render empty delete result: %w", err)
+		}
 	}
 	return results, nil
 }

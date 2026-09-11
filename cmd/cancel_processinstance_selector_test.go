@@ -731,6 +731,49 @@ func TestCancelProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.
 	require.Equal(t, "found: 0\n", output)
 }
 
+// TestCancelProcessInstanceEmptySelectorOutput verifies empty selector cancels
+// preserve JSON and keys-only contracts across execution controls.
+func TestCancelProcessInstanceEmptySelectorOutput(t *testing.T) {
+	tests := []struct {
+		name   string
+		flags  []string
+		dryRun bool
+		mode   RenderMode
+	}{
+		{name: "json", flags: []string{"--json"}, mode: RenderModeJSON},
+		{name: "dry run json", flags: []string{"--json", "--dry-run"}, dryRun: true, mode: RenderModeJSON},
+		{name: "keys only", flags: []string{"--keys-only"}, mode: RenderModeKeysOnly},
+		{name: "dry run keys only", flags: []string{"--keys-only", "--dry-run"}, dryRun: true, mode: RenderModeKeysOnly},
+		{name: "auto confirm json", flags: []string{"--json", "--auto-confirm"}, mode: RenderModeJSON},
+		{name: "automation json", flags: []string{"--json", "--automation"}, mode: RenderModeJSON},
+		{name: "automation keys only", flags: []string{"--keys-only", "--automation"}, mode: RenderModeKeysOnly},
+		{name: "no wait json", flags: []string{"--json", "--no-wait"}, mode: RenderModeJSON},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newProcessInstanceSearchCaptureServer(t, &requests)
+			t.Cleanup(srv.Close)
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+			prevConfirm := confirmCmdOrAbortFn
+			confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
+				t.Fatal("unexpected confirmation for empty cancel selector")
+				return nil
+			}
+			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+			args := []string{"--config", cfgPath, "cancel", "process-instance", "--state", "active"}
+			args = append(args, tt.flags...)
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+
+			require.Len(t, requests, 1)
+			requireEmptyProcessInstanceSelectorOutput(t, stdout, stderr, "cancel process-instance", "cancel", tt.dryRun, tt.mode)
+		})
+	}
+}
+
 // Verifies date-filtered search selection cancels matched instances and keeps descendant lookup behavior intact.
 func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMatches(t *testing.T) {
 	var requests []string

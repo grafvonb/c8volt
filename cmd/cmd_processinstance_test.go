@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -13,11 +14,56 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
 const testRelativeDayNowEnv = "C8VOLT_TEST_RELATIVE_DAY_NOW"
+
+// requireEmptyProcessInstanceSelectorOutput verifies the shared no-op contract
+// without accepting trailing JSON values or cross-stream human summaries.
+func requireEmptyProcessInstanceSelectorOutput(t *testing.T, stdout, stderr, command, operation string, dryRun bool, mode RenderMode) {
+	t.Helper()
+	require.NotContains(t, stdout, "found: 0")
+	require.NotContains(t, stderr, "found: 0")
+
+	if mode == RenderModeKeysOnly {
+		require.Empty(t, stdout)
+		return
+	}
+
+	require.Equal(t, RenderModeJSON, mode)
+	decoder := json.NewDecoder(bytes.NewBufferString(stdout))
+	var envelope ResultEnvelope[json.RawMessage]
+	require.NoError(t, decoder.Decode(&envelope))
+	var trailing any
+	require.ErrorIs(t, decoder.Decode(&trailing), io.EOF)
+	require.Equal(t, OutcomeSucceeded, envelope.Outcome)
+	require.Equal(t, command, envelope.Command)
+	require.Empty(t, envelope.Class)
+	require.Empty(t, envelope.Detail)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(envelope.Payload, &payload))
+	if !dryRun {
+		require.Empty(t, payload)
+		return
+	}
+
+	require.Equal(t, operation, payload["operation"])
+	for _, field := range []string{"requestedCount", "resolvedRootCount", "affectedCount", "selectedFinalStateCount", "requiresCancelBeforeDeleteCount"} {
+		require.EqualValues(t, 0, payload[field], field)
+	}
+	for _, field := range []string{"selectedFinalState", "requiresCancelBeforeDelete", "missingAncestors", "previews"} {
+		require.Contains(t, payload, field)
+		require.Nil(t, payload[field], field)
+	}
+	require.Equal(t, string(process.TraversalOutcomeComplete), payload["traversalOutcome"])
+	require.Equal(t, true, payload["scopeComplete"])
+	require.Equal(t, "", payload["warning"])
+	require.Equal(t, false, payload["mutationSubmitted"])
+}
 
 func applyRelativeDayNowOverrideFromEnv(t *testing.T) {
 	t.Helper()

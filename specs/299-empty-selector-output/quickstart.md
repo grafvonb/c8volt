@@ -41,3 +41,11 @@ git diff --check
 ```
 
 `make test` runs `go test ./... -race -count=1`. Run `gofmt` on the Go files changed during implementation before these final checks. Inspect regenerated documentation for correct no-op examples and review unrelated output changes before committing. A failing or unavailable check must be reported and resolved before implementation completion; do not treat this planning guide as evidence of passing tests.
+
+## Iteration 1 validation (2026-09-11)
+
+- Confirmed branch, active feature selection, Go 1.26/toolchain 1.26.2, constitution, AGENTS guidance, and Ralph implementation rules with no conflict.
+- Demonstrated the pre-fix machine-output defect with the new delete/cancel empty-selector tests.
+- Passed `go test ./cmd -run 'Test(Delete|Cancel)ProcessInstanceEmptySelectorOutput|TestProcessInstance.*Empty|Test(Delete|Cancel)ProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp' -count=1`.
+- Passed `make test` (`go test ./... -race -count=1`).
+- Passed `git diff --check` before coordinated persistence.
