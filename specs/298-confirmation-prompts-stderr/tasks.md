@@ -16,8 +16,8 @@ All paths are repository-relative. `[P]` marks disjoint work that can run concur
 
 **Purpose**: Establish the migration inventory and terminal-test interface without changing behavior.
 
-- [ ] T001 Audit all references to `confirmCmdOrAbort`, `confirmCmdOrAbortFn`, and `confirmProcessDefinitionSelectorListVisibleFn` under `cmd/`, starting with `cmd/cmd_cli.go` and `cmd/process_definition_selector_validation.go`; record the exact production/test file inventory and baseline focused-test results in `specs/298-confirmation-prompts-stderr/quickstart.md`, using `go test ./cmd -run 'Confirm|Paging|Selector' -count=1`.
-- [ ] T002 Define the minimal PTY allocator contract and bounded subprocess runner interface in `testx/cmd_terminal_runner.go`, following `testx/cmd_subprocess_runner.go` helper-process environment and exact-test-selection conventions; specify separate stream capture, prompt/response sequencing, canonical EOF, timeout cleanup, and explicit unsupported-platform results before platform work starts.
+- [x] T001 Audit all references to `confirmCmdOrAbort`, `confirmCmdOrAbortFn`, and `confirmProcessDefinitionSelectorListVisibleFn` under `cmd/`, starting with `cmd/cmd_cli.go` and `cmd/process_definition_selector_validation.go`; record the exact production/test file inventory and baseline focused-test results in `specs/298-confirmation-prompts-stderr/quickstart.md`, using `go test ./cmd -run 'Confirm|Paging|Selector' -count=1`.
+- [x] T002 Define the minimal PTY allocator contract and bounded subprocess runner interface in `testx/cmd_terminal_runner.go`, following `testx/cmd_subprocess_runner.go` helper-process environment and exact-test-selection conventions; specify separate stream capture, prompt/response sequencing, canonical EOF, timeout cleanup, and explicit unsupported-platform results before platform work starts.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
