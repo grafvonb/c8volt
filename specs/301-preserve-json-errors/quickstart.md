@@ -95,3 +95,11 @@ git diff --check
 - `get process-definition --xml --key 123` with JSON mode wrote one 260-byte `invalid` / `invalid_input` incompatibility envelope and zero stderr bytes; it exited 0 with `--no-err-codes` and 2 without it.
 - The same invalid stdin check in human mode exited 2, wrote zero stdout bytes, and wrote exactly one stderr diagnostic containing the `--keys-only` guidance.
 - `jq -s` checks confirmed exactly one JSON document in each JSON capture. The documented smoke commands and implemented `TestCommandErrorEnvelope` prefix were current; no guide command or proposed test name required reconciliation.
+
+## Iteration 11 evidence
+
+- `go test ./cmd -list 'TestCommandErrorEnvelope'` passed and listed the implemented error-envelope test family, including cluster, delete validation, embedded list, fallback, modes, process definition, stdin, and success coverage.
+- `go test ./cmd -run '^TestCommandErrorEnvelope' -count=1` passed in 72.627 seconds.
+- `go test ./cmd -run 'TestGetCluster|TestGetProcessDefinition|TestEmbedList|TestCommandCapability|TestOutputModes' -count=1` passed in 19.749 seconds.
+- `make test` passed the full `go test ./... -race -count=1` suite, including `github.com/grafvonb/c8volt/cmd` in 356.853 seconds.
+- `git diff --check` passed with no whitespace errors.

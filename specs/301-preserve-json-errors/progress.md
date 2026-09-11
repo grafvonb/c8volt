@@ -206,3 +206,18 @@ Started: 2026-09-11 15:45:51
 **Learnings**:
 - Standalone execution preserved one-envelope JSON output, empty JSON stderr, human stderr routing, classified exit 2, and zero-status suppression exactly as documented.
 ---
+---
+## Iteration 11 - 2026-09-11 17:08
+**Work Unit**: Phase 6 Polish (final validation)
+**Tasks Completed**:
+- [x] T026: Run and record final focused command checks, the full race-enabled suite, and diff hygiene
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/301-preserve-json-errors/tasks.md
+- specs/301-preserve-json-errors/quickstart.md
+- specs/301-preserve-json-errors/ralph-memory.md
+- specs/301-preserve-json-errors/progress.md
+**Learnings**:
+- The complete focused matrix, compatibility regressions, full race-enabled repository suite, and whitespace check all pass in the final feature state.
+---
