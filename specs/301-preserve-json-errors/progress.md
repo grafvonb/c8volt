@@ -116,3 +116,19 @@ Started: 2026-09-11 15:45:51
 **Learnings**:
 - A real mixed flag/stdin lookup confirms stable caller deduplication, and representative successes retain their established envelope, raw-output, filtering, and tenant-context behavior without extra requests.
 ---
+---
+## Iteration 6 - 2026-09-11 16:45
+**Work Unit**: US3 Preserve Existing Workflows (integration and validation)
+**Tasks Completed**:
+- [x] T020: Audit the final production diff against the contract, renderer, error policy, and documented exclusions
+- [x] T021: Run and record the integrated command error-envelope and compatibility test matrix
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/301-preserve-json-errors/tasks.md
+- specs/301-preserve-json-errors/quickstart.md
+- specs/301-preserve-json-errors/ralph-memory.md
+- specs/301-preserve-json-errors/progress.md
+**Learnings**:
+- The correction changes only eligible command execution dispatch: shared schemas, capability metadata, classification, exit policy, bootstrap/parsing, raw XML, and excluded renderer paths remain unchanged from the pre-feature baseline.
+---

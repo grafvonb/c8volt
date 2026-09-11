@@ -81,3 +81,9 @@ git diff --check
 - TDD failures confirmed: cluster, process-definition retrieval/selector/search/XML validation, and embedded-list JSON cases reached EOF before the planned dispatch corrections.
 - US2 focused validation: `go test ./cmd -run '^TestCommandErrorEnvelope(Cluster|ProcessDefinition|EmbedList)|TestGetCluster|TestGetProcessDefinition|TestEmbedList' -count=1` passed in 88.023 seconds.
 - Full race-enabled validation: `make test` passed, including `github.com/grafvonb/c8volt/cmd` in 341.643 seconds.
+
+## Iteration 6 evidence
+
+- Final production-diff audit passed: `cmd/command_contract.go`, `cmd/cmd_views_contract.go`, and `c8volt/ferrors/errors.go` are unchanged from the pre-feature baseline, so schema, capability eligibility, normalization, classification, and exit policy remain intact.
+- The audit confirmed that changes are limited to the documented execution paths: the 12 stdin callers retain their prior key ordering and `.Unique()` placement, corrected failures invoke the shared renderer once and terminate immediately, and bootstrap/parsing, raw-XML retrieval/write, and defensive renderer-error exclusions remain unchanged.
+- Integrated US3 validation: `go test ./cmd -run '^TestCommandErrorEnvelope|TestGetCluster|TestGetProcessDefinition|TestEmbedList|TestCommandCapability|TestOutputModes' -count=1` passed in 90.470 seconds, covering corrected human/JSON paths, ordinary/suppressed exits, mode precedence, non-full fallback, and successful workflows.

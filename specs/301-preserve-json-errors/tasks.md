@@ -86,8 +86,8 @@ Task lines use `- [ ] Tnnn [P?] [USn?] Description`. Paths are relative to the r
 
 ### Integration and validation
 
-- [ ] T020 [US3] Audit the final production diff against `cmd/command_contract.go`, `cmd/cmd_views_contract.go`, `c8volt/ferrors/errors.go`, and the exclusions in `specs/301-preserve-json-errors/research.md`; ensure no schema/class/exit-policy or capability-support changes, duplicate renderer invocation, bootstrap/parsing changes, raw-XML changes, or post-error execution, and record the audit result in `specs/301-preserve-json-errors/quickstart.md`.
-- [ ] T021 [US3] Run `go test ./cmd -run '^TestCommandErrorEnvelope|TestGetCluster|TestGetProcessDefinition|TestEmbedList|TestCommandCapability|TestOutputModes' -count=1` after US1/US2 integration; verify every corrected branch has human/JSON and exit-suppression evidence and record results in `specs/301-preserve-json-errors/quickstart.md`.
+- [x] T020 [US3] Audit the final production diff against `cmd/command_contract.go`, `cmd/cmd_views_contract.go`, `c8volt/ferrors/errors.go`, and the exclusions in `specs/301-preserve-json-errors/research.md`; ensure no schema/class/exit-policy or capability-support changes, duplicate renderer invocation, bootstrap/parsing changes, raw-XML changes, or post-error execution, and record the audit result in `specs/301-preserve-json-errors/quickstart.md`.
+- [x] T021 [US3] Run `go test ./cmd -run '^TestCommandErrorEnvelope|TestGetCluster|TestGetProcessDefinition|TestEmbedList|TestCommandCapability|TestOutputModes' -count=1` after US1/US2 integration; verify every corrected branch has human/JSON and exit-suppression evidence and record results in `specs/301-preserve-json-errors/quickstart.md`.
 
 **Checkpoint**: All three stories meet their acceptance criteria. US3 adds compatibility evidence rather than a new error policy; fix any failures within the owning US1/US2 files before marking it complete.
 
