@@ -6,7 +6,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/spf13/cobra"
 )
 
@@ -54,7 +53,7 @@ func runGetClusterVersion(cmd *cobra.Command, args []string) {
 	log.Debug("getting cluster topology for version")
 	topology, err := cli.GetClusterTopology(cmd.Context())
 	if err != nil {
-		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("get cluster version: %w", err))
+		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get cluster version: %w", err))
 	}
 	if pickMode() == RenderModeJSON {
 		if err := renderJSONPayload(cmd, RenderModeJSON, newClusterVersionView(topology, flagGetClusterVersionWithBrokers)); err != nil {

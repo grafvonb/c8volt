@@ -108,7 +108,7 @@ func runGetProcessDefinition(cmd *cobra.Command, args []string) {
 
 func runGetProcessDefinitionXML(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, filter process.ProcessDefinitionFilter) {
 	if err := validateProcessDefinitionXMLFlags(filter); err != nil {
-		ferrors.HandleAndExit(log, noErrCodes, err)
+		handleCommandError(cmd, log, noErrCodes, err)
 	}
 
 	log.Debug(fmt.Sprintf("getting pd %s xml", filter.Key))
@@ -125,7 +125,7 @@ func runGetProcessDefinitionByKey(cmd *cobra.Command, cli c8volt.API, log *slog.
 	log.Debug(fmt.Sprintf("getting pd %s", key))
 	pd, err := cli.GetProcessDefinition(cmd.Context(), key, collectExplicitAdminInputOptions()...)
 	if err != nil {
-		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("get process definition: %w", err))
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("get process definition: %w", err))
 	}
 	if err := processDefinitionView(cmd, pd); err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error rendering key-only view: %w", err))
@@ -142,7 +142,7 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 	if filter.BpmnProcessId != "" {
 		result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newGetPDProcessDefinitionSelectorValidationRequest(), collectOptions()...)
 		if err != nil {
-			ferrors.HandleAndExit(log, noErrCodes, err)
+			handleCommandError(cmd, log, noErrCodes, err)
 		}
 		if !result.Valid() {
 			handleProcessDefinitionSelectorValidationError(cmd, log, noErrCodes, cli, result)
@@ -154,7 +154,7 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 		pds, err = searchProcessDefinitionsWithPaging(cmd, cli, filter)
 	}
 	if err != nil {
-		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("search process definitions: %w", err))
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("search process definitions: %w", err))
 	}
 	if err := listProcessDefinitionsView(cmd, pds); err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error rendering items view: %w", err))

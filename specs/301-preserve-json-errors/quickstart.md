@@ -75,3 +75,9 @@ git diff --check
 - TDD failure confirmed: the new US1 JSON cases decoded EOF because the direct handlers emitted no envelope before T006/T007.
 - US1 focused validation: `go test ./cmd -run '^TestCommandErrorEnvelope(DeleteValidation|Stdin)' -count=1` passed, executing deletion validation and all 12 stdin caller matrices.
 - Broader command regression: `go test ./cmd -count=1` passed in 37.805 seconds.
+
+## Iteration 2 evidence
+
+- TDD failures confirmed: cluster, process-definition retrieval/selector/search/XML validation, and embedded-list JSON cases reached EOF before the planned dispatch corrections.
+- US2 focused validation: `go test ./cmd -run '^TestCommandErrorEnvelope(Cluster|ProcessDefinition|EmbedList)|TestGetCluster|TestGetProcessDefinition|TestEmbedList' -count=1` passed in 88.023 seconds.
+- Full race-enabled validation: `make test` passed, including `github.com/grafvonb/c8volt/cmd` in 341.643 seconds.

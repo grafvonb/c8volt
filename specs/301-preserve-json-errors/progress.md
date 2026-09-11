@@ -41,3 +41,33 @@ Started: 2026-09-11 15:45:51
 **Learnings**:
 - The independent subprocess matrix reproduced the missing-envelope defect before the two narrow dispatch changes and now proves immediate termination even when the process status is suppressed.
 ---
+---
+## Iteration 2 - 2026-09-11 16:14
+**Work Unit**: US2 Structured Runtime Failures
+**Tasks Completed**:
+- [x] T009: Add the cluster runtime and malformed-response error-envelope matrix
+- [x] T010: Add process-definition retrieval, selector, search, and XML validation regressions
+- [x] T011: Extract the command-local embedded-list execution seam
+- [x] T012: Add deterministic embedded-list failure and empty-scope regressions
+- [x] T013: Route cluster runtime failures through the shared command error handler
+- [x] T014: Route eligible process-definition failures through the shared command error handler
+- [x] T015: Route embedded listing and no-matching-files failures through the shared command error handler
+- [x] T016: Format and validate the complete US2 matrix and existing regressions
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_cluster_error_envelope_test.go
+- cmd/get_processdefinition_error_envelope_test.go
+- cmd/embed_list_error_envelope_test.go
+- cmd/get_cluster_topology.go
+- cmd/get_cluster_version.go
+- cmd/get_cluster_license.go
+- cmd/get_processdefinition.go
+- cmd/embed_list.go
+- specs/301-preserve-json-errors/tasks.md
+- specs/301-preserve-json-errors/ralph-memory.md
+- specs/301-preserve-json-errors/quickstart.md
+- specs/301-preserve-json-errors/progress.md
+**Learnings**:
+- Existing read retries can write transient informational context to stderr in JSON mode; the regressions exclude only duplicate final error diagnostics while preserving that behavior.
+---

@@ -18,10 +18,12 @@ Started: 2026-09-11T13:45:51Z
 
 - `--no-err-codes` exits zero but still must terminate; request-count assertions are required to catch accidental continuation.
 - JSON errors omit `payload`, `suggestion`, and unavailable `tenantContext`; their absence is part of the contract.
+- Read-only GET fixtures may emit transient retry context on stderr before the final failure; JSON assertions must prohibit the final human diagnostic without rejecting that established context.
 
 ## Reusable Commands
 
 - `go test ./cmd -run '^TestCommandErrorEnvelope(DeleteValidation|Stdin)' -count=1`
+- `go test ./cmd -run '^TestCommandErrorEnvelope(Cluster|ProcessDefinition|EmbedList)|TestGetCluster|TestGetProcessDefinition|TestEmbedList' -count=1`
 - `go test ./cmd -count=1`
 
 ## Do Not Repeat
@@ -30,4 +32,4 @@ Started: 2026-09-11T13:45:51Z
 - Do not use a production `ResultEnvelope` to decode or construct expected regression results.
 
 ## Current Handoff
-- Continue with T009 in US2: add cluster topology/version/license error-envelope regressions before changing their runtime dispatch.
+- Continue with T017 in US3: add corrected-path output-mode compatibility coverage before the final production audit.

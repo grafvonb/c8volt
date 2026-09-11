@@ -6,7 +6,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/spf13/cobra"
 )
 
@@ -45,7 +44,7 @@ func runGetClusterLicense(cmd *cobra.Command, args []string) {
 	log.Debug("getting cluster license")
 	license, err := cli.GetClusterLicense(cmd.Context())
 	if err != nil {
-		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("get cluster license: %w", err))
+		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get cluster license: %w", err))
 	}
 	if pickMode() == RenderModeJSON {
 		if err := renderJSONPayload(cmd, RenderModeJSON, license); err != nil {
