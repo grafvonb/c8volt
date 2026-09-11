@@ -7,12 +7,15 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
@@ -20,6 +23,164 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+// TestProcessInstanceMutationTenantSeverity verifies both mutation tenant
+// emitters preserve producer ordering and map warning markers to log severity.
+func TestProcessInstanceMutationTenantSeverity(t *testing.T) {
+	tests := []struct {
+		name string
+		emit func(*cobra.Command, tenant.Context)
+	}{
+		{
+			name: "durable progress",
+			emit: func(cmd *cobra.Command, ctx tenant.Context) {
+				attachTenantContext(cmd, ctx)
+				printProcessInstanceMutationTenantContext(cmd, ops.ProgressChannel{
+					Mode:           ops.ProgressModeHuman,
+					DurableAllowed: true,
+					StderrAllowed:  true,
+				})
+			},
+		},
+		{
+			name: "confirmation context",
+			emit: renderProcessInstanceMutationTenantContextStderr,
+		},
+	}
+
+	expected := []struct {
+		level string
+		text  string
+	}{
+		{level: "INFO", text: "configured tenant: tenant-a"},
+		{level: "WARN", text: `--tenant "" overrides the configured tenant filter; selection is unfiltered`},
+		{level: "INFO", text: "selection scope: unfiltered across accessible tenants"},
+		{level: "WARN", text: "affected tenants: tenant-a, tenant-b"},
+		{level: "WARN", text: "tenant metadata is unknown for 1 target"},
+	}
+	plainLine := regexp.MustCompile(`^(\d{2}:\d{2}:\d{2}\.\d{3}) (INFO|WARN) (.*)$`)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			cmd := &cobra.Command{}
+			cmd.SetOut(stdout)
+			cmd.SetErr(stderr)
+			cmd.SetContext(tenantOverrideProvenance{
+				ConfiguredTenantID: "tenant-a",
+				ExplicitTenantID:   "",
+				Explicit:           true,
+			}.ToContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{
+				Level:  "info",
+				Format: "plain-time",
+				Writer: stderr,
+			}))))
+			ctx := withTenantContextEvidence(newDiscoveryTenantContext(""), []string{"tenant-b", "tenant-a"}, 1)
+
+			tt.emit(cmd, ctx)
+
+			require.Empty(t, stdout.String())
+			lines := strings.Split(strings.TrimSuffix(stderr.String(), "\n"), "\n")
+			require.Len(t, lines, len(expected))
+			for i, want := range expected {
+				matches := plainLine.FindStringSubmatch(lines[i])
+				require.Len(t, matches, 4, "line %d must use the standard timestamped plain format: %q", i, lines[i])
+				_, err := time.Parse(logging.PlainTimeTimestampLayout, matches[1])
+				require.NoError(t, err, "line %d must begin with a valid timestamp", i)
+				require.Equal(t, want.level, matches[2])
+				require.Equal(t, want.text, matches[3])
+			}
+		})
+	}
+}
+
+// TestProcessInstanceMutationTenantFallbackAndDeduplication verifies raw
+// configured-stderr fallback and rendered-state suppression across both paths.
+func TestProcessInstanceMutationTenantFallbackAndDeduplication(t *testing.T) {
+	ctx := withTenantContextEvidence(newDiscoveryTenantContext("tenant-a"), []string{"tenant-a"}, 0)
+	want := "selection scope: tenant-a only\naffected tenants: tenant-a\n"
+	channel := ops.ProgressChannel{
+		Mode:           ops.ProgressModeHuman,
+		DurableAllowed: true,
+		StderrAllowed:  true,
+	}
+
+	tests := []struct {
+		name string
+		emit func(*cobra.Command)
+		want string
+	}{
+		{
+			name: "progress same path",
+			emit: func(cmd *cobra.Command) {
+				attachTenantContext(cmd, ctx)
+				printProcessInstanceMutationTenantContext(cmd, channel)
+				printProcessInstanceMutationTenantContext(cmd, channel)
+			},
+			want: want,
+		},
+		{
+			name: "confirmation same path",
+			emit: func(cmd *cobra.Command) {
+				renderProcessInstanceMutationTenantContextStderr(cmd, ctx)
+				renderProcessInstanceMutationTenantContextStderr(cmd, ctx)
+			},
+			want: want,
+		},
+		{
+			name: "progress then confirmation",
+			emit: func(cmd *cobra.Command) {
+				attachTenantContext(cmd, ctx)
+				printProcessInstanceMutationTenantContext(cmd, channel)
+				renderProcessInstanceMutationTenantContextStderr(cmd, ctx)
+			},
+			want: want,
+		},
+		{
+			name: "confirmation then progress",
+			emit: func(cmd *cobra.Command) {
+				attachTenantContext(cmd, ctx)
+				renderProcessInstanceMutationTenantContextStderr(cmd, ctx)
+				printProcessInstanceMutationTenantContext(cmd, channel)
+			},
+			want: want,
+		},
+		{
+			name: "absent progress context",
+			emit: func(cmd *cobra.Command) {
+				printProcessInstanceMutationTenantContext(cmd, channel)
+			},
+		},
+		{
+			name: "zero confirmation context",
+			emit: func(cmd *cobra.Command) {
+				renderProcessInstanceMutationTenantContextStderr(cmd, tenant.Context{})
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			cmd := &cobra.Command{}
+			cmd.SetOut(stdout)
+			cmd.SetErr(stderr)
+
+			tt.emit(cmd)
+
+			require.Empty(t, stdout.String())
+			require.Equal(t, tt.want, stderr.String())
+		})
+	}
+}
 
 // pendingProcessInstanceMutationProgressT064 marks the historical progress
 // contract gate while the concrete tests define the preserved behavior.
