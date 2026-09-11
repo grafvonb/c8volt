@@ -170,3 +170,24 @@ Started: 2026-09-11 15:45:51
 **Learnings**:
 - The affected command descriptions can share the README boundary verbatim without changing contract metadata; their existing JSON examples were sufficient except for cluster version.
 ---
+---
+## Iteration 9 - 2026-09-11 16:55
+**Work Unit**: Phase 6 Polish (partial: generated CLI references)
+**Tasks Completed**:
+- [x] T024: Format previously touched Go files, regenerate CLI references, and inspect generated documentation
+**Tasks Remaining in Work Unit**: T025-T026
+**Commit**: This work-unit commit
+**Files Changed**:
+- docs/cli/c8volt_delete_process-instance.md
+- docs/cli/c8volt_embed_list.md
+- docs/cli/c8volt_get_cluster_license.md
+- docs/cli/c8volt_get_cluster_topology.md
+- docs/cli/c8volt_get_cluster_version.md
+- docs/cli/c8volt_get_process-definition.md
+- docs/index.md
+- specs/301-preserve-json-errors/tasks.md
+- specs/301-preserve-json-errors/ralph-memory.md
+- specs/301-preserve-json-errors/progress.md
+**Learnings**:
+- Generation changed only the six intended command pages plus the README-synced homepage; the homepage provenance line advanced as part of normal generation, with no unrelated CLI-page churn.
+---

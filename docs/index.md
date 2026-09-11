@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.0-beta.1-226-gc3ace7cc-dirty`, commit `c3ace7cc`, built `2026-09-11T10:24:15Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.0-beta.1-237-g052e5a7d`, commit `052e5a7d`, built `2026-09-11T14:54:43Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -215,6 +215,21 @@ For scripts or CI, add `--json` when stdout should be data and logs should stay 
 ```bash
 ./c8volt config test-connection --json
 ```
+
+For commands that advertise full machine-contract support, `--json` writes
+exactly one established error envelope when validation or runtime work fails
+during command execution. The envelope retains the failure or invalid outcome,
+its normalized class and detail, and the command identity. In ordinary human
+mode, the diagnostic is written to stderr and stdout remains reserved for
+command results.
+
+`--no-err-codes` changes only the process exit status. A JSON error envelope
+still reports the failure or invalid outcome, human mode still writes the error
+to stderr, and the command still terminates without continuing work. Bootstrap
+failures and argument or flag parsing errors that occur before command execution
+are outside this shared envelope and retain their established diagnostics. Use
+`c8volt capabilities --json` to discover which commands advertise full
+machine-contract support.
 
 ### Output and confirmation streams
 

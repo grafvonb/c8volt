@@ -14,6 +14,8 @@ List bundled BPMN fixture files.
 
 Shows files for the configured Camunda version, matching `embed deploy --all`. Use before `embed deploy` or `embed export` to get exact file names.
 
+With --json, validation and runtime failures during command execution use one shared error envelope. Without --json, the diagnostic is written to stderr. --no-err-codes changes only the process exit status; the reported failure and immediate termination are unchanged. Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics.
+
 ```
 c8volt embed list [flags]
 ```
