@@ -88,3 +88,18 @@ Started: 2026-09-11 08:40:57
 **Learnings**:
 - The explicit writer parameter compiles across all mutation, paging, ops, selector-recovery, and test seam call sites while retaining the existing prompt writes and control flow.
 ---
+
+## Iteration 6 - 2026-09-11 09:03
+**Work Unit**: Phase 2 foundational terminal validation
+**Tasks Completed**:
+- [x] T007: Run the terminal and focused command checks, verify terminal test discovery, and record native host evidence.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/298-confirmation-prompts-stderr/progress.md
+- specs/298-confirmation-prompts-stderr/quickstart.md
+- specs/298-confirmation-prompts-stderr/ralph-memory.md
+- specs/298-confirmation-prompts-stderr/tasks.md
+**Learnings**:
+- Native Darwin/arm64 execution discovered all six terminal allocator/runner tests and both required post-migration suites passed with Go 1.26.2.
+---

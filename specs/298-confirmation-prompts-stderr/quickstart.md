@@ -71,6 +71,33 @@ $ go test ./cmd -run 'Confirm|Paging|Selector' -count=1
 ok github.com/grafvonb/c8volt/cmd 1.615s
 ```
 
+## Iteration 6 foundational validation
+
+Validation ran on 2026-09-11 with `go1.26.2 darwin/arm64`. Terminal test discovery was confirmed before running the required checks:
+
+```text
+$ go test ./testx -list 'Terminal'
+TestDarwinCmdTerminalAllocator
+TestDarwinCmdTerminalAllocatorClosesMasterWhenSlaveOpenFails
+TestCmdTerminalRunnerSequencesPrompts
+TestCmdTerminalRunnerTimesOut
+TestCmdTerminalRunnerReportsAllocatorFailure
+TestCmdTerminalRunnerReportsUnsupportedPlatform
+ok github.com/grafvonb/c8volt/testx 0.430s
+```
+
+Both post-migration focused suites passed:
+
+```text
+$ go test ./testx -run 'Terminal' -count=1
+ok github.com/grafvonb/c8volt/testx 0.510s
+
+$ go test ./cmd -run 'Confirm|Paging|Selector' -count=1
+ok github.com/grafvonb/c8volt/cmd 1.294s
+```
+
+The native Darwin allocator tests and isolated terminal runner tests executed; the focused command suite also remained green after the writer-signature migration. Story-level prompt routing remains intentionally unimplemented until US1 and US3.
+
 ## Focused validation after implementation
 
 ```sh

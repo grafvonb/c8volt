@@ -13,6 +13,7 @@ Started: 2026-09-11T06:40:57Z
 - `testx.NewCmdTerminalRunner` re-executes the exact helper test with only stdin attached to the PTY, observes synchronized stderr snapshots, and advances a search offset so repeated prompt text cannot consume a stale occurrence.
 - The runner closes the parent's slave descriptor after start, drains the no-echo PTY master, and kills then reaps the child before closing descriptors on every timeout/error return.
 - Both confirmation seams now have the signature `(io.Writer, bool, string) error`; production callers pass `cmd.ErrOrStderr()`, while migrated test stubs may ignore the writer until their story-specific routing assertions are added.
+- Native Darwin/arm64 foundation validation with Go 1.26.2 discovers all six terminal allocator/runner tests and passes both the terminal-support and focused command suites.
 
 ## Decisions
 
@@ -39,4 +40,4 @@ Started: 2026-09-11T06:40:57Z
 - A successful helper test that returns normally adds the Go test harness `PASS` line to stdout; helpers requiring byte-exact stdout can call `os.Exit(0)` after their child assertions succeed.
 
 ## Current Handoff
-- Start T007 in Phase 2: run the specified terminal and focused command checks, verify terminal tests are discovered, and record the host/results in `quickstart.md`; prompt writes intentionally remain on stdout until US1/US3.
+- Start T008 in US1 by adding real-terminal default-no helper coverage in `cmd/cmd_confirmation_terminal_test.go`; prompt writes intentionally remain on stdout until T010 so routing assertions should first demonstrate the defect.
