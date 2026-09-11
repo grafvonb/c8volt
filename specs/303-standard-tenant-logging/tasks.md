@@ -18,7 +18,7 @@
 
 **Purpose**: Confirm the existing feature context and toolchain; no project scaffolding or dependencies are needed.
 
-- [ ] T001 Verify branch `codex/303-standard-tenant-logging`, read the feature artifacts and `AGENTS.md`, and confirm the Go toolchain against `go.mod`; record the implementation environment and any blockers in `specs/303-standard-tenant-logging/quickstart.md`. For Ralph execution, also read `specs/ralph-implementation-rules.md` and surface any conflict before implementation.
+- [x] T001 Verify branch `codex/303-standard-tenant-logging`, read the feature artifacts and `AGENTS.md`, and confirm the Go toolchain against `go.mod`; record the implementation environment and any blockers in `specs/303-standard-tenant-logging/quickstart.md`. For Ralph execution, also read `specs/ralph-implementation-rules.md` and surface any conflict before implementation.
 
 ## Phase 2: Foundational
 
