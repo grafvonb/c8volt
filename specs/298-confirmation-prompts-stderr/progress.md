@@ -168,3 +168,29 @@ Started: 2026-09-11 08:40:57
 **Learnings**:
 - Real-terminal evidence preserves the full default matrix, while deadline-backed caller tests prove every existing selector skip policy avoids both prompt output and input reads.
 ---
+
+## Iteration 10 - 2026-09-11 09:51
+**Work Unit**: Phase 6 Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T019: Document stdout results and stderr confirmation/continuation prompts in README guidance.
+- [x] T020: Add the routing contract to root help metadata and assertions.
+- [x] T021: Regenerate and inspect CLI and homepage documentation.
+- [x] T022: Run focused and full race-enabled validation, fix the race subprocess deadline, and record results.
+- [x] T023: Validate Windows/Linux compilation, native macOS terminal execution, CI coverage, and platform availability.
+- [x] T024: Reconcile the final call-site inventory and FR-001–FR-010 evidence.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cmd_confirmation_skip_test.go
+- cmd/root.go
+- cmd/root_test.go
+- docs/cli/c8volt.md
+- docs/index.md
+- specs/298-confirmation-prompts-stderr/progress.md
+- specs/298-confirmation-prompts-stderr/quickstart.md
+- specs/298-confirmation-prompts-stderr/ralph-memory.md
+- specs/298-confirmation-prompts-stderr/tasks.md
+**Learnings**:
+- Race instrumentation requires more subprocess startup allowance, while a five-second deadline still detects any blocked confirmation read; generated docs and all validation gates now agree on the corrected stream contract.
+---

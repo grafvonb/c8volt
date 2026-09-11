@@ -20,6 +20,8 @@ Started: 2026-09-11T06:40:57Z
 - Caller-writer regressions can write a marker through the confirmation seam and use separate command buffers to prove the supplied writer resolves to stderr without invoking terminal input.
 - Default-yes selector recovery now uses the supplied writer with `os.Stderr` fallback; the real-terminal matrix preserves normalized yes, empty-default acceptance, other-answer abort, and EOF abort behavior.
 - Deadline-backed selector skip subprocesses can hold stdin open behind a blocking confirmation seam, making any skipped-policy read fail by timeout; real PTY stdin plus captured stdout separately proves redirected stdout remains ineligible.
+- Race-instrumented `cmd` subprocess startup can exceed one second on loaded builders; the skip-policy deadline is five seconds and remains bounded so an accidental stdin read still fails.
+- `make docs-content` regenerates both the root CLI page and the README-derived docs homepage; build provenance in `docs/index.md` is expected to refresh with the current HEAD.
 
 ## Decisions
 
@@ -47,4 +49,4 @@ Started: 2026-09-11T06:40:57Z
 - A successful helper test that returns normally adds the Go test harness `PASS` line to stdout; helpers requiring byte-exact stdout can call `os.Exit(0)` after their child assertions succeed.
 
 ## Current Handoff
-- Start T019 in polish by updating README output-contract guidance; remain within the cross-cutting phase through T024 in later iterations.
+- Feature complete; no handoff required.

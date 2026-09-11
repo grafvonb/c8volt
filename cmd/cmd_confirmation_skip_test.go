@@ -43,7 +43,9 @@ func TestConfirmationSkipPolicies(t *testing.T) {
 	}
 	for _, scenario := range scenarios {
 		t.Run(scenario, func(t *testing.T) {
-			stdout, stderr, err := runConfirmationSkipPolicySubprocess(t, scenario, time.Second)
+			// Race-instrumented helper startup can exceed one second on loaded builders;
+			// the bounded deadline still turns any accidental stdin read into a failure.
+			stdout, stderr, err := runConfirmationSkipPolicySubprocess(t, scenario, 5*time.Second)
 
 			require.NoError(t, err)
 			require.Equal(t, "skipped=true\n", stdout)

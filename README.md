@@ -210,6 +210,20 @@ For scripts or CI, add `--json` when stdout should be data and logs should stay 
 ./c8volt config test-connection --json
 ```
 
+### Output and confirmation streams
+
+Command results are written to stdout. Plain confirmation and paging
+continuation questions are written to stderr, so redirecting or piping stdout
+does not mix prompts into results. Keys-only output therefore remains one key
+per line while an eligible continuation question stays visible in the terminal.
+If a script or prompt consumer needs the question text, it must capture stderr.
+
+Redirecting stdout does not suppress confirmation questions whose existing
+terminal-input rules allow them. Selector-recovery questions keep their existing
+eligibility rules, including their terminal-stdout guard, and `--auto-confirm`
+continues to skip only the questions it already skipped. Answer defaults,
+automation behavior, and command outcomes are unchanged.
+
 For the full setup contract, see the generated [config reference](docs/cli/c8volt_config.md).
 
 ## Example Notes

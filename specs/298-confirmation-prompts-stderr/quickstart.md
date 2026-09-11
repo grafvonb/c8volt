@@ -184,3 +184,53 @@ cat /tmp/c8volt-298-keys.txt
 Use an environment with at least three matching instances and leave auto-confirm/automation disabled. If a continuation question is reached under the existing paging rules, accept once and decline the next question. The question stays visible on stderr, and the file contains only the fetched keys. Consult command help for configuration flags required by your environment. This read-only smoke check supplements the automated terminal matrix.
 
 Implementation completion requires actual recorded targeted and full-suite results; the plan alone supplies no runtime proof.
+
+## Iteration 10 final validation
+
+Validation ran on 2026-09-11 with `go1.26.2 darwin/arm64`. README guidance and root help now state that results use stdout, plain confirmation and continuation questions use stderr, prompt consumers must capture stderr, and selector-recovery/auto-confirm policies remain unchanged. `make docs-content` regenerated `docs/cli/c8volt.md` and the README-derived `docs/index.md`; inspection found the same routing contract in all three sources and only the expected current-build provenance refresh in the homepage.
+
+The focused checks passed and explicitly discovered all three real-terminal parent tests:
+
+```text
+$ go test ./cmd -list 'TestConfirmOrAbort.*Terminal|TestGetProcessInstanceKeysOnlyPagingTerminal'
+TestConfirmOrAbortTerminal
+TestConfirmOrAbortDefaultYesTerminal
+TestGetProcessInstanceKeysOnlyPagingTerminal
+ok github.com/grafvonb/c8volt/cmd 0.503s
+
+$ go test ./cmd -run 'TestConfirmOrAbort.*Terminal|TestGetProcessInstanceKeysOnlyPagingTerminal' -count=1
+ok github.com/grafvonb/c8volt/cmd 0.747s
+
+$ go test ./cmd -run 'Confirm|Paging|Selector' -count=1
+ok github.com/grafvonb/c8volt/cmd 1.704s
+
+$ go test ./testx -run 'Terminal' -count=1
+ok github.com/grafvonb/c8volt/testx 0.536s
+
+$ go test ./cmd -run 'TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand|TestRootHelpAndGeneratedMarkdownShareDiscoveryAnchors' -count=1
+ok github.com/grafvonb/c8volt/cmd 0.555s
+```
+
+The first race-enabled full-suite run exposed only a test-harness deadline issue: all six `TestConfirmationSkipPolicies` subprocesses exceeded the former one-second startup deadline under race instrumentation. The deadline was increased to five seconds, retaining bounded failure for an accidental stdin read. The focused race regression then passed in 7.887s, and the required full suite passed:
+
+```text
+$ go test ./cmd -race -run '^TestConfirmationSkipPolicies$' -count=1
+ok github.com/grafvonb/c8volt/cmd 7.887s
+
+$ make test
+go test ./... -race -count=1
+ok github.com/grafvonb/c8volt/cmd 173.353s
+[all remaining packages passed or reported no test files]
+
+$ git diff --check
+[no output]
+```
+
+Platform evidence:
+
+- macOS Darwin/arm64: the three terminal parent tests executed natively and passed; no PTY skip occurred.
+- Windows amd64: `GOOS=windows GOARCH=amd64 go test -c -o /tmp/c8volt-cmd-298.test.exe ./cmd` produced a PE32+ x86-64 test executable. This is compilation evidence only; Windows runtime terminal behavior was not exercised.
+- Linux arm64: `GOOS=linux GOARCH=arm64 go test -c -o /tmp/c8volt-cmd-298-linux.test ./cmd` produced a statically linked ELF aarch64 test executable. A Docker runtime attempt stalled before creating a visible container and was terminated after more than five minutes, so no new Linux runtime claim is made in this iteration. Earlier iteration 2 Linux PTY allocator runtime evidence remains recorded separately.
+- `.github/workflows/go.yml` runs `make cover`; the Makefile target invokes `go test ... -race -covermode=atomic`, so the new command and test-support tests are included in existing Linux race-enabled package coverage.
+
+Final review matched the T001 production inventory exactly: the same 22 files contain the two helpers/seams and their callers, every production caller supplies `cmd.ErrOrStderr()`, and both helpers retain the existing terminal checks, formatting, scanning, decisions, and error conversion while using the supplied writer with `os.Stderr` fallback. No facade, internal service, generated client, backend call, flag, alias, default, or unrelated output path changed. The task coverage table and iteration 7–10 evidence jointly satisfy FR-001–FR-010.
