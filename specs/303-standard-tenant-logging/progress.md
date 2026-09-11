@@ -52,3 +52,19 @@ Started: 2026-09-11 18:49:29
 **Learnings**:
 - The shared durable-line helper restores severity and formatting without changing fallback bytes or rendered-state deduplication.
 ---
+---
+## Iteration 4 - 2026-09-11 19:00
+**Work Unit**: US2 Apply Configured Log Format and Level
+**Tasks Completed**:
+- [x] T006: Cover both emitters across plain/JSON formats and INFO/WARN/ERROR thresholds with exact ordered record validation and empty stdout.
+- [x] T007: Prove ERROR filtering has no raw fallback and a later permissive logger cannot replay the rendered tenant context.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/processinstance_mutation_progress_test.go
+- specs/303-standard-tenant-logging/tasks.md
+- specs/303-standard-tenant-logging/ralph-memory.md
+- specs/303-standard-tenant-logging/progress.md
+**Learnings**:
+- The T004 integration already satisfies configured formatting, threshold filtering, and mark-before-emission deduplication for both paths without further production changes.
+---
