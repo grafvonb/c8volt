@@ -67,7 +67,7 @@ var expectProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagExpectPIKeys, stdinKeys, log, cfg)
+		keys := mergeAndValidateKeys(cmd, flagExpectPIKeys, stdinKeys, log, cfg)
 		if len(keys) == 0 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to watch")))
 		}

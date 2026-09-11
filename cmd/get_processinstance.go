@@ -119,7 +119,7 @@ var getProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			fail(err)
 		}
-		keys := mergeAndValidateKeys(flagGetPIKeys, stdinKeys, log, cfg)
+		keys := mergeAndValidateKeys(cmd, flagGetPIKeys, stdinKeys, log, cfg)
 		ukeys := keys.Unique()
 		lk := len(ukeys)
 		taskKeys, err := normalizeHasUserTasks(types.Keys(flagGetPIHasUserTasks))

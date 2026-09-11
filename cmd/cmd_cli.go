@@ -132,16 +132,18 @@ func requireAutomationSupport(cmd *cobra.Command) error {
 	)
 }
 
-func mergeAndValidateKeys(baseKeys []string, stdinKeys []string, log *slog.Logger, cfg *config.Config) typex.Keys {
+// mergeAndValidateKeys preserves flag-before-stdin ordering and routes invalid
+// piped input through the invoking command's established error contract.
+func mergeAndValidateKeys(cmd *cobra.Command, baseKeys []string, stdinKeys []string, log *slog.Logger, cfg *config.Config) typex.Keys {
 	keys := append([]string{}, baseKeys...)
 
 	if len(stdinKeys) > 0 {
 		if ok, firstBadKey, firstBadIndex := validateKeys(stdinKeys); !ok {
 			if strings.HasPrefix(firstBadKey, "filter: ") {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes,
+				handleCommandError(cmd, log, cfg.App.NoErrCodes,
 					invalidFlagValuef("validating keys from stdin failed: use --keys-only flag to get only keys as input"))
 			}
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes,
+			handleCommandError(cmd, log, cfg.App.NoErrCodes,
 				invalidFlagValuef("validating keys from stdin failed: line %q at index %d is not a valid key; have you forgotten to use --keys-only flag in case of c8volt commands?",
 					firstBadKey, firstBadIndex))
 		}

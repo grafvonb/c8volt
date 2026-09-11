@@ -69,7 +69,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagCancelPIKeys, stdinKeys, log, cfg).Unique()
+		keys := mergeAndValidateKeys(cmd, flagCancelPIKeys, stdinKeys, log, cfg).Unique()
 		if err := validatePIKeyedModeDateFilters(len(keys)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}

@@ -93,7 +93,7 @@ var opsRepairIncidentCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagOpsRepairIncidentKeys, stdinKeys, log, cfg).Unique()
+		keys := mergeAndValidateKeys(cmd, flagOpsRepairIncidentKeys, stdinKeys, log, cfg).Unique()
 		searchMode := hasOpsRepairIncidentSearchModeFlags(cmd)
 		keyedMode := len(flagOpsRepairIncidentKeys) > 0 || len(stdinKeys) > 0
 		if keyedMode && searchMode {

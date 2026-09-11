@@ -90,7 +90,7 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagOpsAnalyseSlowProcessInstanceKeys, stdinKeys, log, cfg).Unique()
+		keys := mergeAndValidateKeys(cmd, flagOpsAnalyseSlowProcessInstanceKeys, stdinKeys, log, cfg).Unique()
 		if ok, firstBadKey, _ := validateKeys(keys); !ok {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("process-instance key %q is not a valid key", firstBadKey))
 		}

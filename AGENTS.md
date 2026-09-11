@@ -120,5 +120,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/298-confirmation-prompts-stderr/plan.md`
+- Active Speckit implementation plan: `specs/301-preserve-json-errors/plan.md`
 <!-- SPECKIT END -->
