@@ -65,13 +65,13 @@ Production CLI changes belong in `cmd/`; existing public report types are in `c8
 
 ### Tests for User Story 2
 
-- [ ] T010 [P] [US2] Extend `TestDeleteProcessInstanceEmptySelectorOutput` in `cmd/delete_processinstance_selector_test.go` with human, quiet human, quiet+JSON, and quiet+keys-only cases for normal execution and dry-run; verify the exact human line and absence of duplicate or stderr summaries, and demonstrate the quiet failure before T012.
-- [ ] T011 [P] [US2] Extend `TestCancelProcessInstanceEmptySelectorOutput` in `cmd/cancel_processinstance_selector_test.go` with the same human and quiet combinations for normal execution and dry-run; capture streams separately and demonstrate the quiet failure before T012.
+- [x] T010 [P] [US2] Extend `TestDeleteProcessInstanceEmptySelectorOutput` in `cmd/delete_processinstance_selector_test.go` with human, quiet human, quiet+JSON, and quiet+keys-only cases for normal execution and dry-run; verify the exact human line and absence of duplicate or stderr summaries, and demonstrate the quiet failure before T012.
+- [x] T011 [P] [US2] Extend `TestCancelProcessInstanceEmptySelectorOutput` in `cmd/cancel_processinstance_selector_test.go` with the same human and quiet combinations for normal execution and dry-run; capture streams separately and demonstrate the quiet failure before T012.
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Add explicit `flagQuiet` suppression only to the human branch of the empty-result helper in `cmd/cmd_views_processinstance.go`, keeping JSON and keys-only precedence intact; use the existing raw output helper for unprefixed `found: 0` rather than changing logger behavior or calling the full human dry-run summary renderer.
-- [ ] T013 [US2] Format the US2 changes and run `go test ./cmd -run 'Test(Delete|Cancel)ProcessInstanceEmptySelectorOutput|TestProcessInstance.*Empty' -count=1`; verify the entire output matrix in `specs/299-empty-selector-output/contracts/cli-output.md` and record the results in `specs/299-empty-selector-output/quickstart.md`.
+- [x] T012 [US2] Add explicit `flagQuiet` suppression only to the human branch of the empty-result helper in `cmd/cmd_views_processinstance.go`, keeping JSON and keys-only precedence intact; use the existing raw output helper for unprefixed `found: 0` rather than changing logger behavior or calling the full human dry-run summary renderer.
+- [x] T013 [US2] Format the US2 changes and run `go test ./cmd -run 'Test(Delete|Cancel)ProcessInstanceEmptySelectorOutput|TestProcessInstance.*Empty' -count=1`; verify the entire output matrix in `specs/299-empty-selector-output/contracts/cli-output.md` and record the results in `specs/299-empty-selector-output/quickstart.md`.
 
 **Checkpoint**: Both output stories are independently verifiable. Ordinary human output is unchanged, quiet suppresses the informational summary, and machine output remains intact.
 

@@ -56,6 +56,9 @@ func renderEmptyProcessInstanceSelectorResult(cmd *cobra.Command, operation stri
 	case RenderModeKeysOnly:
 		return nil
 	default:
+		if flagQuiet {
+			return nil
+		}
 		renderOutputLine(cmd, "found: %d", 0)
 		return nil
 	}

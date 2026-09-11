@@ -34,3 +34,24 @@ Started: 2026-09-11 11:51:18
 **Learnings**:
 - Aggregate planning count is the safe no-op boundary; shared succeeded rendering preserves JSON semantics even with no-wait.
 ---
+---
+## Iteration 2 - 2026-09-11 12:10
+**Work Unit**: US2 Understand an empty result interactively
+**Tasks Completed**:
+- [x] T010: Add delete empty-selector human and quiet output matrix
+- [x] T011: Add cancel empty-selector human and quiet output matrix
+- [x] T012: Suppress only quiet human empty-result output
+- [x] T013: Format and validate the complete US2 output matrix
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_processinstance_selector_test.go
+- cmd/cmd_views_processinstance.go
+- cmd/delete_processinstance_selector_test.go
+- specs/299-empty-selector-output/quickstart.md
+- specs/299-empty-selector-output/tasks.md
+- specs/299-empty-selector-output/ralph-memory.md
+- specs/299-empty-selector-output/progress.md
+**Learnings**:
+- Resolve the output mode before quiet suppression so explicit machine output retains precedence.
+---

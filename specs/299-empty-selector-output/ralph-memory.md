@@ -8,6 +8,7 @@ Started: 2026-09-11T09:51:18Z
 - Empty selector completion is authoritative only after `PlanProcessInstanceMutationPages` returns successfully with aggregate `RequestedCount == 0`.
 - Final process-instance output belongs in `cmd/cmd_views_processinstance.go`; JSON uses the shared succeeded envelope, while keys-only emits no bytes.
 - `executeRootForProcessInstanceWithSeparateOutputs` plus the empty HTTP search fixture exercises real Cobra mode precedence without subprocess output merging.
+- Quiet suppression belongs after `pickMode()` selects the human branch so explicit JSON remains visible and keys-only remains byte-empty.
 
 ## Decisions
 
@@ -29,4 +30,4 @@ Started: 2026-09-11T09:51:18Z
 - Do not infer successful emptiness from report or preview slice length; aborted and nonempty workflows can also return empty slices.
 
 ## Current Handoff
-- Continue US2 at T010: extend the delete empty-selector matrix with human and quiet cases before implementing quiet suppression.
+- Continue US3 at T014: add delete compatibility coverage for exact discovery requests and nonempty/error/abort classification guards.

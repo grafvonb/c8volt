@@ -703,13 +703,14 @@ func TestDeleteProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.
 }
 
 // TestDeleteProcessInstanceEmptySelectorOutput verifies empty selector deletes
-// preserve JSON and keys-only contracts across execution controls.
+// preserve machine contracts and human or quiet output across execution controls.
 func TestDeleteProcessInstanceEmptySelectorOutput(t *testing.T) {
 	tests := []struct {
 		name   string
 		flags  []string
 		dryRun bool
 		mode   RenderMode
+		quiet  bool
 	}{
 		{name: "json", flags: []string{"--json"}, mode: RenderModeJSON},
 		{name: "dry run json", flags: []string{"--json", "--dry-run"}, dryRun: true, mode: RenderModeJSON},
@@ -719,6 +720,14 @@ func TestDeleteProcessInstanceEmptySelectorOutput(t *testing.T) {
 		{name: "automation json", flags: []string{"--json", "--automation"}, mode: RenderModeJSON},
 		{name: "automation keys only", flags: []string{"--keys-only", "--automation"}, mode: RenderModeKeysOnly},
 		{name: "no wait json", flags: []string{"--json", "--no-wait"}, mode: RenderModeJSON},
+		{name: "human", mode: RenderModeOneLine},
+		{name: "dry run human", flags: []string{"--dry-run"}, dryRun: true, mode: RenderModeOneLine},
+		{name: "quiet human", flags: []string{"--quiet"}, mode: RenderModeOneLine, quiet: true},
+		{name: "dry run quiet human", flags: []string{"--dry-run", "--quiet"}, dryRun: true, mode: RenderModeOneLine, quiet: true},
+		{name: "quiet json", flags: []string{"--json", "--quiet"}, mode: RenderModeJSON, quiet: true},
+		{name: "dry run quiet json", flags: []string{"--json", "--dry-run", "--quiet"}, dryRun: true, mode: RenderModeJSON, quiet: true},
+		{name: "quiet keys only", flags: []string{"--keys-only", "--quiet"}, mode: RenderModeKeysOnly, quiet: true},
+		{name: "dry run quiet keys only", flags: []string{"--keys-only", "--dry-run", "--quiet"}, dryRun: true, mode: RenderModeKeysOnly, quiet: true},
 	}
 
 	for _, tt := range tests {
@@ -740,6 +749,16 @@ func TestDeleteProcessInstanceEmptySelectorOutput(t *testing.T) {
 			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
 
 			require.Len(t, requests, 1)
+			if tt.mode == RenderModeOneLine {
+				if tt.quiet {
+					require.Empty(t, stdout)
+					require.Empty(t, stderr)
+					return
+				}
+				require.Equal(t, "found: 0\n", stdout)
+				require.Empty(t, stderr)
+				return
+			}
 			requireEmptyProcessInstanceSelectorOutput(t, stdout, stderr, "delete process-instance", "delete", tt.dryRun, tt.mode)
 		})
 	}

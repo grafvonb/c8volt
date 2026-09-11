@@ -49,3 +49,11 @@ git diff --check
 - Passed `go test ./cmd -run 'Test(Delete|Cancel)ProcessInstanceEmptySelectorOutput|TestProcessInstance.*Empty|Test(Delete|Cancel)ProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp' -count=1`.
 - Passed `make test` (`go test ./... -race -count=1`).
 - Passed `git diff --check` before coordinated persistence.
+
+## Iteration 2 validation (2026-09-11)
+
+- Demonstrated the pre-fix quiet defect in delete/cancel normal and dry-run human cases; the new matrix failed only because `found: 0` remained on stdout.
+- Passed `go test ./cmd -run 'Test(Delete|Cancel)ProcessInstanceEmptySelectorOutput|TestProcessInstance.*Empty' -count=1` after adding human-only quiet suppression.
+- Verified ordinary human output is exactly `found: 0\n`, quiet human output is absent from both streams, quiet JSON remains one successful envelope, and quiet keys-only remains byte-empty for both commands and execution types.
+- Passed `make test` (`go test ./... -race -count=1`).
+- Passed `git diff --check` before coordinated persistence.
