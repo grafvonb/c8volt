@@ -117,3 +117,18 @@ Started: 2026-09-11 18:49:29
 **Learnings**:
 - The destructive process-instance prompt intentionally spans two stderr lines; standard JSON logging remains structured while the prompt stays exact plain interactive text.
 ---
+---
+## Iteration 8 - 2026-09-11 19:27
+**Work Unit**: T012 Clarify selector tenant diagnostics in README
+**Tasks Completed**:
+- [x] T012: Document standard INFO/WARN severity, configured format/level handling, unchanged output-mode eligibility, and separation from JSON command results.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- specs/303-standard-tenant-logging/tasks.md
+- specs/303-standard-tenant-logging/ralph-memory.md
+- specs/303-standard-tenant-logging/progress.md
+**Learnings**:
+- The existing tenant-context paragraph can state the selector logging contract without changing broader tenant policy or generated command documentation.
+---

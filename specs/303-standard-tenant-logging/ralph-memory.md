@@ -13,6 +13,7 @@ Started: 2026-09-11T16:49:28Z
 - Cancel execution coverage attaches the real logger to independently captured stderr, keeps stdout uncontaminated, and counts planning and mutation calls around tenant emission. Existing selector tests already own the broad empty/sparse/direct-key/abort/error matrix, so T008 extends those cases instead of duplicating command scaffolding.
 - Delete execution coverage follows the same pattern: positive attached-logger paths assert clean stdout and unchanged planning/deletion counts, direct execution decodes one JSON envelope through EOF, and the expanded empty-selector table retains exact human, JSON, keys-only, quiet, automation, dry-run, verbose, auto-confirm, and no-wait contracts.
 - Real-terminal process-instance coverage uses the root command with `--no-indicator` and a stub HTTP server. It exercises cancel/delete across plain/JSON logging, configured/inherited root stderr, acceptance/abort, exact multiline prompts, stdout isolation, and mutation-call presence or absence. Existing terminal fixtures retain prompt-free empty scopes and one-key-per-line paging.
+- The README tenant-context paragraph now states that eligible selector-based delete/cancel diagnostics use standard INFO/WARN logging, honor configured log format/level, retain existing mode eligibility, and remain separate from JSON command results.
 
 ## Decisions
 
@@ -37,4 +38,4 @@ Started: 2026-09-11T16:49:28Z
 - Do not treat a passing pre-change baseline as proof of the new logger behavior.
 
 ## Current Handoff
-- US3 is complete. Continue with T012 in the polish phase: clarify eligible selector tenant diagnostics in README.md, without starting command metadata work until a later iteration.
+- Continue with T013 in the polish phase: add the same concise logging clarification to cancel/delete command source metadata and adjust only relevant metadata assertions if needed.
