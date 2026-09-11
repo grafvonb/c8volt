@@ -8,6 +8,8 @@ Started: 2026-09-11T06:40:57Z
 - `testx/cmd_subprocess_runner.go` selects helper subprocesses exactly with `-test.run=^<quoted name>$` and sets both `GO_WANT_HELPER_PROCESS=1` and `C8VOLT_TEST_HELPER_PROCESS_NAME`.
 - Terminal acceptance must attach only child stdin to a PTY; stdout and stderr remain independent captures, and each response waits for its complete stderr prompt.
 - Linux PTY allocation uses `/dev/ptmx`, `TIOCSPTLCK`, and `TIOCGPTN`; the slave stays canonical while `ECHO` and `ECHONL` are cleared.
+- Darwin PTY allocation obtains the slave name through `TIOCPTYGNAME`, then grants and unlocks it before opening; it uses `TIOCGETA`/`TIOCSETA` for canonical no-echo input.
+- Non-Linux/Darwin targets select a build-constrained allocator that reports an explicit unsupported-platform reason and has no Unix dependency.
 
 ## Decisions
 
@@ -33,4 +35,4 @@ Started: 2026-09-11T06:40:57Z
 - Pipe-backed stdin is not acceptable proof for FR-008; the later runner and acceptance tests must verify that child stdin is an actual terminal.
 
 ## Current Handoff
-- Start T004 in Phase 2: implement and validate the Darwin PTY allocator plus the complementary unsupported-platform allocator; do not begin T005 or another work unit in the same iteration.
+- Start T005 in Phase 2: complete and validate the isolated terminal child-process runner using the platform allocators; do not begin T006 or another work unit in the same iteration.

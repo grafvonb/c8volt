@@ -37,3 +37,20 @@ Started: 2026-09-11 08:40:57
 **Learnings**:
 - A cross-compiled Linux test binary runs successfully in the local Linux/arm64 Docker engine, providing runtime PTY evidence from the macOS host.
 ---
+
+## Iteration 3 - 2026-09-11 08:50
+**Work Unit**: Phase 2 Darwin and unsupported-platform PTY allocation
+**Tasks Completed**:
+- [x] T004: Implement and validate Darwin PTY allocation and the unsupported-platform allocator.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/298-confirmation-prompts-stderr/progress.md
+- specs/298-confirmation-prompts-stderr/ralph-memory.md
+- specs/298-confirmation-prompts-stderr/tasks.md
+- testx/cmd_terminal_darwin.go
+- testx/cmd_terminal_darwin_test.go
+- testx/cmd_terminal_unsupported.go
+**Learnings**:
+- Darwin exposes the PTY slave path through `TIOCPTYGNAME`; native allocation and cleanup tests pass, while Linux and Windows test binaries compile with their isolated platform implementations.
+---
