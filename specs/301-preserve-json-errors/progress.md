@@ -71,3 +71,18 @@ Started: 2026-09-11 15:45:51
 **Learnings**:
 - Existing read retries can write transient informational context to stderr in JSON mode; the regressions exclude only duplicate final error diagnostics while preserving that behavior.
 ---
+---
+## Iteration 3 - 2026-09-11 16:26
+**Work Unit**: US3 Preserve Existing Workflows (partial: output-mode compatibility)
+**Tasks Completed**:
+- [x] T017: Add corrected validation/runtime output-mode and automation compatibility coverage
+**Tasks Remaining in Work Unit**: T018-T021
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_error_envelope_modes_test.go
+- specs/301-preserve-json-errors/tasks.md
+- specs/301-preserve-json-errors/ralph-memory.md
+- specs/301-preserve-json-errors/progress.md
+**Learnings**:
+- JSON retains precedence over quiet and keys-only, while non-JSON modes keep zero-byte stdout and the existing stderr diagnostic under both exit policies; unsupported automation still rejects before stdin validation.
+---
