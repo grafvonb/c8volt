@@ -63,7 +63,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagDeletePDKeys, stdinKeys, log, cfg)
+		keys := mergeAndValidateKeys(cmd, flagDeletePDKeys, stdinKeys, log, cfg)
 		explicitInput := len(keys) > 0
 		callOpts := collectOptions()
 		if explicitInput {

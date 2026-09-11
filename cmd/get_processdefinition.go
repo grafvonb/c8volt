@@ -68,6 +68,12 @@ When ` + "`--bpmn-process-id`" + ` is set, c8volt validates that at least one vi
 process definition matches the selector before rendering output. A missing selector
 fails with the shared local diagnostic instead of rendering an ambiguous empty list.
 
+With ` + "`--json`" + `, validation and runtime failures during command execution use one
+shared error envelope. Without ` + "`--json`" + `, the diagnostic is written to stderr.
+` + "`--no-err-codes`" + ` changes only the process exit status; the reported failure and
+immediate termination are unchanged. Bootstrap failures and argument or flag parsing
+errors before command execution retain their established diagnostics.
+
 ` + "`--stat`" + ` requires Camunda ` + "`8.8`" + ` or newer and prints exact-version
 counts. Camunda ` + "`8.7`" + ` does not support native statistics.`,
 	Example: `  ./c8volt get process-definition --latest
@@ -108,7 +114,7 @@ func runGetProcessDefinition(cmd *cobra.Command, args []string) {
 
 func runGetProcessDefinitionXML(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, filter process.ProcessDefinitionFilter) {
 	if err := validateProcessDefinitionXMLFlags(filter); err != nil {
-		ferrors.HandleAndExit(log, noErrCodes, err)
+		handleCommandError(cmd, log, noErrCodes, err)
 	}
 
 	log.Debug(fmt.Sprintf("getting pd %s xml", filter.Key))
@@ -125,7 +131,7 @@ func runGetProcessDefinitionByKey(cmd *cobra.Command, cli c8volt.API, log *slog.
 	log.Debug(fmt.Sprintf("getting pd %s", key))
 	pd, err := cli.GetProcessDefinition(cmd.Context(), key, collectExplicitAdminInputOptions()...)
 	if err != nil {
-		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("get process definition: %w", err))
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("get process definition: %w", err))
 	}
 	if err := processDefinitionView(cmd, pd); err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error rendering key-only view: %w", err))
@@ -142,7 +148,7 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 	if filter.BpmnProcessId != "" {
 		result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newGetPDProcessDefinitionSelectorValidationRequest(), collectOptions()...)
 		if err != nil {
-			ferrors.HandleAndExit(log, noErrCodes, err)
+			handleCommandError(cmd, log, noErrCodes, err)
 		}
 		if !result.Valid() {
 			handleProcessDefinitionSelectorValidationError(cmd, log, noErrCodes, cli, result)
@@ -154,7 +160,7 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 		pds, err = searchProcessDefinitionsWithPaging(cmd, cli, filter)
 	}
 	if err != nil {
-		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("search process definitions: %w", err))
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("search process definitions: %w", err))
 	}
 	if err := listProcessDefinitionsView(cmd, pds); err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error rendering items view: %w", err))

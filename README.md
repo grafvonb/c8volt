@@ -210,6 +210,21 @@ For scripts or CI, add `--json` when stdout should be data and logs should stay 
 ./c8volt config test-connection --json
 ```
 
+For commands that advertise full machine-contract support, `--json` writes
+exactly one established error envelope when validation or runtime work fails
+during command execution. The envelope retains the failure or invalid outcome,
+its normalized class and detail, and the command identity. In ordinary human
+mode, the diagnostic is written to stderr and stdout remains reserved for
+command results.
+
+`--no-err-codes` changes only the process exit status. A JSON error envelope
+still reports the failure or invalid outcome, human mode still writes the error
+to stderr, and the command still terminates without continuing work. Bootstrap
+failures and argument or flag parsing errors that occur before command execution
+are outside this shared envelope and retain their established diagnostics. Use
+`c8volt capabilities --json` to discover which commands advertise full
+machine-contract support.
+
 ### Output and confirmation streams
 
 Command results are written to stdout. Plain confirmation and paging

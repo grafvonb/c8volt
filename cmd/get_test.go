@@ -280,6 +280,10 @@ func TestGetClusterLicenseHelp(t *testing.T) {
 	require.Contains(t, output, "Show connected cluster license")
 	require.Contains(t, output, "flat fields")
 	require.Contains(t, output, "Use --json for the structured license payload")
+	require.Contains(t, output, "With --json, validation and runtime failures during command execution use one shared error envelope")
+	require.Contains(t, output, "Without --json, the diagnostic is written to stderr")
+	require.Contains(t, output, "--no-err-codes changes only the process exit status")
+	require.Contains(t, output, "Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics")
 	require.Contains(t, output, "c8volt get cluster license")
 	require.Contains(t, output, "./c8volt get cluster license --json")
 	require.Contains(t, output, "./c8volt get cluster licence")
@@ -292,6 +296,10 @@ func TestGetClusterTopologyHelp(t *testing.T) {
 	require.Contains(t, output, "Show connected cluster topology as a sorted tree")
 	require.Contains(t, output, "sorted tree")
 	require.Contains(t, output, "Use --json for the structured topology payload")
+	require.Contains(t, output, "With --json, validation and runtime failures during command execution use one shared error envelope")
+	require.Contains(t, output, "Without --json, the diagnostic is written to stderr")
+	require.Contains(t, output, "--no-err-codes changes only the process exit status")
+	require.Contains(t, output, "Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics")
 	require.Contains(t, output, "./c8volt get cluster topology")
 	require.Contains(t, output, "./c8volt get cluster topology --json")
 }
@@ -303,11 +311,17 @@ func TestGetClusterVersionHelp(t *testing.T) {
 	require.Contains(t, output, "Show connected cluster version")
 	require.Contains(t, output, "gateway version by default")
 	require.Contains(t, output, "include broker versions")
+	require.Contains(t, output, "With --json, validation and runtime failures during command execution use one shared error envelope")
+	require.Contains(t, output, "Without --json, the diagnostic is written to stderr")
+	require.Contains(t, output, "--no-err-codes changes only the process exit status")
+	require.Contains(t, output, "Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics")
 	require.Contains(t, output, "./c8volt get cluster version")
 	require.Contains(t, output, "./c8volt get cluster version --with-brokers")
+	require.Contains(t, output, "./c8volt get cluster version --json")
 	require.Contains(t, output, "--with-brokers")
 }
 
+// TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes verifies output modes and their execution-error boundary.
 func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 	output := executeRootForTest(t, "get", "process-definition", "--help")
 
@@ -320,6 +334,12 @@ func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 	require.Contains(t, output, "Tenant contract:")
 	require.Contains(t, output, "`--tenant` scopes list/latest and BPMN selector discovery")
 	require.Contains(t, output, "Explicit `--key` and XML key lookups are backend-authorized admin")
+	require.Contains(t, output, "With `--json`, validation and runtime failures during command execution use one")
+	require.Contains(t, output, "shared error envelope")
+	require.Contains(t, output, "Without `--json`, the diagnostic is written to stderr")
+	require.Contains(t, output, "`--no-err-codes` changes only the process exit status")
+	require.Contains(t, output, "Bootstrap failures and argument or flag parsing")
+	require.Contains(t, output, "errors before command execution retain their established diagnostics")
 	require.Contains(t, output, "./c8volt get process-definition --key <process-definition-key> --json")
 }
 

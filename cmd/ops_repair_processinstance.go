@@ -81,7 +81,7 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagOpsRepairProcessInstanceKeys, stdinKeys, log, cfg).Unique()
+		keys := mergeAndValidateKeys(cmd, flagOpsRepairProcessInstanceKeys, stdinKeys, log, cfg).Unique()
 		stdinMode := len(args) == 1 && args[0] == "-"
 		keyedMode := len(flagOpsRepairProcessInstanceKeys) > 0 || stdinMode
 		explicitSearchMode := hasOpsRepairProcessInstanceSearchModeFlags(cmd)

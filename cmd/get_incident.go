@@ -79,7 +79,7 @@ var getIncidentCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagGetIncidentKeys, stdinKeys, log, cfg).Unique()
+		keys := mergeAndValidateKeys(cmd, flagGetIncidentKeys, stdinKeys, log, cfg).Unique()
 		keyedMode := len(flagGetIncidentKeys) > 0 || len(args) == 1 && args[0] == "-"
 		if keyedMode {
 			if len(keys) == 0 {

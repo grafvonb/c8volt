@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 	"path/filepath"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -18,51 +19,63 @@ var (
 	flagEmbedListDetails bool
 )
 
+type embeddedListFunc func() ([]string, error)
+
 var embedListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List bundled BPMN fixture files",
 	Long: "List bundled BPMN fixture files.\n\n" +
 		"Shows files for the configured Camunda version, matching `embed deploy --all`. " +
-		"Use before `embed deploy` or `embed export` to get exact file names.",
+		"Use before `embed deploy` or `embed export` to get exact file names.\n\n" +
+		"With --json, validation and runtime failures during command execution use one shared error envelope. Without --json, the diagnostic is written to stderr. --no-err-codes changes only the process exit status; the reported failure and immediate termination are unchanged. Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics.",
 	Example: `  ./c8volt embed list
   ./c8volt embed list --details
   ./c8volt --json embed list`,
 	Aliases: []string{"ls"},
-	Run: func(cmd *cobra.Command, args []string) {
-		log, _ := logging.FromContext(cmd.Context())
-		cfg, err := config.FromContext(cmd.Context())
-		if err != nil {
-			_, noErrCodes := bootstrapFailureContext(cmd)
-			ferrors.HandleAndExit(log, noErrCodes, normalizeBootstrapError(err))
-		}
+	Run:     runEmbedList,
+}
 
-		files, err := embedded.List()
-		if err != nil {
+// runEmbedList retains bootstrap handling while wiring the compiled embedded
+// filesystem into the command-local execution seam.
+func runEmbedList(cmd *cobra.Command, _ []string) {
+	log, _ := logging.FromContext(cmd.Context())
+	cfg, err := config.FromContext(cmd.Context())
+	if err != nil {
+		_, noErrCodes := bootstrapFailureContext(cmd)
+		ferrors.HandleAndExit(log, noErrCodes, normalizeBootstrapError(err))
+	}
+	runEmbedListWithListing(cmd, log, cfg, embedded.List)
+}
+
+// runEmbedListWithListing isolates ordinary listing behavior so compiled-in
+// filesystem failures can be exercised without mutable global injection.
+func runEmbedListWithListing(cmd *cobra.Command, log *slog.Logger, cfg *config.Config, list embeddedListFunc) {
+	files, err := list()
+	if err != nil {
+		handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+	}
+	files = embeddedFilesForCamundaVersion(files, cfg.App.CamundaVersion)
+	if len(files) == 0 {
+		handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no embedded files found for Camunda version %q", cfg.App.CamundaVersion.String())))
+	}
+
+	viewItems := make([]string, 0, len(files))
+	for _, f := range files {
+		view := f
+		if !flagEmbedListDetails {
+			view = filepath.Base(f)
+		}
+		viewItems = append(viewItems, view)
+	}
+	if flagViewAsJson {
+		if err := renderJSONPayload(cmd, RenderModeJSON, viewItems); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
-		files = embeddedFilesForCamundaVersion(files, cfg.App.CamundaVersion)
-		if len(files) == 0 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no embedded files found for Camunda version %q", cfg.App.CamundaVersion.String())))
-		}
-
-		viewItems := make([]string, 0, len(files))
-		for _, f := range files {
-			view := f
-			if !flagEmbedListDetails {
-				view = filepath.Base(f)
-			}
-			viewItems = append(viewItems, view)
-		}
-		if flagViewAsJson {
-			if err := renderJSONPayload(cmd, RenderModeJSON, viewItems); err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
-			}
-			return
-		}
-		for _, view := range viewItems {
-			renderOutputLine(cmd, "%s", view)
-		}
-	},
+		return
+	}
+	for _, view := range viewItems {
+		renderOutputLine(cmd, "%s", view)
+	}
 }
 
 func init() {

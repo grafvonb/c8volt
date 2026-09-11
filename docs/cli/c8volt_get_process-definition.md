@@ -44,6 +44,12 @@ When `--bpmn-process-id` is set, c8volt validates that at least one visible
 process definition matches the selector before rendering output. A missing selector
 fails with the shared local diagnostic instead of rendering an ambiguous empty list.
 
+With `--json`, validation and runtime failures during command execution use one
+shared error envelope. Without `--json`, the diagnostic is written to stderr.
+`--no-err-codes` changes only the process exit status; the reported failure and
+immediate termination are unchanged. Bootstrap failures and argument or flag parsing
+errors before command execution retain their established diagnostics.
+
 `--stat` requires Camunda `8.8` or newer and prints exact-version
 counts. Camunda `8.7` does not support native statistics.
 

@@ -26,6 +26,8 @@ Search mode pages through matching process instances by default and freezes ever
 
 After confirmation, default human output keeps one workflow activity updated from real deletion completions and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-root completion line. JSON, keys-only, and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings.
 
+With --json, validation and runtime failures during command execution use one shared error envelope. Without --json, the diagnostic is written to stderr. --no-err-codes changes only the process exit status; the reported failure and immediate termination are unchanged. Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics.
+
 Use --dry-run to preview selected, in-scope, final-state, non-final, and partial-scope instances without deleting or cancelling.
 
 Use --auto-confirm for unattended destructive runs.
