@@ -38,6 +38,35 @@
 - Do not add noisy endpoint, request, cursor, or per-key lifecycle detail to default human output; keep diagnostics behind `--verbose`.
 - When command output changes, update tests for the affected human, JSON, keys-only, error, prompt, and activity behavior where relevant.
 
+### Empty Results And Successful No-Ops
+- Treat empty results and early returns as part of the command's output contract.
+  Route them through a mode-aware view helper; do not print human summaries
+  directly from discovery or execution branches before checking the output mode.
+- For commands using the shared JSON contract, a successful empty result must
+  emit exactly one successful envelope with the existing command-appropriate
+  empty payload. Preserve established omission and null-versus-empty-array rules;
+  do not invent report entries or change shared schemas to represent no work.
+- Keys-only output with no keys must contain zero bytes, including no blank line.
+  Preserve the established human empty-result wording, and suppress informational
+  summaries in quiet mode without suppressing explicitly requested JSON results.
+  Preserve existing output-mode precedence and automation behavior.
+- Derive a successful no-op from authoritative completed discovery or planning,
+  not from an empty intermediate page, absent reports, a user abort, or an error.
+  Preserve continuation through sparse pages and existing failure handling.
+- When no mutation was submitted, do not report an accepted or pending mutation,
+  even with `--no-wait`. Dry-run output must remain a preview and must not claim
+  mutation submission. Empty scopes must not trigger mutation confirmation or
+  mutation requests, and rendering must not add discovery requests.
+- Test affected commands through their execution paths, not only view helpers:
+  cover normal execution and dry-run, human/JSON/keys-only/quiet output, quiet
+  combined with machine output, and supported auto-confirm/automation/no-wait
+  combinations. Capture stdout and stderr separately; decode one JSON envelope
+  and require EOF afterward, assert exact human output and zero-byte keys output,
+  and verify request counts and absence of confirmation and mutation calls.
+- Use real terminal stdin to verify prompt-free empty-scope completion when
+  interactive confirmation is otherwise eligible. Retain regression coverage
+  for nonempty results, sparse pages, explicit-key execution, aborts, and errors.
+
 ### Output Streams And Interactive Prompts
 - Reserve stdout for command results in the selected output format.
 - Write confirmation questions, paging continuation prompts, and other interactive
