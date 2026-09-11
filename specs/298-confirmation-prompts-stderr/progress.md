@@ -146,3 +146,25 @@ Started: 2026-09-11 08:40:57
 **Learnings**:
 - A parent fake HTTP server can drive the real PTY child command while exact prompt exchanges and request counts prove both clean keys output and stop behavior.
 ---
+
+## Iteration 9 - 2026-09-11 09:25
+**Work Unit**: US3 Retain familiar confirmation decisions
+**Tasks Completed**:
+- [x] T015: Add real-terminal default-yes coverage and complete both-default answer matrices.
+- [x] T016: Add configured/inherited selector routing and deadline-backed skip-policy coverage.
+- [x] T017: Route default-yes confirmation prompts through the supplied writer with stderr fallback.
+- [x] T018: Run and record the required US3 decision and skip-policy validation.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_confirmation_skip_test.go
+- cmd/cmd_confirmation_terminal_test.go
+- cmd/process_definition_selector_validation.go
+- cmd/process_definition_selector_validation_test.go
+- specs/298-confirmation-prompts-stderr/progress.md
+- specs/298-confirmation-prompts-stderr/quickstart.md
+- specs/298-confirmation-prompts-stderr/ralph-memory.md
+- specs/298-confirmation-prompts-stderr/tasks.md
+**Learnings**:
+- Real-terminal evidence preserves the full default matrix, while deadline-backed caller tests prove every existing selector skip policy avoids both prompt output and input reads.
+---

@@ -385,7 +385,10 @@ func confirmCmdOrAbortDefaultYes(promptWriter io.Writer, autoConfirm bool, promp
 	if autoConfirm || !term.IsTerminal(int(os.Stdin.Fd())) {
 		return nil
 	}
-	fmt.Print(formatConfirmationPrompt(prompt, "[Y/n]"))
+	if promptWriter == nil {
+		promptWriter = os.Stderr
+	}
+	fmt.Fprint(promptWriter, formatConfirmationPrompt(prompt, "[Y/n]"))
 	in := bufio.NewScanner(os.Stdin)
 	if !in.Scan() {
 		return localPreconditionError(ErrCmdAborted)

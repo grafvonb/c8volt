@@ -124,6 +124,21 @@ ok github.com/grafvonb/c8volt/cmd 1.403s
 
 `TestGetProcessInstanceKeysOnlyPagingTerminal` exercised real PTY stdin through the actual keys-only command path. Repeated acceptance fetched all three pages, decline after one continuation retained two keys, and canonical EOF retained the first key; stderr contained the exact one-or-two prompts, stdout contained one key per line, and request counts proved no page was fetched after stop. Process-instance, incident, job, and element caller regressions also verified their command stderr writer and normal paging-stop interpretation. The broader `go test ./cmd -count=1` suite passed in 35.837s, followed by `git diff --check`.
 
+## Iteration 9 US3 validation
+
+Validation ran on 2026-09-11 with `go1.26.2 darwin/arm64`. Before T017, all seven default-yes terminal scenarios reached their bounded deadlines waiting for the complete prompt on stderr because the helper still wrote to stdout. This supplied the required red routing evidence.
+
+After routing the default-yes prompt through the supplied writer with standard-stderr fallback, the required US3 filter passed:
+
+```text
+$ go test ./cmd -run 'TestConfirmOrAbort.*Terminal|Confirmation.*Skip|ProcessDefinitionSelector|Automation' -count=1
+ok github.com/grafvonb/c8volt/cmd 0.911s
+```
+
+`TestConfirmOrAbortDefaultYesTerminal` and the expanded default-no matrix exercised real PTY stdin for `y`, `yes`, mixed case, surrounding whitespace, empty input, other answers, and canonical EOF. Both helpers retained byte-exact choice labels and abort behavior, honored custom writers and nil fallback, and kept result stdout separate. Selector recovery tests proved configured and inherited stderr wiring for visible and near-match prompts while preserving accepted listings and declined diagnostics.
+
+`TestConfirmationSkipPolicies` held no-input stdin open behind a blocking confirmation seam and completed within its deadline for auto-confirm, supported and unsupported automation, non-terminal input, JSON, and keys-only modes. `TestConfirmationRedirectedStdoutSkip` used real terminal stdin with captured non-terminal stdout and confirmed recovery remained suppressed. Test discovery was verified with the same filter, the broader `go test ./cmd -count=1` suite passed in 36.580s, and `git diff --check` passed.
+
 ## Focused validation after implementation
 
 ```sh

@@ -18,6 +18,8 @@ Started: 2026-09-11T06:40:57Z
 - Command-level terminal tests can prove configured stderr by setting a root `io.MultiWriter` before execution and inspecting its secondary capture; root setup wraps that destination in the activity writer and the executed child inherits it.
 - Real keys-only paging acceptance can keep the parent fake HTTP server alive while the PTY child executes the command; sequential responses and parent-side request counts prove both continuation and stop behavior.
 - Caller-writer regressions can write a marker through the confirmation seam and use separate command buffers to prove the supplied writer resolves to stderr without invoking terminal input.
+- Default-yes selector recovery now uses the supplied writer with `os.Stderr` fallback; the real-terminal matrix preserves normalized yes, empty-default acceptance, other-answer abort, and EOF abort behavior.
+- Deadline-backed selector skip subprocesses can hold stdin open behind a blocking confirmation seam, making any skipped-policy read fail by timeout; real PTY stdin plus captured stdout separately proves redirected stdout remains ineligible.
 
 ## Decisions
 
@@ -45,4 +47,4 @@ Started: 2026-09-11T06:40:57Z
 - A successful helper test that returns normally adds the Go test harness `PASS` line to stdout; helpers requiring byte-exact stdout can call `os.Exit(0)` after their child assertions succeed.
 
 ## Current Handoff
-- Start T015 in US3 by extending the real-terminal confirmation matrix with default-yes routing and both-default normalized answer coverage.
+- Start T019 in polish by updating README output-contract guidance; remain within the cross-cutting phase through T024 in later iterations.
