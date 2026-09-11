@@ -87,3 +87,11 @@ git diff --check
 - Final production-diff audit passed: `cmd/command_contract.go`, `cmd/cmd_views_contract.go`, and `c8volt/ferrors/errors.go` are unchanged from the pre-feature baseline, so schema, capability eligibility, normalization, classification, and exit policy remain intact.
 - The audit confirmed that changes are limited to the documented execution paths: the 12 stdin callers retain their prior key ordering and `.Unique()` placement, corrected failures invoke the shared renderer once and terminate immediately, and bootstrap/parsing, raw-XML retrieval/write, and defensive renderer-error exclusions remain unchanged.
 - Integrated US3 validation: `go test ./cmd -run '^TestCommandErrorEnvelope|TestGetCluster|TestGetProcessDefinition|TestEmbedList|TestCommandCapability|TestOutputModes' -count=1` passed in 90.470 seconds, covering corrected human/JSON paths, ordinary/suppressed exits, mode precedence, non-full fallback, and successful workflows.
+
+## Iteration 10 evidence
+
+- Built a standalone executable with `go build -o "$check_dir/c8volt" .` and used the documented loopback-only Camunda 8.8 configuration; no live cluster or credentials were used.
+- Invalid `get process-instance` stdin in JSON mode exited 2, wrote one 275-byte `invalid` / `invalid_input` envelope for `get process-instance`, preserved the specific `--keys-only` guidance, and wrote zero stderr bytes.
+- `get process-definition --xml --key 123` with JSON mode wrote one 260-byte `invalid` / `invalid_input` incompatibility envelope and zero stderr bytes; it exited 0 with `--no-err-codes` and 2 without it.
+- The same invalid stdin check in human mode exited 2, wrote zero stdout bytes, and wrote exactly one stderr diagnostic containing the `--keys-only` guidance.
+- `jq -s` checks confirmed exactly one JSON document in each JSON capture. The documented smoke commands and implemented `TestCommandErrorEnvelope` prefix were current; no guide command or proposed test name required reconciliation.

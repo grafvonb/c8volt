@@ -191,3 +191,18 @@ Started: 2026-09-11 15:45:51
 **Learnings**:
 - Generation changed only the six intended command pages plus the README-synced homepage; the homepage provenance line advanced as part of normal generation, with no unrelated CLI-page churn.
 ---
+---
+## Iteration 10 - 2026-09-11 16:57
+**Work Unit**: Phase 6 Polish (partial: standalone-binary smoke validation)
+**Tasks Completed**:
+- [x] T025: Run and record the standalone-binary validation smoke scenarios
+**Tasks Remaining in Work Unit**: T026
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/301-preserve-json-errors/tasks.md
+- specs/301-preserve-json-errors/quickstart.md
+- specs/301-preserve-json-errors/ralph-memory.md
+- specs/301-preserve-json-errors/progress.md
+**Learnings**:
+- Standalone execution preserved one-envelope JSON output, empty JSON stderr, human stderr routing, classified exit 2, and zero-status suppression exactly as documented.
+---

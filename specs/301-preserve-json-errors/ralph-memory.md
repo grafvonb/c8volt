@@ -18,6 +18,7 @@ Started: 2026-09-11T13:45:51Z
 - README machine-contract guidance belongs beside the scripts/CI JSON example and scopes error envelopes to execution-time failures of commands advertising full support; `capabilities --json` remains the discovery mechanism.
 - Affected command help uses one consistent execution-error boundary: JSON envelopes cover validation/runtime failures during command execution, human diagnostics stay on stderr, `--no-err-codes` changes only status, and bootstrap/pre-execution parsing retains established diagnostics. Existing stdin help needed no change.
 - `make docs-content` propagates command descriptions into only the six affected CLI pages and syncs README guidance into `docs/index.md`; the homepage build-provenance line also advances to the generating commit and timestamp.
+- Standalone smoke validation matches the subprocess contract: corrected JSON validation failures emit exactly one envelope with empty stderr, invalid arguments exit 2 unless `--no-err-codes` suppresses the status to zero, and human failures keep stdout empty with one stderr diagnostic.
 
 ## Gotchas
 
@@ -40,4 +41,4 @@ Started: 2026-09-11T13:45:51Z
 - Do not use a production `ResultEnvelope` to decode or construct expected regression results.
 
 ## Current Handoff
-- Continue with T025 in Phase 6: run the standalone-binary smoke scenarios from `quickstart.md` with stdout/stderr/status captured separately and record the actual results.
+- Continue with T026 in Phase 6: run the final focused checks, `make test`, and `git diff --check`, then record the evidence and establish the terminal handoff if every task is complete.
