@@ -100,3 +100,20 @@ Started: 2026-09-11 18:49:29
 **Learnings**:
 - Existing delete regressions already retain sparse pages, explicit keys, aborts, failures, and empty-scope request suppression; attached-logger stream routing and strict positive/empty result contracts now match cancel coverage.
 ---
+---
+## Iteration 7 - 2026-09-11 19:24
+**Work Unit**: US3 Preserve Command Output and Execution Behavior (terminal coverage and validation)
+**Tasks Completed**:
+- [x] T010: Extend real-terminal delete/cancel confirmation coverage across configured/inherited stderr, plain/JSON tenant logging, acceptance/abort, empty scope, and keys-only paging.
+- [x] T011: Run and document the complete delete/cancel and confirmation command regression suites.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_confirmation_terminal_test.go
+- specs/303-standard-tenant-logging/quickstart.md
+- specs/303-standard-tenant-logging/tasks.md
+- specs/303-standard-tenant-logging/ralph-memory.md
+- specs/303-standard-tenant-logging/progress.md
+**Learnings**:
+- The destructive process-instance prompt intentionally spans two stderr lines; standard JSON logging remains structured while the prompt stays exact plain interactive text.
+---

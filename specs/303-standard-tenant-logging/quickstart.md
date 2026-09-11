@@ -42,6 +42,12 @@ Follow [contracts/tenant-logging.md](contracts/tenant-logging.md) and [data-mode
 4. Run real-terminal confirmation fixtures with separate result/diagnostic capture. Retain configured/inherited stderr, acceptance/abort behavior, and prompt-free empty selections. Prompts remain plain even when diagnostics use JSON logging.
 5. Retain sparse-page continuation, direct-key, failure, and no-wait regressions through the existing command suite.
 
+## User Story 3 Validation
+
+- On 2026-09-11, `go test -race ./cmd -run '^(TestProcessInstanceConfirmationTerminal|TestConfirmationEmptySelectorResults|TestGetProcessInstanceKeysOnlyPagingTerminal)$' -count=1 -v` passed. The host supported every real-terminal case: delete/cancel acceptance and abort with configured/inherited stderr and plain/JSON tenant logging, prompt-free empty selections across result modes, and keys-only paging with exact one-key-per-line stdout.
+- On 2026-09-11, `go test ./cmd -run 'Test(Cancel|Delete)ProcessInstance' -count=1` passed. This exercised the command and selector suites covering attached tenant logging, human/machine/quiet/dry-run/automation controls, sparse paging, direct keys, request behavior, aborts, and errors.
+- On 2026-09-11, `go test ./cmd -run 'TestConfirmation' -count=1` passed. This exercised the process-instance terminal matrix, empty-scope terminal completion, and existing configured/inherited prompt-routing regressions. No terminal checks were skipped or unsupported.
+
 ## Documentation and Full Validation
 
 After updating README and command help metadata:

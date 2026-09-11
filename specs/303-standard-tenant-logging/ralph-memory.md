@@ -12,6 +12,7 @@ Started: 2026-09-11T16:49:28Z
 - Attached-logger coverage uses a shared emitter table and validates the full 2 emitters × 2 formats × 3 thresholds matrix. Plain records parse `logging.PlainTimestampLayout`; JSON records decode `time`, `level`, and `msg` individually and require EOF.
 - Cancel execution coverage attaches the real logger to independently captured stderr, keeps stdout uncontaminated, and counts planning and mutation calls around tenant emission. Existing selector tests already own the broad empty/sparse/direct-key/abort/error matrix, so T008 extends those cases instead of duplicating command scaffolding.
 - Delete execution coverage follows the same pattern: positive attached-logger paths assert clean stdout and unchanged planning/deletion counts, direct execution decodes one JSON envelope through EOF, and the expanded empty-selector table retains exact human, JSON, keys-only, quiet, automation, dry-run, verbose, auto-confirm, and no-wait contracts.
+- Real-terminal process-instance coverage uses the root command with `--no-indicator` and a stub HTTP server. It exercises cancel/delete across plain/JSON logging, configured/inherited root stderr, acceptance/abort, exact multiline prompts, stdout isolation, and mutation-call presence or absence. Existing terminal fixtures retain prompt-free empty scopes and one-key-per-line paging.
 
 ## Decisions
 
@@ -36,4 +37,4 @@ Started: 2026-09-11T16:49:28Z
 - Do not treat a passing pre-change baseline as proof of the new logger behavior.
 
 ## Current Handoff
-- Continue US3 with T010: extend the real-terminal confirmation fixtures for both commands, including configured/inherited stderr, attached plain/JSON logging, prompt acceptance/abort, prompt-free empty scope, and keys-only paging.
+- US3 is complete. Continue with T012 in the polish phase: clarify eligible selector tenant diagnostics in README.md, without starting command metadata work until a later iteration.
