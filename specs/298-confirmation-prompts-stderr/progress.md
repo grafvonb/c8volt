@@ -54,3 +54,19 @@ Started: 2026-09-11 08:40:57
 **Learnings**:
 - Darwin exposes the PTY slave path through `TIOCPTYGNAME`; native allocation and cleanup tests pass, while Linux and Windows test binaries compile with their isolated platform implementations.
 ---
+
+## Iteration 4 - 2026-09-11 08:57
+**Work Unit**: Phase 2 isolated terminal subprocess runner
+**Tasks Completed**:
+- [x] T005: Complete and validate the isolated terminal child-process runner.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/298-confirmation-prompts-stderr/progress.md
+- specs/298-confirmation-prompts-stderr/ralph-memory.md
+- specs/298-confirmation-prompts-stderr/tasks.md
+- testx/cmd_terminal_runner.go
+- testx/cmd_terminal_runner_test.go
+**Learnings**:
+- Prompt observation uses synchronized notifications and occurrence offsets, so identical paging prompts are paced independently; native Darwin and Docker Linux PTY runs pass, and Windows compilation preserves platform isolation.
+---

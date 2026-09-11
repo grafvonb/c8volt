@@ -10,6 +10,8 @@ Started: 2026-09-11T06:40:57Z
 - Linux PTY allocation uses `/dev/ptmx`, `TIOCSPTLCK`, and `TIOCGPTN`; the slave stays canonical while `ECHO` and `ECHONL` are cleared.
 - Darwin PTY allocation obtains the slave name through `TIOCPTYGNAME`, then grants and unlocks it before opening; it uses `TIOCGETA`/`TIOCSETA` for canonical no-echo input.
 - Non-Linux/Darwin targets select a build-constrained allocator that reports an explicit unsupported-platform reason and has no Unix dependency.
+- `testx.NewCmdTerminalRunner` re-executes the exact helper test with only stdin attached to the PTY, observes synchronized stderr snapshots, and advances a search offset so repeated prompt text cannot consume a stale occurrence.
+- The runner closes the parent's slave descriptor after start, drains the no-echo PTY master, and kills then reaps the child before closing descriptors on every timeout/error return.
 
 ## Decisions
 
@@ -33,6 +35,7 @@ Started: 2026-09-11T06:40:57Z
 ## Do Not Repeat
 
 - Pipe-backed stdin is not acceptable proof for FR-008; the later runner and acceptance tests must verify that child stdin is an actual terminal.
+- A successful helper test that returns normally adds the Go test harness `PASS` line to stdout; helpers requiring byte-exact stdout can call `os.Exit(0)` after their child assertions succeed.
 
 ## Current Handoff
-- Start T005 in Phase 2: complete and validate the isolated terminal child-process runner using the platform allocators; do not begin T006 or another work unit in the same iteration.
+- Start T006 in Phase 2: perform the complete writer-signature, production-caller, and test-stub migration as one compile-safe work unit; preserve existing prompt writes until US1/US3.
