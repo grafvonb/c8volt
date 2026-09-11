@@ -60,7 +60,7 @@ func configureOpsSlowProcessAnalysisPreflightWithPacer(cmd *cobra.Command, reque
 			if prompt == "" {
 				prompt = "Continue slow analysis?"
 			}
-			return confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt)
+			return confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt)
 		}
 	}
 	return progress

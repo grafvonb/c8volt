@@ -38,6 +38,9 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 		"Use capabilities for the machine-readable",
 		"Camunda 8.7, 8.8, 8.9, and 8.10",
 		"Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)",
+		"Results are written to stdout; plain confirmation and continuation questions are written to stderr.",
+		"Capture stderr when consuming prompts. Redirecting stdout does not suppress eligible questions.",
+		"Selector-recovery and --auto-confirm policies remain unchanged.",
 		"--automation",
 		"Examples:",
 		"./c8volt config show --template",
@@ -68,6 +71,9 @@ func TestRootHelpAndGeneratedMarkdownShareDiscoveryAnchors(t *testing.T) {
 		"Use capabilities for the machine-readable",
 		"Camunda 8.7, 8.8, 8.9, and 8.10",
 		"Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)",
+		"Results are written to stdout; plain confirmation and continuation questions are written to stderr.",
+		"Capture stderr when consuming prompts. Redirecting stdout does not suppress eligible questions.",
+		"Selector-recovery and --auto-confirm policies remain unchanged.",
 	} {
 		require.Contains(t, helpOutput, anchor)
 		require.Contains(t, markdown, anchor)

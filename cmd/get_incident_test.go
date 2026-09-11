@@ -379,7 +379,7 @@ func TestGetIncidentCommand_SearchPIKeysOnlyIncrementalPagesOmitFound(t *testing
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 	promptCalls := 0
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		promptCalls++
 		require.False(t, autoConfirm)
 		require.Contains(t, prompt, "More matching incidents remain")
@@ -400,6 +400,38 @@ func TestGetIncidentCommand_SearchPIKeysOnlyIncrementalPagesOmitFound(t *testing
 	require.NotContains(t, output, "found:")
 }
 
+// TestGetIncidentCommand_DeclinedPagingUsesCommandStderr verifies the caller passes its stderr writer and treats decline as a normal stop.
+func TestGetIncidentCommand_DeclinedPagingUsesCommandStderr(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":true}}`,
+		`{"items":[{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(writer io.Writer, autoConfirm bool, prompt string) error {
+		_, err := writer.Write([]byte("incident paging prompt writer\n"))
+		require.NoError(t, err)
+		require.False(t, autoConfirm)
+		require.Contains(t, prompt, "More matching incidents remain")
+		return localPreconditionError(ErrCmdAborted)
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	stdout, stderr := executeRootForIncidentTestWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--keys-only",
+		"get", "incident",
+		"--batch-size", "1",
+	)
+
+	require.Len(t, requests, 1)
+	require.Equal(t, "2251799813685253\n", stdout)
+	require.Equal(t, "incident paging prompt writer\n", stderr)
+}
+
 // TestGetIncidentCommand_SearchSkipsPromptForEmptyFilteredPages verifies locally filtered empty pages do not make interactive users confirm before any rows are shown.
 func TestGetIncidentCommand_SearchSkipsPromptForEmptyFilteredPages(t *testing.T) {
 	var requests []string
@@ -412,7 +444,7 @@ func TestGetIncidentCommand_SearchSkipsPromptForEmptyFilteredPages(t *testing.T)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 	var prompts []string
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		require.False(t, autoConfirm)
 		prompts = append(prompts, prompt)
 		return nil

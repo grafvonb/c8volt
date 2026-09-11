@@ -107,7 +107,7 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 				ctx := attachOpsDiscoveryTenantContext(cmd, cfg, planned.DeletePlan.TenantEvidence)
 				printOpsTenantContextForCommand(cmd, ctx)
 				prompt := opsExecuteRetentionPolicyConfirmationPrompt(planned)
-				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+				if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsExecuteRetentionPolicyAfterReport(cmd, log, cfg, markOpsExecuteRetentionPolicyLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
 					return
 				}

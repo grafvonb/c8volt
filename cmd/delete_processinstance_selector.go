@@ -91,7 +91,7 @@ func deleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	if impact.Affected > impact.Requested {
 		prompt = fmt.Sprintf("You have requested to delete %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be deleted. Do you want to proceed?", impact.Requested, impact.Affected, impact.Roots)
 	}
-	if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+	if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 		return processInstancePageActionResults{}, err
 	}
 
@@ -147,7 +147,7 @@ func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, c
 			return process.ProcessInstanceSearchPageActionContinue, nil
 		case processInstanceContinuationPrompt:
 			prompt := fmt.Sprintf("Checked delete impact for %d process instance(s) on this page (%s, %d including dependencies); no changes made yet. More matching process instances remain. Continue checking?", summary.CurrentPageCount, formatProcessInstancePagingProgress(step.Page, summary.CumulativeCount, "requested"), step.CumulativeImpact)
-			if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+			if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 				if isCmdAborted(err) {
 					printPISearchProgress(cmd, processInstanceProgressSummary{
 						PageSize:          summary.PageSize,
@@ -226,7 +226,7 @@ func planDeleteProcessInstanceSearchPagesWithPrompt(cmd *cobra.Command, cli proc
 		case processInstanceContinuationPrompt:
 			planningActivity.Stop()
 			prompt := fmt.Sprintf("Checked delete impact for %d process instance(s) on this page (%s, %d including dependencies); no changes made yet. More matching process instances remain. Continue checking?", summary.CurrentPageCount, formatProcessInstancePagingProgress(step.Page, summary.CumulativeCount, "requested"), step.CumulativeImpact)
-			if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+			if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 				if isCmdAborted(err) {
 					printPISearchProgress(cmd, processInstanceProgressSummary{
 						PageSize:          summary.PageSize,

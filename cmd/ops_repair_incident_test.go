@@ -650,7 +650,7 @@ func TestOpsRepairIncidentProgressContractPendingT068(t *testing.T) {
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		require.False(t, autoConfirm)
 		require.Contains(t, prompt, "incident repair: 2 active incident(s)")
 		require.Contains(t, prompt, "1 related job(s)")
@@ -829,7 +829,7 @@ func TestOpsRepairIncidentCommandHelper(t *testing.T) {
 	if promptPath := os.Getenv("C8VOLT_TEST_OPS_REPAIR_INC_PROMPT"); promptPath != "" {
 		prevConfirm := confirmCmdOrAbortFn
 		defer func() { confirmCmdOrAbortFn = prevConfirm }()
-		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 			if autoConfirm {
 				return fmt.Errorf("unexpected auto-confirm prompt")
 			}

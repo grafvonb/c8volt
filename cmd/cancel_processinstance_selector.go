@@ -103,7 +103,7 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 					if affectedCount > requestedCount {
 						prompt = fmt.Sprintf("You have requested to cancel %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be canceled. Do you want to proceed?", requestedCount, affectedCount, rootCount)
 					}
-					if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+					if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 						return process.ProcessInstanceSearchPageActionStop, err
 					}
 				}
@@ -141,7 +141,7 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 				renderDiscoveryTenantContext(step.Plan.TenantEvidence)
 			}
 			prompt := fmt.Sprintf("Processed %d process instance(s) on this page (%s, %d including dependencies). More matching process instances remain. Continue?", summary.CurrentPageCount, formatProcessInstancePagingProgress(step.Page, summary.CumulativeCount, "requested"), step.CumulativeImpact)
-			if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+			if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 				if isCmdAborted(err) {
 					printPISearchProgress(cmd, processInstanceProgressSummary{
 						PageSize:          summary.PageSize,

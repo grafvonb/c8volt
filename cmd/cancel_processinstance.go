@@ -144,7 +144,7 @@ func cancelProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli 
 		if affectedCount > requestedCount {
 			prompt = fmt.Sprintf("You have requested to cancel %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be canceled. Do you want to proceed?", requestedCount, affectedCount, rootCount)
 		}
-		if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+		if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			return processInstancePageActionResult{}, err
 		}
 	}

@@ -671,7 +671,7 @@ func TestOpsExecuteRetentionPolicyInteractiveHelper(t *testing.T) {
 	}
 
 	var promptOutput bytes.Buffer
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		if autoConfirm {
 			return fmt.Errorf("unexpected auto-confirm prompt")
 		}

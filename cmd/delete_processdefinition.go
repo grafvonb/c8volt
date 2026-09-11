@@ -142,7 +142,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 			}
 		}
 		prompt := "Proceed with this deletion?"
-		if err := confirmCmdOrAbort(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+		if err := confirmCmdOrAbort(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		deletionProgress := newProcessDefinitionDeleteSemanticProgress(cmd, len(keys))

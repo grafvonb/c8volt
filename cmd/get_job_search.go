@@ -65,7 +65,7 @@ func searchJobsWithPaging(cmd *cobra.Command, cli job.API, request job.SearchReq
 			return job.SearchPageActionContinue, nil
 		}
 		prompt := fmt.Sprintf("Fetched %d job(s) on this page (%d loaded). More matching jobs remain. Continue?", len(items), processedTotal)
-		if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+		if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			if isCmdAborted(err) {
 				return job.SearchPageActionStop, nil
 			}

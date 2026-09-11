@@ -77,7 +77,7 @@ var updateJobCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render job update plan: %w", err))
 			}
 			prompt := fmt.Sprintf("You are about to update job %s. Do you want to proceed?", request.Key)
-			if err := confirmCmdOrAbortFn(false, prompt); err != nil {
+			if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), false, prompt); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 		} else {

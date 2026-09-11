@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.0-beta.1-202-gaf63987b-dirty`, commit `af63987b`, built `2026-09-10T18:30:50Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.0-beta.1-217-g16dc34a9-dirty`, commit `16dc34a9`, built `2026-09-11T07:30:01Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -215,6 +215,20 @@ For scripts or CI, add `--json` when stdout should be data and logs should stay 
 ```bash
 ./c8volt config test-connection --json
 ```
+
+### Output and confirmation streams
+
+Command results are written to stdout. Plain confirmation and paging
+continuation questions are written to stderr, so redirecting or piping stdout
+does not mix prompts into results. Keys-only output therefore remains one key
+per line while an eligible continuation question stays visible in the terminal.
+If a script or prompt consumer needs the question text, it must capture stderr.
+
+Redirecting stdout does not suppress confirmation questions whose existing
+terminal-input rules allow them. Selector-recovery questions keep their existing
+eligibility rules, including their terminal-stdout guard, and `--auto-confirm`
+continues to skip only the questions it already skipped. Answer defaults,
+automation behavior, and command outcomes are unchanged.
 
 For the full setup contract, see the generated [config reference](./cli/c8volt_config).
 

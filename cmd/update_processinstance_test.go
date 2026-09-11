@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -662,7 +663,7 @@ func TestUpdateProcessInstanceCommand_NoPlannedChangesSkipsPromptAndMutation(t *
 	t.Cleanup(srv.Close)
 
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("no-op update must not prompt for confirmation")
 		return nil
 	}

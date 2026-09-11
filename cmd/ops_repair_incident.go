@@ -151,7 +151,7 @@ var opsRepairIncidentCmd = &cobra.Command{
 				ctx := attachOpsRepairTenantContext(cmd, cfg, planned)
 				printOpsTenantContextForCommand(cmd, ctx)
 			}
-			if err := confirmCmdOrAbortFn(false, opsRepairConfirmationPrompt(planned)); err != nil {
+			if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), false, opsRepairConfirmationPrompt(planned)); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 			request = opsRepairConfirmedRequestFromPlan(request, planned)

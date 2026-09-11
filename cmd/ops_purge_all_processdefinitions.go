@@ -95,7 +95,7 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 				ctx := attachOpsPurgeAllProcessDefinitionsTenantContext(cmd, cfg, planned)
 				printOpsTenantContextForCommand(cmd, ctx)
 				prompt := opsPurgeAllProcessDefinitionsConfirmationPrompt(planned)
-				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+				if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsPurgeAllProcessDefinitionsAfterReport(cmd, log, cfg, markOpsPurgeAllProcessDefinitionsLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
 					return
 				}

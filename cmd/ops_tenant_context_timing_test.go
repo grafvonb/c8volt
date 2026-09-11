@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -88,7 +89,7 @@ func executeRootForOpsTenantTiming(t *testing.T, output *opsTenantTimingOutput, 
 
 	previousConfirm := confirmCmdOrAbortFn
 	promptCount := 0
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		promptCount++
 		return fmt.Errorf("unexpected prompt during auto-confirm execution")
 	}

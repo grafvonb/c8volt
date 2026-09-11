@@ -164,7 +164,7 @@ func searchIncidentsWithPaging(cmd *cobra.Command, cli incident.API, cfg *config
 				return incident.SearchPageActionContinue, nil
 			}
 			prompt := fmt.Sprintf("Fetched %d incident(s) on this page (%s). More matching incidents remain. Continue?", len(items), formatIncidentPagingProgress(page, processedTotal, "loaded"))
-			if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+			if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 				if isCmdAborted(err) {
 					return incident.SearchPageActionStop, nil
 				}

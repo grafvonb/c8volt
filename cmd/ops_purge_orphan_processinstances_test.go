@@ -656,7 +656,7 @@ func TestOpsPurgeOrphanProcessInstancesAbortPreservesExistingReportHelper(t *tes
 		return
 	}
 
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		return localPreconditionError(ErrCmdAborted)
 	}
 	root := Root()
@@ -677,7 +677,7 @@ func TestOpsPurgeOrphanProcessInstancesInteractiveHelper(t *testing.T) {
 	}
 
 	var promptOutput bytes.Buffer
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		if autoConfirm {
 			return fmt.Errorf("unexpected auto-confirm prompt")
 		}

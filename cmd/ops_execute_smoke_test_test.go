@@ -753,7 +753,7 @@ func TestOpsExecuteSmokeTestUsesImplicitConfirmationForCleanup(t *testing.T) {
 	t.Cleanup(srv.Close)
 	var prompts []string
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		require.False(t, autoConfirm)
 		prompts = append(prompts, prompt)
 		return nil
@@ -777,7 +777,7 @@ func TestOpsExecuteSmokeTestAutomationNoCleanupDoesNotPrompt(t *testing.T) {
 	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
 	t.Cleanup(srv.Close)
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected confirmation prompt for --automation --no-cleanup")
 		return nil
 	}
