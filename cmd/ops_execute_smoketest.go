@@ -71,7 +71,7 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
 			ctx := attachCreationTenantContext(cmd, cfg)
 			printOpsTenantContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
 			prompt := opsExecuteSmokeTestConfirmationPrompt(request)
-			if err := confirmCmdOrAbortFn(effectiveAutoConfirm, prompt); err != nil {
+			if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), effectiveAutoConfirm, prompt); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 		}

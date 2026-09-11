@@ -46,7 +46,7 @@ func TestCancelProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *tes
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected confirmation prompt during cancel dry-run search")
 		return nil
 	}
@@ -148,7 +148,7 @@ func TestCancelProcessInstanceSearchSelectedUsesSemanticCompletionActivity(t *te
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		require.True(t, autoConfirm)
 		require.Contains(t, prompt, "cancel")
 		requireProcessInstanceMutationPlanningStoppedBeforePrompt(t, sink, "cancel")
@@ -271,7 +271,7 @@ func TestCancelProcessInstanceSearchSelectedSemanticLifecycleParity(t *testing.T
 
 			prevConfirm := confirmCmdOrAbortFn
 			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-			confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 				require.True(t, autoConfirm)
 				require.Contains(t, prompt, "cancel")
 				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "CONFIRMATION-MARKER")
@@ -434,7 +434,7 @@ func TestCancelProcessInstanceDryRun_SearchTenantContextPrecedesPreview(t *testi
 
 			prevConfirm := confirmCmdOrAbortFn
 			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-			confirmCmdOrAbortFn = func(bool, string) error {
+			confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 				t.Fatal("unexpected confirmation prompt during cancel dry-run search")
 				return nil
 			}
@@ -490,7 +490,7 @@ func TestCancelProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage(t *test
 	require.NoError(t, cmd.Flags().Set("batch-size", "4"))
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected confirmation prompt during cancel dry-run limited search")
 		return nil
 	}
@@ -941,7 +941,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 	var prompts []string
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		prompts = append(prompts, prompt)
 		return nil
 	}
@@ -1138,7 +1138,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 	promptCalls := 0
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		promptCalls++
 		return nil
 	}
@@ -1226,7 +1226,7 @@ func TestCancelProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 	promptCalls := 0
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		promptCalls++
 		return nil
 	}
@@ -1306,7 +1306,7 @@ func TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 	promptCalls := 0
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		promptCalls++
 		return nil
 	}
@@ -1393,7 +1393,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 	promptCalls := 0
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		promptCalls++
 		return nil
 	}
@@ -1472,7 +1472,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 	callCount := 0
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		callCount++
 		if callCount == 1 {
 			return nil
@@ -1548,7 +1548,7 @@ func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error { return nil }
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error { return nil }
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
 
 	output := executeRootForProcessInstanceTest(t,

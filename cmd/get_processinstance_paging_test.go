@@ -77,7 +77,7 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 		promptCalls := 0
 		prevConfirm := confirmCmdOrAbortFn
-		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 			promptCalls++
 			return nil
 		}
@@ -158,7 +158,7 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 		promptCalls := 0
 		prevConfirm := confirmCmdOrAbortFn
-		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 			promptCalls++
 			return nil
 		}
@@ -362,7 +362,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 		promptCalls := 0
 		prevConfirm := confirmCmdOrAbortFn
-		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 			promptCalls++
 			return nil
 		}
@@ -404,7 +404,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 		prompts := []string{}
 		prevConfirm := confirmCmdOrAbortFn
-		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 			prompts = append(prompts, prompt)
 			return nil
 		}
@@ -444,7 +444,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 		prompts := []string{}
 		prevConfirm := confirmCmdOrAbortFn
-		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 			prompts = append(prompts, prompt)
 			return nil
 		}
@@ -483,7 +483,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 		promptCalls := 0
 		prevConfirm := confirmCmdOrAbortFn
-		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 			promptCalls++
 			return nil
 		}
@@ -545,7 +545,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 		promptCalls := 0
 		prevConfirm := confirmCmdOrAbortFn
-		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 			promptCalls++
 			return nil
 		}
@@ -585,7 +585,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 		promptCalls := 0
 		prevConfirm := confirmCmdOrAbortFn
-		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 			promptCalls++
 			return nil
 		}
@@ -623,7 +623,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 		promptCalls := 0
 		prevConfirm := confirmCmdOrAbortFn
-		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 			promptCalls++
 			return nil
 		}
@@ -662,7 +662,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 		promptCalls := 0
 		prevConfirm := confirmCmdOrAbortFn
-		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 			promptCalls++
 			return nil
 		}
@@ -698,7 +698,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 		promptCalls := 0
 		prevConfirm := confirmCmdOrAbortFn
-		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 			promptCalls++
 			return nil
 		}
@@ -734,7 +734,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 
 		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 		prevConfirm := confirmCmdOrAbortFn
-		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 			return localPreconditionError(ErrCmdAborted)
 		}
 		t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
@@ -878,7 +878,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 				cfgPath := writeTestConfigForVersion(t, srv.URL, version)
 				prompts := []string{}
 				prevConfirm := confirmCmdOrAbortFn
-				confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+				confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 					prompts = append(prompts, prompt)
 					return nil
 				}

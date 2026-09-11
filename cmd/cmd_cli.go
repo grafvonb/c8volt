@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
@@ -61,7 +62,8 @@ func handleNewCliError(cmd *cobra.Command, log *slog.Logger, cfg *config.Config,
 	handleCommandError(cmd, log, noErrCodes, err)
 }
 
-func confirmCmdOrAbort(autoConfirm bool, prompt string) error {
+// confirmCmdOrAbort applies the shared default-no terminal confirmation policy.
+func confirmCmdOrAbort(promptWriter io.Writer, autoConfirm bool, prompt string) error {
 	if autoConfirm || !term.IsTerminal(int(os.Stdin.Fd())) {
 		return nil
 	}

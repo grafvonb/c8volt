@@ -2055,7 +2055,7 @@ func TestGetProcessInstanceListWithElements_BPMNSelectorPreservesProcessFilter(t
 func TestGetProcessInstanceListWithElements_IncrementalPagingKeepsProcessInstancePromptCounts(t *testing.T) {
 	var prompts []string
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		prompts = append(prompts, prompt)
 		return localPreconditionError(ErrCmdAborted)
 	}

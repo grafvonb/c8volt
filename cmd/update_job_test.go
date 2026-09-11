@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -97,7 +98,7 @@ func TestUpdateJobCommand_RetriesConfirmedJSONOutput(t *testing.T) {
 func TestUpdateJobCommand_MaterialInteractiveRetriesUpdateRequiresConfirmation(t *testing.T) {
 	prevConfirm := confirmCmdOrAbortFn
 	var prompt string
-	confirmCmdOrAbortFn = func(autoConfirm bool, got string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, got string) error {
 		require.False(t, autoConfirm)
 		prompt = got
 		return nil
@@ -127,7 +128,7 @@ func TestUpdateJobCommand_MaterialInteractiveRetriesUpdateRequiresConfirmation(t
 func TestUpdateJobCommand_V810PromptedRetriesUpdatePreservesConfirmationFlow(t *testing.T) {
 	prevConfirm := confirmCmdOrAbortFn
 	var prompt string
-	confirmCmdOrAbortFn = func(autoConfirm bool, got string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, got string) error {
 		require.False(t, autoConfirm)
 		prompt = got
 		return nil
@@ -282,7 +283,7 @@ func TestUpdateJobCommand_NoWaitJSONSubmittedResult(t *testing.T) {
 func TestUpdateJobCommand_NoWaitStillRequiresInteractiveConfirmationForMaterialUpdates(t *testing.T) {
 	prevConfirm := confirmCmdOrAbortFn
 	var prompt string
-	confirmCmdOrAbortFn = func(autoConfirm bool, got string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, got string) error {
 		require.False(t, autoConfirm)
 		prompt = got
 		return nil

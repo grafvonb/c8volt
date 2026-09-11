@@ -81,7 +81,7 @@ var updateProcessInstanceCmd = &cobra.Command{
 			}
 			requestedUpdates := preview.VariableAddCount + preview.VariableChangeCount
 			prompt := fmt.Sprintf("You are about to update %d requested variable value(s) on %d process instance(s). Do you want to proceed?", requestedUpdates, preview.UpdateCount)
-			if err := confirmCmdOrAbortFn(false, prompt); err != nil {
+			if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), false, prompt); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 		}

@@ -70,3 +70,21 @@ Started: 2026-09-11 08:40:57
 **Learnings**:
 - Prompt observation uses synchronized notifications and occurrence offsets, so identical paging prompts are paced independently; native Darwin and Docker Linux PTY runs pass, and Windows compilation preserves platform isolation.
 ---
+
+## Iteration 5 - 2026-09-11 09:00
+**Work Unit**: Phase 2 confirmation writer signature migration
+**Tasks Completed**:
+- [x] T006: Add the writer parameter, migrate every production caller, and update all test seams as one compile-safe change.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_cli.go
+- cmd/process_definition_selector_validation.go
+- cmd/* confirmation production callers from the T006 migration inventory
+- cmd/*_test.go confirmation seam stubs from the T001 inventory
+- specs/298-confirmation-prompts-stderr/tasks.md
+- specs/298-confirmation-prompts-stderr/ralph-memory.md
+- specs/298-confirmation-prompts-stderr/progress.md
+**Learnings**:
+- The explicit writer parameter compiles across all mutation, paging, ops, selector-recovery, and test seam call sites while retaining the existing prompt writes and control flow.
+---

@@ -379,7 +379,7 @@ func TestGetIncidentCommand_SearchPIKeysOnlyIncrementalPagesOmitFound(t *testing
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 	promptCalls := 0
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		promptCalls++
 		require.False(t, autoConfirm)
 		require.Contains(t, prompt, "More matching incidents remain")
@@ -412,7 +412,7 @@ func TestGetIncidentCommand_SearchSkipsPromptForEmptyFilteredPages(t *testing.T)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 	var prompts []string
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		require.False(t, autoConfirm)
 		prompts = append(prompts, prompt)
 		return nil

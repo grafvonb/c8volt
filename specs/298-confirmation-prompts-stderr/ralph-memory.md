@@ -12,6 +12,7 @@ Started: 2026-09-11T06:40:57Z
 - Non-Linux/Darwin targets select a build-constrained allocator that reports an explicit unsupported-platform reason and has no Unix dependency.
 - `testx.NewCmdTerminalRunner` re-executes the exact helper test with only stdin attached to the PTY, observes synchronized stderr snapshots, and advances a search offset so repeated prompt text cannot consume a stale occurrence.
 - The runner closes the parent's slave descriptor after start, drains the no-echo PTY master, and kills then reaps the child before closing descriptors on every timeout/error return.
+- Both confirmation seams now have the signature `(io.Writer, bool, string) error`; production callers pass `cmd.ErrOrStderr()`, while migrated test stubs may ignore the writer until their story-specific routing assertions are added.
 
 ## Decisions
 
@@ -38,4 +39,4 @@ Started: 2026-09-11T06:40:57Z
 - A successful helper test that returns normally adds the Go test harness `PASS` line to stdout; helpers requiring byte-exact stdout can call `os.Exit(0)` after their child assertions succeed.
 
 ## Current Handoff
-- Start T006 in Phase 2: perform the complete writer-signature, production-caller, and test-stub migration as one compile-safe work unit; preserve existing prompt writes until US1/US3.
+- Start T007 in Phase 2: run the specified terminal and focused command checks, verify terminal tests are discovered, and record the host/results in `quickstart.md`; prompt writes intentionally remain on stdout until US1/US3.

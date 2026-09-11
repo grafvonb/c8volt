@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -84,7 +85,7 @@ func TestUpdateJobCommand_JSONDryRunIncludesExplicitKeyTenantContext(t *testing.
 // TestUpdateJobCommand_RetriesNoOpSkipsPromptAndMutation verifies the update job planning and dry-run behavior covered by this scenario.
 func TestUpdateJobCommand_RetriesNoOpSkipsPromptAndMutation(t *testing.T) {
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected confirmation prompt for retry no-op")
 		return nil
 	}

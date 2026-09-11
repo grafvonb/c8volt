@@ -839,7 +839,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsInvalidFlagsHelper(t *testing.T) {
 	if promptPath := os.Getenv("C8VOLT_TEST_INCIDENT_PURGE_PROMPT_FILE"); promptPath != "" {
 		prevConfirm := confirmCmdOrAbortFn
 		defer func() { confirmCmdOrAbortFn = prevConfirm }()
-		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 			if autoConfirm {
 				return fmt.Errorf("unexpected auto-confirm prompt")
 			}
@@ -1027,7 +1027,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsCommandHelper(t *testing.T) {
 	if promptPath := os.Getenv("C8VOLT_TEST_INCIDENT_PURGE_PROMPT_FILE"); promptPath != "" {
 		prevConfirm := confirmCmdOrAbortFn
 		defer func() { confirmCmdOrAbortFn = prevConfirm }()
-		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 			if autoConfirm {
 				return fmt.Errorf("unexpected auto-confirm prompt")
 			}

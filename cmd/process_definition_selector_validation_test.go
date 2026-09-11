@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -356,7 +357,7 @@ func TestProcessDefinitionSelectorHumanDiagnostic_SingleMissingSelectorOffersLis
 
 	cmd, _ := newProcessDefinitionSelectorValidationTestCommand()
 	var prompt string
-	confirmProcessDefinitionSelectorListVisibleFn = func(autoConfirm bool, got string) error {
+	confirmProcessDefinitionSelectorListVisibleFn = func(_ io.Writer, autoConfirm bool, got string) error {
 		require.False(t, autoConfirm)
 		prompt = got
 		return localPreconditionError(ErrCmdAborted)
@@ -394,7 +395,7 @@ func TestProcessDefinitionSelectorHumanDiagnostic_MultipleMissingSelectorsOffers
 
 	cmd, _ := newProcessDefinitionSelectorValidationTestCommand()
 	var prompt string
-	confirmProcessDefinitionSelectorListVisibleFn = func(autoConfirm bool, got string) error {
+	confirmProcessDefinitionSelectorListVisibleFn = func(_ io.Writer, autoConfirm bool, got string) error {
 		require.False(t, autoConfirm)
 		prompt = got
 		return localPreconditionError(ErrCmdAborted)
@@ -431,7 +432,7 @@ func TestProcessDefinitionSelectorValidationError_SkipsPromptWhenNoVisibleDefini
 	processDefinitionSelectorInteractiveTerminalFn = func() bool { return true }
 
 	cmd, output := newProcessDefinitionSelectorValidationTestCommand()
-	confirmProcessDefinitionSelectorListVisibleFn = func(bool, string) error {
+	confirmProcessDefinitionSelectorListVisibleFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected process-definition selector listing prompt")
 		return nil
 	}
@@ -494,7 +495,7 @@ func TestProcessDefinitionSelectorValidationError_MachineAndNonTTYModesDoNotProm
 			processDefinitionSelectorInteractiveTerminalFn = func() bool { return true }
 			cmd, _ := newProcessDefinitionSelectorValidationTestCommand()
 			tt.setup(cmd)
-			confirmProcessDefinitionSelectorListVisibleFn = func(bool, string) error {
+			confirmProcessDefinitionSelectorListVisibleFn = func(_ io.Writer, _ bool, _ string) error {
 				t.Fatal("unexpected process-definition selector listing prompt")
 				return nil
 			}
@@ -519,7 +520,7 @@ func TestProcessDefinitionSelectorValidationError_AcceptedPromptListsVisibleDefi
 
 	cmd, output := newProcessDefinitionSelectorValidationTestCommand()
 	var prompt string
-	confirmProcessDefinitionSelectorListVisibleFn = func(autoConfirm bool, got string) error {
+	confirmProcessDefinitionSelectorListVisibleFn = func(_ io.Writer, autoConfirm bool, got string) error {
 		require.False(t, autoConfirm)
 		prompt = got
 		return nil
@@ -566,7 +567,7 @@ func TestProcessDefinitionSelectorValidationError_AcceptedPromptListsNearMatches
 
 	cmd, output := newProcessDefinitionSelectorValidationTestCommand()
 	var prompt string
-	confirmProcessDefinitionSelectorListVisibleFn = func(autoConfirm bool, got string) error {
+	confirmProcessDefinitionSelectorListVisibleFn = func(_ io.Writer, autoConfirm bool, got string) error {
 		require.False(t, autoConfirm)
 		prompt = got
 		return nil

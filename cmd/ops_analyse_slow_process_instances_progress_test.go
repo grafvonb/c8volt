@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -201,7 +202,7 @@ func TestOpsAnalyseSlowProcessInstancesDefaultProgressWritesPacedMilestones(t *t
 	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		require.False(t, autoConfirm)
 		require.Equal(t, "Continue slow analysis for 2000 process instances?", prompt)
 		return nil

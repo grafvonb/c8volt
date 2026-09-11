@@ -110,7 +110,7 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 				ctx := attachOpsPurgeProcessInstancesWithIncidentsTenantContext(cmd, cfg, planned)
 				printOpsTenantContextForCommand(cmd, ctx)
 				prompt := opsPurgeProcessInstancesWithIncidentsConfirmationPrompt(planned)
-				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+				if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsPurgeProcessInstancesWithIncidentsAfterReport(cmd, log, cfg, markOpsPurgeProcessInstancesWithIncidentsLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
 					return
 				}

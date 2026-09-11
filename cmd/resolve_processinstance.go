@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/grafvonb/c8volt/c8volt/incident"
 
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -106,7 +107,7 @@ func resolveProcessInstancesWithPlan(cmd *cobra.Command, cli resolveProcessInsta
 		if affectedCount > requestedCount {
 			prompt = fmt.Sprintf("You have requested to resolve incidents for %d process instance(s), but due to the process-instance family scope, %d instance(s) with %d root instance(s) will be inspected and active incidents found in that family will be resolved. Do you want to proceed?", requestedCount, affectedCount, rootCount)
 		}
-		if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+		if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			return incident.ProcessInstanceResolutionResults{}, err
 		}
 	}

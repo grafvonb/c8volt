@@ -1407,7 +1407,7 @@ func TestOpsPurgeAllProcessDefinitionsCommandHelper(t *testing.T) {
 	if promptPath := os.Getenv("C8VOLT_TEST_ALL_PD_PURGE_PROMPT"); promptPath != "" {
 		prevConfirm := confirmCmdOrAbortFn
 		defer func() { confirmCmdOrAbortFn = prevConfirm }()
-		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 			if autoConfirm {
 				return fmt.Errorf("unexpected auto-confirm prompt")
 			}

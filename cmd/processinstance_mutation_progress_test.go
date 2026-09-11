@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -46,7 +47,7 @@ func TestCancelProcessInstanceSearchProgressContractPendingT064(t *testing.T) {
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		require.True(t, autoConfirm)
 		require.Contains(t, prompt, "cancel")
 		return nil
@@ -562,7 +563,7 @@ func TestProcessInstanceMutationDirectAndStdinKeysUseSemanticCompletionActivity(
 
 			prevConfirm := confirmCmdOrAbortFn
 			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-			confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 				require.True(t, autoConfirm)
 				require.Contains(t, prompt, tt.operation)
 				return nil
@@ -667,7 +668,7 @@ func TestProcessInstanceMutationDirectAndStdinKeysShareLifecycleWording(t *testi
 
 			prevConfirm := confirmCmdOrAbortFn
 			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-			confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 				require.True(t, autoConfirm)
 				require.Contains(t, prompt, tt.operation)
 				return nil
@@ -934,7 +935,7 @@ func TestDeleteProcessInstanceSearchProgressContractPendingT064(t *testing.T) {
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		require.True(t, autoConfirm)
 		require.Contains(t, prompt, "delete")
 		return nil

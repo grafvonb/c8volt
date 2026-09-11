@@ -44,7 +44,7 @@ func TestCancelProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t 
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected confirmation prompt during cancel dry run")
 		return nil
 	}
@@ -94,7 +94,7 @@ func TestCancelProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected confirmation prompt during cancel dry run")
 		return nil
 	}
@@ -182,7 +182,7 @@ func TestCancelProcessInstanceSearch_TenantContextPrecedesConfirmation(t *testin
 	var prompt string
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(_ bool, got string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, got string) error {
 		prompt = got
 		outputBeforePrompt := buf.String()
 		require.Contains(t, outputBeforePrompt, "selection scope: unfiltered across accessible tenants\n")
@@ -240,7 +240,7 @@ func TestCancelProcessInstanceSearch_TenantWarningsPrecedeConfirmation(t *testin
 	var prompt string
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(_ bool, got string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, got string) error {
 		prompt = got
 		outputBeforePrompt := buf.String()
 		require.Contains(t, outputBeforePrompt, "affected tenants: tenant-a, tenant-b\n")
@@ -339,7 +339,7 @@ func TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissing
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected confirmation prompt during cancel dry-run orphan preview")
 		return nil
 	}
@@ -387,7 +387,7 @@ func TestCancelProcessInstanceDryRun_UnresolvedOrphanFailsWithoutMutation(t *tes
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected confirmation prompt during unresolved cancel dry run")
 		return nil
 	}
@@ -508,7 +508,7 @@ func TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedImpactCheck(t
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
 
 	var prompt string
-	confirmCmdOrAbortFn = func(_ bool, got string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, got string) error {
 		prompt = got
 		return nil
 	}
@@ -564,7 +564,7 @@ func TestCancelProcessInstancesWithPlan_RegressionWorkerControls(t *testing.T) {
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		require.True(t, autoConfirm)
 		require.Contains(t, prompt, "requested to cancel 2 process instance(s)")
 		return nil
@@ -649,7 +649,7 @@ func TestCancelProcessInstancesWithPlan_TerminalNoOpPreservesCommandContracts(t 
 			promptCount := 0
 			prevConfirm := confirmCmdOrAbortFn
 			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-			confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 				promptCount++
 				require.True(t, autoConfirm)
 				require.Equal(t, "You are about to cancel 1 process instance(s). Do you want to proceed?", prompt)
@@ -747,7 +747,7 @@ func TestCancelProcessInstancesWithPlan_DefaultMilestoneFinalFlushAndNoTimerDupl
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		require.True(t, autoConfirm)
 		require.Contains(t, prompt, "cancel")
 		return nil
@@ -832,7 +832,7 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error { return nil }
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error { return nil }
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
 
 	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,

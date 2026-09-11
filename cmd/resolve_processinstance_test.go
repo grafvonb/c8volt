@@ -85,7 +85,7 @@ func TestResolveProcessInstancesWithPlan_ExpandsFamilyScopeAndPrompts(t *testing
 
 	var prompt string
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, got string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, got string) error {
 		require.True(t, autoConfirm)
 		prompt = got
 		return nil

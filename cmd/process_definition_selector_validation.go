@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
@@ -229,7 +230,7 @@ func handleProcessDefinitionSelectorValidationError(cmd *cobra.Command, log *slo
 // processDefinitionSelectorRecovery reuses existing process-definition list rendering instead of introducing a second diagnostic format.
 func processDefinitionSelectorRecovery(cmd *cobra.Command, cli process.API, result processDefinitionSelectorValidationResult) error {
 	if result.HasNearMatches() {
-		if err := confirmProcessDefinitionSelectorListVisibleFn(false, "List matching process definitions?"); err != nil {
+		if err := confirmProcessDefinitionSelectorListVisibleFn(cmd.ErrOrStderr(), false, "List matching process definitions?"); err != nil {
 			return nil
 		}
 		if err := listNearMatchProcessDefinitionsForSelectorValidation(cmd, result); err != nil {
@@ -245,7 +246,7 @@ func processDefinitionSelectorRecovery(cmd *cobra.Command, cli process.API, resu
 	if !processDefinitionSelectorHasMatches(pds) {
 		return nil
 	}
-	if err := confirmProcessDefinitionSelectorListVisibleFn(false, "List visible process definitions?"); err != nil {
+	if err := confirmProcessDefinitionSelectorListVisibleFn(cmd.ErrOrStderr(), false, "List visible process definitions?"); err != nil {
 		return nil
 	}
 	if err := listProcessDefinitionsView(cmd, pds); err != nil {
@@ -380,7 +381,7 @@ func normalizeSelectorBpmnProcessIDs(ids []string) []string {
 }
 
 // confirmCmdOrAbortDefaultYes is scoped to selector recovery; command launch behavior still uses the shared confirmation helpers.
-func confirmCmdOrAbortDefaultYes(autoConfirm bool, prompt string) error {
+func confirmCmdOrAbortDefaultYes(promptWriter io.Writer, autoConfirm bool, prompt string) error {
 	if autoConfirm || !term.IsTerminal(int(os.Stdin.Fd())) {
 		return nil
 	}
