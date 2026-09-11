@@ -20,6 +20,7 @@ Started: 2026-09-11T13:45:51Z
 - JSON errors omit `payload`, `suggestion`, and unavailable `tenantContext`; their absence is part of the contract.
 - Read-only GET fixtures may emit transient retry context on stderr before the final failure; JSON assertions must prohibit the final human diagnostic without rejecting that established context.
 - The root mode resolver gives JSON precedence over keys-only, while keys-only and quiet alone retain the ordinary stderr error path; unsupported automation is checked before stdin validation in commands that call `requireAutomationSupport` first.
+- Non-full fallback coverage should use synthetic limited/unsupported commands for shared stdin validation and real config/embed commands for production compatibility; an HTTP 400 config fixture is deterministic because it avoids transient retry counts.
 
 ## Reusable Commands
 
@@ -34,4 +35,4 @@ Started: 2026-09-11T13:45:51Z
 - Do not use a production `ResultEnvelope` to decode or construct expected regression results.
 
 ## Current Handoff
-- Continue with T018 in US3: add limited/unsupported fixture and representative real non-full fallback coverage without expanding contract support.
+- Continue with T019 in US3: add or extend success regressions for key merging/deduplication, cluster, process-definition, embedded-list, and existing tenant-context behavior.
