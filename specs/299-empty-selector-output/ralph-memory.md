@@ -11,6 +11,7 @@ Started: 2026-09-11T09:51:18Z
 - Quiet suppression belongs after `pickMode()` selects the human branch so explicit JSON remains visible and keys-only remains byte-empty.
 - Exact empty-scope request coverage uses one `/v2/process-instances/search` for state/date selectors and `/v2/process-definitions/search` followed by one instance search for BPMN selectors; fixture default branches reject mutation or extra discovery.
 - Real-terminal empty-scope coverage can run with zero `CmdTerminalExchange` values: pass the config and command matrix through environment variables, execute with buffered root streams in the child, and copy those streams to subprocess stdout/stderr for independent parent assertions.
+- README guidance for selector-based cancellation and deletion belongs in the existing `Cancel And Delete Safely` workflow section; command-specific help and generated references remain sourced from Cobra metadata.
 
 ## Decisions
 
@@ -32,4 +33,4 @@ Started: 2026-09-11T09:51:18Z
 - Do not infer successful emptiness from report or preview slice length; aborted and nonempty workflows can also return empty slices.
 
 ## Current Handoff
-- Continue with T018 in the Polish phase: document empty selector output behavior in README.md.
+- Continue with T019 in the Polish phase: update delete/cancel command metadata and destructive-help assertions.

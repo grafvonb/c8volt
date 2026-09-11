@@ -76,3 +76,18 @@ Started: 2026-09-11 11:51:18
 **Learnings**:
 - Empty-scope output adds no request: simple selectors retain one search, BPMN selectors retain validation plus search, and terminal stdin is never read.
 ---
+---
+## Iteration 4 - 2026-09-11 12:20
+**Work Unit**: Polish: document empty selector results
+**Tasks Completed**:
+- [x] T018: Document empty selector output behavior and examples in README.md
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- specs/299-empty-selector-output/tasks.md
+- specs/299-empty-selector-output/ralph-memory.md
+- specs/299-empty-selector-output/progress.md
+**Learnings**:
+- The existing cancel/delete workflow section can explain every empty-result mode without duplicating generated command help.
+---
