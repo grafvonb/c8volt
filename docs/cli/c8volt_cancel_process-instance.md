@@ -22,6 +22,8 @@ Resolved plans show one known resource tenant informationally, emit one warning-
 
 When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, or cancellation; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no cancellation request is submitted.
 
+When a selector search succeeds with no matching instances, cancellation completes as a successful no-op without confirmation or mutation. Human output is exactly "found: 0"; --quiet suppresses that summary, --keys-only writes zero bytes, and --json writes one succeeded result envelope with an empty cancellation payload. The same output rules apply to --dry-run, whose JSON preview reports mutationSubmitted: false.
+
 Search mode pages through matching process instances by default. --batch-size controls each discovery page request, --limit caps the selected process-instance scope across all pages, and --workers, --fail-fast, and --no-worker-limit bound independent planning or cancellation work. Verbose paging progress is written away from stdout; JSON, quiet, and automation output remain free of prompts unless confirmation is explicitly supplied.
 
 After confirmation, default human output keeps one workflow activity updated from real cancellation completions and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-root completion line. JSON, keys-only, and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings.
@@ -44,6 +46,8 @@ c8volt cancel process-instance [flags]
   ./c8volt --tenant tenant-a cancel process-instance --state active --limit 5 --dry-run
   ./c8volt --tenant "" cancel process-instance --state active --limit 5 --dry-run
   ./c8volt cancel process-instance --state active --batch-size 250 --limit 5 --dry-run
+  ./c8volt cancel process-instance --state active --json --dry-run
+  ./c8volt cancel process-instance --state active --keys-only
   ./c8volt cancel process-instance --state active --start-date-before 2026-05-31 --limit 5 --dry-run
   ./c8volt cancel process-instance --state active --start-date-newer-days 30 --limit 5 --dry-run
   ./c8volt cancel process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5 --auto-confirm

@@ -65,3 +65,13 @@ git diff --check
 - Passed `go test ./cmd -run 'Test(Delete|Cancel)ProcessInstance' -count=1`.
 - Passed `go test ./cmd -run 'TestProcessInstance|TestConfirm|TestConfirmation' -count=1`, retaining sparse-page, nonempty, abort, explicit-key, error, exit-code, and activity coverage.
 - Passed `git diff --check` before coordinated persistence.
+
+## Iteration 5 validation (2026-09-11)
+
+- Added cancel/delete command help contracts and selector examples for successful empty human, quiet, JSON, keys-only, and dry-run results.
+- Passed `go test ./cmd -run 'TestProcessInstanceDestructiveHelp|TestProcessInstanceHelp_DocumentsTenantContract' -count=1`.
+- Regenerated `docs/cli/` and the README-derived `docs/index.md` with `make docs-content`; reviewed the generated delta for the intended no-op contract.
+- Passed `go test ./cmd -run 'Test(Delete|Cancel)ProcessInstance' -count=1`.
+- Passed `go test ./cmd -run 'TestProcessInstance|TestConfirm|TestConfirmation' -count=1`.
+- Passed `make test` (`go test ./... -race -count=1`).
+- Passed `git diff --check`; final diff review found only scoped command metadata, help coverage, generated documentation, and feature records.

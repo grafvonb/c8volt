@@ -340,6 +340,28 @@ func TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode(t *testing.T)
 	require.Contains(t, deleteOutput, "./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run")
 }
 
+// TestProcessInstanceDestructiveHelp_DocumentsEmptySelectorOutput verifies
+// cancel and delete help document the successful no-op output contract.
+func TestProcessInstanceDestructiveHelp_DocumentsEmptySelectorOutput(t *testing.T) {
+	for _, testCase := range []struct {
+		operation string
+		state     string
+	}{
+		{operation: "cancel", state: "active"},
+		{operation: "delete", state: "terminated"},
+	} {
+		output := executeRootForProcessInstanceTest(t, testCase.operation, "process-instance", "--help")
+		require.Contains(t, output, "successful no-op")
+		require.Contains(t, output, "found: 0")
+		require.Contains(t, output, "--quiet suppresses that summary")
+		require.Contains(t, output, "--keys-only writes zero bytes")
+		require.Contains(t, output, "--json writes one succeeded result envelope")
+		require.Contains(t, output, "mutationSubmitted: false")
+		require.Contains(t, output, "--state "+testCase.state+" --json --dry-run")
+		require.Contains(t, output, "--state "+testCase.state+" --keys-only")
+	}
+}
+
 // TestProcessInstanceHelp_DocumentsTenantContract verifies command help names
 // discovery-scoped tenant behavior separately from explicit admin input.
 func TestProcessInstanceHelp_DocumentsTenantContract(t *testing.T) {

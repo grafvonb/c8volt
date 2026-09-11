@@ -91,3 +91,26 @@ Started: 2026-09-11 11:51:18
 **Learnings**:
 - The existing cancel/delete workflow section can explain every empty-result mode without duplicating generated command help.
 ---
+---
+## Iteration 5 - 2026-09-11 12:28
+**Work Unit**: Polish: command help, generated documentation, and release validation
+**Tasks Completed**:
+- [x] T019: Document empty selector output in cancel/delete command metadata and help tests
+- [x] T020: Format changes, validate help, and regenerate CLI documentation
+- [x] T021: Execute targeted and full race-enabled release validation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/cmd_processinstance_test.go
+- cmd/delete_processinstance.go
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/index.md
+- specs/299-empty-selector-output/quickstart.md
+- specs/299-empty-selector-output/tasks.md
+- specs/299-empty-selector-output/ralph-memory.md
+- specs/299-empty-selector-output/progress.md
+**Learnings**:
+- Command metadata is the source for CLI references, while the documentation generator also refreshes the README-derived site index.
+---
