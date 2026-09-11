@@ -68,3 +68,19 @@ Started: 2026-09-11 18:49:29
 **Learnings**:
 - The T004 integration already satisfies configured formatting, threshold filtering, and mark-before-emission deduplication for both paths without further production changes.
 ---
+---
+## Iteration 5 - 2026-09-11 19:12
+**Work Unit**: US3 Preserve Command Output and Execution Behavior (partial: cancel coverage)
+**Tasks Completed**:
+- [x] T008: Extend cancel execution and selector regressions with attached logging, independent streams, strict JSON EOF, mode combinations, and unchanged planning/mutation counts.
+**Tasks Remaining in Work Unit**: 3 (T009-T011)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_processinstance_test.go
+- cmd/cancel_processinstance_selector_test.go
+- specs/303-standard-tenant-logging/tasks.md
+- specs/303-standard-tenant-logging/ralph-memory.md
+- specs/303-standard-tenant-logging/progress.md
+**Learnings**:
+- Existing cancel regressions already cover sparse pages, explicit keys, aborts, failures, and empty-scope prompt/mutation suppression; the missing evidence was attached-logger stream routing, strict envelope termination, and call-count invariance.
+---

@@ -10,6 +10,7 @@ Started: 2026-09-11T16:49:28Z
 - Tests that mutate process-instance command globals call `resetProcessInstanceCommandGlobals` before the test and register it with `t.Cleanup`; real-terminal checks use `testx.NewCmdTerminalRunner`.
 - Both mutation tenant emitters now route existing `tenantContextHumanLine` values through `printOpsDurableLine`; the rendered marker remains before emission, so filtering cannot cause replay.
 - Attached-logger coverage uses a shared emitter table and validates the full 2 emitters × 2 formats × 3 thresholds matrix. Plain records parse `logging.PlainTimestampLayout`; JSON records decode `time`, `level`, and `msg` individually and require EOF.
+- Cancel execution coverage attaches the real logger to independently captured stderr, keeps stdout uncontaminated, and counts planning and mutation calls around tenant emission. Existing selector tests already own the broad empty/sparse/direct-key/abort/error matrix, so T008 extends those cases instead of duplicating command scaffolding.
 
 ## Decisions
 
@@ -26,10 +27,11 @@ Started: 2026-09-11T16:49:28Z
 - Focused US1 regression: `go test ./cmd -run '^TestProcessInstanceMutationTenantSeverity$' -count=1`
 - US1 suite: `go test ./cmd -run 'TestProcessInstanceMutation(Tenant|Progress)' -count=1`
 - US2 suite: `go test ./cmd -run 'TestProcessInstanceMutationTenant' -count=1 -v`
+- US3 cancel suite: `go test -race ./cmd -run 'TestCancelProcessInstance' -count=1`
 
 ## Do Not Repeat
 
 - Do not treat a passing pre-change baseline as proof of the new logger behavior.
 
 ## Current Handoff
-- Begin US3 with T008: extend cancel command execution coverage with attached logging while preserving output modes, streams, and request counts.
+- Continue US3 with T009: add equivalent attached-logger execution coverage for delete while preserving its existing mode matrix, streams, and request counts.
