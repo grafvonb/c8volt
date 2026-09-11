@@ -55,3 +55,24 @@ Started: 2026-09-11 11:51:18
 **Learnings**:
 - Resolve the output mode before quiet suppression so explicit machine output retains precedence.
 ---
+---
+## Iteration 3 - 2026-09-11 12:15
+**Work Unit**: US3 Preserve existing selection and execution behavior
+**Tasks Completed**:
+- [x] T014: Add delete empty-scope request and compatibility coverage
+- [x] T015: Add cancel empty-scope request and compatibility coverage
+- [x] T016: Add real-terminal prompt-free empty-selector coverage
+- [x] T017: Format and validate the complete US3 regression work unit
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_processinstance_selector_test.go
+- cmd/cmd_confirmation_terminal_test.go
+- cmd/delete_processinstance_selector_test.go
+- specs/299-empty-selector-output/quickstart.md
+- specs/299-empty-selector-output/tasks.md
+- specs/299-empty-selector-output/ralph-memory.md
+- specs/299-empty-selector-output/progress.md
+**Learnings**:
+- Empty-scope output adds no request: simple selectors retain one search, BPMN selectors retain validation plus search, and terminal stdin is never read.
+---

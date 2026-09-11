@@ -57,3 +57,11 @@ git diff --check
 - Verified ordinary human output is exactly `found: 0\n`, quiet human output is absent from both streams, quiet JSON remains one successful envelope, and quiet keys-only remains byte-empty for both commands and execution types.
 - Passed `make test` (`go test ./... -race -count=1`).
 - Passed `git diff --check` before coordinated persistence.
+
+## Iteration 3 validation (2026-09-11)
+
+- Added exact delete/cancel discovery baselines for state, date, and BPMN selectors in normal and dry-run execution; simple selectors issue one instance search and BPMN selectors issue definition validation followed by one instance search.
+- Added 16 real-terminal cases covering delete/cancel, normal/dry-run, human/JSON/keys-only/quiet output with no input exchanges; every case completed prompt-free with one discovery request and no mutation request.
+- Passed `go test ./cmd -run 'Test(Delete|Cancel)ProcessInstance' -count=1`.
+- Passed `go test ./cmd -run 'TestProcessInstance|TestConfirm|TestConfirmation' -count=1`, retaining sparse-page, nonempty, abort, explicit-key, error, exit-code, and activity coverage.
+- Passed `git diff --check` before coordinated persistence.

@@ -764,6 +764,108 @@ func TestDeleteProcessInstanceEmptySelectorOutput(t *testing.T) {
 	}
 }
 
+// TestDeleteProcessInstanceEmptySelectorPreservesDiscoveryRequests verifies
+// empty-result rendering neither repeats discovery nor skips BPMN validation.
+func TestDeleteProcessInstanceEmptySelectorPreservesDiscoveryRequests(t *testing.T) {
+	tests := []struct {
+		name      string
+		selectors []string
+		dryRun    bool
+		wantPaths []string
+		assert    func(*testing.T, []string)
+	}{
+		{
+			name:      "state",
+			selectors: []string{"--state", "completed"},
+			wantPaths: []string{"POST /v2/process-instances/search"},
+			assert: func(t *testing.T, bodies []string) {
+				require.Equal(t, "COMPLETED", decodeCapturedPISearchFilter(t, bodies)["state"])
+			},
+		},
+		{
+			name:      "state dry run",
+			selectors: []string{"--state", "completed"},
+			dryRun:    true,
+			wantPaths: []string{"POST /v2/process-instances/search"},
+			assert: func(t *testing.T, bodies []string) {
+				require.Equal(t, "COMPLETED", decodeCapturedPISearchFilter(t, bodies)["state"])
+			},
+		},
+		{
+			name:      "date",
+			selectors: []string{"--start-date-after", "2026-01-01"},
+			wantPaths: []string{"POST /v2/process-instances/search"},
+			assert: func(t *testing.T, bodies []string) {
+				requireCapturedPISearchDateBound(t, decodeCapturedPISearchFilter(t, bodies), "startDate", "$gte", "2026-01-01T00:00:00Z")
+			},
+		},
+		{
+			name:      "date dry run",
+			selectors: []string{"--start-date-after", "2026-01-01"},
+			dryRun:    true,
+			wantPaths: []string{"POST /v2/process-instances/search"},
+			assert: func(t *testing.T, bodies []string) {
+				requireCapturedPISearchDateBound(t, decodeCapturedPISearchFilter(t, bodies), "startDate", "$gte", "2026-01-01T00:00:00Z")
+			},
+		},
+		{
+			name:      "bpmn",
+			selectors: []string{"--state", "completed", "--bpmn-process-id", "order-process"},
+			wantPaths: []string{"POST /v2/process-definitions/search", "POST /v2/process-instances/search"},
+			assert: func(t *testing.T, bodies []string) {
+				require.Contains(t, bodies[0], `"processDefinitionId":"order-process"`)
+				require.Contains(t, bodies[1], `"processDefinitionId":"order-process"`)
+			},
+		},
+		{
+			name:      "bpmn dry run",
+			selectors: []string{"--state", "completed", "--bpmn-process-id", "order-process"},
+			dryRun:    true,
+			wantPaths: []string{"POST /v2/process-definitions/search", "POST /v2/process-instances/search"},
+			assert: func(t *testing.T, bodies []string) {
+				require.Contains(t, bodies[0], `"processDefinitionId":"order-process"`)
+				require.Contains(t, bodies[1], `"processDefinitionId":"order-process"`)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var paths []string
+			var bodies []string
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				paths = append(paths, r.Method+" "+r.URL.Path)
+				body, err := io.ReadAll(r.Body)
+				require.NoError(t, err)
+				bodies = append(bodies, string(body))
+				switch r.URL.Path {
+				case "/v2/process-definitions/search":
+					writeVisibleProcessDefinitionSearchResponse(w)
+				case "/v2/process-instances/search":
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+				default:
+					t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+				}
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+			args := []string{"--config", cfgPath, "delete", "process-instance"}
+			args = append(args, tt.selectors...)
+			if tt.dryRun {
+				args = append(args, "--dry-run")
+			}
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+
+			require.Equal(t, tt.wantPaths, paths)
+			tt.assert(t, bodies)
+			require.Equal(t, "found: 0\n", stdout)
+			require.Empty(t, stderr)
+		})
+	}
+}
+
 // Verifies reversed date ranges are rejected when the after-bound is later than the before-bound.
 func TestDeleteProcessInstanceCommand_RejectsInvalidDateFilter(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
