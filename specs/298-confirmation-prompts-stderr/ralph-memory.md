@@ -16,6 +16,8 @@ Started: 2026-09-11T06:40:57Z
 - Native Darwin/arm64 foundation validation with Go 1.26.2 discovers all six terminal allocator/runner tests and passes both the terminal-support and focused command suites.
 - Default-no confirmation now writes the unchanged formatted prompt to its supplied writer and falls back to `os.Stderr` for a nil interface; terminal acceptance covers accept, decline, empty input, and canonical EOF.
 - Command-level terminal tests can prove configured stderr by setting a root `io.MultiWriter` before execution and inspecting its secondary capture; root setup wraps that destination in the activity writer and the executed child inherits it.
+- Real keys-only paging acceptance can keep the parent fake HTTP server alive while the PTY child executes the command; sequential responses and parent-side request counts prove both continuation and stop behavior.
+- Caller-writer regressions can write a marker through the confirmation seam and use separate command buffers to prove the supplied writer resolves to stderr without invoking terminal input.
 
 ## Decisions
 
@@ -43,4 +45,4 @@ Started: 2026-09-11T06:40:57Z
 - A successful helper test that returns normally adds the Go test harness `PASS` line to stdout; helpers requiring byte-exact stdout can call `os.Exit(0)` after their child assertions succeed.
 
 ## Current Handoff
-- Start T012 in US2 by adding actual keys-only paging terminal coverage in `cmd/get_processinstance_paging_terminal_test.go`; T010 now supplies the corrected default-no writer routing.
+- Start T015 in US3 by extending the real-terminal confirmation matrix with default-yes routing and both-default normalized answer coverage.

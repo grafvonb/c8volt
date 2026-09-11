@@ -124,3 +124,25 @@ Started: 2026-09-11 08:40:57
 **Learnings**:
 - Real-command PTY coverage verifies Cobra's configured/inherited stderr path while a fake backend independently proves accepted mutation and declined non-mutation outcomes.
 ---
+
+## Iteration 8 - 2026-09-11 09:18
+**Work Unit**: US2 Page through keys without polluting the key stream
+**Tasks Completed**:
+- [x] T012: Add real-terminal keys-only paging coverage for repeated continuation, completion, decline, EOF, exact streams, and request-stop behavior.
+- [x] T013: Add caller-writer and normal-stop regressions for process-instance, incident, job, and element paging.
+- [x] T014: Run and record the required US2 regression validation.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_element_search_test.go
+- cmd/get_incident_test.go
+- cmd/get_job_test.go
+- cmd/get_processinstance_paging_terminal_test.go
+- cmd/get_processinstance_paging_test.go
+- specs/298-confirmation-prompts-stderr/progress.md
+- specs/298-confirmation-prompts-stderr/quickstart.md
+- specs/298-confirmation-prompts-stderr/ralph-memory.md
+- specs/298-confirmation-prompts-stderr/tasks.md
+**Learnings**:
+- A parent fake HTTP server can drive the real PTY child command while exact prompt exchanges and request counts prove both clean keys output and stop behavior.
+---

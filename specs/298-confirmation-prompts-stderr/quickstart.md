@@ -111,6 +111,19 @@ ok github.com/grafvonb/c8volt/cmd 0.845s
 
 `TestConfirmOrAbortTerminal` exercised real PTY stdin for acceptance, decline, empty input, and canonical EOF, including the nil-writer fallback and byte-exact plain prompt. `TestConfirmationCommand` exercised the real delete-process-definition command with a fake backend: configured and inherited stderr both received the prompt, accepted JSON results stayed on stdout, decline retained the error exit, and the backend received no deletion request after decline. The broader `go test ./cmd -count=1` suite also passed in 35.253s, followed by `git diff --check`.
 
+## Iteration 8 US2 validation
+
+Validation ran on 2026-09-11 with `go1.26.2 darwin/arm64`. The new terminal parent test was first run against the temporarily restored pre-T010 `fmt.Print` write. All three scenarios reached their bounded deadlines waiting for the complete prompt on stderr, proving the old route fails the regression; the corrected `fmt.Fprint` writer route was restored immediately afterward.
+
+The required US2 filter then passed:
+
+```text
+$ go test ./cmd -run 'TestGetProcessInstanceKeysOnlyPagingTerminal|Paging|GetIncident|GetJob|GetElement' -count=1
+ok github.com/grafvonb/c8volt/cmd 1.403s
+```
+
+`TestGetProcessInstanceKeysOnlyPagingTerminal` exercised real PTY stdin through the actual keys-only command path. Repeated acceptance fetched all three pages, decline after one continuation retained two keys, and canonical EOF retained the first key; stderr contained the exact one-or-two prompts, stdout contained one key per line, and request counts proved no page was fetched after stop. Process-instance, incident, job, and element caller regressions also verified their command stderr writer and normal paging-stop interpretation. The broader `go test ./cmd -count=1` suite passed in 35.837s, followed by `git diff --check`.
+
 ## Focused validation after implementation
 
 ```sh

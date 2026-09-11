@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -183,6 +184,38 @@ func TestGetJobCommand_SearchModeBatchSizeShorthandPagesUntilComplete(t *testing
 	page = requireJSONObject(t, bodies[1]["page"])
 	require.Equal(t, float64(2), page["limit"])
 	require.Equal(t, float64(1), page["from"])
+}
+
+// TestGetJobCommand_DeclinedPagingUsesCommandStderr verifies the caller passes its stderr writer and stops before another job page.
+func TestGetJobCommand_DeclinedPagingUsesCommandStderr(t *testing.T) {
+	var bodies []map[string]any
+	srv := newJobSearchServerResponses(t, &bodies,
+		`{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0}],"page":{"totalItems":2,"hasMoreTotalItems":true}}`,
+		`{"items":[{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(writer io.Writer, autoConfirm bool, prompt string) error {
+		_, err := writer.Write([]byte("job paging prompt writer\n"))
+		require.NoError(t, err)
+		require.False(t, autoConfirm)
+		require.Contains(t, prompt, "More matching jobs remain")
+		return localPreconditionError(ErrCmdAborted)
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	stdout, stderr := executeRootForJobTestWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--keys-only",
+		"get", "job",
+		"--batch-size", "1",
+	)
+
+	require.Len(t, bodies, 1)
+	require.Equal(t, "2251799813711967\n", stdout)
+	require.Equal(t, "job paging prompt writer\n", stderr)
 }
 
 func TestGetJobCommand_SearchModeLimitShorthandCapsPagedSearch(t *testing.T) {
