@@ -132,3 +132,18 @@ Started: 2026-09-11 15:45:51
 **Learnings**:
 - The correction changes only eligible command execution dispatch: shared schemas, capability metadata, classification, exit policy, bootstrap/parsing, raw XML, and excluded renderer paths remain unchanged from the pre-feature baseline.
 ---
+---
+## Iteration 7 - 2026-09-11 16:47
+**Work Unit**: Phase 6 Polish (partial: README machine-contract guidance)
+**Tasks Completed**:
+- [x] T022: Document the bounded command-execution error-envelope behavior in README
+**Tasks Remaining in Work Unit**: T023-T026
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- specs/301-preserve-json-errors/tasks.md
+- specs/301-preserve-json-errors/ralph-memory.md
+- specs/301-preserve-json-errors/progress.md
+**Learnings**:
+- The existing scripts/CI section is the narrowest place to explain error-envelope eligibility, stderr diagnostics, exit suppression, and the bootstrap/parsing boundary without implying broader command support.
+---

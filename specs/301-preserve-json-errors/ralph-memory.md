@@ -15,6 +15,7 @@ Started: 2026-09-11T13:45:51Z
 - Shared error-envelope assertions use independent test-only wire structs and raw JSON field maps so tests do not derive expectations from production rendering.
 - US1 retains every stdin caller's existing `.Unique()` placement and changes only command context/error dispatch.
 - The final production audit uses commit `6afb3cbe` as the pre-feature baseline; the contract schema, renderer, error normalization/classification, capability metadata, and exit policy are unchanged from that baseline.
+- README machine-contract guidance belongs beside the scripts/CI JSON example and scopes error envelopes to execution-time failures of commands advertising full support; `capabilities --json` remains the discovery mechanism.
 
 ## Gotchas
 
@@ -37,4 +38,4 @@ Started: 2026-09-11T13:45:51Z
 - Do not use a production `ResultEnvelope` to decode or construct expected regression results.
 
 ## Current Handoff
-- Continue with T022 in Phase 6: update README machine-contract guidance within the documented compatibility boundary.
+- Continue with T023 in Phase 6: update only relevant command help descriptions/examples and affected assertions, preserving command metadata.

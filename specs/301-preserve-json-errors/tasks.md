@@ -95,7 +95,7 @@ Task lines use `- [ ] Tnnn [P?] [USn?] Description`. Paths are relative to the r
 
 **Purpose**: Align user guidance and complete required verification.
 
-- [ ] T022 [P] Update `README.md` machine-contract guidance with the single command-execution error envelope, stderr human reporting, `--no-err-codes` retaining failure meaning, and the explicit bootstrap/parsing exclusion; do not promise broader command support.
+- [x] T022 [P] Update `README.md` machine-contract guidance with the single command-execution error envelope, stderr human reporting, `--no-err-codes` retaining failure meaning, and the explicit bootstrap/parsing exclusion; do not promise broader command support.
 - [ ] T023 [P] Update relevant help descriptions/examples in `cmd/delete_processinstance.go`, `cmd/get_cluster_topology.go`, `cmd/get_cluster_version.go`, `cmd/get_cluster_license.go`, `cmd/get_processdefinition.go`, and `cmd/embed_list.go`, plus affected stdin caller help where clarification is necessary; preserve annotations, identifiers, flags, and aliases, and update corresponding help assertions in `cmd/get_test.go` and `cmd/embed_test.go` where affected.
 - [ ] T024 After T022/T023, format all touched Go files and regenerate CLI references with `make docs-content` from `Makefile`; inspect `docs/cli/` and the generated homepage for accuracy and unrelated churn, never hand-editing generated pages.
 - [ ] T025 Follow `specs/301-preserve-json-errors/quickstart.md` to run the standalone-binary validation smoke scenarios with separately captured stdout/stderr and process statuses; record actual results and reconcile any stale guide commands or proposed test names with the completed implementation.
