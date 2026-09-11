@@ -14,6 +14,7 @@ Started: 2026-09-11T16:49:28Z
 - Delete execution coverage follows the same pattern: positive attached-logger paths assert clean stdout and unchanged planning/deletion counts, direct execution decodes one JSON envelope through EOF, and the expanded empty-selector table retains exact human, JSON, keys-only, quiet, automation, dry-run, verbose, auto-confirm, and no-wait contracts.
 - Real-terminal process-instance coverage uses the root command with `--no-indicator` and a stub HTTP server. It exercises cancel/delete across plain/JSON logging, configured/inherited root stderr, acceptance/abort, exact multiline prompts, stdout isolation, and mutation-call presence or absence. Existing terminal fixtures retain prompt-free empty scopes and one-key-per-line paging.
 - The README tenant-context paragraph now states that eligible selector-based delete/cancel diagnostics use standard INFO/WARN logging, honor configured log format/level, retain existing mode eligibility, and remain separate from JSON command results.
+- Cancel/delete command `Long` descriptions now repeat that concise logging contract; `TestProcessInstanceHelp_DocumentsTenantContract` locks the shared wording for both commands before docs regeneration.
 
 ## Decisions
 
@@ -38,4 +39,4 @@ Started: 2026-09-11T16:49:28Z
 - Do not treat a passing pre-change baseline as proof of the new logger behavior.
 
 ## Current Handoff
-- Continue with T013 in the polish phase: add the same concise logging clarification to cancel/delete command source metadata and adjust only relevant metadata assertions if needed.
+- Continue with T014 in the polish phase: run `make docs-content`, then inspect generated documentation for only the intended tenant-logging clarification.

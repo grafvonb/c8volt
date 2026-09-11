@@ -132,3 +132,20 @@ Started: 2026-09-11 18:49:29
 **Learnings**:
 - The existing tenant-context paragraph can state the selector logging contract without changing broader tenant policy or generated command documentation.
 ---
+---
+## Iteration 9 - 2026-09-11 19:29
+**Work Unit**: T013 Add tenant logging clarification to command metadata
+**Tasks Completed**:
+- [x] T013: Add the shared logging clarification to cancel/delete command metadata and assert it in process-instance help tests.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/delete_processinstance.go
+- cmd/cmd_processinstance_test.go
+- specs/303-standard-tenant-logging/tasks.md
+- specs/303-standard-tenant-logging/ralph-memory.md
+- specs/303-standard-tenant-logging/progress.md
+**Learnings**:
+- One shared help paragraph can document standard severity, format/level filtering, mode eligibility, and result-stream separation without changing command behavior.
+---
