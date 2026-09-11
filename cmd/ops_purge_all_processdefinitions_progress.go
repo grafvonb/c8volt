@@ -97,6 +97,7 @@ func configureOpsPurgeAllProcessDefinitionsProgress(cmd *cobra.Command, request 
 	}
 	channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
 	request.Progress = func(event ops.ProgressEvent) {
+		handleOpsTenantScopeProgressEvent(cmd, event, channel)
 		switch event.Kind {
 		case ops.ProgressEventKindPreflight:
 			if event.Preflight != nil {

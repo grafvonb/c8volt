@@ -4,8 +4,10 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -129,15 +131,20 @@ func TestOpsPurgeOrphanProcessInstancesDryRunVerboseReportsCandidateKeys(t *test
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/deletion")
 }
 
+// TestOpsPurgeOrphanProcessInstancesDryRunNoTargetsReportsNoOp verifies an
+// empty validated scope remains explicit in audit data without invented tenants.
 func TestOpsPurgeOrphanProcessInstancesDryRunNoTargetsReportsNoOp(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newOpsOrphanPurgeServer(t, &requests, false)
 	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "orphan-purge-empty.json")
 
 	output := executeRootForProcessInstanceTest(t,
 		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
 		"ops", "purge", "orphan-process-instances",
 		"--dry-run",
+		"--report-file", reportPath,
+		"--report-format", "json",
 	)
 
 	require.Contains(t, output, "candidate orphan process instances: 0")
@@ -147,6 +154,16 @@ func TestOpsPurgeOrphanProcessInstancesDryRunNoTargetsReportsNoOp(t *testing.T) 
 	snapshot := requests.Snapshot()
 	require.Len(t, snapshot, 1)
 	require.True(t, strings.HasPrefix(snapshot[0], "POST /v2/process-instances/search "))
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, "planned", report["outcome"])
+	tenantContext := requireJSONObject(t, report["tenantContext"])
+	require.Equal(t, "discovery", tenantContext["mode"])
+	require.Equal(t, "none", tenantContext["filter"])
+	require.Equal(t, []any{}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+	require.Equal(t, "unfiltered_selection", requireJSONObject(t, requireJSONItems(t, tenantContext["warnings"], 1)[0])["code"])
 }
 
 func TestOpsPurgeOrphanProcessInstancesDryRunAppliesCompatibleFilters(t *testing.T) {
@@ -197,6 +214,97 @@ func TestOpsPurgeOrphanProcessInstancesAutoConfirmDeletesCandidateKeys(t *testin
 	require.Contains(t, output, "elapsed:")
 	require.Equal(t, []string{"/v2/process-instances/" + opsOrphanChildKey + "/deletion"}, deleted.Snapshot())
 	require.NotContains(t, strings.Join(deleted.Snapshot(), "\n"), opsOrphanParentKey)
+}
+
+// TestOpsPurgeOrphanProcessInstancesInteractiveTenantContext verifies complete
+// tenant context is visible at acceptance or decline, duplicate scope events
+// stay silent, and the planned orphan key is reused for confirmed deletion.
+func TestOpsPurgeOrphanProcessInstancesInteractiveTenantContext(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		decline bool
+	}{
+		{name: "accepted"},
+		{name: "declined", decline: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			var deleted testx.SafeSlice[string]
+			srv := newOpsOrphanPurgeServerWithState(t, &requests, &deleted, true, "TERMINATED")
+			t.Cleanup(srv.Close)
+			promptPath := filepath.Join(t.TempDir(), "prompt.txt")
+			promptOutputPath := filepath.Join(t.TempDir(), "prompt-output.txt")
+			env := map[string]string{
+				"C8VOLT_TEST_CONFIG":                     writeTestConfigForVersion(t, srv.URL, "8.9"),
+				"C8VOLT_TEST_ORPHAN_PURGE_PROMPT":        promptPath,
+				"C8VOLT_TEST_ORPHAN_PURGE_PROMPT_OUTPUT": promptOutputPath,
+			}
+			if tt.decline {
+				env["C8VOLT_TEST_ORPHAN_PURGE_DECLINE"] = "1"
+			}
+
+			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeOrphanProcessInstancesInteractiveHelper", env)
+			if tt.decline {
+				require.Error(t, err, stderr)
+			} else {
+				require.NoError(t, err, stderr)
+			}
+			promptOutput := readReportFile(t, promptOutputPath)
+			require.Contains(t, readReportFile(t, promptPath), "orphan purge: 1 orphan candidate(s)")
+			require.Contains(t, promptOutput, "selection scope: unfiltered across accessible tenants")
+			require.Contains(t, promptOutput, "affected tenants: tenant")
+			require.Less(t, strings.Index(promptOutput, "selection scope: unfiltered across accessible tenants"), strings.Index(promptOutput, "affected tenants: tenant"))
+			combined := stdout + stderr
+			require.Equal(t, 1, strings.Count(combined, "selection scope: unfiltered across accessible tenants"), combined)
+			require.Equal(t, 1, strings.Count(combined, "affected tenants: tenant"), combined)
+			wantSearchRequests := 4
+			if tt.decline {
+				wantSearchRequests = 2
+			}
+			snapshot := requests.Snapshot()
+			require.Equal(t, wantSearchRequests, countRequestPrefixes(snapshot, "POST /v2/process-instances/search "), snapshot)
+			require.Equal(t, 1, strings.Count(strings.Join(snapshot, "\n"), `"$exists":true`), snapshot)
+			if tt.decline {
+				require.Empty(t, deleted.Snapshot())
+				return
+			}
+			require.Equal(t, []string{"/v2/process-instances/" + opsOrphanChildKey + "/deletion"}, deleted.Snapshot())
+		})
+	}
+}
+
+// TestOpsPurgeOrphanProcessInstancesAutoConfirmReportsTenantScopeBeforeWork
+// verifies unfiltered selection is visible before discovery and affected
+// evidence is visible before deletion without changing the frozen root target.
+func TestOpsPurgeOrphanProcessInstancesAutoConfirmReportsTenantScopeBeforeWork(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	backend := newOpsOrphanPurgeServerWithState(t, &requests, &deleted, true, "TERMINATED")
+	t.Cleanup(backend.Close)
+	output := &opsTenantTimingOutput{}
+	proxy, observations := newOpsTenantTimingProxy(t, backend.URL, output, func(r *http.Request) bool {
+		return r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/deletion")
+	})
+	t.Cleanup(proxy.Close)
+	reset := func() {
+		resetProcessInstanceCommandGlobals()
+		flagOpsPurgeOrphanReportFile = ""
+		flagOpsPurgeOrphanReportFormat = ""
+	}
+
+	promptCount, err := executeRootForOpsTenantTiming(t, output, reset,
+		"--config", writeTestConfigForVersion(t, proxy.URL, "8.9"),
+		"ops", "purge", "orphan-process-instances",
+		"--auto-confirm",
+		"--no-wait",
+	)
+	require.NoError(t, err, output.String())
+	firstRequest, firstMutation := observations.snapshot()
+	require.Contains(t, firstRequest, "selection scope: unfiltered across accessible tenants")
+	require.Contains(t, firstMutation, "affected tenants: tenant")
+	require.Zero(t, promptCount)
+	require.Equal(t, 3, countRequestPrefixes(requests.Snapshot(), "POST /v2/process-instances/search "))
+	require.Equal(t, []string{"/v2/process-instances/" + opsOrphanChildKey + "/deletion"}, deleted.Snapshot())
 }
 
 func TestOpsPurgeOrphanProcessInstancesAutoConfirmNoTargetsSkipsDelete(t *testing.T) {
@@ -291,6 +399,8 @@ func TestOpsPurgeOrphanProcessInstancesWritesMarkdownReport(t *testing.T) {
 	require.Contains(t, report, "  - "+opsOrphanChildKey)
 }
 
+// TestOpsPurgeOrphanProcessInstancesWritesJSONReport verifies submitted audit
+// output retains the complete unfiltered tenant scope and frozen target facts.
 func TestOpsPurgeOrphanProcessInstancesWritesJSONReport(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
@@ -321,6 +431,14 @@ func TestOpsPurgeOrphanProcessInstancesWritesJSONReport(t *testing.T) {
 	require.Equal(t, true, report["noWait"])
 	require.NotContains(t, report, "dryRun")
 	require.Equal(t, "8.9", report["camundaVersion"])
+	require.NotContains(t, report, "tenantId")
+	tenantContext := requireJSONObject(t, report["tenantContext"])
+	require.Equal(t, "discovery", tenantContext["mode"])
+	require.Equal(t, "none", tenantContext["filter"])
+	require.Equal(t, []any{"tenant"}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+	require.Equal(t, "unfiltered_selection", requireJSONObject(t, requireJSONItems(t, tenantContext["warnings"], 1)[0])["code"])
 	discovery := requireJSONObject(t, report["discovery"])
 	require.Equal(t, float64(1), discovery["count"])
 	keys := discovery["keys"].([]any)
@@ -550,6 +668,39 @@ func TestOpsPurgeOrphanProcessInstancesAbortPreservesExistingReportHelper(t *tes
 	})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestOpsPurgeOrphanProcessInstancesInteractiveHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	var promptOutput bytes.Buffer
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		if autoConfirm {
+			return fmt.Errorf("unexpected auto-confirm prompt")
+		}
+		if err := os.WriteFile(os.Getenv("C8VOLT_TEST_ORPHAN_PURGE_PROMPT"), []byte(prompt), 0o600); err != nil {
+			return err
+		}
+		if err := os.WriteFile(os.Getenv("C8VOLT_TEST_ORPHAN_PURGE_PROMPT_OUTPUT"), promptOutput.Bytes(), 0o600); err != nil {
+			return err
+		}
+		if os.Getenv("C8VOLT_TEST_ORPHAN_PURGE_DECLINE") == "1" {
+			return localPreconditionError(ErrCmdAborted)
+		}
+		return nil
+	}
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"ops", "purge", "orphan-process-instances",
+		"--no-wait",
+	})
+	root.SetOut(os.Stdout)
+	root.SetErr(io.MultiWriter(os.Stderr, &promptOutput))
 	_ = root.Execute()
 }
 

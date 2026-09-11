@@ -16,7 +16,13 @@ import (
 
 type tenantContextKey struct{}
 type tenantContextHumanRenderedKey struct{}
+type tenantContextHumanRenderStagesKey struct{}
 type tenantOverrideProvenanceKey struct{}
+
+type tenantContextHumanRenderState struct {
+	selectionRendered bool
+	affectedRendered  bool
+}
 
 type tenantOverrideProvenance struct {
 	ConfiguredTenantID string
@@ -100,6 +106,56 @@ func tenantContextHumanRendered(cmd *cobra.Command) bool {
 	}
 	rendered, _ := cmd.Context().Value(tenantContextHumanRenderedKey{}).(bool)
 	return rendered
+}
+
+// initializeTenantContextHumanRenderStages installs fresh staged suppression
+// state for one command execution without changing attached context data.
+func initializeTenantContextHumanRenderStages(cmd *cobra.Command) {
+	if cmd == nil {
+		return
+	}
+	parent := cmd.Context()
+	if parent == nil {
+		parent = context.Background()
+	}
+	cmd.SetContext(context.WithValue(parent, tenantContextHumanRenderStagesKey{}, tenantContextHumanRenderState{}))
+}
+
+// tenantContextHumanRenderStages returns staged state only for commands that
+// opted into separate selection and affected-scope rendering.
+func tenantContextHumanRenderStages(cmd *cobra.Command) (tenantContextHumanRenderState, bool) {
+	if cmd == nil || cmd.Context() == nil {
+		return tenantContextHumanRenderState{}, false
+	}
+	state, ok := cmd.Context().Value(tenantContextHumanRenderStagesKey{}).(tenantContextHumanRenderState)
+	return state, ok
+}
+
+// markTenantContextSelectionRendered records permitted selection output while
+// retaining the independent affected-scope stage.
+func markTenantContextSelectionRendered(cmd *cobra.Command) {
+	markTenantContextHumanRenderStage(cmd, true)
+}
+
+// markTenantContextAffectedRendered records a complete permitted affected
+// stage, including a validated empty scope that has no visible lines.
+func markTenantContextAffectedRendered(cmd *cobra.Command) {
+	markTenantContextHumanRenderStage(cmd, false)
+}
+
+// markTenantContextHumanRenderStage updates one command-local stage without
+// mutating the tenant context attached for final output or audit data.
+func markTenantContextHumanRenderStage(cmd *cobra.Command, selection bool) {
+	state, ok := tenantContextHumanRenderStages(cmd)
+	if !ok {
+		return
+	}
+	if selection {
+		state.selectionRendered = true
+	} else {
+		state.affectedRendered = true
+	}
+	cmd.SetContext(context.WithValue(cmd.Context(), tenantContextHumanRenderStagesKey{}, state))
 }
 
 // attachConfigurationTenantContext records configured tenant semantics for
@@ -230,11 +286,24 @@ func withTenantContextWarnings(ctx tenant.Context) tenant.Context {
 // tenantContextHumanLines classifies every human tenant-context line once so
 // stdout/stderr renderers and durable progress agree on warning severity.
 func tenantContextHumanLines(cmd *cobra.Command, ctx tenant.Context) []tenantContextHumanLine {
+	lines := tenantContextSelectionHumanLines(cmd, ctx)
+	return append(lines, tenantContextAffectedHumanLines(ctx)...)
+}
+
+// tenantContextSelectionHumanLines builds only override provenance and the
+// effective selection label used before discovery begins.
+func tenantContextSelectionHumanLines(cmd *cobra.Command, ctx tenant.Context) []tenantContextHumanLine {
 	lines := tenantOverrideHumanLines(cmd, ctx)
 	if line := tenantContextPrimaryHumanLine(ctx); line != "" {
 		lines = append(lines, tenantContextHumanLine{Text: line})
 	}
+	return lines
+}
 
+// tenantContextAffectedHumanLines builds only validated tenant summaries and
+// unknown-metadata warnings used after service-owned scope construction.
+func tenantContextAffectedHumanLines(ctx tenant.Context) []tenantContextHumanLine {
+	var lines []tenantContextHumanLine
 	switch len(ctx.ResolvedTenantIDs) {
 	case 0:
 	case 1:

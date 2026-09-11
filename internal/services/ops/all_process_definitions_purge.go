@@ -59,6 +59,7 @@ func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllP
 	if len(discovery.CandidateProcessDefinitionKeys) == 0 {
 		result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
 		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		emitOpsTenantScope(request.Progress, d.TenantEvidence{})
 		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomePlanned, nil)
 	}
 
@@ -77,6 +78,8 @@ func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllP
 		result.Deletion.Errors = []string{err.Error()}
 		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomeFailed, err)
 	}
+
+	emitOpsTenantScope(request.Progress, plan.TenantEvidence)
 
 	if request.DryRun || len(plan.CandidateProcessDefinitionKeys) == 0 {
 		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped

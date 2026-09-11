@@ -987,6 +987,226 @@ func TestRepairIncidentsBlocksResolutionWhenVariableScopeFails(t *testing.T) {
 	require.Equal(t, d.OpsWorkflowStepStatusBlocked, got.Plan[0].ResolutionStatus)
 }
 
+// TestRepairWorkflowsEmitTenantScopeBeforeFirstMutation verifies every repair
+// discovery mode publishes its complete frozen evidence before variable updates.
+func TestRepairWorkflowsEmitTenantScopeBeforeFirstMutation(t *testing.T) {
+	tests := []struct {
+		name      string
+		targetKey string
+		run       func(*testing.T, func(d.OpsProgressEvent), *bool) (d.OpsRepairResult, error)
+	}{
+		{
+			name:      "explicit incident",
+			targetKey: "inc-a",
+			run: func(t *testing.T, progress func(d.OpsProgressEvent), scopePublished *bool) (d.OpsRepairResult, error) {
+				api := NewWithRepairDependencies(nil, repairVariableAPI(t, scopePublished), repairIncidentAPI{
+					getIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+						return repairTenantIncident(key), nil
+					},
+					resolveIncident: successfulRepairResolution,
+				}, nil, nil, repairJobAPI{}, "")
+				return api.RepairIncidents(context.Background(), repairTenantRequest(d.OpsRepairDiscoveryModeKeyed, typex.Keys{"inc-a"}), services.WithProgress(progress))
+			},
+		},
+		{
+			name:      "search incident",
+			targetKey: "inc-a",
+			run: func(t *testing.T, progress func(d.OpsProgressEvent), scopePublished *bool) (d.OpsRepairResult, error) {
+				api := NewWithRepairDependencies(nil, repairVariableAPI(t, scopePublished), repairIncidentAPI{
+					searchIncidents: func(context.Context, d.IncidentFilter, int32, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+						return []d.ProcessInstanceIncidentDetail{repairTenantIncident("inc-a")}, nil
+					},
+					resolveIncident: successfulRepairResolution,
+				}, nil, nil, repairJobAPI{}, "")
+				return api.RepairIncidents(context.Background(), repairTenantRequest(d.OpsRepairDiscoveryModeSearch, nil), services.WithProgress(progress))
+			},
+		},
+		{
+			name:      "explicit process instance",
+			targetKey: "pi-a",
+			run: func(t *testing.T, progress func(d.OpsProgressEvent), scopePublished *bool) (d.OpsRepairResult, error) {
+				piAPI := repairVariableAPI(t, scopePublished)
+				piAPI.getProcessInstances = func(context.Context, typex.Keys, int, ...services.CallOption) ([]d.ProcessInstance, error) {
+					return []d.ProcessInstance{{Key: "pi-a", TenantId: "tenant-a", State: d.StateActive}}, nil
+				}
+				api := NewWithRepairDependencies(nil, piAPI, repairIncidentAPI{
+					searchProcessInstanceIncidents: func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+						return []d.ProcessInstanceIncidentDetail{repairTenantIncident("inc-a")}, nil
+					},
+					resolveIncident: successfulRepairResolution,
+				}, nil, nil, repairJobAPI{}, "")
+				return api.RepairProcessInstances(context.Background(), repairTenantRequest(d.OpsRepairDiscoveryModeKeyed, typex.Keys{"pi-a"}), services.WithProgress(progress))
+			},
+		},
+		{
+			name:      "search process instance",
+			targetKey: "pi-a",
+			run: func(t *testing.T, progress func(d.OpsProgressEvent), scopePublished *bool) (d.OpsRepairResult, error) {
+				piAPI := repairVariableAPI(t, scopePublished)
+				piAPI.search = func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+					return []d.ProcessInstance{{Key: "pi-a", TenantId: "tenant-a", State: d.StateActive}}, nil
+				}
+				api := NewWithRepairDependencies(nil, piAPI, repairIncidentAPI{
+					searchProcessInstanceIncidents: func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+						return []d.ProcessInstanceIncidentDetail{repairTenantIncident("inc-a")}, nil
+					},
+					resolveIncident: successfulRepairResolution,
+				}, nil, nil, repairJobAPI{}, "")
+				return api.RepairProcessInstances(context.Background(), repairTenantRequest(d.OpsRepairDiscoveryModeSearch, nil), services.WithProgress(progress))
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tenantEvents := 0
+			scopePublished := false
+			got, err := tt.run(t, func(event d.OpsProgressEvent) {
+				if event.Kind != d.OpsProgressEventKindTenantScope {
+					return
+				}
+				tenantEvents++
+				require.Equal(t, d.TenantEvidence{
+					ResolvedTenantIDs: []string{"tenant-a"},
+					TargetCount:       1,
+					Targets:           []d.TenantEvidenceTarget{{Key: tt.targetKey, TenantID: "tenant-a"}},
+				}, event.TenantScope.Evidence)
+				scopePublished = true
+			}, &scopePublished)
+
+			require.NoError(t, err)
+			require.Equal(t, d.OpsRepairOutcomeRepaired, got.Outcome)
+			require.Equal(t, 1, tenantEvents)
+			require.True(t, scopePublished)
+			require.Len(t, got.VariableUpdates, 1)
+			require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.VariableUpdates[0].Status)
+			require.Len(t, got.Plan, 1)
+			require.Equal(t, d.OpsWorkflowStepStatusSubmitted, got.Plan[0].ResolutionStatus)
+		})
+	}
+}
+
+// TestRepairTenantScopeEmptyFailureAndNilCallbackBoundaries verifies empty
+// frozen sets publish explicitly, failed discovery publishes nothing, and the
+// optional callback does not change existing dry-run behavior.
+func TestRepairTenantScopeEmptyFailureAndNilCallbackBoundaries(t *testing.T) {
+	t.Run("empty incident search", func(t *testing.T) {
+		tenantEvents := 0
+		api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
+			searchIncidents: func(context.Context, d.IncidentFilter, int32, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+				return nil, nil
+			},
+		}, nil, nil, repairJobAPI{}, "")
+		got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{DiscoveryMode: d.OpsRepairDiscoveryModeSearch}, services.WithProgress(func(event d.OpsProgressEvent) {
+			if event.Kind == d.OpsProgressEventKindTenantScope {
+				tenantEvents++
+				require.Equal(t, d.TenantEvidence{}, event.TenantScope.Evidence)
+			}
+		}))
+		require.NoError(t, err)
+		require.Equal(t, 1, tenantEvents)
+		require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
+	})
+
+	t.Run("empty explicit process instance incidents", func(t *testing.T) {
+		tenantEvents := 0
+		api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{
+			getProcessInstances: func(context.Context, typex.Keys, int, ...services.CallOption) ([]d.ProcessInstance, error) {
+				return []d.ProcessInstance{{Key: "pi-a", TenantId: "tenant-a"}}, nil
+			},
+		}, repairIncidentAPI{
+			searchProcessInstanceIncidents: func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+				return nil, nil
+			},
+		}, nil, nil, repairJobAPI{}, "")
+		got, err := api.RepairProcessInstances(context.Background(), d.OpsRepairRequest{InputKeys: typex.Keys{"pi-a"}}, services.WithProgress(func(event d.OpsProgressEvent) {
+			if event.Kind == d.OpsProgressEventKindTenantScope {
+				tenantEvents++
+				require.Equal(t, d.TenantEvidence{ResolvedTenantIDs: []string{"tenant-a"}, TargetCount: 1, Targets: []d.TenantEvidenceTarget{{Key: "pi-a", TenantID: "tenant-a"}}}, event.TenantScope.Evidence)
+			}
+		}))
+		require.NoError(t, err)
+		require.Equal(t, 1, tenantEvents)
+		require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
+	})
+
+	t.Run("discovery failure", func(t *testing.T) {
+		tenantEvents := 0
+		api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
+			getIncident: func(context.Context, string, ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+				return d.ProcessInstanceIncidentDetail{}, errors.New("discovery failed")
+			},
+		}, nil, nil, repairJobAPI{}, "")
+		_, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{InputKeys: typex.Keys{"inc-a"}}, services.WithProgress(func(event d.OpsProgressEvent) {
+			if event.Kind == d.OpsProgressEventKindTenantScope {
+				tenantEvents++
+			}
+		}))
+		require.ErrorContains(t, err, "discovery failed")
+		require.Zero(t, tenantEvents)
+	})
+
+	t.Run("process-instance search failure", func(t *testing.T) {
+		tenantEvents := 0
+		api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{
+			search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+				return nil, errors.New("process-instance discovery failed")
+			},
+		}, repairIncidentAPI{}, nil, nil, repairJobAPI{}, "")
+		_, err := api.RepairProcessInstances(context.Background(), d.OpsRepairRequest{DiscoveryMode: d.OpsRepairDiscoveryModeSearch}, services.WithProgress(func(event d.OpsProgressEvent) {
+			if event.Kind == d.OpsProgressEventKindTenantScope {
+				tenantEvents++
+			}
+		}))
+		require.ErrorContains(t, err, "process-instance discovery failed")
+		require.Zero(t, tenantEvents)
+	})
+
+	t.Run("nil callback", func(t *testing.T) {
+		api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
+			getIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+				return repairTenantIncident(key), nil
+			},
+		}, nil, nil, repairJobAPI{}, "")
+		got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{InputKeys: typex.Keys{"inc-a"}, DryRun: true})
+		require.NoError(t, err)
+		require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
+	})
+}
+
+func repairTenantRequest(mode d.OpsRepairDiscoveryMode, keys typex.Keys) d.OpsRepairRequest {
+	return d.OpsRepairRequest{
+		DiscoveryMode: mode,
+		InputKeys:     keys,
+		BatchSize:     10,
+		Variables:     map[string]any{"customerTier": "gold"},
+		NoWait:        true,
+		Workers:       1,
+	}
+}
+
+func repairTenantIncident(key string) d.ProcessInstanceIncidentDetail {
+	return d.ProcessInstanceIncidentDetail{IncidentKey: key, ProcessInstanceKey: "pi-a", TenantId: "tenant-a", State: "ACTIVE"}
+}
+
+func repairVariableAPI(t *testing.T, scopePublished *bool) stubProcessInstanceAPI {
+	return stubProcessInstanceAPI{
+		updateVariables: func(_ context.Context, key string, variables map[string]any, _ ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+			require.True(t, *scopePublished, "tenant scope must precede variable updates")
+			require.Equal(t, "pi-a", key)
+			require.Equal(t, map[string]any{"customerTier": "gold"}, variables)
+			return d.ProcessInstanceVariableUpdateResponse{Key: key, Ok: true, StatusCode: http.StatusNoContent}, nil
+		},
+		searchVariables: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			return []d.ProcessInstanceVariable{{Name: "customerTier", Value: `"gold"`, ProcessInstanceKey: key, ScopeKey: key}}, nil
+		},
+	}
+}
+
+func successfulRepairResolution(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
+	return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: http.StatusNoContent, Status: "accepted"}, nil
+}
+
 // TestRepairIncidentsSearchProgressContractPendingT068 defines the structured
 // incident repair progress emitted from service-owned paged discovery and
 // frozen planning.
@@ -1041,7 +1261,7 @@ func TestRepairIncidentsSearchProgressContractPendingT068(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
 	require.Len(t, pageRequests, 2)
-	require.Len(t, events, 5)
+	require.Len(t, events, 6)
 	require.Equal(t, d.OpsProgressEventKindPreflight, events[0].Kind)
 	require.NotNil(t, events[0].Preflight)
 	require.Equal(t, "preflight", events[0].Preflight.Phase)
@@ -1059,8 +1279,10 @@ func TestRepairIncidentsSearchProgressContractPendingT068(t *testing.T) {
 
 	require.Equal(t, d.OpsPageProgress{Phase: "discovering repair incidents", CurrentPage: 1, PageCount: ptrDomainInt64(2), PageCountKind: d.OpsPageCountKindExact, PageSize: 2, CurrentPageCount: 2, Seen: 2, Selected: 2, OverflowState: d.OpsOverflowStateHasMore}, *events[1].Page)
 	require.Equal(t, d.OpsPageProgress{Phase: "discovering repair incidents", CurrentPage: 2, PageCount: ptrDomainInt64(2), PageCountKind: d.OpsPageCountKindExact, PageSize: 2, CurrentPageCount: 1, Seen: 3, Selected: 3, OverflowState: d.OpsOverflowStateNoMore}, *events[2].Page)
-	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "planning incident repair scope", CoreResource: "incident(s)", Done: 0, Total: 3}, *events[3].FrozenScope)
-	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "planning incident repair scope", CoreResource: "incident(s)", Done: 3, Total: 3}, *events[4].FrozenScope)
+	require.Equal(t, d.OpsProgressEventKindTenantScope, events[3].Kind)
+	require.Equal(t, 3, events[3].TenantScope.Evidence.TargetCount)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "planning incident repair scope", CoreResource: "incident(s)", Done: 0, Total: 3}, *events[4].FrozenScope)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "planning incident repair scope", CoreResource: "incident(s)", Done: 3, Total: 3}, *events[5].FrozenScope)
 }
 
 // TestRepairProcessInstancesSearchProgressContractPendingT068 defines the
@@ -1123,7 +1345,7 @@ func TestRepairProcessInstancesSearchProgressContractPendingT068(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
 	require.Len(t, pageRequests, 2)
-	require.Len(t, events, 7)
+	require.Len(t, events, 8)
 	require.Equal(t, d.OpsProgressEventKindPreflight, events[0].Kind)
 	require.Equal(t, "process_instance", events[0].Preflight.CoreResource)
 	require.Equal(t, "process-instance repair", events[0].Preflight.SelectorSummary)
@@ -1134,8 +1356,10 @@ func TestRepairProcessInstancesSearchProgressContractPendingT068(t *testing.T) {
 	require.Equal(t, d.OpsPageProgress{Phase: "discovering repair process instances", CurrentPage: 2, PageCount: ptrDomainInt64(2), PageCountKind: d.OpsPageCountKindExact, PageSize: 2, CurrentPageCount: 1, Seen: 3, Selected: 3, OverflowState: d.OpsOverflowStateNoMore}, *events[2].Page)
 	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "loading process-instance repair incidents", CoreResource: "process instance(s)", Done: 0, Total: 3}, *events[3].FrozenScope)
 	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "loading process-instance repair incidents", CoreResource: "process instance(s)", Done: 3, Total: 3}, *events[4].FrozenScope)
-	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "planning process-instance repair scope", CoreResource: "process instance(s)", Done: 0, Total: 3}, *events[5].FrozenScope)
-	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "planning process-instance repair scope", CoreResource: "process instance(s)", Done: 3, Total: 3}, *events[6].FrozenScope)
+	require.Equal(t, d.OpsProgressEventKindTenantScope, events[5].Kind)
+	require.Equal(t, 3, events[5].TenantScope.Evidence.TargetCount)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "planning process-instance repair scope", CoreResource: "process instance(s)", Done: 0, Total: 3}, *events[6].FrozenScope)
+	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "planning process-instance repair scope", CoreResource: "process instance(s)", Done: 3, Total: 3}, *events[7].FrozenScope)
 }
 
 // TestRepairIncidentsKeyedBulkProgressCountersPendingT068 defines exact

@@ -27,7 +27,7 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 	Use:   "orphan-process-instances",
 	Short: "Purge orphan child process instances",
 	Long: "Purge orphan child process instances.\n\n" +
-		"Tenant contract: orphan purge uses discovery semantics. A named tenant scopes candidate discovery; empty tenant configuration leaves discovery unfiltered and is reported as \"selection scope: unfiltered across accessible tenants\". Explicit --tenant changes are reported before scope, and --tenant \"\" warns when it clears a named configured filter. Frozen plans and audit reports show one known resource tenant informationally, emit one warning-level \"affected tenants\" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.\n\n" +
+		"Tenant contract: orphan purge uses discovery semantics. A named tenant scopes candidate discovery; empty tenant configuration leaves discovery unfiltered and is reported as \"selection scope: unfiltered across accessible tenants\". Explicit --tenant changes are reported before scope, and --tenant \"\" warns when it clears a named configured filter. Selection context appears before discovery; validated affected tenants appear before the confirmation question and the first mutation. --auto-confirm skips only the question and does not suppress tenant context permitted by the selected output mode. Frozen plans and audit reports show one known resource tenant informationally, emit one warning-level \"affected tenants\" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.\n\n" +
 		"The workflow discovers child process instances with missing parents, freezes the discovered key set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. After confirmation, default human output keeps deletion progress on one workflow activity and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-root completion line. JSON and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
 	Example: `  ./c8volt ops purge orphan-process-instances --dry-run
   ./c8volt --tenant tenant-a ops purge orphan-process-instances --dry-run
@@ -71,6 +71,7 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 			ReportFormat: flagOpsPurgeOrphanReportFormat,
 			StartedAt:    time.Now().UTC(),
 		}
+		initializeOpsTenantContextHumanReporting(cmd, cfg, false)
 		progress := configureOpsPurgeOrphanProcessInstancesProgress(cmd, &request)
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
@@ -87,7 +88,7 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 			}
 			if planned.Discovery.Count > 0 {
 				ctx := attachOpsDiscoveryTenantContext(cmd, cfg, planned.DeletionPlan.TenantEvidence)
-				printOpsTenantContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
+				printOpsTenantContextForCommand(cmd, ctx)
 				prompt := opsPurgeOrphanProcessInstancesConfirmationPrompt(planned)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsPurgeOrphanProcessInstancesAfterReport(cmd, log, cfg, markOpsPurgeOrphanProcessInstancesLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
@@ -170,6 +171,11 @@ func init() {
 	setCommandMutation(opsPurgeOrphanProcessInstancesCmd, CommandMutationStateChanging)
 	setContractSupport(opsPurgeOrphanProcessInstancesCmd, ContractSupportFull)
 	setAutomationSupport(opsPurgeOrphanProcessInstancesCmd, AutomationSupportFull, "supports unattended dry-run previews and implicitly confirmed purges with shared machine output")
+	setOutputModes(opsPurgeOrphanProcessInstancesCmd,
+		OutputModeContract{Name: RenderModeOneLine.String(), Supported: true},
+		OutputModeContract{Name: RenderModeKeysOnly.String(), Supported: true},
+		OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
+	)
 }
 
 func validateOpsPurgeOrphanProcessInstancesReportFlags() error {

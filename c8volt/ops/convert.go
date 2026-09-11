@@ -245,6 +245,7 @@ func fromDomainProgressEvent(x d.OpsProgressEvent) ProgressEvent {
 		Preflight:   fromDomainPreflightScopePtr(x.Preflight),
 		Page:        fromDomainPageProgressPtr(x.Page),
 		FrozenScope: fromDomainFrozenScopeProgressPtr(x.FrozenScope),
+		TenantScope: fromDomainTenantScopeProgressPtr(x.TenantScope),
 		ETA:         fromDomainETASampleWindowPtr(x.ETA),
 		Stage:       fromDomainStageProgressPtr(x.Stage),
 		Completion:  fromDomainCompletionProgressPtr(x.Completion),
@@ -258,10 +259,29 @@ func toDomainProgressEvent(x ProgressEvent) d.OpsProgressEvent {
 		Preflight:   toDomainPreflightScopePtr(x.Preflight),
 		Page:        toDomainPageProgressPtr(x.Page),
 		FrozenScope: toDomainFrozenScopeProgressPtr(x.FrozenScope),
+		TenantScope: toDomainTenantScopeProgressPtr(x.TenantScope),
 		ETA:         toDomainETASampleWindowPtr(x.ETA),
 		Stage:       toDomainStageProgressPtr(x.Stage),
 		Completion:  toDomainCompletionProgressPtr(x.Completion),
 	}
+}
+
+// fromDomainTenantScopeProgressPtr maps optional validated tenant evidence
+// while preserving nil as an absent payload.
+func fromDomainTenantScopeProgressPtr(x *d.OpsTenantScopeProgress) *TenantScopeProgress {
+	if x == nil {
+		return nil
+	}
+	return &TenantScopeProgress{Evidence: fromDomainOpsTenantEvidence(x.Evidence)}
+}
+
+// toDomainTenantScopeProgressPtr maps optional public tenant evidence while
+// preserving nil as an absent payload.
+func toDomainTenantScopeProgressPtr(x *TenantScopeProgress) *d.OpsTenantScopeProgress {
+	if x == nil {
+		return nil
+	}
+	return &d.OpsTenantScopeProgress{Evidence: toDomainOpsTenantEvidence(x.Evidence)}
 }
 
 // fromDomainPreflightScopePtr maps optional preflight metadata while preserving nil as absent.
@@ -1809,6 +1829,19 @@ func fromDomainOpsTenantEvidence(x d.TenantEvidence) process.TenantEvidence {
 		TargetCount:        x.TargetCount,
 		Targets: toolx.MapSlice(x.Targets, func(target d.TenantEvidenceTarget) process.TenantEvidenceTarget {
 			return process.TenantEvidenceTarget{Key: target.Key, TenantID: target.TenantID}
+		}),
+	}
+}
+
+// toDomainOpsTenantEvidence copies public process evidence into the internal
+// shape used by service callback adapters.
+func toDomainOpsTenantEvidence(x process.TenantEvidence) d.TenantEvidence {
+	return d.TenantEvidence{
+		ResolvedTenantIDs:  append([]string(nil), x.ResolvedTenantIDs...),
+		UnknownTargetCount: x.UnknownTargetCount,
+		TargetCount:        x.TargetCount,
+		Targets: toolx.MapSlice(x.Targets, func(target process.TenantEvidenceTarget) d.TenantEvidenceTarget {
+			return d.TenantEvidenceTarget{Key: target.Key, TenantID: target.TenantID}
 		}),
 	}
 }

@@ -29,7 +29,7 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 	Use:   "retention-policy",
 	Short: "Execute process-instance retention cleanup",
 	Long: "Execute process-instance retention cleanup.\n\n" +
-		"Tenant contract: retention cleanup uses discovery semantics. A named tenant scopes candidate discovery; empty tenant configuration leaves discovery unfiltered and is reported as \"selection scope: unfiltered across accessible tenants\". Explicit --tenant changes are reported before scope, and --tenant \"\" warns when it clears a named configured filter. Frozen plans and audit reports show one known resource tenant informationally, emit one warning-level \"affected tenants\" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.\n\n" +
+		"Tenant contract: retention cleanup uses discovery semantics. A named tenant scopes candidate discovery; empty tenant configuration leaves discovery unfiltered and is reported as \"selection scope: unfiltered across accessible tenants\". Explicit --tenant changes are reported before scope, and --tenant \"\" warns when it clears a named configured filter. Selection context appears before discovery; validated affected tenants appear before the confirmation question and the first mutation. --auto-confirm skips only the question and does not suppress tenant context permitted by the selected output mode. Frozen plans and audit reports show one known resource tenant informationally, emit one warning-level \"affected tenants\" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.\n\n" +
 		"The workflow discovers process instances older than the required retention age, freezes that candidate set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion after confirmation. Discovery pages through all matching retention candidates by default. --batch-size controls each discovery page request, --limit caps the frozen retention scope, and --workers, --fail-fast, and --no-worker-limit bound independent delete planning or deletion work. Human, JSON, and audit report output identify whether discovery completed or was user-limited. After confirmation, default human output keeps deletion progress on one workflow activity and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-root completion line. JSON and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings. Use compatible process-instance filters to narrow discovery, --auto-confirm or --automation for unattended deletion, and --report-file to write an audit report.",
 	Example: `  ./c8volt ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt --tenant tenant-a ops execute retention-policy --retention-days 90 --dry-run
@@ -89,6 +89,7 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 		if err := validateOpsWorkflowReportPathForPlanning(flagOpsExecuteRetentionPolicyReportFile, opsWorkflowReportWriteModeForConfirmedMutation(effectiveAutoConfirm)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
+		initializeOpsTenantContextHumanReporting(cmd, cfg, false)
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
@@ -104,7 +105,7 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 			}
 			if len(planned.DeletePlan.ResolvedRootKeys) > 0 {
 				ctx := attachOpsDiscoveryTenantContext(cmd, cfg, planned.DeletePlan.TenantEvidence)
-				printOpsTenantContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
+				printOpsTenantContextForCommand(cmd, ctx)
 				prompt := opsExecuteRetentionPolicyConfirmationPrompt(planned)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsExecuteRetentionPolicyAfterReport(cmd, log, cfg, markOpsExecuteRetentionPolicyLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
@@ -163,6 +164,10 @@ func init() {
 	setCommandMutation(opsExecuteRetentionPolicyCmd, CommandMutationStateChanging)
 	setContractSupport(opsExecuteRetentionPolicyCmd, ContractSupportFull)
 	setAutomationSupport(opsExecuteRetentionPolicyCmd, AutomationSupportFull, "supports unattended dry-run previews and implicitly confirmed retention cleanup with shared machine output")
+	setOutputModes(opsExecuteRetentionPolicyCmd,
+		OutputModeContract{Name: RenderModeOneLine.String(), Supported: true},
+		OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
+	)
 	setFlagContractRequired(opsExecuteRetentionPolicyCmd, "retention-days")
 }
 

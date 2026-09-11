@@ -38,9 +38,42 @@ func attachOpsCreationTenantContext(cmd *cobra.Command, cfg *config.Config, evid
 	return ctx
 }
 
+// initializeOpsTenantContextHumanReporting starts a fresh two-stage reporting
+// lifetime and emits selection semantics before any backend work begins.
+func initializeOpsTenantContextHumanReporting(cmd *cobra.Command, cfg *config.Config, explicitKeys bool) {
+	initializeTenantContextHumanRenderStages(cmd)
+	ctx := newDiscoveryTenantContext(configuredTenantID(cfg))
+	if explicitKeys {
+		ctx = newExplicitKeysTenantContext(configuredTenantID(cfg))
+	}
+	attachTenantContext(cmd, ctx)
+	channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
+	printOpsTenantSelectionContext(cmd, ctx, channel)
+}
+
+// handleOpsTenantScopeProgressEvent attaches the service-owned evidence before
+// rendering its affected stage; other progress events remain untouched.
+func handleOpsTenantScopeProgressEvent(cmd *cobra.Command, event ops.ProgressEvent, channel ops.ProgressChannel) {
+	if event.Kind != ops.ProgressEventKindTenantScope || event.TenantScope == nil {
+		return
+	}
+	base, ok := attachedTenantContext(cmd)
+	if !ok {
+		return
+	}
+	ctx := opsTenantContextWithEvidence(*base, event.TenantScope.Evidence)
+	attachTenantContext(cmd, ctx)
+	printOpsTenantAffectedContext(cmd, ctx, channel)
+}
+
 // printOpsTenantContext writes tenant semantics on the ops durable progress
 // channel so preflight and confirmation boundaries do not contaminate stdout.
 func printOpsTenantContext(cmd *cobra.Command, ctx tenant.Context, channel ops.ProgressChannel) {
+	if _, staged := tenantContextHumanRenderStages(cmd); staged {
+		printOpsTenantSelectionContext(cmd, ctx, channel)
+		printOpsTenantAffectedContext(cmd, ctx, channel)
+		return
+	}
 	if cmd == nil || tenantContextIsZero(ctx) || !channel.DurableAllowed || !channel.StderrAllowed || tenantContextHumanRendered(cmd) {
 		return
 	}
@@ -48,6 +81,45 @@ func printOpsTenantContext(cmd *cobra.Command, ctx tenant.Context, channel ops.P
 	for _, line := range tenantContextHumanLines(cmd, ctx) {
 		printOpsDurableLine(cmd, line.Text, line.Warn)
 	}
+}
+
+// printOpsTenantContextForCommand derives the durable channel from the active
+// command mode before reporting pre-prompt tenant context.
+func printOpsTenantContextForCommand(cmd *cobra.Command, ctx tenant.Context) {
+	channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
+	printOpsTenantContext(cmd, ctx, channel)
+}
+
+// printOpsTenantSelectionContext emits only selection semantics at the early
+// command boundary and suppresses duplicate callbacks within the execution.
+func printOpsTenantSelectionContext(cmd *cobra.Command, ctx tenant.Context, channel ops.ProgressChannel) {
+	state, staged := tenantContextHumanRenderStages(cmd)
+	if !staged || state.selectionRendered || !opsTenantContextHumanAllowed(cmd, ctx, channel) {
+		return
+	}
+	for _, line := range tenantContextSelectionHumanLines(cmd, ctx) {
+		printOpsDurableLine(cmd, line.Text, line.Warn)
+	}
+	markTenantContextSelectionRendered(cmd)
+}
+
+// printOpsTenantAffectedContext emits validated affected-scope facts once and
+// treats a permitted empty scope as a completed stage without fabricating text.
+func printOpsTenantAffectedContext(cmd *cobra.Command, ctx tenant.Context, channel ops.ProgressChannel) {
+	state, staged := tenantContextHumanRenderStages(cmd)
+	if !staged || state.affectedRendered || !opsTenantContextHumanAllowed(cmd, ctx, channel) {
+		return
+	}
+	for _, line := range tenantContextAffectedHumanLines(ctx) {
+		printOpsDurableLine(cmd, line.Text, line.Warn)
+	}
+	markTenantContextAffectedRendered(cmd)
+}
+
+// opsTenantContextHumanAllowed applies the shared durable stderr policy while
+// keeping context attachment independent from whether text can be emitted.
+func opsTenantContextHumanAllowed(cmd *cobra.Command, ctx tenant.Context, channel ops.ProgressChannel) bool {
+	return cmd != nil && !tenantContextIsZero(ctx) && channel.DurableAllowed && channel.StderrAllowed
 }
 
 // opsTenantContextWithEvidence merges a command-owned base context with

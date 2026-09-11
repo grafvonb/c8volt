@@ -62,6 +62,8 @@ const (
 	OpsProgressEventKindPage OpsProgressEventKind = "page"
 	// OpsProgressEventKindFrozenScope carries exact counters for a frozen work set.
 	OpsProgressEventKindFrozenScope OpsProgressEventKind = "frozen_scope"
+	// OpsProgressEventKindTenantScope carries validated tenant evidence for the complete applicable work set.
+	OpsProgressEventKindTenantScope OpsProgressEventKind = "tenant_scope"
 	// OpsProgressEventKindETA carries timing samples used for approximate ETA rendering.
 	OpsProgressEventKindETA OpsProgressEventKind = "eta"
 	// OpsProgressEventKindStage carries a service-owned stage entry before mutation work begins.
@@ -163,6 +165,12 @@ type OpsFrozenScopeProgress struct {
 	Errors       int            `json:"errors,omitempty"`
 }
 
+// OpsTenantScopeProgress carries a snapshot of validated tenant evidence. An
+// empty evidence value represents a successfully established empty scope.
+type OpsTenantScopeProgress struct {
+	Evidence TenantEvidence `json:"evidence,omitempty"`
+}
+
 // OpsStageProgress reports that a service workflow entered a stage. Optional
 // counts are nil when unavailable; non-nil counts must be nonnegative, and zero
 // represents a known empty scope rather than unknown work.
@@ -203,6 +211,7 @@ type OpsProgressEvent struct {
 	Preflight   *OpsPreflightScope      `json:"preflight,omitempty"`
 	Page        *OpsPageProgress        `json:"page,omitempty"`
 	FrozenScope *OpsFrozenScopeProgress `json:"frozenScope,omitempty"`
+	TenantScope *OpsTenantScopeProgress `json:"tenantScope,omitempty"`
 	ETA         *OpsETASampleWindow     `json:"eta,omitempty"`
 	Stage       *OpsStageProgress       `json:"stage,omitempty"`
 	Completion  *OpsCompletionProgress  `json:"completion,omitempty"`

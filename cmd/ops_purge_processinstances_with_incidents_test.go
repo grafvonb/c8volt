@@ -502,6 +502,14 @@ func TestOpsPurgeProcessInstancesWithIncidentsWritesJSONReport(t *testing.T) {
 	require.Equal(t, "deleted", report["outcome"])
 	require.Equal(t, true, report["noWait"])
 	require.Equal(t, "8.9", report["camundaVersion"])
+	require.NotContains(t, report, "tenantId")
+	tenantContext := requireJSONObject(t, report["tenantContext"])
+	require.Equal(t, "discovery", tenantContext["mode"])
+	require.Equal(t, "none", tenantContext["filter"])
+	require.Equal(t, []any{"tenant"}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+	require.Equal(t, "unfiltered_selection", requireJSONObject(t, requireJSONItems(t, tenantContext["warnings"], 1)[0])["code"])
 	discovery := requireJSONObject(t, report["discovery"])
 	require.Equal(t, true, discovery["complete"])
 	require.Equal(t, float64(1000), discovery["batchSize"])
@@ -524,16 +532,25 @@ func TestOpsPurgeProcessInstancesWithIncidentsExistingReportPreservation(t *test
 		withActiveChild bool
 		want            string
 		wantRequests    bool
+		wantExitCode    int
 	}{
 		{
-			name: "dry run",
-			args: []string{"ops", "purge", "process-instances-with-incidents", "--dry-run"},
-			want: "report file already exists:",
+			name:         "dry run",
+			args:         []string{"ops", "purge", "process-instances-with-incidents", "--dry-run"},
+			want:         "report file already exists:",
+			wantExitCode: exitcode.Error,
 		},
 		{
-			name: "unconfirmed",
-			args: []string{"ops", "purge", "process-instances-with-incidents"},
-			want: "report file already exists:",
+			name:         "invalid input",
+			args:         []string{"ops", "purge", "process-instances-with-incidents", "--limit", "0"},
+			want:         "--limit must be positive integer",
+			wantExitCode: exitcode.InvalidArgs,
+		},
+		{
+			name:         "unconfirmed",
+			args:         []string{"ops", "purge", "process-instances-with-incidents"},
+			want:         "report file already exists:",
+			wantExitCode: exitcode.Error,
 		},
 		{
 			name:            "locally blocked",
@@ -541,6 +558,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsExistingReportPreservation(t *test
 			withActiveChild: true,
 			want:            "write audit report: report file already exists:",
 			wantRequests:    true,
+			wantExitCode:    exitcode.Error,
 		},
 	}
 
@@ -564,7 +582,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsExistingReportPreservation(t *test
 
 			exitErr, ok := err.(*exec.ExitError)
 			require.True(t, ok)
-			require.Equal(t, exitcode.Error, exitErr.ExitCode())
+			require.Equal(t, tt.wantExitCode, exitErr.ExitCode())
 			require.Contains(t, string(output), tt.want)
 			require.Equal(t, existingReport, readReportFile(t, reportPath))
 			require.Empty(t, deleted.Snapshot())
@@ -610,6 +628,61 @@ func TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionUsesFrozenPlanRoo
 	require.Equal(t, 1, countOpsIncidentPurgeRequests(requests.Snapshot(), "POST /v2/incidents/search "))
 }
 
+// TestOpsPurgeProcessInstancesWithIncidentsInteractiveTenantContext verifies
+// complete prompt-time context, duplicate callback suppression, frozen
+// discovery reuse, and the no-mutation decline path.
+func TestOpsPurgeProcessInstancesWithIncidentsInteractiveTenantContext(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		decline bool
+	}{
+		{name: "accepted"},
+		{name: "declined", decline: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			var deleted testx.SafeSlice[string]
+			srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+			t.Cleanup(srv.Close)
+			promptPath := filepath.Join(t.TempDir(), "prompt.txt")
+			promptOutputPath := filepath.Join(t.TempDir(), "prompt-output.txt")
+			env := map[string]string{
+				"C8VOLT_TEST_CONFIG":                            writeTestConfigForVersion(t, srv.URL, "8.9"),
+				"C8VOLT_TEST_INCIDENT_PURGE_PROMPT_FILE":        promptPath,
+				"C8VOLT_TEST_INCIDENT_PURGE_PROMPT_OUTPUT_FILE": promptOutputPath,
+				"C8VOLT_TEST_INCIDENT_PURGE_ARGS": marshalOpsPurgeProcessInstancesWithIncidentsArgsForEnv(t, []string{
+					"ops", "purge", "process-instances-with-incidents",
+					"--no-wait",
+				}),
+			}
+			if tt.decline {
+				env["C8VOLT_TEST_INCIDENT_PURGE_DECLINE"] = "1"
+			}
+
+			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeProcessInstancesWithIncidentsCommandHelper", env)
+			if tt.decline {
+				require.Error(t, err, stderr)
+			} else {
+				require.NoError(t, err, stderr)
+			}
+			promptOutput := readReportFile(t, promptOutputPath)
+			require.Contains(t, readReportFile(t, promptPath), "incident purge: 1 candidate incident(s)")
+			require.Contains(t, promptOutput, "selection scope: unfiltered across accessible tenants")
+			require.Contains(t, promptOutput, "affected tenants: tenant")
+			require.Less(t, strings.Index(promptOutput, "selection scope: unfiltered across accessible tenants"), strings.Index(promptOutput, "affected tenants: tenant"))
+			combined := stdout + stderr
+			require.Equal(t, 1, strings.Count(combined, "selection scope: unfiltered across accessible tenants"), combined)
+			require.Equal(t, 1, strings.Count(combined, "affected tenants: tenant"), combined)
+			require.Equal(t, 1, countOpsIncidentPurgeRequests(requests.Snapshot(), "POST /v2/incidents/search "))
+			if tt.decline {
+				require.Empty(t, deleted.Snapshot())
+				return
+			}
+			require.Equal(t, []string{"/v2/process-instances/" + opsIncidentPurgeRootKey + "/deletion"}, deleted.Snapshot())
+		})
+	}
+}
+
 // TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionReusesMultiPageFrozenScope verifies confirmation does not trigger a second incident discovery pass.
 func TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionReusesMultiPageFrozenScope(t *testing.T) {
 	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
@@ -639,6 +712,42 @@ func TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionReusesMultiPageFr
 		"/v2/process-instances/" + opsIncidentPurgeChildKey + "/deletion",
 	}, deleted.Snapshot())
 	require.Equal(t, 2, countOpsIncidentPurgeRequests(requests.Snapshot(), "POST /v2/incidents/search "))
+}
+
+// TestOpsPurgeProcessInstancesWithIncidentsAutoConfirmReportsTenantScopeBeforeWork
+// verifies direct incident keys announce tenant-filter bypass before resolution
+// and actual frozen evidence before the unchanged root deletion target.
+func TestOpsPurgeProcessInstancesWithIncidentsAutoConfirmReportsTenantScopeBeforeWork(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	backend := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+	t.Cleanup(backend.Close)
+	output := &opsTenantTimingOutput{}
+	proxy, observations := newOpsTenantTimingProxy(t, backend.URL, output, func(r *http.Request) bool {
+		return r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/deletion")
+	})
+	t.Cleanup(proxy.Close)
+	reset := func() {
+		resetProcessInstanceCommandGlobals()
+		resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	}
+
+	promptCount, err := executeRootForOpsTenantTiming(t, output, reset,
+		"--config", writeTestConfigForVersion(t, proxy.URL, "8.9"),
+		"--tenant", "tenant-a",
+		"ops", "purge", "process-instances-with-incidents",
+		"--inc-key", "2251799813685299",
+		"--auto-confirm",
+		"--no-wait",
+	)
+	require.NoError(t, err, output.String())
+	firstRequest, firstMutation := observations.snapshot()
+	require.Contains(t, firstRequest, "selection scope: explicit resource keys; tenant filter not applied")
+	require.NotContains(t, firstRequest, "selection scope: tenant-a only")
+	require.Contains(t, firstMutation, "affected tenants: tenant")
+	require.Zero(t, promptCount)
+	require.Equal(t, 1, countOpsIncidentPurgeRequests(requests.Snapshot(), "POST /v2/incidents/search "))
+	require.Equal(t, []string{"/v2/process-instances/" + opsIncidentPurgeRootKey + "/deletion"}, deleted.Snapshot())
 }
 
 // TestOpsPurgeProcessInstancesWithIncidentsAutomationJSONExecutesWithoutAutoConfirm verifies automation mode confirms the supported purge path.
@@ -910,6 +1019,11 @@ func TestOpsPurgeProcessInstancesWithIncidentsCommandHelper(t *testing.T) {
 	resetCommandTreeFlags(root)
 	resetProcessInstanceCommandGlobals()
 	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	var promptOutput bytes.Buffer
+	errWriter := io.Writer(os.Stderr)
+	if os.Getenv("C8VOLT_TEST_INCIDENT_PURGE_PROMPT_OUTPUT_FILE") != "" {
+		errWriter = io.MultiWriter(os.Stderr, &promptOutput)
+	}
 	if promptPath := os.Getenv("C8VOLT_TEST_INCIDENT_PURGE_PROMPT_FILE"); promptPath != "" {
 		prevConfirm := confirmCmdOrAbortFn
 		defer func() { confirmCmdOrAbortFn = prevConfirm }()
@@ -917,12 +1031,23 @@ func TestOpsPurgeProcessInstancesWithIncidentsCommandHelper(t *testing.T) {
 			if autoConfirm {
 				return fmt.Errorf("unexpected auto-confirm prompt")
 			}
-			return os.WriteFile(promptPath, []byte(prompt), 0o600)
+			if err := os.WriteFile(promptPath, []byte(prompt), 0o600); err != nil {
+				return err
+			}
+			if outputPath := os.Getenv("C8VOLT_TEST_INCIDENT_PURGE_PROMPT_OUTPUT_FILE"); outputPath != "" {
+				if err := os.WriteFile(outputPath, promptOutput.Bytes(), 0o600); err != nil {
+					return err
+				}
+			}
+			if os.Getenv("C8VOLT_TEST_INCIDENT_PURGE_DECLINE") == "1" {
+				return localPreconditionError(ErrCmdAborted)
+			}
+			return nil
 		}
 	}
 	root.SetArgs(append([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG")}, args...))
 	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
+	root.SetErr(errWriter)
 	if err := root.Execute(); err != nil {
 		handleBootstrapError(root, err)
 	}

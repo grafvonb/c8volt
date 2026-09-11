@@ -74,5 +74,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/294-confirm-terminal-cancellation/plan.md`
+- Active Speckit implementation plan: `specs/295-tenant-context-before-mutations/plan.md`
 <!-- SPECKIT END -->

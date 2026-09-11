@@ -6,6 +6,7 @@ package ops
 import (
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 )
 
@@ -59,6 +60,8 @@ const (
 	ProgressEventKindPage ProgressEventKind = "page"
 	// ProgressEventKindFrozenScope carries exact counters for a frozen work set.
 	ProgressEventKindFrozenScope ProgressEventKind = "frozen_scope"
+	// ProgressEventKindTenantScope carries validated tenant evidence for the complete applicable work set.
+	ProgressEventKindTenantScope ProgressEventKind = "tenant_scope"
 	// ProgressEventKindETA carries timing samples used for approximate ETA rendering.
 	ProgressEventKindETA ProgressEventKind = "eta"
 	// ProgressEventKindStage carries a service-owned stage entry before mutation work begins.
@@ -160,6 +163,12 @@ type FrozenScopeProgress struct {
 	Errors       int            `json:"errors,omitempty"`
 }
 
+// TenantScopeProgress carries a snapshot of validated tenant evidence. An
+// empty evidence value represents a successfully established empty scope.
+type TenantScopeProgress struct {
+	Evidence process.TenantEvidence `json:"evidence,omitempty"`
+}
+
 // StageProgress reports that a service workflow entered a stage. Optional
 // counts are nil when unavailable; non-nil counts must be nonnegative, and zero
 // represents a known empty scope rather than unknown work.
@@ -200,6 +209,7 @@ type ProgressEvent struct {
 	Preflight   *PreflightScope      `json:"preflight,omitempty"`
 	Page        *PageProgress        `json:"page,omitempty"`
 	FrozenScope *FrozenScopeProgress `json:"frozenScope,omitempty"`
+	TenantScope *TenantScopeProgress `json:"tenantScope,omitempty"`
 	ETA         *ETASampleWindow     `json:"eta,omitempty"`
 	Stage       *StageProgress       `json:"stage,omitempty"`
 	Completion  *CompletionProgress  `json:"completion,omitempty"`

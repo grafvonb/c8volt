@@ -57,6 +57,7 @@ func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.Orp
 	if len(discovery.Keys) == 0 {
 		result.DeletionPlan.Status = d.OpsWorkflowStepStatusSkipped
 		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		emitOpsTenantScope(request.Progress, d.TenantEvidence{})
 		return finishOrphanPurgeResult(result, d.OrphanPurgeOutcomePlanned, nil)
 	}
 
@@ -78,16 +79,18 @@ func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.Orp
 		return finishOrphanPurgeResult(result, d.OrphanPurgeOutcomeFailed, fmt.Errorf("orphan purge delete-plan validation: %w", err))
 	}
 
-	if request.DryRun {
-		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
-		return finishOrphanPurgeResult(result, d.OrphanPurgeOutcomePlanned, nil)
-	}
-
-	if !cfg.Force && len(plan.RequiresCancelBeforeDelete) > 0 {
+	if !request.DryRun && !cfg.Force && len(plan.RequiresCancelBeforeDelete) > 0 {
 		err = fmt.Errorf("refusing to delete orphan process-instance scope: %d affected process instance(s) are not in a final state; no delete request was submitted; use --force to cancel the entire affected scope before delete", len(plan.RequiresCancelBeforeDelete))
 		result.Deletion.Status = d.OpsWorkflowStepStatusBlocked
 		result.Deletion.Errors = []string{err.Error()}
 		return finishOrphanPurgeResult(result, d.OrphanPurgeOutcomeFailed, err)
+	}
+
+	emitOpsTenantScope(request.Progress, plan.TenantEvidence)
+
+	if request.DryRun {
+		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		return finishOrphanPurgeResult(result, d.OrphanPurgeOutcomePlanned, nil)
 	}
 
 	result.DeleteRequested = true

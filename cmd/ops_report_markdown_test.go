@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/stretchr/testify/require"
@@ -59,4 +61,44 @@ func TestWriteMarkdownTenantContextUsesSharedHumanContract(t *testing.T) {
 	require.Contains(t, got, "tenant metadata is unknown for 1 target")
 	require.Equal(t, 1, strings.Count(got, "affected tenants: tenant-a, tenant-b"))
 	require.NotContains(t, got, string(tenant.ContextWarningUnfilteredSelection))
+}
+
+// TestOpsAuditReportMarkdownPreservesTenantEvidenceAfterEarlyHumanRendering
+// proves audit Markdown ignores staged human suppression and keeps all facts.
+func TestOpsAuditReportMarkdownPreservesTenantEvidenceAfterEarlyHumanRendering(t *testing.T) {
+	resetTenantContextRenderFlags(t)
+	cmd, output := newTenantContextRenderTestCommand()
+	cfg := &config.Config{}
+	evidence := process.TenantEvidence{Targets: []process.TenantEvidenceTarget{
+		{Key: "root-b", TenantID: "tenant-b"},
+		{Key: "root-unknown"},
+		{Key: "root-a", TenantID: "tenant-a"},
+	}}
+
+	initializeOpsTenantContextHumanReporting(cmd, cfg, false)
+	handleOpsTenantScopeProgressEvent(cmd, ops.ProgressEvent{
+		Kind:        ops.ProgressEventKindTenantScope,
+		TenantScope: &ops.TenantScopeProgress{Evidence: evidence},
+	}, ops.ProgressChannel{DurableAllowed: true, StderrAllowed: true})
+	require.Contains(t, output.String(), "selection scope: unfiltered across accessible tenants")
+	require.Contains(t, output.String(), "affected tenants: tenant-a, tenant-b")
+
+	report := enrichOpsExecuteRetentionPolicyReport(ops.RetentionAuditReport{
+		SchemaVersion: "ops.retention-policy.v1",
+		CommandName:   "ops execute retention-policy",
+		DeletePlan:    ops.RetentionDeletePlan{TenantEvidence: evidence},
+	}, cfg)
+	data, err := renderOpsExecuteRetentionPolicyMarkdownReport(report, cfg)
+	require.NoError(t, err)
+	got := string(data)
+	require.Contains(t, got, "- Tenant: -")
+	require.Contains(t, got, "- Tenant Context: selection scope: unfiltered across accessible tenants")
+	require.Contains(t, got, "- Unknown Target Tenants: 1")
+	require.Contains(t, got, "- Cross Tenant: true")
+	require.Contains(t, got, "  - affected tenants: tenant-a, tenant-b")
+	require.Contains(t, got, "  - tenant metadata is unknown for 1 target")
+	require.Equal(t, 1, strings.Count(got, "affected tenants: tenant-a, tenant-b"))
+	require.Equal(t, 1, strings.Count(got, "tenant metadata is unknown for 1 target"))
+	require.NotContains(t, got, "configuredTenantId")
+	require.NotContains(t, got, "allTenants")
 }

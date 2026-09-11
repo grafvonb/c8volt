@@ -70,6 +70,7 @@ func configureOpsPurgeProcessInstancesWithIncidentsProgress(cmd *cobra.Command, 
 // printOpsProcessInstancePurgeProgressEvent routes discovery facts to existing
 // progress rendering and deletion completion facts to the semantic reporter.
 func printOpsProcessInstancePurgeProgressEvent(cmd *cobra.Command, event ops.ProgressEvent, channel ops.ProgressChannel, progress *opsProcessInstancePurgeSemanticProgress) {
+	handleOpsTenantScopeProgressEvent(cmd, event, channel)
 	switch event.Kind {
 	case ops.ProgressEventKindPreflight:
 		if event.Preflight != nil {
