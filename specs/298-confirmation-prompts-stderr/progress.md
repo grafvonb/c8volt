@@ -103,3 +103,24 @@ Started: 2026-09-11 08:40:57
 **Learnings**:
 - Native Darwin/arm64 execution discovered all six terminal allocator/runner tests and both required post-migration suites passed with Go 1.26.2.
 ---
+
+## Iteration 7 - 2026-09-11 09:11
+**Work Unit**: US1 Confirm an operation while capturing results
+**Tasks Completed**:
+- [x] T008: Add real-terminal default-no acceptance, decline, empty-answer, EOF, exact-stream, and nil-fallback coverage.
+- [x] T009: Add configured and inherited command stderr routing tests with accepted-result and declined-no-mutation evidence.
+- [x] T010: Route the default-no prompt through the supplied writer with standard-stderr fallback.
+- [x] T011: Run and record the required US1 regression validation.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_cli.go
+- cmd/cmd_confirmation_command_test.go
+- cmd/cmd_confirmation_terminal_test.go
+- specs/298-confirmation-prompts-stderr/progress.md
+- specs/298-confirmation-prompts-stderr/quickstart.md
+- specs/298-confirmation-prompts-stderr/ralph-memory.md
+- specs/298-confirmation-prompts-stderr/tasks.md
+**Learnings**:
+- Real-command PTY coverage verifies Cobra's configured/inherited stderr path while a fake backend independently proves accepted mutation and declined non-mutation outcomes.
+---

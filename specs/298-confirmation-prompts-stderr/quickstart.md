@@ -98,6 +98,19 @@ ok github.com/grafvonb/c8volt/cmd 1.294s
 
 The native Darwin allocator tests and isolated terminal runner tests executed; the focused command suite also remained green after the writer-signature migration. Story-level prompt routing remains intentionally unimplemented until US1 and US3.
 
+## Iteration 7 US1 validation
+
+Validation ran on 2026-09-11 with `go1.26.2 darwin/arm64`. Before T010, both new terminal suites failed by reaching their bounded deadlines while waiting for the complete prompt on stderr; the helper still wrote that prompt to stdout. This supplied red routing evidence without treating the timeout as a passing regression.
+
+After routing the default-no prompt through the supplied writer with a standard-stderr fallback, the required US1 filter passed:
+
+```text
+$ go test ./cmd -run 'TestConfirmOrAbortTerminal|TestConfirmationCommand|FormatConfirmationPrompt|DeleteProcessDefinition' -count=1
+ok github.com/grafvonb/c8volt/cmd 0.845s
+```
+
+`TestConfirmOrAbortTerminal` exercised real PTY stdin for acceptance, decline, empty input, and canonical EOF, including the nil-writer fallback and byte-exact plain prompt. `TestConfirmationCommand` exercised the real delete-process-definition command with a fake backend: configured and inherited stderr both received the prompt, accepted JSON results stayed on stdout, decline retained the error exit, and the backend received no deletion request after decline. The broader `go test ./cmd -count=1` suite also passed in 35.253s, followed by `git diff --check`.
+
 ## Focused validation after implementation
 
 ```sh

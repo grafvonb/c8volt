@@ -14,6 +14,8 @@ Started: 2026-09-11T06:40:57Z
 - The runner closes the parent's slave descriptor after start, drains the no-echo PTY master, and kills then reaps the child before closing descriptors on every timeout/error return.
 - Both confirmation seams now have the signature `(io.Writer, bool, string) error`; production callers pass `cmd.ErrOrStderr()`, while migrated test stubs may ignore the writer until their story-specific routing assertions are added.
 - Native Darwin/arm64 foundation validation with Go 1.26.2 discovers all six terminal allocator/runner tests and passes both the terminal-support and focused command suites.
+- Default-no confirmation now writes the unchanged formatted prompt to its supplied writer and falls back to `os.Stderr` for a nil interface; terminal acceptance covers accept, decline, empty input, and canonical EOF.
+- Command-level terminal tests can prove configured stderr by setting a root `io.MultiWriter` before execution and inspecting its secondary capture; root setup wraps that destination in the activity writer and the executed child inherits it.
 
 ## Decisions
 
@@ -24,6 +26,7 @@ Started: 2026-09-11T06:40:57Z
 
 - `cmd/ops_execute_smoketest.go` contains an actual `confirmCmdOrAbortFn` call, not only a related comment, so it belongs in the T006 migration.
 - The exact T006 production and test migration inventory is recorded in `quickstart.md`; use it together with a fresh `rg` so new references cannot be missed.
+- A typed nil pointer stored in an `io.Writer` interface is non-nil; nil-fallback tests must pass a genuinely nil interface.
 
 ## Reusable Commands
 
@@ -40,4 +43,4 @@ Started: 2026-09-11T06:40:57Z
 - A successful helper test that returns normally adds the Go test harness `PASS` line to stdout; helpers requiring byte-exact stdout can call `os.Exit(0)` after their child assertions succeed.
 
 ## Current Handoff
-- Start T008 in US1 by adding real-terminal default-no helper coverage in `cmd/cmd_confirmation_terminal_test.go`; prompt writes intentionally remain on stdout until T010 so routing assertions should first demonstrate the defect.
+- Start T012 in US2 by adding actual keys-only paging terminal coverage in `cmd/get_processinstance_paging_terminal_test.go`; T010 now supplies the corrected default-no writer routing.
