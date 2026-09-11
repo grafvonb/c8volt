@@ -101,3 +101,18 @@ Started: 2026-09-11 15:45:51
 **Learnings**:
 - JSON selection leaves limited/unsupported shared-helper failures and real config/embed failures on ordinary stderr, while an established full-contract validation path still emits exactly one envelope under both exit policies.
 ---
+---
+## Iteration 5 - 2026-09-11 16:41
+**Work Unit**: US3 Preserve Existing Workflows (partial: successful execution compatibility)
+**Tasks Completed**:
+- [x] T019: Add successful key merge/deduplication, cluster, process-definition, embedded-list, and tenant-context regressions
+**Tasks Remaining in Work Unit**: T020-T021
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_error_envelope_success_test.go
+- specs/301-preserve-json-errors/tasks.md
+- specs/301-preserve-json-errors/ralph-memory.md
+- specs/301-preserve-json-errors/progress.md
+**Learnings**:
+- A real mixed flag/stdin lookup confirms stable caller deduplication, and representative successes retain their established envelope, raw-output, filtering, and tenant-context behavior without extra requests.
+---

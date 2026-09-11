@@ -6,6 +6,7 @@ Started: 2026-09-11T13:45:51Z
 ## Codebase Patterns
 
 - Command paths that can call `os.Exit` are tested with `testx.RunCmdSubprocessInDirWithSeparateOutputs`; bind the subprocess to the exact test through `testx.CmdSubprocessNameEnv` and send real CLI arguments through `Execute()`.
+- Successful subprocess helpers that return from `Execute()` must call `os.Exit(0)` afterward so Go's helper-test `PASS` marker cannot contaminate captured command stdout.
 - Full-contract execution failures must use `handleCommandError` with the actual Cobra command. It preserves JSON precedence, normalized classification, human stderr, and `--no-err-codes` while terminating immediately.
 - `readKeysIfDash` removes blank lines before `validateKeys`, so invalid stdin indexes describe the processed key slice rather than physical input lines.
 
@@ -35,4 +36,4 @@ Started: 2026-09-11T13:45:51Z
 - Do not use a production `ResultEnvelope` to decode or construct expected regression results.
 
 ## Current Handoff
-- Continue with T019 in US3: add or extend success regressions for key merging/deduplication, cluster, process-definition, embedded-list, and existing tenant-context behavior.
+- Continue with T020 in US3: audit the final production diff against the contract, renderer, error policy, and documented exclusions, then record the result in quickstart.md.
