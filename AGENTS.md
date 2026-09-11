@@ -38,6 +38,24 @@
 - Do not add noisy endpoint, request, cursor, or per-key lifecycle detail to default human output; keep diagnostics behind `--verbose`.
 - When command output changes, update tests for the affected human, JSON, keys-only, error, prompt, and activity behavior where relevant.
 
+### Output Streams And Interactive Prompts
+- Reserve stdout for command results in the selected output format.
+- Write confirmation questions, paging continuation prompts, and other interactive
+  control text to the command's configured stderr writer (`cmd.ErrOrStderr()`).
+- Shared prompt helpers must accept an explicit writer; do not write directly to
+  process stdout or use a mutable global prompt destination.
+- Keep prompts as plain interactive text without logger prefixes.
+- Terminal stdin does not imply terminal stdout. Preserve each command's existing
+  prompt eligibility checks when stdout is redirected or piped.
+- Stream-routing changes must preserve prompt wording, default answers, input
+  handling, EOF behavior, auto-confirm, automation, and caller-specific abort or
+  paging-stop behavior.
+- Tests for interactive output must exercise real terminal stdin with stdout and
+  stderr captured separately. Pipe-only input and mocked terminal checks are
+  insufficient to prove prompt routing.
+- Verify configured and inherited stderr destinations, uncontaminated command
+  results, and keys-only paging with exactly one key per stdout line.
+
 ## Command File Cohesion
 - Keep `cmd/<verb>_<noun>.go` focused on Cobra construction, flags, validation, top-level dispatch, and the command's ordinary execution path.
 - Put a distinct execution mode or lifecycle such as watch, polling, streaming, follow, batch, or interactive operation in `cmd/<verb>_<noun>_<mode>.go` once it has its own runner, state, timing, retry, status, or request-building behavior.
