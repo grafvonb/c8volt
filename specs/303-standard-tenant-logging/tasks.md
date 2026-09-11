@@ -24,7 +24,7 @@
 
 **Purpose**: Establish the regression baseline and existing test support before changing either emitter.
 
-- [ ] T002 Inspect `cmd/ops_progress_render.go`, `cmd/processinstance_mutation_progress_test.go`, `cmd/ops_progress_test.go`, and `cmd/cmd_confirmation_terminal_test.go` for the existing logger, cleanup, and terminal fixtures; run `go test ./cmd -run 'Test(ProcessInstanceMutation|CancelProcessInstance|DeleteProcessInstance|Confirmation)' -count=1` and record the baseline in `specs/303-standard-tenant-logging/quickstart.md` without treating a baseline pass as proof of the new behavior.
+- [x] T002 Inspect `cmd/ops_progress_render.go`, `cmd/processinstance_mutation_progress_test.go`, `cmd/ops_progress_test.go`, and `cmd/cmd_confirmation_terminal_test.go` for the existing logger, cleanup, and terminal fixtures; run `go test ./cmd -run 'Test(ProcessInstanceMutation|CancelProcessInstance|DeleteProcessInstance|Confirmation)' -count=1` and record the baseline in `specs/303-standard-tenant-logging/quickstart.md` without treating a baseline pass as proof of the new behavior.
 
 **Checkpoint**: Existing helper semantics and test fixtures are understood; all story tasks depend on this phase. No new shared production infrastructure is required.
 

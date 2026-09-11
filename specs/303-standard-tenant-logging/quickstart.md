@@ -16,6 +16,12 @@
 - The feature specification, plan, tasks, research, data model, contract, validation guide, `AGENTS.md`, and `specs/ralph-implementation-rules.md` were reviewed with no conflicts found.
 - No implementation-environment blockers were identified.
 
+## Pre-Implementation Baseline
+
+- On 2026-09-11, `go test ./cmd -run 'Test(ProcessInstanceMutation|CancelProcessInstance|DeleteProcessInstance|Confirmation)' -count=1` passed (`ok github.com/grafvonb/c8volt/cmd`, 1.905s).
+- The passing baseline confirms the existing command and fixture behavior only. It does not prove the planned attached-logger severity, formatting, or threshold-filtering contract.
+- Existing support includes `logging.New` attached with `logging.ToContext`, separate stdout/stderr buffers, `resetProcessInstanceCommandGlobals` cleanup, and `testx.NewCmdTerminalRunner` for real-terminal prompt coverage.
+
 Run from the repository root:
 
 ```sh
