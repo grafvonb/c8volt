@@ -10,6 +10,7 @@ Started: 2026-09-12T17:35:53Z
 - Real-terminal command tests use `testx.NewCmdTerminalRunner` with terminal stdin and independently captured stdout/stderr.
 - Diagnostic record optional numeric and boolean evidence uses pointers so observed zero/false remains distinct from absence; `diagnosticRecord.format` owns stable field order and ASCII duration units.
 - Diagnostic sanitization is exchange-owned and collects configured, URL, header and parsed cookie secrets before producing allowed request/response metadata; malformed queries fail closed without body access.
+- The invocation collector is absent unless verbose INFO is admitted, copies only private context/redaction seeds, allocates atomic exchange sequences, freezes deep snapshots under an exchange lock and emits through the existing logger after unlocking.
 
 ## Decisions
 
@@ -33,4 +34,4 @@ Started: 2026-09-12T17:35:53Z
 - Do not add diagnostics to individual commands or generated clients; keep observation at the shared HTTP transport boundary.
 
 ## Current Handoff
-- Continue with T006: implement and test the invocation collector in `internal/services/httpc/diagnostics.go`, retaining the invocation logger and resolved verbose gate, allocating atomic sequences, freezing snapshots once under private state locks, and emitting only after locks are released.
+- Begin US1 with T007 and T008 transport and OAuth contract tests; keep the new collector internal and attach observation below retries only in the later ordered implementation tasks.

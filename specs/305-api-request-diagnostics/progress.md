@@ -53,3 +53,20 @@ Started: 2026-09-12 19:35:54
 **Learnings**:
 - Secrets from response cookies must be collected before allowed correlation headers are evaluated; malformed query strings are safest when their entire query component is omitted.
 ---
+
+---
+## Iteration 4 - 2026-09-12 20:13
+**Work Unit**: Foundational invocation collector (T006)
+**Tasks Completed**:
+- [x] T006: Implemented the invocation-scoped collector with verbose/INFO gating, private redaction context, atomic sequencing, locked immutable snapshots and exactly-once logger emission.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/httpc/diagnostics.go
+- internal/services/httpc/diagnostics_test.go
+- specs/305-api-request-diagnostics/tasks.md
+- specs/305-api-request-diagnostics/ralph-memory.md
+- specs/305-api-request-diagnostics/progress.md
+**Learnings**:
+- Existing logger filtering can prevent collector installation up front; emission remains synchronous through the shared logger and occurs only after exchange state is frozen and unlocked.
+---
