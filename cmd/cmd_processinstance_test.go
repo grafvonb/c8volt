@@ -383,12 +383,20 @@ func TestProcessInstanceHelp_DocumentsTenantContract(t *testing.T) {
 	require.Contains(t, cancelOutput, "--tenant scopes search-derived candidate discovery")
 	require.Contains(t, cancelOutput, "Explicit --key and stdin keys are backend-authorized admin input")
 	require.Contains(t, cancelOutput, "existing dry-run, confirmation, force, and wait safety checks still apply")
+	require.Contains(t, cancelOutput, "Eligible selector-based tenant diagnostics use standard INFO and WARN logging")
+	require.Contains(t, cancelOutput, "honor the configured log format and level")
+	require.Contains(t, cancelOutput, "existing output-mode eligibility remains unchanged")
+	require.Contains(t, cancelOutput, "JSON-formatted diagnostic logs are separate from JSON command results")
 
 	deleteOutput := executeRootForProcessInstanceTest(t, "delete", "process-instance", "--help")
 	require.Contains(t, deleteOutput, "Tenant contract:")
 	require.Contains(t, deleteOutput, "--tenant scopes search-derived candidate discovery")
 	require.Contains(t, deleteOutput, "Explicit --key and stdin keys are backend-authorized admin input")
 	require.Contains(t, deleteOutput, "existing dry-run, confirmation, force, and wait safety checks still apply")
+	require.Contains(t, deleteOutput, "Eligible selector-based tenant diagnostics use standard INFO and WARN logging")
+	require.Contains(t, deleteOutput, "honor the configured log format and level")
+	require.Contains(t, deleteOutput, "existing output-mode eligibility remains unchanged")
+	require.Contains(t, deleteOutput, "JSON-formatted diagnostic logs are separate from JSON command results")
 }
 
 func TestProcessInstanceSearchDefaultOneLineOutput_IgnoresReportedTotalMetadata(t *testing.T) {

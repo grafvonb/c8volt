@@ -6,13 +6,17 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
@@ -20,6 +24,266 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+type processInstanceMutationTenantEmitter struct {
+	name string
+	emit func(*cobra.Command, tenant.Context)
+}
+
+type processInstanceMutationTenantLogRecord struct {
+	Time  string `json:"time"`
+	Level string `json:"level"`
+	Msg   string `json:"msg"`
+}
+
+var processInstanceMutationTenantEmitters = []processInstanceMutationTenantEmitter{
+	{
+		name: "durable progress",
+		emit: func(cmd *cobra.Command, ctx tenant.Context) {
+			attachTenantContext(cmd, ctx)
+			printProcessInstanceMutationTenantContext(cmd, ops.ProgressChannel{
+				Mode:           ops.ProgressModeHuman,
+				DurableAllowed: true,
+				StderrAllowed:  true,
+			})
+		},
+	},
+	{
+		name: "confirmation context",
+		emit: renderProcessInstanceMutationTenantContextStderr,
+	},
+}
+
+var processInstanceMutationTenantExpectedRecords = []processInstanceMutationTenantLogRecord{
+	{Level: "INFO", Msg: "configured tenant: tenant-a"},
+	{Level: "WARN", Msg: `--tenant "" overrides the configured tenant filter; selection is unfiltered`},
+	{Level: "INFO", Msg: "selection scope: unfiltered across accessible tenants"},
+	{Level: "WARN", Msg: "affected tenants: tenant-a, tenant-b"},
+	{Level: "WARN", Msg: "tenant metadata is unknown for 1 target"},
+}
+
+// TestProcessInstanceMutationTenantSeverity verifies both mutation tenant
+// emitters honor the standard plain/JSON formats and INFO/WARN/ERROR levels.
+func TestProcessInstanceMutationTenantSeverity(t *testing.T) {
+	formats := []struct {
+		name  string
+		value string
+	}{
+		{name: "plain", value: "plain"},
+		{name: "json", value: "json"},
+	}
+	levels := []struct {
+		name string
+		want []processInstanceMutationTenantLogRecord
+	}{
+		{name: "info", want: processInstanceMutationTenantExpectedRecords},
+		{name: "warn", want: []processInstanceMutationTenantLogRecord{
+			processInstanceMutationTenantExpectedRecords[1],
+			processInstanceMutationTenantExpectedRecords[3],
+			processInstanceMutationTenantExpectedRecords[4],
+		}},
+		{name: "error"},
+	}
+
+	for _, emitter := range processInstanceMutationTenantEmitters {
+		for _, format := range formats {
+			for _, level := range levels {
+				t.Run(emitter.name+"/"+format.name+"/"+level.name, func(t *testing.T) {
+					resetProcessInstanceCommandGlobals()
+					t.Cleanup(resetProcessInstanceCommandGlobals)
+
+					stdout := &bytes.Buffer{}
+					stderr := &bytes.Buffer{}
+					cmd := &cobra.Command{}
+					cmd.SetOut(stdout)
+					cmd.SetErr(stderr)
+					cmd.SetContext(tenantOverrideProvenance{
+						ConfiguredTenantID: "tenant-a",
+						ExplicitTenantID:   "",
+						Explicit:           true,
+					}.ToContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{
+						Level:  level.name,
+						Format: format.value,
+						Writer: stderr,
+					}))))
+					ctx := withTenantContextEvidence(newDiscoveryTenantContext(""), []string{"tenant-b", "tenant-a"}, 1)
+
+					emitter.emit(cmd, ctx)
+
+					require.Empty(t, stdout.String())
+					if format.value == "json" {
+						requireProcessInstanceMutationTenantJSONRecords(t, stderr.String(), level.want)
+						return
+					}
+					requireProcessInstanceMutationTenantPlainRecords(t, stderr.String(), level.want)
+				})
+			}
+		}
+	}
+}
+
+func requireProcessInstanceMutationTenantPlainRecords(t *testing.T, output string, expected []processInstanceMutationTenantLogRecord) {
+	t.Helper()
+	if len(expected) == 0 {
+		require.Empty(t, output)
+		return
+	}
+
+	plainLine := regexp.MustCompile(`^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2}) (INFO|WARN) (.*)$`)
+	lines := strings.Split(strings.TrimSuffix(output, "\n"), "\n")
+	require.Len(t, lines, len(expected))
+	for i, want := range expected {
+		matches := plainLine.FindStringSubmatch(lines[i])
+		require.Len(t, matches, 4, "line %d must use the standard timestamped plain format: %q", i, lines[i])
+		_, err := time.Parse(logging.PlainTimestampLayout, matches[1])
+		require.NoError(t, err, "line %d must begin with a valid timestamp", i)
+		require.Equal(t, want.Level, matches[2])
+		require.Equal(t, want.Msg, matches[3])
+	}
+}
+
+func requireProcessInstanceMutationTenantJSONRecords(t *testing.T, output string, expected []processInstanceMutationTenantLogRecord) {
+	t.Helper()
+	decoder := json.NewDecoder(strings.NewReader(output))
+	for i, want := range expected {
+		var got processInstanceMutationTenantLogRecord
+		require.NoError(t, decoder.Decode(&got), "record %d must be valid JSON", i)
+		_, err := time.Parse(time.RFC3339Nano, got.Time)
+		require.NoError(t, err, "record %d must contain a valid time", i)
+		require.Equal(t, want.Level, got.Level)
+		require.Equal(t, want.Msg, got.Msg)
+	}
+	var extra any
+	require.ErrorIs(t, decoder.Decode(&extra), io.EOF)
+}
+
+// TestProcessInstanceMutationTenantFilteredFirstReport verifies a filtered
+// emission marks tenant context rendered and never falls back or replays later.
+func TestProcessInstanceMutationTenantFilteredFirstReport(t *testing.T) {
+	for _, emitter := range processInstanceMutationTenantEmitters {
+		for _, format := range []string{"plain", "json"} {
+			t.Run(emitter.name+"/"+format, func(t *testing.T) {
+				resetProcessInstanceCommandGlobals()
+				t.Cleanup(resetProcessInstanceCommandGlobals)
+
+				stdout := &bytes.Buffer{}
+				fallback := &bytes.Buffer{}
+				filtered := &bytes.Buffer{}
+				permissive := &bytes.Buffer{}
+				cmd := &cobra.Command{}
+				cmd.SetOut(stdout)
+				cmd.SetErr(fallback)
+				cmd.SetContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{
+					Level:  "error",
+					Format: format,
+					Writer: filtered,
+				})))
+				ctx := withTenantContextEvidence(newDiscoveryTenantContext(""), []string{"tenant-a", "tenant-b"}, 1)
+
+				emitter.emit(cmd, ctx)
+				require.True(t, tenantContextHumanRendered(cmd))
+				require.Empty(t, stdout.String())
+				require.Empty(t, fallback.String(), "filtering must not use raw stderr fallback")
+				require.Empty(t, filtered.String())
+
+				cmd.SetContext(logging.ToContext(cmd.Context(), logging.New(logging.LoggerConfig{
+					Level:  "info",
+					Format: format,
+					Writer: permissive,
+				})))
+				emitter.emit(cmd, ctx)
+
+				require.Empty(t, stdout.String())
+				require.Empty(t, fallback.String())
+				require.Empty(t, permissive.String(), "a permissive logger must not replay a filtered first report")
+			})
+		}
+	}
+}
+
+// TestProcessInstanceMutationTenantFallbackAndDeduplication verifies raw
+// configured-stderr fallback and rendered-state suppression across both paths.
+func TestProcessInstanceMutationTenantFallbackAndDeduplication(t *testing.T) {
+	ctx := withTenantContextEvidence(newDiscoveryTenantContext("tenant-a"), []string{"tenant-a"}, 0)
+	want := "selection scope: tenant-a only\naffected tenants: tenant-a\n"
+	channel := ops.ProgressChannel{
+		Mode:           ops.ProgressModeHuman,
+		DurableAllowed: true,
+		StderrAllowed:  true,
+	}
+
+	tests := []struct {
+		name string
+		emit func(*cobra.Command)
+		want string
+	}{
+		{
+			name: "progress same path",
+			emit: func(cmd *cobra.Command) {
+				attachTenantContext(cmd, ctx)
+				printProcessInstanceMutationTenantContext(cmd, channel)
+				printProcessInstanceMutationTenantContext(cmd, channel)
+			},
+			want: want,
+		},
+		{
+			name: "confirmation same path",
+			emit: func(cmd *cobra.Command) {
+				renderProcessInstanceMutationTenantContextStderr(cmd, ctx)
+				renderProcessInstanceMutationTenantContextStderr(cmd, ctx)
+			},
+			want: want,
+		},
+		{
+			name: "progress then confirmation",
+			emit: func(cmd *cobra.Command) {
+				attachTenantContext(cmd, ctx)
+				printProcessInstanceMutationTenantContext(cmd, channel)
+				renderProcessInstanceMutationTenantContextStderr(cmd, ctx)
+			},
+			want: want,
+		},
+		{
+			name: "confirmation then progress",
+			emit: func(cmd *cobra.Command) {
+				attachTenantContext(cmd, ctx)
+				renderProcessInstanceMutationTenantContextStderr(cmd, ctx)
+				printProcessInstanceMutationTenantContext(cmd, channel)
+			},
+			want: want,
+		},
+		{
+			name: "absent progress context",
+			emit: func(cmd *cobra.Command) {
+				printProcessInstanceMutationTenantContext(cmd, channel)
+			},
+		},
+		{
+			name: "zero confirmation context",
+			emit: func(cmd *cobra.Command) {
+				renderProcessInstanceMutationTenantContextStderr(cmd, tenant.Context{})
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			cmd := &cobra.Command{}
+			cmd.SetOut(stdout)
+			cmd.SetErr(stderr)
+
+			tt.emit(cmd)
+
+			require.Empty(t, stdout.String())
+			require.Equal(t, tt.want, stderr.String())
+		})
+	}
+}
 
 // pendingProcessInstanceMutationProgressT064 marks the historical progress
 // contract gate while the concrete tests define the preserved behavior.

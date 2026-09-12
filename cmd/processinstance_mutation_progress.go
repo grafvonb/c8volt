@@ -327,7 +327,7 @@ func printProcessInstanceMutationTenantContext(cmd *cobra.Command, channel ops.P
 	}
 	markTenantContextHumanRendered(cmd)
 	for _, line := range tenantContextHumanLines(cmd, *ctx) {
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), line.Text)
+		printOpsDurableLine(cmd, line.Text, line.Warn)
 	}
 }
 
@@ -339,7 +339,7 @@ func renderProcessInstanceMutationTenantContextStderr(cmd *cobra.Command, ctx te
 	}
 	markTenantContextHumanRendered(cmd)
 	for _, line := range tenantContextHumanLines(cmd, ctx) {
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), line.Text)
+		printOpsDurableLine(cmd, line.Text, line.Warn)
 	}
 }
 
