@@ -59,3 +59,13 @@ make test
 ```
 
 Run gofmt on all touched Go files before the final checks. Inspect regenerated documentation and confirm it only reflects the planned correction. `make test` must pass with the race detector before implementation commit or merge. Record any unavailable terminal checks or other validation failures explicitly; do not report an unrun check as passing.
+
+## Final Validation Results
+
+- On 2026-09-12, `gofmt` produced no changes across all ten feature-touched Go files.
+- `go test ./cmd -run 'TestProcessInstanceMutation(Tenant|Progress)' -count=1` passed (`ok github.com/grafvonb/c8volt/cmd`, 0.533s).
+- `go test ./cmd -run 'Test(Cancel|Delete)ProcessInstance' -count=1` passed (`ok github.com/grafvonb/c8volt/cmd`, 1.781s).
+- `go test ./cmd -run 'TestConfirmation' -count=1` passed (`ok github.com/grafvonb/c8volt/cmd`, 0.887s).
+- `git diff --check` passed before the full suite.
+- `make test` passed, running `go test ./... -race -count=1`; the race-enabled `cmd` package completed in 376.777s and all repository packages passed or reported no test files.
+- No environmental blockers or unavailable terminal checks were encountered.

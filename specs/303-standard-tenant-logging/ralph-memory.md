@@ -16,6 +16,7 @@ Started: 2026-09-11T16:49:28Z
 - The README tenant-context paragraph now states that eligible selector-based delete/cancel diagnostics use standard INFO/WARN logging, honor configured log format/level, retain existing mode eligibility, and remain separate from JSON command results.
 - Cancel/delete command `Long` descriptions now repeat that concise logging contract; `TestProcessInstanceHelp_DocumentsTenantContract` locks the shared wording for both commands before docs regeneration.
 - `make docs-content` regenerates the two process-instance command pages plus README-derived `docs/index.md`; the only content change is the tenant-logging clarification, while the homepage build line receives the generator's expected current commit metadata.
+- All ten feature-touched Go files are gofmt-clean. The three quickstart targeted suites, `git diff --check`, and the repository-wide race-enabled `make test` pass; no environmental or terminal-fixture blockers remain.
 
 ## Decisions
 
@@ -40,4 +41,4 @@ Started: 2026-09-11T16:49:28Z
 - Do not treat a passing pre-change baseline as proof of the new logger behavior.
 
 ## Current Handoff
-- Continue with T015: gofmt all touched Go files, run the three targeted validation commands and `git diff --check`, then run `make test` and record actual outcomes in `quickstart.md`.
+- Continue with T016: review the final diff against the tenant-logging contract and FR-001–FR-009, confirm the bounded change set and recorded acceptance evidence, then persist terminal completion state if the review passes.
