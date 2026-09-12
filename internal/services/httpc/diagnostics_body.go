@@ -21,6 +21,7 @@ func newDiagnosticRequestBody(delegate io.ReadCloser, exchange *diagnosticExchan
 	return body
 }
 
+// Read preserves delegated results while recording whether the upload reached EOF.
 func (body *diagnosticRequestBody) Read(buffer []byte) (int, error) {
 	n, err := body.delegate.Read(buffer)
 	body.exchange.update(func(record *diagnosticRecord) {
@@ -30,8 +31,13 @@ func (body *diagnosticRequestBody) Read(buffer []byte) (int, error) {
 		*record.requestBytes += int64(n)
 		if err == io.EOF {
 			record.requestComplete = diagnosticBoolPointer(true)
+		} else {
+			record.requestComplete = diagnosticBoolPointer(false)
 		}
 	})
+	if err != nil && err != io.EOF {
+		body.exchange.setFailurePhase(diagnosticPhaseRequestWrite)
+	}
 	return n, err
 }
 
@@ -42,6 +48,7 @@ type diagnosticRequestBodyWriterTo struct {
 	writerTo io.WriterTo
 }
 
+// WriteTo preserves the delegate fast path and records its explicit completion result.
 func (body *diagnosticRequestBodyWriterTo) WriteTo(writer io.Writer) (int64, error) {
 	n, err := body.writerTo.WriteTo(writer)
 	body.exchange.update(func(record *diagnosticRecord) {
@@ -51,8 +58,13 @@ func (body *diagnosticRequestBodyWriterTo) WriteTo(writer io.Writer) (int64, err
 		*record.requestBytes += n
 		if err == nil {
 			record.requestComplete = diagnosticBoolPointer(true)
+		} else {
+			record.requestComplete = diagnosticBoolPointer(false)
 		}
 	})
+	if err != nil {
+		body.exchange.setFailurePhase(diagnosticPhaseRequestWrite)
+	}
 	return n, err
 }
 

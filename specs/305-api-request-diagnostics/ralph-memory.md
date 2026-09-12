@@ -17,6 +17,7 @@ Started: 2026-09-12T17:35:53Z
 - Root bootstrap must resolve the executing leaf's `cmd.ErrOrStderr()` before activity wrapping and set only the root to that wrapper; setting the child writer too hides its configured destination and risks stale invocation routing.
 - Real-terminal diagnostic coverage can reuse the process-instance confirmation subprocess helper: terminal stdin remains genuine while stdout/stderr are independently captured, and a configured child destination can be mirrored with `io.MultiWriter` for exact routing assertions.
 - Cookie login usernames must join passwords in the invocation-private credential seed because the authenticator sends both as query values; request sanitization then omits those reflected login credentials before formatting.
+- Request-body reads establish explicit incomplete upload evidence until EOF or a successful `WriterTo`; request-body Close preserves the delegate result without claiming upload completion.
 
 ## Decisions
 
@@ -46,4 +47,4 @@ Started: 2026-09-12T17:35:53Z
 - Do not add diagnostics to individual commands or generated clients; keep observation at the shared HTTP transport boundary.
 
 ## Current Handoff
-- Continue US3 at T022: add lifecycle edge tests before completing trace/concurrency and retry/version coverage within the same story.
+- Continue US3 at T023: add trace/concurrency coverage, then proceed through the remaining US3 retry and synchronization tasks.

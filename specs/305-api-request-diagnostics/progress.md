@@ -180,3 +180,19 @@ Started: 2026-09-12 19:35:54
 **Learnings**:
 - Cookie usernames require the same private seed treatment as passwords because login transmits both in query metadata; response secrets must be collected before allowed correlation fields are selected.
 ---
+---
+## Iteration 10 - 2026-09-12 21:38
+**Work Unit**: US3 Interpret failures and partial evidence accurately (T022 lifecycle edges)
+**Tasks Completed**:
+- [x] T022: Added lifecycle coverage for early close, read/close failures, repeated close after EOF, decompression, interrupted uploads, context failures and abandoned bodies without added lifecycle operations.
+**Tasks Remaining in Work Unit**: 6 US3 tasks (T023-T028)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/httpc/diagnostics_body.go
+- internal/services/httpc/diagnostics_body_test.go
+- specs/305-api-request-diagnostics/tasks.md
+- specs/305-api-request-diagnostics/ralph-memory.md
+- specs/305-api-request-diagnostics/progress.md
+**Learnings**:
+- Partial request reads must retain an explicit `request-complete=false`; request Close remains transparent and does not prove upload completion. Focused race tests and the second full race-enabled repository gate passed; one initial full run hit a non-reproducible OAuth timeout-classification failure that passed 30 targeted repetitions.
+---
