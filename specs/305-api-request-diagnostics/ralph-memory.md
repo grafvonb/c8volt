@@ -19,6 +19,8 @@ Started: 2026-09-12T17:35:53Z
 - Cookie login usernames must join passwords in the invocation-private credential seed because the authenticator sends both as query values; request sanitization then omits those reflected login credentials before formatting.
 - Request-body reads establish explicit incomplete upload evidence until EOF or a successful `WriterTo`; request-body Close preserves the delegate result without claiming upload completion.
 - Trace phase queues retain completed zero-duration samples, match overlapping TCP attempts by network/address, order output by start time, and freeze before logger emission; the shared logging writer keeps concurrently completed records indivisible.
+- Read-retry closes discarded response bodies without draining them, so the diagnostic response wrapper emits one attempt record with observed zero bytes and `response-complete=false`; the eventual response remains a separate sequence.
+- A single `httpc.Service` client supplied to the top-level `c8volt.New` factory reaches Camunda clients for 8.7-8.10, the v8.7 Operate adapter and v8.8/v8.9 Tasklist fallback without generated-client changes.
 
 ## Decisions
 
@@ -48,4 +50,4 @@ Started: 2026-09-12T17:35:53Z
 - Do not add diagnostics to individual commands or generated clients; keep observation at the shared HTTP transport boundary.
 
 ## Current Handoff
-- Continue US3 at T024: add retry/redirect and supported-client wiring coverage, then complete T026-T028 failure, isolation and validation work.
+- Continue US3 at T026: complete failure/partial-transfer finalization and safe error classification against the T022/T024 lifecycle coverage, then finish T027-T028 isolation and validation.

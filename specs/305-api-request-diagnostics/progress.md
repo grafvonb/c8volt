@@ -212,3 +212,19 @@ Started: 2026-09-12 19:35:54
 **Learnings**:
 - The existing keyed connect queues and immutable terminal snapshot already met the advanced phase contract; deterministic callback clocks now prove start-order formatting, zero-versus-absent evidence and late-callback rejection under the race detector.
 ---
+---
+## Iteration 12 - 2026-09-12 21:56
+**Work Unit**: US3 Interpret failures and partial evidence accurately (T024 retry and client wiring)
+**Tasks Completed**:
+- [x] T024: Added retry/redirect boundary regressions and supplied-client wiring coverage across Camunda 8.7-8.10, Operate and Tasklist paths.
+**Tasks Remaining in Work Unit**: 3 US3 tasks (T026-T028)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/httpc/diagnostics_retry_test.go
+- c8volt/diagnostics_test.go
+- specs/305-api-request-diagnostics/tasks.md
+- specs/305-api-request-diagnostics/ralph-memory.md
+- specs/305-api-request-diagnostics/progress.md
+**Learnings**:
+- Diagnostics preserve each public transport boundary: discarded retry responses are incomplete, redirects and eventual successes receive distinct sequences, and the shared supplied client reaches every supported generated-client family without instrumentation below that boundary.
+---
