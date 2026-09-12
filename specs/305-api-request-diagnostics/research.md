@@ -22,11 +22,11 @@ All design questions identified during planning are resolved below. Research use
 
 ### 3. Invocation wiring and stderr
 
-**Decision:** Register a persistent boolean flag without a new persisted configuration key. Read the flag from the executing Cobra command. Capture `cmd.ErrOrStderr()` before installing the activity writer; use that destination for the activity writer, logger and diagnostics. Pass diagnostic options explicitly through shared bootstrap wiring into `httpc.New` before authentication initialization. No collector is created when disabled.
+**Decision:** Reuse resolved verbose configuration and the existing invocation logger before authentication initialization. Capture `cmd.ErrOrStderr()` before activity wrapping and construct the normal configured logger with that writer. Pass verbose/logger context into httpc; install no observer when verbose is off or INFO is filtered. Reuse `logging.InfoIfVerbose` for emission; do not create a diagnostic writer or logger.
 
-**Rationale:** `cmd/root.go` currently builds its activity writer from `root.ErrOrStderr()` and then overwrites the leaf destination. A configured leaf writer must remain authoritative for this feature. `toolx/logging/activity.go` already serializes writes and clears transient terminal output. Diagnostics use direct complete-line writes through this writer, independent of log level, so explicit diagnostics remain effective with quiet mode.
+**Rationale:** `cmd/root.go` currently uses root stderr and can override a configured leaf destination. Effective command stderr must remain authoritative. Existing logging/activity helpers provide formatting, synchronization and terminal coexistence; quiet and configured log levels intentionally suppress INFO diagnostics.
 
-**Alternatives considered:** The standard logger is filtered by quiet/log level and has its own formats; raw process stderr ignores caller routing; a mutable global writer breaks isolation. A new command-specific runner is unnecessary because this is shared bootstrap behavior, not a distinct command lifecycle.
+**Alternatives considered:** Direct writes bypass quiet, configured formats and shared logging conventions. Raw process stderr ignores command routing; a mutable global writer breaks isolation. No command-specific runner or separate logger is needed.
 
 ### 4. Exchange boundaries and lifecycle
 
@@ -38,19 +38,19 @@ All design questions identified during planning are resolved below. Research use
 
 ### 5. Timing and byte semantics
 
-**Decision:** Use UTC wall time for the start timestamp and monotonic elapsed time for durations. Compose `httptrace.ClientTrace` hooks with any existing trace. First response means the first response header byte reported by `GotFirstResponseByte` (which can be informational). Total ends at the observed terminal event. Preserve all completed DNS/connect/TLS phase samples; match overlapping connect attempts by network/address without emitting the address. Do not fabricate absent phases.
+**Decision:** Use monotonic elapsed time for durations; the existing logger supplies emission timestamps in its configured format, with no duplicate start timestamp in the message. Compose `httptrace.ClientTrace` hooks with any existing trace. Capture `t0` immediately before delegated RoundTrip, `th` immediately when it returns final response headers, and `te` at observed body termination. Emit `headers=th-t0`, `body=te-th`, and `total=te-t0`; a known bodyless response ends at `th`. `GotFirstResponseByte` does not define `headers`, because it can precede final headers, including informational responses. Total ends at the observed terminal event. Preserve all completed DNS/connect/TLS phase samples; match overlapping connect attempts by network/address without emitting the address. Do not fabricate absent phases.
 
 **Rationale:** Hooks may execute concurrently or after response termination. Protect mutable exchange state and freeze a snapshot once; ignore late changes to emitted data. Happy Eyeballs may produce concurrent connect samples, so a single overwritten start time is incorrect. Phase samples are observations, not additive portions of total elapsed time.
 
 **Decision:** Count bytes returned by delegated request/response body reads, including bytes returned with an error. These are observed body bytes, not network/framing bytes or declared Content-Length. Automatic decompression can make response counts decoded bytes. Preserve Read/Close behavior and request replay through GetBody. Snapshot request count and completion evidence at record emission; an upload still in progress is incomplete, not a complete transfer.
 
-**Alternatives considered:** Content-Length is declared size, not transferred evidence; payload dumps buffer/read content; replacing existing trace hooks breaks callers; deriving first response from RoundTrip return includes additional time.
+**Alternatives considered:** Content-Length is declared size, not transferred evidence; payload dumps buffer/read content; replacing existing trace hooks breaks callers; first-byte timing answers a different question from the agreed final-header metric and is not emitted.
 
 Primary references: [Go HTTP contracts](https://pkg.go.dev/net/http), [Go HTTP tracing and hook concurrency](https://pkg.go.dev/net/http/httptrace).
 
 ### 6. Safe diagnostic representation
 
-**Decision:** Emit one `api:`-prefixed key=value line with deterministic field order and quoted/escaped string values. Use classified error categories instead of arbitrary error text. Build a new redacted record rather than dumping requests or headers. Exact fields and redaction rules are in `contracts/api-diagnostics.md`.
+**Decision:** Emit one compact `api #<sequence> <METHOD> <safe-path-and-query>: status=<code> error=<failure>` line followed by space-separated timing, connection and secondary metadata fields. Keep numbers beside short technical field names; quote/escape unsafe textual tokens. Use `httptrace` DNSStart/Done, ConnectStart/Done and TLSHandshakeStart/Done for `dns`, `tcp` and `tls`; only TCP network attempts qualify as `tcp`. GotConn supplies `conn=new|reused`. Use classified error categories instead of arbitrary error text. Build a new redacted record rather than dumping requests or headers. Exact fields and redaction rules are in `contracts/api-diagnostics.md`.
 
 **Rationale:** Existing `LogTransport` prints raw URLs and optionally uses `httputil.DumpRequestOut`; neither is an appropriate formatter. Diagnostics must never enable those options. Error strings and free-form header descriptions can contain payloads and credentials. A safe category preserves the failure signal without trusting arbitrary strings.
 
@@ -60,7 +60,7 @@ Primary references: [Go HTTP contracts](https://pkg.go.dev/net/http), [Go HTTP t
 
 ### 7. Resource and failure policy
 
-**Decision:** Store only per-exchange metadata, counters and trace samples; no history, payload copies, extra requests or queue. Serialize a completed record before a locked write. Writer failure is best-effort diagnostic loss and must not replace an HTTP/body error or alter command exit status; do not retry writes into other streams.
+**Decision:** Store only per-exchange metadata, counters and trace samples; no history, payload copies, extra requests or queue. Format the safe message after freezing state, then emit through the existing invocation logger and its synchronized writer. Writer failure is best-effort diagnostic loss and must not replace an HTTP/body error or alter command exit status; do not retry writes into other streams.
 
 **Rationale:** This preserves operation outcomes and confines cost to actual exchanges. As with existing stderr logging, a slow writer can add output latency; no zero-overhead or nonblocking guarantee is invented. Emission timing excludes diagnostic formatting/writing time. An abandoned body with no observable terminal event cannot produce a fabricated completed record.
 
@@ -70,6 +70,6 @@ Primary references: [Go HTTP contracts](https://pkg.go.dev/net/http), [Go HTTP t
 
 **Decision:** Use existing `testx` HTTP servers, root execution patterns, and `testx.NewCmdTerminalRunner` for separate stdout/stderr with real terminal stdin. Cover `get process-definition` and `cancel process-instance`, auth variants, all supported version wiring, retries, body lifecycle, tracing, output modes and redaction. Run targeted tests before `make test`; update root metadata and README, then regenerate with `make docs-content`.
 
-**Rationale:** Existing root, cancellation and terminal tests provide realistic invocation paths. Isolated rendering tests cannot prove flag inheritance, bootstrap auth coverage, request counts or configured stderr routing.
+**Rationale:** Existing root, cancellation and terminal tests provide realistic invocation paths. Isolated rendering tests cannot prove existing verbose resolution, bootstrap auth coverage, request counts or configured stderr routing.
 
 **Alternatives considered:** Live mutation testing is not needed for default validation; deterministic local handlers can assert operation behavior without real resource changes. Pure mock-facade tests miss the transport entirely.
