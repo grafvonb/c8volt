@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -121,7 +122,12 @@ func TestPagedSearchMachineOutputCleanliness(t *testing.T) {
 			stdout, stderr := executeRootForJobWithSeparateOutputs(t, args...)
 
 			require.Len(t, bodies, 2)
-			require.Empty(t, stderr)
+			if slices.Contains(tt.args, "--verbose") && !slices.Contains(tt.args, "--quiet") {
+				require.Equal(t, 2, strings.Count(stderr, "api #"))
+				require.NotContains(t, stdout, "api #")
+			} else {
+				require.Empty(t, stderr)
+			}
 			tt.wantStdout(t, stdout)
 		})
 	}

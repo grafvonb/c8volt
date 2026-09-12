@@ -13,6 +13,7 @@ Started: 2026-09-12T17:35:53Z
 - The invocation collector is absent unless verbose INFO is admitted, copies only private context/redaction seeds, allocates atomic exchange sequences, freezes deep snapshots under an exchange lock and emits through the existing logger after unlocking.
 - Diagnostics are installed beneath the existing log and read-retry transports; `httptrace.WithClientTrace` composes callbacks, response termination owns final timing, and request/response wrappers retain `GetBody`, Read/Close results and `io.WriterTo` when supplied.
 - `httpc.ShareDiagnostics` finds the invocation collector through known wrappers and attaches it to OAuth's timeout-preserving, unauthenticated, non-retrying token client so token and API exchanges share one sequence.
+- Root bootstrap passes `flagVerbose` and the existing configured invocation logger to `httpc.WithDiagnostics` before authenticator construction, so OAuth token and cookie login traffic are observed without separate command logic.
 
 ## Decisions
 
@@ -24,6 +25,7 @@ Started: 2026-09-12T17:35:53Z
 ## Gotchas
 
 - The baseline regex intentionally has no matching tests in several auth packages; their `[no tests to run]` result is not a failure.
+- Existing verbose command tests that prohibit endpoint detail must evaluate command-owned progress after removing `api #` lines; machine stdout remains byte-clean while admitted diagnostics intentionally occupy stderr.
 
 ## Reusable Commands
 
@@ -32,10 +34,11 @@ Started: 2026-09-12T17:35:53Z
 - Sanitizer checks: `go test ./internal/services/httpc -run 'TestAPIDiagnostics' -race -count=1`
 - Full gate: `make test`
 - US1 transport/auth gate: `go test ./internal/services/httpc ./internal/services/auth/oauth2 -run 'TestAPIDiagnostics' -race -count=1`
+- US1 command gate: `go test ./internal/services/httpc ./internal/services/auth/oauth2 ./cmd -run 'TestAPIDiagnostics|RootHelp' -count=1`
 
 ## Do Not Repeat
 
 - Do not add diagnostics to individual commands or generated clients; keep observation at the shared HTTP transport boundary.
 
 ## Current Handoff
-- Continue US1 at T013: pass the resolved verbose setting and existing invocation logger into `httpc.WithDiagnostics` before authenticator initialization, then add command/bootstrap coverage in T014 and record the US1 gate in T015.
+- Start US2 at T016: extend the command execution matrix for log/result modes and read/cancellation workflows, without beginning T017 or later tasks unless T016 is validated in the same story work unit.

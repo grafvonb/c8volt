@@ -96,3 +96,32 @@ Started: 2026-09-12 19:35:54
 **Learnings**:
 - Final-header timing is defined by RoundTrip return, while body termination owns total emission; sharing the collector through known wrappers preserves OAuth timeout and avoids adding auth or retry behavior.
 ---
+
+---
+## Iteration 6 - 2026-09-12 20:47
+**Work Unit**: US1 Investigate a slow command (T013-T015)
+**Tasks Completed**:
+- [x] T013: Wired resolved verbose state and the existing invocation logger into shared HTTP diagnostics before authenticator initialization.
+- [x] T014: Added deterministic root/bootstrap acceptance coverage for read preservation, flag inheritance, authentication modes, filtering and no-exchange help.
+- [x] T015: Verified diagnostic test discovery, passed the US1 gate and the full race-enabled repository suite, and recorded the outcomes.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/root_services.go
+- cmd/root_api_diagnostics_test.go
+- cmd/cancel_processinstance_selector_test.go
+- cmd/delete_processinstance_selector_test.go
+- cmd/cmd_json_assertions_test.go
+- cmd/get_processinstance_paging_test.go
+- cmd/ops_execute_retention_policy_test.go
+- cmd/ops_purge_orphan_processinstances_test.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- cmd/ops_repair_incident_test.go
+- cmd/ops_repair_processinstance_test.go
+- specs/305-api-request-diagnostics/tasks.md
+- specs/305-api-request-diagnostics/ralph-memory.md
+- specs/305-api-request-diagnostics/quickstart.md
+- specs/305-api-request-diagnostics/progress.md
+**Learnings**:
+- Shared bootstrap observation makes safe API records part of verbose stderr across commands; existing progress tests must distinguish those records while continuing to prohibit endpoint detail in command-owned lifecycle messages.
+---

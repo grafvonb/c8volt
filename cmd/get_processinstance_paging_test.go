@@ -684,7 +684,8 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.Contains(t, stdout, `"outcome": "succeeded"`)
 		require.Contains(t, stdout, `"total": 3`)
 		require.NotContains(t, stdout, "page size:")
-		require.Empty(t, stderr)
+		require.Equal(t, 2, strings.Count(stderr, "api #"))
+		require.NotContains(t, stdout, "api #")
 	})
 
 	t.Run("automation json mode keeps stdout machine-readable even with debug logs", func(t *testing.T) {

@@ -19,6 +19,20 @@ go test ./internal/services/httpc ./internal/services/auth/... ./cmd -run 'ReadR
 
 The shared HTTP retry tests and command root-help/real-terminal confirmation tests passed. Auth packages without matching baseline test names reported `[no tests to run]`; no package failed. Review of the feature artifacts, constitution and `specs/ralph-implementation-rules.md` found no conflicts.
 
+## User Story 1 command/bootstrap validation
+
+On 2026-09-12, the diagnostic test inventories for `internal/services/httpc`, `internal/services/auth/oauth2`, and `cmd` all listed matching `APIDiagnostics` tests. The US1 gate passed:
+
+```sh
+go test ./internal/services/httpc ./internal/services/auth/oauth2 ./cmd -run 'TestAPIDiagnostics|RootHelp' -count=1
+```
+
+The command cases cover inherited `--verbose` placement, auth-none, OAuth token and cookie-login bootstrap exchanges, unchanged read stdout/request counts, help without exchanges, and verbose-off/debug-only/quiet/restrictive-INFO filtering. After updating pre-feature verbose assertions to distinguish safe API records from command progress text, the full race-enabled repository gate also passed:
+
+```sh
+make test
+```
+
 ## 1. Check implementation coverage and run focused validation
 
 Add acceptance tests under the shared `TestAPIDiagnostics...` naming prefix in httpc, OAuth and cmd during implementation. Confirm the test lists contain the intended cases before running them; a successful command with no matching tests is not validation.

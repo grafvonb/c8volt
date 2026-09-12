@@ -794,7 +794,8 @@ func TestCancelProcessInstanceEmptySelectorOutput(t *testing.T) {
 				}
 				require.Equal(t, "found: 0\n", stdout)
 				if tt.verbose {
-					normalized := regexp.MustCompile(`(?m)^\d{2}:\d{2}:\d{2}\.\d{3} (INFO|WARN) `).ReplaceAllString(stderr, `$1 `)
+					require.Contains(t, stderr, "api #1 POST /v2/process-instances/search: status=200")
+					normalized := regexp.MustCompile(`(?m)^\d{2}:\d{2}:\d{2}\.\d{3} (INFO|WARN) `).ReplaceAllString(withoutAPIDiagnosticLines(stderr), `$1 `)
 					want := "INFO process-instance cancel scope: cancel process-instance matched no process instances; page size: 1000; discovery pages: 1\n" +
 						"WARN process-instance cancel is destructive: plan process-instance mutation scope\n" +
 						"INFO discovering process instances, page 1/1\n" +
