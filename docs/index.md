@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.0-beta.1-255-ga4bd3982-dirty`, commit `a4bd3982`, built `2026-09-12T13:40:31Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.0-beta.1-256-gdbd4087a-dirty`, commit `dbd4087a`, built `2026-09-12T13:59:41Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -22,53 +22,11 @@ has_toc: true
 
 `c8volt` is not an official Camunda product. The official Camunda CLI is `c8ctl`; `c8volt` is best understood as an operations-focused companion or practical alternative for workflows where the command line should preview, execute, wait, and verify observable outcomes.
 
-## New in v4.3: Experimental Camunda 8.10 Support
+## C8 Ops CLI
 
-[c8volt v4.3.0](https://github.com/grafvonb/c8volt/releases/tag/v4.3.0) adds experimental Camunda 8.10 support through an isolated native API client, version-specific service adapters, and dedicated C810 process definitions for embedded and integration workflows.
+Introduced at [CamundaCon 2026](https://www.camundacon.com/), `c8volt ops` turns multi-command Camunda operations into previewable playbooks. Each workflow discovers its targets, plans the required actions, and coordinates execution and verification.
 
-The release also makes Camunda 8.9 the default compatibility version, strengthens generated-client provenance and publication safeguards, and improves release-line diagnostics while preserving the established script-safe CLI contract.
-
-## New in v4.2: C8 Ops CLI and Slow Process Analysis
-
-The v4 line introduced the C8 Ops CLI at [CamundaCon 2026](https://www.camundacon.com/). The event is done, but the idea is now the center of c8volt: low-level commands do work; `c8volt ops` gets the job done.
-
-The `ops` command group turns multi-command Camunda operations into audited, previewable playbooks. An ops command discovers the target set, freezes it, builds the lower-level c8volt plan, then runs it with dry-run previews, confirmation controls, JSON output, and audit reports.
-
-### Ops-Scale Preflight And Progress
-
-High-volume search, analysis, repair, purge, cancel, delete, walk, run, and smoke-test workflows report scope before expensive work and progress while the frozen work set is processed. Broad selectors show a preflight summary with the core resource, best available count certainty, page-size context, and the consequence of continuing. Counts are labeled as exact, lower bound, estimated, or unknown so operators can tell whether the number is a frozen scope or only the best current signal from Camunda.
-
-During discovery, progress uses page and seen-count wording. After c8volt freezes the work set and starts real work, progress switches to exact completion counters for phases such as deleting process-instance trees, deleting or deploying process definitions, repairing incidents, starting process instances, analyzing enriched runtime data, waiting for multi-key expectations, or running smoke-test stages. Forced all-process-definitions purge reports the actual cleanup sequence: cancelling process-instance root trees, waiting for active process instances to drain, deleting process-instance histories, then deleting process definitions. Root-tree cleanup counts are separate from definition counts, and any displayed affected scope is planned cleanup scope rather than completed work. The visible activity is updated from real completions and may include failed counts plus affected-resource totals only when every item can report a trustworthy value.
-
-Progress never writes to result stdout. Default human mode uses terminal activity and, for long progressing phases, emits compact completion milestones on stderr at most once per 10-second interval during work, plus immediate failure warnings and a final flush of pending progress once milestones have started. Clean operations that finish before the first interval stay durably silent. Verbose and debug modes replace aggregate milestones with one durable per-item or per-stage completion line. JSON output remains one document, keys-only output remains one key per line, quiet mode suppresses successful progress while retaining failure warnings, and automation-oriented runs suppress all human progress chatter or keep scope in structured reports. For paged commands, `--batch-size` controls each backend discovery request, while `--limit` caps the total returned, selected, frozen, or analyzed scope as documented by the command.
-
-Mutation workflows and configuration diagnostics expose operation-specific tenant context. For ops purge, retention, and repair workflows, ordinary human runs show selection context before discovery or explicit-key resolution, then show validated affected tenants before the confirmation question and the first mutation. `--auto-confirm` skips only the question; it does not suppress tenant context permitted by the selected output mode. Tenant-reporting mutation workflows show a named discovery filter as `selection scope: tenant-a only`, or `selection scope: unfiltered across accessible tenants` when no tenant filter is configured. Use `--all-tenants` to explicitly clear a configured tenant filter for commands that can search across every tenant visible to the authenticated user. On these tenant-reporting surfaces, if an explicit `--tenant` value changes configuration, eligible human output first reports the prior `configured tenant`; clearing a named filter with `--tenant ""` warns that selection is unfiltered, while named changes are informational. Clearing a named filter with `--all-tenants` emits `--all-tenants overrides the configured tenant filter; selection is unfiltered`. Deploy, run, and smoke-test creation steps show `creation target: tenant-a` or `creation target: default tenant`, and reject `--all-tenants` because they require one concrete destination tenant. Explicit-key mutations state that the tenant filter is not applied, then show resource tenant evidence when the frozen plan already contains it. For selector-based process-instance delete and cancel, eligible tenant diagnostics use standard INFO and WARN logging and honor the configured log format and level; their existing output-mode eligibility remains unchanged. JSON-formatted diagnostic logs are separate from JSON command results and stay off result stdout. Multi-tenant plans emit one warning-level `affected tenants: ...` summary, and unknown-metadata warnings remain non-blocking safety evidence. JSON results and JSON audit reports use one nested `tenantContext` object; quiet mode suppresses tenant lines, and keys-only output stays one key per line with no warnings on stdout.
-
-Transient Camunda GET and HEAD read failures are retried automatically when the shared request path sees temporary transport errors, throttling, or server availability responses. Retry messages stay compact and off result stdout, and c8volt still treats business outcomes such as not-found, invalid request, permission failure, and conflict as final.
-
-### v4.2 Highlight: Slow Process Analysis
-
-`ops analyse slow-process-instances` is read-only analysis for slow runtime work. It combines process-instance search, runtime element timing, and optional listener-job context into an operator view: slowest roots first, slowest elements underneath.
-
-```bash
-./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --state active --dur-longer 5m
-./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-listeners
-./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --element-id <element-id> --dur-element-longer 30s
-```
-
-Playbook: [Analyse Slow Process Instances](./ops/analyse-slow-process-instances/). Generated reference: [ops analyse slow-process-instances](./cli/c8volt_ops_analyse_slow-process-instances).
-
-### Ops Commands To Know
-
-Start destructive, repair, and cleanup work with a plan:
-
-```bash
-./c8volt ops execute retention-policy --retention-days 90 --dry-run
-./c8volt ops repair incident --key <incident-key> --dry-run
-./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
-```
-
-Generated references: [ops execute retention-policy](./cli/c8volt_ops_execute_retention-policy), [ops purge process-instances-with-incidents](./cli/c8volt_ops_purge_process-instances-with-incidents), [ops repair incident](./cli/c8volt_ops_repair_incident).
+Start repair, purge, and retention workflows with `--dry-run` to review the affected scope before changing cluster data. Follow the linked playbook for selection, execution, and verification details.
 
 | Command | What it finishes | Playbook |
 | --- | --- | --- |
@@ -177,73 +135,22 @@ Then look around at the latest process definitions visible in the cluster:
 ./c8volt get process-definition --latest
 ```
 
-Process-definition collections use one stable order in human, JSON, keys-only,
-statistics, and watch output: tenant ID ascending, BPMN process ID ascending,
-version descending, then process-definition key ascending. Tenant and BPMN
-process IDs are exact, case-sensitive text; the displayed `<default>` tenant is
-ordered as ordinary text; process-definition keys are opaque text and are not
-parsed numerically. `--latest` selects one newest definition per exact tenant
-ID and BPMN process ID pair, using the lowest exact-text key when versions tie.
-Camunda 8.7 applies this latest selection within its existing 1000 visible
-definition compatibility window; Camunda 8.8 or newer uses native latest
-filtering and the same final collection order.
+`--latest` selects the newest definition for each exact tenant ID and BPMN process ID pair. On Camunda 8.7, selection is limited to the existing 1000 visible-definition compatibility window; Camunda 8.8 or newer uses native latest filtering.
 
-To watch deployment visibility in a terminal, add `--watch`. The first refresh
-runs immediately, the default interval is `1s`, and `--watch-interval` accepts
-positive durations such as `2s`. Each successful refresh repaints one terminal
-view and uses the same human result body as the equivalent non-watch process
-definition lookup, without watch-only `snapshot N:` labels. Without a selector,
-watch mode observes all visible process definitions; `--batch-size` controls
-each backend discovery request for broad watch refreshes without capping the
-total rows in a refresh.
+To monitor deployment visibility, add `--watch`. It checks immediately and repeats every second by default; use `--watch-interval` to change the interval.
 
 ```bash
 ./c8volt get process-definition --watch
 ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --watch --watch-interval 2s
 ```
 
-Process-definition watch output is human-only: it rejects `--json`,
-`--keys-only`, `--xml`, `--quiet`, and `--automation` before lookup work so
-script-safe output modes stay finite and deterministic. Existing timeout and
-backoff retry settings bound watch runs, and successful refreshes reset the
-consecutive retry budget. If refresh work takes longer than the configured
-interval, default human mode warns once per continuous slow streak; verbose mode
-adds per-refresh timing on stderr.
+Watch runs until interrupted, timed out, or its retry budget is exhausted. It cannot be combined with `--json`, `--keys-only`, `--xml`, `--quiet`, or `--automation`.
 
-For scripts or CI, add `--json` when stdout should be data and logs should stay on stderr:
+For scripts or CI, request JSON with `--json`:
 
 ```bash
 ./c8volt config test-connection --json
 ```
-
-For commands that advertise full machine-contract support, `--json` writes
-exactly one established error envelope when validation or runtime work fails
-during command execution. The envelope retains the failure or invalid outcome,
-its normalized class and detail, and the command identity. In ordinary human
-mode, the diagnostic is written to stderr and stdout remains reserved for
-command results.
-
-`--no-err-codes` changes only the process exit status. A JSON error envelope
-still reports the failure or invalid outcome, human mode still writes the error
-to stderr, and the command still terminates without continuing work. Bootstrap
-failures and argument or flag parsing errors that occur before command execution
-are outside this shared envelope and retain their established diagnostics. Use
-`c8volt capabilities --json` to discover which commands advertise full
-machine-contract support.
-
-### Output and confirmation streams
-
-Command results are written to stdout. Plain confirmation and paging
-continuation questions are written to stderr, so redirecting or piping stdout
-does not mix prompts into results. Keys-only output therefore remains one key
-per line while an eligible continuation question stays visible in the terminal.
-If a script or prompt consumer needs the question text, it must capture stderr.
-
-Redirecting stdout does not suppress confirmation questions whose existing
-terminal-input rules allow them. Selector-recovery questions keep their existing
-eligibility rules, including their terminal-stdout guard, and `--auto-confirm`
-continues to skip only the questions it already skipped. Answer defaults,
-automation behavior, and command outcomes are unchanged.
 
 For the full setup contract, see the generated [config reference](./cli/c8volt_config).
 
@@ -255,15 +162,13 @@ Documentation examples use full command, resource, and flag names so they match 
 
 ## Supported Camunda Versions
 
-`c8volt` supports Camunda `8.7`, `8.8`, `8.9`, and `8.10`.
+`c8volt` supports Camunda `8.7`, `8.8`, and `8.9`, with experimental `8.10` support introduced in [c8volt v4.3.0](https://github.com/grafvonb/c8volt/releases/tag/v4.3.0).
 
-`8.10` is selected as the ordinary compatibility identity `8.10`. Accepted aliases are `8.10`, `810`, `v810`, and `v8.10`; alpha, release-candidate, and patch tags are provenance, not configuration identities. The active 8.10 artifacts currently come from Camunda `8.10.0-alpha4` and are disclosed by `c8volt version`.
+Set `app.camunda_version` to `"8.10"` for Camunda 8.10. Use `c8volt version` to check the bundled API baseline.
 
 `8.9` is the default when no Camunda version is configured. `8.9` and `8.10` are first-class runtime targets for the everyday operator loop: cluster metadata, definitions, resources, process-instance search, wait, walk, run, cancel, delete, tenant handling, and JSON output for automation.
 
 Process-instance variable updates, incident resolution, and `get job`/`update job` commands are supported on Camunda `8.8` or newer; Camunda `8.7` returns an unsupported-version error for those state-changing job, variable update, and incident resolution commands. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
-
-The 8.10 baseline is updated in place as later alphas, release candidates, or the final 8.10.0 source are adopted. Operator configuration, docs, package names, and service-family identity remain `8.10` across those baseline updates.
 
 ## Core Workflows
 
@@ -283,7 +188,7 @@ Generated references: [deploy process-definition](./cli/c8volt_deploy_process-de
 
 ### Inspect Process Instances
 
-Use `get process-instance` for direct lookup, scoped search, variables, incidents, runtime elements, listener jobs, and process-instance keys for pipelines. Add `--with-elements` when the BPMN execution state should be visible below each selected process instance. Add `--with-listeners` together with `--with-elements` when execution/task listener jobs should stay attached to the matching element rows.
+Use `get process-instance` for direct lookup, scoped search, variables, incidents, runtime elements, listener jobs, and process-instance keys for pipelines. Add `--with-elements` to inspect BPMN execution state, and combine it with `--with-listeners` to inspect execution and task listener jobs.
 
 ```bash
 ./c8volt get process-instance --key <process-instance-key>
@@ -348,7 +253,7 @@ Use dry-run to preview process-instance family scope before cancellation or hist
 
 Cancellation confirmation succeeds when every affected family member is completed, canceled, terminated, or no longer present. This terminal cleanup rule does not broaden explicit state checks: `expect process-instance --state canceled` continues to match only canceled or terminated instances, not completed or absent ones.
 
-When selectors match no process instances, cancel and delete complete as successful no-ops without confirmation or mutation. Ordinary output remains exactly `found: 0`; `--quiet` suppresses that summary, `--keys-only` writes zero bytes, and `--json` writes one shared result envelope with outcome `succeeded` and an empty operation-specific payload. The same rules apply to `--dry-run`: JSON describes an empty preview with `mutationSubmitted: false`, while human, quiet, and keys-only output keep their normal empty-result behavior.
+When selectors match no process instances, cancel and delete complete successfully without confirmation or mutation. This also applies to `--dry-run`. A `--bpmn-process-id` selector must first match a visible process definition.
 
 ```bash
 ./c8volt cancel process-instance --key <process-instance-key> --dry-run
@@ -390,7 +295,7 @@ Configure `app.tenant` when everyday discovery should stay narrowed to one tenan
 
 Both forms are supported because `--all-tenants` is inherited from the root command. The option is command-line-only, conflicts with any explicit `--tenant` value including `--tenant ""`, and `--all-tenants=false` is the same as not setting it.
 
-On tenant-reporting mutation surfaces, when `--all-tenants` clears a named configured tenant, eligible human output includes the warning `--all-tenants overrides the configured tenant filter; selection is unfiltered`, then reports `selection scope: unfiltered across accessible tenants`. `get process-definition`, `get process-instance`, and `ops analyse slow-process-instances` apply the filter override without emitting these tenant-context messages. This is a filter change only: Camunda still limits results to resources the authenticated identity can see, and c8volt does not enumerate tenants or bypass authorization.
+This clears the discovery filter only. Camunda still limits results to resources the authenticated identity can access. Explicit resource keys are not restricted by the tenant filter.
 
 Commands that create or deploy into one tenant reject `--all-tenants`: `deploy process-definition`, `embed deploy`, `run process-instance`, and `ops execute smoke-test`. Direct resource-key commands keep their existing backend authorization behavior; the flag does not grant broader direct-key access.
 
