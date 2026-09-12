@@ -19,7 +19,7 @@ var configValidateCmd = &cobra.Command{
 
 Loads the effective configuration using the normal precedence rules and applies the same validation as config show --validate.`,
 	Example: `  ./c8volt --config ./config.yaml config validate
-  ./c8volt --profile prod config validate
+  ./c8volt --profile <profile-name> config validate
   ./c8volt --tenant tenant-a config validate
   ./c8volt --tenant "" config validate`,
 	Run: func(cmd *cobra.Command, args []string) {

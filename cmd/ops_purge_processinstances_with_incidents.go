@@ -58,7 +58,7 @@ Use --dry-run to inspect the plan without mutation, --auto-confirm or --automati
   ./c8volt --tenant "" ops purge process-instances-with-incidents --state active --limit 5 --dry-run
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force
-  ./c8volt --verbose ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --auto-confirm
+  ./c8volt --verbose ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --auto-confirm
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md`,
 	Aliases: []string{"pi-with-incidents", "piwi"},
 	Args:    cobra.NoArgs,

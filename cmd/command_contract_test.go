@@ -53,7 +53,7 @@ func TestCommandCapabilityForCommand_IncludesInheritedAndRequiredFlags(t *testin
 		Type:        "string",
 		Required:    true,
 		Repeated:    false,
-		Description: "resource ID to fetch",
+		Description: "resource key to fetch",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "automation",

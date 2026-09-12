@@ -41,7 +41,7 @@ This generated tree lists the root reference plus the 55 available c8volt comman
     - [`c8volt get job`]({{ "/cli/c8volt_get_job" | relative_url }}) - Inspect or search jobs
     - [`c8volt get process-definition`]({{ "/cli/c8volt_get_process-definition" | relative_url }}) - List or fetch deployed process definitions
     - [`c8volt get process-instance`]({{ "/cli/c8volt_get_process-instance" | relative_url }}) - List or fetch process instances
-    - [`c8volt get resource`]({{ "/cli/c8volt_get_resource" | relative_url }}) - Get a resource by ID
+    - [`c8volt get resource`]({{ "/cli/c8volt_get_resource" | relative_url }}) - Get a resource by key
     - [`c8volt get tenant`]({{ "/cli/c8volt_get_tenant" | relative_url }}) - List tenants
   - [`c8volt ops`]({{ "/cli/c8volt_ops" | relative_url }}) - Run operational playbooks
     - [`c8volt ops analyse`]({{ "/cli/c8volt_ops_analyse" | relative_url }}) - Discover read-only operational analyses

@@ -241,18 +241,18 @@ func TestCapabilitiesCommand_AutomationJSONKeepsStdoutMachineReadable(t *testing
 	require.Empty(t, stderr)
 }
 
-// Verifies `get resource --help` documents required ID-based lookup usage.
+// Verifies `get resource --help` documents required resource-key lookup usage.
 func TestGetResourceHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "resource", "--help")
 
-	require.Contains(t, output, "Get a single resource by ID")
+	require.Contains(t, output, "Get a single resource by key")
 	require.Contains(t, output, "Requires --id")
 	require.Contains(t, output, "tenant")
 	require.Contains(t, output, "Explicit --id uses backend authorization without tenant filtering")
 	require.Contains(t, output, "without tenant filtering")
 	require.Contains(t, output, "c8volt get resource")
 	require.Contains(t, output, "--id")
-	require.Contains(t, output, "resource ID to fetch")
+	require.Contains(t, output, "resource key to fetch")
 	require.Contains(t, output, "--keys-only")
 }
 

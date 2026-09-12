@@ -20,7 +20,7 @@ var configTestConnectionCmd = &cobra.Command{
 Loads the effective configuration, validates it locally, and retrieves cluster topology. Compatibility checks compare the configured and observed major/minor release lines; patch and prerelease differences on the same line are accepted. A version mismatch or unknown gateway version does not fail an otherwise successful connection test.`,
 	Example: `  ./c8volt --config ./config.yaml config test-connection
   ./c8volt --config ./config.yaml config test-connection --json
-  ./c8volt --profile prod config test-connection
+  ./c8volt --profile <profile-name> config test-connection
   ./c8volt --tenant tenant-a config test-connection
   ./c8volt --tenant "" config test-connection --json`,
 	Run: func(cmd *cobra.Command, args []string) {

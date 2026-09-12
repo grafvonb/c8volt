@@ -22,7 +22,7 @@ instances, inspect jobs, elements, and incidents by key or search, list visible 
   ./c8volt get incident --key <incident-key>
   ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
   ./c8volt get tenant
-  ./c8volt get resource --id <resource-id>`,
+  ./c8volt get resource --id <resource-key>`,
 	Aliases: []string{"g", "read"},
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {

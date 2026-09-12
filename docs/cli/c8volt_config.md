@@ -30,7 +30,7 @@ c8volt config [flags]
   ./c8volt --config ./config.yaml config test-connection
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt config show --template
-  ./c8volt --profile prod config show
+  ./c8volt --profile <profile-name> config show
 ```
 
 ### Options

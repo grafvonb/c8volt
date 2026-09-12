@@ -23,7 +23,7 @@ c8volt config test-connection [flags]
 ```
   ./c8volt --config ./config.yaml config test-connection
   ./c8volt --config ./config.yaml config test-connection --json
-  ./c8volt --profile prod config test-connection
+  ./c8volt --profile <profile-name> config test-connection
   ./c8volt --tenant tenant-a config test-connection
   ./c8volt --tenant "" config test-connection --json
 ```

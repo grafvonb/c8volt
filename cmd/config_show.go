@@ -27,7 +27,7 @@ Precedence: flag > env > profile > base config > default. A named tenant limits 
 
 --validate and --template are compatibility shortcuts for config validate and config template.`,
 	Example: `  ./c8volt config show
-  ./c8volt --config ./config.yaml --profile prod config show
+  ./c8volt --config ./config.yaml --profile <profile-name> config show
   ./c8volt --tenant tenant-a config show
   ./c8volt --tenant "" config show
   ./c8volt --config ./config.yaml config show --validate
