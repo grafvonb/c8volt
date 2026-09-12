@@ -33,6 +33,20 @@ The command cases cover inherited `--verbose` placement, auth-none, OAuth token 
 make test
 ```
 
+## User Story 2 safety and operational validation
+
+On 2026-09-12, the sanitizer, OAuth, cookie and real-terminal diagnostic test inventories all contained their expected acceptance cases. The US2 gate passed without live service access or live mutations:
+
+```sh
+go test ./internal/services/httpc ./internal/services/auth/... ./cmd -run 'TestAPIDiagnostics|ProcessInstanceConfirmationTerminal' -count=1
+```
+
+Adversarial cases cover AWS/Google signed URLs, multiply encoded names and values, repeated safe and unsafe values, known-secret reflection across query/header/context fields, response cookies reflected in allowed identifiers, arbitrary headers and errors, malformed metadata, control injection and fuzz seeds. Cookie-login and OAuth fixtures verify that credentials and token/cookie reflections are absent while safe correlation identifiers remain. Real-terminal cancellation cases execute with local fixtures only and prove that abort, EOF and empty scopes submit no mutations. The full race-enabled repository gate also passed:
+
+```sh
+make test
+```
+
 ## 1. Check implementation coverage and run focused validation
 
 Add acceptance tests under the shared `TestAPIDiagnostics...` naming prefix in httpc, OAuth and cmd during implementation. Confirm the test lists contain the intended cases before running them; a successful command with no matching tests is not validation.

@@ -60,6 +60,7 @@ func newDiagnosticSanitizer(cfg *config.Config) *diagnosticSanitizer {
 	sanitizer.profile = cfg.ActiveProfile
 	sanitizer.tenant = cfg.App.Tenant
 	sanitizer.addSecret(cfg.Auth.OAuth2.ClientSecret)
+	sanitizer.addSecret(cfg.Auth.Cookie.Username)
 	sanitizer.addSecret(cfg.Auth.Cookie.Password)
 	return sanitizer
 }

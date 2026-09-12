@@ -19,6 +19,169 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestAPIDiagnosticsSanitizesAdversarialQueryFamilies verifies encoded credential families and payloads fail closed.
+func TestAPIDiagnosticsSanitizesAdversarialQueryFamilies(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		rawQuery string
+		want     string
+	}{
+		{
+			name:     "aws signed url",
+			rawQuery: "safe=visible&X-Amz-Credential=credential&X-Amz-Signature=signature&X-Amz-Security-Token=token",
+			want:     "/v2/items?safe=visible",
+		},
+		{
+			name:     "google signed url",
+			rawQuery: "X-Goog-Credential=credential&X-Goog-Signature=signature&resource-key=2251799813685249",
+			want:     "/v2/items?resource-key=2251799813685249",
+		},
+		{
+			name:     "multiply encoded names and values",
+			rawQuery: "access%255Ftoken=drop&safe=token%253Dnested-secret&safe=retained",
+			want:     "/v2/items?safe=retained",
+		},
+		{
+			name:     "repeated safe and credential values",
+			rawQuery: "tenant=customer-a&tenant=Bearer%20nested-secret&signature=drop&payload=%7B%22business%22%3Atrue%7D",
+			want:     "/v2/items?tenant=customer-a",
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			metadata := newDiagnosticSanitizer(nil).sanitizeRequest(&http.Request{
+				Method: http.MethodGet,
+				URL:    &url.URL{Scheme: "https", Host: "example.test", Path: "/v2/items", RawQuery: test.rawQuery},
+			})
+			require.Equal(t, test.want, metadata.target)
+			require.NotContains(t, metadata.target, "credential")
+			require.NotContains(t, metadata.target, "signature")
+			require.NotContains(t, metadata.target, "nested-secret")
+			require.NotContains(t, metadata.target, "business")
+		})
+	}
+}
+
+// TestAPIDiagnosticsRedactsKnownSecretsAcrossMetadata verifies private seeds are applied before any allowed field is retained.
+func TestAPIDiagnosticsRedactsKnownSecretsAcrossMetadata(t *testing.T) {
+	t.Parallel()
+
+	const (
+		clientSecret = "client/secret + value"
+		cookieSecret = "cookie-response-secret"
+	)
+	cfg := config.New()
+	cfg.ActiveProfile = "profile-" + url.QueryEscape(clientSecret)
+	cfg.App.Tenant = "tenant-" + clientSecret
+	cfg.Auth.OAuth2.ClientSecret = clientSecret
+
+	sanitizer := newDiagnosticSanitizer(cfg)
+	request := &http.Request{
+		Method: http.MethodPost,
+		URL:    &url.URL{Path: "/v2/items/" + url.PathEscape(clientSecret), RawQuery: "key=2251799813685249&echo=" + url.QueryEscape(clientSecret)},
+		Header: make(http.Header),
+		Body:   &panicReadCloser{},
+	}
+	request.Header.Add("X-Request-ID", url.QueryEscape(clientSecret))
+	request.Header.Add("X-Request-ID", "safe-client-request")
+	request.Header.Set("X-Correlation-ID", "safe-client-correlation")
+	requestMetadata := sanitizer.sanitizeRequest(request)
+
+	response := &http.Response{Header: make(http.Header), Body: &panicReadCloser{}}
+	response.Header.Add("Set-Cookie", "SESSION="+cookieSecret+"; Path=/; HttpOnly")
+	response.Header.Add("X-Request-ID", cookieSecret)
+	response.Header.Add("X-Request-ID", "safe-response-request")
+	response.Header.Set("X-Correlation-ID", "safe-response-correlation")
+	response.Header.Set("X-Api-Key", "response-api-key")
+	response.Header.Set("Server-Timing", `db;desc="response-api-key";dur=2`)
+	responseMetadata := sanitizer.sanitizeResponse(response)
+
+	serialized := strings.Join([]string{
+		requestMetadata.target,
+		requestMetadata.profile,
+		requestMetadata.tenant,
+		requestMetadata.clientRequestID,
+		requestMetadata.clientCorrelationID,
+		responseMetadata.requestID,
+		responseMetadata.correlationID,
+		responseMetadata.serverTiming,
+	}, " ")
+	for _, secret := range []string{clientSecret, url.QueryEscape(clientSecret), cookieSecret, "response-api-key"} {
+		require.NotContains(t, serialized, secret)
+	}
+	require.Contains(t, requestMetadata.target, "key=2251799813685249")
+	require.Equal(t, "safe-client-request", requestMetadata.clientRequestID)
+	require.Equal(t, "safe-client-correlation", requestMetadata.clientCorrelationID)
+	require.Equal(t, "safe-response-request", responseMetadata.requestID)
+	require.Equal(t, "safe-response-correlation", responseMetadata.correlationID)
+	require.Equal(t, "db;dur=2", responseMetadata.serverTiming)
+}
+
+// TestAPIDiagnosticsRejectsControlInjection verifies malformed identity and allowed metadata cannot forge another record.
+func TestAPIDiagnosticsRejectsControlInjection(t *testing.T) {
+	t.Parallel()
+
+	request := &http.Request{
+		Method: "GET\napi",
+		URL:    &url.URL{Host: "example.test\rforged", Path: "/v2/items\napi #999", RawQuery: "safe=ok%0Aforged"},
+		Header: http.Header{"X-Request-ID": {"safe\rforged"}},
+	}
+	metadata := newDiagnosticSanitizer(nil).sanitizeRequest(request)
+	require.Empty(t, metadata.method)
+	require.Empty(t, metadata.host)
+	require.Empty(t, metadata.clientRequestID)
+	require.NotContains(t, metadata.target, "\n")
+	require.NotContains(t, metadata.target, "\r")
+}
+
+// FuzzAPIDiagnosticsSanitizer exercises arbitrary malformed metadata while guarding the no-body and one-line contracts.
+func FuzzAPIDiagnosticsSanitizer(f *testing.F) {
+	for _, seed := range []struct {
+		query  string
+		header string
+	}{
+		{query: "safe=value", header: "request-123"},
+		{query: "X-Amz-Signature=secret&key=42", header: "safe\napi #999"},
+		{query: "broken=%zz", header: strings.Repeat("a", diagnosticCorrelationIDLimit+1)},
+		{query: "safe=token%253Dnested", header: "\x00\x1b[31m"},
+	} {
+		f.Add(seed.query, seed.header)
+	}
+
+	f.Fuzz(func(t *testing.T, rawQuery, headerValue string) {
+		const knownSecret = "fuzz-known-secret"
+		cfg := config.New()
+		cfg.Auth.OAuth2.ClientSecret = knownSecret
+		sanitizer := newDiagnosticSanitizer(cfg)
+		request := &http.Request{
+			Method: http.MethodGet,
+			URL:    &url.URL{Host: "example.test", Path: "/v2/items", RawQuery: rawQuery},
+			Header: http.Header{"Authorization": {"Bearer " + knownSecret}, "X-Request-ID": {headerValue}},
+			Body:   &panicReadCloser{},
+		}
+		requestMetadata := sanitizer.sanitizeRequest(request)
+
+		response := &http.Response{
+			Header: http.Header{"Set-Cookie": {"SESSION=" + knownSecret + "; Path=/"}, "X-Correlation-ID": {headerValue}},
+			Body:   &panicReadCloser{},
+		}
+		responseMetadata := sanitizer.sanitizeResponse(response)
+		serialized := strings.Join([]string{
+			requestMetadata.method, requestMetadata.target, requestMetadata.host, requestMetadata.profile,
+			requestMetadata.tenant, requestMetadata.clientRequestID, requestMetadata.clientCorrelationID,
+			responseMetadata.requestID, responseMetadata.correlationID, responseMetadata.retryAfter, responseMetadata.serverTiming,
+		}, " ")
+		require.NotContains(t, serialized, knownSecret)
+		require.NotContains(t, serialized, "\n")
+		require.NotContains(t, serialized, "\r")
+	})
+}
+
 // TestAPIDiagnosticsSanitizesRequestIdentity verifies safe URL context survives while credentials and payloads do not.
 func TestAPIDiagnosticsSanitizesRequestIdentity(t *testing.T) {
 	t.Parallel()

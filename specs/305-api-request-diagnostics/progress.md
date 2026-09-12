@@ -158,3 +158,25 @@ Started: 2026-09-12 19:35:54
 **Learnings**:
 - Real-terminal subprocess coverage confirms admitted records and plain prompts share the effective stderr without entering machine stdout; quiet suppresses records, and abort/EOF/empty scopes submit no mutation.
 ---
+---
+## Iteration 9 - 2026-09-12 21:20
+**Work Unit**: US2 Use diagnostics safely in operational workflows (T018, T020-T021 security and validation)
+**Tasks Completed**:
+- [x] T018: Added adversarial sanitizer cases and fuzz seeds for signed URLs, encoded/repeated metadata, secret reflection, malformed input, control injection and safe identifier retention without body access.
+- [x] T020: Seeded cookie usernames as private invocation credentials and added OAuth/cookie integration regressions proving reflected credentials, tokens, cookies and arbitrary payload headers remain absent.
+- [x] T021: Verified diagnostic and terminal test discovery, passed the complete US2 package gate and passed the full race-enabled repository suite using local fixtures only.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/httpc/diagnostics.go
+- internal/services/httpc/diagnostics_redaction.go
+- internal/services/httpc/diagnostics_redaction_test.go
+- internal/services/auth/oauth2/diagnostics_test.go
+- internal/services/auth/cookie/diagnostics_test.go
+- specs/305-api-request-diagnostics/tasks.md
+- specs/305-api-request-diagnostics/quickstart.md
+- specs/305-api-request-diagnostics/ralph-memory.md
+- specs/305-api-request-diagnostics/progress.md
+**Learnings**:
+- Cookie usernames require the same private seed treatment as passwords because login transmits both in query metadata; response secrets must be collected before allowed correlation fields are selected.
+---

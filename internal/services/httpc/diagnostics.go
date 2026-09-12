@@ -91,7 +91,7 @@ func newDiagnosticInvocationContext(cfg *config.Config) diagnosticInvocationCont
 		profile: cfg.ActiveProfile,
 		tenant:  cfg.App.Tenant,
 	}
-	for _, secret := range []string{cfg.Auth.OAuth2.ClientSecret, cfg.Auth.Cookie.Password} {
+	for _, secret := range []string{cfg.Auth.OAuth2.ClientSecret, cfg.Auth.Cookie.Username, cfg.Auth.Cookie.Password} {
 		if secret != "" {
 			invocation.secrets = append(invocation.secrets, secret)
 		}

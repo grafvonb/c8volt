@@ -16,6 +16,7 @@ Started: 2026-09-12T17:35:53Z
 - Root bootstrap passes `flagVerbose` and the existing configured invocation logger to `httpc.WithDiagnostics` before authenticator construction, so OAuth token and cookie login traffic are observed without separate command logic.
 - Root bootstrap must resolve the executing leaf's `cmd.ErrOrStderr()` before activity wrapping and set only the root to that wrapper; setting the child writer too hides its configured destination and risks stale invocation routing.
 - Real-terminal diagnostic coverage can reuse the process-instance confirmation subprocess helper: terminal stdin remains genuine while stdout/stderr are independently captured, and a configured child destination can be mirrored with `io.MultiWriter` for exact routing assertions.
+- Cookie login usernames must join passwords in the invocation-private credential seed because the authenticator sends both as query values; request sanitization then omits those reflected login credentials before formatting.
 
 ## Decisions
 
@@ -23,6 +24,7 @@ Started: 2026-09-12T17:35:53Z
 - T002's red test cannot be committed alone under repository quality policy, so T002 and its paired T003 implementation form one validated work-unit commit.
 - T004 and T005 are paired for the same green-suite requirement; allowed correlation values are bounded identifiers, while Retry-After and Server-Timing are parsed into safe canonical forms.
 - T007 through T012 form one validated lower-layer US1 slice because transport/OAuth contract tests require their paired body, trace, stack and token-client implementations to remain green.
+- US2 security coverage retains safe fallback correlation identifiers while dropping unsafe first values, and collects response cookie/API-key secrets before parsing allowed response metadata.
 
 ## Gotchas
 
@@ -37,10 +39,11 @@ Started: 2026-09-12T17:35:53Z
 - Full gate: `make test`
 - US1 transport/auth gate: `go test ./internal/services/httpc ./internal/services/auth/oauth2 -run 'TestAPIDiagnostics' -race -count=1`
 - US1 command gate: `go test ./internal/services/httpc ./internal/services/auth/oauth2 ./cmd -run 'TestAPIDiagnostics|RootHelp' -count=1`
+- US2 gate: `go test ./internal/services/httpc ./internal/services/auth/... ./cmd -run 'TestAPIDiagnostics|ProcessInstanceConfirmationTerminal' -count=1`
 
 ## Do Not Repeat
 
 - Do not add diagnostics to individual commands or generated clients; keep observation at the shared HTTP transport boundary.
 
 ## Current Handoff
-- Continue US2 at T018: extend adversarial sanitizer and fuzz coverage; then complete auth/cookie security integration in T020 and run the US2 gate in T021.
+- Continue US3 at T022: add lifecycle edge tests before completing trace/concurrency and retry/version coverage within the same story.

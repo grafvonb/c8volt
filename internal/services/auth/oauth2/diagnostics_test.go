@@ -34,10 +34,15 @@ func TestAPIDiagnosticsOAuthSharesSequenceAndCachesToken(t *testing.T) {
 			require.NoError(t, err)
 			require.Contains(t, string(body), "client_secret="+clientSecret)
 			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("X-Request-ID", clientSecret)
+			w.Header().Set("X-Correlation-ID", "safe-token-correlation")
 			_ = json.NewEncoder(w).Encode(map[string]any{"access_token": accessToken, "expires_in": 120, "token_type": "Bearer"})
 		case "/v2/topology":
 			apiRequests.Add(1)
 			require.Equal(t, "Bearer "+accessToken, req.Header.Get("Authorization"))
+			w.Header().Set("X-Request-ID", accessToken)
+			w.Header().Set("X-Correlation-ID", "safe-api-correlation")
+			w.Header().Set("X-Arbitrary-Payload", "body-secret-must-not-appear")
 			_, _ = io.WriteString(w, "ok")
 		default:
 			http.NotFound(w, req)
@@ -71,8 +76,11 @@ func TestAPIDiagnosticsOAuthSharesSequenceAndCachesToken(t *testing.T) {
 	require.Contains(t, output.String(), "api #1 POST /oauth/token: status=200")
 	require.Contains(t, output.String(), "api #2 GET /v2/topology: status=200")
 	require.Contains(t, output.String(), "api #3 GET /v2/topology: status=200")
+	require.Contains(t, output.String(), "correlation-id=safe-token-correlation")
+	require.Contains(t, output.String(), "correlation-id=safe-api-correlation")
 	require.NotContains(t, output.String(), clientSecret)
 	require.NotContains(t, output.String(), accessToken)
+	require.NotContains(t, output.String(), "body-secret-must-not-appear")
 }
 
 // TestAPIDiagnosticsOAuthPreservesAPITimeout verifies the plain token client inherits timeout without retrying.
