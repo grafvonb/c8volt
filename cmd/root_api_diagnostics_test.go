@@ -21,6 +21,7 @@ import (
 )
 
 const apiDiagnosticsProcessDefinitionKey = "2251799813685255"
+const apiDiagnosticsInvocationHelper = "TestAPIDiagnosticsInvocationHelper"
 
 // TestAPIDiagnosticsCommandReadPreservesResultsAndRequests verifies inherited verbose placement enables one diagnostic without changing command results or traffic.
 func TestAPIDiagnosticsCommandReadPreservesResultsAndRequests(t *testing.T) {
@@ -190,6 +191,49 @@ func TestAPIDiagnosticsCommandEffectiveStderrRouting(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, secondRootStderr.String(), "api #1 GET /v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey)
 	require.Equal(t, 1, strings.Count(firstChildStderr.String(), "api #"), "a later invocation must not reuse child stderr")
+}
+
+// TestAPIDiagnosticsCommandSubprocessInvocationsStayIsolated verifies real
+// process invocations each own their stderr destination and sequence space.
+func TestAPIDiagnosticsCommandSubprocessInvocationsStayIsolated(t *testing.T) {
+	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		require.Equal(t, "/v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey, request.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(apiDiagnosticsProcessDefinitionFixture))
+	}))
+	t.Cleanup(server.Close)
+	configPath := writeAPIDiagnosticsCommandConfig(t, server.URL, "none")
+
+	var previousStdout string
+	for invocation := range 2 {
+		stdout, stderr, err := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, apiDiagnosticsInvocationHelper, "", map[string]string{
+			"C8VOLT_API_DIAGNOSTICS_CONFIG": configPath,
+		}, "")
+		require.NoError(t, err, "invocation %d: stdout=%q stderr=%q", invocation+1, stdout, stderr)
+		require.Equal(t, 1, strings.Count(stderr, "api #"))
+		require.Contains(t, stderr, "api #1 GET /v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey)
+		require.NotContains(t, stderr, "api #2")
+		if invocation > 0 {
+			require.Equal(t, previousStdout, stdout)
+		}
+		previousStdout = stdout
+	}
+}
+
+// TestAPIDiagnosticsInvocationHelper executes one fresh process-level command invocation.
+func TestAPIDiagnosticsInvocationHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	require.Equal(t, apiDiagnosticsInvocationHelper, os.Getenv(testx.CmdSubprocessNameEnv))
+	os.Args = []string{
+		"c8volt",
+		"--config", os.Getenv("C8VOLT_API_DIAGNOSTICS_CONFIG"),
+		"--log-format", "plain", "--verbose",
+		"get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey,
+	}
+	Execute()
+	os.Exit(0)
 }
 
 // TestAPIDiagnosticsCommandReadOutputAndLogFormatMatrix verifies read results

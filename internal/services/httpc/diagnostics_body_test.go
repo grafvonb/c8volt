@@ -9,12 +9,15 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httptrace"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -156,8 +159,94 @@ func TestAPIDiagnosticsBodyInterruptedUploadPreservesPartialRequestEvidence(t *t
 	require.Equal(t, int32(1), requestBody.reads.Load())
 	require.Equal(t, int32(1), requestBody.closes.Load())
 	require.Contains(t, output.String(), "error=TRANSPORT_ERROR")
+	require.Contains(t, output.String(), "phase=request-write")
 	require.Contains(t, output.String(), "request-bytes=4 request-complete=false")
 	require.NotContains(t, output.String(), "private upload")
+}
+
+// TestAPIDiagnosticsFailurePhaseRequiresUnambiguousEvidence verifies typed and trace-derived phases without last-callback guessing.
+func TestAPIDiagnosticsFailurePhaseRequiresUnambiguousEvidence(t *testing.T) {
+	tests := []struct {
+		name      string
+		failure   error
+		trace     func(*httptrace.ClientTrace)
+		wantPhase string
+	}{
+		{
+			name:      "typed DNS error",
+			failure:   &net.DNSError{Err: "private lookup detail", Name: "private.example"},
+			wantPhase: "phase=dns",
+		},
+		{
+			name:    "successful write awaiting headers",
+			failure: context.DeadlineExceeded,
+			trace: func(trace *httptrace.ClientTrace) {
+				trace.WroteRequest(httptrace.WroteRequestInfo{})
+			},
+			wantPhase: "phase=response-headers",
+		},
+		{
+			name:    "overlapping setup phases are ambiguous",
+			failure: context.DeadlineExceeded,
+			trace: func(trace *httptrace.ClientTrace) {
+				trace.DNSStart(httptrace.DNSStartInfo{})
+				trace.TLSHandshakeStart()
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var output bytes.Buffer
+			transport := &DiagnosticsTransport{
+				collector: newAPIDiagnosticCollector(t, &output),
+				base: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					if test.trace != nil {
+						test.trace(httptrace.ContextClientTrace(request.Context()))
+					}
+					return nil, test.failure
+				}),
+			}
+			request, err := http.NewRequest(http.MethodGet, "https://camunda.example.test/failure", nil)
+			require.NoError(t, err)
+
+			response, err := transport.RoundTrip(request)
+			require.Nil(t, response)
+			require.ErrorIs(t, err, test.failure)
+			if test.wantPhase == "" {
+				require.NotContains(t, output.String(), "phase=")
+			} else {
+				require.Contains(t, output.String(), test.wantPhase)
+			}
+			require.NotContains(t, output.String(), "private")
+		})
+	}
+}
+
+// TestAPIDiagnosticsElapsedRequestDeadlineClassifiesTimeout verifies timeout
+// classification does not depend on a race with context cancellation state.
+func TestAPIDiagnosticsElapsedRequestDeadlineClassifiesTimeout(t *testing.T) {
+	var output bytes.Buffer
+	base := time.Now()
+	times := []time.Time{base, base.Add(2 * time.Second)}
+	transport := &DiagnosticsTransport{
+		collector: newAPIDiagnosticCollector(t, &output),
+		base:      roundTripFunc(func(*http.Request) (*http.Response, error) { return nil, errors.New("private transport error") }),
+		now: func() time.Time {
+			value := times[0]
+			times = times[1:]
+			return value
+		},
+	}
+	ctx, cancel := context.WithDeadline(context.Background(), base.Add(time.Second))
+	defer cancel()
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://camunda.example.test/timeout", nil)
+	require.NoError(t, err)
+
+	response, err := transport.RoundTrip(request)
+	require.Nil(t, response)
+	require.Error(t, err)
+	require.Contains(t, output.String(), "error=TIMEOUT")
+	require.NotContains(t, output.String(), "private")
 }
 
 // TestAPIDiagnosticsBodyClassifiesContextFailuresAtObservedBoundary verifies before-header and partial-body context failures retain only available evidence.

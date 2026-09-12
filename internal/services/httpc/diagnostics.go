@@ -34,22 +34,23 @@ type diagnosticCollector struct {
 
 // diagnosticExchange protects mutable observations until one terminal snapshot is frozen.
 type diagnosticExchange struct {
-	collector    *diagnosticCollector
-	sanitizer    *diagnosticSanitizer
-	mu           sync.Mutex
-	frozen       bool
-	record       diagnosticRecord
-	once         sync.Once
-	started      time.Time
-	headersAt    time.Time
-	phaseSeq     uint64
-	dnsOpen      []diagnosticPhaseStart
-	tlsOpen      []diagnosticPhaseStart
-	connectOpen  map[string][]diagnosticPhaseStart
-	dnsSamples   []diagnosticTimedSample
-	tcpSamples   []diagnosticTimedSample
-	tlsSamples   []diagnosticTimedSample
-	failurePhase diagnosticPhase
+	collector     *diagnosticCollector
+	sanitizer     *diagnosticSanitizer
+	mu            sync.Mutex
+	frozen        bool
+	record        diagnosticRecord
+	once          sync.Once
+	started       time.Time
+	headersAt     time.Time
+	phaseSeq      uint64
+	dnsOpen       []diagnosticPhaseStart
+	tlsOpen       []diagnosticPhaseStart
+	connectOpen   map[string][]diagnosticPhaseStart
+	dnsSamples    []diagnosticTimedSample
+	tcpSamples    []diagnosticTimedSample
+	tlsSamples    []diagnosticTimedSample
+	failurePhases map[diagnosticPhase]struct{}
+	wroteRequest  bool
 }
 
 type diagnosticPhaseStart struct {
@@ -121,7 +122,8 @@ func (collector *diagnosticCollector) start(req *http.Request) *diagnosticExchan
 			clientRequestID:     request.clientRequestID,
 			clientCorrelationID: request.clientCorrelationID,
 		},
-		connectOpen: make(map[string][]diagnosticPhaseStart),
+		connectOpen:   make(map[string][]diagnosticPhaseStart),
+		failurePhases: make(map[diagnosticPhase]struct{}),
 	}
 }
 
@@ -164,11 +166,12 @@ func (transport *DiagnosticsTransport) RoundTrip(req *http.Request) (*http.Respo
 		exchange.finish(func(record *diagnosticRecord) {
 			record.total = elapsedDiagnostic(exchange.started, headersAt)
 			classifiedError := err
-			if contextError := observed.Context().Err(); contextError != nil {
+			if contextError := diagnosticContextFailure(observed.Context(), headersAt); contextError != nil {
 				classifiedError = contextError
 			}
-			record.failure, record.reason = classifyDiagnosticError(classifiedError, exchange.failurePhase, false)
-			record.phase = exchange.failurePhase
+			phase := exchange.failurePhase(classifiedError)
+			record.failure, record.reason = classifyDiagnosticError(classifiedError, phase, false)
+			record.phase = phase
 			exchange.copyTraceEvidence(record)
 		})
 		return response, err
@@ -200,6 +203,21 @@ func (transport *DiagnosticsTransport) RoundTrip(req *http.Request) (*http.Respo
 	}
 	response.Body = newDiagnosticResponseBody(response.Body, exchange, now)
 	return response, nil
+}
+
+// diagnosticContextFailure recognizes an elapsed request deadline even when a
+// transport returns just before context cancellation becomes observable.
+func diagnosticContextFailure(ctx context.Context, observedAt time.Time) error {
+	if ctx == nil {
+		return nil
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if deadline, ok := ctx.Deadline(); ok && !observedAt.Before(deadline) {
+		return context.DeadlineExceeded
+	}
+	return nil
 }
 
 func diagnosticKnownBodyless(req *http.Request, response *http.Response) bool {
@@ -236,7 +254,9 @@ func (exchange *diagnosticExchange) clientTrace(now func() time.Time) *httptrace
 		WroteRequest: func(info httptrace.WroteRequestInfo) {
 			if info.Err != nil {
 				exchange.setFailurePhase(diagnosticPhaseRequestWrite)
+				return
 			}
+			exchange.update(func(*diagnosticRecord) { exchange.wroteRequest = true })
 		},
 	}
 }
@@ -279,7 +299,7 @@ func (exchange *diagnosticExchange) finishSimplePhase(phase diagnosticPhase, at 
 		*samples = append(*samples, diagnosticTimedSample{started: start.at, duration: elapsedDiagnostic(start.at, at), order: start.order})
 	}
 	if err != nil {
-		exchange.failurePhase = phase
+		exchange.failurePhases[phase] = struct{}{}
 	}
 }
 
@@ -309,7 +329,7 @@ func (exchange *diagnosticExchange) finishConnect(network, address string, at ti
 		}
 	}
 	if err != nil {
-		exchange.failurePhase = diagnosticPhaseConnect
+		exchange.failurePhases[diagnosticPhaseConnect] = struct{}{}
 	}
 }
 
@@ -321,8 +341,49 @@ func (exchange *diagnosticExchange) setFailurePhase(phase diagnosticPhase) {
 	exchange.mu.Lock()
 	defer exchange.mu.Unlock()
 	if !exchange.frozen {
-		exchange.failurePhase = phase
+		exchange.failurePhases[phase] = struct{}{}
 	}
+}
+
+// failurePhase resolves only evidence that identifies one unambiguous terminal phase.
+// The caller holds exchange.mu while freezing the record.
+func (exchange *diagnosticExchange) failurePhase(err error) diagnosticPhase {
+	if phase := typedDiagnosticFailurePhase(err); phase != "" {
+		return phase
+	}
+	if len(exchange.failurePhases) == 1 {
+		for phase := range exchange.failurePhases {
+			return phase
+		}
+	}
+	if len(exchange.failurePhases) > 1 {
+		return ""
+	}
+
+	active := make(map[diagnosticPhase]struct{}, 3)
+	if len(exchange.dnsOpen) > 0 {
+		active[diagnosticPhaseDNS] = struct{}{}
+	}
+	if len(exchange.tlsOpen) > 0 {
+		active[diagnosticPhaseTLS] = struct{}{}
+	}
+	for _, starts := range exchange.connectOpen {
+		if len(starts) > 0 {
+			active[diagnosticPhaseConnect] = struct{}{}
+		}
+	}
+	if len(active) == 1 {
+		for phase := range active {
+			return phase
+		}
+	}
+	if len(active) > 1 {
+		return ""
+	}
+	if exchange.wroteRequest {
+		return diagnosticPhaseResponseHeaders
+	}
+	return ""
 }
 
 func (exchange *diagnosticExchange) copyTraceEvidence(record *diagnosticRecord) {

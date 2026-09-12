@@ -21,6 +21,9 @@ Started: 2026-09-12T17:35:53Z
 - Trace phase queues retain completed zero-duration samples, match overlapping TCP attempts by network/address, order output by start time, and freeze before logger emission; the shared logging writer keeps concurrently completed records indivisible.
 - Read-retry closes discarded response bodies without draining them, so the diagnostic response wrapper emits one attempt record with observed zero bytes and `response-complete=false`; the eventual response remains a separate sequence.
 - A single `httpc.Service` client supplied to the top-level `c8volt.New` factory reaches Camunda clients for 8.7-8.10, the v8.7 Operate adapter and v8.8/v8.9 Tasklist fallback without generated-client changes.
+- Pre-header failure phase resolution prefers typed DNS/TLS/connect evidence, retains a phase only when trace failures or active setup identify one phase, and uses a successful `WroteRequest` as response-header evidence; conflicting phases are omitted.
+- Client timeout finalization must compare the terminal observation with the request context deadline in addition to checking `Context.Err()`, because cancellation state can lag the transport return under race-suite load.
+- Separate command invocations should be tested in subprocesses: each owns a fresh Cobra singleton, diagnostic collector, stderr destination and sequence beginning at 1.
 
 ## Decisions
 
@@ -34,6 +37,7 @@ Started: 2026-09-12T17:35:53Z
 
 - The baseline regex intentionally has no matching tests in several auth packages; their `[no tests to run]` result is not a failure.
 - Existing verbose command tests that prohibit endpoint detail must evaluate command-owned progress after removing `api #` lines; machine stdout remains byte-clean while admitted diagnostics intentionally occupy stderr.
+- The 25ms OAuth timeout test can expose scheduler-sensitive context cancellation under full race-suite load; deadline-based terminal classification removes that race without changing the client timeout.
 
 ## Reusable Commands
 
@@ -44,10 +48,11 @@ Started: 2026-09-12T17:35:53Z
 - US1 transport/auth gate: `go test ./internal/services/httpc ./internal/services/auth/oauth2 -run 'TestAPIDiagnostics' -race -count=1`
 - US1 command gate: `go test ./internal/services/httpc ./internal/services/auth/oauth2 ./cmd -run 'TestAPIDiagnostics|RootHelp' -count=1`
 - US2 gate: `go test ./internal/services/httpc ./internal/services/auth/... ./cmd -run 'TestAPIDiagnostics|ProcessInstanceConfirmationTerminal' -count=1`
+- US3 gate: `go test ./internal/services/httpc ./internal/services/auth/... ./c8volt ./cmd -run 'APIDiagnostics|ReadRetry|ProcessInstanceConfirmationTerminal|RootHelp' -race -count=1`
 
 ## Do Not Repeat
 
 - Do not add diagnostics to individual commands or generated clients; keep observation at the shared HTTP transport boundary.
 
 ## Current Handoff
-- Continue US3 at T026: complete failure/partial-transfer finalization and safe error classification against the T022/T024 lifecycle coverage, then finish T027-T028 isolation and validation.
+- Continue Phase 6 at T029: update README and root command metadata for the implemented verbose diagnostic contract, then regenerate docs at T030.

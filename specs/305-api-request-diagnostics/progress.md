@@ -228,3 +228,24 @@ Started: 2026-09-12 19:35:54
 **Learnings**:
 - Diagnostics preserve each public transport boundary: discarded retry responses are incomplete, redirects and eventual successes receive distinct sequences, and the shared supplied client reaches every supported generated-client family without instrumentation below that boundary.
 ---
+---
+## Iteration 13 - 2026-09-12 22:14
+**Work Unit**: US3 Interpret failures and partial evidence accurately (T026-T028)
+**Tasks Completed**:
+- [x] T026: Completed failure and partial-transfer finalization with typed, trace-backed and ambiguity-safe phase resolution plus deterministic request-deadline timeout classification.
+- [x] T027: Validated one-shot writer-failure behavior and added subprocess coverage proving invocation-owned destinations and sequence spaces.
+- [x] T028: Passed the complete US3 race gate, verified the requested package coverage and passed the full repository race suite.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/httpc/diagnostics.go
+- internal/services/httpc/diagnostics_redaction.go
+- internal/services/httpc/diagnostics_body_test.go
+- cmd/root_api_diagnostics_test.go
+- specs/305-api-request-diagnostics/tasks.md
+- specs/305-api-request-diagnostics/quickstart.md
+- specs/305-api-request-diagnostics/ralph-memory.md
+- specs/305-api-request-diagnostics/progress.md
+**Learnings**:
+- Request context cancellation can become observable just after a client timeout returns under race load; comparing the terminal timestamp with the established deadline preserves deterministic timeout evidence without changing transport behavior.
+---

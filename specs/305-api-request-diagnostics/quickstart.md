@@ -47,6 +47,20 @@ Adversarial cases cover AWS/Google signed URLs, multiply encoded names and value
 make test
 ```
 
+## User Story 3 failure, concurrency and compatibility validation
+
+On 2026-09-12, the US3 race gate passed with lifecycle, retry, redirect, trace/concurrency, writer-failure, subprocess-invocation and supplied-client tests discovered across the requested packages:
+
+```sh
+go test ./internal/services/httpc ./internal/services/auth/... ./c8volt ./cmd -run 'APIDiagnostics|ReadRetry|ProcessInstanceConfirmationTerminal|RootHelp' -race -count=1
+```
+
+The cases preserve partial request/response counts and original body errors, retain typed or unambiguous trace-backed failure phases, omit conflicting phase evidence, keep frozen records immutable, and give separate process invocations independent stderr destinations and sequences. The repository-wide race suite also passed after the OAuth timeout boundary was made deterministic from the elapsed request deadline:
+
+```sh
+make test
+```
+
 ## 1. Check implementation coverage and run focused validation
 
 Add acceptance tests under the shared `TestAPIDiagnostics...` naming prefix in httpc, OAuth and cmd during implementation. Confirm the test lists contain the intended cases before running them; a successful command with no matching tests is not validation.

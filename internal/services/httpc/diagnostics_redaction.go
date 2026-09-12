@@ -520,6 +520,25 @@ func classifyDiagnosticError(err error, phase diagnosticPhase, closing bool) (di
 	}
 }
 
+// typedDiagnosticFailurePhase derives a phase only from errors whose types identify it.
+func typedDiagnosticFailurePhase(err error) diagnosticPhase {
+	if err == nil {
+		return ""
+	}
+	var dnsError *net.DNSError
+	if errors.As(err, &dnsError) {
+		return diagnosticPhaseDNS
+	}
+	if isDiagnosticCertificateError(err) {
+		return diagnosticPhaseTLS
+	}
+	var opError *net.OpError
+	if errors.As(err, &opError) && (opError.Op == "dial" || opError.Op == "connect") {
+		return diagnosticPhaseConnect
+	}
+	return ""
+}
+
 // isDiagnosticCertificateError recognizes standard certificate validation error types.
 func isDiagnosticCertificateError(err error) bool {
 	var unknownAuthority x509.UnknownAuthorityError
