@@ -285,3 +285,19 @@ Started: 2026-09-12 19:35:54
 **Learnings**:
 - The generator propagated the root persistent flag description across inherited command pages and copied the README guidance into the homepage; stream details belong there, while root long help uses action-focused configured-logging language.
 ---
+---
+## Iteration 16 - 2026-09-12 22:36
+**Work Unit**: Phase 6 Polish and cross-cutting concerns (T031 diagnostic benchmarks)
+**Tasks Completed**:
+- [x] T031: Added enabled/disabled small-body and generated streaming-body benchmarks, ran the benchmark gate, and recorded payload-size-independent allocation results.
+**Tasks Remaining in Work Unit**: 1 Phase 6 task (T032)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/httpc/diagnostics_benchmark_test.go
+- specs/305-api-request-diagnostics/quickstart.md
+- specs/305-api-request-diagnostics/tasks.md
+- specs/305-api-request-diagnostics/ralph-memory.md
+- specs/305-api-request-diagnostics/progress.md
+**Learnings**:
+- Enabled diagnostics allocated about 4.3 KiB per exchange for both 32-byte and streamed 8 MiB responses; runtime scaled with consumed bytes, while metadata memory did not retain or scale with payload size.
+---

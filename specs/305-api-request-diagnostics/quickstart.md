@@ -127,6 +127,17 @@ Require no races, duplicate records or interleaved lines during reordered concur
 
 Benchmarks compare disabled/enabled diagnostics using the existing logger configured with a discard writer, small responses and streamed large bodies. Report allocations and runtime; metadata memory must not grow with payload size. Blocking stderr behavior is documented, not hidden behind an unbounded queue.
 
+On 2026-09-12, the benchmark gate passed on Darwin/arm64 (Apple M3 Pro):
+
+```text
+BenchmarkAPIDiagnostics/disabled/small-body-12             316.0 ns/op      746 B/op    7 allocs/op
+BenchmarkAPIDiagnostics/disabled/streaming-body-12       77980 ns/op        744 B/op    7 allocs/op
+BenchmarkAPIDiagnostics/enabled/small-body-12             3018 ns/op       4311 B/op   84 allocs/op
+BenchmarkAPIDiagnostics/enabled/streaming-body-12        83502 ns/op       4421 B/op   87 allocs/op
+```
+
+The streaming case generated and consumed 8 MiB without retaining a payload buffer. Enabled metadata allocation remained about 4.3 KiB per exchange (a 110-byte difference between the 32-byte and 8 MiB cases), so memory did not scale with payload size and no history, queue or payload buffering appeared. Runtime increased with bytes consumed, as expected; no unsupported latency threshold is claimed.
+
 ## 4. Optional manual read-only smoke check
 
 With an existing valid configuration for a development Camunda instance:

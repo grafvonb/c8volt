@@ -26,6 +26,7 @@ Started: 2026-09-12T17:35:53Z
 - Separate command invocations should be tested in subprocesses: each owns a fresh Cobra singleton, diagnostic collector, stderr destination and sequence beginning at 1.
 - Root `Long`, `Example` and persistent-flag metadata are the source for generated root and inherited help; README content is also copied into the generated documentation homepage by `make docs-content`.
 - `make docs-content` regenerates the root guidance in `docs/cli/c8volt.md`, propagates the persistent verbose description to every inherited-flag page and copies the README diagnostics section into `docs/index.md`; root `Long` help must describe diagnostics as configured logging without the presentation term `stderr`, which `TestAllCommandHelpFocusesOnActions` reserves for documentation outside action-focused help.
+- Diagnostic benchmarks should stream generated response bytes through the real wrapper into `io.Discard`; on Darwin/arm64, enabled allocation remained about 4.3 KiB per exchange from 32-byte through 8 MiB bodies, demonstrating payload-size-independent metadata without retaining payload buffers.
 
 ## Decisions
 
@@ -57,4 +58,4 @@ Started: 2026-09-12T17:35:53Z
 - Do not add diagnostics to individual commands or generated clients; keep observation at the shared HTTP transport boundary.
 
 ## Current Handoff
-- Continue Phase 6 at T031: add and run enabled/disabled small-body and streaming-body diagnostic benchmarks, verify allocation behavior is independent of payload size, and record measured outcomes in `quickstart.md`.
+- Continue Phase 6 at T032: run the final formatting, automated quickstart scenarios, full race suite and diff/requirements review, then record actual outcomes before the coordinated final commit.
