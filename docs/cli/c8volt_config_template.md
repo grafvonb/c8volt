@@ -12,7 +12,7 @@ Print a blank configuration template
 
 Print a blank configuration template.
 
-Renders the same blank configuration template as `config show --template`.
+Equivalent to config show --template.
 
 ```
 c8volt config template [flags]

@@ -10,11 +10,13 @@ Update a job by key
 
 ### Synopsis
 
-Update a Camunda job by key.
+Update a Camunda job by key on Camunda 8.8 or newer.
 
-Tenant contract: --key is backend-authorized admin input and reports that the tenant filter is not applied. The pre-mutation plan shows the current job tenant when it is available and warns if the tenant metadata is unknown.
+Supports retry and timeout updates and worker outcomes. Explicit --key uses backend authorization without tenant filtering.
 
-The command supports retries, timeout updates, and worker outcome modes for Camunda 8.8 or newer. It builds a pre-mutation plan, supports --dry-run previews, and asks for confirmation before material interactive mutations. Retry updates are confirmed by reading the job by key by default; timeout updates and worker outcomes report accepted submission without deadline or outcome confirmation. JSON mutations require --dry-run, --auto-confirm, or --automation, and --json cannot be combined with --verbose. Camunda 8.7 returns an unsupported-version error before mutation.
+c8volt plans the update and asks for confirmation before material interactive mutations. Retry updates are verified by reading the job; timeout updates and worker outcomes return after acceptance without waiting for confirmation.
+
+Use --dry-run to inspect the plan without mutation. With --json, mutations require --dry-run, --auto-confirm, or --automation; --json cannot be combined with --verbose.
 
 ```
 c8volt update job [flags]

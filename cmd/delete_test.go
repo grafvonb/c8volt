@@ -58,7 +58,7 @@ func TestDeleteCommands_RegressionPreservesCleanupContracts(t *testing.T) {
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "force cancellation of the process instance(s), prior to deletion",
+		Description: "allow cancellation when deletion encounters nonterminal process instances",
 	})
 
 	pdCapability := commandCapabilityForCommand(deleteProcessDefinitionCmd)
@@ -159,10 +159,10 @@ func TestDeleteProcessDefinitionSemanticProgressModeGate(t *testing.T) {
 func TestDeleteProcessDefinitionHelp_DocumentsTenantContract(t *testing.T) {
 	output := executeRootForTest(t, "delete", "process-definition", "--help")
 
-	require.Contains(t, output, "Tenant contract:")
-	require.Contains(t, output, "--tenant scopes BPMN selector discovery")
-	require.Contains(t, output, "Explicit --key and stdin process-definition keys are backend-authorized admin input")
-	require.Contains(t, output, "existing impact, confirmation, force, and wait safety checks still apply")
+	require.Contains(t, output, "tenant")
+	require.Contains(t, output, "--tenant limits BPMN selector discovery")
+	require.Contains(t, output, "Explicit --key and stdin keys use backend authorization without tenant filtering")
+	require.Contains(t, output, "--dry-run")
 }
 
 // TestDeleteCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig verifies command-local timeout precedence.
@@ -181,21 +181,17 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"delete"}, []string{
 		"Delete process instances or process definitions",
 		"--auto-confirm",
-		"show verification examples",
+		"validate its scope and confirm deletion",
 		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 	require.Contains(t, output, "process-definition")
 
 	output = assertCommandHelpOutput(t, []string{"delete", "process-instance"}, []string{
-		"validates the complete affected tree before submitting any delete request",
-		"the whole delete batch is refused before mutation",
-		"Use --force to cancel the affected scope first",
-		"Use --auto-confirm for unattended destructive runs",
-		"With --json, validation and runtime failures during command execution use one shared error envelope",
-		"Without --json, the diagnostic is written to stderr",
-		"--no-err-codes changes only the process exit status",
-		"Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics",
+		"validates the affected tree before any deletion",
+		"Nonterminal instances block deletion unless --force is set",
+		"--force allows cancellation when deletion encounters a nonterminal instance",
+		"--auto-confirm for unattended",
 		"process instance key(s) to delete; repeat or combine with stdin '-'",
 		"number of process instances to inspect per discovery page; does not cap total frozen scope",
 		"maximum number of matching process instances to freeze for deletion across all pages; omit to continue through all matches",
@@ -208,14 +204,14 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 
 	output = assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{
 		"Delete process definition resources from Camunda",
-		"checks delete impact without changing anything",
-		"requires the full process-definition history deletion capability, currently Camunda 8.9 or newer",
+		"Before mutation, c8volt checks active-instance impact",
+		"Camunda 8.9 or newer",
 		"associated history",
-		"c8volt delete process-instance --bpmn-process-id <bpmn-process-id>",
-		"Use --dry-run to preview process-definition delete impact without submitting deletion or cancellation requests",
+		"delete process-instance --bpmn-process-id <bpmn-process-id>",
+		"Use --dry-run to preview impact without mutation",
 		"./c8volt delete process-definition --key <process-definition-key> --dry-run",
 		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run",
-		"Use --auto-confirm for unattended destructive runs",
+		"--auto-confirm for unattended",
 		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
 	}, nil)
 	require.NotContains(t, output, "--allow-inconsistent")

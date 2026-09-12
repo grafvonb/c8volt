@@ -23,14 +23,9 @@ var configShowCmd = &cobra.Command{
 	Short: "Show effective configuration",
 	Long: `Show effective configuration with sensitive values sanitized.
 
-Precedence: flag > env > profile > base config > default.
-Tenant context in the sanitized document describes configuration scope only:
-a named tenant is a discovery filter, while an empty tenant means no configured
-tenant filter and is not reported as <default>.
-Human diagnostics report explicit --tenant changes before the resulting scope;
---tenant "" warns when it clears a named configured filter.
-The --validate and --template flags remain supported as compatibility shortcuts
-for validation and template rendering.`,
+Precedence: flag > env > profile > base config > default. A named tenant limits discovery; an empty tenant leaves discovery unfiltered.
+
+--validate and --template are compatibility shortcuts for config validate and config template.`,
 	Example: `  ./c8volt config show
   ./c8volt --config ./config.yaml --profile prod config show
   ./c8volt --tenant tenant-a config show

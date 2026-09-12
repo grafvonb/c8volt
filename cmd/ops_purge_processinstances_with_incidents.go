@@ -45,9 +45,13 @@ var (
 var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 	Use:   "process-instances-with-incidents",
 	Short: "Purge process instances selected by incidents",
-	Long: "Purge process instances selected by incidents.\n\n" +
-		"Tenant contract: incident-filter mode uses discovery semantics, where a named tenant scopes candidate discovery and empty tenant configuration leaves discovery unfiltered. Explicit --tenant changes are reported before scope, and --tenant \"\" warns when it clears a named configured filter. Direct --inc-key input uses explicit-key semantics and reports that the tenant filter is not applied. Selection context appears before discovery or explicit-key resolution; validated affected tenants appear before the confirmation question and the first mutation. --auto-confirm skips only the question and does not suppress tenant context permitted by the selected output mode. Frozen plans and audit reports show one known resource tenant informationally, emit one warning-level \"affected tenants\" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.\n\n" +
-		"The workflow discovers candidate incidents from incident filters, freezes the candidate process-instance keys, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Discovery pages through all matching incidents by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. After confirmation, default human output keeps deletion progress on one workflow activity and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-root completion line. JSON and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
+	Long: `Delete process-instance families selected through incidents.
+
+Select incidents using filters or explicit --inc-key values. The workflow fixes the candidate process-instance set, validates the delete plan, and requires confirmation before deletion. Incident matching only selects candidates; process-instance family, force, and wait rules govern deletion.
+
+--tenant limits incident discovery; an empty tenant or --all-tenants searches across accessible tenants. Explicit incident keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
+
+Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.`,
 	Example: `  ./c8volt ops purge process-instances-with-incidents --dry-run
   ./c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
   ./c8volt --tenant tenant-a ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
@@ -166,7 +170,7 @@ func init() {
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling validation or deletion work after the first error")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion requests are accepted without deletion confirmation")
-	fs.BoolVar(&flagForce, "force", false, "force cancellation of the process instance(s), prior to deletion")
+	fs.BoolVar(&flagForce, "force", false, "allow cancellation when deletion encounters nonterminal process instances")
 	fs.StringVar(&flagOpsPurgeIncidentReportFile, "report-file", "", "write an audit report to the given path")
 	fs.StringVar(&flagOpsPurgeIncidentReportFormat, "report-format", "", "audit report format: markdown, json (default inferred from report-file extension)")
 

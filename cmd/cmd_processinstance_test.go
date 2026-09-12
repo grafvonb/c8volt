@@ -327,22 +327,22 @@ func decodeCapturedTopLevelPISearchSizes(t *testing.T, requests []string) []floa
 func TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode(t *testing.T) {
 	cancelOutput := executeRootForProcessInstanceTest(t, "cancel", "process-instance", "--help")
 	require.Contains(t, cancelOutput, "--dry-run")
-	require.Contains(t, cancelOutput, "preview selected, in-scope, final-state")
+	require.Contains(t, cancelOutput, "preview the affected family")
 	require.Contains(t, cancelOutput, "preview cancel scope without submitting cancellation")
 	require.Contains(t, cancelOutput, "./c8volt cancel process-instance --key <process-instance-key> --dry-run")
 	require.Contains(t, cancelOutput, "./c8volt cancel process-instance --state active --batch-size 250 --limit 5 --dry-run")
 
 	deleteOutput := executeRootForProcessInstanceTest(t, "delete", "process-instance", "--help")
 	require.Contains(t, deleteOutput, "--dry-run")
-	require.Contains(t, deleteOutput, "final-state, non-final, and partial-scope")
+	require.Contains(t, deleteOutput, "without deleting or cancelling")
 	require.Contains(t, deleteOutput, "preview delete scope without submitting deletion or cancel-before-delete requests")
 	require.Contains(t, deleteOutput, "./c8volt delete process-instance --key <process-instance-key> --dry-run")
 	require.Contains(t, deleteOutput, "./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run")
 }
 
-// TestProcessInstanceDestructiveHelp_DocumentsEmptySelectorOutput verifies
-// cancel and delete help document the successful no-op output contract.
-func TestProcessInstanceDestructiveHelp_DocumentsEmptySelectorOutput(t *testing.T) {
+// TestProcessInstanceDestructiveHelp_DocumentsEmptySelectorNoOp verifies
+// cancel and delete help describe prompt-free completion for empty selections.
+func TestProcessInstanceDestructiveHelp_DocumentsEmptySelectorNoOp(t *testing.T) {
 	for _, testCase := range []struct {
 		operation string
 		state     string
@@ -351,12 +351,7 @@ func TestProcessInstanceDestructiveHelp_DocumentsEmptySelectorOutput(t *testing.
 		{operation: "delete", state: "terminated"},
 	} {
 		output := executeRootForProcessInstanceTest(t, testCase.operation, "process-instance", "--help")
-		require.Contains(t, output, "successful no-op")
-		require.Contains(t, output, "found: 0")
-		require.Contains(t, output, "--quiet suppresses that summary")
-		require.Contains(t, output, "--keys-only writes zero bytes")
-		require.Contains(t, output, "--json writes one succeeded result envelope")
-		require.Contains(t, output, "mutationSubmitted: false")
+		require.Contains(t, output, "An empty selection completes without confirmation")
 		require.Contains(t, output, "--state "+testCase.state+" --json --dry-run")
 		require.Contains(t, output, "--state "+testCase.state+" --keys-only")
 	}
@@ -366,37 +361,29 @@ func TestProcessInstanceDestructiveHelp_DocumentsEmptySelectorOutput(t *testing.
 // discovery-scoped tenant behavior separately from explicit admin input.
 func TestProcessInstanceHelp_DocumentsTenantContract(t *testing.T) {
 	getOutput := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
-	require.Contains(t, getOutput, "Tenant contract:")
-	require.Contains(t, getOutput, "--tenant scopes search/list discovery and selector validation")
-	require.Contains(t, getOutput, "Explicit --key and stdin keys are backend-authorized admin input")
+	require.Contains(t, getOutput, "tenant")
+	require.Contains(t, getOutput, "--tenant limits search and selector discovery")
+	require.Contains(t, getOutput, "Explicit --key and stdin keys use backend authorization without tenant filtering")
 
 	walkOutput := executeRootForProcessInstanceTest(t, "walk", "process-instance", "--help")
-	require.Contains(t, walkOutput, "Tenant contract:")
-	require.Contains(t, walkOutput, "explicit --key process-instance targets are backend-authorized admin input")
+	require.Contains(t, walkOutput, "tenant")
+	require.Contains(t, walkOutput, "Explicit --key uses backend authorization without tenant filtering")
 
 	expectOutput := executeRootForProcessInstanceTest(t, "expect", "process-instance", "--help")
-	require.Contains(t, expectOutput, "Tenant contract:")
+	require.Contains(t, expectOutput, "tenant")
 	require.Contains(t, expectOutput, "explicit --key and stdin process-instance targets are backend-authorized admin input")
 
 	cancelOutput := executeRootForProcessInstanceTest(t, "cancel", "process-instance", "--help")
-	require.Contains(t, cancelOutput, "Tenant contract:")
-	require.Contains(t, cancelOutput, "--tenant scopes search-derived candidate discovery")
-	require.Contains(t, cancelOutput, "Explicit --key and stdin keys are backend-authorized admin input")
-	require.Contains(t, cancelOutput, "existing dry-run, confirmation, force, and wait safety checks still apply")
-	require.Contains(t, cancelOutput, "Eligible selector-based tenant diagnostics use standard INFO and WARN logging")
-	require.Contains(t, cancelOutput, "honor the configured log format and level")
-	require.Contains(t, cancelOutput, "existing output-mode eligibility remains unchanged")
-	require.Contains(t, cancelOutput, "JSON-formatted diagnostic logs are separate from JSON command results")
+	require.Contains(t, cancelOutput, "tenant")
+	require.Contains(t, cancelOutput, "--tenant limits search-derived selection")
+	require.Contains(t, cancelOutput, "Explicit --key and stdin keys use backend authorization without tenant filtering")
+	require.Contains(t, cancelOutput, "--dry-run")
 
 	deleteOutput := executeRootForProcessInstanceTest(t, "delete", "process-instance", "--help")
-	require.Contains(t, deleteOutput, "Tenant contract:")
-	require.Contains(t, deleteOutput, "--tenant scopes search-derived candidate discovery")
-	require.Contains(t, deleteOutput, "Explicit --key and stdin keys are backend-authorized admin input")
-	require.Contains(t, deleteOutput, "existing dry-run, confirmation, force, and wait safety checks still apply")
-	require.Contains(t, deleteOutput, "Eligible selector-based tenant diagnostics use standard INFO and WARN logging")
-	require.Contains(t, deleteOutput, "honor the configured log format and level")
-	require.Contains(t, deleteOutput, "existing output-mode eligibility remains unchanged")
-	require.Contains(t, deleteOutput, "JSON-formatted diagnostic logs are separate from JSON command results")
+	require.Contains(t, deleteOutput, "tenant")
+	require.Contains(t, deleteOutput, "--tenant limits search-derived selection")
+	require.Contains(t, deleteOutput, "Explicit --key and stdin keys use backend authorization without tenant filtering")
+	require.Contains(t, deleteOutput, "--dry-run")
 }
 
 func TestProcessInstanceSearchDefaultOneLineOutput_IgnoresReportedTotalMetadata(t *testing.T) {

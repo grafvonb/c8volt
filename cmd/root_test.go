@@ -26,7 +26,7 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 		"expect",
 		"walk",
 		"ops",
-		"Discover high-level operational workflows",
+		"Run operational playbooks",
 		"deploy",
 		"delete",
 		"cancel",
@@ -35,12 +35,9 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 		"embed",
 		"version",
 		"capabilities",
-		"Use capabilities for the machine-readable",
+		"Use capabilities to discover supported commands and automation options",
 		"Camunda 8.7, 8.8, 8.9, and 8.10",
 		"Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)",
-		"Results are written to stdout; plain confirmation and continuation questions are written to stderr.",
-		"Capture stderr when consuming prompts. Redirecting stdout does not suppress eligible questions.",
-		"Selector-recovery and --auto-confirm policies remain unchanged.",
 		"--automation",
 		"Examples:",
 		"./c8volt config show --template",
@@ -68,12 +65,9 @@ func TestRootHelpAndGeneratedMarkdownShareDiscoveryAnchors(t *testing.T) {
 	markdown := renderMarkdownForCommand(t, root)
 
 	for _, anchor := range []string{
-		"Use capabilities for the machine-readable",
+		"Use capabilities to discover supported commands and automation options",
 		"Camunda 8.7, 8.8, 8.9, and 8.10",
 		"Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)",
-		"Results are written to stdout; plain confirmation and continuation questions are written to stderr.",
-		"Capture stderr when consuming prompts. Redirecting stdout does not suppress eligible questions.",
-		"Selector-recovery and --auto-confirm policies remain unchanged.",
 	} {
 		require.Contains(t, helpOutput, anchor)
 		require.Contains(t, markdown, anchor)
@@ -146,8 +140,8 @@ func TestAllTenantsHelp_DocumentsRootAndApplicableCommand(t *testing.T) {
 
 	processInstanceOutput := executeRootForTest(t, "get", "process-instance", "--help")
 	assertHelpOutputContainsAll(t, processInstanceOutput,
-		"Tenant contract: --tenant scopes search/list discovery and selector validation where supported.",
-		"Explicit --key and stdin keys are backend-authorized admin input",
+		"--tenant limits search and selector discovery",
+		"Explicit --key and stdin keys use backend authorization without tenant filtering",
 		"--all-tenants",
 		"clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant",
 	)

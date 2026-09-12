@@ -12,13 +12,7 @@ Validate effective configuration
 
 Validate effective configuration.
 
-Loads the effective configuration through the normal config resolver and uses
-the same validation behavior as `config show --validate`.
-
-Tenant context describes configuration scope only: a named tenant is a discovery
-filter, while an empty tenant means no configured tenant filter and is not
-reported as <default>. Human diagnostics report explicit --tenant changes before
-the resulting scope; --tenant "" warns when it clears a named configured filter.
+Loads the effective configuration using the normal precedence rules and applies the same validation as config show --validate.
 
 ```
 c8volt config validate [flags]

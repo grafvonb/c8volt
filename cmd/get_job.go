@@ -33,8 +33,13 @@ var (
 var getJobCmd = &cobra.Command{
 	Use:   "job",
 	Short: "Inspect or search jobs",
-	Long: "Inspect or search Camunda jobs.\n\n" +
-		"Use --key with the jobKey exposed by incident-aware process-instance output to inspect a matching runtime job directly. Search mode will use list filters such as --state, --type, --pi-key, --element-instance-key, --element-id, --worker, --retries, --kind, and --listener-event-type. Search mode pages through matching jobs by default. --batch-size controls each backend page request, --limit caps total returned jobs across all pages, and --total returns only the matching count. Verbose paging progress is written away from stdout; JSON, keys-only, quiet, and automation output remain free of prompts and progress text. Use --json for the stable job payload, or --error-message-limit to shorten long error messages. Job lookup and search are supported for Camunda 8.8 or newer; Camunda 8.7 returns an unsupported-version error.",
+	Long: `Inspect or search Camunda jobs.
+
+Use --key for a known job. Otherwise search by state, type, process instance, element instance, BPMN element, worker, retries, job kind, or listener event type.
+
+--batch-size controls each discovery request; --limit caps jobs across all pages; --total counts matching jobs.
+
+Requires Camunda 8.8 or newer.`,
 	Example: `  ./c8volt get job --key <job-key>
   ./c8volt get job --state failed --batch-size 10 --limit 50
   ./c8volt get job --state failed --total
@@ -99,7 +104,7 @@ func init() {
 	fs.Int32Var(&flagGetJobRetries, "retries", 0, "exact retry count to filter in search mode")
 	fs.StringVar(&flagGetJobKind, "kind", "", "Camunda job kind to filter in search mode; case-insensitive")
 	fs.StringVar(&flagGetJobListenerEvent, "listener-event-type", "", "listener event type to filter in search mode; case-insensitive")
-	fs.Int32VarP(&flagGetJobBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of jobs to request per page; does not cap total returned rows (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetJobBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of jobs to request per page; does not cap total results (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetJobLimit, "limit", "l", 0, "maximum number of matching jobs to return across all pages; omit to continue through all matches")
 	fs.BoolVar(&flagGetJobTotal, "total", false, "return only the numeric total of matching jobs")
 	fs.IntVar(&flagGetErrorMessageLimit, "error-message-limit", 0, "maximum characters to show for error messages; 0 keeps full messages")

@@ -66,7 +66,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsHelpDocumentsCommandShape(t *testi
 	output := executeRootForProcessInstanceTest(t, "ops", "purge", "process-instances-with-incidents", "--help")
 
 	assertHelpOutputContainsAll(t, output,
-		"Purge process instances selected by incidents",
+		"Delete process-instance families selected through incidents",
 		"Aliases:",
 		"pi-with-incidents",
 		"--inc-key strings",
@@ -106,7 +106,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsHelpDocumentsCommandShape(t *testi
 	)
 
 	aliasOutput := executeRootForProcessInstanceTest(t, "ops", "purge", "pi-with-incidents", "--help")
-	require.Contains(t, aliasOutput, "Purge process instances selected by incidents")
+	require.Contains(t, aliasOutput, "Delete process-instance families selected through incidents")
 }
 
 // TestOpsPurgeProcessInstancesWithIncidentsRejectsIncidentDisplayOnlyFlags keeps display flags out of the purge surface.

@@ -10,11 +10,9 @@ Show connected cluster version
 
 ### Synopsis
 
-Show connected cluster version.
+Get the connected Camunda gateway version.
 
-This command prints the gateway version by default. Use --with-brokers to include broker versions sorted by broker node id. Use --json for the structured version payload.
-
-With --json, validation and runtime failures during command execution use one shared error envelope. Without --json, the diagnostic is written to stderr. --no-err-codes changes only the process exit status; the reported failure and immediate termination are unchanged. Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics.
+Use --with-brokers to include broker versions.
 
 ```
 c8volt get cluster version [flags]

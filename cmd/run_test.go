@@ -47,9 +47,9 @@ func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 	require.Contains(t, output, "process-instance")
 
 	output = assertCommandHelpOutput(t, []string{"run", "process-instance"}, []string{
-		"Run by BPMN process ID",
+		"Use a BPMN process ID",
 		"waits until created instances are observable",
-		"does not accept --all-tenants because it creates resources in one concrete tenant",
+		"--all-tenants is not supported because",
 		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2",
 		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -",
 	}, nil)

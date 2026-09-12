@@ -14,7 +14,7 @@ var configTemplateCmd = &cobra.Command{
 	Short: "Print a blank configuration template",
 	Long: `Print a blank configuration template.
 
-Renders the same blank configuration template as ` + "`config show --template`" + `.`,
+Equivalent to config show --template.`,
 	Example: `  ./c8volt config template`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log, _ := logging.FromContext(cmd.Context())

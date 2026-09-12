@@ -24,10 +24,9 @@ type embeddedListFunc func() ([]string, error)
 var embedListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List bundled BPMN fixture files",
-	Long: "List bundled BPMN fixture files.\n\n" +
-		"Shows files for the configured Camunda version, matching `embed deploy --all`. " +
-		"Use before `embed deploy` or `embed export` to get exact file names.\n\n" +
-		"With --json, validation and runtime failures during command execution use one shared error envelope. Without --json, the diagnostic is written to stderr. --no-err-codes changes only the process exit status; the reported failure and immediate termination are unchanged. Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics.",
+	Long: `List bundled BPMN fixture files for the configured Camunda version.
+
+Use before embed deploy or embed export to find exact file names. The selection matches embed deploy --all.`,
 	Example: `  ./c8volt embed list
   ./c8volt embed list --details
   ./c8volt --json embed list`,

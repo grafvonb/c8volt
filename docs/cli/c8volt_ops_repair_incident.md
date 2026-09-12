@@ -9,11 +9,15 @@ Repair incidents by key or filter
 
 ### Synopsis
 
-Repair incidents by key or filter.
+Repair incidents by key or search filters.
 
-Tenant contract: incident-filter mode uses discovery semantics, where a named tenant scopes candidate discovery and empty tenant configuration leaves discovery unfiltered. Explicit --tenant changes are reported before scope, and --tenant "" warns when it clears a named configured filter. Direct --key and stdin input use explicit-key semantics and report that the tenant filter is not applied. Selection context appears before discovery or explicit-key resolution; validated affected tenants appear before the confirmation question and the first mutation. --auto-confirm skips only the question and does not suppress tenant context permitted by the selected output mode. Frozen plans and audit reports show one known resource tenant informationally, emit one warning-level "affected tenants" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.
+Provide repeated --key values, newline-separated keys from stdin with '-', or search filters. Keyed mode and search mode are mutually exclusive.
 
-The command accepts repeated --key values, newline-separated keys from stdin with '-', or incident search filters. Keyed mode and search mode are mutually exclusive. Search mode pages through all matching incidents by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. It builds a fixed incident target set before mutation, applies process-instance-scope variable updates once per unique scope when requested, applies job retry and timeout updates only when an incident has a related job, resolves each incident, and confirms clearance unless --no-wait is set. Default human output keeps repair progress on one workflow activity and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-incident completion line. JSON and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings. Incidents without related jobs are reported and still proceed to incident resolution. Use --report-file with Markdown or JSON output for an audit record of discovery, targets, step statuses, notices, errors, and final outcome.
+The workflow fixes the incident target set, applies requested variables once per process-instance scope, updates retries and timeouts for related jobs, and resolves incidents. Incidents without related jobs still proceed to resolution. Unless --no-wait is set, it confirms that incidents are cleared.
+
+--tenant limits search; an empty tenant or --all-tenants searches across accessible tenants. Explicit keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
+
+Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --automation for unattended repair, and --report-file to save an audit report.
 
 ```
 c8volt ops repair incident [flags]

@@ -16,9 +16,9 @@ var (
 var resolveIncidentCmd = &cobra.Command{
 	Use:   "incident",
 	Short: "Resolve incidents by key",
-	Long: "Resolve incidents by key.\n\n" +
-		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is submitted for resolution and reported independently.\n\n" +
-		"By default c8volt waits until each incident is no longer active by polling incident lookup through the incident service.",
+	Long: `Resolve incidents by key.
+
+Provide repeated --key values or newline-separated keys from stdin with '-'. Each unique incident is resolved once. By default c8volt waits until it is no longer active.`,
 	Example: `  ./c8volt resolve incident --key <incident-key>
   ./c8volt resolve incident --key <incident-key> --key <another-incident-key>
   printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt resolve incident -

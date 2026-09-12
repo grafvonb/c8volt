@@ -47,8 +47,8 @@ c8volt walk process-instance --key <created-process-instance-key>
 
 Generated references: [config test-connection](/cli/c8volt_config_test-connection), [run process-instance](/cli/c8volt_run_process-instance), [walk process-instance](/cli/c8volt_walk_process-instance), [delete process-instance](/cli/c8volt_delete_process-instance).
 
-## Output And Safety
+## Safety
 
 `--dry-run` reports the planned smoke-test steps without mutation. Real execution creates c8volt-owned runtime data and cleans it up unless `--no-cleanup` is supplied. On Camunda 8.8, prefer `--no-cleanup` because full process-definition deletion is supported by c8volt from Camunda 8.9 onward.
 
-Smoke-test creation reports the target tenant before creating runtime data: `creation target: tenant-a` for a named tenant or `creation target: default tenant` when no tenant is configured. This workflow requires one concrete destination tenant and rejects `--all-tenants`, including `--dry-run`, before planning or execution. Use a named tenant when the smoke-test data must be created outside the default tenant. Cleanup evidence in the report uses the same tenant-context contract and may include one known resource tenant informationally, one warning-level `affected tenants: ...` summary for multi-tenant cleanup, and separate non-blocking unknown-metadata warnings. JSON reports expose `tenantContext`; quiet and automation-oriented runs avoid extra human chatter on stdout.
+Creation uses the configured tenant, or the default tenant when none is configured. This workflow rejects `--all-tenants`, including with `--dry-run`, because it requires one destination tenant.

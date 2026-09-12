@@ -24,11 +24,7 @@ func TestEmbedListHelp_DocumentsReadOnlyDiscoveryExamples(t *testing.T) {
 	output := executeRootForTest(t, "embed", "list", "--help")
 
 	require.Contains(t, output, "List bundled BPMN fixture files")
-	require.Contains(t, output, "Shows files for the configured Camunda version")
-	require.Contains(t, output, "With --json, validation and runtime failures during command execution use one shared error envelope")
-	require.Contains(t, output, "Without --json, the diagnostic is written to stderr")
-	require.Contains(t, output, "--no-err-codes changes only the process exit status")
-	require.Contains(t, output, "Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics")
+	require.Contains(t, output, "List bundled BPMN fixture files for the configured Camunda version")
 	require.Contains(t, output, "./c8volt embed list --details")
 	require.Contains(t, output, "./c8volt --json embed list")
 }
@@ -94,7 +90,7 @@ func TestEmbedDeployHelp_DocumentsRunWithoutExpectationFlags(t *testing.T) {
 	output := executeRootForTest(t, "embed", "deploy", "--help")
 
 	require.Contains(t, output, "Add --run to start one process instance")
-	require.Contains(t, output, "does not accept --all-tenants because it creates resources in one concrete tenant")
+	require.Contains(t, output, "--all-tenants is not supported because")
 	require.Contains(t, output, "--run")
 	require.NotContains(t, output, "--expected-status")
 }

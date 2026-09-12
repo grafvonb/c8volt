@@ -28,9 +28,13 @@ var (
 var opsExecuteRetentionPolicyCmd = &cobra.Command{
 	Use:   "retention-policy",
 	Short: "Execute process-instance retention cleanup",
-	Long: "Execute process-instance retention cleanup.\n\n" +
-		"Tenant contract: retention cleanup uses discovery semantics. A named tenant scopes candidate discovery; empty tenant configuration leaves discovery unfiltered and is reported as \"selection scope: unfiltered across accessible tenants\". Explicit --tenant changes are reported before scope, and --tenant \"\" warns when it clears a named configured filter. Selection context appears before discovery; validated affected tenants appear before the confirmation question and the first mutation. --auto-confirm skips only the question and does not suppress tenant context permitted by the selected output mode. Frozen plans and audit reports show one known resource tenant informationally, emit one warning-level \"affected tenants\" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.\n\n" +
-		"The workflow discovers process instances older than the required retention age, freezes that candidate set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion after confirmation. Discovery pages through all matching retention candidates by default. --batch-size controls each discovery page request, --limit caps the frozen retention scope, and --workers, --fail-fast, and --no-worker-limit bound independent delete planning or deletion work. Human, JSON, and audit report output identify whether discovery completed or was user-limited. After confirmation, default human output keeps deletion progress on one workflow activity and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-root completion line. JSON and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings. Use compatible process-instance filters to narrow discovery, --auto-confirm or --automation for unattended deletion, and --report-file to write an audit report.",
+	Long: `Delete process instances older than the required retention age.
+
+The workflow discovers candidates, fixes the target set, validates the delete plan, and requires confirmation before deletion. Use process-instance filters to narrow the candidates.
+
+--tenant limits discovery; an empty tenant or --all-tenants searches across accessible tenants. --batch-size controls each discovery request; --limit caps the selected scope. --workers, --fail-fast, and --no-worker-limit control planning and deletion.
+
+Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.`,
 	Example: `  ./c8volt ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt --tenant tenant-a ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt --tenant "" ops execute retention-policy --retention-days 90 --dry-run
@@ -157,7 +161,7 @@ func init() {
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling validation or deletion work after the first error")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion requests are accepted without deletion confirmation")
 	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking process-instance state before deleting")
-	fs.BoolVar(&flagForce, "force", false, "force cancellation of the process instance(s), prior to deletion")
+	fs.BoolVar(&flagForce, "force", false, "allow cancellation when deletion encounters nonterminal process instances")
 	fs.StringVar(&flagOpsExecuteRetentionPolicyReportFile, "report-file", "", "write an audit report to the given path")
 	fs.StringVar(&flagOpsExecuteRetentionPolicyReportFormat, "report-format", "", "audit report format: markdown, json (default inferred from report-file extension)")
 

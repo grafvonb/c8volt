@@ -58,6 +58,6 @@ c8volt get cluster [flags]
 
 * [c8volt get]({{ "/cli/c8volt_get" | relative_url }})	 - Inspect cluster, process, job, element, incident, tenant, and resource state
 * [c8volt get cluster license]({{ "/cli/c8volt_get_cluster_license" | relative_url }})	 - Show connected cluster license
-* [c8volt get cluster topology]({{ "/cli/c8volt_get_cluster_topology" | relative_url }})	 - Show connected cluster topology as a tree
+* [c8volt get cluster topology]({{ "/cli/c8volt_get_cluster_topology" | relative_url }})	 - Inspect connected cluster topology
 * [c8volt get cluster version]({{ "/cli/c8volt_get_cluster_version" | relative_url }})	 - Show connected cluster version
 

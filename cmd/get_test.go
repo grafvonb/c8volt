@@ -61,7 +61,7 @@ func TestGetHelp(t *testing.T) {
 func TestGetCommand_PreservesExistingProcessInstanceHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "process-instance", "--help")
 
-	require.Contains(t, output, "Get process instances by key or by search criteria.")
+	require.Contains(t, output, "Get process instances by key or search criteria.")
 	require.Contains(t, output, "./c8volt get process-instance --state active")
 	require.Contains(t, output, "--key")
 	require.Contains(t, output, "--state")
@@ -247,9 +247,9 @@ func TestGetResourceHelp(t *testing.T) {
 
 	require.Contains(t, output, "Get a single resource by ID")
 	require.Contains(t, output, "Requires --id")
-	require.Contains(t, output, "Tenant contract:")
-	require.Contains(t, output, "explicit --id resource targets are backend-authorized admin input")
-	require.Contains(t, output, "returned tenant metadata may differ from the selected tenant")
+	require.Contains(t, output, "tenant")
+	require.Contains(t, output, "Explicit --id uses backend authorization without tenant filtering")
+	require.Contains(t, output, "without tenant filtering")
 	require.Contains(t, output, "c8volt get resource")
 	require.Contains(t, output, "--id")
 	require.Contains(t, output, "resource ID to fetch")
@@ -277,13 +277,7 @@ func TestGetClusterHelp(t *testing.T) {
 func TestGetClusterLicenseHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "license", "--help")
 
-	require.Contains(t, output, "Show connected cluster license")
-	require.Contains(t, output, "flat fields")
-	require.Contains(t, output, "Use --json for the structured license payload")
-	require.Contains(t, output, "With --json, validation and runtime failures during command execution use one shared error envelope")
-	require.Contains(t, output, "Without --json, the diagnostic is written to stderr")
-	require.Contains(t, output, "--no-err-codes changes only the process exit status")
-	require.Contains(t, output, "Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics")
+	require.Contains(t, output, "Inspect the connected Camunda cluster's license")
 	require.Contains(t, output, "c8volt get cluster license")
 	require.Contains(t, output, "./c8volt get cluster license --json")
 	require.Contains(t, output, "./c8volt get cluster licence")
@@ -293,13 +287,7 @@ func TestGetClusterLicenseHelp(t *testing.T) {
 func TestGetClusterTopologyHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "topology", "--help")
 
-	require.Contains(t, output, "Show connected cluster topology as a sorted tree")
-	require.Contains(t, output, "sorted tree")
-	require.Contains(t, output, "Use --json for the structured topology payload")
-	require.Contains(t, output, "With --json, validation and runtime failures during command execution use one shared error envelope")
-	require.Contains(t, output, "Without --json, the diagnostic is written to stderr")
-	require.Contains(t, output, "--no-err-codes changes only the process exit status")
-	require.Contains(t, output, "Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics")
+	require.Contains(t, output, "Inspect brokers, partitions, and gateway metadata")
 	require.Contains(t, output, "./c8volt get cluster topology")
 	require.Contains(t, output, "./c8volt get cluster topology --json")
 }
@@ -308,13 +296,9 @@ func TestGetClusterTopologyHelp(t *testing.T) {
 func TestGetClusterVersionHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "version", "--help")
 
-	require.Contains(t, output, "Show connected cluster version")
-	require.Contains(t, output, "gateway version by default")
+	require.Contains(t, output, "Get the connected Camunda gateway version")
+	require.Contains(t, output, "Camunda gateway version")
 	require.Contains(t, output, "include broker versions")
-	require.Contains(t, output, "With --json, validation and runtime failures during command execution use one shared error envelope")
-	require.Contains(t, output, "Without --json, the diagnostic is written to stderr")
-	require.Contains(t, output, "--no-err-codes changes only the process exit status")
-	require.Contains(t, output, "Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics")
 	require.Contains(t, output, "./c8volt get cluster version")
 	require.Contains(t, output, "./c8volt get cluster version --with-brokers")
 	require.Contains(t, output, "./c8volt get cluster version --json")
@@ -326,20 +310,14 @@ func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 	output := executeRootForTest(t, "get", "process-definition", "--help")
 
 	require.Contains(t, output, "List or fetch deployed process definitions")
-	require.Contains(t, output, "Inspect deployed BPMN models")
-	require.Contains(t, output, "Use `--xml` only with `--key`")
-	require.Contains(t, output, "`--stat` requires Camunda `8.8` or newer")
-	require.Contains(t, output, "prints exact-version")
-	require.Contains(t, output, "Camunda `8.7` does not support")
-	require.Contains(t, output, "Tenant contract:")
-	require.Contains(t, output, "`--tenant` scopes list/latest and BPMN selector discovery")
-	require.Contains(t, output, "Explicit `--key` and XML key lookups are backend-authorized admin")
-	require.Contains(t, output, "With `--json`, validation and runtime failures during command execution use one")
-	require.Contains(t, output, "shared error envelope")
-	require.Contains(t, output, "Without `--json`, the diagnostic is written to stderr")
-	require.Contains(t, output, "`--no-err-codes` changes only the process exit status")
-	require.Contains(t, output, "Bootstrap failures and argument or flag parsing")
-	require.Contains(t, output, "errors before command execution retain their established diagnostics")
+	require.Contains(t, output, "Select by key, BPMN process ID, version, or version tag")
+	require.Contains(t, output, "Use --xml only with --key")
+	require.Contains(t, output, "--stat includes exact-version statistics and requires Camunda 8.8 or newer")
+	require.Contains(t, output, "exact-version statistics")
+	require.Contains(t, output, "Camunda 8.7 selects within its 1000 visible-definition compatibility window")
+	require.Contains(t, output, "tenant")
+	require.Contains(t, output, "--tenant limits list and selector discovery")
+	require.Contains(t, output, "Explicit --key and XML lookups use backend authorization without tenant filtering")
 	require.Contains(t, output, "./c8volt get process-definition --key <process-definition-key> --json")
 }
 

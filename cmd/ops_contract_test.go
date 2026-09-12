@@ -75,7 +75,7 @@ func TestOpsAnalyseSlowProcessInstancesMetadataRecordsReadOnlyContract(t *testin
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "include runtime listener jobs under matching element timeline rows",
+		Description: "include runtime listener jobs",
 	})
 }
 

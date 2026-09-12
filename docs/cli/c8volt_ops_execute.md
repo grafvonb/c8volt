@@ -9,11 +9,9 @@ Discover predefined operational playbooks
 
 ### Synopsis
 
-Discover predefined operational playbooks.
+Run predefined operational playbooks.
 
-The execute command group lists playbooks that discover target sets and execute
-existing c8volt resource actions. This grouping command does not run concrete
-operational workflows by itself.
+Choose retention-policy to clean up old process instances or smoke-test to verify deployment, execution, and cleanup.
 
 ```
 c8volt ops execute [flags]
@@ -55,7 +53,7 @@ c8volt ops execute [flags]
 
 ### SEE ALSO
 
-* [c8volt ops]({{ "/cli/c8volt_ops" | relative_url }})	 - Discover high-level operational workflows
+* [c8volt ops]({{ "/cli/c8volt_ops" | relative_url }})	 - Run operational playbooks
 * [c8volt ops execute retention-policy]({{ "/cli/c8volt_ops_execute_retention-policy" | relative_url }})	 - Execute process-instance retention cleanup
 * [c8volt ops execute smoke-test]({{ "/cli/c8volt_ops_execute_smoke-test" | relative_url }})	 - Execute a cluster smoke test workflow
 

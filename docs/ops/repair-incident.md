@@ -43,8 +43,8 @@ c8volt resolve incident --key <incident-key>
 
 Generated references: [get incident](/cli/c8volt_get_incident), [update process-instance](/cli/c8volt_update_process-instance), [update job](/cli/c8volt_update_job), [resolve incident](/cli/c8volt_resolve_incident).
 
-## Output And Safety
+## Safety
 
 `--dry-run` shows selected incidents and planned variable, job, and resolution steps without mutation. Real execution submits only the requested repair actions and reports planned, skipped, submitted, confirmed, and failed work. Keyed mode and search mode are mutually exclusive.
 
-Search mode uses discovery semantics and reports either `selection scope: tenant-a only` or `selection scope: unfiltered across accessible tenants` before repair. Use `--all-tenants` to clear a configured search tenant for this run; the resulting unfiltered discovery is still limited to resources visible to the authenticated identity. Explicit tenant flag changes are reported before scope; clearing a named configuration with `--tenant ""` warns that selection is unfiltered, and clearing it with `--all-tenants` emits `--all-tenants overrides the configured tenant filter; selection is unfiltered`. The options `--tenant` and `--all-tenants` are mutually exclusive. Keyed mode uses explicit-key semantics: c8volt states that the tenant filter is not applied for explicit resource keys and reports actual resource tenant evidence only when the frozen incident or process-instance plan already contains it. Multi-tenant plans emit one warning-level `affected tenants: ...` summary, and unknown-metadata warnings do not block repair; both are shown before confirmation and recorded in JSON reports as `tenantContext`. Quiet output suppresses these human lines.
+A named tenant limits discovery. An empty tenant or `--all-tenants` searches across tenants visible to the authenticated identity. `--all-tenants` conflicts with an explicit `--tenant` value. Explicit keys use backend authorization without tenant filtering.

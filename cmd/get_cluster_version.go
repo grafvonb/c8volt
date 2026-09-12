@@ -14,9 +14,9 @@ var flagGetClusterVersionWithBrokers bool
 var getClusterVersionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show connected cluster version",
-	Long: "Show connected cluster version.\n\n" +
-		"This command prints the gateway version by default. Use --with-brokers to include broker versions sorted by broker node id. Use --json for the structured version payload.\n\n" +
-		"With --json, validation and runtime failures during command execution use one shared error envelope. Without --json, the diagnostic is written to stderr. --no-err-codes changes only the process exit status; the reported failure and immediate termination are unchanged. Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics.",
+	Long: `Get the connected Camunda gateway version.
+
+Use --with-brokers to include broker versions.`,
 	Example: `  ./c8volt get cluster version
   ./c8volt get cluster version --with-brokers
   ./c8volt get cluster version --json`,

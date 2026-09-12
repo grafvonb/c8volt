@@ -25,14 +25,13 @@ var (
 var deleteProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
 	Short: "Delete process definition resources",
-	Long: "Delete process definition resources from Camunda.\n\n" +
-		"By default c8volt first checks delete impact without changing anything: active process instances, required cancellation roots and process-instance tree scope when --force is used, and batch-operation read access before prompting. Process-definition deletion requires the full process-definition history deletion capability, currently Camunda 8.9 or newer. With --force, it cancels the root process instances, deletes the affected process-instance history, then asks Camunda to delete the process definition and remaining associated history. If you only want to delete process instances for a definition, use `c8volt delete process-instance --bpmn-process-id <bpmn-process-id>`.\n\n" +
-		"Tenant contract: --tenant scopes BPMN selector discovery where supported. Empty tenant configuration leaves discovery unfiltered and is reported as \"selection scope: unfiltered across accessible tenants\". Explicit --tenant changes are reported before scope, and --tenant \"\" warns when it clears a named configured filter. Explicit --key and stdin process-definition keys are backend-authorized admin input and report that the tenant filter is not applied; existing impact, confirmation, force, and wait safety checks still apply.\n\n" +
-		"Resolved delete impact shows one known process-definition or nested process-instance tenant informationally, emits one warning-level \"affected tenants\" summary when the frozen scope spans multiple tenants, and warns separately for targets with unknown tenant metadata.\n\n" +
-		"When --bpmn-process-id is set, c8volt validates visible process-definition matches before delete impact planning, confirmation, cancellation, or deletion. A missing selector fails with the shared local diagnostic.\n\n" +
-		"After confirmation, default human output keeps one workflow activity updated from real process-definition deletion completions and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-definition completion line. JSON, keys-only, and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings.\n\n" +
-		"Use --dry-run to preview process-definition delete impact without submitting deletion or cancellation requests.\n\n" +
-		"Use --auto-confirm for unattended destructive runs.",
+	Long: `Delete process definition resources from Camunda 8.9 or newer.
+
+Before mutation, c8volt checks active-instance impact, required cancellation roots, affected instance families, and batch-operation read access. With --force, it cancels root instances, deletes affected instance history, then deletes the definition and remaining associated history.
+
+--tenant limits BPMN selector discovery. An empty tenant or --all-tenants leaves discovery unfiltered across accessible tenants. Explicit --key and stdin keys use backend authorization without tenant filtering. A --bpmn-process-id selector must match visible definitions before impact planning.
+
+Use --dry-run to preview impact without mutation, or --auto-confirm for unattended deletion. To delete only a definition's instances, use delete process-instance --bpmn-process-id <bpmn-process-id>.`,
 	Example: `  ./c8volt delete process-definition --key <process-definition-key> --auto-confirm
   ./c8volt delete process-definition --key <process-definition-key> --dry-run
   ./c8volt --tenant tenant-a delete process-definition --key <process-definition-key> --dry-run

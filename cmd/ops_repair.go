@@ -18,13 +18,9 @@ import (
 var opsRepairCmd = &cobra.Command{
 	Use:   "repair",
 	Short: "Discover repair and remediation workflows",
-	Long: `Discover repair and remediation workflows.
+	Long: `Repair incidents and affected process instances.
 
-The repair command group lists target-specific remediation workflows for
-incidents and process-instance selected incidents. Use a concrete target command
-to provide keys, filters, dry-run controls, variable updates, job repair
-options, and audit reports. This grouping command does not define target keys or
-run remediation behavior by itself.`,
+Choose a target command to select resources, update variables or jobs, resolve incidents, and verify recovery.`,
 	Example: `  ./c8volt ops repair --help
   ./c8volt capabilities --json`,
 	Args: cobra.NoArgs,

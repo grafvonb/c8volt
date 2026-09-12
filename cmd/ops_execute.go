@@ -8,11 +8,9 @@ import "github.com/spf13/cobra"
 var opsExecuteCmd = &cobra.Command{
 	Use:   "execute",
 	Short: "Discover predefined operational playbooks",
-	Long: `Discover predefined operational playbooks.
+	Long: `Run predefined operational playbooks.
 
-The execute command group lists playbooks that discover target sets and execute
-existing c8volt resource actions. This grouping command does not run concrete
-operational workflows by itself.`,
+Choose retention-policy to clean up old process instances or smoke-test to verify deployment, execution, and cleanup.`,
 	Example: `  ./c8volt ops execute --help
   ./c8volt ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt ops execute smoke-test --dry-run

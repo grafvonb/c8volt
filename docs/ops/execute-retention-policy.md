@@ -46,8 +46,8 @@ c8volt delete process-instance -
 
 Generated references: [get process-instance](/cli/c8volt_get_process-instance), [delete process-instance](/cli/c8volt_delete_process-instance).
 
-## Output And Safety
+## Safety
 
 `--dry-run` reports the frozen retention set and delete plan without mutation. Real execution confirms or runs under automation, deletes through normal process-instance delete planning, waits unless disabled, and can write Markdown or JSON reports. Discovery page size and frozen scope are separate: use `--batch-size` for request size and `--limit` only when the retention scope should intentionally stop early.
 
-Retention is discovery-driven. A named tenant configuration is shown as `selection scope: tenant-a only`; an empty tenant configuration or active `--all-tenants` is shown as `selection scope: unfiltered across accessible tenants` and is not described as `<default>`. Use `--all-tenants` to clear a configured tenant for this run without enumerating tenants or bypassing authenticated visibility. Explicit tenant flag changes are reported before scope; clearing a named configuration with `--tenant ""` warns that selection is unfiltered, and clearing it with `--all-tenants` emits `--all-tenants overrides the configured tenant filter; selection is unfiltered`. The options `--tenant` and `--all-tenants` are mutually exclusive. The frozen delete plan reports one known tenant informationally, emits one warning-level `affected tenants: ...` summary for multi-tenant scope, and warns separately for unknown tenant metadata. JSON output and JSON reports carry the same `tenantContext` object, while quiet mode and keys-only pipelines keep tenant guidance out of stdout.
+A named tenant limits discovery. An empty tenant or `--all-tenants` searches across tenants visible to the authenticated identity. `--all-tenants` conflicts with an explicit `--tenant` value.

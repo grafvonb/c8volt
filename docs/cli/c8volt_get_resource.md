@@ -14,7 +14,7 @@ Get a single resource by ID.
 
 Requires --id. The ID must be a Camunda resource ID; process-definition keys and deployment response keys are not resource IDs.
 
-Tenant contract: explicit --id resource targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.
+Explicit --id uses backend authorization without tenant filtering.
 
 ```
 c8volt get resource [flags]

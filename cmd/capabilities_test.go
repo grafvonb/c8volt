@@ -198,7 +198,7 @@ func TestCapabilitiesCommand_JSONIncludesOpsRootMetadata(t *testing.T) {
 	require.Equal(t, ContractSupportLimited, ops.ContractSupport)
 	require.Equal(t, AutomationSupportUnsupported, ops.AutomationSupport)
 	require.Contains(t, ops.Aliases, "operations")
-	require.Contains(t, ops.Summary, "Discover high-level operational workflows")
+	require.Contains(t, ops.Summary, "Run operational playbooks")
 	execute, ok := findCommandCapability(ops.Children, "ops execute")
 	require.True(t, ok)
 	require.Equal(t, CommandMutationStateChanging, execute.Mutation)
@@ -258,14 +258,14 @@ func TestCapabilitiesCommand_JSONIncludesPagedWorkflowContracts(t *testing.T) {
 	}{
 		{
 			path:       "get job",
-			batchDesc:  "number of jobs to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+			batchDesc:  "number of jobs to request per page; does not cap total results (max limit 1000 enforced by server)",
 			limitDesc:  "maximum number of matching jobs to return across all pages; omit to continue through all matches",
 			mutation:   CommandMutationReadOnly,
 			outputMode: OutputModeContract{Name: "keys-only", Supported: true},
 		},
 		{
 			path:       "get element",
-			batchDesc:  "number of elements to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+			batchDesc:  "number of elements to request per page; does not cap total results (max limit 1000 enforced by server)",
 			limitDesc:  "maximum number of matching elements to return across all pages; omit to continue through all matches",
 			aliases:    []string{"ei"},
 			mutation:   CommandMutationReadOnly,
@@ -273,7 +273,7 @@ func TestCapabilitiesCommand_JSONIncludesPagedWorkflowContracts(t *testing.T) {
 		},
 		{
 			path:       "get incident",
-			batchDesc:  "number of incidents to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+			batchDesc:  "number of incidents to request per page; does not cap total results (max limit 1000 enforced by server)",
 			limitDesc:  "maximum number of matching incidents to return across all pages; omit to continue through all matches",
 			aliases:    []string{"incidents", "inc"},
 			mutation:   CommandMutationReadOnly,
@@ -281,7 +281,7 @@ func TestCapabilitiesCommand_JSONIncludesPagedWorkflowContracts(t *testing.T) {
 		},
 		{
 			path:       "get process-instance",
-			batchDesc:  "number of process instances to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+			batchDesc:  "number of process instances to request per page; does not cap total results (max limit 1000 enforced by server)",
 			limitDesc:  "maximum number of matching process instances to return across all pages; omit to continue through all matches",
 			aliases:    []string{"process-instances", "pi", "pis"},
 			mutation:   CommandMutationReadOnly,

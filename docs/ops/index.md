@@ -27,7 +27,7 @@ The ops command group is the operator-facing layer for predefined Camunda playbo
 
 ## Shared Shape
 
-Every ops playbook page keeps the same compact structure: purpose, use when, basic usage, best variants, lower-level commands, output/report behavior, and safety notes. Generated reference pages remain the exact flag contract.
+Each playbook describes its purpose, usage, underlying resource commands, and safety rules. Generated references list the supported flags.
 
 ## Safety Model
 
@@ -60,7 +60,7 @@ wait and verify
 write audit report
 ```
 
-Tenant-aware discovery playbooks accept `--all-tenants` when the configured tenant filter should be cleared for one run. The scope is unfiltered only across tenants visible to the authenticated identity; it does not enumerate tenants or bypass backend authorization. If the option clears a named configured tenant, human output emits `--all-tenants overrides the configured tenant filter; selection is unfiltered` before the unfiltered selection scope. It is mutually exclusive with any explicit `--tenant` value. Workflows that create resources in one concrete tenant, such as `ops execute smoke-test`, reject `--all-tenants`.
+Discovery playbooks accept `--all-tenants` to clear the configured tenant filter for one run. Discovery remains limited to resources visible to the authenticated identity. The option conflicts with an explicit `--tenant` value. Creation workflows such as `ops execute smoke-test` require one destination tenant and reject `--all-tenants`.
 
 ## Reports And Demos
 

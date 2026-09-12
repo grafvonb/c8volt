@@ -16,9 +16,9 @@ func TestOpsHelpDocumentsGroupingCommand(t *testing.T) {
 	output := executeRootForTest(t, "ops", "--help")
 
 	assertHelpOutputContainsAll(t, output,
-		"Discover high-level operational workflows",
-		"groups operational playbooks for execution, repair, and",
-		"target-specific subcommands will define concrete behavior",
+		"Run operational playbooks",
+		"Run operational playbooks for analysis, retention, purge, repair, and cluster smoke testing",
+		"Choose a subcommand for a specific workflow",
 		"./c8volt ops --help",
 		"./c8volt capabilities --json",
 	)
@@ -46,7 +46,7 @@ func TestOpsHelpSkipsRuntimeConfigurationValidation(t *testing.T) {
 
 	output := executeRootForTest(t, "ops", "--help")
 
-	require.Contains(t, output, "Discover high-level operational workflows")
+	require.Contains(t, output, "Run operational playbooks")
 	require.Contains(t, output, "Usage:")
 }
 
@@ -54,7 +54,7 @@ func TestOpsHelpSkipsRuntimeConfigurationValidation(t *testing.T) {
 func TestOpsCommandReturnsHelpForGroupingInvocation(t *testing.T) {
 	output := executeRootForTest(t, "ops")
 
-	require.Contains(t, output, "Discover high-level operational workflows")
+	require.Contains(t, output, "Run operational playbooks")
 	require.Contains(t, output, "Usage:")
 	require.Contains(t, output, "c8volt ops")
 }
@@ -79,8 +79,8 @@ func TestOpsAnalyseSlowProcessInstancesHelpDocumentsScaffold(t *testing.T) {
 	output := executeRootForTest(t, "ops", "analyse", "slow-process-instances", "--help")
 
 	assertHelpOutputContainsAll(t, output,
-		"Analyse slow process-instance timings",
-		"The command is read-only.",
+		"Analyse process-instance and runtime-element durations",
+		"without changing cluster state",
 		"--key strings",
 		"--bpmn-process-id string",
 		"--pd-key string",
@@ -91,8 +91,8 @@ func TestOpsAnalyseSlowProcessInstancesHelpDocumentsScaffold(t *testing.T) {
 		"--element-id string",
 		"--dur-longer string",
 		"--dur-element-longer string",
-		"Duration thresholds use Go duration syntax",
-		"Calendar units such as 1d are not accepted",
+		"Durations use Go syntax",
+		"Calendar units such as 1d are not supported",
 		"./c8volt get process-instance --state active --keys-only | ./c8volt ops analyse slow-process-instances -",
 	)
 	assertHelpOutputOmitsAll(t, output, "--duration-after", "--incidents-only")
@@ -103,9 +103,8 @@ func TestOpsExecuteHelpDocumentsGroupingCommand(t *testing.T) {
 	output := executeRootForTest(t, "ops", "execute", "--help")
 
 	assertHelpOutputContainsAll(t, output,
-		"Discover predefined operational playbooks",
-		"lists playbooks that discover target sets and execute",
-		"existing c8volt resource actions",
+		"Run predefined operational playbooks",
+		"Choose retention-policy",
 		"./c8volt ops execute --help",
 		"./c8volt ops execute retention-policy --retention-days 90 --dry-run",
 		"./c8volt ops execute smoke-test --dry-run",
@@ -120,7 +119,7 @@ func TestOpsExecuteHelpDocumentsGroupingCommand(t *testing.T) {
 func TestOpsExecuteCommandReturnsHelpForGroupingInvocation(t *testing.T) {
 	output := executeRootForTest(t, "ops", "execute")
 
-	require.Contains(t, output, "Discover predefined operational playbooks")
+	require.Contains(t, output, "Run predefined operational playbooks")
 	require.Contains(t, output, "Usage:")
 	require.Contains(t, output, "c8volt ops execute")
 }
@@ -130,10 +129,9 @@ func TestOpsRepairHelpDocumentsGroupingCommand(t *testing.T) {
 	output := executeRootForTest(t, "ops", "repair", "--help")
 
 	assertHelpOutputContainsAll(t, output,
-		"Discover repair and remediation workflows",
-		"lists target-specific remediation workflows",
-		"does not define target keys or",
-		"run remediation behavior by itself",
+		"Repair incidents and affected process instances",
+		"Choose a target command",
+		"resolve incidents, and verify recovery",
 		"./c8volt ops repair --help",
 		"./c8volt capabilities --json",
 	)
@@ -147,7 +145,7 @@ func TestOpsRepairHelpDocumentsGroupingCommand(t *testing.T) {
 func TestOpsRepairCommandReturnsHelpForGroupingInvocation(t *testing.T) {
 	output := executeRootForTest(t, "ops", "repair")
 
-	require.Contains(t, output, "Discover repair and remediation workflows")
+	require.Contains(t, output, "Repair incidents and affected process instances")
 	require.Contains(t, output, "Usage:")
 	require.Contains(t, output, "c8volt ops repair")
 }
@@ -174,10 +172,7 @@ func TestOpsMutationHelpDocumentsTenantContextOrder(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Contains(t, tt.command.Long, "Selection context appears before discovery")
-			require.Contains(t, tt.command.Long, "validated affected tenants appear before the confirmation question and the first mutation")
-			require.Contains(t, tt.command.Long, "--auto-confirm skips only the question")
-			require.Contains(t, tt.command.Long, "does not suppress tenant context permitted by the selected output mode")
+			require.Contains(t, tt.command.Long, "--auto-confirm or --automation for unattended")
 		})
 	}
 }

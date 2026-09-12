@@ -12,9 +12,7 @@ Resolve incidents by key
 
 Resolve incidents by key.
 
-The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is submitted for resolution and reported independently.
-
-By default c8volt waits until each incident is no longer active by polling incident lookup through the incident service.
+Provide repeated --key values or newline-separated keys from stdin with '-'. Each unique incident is resolved once. By default c8volt waits until it is no longer active.
 
 ```
 c8volt resolve incident [flags]

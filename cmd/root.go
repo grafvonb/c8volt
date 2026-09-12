@@ -43,10 +43,7 @@ state changes, walk process trees, cancel, and delete.
 Supports Camunda 8.7, 8.8, 8.9, and 8.10.
 Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease).
 Camunda 8.10 aliases: 8.10, 810, v810, v8.10. Default: 8.9.
-Results are written to stdout; plain confirmation and continuation questions are written to stderr.
-Capture stderr when consuming prompts. Redirecting stdout does not suppress eligible questions.
-Selector-recovery and --auto-confirm policies remain unchanged.
-Use capabilities for the machine-readable command contract.`,
+Use capabilities to discover supported commands and automation options.`,
 	Example: `  ./c8volt config show --template
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt get cluster topology

@@ -26,11 +26,13 @@ type resolveProcessInstanceAPI interface {
 var resolveProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Resolve process-instance incidents by key",
-	Long: "Resolve process-instance incidents by key.\n\n" +
-		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. For each unique process instance, c8volt expands to the process-instance family, discovers active incidents at command start for direct incidents on in-scope instances, resolves that fixed incident set, and reports process instances with no active incidents as skipped.\n\n" +
-		"Tenant contract: explicit --key and stdin keys are backend-authorized admin input and report that the tenant filter is not applied. Resolved plans show one known resource tenant informationally, emit one warning-level \"affected tenants\" summary when the frozen scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.\n\n" +
-		"By default c8volt validates the affected root and descendant instances and asks for confirmation before resolving active incidents in the family. Use --dry-run to preview the family scope and incident resolution plan without submitting mutations.\n\n" +
-		"By default c8volt waits until the initially discovered incidents are no longer active by polling process-instance incident lookup through the incident service.",
+	Long: `Resolve active incidents in process-instance families.
+
+Provide repeated --key values or newline-separated keys from stdin with '-'. c8volt expands each target to its family, validates the affected scope, and asks for confirmation. Explicit keys use backend authorization without tenant filtering.
+
+Only incidents discovered at command start are resolved. Instances with no active incidents require no mutation. By default c8volt waits until those incidents are no longer active.
+
+Use --dry-run to inspect the family and incident plan without mutation.`,
 	Example: `  ./c8volt resolve process-instance --key <process-instance-key> --dry-run
   ./c8volt resolve process-instance --key <process-instance-key>
   ./c8volt --tenant tenant-a resolve process-instance --key <process-instance-key> --dry-run

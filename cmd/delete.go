@@ -12,8 +12,7 @@ var deleteCmd = &cobra.Command{
 	Short: "Delete process instances or definitions",
 	Long: `Delete process instances or process definitions.
 
-Leaf commands validate scope, require confirmation for destructive steps, and
-show verification examples.`,
+Choose a resource command to validate its scope and confirm deletion.`,
 	Example: `  ./c8volt delete process-instance --key <process-instance-key> --force
   ./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run
   ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm`,

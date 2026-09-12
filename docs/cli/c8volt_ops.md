@@ -5,15 +5,13 @@ nav_exclude: true
 
 ## c8volt ops
 
-Discover high-level operational workflows
+Run operational playbooks
 
 ### Synopsis
 
-Discover high-level operational workflows.
+Run operational playbooks for analysis, retention, purge, repair, and cluster smoke testing.
 
-The ops command family groups operational playbooks for execution, repair, and
-future maintenance workflows. This root command is intentionally discovery-only;
-target-specific subcommands will define concrete behavior as they are added.
+Choose a subcommand for a specific workflow.
 
 ```
 c8volt ops [flags]

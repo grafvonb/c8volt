@@ -6,15 +6,11 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt get cluster topology
 
-Show connected cluster topology as a tree
+Inspect connected cluster topology
 
 ### Synopsis
 
-Show connected cluster topology as a sorted tree.
-
-This command reports brokers, partitions, and gateway metadata for the configured Camunda cluster. Use --json for the structured topology payload.
-
-With --json, validation and runtime failures during command execution use one shared error envelope. Without --json, the diagnostic is written to stderr. --no-err-codes changes only the process exit status; the reported failure and immediate termination are unchanged. Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics.
+Inspect brokers, partitions, and gateway metadata for the connected Camunda cluster.
 
 ```
 c8volt get cluster topology [flags]

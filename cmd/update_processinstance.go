@@ -18,11 +18,13 @@ var (
 var updateProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Update process-instance variables by key",
-	Long: "Update process-instance variables by key.\n\n" +
-		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. Provide exactly one variable payload source: --vars with a JSON object or --vars-file with a path to a JSON object file. The same variable map is applied to every unique target key.\n\n" +
-		"Tenant contract: explicit --key and stdin keys are backend-authorized admin input and report that the tenant filter is not applied. Resolved previews show one known variable/resource tenant informationally, emit one warning-level \"affected tenants\" summary when multiple tenants are already known, and warn separately when target tenant metadata is unknown.\n\n" +
-		"By default c8volt loads current process-instance-scope variables, previews planned additions and changes, asks for confirmation, then waits until requested variables are visible through the same lookup path as `get process-instance --with-vars`. Use --dry-run to preview without mutating, or --auto-confirm for unattended mutation.\n\n" +
-		"Variable updates are supported for Camunda 8.8 or newer. Camunda 8.7 returns an unsupported-version error before mutation.",
+	Long: `Update process-instance-scope variables on Camunda 8.8 or newer.
+
+Provide repeated --key values or newline-separated keys from stdin with '-'. Supply exactly one payload source: --vars with a JSON object or --vars-file with its file path. The same variable map is applied to every unique key. Explicit keys use backend authorization without tenant filtering.
+
+c8volt loads current variables, plans additions and changes, asks for confirmation, and waits until the requested variables are visible through the same lookup as get process-instance --with-vars.
+
+Use --dry-run to inspect changes without mutation, or --auto-confirm for unattended updates.`,
 	Example: `  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
   ./c8volt update process-instance --key <process-instance-key> --vars-file ./vars.json --dry-run
   ./c8volt --tenant tenant-a update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run

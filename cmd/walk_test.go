@@ -85,8 +85,8 @@ func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
 	require.Contains(t, output, "process-instance")
 
 	output = assertCommandHelpOutput(t, []string{"walk", "process-instance"}, []string{
-		"By default, walk shows the full process-instance family as an ASCII tree",
-		"returns the partial tree plus a warning",
+		"the default scope is the full family",
+		"walk returns the available family",
 		"./c8volt walk process-instance --key <process-instance-key> --with-incidents",
 		"./c8volt walk process-instance --key <process-instance-key> --with-vars",
 		"./c8volt walk process-instance --key <process-instance-key> --with-elements",

@@ -14,25 +14,15 @@ Cancel process instances by key or search filters.
 
 By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.
 
-Cancellation confirmation succeeds when every affected family member is completed, canceled, terminated, or no longer present. This terminal cleanup rule does not broaden explicit state checks: expect process-instance --state canceled continues to match only canceled or terminated instances, not completed or absent ones.
+Cancellation succeeds when every affected family member is completed, canceled, terminated, or absent. The explicit expect process-instance --state canceled check still requires canceled or terminated instances.
 
-Tenant contract: --tenant scopes search-derived candidate discovery where supported. Empty tenant configuration leaves discovery unfiltered and is reported as "selection scope: unfiltered across accessible tenants". Explicit --tenant changes are reported before scope, and --tenant "" warns when it clears a named configured filter. Explicit --key and stdin keys are backend-authorized admin input and report that the tenant filter is not applied; existing dry-run, confirmation, force, and wait safety checks still apply.
+--tenant limits search-derived selection. An empty tenant or --all-tenants leaves discovery unfiltered across accessible tenants. Explicit --key and stdin keys use backend authorization without tenant filtering.
 
-Resolved plans show one known resource tenant informationally, emit one warning-level "affected tenants" summary when the frozen scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.
+A --bpmn-process-id selector must match a visible process definition before instance discovery. An empty selection completes without confirmation or cancellation.
 
-Eligible selector-based tenant diagnostics use standard INFO and WARN logging and honor the configured log format and level; their existing output-mode eligibility remains unchanged. JSON-formatted diagnostic logs are separate from JSON command results and stay off result stdout.
+--batch-size controls each discovery request; --limit caps selected instances across all pages. --workers, --fail-fast, and --no-worker-limit control planning and cancellation work.
 
-When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, or cancellation; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no cancellation request is submitted.
-
-When a selector search succeeds with no matching instances, cancellation completes as a successful no-op without confirmation or mutation. Human output is exactly "found: 0"; --quiet suppresses that summary, --keys-only writes zero bytes, and --json writes one succeeded result envelope with an empty cancellation payload. The same output rules apply to --dry-run, whose JSON preview reports mutationSubmitted: false.
-
-Search mode pages through matching process instances by default. --batch-size controls each discovery page request, --limit caps the selected process-instance scope across all pages, and --workers, --fail-fast, and --no-worker-limit bound independent planning or cancellation work. Verbose paging progress is written away from stdout; JSON, quiet, and automation output remain free of prompts unless confirmation is explicitly supplied.
-
-After confirmation, default human output keeps one workflow activity updated from real cancellation completions and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-root completion line. JSON, keys-only, and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings.
-
-Use --dry-run to preview selected, in-scope, final-state, and partial-scope instances without cancelling.
-
-Use --auto-confirm for unattended destructive runs.
+Use --dry-run to preview the affected family without cancelling. Use --auto-confirm for unattended cancellation.
 
 ```
 c8volt cancel process-instance [flags]
@@ -83,7 +73,7 @@ c8volt cancel process-instance [flags]
       --start-date-newer-days int   only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int   only include process instances N days old or older (default -1)
   -s, --state string                state to filter process instances: all, active, completed, canceled, terminated (default "all")
-  -w, --workers int                 maximum concurrent workers when --batch-size > 1 (default: min(batch-size, 2*GOMAXPROCS, 32))
+  -w, --workers int                 maximum concurrent workers for queued work; mutation work uses root trees (default: min(queued work, 2*GOMAXPROCS, 32)); independent of discovery page size
 ```
 
 ### Options inherited from parent commands

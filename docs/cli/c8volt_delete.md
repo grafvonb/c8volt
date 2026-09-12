@@ -12,8 +12,7 @@ Delete process instances or definitions
 
 Delete process instances or process definitions.
 
-Leaf commands validate scope, require confirmation for destructive steps, and
-show verification examples.
+Choose a resource command to validate its scope and confirm deletion.
 
 ```
 c8volt delete [flags]

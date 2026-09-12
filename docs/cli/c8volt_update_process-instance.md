@@ -10,15 +10,13 @@ Update process-instance variables by key
 
 ### Synopsis
 
-Update process-instance variables by key.
+Update process-instance-scope variables on Camunda 8.8 or newer.
 
-The command accepts repeated --key values or newline-separated keys from stdin with '-'. Provide exactly one variable payload source: --vars with a JSON object or --vars-file with a path to a JSON object file. The same variable map is applied to every unique target key.
+Provide repeated --key values or newline-separated keys from stdin with '-'. Supply exactly one payload source: --vars with a JSON object or --vars-file with its file path. The same variable map is applied to every unique key. Explicit keys use backend authorization without tenant filtering.
 
-Tenant contract: explicit --key and stdin keys are backend-authorized admin input and report that the tenant filter is not applied. Resolved previews show one known variable/resource tenant informationally, emit one warning-level "affected tenants" summary when multiple tenants are already known, and warn separately when target tenant metadata is unknown.
+c8volt loads current variables, plans additions and changes, asks for confirmation, and waits until the requested variables are visible through the same lookup as get process-instance --with-vars.
 
-By default c8volt loads current process-instance-scope variables, previews planned additions and changes, asks for confirmation, then waits until requested variables are visible through the same lookup path as `get process-instance --with-vars`. Use --dry-run to preview without mutating, or --auto-confirm for unattended mutation.
-
-Variable updates are supported for Camunda 8.8 or newer. Camunda 8.7 returns an unsupported-version error before mutation.
+Use --dry-run to inspect changes without mutation, or --auto-confirm for unattended updates.
 
 ```
 c8volt update process-instance [flags]

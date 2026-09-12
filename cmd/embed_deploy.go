@@ -26,7 +26,7 @@ var embedDeployCmd = &cobra.Command{
 	Long: "Deploy bundled BPMN fixtures.\n\n" +
 		"Use `--all` for the configured Camunda version, or pass one or more `--file` values from `embed list`. " +
 		"Add --run to start one process instance after deployment. " +
-		"This command does not accept --all-tenants because it creates resources in one concrete tenant.",
+		"--all-tenants is not supported because deployment requires one destination tenant.",
 	Example: `  ./c8volt embed list
   ./c8volt embed deploy --all
   ./c8volt embed deploy --file processdefinitions/<embedded-process>.bpmn

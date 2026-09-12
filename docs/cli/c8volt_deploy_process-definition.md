@@ -10,11 +10,9 @@ Deploy BPMN process definition files
 
 ### Synopsis
 
-Deploy BPMN process definition files and report the deployed definitions.
+Deploy BPMN process definition files to Camunda.
 
-Tenant contract: deployment is a creation operation. A named tenant is reported as "creation target: <tenant>" before upload; empty tenant configuration targets and reports "creation target: default tenant". This command does not accept --all-tenants because it creates resources in one concrete tenant.
-
-Default human output keeps one workflow activity updated from real deployment visibility completions and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-definition completion line. JSON and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings.
+Deployment uses the configured tenant, or the default tenant when none is configured. --all-tenants is not supported because deployment requires one destination tenant.
 
 By default c8volt waits for deployment confirmation. Use --run to start one process instance for each deployed definition.
 

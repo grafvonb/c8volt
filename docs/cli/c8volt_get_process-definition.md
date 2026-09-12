@@ -12,46 +12,15 @@ List or fetch deployed process definitions
 
 List or fetch deployed process definitions.
 
-Inspect deployed BPMN models by key, BPMN process ID, version selectors, or
-latest deployed version. Use `--xml` only with `--key`.
+Select by key, BPMN process ID, version, or version tag. Use --xml only with --key. A --bpmn-process-id selector must match a visible definition.
 
-Tenant contract: `--tenant` scopes list/latest and BPMN selector discovery where
-supported. Explicit `--key` and XML key lookups are backend-authorized admin input;
-c8volt displays returned tenant metadata without rejecting solely because it differs
-from the selected tenant.
+--tenant limits list and selector discovery. Explicit --key and XML lookups use backend authorization without tenant filtering.
 
-Collection order is stable across list, `--latest`, `--stat`, JSON, keys-only,
-and watch output: tenant ID ascending, BPMN process ID ascending, version
-descending, then process-definition key ascending. Tenant IDs and BPMN process
-IDs are compared exactly and case-sensitively; `<default>` is ordinary text
-for ordering; keys are opaque text and are not parsed numerically.
+--latest selects the newest definition per exact tenant ID and BPMN process ID, breaking version ties by the lowest exact-text key. Camunda 8.7 selects within its 1000 visible-definition compatibility window; Camunda 8.8 or newer uses native latest filtering.
 
-`--latest` selects one newest definition per exact tenant ID and BPMN process
-ID pair, using the lowest exact-text process-definition key when versions tie.
-Camunda `8.7` applies this latest selection within its existing 1000 visible
-definition compatibility window; Camunda `8.8` or newer uses native latest
-filtering and the same final collection order.
+--stat includes exact-version statistics and requires Camunda 8.8 or newer.
 
-Watch mode repaints one terminal view, starting immediately and then waiting
-`1s` between refreshes unless `--watch-interval` is set. Each refresh body
-matches normal list output without watch-only snapshot labels. Without a selector,
-`--watch` observes all visible process definitions. JSON, keys-only, XML,
-quiet, and automation combinations are rejected before lookup work. Existing
-timeout and backoff retry settings bound the watch run; successful refreshes reset
-the consecutive retry budget.
-
-When `--bpmn-process-id` is set, c8volt validates that at least one visible
-process definition matches the selector before rendering output. A missing selector
-fails with the shared local diagnostic instead of rendering an ambiguous empty list.
-
-With `--json`, validation and runtime failures during command execution use one
-shared error envelope. Without `--json`, the diagnostic is written to stderr.
-`--no-err-codes` changes only the process exit status; the reported failure and
-immediate termination are unchanged. Bootstrap failures and argument or flag parsing
-errors before command execution retain their established diagnostics.
-
-`--stat` requires Camunda `8.8` or newer and prints exact-version
-counts. Camunda `8.7` does not support native statistics.
+--watch repeats the lookup until interrupted, timed out, or retries are exhausted. It starts immediately; --watch-interval controls subsequent checks. Without a selector it observes all visible definitions. Successful checks reset the consecutive retry budget. --watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation.
 
 ```
 c8volt get process-definition [flags]
@@ -71,7 +40,7 @@ c8volt get process-definition [flags]
 ### Options
 
 ```
-  -n, --batch-size int32          number of process definitions to request per discovery page; does not cap total returned rows (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32          number of process definitions to request per discovery page; does not cap total results (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string    BPMN process ID to filter process instances
   -h, --help                      help for process-definition
   -k, --key string                process definition key to fetch
@@ -79,7 +48,7 @@ c8volt get process-definition [flags]
       --pd-version int32          process definition version
       --pd-version-tag string     process definition version tag
       --stat                      include process definition statistics; 8.8 or newer includes incident counts, 8.7 unsupported
-      --watch                     repeat the process-definition lookup as a repainted terminal view until interrupted, timed out, or retry-exhausted
+      --watch                     repeat the process-definition lookup until interrupted, timed out, or retries are exhausted
       --watch-interval duration   interval between process-definition watch refreshes after the immediate first refresh (default 1s)
       --xml                       output the selected process definition as raw XML (requires --key and no other filters)
 ```

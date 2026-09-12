@@ -65,7 +65,7 @@ func TestOpsRepairProcessInstanceHelpDocumentsSelectionShape(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "ops", "repair", "process-instance", "--help")
 
 	assertHelpOutputContainsAll(t, output,
-		"Repair incidents selected by process instances",
+		"Repair active incidents associated with selected process instances",
 		"Aliases:",
 		"pi",
 		"--key strings",

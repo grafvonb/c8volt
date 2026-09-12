@@ -27,12 +27,13 @@ var (
 var runProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Start process instances and confirm creation",
-	Long: "Start process instances and confirm creation.\n\n" +
-		"Run by BPMN process ID for the latest version, or by process definition key for an exact definition.\n\n" +
-		"Tenant contract: process-instance start is a creation operation. A named tenant is reported as \"creation target: <tenant>\" before creation; empty tenant configuration targets and reports \"creation target: default tenant\". This command does not accept --all-tenants because it creates resources in one concrete tenant.\n\n" +
-		"When running by BPMN process ID, c8volt validates all requested process definitions before creating anything. Mixed visible and missing BPMN IDs fail as one request, so no partial process instances are started; automation-oriented modes never prompt for recovery output.\n\n" +
-		"By default c8volt waits until created instances are observable. Created instances are confirmed after Camunda observes ACTIVE, COMPLETED, CANCELED, or TERMINATED.\n\n" +
-		"Use --keys-only to pipe created process instance keys into strict lifecycle checks with expect process-instance.",
+	Long: `Start process instances and confirm creation.
+
+Use a BPMN process ID for the latest version or a process-definition key for an exact definition. All requested BPMN IDs must be visible before any instance is started.
+
+Creation uses the configured tenant, or the default tenant when none is configured. --all-tenants is not supported because creation requires one destination tenant.
+
+By default c8volt waits until created instances are observable as ACTIVE, COMPLETED, CANCELED, or TERMINATED.`,
 	Example: `  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
   ./c8volt --tenant tenant-a run process-instance --bpmn-process-id <bpmn-process-id>
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'

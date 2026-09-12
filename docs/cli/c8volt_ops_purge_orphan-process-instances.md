@@ -9,11 +9,13 @@ Purge orphan child process instances
 
 ### Synopsis
 
-Purge orphan child process instances.
+Delete orphan child process instances whose parents are missing.
 
-Tenant contract: orphan purge uses discovery semantics. A named tenant scopes candidate discovery; empty tenant configuration leaves discovery unfiltered and is reported as "selection scope: unfiltered across accessible tenants". Explicit --tenant changes are reported before scope, and --tenant "" warns when it clears a named configured filter. Selection context appears before discovery; validated affected tenants appear before the confirmation question and the first mutation. --auto-confirm skips only the question and does not suppress tenant context permitted by the selected output mode. Frozen plans and audit reports show one known resource tenant informationally, emit one warning-level "affected tenants" summary when the scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.
+The workflow discovers orphan candidates, fixes the target set, validates the delete plan, and requires confirmation before deletion. Process-instance family, force, and wait rules apply.
 
-The workflow discovers child process instances with missing parents, freezes the discovered key set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. After confirmation, default human output keeps deletion progress on one workflow activity and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-root completion line. JSON and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.
+--tenant limits discovery; an empty tenant or --all-tenants searches across accessible tenants.
+
+Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
 
 ```
 c8volt ops purge orphan-process-instances [flags]
@@ -42,7 +44,7 @@ c8volt ops purge orphan-process-instances [flags]
       --end-date-newer-days int     only include process instances with end date N days old or newer (0 means today) (default -1)
       --end-date-older-days int     only include process instances with end date N days old or older (default -1)
       --fail-fast                   stop scheduling validation work after the first error
-      --force                       force cancellation of the process instance(s), prior to deletion
+      --force                       allow cancellation when deletion encounters nonterminal process instances
   -h, --help                        help for orphan-process-instances
       --incidents-only              show only process instances that have incidents
   -l, --limit int32                 maximum number of matching child process instances to inspect across all pages

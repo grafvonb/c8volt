@@ -10,11 +10,7 @@ Show connected cluster license
 
 ### Synopsis
 
-Show connected cluster license.
-
-This command prints flat fields returned by the configured Camunda cluster. Use --json for the structured license payload.
-
-With --json, validation and runtime failures during command execution use one shared error envelope. Without --json, the diagnostic is written to stderr. --no-err-codes changes only the process exit status; the reported failure and immediate termination are unchanged. Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics.
+Inspect the connected Camunda cluster's license.
 
 ```
 c8volt get cluster license [flags]

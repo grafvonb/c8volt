@@ -12,9 +12,7 @@ Resolve operational incidents
 
 Resolve operational incidents.
 
-The incident command resolves known incident keys and reports each target
-independently. Resolution is state-changing and waits for confirmation by
-default unless a leaf command supports an explicit opt-out.
+Choose incident keys or process-instance families. Resolution changes state and waits for clearance unless --no-wait is set.
 
 ```
 c8volt resolve [flags]

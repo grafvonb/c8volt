@@ -60,14 +60,14 @@ func TestOpsExecuteRetentionPolicyHelpDocumentsCommand(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "ops", "execute", "--help")
 
 	assertHelpOutputContainsAll(t, output,
-		"Discover predefined operational playbooks",
+		"Run predefined operational playbooks",
 		"retention-policy",
 	)
 
 	commandOutput := executeRootForProcessInstanceTest(t, "ops", "execute", "retention-policy", "--help")
 
 	assertHelpOutputContainsAll(t, commandOutput,
-		"Execute process-instance retention cleanup",
+		"Delete process instances older than the required retention age",
 		"--retention-days int",
 		"./c8volt ops execute retention-policy --retention-days 90 --dry-run",
 		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --dry-run",

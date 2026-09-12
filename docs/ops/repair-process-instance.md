@@ -43,8 +43,8 @@ c8volt resolve incident --key <incident-key>
 
 Generated references: [get process-instance](/cli/c8volt_get_process-instance), [update process-instance](/cli/c8volt_update_process-instance), [update job](/cli/c8volt_update_job), [resolve incident](/cli/c8volt_resolve_incident).
 
-## Output And Safety
+## Safety
 
 `--dry-run` shows selected process instances, discovered active incidents, and planned repair steps without mutation. Real execution skips instances with no repairable incident, deduplicates shared targets, and reports the same repair outcomes as `ops repair incident`.
 
-Selector-based repair reports discovery tenant context, using `selection scope: tenant-a only` for named discovery and `selection scope: unfiltered across accessible tenants` when discovery is unfiltered. Use `--all-tenants` to clear a configured selector tenant for this run while staying bounded by authenticated Camunda visibility. Explicit tenant flag changes are reported before scope; clearing a named configuration with `--tenant ""` warns that selection is unfiltered, and clearing it with `--all-tenants` emits `--all-tenants overrides the configured tenant filter; selection is unfiltered`. The options `--tenant` and `--all-tenants` are mutually exclusive. Explicit process-instance keys report `selection scope: explicit resource keys; tenant filter not applied`, then include known process-instance or incident tenant evidence from the frozen repair plan. Multi-tenant plans emit one warning-level `affected tenants: ...` summary, and unknown-metadata warnings are non-blocking safety signals. JSON reports carry `tenantContext`; quiet and keys-only behavior remains protected for automation.
+A named tenant limits discovery. An empty tenant or `--all-tenants` searches across tenants visible to the authenticated identity. `--all-tenants` conflicts with an explicit `--tenant` value. Explicit keys use backend authorization without tenant filtering.

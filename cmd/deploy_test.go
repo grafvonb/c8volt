@@ -45,7 +45,7 @@ func TestDeployHelp_DocumentsWaitContractsAndFollowUp(t *testing.T) {
 	output = assertCommandHelpOutput(t, []string{"deploy", "process-definition"}, []string{
 		"By default c8volt waits for deployment confirmation",
 		"Use --run to start one process instance",
-		"does not accept --all-tenants because it creates resources in one concrete tenant",
+		"--all-tenants is not supported because",
 		"./c8volt deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run",
 	}, nil)
 	require.Contains(t, output, "--run")

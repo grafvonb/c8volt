@@ -19,7 +19,7 @@ var getResourceCmd = &cobra.Command{
 	Short: "Get a resource by ID",
 	Long: "Get a single resource by ID.\n\n" +
 		"Requires --id. The ID must be a Camunda resource ID; process-definition keys and deployment response keys are not resource IDs.\n\n" +
-		"Tenant contract: explicit --id resource targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.",
+		"Explicit --id uses backend authorization without tenant filtering.",
 	Example: `  ./c8volt get resource --id <resource-id>
   ./c8volt --json get resource --id <resource-id>
   ./c8volt --keys-only get resource --id <resource-id>`,

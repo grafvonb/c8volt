@@ -161,13 +161,11 @@ func TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape(t *testing.T) {
 	output := executeRootForTest(t, "ops", "purge", "all-process-definitions", "--help")
 
 	assertHelpOutputContainsAll(t, output,
-		"Purge all selected process definitions",
-		"Forced cleanup enters the actual stages as needed",
-		"cancelling process-instance root trees",
-		"waiting for active process instances to drain",
-		"deleting process-instance histories",
-		"Cancellation and history deletion count unique root trees; definition deletion counts process definitions.",
-		"one completion line per root or definition in the current stage",
+		"Delete selected process definitions and their associated history",
+		"Forced cleanup cancels root instances",
+		"cancels root instances",
+		"waits for active instances to drain",
+		"deletes instance history",
 		"Aliases:",
 		"all-pds",
 		"--key string",
@@ -199,7 +197,7 @@ func TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape(t *testing.T) {
 	)
 
 	aliasOutput := executeRootForTest(t, "ops", "purge", "all-pds", "--help")
-	require.Contains(t, aliasOutput, "Purge all selected process definitions")
+	require.Contains(t, aliasOutput, "Delete selected process definitions and their associated history")
 }
 
 // TestOpsPurgeAllProcessDefinitionsRejectsDisplayOnlyPDFlags keeps get-pd display flags out of the purge surface.

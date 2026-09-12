@@ -60,7 +60,7 @@ func TestConfigValidateHelp_ExplainsDirectValidation(t *testing.T) {
 	output := executeRootForTest(t, "config", "validate", "--help")
 
 	require.Contains(t, output, "Validate effective configuration")
-	require.Contains(t, output, "same validation behavior as `config show --validate`")
+	require.Contains(t, output, "same validation as config show --validate")
 	require.Contains(t, output, "./c8volt --config ./config.yaml config validate")
 	require.NotContains(t, output, "--template")
 }
@@ -69,7 +69,7 @@ func TestConfigTemplateHelp_ExplainsDirectTemplateRendering(t *testing.T) {
 	output := executeRootForTest(t, "config", "template", "--help")
 
 	require.Contains(t, output, "Print a blank configuration template")
-	require.Contains(t, output, "same blank configuration template as `config show --template`")
+	require.Contains(t, output, "Equivalent to config show --template")
 	require.Contains(t, output, "./c8volt config template")
 	require.NotContains(t, output, "--validate")
 }
@@ -77,13 +77,12 @@ func TestConfigTemplateHelp_ExplainsDirectTemplateRendering(t *testing.T) {
 func TestConfigTestConnectionHelp_ExplainsConnectionDiagnostic(t *testing.T) {
 	output := executeRootForTest(t, "config", "test-connection", "--help")
 
-	require.Contains(t, output, "Test configured Camunda connection")
-	require.Contains(t, output, "validates local configuration before retrieving cluster topology")
-	require.Contains(t, output, "Plain, patch,")
-	require.Contains(t, output, "prerelease values on the configured release line match without a warning")
-	require.Contains(t, output, "different major/minor release line warns about a mismatch")
-	require.Contains(t, output, "gateway versions warn that compatibility cannot be verified")
-	require.Contains(t, output, "diagnostics do not make an otherwise successful connection test")
+	require.Contains(t, output, "Validate configuration and test Camunda reachability")
+	require.Contains(t, output, "validates it locally, and retrieves cluster topology")
+	require.Contains(t, output, "patch and prerelease differences on the same line are accepted")
+	require.Contains(t, output, "compare the configured and observed major/minor release lines")
+	require.Contains(t, output, "unknown gateway version")
+	require.Contains(t, output, "does not fail an otherwise successful connection test")
 	require.Contains(t, output, "./c8volt --config ./config.yaml config test-connection")
 	require.NotContains(t, output, "--template")
 }

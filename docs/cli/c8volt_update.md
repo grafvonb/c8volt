@@ -10,13 +10,9 @@ Update existing resources
 
 ### Synopsis
 
-Update existing resources.
+Update process-instance variables or job retries, timeouts, and worker outcomes.
 
-The process-instance command updates process-instance-scope variables on
-existing Camunda 8.8 or newer process instances. The job command updates
-job retries and timeout by key, with dry-run planning, confirmation prompts,
-and submitted output. Camunda 8.7 configurations return an
-unsupported-version error before these mutations.
+Requires Camunda 8.8 or newer. Use a resource subcommand to plan and confirm updates.
 
 ```
 c8volt update [flags]

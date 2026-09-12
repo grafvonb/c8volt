@@ -46,8 +46,8 @@ c8volt delete process-instance -
 
 Generated references: [get process-instance](/cli/c8volt_get_process-instance), [delete process-instance](/cli/c8volt_delete_process-instance).
 
-## Output And Safety
+## Safety
 
 `--dry-run` reports orphan candidates and the delete plan without mutation. Real execution deletes only after confirmation unless automation controls are used. Process-instance delete safety, waiting, report format, worker controls, and fail-fast behavior follow the underlying delete workflow.
 
-Orphan purge uses discovery tenant semantics. A named tenant configuration limits discovery and is reported as `selection scope: tenant-a only`; an empty tenant or active `--all-tenants` is reported as `selection scope: unfiltered across accessible tenants`. Use `--all-tenants` to clear a configured tenant for this run while staying bounded by authenticated Camunda visibility. Explicit tenant flag changes are reported before scope; clearing a named configuration with `--tenant ""` warns that selection is unfiltered, and clearing it with `--all-tenants` emits `--all-tenants overrides the configured tenant filter; selection is unfiltered`. The options `--tenant` and `--all-tenants` are mutually exclusive. The frozen delete plan can also show one known tenant informationally, emit one warning-level `affected tenants: ...` summary when the affected set spans tenants, and warn separately for unknown tenant metadata. JSON reports include the shared `tenantContext` object, and protected output modes keep stdout script-safe.
+A named tenant limits discovery. An empty tenant or `--all-tenants` searches across tenants visible to the authenticated identity. `--all-tenants` conflicts with an explicit `--tenant` value.

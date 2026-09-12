@@ -10,9 +10,7 @@ Print version information
 
 ### Synopsis
 
-Print version information.
-
-Use --json for version metadata, including supported Camunda versions and the active Camunda 8.10 baseline.
+Show the c8volt version, build metadata, supported Camunda versions, and active Camunda 8.10 baseline.
 
 ```
 c8volt version [flags]

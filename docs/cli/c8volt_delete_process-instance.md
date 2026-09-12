@@ -10,29 +10,19 @@ Delete process instances by key or filters
 
 ### Synopsis
 
-Delete process instances by key or search filters, optionally cancelling first.
+Delete process instances by key or search filters.
 
-By default c8volt validates the complete affected tree before submitting any delete request, prompts before deletion, and waits until deletion is observed. If any affected process instance is not in a final state, the whole delete batch is refused before mutation. Use --force to cancel the affected scope first, then delete it.
+c8volt validates the affected tree before any deletion, asks for confirmation, and waits until deletion is observed. Nonterminal instances block deletion unless --force is set.
 
-Tenant contract: --tenant scopes search-derived candidate discovery where supported. Empty tenant configuration leaves discovery unfiltered and is reported as "selection scope: unfiltered across accessible tenants". Explicit --tenant changes are reported before scope, and --tenant "" warns when it clears a named configured filter. Explicit --key and stdin keys are backend-authorized admin input and report that the tenant filter is not applied; existing dry-run, confirmation, force, and wait safety checks still apply.
+--force allows cancellation when deletion encounters a nonterminal instance. Deletion traverses children first and retries after cancellation; the entire scope is not canceled before any deletion.
 
-Resolved delete plans show one known resource tenant informationally, emit one warning-level "affected tenants" summary when the frozen scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.
+--tenant limits search-derived selection. An empty tenant or --all-tenants leaves discovery unfiltered across accessible tenants. Explicit --key and stdin keys use backend authorization without tenant filtering.
 
-Eligible selector-based tenant diagnostics use standard INFO and WARN logging and honor the configured log format and level; their existing output-mode eligibility remains unchanged. JSON-formatted diagnostic logs are separate from JSON command results and stay off result stdout.
+A --bpmn-process-id selector must match a visible process definition before instance discovery. An empty selection completes without confirmation or mutation.
 
-When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, cancellation, or deletion; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no deletion request is submitted.
+Search mode plans all selected pages before one confirmation and deletion. --batch-size controls each discovery request; --limit caps the selected scope across all pages. --workers, --fail-fast, and --no-worker-limit control planning and deletion work.
 
-When a selector search succeeds with no matching instances, deletion completes as a successful no-op without confirmation or mutation. Human output is exactly "found: 0"; --quiet suppresses that summary, --keys-only writes zero bytes, and --json writes one succeeded result envelope with an empty deletion payload. The same output rules apply to --dry-run, whose JSON preview reports mutationSubmitted: false.
-
-Search mode pages through matching process instances by default and freezes every selected page-level delete plan before one confirmation and mutation. --batch-size controls each discovery page request, --limit caps the frozen delete scope across all pages, and --workers, --fail-fast, and --no-worker-limit bound independent planning, cancellation, or deletion work. Verbose paging progress is written away from stdout; JSON, quiet, and automation output remain free of prompts unless confirmation is explicitly supplied.
-
-After confirmation, default human output keeps one workflow activity updated from real deletion completions and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-root completion line. JSON, keys-only, and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings.
-
-With --json, validation and runtime failures during command execution use one shared error envelope. Without --json, the diagnostic is written to stderr. --no-err-codes changes only the process exit status; the reported failure and immediate termination are unchanged. Bootstrap failures and argument or flag parsing errors before command execution retain their established diagnostics.
-
-Use --dry-run to preview selected, in-scope, final-state, non-final, and partial-scope instances without deleting or cancelling.
-
-Use --auto-confirm for unattended destructive runs.
+Use --dry-run to preview the affected family without deleting or cancelling. Use --auto-confirm for unattended deletion.
 
 ```
 c8volt delete process-instance [flags]
@@ -66,7 +56,7 @@ c8volt delete process-instance [flags]
       --end-date-newer-days int     only include process instances with end date N days old or newer (0 means today) (default -1)
       --end-date-older-days int     only include process instances with end date N days old or older (default -1)
       --fail-fast                   stop scheduling new instances after the first error
-      --force                       force cancellation of the process instance(s), prior to deletion
+      --force                       allow cancellation when deletion encounters nonterminal process instances
   -h, --help                        help for process-instance
   -k, --key strings                 process instance key(s) to delete; repeat or combine with stdin '-'
   -l, --limit int32                 maximum number of matching process instances to freeze for deletion across all pages; omit to continue through all matches
@@ -80,7 +70,7 @@ c8volt delete process-instance [flags]
       --start-date-newer-days int   only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int   only include process instances N days old or older (default -1)
   -s, --state string                state to filter process instances: all, active, completed, canceled, terminated (default "all")
-  -w, --workers int                 maximum concurrent workers when --batch-size > 1 (default: min(batch-size, 2*GOMAXPROCS, 32))
+  -w, --workers int                 maximum concurrent workers for queued work; mutation work uses root trees (default: min(queued work, 2*GOMAXPROCS, 32)); independent of discovery page size
 ```
 
 ### Options inherited from parent commands

@@ -36,7 +36,7 @@ func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
 	output = assertCommandHelpOutput(t, []string{"cancel", "process-instance"}, []string{
 		"validates the affected root and descendant instances",
 		"Use --force when a selected child must be escalated",
-		"Use --auto-confirm for unattended destructive runs",
+		"--auto-confirm for unattended",
 		"number of process instances to inspect per discovery page; does not cap total selected scope",
 		"maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches",
 		"./c8volt expect process-instance --key <process-instance-key> --state canceled",

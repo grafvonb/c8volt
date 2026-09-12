@@ -15,22 +15,9 @@ import (
 var configTestConnectionCmd = &cobra.Command{
 	Use:   "test-connection",
 	Short: "Test configured Camunda connection",
-	Long: `Test configured Camunda connection.
+	Long: `Validate configuration and test Camunda reachability.
 
-Loads the effective configuration and logs the config source. The command
-validates local configuration before retrieving cluster topology. Plain, patch,
-and prerelease values on the configured release line match without a warning.
-A different major/minor release line warns about a mismatch. Empty or
-unparseable gateway versions warn that compatibility cannot be verified. These
-compatibility diagnostics do not make an otherwise successful connection test
-fail.
-
-Tenant context describes configuration scope only: a named tenant is a discovery
-filter, while an empty tenant means no configured tenant filter and is not
-reported as <default>. Human diagnostics report explicit --tenant changes before
-the resulting scope; --tenant "" warns when it clears a named configured filter.
-
-Use --json for a structured diagnostic payload on stdout; logs remain on stderr.`,
+Loads the effective configuration, validates it locally, and retrieves cluster topology. Compatibility checks compare the configured and observed major/minor release lines; patch and prerelease differences on the same line are accepted. A version mismatch or unknown gateway version does not fail an otherwise successful connection test.`,
 	Example: `  ./c8volt --config ./config.yaml config test-connection
   ./c8volt --config ./config.yaml config test-connection --json
   ./c8volt --profile prod config test-connection

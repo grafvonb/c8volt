@@ -63,7 +63,7 @@ func TestOpsPurgeOrphanProcessInstancesHelpDocumentsSafeAutomationPreview(t *tes
 	output := executeRootForProcessInstanceTest(t, "ops", "purge", "orphan-process-instances", "--help")
 
 	assertHelpOutputContainsAll(t, output,
-		"Purge orphan child process instances",
+		"Delete orphan child process instances whose parents are missing",
 		"./c8volt ops purge orphan-process-instances --dry-run",
 		"./c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md",
 	)

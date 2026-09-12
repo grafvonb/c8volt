@@ -20,18 +20,19 @@ var (
 var cancelProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Cancel process instances by key or filters",
-	Long: "Cancel process instances by key or search filters.\n\n" +
-		"By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.\n\n" +
-		"Cancellation confirmation succeeds when every affected family member is completed, canceled, terminated, or no longer present. This terminal cleanup rule does not broaden explicit state checks: expect process-instance --state canceled continues to match only canceled or terminated instances, not completed or absent ones.\n\n" +
-		"Tenant contract: --tenant scopes search-derived candidate discovery where supported. Empty tenant configuration leaves discovery unfiltered and is reported as \"selection scope: unfiltered across accessible tenants\". Explicit --tenant changes are reported before scope, and --tenant \"\" warns when it clears a named configured filter. Explicit --key and stdin keys are backend-authorized admin input and report that the tenant filter is not applied; existing dry-run, confirmation, force, and wait safety checks still apply.\n\n" +
-		"Resolved plans show one known resource tenant informationally, emit one warning-level \"affected tenants\" summary when the frozen scope spans multiple tenants, and warn separately for targets with unknown tenant metadata.\n\n" +
-		"Eligible selector-based tenant diagnostics use standard INFO and WARN logging and honor the configured log format and level; their existing output-mode eligibility remains unchanged. JSON-formatted diagnostic logs are separate from JSON command results and stay off result stdout.\n\n" +
-		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, or cancellation; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no cancellation request is submitted.\n\n" +
-		"When a selector search succeeds with no matching instances, cancellation completes as a successful no-op without confirmation or mutation. Human output is exactly \"found: 0\"; --quiet suppresses that summary, --keys-only writes zero bytes, and --json writes one succeeded result envelope with an empty cancellation payload. The same output rules apply to --dry-run, whose JSON preview reports mutationSubmitted: false.\n\n" +
-		"Search mode pages through matching process instances by default. --batch-size controls each discovery page request, --limit caps the selected process-instance scope across all pages, and --workers, --fail-fast, and --no-worker-limit bound independent planning or cancellation work. Verbose paging progress is written away from stdout; JSON, quiet, and automation output remain free of prompts unless confirmation is explicitly supplied.\n\n" +
-		"After confirmation, default human output keeps one workflow activity updated from real cancellation completions and writes compact stderr milestones at most once per 10-second interval, plus immediate failure warnings. Verbose and debug output replace aggregate milestones with one per-root completion line. JSON, keys-only, and automation output remain free of human progress text; quiet mode suppresses successful progress and retains failure warnings.\n\n" +
-		"Use --dry-run to preview selected, in-scope, final-state, and partial-scope instances without cancelling.\n\n" +
-		"Use --auto-confirm for unattended destructive runs.",
+	Long: `Cancel process instances by key or search filters.
+
+By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.
+
+Cancellation succeeds when every affected family member is completed, canceled, terminated, or absent. The explicit expect process-instance --state canceled check still requires canceled or terminated instances.
+
+--tenant limits search-derived selection. An empty tenant or --all-tenants leaves discovery unfiltered across accessible tenants. Explicit --key and stdin keys use backend authorization without tenant filtering.
+
+A --bpmn-process-id selector must match a visible process definition before instance discovery. An empty selection completes without confirmation or cancellation.
+
+--batch-size controls each discovery request; --limit caps selected instances across all pages. --workers, --fail-fast, and --no-worker-limit control planning and cancellation work.
+
+Use --dry-run to preview the affected family without cancelling. Use --auto-confirm for unattended cancellation.`,
 	Example: `  ./c8volt cancel process-instance --key <process-instance-key>
   ./c8volt cancel process-instance --key <process-instance-key> --dry-run
   ./c8volt cancel process-instance --key <process-instance-key> --force
@@ -187,7 +188,7 @@ func init() {
 	fs.StringSliceVarP(&flagCancelPIKeys, "key", "k", nil, "process instance key(s) to cancel")
 	fs.BoolVar(&flagForce, "force", false, "cancel the root instance when a selected instance is a child")
 
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --batch-size > 1 (default: min(batch-size, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers for queued work; mutation work uses root trees (default: min(queued work, 2*GOMAXPROCS, 32)); independent of discovery page size")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 
