@@ -19,3 +19,20 @@ Started: 2026-09-12 19:35:54
 **Learnings**:
 - Existing transport layering and terminal fixtures support the planned invocation-scoped shared interceptor; the baseline passed without product-code changes.
 ---
+
+## Iteration 2 - 2026-09-12 19:48
+**Work Unit**: Foundational record contract and formatter (T002-T003)
+**Tasks Completed**:
+- [x] T002: Added contract tests for stable field order, one-line escaping, omission, ASCII durations, nonnegative evidence, and invocation-local sequence allocation.
+- [x] T003: Implemented immutable diagnostic snapshots, bounded evidence enums, validation, and deterministic safe formatting.
+**Tasks Remaining in Work Unit**: 3 foundational tasks (T004-T006)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/httpc/diagnostics_record.go
+- internal/services/httpc/diagnostics_record_test.go
+- specs/305-api-request-diagnostics/tasks.md
+- specs/305-api-request-diagnostics/ralph-memory.md
+- specs/305-api-request-diagnostics/progress.md
+**Learnings**:
+- Optional evidence must distinguish absence from observed zero/false; the red test failed at the missing record contract, and targeted race plus full repository tests passed after implementation.
+---

@@ -8,10 +8,12 @@ Started: 2026-09-12T17:35:53Z
 - `httpc.New` currently builds `ReadRetry -> Log -> default transport`; `InstallAuthEditor` later adds Auth outside that chain.
 - OAuth token acquisition owns a separate unauthenticated HTTP client, while cookie authentication uses the shared client.
 - Real-terminal command tests use `testx.NewCmdTerminalRunner` with terminal stdin and independently captured stdout/stderr.
+- Diagnostic record optional numeric and boolean evidence uses pointers so observed zero/false remains distinct from absence; `diagnosticRecord.format` owns stable field order and ASCII duration units.
 
 ## Decisions
 
 - No conflict exists between the feature artifacts, constitution, AGENTS.md and `specs/ralph-implementation-rules.md` for the planned shared-interceptor design.
+- T002's red test cannot be committed alone under repository quality policy, so T002 and its paired T003 implementation form one validated work-unit commit.
 
 ## Gotchas
 
@@ -20,10 +22,12 @@ Started: 2026-09-12T17:35:53Z
 ## Reusable Commands
 
 - Baseline: `go test ./internal/services/httpc ./internal/services/auth/... ./cmd -run 'ReadRetry|ProcessInstanceConfirmationTerminal|RootHelp' -count=1`
+- Record checks: `go test ./internal/services/httpc -run 'TestAPIDiagnosticsRecord' -race -count=1`
+- Full gate: `make test`
 
 ## Do Not Repeat
 
 - Do not add diagnostics to individual commands or generated clients; keep observation at the shared HTTP transport boundary.
 
 ## Current Handoff
-- Continue with T002: add record contract tests in `internal/services/httpc/diagnostics_record_test.go`, confirm they fail for the missing implementation, and keep T003 for a later coordinated work unit.
+- Continue with T004: add sanitizer unit tests in `internal/services/httpc/diagnostics_redaction_test.go`, confirm the intended missing-implementation failure, and pair with T005 before committing if repository quality policy requires the suite to remain green.
