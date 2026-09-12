@@ -15,6 +15,7 @@ Started: 2026-09-12T17:35:53Z
 - `httpc.ShareDiagnostics` finds the invocation collector through known wrappers and attaches it to OAuth's timeout-preserving, unauthenticated, non-retrying token client so token and API exchanges share one sequence.
 - Root bootstrap passes `flagVerbose` and the existing configured invocation logger to `httpc.WithDiagnostics` before authenticator construction, so OAuth token and cookie login traffic are observed without separate command logic.
 - Root bootstrap must resolve the executing leaf's `cmd.ErrOrStderr()` before activity wrapping and set only the root to that wrapper; setting the child writer too hides its configured destination and risks stale invocation routing.
+- Real-terminal diagnostic coverage can reuse the process-instance confirmation subprocess helper: terminal stdin remains genuine while stdout/stderr are independently captured, and a configured child destination can be mirrored with `io.MultiWriter` for exact routing assertions.
 
 ## Decisions
 
@@ -42,4 +43,4 @@ Started: 2026-09-12T17:35:53Z
 - Do not add diagnostics to individual commands or generated clients; keep observation at the shared HTTP transport boundary.
 
 ## Current Handoff
-- Continue US2 at T017: add real-terminal diagnostic cases for accepted/aborted cancellation, effective stderr, quiet/machine modes, prompt-free empty scopes and activity coexistence; T019 remains unchecked until the T017 stream contract also passes.
+- Continue US2 at T018: extend adversarial sanitizer and fuzz coverage; then complete auth/cookie security integration in T020 and run the US2 gate in T021.

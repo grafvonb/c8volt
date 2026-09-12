@@ -142,3 +142,19 @@ Started: 2026-09-12 19:35:54
 **Learnings**:
 - Selecting root stderr before inspecting the executing leaf bypasses configured child destinations; activity wrapping should use the effective leaf writer without replacing the child's plain prompt writer.
 ---
+---
+## Iteration 8 - 2026-09-12 21:09
+**Work Unit**: US2 Use diagnostics safely in operational workflows (T017 and T019 terminal stream contract)
+**Tasks Completed**:
+- [x] T017: Added real-terminal diagnostic cancellation coverage for accept, abort and EOF, configured/inherited stderr, quiet JSON and keys-only modes, prompt-free empty scopes, activity coexistence and mutation absence.
+- [x] T019: Validated the effective stderr bootstrap and logger wiring against the complete T016-T017 command and terminal contract.
+**Tasks Remaining in Work Unit**: 3 US2 tasks (T018, T020-T021)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_confirmation_terminal_test.go
+- specs/305-api-request-diagnostics/tasks.md
+- specs/305-api-request-diagnostics/ralph-memory.md
+- specs/305-api-request-diagnostics/progress.md
+**Learnings**:
+- Real-terminal subprocess coverage confirms admitted records and plain prompts share the effective stderr without entering machine stdout; quiet suppresses records, and abort/EOF/empty scopes submit no mutation.
+---
