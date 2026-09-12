@@ -249,3 +249,21 @@ Started: 2026-09-12 19:35:54
 **Learnings**:
 - Request context cancellation can become observable just after a client timeout returns under race load; comparing the terminal timestamp with the established deadline preserves deterministic timeout evidence without changing transport behavior.
 ---
+---
+## Iteration 14 - 2026-09-12 22:18
+**Work Unit**: Phase 6 Polish and cross-cutting concerns (T029 operator documentation)
+**Tasks Completed**:
+- [x] T029: Documented the implemented verbose API diagnostic contract in README and root command metadata/examples, aligned runnable quickstart commands with the actual acceptance-test inventory, and added root-help regression coverage.
+**Tasks Remaining in Work Unit**: 3 Phase 6 tasks (T030-T032)
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/root.go
+- cmd/root_test.go
+- specs/305-api-request-diagnostics/tasks.md
+- specs/305-api-request-diagnostics/quickstart.md
+- specs/305-api-request-diagnostics/ralph-memory.md
+- specs/305-api-request-diagnostics/progress.md
+**Learnings**:
+- Root Cobra metadata feeds generated root and inherited help, while the README feeds the generated homepage; the acceptance inventory commands now enumerate every package that owns diagnostic coverage.
+---

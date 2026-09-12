@@ -38,10 +38,15 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 		"Use capabilities to discover supported commands and automation options",
 		"Camunda 8.7, 8.8, 8.9, and 8.10",
 		"Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)",
+		"--verbose emits redacted request diagnostics at INFO",
+		"configured stderr",
+		"--quiet and log-level filtering still",
+		"log format, timestamps, and source settings use the existing logger",
 		"--automation",
 		"Examples:",
 		"./c8volt config show --template",
 		"./c8volt get cluster topology",
+		"./c8volt --config ./config.yaml --verbose get process-definition --latest",
 		"./c8volt capabilities --json",
 		"./c8volt --config ./config.yaml config show --validate",
 	)
@@ -68,6 +73,8 @@ func TestRootHelpAndGeneratedMarkdownShareDiscoveryAnchors(t *testing.T) {
 		"Use capabilities to discover supported commands and automation options",
 		"Camunda 8.7, 8.8, 8.9, and 8.10",
 		"Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)",
+		"--verbose emits redacted request diagnostics at INFO",
+		"./c8volt --config ./config.yaml --verbose get process-definition --latest",
 	} {
 		require.Contains(t, helpOutput, anchor)
 		require.Contains(t, markdown, anchor)

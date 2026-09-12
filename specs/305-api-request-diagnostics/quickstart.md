@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Work from the repository root on `codex/305-api-request-diagnostics` with Go 1.26/toolchain go1.26.2 and repository dependencies available.
-- Implement the design before expecting the new diagnostics from existing `--verbose`. The named `APIDiagnostics` tests below are planned acceptance tests, not existing passing tests at planning time.
+- API request diagnostics are implemented through the existing `--verbose` flag. The named `APIDiagnostics` tests below are the runnable acceptance suite.
 - Default automated validation uses local HTTP/TLS fixtures and temporary configuration, including authentication and cancellation endpoints. It requires no live Camunda credentials and performs no real mutations.
 - Linux/macOS terminal checks use the existing `testx.NewCmdTerminalRunner`; unsupported platforms must explicitly report that limitation.
 
@@ -63,14 +63,17 @@ make test
 
 ## 1. Check implementation coverage and run focused validation
 
-Add acceptance tests under the shared `TestAPIDiagnostics...` naming prefix in httpc, OAuth and cmd during implementation. Confirm the test lists contain the intended cases before running them; a successful command with no matching tests is not validation.
+Acceptance tests use the shared `TestAPIDiagnostics...` naming prefix in httpc, OAuth, cookie auth, c8volt client wiring and cmd. Confirm the test lists contain the intended cases before running them; a successful command with no matching tests is not validation.
 
 ```sh
 go test ./internal/services/httpc -list APIDiagnostics
 go test ./internal/services/auth/oauth2 -list APIDiagnostics
+go test ./internal/services/auth/cookie -list APIDiagnostics
+go test ./c8volt -list APIDiagnostics
 go test ./cmd -list APIDiagnostics
 go test ./internal/services/httpc -run 'TestAPIDiagnostics' -count=1
-go test ./internal/services/auth/oauth2 -run 'TestAPIDiagnostics' -count=1
+go test ./internal/services/auth/... -run 'TestAPIDiagnostics' -count=1
+go test ./c8volt -run 'TestAPIDiagnostics' -count=1
 go test ./cmd -run 'TestAPIDiagnostics' -count=1
 ```
 

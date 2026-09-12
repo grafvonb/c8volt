@@ -24,6 +24,7 @@ Started: 2026-09-12T17:35:53Z
 - Pre-header failure phase resolution prefers typed DNS/TLS/connect evidence, retains a phase only when trace failures or active setup identify one phase, and uses a successful `WroteRequest` as response-header evidence; conflicting phases are omitted.
 - Client timeout finalization must compare the terminal observation with the request context deadline in addition to checking `Context.Err()`, because cancellation state can lag the transport return under race-suite load.
 - Separate command invocations should be tested in subprocesses: each owns a fresh Cobra singleton, diagnostic collector, stderr destination and sequence beginning at 1.
+- Root `Long`, `Example` and persistent-flag metadata are the source for generated root and inherited help; README content is also copied into the generated documentation homepage by `make docs-content`.
 
 ## Decisions
 
@@ -55,4 +56,4 @@ Started: 2026-09-12T17:35:53Z
 - Do not add diagnostics to individual commands or generated clients; keep observation at the shared HTTP transport boundary.
 
 ## Current Handoff
-- Continue Phase 6 at T029: update README and root command metadata for the implemented verbose diagnostic contract, then regenerate docs at T030.
+- Continue Phase 6 at T030: run `make docs-content`, inspect the generated root/inherited CLI pages and README homepage, and fix source metadata rather than generated files if needed.
