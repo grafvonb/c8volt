@@ -81,7 +81,7 @@
 - [x] T013 [P] Add the same concise logging clarification to command source metadata in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`; preserve command names, flags, examples, tenant policy, and prompt wording, and adjust relevant metadata assertions in `cmd/cmd_processinstance_test.go` if needed.
 - [x] T014 Run `make docs-content` using `Makefile` after T012–T013; inspect regenerated `docs/cli/` pages and README-derived documentation for only the intended clarification, without hand-editing generated files.
 - [x] T015 Run gofmt on all touched Go files, the three targeted commands in `specs/303-standard-tenant-logging/quickstart.md`, and `git diff --check`; then run the required `make test` from `Makefile` (`go test ./... -race -count=1`) and record actual outcomes in `specs/303-standard-tenant-logging/quickstart.md` before any implementation commit. Resolve failures within scope and explicitly report environmental blockers.
-- [ ] T016 Review the final diff against `specs/303-standard-tenant-logging/contracts/tenant-logging.md` and FR-001–FR-009 in `specs/303-standard-tenant-logging/spec.md`; confirm only the two emission calls plus tests/docs changed, all acceptance evidence is recorded, and update completion checkboxes in `specs/303-standard-tenant-logging/tasks.md` only for finished work.
+- [x] T016 Review the final diff against `specs/303-standard-tenant-logging/contracts/tenant-logging.md` and FR-001–FR-009 in `specs/303-standard-tenant-logging/spec.md`; confirm only the two emission calls plus tests/docs changed, all acceptance evidence is recorded, and update completion checkboxes in `specs/303-standard-tenant-logging/tasks.md` only for finished work.
 
 ## Dependencies & Execution Order
 
